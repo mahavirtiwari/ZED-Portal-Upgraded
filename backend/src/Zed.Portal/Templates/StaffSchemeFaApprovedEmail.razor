@@ -1,0 +1,17 @@
+@* Port of _FaVerificationAcceptUnitTemplate.cshtml (FinalSubmit, agency approval): to the MSME.
+   The legacy action sent this text, which addresses the MSME, to the agency's own address. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">At the outset, we thank you for being a part of the “MSME Sustainable (ZED) Certification” Scheme of Ministry of MSME, Government of India.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your application for Financial Assistance on <span>@CategoryOfCertificate</span> has been approved and the reimbursement of certification cost is in process. A notification shall be sent once the reimbursement towards the certification cost (as applicable) is credited to your account.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">ZED ID: <b>@ZedId</b></p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string CategoryOfCertificate { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

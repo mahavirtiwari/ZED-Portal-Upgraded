@@ -1,0 +1,135 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme msme-cer-details">
+    @if (error()) {
+      <div class="alert alert-danger mt-3" role="alert">
+        {{ error() }}
+        @if (type()) {
+          <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+        }
+        <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
+      </div>
+    }
+
+    @if (data(); as d) {
+      <div class="row">
+        <!-- Unit summary -->
+        <div class="col-sm-3">
+          <h3 class="registration-title dash-text-clr">Welcome</h3>
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                @switch (msme()['EnterpriseType']) {
+                  @case ('Micro') { <div class="entp-label micro">M</div> }
+                  @case ('Small') { <div class="entp-label small">S</div> }
+                  @case ('Medium') { <div class="entp-label medium">M</div> }
+                }
+                <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+              </div>
+              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+            </div>
+          </div>
+
+          <div class="panel panel-default panel-black mt-2"><div class="panel-body">Selected Unit</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+          <div class="unit-selection">
+            <img src="/Images/svgicons/mapicon.svg" alt="" />
+            <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+          </div>
+
+          <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+
+          <div class="panel panel-default panel-black"><div class="panel-body">ZED Pledge Certificate</div></div>
+          <div class="unit-selection">
+            <div class="col-sm-12" style="padding: 0">
+              <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
+              <div class="btn-download">
+                <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-9">
+          <div class="refresh-bar">
+            <div>
+              <a [routerLink]="kind() === 'milestone' ? '/msme/handholding' : '/msme/dashboard'">
+                <img src="/Images/svgicons/back.svg" alt="" />
+                <span>BACK</span>
+              </a>
+            </div>
+            <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
+              <img src="/Images/svgicons/refresh.svg" alt="" />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          @if (showAppBanner()) {
+            <div class="zed-payment-success">
+              <div class="label-highlight">
+                <div>
+                  <p>Please download the <strong>ZED MSME Mobile Application</strong> to proceed to the next step, i.e. Basic Information and Document Upload</p>
+                  <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
+                  <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                  <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+                </div>
+              </div>
+            </div>
+          }
+
+          <div class="panel panel-steps panel-bg-default">
+            <div class="panel-body">
+              <div class="row">
+                <div class="col-sm-7">
+                  <h3 class="registration-title">Status</h3>
+                  <zed-certification-steps [certification]="d.certification" [status]="status()" [incentiveUrl]="incentiveUrl()" />
+                </div>
+                <div class="col-sm-5">
+                  <h3 class="registration-title">Actions</h3>
+                  @for (a of actions(); track $index) {
+                    <div class="alert alert-document" [class.alert-document-danger]="a.danger" [class.btn-disabled]="!a.enabled">
+                      <div>
+                        <img class="icon-bg" [src]="'/Images/svgicons/' + a.icon + '.svg'" alt="" />
+                        <p>{{ a.label }}</p>
+                      </div>
+                      @if (a.route && a.enabled) {
+                        <a [routerLink]="a.route" [attr.aria-label]="a.label">
+                          <img src="/Images/svgicons/arrow-right-black.svg" alt="" />
+                        </a>
+                      } @else if (a.route) {
+                        <span aria-hidden="true"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></span>
+                      } @else if (a.href !== undefined) {
+                        <a [href]="a.href" target="_blank" rel="noopener" [attr.aria-label]="a.label" [style.width.px]="a.wide ? 180 : null">
+                          <img [src]="a.download ? '/Images/svgicons/download.svg' : '/Images/svgicons/arrow-right-black.svg'" alt="" />
+                        </a>
+                      } @else {
+                        <small class="soon-note" title="This page is being moved to the new portal.">Available soon</small>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
+    <div class="loadingimage">
+      <div class="loader"></div>
+      <div class="text-center">
+        <small>Please wait ...</small><br />
+        <small>It may take upto 60 seconds</small>
+      </div>
+    </div>
+  </div>
+}

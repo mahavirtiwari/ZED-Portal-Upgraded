@@ -1,0 +1,19 @@
+@* Port of _FaVerificationRejectUnitTemplate.cshtml (FinalSubmit, assessor rejection): to the MSME. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your application for Financial Assistance on <span>@CategoryOfCertificate</span> is being returned as rejected. The details are as follows:</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string CategoryOfCertificate { get; set; } = "";
+    [Parameter] public string Reason { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Reason for Rejection", Reason)];
+}

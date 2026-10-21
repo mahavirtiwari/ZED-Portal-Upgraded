@@ -1,0 +1,26 @@
+// "Edit Activity" sat on the right of the heading (pull-right in the old markup).
+.activity-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+label.panel-item {
+  display: block;
+  cursor: pointer;
+}
+
+.unit-isselected .option-input {
+  vertical-align: sub;
+}
+
+// The legacy .loadingdiv is display:none until jQuery showed it; here it only exists while loading.
+.loadingdiv {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}

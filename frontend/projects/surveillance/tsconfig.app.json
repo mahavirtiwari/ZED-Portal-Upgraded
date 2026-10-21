@@ -1,0 +1,9 @@
+/* Built from the main app's source with src/portal-system.ts swapped in (angular.json fileReplacements). */
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": []
+  },
+  "include": ["../main/src/**/*.ts", "src/**/*.ts"],
+  "exclude": ["../main/src/**/*.spec.ts", "src/**/*.spec.ts"]
+}

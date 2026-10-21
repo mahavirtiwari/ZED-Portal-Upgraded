@@ -1,0 +1,24 @@
+@* Port of the inline HTML in HomeController.Contact. Values are HTML-encoded (the old mail inserted them raw). *@
+<div><b>Name:</b> @Name</div>
+<div><b>Mobile Number:</b> @Mobile</div>
+<div><b>Email ID:</b> @Email</div>
+@if (!string.IsNullOrEmpty(ZedId))
+{
+    <div><b>ZED ID:</b> @ZedId</div>
+}
+<br /><br />
+<div>
+    <b>Query:</b><br />
+    @foreach (var line in Query.Split('\n'))
+    {
+        @line.TrimEnd('\r')<br />
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Name { get; set; } = "";
+    [Parameter, EditorRequired] public string Mobile { get; set; } = "";
+    [Parameter, EditorRequired] public string Email { get; set; } = "";
+    [Parameter, EditorRequired] public string Query { get; set; } = "";
+    [Parameter] public string? ZedId { get; set; }
+}

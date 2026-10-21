@@ -1,0 +1,75 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme msme-cer-details">
+    <div class="panel panel-steps panel-bg-default mt-3">
+      <div class="panel-body">
+        <h3 class="registration-title">Certification History</h3>
+
+        <form class="row g-2 align-items-end mb-3" (ngSubmit)="search()">
+          <div class="col-sm-4">
+            <label for="zedId"><strong>ZED ID</strong></label>
+            <input id="zedId" name="zedId" type="text" class="form-control" maxlength="30" placeholder="e.g. ZEDMSME000123" [(ngModel)]="zedId" />
+          </div>
+          <div class="col-sm-3">
+            <button type="submit" class="btn btn-primary" [disabled]="loading()">Search</button>
+          </div>
+        </form>
+
+        @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+
+        @if (events().length) {
+          <div class="history-summary">
+            <div class="hs-item"><small>ZED ID</small><p>{{ searched() }}</p></div>
+            <div class="hs-item"><small>Total Milestones</small><p>{{ events().length }}</p></div>
+            <div class="hs-item"><small>Journey Started</small><p>{{ events()[0].CreatedDate | date: 'dd MMM yyyy' }}</p></div>
+            <div class="hs-item">
+              <small>Current Stage</small>
+              <p>
+                <span class="cert-badge" [class]="'cert-' + ((latest()?.CertificationType || 'na') | lowercase)">{{ latest()?.CertificationType || 'Registration' }}</span>
+                {{ latest()?.label || latest()?.Description }}
+              </p>
+            </div>
+            <div class="hs-item"><small>Last Updated</small><p>{{ latest()?.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</p></div>
+          </div>
+
+          <div class="timeline-wrap">
+            @for (g of groups(); track g.title) {
+              <div class="tl-group">
+                <div class="tl-group-head">
+                  <span class="cert-badge" [class]="'cert-' + ((g.cert || 'na') | lowercase)">{{ g.title }}</span>
+                  <span class="tl-group-range">{{ g.start | date: 'dd MMM yyyy' }} &ndash; {{ g.end | date: 'dd MMM yyyy' }}</span>
+                  <span class="tl-group-count">{{ g.events.length }} event(s)</span>
+                </div>
+                <ul class="timeline">
+                  @for (e of g.events; track $index) {
+                    <li class="tl-item" [class.tl-done]="e.done" [class.tl-alert]="e.alert">
+                      <div class="tl-dot" aria-hidden="true">{{ e.icon }}</div>
+                      <div class="tl-card">
+                        <div class="tl-card-top">
+                          @if (e.label) { <span class="tl-label">{{ e.label }}</span> }
+                          <span class="tl-source">{{ e.Source_DB }}</span>
+                          <span class="tl-time">{{ e.CreatedDate | date: 'dd MMM yyyy, h:mm a' }}</span>
+                        </div>
+                        <p class="tl-desc">{{ e.Description }}</p>
+                      </div>
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          </div>
+        } @else if (loaded() && !loading() && !error()) {
+          <div class="no-history"><p>No certification history found for this unit.</p></div>
+        }
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loadingdiv" role="status">
+    <div class="text-center text-white">
+      <img src="/Images/loading.gif" alt="" /><br />
+      <small>Please wait ... It may take upto 60 seconds</small>
+    </div>
+  </div>
+}

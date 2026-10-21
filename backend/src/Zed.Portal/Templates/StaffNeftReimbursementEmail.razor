@@ -1,0 +1,26 @@
+@* Port of _FaApprovedReimbursementTemplate.cshtml (NeftController.UpdateStatus): to the MSME. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The reimbursement details towards the certification cost for Financial Assistance on <span>@CategoryOfCertificate</span> are as follows:</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string CategoryOfCertificate { get; set; } = "";
+    [Parameter] public string Certification { get; set; } = "";
+    [Parameter] public string Amount { get; set; } = "";
+    [Parameter] public string PaymentDate { get; set; } = "";
+    [Parameter] public string ReferenceNo { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+    [
+        new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Amount (in Rs.)", Amount),
+        new("Date of Payment", PaymentDate), new("Reference Number", ReferenceNo), new("Certification", Certification),
+    ];
+}

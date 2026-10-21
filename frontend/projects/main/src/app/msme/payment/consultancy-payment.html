@@ -1,0 +1,220 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme">
+    @if (error()) {
+      <div class="alert alert-danger alert-dismissible mt-3" role="alert">
+        {{ error() }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+      </div>
+      @if (!step()) {
+        <div class="stepper-footer-sec initial-step1"><a class="btn btn-default" routerLink="/msme/handholding">BACK TO HANDHOLDING SUPPORT</a></div>
+      }
+    }
+
+    @switch (step()) {
+      @case ('disclaimer') {
+        <div class="row justify-content-center">
+          <div class="col-sm-9">
+            <div class="panel panel-default panel-design">
+              <div class="panel-body disclaimer-sec">
+                <h3 class="registration-title">DISCLAIMER</h3>
+                <p><strong>Handholding for {{ level() }} Level: {{ milestoneTitle() }}</strong></p>
+                <ol>
+                  <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this activity on their own volition.</li>
+                  <li>The applicant has read and understood the requirements of the handholding process for which the payment is being made and take full responsibility for the outcome of the process.</li>
+                  <li>The amount once remitted is non-refundable, non-adjustable &amp; non-transferable irrespective of the outcome of the process.</li>
+                  <li>Submission of relevant documents/evidences/responses in a timely manner is essential.</li>
+                  <li>Complete support to the Consultant Organisation must be provided by the applicant in order to achieve the desired result.</li>
+                  <li>The payment being made is only the “beneficiary contribution”; the subsidies applicable for this activity is pre-applied.</li>
+                </ol>
+                <div class="stepper-footer-sec initial-step1">
+                  <a class="btn btn-default" routerLink="/msme/handholding">BACK</a>
+                  <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @case ('instructions') {
+        <div class="row justify-content-center">
+          <div class="col-sm-9">
+            <div class="panel panel-default panel-design">
+              <div class="panel-body disclaimer-sec">
+                <h3 class="registration-title">INSTRUCTIONS</h3>
+                <ol>
+                  <li>There are 3 milestones in the handholding process. Payment will be made at the beginning of each milestone.</li>
+                  <li>A Consultant Organisation will be allocated to the applicant after payment of the first milestone.</li>
+                  <li>The applicant would need to submit necessary information/documents as and when sought and extend full support to the consultant organisation.</li>
+                  <li>Applicant must coordinate closely with the Consultant Organisation to close each milestone and move to the next.</li>
+                  <li>Activity for each milestone would commence only after payment of that milestone and acceptance of activities performed in the previous milestone, if &amp; as applicable.</li>
+                </ol>
+                <div class="stepper-footer-sec initial-step1">
+                  <a class="btn btn-default" routerLink="/msme/handholding">BACK</a>
+                  <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="openPayment()">ACCEPT &amp; PROCEED</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+
+      @case ('payment') {
+        @if (options(); as o) {
+          <div class="row justify-content-center">
+            <div class="col-sm-10 Dashboard">
+              <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
+                <div class="panel panel-default panel-payment">
+                  <div class="panel-heading">
+                    <div class="text-center"><img [src]="'/Images/Dashboard/' + level()!.toLowerCase() + '.png'" [alt]="level()" /></div>
+                    <p class="text-center mb-0"><strong>{{ milestoneTitle() }}</strong></p>
+                  </div>
+                  <div class="panel-body">
+                    <div class="row">
+                      <!-- Payment options -->
+                      <div class="col-sm-6">
+                        <h3 class="registration-title">Payment Options</h3>
+
+                        <div class="payment-option-block">
+                          <p id="gstinLabel">GSTIN Applicable?</p>
+                          <div role="radiogroup" aria-labelledby="gstinLabel">
+                            <label><input type="radio" class="option-input yes radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /> <span>Yes&nbsp;&nbsp;</span></label>
+                            <label><input type="radio" class="option-input yes radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /> <span>No</span></label>
+                          </div>
+                          @if (submitted() && !gstinApplicable) { <span class="help-block text-danger">This is required.</span> }
+                        </div>
+                        @if (gstinApplicable === 'Yes') {
+                          <div class="payment-option-block">
+                            <input type="text" placeholder="Unit GSTIN" aria-label="Unit GSTIN" class="form-control border-less" name="gstin" maxlength="15" [(ngModel)]="gstin" />
+                            @if (submitted() && gstinInvalid()) { <span class="help-block text-danger">Please enter valid GSTIN.</span> }
+                          </div>
+                        }
+
+                        <div class="payment-option-block">
+                          <p id="tdsLabel">TDS Deductible?</p>
+                          <div role="radiogroup" aria-labelledby="tdsLabel">
+                            <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /> <span>Yes&nbsp;&nbsp;</span></label>
+                            <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /> <span>No</span></label>
+                          </div>
+                          @if (submitted() && !tdsDeductible) { <span class="help-block text-danger">This is required.</span> }
+                        </div>
+                        @if (tdsDeductible === 'Yes') {
+                          <div class="payment-option-block">
+                            <p id="tdsAmountLabel">TDS Amount</p>
+                            <div role="radiogroup" aria-labelledby="tdsAmountLabel">
+                              <label><input type="radio" class="option-input yes radio" name="tds" value="1.5" [(ngModel)]="tds" /> <span>2%&nbsp;&nbsp;</span></label>
+                              <label><input type="radio" class="option-input yes radio" name="tds" value="7.5" [(ngModel)]="tds" /> <span>10%</span></label>
+                            </div>
+                            @if (submitted() && !tds) { <span class="help-block text-danger">This is required.</span> }
+                          </div>
+                          <div class="payment-option-block" style="margin-bottom: 9px">
+                            <input type="text" placeholder="TAN Number" aria-label="TAN Number" class="form-control border-less" name="tan" maxlength="10" [(ngModel)]="tan" />
+                            @if (submitted() && tanInvalid()) { <span class="help-block text-danger">Please enter valid TAN Number.</span> }
+                          </div>
+                        }
+
+                        @if (o.rewardAvailable) {
+                          <div class="payment-reward-block">
+                            <div>
+                              <h4>Joining Reward*</h4>
+                              <strong>{{ 10000 | number: '1.2-2' }}</strong>
+                              <div>*Applicable only on one certification (either Bronze or Silver or Gold).</div>
+                            </div>
+                            <div>
+                              @if (useReward()) {
+                                <span class="dash-text-success"><strong>Reward Applied</strong></span><br />
+                                <button type="button" class="btn btn-danger" (click)="useReward.set(false)">REMOVE</button>
+                              } @else {
+                                <button type="button" class="btn btn-primary" (click)="useReward.set(true)">APPLY REWARD</button>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+
+                      <!-- Summary -->
+                      <div class="col-sm-6 payment-summary">
+                        <h3 class="registration-title">Summary</h3>
+                        <div class="panel panel-info" style="border: 1px solid #ddd">
+                          <div class="panel-body p-0">
+                            <div><span>Handholding Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
+                            <hr />
+                            @if (useReward()) {
+                              <div><span>Joining Reward</span><strong>- ₹ {{ n('Coupon') | number: '1.2-2' }}</strong></div>
+                              <hr />
+                              <div><span>Final Certification Fee<br />(After adjusting joining reward)</span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
+                              <hr />
+                            }
+                            <div>
+                              <span>Subsidy <strong>{{ text('SubsidyLabel') }}</strong><br />(On Handholding fee)</span>
+                              <strong>- ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong>
+                            </div>
+                            <hr />
+                            @if (text('StateSubsidyLabel')) {
+                              <div>
+                                <span>Andhra pradesh govt Subsidy <strong>{{ text('StateSubsidyLabel') }}</strong><br />(On Final certification fee)</span>
+                                <strong>- ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong>
+                              </div>
+                              <hr />
+                            }
+                            <div><span>Amount Payable</span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+                            <hr />
+                            <div><span>Amount</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
+                            <hr />
+                            <div><span>GST(18%)</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
+                            <hr />
+                            @if (tdsDeductible === 'Yes' && tds) {
+                              <div>
+                                <span>TDS Deducted ({{ tds === '1.5' ? '2%' : '10%' }})</span>
+                                <strong>₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong>
+                              </div>
+                              <hr />
+                            }
+                            <div><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="col-sm-12">
+                        <div class="stepper-footer-sec initial-step1">
+                          <a class="btn btn-default" routerLink="/msme/handholding">BACK TO DASHBOARD</a>
+                          <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>
+
+<!-- #PanCorrectionModal -->
+@if (panModal()) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="panTitle">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header"><h4 class="modal-title" id="panTitle">PAN Mismatch Detected</h4></div>
+        <div class="modal-body">
+          <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
+          <label for="correctedPan">Please enter the correct PAN number:</label>
+          <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
+          @if (panError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ panError() }}</div> }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
+          <button type="button" class="btn btn-primary" (click)="savePan()">Save &amp; Proceed</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
+}

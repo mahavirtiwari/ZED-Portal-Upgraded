@@ -1,0 +1,695 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme msme-cer-details">
+    @if (error()) {
+      <div class="alert alert-danger mt-3" role="alert">
+        {{ error() }}
+        @if (type()) {
+          <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+        }
+        <a class="btn btn-link" [routerLink]="backLink()">Back</a>
+      </div>
+    }
+
+    @if (basic() || nc()) {
+      <div class="row">
+        <!-- Unit summary -->
+        <div class="col-sm-3">
+          <h3 class="registration-title dash-text-clr">Welcome</h3>
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                @switch (msme()['EnterpriseType']) {
+                  @case ('Micro') { <div class="entp-label micro">M</div> }
+                  @case ('Small') { <div class="entp-label small">S</div> }
+                  @case ('Medium') { <div class="entp-label medium">M</div> }
+                }
+                @if (unit()) {
+                  <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+                }
+              </div>
+              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>UDYAM Number</small><p>{{ udyam() }}</p></div>
+              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+            </div>
+          </div>
+
+          <div class="panel panel-default panel-black mt-2" [class.panel-msme-black]="mode() === 'basic-info'"><div class="panel-body">Selected Unit</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+          <div class="unit-selection">
+            <img src="/Images/svgicons/mapicon.svg" alt="" />
+            @if (unit()) {
+              <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+            }
+          </div>
+
+          <div class="panel panel-default panel-black" [class.panel-msme-black]="mode() === 'basic-info'"><div class="panel-body">Selected Activity</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+
+          <div class="panel panel-default panel-black" [class.panel-msme-black]="mode() === 'basic-info'">
+            <div class="panel-body">{{ mode() === 'basic-info' ? 'ZED Pledge' : 'ZED Pledge Certificate' }}</div>
+          </div>
+          <div class="unit-selection">
+            <div class="col-sm-12" style="padding: 0">
+              <p>{{ mode() === 'basic-info' ? 'Pledged on' : 'Pledge taken on' }} {{ msme()['PledgeOn'] }}</p>
+              <div class="btn-download">
+                <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">{{ mode() === 'basic-info' ? 'DOWNLOAD PLEDGE' : 'DOWNLOAD' }}</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-9" [class.zed-tabs]="mode() === 'basic-info'">
+          <div class="refresh-bar">
+            <div>
+              <a [routerLink]="backLink()">
+                <img src="/Images/svgicons/back.svg" alt="" />
+                <span>BACK</span>
+              </a>
+            </div>
+            <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
+              <img src="/Images/svgicons/refresh.svg" alt="" />
+              <span>Refresh</span>
+            </button>
+          </div>
+
+          <div class="panel panel-steps panel-bg-default">
+            <div class="panel-body">
+              @if (basic(); as b) {
+                <div class="row">
+                  <div class="col-sm-12">
+                    <div class="zed-info-panel">
+                      <ul class="cert-steps">
+                        <li>
+                          <div class="step-num"><span>1</span></div>
+                          <div class="step-details"><h3 class="registration-title">Basic Information &amp; Documents Upload</h3></div>
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12">
+                    <div class="panel-body">
+                      <ul class="nav nav-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" [class.active]="basicTab() === 'basicInfo'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'basicInfo'" (click)="basicTab.set('basicInfo')">Basic Information</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" [class.active]="basicTab() === 'esg'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'esg'" (click)="basicTab.set('esg')">ESG Checklist</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" [class.active]="basicTab() === 'elements'" type="button" role="tab" [attr.aria-selected]="basicTab() === 'elements'" (click)="basicTab.set('elements')">Parameters / Document Uploaded</button>
+                        </li>
+                      </ul>
+                      <div class="tab-content">
+                        @switch (basicTab()) {
+                          @case ('basicInfo') {
+                            <div class="tab-pane fade show active p-t-0" role="tabpanel">
+                              <table class="table table-default table-zed bg-white">
+                                <tbody>
+                                  <tr>
+                                    <td class="w-50">Unit Representative Selfie</td>
+                                    <td>
+                                      @for (p of selfies(); track $index) {
+                                        <div class="row-data">
+                                          <div>
+                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" alt="Unit representative selfie" /> }
+                                            <span>captured at {{ p['TimeStamp'] }}<br />uploaded at {{ p['CreatedDate'] }}</span>
+                                          </div>
+                                          @if (p['FileUrl']) {
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">VIEW</button>
+                                          }
+                                        </div>
+                                      }
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Site Exterior Photos</td>
+                                    <td>
+                                      @for (p of exteriorPhotos(); track $index) {
+                                        <div class="row-data">
+                                          <div>
+                                            @if (p['FileUrl']) { <img [src]="p['FileUrl']" alt="Site exterior" /> }
+                                            <span>captured at {{ p['TimeStamp'] }}<br />uploaded at {{ p['CreatedDate'] }}</span>
+                                          </div>
+                                          @if (p['FileUrl']) {
+                                            <button type="button" class="btn btn-primary pull-right" (click)="preview.set(value(p['FileUrl']))">VIEW</button>
+                                          }
+                                        </div>
+                                      }
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Whether 3rd Party Financial Audits are conducted?</td>
+                                    <td><div class="row-data"><b>{{ answers()['AuditsConducted'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Product manufactured</td>
+                                    <td>
+                                      @for (p of b.products; track $index) {
+                                        <div class="row-data">
+                                          <div>
+                                            @if (p['PhotoUrl']) { <img [src]="p['PhotoUrl']" alt="" /> }
+                                            <span>{{ p['ProductName'] }}</span>
+                                          </div>
+                                          <button type="button" class="btn btn-primary pull-right" (click)="product.set(p)">VIEW</button>
+                                        </div>
+                                      }
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Key Domestic Customers</td>
+                                    <td><div class="row-data"><b>{{ answers()['DomesticCustomers'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Key International Customers</td>
+                                    <td><div class="row-data"><b>{{ answers()['InternationalCustomers'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Whether Raw Material is Imported?</td>
+                                    <td><div class="row-data"><b>{{ answers()['RawMaterialImported'] }}</b></div></td>
+                                  </tr>
+                                  @if (answers()['RawMaterialImported'] === 'Yes') {
+                                    <tr>
+                                      <td class="w-50">Raw Materials</td>
+                                      <td>
+                                        @for (r of b.rawMaterials; track $index) {
+                                          <div class="row-data">
+                                            <span>{{ r['RawMaterialName'] }}</span>
+                                            <button type="button" class="btn btn-primary pull-right" (click)="rawMaterial.set(r)">VIEW</button>
+                                          </div>
+                                        }
+                                      </td>
+                                    </tr>
+                                  }
+                                  <tr>
+                                    <td class="w-50">Processed Outsourced, if any?</td>
+                                    <td><div class="row-data"><b>{{ answers()['OutsourcedProcesses'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Energy Source(s) Used</td>
+                                    <td><div class="row-data"><b>{{ answers()['EnergySources'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">monthly Manufacturing Capacity</td>
+                                    <td><div class="row-data"><b>{{ answers()['ManufacturingCapacityValue'] }} {{ answers()['ManufacturingCapacityUnits'] }}</b></div></td>
+                                  </tr>
+                                  <tr>
+                                    <td class="w-50">Monthly Utilization</td>
+                                    <td><div class="row-data"><b>{{ answers()['MonthlyUtilizationValue'] }} {{ answers()['MonthlyUtilizationUnits'] }}</b></div></td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          }
+
+                          @case ('esg') {
+                            <div class="tab-pane fade show active" role="tabpanel" style="background-color: #f0f0f0">
+                              <div class="row">
+                                <div class="col-sm-12">
+                                  <strong>ESG Check List</strong>
+                                  <table class="table table-bordered table-zed bg-white">
+                                    <thead>
+                                      <tr>
+                                        <th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      @for (p of esg(); track $index) {
+                                        <tr>
+                                          <td>{{ p['Question'] }}</td><td>{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
+                                          <td>{{ p['IfYesAnswer'] }}</td><td>{{ p['IfNoQuestion'] }}</td><td>{{ p['IfNoAnswer'] }}</td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                              <div class="row">
+                                <div class="col-sm-12">
+                                  <strong>Social/OHS Check List</strong>
+                                  <table class="table table-bordered table-zed bg-white">
+                                    <thead>
+                                      <tr>
+                                        <th>S.No</th><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      @for (p of social(); track $index) {
+                                        <tr>
+                                          <td>{{ p['Code'] }}</td><td>{{ p['Question'] }}</td><td>{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
+                                          <td>{{ p['IfYesAnswer'] }}</td><td>{{ p['IfNoQuestion'] }}</td><td>{{ p['IfNoAnswer'] }}</td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            </div>
+                          }
+
+                          @case ('elements') {
+                            <div class="tab-pane fade show active" role="tabpanel" style="background-color: #f0f0f0">
+                              <div class="row">
+                                @for (s of sections(); track $index) {
+                                  <div>
+                                    <div class="col-sm-12">
+                                      <div class="panel panel-default panel-black m-b-2 m-t-2">
+                                        <div class="panel-body">
+                                          <div class="info-block">
+                                            {{ s.section['SectionCode'] }}. {{ s.section['SectionName'] }}
+                                            <div class="z-tooltip">
+                                              <img src="/Images/svgicons/info.svg" alt="" />
+                                              <span class="tooltiptext">{{ s.section['iButton'] }}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div class="col-sm-12">
+                                      @for (r of s.requirements; track $index) {
+                                        <div class="panel panel-default panel-info mb-4">
+                                          <div class="panel-body" style="position: relative">
+                                            <div class="label-top">{{ s.section['SectionCode'] }}.{{ r.requirement['RequirementCode'] }}</div>
+                                            <div class="label-highlight3 m-t-2">
+                                              @for (o of r.options; track $index) {
+                                                <div>
+                                                  <strong class="dash-text-clr">REQUIREMENT</strong><br />
+                                                  {{ o.option['OptionName'] }}
+                                                  <ul>
+                                                    @for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }
+                                                  </ul>
+                                                </div>
+                                              }
+                                            </div>
+                                            @if (r.evidences.length === 0) {
+                                              <div class="label-highlight4">No Documents necessary</div>
+                                            }
+                                            <div>
+                                              <table class="table table-zed">
+                                                <tbody>
+                                                  @for (e of r.evidences; track $index) {
+                                                    <tr>
+                                                      <td class="w-50" style="vertical-align: inherit">{{ e['EvidenceName'] }}</td>
+                                                      <td>
+                                                        @if (!e['GeneratedTime']) {
+                                                          <div class="label-highlight4">No Documents uploaded</div>
+                                                        } @else {
+                                                          <div class="row-data">
+                                                            <div>
+                                                              <img src="/Images/svgicons/pdf-icon.svg" alt="" />
+                                                              <span>Generated at {{ e['GeneratedTime'] }}</span>
+                                                            </div>
+                                                            @if (e['FileUrl']) {
+                                                              <a class="btn btn-primary pull-right" [href]="e['FileUrl']" target="_blank" rel="noopener">VIEW</a>
+                                                            }
+                                                          </div>
+                                                        }
+                                                      </td>
+                                                    </tr>
+                                                  }
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      }
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            </div>
+                          }
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+
+              @if (nc(); as report) {
+                <div class="row">
+                  <div class="alert alert-document alert-document-danger m-0" style="background-color: transparent">
+                    <div>
+                      <img class="icon-bg" src="/Images/svgicons/non-conformance.svg" alt="" />
+                      <h3 class="registration-title m-0">&nbsp;Non-Conformance(s)</h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="col-sm-12 zed-tabs">
+                    @if (rounds().length === 0) {
+                      <p class="mt-3">No non-conformance has been raised.</p>
+                    }
+                    <ul class="nav nav-tabs" role="tablist">
+                      @for (r of rounds(); track r.number) {
+                        <li class="nav-item" role="presentation">
+                          <button class="nav-link" [class.active]="ncTab() === r.number" type="button" role="tab" [attr.aria-selected]="ncTab() === r.number" (click)="ncTab.set(r.number)">NC{{ r.number }}</button>
+                        </li>
+                      }
+                    </ul>
+                    <div class="tab-content">
+                      @if (round(); as r) {
+                        <div class="tab-pane fade show active p-0" role="tabpanel" [attr.aria-label]="'NC' + r.number">
+                          <div class="row">
+                            @if (r.siteExterior; as se) {
+                              <div>
+                                <table class="table table-default table-zed">
+                                  <thead><tr><th>Description</th><th>Value</th></tr></thead>
+                                  <tbody>
+                                    <tr>
+                                      <td class="w-50">Site Exterior Photos</td>
+                                      <td>
+                                        @for (p of se.previous; track $index) {
+                                          <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
+                                        }
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td colspan="2">
+                                        <div class="d-flex flex-column">
+                                          <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                            <div><strong>ASSESSOR RESPONSE</strong><span class="pull-right">{{ se.assessor['UpdatedDate'] }}</span></div>
+                                            <span>{{ se.assessor['AssessorRemarks'] }}</span>
+                                          </div>
+                                          <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                            <div>
+                                              <strong>MSME RESPONSE</strong>
+                                              <span class="pull-right">{{ se.msme['CreatedDate'] }}</span>
+                                              <span>{{ se.msme['MsmeRemarks'] }}</span>
+                                            </div>
+                                            @if (!se.hasResponse) { <div>No response yet</div> }
+                                            @for (p of se.current; track $index) {
+                                              <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
+                                            }
+                                          </div>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            }
+
+                            @if (r.products.length > 0) {
+                              <div class="col-sm-12" style="padding-top: 20px">
+                                <div class="panel panel-default panel-black m-b-2">
+                                  <div class="panel-body"><div class="info-block">Product manufactured</div></div>
+                                </div>
+                                @for (prod of r.products; track $index) {
+                                  <div>
+                                    <table class="table table-default table-zed">
+                                      <tbody>
+                                        <tr>
+                                          <td class="w-50">{{ prod.product['ProductName'] }}</td>
+                                          <td>
+                                            @for (p of prod.previous; track $index) {
+                                              <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
+                                            }
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <td colspan="2">
+                                            <div class="d-flex flex-column">
+                                              <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                                <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ prod.product['PreviousAssessorUpdatedDate'] }}</span></div>
+                                                <span>{{ prod.product['PreviousAssessorRemarks'] }}</span>
+                                              </div>
+                                              <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                                <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ prod.product['MsmeUpdatedDate'] }}</span></div>
+                                                <span>{{ prod.product['MsmeRemarks'] }}</span>
+                                                @if (!prod.hasResponse) { <div>No response yet</div> }
+                                                @for (p of prod.current; track $index) {
+                                                  <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: p }" />
+                                                }
+                                              </div>
+                                            </div>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                }
+                              </div>
+                            }
+
+                            @for (s of r.sections; track $index) {
+                              <div class="col-sm-12" style="padding-top: 20px">
+                                <div class="panel panel-default panel-black m-b-2">
+                                  <div class="panel-body">
+                                    <div class="info-block">
+                                      {{ s.section['SectionCode'] }}. {{ s.section['SectionName'] }}
+                                      <div class="z-tooltip">
+                                        <img src="/Images/svgicons/info.svg" alt="" />
+                                        <span class="tooltiptext">{{ s.section['iButton'] }}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                @for (req of s.requirements; track $index) {
+                                  <div class="panel panel-default panel-info" [class.mb-4]="!siteVariant()">
+                                    <div class="panel-body border-left" style="position: relative">
+                                      <div class="label-top">{{ s.section['SectionCode'] }}.{{ req.requirement['RequirementCode'] }}</div>
+                                      <div class="label-highlight3 m-t-2">
+                                        @for (o of req.options; track $index) {
+                                          <div>
+                                            <strong class="dash-text-clr">REQUIREMENT</strong><br />
+                                            {{ o.option['OptionName'] }}
+                                            <ul>
+                                              @for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }
+                                            </ul>
+                                          </div>
+                                        }
+                                      </div>
+                                      @if (req.previous.length === 0) {
+                                        <div class="label-highlight4">No Documents necessary</div>
+                                      }
+                                      <div>
+                                        <table class="table table-default table-zed">
+                                          <tbody>
+                                            @for (e of req.previous; track $index) {
+                                              <tr>
+                                                <td [class.w-50]="req.previousLabelWide" [class.w-25]="!req.previousLabelWide" style="vertical-align: inherit">{{ e.label }}</td>
+                                                <td>
+                                                  <div class="row-data">
+                                                    <div>
+                                                      @if (e.isPdf || !e.url) {
+                                                        <img src="/Images/svgicons/pdf-icon.svg" alt="" />
+                                                      } @else {
+                                                        <img [src]="e.url" alt="" />
+                                                      }
+                                                      <span>Generated at {{ e.generatedTime }}</span>
+                                                    </div>
+                                                    @if (e.url) {
+                                                      <a class="btn btn-primary pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
+                                                    }
+                                                  </div>
+                                                </td>
+                                              </tr>
+                                            }
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                      <div class="d-flex flex-column">
+                                        <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                          <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ req.requirement['PreviousAssessorUpdatedDate'] }}</span></div>
+                                          <span>{{ req.requirement['PreviousAssessorRemarks'] }}</span>
+                                        </div>
+                                        <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                          <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ req.requirement['MsmeUpdatedDate'] }}</span></div>
+                                          <span>{{ req.requirement['MsmeComments'] }}</span>
+                                          @if (!req.responded) {
+                                            <div>No response yet</div>
+                                          } @else {
+                                            <div>
+                                              <table class="table table-default table-zed">
+                                                <tbody>
+                                                  @for (e of req.current; track $index) {
+                                                    <tr>
+                                                      <td>
+                                                        <div class="row-data">
+                                                          <div>
+                                                            <img src="/Images/svgicons/pdf-icon.svg" alt="" />
+                                                            <span>Generated at {{ e['GeneratedTime'] }}</span>
+                                                          </div>
+                                                          @if (e['FileUrl']) {
+                                                            <a class="btn btn-primary pull-right" [href]="e['FileUrl']" target="_blank" rel="noopener">VIEW</a>
+                                                          }
+                                                        </div>
+                                                      </td>
+                                                    </tr>
+                                                  }
+                                                </tbody>
+                                              </table>
+                                            </div>
+                                          }
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                }
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- A photo with its capture/upload times and a VIEW button (images preview, PDFs open in a new tab). -->
+<ng-template #photoRow let-p>
+  <div class="row-data">
+    <div>
+      @if (p.isPdf || !p.url) {
+        <img src="/Images/svgicons/pdf-icon.svg" alt="" />
+      } @else {
+        <img [src]="p.url" alt="" />
+      }
+      <span>captured at {{ p.timeStamp }}<br />uploaded at {{ p.createdDate }}</span>
+    </div>
+    @if (p.url) {
+      <button type="button" class="btn btn-primary pull-right" (click)="view(p)">VIEW</button>
+    }
+  </div>
+</ng-template>
+
+<!-- Product (#Product) -->
+@if (product(); as p) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="productTitle" (click)="product.set(null)">
+    <div class="modal-dialog modal-popup" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100">
+            <div>
+              <h3 class="registration-title" id="productTitle">{{ p['ProductName'] }}</h3>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="product.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <table class="table table-default table-zed">
+                <tbody>
+                  <tr>
+                    <td class="w-50">Weather Exported</td>
+                    <td>{{ p['Exported'] }}</td>
+                  </tr>
+                  <tr>
+                    <td class="w-50">Product Photos</td>
+                    <td>
+                      @if (p['PhotoUrl']) {
+                        <div class="row-data">
+                          <div><img [src]="p['PhotoUrl']" alt="" /></div>
+                          <button type="button" class="btn btn-primary" (click)="preview.set(value(p['PhotoUrl']))">VIEW</button>
+                        </div>
+                      }
+                    </td>
+                  </tr>
+                  <tr>
+                    <td class="w-50">Product Lable / Description Photos</td>
+                    <td>
+                      @if (p['DescriptionUrl']) {
+                        @if (p['DescriptionType'] === 'pdf') {
+                          <div class="row-data">
+                            <div><img src="/Images/svgicons/pdf-icon.svg" alt="" /></div>
+                            <a class="btn btn-primary" [href]="p['DescriptionUrl']" target="_blank" rel="noopener">VIEW</a>
+                          </div>
+                        } @else {
+                          <div class="row-data">
+                            <div><img [src]="p['DescriptionUrl']" alt="" /></div>
+                            <button type="button" class="btn btn-primary" (click)="preview.set(value(p['DescriptionUrl']))">VIEW</button>
+                          </div>
+                        }
+                      }
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+<!-- Raw material (#Raw) -->
+@if (rawMaterial(); as r) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="rawTitle" (click)="rawMaterial.set(null)">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100">
+            <strong id="rawTitle">{{ r['RawMaterialName'] }}</strong>
+            <button type="button" class="close" aria-label="Close" (click)="rawMaterial.set(null)"><strong>x&nbsp;</strong></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-sm-12">
+              <table class="table table-default table-zed">
+                <tbody>
+                  <tr><td class="w-50">Raw Material Name</td><th>{{ r['RawMaterialName'] }}</th></tr>
+                  <tr><td class="w-50">Percentage</td><th>{{ r['Percentage'] }}</th></tr>
+                  <tr><td class="w-50">Country Name</td><th>{{ r['CountryName'] }}</th></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+<!-- Image preview (#Allot); above the product dialog it was opened from. -->
+@if (preview(); as src) {
+  <div class="modal d-block preview-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="previewTitle" (click)="preview.set(null)">
+    <div class="modal-dialog modal-popup" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100">
+            <div>
+              <h3 class="registration-title" id="previewTitle">Image preview</h3>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="preview.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div style="margin-bottom: 9px" class="text-center img-responsive">
+            <img [src]="src" alt="Preview" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show preview-backdrop"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
+    <div class="loadingimage">
+      <div class="loader"></div>
+      <div class="text-center">
+        <small>Please wait ...</small><br />
+        <small>It may take upto 60 seconds</small>
+      </div>
+    </div>
+  </div>
+}

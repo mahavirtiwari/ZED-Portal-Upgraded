@@ -1,0 +1,12 @@
+﻿{
+  "QrCode": { "x": 1940, "y": 2836, "font": 5.5 },
+  "CertificateNo": { "x": 1960, "y": 3171, "font": 8 },
+  "IssuedOn": { "x": 0, "y": 0, "font": 5.5 },
+  "DateOfPledge": { "x": 309, "y": 3021, "font": 8 },
+  "Name": { "x": 1240, "y": 1925, "font": 14 },
+  "Address": { "x": 319, "y": 2164, "height":184, "width":1852, "font": 10 },
+  "RegistrationNumber": { "x": 1240, "y": 2656, "font": 13 },
+  "NicCode": { "x": 288, "y": 2440, "height":115, "width":1912, "font": 12 },
+  "AgencyName": { "x": 1240, "y": 2770, "font": 12 }
+  
+}

@@ -1,0 +1,139 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="row mt-3">
+    <div class="col-sm-12"><h3 class="registration-title">Registered MSME</h3></div>
+
+    <div class="col-sm-12 mb-4">
+      <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)" />
+    </div>
+
+    <form class="row mb-2 align-items-end" (ngSubmit)="doSearch()">
+      <div class="col-sm-3">
+        <label for="searchBy"><strong>Search By</strong></label>
+        <select class="form-select" style="width: 200px" id="searchBy" name="searchBy" [(ngModel)]="searchBy">
+          @for (f of searchFields; track f) { <option [value]="f">{{ f }}</option> }
+        </select>
+      </div>
+      <div class="col-sm-3">
+        <label for="search">{{ searchBy }}</label>
+        <input type="text" class="form-control" id="search" name="search" maxlength="50" [(ngModel)]="search" />
+      </div>
+      <div class="col-sm-3">
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+      </div>
+    </form>
+
+    @if (error()) { <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div> }
+    @if (message()) { <div class="col-sm-12"><div class="alert alert-success" role="status">{{ message() }}</div></div> }
+
+    <div class="col-sm-12">
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered">
+          <thead>
+            <tr>
+              <th>S.No.</th>
+              <th>Certification Level</th>
+              <th>Certification Phase</th>
+              <th>Unit Name<br />ZedId<br />Registered Date</th>
+              <th>Status</th>
+              <th>First Surveillance Due Date</th>
+              <th>Unit Address</th>
+              <th>State</th>
+              @if (isSuperAdmin()) { <th>Assessment Agency<br /><br />Udyam Number</th> }
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of rows(); track $index) {
+              <tr>
+                <td>{{ s['RowNumber'] }}</td>
+                <td>{{ s['Certification'] }}</td>
+                <td>{{ s['CertificationPhase'] }}</td>
+                <td>
+                  <strong>{{ s['PUnitName'] }}</strong><br /><br />
+                  {{ s['ZedId'] }}<br /><br />
+                  <strong>{{ $any(s['RegisteredDate']) | date: 'medium' }}</strong>
+                </td>
+                <td>{{ s['AssessmentStatus'] }}</td>
+                <td>{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}<br />{{ s['FirstSurveDueDate'] }}</td>
+                <td>{{ s['UnitAddress'] }}</td>
+                <td>{{ s['PStateName'] }}</td>
+                @if (isSuperAdmin()) {
+                  <td><strong>{{ s['CertificationBodyUserId'] }}<br /><br />{{ s['UserName'] }}</strong><br /><br />{{ s['UdyogAadharNo'] }}</td>
+                }
+                <td>
+                  @if (isDisabled(s)) {
+                    <span class="alert alert-warning d-inline-block">DISABLED</span>
+                  } @else {
+                    @if (isSuperAdmin()) {
+                      <button type="button" class="btn btn-primary btn-xs action-btn mb-2" (click)="resend(s)">Resend Details</button><br />
+                    }
+                    <a class="btn btn-primary btn-xs action-btn mb-2" [href]="profileUrl(s)" title="Opens the current portal">View Profile</a><br />
+                    @if (assessmentLink(s); as link) {
+                      <a class="btn btn-primary btn-xs action-btn mb-2" [routerLink]="link">Assessment<br />Details</a><br />
+                    }
+                    @if (isSuperAdmin()) {
+                      <button type="button" class="btn btn-danger btn-xs action-btn" (click)="openDisable(s)">IN-ACTIVE MSME</button>
+                    }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-between mb-4">
+    <div class="col-sm-6">
+      Show
+      <select class="btn btn-primary" aria-label="Entries per page" (change)="setPageSize($any($event.target).value)">
+        @for (n of pageSizes; track n) { <option [value]="n" [selected]="n === pageSize()">{{ n }}</option> }
+      </select>
+      Entries <span class="ms-2 text-muted">({{ total() }} records)</span>
+    </div>
+    <div class="col-sm-auto">
+      <button type="button" class="btn btn-primary me-1" (click)="go(-2)">First</button>
+      <button type="button" class="btn btn-primary me-1" (click)="go(-1)">Prev</button>
+      <select class="btn btn-primary me-1" aria-label="Page" (change)="goTo($any($event.target).value)">
+        @for (p of pages(); track p) { <option [value]="p" [selected]="p === pageNo()">{{ p }}</option> }
+      </select>
+      <button type="button" class="btn btn-primary me-1" (click)="go(1)">Next</button>
+      <button type="button" class="btn btn-primary" (click)="go(2)">Last</button>
+    </div>
+  </div>
+</div>
+
+@if (disabling(); as m) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="disable-title">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100 d-flex justify-content-between">
+            <strong id="disable-title">Deactivate MSME</strong>
+            <button type="button" class="btn-close" aria-label="Close" (click)="disabling.set(null)"></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
+          <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
+          <br />
+          <label for="disableRemarks"><strong>Reason for Deactivate<span style="color: red">*</span></strong></label>
+          <textarea id="disableRemarks" class="form-control" maxlength="2000" [(ngModel)]="disableRemarks"></textarea>
+          @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" (click)="disabling.set(null)">CANCEL</button>
+          <button type="button" class="btn btn-primary" [disabled]="!disableRemarks.trim() || saving()" (click)="submitDisable()">SUBMIT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div>
+}

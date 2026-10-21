@@ -1,0 +1,65 @@
+@* Port of _BronzeDaReportTemplate.cshtml (Bronze, Monitoring/FinalSubmit) and _SaReportTemplate.cshtml (Silver/Gold,
+   Monitoring/RaFinalSubmit). The old mails linked to SA/ReportSummary/{ZedId}, a page anyone could open for any ZED ID
+   (SECURITY-FINDINGS #18); here the report is attached when it could be generated and the button opens the MSME login. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">At the outset, we thank you for being a part of the "MSME Sustainable (ZED) Certification" Scheme of Ministry of MSME, Government of India.</p>
+    @if (ReportAttached)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Certificate and the Assessment Report of your unit. The Assessment Report can also be downloaded from your dashboard after you sign in.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Certificate of your unit. The Assessment Report can be downloaded from your dashboard after you sign in.</p>
+    }
+
+    @if (SiteAssessment)
+    {
+        <p style="font-size: 14px; margin-bottom: 0;background: #F0F0F0;padding:15px;font-weight: 700;">Your certificate details are as below:</p>
+        <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+            <tbody bgcolor="#ffffff">
+                <tr>
+                    <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Enterprise Name</td>
+                    <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@EnterpriseName</td>
+                </tr>
+                <tr>
+                    <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">ZED ID</td>
+                    <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ZedId</td>
+                </tr>
+                <tr>
+                    <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Certification</td>
+                    <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Certification</td>
+                </tr>
+            </tbody>
+        </table>
+        <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)</span>
+    }
+
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Go to Login</a>
+    </div>
+
+    <p style="font-size: 13px; margin-bottom: 0;">We encourage you to adopt measures as suggested in the ZED Standard and we are confident that you will understand and prioritize your business needs by helping identify any deficiencies or shortcomings that need to be overcome, thereby performing better on the ZED parameters.</p>
+    @if (!SiteAssessment)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your correspondence.</p>
+    }
+    <p style="font-size: 13px; margin-bottom: 0;">Please acknowledge the receipt of the Certificate and Assessment Report.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Wish you all the best in your journey of ZED!</p>
+    @if (SiteAssessment)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
+    }
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    /// <summary>Silver/Gold certified after the site assessment (the _SaReportTemplate layout); false for Bronze.</summary>
+    [Parameter] public bool SiteAssessment { get; set; }
+    [Parameter] public bool ReportAttached { get; set; }
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Certification { get; set; } = "";
+    [Parameter] public string? EnterpriseName { get; set; }
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

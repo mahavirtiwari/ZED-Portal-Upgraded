@@ -1,0 +1,355 @@
+<header class="register-header">
+  <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" height="56" /></a>
+  <img src="/Images/header/zed-logo.png" alt="ZED" height="64" />
+</header>
+
+<main class="container register-page">
+  @if (stepNumber() > 0) {
+    <ol class="zed-stepper" aria-label="Registration progress">
+      @for (n of [1, 2, 3, 4]; track n) {
+        <li [class.current]="n === stepNumber()" [class.done]="n < stepNumber()"><span class="visually-hidden">Step {{ n }}</span></li>
+      }
+    </ol>
+  }
+
+  @if (error()) {
+    <div class="alert alert-danger alert-dismissible col-sm-8 offset-sm-2" role="alert">
+      {{ error() }}
+      <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+    </div>
+  }
+
+  @switch (step()) {
+    @case ('welcome') {
+      <div class="col-sm-8 offset-sm-2">
+        <h3 class="registration-title">Welcome</h3>
+        <p class="info-heading">To proceed, please keep the following ready:</p>
+        <ol style="padding-left: 18px">
+          <li>The <strong>Udyam Registration Number</strong> of the Enterprise.</li>
+          <li>The <strong>Mobile Number</strong> that is associated with the Udyam Registration.</li>
+        </ol>
+        <div class="label-highlight">
+          <div class="text-center">
+            <p>
+              If your Enterprise is not registered under Udyam Registration, then you may first register on<br />
+              <a class="udyam-info-link" href="https://udyamregistration.gov.in" target="_blank" rel="noopener">
+                https://udyamregistration.gov.in <img src="/Images/svgicons/nav.svg" alt="" />
+              </a><br />
+              and then register here.
+            </p>
+          </div>
+        </div>
+        <div class="stepper-footer-sec initial-step1">
+          <a routerLink="/msme/login" class="btn btn-default">BACK</a>
+          <button type="button" class="btn btn-primary" (click)="go('udyam')">PROCEED</button>
+        </div>
+      </div>
+    }
+
+    @case ('udyam') {
+      <div class="col-sm-8 offset-sm-2 mt-4">
+        <h3 class="registration-title">Udyam Registration Validation</h3>
+        <form class="row" (ngSubmit)="submitUdyam()" novalidate>
+          <div class="col-sm-6 mt-2 text-start">
+            <label class="input-title" for="regNo">
+              Enter your Udyam Registration Number:<br />(For Example UDYAM-XX-00-0000000)
+            </label>
+            <input id="regNo" name="registrationNo" class="form-control input-custom" maxlength="19" autocomplete="off"
+                   placeholder="UDYAM-XX-00-0000000" [(ngModel)]="registrationNo" (blur)="normaliseRegNo()" required />
+            <p class="input-sub-title">(as provided at the time of Udyam Registration)</p>
+          </div>
+          <div class="col-sm-6 mt-2 text-start">
+            <label class="input-title" for="mobileNo">
+              Enter your Udyam Registered Mobile Number:<br />(For Example 9999999999)
+            </label>
+            <input id="mobileNo" name="mobileNo" class="form-control input-custom" maxlength="10" inputmode="numeric"
+                   autocomplete="tel-national" [(ngModel)]="mobileNo" required />
+            <p class="input-sub-title">(as mentioned in the Udyam Registration)</p>
+          </div>
+          <div class="col-sm-12 my-2">
+            <zed-recaptcha (token)="onCaptcha($event)" />
+          </div>
+          <div class="col-sm-12">
+            <div class="stepper-footer-sec initial-step1">
+              <button type="button" class="btn btn-default" (click)="go('welcome')">BACK</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    }
+
+    @case ('plant') {
+      <div class="row">
+        <div class="col-sm-12">
+          <h3 class="registration-title">Unit and Activity</h3>
+          <div class="label-highlight">
+            <p>Your details have been validated from MSME Database (Ministry of MSME, Government of India)</p>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-black"><div class="panel-body">Basic Information</div></div>
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                <div class="entp-label" [class.micro]="basic()['EnterpriseType'] === 'Micro'"
+                     [class.small]="basic()['EnterpriseType'] === 'Small'" [class.medium]="basic()['EnterpriseType'] === 'Medium'">
+                  {{ enterpriseInitial(basic()['EnterpriseType']) }}
+                </div>
+                <p class="entp-type-title">{{ basic()['EnterpriseType'] }}</p>
+              </div>
+              <div class="entrp-title"><h4>{{ basic()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>Name of Entrepreneur</small><p>{{ basic()['OwnerName'] }}</p></div>
+              <div class="entp-details"><small>Gender</small><p>{{ basic()['Gender'] }}</p></div>
+              <div class="entp-details"><small>Udyam Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+              <div class="entp-details"><small>Social Category</small><p>{{ basic()['SocialCategory'] }}</p></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-9">
+          <form (ngSubmit)="submitPlant()" novalidate>
+            <div class="col-sm-12 plant-activity">
+              <h3 class="registration-title">Please select any one Plant location and its activity</h3>
+              <div class="panel panel-default panel-black"><div class="panel-body">Plant Location</div></div>
+              <div class="panel-units" role="radiogroup" aria-label="Plant location">
+                @for (p of lookup()?.plants ?? []; track $index) {
+                  <label class="panel-item" [class.panel-selected]="plantIndex() === $index">
+                    <div class="panel panel-default">
+                      <div class="panel-body">
+                        <div class="unit-isselected">
+                          <input type="radio" class="option-input yes radio" name="plant" [value]="$index" [attr.aria-label]="p['UnitName']"
+                                 [checked]="plantIndex() === $index" (change)="plantIndex.set($index)" />
+                        </div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ p['UnitName'] }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ plantAddress(p) }}</p></div>
+                      </div>
+                    </div>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <div class="col-sm-12 plant-activity" [class.plant-activity-disabled]="plantIndex() === null">
+              <div class="panel panel-default panel-black"><div class="panel-body">Plant Activity</div></div>
+              <div class="label-highlight1 text-center">
+                <p>Please select Plant activity for the selected Plant location:</p>
+                @if (selectedPlant(); as sp) {
+                  <strong>{{ plantAddress(sp) }}</strong>
+                }
+              </div>
+              <div class="panel-units" role="radiogroup" aria-label="Plant activity">
+                @for (a of lookup()?.activities ?? []; track $index) {
+                  <label class="panel-item" [class.panel-selected]="activityIndex() === $index">
+                    <div class="panel panel-default">
+                      <div class="panel-body">
+                        <div class="unit-isselected">
+                          <input type="radio" class="option-input yes radio" name="activity" [value]="$index" [attr.aria-label]="a['Activity'] + ' ' + a['Five_DigitActivity']"
+                                 [disabled]="plantIndex() === null"
+                                 [checked]="activityIndex() === $index" (change)="activityIndex.set($index)" />
+                        </div>
+                        <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ a['Activity'] }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ a['Two_DigitActivity'] }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ a['Four_DigitActivity'] }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ a['Five_DigitActivity'] }}</p></div>
+                      </div>
+                    </div>
+                  </label>
+                }
+              </div>
+            </div>
+
+            <div class="stepper-footer-sec initial-step1">
+              <button type="button" class="btn btn-default" (click)="go('udyam')">BACK</button>
+              <button type="submit" class="btn btn-primary" [class.btn-disabled]="activityIndex() === null" [disabled]="busy()">
+                CONFIRM &amp; PROCEED
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+
+    @case ('summary') {
+      <h4 class="registration-title">Summary</h4>
+      <div class="row">
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                <div class="entp-label" [class.micro]="basic()['EnterpriseType'] === 'Micro'"
+                     [class.small]="basic()['EnterpriseType'] === 'Small'" [class.medium]="basic()['EnterpriseType'] === 'Medium'">
+                  {{ enterpriseInitial(basic()['EnterpriseType']) }}
+                </div>
+                <p class="entp-type-title">{{ basic()['EnterpriseType'] }}</p>
+              </div>
+              <div class="entrp-title"><h4>{{ basic()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>Udyam Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-black">
+            <div class="panel-body"><div class="summary-title">Email ID
+              <button type="button" class="btn btn-link p-0" aria-label="Change Email ID" (click)="openEmailModal()"><img src="/Images/svgicons/edit.svg" alt="" /></button>
+            </div></div>
+          </div>
+          <div class="unit-selection"><img src="/Images/svgicons/email.svg" width="20" alt="" /><p>{{ verifiedEmail() }}</p></div>
+          <div class="unit-selection" style="background-color: rgba(179, 224, 121, 0.2)">
+            <p>Your ZED ID &amp; Password along with your ZED Pledge Certificate will be sent on this email ID.</p>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-black">
+            <div class="panel-body"><div class="summary-title">Plant
+              <button type="button" class="btn btn-link p-0" aria-label="Change plant" (click)="go('plant')"><img src="/Images/svgicons/edit.svg" alt="" /></button>
+            </div></div>
+          </div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ selectedPlant()?.['UnitName'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ plantAddress(selectedPlant()) }}</p></div>
+        </div>
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-black">
+            <div class="panel-body"><div class="summary-title">Activity
+              <button type="button" class="btn btn-link p-0" aria-label="Change activity" (click)="go('plant')"><img src="/Images/svgicons/edit.svg" alt="" /></button>
+            </div></div>
+          </div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ selectedActivity()?.['Activity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ selectedActivity()?.['Two_DigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ selectedActivity()?.['Four_DigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ selectedActivity()?.['Five_DigitActivity'] }}</p></div>
+        </div>
+      </div>
+      <div class="label-highlight2">
+        <label class="checkbox-inline">
+          <input type="checkbox" class="option-input1 yes checkbox" [(ngModel)]="accepted" name="accepted" />
+          <span>I confirm the above and agree to proceed with the information provided.</span>
+        </label>
+      </div>
+      <div class="stepper-footer-sec initial-step1">
+        <button type="button" class="btn btn-default" (click)="go('plant')">BACK</button>
+        <button type="button" class="btn btn-primary" [class.btn-disabled]="!accepted" (click)="toPledge()">PROCEED TO PLEDGE</button>
+      </div>
+    }
+
+    @case ('pledge') {
+      <div class="zed-pledge-container">
+        <h3 class="registration-title">ZED Pledge</h3>
+        <div class="container-box border-gradient border-gradient-purple">
+          <div class="label-text">PLEDGE</div>
+          <div class="zed-logo-img"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></div>
+          <div class="text-center">
+            <div class="zed-pledge">
+              <div class="zed-pledge-text">
+                @for (line of pledgeLines; track $index) {
+                  <span class="pledge-line" [style.animation-delay.ms]="$index * 1000">{{ line }} </span>
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="stepper-footer-sec initial-step1">
+          <button type="button" class="btn btn-default" (click)="go('summary')">BACK</button>
+          <button type="button" class="btn btn-primary" [class.btn-disabled]="!pledgeReady()" [disabled]="!pledgeReady() || busy()" (click)="takePledge()">
+            I/WE PLEDGE
+          </button>
+        </div>
+      </div>
+    }
+
+    @case ('success') {
+      <div class="col-sm-8 offset-sm-2">
+        <div class="jumbotron text-center">
+          <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
+          <h2>Registration Successful!</h2>
+          <p>Your ZED ID is <strong>{{ result()?.zedId }}</strong></p>
+        </div>
+        @if (result() && !result()!.emailSent) {
+          <div class="alert alert-warning">
+            We could not send the confirmation email right now. Your registration is complete; please note your ZED ID
+            and use “Forgot Password” on the login page if you do not receive your password.
+          </div>
+        }
+        <strong>Congratulations! You can now avail:</strong>
+        <ul>
+          <li>Joining reward of Rs. 10,000/- for ZED Certification.</li>
+        </ul>
+        <strong>What next?</strong>
+        <ul>
+          <li>Check your email for Pledge Certificate and ZED ID/ Password.</li>
+          <li>If you did not receive any email, please check in Spam/Junk folder.</li>
+          <li>Use the received ZED ID and Password to login again.</li>
+        </ul>
+        <div class="stepper-footer-sec initial-step">
+          <a class="btn btn-primary" routerLink="/msme/dashboard">GO TO DASHBOARD</a>
+        </div>
+      </div>
+    }
+  }
+</main>
+
+<!-- Pledge e-mail modal (#pledgeEmail) -->
+@if (modal() === 'email') {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="emailTitle">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content" (ngSubmit)="sendOtp()" novalidate>
+        <div class="modal-header">
+          <h3 class="registration-title m-0" id="emailTitle">Enter Email ID</h3>
+          <button type="button" class="btn-close" aria-label="Close" (click)="modal.set(null)"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">Your ZED ID, password and Pledge Certificate will be sent to this Email ID.</p>
+          <label class="input-title" for="email">Email ID</label>
+          <input id="email" name="email" type="email" class="form-control mb-3" maxlength="100" autocomplete="email" [(ngModel)]="email" required />
+          <label class="input-title" for="confirmEmail">Confirm Email ID</label>
+          <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
+          @if (modalError()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">SEND OTP</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+<!-- OTP modal (#verifyMobileNumber) -->
+@if (modal() === 'otp') {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
+    <div class="modal-dialog modal-dialog-centered">
+      <form class="modal-content" (ngSubmit)="verifyOtp()" novalidate>
+        <div class="modal-header">
+          <h3 class="registration-title m-0" id="otpTitle">Enter OTP</h3>
+          <button type="button" class="btn-close" aria-label="Close" (click)="modal.set(null)"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small">An OTP has been sent to <strong>{{ email }}</strong>. It is valid for 10 minutes.</p>
+          <input name="otp" class="form-control text-center fs-4" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+                 [(ngModel)]="otp" required />
+          @if (modalError()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div>
+          }
+        </div>
+        <div class="modal-footer justify-content-between">
+          <div>
+            <button type="button" class="btn btn-link" [disabled]="resendIn() > 0 || busy()" (click)="resendOtp()">
+              Resend OTP @if (resendIn() > 0) { ({{ resendIn() }}s) }
+            </button>
+            <button type="button" class="btn btn-link" (click)="openEmailModal()">Change Email ID</button>
+          </div>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">VERIFY</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

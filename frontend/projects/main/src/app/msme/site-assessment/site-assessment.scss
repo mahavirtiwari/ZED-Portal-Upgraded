@@ -1,0 +1,91 @@
+// Inline styles of the old SiteAssessmentInfo.cshtml, as classes. Everything else comes from the
+// legacy site CSS (.row-data, .label-highlight*, .milestone-n, .evidence-img, ...).
+
+table tbody tr td {
+  font-size: 14px;
+}
+
+.sa-rule {
+  border: 1px solid #2ba3d8 !important;
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+.sa-source {
+  width: 100px;
+}
+
+.sa-section {
+  padding-top: 20px;
+}
+
+.sa-requirement {
+  margin-bottom: 20px;
+}
+
+.sa-relative {
+  position: relative;
+}
+
+.sa-milestone-border {
+  border-left: 4px solid #ad1616 !important;
+}
+
+.sa-milestone-table {
+  margin-top: 2px;
+}
+
+.sa-w50 {
+  width: 50%;
+}
+
+.sa-w60 {
+  width: 60%;
+}
+
+.sa-photo-cell {
+  border-bottom: 1px solid #ddd;
+}
+
+.sa-answer {
+  margin-top: 4px;
+}
+
+.sa-remarks {
+  padding: 10px;
+  min-height: 70px;
+}
+
+.sa-thumb {
+  height: 40px;
+  width: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.sa-float-right {
+  float: right;
+}
+
+.sa-readonly {
+  max-width: 100%;
+}
+
+// The old page swapped to a blue PDF icon once the MSME had opened the description.
+.sa-pdf-icon.opened {
+  filter: hue-rotate(200deg) saturate(1.5);
+}
+
+// Site tour tiles: the photo opens the pop-up (an <img ng-click> before).
+.sa-image-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.sa-preview img {
+  max-width: 100%;
+}

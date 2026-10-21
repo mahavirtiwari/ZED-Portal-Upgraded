@@ -1,0 +1,43 @@
+@use 'sass:meta';
+@use 'bootstrap/dist/css/bootstrap.min.css';
+// @keyframes from the MVC site's Content/site.css and swachh.css (must stay global).
+@use 'styles/legacy-site-global';
+
+body {
+  font-family: 'Work Sans', sans-serif;
+  padding-top: 0;
+}
+
+// The MVC layout loaded bootstrap + Content/site.css + Content/swachh.css on every inner page.
+// Here they apply only inside elements with .zed-legacy (MSME layout, registration).
+.zed-legacy {
+  @include meta.load-css('styles/legacy-site');
+}
+
+// Content/zed-login.css was only loaded by the login page; keep it scoped to the login pages.
+.zed-login {
+  @include meta.load-css('styles/legacy-login');
+}
+
+// .btn-default came from Bootstrap 3; the old site restyled it in site.css.
+.btn-default,
+.btn-default:hover {
+  background-color: #8d8f90 !important;
+  color: #fff;
+  text-transform: uppercase;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+// ZED teal primary buttons (Content/swachh.css loaded last in the MVC layout and set this).
+.btn-primary,
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:disabled {
+  color: #fff;
+  background-color: #45a5ad;
+  border-color: #45a5ad;
+}
+.btn-primary:hover {
+  filter: brightness(0.95);
+}

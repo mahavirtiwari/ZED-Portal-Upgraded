@@ -1,0 +1,129 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="row mt-4">
+    <div class="col-sm-12">
+      <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
+        <h3 class="registration-title">{{ title }}</h3>
+        <div class="search-input" style="margin-left: auto">
+          <input type="text" placeholder="Search.." aria-label="Search agencies" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+          <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
+        </div>
+        @if (mode === 'all') {
+          <a style="margin-left: 10px" routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add New</a>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div class="alert alert-success" role="status">{{ success() }}</div>
+      }
+
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered bg-white">
+          <thead>
+            <tr class="btn-default text-center" style="font-size: 16px">
+              <th>Status</th>
+              <th>Agency Id</th>
+              <th>Agency Details</th>
+              <th>Spoc Details</th>
+              <th>Category</th>
+              <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of Assessors' }}</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of filtered(); track a.UserId) {
+              <tr class="filterClass">
+                <td><strong>{{ a.IdStatus }}</strong></td>
+                <td><strong>{{ a.UserId }}</strong></td>
+                <td>
+                  <p class="sub-heading">{{ a.UserName }}</p>
+                  <p>{{ a.Address }}</p>
+                  <p>{{ a.Pincode }}</p>
+                </td>
+                <td><strong>{{ a.SpocName }}</strong><br />{{ a.MobileNo }}<br />{{ a.Email }}</td>
+                <td>{{ a.DesktopVerfi }}<br />{{ a.SiteVerifi }}<br />{{ a.FinanceVerfi }}</td>
+                <td>{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</td>
+                <td class="text-center">
+                  @if (mode === 'all') {
+                    @if (a.IsActive) {
+                      <button type="button" class="btn btn-default" style="width: 100px" [disabled]="saving()" (click)="open('block', a)">Block</button>
+                    } @else {
+                      <button type="button" class="btn btn-primary" style="width: 100px" [disabled]="saving()" (click)="unblock(a)">UnBlock</button>
+                    }
+                    <br />
+                    <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
+                    <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px">Assessors</a><br />
+                    <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
+                  } @else {
+                    @if (a.AllowBronzeAssessments) {
+                      <button type="button" class="btn btn-default" style="width: 130px" [disabled]="saving()" (click)="open('disable-bronze', a)">Disable Bronze Assessments</button>
+                    } @else {
+                      <button type="button" class="btn btn-primary" style="width: 130px" [disabled]="saving()" (click)="enableBronze(a)">Enable Bronze Assessments</button>
+                    }
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (dialog(); as d) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="agency-dialog-title">
+    <div class="modal-dialog modal-popup">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+            <h3 class="registration-title m-0" id="agency-dialog-title">
+              @switch (d.kind) {
+                @case ('block') { Reason for Block the Agency }
+                @case ('disable-bronze') { Reason for Disabling Bronze Assessments }
+                @case ('mobile') { SPOC Mobile Number }
+              }
+            </h3>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          </div>
+        </div>
+        <form (ngSubmit)="submitDialog()" novalidate>
+          <div class="modal-body">
+            <p class="mb-2"><strong>{{ d.agency.UserId }}</strong> – {{ d.agency.UserName }}</p>
+            @if (d.kind === 'mobile') {
+              <label class="visually-hidden" for="dialog-mobile">Mobile Number</label>
+              <input id="dialog-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
+            } @else {
+              <label class="visually-hidden" for="dialog-reason">Reason</label>
+              <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" style="height: 100px" [(ngModel)]="d.text"></textarea>
+            }
+            @if (dialogError()) {
+              <span class="help-block" role="alert">{{ dialogError() }}</span>
+            }
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="saving()">
+              @switch (d.kind) {
+                @case ('block') { Block }
+                @case ('disable-bronze') { Disable Bronze Assessments }
+                @case ('mobile') { Update }
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

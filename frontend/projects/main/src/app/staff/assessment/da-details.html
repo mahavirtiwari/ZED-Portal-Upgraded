@@ -1,0 +1,873 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-4">
+    <div class="row justify-content-between">
+      <div class="col-sm-10"><h3 class="registration-title">Assessment Details</h3></div>
+      <div class="col-sm-2">
+        <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
+          <img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+        </button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">
+        {{ error() }}
+        <a class="btn btn-link" routerLink="/staff">Back to home</a>
+      </div>
+    }
+
+    @if (notice(); as nt) {
+      <div class="alert alert-dismissible" [class.alert-success]="nt.ok" [class.alert-danger]="!nt.ok" role="status">
+        {{ nt.text }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+      </div>
+    }
+
+    @if (data(); as d) {
+      <div class="row">
+        <div class="col-sm-12 zed-tabs bg-grey">
+          <div class="tab-title">
+            <div class="numberCircle">{{ tab() }}</div>
+            <h4>{{ tabTitles[tab()] }}</h4>
+          </div>
+          <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" [class.active]="tab() === 1" type="button" role="tab" [attr.aria-selected]="tab() === 1" (click)="tab.set(1)">Assessment Overview</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" [class.active]="tab() === 2" type="button" role="tab" [attr.aria-selected]="tab() === 2" (click)="tab.set(2)">Basic Information</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" [class.active]="tab() === 9" type="button" role="tab" [attr.aria-selected]="tab() === 9" (click)="tab.set(9)">Esg Compliance</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" [class.active]="tab() === 3" type="button" role="tab" [attr.aria-selected]="tab() === 3" (click)="tab.set(3)">Parameters</button>
+            </li>
+            @for (nc of ncTabs(); track nc) {
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === nc + 3" type="button" role="tab" [attr.aria-selected]="tab() === nc + 3" (click)="tab.set(nc + 3)">NC{{ nc }}</button>
+              </li>
+            }
+          </ul>
+
+          <div class="tab-content">
+            <!-- ================================================= overview -->
+            @if (tab() === 1) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @if (isAssessorRole()) {
+                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the site exterior photos to validate</span></div>
+                }
+                <div class="row">
+                  <div class="col-sm-12">
+                    <table class="table table-bordered table-zed bg-white">
+                      <tbody>
+                        <tr><th style="width: 40%">ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
+                        <tr><th>Unit Name</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
+                        <tr><th>Udyam Registration Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
+                        <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
+                        <tr><th>Document Submission Date</th><td>{{ t(msme(), 'BasicInfoStatus') }}</td></tr>
+                        <tr><th>Document Verification allocated on</th><td>{{ t(msme(), 'DocVerifiAllot') }}</td></tr>
+                        @for (i of [1, 2, 3, 4, 5]; track i) {
+                          @if (t(msme(), 'Nc' + i + 'Raised')) {
+                            <tr><th>Non-Conformance {{ i }} Raised On</th><td>{{ t(msme(), 'Nc' + i + 'Raised') }}</td></tr>
+                          }
+                          @if (t(msme(), 'Nc' + i + 'Submitted')) {
+                            <tr><th>Non-Conformance {{ i }} Submitted On</th><td>{{ t(msme(), 'Nc' + i + 'Submitted') }}</td></tr>
+                          }
+                        }
+                        <tr><th>Document Verification Completed on</th><td>{{ t(msme(), 'CompletedOn') }}</td></tr>
+                        <tr><th>Certification</th><td>{{ t(msme(), 'Certification') }}</td></tr>
+                        @if (!isQc()) {
+                          <tr><th>Agency Name</th><td>{{ t(msme(), 'CertificationBodyUserId') }} - {{ t(msme(), 'AgencyName') }}</td></tr>
+                          <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <div class="col-sm-12">
+                    <p class="sub-heading">
+                      Location
+                      @if (mapUrl()) {
+                        <a class="pull-right btn btn-primary btn-sm" [href]="mapUrl()" target="_blank" rel="noopener">Click here to view map</a>
+                      }
+                    </p>
+                    <table class="table table-bordered table-zed bg-white">
+                      <tbody>
+                        <tr><th>Latitude</th><td><h4>{{ t(d.location, 'Latitude') }}</h4></td></tr>
+                        <tr><th>Longitude</th><td><h4>{{ t(d.location, 'Longitude') }}</h4></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ================================================= basic information -->
+            @if (tab() === 2) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @if (isAssessorRole()) {
+                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the Product photos to validate</span></div>
+                }
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>S.No</th><th>Description</th><th>Responses</th></tr></thead>
+                  <tbody>
+                    <tr>
+                      <td>1</td>
+                      <td>MSME Representative Selfie</td>
+                      <td>
+                        <div class="row">
+                          @for (p of selfies(); track t(p, 'Id')) {
+                            <div class="col-sm-3">
+                              <div class="evidence-img">
+                                <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'])"><img [src]="t(p, 'Url')" alt="Selfie" /></button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td>1</td>
+                      <td>Site Exterior Photos</td>
+                      <td>
+                        <div class="row">
+                          @for (p of siteExterior(); track t(p, 'Id')) {
+                            <div class="col-sm-3">
+                              <div class="evidence-img">
+                                <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'], 'SiteExteriorPhoto', p)"><img [src]="t(p, 'Url')" alt="Site exterior" /></button>
+                              </div>
+                            </div>
+                          }
+                          <div class="col-sm-3">
+                            @let se = siteExterior()[0];
+                            @if (t(se, 'IsVerified')) {
+                              <label>Verified: {{ t(se, 'IsVerified') }}</label><br />
+                              <label>Assessor Remarks: {{ t(se, 'AssessorRemarks') }}</label>
+                              @if (review().editRemarks) {
+                                <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('photo', se)" />
+                              }
+                            }
+                            @if (se && canChange(0) && n(se, 'DocumentOpenedTime') === 0) {
+                              <input type="button" [value]="t(se, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-block btn-auto" (click)="editSiteExterior(se)" />
+                            }
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr><td>1</td><td>Whether 3rd Party Financial Audits are conducted?</td><td>{{ t(msme(), 'AuditsConducted') }}</td></tr>
+                    <tr>
+                      <td>2</td>
+                      <td>Product manufactured</td>
+                      <td>
+                        <table class="table table-striped bg-white">
+                          <thead>
+                            <tr><th>Product Name</th><th>Whether Exported</th><th>Product Photo</th><th>Product Description Photo</th><th>Conformance</th><th>Assessor Remarks</th></tr>
+                          </thead>
+                          <tbody>
+                            @for (p of d.products; track t(p, 'Id')) {
+                              <tr>
+                                <td>{{ t(p, 'ProductName') }}</td>
+                                <td>{{ t(p, 'Exported') }}</td>
+                                <td>
+                                  @if (t(p, 'PhotoUrl')) {
+                                    <button type="button" class="btn btn-link p-0" (click)="openImage(p['PhotoUrl'], 'ProductPhoto', p)"><img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /></button>
+                                  }
+                                </td>
+                                <td>
+                                  @if (t(p, 'DescriptionKind') === 'pdf') {
+                                    <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)">
+                                      <img [src]="f(p, 'DescriptionOpened') ? '/Images/pdf-icon-blue.png' : '/Images/pdf-icon.png'" height="25" alt="Product description (PDF)" />
+                                    </a>
+                                  } @else if (t(p, 'DescriptionKind') === 'image') {
+                                    <button type="button" class="btn btn-link p-0" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" /></button>
+                                  }
+                                </td>
+                                <td class="text-center">
+                                  {{ t(p, 'IsVerified') }}
+                                  @if (canChange(0) && (t(p, 'IsVerified') || (f(p, 'ProductOpened') && f(p, 'DescriptionOpened')))) {
+                                    <input type="button" [value]="t(p, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editProduct(p)" />
+                                  }
+                                </td>
+                                <td>
+                                  {{ t(p, 'AssessorRemarks') }}
+                                  @if (review().editRemarks) {
+                                    <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('product', p)" />
+                                  }
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                    <tr><td>3</td><td>Key Domestic Customers</td><td>{{ t(msme(), 'DomesticCustomers') }}</td></tr>
+                    <tr><td>4</td><td>Key International Customers</td><td>{{ t(msme(), 'InternationalCustomers') }}</td></tr>
+                    <tr><td>5</td><td>Whether Raw Material is Imported?</td><td>{{ t(msme(), 'RawMaterialImported') }}</td></tr>
+                    @if (t(msme(), 'RawMaterialImported') === 'Yes') {
+                      <tr>
+                        <td></td>
+                        <td>Raw Materials</td>
+                        <td>
+                          <table class="table table-striped bg-white">
+                            <thead><tr><th>Raw Material Name</th><th>% of Raw Material Imported</th><th>Name of Country</th></tr></thead>
+                            <tbody>
+                              @for (r of d.rawMaterials; track $index) {
+                                <tr><td>{{ t(r, 'RawMaterialName') }}</td><td>{{ t(r, 'Percentage') }}</td><td>{{ t(r, 'CountryName') }}</td></tr>
+                              }
+                            </tbody>
+                          </table>
+                        </td>
+                      </tr>
+                    }
+                    <tr><td>6</td><td>Processed Outsourced, if any?</td><td>{{ t(msme(), 'OutsourcedProcesses') }}</td></tr>
+                    <tr><td>7</td><td>Energy Source(s) Used</td><td>{{ t(msme(), 'EnergySources') }}</td></tr>
+                    <tr><td>8</td><td>monthly Manufacturing Capacity</td><td>{{ t(msme(), 'ManufacturingCapacityValue') }} {{ t(msme(), 'ManufacturingCapacityUnits') }}</td></tr>
+                    <tr><td>9</td><td>Monthly Utilization</td><td>{{ t(msme(), 'MonthlyUtilizationValue') }} {{ t(msme(), 'MonthlyUtilizationUnits') }}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- ================================================= ESG -->
+            @if (tab() === 9) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <h2>ESG Check List</h2>
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th></tr></thead>
+                  <tbody>
+                    @for (p of esg(); track $index) {
+                      <tr>
+                        <td>{{ t(p, 'Question') }}</td><td>{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
+                        <td>{{ t(p, 'IfYesAnswer') }}</td><td>{{ t(p, 'IfNoQuestion') }}</td><td>{{ t(p, 'IfNoAnswer') }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                <h2>Social/OHS Check List</h2>
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>S.No</th><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th></tr></thead>
+                  <tbody>
+                    @for (p of social(); track $index) {
+                      <tr>
+                        <td>{{ t(p, 'Code') }}</td><td>{{ t(p, 'Question') }}</td><td>{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
+                        <td>{{ t(p, 'IfYesAnswer') }}</td><td>{{ t(p, 'IfNoQuestion') }}</td><td>{{ t(p, 'IfNoAnswer') }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- ================================================= parameters -->
+            @if (tab() === 3) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @if (isAssessorRole()) {
+                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the uploaded documents (PDFs) to validate</span></div>
+                }
+                <div class="row">
+                  @for (s of d.sections; track t(s, 'Id')) {
+                    <div class="col-sm-12">
+                      <div class="panel panel-default panel-black mt-2">
+                        <div class="panel-body">
+                          {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
+                          @if (t(s, 'iButton')) {
+                            <span class="z-tooltip" style="float: right">
+                              <img src="/Images/svgicons/info.svg" alt="Information" />
+                              <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                            </span>
+                          }
+                        </div>
+                      </div>
+                      <div class="mt-4">
+                        @if (n(s, 'ValidationRequired') > 0) {
+                          <h5>
+                            @if (canChange(0) && status() <= 3) {
+                              <span>Exempted from Remote/Site Assessment</span>
+                              <label class="ms-2" style="line-height: 30px; cursor: pointer">
+                                <input type="radio" class="option-input yes radio" [name]="'exempt' + t(s, 'Id')" value="Yes" [checked]="t(s, 'IsAssessmentExcempted') === 'Yes'" [disabled]="busy()" (change)="setExemption(s, 'Yes')" /> Yes&nbsp;
+                              </label>
+                              <label style="line-height: 30px; cursor: pointer">
+                                <input type="radio" class="option-input no radio" [name]="'exempt' + t(s, 'Id')" value="No" [checked]="t(s, 'IsAssessmentExcempted') === 'No'" [disabled]="busy()" (change)="setExemption(s, 'No')" /> No
+                              </label>
+                            } @else if (perms().canWithdrawExemption && t(s, 'IsAssessmentExcempted') === 'Yes') {
+                              <span>Exempted from Remote/Site Assessment</span>
+                              <label class="ms-2" style="line-height: 30px; cursor: pointer">
+                                <input type="radio" class="option-input yes radio" [name]="'adminExempt' + t(s, 'Id')" value="Yes" checked /> Yes&nbsp;
+                              </label>
+                              <label style="line-height: 30px; cursor: pointer">
+                                <input type="radio" class="option-input no radio" [name]="'adminExempt' + t(s, 'Id')" value="No" [disabled]="busy()" (change)="setExemption(s, 'No')" /> No
+                              </label>
+                            } @else if (t(s, 'IsAssessmentExcempted')) {
+                              <span>Exempted from Remote/Site Assessment: <strong>{{ t(s, 'IsAssessmentExcempted') }}</strong></span>
+                            }
+                          </h5>
+                        }
+                        <table class="table table-bordered table-zed" style="margin-bottom: 0">
+                          <thead>
+                            <tr><th>Code</th><th>Requirement</th><th>Document Uploaded</th><th>Conformance (Yes/No)</th><th>Assessor Remark</th></tr>
+                          </thead>
+                          <tbody>
+                            @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
+                              <tr>
+                                <th style="vertical-align: middle; width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                                <td style="vertical-align: middle; width: 35%">
+                                  @for (o of optionsOf(r, d.options); track $index) {
+                                    <div>
+                                      {{ t(o, 'OptionName') }}
+                                      <ul>
+                                        @for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
+                                      </ul>
+                                    </div>
+                                  }
+                                </td>
+                                <td style="padding: 0">
+                                  <table class="table table-striped">
+                                    <tbody>
+                                      @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
+                                        <tr>
+                                          <td>
+                                            {{ t(e, 'EvidenceName') }}
+                                            @if (t(e, 'FileUrl')) {
+                                              <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
+                                                <img [src]="f(e, 'Opened') ? '/Images/pdf-icon-blue.png' : '/Images/pdf-icon.png'" height="25" alt="Evidence (PDF)" />
+                                              </a>
+                                            }
+                                            <br />
+                                            @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
+                                            @if (t(e, 'SourceOfValidation')) { <small><br /><strong>Source of Validation:</strong> {{ t(e, 'SourceOfValidation') }}</small> }
+                                            @if (t(e, 'AssessorRemarks')) { <small><br /><strong>Remarks:</strong> {{ t(e, 'AssessorRemarks') }}</small> }
+                                            @if (t(e, 'IsVerified')) {
+                                              <small>
+                                                <br />
+                                                @for (sc of screenshots(e); track sc) {
+                                                  <a [href]="sc" target="_blank" rel="noopener"><img src="/Images/pdf-icon.png" height="25" alt="Screenshot" /></a>
+                                                }
+                                              </small>
+                                            }
+                                            @if (canChange(0) && f(e, 'ValidationRequired') && f(e, 'Opened')) {
+                                              <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editEvidence(e)" />
+                                            }
+                                          </td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </td>
+                                <td style="width: 60px" class="text-center">
+                                  {{ t(r, 'Conformance') }}
+                                  @if (canChange(0) && (t(r, 'Conformance') || f(r, 'OpenedFlag'))) {
+                                    <input type="button" [value]="t(r, 'Conformance') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editConformance(r)" />
+                                  }
+                                </td>
+                                <td>
+                                  {{ t(r, 'AssessorRemarks') }}
+                                  @if (review().editRemarks) {
+                                    <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('requirement', r)" />
+                                  }
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  }
+                  @if (t(msme(), 'AssessorRemarks')) {
+                    <div class="col-sm-12"><strong>Assessor Final Remarks:</strong> {{ t(msme(), 'AssessorRemarks') }}</div>
+                  }
+                  <div class="col-sm-12 text-center mt-3">
+                    @if (perms().canFinalSubmit && currentRound() === 0) {
+                      <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="openFinalSubmit()" />
+                    }
+                    <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="desktop" [actions]="review()" (done)="reviewed($event)" />
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- ================================================= NC rounds -->
+            @for (nc of ncTabs(); track nc) {
+              @if (tab() === nc + 3) {
+                @let rd = round(nc);
+                <div class="tab-pane fade show active" role="tabpanel">
+                  @if (noRows(previousPhotos(nc), 'IsVerified').length > 0) {
+                    <table class="table table-zed table-bordered">
+                      <thead>
+                        <tr><th></th><th></th><th class="text-center">Photos</th><th>Conformance</th><th>Assessor Remarks</th><th style="width: 200px">MSME Remarks</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td rowspan="2" style="vertical-align: middle">Site Exterior Photos</td>
+                          <td>{{ nc > 1 ? 'NC' + (nc - 1) : '' }}</td>
+                          <td>
+                            <div class="row">
+                              @for (p of previousPhotos(nc); track t(p, 'Id')) {
+                                <div class="col-sm-6 text-center">
+                                  <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'])"><img [src]="t(p, 'Url')" height="60" alt="Site exterior" /></button>
+                                </div>
+                              }
+                            </div>
+                          </td>
+                          <td>{{ t(previousPhotos(nc)[0], 'IsVerified') }}</td>
+                          <td>{{ t(previousPhotos(nc)[0], 'AssessorRemarks') }}</td>
+                          <td>{{ t(previousPhotos(nc)[0], 'MsmeRemarks') }}</td>
+                        </tr>
+                        @if (roundPhotos(nc).length > 0) {
+                          @let cur = roundPhotos(nc)[0];
+                          <tr>
+                            <td>NC{{ nc }}</td>
+                            <td>
+                              <div class="row">
+                                @for (p of roundPhotos(nc); track t(p, 'Id')) {
+                                  <div class="col-sm-6 text-center">
+                                    <button type="button" class="btn btn-link p-0" (click)="openImage(p['Url'], 'SiteExteriorPhoto', p)"><img [src]="t(p, 'Url')" height="60" alt="Site exterior" /></button>
+                                  </div>
+                                }
+                              </div>
+                            </td>
+                            <td>
+                              {{ t(cur, 'IsVerified') }}
+                              @if (canChange(nc) && n(cur, 'DocumentOpenedTime') === 0) {
+                                <input type="button" [value]="t(cur, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editSiteExterior(cur)" />
+                              }
+                            </td>
+                            <td>
+                              {{ t(cur, 'AssessorRemarks') }}
+                              @if (review().editRemarks && t(cur, 'IsVerified')) {
+                                <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('photo', cur)" />
+                              }
+                            </td>
+                            <td>{{ t(cur, 'MsmeRemarks') }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+
+                  @if ((rd?.products ?? []).length > 0) {
+                    <hr />
+                    <table class="table table-zed table-bordered">
+                      <thead>
+                        <tr>
+                          <th>Product Name</th><th>Whether Exported</th><th style="width: 50px"></th><th style="width: 120px">Product Photo</th>
+                          <th style="width: 180px">Product Description Photo</th><th style="width: 80px">Verified</th><th>Assessor Remarks</th><th style="width: 200px">MSME Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (p of rd?.products ?? []; track t(p, 'Id')) {
+                          <tr>
+                            <td style="vertical-align: middle">{{ t(p, 'ProductName') }}</td>
+                            <td style="vertical-align: middle">{{ t(p, 'Exported') }}</td>
+                            <td style="padding: 0" colspan="6">
+                              <table class="table table-zed table-bordered">
+                                <tbody>
+                                  @for (o of oldProductsOf(p, nc); track t(o, 'Id')) {
+                                    <tr>
+                                      <td style="width: 50px"></td>
+                                      <td class="text-center" style="width: 120px">
+                                        @if (t(o, 'PhotoUrl')) {
+                                          <button type="button" class="btn btn-link p-0" (click)="openImage(o['PhotoUrl'])"><img [src]="t(o, 'PhotoUrl')" height="60" alt="Product" /></button>
+                                        }
+                                      </td>
+                                      <td class="text-center" style="width: 180px">
+                                        @if (t(o, 'DescriptionKind') === 'pdf') {
+                                          <a [href]="t(o, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="/Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                        } @else if (t(o, 'DescriptionKind') === 'image') {
+                                          <button type="button" class="btn btn-link p-0" (click)="openImage(o['DescriptionUrl'])"><img [src]="t(o, 'DescriptionUrl')" height="60" alt="Product description" /></button>
+                                        }
+                                      </td>
+                                      <td class="text-center" style="width: 80px">{{ t(o, 'IsVerified') }}</td>
+                                      <td>@if (t(o, 'IsVerified')) { {{ t(o, 'AssessorRemarks') }} }</td>
+                                      <td style="width: 200px">{{ t(o, 'MsmeRemarks') }}</td>
+                                    </tr>
+                                  }
+                                  @if (t(p, 'PhotoUrl')) {
+                                    <tr>
+                                      <td style="width: 50px">NC{{ t(p, 'NcCount') }}</td>
+                                      <td class="text-center" style="width: 120px">
+                                        <button type="button" class="btn btn-link p-0" (click)="openImage(p['PhotoUrl'], 'ProductPhoto', p)"><img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /></button>
+                                      </td>
+                                      <td class="text-center" style="width: 180px">
+                                        @if (t(p, 'DescriptionKind') === 'pdf') {
+                                          <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)"><img src="/Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                        } @else if (t(p, 'DescriptionKind') === 'image') {
+                                          <button type="button" class="btn btn-link p-0" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" /></button>
+                                        }
+                                      </td>
+                                      <td class="text-center" style="width: 80px">
+                                        {{ t(p, 'IsVerified') }}
+                                        @if (canChange(nc) && (t(p, 'IsVerified') || (f(p, 'ProductOpened') && f(p, 'DescriptionOpened')))) {
+                                          <input type="button" [value]="t(p, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editProduct(p)" />
+                                        }
+                                      </td>
+                                      <td>
+                                        @if (t(p, 'IsVerified')) { {{ t(p, 'AssessorRemarks') }} }
+                                        @if (review().editRemarks) {
+                                          <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('product', p)" />
+                                        }
+                                      </td>
+                                      <td style="width: 200px">{{ t(p, 'MsmeRemarks') }}</td>
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+
+                  <hr />
+                  <div class="row">
+                    @for (s of rd?.sections ?? []; track t(s, 'Id')) {
+                      <div class="col-sm-12" style="padding-top: 20px">
+                        <div class="panel panel-default panel-black">
+                          <div class="panel-body">
+                            {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
+                            @if (t(s, 'iButton')) {
+                              <span class="z-tooltip" style="float: right">
+                                <img src="/Images/svgicons/info.svg" alt="Information" />
+                                <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                              </span>
+                            }
+                          </div>
+                        </div>
+                        <table class="table table-zed table-bordered" style="margin-bottom: 0">
+                          <thead>
+                            <tr>
+                              <th>Code</th><th style="width: 35%">Requirement</th><th style="width: 20%">Document Uploaded</th>
+                              <th style="width: 10%">Conformance (Yes/No)</th><th style="width: 15%">MSME Comments</th><th style="width: 15%">Assessor Remark</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (r of requirementsOf(s, rd?.requirements); track t(r, 'Id')) {
+                              <tr>
+                                <th style="vertical-align: middle; width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                                <td style="vertical-align: middle; width: 35%">
+                                  @for (o of optionsOf(r, rd?.options); track $index) {
+                                    <div>
+                                      {{ t(o, 'OptionName') }}
+                                      <ul>
+                                        @for (so of subOptionsOf(o, rd?.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
+                                      </ul>
+                                    </div>
+                                  }
+                                </td>
+                                <td style="padding: 0" colspan="4">
+                                  <table class="table table-striped table-bordered">
+                                    <tbody>
+                                      @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
+                                        <tr>
+                                          <td>
+                                            {{ t(e, 'EvidenceName') }}
+                                            @if (t(e, 'FileUrl')) {
+                                              <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="/Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
+                                            }
+                                            <br />
+                                            @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
+                                            @if (t(e, 'AssessorRemarks')) { <small><br /><strong>Remarks:</strong> {{ t(e, 'AssessorRemarks') }}</small> }
+                                          </td>
+                                          <td></td><td></td><td></td>
+                                        </tr>
+                                      }
+                                      @for (e of evidencesOf(r, rd?.evidences); track t(e, 'Id')) {
+                                        <tr>
+                                          <td>
+                                            @if (t(e, 'SyncedDate')) { <span>NC{{ t(e, 'NcCount') }}</span> }
+                                            @if (t(e, 'FileUrl')) {
+                                              <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
+                                                <img [src]="f(e, 'Opened') ? '/Images/pdf-icon-blue.png' : '/Images/pdf-icon.png'" height="25" alt="Evidence (PDF)" />
+                                              </a>
+                                            }
+                                          </td>
+                                          <td style="width: 17%">
+                                            {{ t(e, 'Conformance') }}
+                                            @if (n(e, 'NcCount') === nc && canChange(nc) && (t(r, 'Conformance') || f(r, 'OpenedFlag'))) {
+                                              <input type="button" [value]="t(r, 'Conformance') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editConformance(r)" />
+                                            }
+                                          </td>
+                                          <td style="width: 25%">{{ t(e, 'RequirementMsmeRemarks') }}</td>
+                                          <td style="width: 25%">
+                                            {{ t(e, 'RequirementRemarks') }}
+                                            @if (review().editRemarks && n(e, 'NcCount') === nc) {
+                                              <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('requirement', r)" />
+                                            }
+                                          </td>
+                                        </tr>
+                                      }
+                                    </tbody>
+                                  </table>
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    }
+                  </div>
+                  <div class="col-sm-12 text-center mt-3">
+                    @if (rd?.assessorRemarks) {
+                      <div class="alert alert-success"><strong>Assessor Comments:</strong> {{ rd?.assessorRemarks }}</div>
+                    }
+                    @if (nc === 5 && n(msme(), 'SendBackStatus') === 1 && t(msme(), 'SendBackRemarks')) {
+                      <div class="alert alert-success"><strong>Agency Send Back Comments:</strong> {{ t(msme(), 'SendBackRemarks') }}</div>
+                    }
+                    @if (perms().canFinalSubmit && currentRound() === nc) {
+                      <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="openFinalSubmit()" />
+                    }
+                    <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="desktop" [actions]="review()" (done)="reviewed($event)" />
+                  </div>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ================================================= pop-ups -->
+@if (data(); as d) {
+  <zed-review-remarks [zedId]="d.zedId" [certification]="d.certification" [target]="remarksTarget()" (saved)="reviewed($event)" (closed)="remarksTarget.set(null)" />
+}
+
+@if (conformanceEdit(); as e) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daConfTitle">
+    <div class="modal-dialog modal-popup">
+      <div class="modal-content">
+        <form (ngSubmit)="saveConformance()" novalidate>
+          <div class="modal-header">
+            <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+              <h3 class="registration-title" id="daConfTitle">Conformance</h3>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="conformanceEdit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <span class="col-sm-4">Conformance</span>
+              <div class="col-sm-8">
+                <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input yes radio" name="conformance" value="Yes" [(ngModel)]="e.conformance" /> Yes&nbsp;</label>
+                <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input no radio" name="conformance" value="No" [(ngModel)]="e.conformance" /> No</label>
+              </div>
+            </div>
+            <div class="mb-3 row">
+              <label class="col-sm-4" for="daConfRemarks">Remarks</label>
+              <div class="col-sm-8">
+                <textarea id="daConfRemarks" name="remarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="e.remarks"></textarea>
+              </div>
+            </div>
+            @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+          </div>
+          <div class="modal-footer">
+            <input type="button" class="btn btn-default" value="CANCEL" (click)="conformanceEdit.set(null)" />
+            <input type="submit" class="btn btn-primary" value="SUBMIT" [disabled]="busy()" />
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@for (m of [productEdit(), siteExteriorEdit()]; track $index) {
+  @if (m) {
+    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" [attr.aria-labelledby]="'daValTitle' + $index">
+      <div class="modal-dialog modal-popup">
+        <div class="modal-content">
+          <form (ngSubmit)="$index === 0 ? saveProduct() : saveSiteExterior()" novalidate>
+            <div class="modal-header">
+              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+                <h3 class="registration-title" [id]="'daValTitle' + $index">{{ $index === 0 ? t(m.row, 'ProductName') : 'Site Exterior Photos' }}</h3>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="productEdit.set(null); siteExteriorEdit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              </div>
+            </div>
+            <div class="modal-body">
+              <div class="row mb-3">
+                <span class="col-sm-4">CONFORMANCE</span>
+                <div class="col-sm-8">
+                  <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input yes radio" name="verified" value="Yes" [(ngModel)]="m.verified" /> Yes&nbsp;</label>
+                  <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input no radio" name="verified" value="No" [(ngModel)]="m.verified" /> No</label>
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-sm-4" [for]="'daValRemarks' + $index">Remarks</label>
+                <div class="col-sm-8">
+                  <textarea [id]="'daValRemarks' + $index" name="remarks" class="form-control" maxlength="1000" style="min-width: 100%; height: 100px" [(ngModel)]="m.remarks"></textarea>
+                </div>
+              </div>
+              @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+            </div>
+            <div class="modal-footer">
+              <input type="submit" class="btn btn-primary btn-block" value="Submit" [disabled]="busy()" />
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="modal-backdrop show"></div>
+  }
+}
+
+@if (evidenceEdit(); as e) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daEvTitle">
+    <div class="modal-dialog modal-popup">
+      <div class="modal-content">
+        <form (ngSubmit)="saveEvidence()" novalidate>
+          <div class="modal-header">
+            <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+              <h3 class="registration-title" id="daEvTitle">Validate Evidence</h3>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="evidenceEdit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div class="row mb-3">
+              <span class="col-sm-4">Verified</span>
+              <div class="col-sm-8">
+                <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input yes radio" name="evVerified" value="Yes" [(ngModel)]="e.verified" /> Yes&nbsp;</label>
+                <label style="line-height: 30px; cursor: pointer"><input type="radio" class="option-input no radio" name="evVerified" value="No" [(ngModel)]="e.verified" /> No</label>
+              </div>
+            </div>
+            @if (e.verified === 'Yes') {
+              <div class="row mb-3">
+                <label class="col-sm-4" for="daEvSource">Source of Validation</label>
+                <div class="col-sm-8">
+                  <input type="text" id="daEvSource" name="source" class="form-control" maxlength="200" style="min-width: 100%" [(ngModel)]="e.source" />
+                </div>
+              </div>
+              <div class="row mb-3">
+                <label class="col-sm-4" for="daEvFiles">Upload Screenshots</label>
+                <div class="col-sm-8">
+                  <input type="file" id="daEvFiles" class="btn btn-primary" style="margin-top: 5px; min-width: 100%" accept="image/*,application/pdf" multiple (change)="pickFiles($event)" />
+                  <span style="color: red; font-size: small">(Valid file types: PDF/JPG)</span>
+                  <span style="color: red; font-size: small" class="pull-right">(File size: &lt; 2MB)</span>
+                </div>
+              </div>
+            }
+            <div class="row mb-3">
+              <label class="col-sm-8" for="daEvRemarks">Remarks</label>
+              <div class="col-sm-8">
+                <textarea id="daEvRemarks" name="evRemarks" class="form-control" maxlength="1000" style="min-width: 100%; height: 100px" [(ngModel)]="e.remarks"></textarea>
+              </div>
+            </div>
+            @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+          </div>
+          <div class="modal-footer">
+            <input type="submit" class="btn btn-primary btn-block" value="Submit" [disabled]="busy()" />
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (finalSubmitEdit(); as e) {
+  @let sr = submitRound();
+  @let bronze = data()?.certification === 'Bronze';
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daFsTitle">
+    <div class="modal-dialog modal-popup modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+            <h3 class="registration-title" id="daFsTitle">{{ bronze && e.check.raisesNc ? 'Non-Conformance(s) Details' : 'Final Submit' }}</h3>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="finalSubmitEdit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          @if (bronze && t(sr.photos[0], 'IsVerified') === 'No') {
+            <table class="table table-striped">
+              <thead><tr><th>Site Exterior Photos</th><th>Assessor Remarks</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td>@for (p of sr.photos; track t(p, 'Id')) { <img [src]="t(p, 'Url')" height="60" alt="Site exterior" class="me-1" /> }</td>
+                  <td>{{ t(sr.photos[0], 'AssessorRemarks') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          }
+          @if (bronze && noRows(sr.products, 'IsVerified').length > 0) {
+            <table class="table table-striped">
+              <thead><tr><th>Product Name</th><th>Product Photo</th><th>Assessor Remarks</th></tr></thead>
+              <tbody>
+                @for (p of noRows(sr.products, 'IsVerified'); track t(p, 'Id')) {
+                  <tr>
+                    <td>{{ t(p, 'ProductName') }}</td>
+                    <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /> }</td>
+                    <td>{{ t(p, 'AssessorRemarks') }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
+          @if (bronze && noRows(sr.requirements, 'Conformance').length > 0) {
+            <table class="table table-bordered">
+              <thead><tr><th>Code</th><th>Requirement</th><th>Assessor Remark</th></tr></thead>
+              <tbody>
+                @for (s of sr.sections; track t(s, 'Id')) {
+                  @for (r of noRows(requirementsOf(s, sr.requirements), 'Conformance'); track t(r, 'Id')) {
+                    <tr>
+                      <th style="vertical-align: middle; width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                      <td style="vertical-align: middle; width: 50%">
+                        @for (o of optionsOf(r, sr.options); track $index) {
+                          <div>{{ t(o, 'OptionName') }}<ul>@for (so of subOptionsOf(o, sr.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>
+                        }
+                      </td>
+                      <td>{{ t(r, 'AssessorRemarks') }}</td>
+                    </tr>
+                  }
+                }
+              </tbody>
+            </table>
+          }
+          <div style="margin-bottom: 9px">
+            <label for="daFsRemarks"><strong>Assessor Final Remarks<span style="color: red">*</span></strong></label>
+            <textarea id="daFsRemarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="e.remarks"></textarea>
+          </div>
+          <div style="padding-left: 20px">
+            <label class="checkbox-inline">
+              <input type="checkbox" class="option-input1 yes checkbox" [(ngModel)]="e.confirmed" />
+              <span>I confirm that I have verified the information provided by the unit against each requirement in a fair and unbiased manner.</span>
+            </label>
+          </div>
+          @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
+        </div>
+        <div class="modal-footer">
+          <input type="button" class="btn btn-default" value="CANCEL" (click)="finalSubmitEdit.set(null)" />
+          <input type="button" class="btn btn-primary" value="SUBMIT" [disabled]="!e.confirmed || busy()" (click)="finalSubmit()" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (preview(); as src) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daPreviewTitle" (click)="preview.set(null)">
+    <div class="modal-dialog modal-popup modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+            <h3 class="registration-title" id="daPreviewTitle">Image</h3>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="preview.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="text-center img-responsive" style="margin-bottom: 9px"><img [src]="src" alt="Selected photo" style="max-width: 100%" /></div>
+        </div>
+        <div class="modal-footer"><input type="button" class="btn btn-default" value="OK" (click)="preview.set(null)" /></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
+    <div class="loadingimage">
+      <div class="loader"></div>
+      <div class="text-center"><small>Please wait ...</small><br /><small>It may take upto 60 seconds</small></div>
+    </div>
+  </div>
+}

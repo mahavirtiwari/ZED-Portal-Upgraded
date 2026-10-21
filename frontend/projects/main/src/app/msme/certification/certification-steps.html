@@ -1,0 +1,154 @@
+<ng-template #ncList let-tick="tick">
+  @if (s('NcFinalClosureDate')) {
+    <li>
+      <strong class="text-danger">Non-Conformance(s) (NC)</strong> ({{ s('NcFinalClosureDate') }})
+      <ul>
+        @for (n of ncRounds; track n) {
+          @if (s('Nc' + n + 'Raised')) {
+            <li [class.list-tick]="tick"><strong class="dash-text-clr">ZED: </strong>{{ s('Nc' + n + 'Raised') }}</li>
+          }
+          @if (s('Nc' + n + 'Submitted')) {
+            <li [class.list-tick]="tick"><strong>YOU: </strong>{{ s('Nc' + n + 'Submitted') }}</li>
+          }
+        }
+      </ul>
+    </li>
+  }
+  @if (s('NcClosed')) {
+    <li><strong class="dash-text-clr">ZED: </strong>{{ s('NcClosed') }}</li>
+  }
+  @if (s('CompletedOn')) {
+    <li><strong class="dash-text-clr">ZED: </strong>{{ s('CompletedOn') }}</li>
+  }
+</ng-template>
+
+<ng-template #certified let-from="from">
+  <li [hidden]="!s('GetCertified')">
+    <div class="step-num"><span>{{ from }}</span></div>
+    <div class="step-details">
+      <h4>Get Certified!</h4>
+      <ul>
+        <li><strong class="dash-text-clr">ZED: </strong>{{ s('GetCertified') }}</li>
+      </ul>
+    </div>
+  </li>
+  <li [hidden]="!s('GetCertified')">
+    <div class="step-num"><span>{{ from + 1 }}</span></div>
+    <div class="step-details">
+      <h4>Avail Incentives</h4>
+      <ul>
+        <li><a class="dash-text-clr f-w-700" [href]="incentiveUrl()" target="_blank" rel="noopener">Click here to view your Incentives</a></li>
+      </ul>
+    </div>
+  </li>
+</ng-template>
+
+@if (s('ApplicationReceived')) {
+  <div class="label-highlight">
+    <strong>{{ kind() === 'surveillance' ? 'Application Received for Surveillance Assessment' : 'Application Received' }}</strong>
+    <ul>
+      <li>{{ s('ApplicationReceived') }}</li>
+    </ul>
+  </div>
+}
+
+<ul class="cert-steps">
+  @switch (kind()) {
+    @case ('bronze') {
+      <li [hidden]="!s('ApplicationReceived')">
+        <div class="step-num"><span>1</span></div>
+        <div class="step-details">
+          <h4>Basic Information and Document Upload</h4>
+          <ul><li><strong>YOU: </strong>{{ s('BasicInfoStatus') }}</li></ul>
+        </div>
+      </li>
+      <li [hidden]="!s('BronzeDesktopVerification')">
+        <div class="step-num"><span>2</span></div>
+        <div class="step-details">
+          <h4>Desktop Verification</h4>
+          <ul>
+            <li><strong class="dash-text-clr">ZED: </strong>{{ s('BronzeDesktopVerification') }}</li>
+            <ng-container *ngTemplateOutlet="ncList; context: { tick: true }" />
+          </ul>
+        </div>
+      </li>
+      <ng-container *ngTemplateOutlet="certified; context: { from: 3 }" />
+    }
+
+    @case ('silverGold') {
+      <li [hidden]="!s('ApplicationReceived')">
+        <div class="step-num"><span>1</span></div>
+        <div class="step-details">
+          <h4>Basic Information and Document Upload</h4>
+          <ul><li><strong>YOU: </strong>{{ s('BasicInfoStatus') }}</li></ul>
+        </div>
+      </li>
+      <li [hidden]="!s('DesktopVerification')">
+        <div class="step-num"><span>2</span></div>
+        <div class="step-details">
+          <h4>Desktop Verification</h4>
+          <ul><li><strong class="dash-text-clr">ZED: </strong>{{ s('DesktopVerification') }}</li></ul>
+        </div>
+      </li>
+      <li [hidden]="!s('ScheduledOn')">
+        <div class="step-num"><span>3</span></div>
+        <div class="step-details">
+          <h4>Remote/Onsite Assessment</h4>
+          <ul>
+            <li><strong class="dash-text-clr">ZED: </strong>{{ s('ScheduledOn') }}</li>
+            <ng-container *ngTemplateOutlet="ncList; context: { tick: false }" />
+          </ul>
+        </div>
+      </li>
+      <ng-container *ngTemplateOutlet="certified; context: { from: 4 }" />
+    }
+
+    @case ('surveillance') {
+      <li [hidden]="!s('ScheduledOn')">
+        <div class="step-num"><span>1</span></div>
+        <div class="step-details">
+          <h4>Surveillance Assessment</h4>
+          <ul>
+            <li><strong class="dash-text-clr">ZED: </strong>{{ s('ScheduledOn') }}</li>
+            <ng-container *ngTemplateOutlet="ncList; context: { tick: false }" />
+          </ul>
+        </div>
+      </li>
+      <ng-container *ngTemplateOutlet="certified; context: { from: 2 }" />
+    }
+
+    @case ('milestone') {
+      <li [hidden]="!s('AllocationCompleted')">
+        <div class="step-num"><span>1</span></div>
+        <div class="step-details">
+          <h4>Allocation of consulting organisation</h4>
+          <ul><li><strong class="dash-text-clr">ZED: </strong>{{ s('AllocationCompleted') }}</li></ul>
+        </div>
+      </li>
+      <li [hidden]="!s('BdsScheduledOn')">
+        <div class="step-num"><span>2</span></div>
+        <div class="step-details">
+          <h4>Milestone {{ milestone() }}</h4>
+          <ul>
+            @if (s('BdsScheduledOn')) {
+              <li><strong class="dash-text-clr">ZED: </strong>{{ s('BdsScheduledOn') }}</li>
+            }
+            @if (milestone() === 1 && s('HapScheduledOn')) {
+              <li><strong class="dash-text-clr">ZED: </strong>{{ s('HapScheduledOn') }}</li>
+            }
+            @if (s('SubmittedByConsultant')) {
+              <li><strong class="dash-text-clr">ZED: </strong>{{ s('SubmittedByConsultant') }}</li>
+            }
+          </ul>
+        </div>
+      </li>
+      <li [hidden]="!s('ApplicantAcceptedOn')">
+        <div class="step-num"><span>3</span></div>
+        <div class="step-details">
+          <h4>Acceptance by Applicant</h4>
+          <ul><li><strong class="dash-text-clr">YOU: </strong>{{ s('ApplicantAcceptedOn') }}</li></ul>
+        </div>
+      </li>
+    }
+  }
+</ul>

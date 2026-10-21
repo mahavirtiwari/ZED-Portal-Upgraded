@@ -1,0 +1,46 @@
+@* Port of _AssessorRegisterTemplate.cshtml (welcome mail of a new assessor, sent once). *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    @if (IsBronzeAssessor)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been authorized for conducting Bronze Assessment under the <b>"MSME Sustainable (ZED) Certification"</b> Scheme.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been authorized for conducting Assessment under the <b>"MSME Sustainable (ZED) Certification"</b> Scheme. </p>
+    }
+    <p style="font-size: 13px; margin-bottom: 0;">Your login details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">User ID</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UserId</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Password</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Password</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Agency Name</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyName</td>
+            </tr>
+        </tbody>
+    </table>
+    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px; color: #999;">(Please use this Assessor ID in all your future communication regarding this Scheme)</span>
+    <p style="font-size: 13px; margin-bottom: 0;">Please change this password after your first login (Change Password in the menu under your name).</p>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, do drop in a mail at: zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string UserId { get; set; } = "";
+    [Parameter, EditorRequired] public string Password { get; set; } = "";
+    [Parameter] public string? AgencyName { get; set; }
+    [Parameter] public bool IsBronzeAssessor { get; set; }
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

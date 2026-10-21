@@ -1,0 +1,154 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-3">
+    <div class="row"><div class="col-sm-12"><h3 class="registration-title">Failed Transactions</h3></div></div>
+    <div class="col-sm-12 mb-2">
+      <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)" />
+    </div>
+    <div class="row justify-content-end mb-2">
+      <div class="col-sm-3">
+        <input type="search" class="form-control" maxlength="50" placeholder="Search" aria-label="Search"
+               [value]="pager.search()" (input)="pager.setSearch($any($event.target).value)" />
+      </div>
+    </div>
+
+    @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th>S.No.</th>
+            <th></th>
+            <th>ZED ID<br /><br />Certification<br /><br />Transaction Date</th>
+            <th>Unit Name<br /><br />Transaction Id</th>
+            <th>Size/Gender</th>
+            <th>Social Category</th>
+            <th>Joining Reward</th>
+            <th>StateName<br /><br />District Name</th>
+            <th>Amount Paid (Rs.)</th>
+            <th>TAN (%)</th>
+            <th>Subsidy (%)</th>
+            <th>GSTIN/ TAN Number</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of pager.page(); track $index) {
+            <tr>
+              <td>{{ s['RowNumber'] }}</td>
+              <td>
+                @if (isUpdated(s)) {
+                  <span class="alert alert-warning d-inline-block">SUCCESS</span>
+                } @else if (canUpdate(s)) {
+                  <button type="button" class="btn btn-primary btn-xs" style="width: 180px; margin-top: 10px" (click)="open(s)">UPDATE <br />PAYMENT STATUS</button>
+                }
+              </td>
+              <td><strong>{{ s['ZedId'] }}</strong><br /><br />{{ s['Certification'] }}<br /><br />{{ s['TransactionDate'] }}</td>
+              <td><strong>{{ s['PUnitName'] }}<br /><br />{{ s['TransactionId'] }}</strong></td>
+              <td>{{ s['EnterpriseTypee'] }}<br /><br />{{ s['Gender'] }}</td>
+              <td>{{ s['SocialCategoryName'] }}</td>
+              <td>{{ flag(s, 'IsCouponUsed') ? 'Yes' : 'No' }}</td>
+              <td><strong>{{ s['PStateName'] }}</strong><br /><br />{{ s['PDistrictName'] }}</td>
+              <td><strong>{{ s['FinalAmountPaid'] }}</strong></td>
+              <td>{{ s['Tds'] }}</td>
+              <td>{{ s['SubsidyPercentage'] }}</td>
+              <td>{{ s['GstinNumber'] }} {{ s['TanNumber'] }}</td>
+            </tr>
+          } @empty {
+            @if (!loading()) { <tr><td colspan="12" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager-bar [pager]="pager" />
+  </div>
+</div>
+
+@if (current(); as m) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="pay-title">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form #paymentForm="ngForm" novalidate (ngSubmit)="submit()">
+          <div class="modal-header">
+            <div class="modal-title w-100 d-flex justify-content-between">
+              <strong id="pay-title">Update Payment Status</strong>
+              <button type="button" class="btn-close" aria-label="Close" (click)="current.set(null)"></button>
+            </div>
+          </div>
+          <div class="modal-body">
+            <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
+            <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
+            <div><strong>Certification:</strong> {{ m['Certification'] }}</div>
+            <br />
+            <div class="row">
+              <div class="col-sm-6 mb-2">
+                <label for="pgType"><strong>PG Type <span style="color: red">*</span></strong></label>
+                <select id="pgType" name="pgType" class="form-select" required [(ngModel)]="form.pgType">
+                  <option value="">-- Select PG Type --</option>
+                  @for (p of pgTypes; track p.value) { <option [value]="p.value">{{ p.label }}</option> }
+                </select>
+              </div>
+              <div class="col-sm-6 mb-2">
+                <label for="trackingId"><strong>CC Avenue Ref No.<span style="color: red">*</span></strong></label>
+                <input type="text" id="trackingId" name="trackingId" class="form-control" maxlength="12" inputmode="numeric"
+                       placeholder="Enter 12-digit number" required [(ngModel)]="form.trackingId" />
+                @if (form.trackingId && !trackingIdValid()) { <small class="help-block">Must be exactly 12 numeric digits.</small> }
+              </div>
+              <div class="col-sm-6 mb-2">
+                <label for="bankRefNumber"><strong>Bank Ref Number <span style="color: red">*</span></strong></label>
+                <input type="text" id="bankRefNumber" name="bankRefNumber" class="form-control" maxlength="50" placeholder="Enter Bank Ref No."
+                       required [(ngModel)]="form.bankRefNumber" />
+              </div>
+              <div class="col-sm-6 mb-2">
+                <label for="bankCode"><strong>Bank Code</strong></label>
+                <input type="text" id="bankCode" name="bankCode" class="form-control" maxlength="50" placeholder="Enter Bank Code (Optional)"
+                       [(ngModel)]="form.bankCode" />
+              </div>
+              <div class="col-sm-6 mb-2">
+                <label for="paymentReceivedDate"><strong>Payment Received Date <span style="color: red">*</span></strong></label>
+                <input type="date" id="paymentReceivedDate" name="paymentReceivedDate" class="form-control" [max]="maxDate" required
+                       [(ngModel)]="form.paymentReceivedDate" />
+              </div>
+              <div class="col-sm-6 mb-2">
+                <label for="gstin"><strong>GST Number</strong></label>
+                @if (m['Gstin']) {
+                  <input type="text" id="gstin" class="form-control" readonly [value]="m['Gstin']" />
+                } @else {
+                  <input type="text" id="gstin" name="gstNumber" class="form-control" maxlength="15" placeholder="Enter 15-digit GSTIN (Optional)"
+                         [(ngModel)]="form.gstNumber" />
+                  @if (!gstValid()) { <small class="help-block">Invalid GSTIN format (e.g., 22AAAAA0000A1Z5).</small> }
+                }
+              </div>
+              @if (m['PanNo']) {
+                <div class="col-sm-6 mb-2">
+                  <label for="panNo"><strong>PAN Number</strong></label>
+                  <input type="text" id="panNo" class="form-control" readonly [value]="m['PanNo']" />
+                </div>
+              }
+              @if (m['TanNo']) {
+                <div class="col-sm-6 mb-2">
+                  <label for="tanNo"><strong>TAN Number</strong></label>
+                  <input type="text" id="tanNo" class="form-control" readonly [value]="m['TanNo']" />
+                </div>
+              }
+            </div>
+            <div style="margin-bottom: 9px">
+              <label for="paymentRemarks"><strong>Remarks if Any<span style="color: red">*</span></strong></label>
+              <textarea id="paymentRemarks" name="paymentRemarks" class="form-control" maxlength="2000" style="height: 100px"
+                        [(ngModel)]="form.paymentRemarks"></textarea>
+            </div>
+            @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" (click)="current.set(null)">CANCEL</button>
+            <button type="submit" class="btn btn-primary" [disabled]="!canSubmit() || saving()">SUBMIT</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop fade show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div>
+}

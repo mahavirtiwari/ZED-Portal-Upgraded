@@ -1,0 +1,464 @@
+/**
+ * GLOBAL OVERRIDES START
+ */
+body {
+    /*background: rgb(241,125,2);
+	background:linear-gradient(75deg, rgba(241,125,2,1) 49%, rgba(74,146,38,1) 49%);	
+    /* fallback for old browsers */
+    /*font-family: "Roboto", sans-serif;
+ 	-webkit-font-smoothing: antialiased;
+ 	-moz-osx-font-smoothing: grayscale;*/
+    /*width: 100vw;
+ 	height: 100vh;*/
+    /*display: table;*/
+}
+
+.btn {
+    line-height: 42px;
+    padding-top: 0;
+    padding-bottom: 0;
+    height: 42px;
+}
+
+.form-control {
+    padding-top: 0;
+    padding-bottom: 0;
+    line-height: 42px;
+    height: 42px;
+    box-shadow: none !important;
+}
+
+    .form-control:focus {
+        border-color: #329478;
+    }
+
+/**
+ * LOGIN BOX
+ */
+.swachh-login-container {
+    display: table-cell;
+    width: 100%;
+    height: 100%;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.swachh-login-box {
+    display: inline-block;
+    width: 100%;
+    max-width: 800px;
+    overflow: hidden;
+    background-color: #ffffff;
+    box-shadow: 2px 6px 12px 0px rgba(0,0,0,0.14);
+    border-radius: 8px;
+}
+
+.swachh-login-content {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+
+    .swachh-login-content h2 {
+        margin-bottom: 20px;
+        border-left: 3px solid #555555;
+        text-align: left;
+        padding-left: 8px;
+        font-size: 16px;
+    }
+
+    .swachh-login-content > div {
+        display: table-cell;
+        vertical-align: middle;
+        position: relative;
+    }
+
+.swachh-login-left {
+    text-align: center;
+    padding: 10em 3em;
+}
+
+.swachh-login-right {
+    text-align: left;
+    padding: 10em 3em;
+    background-color: #F7F8F9;
+}
+/*.swachh-login-logo{
+ 	height: 120px;
+ }*/
+
+/**
+  * FORM CONTROL OVERRIDES
+  */
+.swachh-login-container .form-control {
+    padding: 0 18px;
+    line-height: 42px;
+    height: auto;
+}
+
+.swachh-login-quote {
+    position: absolute;
+    bottom: 0;
+    padding: 10px;
+    left: 0;
+    width: 100%;
+    border-top: 1px #dee1e4 solid;
+    /*line-height: 64px;*/
+    font-size: 14px;
+}
+
+
+/**
+  * MOBILE OVERRIDES
+  */
+@media only screen and (max-width: 768px) {
+    .swachh-login-content {
+        display: block;
+    }
+
+        .swachh-login-content > div {
+            display: block;
+        }
+
+    .swachh-login-right,
+    .swachh-login-left {
+        padding: 5em 3em;
+    }
+
+    .swachh-login-quote {
+        display: none;
+    }
+}
+/*new theme change styles 03-06-2021*/
+
+body {
+    padding-top: 0px;
+    font-family: Work Sans;
+}
+
+.login-block {
+    display: flex;
+    flex: 1;
+    min-height: calc(100vh - 65px); 
+    overflow: hidden; 
+    position: relative;
+}
+
+.header-block {
+    display: flex;
+    /*align-items: center;*/
+    justify-content: space-between;
+}
+
+.login-block1 {
+    flex: 0 0 55%;
+    padding: 0px 23px;
+    background-color: #fff;
+    display: flex;
+    flex-direction: column;
+}
+
+    .login-block1 > section {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+        .login-block1 > section > .login-zed-img {
+            flex: 1;
+        }
+
+.login-block2 {
+    /*width: 430px;*/
+    flex: 0 0 45%;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    background-color: #F7F7F7;
+    padding-left: 130px;
+    padding-right: 120px;
+    padding-bottom: 10px;
+}
+
+    .login-block2 label {
+        color: #8D8F90;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .login-block2 h2 {
+        font-size: 20px;
+        font-style: normal;
+        font-weight: 700;
+        line-height: 28px;
+        letter-spacing: 0em;
+        text-align: left;
+    }
+
+.header-block a {
+    width: 180px;
+}
+
+.login-zed-logo {
+    text-align: center;
+}
+
+    .login-zed-logo a img {
+        width: 250px;
+    }
+
+.login-img {
+    /*border-radius: 52px;
+            width:80%;
+            box-shadow: 0px 13.143712997436523px 31.544912338256836px 0px #00000033;*/
+}
+
+.login-img1 {
+    position: relative;
+    width: 327px;
+    float: right;
+    top: -100px;
+}
+.field-icon {
+    float: right;
+    margin-right: 10px;
+    margin-top: -30px;
+    position: relative;
+    z-index: 2;
+}
+.register-btn .btn {
+    /*min-width: 120px;*/
+    max-width: 100%;
+    border-radius: 4px !important;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+    .register-btn .btn:first-child {
+        margin-right: 5px;
+		width: 45%;
+    }
+	.register-btn .btn:last-child { 
+		width: 50%;
+    }
+.btn-primary, .btn-primary:hover {
+    color: #ffffff;
+    background-color: #45A5AD;
+    border-color: #45A5AD;
+    white-space: normal;
+	font-size: 12px;
+    /* font-weight: 700; */
+}
+.btn-dark, .btn-dark:hover {
+    background-color: #8D8F90 !important;
+	 border-color: #8D8F90;
+    color: #fff;
+	font-size: 12px;
+    text-transform: uppercase;
+    font-weight: 600; 
+}
+.login-bottom-newuser {
+    background: linear-gradient(208.98deg, #B3E079 -9.55%, #45A5AD 89.69%);
+    color: #fff;
+    border-radius: 8px;
+    /*margin: 24px;*/
+    padding: 15px;
+}
+
+.btn-white,.btn-white:hover {
+    background-color: #fff;
+    font-family: Work Sans;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+    color: #232527;
+	width:100%;
+}
+.form-control:focus{
+	    border-color: #333;
+}
+.line-icon {
+    box-sizing: border-box;
+    position: relative;
+    text-align: center;
+    background-repeat: no-repeat;
+    background-position: center center;
+    font-size: 0;
+    height: 40px;
+    width: 100%;
+    margin:0;
+    /*padding: 0 42px;*/
+    background-image: url(/Images/header/ZED-Cog.png);
+}
+.line-icon::before, .line-icon::after {
+    box-sizing: border-box;
+    width: 45%;
+    height: 1px;
+    border-top: 1px solid #837048;
+    display: inline-block;
+    content: '';
+    margin-left: 2%;
+    margin-right: 2%;
+    position: relative;
+    top: 50%;
+    -moz-transform: translatey(-50%);
+    -ms-transform: translatey(-50%);
+    -o-transform: translatey(-50%);
+    -webkit-transform: translatey(-50%);
+    transform: translatey(-50%);
+}
+    /*.line-icon::before {
+        box-sizing: border-box;
+        width: 100%;
+        height: 1px;
+        border-top: 1px solid #837048;
+        display: inline-block;
+        content: '';
+        margin-left: 0;
+        margin-right: 0;
+        position: relative;
+        top: 50%;
+        -moz-transform: translatey(-50%);
+        -ms-transform: translatey(-50%);
+        -o-transform: translatey(-50%);
+        -webkit-transform: translatey(-50%);
+        transform: translatey(-50%);
+    }*/
+
+    .field-validation-error {
+        color: #ff0000;
+    }
+
+    .field-validation-valid {
+        display: none;
+    }
+
+    .input-validation-error {
+        border: 1px solid #ff0000;
+        background-color: #ffeeee;
+    }
+
+    .validation-summary-errors {
+        font-weight: bold;
+        color: #ff0000;
+    }
+
+    .validation-summary-valid {
+        display: none;
+    }
+footer {
+    background-color: #232527;
+    color: #fff;
+}
+
+.footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    min-height: 65px;
+}
+    .footer img {
+        width:50px;
+    }
+    .footer .social-network a img {
+        width: 16px;
+        margin: 0 10px;
+    }
+
+.login-svg {
+    width: 100%;
+    /* display: none; */
+}
+.login-zed-portal-img {
+
+}
+.login-svg-img {
+    box-sizing: border-box;
+    margin-bottom: 20px;
+    height: 100%;
+    position: relative;
+    text-align: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+    .login-svg-img:before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        right: 0;
+        /* border:5px solid #fff; */
+        /*background-image: url(/Images/header/Banner.png);*/
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: contain;
+    }
+
+.login-login {
+    /*padding: 0.5em 42px;*/
+    width: 100%;
+}
+
+.login-register {
+    width: 100%;
+}
+
+.register-btn {
+    display: flex;
+    justify-content: space-around;
+}
+
+@media only screen and (max-width: 786px) {
+    .login-block {
+        display: initial;
+    }
+    .login-block2{
+        width:100%;
+        padding-left:40px;
+        padding-right:40px;
+    }
+}
+.container-sec{
+            min-height: calc(100vh - 65px);
+            overflow: hidden;
+            position: relative;
+        }
+@media only screen and (max-width: 480px) {
+
+.container-sec{
+    min-height: inherit;
+}
+    .login-img1 {
+        position: static;
+        width: 200px;
+        float: initial;
+    }
+
+    .footer {
+        flex-direction: column;
+        justify-content: center;
+        padding:10px;
+    }
+
+        .footer div {
+            padding: 5px;
+        }
+
+    .login-bottom-newuser {
+        margin: 24px 0;
+    }
+
+    .login-zed-logo a img {
+        width: 170px;
+    }
+
+    .header-block a {
+        width: 90px;
+    }
+    /*.login-block2{
+        padding-bottom:100px;
+    }*/
+}

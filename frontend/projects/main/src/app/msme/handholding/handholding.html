@@ -1,0 +1,297 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme">
+    @if (error()) {
+      <div class="alert alert-danger alert-dismissible mt-3" role="alert">
+        {{ error() }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+        @if (!data()) {
+          <div><a class="btn btn-link p-0" routerLink="/msme/dashboard">Back to dashboard</a></div>
+        }
+      </div>
+    }
+
+    @if (data()) {
+      <div class="row">
+        <div class="col-sm-3"><h3 class="registration-title dash-text-clr">Welcome</h3></div>
+        <div class="col-sm-5">
+          @if (selected()) {
+            <a href="" (click)="$event.preventDefault(); selected.set(null)"><img src="/Images/svgicons/back.svg" alt="" /> <strong>BACK</strong></a>
+          }
+        </div>
+        <div class="col-sm-4">
+          <button type="button" class="refresh-link btn btn-link p-0" (click)="load()">
+            <img src="/Images/svgicons/refresh.svg" alt="" />
+            <span>Refresh on {{ loadedAt() | date: 'dd/MM/yyyy hh:mm a' }}</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="row">
+        <!-- Unit summary -->
+        <div class="col-sm-3">
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                @switch (msme()['EnterpriseType']) {
+                  @case ('Micro') { <div class="entp-label micro">M</div> }
+                  @case ('Small') { <div class="entp-label small">S</div> }
+                  @case ('Medium') { <div class="entp-label medium">M</div> }
+                }
+                <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+              </div>
+              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+            </div>
+          </div>
+
+          <div class="panel panel-default panel-black mt-2"><div class="panel-body">Selected Unit</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+          <div class="unit-selection">
+            <img src="/Images/svgicons/mapicon.svg" alt="" />
+            <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+          </div>
+
+          <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+
+          <div class="panel panel-default panel-black"><div class="panel-body">ZED Pledge Certificate</div></div>
+          <div class="unit-selection">
+            <div class="col-sm-12" style="padding: 0">
+              <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
+              <div class="btn-download"><a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-9">
+          @if (!selected()) {
+            <div>
+              <a routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <strong>BACK</strong></a>
+            </div>
+
+            <!-- Level cards -->
+            <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
+              <div class="panel-heading">
+                <div class="row">
+                  <div class="col-sm-10">
+                    <div class="panel-titles-sec">
+                      <h4>Handholding Support</h4>
+                      <p>Avail consultancy to achieve desired certification level</p>
+                    </div>
+                  </div>
+                  <div class="col-sm-2">
+                    <button type="button" class="btn btn-link p-0 pull-right" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="row">
+                  @for (level of levels; track level) {
+                    <div class="col-sm-6 col-xs-12 panel-handhold">
+                      <div class="panel panel-default panel-cert-block" [class.panel-silver]="level === 'Silver'" [class.panel-gold]="level === 'Gold'" [class.plant-activity-disabled]="cardDisabled(level)">
+                        <div class="panel-heading p-2">
+                          <h5>HANDHOLDING FOR {{ level.toUpperCase() }} LEVEL</h5>
+                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About Handholding for ' + level + ' Level'" (click)="info.set(level)"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
+                        </div>
+                        <div class="panel-body">
+                          <div class="cert-inner-block">
+                            <div class="inner1">
+                              <p>
+                                <span><img src="/Images/svgicons/arrow-right.svg" alt="" /></span>
+                                @for (label of progress(level); track label) { <span> {{ label }}</span> }
+                              </p>
+                              <div class="stepper">
+                                <ul class="nav nav-tabs" role="list">
+                                  @for (s of steps(level); track $index) {
+                                    <li role="listitem" class="w-25" [class.completed]="s.completed" [class.current]="s.current && !s.completed">
+                                      <a [attr.aria-label]="'Step ' + ($index + 1)"><span class="round-tab">
+                                        @if (s.completed) { <img src="/Images/svgicons/stepper-completed.svg" alt="" /> }
+                                      </span></a>
+                                    </li>
+                                  }
+                                </ul>
+                              </div>
+                              <h5 class="clickable" role="button" tabindex="0" (click)="viewDetails(level)" (keydown.enter)="viewDetails(level)">VIEW DETAILS</h5>
+                            </div>
+                            <div class="inner2"><img [src]="'/Images/Dashboard/' + level.toLowerCase() + '.png'" alt="" /></div>
+                            <div class="inner3">
+                              @if (paid(level)) {
+                                <p class="dash-text-clr clickable" role="button" tabindex="0" [attr.aria-label]="'Open ' + level + ' milestones'" (click)="openLevel(level)" (keydown.enter)="openLevel(level)"><img src="/Images/svgicons/arrow-right-black.svg" alt="->" /></p>
+                              } @else {
+                                <p class="dash-text-clr clickable" role="button" tabindex="0" (click)="openLevel(level)" (keydown.enter)="openLevel(level)">APPLY</p>
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- Milestones of the selected level -->
+            <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
+              <div class="panel-heading p-2">
+                <div class="row">
+                  <div class="col-sm-10">
+                    <div class="panel-titles-sec">
+                      <h4>Handholding Support</h4>
+                      <p>Avail consultancy to achieve desired certification level. </p>
+                    </div>
+                  </div>
+                  <div class="col-sm-2">
+                    <button type="button" class="btn btn-link p-0 pull-right" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
+                  </div>
+                </div>
+              </div>
+              <div class="panel-body">
+                <div class="row">
+                  @for (m of milestones(); track m.number) {
+                    <div class="col-sm-12">
+                      <div class="panel panel-default panel-silver" [class.plant-activity-disabled]="m.disabled">
+                        <div class="panel-body">
+                          <div class="inner1 milestone-row">
+                            <strong>{{ m.title }}</strong>
+                            <span>
+                              @if (m.applied) {
+                                <a class="btn btn-primary" [routerLink]="milestoneRoute(m)">VIEW</a>
+                              } @else {
+                                <button type="button" class="btn btn-primary" [disabled]="!m.canApply" (click)="apply(m)">APPLY</button>
+                              }
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      @if (m.canAccept) {
+                        <div class="text-center">
+                          <button type="button" class="btn btn-warning btn-md" (click)="openAccept(m)">ACCEPT MILESTONE {{ m.number }}</button>
+                        </div>
+                      }
+                    </div>
+                  }
+                  @if (state(selected()!); as st) {
+                    @if (!st.canPay && st.refusal && st.enabled) {
+                      <div class="col-sm-12"><p class="text-muted mb-0">{{ st.refusal }}</p></div>
+                    }
+                  }
+                </div>
+              </div>
+            </div>
+          }
+
+          <div><div class="line-icon"></div></div>
+          <div class="panel panel-steps panel-bg-default">
+            <div class="panel-body">
+              <h4 class="step-title">HANDHOLDING SUPPORT STEPS</h4>
+              <ul class="cert-steps">
+                <li>
+                  <div class="step-num"><span>1</span></div>
+                  <div class="step-details">
+                    <h4>Milestone 1: Baseline Diagnostic Study and Handholding Action Plan</h4>
+                    <p>Provides a clear understanding of where the MSME stands and a time-bound improvement plan identifying the steps, tools and resources required to achieve the desired objectives.</p>
+                  </div>
+                </li>
+                <li>
+                  <div class="step-num"><span>2</span></div>
+                  <div class="step-details">
+                    <h4>Milestone 2 &amp; 3: Implementation &amp; Progress Review 1 &amp; 2</h4>
+                    <p>The plan identified will be implemented by MSME and the progress will be regularly monitored and reviewed.</p>
+                  </div>
+                </li>
+                <li>
+                  <div class="step-num"><span>3</span></div>
+                  <div class="step-details">
+                    <h4>Completion of Handholding activity</h4>
+                    <p>The handholding process will be considered to be completed when all the identified activities as mentioned in the Implementation plan are complete.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- #CertificationInfo -->
+@if (info(); as topic) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="infoTitle">
+    <div class="modal-dialog modal-sm modal-popup modal-certification-info modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="registration-title modal-title" id="infoTitle">{{ topic === 'My' ? 'Handholding Support' : 'Handholding for ' + topic + ' Level' }}</h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="info.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          <ul>
+            @if (topic === 'My') {
+              <li><p>Please read the complete instructions and requirements before applying for consultancy. These are available under "My Documents".</p></li>
+            } @else {
+              <li><p>Baseline Diagnostic Study and Handholding Action Plan with defined activities, expected outcome is to achieve the desired level.</p></li>
+              <li><p>The Handholding Support cost is Rs. 2,00,000/- inclusive of taxes; subsidy as applicable.</p></li>
+            }
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+<!-- #CertificationDetails -->
+@if (detailsOf(); as level) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="detailsTitle">
+    <div class="modal-dialog modal-popup modal-certification modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="registration-title modal-title" id="detailsTitle">{{ level }} LEVEL</h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="detailsOf.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
+        </div>
+        <div class="modal-footer" [class.footer-silver]="level === 'Silver'" [class.footer-gold]="level === 'Gold'">
+          <div><span class="img-bg"></span><img [src]="'/Images/Dashboard/' + level + '.png'" alt="" /></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+<!-- #ConfirmFinalSubmitAgency -->
+@if (accepting(); as a) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="acceptTitle">
+    <div class="modal-dialog modal-md modal-popup modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="registration-title modal-title" id="acceptTitle">Accept Milestone {{ a.milestone }}</h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="accepting.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          <div class="checkbox-text">
+            <label class="checkbox-inline">
+              <input type="checkbox" name="isAccepted" class="option-input yes checkbox" [(ngModel)]="accepted" />
+              <span>I accept the activities conducted &amp; recommendations given in Milestone-{{ a.milestone }}</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" (click)="accepting.set(null)">CANCEL</button>
+          <button type="button" class="btn btn-primary" [disabled]="!accepted || busy()" (click)="submitAccept()">SUBMIT</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
+}

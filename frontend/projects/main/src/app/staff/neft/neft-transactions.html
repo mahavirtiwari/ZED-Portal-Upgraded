@@ -1,0 +1,130 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-3">
+    <div class="row">
+      <div class="col-sm-12"><h3 class="registration-title">{{ title }}</h3></div>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="row">
+      <div class="col-sm-12">
+        <div class="table-responsive">
+          <table class="table table-zed table-bordered bg-white">
+            <thead>
+              <tr>
+                @if (list === 'new') {
+                  <th></th>
+                }
+                <th>ZED ID</th>
+                <th>Enterprise Name</th>
+                <th>Category Of Certificate</th>
+                <th>Name of the Certificate<br /><br />Certification Agency</th>
+                <th>Certificate Number<br /><br />Date Of Issue<br /><br />Validity</th>
+                <th>Expenditure Certificate<br /><br />Agency or Supplier</th>
+                <th>Invoice No.<br /><br />Invoice Bill date<br /><br />Amount Paid</th>
+                <th>Account No.<br /><br />IFSC Code</th>
+                <th>Branch Address</th>
+                @if (list === 'approved') {
+                  <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
+                }
+                @if (list !== 'new') {
+                  <th>Comments</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of transactions(); track t.TransactionId) {
+                <tr>
+                  @if (list === 'new') {
+                    <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
+                  }
+                  <td>{{ t.ZedId }}</td>
+                  <td>{{ t.PUnitName || t.EnterpriseName }}</td>
+                  <td>{{ t.CategoryOfCertificate }}</td>
+                  <td>{{ t.NameOfCertficate }}<br /><br />{{ t.CertificationAgency }}</td>
+                  <td>{{ t.CertficateNumber }}<br /><br />{{ t.DateOfIssue }}<br /><br />{{ t.ValidityOfCertificate }}</td>
+                  <td>{{ t.ExpenditureCertficate }}<br /><br />{{ t.AgencyOrSupplier }}</td>
+                  <td>{{ t.InvoiceNo }}<br /><br />{{ t.InvoiceBillDate }}<br /><br />{{ t.AmountPaid }}</td>
+                  <td>{{ t.AccountNo }}<br /><br />{{ t.IfscCode }}</td>
+                  <td>{{ t.BranchAddress }}</td>
+                  @if (list === 'approved') {
+                    <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
+                  }
+                  @if (list !== 'new') {
+                    <td>{{ t.Comments }}</td>
+                  }
+                </tr>
+              } @empty {
+                @if (!loading()) {
+                  <tr>
+                    <td [attr.colspan]="list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (form(); as f) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="neftTitle">
+    <div class="modal-dialog modal-popup">
+      <div class="modal-content">
+        <form class="form-horizontal" (ngSubmit)="submit()" novalidate>
+          <div class="modal-header justify-content-between">
+            <h3 class="registration-title" id="neftTitle">NEFT Transaction Details</h3>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          </div>
+          <div class="modal-body">
+            @if (formError()) {
+              <div class="alert alert-danger" role="alert">{{ formError() }}</div>
+            }
+            <div class="form-group mb-3">
+              <label class="col-sm-12" for="neftZedId"><strong>ZED ID<span style="color: red">*</span></strong></label>
+              <input id="neftZedId" type="text" readonly class="form-control" [value]="f.transaction.ZedId" />
+            </div>
+            <div class="form-group mb-3">
+              <label class="col-sm-12" for="neftDate"><strong>Date of receipt of payment<span style="color: red">*</span></strong></label>
+              <input id="neftDate" name="date" type="date" class="form-control" [max]="maxDate" required
+                     [ngModel]="f.date" (ngModelChange)="update({ date: $event })" />
+              @if (f.submitted && !f.date) {
+                <span class="help-block">This is required.</span>
+              }
+            </div>
+            <div class="form-group mb-3">
+              <label class="col-sm-12" for="neftRef"><strong>Reference number<span style="color: red">*</span></strong></label>
+              <input id="neftRef" name="referenceNo" type="text" class="form-control" maxlength="100" required
+                     [ngModel]="f.referenceNo" (ngModelChange)="update({ referenceNo: $event })" />
+              @if (f.submitted && !f.referenceNo.trim()) {
+                <span class="help-block">This is required.</span>
+              }
+            </div>
+            <div class="form-group mb-3">
+              <label class="col-sm-12" for="neftAmount"><strong>Amount<span style="color: red">*</span></strong></label>
+              <input id="neftAmount" name="amount" type="text" inputmode="decimal" class="form-control" maxlength="15" required
+                     [ngModel]="f.amount" (ngModelChange)="update({ amount: $event })" />
+              @if (f.submitted && !f.amount) {
+                <span class="help-block">This is required.</span>
+              }
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
+            <button type="submit" class="btn btn-primary" [disabled]="saving()">SUBMIT</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv"><div class="loader"></div></div>
+}

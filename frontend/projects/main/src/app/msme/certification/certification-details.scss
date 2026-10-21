@@ -1,0 +1,19 @@
+// The old page's <style> block only had .list-tick in use (now in certification-steps.ts).
+.refresh-link {
+  text-decoration: none;
+}
+
+// "Available soon" in place of the arrow of a page that is not migrated yet.
+.soon-note {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  white-space: nowrap;
+  color: #8d8f90;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+// Room for the note next to the label (the label block is 90% wide in site.css).
+.alert-document:has(.soon-note) > div {
+  flex: 1 1 auto;
+}

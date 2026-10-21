@@ -1,0 +1,278 @@
+import { Routes } from '@angular/router';
+import { authGuard } from '@zed/shared';
+import { STAFF_ROLE_IDS } from './staff/staff-menu';
+import { staffHomeRedirect } from './staff/staff-home.guard';
+import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessment/assessment.routes';
+import { VERIFY_ROUTES } from './verify/verify.routes';
+import { SITE_REVIEW_LEGACY_REDIRECTS, SITE_REVIEW_ROUTES } from './staff/site-review/site-review.routes';
+import { MSME_SCHEME_ROUTES, PUBLIC_INCENTIVE_ROUTES, SCHEME_LEGACY_REDIRECTS } from './msme/schemes/schemes.routes';
+
+/** MSME role id (Users.RoleId 5, "Ulb" in the legacy enum). */
+const MSME = 5;
+
+export const routes: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'msme/login' },
+
+  // Public MSME pages
+  { path: 'msme/login', title: 'ZED | Login', loadComponent: () => import('./msme/login/login').then((m) => m.LoginPage) },
+  { path: 'msme/register', title: 'ZED | Registration', loadComponent: () => import('./msme/register/register').then((m) => m.RegisterPage) },
+  {
+    path: 'msme/reset-password',
+    title: 'ZED | Change Password',
+    loadComponent: () => import('./msme/reset-password/reset-password').then((m) => m.ResetPasswordPage),
+  },
+
+  // Udyami Bharat portal hand-over (old MVC address, query applicationNo & token).
+  {
+    path: 'Msme/ZedDashboard',
+    title: 'ZED | Udyami Bharat',
+    loadComponent: () => import('./msme/udyami-signin/udyami-signin').then((m) => m.UdyamiSignInPage),
+  },
+  ...PUBLIC_INCENTIVE_ROUTES,
+  { path: 'privacy-policy', title: 'ZED | Privacy Policy', loadComponent: () => import('./public/privacy-policy').then((m) => m.PrivacyPolicyPage) },
+
+  // Signed-in MSME area
+  {
+    path: 'msme',
+    canActivate: [authGuard('/msme/login', [MSME])],
+    loadComponent: () => import('./msme/layout/msme-layout').then((m) => m.MsmeLayout),
+    children: [
+      { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./msme/dashboard/dashboard').then((m) => m.DashboardPage) },
+      { path: 'profile', title: 'ZED | Profile', loadComponent: () => import('./msme/profile/profile').then((m) => m.ProfilePage) },
+      { path: 'documents', title: 'ZED | My Documents', loadComponent: () => import('./msme/documents/documents').then((m) => m.DocumentsPage) },
+      {
+        path: 'certification/:certification',
+        title: 'ZED | Certification',
+        loadComponent: () => import('./msme/certification/certification-details').then((m) => m.CertificationDetailsPage),
+      },
+      {
+        path: 'status/:certification',
+        title: 'ZED | Status',
+        loadComponent: () => import('./msme/certification/view-status').then((m) => m.ViewStatusPage),
+      },
+      {
+        path: 'change-password',
+        title: 'ZED | Change Password',
+        loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
+      },
+      {
+        path: 'surveillance-payment/:certification',
+        title: 'ZED | Surveillance Payment',
+        loadComponent: () => import('./msme/payment/surveillance-payment').then((m) => m.SurveillancePaymentPage),
+      },
+      {
+        path: 'payment/result',
+        title: 'ZED | Payment',
+        loadComponent: () => import('./msme/payment/payment-result').then((m) => m.PaymentResultPage),
+      },
+      {
+        path: 'assessment/basic-info/:certification',
+        title: 'ZED | Basic Information',
+        loadComponent: () => import('./msme/assessment/assessment-report').then((m) => m.BasicInfoPage),
+      },
+      {
+        path: 'assessment/non-conformances/:certification',
+        title: 'ZED | Non-Conformances',
+        loadComponent: () => import('./msme/assessment/assessment-report').then((m) => m.NonConformancesPage),
+      },
+      {
+        path: 'site-assessment/:certification',
+        title: 'ZED | Site Assessment',
+        loadComponent: () => import('./msme/site-assessment/site-assessment').then((m) => m.SiteAssessmentPage),
+      },
+      { path: 'handholding', title: 'ZED | Handholding Support', loadComponent: () => import('./msme/handholding/handholding').then((m) => m.HandholdingPage) },
+      {
+        path: 'handholding/:certification/payment',
+        title: 'ZED | Handholding Payment',
+        loadComponent: () => import('./msme/payment/consultancy-payment').then((m) => m.ConsultancyPaymentPage),
+      },
+      {
+        path: 'payment/consultancy-result',
+        title: 'ZED | Payment',
+        loadComponent: () => import('./msme/payment/consultancy-result').then((m) => m.ConsultancyResultPage),
+      },
+      ...MSME_SCHEME_ROUTES,
+      { path: 'contact', title: 'ZED | Contact', loadComponent: () => import('./msme/contact/contact').then((m) => m.ContactPage) },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+    ],
+  },
+
+  // Staff, agencies and assessors
+  { path: 'login', title: 'ZED | User Login', loadComponent: () => import('./staff/staff-login').then((m) => m.StaffLoginPage) },
+  {
+    path: 'staff',
+    canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
+    loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        title: 'ZED | Home',
+        canActivate: [staffHomeRedirect],
+        loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
+      },
+      { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+      { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
+      {
+        path: 'failed-transactions',
+        title: 'ZED | Failed Transactions',
+        loadComponent: () => import('./staff/dashboard/failed-transactions').then((m) => m.FailedTransactionsPage),
+      },
+      {
+        path: 'payments-received',
+        title: 'ZED | Payment Received',
+        loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
+      },
+      {
+        path: 'financial-support',
+        title: 'ZED | Financial Support',
+        loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
+      },
+      { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+      { path: 'history', title: 'ZED | Certification History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
+      { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
+      { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
+      ...ASSESSMENT_ROUTES,
+      ...SITE_REVIEW_ROUTES,
+      { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
+      { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+      { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
+      {
+        path: 'neft/new',
+        title: 'ZED | NEFT New Transactions',
+        data: { list: 'new' },
+        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+      },
+      {
+        path: 'neft/approved',
+        title: 'ZED | NEFT Approved Transactions',
+        data: { list: 'approved' },
+        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+      },
+      {
+        path: 'neft/rejected',
+        title: 'ZED | NEFT Rejected Transactions',
+        data: { list: 'rejected' },
+        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+      },
+      {
+        path: 'financial-assistance',
+        title: 'ZED | Financial Assistance',
+        loadComponent: () => import('./staff/schemes/fa-submissions').then((m) => m.FaSubmissionsPage),
+      },
+      {
+        path: 'financial-assistance/:zedId',
+        title: 'ZED | Financial Assistance',
+        loadComponent: () => import('./staff/schemes/fa-verification').then((m) => m.FaVerificationPage),
+      },
+      {
+        path: 'incentives/submissions',
+        title: 'ZED | Incentive Submissions',
+        loadComponent: () => import('./staff/schemes/incentive-submissions').then((m) => m.IncentiveSubmissionsPage),
+      },
+      {
+        path: 'incentives/upload',
+        title: 'ZED | Upload API Incentives',
+        loadComponent: () => import('./staff/schemes/incentive-upload').then((m) => m.IncentiveUploadPage),
+      },
+      { path: 'incentives', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
+      {
+        path: 'change-password',
+        title: 'ZED | Change Password',
+        data: { loginUrl: '/login' },
+        loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
+      },
+      { path: 'monitoring', title: 'ZED | Assessment Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
+      { path: 'sa-allotment', title: 'ZED | SA Allotment', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
+      {
+        path: 'remote-assessments',
+        title: 'ZED | Remote Assessments',
+        loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
+      },
+    ],
+  },
+
+  // Old MVC addresses that appear in e-mails already sent and in bookmarks.
+  { path: 'Home', pathMatch: 'full', redirectTo: '' },
+  { path: 'Home/Index', redirectTo: '' },
+  { path: 'Home/PrivacyPolicy', redirectTo: 'privacy-policy' },
+  { path: 'Home/Contact', redirectTo: 'msme/contact' },
+  { path: 'User/Login', redirectTo: 'login' },
+  { path: 'Monitoring/Index', redirectTo: 'staff/monitoring' },
+  { path: 'Dashboard', pathMatch: 'full', redirectTo: 'staff/dashboard' },
+  { path: 'Dashboard/Index', redirectTo: 'staff/dashboard' },
+  { path: 'Dashboard/RegisteredMsme', redirectTo: 'staff/registered-msme' },
+  { path: 'Dashboard/FailedTransactions', redirectTo: 'staff/failed-transactions' },
+  { path: 'Dashboard/PaymentReceived', redirectTo: 'staff/payments-received' },
+  { path: 'Dashboard/FinancialSupport', redirectTo: 'staff/financial-support' },
+  { path: 'DynamicReports', pathMatch: 'full', redirectTo: 'staff/reports' },
+  { path: 'DynamicReports/Index', redirectTo: 'staff/reports' },
+  { path: 'Msme/History', redirectTo: 'staff/history' },
+  { path: 'User/AssessmentAgencies', redirectTo: 'staff/users/agencies' },
+  { path: 'User/BronzeAssessmentAgencies', redirectTo: 'staff/users/bronze-agencies' },
+  { path: 'User/CertificationBodies', redirectTo: 'staff/users/agencies' },
+  { path: 'User/AssessorList', redirectTo: 'staff/users/assessors' },
+  { path: 'User/Assessors', redirectTo: 'staff/users/my-assessors' },
+  { path: 'User/Assessor', redirectTo: 'staff/users/my-assessors' },
+  { path: 'Home/PageSettings', redirectTo: 'staff/masters/page-settings' },
+  { path: 'MyDocuments/Index', redirectTo: 'staff/masters/documents' },
+  { path: 'Sector/List', redirectTo: 'staff/masters/sectors' },
+  { path: 'Category/List', redirectTo: 'staff/masters/categories' },
+  { path: 'Category/list', redirectTo: 'staff/masters/categories' },
+  { path: 'Technology/List', redirectTo: 'staff/masters/technologies' },
+  { path: 'Technology/list', redirectTo: 'staff/masters/technologies' },
+  { path: 'Technology/Create', redirectTo: 'staff/masters/technologies/new' },
+  {
+    path: 'Questionaire/Index',
+    redirectTo: ({ queryParams }) => `/staff/masters/parameters/${encodeURIComponent(queryParams['SectionType'] ?? 'Bronze')}`,
+  },
+  { path: 'Assessment/SaAllotment', redirectTo: 'staff/sa-allotment' },
+  { path: 'Assessment/RemoteAssessments', redirectTo: 'staff/remote-assessments' },
+  { path: 'Msme/Login', redirectTo: 'msme/login' },
+  { path: 'Msme/Register', redirectTo: 'msme/register' },
+  { path: 'Msme/Dashboard', redirectTo: 'msme/dashboard' },
+  { path: 'Msme/MyDocuments', redirectTo: 'msme/documents' },
+  { path: 'Msme/ViewProfile', redirectTo: 'msme/profile' },
+  { path: 'Msme/CertificationDetails/:certification', redirectTo: 'msme/certification/:certification' },
+  { path: 'Msme/BasicInfo/:certification', redirectTo: 'msme/assessment/basic-info/:certification' },
+  { path: 'Msme/NonConformances/:certification', redirectTo: 'msme/assessment/non-conformances/:certification' },
+  { path: 'Msme/NonConformancesSa/:certification', redirectTo: 'msme/assessment/non-conformances/:certification' },
+  { path: 'Msme/HandholdingSupport', redirectTo: 'msme/handholding' },
+  { path: 'Msme/SiteAssessmentInfo/:certification', redirectTo: 'msme/site-assessment/:certification' },
+  { path: 'Msme/ViewStatus', redirectTo: ({ queryParams }) => `/msme/status/${encodeURIComponent(queryParams['certification'] ?? '')}` },
+  { path: 'SurveillancePay/Index/:certification', redirectTo: 'msme/surveillance-payment/:certification' },
+  { path: 'Msme/ChangePassword', redirectTo: ({ queryParams }) => `/msme/reset-password?code=${encodeURIComponent(queryParams['code'] ?? '')}` },
+
+  { path: 'Neft/Index', redirectTo: 'staff/neft/new' },
+  { path: 'Neft/NewTransactions', redirectTo: 'staff/neft/new' },
+  { path: 'Neft/ApprovedTransactions', redirectTo: 'staff/neft/approved' },
+  { path: 'Neft/RejectedTransactions', redirectTo: 'staff/neft/rejected' },
+  { path: 'FinancialAssistance/Submissions', redirectTo: 'staff/financial-assistance' },
+  {
+    path: 'FinancialAssistance/Verification',
+    redirectTo: ({ queryParams }) =>
+      `/staff/financial-assistance/${encodeURIComponent(queryParams['zedId'] ?? '')}?certification=${encodeURIComponent(queryParams['Certification'] ?? '')}`,
+  },
+  { path: 'Incentive/Submissions', redirectTo: 'staff/incentives/submissions' },
+  { path: 'Incentive/UploadIncentives', redirectTo: 'staff/incentives/upload' },
+  { path: 'Incentive/Index', redirectTo: ({ queryParams }) => `/staff/incentives?type=${encodeURIComponent(queryParams['incentiveType'] ?? 'Common')}` },
+  ...ASSESSMENT_LEGACY_REDIRECTS,
+  ...SITE_REVIEW_LEGACY_REDIRECTS,
+  ...SCHEME_LEGACY_REDIRECTS,
+  {
+    path: 'Questionaire/Requirements',
+    redirectTo: ({ queryParams }) =>
+      `/staff/questionnaire/${encodeURIComponent(queryParams['sectionType'] ?? 'Bronze')}/${encodeURIComponent(queryParams['sid'] ?? '')}`,
+  },
+  { path: 'Assessment/PaymentDetails', redirectTo: 'staff/fees' },
+  {
+    path: 'Remote/Index',
+    redirectTo: ({ queryParams }) =>
+      `/staff/remote/${encodeURIComponent(queryParams['zedId'] ?? '')}/${encodeURIComponent(queryParams['Certification'] ?? '')}`,
+  },
+
+  // Public certificate verification (QR codes) and old report links from e-mails.
+  ...VERIFY_ROUTES,
+
+  { path: '**', redirectTo: 'msme/login' },
+];

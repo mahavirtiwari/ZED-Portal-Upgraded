@@ -1,0 +1,31 @@
+@* Shared frame of the mobile services' e-mails (logo, teal border, footer); same as the portal's EmailLayout. *@
+<style type="text/css">
+    body { margin: 0; padding: 0; min-width: 100% !important; font-family: Work Sans; }
+    .content { width: 100%; max-width: 600px; }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<div>
+    <table width="65%" bgcolor="#45A5AD" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td>
+                <br><br>
+                <div style="text-align: center;margin: 0 auto;box-shadow: 0px 4px 8px 0px #00000026;background: #ffffff;margin-bottom: 15px;max-width: 600px;">
+                    <img src="@(PublicBaseUrl.TrimEnd('/'))/Images/header/zed-logo.png" height="120" alt="ZED Logo" />
+                </div>
+                <table class="content" bgcolor="#ffffff" align="center" cellpadding="0" cellspacing="0" border="0" style="box-shadow: 0px 4px 8px 0px #00000026; max-width: 600px;">
+                    <tr>
+                        <td style="padding: 2em 3em;line-height: 26px;">
+                            @ChildContent
+                        </td>
+                    </tr>
+                </table>
+                <div style="text-align: center; padding-top: 30px; padding-bottom: 30px;"><small style="font-size: 12px; color: #ffffff;">&copy; ZED @DateTime.Now.ToString("yyyy")</small></div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

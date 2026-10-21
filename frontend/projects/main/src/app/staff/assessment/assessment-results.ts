@@ -1,0 +1,335 @@
+import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { AuthService, apiErrorMessage } from '@zed/shared';
+import { firstValueFrom } from 'rxjs';
+import { StaffRole } from '../staff-menu';
+import { PAGE_SIZES, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { AssessmentApi, Row } from './assessment.api';
+
+/** Folders a stored pledge certificate is in (SP_MONITORING_GET_LIST_PAGINATION PledgePath). */
+const CERT_FOLDERS = ['Certificates', 'Certifications'];
+
+/** Certificates and reports for staff (authorised downloads, same visibility as the DA review page). */
+const DOCUMENTS_API = '/api/staff/certification-documents';
+
+/**
+ * Completed and rejected certifications of the master admin, the agency or the assessor. Port of
+ * Views/Assessment/Completed.cshtml and Rejected.cshtml (Assessment/GetCompletedList, paged on the
+ * server). Certificates and reports download from this portal; profiles and site-assessment pages
+ * open on the current portal.
+ */
+@Component({
+  selector: 'zed-staff-assessment-results',
+  imports: [FormsModule, RouterLink],
+  template: `
+    <div class="container form-page" id="zed_user_form">
+      <div class="row mt-3">
+        <div class="col-sm-12">
+          <h3 class="registration-title">{{ completed() ? 'Completed Assessment' : 'Rejected Certification' }}</h3>
+        </div>
+
+        @if (error()) {
+          <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
+        }
+
+        <div class="col-sm-12 mb-4">
+          <div class="d-flex flex-wrap gap-2">
+            <div>
+              <label for="resState"><strong>State</strong></label>
+              <select class="form-select" style="width: 200px" id="resState" [(ngModel)]="state" (ngModelChange)="search()">
+                <option value="">Show All</option>
+                @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
+              </select>
+            </div>
+            <div>
+              <label for="resLevel"><strong>Certification Level</strong></label>
+              <select class="form-select" style="width: 200px" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
+                <option value="">Show All</option>
+                <option value="Bronze">Bronze</option>
+                <option value="Silver">Silver</option>
+                <option value="Gold">Gold</option>
+              </select>
+            </div>
+            <div>
+              <label for="resSize"><strong>MSME Size</strong></label>
+              <select class="form-select" style="width: 200px" id="resSize" [(ngModel)]="size" (ngModelChange)="search()">
+                <option value="">Show All</option>
+                <option value="Micro">Micro</option>
+                <option value="Small">Small</option>
+                <option value="Medium">Medium</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="row mb-2">
+          <div class="col-sm-3">
+            <label for="resSearchBy"><strong>Search By</strong></label>
+            <select class="form-select" style="width: 200px" id="resSearchBy" [(ngModel)]="searchBy">
+              <option value="Zed Id">Zed Id</option>
+              <option value="Udyam Number">Udyam Number</option>
+              <option value="Unit Name">Unit Name</option>
+            </select>
+          </div>
+          <div class="col-sm-3">
+            <label for="resSearch">{{ searchBy }}</label>
+            <input type="text" id="resSearch" class="form-control" maxlength="50" [(ngModel)]="searchText" (keyup.enter)="search()" />
+          </div>
+          <div class="col-sm-3" style="margin-top: 30px">
+            <button type="button" class="btn btn-primary btn-sm" (click)="search()">Search</button>
+          </div>
+        </div>
+
+        <div class="col-sm-12 mt-3">
+          <div class="table-responsive">
+            <table class="table table-bordered table-zed">
+              <thead>
+                @if (completed()) {
+                  <tr>
+                    <th>S.No</th>
+                    <th>Certification Level</th>
+                    <th>Certification Phase</th>
+                    <th>Unit Details</th>
+                    <th>Mode of Assessment</th>
+                    @if (!isAgency()) { <th>Agency Details</th> }
+                    @if (!isAssessor()) { <th>Assessors Details</th> }
+                    @if (isAssessor()) {
+                      <th>Assessment Allocated On</th>
+                      <th>Assessment Completed On</th>
+                    } @else {
+                      <th>Assessment Dates <br />Completion Date</th>
+                      <th>Surveillance Due Date</th>
+                    }
+                    <th>Duplicates</th>
+                    @if (!isAssessor()) { <th>Action(s)</th> }
+                  </tr>
+                } @else {
+                  <tr>
+                    <th>S.No.</th>
+                    <th>Certification Level</th>
+                    <th>Unit Details</th>
+                    @if (isMasterAdmin()) { <th>Agency Name</th> }
+                    <th>Assessment Date <br /><br />Rejected Date</th>
+                    <th>Action(s)</th>
+                  </tr>
+                }
+              </thead>
+              <tbody>
+                @for (s of rows(); track $index) {
+                  @if (completed()) {
+                    <tr>
+                      <td>{{ t(s, 'RowNumber') }}</td>
+                      <td>{{ t(s, 'Certification') }}</td>
+                      <td>{{ t(s, 'CertificationPhase') }}</td>
+                      <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>
+                      <td>
+                        Desktop<br /><br />
+                        @if (t(s, 'ModeOfAssessment') === 'Remote Assessment') { Remote }
+                        @if (t(s, 'ModeOfAssessment') === 'Onsite Assessment') { Onsite }
+                      </td>
+                      @if (!isAgency()) {
+                        <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
+                      }
+                      @if (!isAssessor()) {
+                        <td>
+                          <strong>{{ t(s, 'DesktopAssessorName') }}</strong><br />{{ t(s, 'DesktopAssessorId') }}<br /><br />
+                          <strong>{{ t(s, 'SiteAssessorName') }}</strong><br />{{ t(s, 'SiteAssessorId') }}<br /><br />
+                          <strong>{{ t(s, 'CoAssessorName') }}</strong><br />{{ t(s, 'CoAssessorId') }}
+                        </td>
+                      }
+                      @if (isAssessor()) {
+                        <td>
+                          @if (t(s, 'DeskAssessment') === 'D') { {{ t(s, 'DocVerifiAllot') }} }<br /><br />
+                          @if (t(s, 'SiteAssessment') === 'S') { {{ t(s, 'ScheduledOn') }} }
+                        </td>
+                        <td>
+                          @if (t(s, 'DeskAssessment') === 'D') { {{ t(s, 'DesktopVerificationCompleted') }} }<br /><br />
+                          @if (t(s, 'SiteAssessment') === 'S') { {{ t(s, 'CompletedOn') }} }
+                        </td>
+                      } @else {
+                        <td>{{ t(s, 'DocVerifiAllot') }}<br /><br />{{ t(s, 'SaAssessmentDate') }}<br /><br />{{ t(s, 'CertificationStatusDate') }}</td>
+                        <td>
+                          @if (t(s, 'Certification') !== 'Bronze') { Surveillance 1 date:<br /> }
+                          {{ t(s, 'FirstSurveDueDate') }}
+                        </td>
+                      }
+                      <td [style.background-color]="n(s, 'SameUdyamAddress') > 0 ? 'yellow' : null">{{ t(s, 'SameUdyamAddress') }}</td>
+                      @if (isMasterAdmin()) {
+                        <td class="text-center">
+                          <a style="width: 180px" [href]="legacy.profile(t(s, 'ZedId'))" class="btn btn-primary mb-2">View Profile</a>
+                          @if (n(s, 'CertificationStatus') >= 9) {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          } @else {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          }
+                          @if (pledgeUrl(s); as href) {
+                            <a style="width: 180px" [href]="href" class="btn btn-primary mb-2" target="_blank" rel="noopener">Download Pledge Certificate</a>
+                          }
+                          @if (certificateUrl(s); as href) {
+                            <a style="width: 180px" [href]="href" class="btn btn-primary mb-2" target="_blank" rel="noopener">Download Certificate</a>
+                          }
+                          <a style="width: 180px" [href]="reportUrl(s)" class="btn btn-primary mb-2" target="_blank" rel="noopener">Download Report</a>
+                        </td>
+                      } @else if (isAgency()) {
+                        <td>
+                          <a style="width: 180px" [href]="legacy.profile(t(s, 'ZedId'))" class="btn btn-primary mb-2">View Profile</a>
+                          @if (n(s, 'CertificationStatus') < 9) {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          }
+                          @if (n(s, 'CertificationStatus') >= 15) {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          }
+                        </td>
+                      }
+                    </tr>
+                  } @else {
+                    <tr>
+                      <td>{{ t(s, 'RowNumber') }}</td>
+                      <td>{{ t(s, 'Certification') }}</td>
+                      <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>
+                      @if (isMasterAdmin()) { <td>{{ t(s, 'CertificationBodyUserId') }} - {{ t(s, 'AgencyName') }}</td> }
+                      <td>{{ t(s, 'SaAssessmentDate') }}<br /><br />{{ t(s, 'CertificationStatusDate') }}</td>
+                      <td>
+                        <a style="width: 180px" [href]="legacy.profile(t(s, 'ZedId'))" class="btn btn-primary mb-2">View Profile</a>
+                        @if (isMasterAdmin()) {
+                          @if (t(s, 'Certification') === 'Bronze') {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'RejectedZedId') || t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          } @else {
+                            <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'RejectedZedId') || t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
+                          }
+                        }
+                      </td>
+                    </tr>
+                  }
+                } @empty {
+                  <tr><td colspan="12" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="row justify-content-between">
+          <div class="col-sm-6">
+            Show
+            <select class="btn btn-primary" aria-label="Entries per page" (change)="setPageSize(+$any($event.target).value)">
+              @for (p of sizes; track p) { <option [value]="p" [selected]="p === pageSize()">{{ p }}</option> }
+            </select>
+            Entries
+          </div>
+          <div class="col-sm-5 text-end">
+            <button type="button" class="btn btn-primary me-1" (click)="go(1)">First</button>
+            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() - 1)">Prev</button>
+            <select class="btn btn-primary me-1" aria-label="Page" (change)="go(+$any($event.target).value)">
+              @for (i of pages(); track i) { <option [value]="i" [selected]="i === pageNo()">{{ i }}</option> }
+            </select>
+            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() + 1)">Next</button>
+            <button type="button" class="btn btn-primary" (click)="go(lastPage())">Last</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
+        <div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div>
+      </div>
+    }
+  `,
+})
+export class AssessmentResultsPage {
+  /** Route data: which list. */
+  readonly kind = input<'completed' | 'rejected'>('completed');
+
+  private readonly api = inject(AssessmentApi);
+  private readonly user = inject(AuthService).currentUser;
+  protected readonly legacy = useLegacyPortal();
+  protected readonly states = STATES;
+  protected readonly sizes = PAGE_SIZES;
+  protected readonly t = text;
+  protected readonly n = num;
+
+  protected state = '';
+  protected level = '';
+  protected size = '';
+  protected searchBy = 'Zed Id';
+  protected searchText = '';
+
+  protected readonly rows = signal<Row[]>([]);
+  protected readonly total = signal(0);
+  protected readonly pageNo = signal(1);
+  protected readonly pageSize = signal(20);
+  protected readonly loading = signal(false);
+  protected readonly error = signal('');
+  private request = 0;
+
+  protected readonly completed = computed(() => this.kind() !== 'rejected');
+  protected readonly isMasterAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
+  protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
+  protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
+  protected readonly lastPage = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
+  protected readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
+
+  constructor() {
+    effect(() => {
+      this.kind();
+      untracked(() => this.search());
+    });
+  }
+
+  protected search(): void {
+    this.pageNo.set(1);
+    void this.load();
+  }
+
+  protected setPageSize(size: number): void {
+    this.pageSize.set(size);
+    this.search();
+  }
+
+  protected go(page: number): void {
+    this.pageNo.set(Math.min(Math.max(page, 1), this.lastPage()));
+    void this.load();
+  }
+
+  /** Shown when the procedure names the folder of a stored pledge certificate, as before. */
+  protected pledgeUrl(s: Row): string {
+    return CERT_FOLDERS.includes(text(s, 'PledgePath')) ? `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/pledge-certificate` : '';
+  }
+
+  /** The server serves the stored certificate, or draws it when a certified record has none. */
+  protected certificateUrl(s: Row): string {
+    return `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/${encodeURIComponent(text(s, 'Certification'))}/certificate`;
+  }
+
+  protected reportUrl(s: Row): string {
+    return `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/${encodeURIComponent(text(s, 'Certification'))}/report`;
+  }
+
+  private async load(): Promise<void> {
+    const request = ++this.request;
+    this.loading.set(true);
+    this.error.set('');
+    try {
+      const res = await firstValueFrom(
+        this.api.results(this.completed() ? 'completed' : 'rejected', {
+          state: this.state,
+          certification: this.level,
+          size: this.size,
+          searchBy: this.searchText.trim() ? this.searchBy : '',
+          search: this.searchText.trim(),
+          pageNo: this.pageNo(),
+          pageSize: this.pageSize(),
+        }),
+      );
+      if (request !== this.request) return;
+      this.rows.set(res.rows);
+      this.total.set(res.totalCount);
+    } catch (err) {
+      if (request === this.request) this.error.set(apiErrorMessage(err));
+    } finally {
+      if (request === this.request) this.loading.set(false);
+    }
+  }
+}

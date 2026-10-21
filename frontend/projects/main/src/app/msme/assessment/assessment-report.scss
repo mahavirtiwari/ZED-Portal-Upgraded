@@ -1,0 +1,17 @@
+// The old pages' <style> blocks only styled a Google map and jQuery tooltips that are not used here.
+.refresh-link {
+  text-decoration: none;
+}
+
+// The image preview opens above the product dialog it can be opened from.
+.preview-backdrop {
+  z-index: 1060;
+}
+
+.preview-modal {
+  z-index: 1065;
+
+  img {
+    max-width: 100%;
+  }
+}

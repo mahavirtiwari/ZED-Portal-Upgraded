@@ -1,0 +1,99 @@
+<div class="container form-page view-profile" id="zed_user_form">
+  <div class="row mt-3 justify-content-center">
+    <div class="col-sm-9">
+      @if (error()) {
+        <div class="alert alert-danger alert-dismissible" role="alert">
+          {{ error() }}
+          <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+        </div>
+      }
+      @if (success()) {
+        <div class="alert alert-success alert-dismissible" role="status">
+          {{ success() }}
+          <button type="button" class="btn-close" aria-label="Close" (click)="success.set('')"></button>
+        </div>
+      }
+
+      <div class="panel panel-default panel-design">
+        <div class="panel-body">
+          <div class="col-sm-12">
+            <h3 class="registration-title">Basic Information</h3>
+            <table class="table">
+              <tbody>
+                @for (r of rows; track r.field) {
+                  <tr>
+                    <td width="35%"><p>{{ r.label }}</p></td>
+                    <td><p>{{ value(r) }}</p></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="col-sm-12">
+            <h3 class="registration-title">Selected Unit</h3>
+            <div class="unit-selection">
+              <p>{{ text(msme(), 'PUnitName') }}</p>
+            </div>
+            <div class="unit-selection">
+              <img src="/Images/svgicons/mapicon.svg" alt="" />
+              <div><p>{{ unitAddress() }}</p></div>
+            </div>
+          </div>
+
+          @if (!editMode()) {
+            <div class="col-sm-12">
+              <h3 class="registration-title activity-title">
+                Selected Unit Activity
+                <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="editActivity()">Edit Activity</button>
+              </h3>
+              <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ text(msme(), 'Activity') }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'TwoDigitActivity') }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'FourDigitActivity') }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'FiveDigitActivity') }}</p></div>
+            </div>
+          } @else {
+            <div class="col-sm-12">
+              <h3 class="registration-title">Selected Unit Activity</h3>
+              <div class="panel-units" role="radiogroup" aria-label="Unit activity">
+                @for (a of activities(); track $index) {
+                  <label class="panel-item" [class.panel-selected]="selected() === a.Five_DigitActivity">
+                    <div class="panel panel-default">
+                      <div class="panel-body">
+                        <div class="unit-isselected">
+                          <input type="radio" class="option-input yes radio" name="Activity" [value]="a.Five_DigitActivity"
+                                 [checked]="selected() === a.Five_DigitActivity" (change)="selected.set(a.Five_DigitActivity)" />
+                          <span>{{ selected() === a.Five_DigitActivity ? 'Selected' : 'Select this Activity' }}</span>
+                        </div>
+                        <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ a.Activity }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ a.Two_DigitActivity }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ a.Four_DigitActivity }}</p></div>
+                        <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ a.Five_DigitActivity }}</p></div>
+                      </div>
+                    </div>
+                  </label>
+                }
+              </div>
+              @if (!selected()) {
+                <span class="help-block">This is required.</span>
+              }
+              <div class="row">
+                <hr />
+                <div class="col-sm-12 text-center">
+                  <button type="button" class="btn btn-warning" (click)="cancelEdit()">CANCEL</button>
+                  @if (changed()) {
+                    <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">UPDATE</button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

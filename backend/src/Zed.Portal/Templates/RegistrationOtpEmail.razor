@@ -1,0 +1,13 @@
+@* Port of _registrationOtpTemplate.cshtml *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings of the day!</p>
+    <p style="font-size: 14px; margin-bottom: 0;">Your OTP for ZED registration is:<b> @Otp </b></p>
+    <p style="font-size: 13px; margin-bottom: 0;">This OTP is valid for 10 minutes. Do not share it with anyone.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string Otp { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

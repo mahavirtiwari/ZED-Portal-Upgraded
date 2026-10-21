@@ -1,0 +1,9 @@
+﻿{
+  "QrCode": { "x": 1184, "y": 2818, "font": 5.5, "color": "#696969" },
+  "CertificateNo": { "x": 1335, "y": 3141, "font": 8, "color": "#504F4F" },
+  "IssuedOn": { "x": 0, "y": 0, "font": 5.5, "color": "#504F4F" },
+  "DateOfPledge": { "x": 1335, "y": 2616, "font": 10, "color": "#504F4F" },
+  "Name": { "x": 1335, "y": 1846, "font": 14, "color": "#7B5613" },
+  "Address": { "x": 622, "y": 2008, "height":182, "width":1424, "font": 8.5, "color": "#504F4F" },
+  "RegistrationNumber": { "x": 1335, "y": 2382, "font": 10, "color": "#504F4F" }
+}

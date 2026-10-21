@@ -1,0 +1,32 @@
+@* Port of the services site's _FaSubmitDetailsTemplate.cshtml. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Thank you for submitting details for Financial assistance.</p>
+    <p style="font-size: 14px; margin-bottom: 0;background: #F0F0F0;padding:15px;font-weight: 700;">Your details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Enterprise Name</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@EnterpriseName</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">ZED ID</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ZedId</td>
+            </tr>
+        </tbody>
+    </table>
+    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px; ">(Please use your ZED ID in all future correspondence for this Scheme)</span>
+    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px; ">The Ministry has instituted various other benefits and incentives which you can avail after completing any one ZED Certification Level (Bronze, Silver or Gold).</span>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@(PublicBaseUrl.TrimEnd('/'))/msme/login" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string EnterpriseName { get; set; } = "";
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

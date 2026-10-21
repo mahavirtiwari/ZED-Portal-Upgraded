@@ -1,0 +1,41 @@
+@* Port of _MsmePaymentTemplate.cshtml *@
+@using Zed.Core.Documents
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">We have received your payment for <span style="font-weight:700;">@Certification @CertOrReCert</span>.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Your ZED ID: <span style="font-weight:700;">@ZedId</span></p>
+    <p style="font-size: 13px; margin-bottom: 0;">Payment Date: <span style="font-weight:700;">@DateTime.Now.ToString("MMMM d, yyyy")</span></p>
+    <br />
+    @if (Lines.Count > 0)
+    {
+        <table style="width: 100%; font-size: 13px; border-collapse: collapse;" cellpadding="6">
+            @foreach (var line in Lines)
+            {
+                <tr style="border-bottom: 1px solid #eeeeee;">
+                    <td style="@(line.Bold ? "font-weight:700;" : "")">
+                        @line.Label
+                        @if (!string.IsNullOrEmpty(line.Note))
+                        {
+                            <br /><small>@line.Note</small>
+                        }
+                    </td>
+                    <td style="text-align:right; @(line.Bold ? "font-weight:700;" : "")">@line.Value</td>
+                </tr>
+            }
+        </table>
+    }
+    <p style="font-size: 13px; margin-bottom: 0;">Please download the ZED MSME Mobile Application to proceed to the next step, i.e. Basic Information and Document Upload (the same can also be downloaded directly from Google Play Store):</p>
+    <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" style="display: block; margin: 10px auto; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Download ZED MSME App</a>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your future correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Certification { get; set; } = "";
+    [Parameter] public string CertOrReCert { get; set; } = "Certification";
+    [Parameter] public IReadOnlyList<SummaryLine> Lines { get; set; } = [];
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Zed.Consultancy.Api/Zed.Consultancy.Api.csproj" />
+    <Project Path="src/Zed.Core/Zed.Core.csproj" />
+    <Project Path="src/Zed.Jobs/Zed.Jobs.csproj" />
+    <Project Path="src/Zed.Main.Api/Zed.Main.Api.csproj" />
+    <Project Path="src/Zed.Main.MobileApi/Zed.Main.MobileApi.csproj" />
+    <Project Path="src/Zed.Portal/Zed.Portal.csproj" />
+    <Project Path="src/Zed.Surveillance.Api/Zed.Surveillance.Api.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Zed.Jobs.Tests/Zed.Jobs.Tests.csproj" />
+    <Project Path="tests/Zed.Main.Api.Tests/Zed.Main.Api.Tests.csproj" />
+    <Project Path="tests/Zed.Main.MobileApi.Tests/Zed.Main.MobileApi.Tests.csproj" />
+  </Folder>
+</Solution>

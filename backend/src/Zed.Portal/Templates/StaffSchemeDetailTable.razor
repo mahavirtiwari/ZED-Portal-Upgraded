@@ -1,0 +1,18 @@
+@* The label/value table used by the financial assistance and NEFT mails (_Fa*Template.cshtml). Values are HTML-encoded. *@
+<table style="width: 100%; table-layout: fixed; font-size: 13px;padding: 15px;  background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+    <tbody bgcolor="#ffffff">
+        @foreach (var row in Rows)
+        {
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">@row.Label</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@row.Value</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    public sealed record Row(string Label, string? Value);
+
+    [Parameter, EditorRequired] public IReadOnlyList<Row> Rows { get; set; } = [];
+}

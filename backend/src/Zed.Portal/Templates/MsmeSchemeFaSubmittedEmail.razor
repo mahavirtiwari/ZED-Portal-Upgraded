@@ -1,0 +1,15 @@
+@* Port of _FaSubmitDetailsTemplate.cshtml (FinancialAssistance/SubmitFinancialData): to the MSME. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Thank you for submitting the Application for Financial Assistance on <span>@CategoryOfCertificate</span>.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">You shall soon be notified on the way forward.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID (<b>@ZedId</b>) in all your future correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string CategoryOfCertificate { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

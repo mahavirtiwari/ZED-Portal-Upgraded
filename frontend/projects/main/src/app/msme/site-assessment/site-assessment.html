@@ -1,0 +1,712 @@
+<div class="form-page" id="zed_user_form">
+  <div class="container">
+    @if (error()) {
+      <div class="alert alert-danger mt-3" role="alert">
+        {{ error() }}
+        @if (type()) {
+          <button type="button" class="btn btn-link" (click)="refresh()">Try again</button>
+        }
+        <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
+      </div>
+    }
+
+    @if (data(); as d) {
+      <div class="row mt-3">
+        <!-- Unit summary -->
+        <div class="col-sm-3">
+          <h3 class="registration-title dash-text-clr">Welcome</h3>
+          <div class="panel panel-default panel-grey">
+            <div class="panel-body">
+              <div class="entp-type-sec">
+                @switch (msme()['EnterpriseType']) {
+                  @case ('Micro') { <div class="entp-label micro">M</div> }
+                  @case ('Small') { <div class="entp-label small">S</div> }
+                  @case ('Medium') { <div class="entp-label medium">M</div> }
+                }
+                @if (msme()['RegistrationType'] === 'UAM') {
+                  <p class="entp-type-title">{{ msme()['EnterpriseTypee'] }}</p>
+                } @else if (msme()['RegistrationType'] === 'UDYAM') {
+                  <p class="entp-type-title">{{ msme()['EnterpriseType'] }}</p>
+                }
+              </div>
+              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+              <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+            </div>
+          </div>
+
+          <div class="panel panel-default panel-black panel-msme-black mt-2"><div class="panel-body">Selected Unit</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+          <div class="unit-selection">
+            <img src="/Images/svgicons/mapicon.svg" alt="" />
+            <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+          </div>
+
+          <div class="panel panel-default panel-black panel-msme-black"><div class="panel-body">Selected Activity</div></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+
+          <div class="panel panel-default panel-black panel-msme-black"><div class="panel-body">ZED Pledge Certificate</div></div>
+          <div class="unit-selection">
+            <div class="col-sm-12" style="padding: 0">
+              <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
+              <div class="btn-download">
+                <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-sm-9">
+          <div class="zed-tabs">
+            <div class="tab-content">
+              <div class="row">
+                <div class="col-sm-12">
+                  <div class="zed-info-panel">
+                    <ul class="cert-steps">
+                      <li>
+                        @if (isMilestone()) {
+                          <div class="step-details"><h3 class="registration-title">HANDHOLDING SUPPORT</h3></div>
+                        } @else {
+                          <div class="step-num"><span>3</span></div>
+                          <div class="step-details"><h3 class="registration-title">Site Assessment Information</h3></div>
+                        }
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="row">
+                <div class="col-sm-12">
+                  <ul class="nav nav-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" [class.active]="tab() === 'basic'" type="button" role="tab" [attr.aria-selected]="tab() === 'basic'" (click)="select('basic')">
+                        {{ isMilestone() ? 'Basic Information' : 'Basic Info' }}
+                      </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" [class.active]="tab() === 'tour'" type="button" role="tab" [attr.aria-selected]="tab() === 'tour'" (click)="select('tour')">Site Tour</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                      <button class="nav-link" [class.active]="tab() === 'parameters'" type="button" role="tab" [attr.aria-selected]="tab() === 'parameters'" (click)="select('parameters')">Parameters</button>
+                    </li>
+                  </ul>
+
+                  <div class="tab-content">
+                    <div class="tab-pane fade show active" role="tabpanel">
+                      @if (!isMilestone()) {
+                        @switch (tab()) {
+                          @case ('basic') { <ng-container *ngTemplateOutlet="basicInfoTab" /> }
+                          @case ('tour') { <ng-container *ngTemplateOutlet="siteTourTab" /> }
+                          @case ('parameters') { <ng-container *ngTemplateOutlet="parametersTab" /> }
+                        }
+                      } @else {
+                        @switch (tab()) {
+                          @case ('basic') { <ng-container *ngTemplateOutlet="milestoneBasicTab" /> }
+                          @case ('tour') { <ng-container *ngTemplateOutlet="milestoneTourTab" /> }
+                          @case ('parameters') { <ng-container *ngTemplateOutlet="milestoneParametersTab" /> }
+                        }
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===================== Silver / Gold ===================== -->
+
+      <ng-template #basicInfoTab>
+        <div class="row">
+          <div class="col-sm-12">
+            <hr class="row sa-rule" />
+            <table class="table table-bordered">
+              <thead>
+                <tr><th>S.No</th><th>Description</th><th>Responses</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>1</td>
+                  <td>Whether 3rd Party Financial Audits are conducted?</td>
+                  <td>{{ assessment()['AuditsConducted'] }}</td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td>Product manufactured</td>
+                  <td>
+                    <table class="table table-default table-zed">
+                      <tbody>
+                        @for (p of d.products; track $index; let i = $index) {
+                          <tr>
+                            <th colspan="3">{{ i + 1 }}. {{ p.productName }} <span class="pull-right">Exported: {{ p.exported }}</span></th>
+                          </tr>
+                          <tr>
+                            <td colspan="2">
+                              <div><strong>DA</strong></div>
+                              @if (p.productPhoto) {
+                                <div class="row-data">
+                                  <div>
+                                    <img [src]="p.productPhoto" alt="" />
+                                    <span>Product Photo</span>
+                                  </div>
+                                  <button type="button" class="btn btn-primary pull-right" (click)="openPreview(p.productPhoto)">VIEW</button>
+                                </div>
+                              }
+                              @if (p.productDescriptionPhoto) {
+                                @if (p.productDescriptionKind === 'pdf') {
+                                  <div class="row-data">
+                                    <div>
+                                      <img class="sa-pdf-icon" [class.opened]="p.productDescriptionOpened" src="/Images/svgicons/pdf-icon.svg" alt="" />
+                                      <span>Product Description Photo</span>
+                                    </div>
+                                    <a class="btn btn-primary pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">VIEW</a>
+                                  </div>
+                                } @else {
+                                  <div class="row-data">
+                                    <div>
+                                      <img [src]="p.productDescriptionPhoto" alt="" />
+                                      <span>Product Description Photo</span>
+                                    </div>
+                                    <button type="button" class="btn btn-primary pull-right" (click)="openPreview(p.productDescriptionPhoto)">VIEW</button>
+                                  </div>
+                                }
+                              }
+                            </td>
+                          </tr>
+                          <tr>
+                            <td colspan="2">
+                              <div><strong>Site Assessment</strong></div>
+                              @for (pp of p.photos; track $index) {
+                                <ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp }" />
+                              }
+                            </td>
+                            <td></td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 3, label: 'Key Domestic Customers', da: 'DomesticCustomers', sa: 'SaDomesticCustomers' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 4, label: 'Key International Customers', da: 'InternationalCustomers', sa: 'SaInternationalCustomers' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 5, label: 'Whether Raw Material is Imported?', da: 'RawMaterialImported', sa: 'SaRawMaterialImported' }" />
+                @if (assessment()['RawMaterialImported'] === 'Yes') {
+                  <tr>
+                    <td></td>
+                    <td>Raw Materials</td>
+                    <td>
+                      <table class="table table-striped">
+                        <thead>
+                          <tr><th>Raw Material Name</th><th>% of Raw Material Imported</th><th>Name of Country</th></tr>
+                        </thead>
+                        <tbody>
+                          @for (r of d.rawMaterials; track $index) {
+                            <tr><td>{{ r['RawMaterialName'] }}</td><td>{{ r['Percentage'] }}</td><td>{{ r['CountryName'] }}</td></tr>
+                          }
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                }
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 6, label: 'Processed Outsourced, if any?', da: 'OutsourcedProcesses', sa: 'SaOutsourcedProcesses' }" />
+                <ng-container *ngTemplateOutlet="daSaRow; context: { no: 7, label: 'Energy Source(s) Used', da: 'EnergySources', sa: 'SaEnergySources' }" />
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </ng-template>
+
+      <ng-template #daSaRow let-no="no" let-label="label" let-da="da" let-sa="sa">
+        <tr>
+          <td>{{ no }}</td>
+          <td>{{ label }}</td>
+          <td>
+            <table class="table table-bordered table-striped">
+              <tbody>
+                <tr><td class="sa-source">DA</td><td>{{ text(assessment(), da) }}</td></tr>
+                <tr><td class="sa-source">Site Assessment</td><td>{{ text(assessment(), sa) }}</td></tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template #siteTourTab>
+        @if (d.surveillancePhotos.length > 0) {
+          <div class="row">
+            <div class="col-sm-12 mt-4">
+              <div class="panel panel-default panel-black"><div class="panel-body">SURVEILLANCE SITE TOUR PHOTOS</div></div>
+            </div>
+            <div class="row m-0">
+              @for (pp of d.surveillancePhotos; track $index) {
+                <ng-container *ngTemplateOutlet="evidenceTile; context: { $implicit: pp }" />
+              }
+            </div>
+          </div>
+        }
+        <div class="row">
+          <div class="col-sm-12 mt-4">
+            <div class="panel panel-default panel-black"><div class="panel-body">SITE TOUR PHOTOS</div></div>
+          </div>
+          <div class="row m-0">
+            @for (pp of d.siteTourPhotos; track $index) {
+              <ng-container *ngTemplateOutlet="evidenceTile; context: { $implicit: pp }" />
+            }
+          </div>
+        </div>
+      </ng-template>
+
+      <ng-template #parametersTab>
+        <div class="row">
+          @for (s of d.sections; track $index) {
+            <div class="col-sm-12 sa-section">
+              <div class="panel panel-default panel-black m-b-2">
+                <div class="panel-body">
+                  <div class="info-block">
+                    {{ s.sectionCode }}. {{ s.sectionName }}
+                    <div class="z-tooltip">
+                      <img src="/Images/svgicons/info.svg" alt="" />
+                      <span class="tooltiptext">{{ s.iButton }}</span>
+                    </div>
+                    @if (s.isAssessmentExcempted) {
+                      <p>Exempted from assessment: {{ s.isAssessmentExcempted }}</p>
+                    }
+                  </div>
+                </div>
+              </div>
+              @for (r of s.requirements; track $index) {
+                <div class="panel panel-default panel-info sa-requirement">
+                  <div class="panel-body border-left sa-relative">
+                    <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div>
+                    <div class="label-highlight3 m-t-2">
+                      <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
+                    </div>
+                    <div class="d-flex flex-column">
+                      <div class="label-highlight label-highlight-assesor">
+                        <div><strong>DA Evidences</strong></div>
+                        <div>
+                          <table class="table table-default table-zed">
+                            <tbody>
+                              @for (e of r.evidences; track $index) {
+                                <tr>
+                                  <td>
+                                    <div class="row-data">
+                                      <div>
+                                        <img src="/Images/svgicons/pdf-icon.svg" alt="" />
+                                        <span>{{ e.evidenceName }}</span>
+                                      </div>
+                                      @if (e.url) {
+                                        <a class="btn btn-primary pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
+                                      }
+                                    </div>
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="label-highlight label-highlight-msme">
+                        <div><strong>SA Evidences</strong></div>
+                        <div>
+                          @if (!exempted(s)) {
+                            <table class="table table-default table-zed">
+                              <tbody>
+                                @for (pp of r.photos; track $index) {
+                                  <tr><td><ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp }" /></td></tr>
+                                }
+                              </tbody>
+                            </table>
+                          }
+                        </div>
+                      </div>
+                      @if (r.surveillancePhotos.length > 0) {
+                        <div class="label-highlight label-highlight-assesor-remark">
+                          <div><strong>Surveillance Evidences</strong></div>
+                          <div>
+                            @if (!exempted(s)) {
+                              <table class="table table-bordered table-striped">
+                                <tbody>
+                                  @for (pp of r.surveillancePhotos; track $index) {
+                                    <tr><td><ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp, small: true }" /></td></tr>
+                                  }
+                                </tbody>
+                              </table>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <div class="col-sm-12">
+            <br />
+            @if (assessment()['AssessorRemarks']) {
+              <div class="label-highlight3">{{ assessment()['AssessorRemarks'] }}</div>
+            }
+          </div>
+        </div>
+      </ng-template>
+
+      <!-- ===================== Handholding milestones ===================== -->
+
+      <ng-template #milestoneBasicTab>
+        <div class="row">
+          <div class="col-sm-12">
+            <div class="panel panel-default panel-black mt-4"><div class="panel-body">Site Exterior Photos</div></div>
+            <div class="sa-milestone-border">
+              @for (m of d.siteExteriorPhotos; track $index) {
+                <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                  <tr>
+                    <td rowspan="3" [class]="'milestone-' + m.ncCount"><p>Milestone {{ m.ncCount }}</p></td>
+                    <td class="p-0"></td>
+                  </tr>
+                  <tr>
+                    <td>
+                      <div class="panel panel-default panel-white m-0 mb-4">
+                        @for (pp of m.photos; track $index) {
+                          <div class="d-flex align-items-center panel-body">
+                            <p>{{ pp.name }}</p>
+                            <div class="row-data sa-w50">
+                              <div>
+                                @if (pp.src) {
+                                  <img [src]="pp.src" alt="" height="60" />
+                                }
+                                <span>Captured at {{ pp.createdDate }}</span>
+                              </div>
+                              @if (pp.src) {
+                                <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              }
+            </div>
+
+            @for (section of milestoneInfo; track section.title) {
+              <div class="panel panel-default panel-black"><div class="panel-body">{{ section.title }}</div></div>
+              <div class="sa-milestone-border">
+                @for (info of d.consultancyBasicInfo; track $index) {
+                  <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                    <tr>
+                      <td rowspan="3" [class]="'milestone-' + text(info, 'NcCount')"><p>Milestone {{ info['NcCount'] }}</p></td>
+                      <td class="p-0"></td>
+                    </tr>
+                    <tr>
+                      <td>
+                        @for (g of section.groups; track $index) {
+                          @if (g.heading) {
+                            <div>
+                              <div class="col-sm-12 p-0">
+                                <div class="panel panel-default panel-black" [class.p-2]="!g.centred">
+                                  <div [class.text-center]="g.centred" [class.text-start]="!g.centred"><strong>{{ g.heading }}</strong></div>
+                                </div>
+                              </div>
+                            </div>
+                          }
+                          @for (f of g.fields; track f[1]) {
+                            <div>
+                              <div class="col-sm-12 p-0">
+                                <div class="label-highlight bg-white">
+                                  <div><strong>{{ f[0] }}</strong></div>
+                                  <input type="text" class="form-control sa-readonly" readonly [value]="text(info, f[1])" [attr.aria-label]="f[0]" />
+                                </div>
+                              </div>
+                            </div>
+                          }
+                        }
+                      </td>
+                    </tr>
+                  </table>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </ng-template>
+
+      <ng-template #milestoneTourTab>
+        <div class="row">
+          <div class="col-sm-12 mt-4">
+            <div class="panel panel-default panel-black"><div class="panel-body">SITE TOUR PICTURES</div></div>
+          </div>
+        </div>
+        <div class="row">
+          @for (pp of d.siteTourPhotos; track $index) {
+            <ng-container *ngTemplateOutlet="evidenceTile; context: { $implicit: pp }" />
+          }
+        </div>
+      </ng-template>
+
+      <ng-template #milestoneParametersTab>
+        <div class="row">
+          @for (s of d.sections; track $index) {
+            <div class="sa-section">
+              <div class="col-sm-12 mb-4">
+                <div class="panel panel-default panel-black">
+                  <div class="panel-body">
+                    {{ s.sectionCode }}. {{ s.sectionName }}
+                    <span class="z-tooltip sa-float-right">
+                      <img src="/Images/svgicons/info.svg" alt="" />
+                      <span class="tooltiptext left">{{ s.iButton }}</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              @for (r of s.requirements; track $index) {
+                <div class="col-sm-12">
+                  <div class="panel panel-default m-0">
+                    <div class="panel-body border-left sa-relative">
+                      <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div>
+                      <div class="label-highlight3">
+                        <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
+                      </div>
+                    </div>
+                  </div>
+                  <div class="sa-milestone-border">
+                    <!-- Milestone 1 : Basic Diagnostic Study -->
+                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                      <tr>
+                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Basic Diagnostic Study</p></td>
+                        <td class="p-0">
+                          <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: r.photos, section: s }" />
+                        </td>
+                      </tr>
+                      <tr>
+                        <td>
+                          @if (!exempted(s)) {
+                            <div class="col-sm-8 col-xs-24 p-0">
+                              <div class="payment-option-block">
+                                <p class="sub-heading">Conformance</p>
+                                <div class="readonly-input">
+                                  <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Conformance" />
+                                  <span class="sa-answer">{{ r.milestone['SaConformance'] }}</span>
+                                </div>
+                              </div>
+                            </div>
+                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'GAPS IDENTIFIED', items: r.bullets?.baselineDiagnostic }" />
+                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['BaselineRemarks'] }" />
+                          }
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Milestone 1 : Handholding Action Plan -->
+                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                      <tr>
+                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Handholding Action Plan</p></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          @if (!exempted(s)) {
+                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'PLANNED ACTIVIES', items: r.bullets?.handholdingActionPlan }" />
+                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'ESTIMATED TIME (IN DAYS)', value: r.milestone['EstimatedTimeInDays'] }" />
+                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['HActionPlanRemarks'] }" />
+                          }
+                        </td>
+                      </tr>
+                    </table>
+
+                    <!-- Milestone 1 : Technology Intervention -->
+                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                      <tr>
+                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Technology Intervention</p></td>
+                      </tr>
+                      <tr>
+                        <td>
+                          @if (!exempted(s)) {
+                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'SUGGESTED TENCHNOLOGY INTERVENTION', items: r.bullets?.technologyIntervention }" />
+                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'RATIONALE FOR TENCHNOLOGY INTERVENTION', value: r.milestone['Intervention'], plain: true }" />
+                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['InterventionRemarks'] }" />
+                          }
+                        </td>
+                      </tr>
+                    </table>
+
+                    @if ((s.ncCount ?? 0) > 1) {
+                      <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 2 : Progress Review 1', css: 'site-assessment', photos: photosOf(r, 2), section: s, completed: r.milestone['IsProposedActivityCompleted'], remarks: r.milestone['ProgressReviewRemarks'] }" />
+                    }
+                    @if (s.ncCount === 3) {
+                      <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 3 : Progress Review 2', css: 'milestone-3', photos: photosOf(r, 3), section: s, completed: r.milestone['IsProposedActivityCompleted2'], remarks: r.milestone['ProgressReviewRemarks2'] }" />
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template #progressReview let-title="title" let-css="css" let-photos="photos" let-s="section" let-completed="completed" let-remarks="remarks">
+        <table class="table table-bordered table-zed bg-white sa-milestone-table">
+          <tr>
+            <td rowspan="3" [class]="css"><p>{{ title }}</p></td>
+            <td class="p-0">
+              <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: photos, section: s }" />
+            </td>
+          </tr>
+          <tr>
+            <td>
+              @if (!exempted(s)) {
+                <div class="col-sm-16 col-xs-24 p-0">
+                  <div class="payment-option-block">
+                    <p class="sub-heading">Is Proposed Activity Completed</p>
+                    <div class="readonly-input">
+                      <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Is Proposed Activity Completed" />
+                      <span class="sa-answer">{{ completed }}</span>
+                    </div>
+                  </div>
+                </div>
+                <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: remarks }" />
+              }
+            </td>
+          </tr>
+        </table>
+      </ng-template>
+
+      <ng-template #milestonePhotos let-photos let-s="section">
+        @if (photos.length === 0) {
+          <p class="p-2">No Documents Uploaded</p>
+        }
+        @if (!exempted(s)) {
+          <table class="table m-0">
+            @for (pp of photos; track $index) {
+              <tr>
+                <td class="sa-photo-cell">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <p>{{ pp.name }}</p>
+                    <div class="row-data sa-w60">
+                      <div>
+                        @if (pp.src) {
+                          <img [src]="pp.src" alt="" />
+                        }
+                        <span>Generated at {{ pp.createdDate }}</span>
+                      </div>
+                      @if (pp.src) {
+                        <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+                      }
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            }
+          </table>
+        }
+      </ng-template>
+
+      <ng-template #bulletBlock let-title="title" let-items="items">
+        <div class="col-sm-12 p-0">
+          <div class="label-highlight label-highlight-assesor-remark">
+            <div><strong>{{ title }}</strong></div>
+            <ul>
+              @for (b of items ?? []; track $index) {
+                <li><span>{{ b }}</span></li>
+              }
+            </ul>
+          </div>
+        </div>
+      </ng-template>
+
+      <ng-template #textBlock let-title="title" let-value="value" let-plain="plain">
+        <div class="col-sm-12 p-0">
+          <div class="label-highlight label-highlight-assesor-remark">
+            <div><strong>{{ title }}</strong></div>
+            <div class="sa-remarks" [class.panel]="!plain" [class.panel-info]="!plain">{{ value }}</div>
+          </div>
+        </div>
+      </ng-template>
+
+      <!-- ===================== shared pieces ===================== -->
+
+      <ng-template #options let-r>
+        @for (o of r.options; track $index) {
+          <div>
+            {{ o.optionName }}
+            <ul>
+              @for (so of o.subOptions; track $index) {
+                <li><span>{{ so }}</span></li>
+              }
+            </ul>
+          </div>
+        }
+      </ng-template>
+
+      <ng-template #photoRow let-pp let-small="small">
+        <div class="row-data">
+          <div>
+            @if (pp.src) {
+              <img [src]="pp.src" alt="" [class.sa-thumb]="small" />
+            }
+            <span>{{ pp.name }}</span>
+          </div>
+          @if (pp.src) {
+            <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template #evidenceTile let-pp>
+        <div class="col-sm-6 evidence-img bg-grey m-0 mb-2">
+          @if (pp.src) {
+            <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')">
+              <img [src]="pp.src" alt="" />
+            </button>
+          }
+          <p class="sub-heading">{{ pp.name }}</p>
+        </div>
+      </ng-template>
+    }
+  </div>
+</div>
+
+<!-- Image pop-up (#Allot on the old page) -->
+@if (preview(); as src) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="saPreviewTitle" (click)="closePreview()">
+    <div class="modal-dialog modal-lg modal-popup" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title w-100">
+            <div class="d-flex justify-content-between align-items-center">
+              <h3 class="registration-title" id="saPreviewTitle">Image</h3>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closePreview()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="text-center img-responsive sa-preview">
+            <img [src]="src" alt="Selected photo" />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <input type="button" class="btn btn-default" value="OK" (click)="closePreview()" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
+    <div class="loadingimage">
+      <div class="loader"></div>
+      <div class="text-center">
+        <small>Please wait ...</small><br />
+        <small>It may take upto 60 seconds</small>
+      </div>
+    </div>
+  </div>
+}

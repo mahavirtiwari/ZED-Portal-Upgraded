@@ -1,0 +1,135 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="row mt-4">
+    <div class="col-sm-8 col-xs-12">
+      <h3 class="registration-title">{{ title }}</h3>
+      @if (error()) {
+        <div class="alert alert-danger" role="alert" style="margin-bottom: 0; margin-top: 15px"><strong>{{ error() }}</strong></div>
+      }
+      @if (success()) {
+        <div class="alert alert-success" role="status" style="margin-bottom: 0; margin-top: 15px"><strong>{{ success() }}</strong></div>
+      }
+    </div>
+  </div>
+
+  <form class="login-form row mt-3" (ngSubmit)="submit()" novalidate>
+    <fieldset class="col-sm-8 col-xs-12" [disabled]="!canEdit()">
+      @if (isNew) {
+        <div class="row">
+          <div class="col-sm-6 field">
+            <label class="d-block" for="assessorType">Assessor Type</label>
+            <select id="assessorType" name="assessorType" class="form-control input-100" [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()">
+              <option value="">Select</option>
+              <option value="BronzeAssessor">Bronze Assessor</option>
+              <option value="Assessor">Assessor</option>
+            </select>
+            @if (submitted() && !model.assessorType) { <span class="help-block">Assessor Type required.</span> }
+          </div>
+        </div>
+        @if (model.assessorType) {
+          <div class="row align-items-end">
+            <div class="col-sm-3 field">
+              <label class="d-block" for="certificateNo">Certificate Number</label>
+              <input id="certificateNo" name="certificateNo" class="form-control input-100" maxlength="20" [(ngModel)]="model.certificateNo" />
+            </div>
+            <div class="col-sm-4 field">
+              <label class="d-block" for="professionalEmail">Registered Email Id</label>
+              <input id="professionalEmail" name="professionalEmail" type="email" class="form-control input-100" maxlength="100" [(ngModel)]="model.professionalEmail" />
+            </div>
+            <div class="col-sm-3 field">
+              <button type="button" class="btn btn-primary" [disabled]="searching()" (click)="searchProfessional()">SEARCH</button>
+            </div>
+            <div class="col-sm-2 field">
+              @if (professional()?.data?.selfieUrl; as selfie) {
+                <img [src]="selfie" id="selfieimg" alt="Selfie of the professional" />
+              }
+            </div>
+          </div>
+        }
+      } @else if (model.assessorType) {
+        <p><strong>{{ model.assessorType }}</strong> {{ userId }}@if (model.certificateNo) { – Certificate {{ model.certificateNo }} }</p>
+      }
+
+      <div class="row">
+        <div class="col-sm-12 field">
+          <label class="d-block" for="userName">Assessor Name</label>
+          <input id="userName" name="userName" class="form-control input-100 readonly" readonly [ngModel]="model.userName" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-6 field">
+          <label class="d-block" for="emailId">Assessor Email ID</label>
+          <input id="emailId" name="emailId" class="form-control input-100 readonly" readonly [ngModel]="model.emailId" />
+        </div>
+        <div class="col-sm-6 field">
+          <label class="d-block" for="mobileNo">Assessor Mobile Number</label>
+          <input id="mobileNo" name="mobileNo" class="form-control input-100 readonly" readonly [ngModel]="model.mobileNo" />
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-12 field">
+          <label class="d-block" for="address">Assessor Address</label>
+          <textarea id="address" name="address" class="form-control input-100" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="model.address"></textarea>
+          @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-6 field">
+          <label class="d-block" for="pinCode">PinCode</label>
+          <input id="pinCode" name="pinCode" class="form-control input-100" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" />
+          @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-sm-6 field">
+          <label class="d-block" for="idProofType">ID Proof</label>
+          <select id="idProofType" name="idProofType" class="form-control input-100" [(ngModel)]="model.idProofType">
+            <option value="">Select</option>
+            <option value="Aadhaar Card">Aadhaar Card</option>
+            <option value="PAN Card">PAN Card</option>
+          </select>
+          @if (submitted() && !model.idProofType) { <span class="help-block">Id Proof required.</span> }
+        </div>
+        @if (model.idProofType) {
+          <div class="col-sm-6 field">
+            <label class="d-block" for="idProofNumber">{{ model.idProofType === 'Aadhaar Card' ? 'Aadhaar Card Number' : 'PAN Card Number' }}</label>
+            <input id="idProofNumber" name="idProofNumber" class="form-control input-100" maxlength="20" autocomplete="off"
+                   [placeholder]="idProofPlaceholder" [(ngModel)]="model.idProofNumber" />
+          </div>
+        }
+      </div>
+      <div class="row">
+        <div class="col-sm-12 field">
+          <label class="d-block" for="states">Applicable States</label>
+          <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" />
+        </div>
+        <div class="col-sm-12 field">
+          <label class="d-block" for="nicSectors">NIC Sector (2 Digit)</label>
+          <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" />
+        </div>
+        <div class="col-sm-12 field">
+          <label class="d-block" for="areas">Area of Knowledge and Expertise</label>
+          <zed-multi-select inputId="areas" label="Area of Knowledge and Expertise" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" />
+        </div>
+        @if (!isNew) {
+          <div class="col-sm-12 field">
+            <label class="d-block" for="reasonForRejection">Reason for Block</label>
+            <textarea id="reasonForRejection" name="reasonForRejection" class="form-control input-100" maxlength="2000" style="max-width: 100%; height: 100px"
+                      [(ngModel)]="model.reasonForRejection"></textarea>
+          </div>
+        }
+      </div>
+    </fieldset>
+    <div class="col-sm-8 col-xs-12 mb-1">
+      <div class="stepper-footer-sec initial-step1">
+        <a [routerLink]="backLink" class="btn btn-back pull-left">BACK</a>
+        @if (canEdit()) {
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || (isNew && !lookupDone)">{{ isNew ? 'Create' : 'Update' }}</button>
+        }
+      </div>
+    </div>
+  </form>
+</div>
+
+@if (loading() || saving() || searching()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

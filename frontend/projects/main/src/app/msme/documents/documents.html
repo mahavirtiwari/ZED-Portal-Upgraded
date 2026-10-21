@@ -1,0 +1,67 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="row justify-content-center mt-3">
+    <div class="col-sm-9 Dashboard">
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      }
+      <div class="panel panel-default panel-design">
+        <div class="panel-body">
+          @if (guidelines().length) {
+            <h3 class="registration-title">Guidelines</h3>
+          }
+          @for (d of guidelines(); track $index) {
+            <div class="alert alert-document">
+              <div>
+                <img class="icon-bg" src="/Images/svgicons/document.svg" alt="document" />
+                <p>{{ d.DocumentName }}</p>
+              </div>
+              @if (d.DocumentPath) {
+                <a [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
+                  <img src="/Images/svgicons/download.svg" alt="download" />
+                </a>
+              }
+            </div>
+          }
+
+          <h3 class="registration-title">Certificates</h3>
+          @for (c of certificates(); track c.label) {
+            <div class="alert alert-document">
+              <div>
+                <img class="icon-bg" src="/Images/svgicons/certificate.svg" alt="certificate" />
+                <p>{{ c.label }}</p>
+              </div>
+              @if (c.url) {
+                <a [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">
+                  <img src="/Images/svgicons/download.svg" alt="download" />
+                </a>
+              } @else {
+                <img class="not-available" src="/Images/svgicons/download.svg" alt="not available" title="Not available yet" />
+              }
+            </div>
+          }
+
+          @if (invoices().length) {
+            <h3 class="registration-title">Invoices and Receipts</h3>
+          }
+          @for (inv of invoices(); track $index) {
+            <div class="alert alert-document">
+              <div>
+                <img class="icon-bg" src="/Images/svgicons/report.svg" alt="document" />
+                <p>{{ invoiceLabel(inv) }}</p>
+              </div>
+              @if (inv.InvoicePath) {
+                <a [href]="inv.InvoicePath" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + invoiceLabel(inv)">
+                  <img src="/Images/svgicons/download.svg" alt="download" />
+                </a>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+@if (loading()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
+}

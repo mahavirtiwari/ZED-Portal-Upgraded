@@ -1,0 +1,44 @@
+@*
+    Confirmation after FinalSubmit from the app. The old services named two partial views for this
+    (_MsmeFinlSubmitDocUpload, _MsmeNcFinlSubmitDocUpload); the first was a copy of the agency
+    registration mail with the wrong model and the second did not exist, so neither could render.
+    This template carries only the enterprise, the ZED ID and the level: no login details.
+*@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    @if (NcCount > 0)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">The response to Non-conformance @NcCount raised under the "MSME Sustainable (ZED) Certification" Scheme has been submitted from the ZED mobile app. The assessor will review it.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Your basic information and documents for ZED Certification have been submitted from the ZED mobile app.</p>
+    }
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; border: 1px #dee1e4 solid; background: #f7f8f9;" cellpadding="0" cellspacing="0" border="0">
+        <tbody>
+            <tr>
+                <td style="padding: 6px; width: 30%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">Enterprise Name</td>
+                <td>@EnterpriseName</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 30%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">ZED ID</td>
+                <td>@ZedId</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 30%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">Certification Level</td>
+                <td>@Certification</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your future correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string EnterpriseName { get; set; } = "";
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Certification { get; set; } = "";
+    [Parameter] public int NcCount { get; set; }
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

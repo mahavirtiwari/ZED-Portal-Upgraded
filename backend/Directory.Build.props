@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    Optional build slot: with the environment variable ZED_BUILD_SLOT=x, each project builds into
+    bin-x/ and obj-x/ instead of bin/ and obj/. Lets several builds (or a build next to a running
+    API) happen at once without locking each other's files.
+  -->
+  <PropertyGroup Condition="'$(ZED_BUILD_SLOT)' != ''">
+    <BaseIntermediateOutputPath>obj-$(ZED_BUILD_SLOT)\</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin-$(ZED_BUILD_SLOT)\</BaseOutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**;obj-*/**;bin-*/**</DefaultItemExcludes>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,23 @@
+// .panel/.panel-body were Bootstrap 3 classes the old layout still had.
+.panel {
+  background: #fff;
+  margin: 0 0 20px;
+}
+
+.panel-body {
+  padding: 15px;
+}
+
+.not-available {
+  opacity: 0.35;
+}
+
+.loadingdiv {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}

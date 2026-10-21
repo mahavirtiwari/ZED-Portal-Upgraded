@@ -1,0 +1,166 @@
+@if (error()) {
+  <div class="alert alert-danger alert-dismissible" role="alert">
+    {{ error() }}
+    <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+  </div>
+}
+
+@if (options(); as o) {
+  <div class="row justify-content-center">
+    <div class="col-sm-10 Dashboard">
+      <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
+        <div class="panel panel-default panel-payment">
+          <div class="panel-heading">
+            <div class="text-center"><img [src]="'/Images/Dashboard/' + certification().toLowerCase() + '.png'" [alt]="certification()" /></div>
+          </div>
+          <div class="panel-body">
+            <div class="row">
+              <!-- Payment options -->
+              <div class="col-sm-6">
+                <h3 class="registration-title">Payment Options</h3>
+
+                <div class="payment-option-block">
+                  <p id="gstinLabel">GSTIN Applicable?</p>
+                  <div role="radiogroup" aria-labelledby="gstinLabel">
+                    <label><input type="radio" class="option-input yes radio" name="unitGstin" value="Yes" [(ngModel)]="gstinApplicable" /> <span>Yes&nbsp;&nbsp;</span></label>
+                    <label><input type="radio" class="option-input yes radio" name="unitGstin" value="No" [(ngModel)]="gstinApplicable" (change)="gstin = ''" /> <span>No</span></label>
+                  </div>
+                  @if (submitted() && !gstinApplicable) { <span class="help-block text-danger">This is required.</span> }
+                </div>
+                @if (gstinApplicable === 'Yes') {
+                  <div class="payment-option-block">
+                    <input type="text" placeholder="Unit GSTIN" aria-label="Unit GSTIN" class="form-control border-less" name="gstin" maxlength="15" [(ngModel)]="gstin" />
+                    @if (submitted() && gstinInvalid()) { <span class="help-block text-danger">Please enter valid GSTIN.</span> }
+                  </div>
+                }
+
+                <div class="payment-option-block">
+                  <p id="tdsLabel">TDS Deductible?</p>
+                  <div role="radiogroup" aria-labelledby="tdsLabel">
+                    <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="Yes" [(ngModel)]="tdsDeductible" /> <span>Yes&nbsp;&nbsp;</span></label>
+                    <label><input type="radio" class="option-input yes radio" name="tdsDeductible" value="No" [(ngModel)]="tdsDeductible" (change)="tan = ''; tds = null" /> <span>No</span></label>
+                  </div>
+                  @if (submitted() && !tdsDeductible) { <span class="help-block text-danger">This is required.</span> }
+                </div>
+                @if (tdsDeductible === 'Yes') {
+                  <div class="payment-option-block">
+                    <p id="tdsAmountLabel">TDS Amount</p>
+                    <div role="radiogroup" aria-labelledby="tdsAmountLabel">
+                      <label><input type="radio" class="option-input yes radio" name="tds" value="1.5" [(ngModel)]="tds" /> <span>2%&nbsp;&nbsp;</span></label>
+                      <label><input type="radio" class="option-input yes radio" name="tds" value="7.5" [(ngModel)]="tds" /> <span>10%</span></label>
+                    </div>
+                    @if (submitted() && !tds) { <span class="help-block text-danger">This is required.</span> }
+                  </div>
+                  <div class="payment-option-block" style="margin-bottom: 9px">
+                    <input type="text" placeholder="TAN Number" aria-label="TAN Number" class="form-control border-less" name="tan" maxlength="10" [(ngModel)]="tan" />
+                    @if (submitted() && tanInvalid()) { <span class="help-block text-danger">Please enter valid TAN Number.</span> }
+                  </div>
+                }
+
+                @if (o.rewardAvailable) {
+                  <div class="payment-reward-block">
+                    <div>
+                      <h4>Joining Reward*</h4>
+                      <strong>{{ 10000 | number: '1.2-2' }}</strong>
+                      <div>
+                        *Applicable only on one certification (either Bronze or Silver or Gold).
+                        <p>
+                          <br />
+                          ** In case of Bronze certification, the balance joining reward i.e. Rs. 2000/- will be adjusted towards "Surveillance Assessment" after 18 months of the certification. The validity of availing the balance joining reward i.e. Rs. 2000/- (cost of surveillance assessment of Bronze) will be till the surveillance is done.
+                        </p>
+                      </div>
+                    </div>
+                    <div>
+                      @if (useReward()) {
+                        <span class="dash-text-success"><strong>Reward Applied</strong></span><br />
+                        <button type="button" class="btn btn-danger" (click)="useReward.set(false)">REMOVE</button>
+                      } @else {
+                        <button type="button" class="btn btn-primary" (click)="useReward.set(true)">APPLY REWARD</button>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Summary -->
+              <div class="col-sm-6 payment-summary">
+                <h3 class="registration-title">Summary</h3>
+                <div class="panel panel-info" style="border: 1px solid #ddd">
+                  <div class="panel-body p-0">
+                    <div><span>Certification Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
+                    <hr />
+                    @if (useReward()) {
+                      <div><span>Joining Reward</span><strong>- ₹ {{ n('Coupon') | number: '1.2-2' }}</strong></div>
+                      <hr />
+                      <div><span>Final Certification Fee<br />(After adjusting joining reward)</span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
+                      <hr />
+                    }
+                    <div>
+                      <span>Subsidy <strong>{{ text('SubsidyLabel') }}</strong><br />(On Final certification fee)</span>
+                      <strong>- ₹ {{ n('Subsidy') | number: '1.2-2' }}</strong>
+                    </div>
+                    <hr />
+                    @if (text('StateSubsidyLabel')) {
+                      <div>
+                        <span>Andhra Pradesh Govt. Subsidy <strong>{{ text('StateSubsidyLabel') }}</strong><br />(On Final certification fee)</span>
+                        <strong>- ₹ {{ n('StateContributionAfterSubsidy') | number: '1.2-2' }}</strong>
+                      </div>
+                      <hr />
+                    }
+                    <div><span>Amount Payable</span><strong>₹ {{ n('ApplicantContributionAfterSubsidy') | number: '1.2-2' }}</strong></div>
+                    <hr />
+                    <div><span>Amount</span><strong>₹ {{ n('SubsidyAmount') | number: '1.2-2' }}</strong></div>
+                    <hr />
+                    <div><span>GST(18%)</span><strong>₹ {{ n('GstAfterSubsidy') | number: '1.2-2' }}</strong></div>
+                    <hr />
+                    @if (tdsDeductible === 'Yes' && tds) {
+                      <div>
+                        <span>TDS Deducted ({{ tds === '1.5' ? '2%' : '10%' }})</span>
+                        <strong>₹ {{ n(tds === '1.5' ? 'Tds15' : 'Tds75') | number: '1.2-2' }}</strong>
+                      </div>
+                      <hr />
+                    }
+                    <div><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-sm-12">
+                <div class="stepper-footer-sec initial-step1">
+                  <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- #PanCorrectionModal -->
+@if (panModal()) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="panTitle">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header"><h4 class="modal-title" id="panTitle">PAN Mismatch Detected</h4></div>
+        <div class="modal-body">
+          <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
+          <label for="correctedPan">Please enter the correct PAN number:</label>
+          <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
+          @if (panError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ panError() }}</div> }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
+          <button type="button" class="btn btn-primary" (click)="savePan()">Save &amp; Proceed</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (busy()) {
+  <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
+}

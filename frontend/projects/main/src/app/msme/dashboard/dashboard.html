@@ -1,0 +1,498 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme">
+    @if (error()) {
+      <div class="alert alert-danger mt-3" role="alert">
+        {{ error() }}
+        <button type="button" class="btn btn-link" (click)="load()">Try again</button>
+      </div>
+    }
+
+    @if (data(); as d) {
+      @switch (step()) {
+        @case ('home') {
+          <div class="row">
+            <div class="col-sm-8"><h3 class="registration-title dash-text-clr">Welcome</h3></div>
+            <div class="col-sm-4">
+              @if (ubpReturnUrl) {
+                <a class="btn btn-primary" [href]="ubpReturnUrl">Back to UBP</a>
+              }
+              <button type="button" class="refresh-link float-sm-end btn btn-link p-0" (click)="load()">
+                <img src="/Images/svgicons/refresh.svg" alt="" />
+                <span>Refresh on {{ refreshedAt().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) }}</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="row">
+            <!-- Unit summary -->
+            <div class="col-sm-3">
+              <div class="panel panel-default panel-grey">
+                <div class="panel-body">
+                  <div class="entp-type-sec">
+                    <div class="entp-label" [class.micro]="msme()['EnterpriseType'] === 'Micro'" [class.small]="msme()['EnterpriseType'] === 'Small'"
+                         [class.medium]="msme()['EnterpriseType'] === 'Medium'">
+                      {{ msme()['EnterpriseType'] === 'Small' ? 'S' : 'M' }}
+                    </div>
+                    <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+                    @if (msme()['OldEnterpriseType']) {
+                      <span style="margin-left: 20px; color: gray; font-size: 0.8em">(Old Type: {{ msme()['OldEnterpriseType'] }})</span>
+                    }
+                  </div>
+                  <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+                  <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+                  <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+                </div>
+              </div>
+
+              <div class="panel panel-default panel-black"><div class="panel-body">Selected Unit</div></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+              <div class="unit-selection">
+                <img src="/Images/svgicons/mapicon.svg" alt="" />
+                <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+              </div>
+
+              <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+              <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+
+              <div class="panel panel-default panel-black"><div class="panel-body">ZED Pledge Certificate</div></div>
+              <div class="unit-selection">
+                <div class="col-sm-12" style="padding: 0">
+                  <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
+                  <div class="btn-download">
+                    <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-sm-9">
+              <div class="zed-payment-success">
+                <div class="label-highlight">
+                  <p>You can now start the <strong>"Bronze/Silver/Gold certification"</strong> from the ZED MSME Mobile Application</p>
+                  <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
+                  <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                  <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+                </div>
+              </div>
+
+              <!-- My Certifications -->
+              <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
+                <div class="panel-heading">
+                  <div class="row">
+                    <div class="col-sm-10">
+                      <div class="panel-titles-sec">
+                        <h4>My Certifications</h4>
+                        <p>Apply for Bronze, Silver or Gold Certifications.</p>
+                      </div>
+                    </div>
+                    <div class="col-sm-2">
+                      <button type="button" class="btn btn-link p-0 float-end" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
+                        <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  <div class="dashbord-list">
+                    @for (level of levels; track level) {
+                      <div class="list-item">
+                        <div class="panel panel-default panel-cert-block panel-{{ level.toLowerCase() }}" [class.plant-activity-disabled]="levelDisabled(level)">
+                          <div class="panel-heading">
+                            <h5>{{ level.toUpperCase() }} CERTIFICATION</h5>
+                            <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + level" (click)="open({ kind: 'info', topic: level })">
+                              <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                            </button>
+                          </div>
+                          <div class="panel-body">
+                            <div class="cert-inner-block">
+                              <div class="inner1">
+                                <p><span><img src="/Images/svgicons/arrow-right.svg" alt="" /></span> <span>{{ statusLabel(level) }}</span></p>
+                                <div class="stepper">
+                                  <ul class="nav nav-tabs" role="list">
+                                    @for (rule of steps(level); track $index) {
+                                      <li [class]="(level === 'Bronze' ? 'w-33 ' : '') + stepClass(level, rule)">
+                                        <span class="round-tab">
+                                          @if (stepClass(level, rule) === 'completed') {
+                                            <img src="/Images/svgicons/stepper-completed.svg" alt="" />
+                                          }
+                                        </span>
+                                      </li>
+                                    }
+                                  </ul>
+                                </div>
+                                @if (paid(level)) {
+                                  <h5><a [routerLink]="['/msme/certification', level]">VIEW DETAILS</a></h5>
+                                } @else {
+                                  <h5 class="clickable" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</h5>
+                                }
+                              </div>
+                              <div class="inner2"><img [src]="'/Images/Dashboard/' + level.toLowerCase() + '.png'" alt="" /></div>
+                              <div class="inner3">
+                                @if (paid(level)) {
+                                  <p class="dash-text-clr">
+                                    <a [routerLink]="['/msme/certification', level]" [attr.aria-label]="level + ' details'"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></a>
+                                  </p>
+                                } @else {
+                                  <p class="dash-text-clr apply-btn" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</p>
+                                }
+                              </div>
+                            </div>
+
+                            @if (surveillanceVisible(level)) {
+                              <div class="px-2"><hr class="m-0" /></div>
+                              <div class="cert-inner-block sub-inner-block">
+                                <div class="inner1">
+                                  <p class="dash-text-clr m-0">
+                                    @if (surveillancePaid(level)) {
+                                      <a [routerLink]="['/msme/certification', level + 'Surveillance']">SURVEILLANCE</a>
+                                    } @else {
+                                      <a [routerLink]="['/msme/surveillance-payment', level]">SURVEILLANCE</a>
+                                    }
+                                  </p>
+                                </div>
+                                <div class="inner2"></div>
+                                <div class="inner3">
+                                  @if (surveillancePaid(level)) {
+                                    <p class="dash-text-clr">
+                                      <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="level + ' surveillance details'"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></a>
+                                    </p>
+                                  } @else {
+                                    <p class="dash-text-clr apply-btn"><a [routerLink]="['/msme/surveillance-payment', level]" class="btn btn-primary">APPLY</a></p>
+                                  }
+                                </div>
+                              </div>
+                            }
+
+                            @if (reCertificationVisible(level)) {
+                              <div class="px-2"><hr class="m-0" /></div>
+                              <div class="cert-inner-block sub-inner-block">
+                                <div class="inner1"><p class="dash-text-clr m-0 text-nowrap clickable" (click)="apply(level)">RE-CERTIFICATION</p></div>
+                                <div class="inner2"></div>
+                                <div class="inner3"><p class="dash-text-clr apply-btn" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</p></div>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+
+              <!-- My Incentives -->
+              <div class="panel panel-primary panel-dashboard panel-incentive panel-bg-default">
+                <div class="panel-heading">
+                  <div class="row">
+                    <div class="col-sm-10">
+                      <div class="panel-titles-sec">
+                        <h4>My Incentives</h4>
+                        <p>Apply to avail incentives.</p>
+                      </div>
+                    </div>
+                    <div class="col-sm-2">
+                      <button type="button" class="btn btn-link p-0 float-end" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
+                        <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div class="panel-body">
+                  <div class="row">
+                    <div class="panel-incen-box g-0">
+                      <div class="item">
+                        <div class="panel panel-default panel-incen-block">
+                          <div class="panel-heading">
+                            <img src="/Images/Dashboard/wash.png" alt="MSME KAWACH" />
+                            <a href="https://msmekawach.org.in/Msme/login" target="_blank" rel="noopener" class="btn btn-sm btn-primary">Avail</a>
+                          </div>
+                          <div class="panel-body">
+                            <h4>MSME KAWACH</h4>
+                            <p>WASH Certification on Safety &amp; Hygiene</p>
+                            <br />
+                            <p><span class="clr-spot"><b>Free</b></span> <span class="strike">₹ 5,750 + Taxes</span>, 100% Subsidized</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="item">
+                        <div class="panel panel-default panel-incen-block">
+                          <div class="panel-heading">
+                            <img src="/Images/Dashboard/reward.png" alt="Joining Reward" />
+                            <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'joining' })">
+                              {{ is(msme(), 'IsCouponUsed', 1) ? 'View' : 'Avail' }}
+                            </button>
+                          </div>
+                          <div class="panel-body">
+                            <h4>Joining Reward</h4>
+                            <p><span class="clr-spot">Rs. 10,000/-</span> Limited purpose reward, linked with ZED Certification Levels</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="item">
+                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="is(basic(), 'IsEligibleForFinancial', 0)">
+                          <div class="panel-heading">
+                            <img src="/Images/Dashboard/financial.png" alt="Financial Assistance" />
+                            @if (is(cert(), 'FinancialAssistanceStatus', 0) && is(basic(), 'IsEligibleForFinancial', 1)) {
+                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'fa' })">View</button>
+                            }
+                            @if (!(is(cert(), 'FinancialAssistanceStatus', 0) || is(basic(), 'IsEligibleForFinancial', 0))) {
+                              <a routerLink="/msme/financial-assistance" class="btn btn-sm btn-primary">Avail</a>
+                            }
+                          </div>
+                          <div class="panel-body">
+                            <h4>Financial Assistance</h4>
+                            <p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="item">
+                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!(anyCertified() && is(basic(), 'IsEligibleForBenefits', 1))">
+                          <div class="panel-heading">
+                            <img src="/Images/Dashboard/handholding.png" alt="Handholding Support" />
+                            <a routerLink="/msme/handholding" class="btn btn-sm btn-primary">
+                              {{ num('ConsultancyStatus') > 0 ? 'View' : 'Avail' }}
+                            </a>
+                          </div>
+                          <div class="panel-body">
+                            <h4>Handholding Support</h4>
+                            <p><span class="clr-spot">Cost: Rs. 2,00,000/- (Subsidy as per MSME size)</span> for improving systems and processes</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="item">
+                        <div class="panel panel-default panel-incen-block"
+                             [class.plant-activity-disabled]="!((is(cert(), 'TechnologyUpgradationStatus', 0) || is(cert(), 'TechnologyUpgradationStatus', 1)) && is(basic(), 'IsEligibleForBenefits', 1))">
+                          <div class="panel-heading">
+                            <img src="/Images/Dashboard/technology.png" alt="Technology Upgradation" />
+                            @if (is(basic(), 'IsEligibleForBenefits', 1)) {
+                              @if (num('TechnologyUpgradationStatus') > 0) {
+                                <a routerLink="/msme/technology-upgradation" class="btn btn-sm btn-primary">Avail</a>
+                              }
+                              @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
+                                <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'tu' })">View</button>
+                              }
+                            }
+                          </div>
+                          <div class="panel-body">
+                            <h4>Technology Upgradation</h4>
+                            <p><span class="clr-spot">Support of upto Rs. 3,00,000/-</span> for moving towards Zero Effect Solutions</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      @for (inc of incentives; track inc.type) {
+                        <div class="item">
+                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!anyCertified()">
+                            <div class="panel-heading">
+                              <img [src]="inc.image" [alt]="inc.title" [attr.style]="inc.imageStyle" />
+                              <a routerLink="/incentives" [queryParams]="incentiveQuery(inc.type)" class="btn btn-sm btn-primary">Avail</a>
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ inc.title }}</h4>
+                              <p>{{ inc.text }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div><div class="line-icon"></div></div>
+
+              <!-- Certification steps -->
+              <div class="panel panel-steps panel-bg-default">
+                <div class="panel-body">
+                  <h4 class="step-title">ZED CERTIFICATION STEPS</h4>
+                  <ul class="cert-steps">
+                    @for (s of certificationSteps; track $index) {
+                      <li>
+                        <div class="step-num"><span>{{ $index + 1 }}</span></div>
+                        <div class="step-details">
+                          <h4>{{ s.title }}</h4>
+                          <p>{{ s.text }}</p>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @case ('disclaimer') {
+          <div class="row justify-content-center">
+            <div class="col-sm-9">
+              <div class="panel panel-default panel-design">
+                <div class="panel-body disclaimer-sec">
+                  <h3 class="registration-title">DISCLAIMER</h3>
+                  <p>This disclaimer/declaration governs the use of the MSME Standard, various documents, reports and any content therein. The following is accepted in full by the User/applicant Unit:</p>
+                  <ol>
+                    <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this voluntary scheme on their own volition.</li>
+                    <li>The applicant has read and understood the requirements of the Certification Level for which the payment is being made and take full responsibility for any non-conformities that may occur during the Certification process.</li>
+                    <li>The amount once remitted is non-refundable, non-adjustable &amp; non-transferable irrespective of the outcome of the Certification process.</li>
+                    <li>Submission of relevant documents/evidences/responses in a timely manner is essential and non-conformance to timelines may result in forfeiture of any amount paid.</li>
+                    @if (!(num('ReCertification', basic()) > 0)) {
+                      <li>The “Joining Reward” (Rs. 10,000/-) will be unlocked only once and can be applied for any Certification Level. Once availed, the Joining Reward cannot be reverted, reinstated or reused in any manner.</li>
+                      <li>The final payment being made is only the “beneficiary contribution”; the subsidies applicable for this Certification Level is pre-applied.</li>
+                    }
+                    <li>Mere submission of relevant payment does not guarantee a Certification. The Certification will only be accorded after completion of due process and closure of all non-conformities, if any, within the stipulated time.</li>
+                  </ol>
+                  <div class="stepper-footer-sec initial-step1">
+                    <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
+                    <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @case ('instructions') {
+          <div class="row justify-content-center">
+            <div class="col-sm-9">
+              <div class="panel panel-default panel-design">
+                <div class="panel-body disclaimer-sec">
+                  <h3 class="registration-title">Instructions</h3>
+                  <ol>
+                    <li>After making the payment, the applicant MSME would need to submit necessary information/documents on the “Basic Information &amp; Document Upload” section.</li>
+                    <li>During the process of “Basic Information and Document Upload”, most relevant information and evidences should be provided/uploaded.</li>
+                    <li>The desktop assessor will not attempt to ensure the accuracy of information/documents provided and the conclusions of this process will be derived solely from the information provided by the applicant.</li>
+                    <li>It is expected that the applicants honestly upload the relevant documents/evidences. Information not disclosed or erroneously uploaded by the applicant may lead to non-conformities.</li>
+                    <li>After the completion of the Basic Information and Document Upload process, a desktop verification of the documents uploaded will be done. Thereafter, the way forward will be provided to the MSME via email.</li>
+                    <li>Please download the Mobile Application from Google Playstore as and when prompted.</li>
+                    <li>Please download the User Manual from “My Documents” for detailed instructions &amp; guidance on “Basic Information &amp; Document Upload”</li>
+                  </ol>
+                  <div class="stepper-footer-sec initial-step1">
+                    <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
+                    <button type="button" class="btn btn-primary" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+
+        @case ('payment') {
+          <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
+        }
+      }
+    }
+  </div>
+</div>
+
+<!-- Information pop-ups (#CertificationDetails, #CertificationInfo, #JoiningReward, #FinancialAssistance, #TechnologyUpgradation) -->
+@if (modal(); as m) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" (click)="modal.set(null)">
+    <div class="modal-dialog modal-md modal-popup modal-certification-info" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header justify-content-between">
+          <h3 class="registration-title m-0">
+            @switch (m.kind) {
+              @case ('apply-info') { {{ m.level }} Certification }
+              @case ('info') { {{ infoTitle(m.topic) }} }
+              @case ('joining') { Joining Reward }
+              @case ('fa') { Financial Assistance }
+              @case ('tu') { Technology Upgradation }
+            }
+          </h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          @switch (m.kind) {
+            @case ('apply-info') {
+              <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
+              <div class="text-center mt-4"><img [src]="'/Images/Dashboard/' + m.level.toLowerCase() + '.png'" alt="" /></div>
+            }
+            @case ('info') {
+              <ul>
+                @switch (m.topic) {
+                  @case ('Bronze') {
+                    <li><p>This level has 5 parameters, which need to be conformed to, for achieving a Certification.</p></li>
+                    <li><p>The certification cost is Rs. 10,000/- inclusive of taxes; subsidy, as applicable.</p></li>
+                  }
+                  @case ('Silver') {
+                    <li><p>This level has 14 parameters, which need to be conformed to, for achieving a Certification.</p></li>
+                    <li><p>The certification cost is Rs. 40,000/- inclusive of taxes; subsidy, as applicable.</p></li>
+                  }
+                  @case ('Gold') {
+                    <li><p>This level has 20 parameters, which need to be conformed to, for achieving a Certification.</p></li>
+                    <li><p>The certification cost is Rs. 90,000/- inclusive of taxes; subsidy, as applicable.</p></li>
+                  }
+                  @case ('My') {
+                    <li><p>Please read the complete instructions and requirements before applying for any Certification Level. These are available under "My Documents".</p></li>
+                  }
+                  @case ('MyIncentives') {
+                    <li><p>MSME KAWACH and Joining Reward incentives are available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under "My Documents".</p></li>
+                  }
+                }
+              </ul>
+            }
+            @case ('joining') {
+              @if (is(msme(), 'IsCouponUsed', 1)) {
+                <table class="table">
+                  <tr><th>Date of avail:</th><td>{{ msme()['DateOfAvail'] }}</td></tr>
+                  <tr><th>Amount:</th><td>{{ msme()['JoiningRewardAmount'] }}</td></tr>
+                  <tr><th>Certification level:</th><td>{{ msme()['LatestCertification'] }}</td></tr>
+                </table>
+              } @else {
+                <ul><li><p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p></li></ul>
+              }
+            }
+            @case ('fa') {
+              @if (is(cert(), 'FinancialAssistanceStatus', 0)) {
+                <table class="table">
+                  <tr><th>Level of Certification:</th><td>{{ cert()['LevelOfCertificationForFa'] }}</td></tr>
+                  <tr><th>Date of avail:</th><td>{{ cert()['DateOfFaAvail'] }}</td></tr>
+                  <tr><th>Amount:</th><td>{{ cert()['FaAmount'] }}</td></tr>
+                  <tr><th>Reference No.:</th><td>{{ cert()['FaReferenceNo'] }}</td></tr>
+                  <tr><th>Certification Category:</th><td>{{ cert()['FaCertificationCategory'] }}</td></tr>
+                </table>
+              } @else {
+                <ul><li><p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p></li></ul>
+              }
+            }
+            @case ('tu') {
+              @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
+                <table class="table">
+                  <tr><th>Level of Certification:</th><td>{{ cert()['LevelOfCertificationForTu'] }}</td></tr>
+                  <tr><th>Date of availing:</th><td>{{ cert()['DateOfTuAvail'] }}</td></tr>
+                  <tr><th>Amount:</th><td>{{ cert()['TuAmount'] }}</td></tr>
+                  <tr><th>Reference No.:</th><td>{{ cert()['TuReferenceNo'] }}</td></tr>
+                  <tr>
+                    <th>Recommended Technologies:</th>
+                    <td>
+                      @for (t of technologies(); track $index) {
+                        {{ t }}<hr />
+                      }
+                    </td>
+                  </tr>
+                </table>
+              } @else {
+                <ul><li><p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p></li></ul>
+              }
+            }
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv" role="status" aria-live="polite">
+    <div class="text-center text-white">
+      <div class="spinner-border text-light"></div>
+      <div><small>Please wait ...</small></div>
+    </div>
+  </div>
+}

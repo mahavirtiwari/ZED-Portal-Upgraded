@@ -1,0 +1,20 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+App_Data/
+TestResults/
+# Node / Angular
+node_modules/
+dist/
+.angular/
+# Local secrets
+appsettings.*.local.json
+*.env
+database/logs/
+bin-*/
+obj-*/
+# Per-agent build slots and scratch outputs
+dist-*/
+*.eml

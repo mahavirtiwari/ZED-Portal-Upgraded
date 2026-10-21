@@ -1,0 +1,51 @@
+@* Port of Views/Shared/_ConsultancyDaAllotCbTemplate.cshtml: tells the Consultant Organisation of the
+   previous milestone that the unit has paid for the next one. Contains no password. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">An MSME Unit has been allocated to you for Handholding Support (Milestone @Milestone). The details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">MSME ZED ID</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@ZedId</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Unit Name</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@UnitName</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Unit Address</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@UnitAddress</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0; padding: 15px; width: 30%;">Stage</td>
+                <td style="border-bottom:2px solid #f0f0f0; font-weight: 700;">@Stage</td>
+            </tr>
+        </tbody>
+    </table>
+    <span style="font-size: 13px; margin-bottom: 0;">Please log-in to your account in order to <strong>Accept or Reject</strong> this allocation within 48 hrs.</span>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your Consultant Organisation ID in all your correspondence.</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Milestone { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string UnitAddress { get; set; } = "";
+    /// <summary>Consultancy portal sign-in page (the consultancy system is not migrated yet).</summary>
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private string Stage => Milestone switch
+    {
+        "1" => "Milestone 1 : Baseline Diagnostic study and Handholding action plan",
+        "2" => "Milestone 2: Implementation & Progress Review 1",
+        _ => "Milestone 3: Implementation & Progress Review 2",
+    };
+}

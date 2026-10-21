@@ -1,0 +1,69 @@
+<zed-login-shell>
+  <div class="login-login">
+    @if (mode() === 'login') {
+      <form class="login-form mt-3" (ngSubmit)="login()" novalidate>
+        <h2>Registered User</h2>
+
+        <label for="userId">ZED ID</label>
+        <div class="mb-3">
+          <input id="userId" name="userId" class="form-control" placeholder="ZED ID" autocomplete="username"
+                 [(ngModel)]="userId" required maxlength="100" />
+        </div>
+
+        <label for="password">Password</label>
+        <div class="mb-3 position-relative">
+          <input id="password" name="password" class="form-control" placeholder="Password" autocomplete="current-password"
+                 [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" required maxlength="50" />
+          <button type="button" class="field-icon toggle-password btn btn-link p-0"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                  (click)="showPassword.set(!showPassword())">
+            <img [src]="showPassword() ? '/Images/svgicons/eye-off.svg' : '/Images/svgicons/eye.svg'" alt="" />
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <label>Verification</label>
+          <zed-recaptcha (token)="onCaptcha($event)" />
+        </div>
+
+        <div class="register-btn">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">LOGIN</button>
+          <button type="button" class="btn btn-dark" (click)="switchMode('reset')">FORGOT PASSWORD?</button>
+        </div>
+      </form>
+    } @else {
+      <form class="login-form mt-3" (ngSubmit)="forgotPassword()" novalidate>
+        <h2>Reset Password</h2>
+        <div class="mb-3">
+          <input name="resetUserId" class="form-control" placeholder="ZED ID" [(ngModel)]="resetUserId" required maxlength="100" />
+        </div>
+        <div class="register-btn">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">RESET PASSWORD</button>
+          <button type="button" class="btn btn-dark" (click)="switchMode('login')">LOGIN</button>
+        </div>
+      </form>
+    }
+
+    @if (success()) {
+      <div class="alert alert-warning alert-dismissible mt-3 mb-0" role="status">
+        <div>{{ success() }}</div>
+        <button type="button" class="btn-close" aria-label="Close" (click)="success.set('')"></button>
+      </div>
+    }
+    @if (error()) {
+      <div class="alert alert-danger alert-dismissible mt-3 mb-0" role="alert">
+        <div>{{ error() }}</div>
+        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
+      </div>
+    }
+  </div>
+
+  <div class="line-icon"></div>
+  <div class="login-register">
+    <div class="login-bottom-newuser">
+      <h2>New User</h2>
+      <p>If you are a first time user, click below on “Register Now”.<br />(Applicable only for manufacturing sector: Section C, NIC 2008)</p>
+      <a routerLink="/msme/register" class="btn btn-white btn-block">REGISTER NOW</a>
+    </div>
+  </div>
+</zed-login-shell>

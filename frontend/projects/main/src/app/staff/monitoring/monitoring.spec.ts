@@ -1,0 +1,162 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { MonitoringPage } from './monitoring';
+
+describe('MonitoringPage', () => {
+  let fixture: ComponentFixture<MonitoringPage>;
+  let http: HttpTestingController;
+  let el: HTMLElement;
+
+  async function settle() {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  const counts = { NotStarted: 1, InProgress: 2, Qc: 3, Nc: 4, Rj: 5 };
+  const unit = (n: number, extra: Record<string, unknown> = {}) => ({
+    RowNumber: n, ZedId: `ZEDMSME${String(n).padStart(6, '0')}`, Certification: 'Silver', PUnitName: `Unit ${n}`,
+    CertificationStatus: 14, NcStatus: 0, NcCount: 2, SameUdyamAddress: 0, NcFinalClosureDt: 'October 30, 2026', ...extra,
+  });
+
+  const button = (label: string) =>
+    [...el.querySelectorAll('button, a')].find((b) => b.textContent!.replace(/\s+/g, ' ').trim().startsWith(label)) as HTMLElement | undefined;
+
+  function listRequest(): TestRequest {
+    return http.expectOne((r) => r.method === 'GET' && r.url === '/api/staff/monitoring');
+  }
+
+  async function choose(selector: string, value: string) {
+    const s = el.querySelector(selector) as HTMLSelectElement;
+    s.value = value;
+    s.dispatchEvent(new Event('change'));
+    await settle();
+  }
+
+  /** Picks Silver, then the NC tab, answering both list calls. */
+  async function openNcTab(canManage: boolean, units = [unit(1), unit(2, { NcStatus: 2, SameUdyamAddress: 3 })]) {
+    await choose('#certification', 'Silver');
+    listRequest().flush({ units: [], counts, canManage });
+    await settle();
+    button('NON-CONFORMANCE')!.click();
+    await settle();
+    const req = listRequest();
+    expect(req.request.params.get('certification')).toBe('Silver');
+    expect(req.request.params.get('status')).toBe('4');
+    req.flush({ units, counts, canManage });
+    await settle();
+  }
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [MonitoringPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    fixture = TestBed.createComponent(MonitoringPage);
+    http = TestBed.inject(HttpTestingController);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne('/api/config').flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: 'https://old.example' });
+    await settle();
+  });
+
+  afterEach(() => http.verify());
+
+  it('loads nothing until a certification level is chosen', () => {
+    http.expectNone('/api/staff/monitoring');
+    expect(el.querySelector('.no-data')).not.toBeNull();
+  });
+
+  it('shows agencies the list without NC dates or admin actions', async () => {
+    await openNcTab(false);
+    expect(el.textContent).toContain('NON-CONFORMANCE 4');
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(2);
+    expect(el.querySelector('thead')!.textContent).not.toContain('NC Closure Date');
+    expect(el.textContent).not.toContain('October 30, 2026');
+    expect(button('Extend NC')).toBeUndefined();
+    expect(button('Step Back')).toBeUndefined();
+    expect(rows[1].classList).toContain('table-danger');
+    expect(rows[1].querySelector('.yellow-background')!.textContent!.trim()).toBe('3');
+    expect((button('View Profile') as HTMLAnchorElement).href).toBe('https://old.example/Msme/Profile/ZEDMSME000001');
+    expect((button('Assessment') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Silver');
+  });
+
+  it('pages and searches the loaded list on the client', async () => {
+    await openNcTab(false, Array.from({ length: 25 }, (_, i) => unit(i + 1)));
+    expect(el.querySelectorAll('tbody tr').length).toBe(10);
+    button('Last')!.click();
+    await settle();
+    expect(el.querySelectorAll('tbody tr').length).toBe(5);
+
+    const search = el.querySelector('input[placeholder="ZED ID"]') as HTMLInputElement;
+    search.value = 'ZEDMSME000017';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('ZEDMSME000017');
+  });
+
+  it('lets master admin extend the NC closure date and reloads', async () => {
+    await openNcTab(true);
+    expect(el.querySelector('thead')!.textContent).toContain('NC Closure Date');
+    expect(button('Step Back to NC1')).toBeDefined();
+
+    button('Extend NC')!.click();
+    await settle();
+    expect(el.querySelector('.modal')!.textContent).toContain('October 30, 2026');
+    const days = el.querySelector('#noOfDays') as HTMLSelectElement;
+    days.value = [...days.options].find((o) => o.text.trim() === '7')!.value;
+    days.dispatchEvent(new Event('change'));
+    await settle();
+    button('SUBMIT')!.click();
+    await settle();
+    const req = http.expectOne('/api/staff/monitoring/extend-nc-closure');
+    expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', noOfDays: 7 });
+    req.flush({ message: 'NC final closure date extended.' });
+    await settle();
+    listRequest().flush({ units: [unit(1)], counts, canManage: true });
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('NC final closure date extended.');
+  });
+
+  it('shows the API message when an action is refused', async () => {
+    await openNcTab(true);
+    button('Step Back to NC1')!.click();
+    await settle();
+    button('SUBMIT')!.click();
+    await settle();
+    http.expectOne('/api/staff/monitoring/step-back-nc').flush({ title: 'Invalid Details.' }, { status: 400, statusText: 'Bad Request' });
+    await settle();
+    expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Invalid Details.');
+  });
+
+  it('offers send back to agency on scheduled units only, never for Bronze', async () => {
+    await choose('#certification', 'Gold');
+    listRequest().flush({ units: [], counts, canManage: true });
+    await settle();
+    button('SCHEDULED BUT NOT STARTED')!.click();
+    await settle();
+    listRequest().flush({ units: [unit(1, { Certification: 'Gold', CertificationStatus: 8 }), unit(2, { Certification: 'Gold', CertificationStatus: 9 })], counts, canManage: true });
+    await settle();
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('Send Back to Agency');
+    expect(rows[1].textContent).not.toContain('Send Back to Agency');
+
+    await choose('#certification', 'Bronze');
+    listRequest().flush({ units: [unit(1, { Certification: 'Bronze', CertificationStatus: 8 })], counts, canManage: true });
+    await settle();
+    expect(el.textContent).not.toContain('Send Back to Agency');
+  });
+
+  it('renders unit data as text', async () => {
+    await openNcTab(false, [unit(1, { PUnitName: '<img src=x onerror=alert(1)>' })]);
+    expect(el.querySelector('tbody img')).toBeNull();
+    expect(el.querySelector('tbody')!.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+});
