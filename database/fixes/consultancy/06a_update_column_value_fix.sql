@@ -44,7 +44,7 @@ BEGIN
 END
 ELSE IF @Mode <> 'APPLY'
 BEGIN
-    PRINT 'PREVIEW: the new definition below is compiled but not created. Set @Mode = ''APPLY'' to alter it.';
+    PRINT 'PREVIEW: the new definition (written out further down in this script, not printed) is compiled but not created. Set @Mode = ''APPLY'' to alter it.';
     SET NOEXEC ON;
 END
 GO

@@ -55,6 +55,33 @@ Udyami Bharat keep working. Nothing moves in DNS.
   included. "Always-up-to-date" (or "SQL Server 2025"): its backups do not restore to SQL Server 2022, so export
   BACPACs (SqlPackage; slow at 76 GB, needs its own downtime window) or copy the data another way. Rehearse the chosen
   method on staging (1.5) and time it: it sets the cut-over window.
+- **Logins after the restore:** the restored databases' users keep the managed instance's SIDs. Run
+  `database/security/02_orphaned_users.sql` (PREVIEW lists them), create the logins (V4: `01_v4_logins_and_roles.sql`,
+  1.3 step 3; the other applications their own), then map or drop each listed user with `02` (APPLY). Azure AD users
+  cannot exist on SQL Server: drop them or re-create them as Windows users. Then test each V4 host with its own login
+  on staging (1.5): the local tests covered the permissions, not a real connection.
+- **Check the copy** with `deploy\Compare-ZedDatabases.ps1` (read-only):
+  1. After the old sites are frozen (app_offline, old app pools and Agent jobs stopped) and right before the copy-only
+     backups or BACPAC exports: `-Snapshot -Server <old instance> -Credential … -Out D:\ZedV4\move\old.json`. Use
+     exact counts; `-Fast` only if the window is too short, and then for both snapshots.
+  2. After the restore or import, the logins and user mapping, and the settings below, before anything points at the
+     new server: `-Snapshot -Server <new server> -Out D:\ZedV4\move\new.json`, then
+     `-Compare "D:\ZedV4\move\old.json,D:\ZedV4\move\new.json" -Report D:\ZedV4\move\compare.txt`.
+  3. Exit code 0 is required to go on. On a MUST MATCH difference do not switch the connection strings; fix it and
+     compare again:
+     - **missing rows or tables:** something wrote after the snapshot, or the copy is incomplete; copy that database again;
+     - **a sequence or identity behind the source:** `ALTER SEQUENCE … RESTART WITH` or `DBCC CHECKIDENT … RESEED` to the source value;
+     - **compatibility level, collation or a setting:** `ALTER DATABASE` to the source value (READ_COMMITTED_SNAPSHOT,
+       TRUSTWORTHY, DB_CHAINING as on the old instance);
+     - **a changed or missing procedure:** script it from the old instance;
+     - **a missing user or role member:** re-create it;
+     - **the server time zone:** set the server to IST.
+
+     If it cannot be fixed in the window, stay on the old instance: nothing has been switched yet.
+  4. EXPECTED differences (server name, version, edition, sizes, recovery model) need no action; set the recovery
+     model on purpose. Act on these INFO lines: users without a login (map them to the new logins), and Agent jobs or
+     Database Mail profiles of the other applications (recreate them).
+  5. Keep `old.json`, `new.json` and `compare.txt` with the move's records.
 - **Time zone:** the old instance runs in IST (confirmed), which is the default of `Jobs:TimeZone` (Asia/Kolkata), so
   the Zed.Jobs times are the Agent times. Give the new server the same time zone: some procedures use `GETDATE()`.
 - **The other applications' jobs and mail** move with their databases to the new server's SQL Agent and Database
@@ -94,10 +121,12 @@ and evidence are reachable only through V4's checked endpoints (closes #9, #34).
 1. Copy `deploy\settings.example.json` to the server (e.g. `D:\ZedV4\settings.json`), readable by administrators only.
 2. Fill it in with **new** values: every key listed in LIVE-HARDENING §7 was exposed and must be rotated anyway.
    Rotating before the cut-over means the old sites get the new values in their `Web.config`, and V4 starts with them.
-3. New SQL logins for V4, not the leaked application login (#110):
-   - one per system with `EXECUTE` and the table rights the procedures need on its own database;
-   - a read-only login on ZED_CONSULTANT and ZED_SURVEILLANCE for main's `ConnectionStrings:Consultancy/Surveillance`,
-     and on ZEDCS_V2_LIVE for the Consultancy and Surveillance hosts' `ConnectionStrings:Main`.
+3. New SQL logins for V4, not the leaked application login (#110): `database/security/01_v4_logins_and_roles.sql`
+   (PREVIEW, then APPLY; passwords typed in SSMS, or `@AuthMode = 'WINDOWS'` for gMSA / app pool identities). It
+   creates `zed_v4_main`, `zed_v4_consultancy`, `zed_v4_surveillance`, `zed_v4_mobile` (app), `zed_v4_jobs` and
+   `zed_v4_readonly` (main's `ConnectionStrings:Consultancy/Surveillance`, the Consultancy/Surveillance hosts'
+   `ConnectionStrings:Main`), with data-only roles: no db_owner, no DDL, no server roles (`database/security/README.md`).
+   Point each host's connection strings at its login. Revoke the old login after the rollback window (section 4).
 4. Every host checks its settings at startup outside Development and **refuses to start**, listing every missing or
    wrong one in the Windows event log (Application, source "IIS AspNetCore Module V2"). It checks: connection strings
    (main also needs Consultancy and Surveillance; the others need Main), `Portal:PublicBaseUrl` (https),
@@ -132,8 +161,19 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 Exception: `fixes/main/02_sp_get_user_details_master_passwords.sql` breaks the **old** Udyami Bharat hand-over;
 run it at the cut-over, right after V4 serves `/Msme/ZedDashboard` (section 2, step 6).
 
-Also before the cut-over (MIGRATION-PLAN "Database"): the 18 procedures that do not compile. They are not new
-problems, but check them on the staging copy. (Sequences and the referenced databases are settled: section 1.1a.)
+**Runner.** `deploy\Invoke-ZedDatabaseScripts.ps1 -Server <server>` checks the server and the databases and shows,
+per migration, whether it is applied; it runs nothing. With `-Apply` it runs the migrations of this table in order, on
+their databases, stopping at the first failure. 0006 runs only with `-IncludeDistributedCache`, and 0003 only with
+`-IncludeMailOutbox`, last. It then previews every fix script and saves, per procedure, the live definition
+(`fixes\<name>\live\`, which is the undo) and the new one where the script prints it (`new\`, with full definitions
+for main 05–12). Diff the two before deciding; for scripts without a `new\` file, review the script's own pattern list
+against `live\`. Apply reviewed fixes with `-SkipMigrations -ApplyFixes 'main/05_mail_passwords','…'`, using exact
+names; each is previewed again and its live definitions saved first. `main/02` is refused without `-AtCutover`;
+`msdb/01` (mailbox password) and `main/13` (a report) are run by hand in SSMS. Logs and summary:
+`database\logs\cutover-<time>`. Exit code 0 only when every step succeeded.
+
+The 18 procedures that do not compile (MIGRATION-PLAN "Database") are broken on production already and no V4 path
+depends on them; nothing to do. (Sequences and the referenced databases are settled: section 1.1a.)
 
 **Where the databases live.** The application cut-over keeps the databases where they are. Moving them to the new
 SQL Server 2022 **Standard** server (1.1a) is a **separate change in its own window**, before or after, never the
@@ -154,6 +194,10 @@ same night:
 4. Mobile apps: their addresses are built in. Use the vendor's staging build, or an emulator / test phone whose
    hosts file points loginzed.msme.gov.in at the staging server.
 5. Rehearse the rollback too (`Install-ZedIis.ps1 -Rollback … -Apply`) and time both directions.
+6. Rehearse the database move with the comparison too (1.1a "Check the copy"), and time both snapshots: exact counts
+   on 76 GB can take a while; that decides between exact and `-Fast` on the night.
+7. Run every V4 host with its own least-privilege login (1.3 step 3) through the journeys of 2.1: the permissions were
+   tested locally with impersonation only.
 
 ## 2. Cut-over day
 
@@ -165,12 +209,12 @@ same night:
 | T−1 d | Notice on the portal and to the agencies; DBA confirms backup space; testers named | owner |
 | 0:00 | **Freeze**: put `app_offline.htm` (a "being updated" page) into each of the six old application folders. The old sites stop writing. Stop the old services' app pools too (the apps get errors for the window) | server team |
 | 0:05 | Copy-only backups of the three databases. `appcmd add backup "before-v4"`. Copy each old application's `web.config`, and the site-level ZED-* request rules (LIVE-HARDENING §1) to a safe folder | DBA, server team |
-| 0:20 | Remaining database scripts of 1.4 (normally only checks: "nothing to change") | DBA |
+| 0:20 | `Invoke-ZedDatabaseScripts.ps1 -Server … -Apply` (migrations, all "ok"; the fix previews should show "nothing to change" for the fixes applied earlier). Keep the log folder with the cut-over records | DBA |
 | 0:30 | **Remove the ZED-* request rules** (LIVE-HARDENING) from the site level. They target the old code and some match V4 addresses: ZED-A03 blocks `/Login…` (V4's staff sign-in), ZED-C01 blocks `/Pay/SubmitZeroPaymentDetails` (served by V4 to the app). V4 has none of the old actions they protect. Keep the copy for a rollback | server team |
 | 0:35 | `Install-ZedIis.ps1 -Package … -Settings … ` (dry run; read it), then the same with `-Apply`. Note the rollback file it writes. Remove the `app_offline.htm` files of the old folders (they are no longer served) | server team |
-| 0:50 | `fixes/main/02_sp_get_user_details_master_passwords.sql` (V4 now serves the Udyami Bharat hand-over) | DBA |
+| 0:50 | `Invoke-ZedDatabaseScripts.ps1 -Server … -Apply -SkipMigrations -AtCutover -ApplyFixes 'main/02_sp_get_user_details_master_passwords'` (V4 now serves the Udyami Bharat hand-over) | DBA |
 | 0:55 | `Test-ZedDeployment.ps1 -BaseUrl https://loginzed.msme.gov.in`: **0 failures** required | server team |
-| 1:00 | Zed.Jobs running (`dbo.V4JobRuns`, `dbo.V4MailOutbox` drain) and Agent jobs off, if not done earlier | DBA |
+| 1:00 | Zed.Jobs running (`dbo.V4JobRuns`, `dbo.V4MailOutbox` drain) and Agent jobs off, if not done earlier; in the same step `Invoke-ZedDatabaseScripts.ps1 -Server … -Apply -SkipFixes -IncludeMailOutbox` (0003) | DBA |
 | 1:05 | Disable the Agent job that runs SP_JOB_TO_CREATE_RENAMING_BATCH_FILES; enable `Jobs:FolderRename` in Report mode; compare its log with what the old .bat would contain, then switch it to Apply (can be done in the following days) | DBA |
 | 1:05 | Functional checks (below) | testers |
 | 2:30 | **Go / no-go** (2.2). Go: announce. No-go: rollback (section 3) | owner |

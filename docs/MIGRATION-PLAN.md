@@ -103,7 +103,10 @@ Local copies are built from the schema scripts by `database/setup.ps1` (details 
   Professional copy without its two table types (5 of its own procedures do not compile locally; ZED does not use
   them): decided not to pursue either, since production keeps the real databases.
 - **18 procedures do not compile against the current tables** (they reference dropped/renamed columns), so they
-  are already broken in production; list in `database/README.md`. Check whether any screen still uses them.
+  are already broken in production; list in `database/README.md`. **Checked: no V4 path depends on them.** V4 calls
+  two of the names: `SP_SA_GET_REG_DETAILS` only from a hotel self-assessment leftover no app calls (it answers `{}`
+  as the old action did), and `SP_APP_MSME_INSERT_TECHNOLOGY_UPGRADATION` only on the main portal, where it compiles
+  (it is broken in ZED_SURVEILLANCE only).
 - **Agent jobs and Database Mail: done** (the production export is in Zed.Jobs, docs/JOBS.md; the old instance runs
   in IST, as `Jobs:TimeZone`). The reporting profile moves from the vendor's mailbox to dev.zed@qcin.org
   (`database/fixes/msdb/01_report_profile_qci_mailbox.sql`, SECURITY-FINDINGS #130).

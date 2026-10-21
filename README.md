@@ -188,5 +188,6 @@ addresses (`/`, `/Consultancy`, `/surveillance` and the three mobile service pat
 server-side copy of `deploy\settings.example.json`. `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks it.
 Hosts refuse to start with missing settings outside Development; `/api/health/ready` and `/health/ready`
 report database readiness. Migrations `database/migrations/0001`–`0009` and the reviewed `database/fixes`
-scripts go first. Runbook, rollback and decommission: `docs/CUTOVER.md`; passwords: `docs/PASSWORDS.md`;
+scripts go first (`deploy\Invoke-ZedDatabaseScripts.ps1` runs them in order; `database/security/` creates the
+least-privilege logins; `deploy\Compare-ZedDatabases.ps1` checks a database move). Runbook, rollback and decommission: `docs/CUTOVER.md`; passwords: `docs/PASSWORDS.md`;
 jobs: `docs/JOBS.md`; mobile: `docs/MOBILE-API.md`.
