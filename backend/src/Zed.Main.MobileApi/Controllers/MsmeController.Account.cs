@@ -34,8 +34,10 @@ public sealed partial class MsmeController
             return Fail("Too many failed attempts. Please try again after 15 minutes.");
 
         var user = (await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS_BY_USER_ID", new { UserId = userName }, ct)).FirstRow(0);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
         if (user.Count == 0 || user.Int("RoleId") != MsmeRoleId || !user.ContainsKey("Password") ||
-            !LegacyPasswords.MatchesStored(user, request.oldPassword))
+            !await passwords.VerifyCurrentAsync(userName, request.oldPassword,
+                LegacyPasswords.MatchesStored(user, request.oldPassword), ct))
         {
             throttle.Failed(MobileApps.Msme, userName);
             return Fail("Invalid Old Password.");
@@ -46,8 +48,9 @@ public sealed partial class MsmeController
             return Fail(policyError);
 
         var userId = user.Text("UserId") is { Length: > 0 } id ? id : userName;
+        await passwords.SetAsync(userId, request.newPassword!, ct);
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @NewPassword WHERE UserId = @UserId AND RoleId = 5",
-            new { NewPassword = request.newPassword, UserId = userId }, ct);
+            new { NewPassword = passwords.StoredValueFor(request.newPassword!), UserId = userId }, ct);
         log.LogInformation("App password change for {UserId}", userId);
 
         await SendMailAsync<MsmePasswordChangedEmail>(user.Text("Email"), "New Login Details - " + userName, new Dictionary<string, object?>

@@ -168,9 +168,10 @@ public sealed class StaffAssessorsController(
         if (professional is null) return this.Problem400(message!);
 
         var password = SecureRandom.Password();
+        var stored = Passwords.StoredValueFor(password);
         var parameters = host.IsConsultancy()
-            ? ConsultancyParameters(values!, null, ConsultancyUsers.ConsultantRole, professional.Name, professional.Email, professional.MobileNo, password, cert, mail)
-            : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, password, type, cert, mail);
+            ? ConsultancyParameters(values!, null, ConsultancyUsers.ConsultantRole, professional.Name, professional.Email, professional.MobileNo, stored, cert, mail)
+            : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, stored, type, cert, mail);
         return await InsertAsync(parameters, professional.Name, professional.Email, professional.MobileNo, password,
             type == StaffUserRules.AssessorTypeBronze, type!, ct);
     }
@@ -192,9 +193,12 @@ public sealed class StaffAssessorsController(
         if (valuesError is not null) return this.Problem400(valuesError);
 
         var password = SecureRandom.Password();
-        return await InsertAsync(ConsultancyParameters(values!, null, ConsultancyUsers.TechnicalExpertRole, name!, mail!, mobile, password, null, null),
+        return await InsertAsync(ConsultancyParameters(values!, null, ConsultancyUsers.TechnicalExpertRole, name!, mail!, mobile, Passwords.StoredValueFor(password), null, null),
             name!, mail!, mobile, password, bronze: false, ConsultancyUsers.TechnicalExpert, ct);
     }
+
+    /// <summary>Hashes for the passwords set here (docs/PASSWORDS.md); <c>password</c> below is the one mailed, the procedure gets its stored value.</summary>
+    private PasswordStore Passwords => PasswordStore.For(db, HttpContext.RequestServices);
 
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
@@ -215,6 +219,7 @@ public sealed class StaffAssessorsController(
             return this.Problem400("The assessor could not be created. Please try again.");
         }
         log.LogInformation("Assessor {NewUserId} ({Type}) created by agency {Actor}", newId, type, UserId);
+        await Passwords.SetAsync(newId!, password, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId

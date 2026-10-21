@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddZedPlatform(builder.Configuration, ZedDatabases.Surveillance, authCookieName: "zed.surveillance");
 builder.AddPortal(PortalSystem.Surveillance);
+builder.EnsureZedConfiguration(PortalSystem.Surveillance, ZedHostKind.Portal);
 
 var app = builder.Build();
 // The old portal ran as the IIS application under Portal:PathBase (/Consultancy, /surveillance); links in

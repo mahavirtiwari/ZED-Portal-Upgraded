@@ -1,0 +1,19 @@
+job,step_id,step_name,subsystem,database_name,on_success_action,on_success_step_id,on_fail_action,on_fail_step_id,command
+ZED - Update latest certification,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_FOR_UPDATE_LATEST_CERTIFICATION
+ZED - Surveillance reminder mails,1,First,TSQL,ZEDCS_V2_LIVE,3,0,2,0,EXEC dbo.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL
+ZED - Surveillance reminder mails,2,Reminder 1,TSQL,ZEDCS_V2_LIVE,3,0,3,0,EXEC dbo.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM1
+ZED - Surveillance reminder mails,3,Reminder 2,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM2
+ZED - Agency status counts,1,Run,TSQL,master,1,0,2,0,EXEC [ZEDCS_V2_LIVE].[dbo].[SP_SEND_MAIL_STATUS_COUNTS_AGENCY];
+ZED - ERP reconciliation,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXECUTE Sp_Daily_ERP_Auto_Reconciliation
+SURV - Insert surveillance data,1,Data,TSQL,ZED_SURVEILLANCE,3,0,2,0,EXEC dbo.SP_JOB_FOR_INSERT_SURVEILLANCE_DATA
+SURV - Insert surveillance data,2,Bronze data,TSQL,ZED_SURVEILLANCE,1,0,2,0,EXEC dbo.SP_JOB_FOR_INSERT_BRONZE_SURVEILLANCE_DATA
+SURV - Bronze by state ASSAM,1,Run,TSQL,ZED_SURVEILLANCE,1,0,2,0,EXEC dbo.SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND_BY_STATE_DISTRICT @StateName = N'ASSAM'
+ZED - Website counts,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,SET NOCOUNT ON;{LF}-- nightly counts{LF}EXEC dbo.SP_DAILY_RUN_WEB_SITE_COUNTS
+ZED - Renaming batch files,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_TO_CREATE_RENAMING_BATCH_FILES
+ZED - Cleanup temp,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,"DELETE FROM dbo.TempUploads WHERE CreatedOn < DATEADD(day, -7, GETDATE()); EXEC dbo.SP_DAILY_RUN_WEB_SITE_COUNTS"
+ZED - Copy backup files,1,Copy,CmdExec,NULL,1,0,2,0,robocopy D:\Backup \\backupserver\zed /MIR
+ZED - First Monday report,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_SEND_MAIL_STATUS_COUNTS_AGENCY
+ZED - Expire certificates,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_TO_UPDATE_3YEARS_COMPLETED_TO_EXPIRED 1
+ZED - ERP push,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.Sp_Daily_ERP_Auto_Reconciliation @ApiKey = 'sample-not-a-real-key'
+ZED - Manual re-certification,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_ENABLE_FOR_RE_CERTIFICATION
+ZED - Old withdrawal mails,1,Run,TSQL,ZEDCS_V2_LIVE,1,0,2,0,EXEC dbo.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW

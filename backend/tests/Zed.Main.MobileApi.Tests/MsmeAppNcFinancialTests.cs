@@ -180,6 +180,27 @@ public sealed class MsmeAppFinancialTests : MsmeAppTestBase
     }
 
     [Fact]
+    public async Task SubmitFinancialData_computes_the_eligible_amount_and_ignores_the_apps()
+    {
+        Certified();
+        var claim = Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"1000.80\",\"EligibleAmount\":\"999999\"");
+        AssertOk(JsonDocument.Parse(await (await Client.PostAsync("/Msme/SubmitFinancialData", Json(claim))).Content.ReadAsStringAsync()).RootElement);
+        var args = Args("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE");
+        Assert.Equal("1000.8", FakeSql.Arg(args, "AmountPaid"));
+        Assert.Equal("750", FakeSql.Arg(args, "EligibleAmount"));
+
+        Host.Sql.Calls.Clear();
+        AssertOk(JsonDocument.Parse(await (await Client.PostAsync("/Msme/SubmitFinancialData",
+            Json(Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"900000\"")))).Content.ReadAsStringAsync()).RootElement);
+        Assert.Equal("50000", FakeSql.Arg(Args("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"), "EligibleAmount"));
+
+        Host.Sql.Calls.Clear();
+        var bad = await Client.PostAsync("/Msme/SubmitFinancialData", Json(Claim.Replace("\"AmountPaid\":\"1000\"", "\"AmountPaid\":\"abc\"")));
+        AssertFail(JsonDocument.Parse(await bad.Content.ReadAsStringAsync()).RootElement, "Invalid Details.");
+        Assert.Empty(CallsTo("SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE"));
+    }
+
+    [Fact]
     public async Task SubmitFinancialData_needs_a_completed_certification_and_maps_the_procedures_refusal()
     {
         Certified(null);

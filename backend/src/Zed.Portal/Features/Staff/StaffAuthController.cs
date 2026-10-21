@@ -29,7 +29,9 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             return this.Problem400("Please enter your User ID and password.");
         if (!await captcha.VerifyAsync(req.CaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), ct))
             return this.Problem400("Invalid Captcha.");
-        var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS", new { UserId = req.UserId.Trim(), req.Password }, ct);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(req.UserId.Trim(), req.Password, ct);
+        var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS", new { UserId = req.UserId.Trim(), Password = login.ProcedurePassword }, ct);
         var row = sets[0].FirstOrDefault();
         if (row is null)
         {
@@ -37,9 +39,9 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             var message = sets.Scalar(1);
             return this.Problem400(string.IsNullOrEmpty(message) || message.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase) ? "Invalid credentials." : message);
         }
-        if (!LegacyPasswords.MatchesStored(row, req.Password))
+        if (!await passwords.CompleteLoginAsync(login, row, ct))
         {
-            log.LogWarning("Blocked staff login with a procedure master password for {UserId}", req.UserId);
+            log.LogWarning("Blocked staff login for {UserId}: the password is not the account's own", req.UserId);
             return this.Problem400("Invalid credentials.");
         }
 

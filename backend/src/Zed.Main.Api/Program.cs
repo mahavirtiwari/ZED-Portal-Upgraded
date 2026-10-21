@@ -7,6 +7,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddZedPlatform(builder.Configuration, ZedDatabases.Main, authCookieName: "zed.main");
 builder.AddPortal(PortalSystem.Main);
+builder.EnsureZedConfiguration(PortalSystem.Main, ZedHostKind.Portal);
 
 var app = builder.Build();
 app.UseZedPlatform();

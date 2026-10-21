@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <!-- The fake password table of the main tests (migration 0005). -->
+    <Compile Include="..\Zed.Main.Api.Tests\FakePasswords.cs" Link="Shared\FakePasswords.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,8 +1,10 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,8 +31,8 @@ public static class ZedHostingExtensions
     {
         services.AddControllers(o => o.Filters.AddService<ValidateAntiforgeryFilter>());
         services.AddZedAuthentication(authCookieName);
+        services.AddZedDataProtection(config, applicationName: authCookieName);
         services.AddZedServices(config, defaultDatabase);
-        services.AddHealthChecks();
         return services;
     }
 
@@ -60,8 +62,9 @@ public static class ZedHostingExtensions
         services.AddSingleton<IBackgroundWork>(sp => sp.GetRequiredService<BackgroundWorkQueue>());
         services.AddHostedService(sp => sp.GetRequiredService<BackgroundWorkQueue>());
 
-        // Single server: in-memory. For a web farm switch to AddDistributedSqlServerCache.
-        services.AddDistributedMemoryCache();
+        // Single server: in memory. Several servers: Cache:SqlServerTable.
+        services.AddZedDistributedCache(config, defaultDatabase);
+        services.AddHealthChecks().AddCheck<DatabaseHealthCheck>("database", tags: [DatabaseHealthCheck.Tag]);
 
         services.AddRateLimiter(o =>
         {
@@ -92,10 +95,21 @@ public static class ZedHostingExtensions
         app.UseXsrfCookie();
 
         app.MapControllers();
-        app.MapHealthChecks("/api/health");
+        app.MapZedHealthChecks("/api/health");
         // Unknown API routes are 404s; any other path is an Angular client-side route.
         app.MapFallback("/api/{**rest}", () => Results.NotFound());
         app.MapFallbackToFile("index.html");
+        return app;
+    }
+
+    /// <summary>
+    /// <c>{path}</c>: liveness, the process answers (no checks run). <c>{path}/ready</c>: the database answers too.
+    /// Both reply with the status word only.
+    /// </summary>
+    public static IEndpointRouteBuilder MapZedHealthChecks(this IEndpointRouteBuilder app, string path)
+    {
+        app.MapHealthChecks(path, new HealthCheckOptions { Predicate = _ => false });
+        app.MapHealthChecks(path + "/ready", new HealthCheckOptions { Predicate = c => c.Tags.Contains(DatabaseHealthCheck.Tag) });
         return app;
     }
 }

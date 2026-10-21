@@ -29,21 +29,62 @@ public sealed class JobsOptions
     public List<JobDefinition> Schedules { get; set; } = [];
 }
 
-/// <summary>One former SQL Agent job: a procedure without parameters, run on a schedule.</summary>
+/// <summary>
+/// One former SQL Agent job: one procedure (<see cref="Procedure"/>) or several run in order (<see cref="Steps"/>),
+/// on a schedule. A schedule is DailyAt or EveryMinutes, optionally limited to DaysOfWeek or DaysOfMonth.
+/// </summary>
 public sealed class JobDefinition
 {
     public string Name { get; set; } = "";
 
-    /// <summary>Connection string name: Main, Consultancy or Surveillance.</summary>
+    /// <summary>Connection string name: Main, Consultancy or Surveillance. Also the default for the steps.</summary>
     public string Database { get; set; } = "Main";
 
+    /// <summary>A one-step job's procedure. Leave empty when <see cref="Steps"/> is used.</summary>
     public string Procedure { get; set; } = "";
+
+    /// <summary>Fixed parameter values of <see cref="Procedure"/>, by name (with or without @). Converted to the
+    /// procedure's declared types (int, date "yyyy-MM-dd", ...); "{NULL}" passes NULL.</summary>
+    public Dictionary<string, string?> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Several procedures run in order; the job stops at the first failure (Agent's "quit reporting
+    /// failure") unless that step has ContinueOnFailure.</summary>
+    public List<JobStep> Steps { get; set; } = [];
 
     /// <summary>Local times of day, "HH:mm".</summary>
     public List<string> DailyAt { get; set; } = [];
 
-    /// <summary>Alternatively, run every N minutes (from midnight).</summary>
+    /// <summary>Alternatively, run every N minutes (1 to 1440), from WindowStart (default midnight) up to WindowEnd.</summary>
     public int? EveryMinutes { get; set; }
 
+    /// <summary>With EveryMinutes: first run of the day, "HH:mm" (Agent's active_start_time). Default 00:00.</summary>
+    public string? WindowStart { get; set; }
+
+    /// <summary>With EveryMinutes: no run after this time, "HH:mm" (Agent's active_end_time). Default 23:59.</summary>
+    public string? WindowEnd { get; set; }
+
+    /// <summary>Only on these days ("Monday", ...). Empty = every day.</summary>
+    public List<string> DaysOfWeek { get; set; } = [];
+
+    /// <summary>Only on these days of the month (1 to 31; a day the month does not have is skipped). Empty = every day.</summary>
+    public List<int> DaysOfMonth { get; set; } = [];
+
     public bool Enabled { get; set; }
+
+    /// <summary>Free text for the people editing the settings (where the entry came from); not used.</summary>
+    public string? Note { get; set; }
+}
+
+public sealed class JobStep
+{
+    /// <summary>Connection string name; empty = the job's Database.</summary>
+    public string? Database { get; set; }
+
+    public string Procedure { get; set; } = "";
+
+    /// <inheritdoc cref="JobDefinition.Parameters"/>
+    public Dictionary<string, string?> Parameters { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>Go on with the next step when this one fails (Agent's "go to the next step" on failure).</summary>
+    public bool ContinueOnFailure { get; set; }
 }

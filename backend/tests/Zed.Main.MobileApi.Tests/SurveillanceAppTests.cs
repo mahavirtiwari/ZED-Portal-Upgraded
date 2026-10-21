@@ -35,10 +35,14 @@ public sealed class SurveillanceAppHost : IDisposable
     public FakeDevices Devices => Host.Devices;
     public Dictionary<string, string?> Settings => Host.Settings;
 
+    /// <summary>A fake of main's database (keyed "Main"), for the accounts copied from main; set before the first call.</summary>
+    public FakeSql? Main { get; set; }
+
     public HttpClient Client => _client ??= (_factory = Host.WithWebHostBuilder(b => b.ConfigureTestServices(s =>
     {
         s.RemoveAll<ISqlExecutor>();
         s.AddSingleton<ISqlExecutor>(Sql);
+        if (Main is not null) s.AddKeyedSingleton<ISqlExecutor>(ZedDatabases.Main, Main);
     }))).CreateClient();
 
     public async Task<(JsonElement Body, HttpStatusCode Status)> Send(string path, HttpContent content)
@@ -399,5 +403,40 @@ public sealed class SurveillanceAppTests : IDisposable
         var r = await _t.Client.GetAsync("/Surveillance/GetEsgChecklist");
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal("application/json", r.Content.Headers.ContentType?.MediaType);
+    }
+    // ------------------------------------------------------------------ Accounts copied from main (#111, docs/PASSWORDS.md)
+
+    [Fact]
+    public async Task Dual_surveillance_login_keeps_the_copied_password_and_does_not_ask_main()
+    {
+        var main = new FakeSql();
+        _t.Main = main;
+        var own = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        own.Add(Assessor, "3", "pw");
+        LoginProc();
+        AssertOk(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "pw", deviceInfo = new { deviceId = "dev-1" } }));
+        Assert.Empty(main.Calls);
+        Assert.True(own.HashMatches(Assessor, "pw"));
+    }
+
+    [Fact]
+    public async Task After_the_old_sites_a_copied_account_signs_in_with_mains_password()
+    {
+        var main = new FakeSql();
+        var master = new global::Zed.TestSupport.FakePasswords().Attach(main.Procs);
+        master.Accounts[Assessor] = new global::Zed.TestSupport.FakePasswords.Account("3", global::Zed.Core.Security.PasswordStore.NewReplacement(), global::Zed.Core.Security.PasswordStore.Hash("Main#Pass2"));
+        _t.Main = main;
+        var own = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        own.Add(Assessor, "3", "pw"); // the stale clear-text copy made when main created the account
+        _t.Settings[global::Zed.Core.Security.PasswordStore.Setting] = "HashOnly";
+        LoginProc();
+
+        AssertFail(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "pw", deviceInfo = new { deviceId = "dev-1" } }), "Invalid Credentials.");
+        AssertOk(await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "Main#Pass2", deviceInfo = new { deviceId = "dev-1" } }));
+        Assert.Equal("pw", SurveillanceAppHost.Arg(_t.CallsTo("SP_APP_SURVEILLANCE_CHECK_LOGIN").Last().Args, "Password"));
+        var write = Assert.Single(own.Writes);
+        Assert.Null(write.Hash); // main's hash stays the password; the copy is only replaced
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(write.Replace));
+        Assert.Empty(master.Writes);
     }
 }

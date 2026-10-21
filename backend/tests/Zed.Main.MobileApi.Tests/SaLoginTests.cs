@@ -165,4 +165,28 @@ public sealed class SaLoginTests : IDisposable
         Assert.Equal("Download new app from store.", e.GetProperty("errorMessage").GetString());
         Assert.Empty(_t.CallsTo("SP_APP_SA_CHECK_LOGIN"));
     }
+    [Fact]
+    public async Task Sa_login_records_a_hash_under_Dual()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        AssertOkStatus(await Login(Password));
+        Assert.True(passwords.HashMatches("ZEDAS0001", Password));
+    }
+
+    [Fact]
+    public async Task Sa_login_under_Migrate_moves_an_account_without_a_hash_and_then_needs_the_hash()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        _t.Settings[global::Zed.Core.Security.PasswordStore.Setting] = "Migrate";
+        passwords.Add("ZEDAS0001", "3", Password);
+        AssertOkStatus(await Login(Password));
+        var write = Assert.Single(passwords.Writes);
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(write.Replace));
+        Assert.True(passwords.HashMatches("ZEDAS0001", Password));
+        // The master value the procedure accepts is no longer sent to it.
+        Assert.Equal("0", (await Login("MASTER")).GetProperty("status").GetString());
+        Assert.Equal(global::Zed.Core.Security.PasswordStore.RefusedValue, FakeSql.Arg(_t.Fake.Calls.Last(c => c.Name == "SP_APP_SA_CHECK_LOGIN").Args, "Password"));
+    }
+
+    private static void AssertOkStatus(JsonElement e) => Assert.Equal("1", e.GetProperty("status").GetString());
 }

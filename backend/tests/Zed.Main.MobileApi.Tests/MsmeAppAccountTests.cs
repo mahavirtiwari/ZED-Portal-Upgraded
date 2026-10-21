@@ -280,4 +280,25 @@ public sealed class MsmeAppAccountTests : MsmeAppTestBase
         Assert.Equal("INV1", e.GetProperty("Table3")[0].GetProperty("TadaInvoiceNo").GetString());
         Assert.False(e.GetProperty("Table3")[0].TryGetProperty("Password", out _));
     }
+    [Fact]
+    public async Task ChangePassword_records_the_hash_and_after_the_old_sites_stores_a_random_value()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(Host.Sql.Procs);
+        UserRow();
+        Assert.Equal("1", (await ChangePassword(OldPassword, NewPassword)).GetProperty("status").GetString());
+        Assert.True(passwords.HashMatches(ZedId, NewPassword));
+        Assert.Equal(NewPassword, FakeSql.Arg(Host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE Users SET Password", StringComparison.Ordinal)).Args, "NewPassword"));
+
+        // HashOnly: the old password is checked against the hash (the row now holds a random value).
+        global::Zed.TestSupport.FakePasswords.SetMode(Host.Services, global::Zed.Core.Security.PasswordMode.HashOnly);
+        Host.Sql.Procs["SP_GET_USER_DETAILS_BY_USER_ID"] = _ => FakeSql.Sets(
+            [new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["UserId"] = ZedId, ["Password"] = global::Zed.Core.Security.PasswordStore.NewReplacement(), ["RoleId"] = 5, ["Email"] = "unit@example.com", ["UserName"] = "Acme Pvt Ltd",
+            }]);
+        AssertFail(await ChangePassword(OldPassword, "Third#Pass3"), "Invalid Old Password.");
+        Assert.Equal("1", (await ChangePassword(NewPassword, "Third#Pass3")).GetProperty("status").GetString());
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(FakeSql.Arg(Host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE Users SET Password", StringComparison.Ordinal)).Args, "NewPassword")));
+        Assert.True(passwords.HashMatches(ZedId, "Third#Pass3"));
+    }
 }

@@ -118,8 +118,10 @@ public sealed partial class ConsultancySAController(
         if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(request.password)) return LoginFail(InvalidCredentials);
         if (throttle.IsLocked(App, userId)) return LoginFail(TooManyAttempts);
 
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(userId, request.password, ct);
         var sets = await db.QueryProcMultipleAsync("SP_APP_SA_CHECK_LOGIN_V2",
-            new { UserId = userId, Password = request.password, ZedId = request.zedId }, ct);
+            new { UserId = userId, Password = login.ProcedurePassword, ZedId = request.zedId }, ct);
 
         var first = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
         if (first is null)
@@ -136,8 +138,8 @@ public sealed partial class ConsultancySAController(
             return LoginFail(message);
         }
 
-        // The Users row: the password must be the account's own (LegacyPasswords; the V2 procedure compares it too).
-        if (!LegacyPasswords.MatchesStored(first, request.password) || first.Text("RoleId") != "3")
+        // The Users row: the password must be the account's own (PasswordStore; the V2 procedure compares it too).
+        if (first.Text("RoleId") != "3" || !await passwords.CompleteLoginAsync(login, first, ct))
         {
             log.LogWarning("Blocked consultant app login for {UserId}: password or role does not match the Users row", userId);
             throttle.Failed(App, userId);

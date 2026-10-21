@@ -241,5 +241,7 @@ The schema scripts are exports of the live procedures, which contain hard-coded 
 (SECURITY-FINDINGS #1, #27, #48). Before the scripts were committed these were replaced:
 master passwords in the login procedures by `#REMOVED-HARDCODED-PASSWORD#`, and the Twilio
 account SID, API key and secret in `SP_APP_MSME_REMOTE_CHECK_LOGIN` by `REDACTED`.
+Every quoted value inside a comment was also replaced by `'<redacted>'`: the procedures' example calls
+held user ids with passwords (#96) and real ZED IDs. Only comments changed; the code is identical.
 A database built from these scripts therefore has no working master password, which is intended.
 The live databases still contain the real values until those procedures are fixed.

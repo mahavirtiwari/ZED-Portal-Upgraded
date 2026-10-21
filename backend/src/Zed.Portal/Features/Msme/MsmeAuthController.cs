@@ -33,13 +33,15 @@ public sealed class MsmeAuthController(
         if (!await captcha.VerifyAsync(req.CaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), ct))
             return this.Problem400("Invalid Captcha.");
         var userId = req.UserId.Trim();
-        var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS", new { UserId = userId, req.Password }, ct);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(userId, req.Password, ct);
+        var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS", new { UserId = userId, Password = login.ProcedurePassword }, ct);
         var row = sets[0].FirstOrDefault();
         if (row is null)
             return this.Problem400(sets.Scalar(1) ?? "Invalid credentials.");
-        if (!LegacyPasswords.MatchesStored(row, req.Password))
+        if (!await passwords.CompleteLoginAsync(login, row, ct))
         {
-            log.LogWarning("Blocked login with a procedure master password for {UserId}", userId);
+            log.LogWarning("Blocked login for {UserId}: the password is not the account's own", userId);
             return this.Problem400("Invalid credentials.");
         }
 
@@ -123,9 +125,11 @@ public sealed class MsmeAuthController(
 
         var userId = user.Text("UserId");
         // Legacy UserHelper.UpdateResetPassword used this inline UPDATE. The reset code is now
-        // cleared as well so a link cannot be reused.
+        // cleared as well so a link cannot be reused. The hash is written first (docs/PASSWORDS.md).
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        await passwords.SetAsync(userId, req.NewPassword, ct);
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password, PwdCode = NULL WHERE UserId = @UserId AND PwdCode = @PwdCode",
-            new { Password = req.NewPassword, UserId = userId, PwdCode = req.Code }, ct);
+            new { Password = passwords.StoredValueFor(req.NewPassword), UserId = userId, PwdCode = req.Code }, ct);
 
         if (user.Text("Email") is { Length: > 0 } to)
         {

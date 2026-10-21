@@ -199,6 +199,9 @@ public sealed partial class MsmeRegistrationController(
         string? P(string k) => Value(plant, k);
         string? A(string k) => Value(activity, k);
 
+        // The procedure stores (and echoes) the value it is given; the pledge mail carries the generated password.
+        var initialPassword = SecureRandom.Password();
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
         var result = await db.QueryProcMultipleAsync("SP_MSME_INSERT_UDYAM_DETAILS", new
         {
             IpAddress = ClientIp,
@@ -223,7 +226,7 @@ public sealed partial class MsmeRegistrationController(
             LgDistrictCode = B("LG_DT_Code"), Pincode = B("PINCode"), PreviousEMType = B("PreviousEMType"),
             PreviousEMNumber = B("PreviousEMNumber"), TotalEmp = B("TotalEmp"), InvestmentCost = B("InvestmentCost"),
             DicName = B("Dic_Name"), AppliedDate = B("AppliedDate"),
-            Password = SecureRandom.Password(),
+            Password = passwords.StoredValueFor(initialPassword),
             ZedCertified = P("ZedCertified") is "1" or "true" or "True" or "TRUE",
             UamNumber = P("UAM_No"), IncorporationDate = B("IncorporationDate"), WhetherProdCommenced = B("WhetherProdCommenced"),
         }, ct);
@@ -235,13 +238,14 @@ public sealed partial class MsmeRegistrationController(
         }
 
         var zedId = row.Text("ZedId");
+        await passwords.SetAsync(zedId, initialPassword, ct);
         var unitName = P("UnitName") ?? "";
         await sessions.RemoveAsync(s.Id, ct);
 
         var emailSent = await SendPledgeCertificate(new PledgeCertificateData(
             zedId, string.IsNullOrEmpty(unitName) ? B("EnterpriseName") ?? "" : unitName, row.Text("CertificateNo"),
             row.Text("DateOfPledge"), row.Text("Address"), B("UdyogAadharNo") ?? "", row.Text("QrCodeNo")),
-            unitName, row.Text("Password"), s.Email, ct);
+            unitName, initialPassword, s.Email, ct);
 
         await HttpContext.SignInZedUserAsync(new ZedUser(zedId, B("EnterpriseName") ?? "", (int)UserRole.Msme,
             B("EmailId"), s.MobileNo, B("State_Id"), B("District_Id"), unitName));

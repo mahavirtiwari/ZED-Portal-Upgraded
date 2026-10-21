@@ -75,13 +75,15 @@ public sealed class SAController(
         if (throttle.IsLocked(MobileApps.SiteAssessor, assessorId))
             return LegacyJson(new AssessmentDetails { status = "0", errorMessage = TooManyAttempts });
 
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(assessorId, request.password, ct);
         var sets = await db.QueryProcMultipleAsync("SP_APP_SA_CHECK_LOGIN",
-            new { ZedId = request.zedId, UserId = assessorId, Password = request.password }, ct);
+            new { ZedId = request.zedId, UserId = assessorId, Password = login.ProcedurePassword }, ct);
 
         // Set 0 is the Users row (RoleId 3, SiteVerification 1, active). The procedure family has
         // hard-coded master passwords, so the typed password must equal the row's own.
         var user = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
-        var masterPassword = user is not null && !LegacyPasswords.MatchesStored(user, request.password);
+        var masterPassword = user is not null && !await passwords.CompleteLoginAsync(login, user, ct);
         if (user is null || masterPassword || user.Text("RoleId") != "3")
         {
             if (masterPassword) log.LogWarning("Blocked SA app login with a procedure master password for {UserId}", assessorId);

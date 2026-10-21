@@ -1,0 +1,78 @@
+{
+  "_comment": "Copy to the server (e.g. D:\\ZedV4\\settings.json), fill in, restrict to administrators. Never commit the filled copy. Keys are environment variable names: ':' becomes '__'. Sections are merged in order: 'Common' (every application), then 'Portals' (main, Consultancy, Surveillance) or 'Mobile' (the three mobile deployments), then the application's own section, which wins. Install-ZedIis.ps1 adds ASPNETCORE_ENVIRONMENT=Production, DataProtection__KeysPath (per application) and Mobile__System itself. Each host refuses to start and lists what is missing (docs/CUTOVER.md).",
+  "Common": {
+    "ConnectionStrings__Main": ""
+  },
+  "Portals": {
+    "Email__Profiles__Default__Host": "",
+    "Email__Profiles__Default__Port": "587",
+    "Email__Profiles__Default__From": "",
+    "Email__Profiles__Default__UserName": "",
+    "Email__Profiles__Default__Password": "",
+    "Recaptcha__SiteKey": "",
+    "Recaptcha__SecretKey": ""
+  },
+  "Mobile": {
+    "Mobile__Culture": "en-US",
+    "Mobile__DeviceBinding": "Monitor"
+  },
+  "Main": {
+    "_comment": "IIS application /. Consultancy and Surveillance connections: a read-only login (EXECUTE on the report procedures).",
+    "ConnectionStrings__Consultancy": "",
+    "ConnectionStrings__Surveillance": "",
+    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in",
+    "Portal__StorageRoot": "",
+    "Portal__AssessmentStorageRoot": "",
+    "Udyam__AccessKey": "",
+    "CcAvenue__MerchantId": "",
+    "CcAvenue__AccessCode": "",
+    "CcAvenue__WorkingKey": "",
+    "CcAvenue__ReconciliationWorkingKey": "",
+    "CcAvenue__MobileAccessCode": "",
+    "CcAvenue__MobileWorkingKey": "",
+    "ProteanGstin__Url": "",
+    "ProteanGstin__UserId": "",
+    "ProteanGstin__Password": "",
+    "Twilio__AccountSid": "",
+    "Twilio__ApiKey": "",
+    "Twilio__ApiSecret": "",
+    "Erp__Enabled": "false",
+    "UdyamiBharat__Enabled": "false"
+  },
+  "Consultancy": {
+    "_comment": "IIS application /Consultancy. StorageRoot: the same folder as main's.",
+    "ConnectionStrings__Consultancy": "",
+    "Portal__PathBase": "/Consultancy",
+    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in/Consultancy",
+    "Portal__LegacyBaseUrl": "https://loginzed.msme.gov.in/Consultancy",
+    "Portal__StorageRoot": "",
+    "Consultancy__SharedStorageRoot": ""
+  },
+  "Surveillance": {
+    "_comment": "IIS application /surveillance. StorageRoot: the same folder as main's.",
+    "ConnectionStrings__Surveillance": "",
+    "Portal__PathBase": "/surveillance",
+    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in/surveillance",
+    "Portal__LegacyBaseUrl": "https://loginzed.msme.gov.in/surveillance",
+    "Portal__StorageRoot": ""
+  },
+  "MobileMain": {
+    "_comment": "IIS application /mobileapi. StorageRoot: the old services site's folder (Photos, SaPhotos, Videos). Culture: what the old server used (docs/MOBILE-API.md).",
+    "Mobile__StorageRoot": "",
+    "Mobile__CheckMsmeVersion": "false",
+    "Mobile__MsmeVersion": "",
+    "Mobile__Twilio__AccountSid": "",
+    "Mobile__Twilio__ApiKey": "",
+    "Mobile__Twilio__ApiSecret": ""
+  },
+  "MobileConsultancy": {
+    "_comment": "IIS application /Consultancymobileapi (database ZED_CONSULTANT).",
+    "ConnectionStrings__Consultancy": "",
+    "Mobile__StorageRoot": ""
+  },
+  "MobileSurveillance": {
+    "_comment": "IIS application /surveillancemobileapi (database ZED_SURVEILLANCE).",
+    "ConnectionStrings__Surveillance": "",
+    "Mobile__StorageRoot": ""
+  }
+}

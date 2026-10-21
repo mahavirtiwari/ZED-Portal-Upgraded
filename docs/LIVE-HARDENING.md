@@ -315,6 +315,8 @@ How they work:
 
 The undo is the definition you saved before (SSMS: Script As > CREATE To > File).
 
+Scripts 01–04 (and consultancy 01–06) use the helper `#V4_FIX_PROCEDURE`; main 05–12 use `#V4_REWRITE_PROCEDURE` and surveillance 04–07 `#V4_EDIT_PROCEDURE` (token-by-token matching that ignores whitespace, case and comments). All scripts of one database can run in any order; each was tested on the local copy inside a rolled-back transaction.
+
 | Script | Fixes | What breaks |
 |---|---|---|
 | main/01_login_master_passwords | #27: SP_GET_LOGIN_DETAILS, SP_APP_MSME_CHECK_LOGIN (MSME app); credential comments in SP_APP_SA_CHECK_LOGIN | Only use of the master values. V4 already refuses them. |
@@ -330,6 +332,24 @@ The undo is the definition you saved before (SSMS: Script As > CREATE To > File)
 | surveillance/01_login_master_passwords | #27: SP_GET_USER_DETAILS (also the lockout bypass), SP_GET_LOGIN_DETAILS, SP_APP_MSME_CHECK_LOGIN, SP_APP_SURVEILLANCE_CHECK_LOGIN; comments in SP_APP_SA_CHECK_LOGIN | Only use of the master values. |
 | surveillance/02_test_amount_lists | #36 (27 ids) and a 16-id list in this DB's copy of SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS | Those units pay the real fee. |
 | surveillance/03_remote_login_twilio | #48/#110 | As main/04. |
+| main/05_mail_passwords | #35: passwords NULL in SP_EMAIL_GET_DETAILS / _FA; the unit password in 13 reminder/status job mails replaced by a fixed sentence. **Apply before enabling those jobs in Zed.Jobs.** | Old allotment mails show an empty password line. |
+| main/06_payment_procedure_defects | #38: no pending order for an already-paid level (SP_MSME_PAYMENT_BASIC_DETAILS); manual payment updates re-raise the real error | Nothing. |
+| main/07_monitoring_state_checks | #84: reject only at 7/17, send back only from 5/15 or 7/17 (NcCount 6), SaProducts remarks saved; #72: acceptance of the named, waiting milestone only | Calls in other states get an error (V4 checks first). |
+| main/08_certified_to_consultancy_test_hack | #123: one-unit test block removed from SP_MOVING_CERTIFIED_MSME_TO_CONSULTANCY | Nothing; re-run the move for that unit if it is missing in ZED_CONSULTANT. |
+| main/09_scheme_amounts_server_side | #77: FA needs a certified level; FA and TU eligible amounts computed in the procedure; TU only for a recommended technology of that certificate | Client-sent eligible amounts are ignored. |
+| main/10_incentive_api_validation | #59: fn_IsSafeInput on API V2; identical resubmissions not stored twice (V1 and V2) | Unsafe input on V2 gets 400 (as V1). |
+| main/11_da_details_from_surveillance_access | #121: SP_ASSESSMENT_DA_DETAILS with @FromSurveillance only for staff roles or the unit's surveillance agency/assessors | The executing login needs SELECT on ZED_SURVEILLANCE.dbo.MsmeCertifications. |
+| main/12_api_token_logging | #53: client name instead of the credential in the API logs and ApiIncentives.Token; optional @PurgeHistory for stored rows and expired tokens | Nothing the applications read; the purge is irreversible (back up). |
+| main/13_xp_cmdshell_report | #12: report on xp_cmdshell use; optional switch-off (@DisableXpCmdShell) | Switch-off stops the folder-rename job; decide its replacement first. |
+| consultancy/07_mail_detail_passwords | #35/#117: password columns of SP_EMAIL_GET_DETAILS, SP_EMAIL_GET_DETAILS_FA, SP_SA_GET_REG_DETAILS become NULL (same column names) | Old-site mails show an empty password ("Forgot password" instead). |
+| consultancy/08_coconsultant_exact_match_web | #121: exact co-consultant match in SP_ASSESSMENT_ALLOT_LIST, SP_ASSESSMENT_DA_DETAILS, SP_ASSESSMENT_SA_DETAILS | Access that only worked through the substring match. |
+| consultancy/09_dfo_login_allotment | #116: SP_APP_SA_CHECK_LOGIN_V2 DFO branch requires the DFO allotted to the unit (VerificationStatus 2) | A DFO signing in to another DFO's unit is refused. |
+| consultancy/10_tu_state_checks | #117/#88: state and owner checks in SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT (no role default; allotted DFO at 2, allotted CO in QC, admin reject before decision), _VALIDATE_EVIDENCES (status 2), SP_FINANCIAL_ASSESSMENT_ACCEPT_UNIT_FOR_VERIFICATION (1, or 2 with TU 4/5), _UPDATE_TECHNOLOGY_DATA and _UPDATE_ACCOUNT_DETAILS (status 4, no NEFT in process) | Out-of-order calls; state-coordinator edits of amount/account before CO approval or after the NEFT starts. |
+| consultancy/11_milestone_reject_send_back | #120/#84: SP_MONITORING_REJECT_FINAL_SUBMIT only at 15 (or 7); SP_MONITORING_SEND_BACK_TO_ASSESSOR returns when not at 15; SP_ASSESSMENT_REJECT_UNIT_FOR_SA current milestone, before allotment, once | Repeated or out-of-order calls. |
+| surveillance/04_photos_and_nc_history | #119: SP_ASSESSMENT_RA_DELETE_PHOTOS refuses an Id present in both SaPhotos and SaRequirementPhotos of the unit; SP_ASSESSMENT_RA_UPDATE_PHOTOS reads the host from UrlsMasterData instead of a hard-coded one; SP_MOVING_ONE_STEP_BACK_OF_NC renames the withdrawn round's history to `_STEPBACK` (as main) | Removing a photo whose Id collides with an evidence photo of the same unit (error shown, photo stays). Check `UrlsMasterData.UrlName` first: if it is not the portal host, "From Site Tour" evidence starts working only after 04. |
+| surveillance/05_monitoring_state_checks | #84, limits #100: SP_MONITORING_REJECT_FINAL_SUBMIT only below 6 or at 7/17; SP_MONITORING_SEND_BACK_TO_ASSESSOR only at 5/15 (NC round up to 5) or 7/17 (round 6) | Rejecting at 6, 8–16 or 99 (no page or job does). Stray send-backs now return an error. |
+| surveillance/06_mail_details_no_passwords | #35: SP_EMAIL_GET_DETAILS (Password, MsmePassword, CoAssessorPassword) and SP_EMAIL_GET_DETAILS_FA (Password) return NULL; same columns and types | Old surveillance allotment, NC and FA mails show an empty password cell. |
+| surveillance/07_payment_order_and_errors | #38: SP_MSME_PAYMENT_BASIC_DETAILS checks "already paid" before creating the order; SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS(_WITH_INFO) re-raise the real error | Nothing. A failed manual update is now reported as failed. |
 
 **Run it like this**, in SSMS, connected to the right instance:
 1. Open the script. It starts with `USE [database]`.
@@ -540,3 +560,6 @@ passwords stored in `FailedLogins` (#2).
   ZED-xx, date)" or "procedure fixed (script, date)".
 - Keep the rules until each application is decommissioned. When V4 takes over an application, its IIS application
   points at V4 and these rules no longer apply to it.
+- **Two rules block addresses V4 itself serves** on the same host: ZED-A03 (`/Login…`) and ZED-C01
+  (`/Pay/SubmitZeroPaymentDetails`). Remove them when the main IIS application points at V4, and put them back
+  if you roll back (docs/CUTOVER.md).

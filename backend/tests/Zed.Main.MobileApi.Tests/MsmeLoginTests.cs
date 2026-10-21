@@ -86,6 +86,33 @@ public sealed class MsmeLoginTests : IDisposable
         Assert.Equal("0", e.GetProperty("status").GetString());
         Assert.Contains("Too many failed attempts", e.GetProperty("errorMessage").GetString());
     }
+
+    // ------------------------------------------------------------------ Password hashes (docs/PASSWORDS.md)
+
+    [Fact]
+    public async Task Dual_app_login_records_a_hash_and_a_master_password_does_not()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_host.Sql.Procs);
+        Assert.Equal("0", (await Login("MASTER")).GetProperty("status").GetString());
+        Assert.Empty(passwords.Writes);
+        Assert.Equal("1", (await Login(Password)).GetProperty("status").GetString());
+        Assert.True(passwords.HashMatches("ZEDMSME000001", Password));
+        Assert.Null(Assert.Single(passwords.Writes).Replace);
+    }
+
+    [Fact]
+    public async Task HashOnly_app_login_checks_the_hash_and_gives_the_procedure_the_stored_value()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_host.Sql.Procs);
+        passwords.Add("ZEDMSME000001", "5", Password, hashOf: Password);
+        global::Zed.TestSupport.FakePasswords.SetMode(_host.Services, global::Zed.Core.Security.PasswordMode.HashOnly);
+        Assert.Equal("0", (await Login("MASTER")).GetProperty("status").GetString());
+        Assert.Equal(global::Zed.Core.Security.PasswordStore.RefusedValue, FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == "SP_APP_MSME_CHECK_LOGIN").Args, "Password"));
+
+        Assert.Equal("1", (await Login(Password.ToUpperInvariant())).GetProperty("status").GetString());
+        Assert.Equal(Password, FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == "SP_APP_MSME_CHECK_LOGIN").Args, "Password"));
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(passwords.Accounts["ZEDMSME000001"].Stored));
+    }
 }
 
 public sealed class MsmeVersionCheckTests : IDisposable

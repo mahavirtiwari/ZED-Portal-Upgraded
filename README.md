@@ -59,9 +59,15 @@ values, so checkout produces a request but nothing is sent to CCAvenue.
 Phase 2b: MSME assessment reports (basic information, non-conformances, site assessment and milestones)
 with photos and evidence served only to the owning MSME. Phase 3b: surveillance payment.
 
-Phase 4 (staff, in progress): staff login and role menu; dashboards, registered MSMEs, failed and received
-payments, financial support, reports (allow-listed), ZED ID history; monitoring, SA allotment, remote
-assessments; agencies, assessors and admin masters. Menu entries not migrated yet still open the old portal.
+Phase 4 (staff): staff login and role menu; dashboards, registered MSMEs, failed and received
+payments, financial support, reports (allow-listed), ZED ID history; desktop and site assessment workflows,
+monitoring and certification, remote (video) assessments; NEFT, financial assistance and incentive reviews;
+agencies, assessors and admin masters. The few items not ported are listed in `docs/MIGRATION-PLAN.md`.
+
+Phase 5 (schemes and external APIs): MSME financial assistance and technology upgradation, public incentive
+pages and template, the APIs for other systems (`ApiSecure`, `Token`, the RAMP / AP / Udyami Bharat /
+incentive-portal / ERP-invoice partner APIs), certificate verification, and the Udyami Bharat sign-in
+hand-over. Saathi and Swachh leftovers (`Webinar`, `Helpdesk`, `QueryForm`, `SelfAssessment`, …) are retired.
 
 Phase 6 (mobile): `Zed.Main.MobileApi` serves the installed apps at the old addresses and
 formats; see `docs/MOBILE-API.md`. `Mobile:System` (Main, Consultancy, Surveillance) picks the database and
@@ -97,6 +103,10 @@ sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\000
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0003_mail_outbox.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_SURVEILLANCE -i database\migrations\0003_mail_outbox.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0004_job_runs.sql
+foreach ($db in 'ZEDCS_V2_LIVE','ZED_CONSULTANT','ZED_SURVEILLANCE') {   # all three DBs
+  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0005_password_hashes.sql      # docs/PASSWORDS.md
+  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0006_distributed_cache.sql    # only used with Cache:SqlServerTable
+}
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-registration-data.sql   # eligibility data, site URL, stand-ins for missing DBs
@@ -150,6 +160,10 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `ProteanGstin:Url/UserId/Password` | `ProteanApiUrl`, `ProteanUserId`, `ProteanPassword` (GSTIN verification) |
 | `ExternalApi:TokenLifetimeMinutes/TokenRequestsPerMinute/RequestsPerMinute/MaxInvoiceBytes` | APIs for other systems (RAMP, AP state, Udyami Bharat, incentive portals, ERP invoices); partner secrets and AES keys stay in `ApiClientTokens`. Lower `TokenLifetimeMinutes` (e.g. 60) once callers' token caching is known |
 | `Mobile:*` (mobile API) | See `docs/MOBILE-API.md`: `PathBase`, `StorageRoot` (old services folder), `Culture`, `DeviceBinding`, version check, Twilio keys (were hard-coded; rotate) |
+| `Security:Passwords` (all V4 hosts, each mobile deployment too) | `Dual` (default) while any old site is live; `Migrate` from the switch-off; `HashOnly` later. Migration 0005 first; steps in `docs/PASSWORDS.md` |
+| `DataProtection:KeysPath` | Folder for the sign-in and anti-forgery keys; required outside Development; one per application; back it up (docs/CUTOVER.md) |
+| `Cache:SqlServerTable` | Optional, e.g. `dbo.V4Cache` (migration 0006): shared cache for more than one server |
+| `Jobs:Schedules` (Zed.Jobs) | The former SQL Agent jobs, filled from the Agent export with `tools/jobs/Convert-AgentJobs.ps1` and checked with `Zed.Jobs --check` (docs/JOBS.md) |
 | `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Off unless `Enabled` is true |
 
 ## Tests
@@ -161,16 +175,11 @@ cd frontend; npx ng test main --watch=false
 
 ## Deployment outline
 
-1. `npx ng build main` → copy `frontend/dist/main/browser/*` into the API's `wwwroot/`
-   (the API serves the Angular app and falls back to `index.html` for client routes).
-2. `dotnet publish backend/src/Zed.Main.Api -c Release` → host on IIS (ASP.NET Core Hosting Bundle 10) or as a Windows service.
-   Consultancy and Surveillance: `ng build consultancy` / `ng build surveillance` into the `wwwroot/` of
-   `Zed.Consultancy.Api` / `Zed.Surveillance.Api`, hosted as the IIS applications `/Consultancy` and `/surveillance`
-   with `Portal:PathBase` set to match.
-3. `dotnet publish backend/src/Zed.Main.MobileApi -c Release` → host at the old services address (same virtual folder,
-   `Mobile:PathBase`), with `Mobile:DeviceBinding` = `Monitor` first. Apply `database/migrations/*.sql` before go-live.
-4. `dotnet publish backend/src/Zed.Jobs -c Release` → Windows service; fill `Jobs:Schedules` from the old Agent jobs
-   and switch those jobs off when it starts (docs/JOBS.md).
-3. Same origin for app and API is required (cookies are `SameSite=Strict`).
-4. Run several instances only after switching `AddDistributedMemoryCache` to the SQL Server
-   distributed cache and sharing Data Protection keys.
+`deploy\Publish-Zed.ps1` builds the release package (tests, the three Angular builds into their APIs, the APIs,
+the mobile API and Zed.Jobs). `deploy\Install-ZedIis.ps1` (dry run, then `-Apply`) installs it at the old IIS
+addresses (`/`, `/Consultancy`, `/surveillance` and the three mobile service paths) with settings from a
+server-side copy of `deploy\settings.example.json`. `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks it.
+Hosts refuse to start with missing settings outside Development; `/api/health/ready` and `/health/ready`
+report database readiness. Migrations `database/migrations/0001`–`0006` and the reviewed `database/fixes`
+scripts go first. Runbook, rollback and decommission: `docs/CUTOVER.md`; passwords: `docs/PASSWORDS.md`;
+jobs: `docs/JOBS.md`; mobile: `docs/MOBILE-API.md`.

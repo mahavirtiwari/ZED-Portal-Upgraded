@@ -1,0 +1,17 @@
+job,job_enabled,schedule,schedule_enabled,freq_type,freq_interval,freq_subday_type,freq_subday_interval,freq_relative_interval,freq_recurrence_factor,active_start_date,active_end_date,active_start_time,active_end_time
+ZED - Update latest certification,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,13000,235959
+ZED - Surveillance reminder mails,1,Morning,1,4,1,1,0,0,0,20220101,99991231,90000,235959
+ZED - Surveillance reminder mails,1,Afternoon,1,4,1,1,0,0,0,20220101,99991231,150000,235959
+ZED - Agency status counts,1,Half-hourly,1,4,1,4,30,0,0,20220101,99991231,80000,200000
+ZED - ERP reconciliation,0,Two-hourly,1,4,1,8,2,0,0,20220101,99991231,0,235959
+SURV - Insert surveillance data,1,Mon and Thu,1,8,18,1,0,0,1,20220101,99991231,60000,235959
+SURV - Bronze by state ASSAM,1,First of month,1,16,1,1,0,0,1,20220101,99991231,30000,235959
+ZED - Website counts,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,500,235959
+ZED - Renaming batch files,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,230000,235959
+ZED - Cleanup temp,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,20000,235959
+ZED - Copy backup files,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,21000,235959
+ZED - First Monday report,1,Monthly first Monday,1,32,2,1,0,1,1,20220101,99991231,70000,235959
+ZED - Expire certificates,1,Nightly,1,4,1,1,0,0,0,20220101,99991231,10000,235959
+ZED - ERP push,1,Hourly,1,4,1,8,1,0,0,20220101,99991231,0,235959
+ZED - Manual re-certification,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+ZED - Old withdrawal mails,1,Nightly,1,4,1,1,0,0,0,20220101,20240101,40000,235959

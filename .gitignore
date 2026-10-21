@@ -18,3 +18,5 @@ obj-*/
 # Per-agent build slots and scratch outputs
 dist-*/
 *.eml
+# Release packages (deploy/Publish-Zed.ps1)
+publish/

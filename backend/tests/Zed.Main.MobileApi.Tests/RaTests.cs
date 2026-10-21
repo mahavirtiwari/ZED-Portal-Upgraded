@@ -169,4 +169,15 @@ public sealed class RaTests : IDisposable
         e = await _t.Json("/RA/SubmitLocation", new { userName = Zed, certificationType = "Silver", location = new { latitude = "" } });
         Assert.Equal("Invalid Location.", e.GetProperty("errorMessage").GetString());
     }
+    [Fact]
+    public async Task Ra_login_hashes_under_Dual_and_uses_the_hash_under_HashOnly()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        _t.Settings[global::Zed.Core.Security.PasswordStore.Setting] = "HashOnly";
+        passwords.Add(Zed, "5", Password, hashOf: Password);
+        Assert.Equal("0", (await Login("MASTER")).GetProperty("status").GetString());
+        Assert.Equal("1", (await Login(Password)).GetProperty("status").GetString());
+        Assert.Equal(Password, FakeSql.Arg(_t.Fake.Calls.Last(c => c.Name == "SP_APP_MSME_REMOTE_CHECK_LOGIN").Args, "Password"));
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(passwords.Accounts[Zed].Stored));
+    }
 }

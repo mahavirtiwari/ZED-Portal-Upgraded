@@ -38,6 +38,17 @@ public sealed partial class MsmeController
             return Answer(ServiceResponse.Fail(InvalidDetails));
         }
 
+        // As the web page: 75% of the amount paid (whole rupees), at most Rs. 50,000, computed here; the app's
+        // EligibleAmount is ignored (SECURITY-FINDINGS #77).
+        if (!decimal.TryParse(exp.AmountPaid, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var amountPaid)
+            || amountPaid is <= 0 or > 100_000_000)
+        {
+            log.LogWarning("Msme/SubmitFinancialData refused for {ZedId}: invalid amount paid", model.ZedId);
+            return Answer(ServiceResponse.Fail(InvalidDetails));
+        }
+        var eligible = Math.Min(decimal.Truncate(amountPaid) * 0.75m, 50_000m);
+        static string Money(decimal value) => value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
         var points = PhotoTable();
         void Add(IEnumerable<PhotoInformation?>? photos, string name)
         {
@@ -63,9 +74,9 @@ public sealed partial class MsmeController
         args.Add("AgencyOrSupplier", exp.AgencyOrSupplier);
         args.Add("InvoiceNo", exp.InvoiceNo);
         args.Add("InvoiceBillDate", exp.InvoiceBillDate);
-        args.Add("AmountPaid", exp.AmountPaid);
+        args.Add("AmountPaid", Money(amountPaid));
         args.Add("ModeOfPayment", exp.ModeOfPayment);
-        args.Add("EligibleAmount", exp.EligibleAmount);
+        args.Add("EligibleAmount", Money(eligible));
         args.Add("AccountNo", acc.AccountNo);
         args.Add("IfscCode", acc.IfscCode);
         args.Add("BranchAddress", acc.BranchAddress);

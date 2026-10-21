@@ -49,9 +49,11 @@ public sealed class RAController(
         if (throttle.IsLocked(MobileApps.RemoteAssessor, userName))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = SAController.TooManyAttempts });
 
-        var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_REMOTE_CHECK_LOGIN", new { UserId = userName, Password = request.password }, ct);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(userName, request.password, ct);
+        var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_REMOTE_CHECK_LOGIN", new { UserId = userName, Password = login.ProcedurePassword }, ct);
         var user = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
-        var masterPassword = user is not null && !LegacyPasswords.MatchesStored(user, request.password);
+        var masterPassword = user is not null && !await passwords.CompleteLoginAsync(login, user, ct);
         if (user is null || masterPassword || user.Text("RoleId") != "5" || sets[1].Count == 0)
         {
             if (masterPassword) log.LogWarning("Blocked RA app login with a procedure master password for {UserId}", userName);

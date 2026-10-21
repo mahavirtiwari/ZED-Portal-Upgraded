@@ -96,7 +96,7 @@ public sealed class ResultSets(IReadOnlyList<IReadOnlyList<IDictionary<string, o
     /// </summary>
     public static readonly IReadOnlySet<string> SensitiveColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "Password", "PwdCode", "OTP", "Otp", "Token", "AccessToken", "SecretKey", "WorkingKey", "AccessCode", "MerchantKey", "Salt",
+        "Password", "PasswordHash", "StoredPassword", "PwdCode", "OTP", "Otp", "Token", "AccessToken", "SecretKey", "WorkingKey", "AccessCode", "MerchantKey", "Salt",
     };
 
     /// <summary>

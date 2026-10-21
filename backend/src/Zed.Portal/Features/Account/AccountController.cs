@@ -40,14 +40,21 @@ public sealed class AccountController(
         if (req.NewPassword != req.ConfirmPassword) return this.Problem400("NewPassword and ConfirmPassword should be same.");
         if (PasswordPolicy.Validate(req.NewPassword) is { } policyError) return this.Problem400(policyError);
 
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        if (await passwords.IsManagedByMainAsync(user.UserId, ct))
+            return this.Problem400("This account's password is managed on the main ZED portal. Please change it there.");
+
         var row = (await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS_BY_USER_ID", new { user.UserId }, ct))[0].FirstOrDefault();
         var stored = row?.Text("Password") ?? "";
-        if (row is null || !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(stored), Encoding.UTF8.GetBytes(req.OldPassword)))
+        var legacyMatch = row is not null && !PasswordStore.IsReplacement(stored) &&
+            CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(stored), Encoding.UTF8.GetBytes(req.OldPassword));
+        if (row is null || !await passwords.VerifyCurrentAsync(user.UserId, req.OldPassword, legacyMatch, ct))
             return this.Problem400("Invalid Old Password.");
         if (req.NewPassword == req.OldPassword) return this.Problem400("The new password must be different from the old password.");
 
+        await passwords.SetAsync(user.UserId, req.NewPassword, ct);
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password WHERE UserId = @UserId",
-            new { Password = req.NewPassword, user.UserId }, ct);
+            new { Password = passwords.StoredValueFor(req.NewPassword), user.UserId }, ct);
 
         if (row.Text("Email") is { Length: > 0 } to)
         {

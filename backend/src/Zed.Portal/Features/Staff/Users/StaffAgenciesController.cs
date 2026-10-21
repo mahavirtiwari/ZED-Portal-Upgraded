@@ -135,7 +135,8 @@ public sealed class StaffAgenciesController(
         if (tuError is not null) return this.Problem400(tuError);
 
         var password = SecureRandom.Password();
-        var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", Parameters(values!, null, password, tuState, tuDistricts), ct);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", Parameters(values!, null, passwords.StoredValueFor(password), tuState, tuDistricts), ct);
         var newId = result.Scalar(0);
         if (!StaffUserRules.IsUserId(newId))
         {
@@ -150,6 +151,7 @@ public sealed class StaffAgenciesController(
             return this.Problem400("The agency could not be created. Please try again.");
         }
         log.LogInformation("Agency {NewUserId} created by {Actor}", newId, UserId);
+        await passwords.SetAsync(newId!, password, ct);
 
         var sent = await Mail.SendAsync<StaffAgencyRegisteredEmail>(values!.EmailId,
             (host.IsConsultancy() ? "Consultant Organisation" : "Assessment Agency") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId, new()

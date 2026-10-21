@@ -77,10 +77,12 @@ public sealed partial class SurveillanceController(
         if (throttle.IsLocked(App, assessorId))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = TooManyAttempts });
 
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(assessorId, request.password, ct);
         var sets = await db.QueryProcMultipleAsync("SP_APP_SURVEILLANCE_CHECK_LOGIN",
-            new { AssessorId = assessorId, ZedId = zedId, Password = request.password }, ct);
+            new { AssessorId = assessorId, ZedId = zedId, Password = login.ProcedurePassword }, ct);
         var user = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
-        var masterPassword = user is not null && !LegacyPasswords.MatchesStored(user, request.password);
+        var masterPassword = user is not null && !await passwords.CompleteLoginAsync(login, user, ct);
         if (user is null || masterPassword || (user.ContainsKey("RoleId") && user.Text("RoleId") != DesktopAssessorRoleId))
         {
             if (masterPassword) log.LogWarning("Blocked surveillance app login with a procedure master password for {UserId}", assessorId);

@@ -72,7 +72,8 @@ public sealed class UdyamiApiController(
             b.UdyogAadharNo, b.SocialCategory, b.SocialCategoryName, b.Gender, b.PH, b.PanNo, b.Address,
             b.MajorActivity, b.MajorActivityName, b.CommmenceDate, LgDistrictCode = b.LG_DT_Code, Pincode = b.PINCode,
             b.PreviousEMType, b.PreviousEMNumber, b.TotalEmp, b.InvestmentCost, DicName = b.Dic_Name, b.AppliedDate,
-            Password = SecureRandom.Password(),
+            // Nobody is told this password (the unit signs in through the hand-over or resets it); after the old sites a random value.
+            Password = PasswordStore.For(db, HttpContext.RequestServices).StoredValueFor(SecureRandom.Password()),
             p.ZedCertified,
             UamNumber = p.UAM_No,
             b.IncorporationDate, b.WhetherProdCommenced,

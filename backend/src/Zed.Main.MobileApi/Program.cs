@@ -17,12 +17,12 @@ var system = builder.Configuration.GetValue("Mobile:System", PortalSystem.Main);
 var host = new PortalHost(system);
 builder.Services.AddSingleton(host);
 builder.Services.AddZedServices(builder.Configuration, host.Database);
+builder.Services.AddZedDataProtection(builder.Configuration, "zed.mobile." + system.ToString().ToLowerInvariant());
 builder.Services.AddLegacyMobile(builder.Configuration);
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<TwilioVideoTokens>();
 builder.Services.AddControllers().ConfigureApplicationPartManager(m =>
     m.FeatureProviders.Add(new PortalControllerFilter(system, typeof(LoginThrottle).Assembly)));
-builder.Services.AddHealthChecks();
 
 var maxRequest = builder.Configuration.GetValue<long?>("Mobile:MaxRequestBytes") ?? new MobileOptions().MaxRequestBytes;
 builder.Services.Configure<KestrelServerOptions>(o => o.Limits.MaxRequestBodySize = maxRequest);
@@ -46,6 +46,7 @@ var culture = System.Globalization.CultureInfo.GetCultureInfo(builder.Configurat
 System.Globalization.CultureInfo.DefaultThreadCurrentCulture = culture;
 System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = culture;
 
+builder.EnsureZedConfiguration(system, ZedHostKind.Mobile);
 var app = builder.Build();
 
 var pathBase = app.Configuration["Mobile:PathBase"];
@@ -57,7 +58,7 @@ else app.UseHsts();
 app.UseRateLimiter();
 
 app.MapControllers();
-app.MapHealthChecks("/health");
+app.MapZedHealthChecks("/health");
 app.Run();
 
 /// <summary>Entry point marker for WebApplicationFactory in tests.</summary>

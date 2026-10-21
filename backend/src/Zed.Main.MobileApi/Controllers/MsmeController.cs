@@ -38,9 +38,11 @@ public sealed partial class MsmeController(
         if (throttle.IsLocked(MobileApps.Msme, userName))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = "Too many failed attempts. Please try again after 15 minutes." });
 
-        var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_CHECK_LOGIN", new { UserId = userName, Password = request.password }, ct);
+        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
+        var login = await passwords.BeginLoginAsync(userName, request.password, ct);
+        var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_CHECK_LOGIN", new { UserId = userName, Password = login.ProcedurePassword }, ct);
         var user = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
-        var masterPassword = user is not null && !LegacyPasswords.MatchesStored(user, request.password);
+        var masterPassword = user is not null && !await passwords.CompleteLoginAsync(login, user, ct);
         if (user is null || masterPassword || sets.Count < 4 || sets[1].Count == 0)
         {
             if (masterPassword) log.LogWarning("Blocked app login with a procedure master password for {UserId}", userName);

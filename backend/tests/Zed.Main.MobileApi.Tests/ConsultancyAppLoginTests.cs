@@ -389,4 +389,15 @@ public sealed class ConsultancyAppLoginTests : IDisposable
         AssertFail(e, ConsultancySAController.ErrorText);
         Assert.DoesNotContain("internal detail", e.GetRawText());
     }
+    [Fact]
+    public async Task Consultant_login_under_HashOnly_uses_the_consultancy_hash()
+    {
+        var passwords = new global::Zed.TestSupport.FakePasswords().Attach(_t.Fake.Procs);
+        passwords.Add(Lead, "3", Password, hashOf: Password);
+        _t.Settings[global::Zed.Core.Security.PasswordStore.Setting] = "HashOnly";
+        AssertFail(await Login(password: "Other#Pass1"), "Invalid Credentials. Please check");
+        Assert.Equal(global::Zed.Core.Security.PasswordStore.RefusedValue, FakeSql.Arg(_t.LastArgs("SP_APP_SA_CHECK_LOGIN_V2"), "Password"));
+        Assert.Equal("1", (await Login()).GetProperty("status").GetString());
+        Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(passwords.Accounts[Lead].Stored));
+    }
 }

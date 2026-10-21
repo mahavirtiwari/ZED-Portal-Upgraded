@@ -19,6 +19,7 @@
     <Using Include="Xunit" />
     <!-- The fakes (FakeSql, FakeEmail, ...) and the XSRF browser of the main tests, run against this system's host. -->
     <Compile Include="..\Zed.Main.Api.Tests\TestHost.cs" Link="Shared\TestHost.cs" />
+    <Compile Include="..\Zed.Main.Api.Tests\FakePasswords.cs" Link="Shared\FakePasswords.cs" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,268 @@
+# Cut-over to V4 and decommission of the old sites
+
+Runbook for the server team, the DBA and the business owner. It moves the six IIS applications of
+loginzed.msme.gov.in from the old ASP.NET MVC code to V4, keeps a quick way back, and then retires the old code.
+**Nothing here has been run on production yet.** The scripts were tested on a local copy (section 7).
+
+| IIS application | Old code | V4 package folder (host) | Database |
+|---|---|---|---|
+| `/` | `ZEDCS main/SwatchSarvekshan` | `main` (Zed.Main.Api + Angular `main`) | ZEDCS_V2_LIVE |
+| `/Consultancy` | `ZEDCS_CONSULTANCY/SwatchSarvekshan` | `consultancy` (Zed.Consultancy.Api + Angular `consultancy`) | ZED_CONSULTANT |
+| `/surveillance` | `ZEDCS_SURVEILLANCE/SurveillanceWeb` | `surveillance` (Zed.Surveillance.Api + Angular `surveillance`) | ZED_SURVEILLANCE |
+| `/mobileapi` | `SwachhSurvekshanServices` | `mobile`, `Mobile:System=Main` | ZEDCS_V2_LIVE |
+| `/Consultancymobileapi` | consultancy services | `mobile`, `Mobile:System=Consultancy` | ZED_CONSULTANT |
+| `/surveillancemobileapi` | `SurveillanceServices` | `mobile`, `Mobile:System=Surveillance` | ZED_SURVEILLANCE |
+| SQL Agent jobs, Database Mail | | `jobs` (Zed.Jobs, Windows service) | all three |
+
+The host name, the certificate and every address stay the same: mails already sent, bookmarks, CCAvenue and
+Udyami Bharat keep working. Nothing moves in DNS.
+
+**Tools** (`deploy/`):
+
+| Script | Does |
+|---|---|
+| `Publish-Zed.ps1` | Tests, builds and packages everything into `zed-<version>\` (no settings, no secrets) |
+| `settings.example.json` | Names of every setting per application; the filled copy stays on the server |
+| `Install-ZedIis.ps1` | Installs a package into IIS at the old addresses. Dry run unless `-Apply`; writes a rollback file; `-Rollback` restores |
+| `Test-ZedDeployment.ps1` | Smoke tests against the live address; exit code 1 on any failure |
+| `Get-ZedUnusedObjects.ps1` | Lists the procedures and tables V4 does not use (for decommission); read-only |
+
+## 1. Preparation (weeks before)
+
+### 1.1 Server
+
+- Windows Server 2016 or later with IIS 10, run as the same site that serves loginzed.msme.gov.in today.
+- **ASP.NET Core Hosting Bundle 10** (installs the runtime and the ASP.NET Core Module V2). Restart IIS after it.
+  `Install-ZedIis.ps1` warns when either is missing.
+- Node is not needed on the server: the package contains the built Angular apps.
+- Each V4 application gets its own app pool (`ZedV4-*`, No Managed Code). The old pools stay untouched until
+  decommission, which is what makes the rollback a two-minute job.
+
+### 1.2 Files: V4 uses the old folders in place
+
+Nothing is copied or converted. V4 reads and writes the existing folders with the old layout, so the old code finds
+everything V4 wrote if you roll back.
+
+| Setting | Point it at |
+|---|---|
+| `Portal:StorageRoot` (main) | the old main site root (e.g. `E:\Publish\ZEDCS_LIVE\ZEDCS_V2_LIVE`): `Certificates\`, `PDFs\`, `ReceiptInvoice\`, `Uploads\` |
+| `Portal:StorageRoot` (Consultancy, Surveillance) | **the same folder as main's**: certificates and reports are shared |
+| `Consultancy:SharedStorageRoot` | main's `Portal:StorageRoot` (technology-upgradation files uploaded through main) |
+| `Portal:AssessmentStorageRoot` (main) | the old services site folder that holds `mobileapi\Photos\…` (photos and evidence served to MSMEs) |
+| `Mobile:StorageRoot` (each mobile deployment) | that deployment's old services site folder (`Photos\`, `SaPhotos\`, `Videos\`, `Attendance\`) |
+| `DataProtection:KeysPath` | set by `Install-ZedIis.ps1` to `<InstallRoot>\keys\<app>`; back this folder up (losing it signs everyone out) |
+
+Once the IIS applications point at V4, these folders are no longer served as static files: photos, certificates
+and evidence are reachable only through V4's checked endpoints (closes #9, #34).
+
+`Install-ZedIis.ps1` grants each app pool identity Modify on its `*StorageRoot` folders and its key folder.
+
+### 1.3 Settings and secrets
+
+1. Copy `deploy\settings.example.json` to the server (e.g. `D:\ZedV4\settings.json`), readable by administrators only.
+2. Fill it in with **new** values: every key listed in LIVE-HARDENING §7 was exposed and must be rotated anyway.
+   Rotating before the cut-over means the old sites get the new values in their `Web.config`, and V4 starts with them.
+3. New SQL logins for V4, not the leaked application login (#110):
+   - one per system with `EXECUTE` and the table rights the procedures need on its own database;
+   - a read-only login on ZED_CONSULTANT and ZED_SURVEILLANCE for main's `ConnectionStrings:Consultancy/Surveillance`,
+     and on ZEDCS_V2_LIVE for the Consultancy and Surveillance hosts' `ConnectionStrings:Main`.
+4. Every host checks its settings at startup outside Development and **refuses to start**, listing every missing or
+   wrong one in the Windows event log (Application, source "IIS AspNetCore Module V2"). It checks: connection strings
+   (main also needs Consultancy and Surveillance; the others need Main), `Portal:PublicBaseUrl` (https),
+   the storage folders exist, `DataProtection:KeysPath`, SMTP (`Email:Profiles:Default`; a mail pickup folder is
+   refused in Production), reCAPTCHA keys when enabled, ERP and Udyami Bharat keys when enabled, and on main the
+   CCAvenue web keys (not the test gateway), the Udyam key and the Protean GSTIN account.
+5. `Mobile:Culture`, `Mobile:PathBase`, version gates: see MOBILE-API.md ("Open before go-live" lists the live
+   checks to do on the old services first). Keep `Mobile:DeviceBinding = Monitor`.
+6. `Security:Passwords` stays `Dual` (the default) until the rollback window is over (section 4).
+7. Optional, only for more than one server per application: `Cache:SqlServerTable = dbo.V4Cache` (migration 0006).
+   One server per application needs nothing.
+
+### 1.4 Database
+
+Do these **before** the cut-over; all are additive, idempotent and harmless to the old sites.
+
+| Order | Script | Databases | Note |
+|---|---|---|---|
+| 1 | `migrations/0001_mobile_devices.sql` | all three | device binding tables |
+| 2 | `migrations/0002_api_incentives_index.sql` | ZEDCS_V2_LIVE | |
+| 3 | `migrations/0004_job_runs.sql` | ZEDCS_V2_LIVE | |
+| 4 | `migrations/0005_password_hashes.sql` | all three | hashes next to the plain column (#2), docs/PASSWORDS.md |
+| 5 | `migrations/0006_distributed_cache.sql` | only with `Cache:SqlServerTable` | |
+| 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once the folder-rename job has an owner) |
+| 7 | `migrations/0003_mail_outbox.sql` | all three | **only together with starting Zed.Jobs and switching the Agent jobs off** (JOBS.md "Before go-live"): from then on procedure mail of the old sites is sent by Zed.Jobs too |
+
+Exception: `fixes/main/02_sp_get_user_details_master_passwords.sql` breaks the **old** Udyami Bharat hand-over;
+run it at the cut-over, right after V4 serves `/Msme/ZedDashboard` (section 2, step 6).
+
+Also before the cut-over (MIGRATION-PLAN "Database"): the 12 SEQUENCE objects, the 4 referenced databases, and the
+18 procedures that do not compile. They are not new problems, but check them on the staging copy.
+
+**Where the databases live.** The cut-over keeps the databases where they are. Moving them to SQL Server 2022
+Express is a **separate change in its own window**, before or after, never the same night:
+- each database must be under Express's 10 GB data limit (else Standard edition, or SQL Server 2025 Express: 50 GB);
+- the three databases must stay on one instance (their procedures call each other by name);
+- from an Azure SQL Managed Instance, a backup restores on SQL Server 2022 only when the instance uses the
+  "SQL Server 2022" update policy; otherwise move them with BACPAC export/import;
+- logins, the SEQUENCE current values, compatibility level 160 and the collation must come along;
+- then change only the connection strings and restart the app pools and Zed.Jobs.
+
+### 1.5 Rehearsal on staging (required)
+
+1. Restore last night's production backups of the three databases on a staging instance, and copy (or share
+   read-only) a sample of the storage folders.
+2. A staging site with a name that marks it as staging (e.g. `staging.loginzed.…`), its own certificate, and the
+   same six applications. Install with the real procedure: `Publish-Zed.ps1`, `Install-ZedIis.ps1` (dry run, then
+   `-Apply`), `Test-ZedDeployment.ps1 -BaseUrl https://staging…`. CCAvenue in test mode with test keys.
+3. Testers go through the journeys in 2.1 step 9 with real accounts of the restored copy.
+4. Mobile apps: their addresses are built in. Use the vendor's staging build, or an emulator / test phone whose
+   hosts file points loginzed.msme.gov.in at the staging server.
+5. Rehearse the rollback too (`Install-ZedIis.ps1 -Rollback … -Apply`) and time both directions.
+
+## 2. Cut-over day
+
+### 2.1 Sequence (evening window, about 2½ hours to go/no-go)
+
+| Time | Step | Who |
+|---|---|---|
+| T−7 d | Release package built from the tagged commit (`Publish-Zed.ps1`, tests run); staging rehearsal passed; settings file filled; CCAvenue, Udyami Bharat, the app vendor and the agencies told the date | dev lead, owner |
+| T−1 d | Notice on the portal and to the agencies; DBA confirms backup space; testers named | owner |
+| 0:00 | **Freeze**: put `app_offline.htm` (a "being updated" page) into each of the six old application folders. The old sites stop writing. Stop the old services' app pools too (the apps get errors for the window) | server team |
+| 0:05 | Copy-only backups of the three databases. `appcmd add backup "before-v4"`. Copy each old application's `web.config`, and the site-level ZED-* request rules (LIVE-HARDENING §1) to a safe folder | DBA, server team |
+| 0:20 | Remaining database scripts of 1.4 (normally only checks: "nothing to change") | DBA |
+| 0:30 | **Remove the ZED-* request rules** (LIVE-HARDENING) from the site level. They target the old code and some match V4 addresses: ZED-A03 blocks `/Login…` (V4's staff sign-in), ZED-C01 blocks `/Pay/SubmitZeroPaymentDetails` (served by V4 to the app). V4 has none of the old actions they protect. Keep the copy for a rollback | server team |
+| 0:35 | `Install-ZedIis.ps1 -Package … -Settings … ` (dry run; read it), then the same with `-Apply`. Note the rollback file it writes. Remove the `app_offline.htm` files of the old folders (they are no longer served) | server team |
+| 0:50 | `fixes/main/02_sp_get_user_details_master_passwords.sql` (V4 now serves the Udyami Bharat hand-over) | DBA |
+| 0:55 | `Test-ZedDeployment.ps1 -BaseUrl https://loginzed.msme.gov.in`: **0 failures** required | server team |
+| 1:00 | Zed.Jobs running (`dbo.V4JobRuns`, `dbo.V4MailOutbox` drain) and Agent jobs off, if not done earlier | DBA |
+| 1:05 | Functional checks (below) | testers |
+| 2:30 | **Go / no-go** (2.2). Go: announce. No-go: rollback (section 3) | owner |
+
+Functional checks (9), each by a named tester, on production with real accounts:
+- MSME: sign in, dashboard, certification details, a download from My Documents, the assessment report of a
+  certified unit; an old mail link (`/Msme/Login`, `/Msme/ChangePassword?code=…`) lands on the new page.
+- Payment: one real low-value payment if the owner agrees (or the zero-amount path for an eligible unit); the
+  receipt mail arrives; CCAvenue's reconciliation post is answered (IIS log of `/Pay/UpdatePaymentReconciliationStatus`).
+- Udyami Bharat: a hand-over sign-in from the UBP portal.
+- Staff: MasterAdmin, an agency, an assessor and a desktop assessor sign in and see their lists; one desktop
+  assessment action on a test unit if one exists.
+- Consultancy: CO and consultant sign in, the milestone page of a unit, a milestone report PDF.
+- Surveillance: staff sign in, the Bronze desktop list, a surveillance certificate.
+- Mobile: MSME app login, site assessor app login and allotment list, the consultant app, the surveillance app
+  (device events appear in `dbo.MobileDeviceEvents`).
+- Mail: the outbox empties (`SELECT COUNT(*) FROM dbo.V4MailOutbox WHERE SentAt IS NULL` on each database).
+- Health: `/api/health/ready` and `/mobileapi/health/ready` stay Healthy for 30 minutes.
+
+### 2.2 Go / no-go
+
+Go only if all are true:
+- [ ] `Test-ZedDeployment.ps1`: 0 failures.
+- [ ] Every functional check passed, or the owner accepted the exception in writing.
+- [ ] No host restarts in the event log; no 5xx bursts in the IIS log (`sc-status` 500–599).
+- [ ] Mail is being sent; Zed.Jobs shows no errors.
+- [ ] Payments: the test payment and its reconciliation went through (or the owner waived it).
+- [ ] The rollback file exists and the old folders, pools and request-rule copy are in place.
+
+## 3. Rollback
+
+Possible at any time while `Security:Passwords` is still `Dual` and the old app pools and folders exist.
+
+1. `app_offline.htm` into the V4 folders under `<InstallRoot>` (stops writes).
+2. `Install-ZedIis.ps1 -Rollback <InstallRoot>\rollback-<time>.json -Apply`: each application points at its old
+   folder and pool again. Start the old services' pools.
+3. Put back the ZED-* request rules from the copy.
+4. `Test-ZedDeployment.ps1` is expected to fail now; check the old login pages by hand.
+
+What the old sites find after a rollback:
+- **All data V4 wrote**: V4 writes through the same procedures into the same tables and files in the old layout.
+- V4-only tables (`V4MailOutbox`, `V4JobRuns`, `V4UserPasswords`, `MobileDeviceBindings`, `MobileDeviceEvents`,
+  `V4Cache`) are ignored by the old code. Leave them.
+- **Mail**: the converted procedures (0003) keep queuing; **keep Zed.Jobs running**. To go fully back, re-enable the
+  Agent jobs, stop Zed.Jobs, and undo 0003 per procedure (its header says how), which needs Database Mail.
+- **Passwords**: in `Dual` mode the plain column stays authoritative, so every account still signs in on the old
+  sites. After `Migrate` the plain column holds random values, and a rollback would lock users out. That is why
+  `Migrate` waits until the rollback window is closed.
+- **Payments started on V4 and not finished**: their callback now reaches the old site. CCAvenue's reconciliation
+  post (old `/Pay/UpdatePaymentReconciliationStatus`, unchanged contract) settles them; check the day's orders.
+- `fixes/main/02` broke the old Udyami Bharat hand-over: restore the saved definition of `SP_GET_USER_DETAILS`
+  (the undo of every fix script is the definition saved before APPLY).
+
+## 4. After the cut-over
+
+| When | Step |
+|---|---|
+| Day 1–3 | Watch the event log, IIS 5xx, `/api/health/ready`, `V4JobRuns` errors, the mail outbox, `MobileDeviceEvents`. Keep the testers' accounts on hand |
+| Day 1 | Old SQL Agent jobs are off (JOBS.md step 4); the old mail profile is unused |
+| Week 1 | Device binding: when `MobileDeviceEvents` shows every app version sending `deviceInfo`, set `Mobile:DeviceBinding = Enforce` (MOBILE-API.md) |
+| End of the rollback window (e.g. 2 weeks) | `Security:Passwords = Migrate` on all hosts (docs/PASSWORDS.md): every sign-in moves the account to its hash and randomises the plain column. **No rollback after this.** |
+| A few months later | `Security:Passwords = HashOnly` once almost every active account has a hash; the rest reset their password |
+| Same time | Remove the old app pools and the old code folders (keep the data folders: they are V4's storage). Revoke the old SQL login and the old mail profile |
+
+## 5. Decommission
+
+1. **Archive** (keep with the final backups, access restricted): the old code folders and their `web.config`
+   files, the IIS configuration backup, the ZED-* rule copy, the last Agent job export, a copy-only backup of each
+   database taken on the decommission day.
+2. **Purge** the request and data dumps the old code left (#51, #57, #99, #113): `App_Data\Json\…` of the old
+   services and portals, the captured photos and logs in the legacy repositories. Purge the typed passwords in
+   `FailedLogins` (#2, LIVE-HARDENING §7).
+3. **Unused database objects.** `Get-ZedUnusedObjects.ps1 -Server … -Database …` for each database, run on
+   production a few weeks after the cut-over. It lists the procedures nothing in V4 calls (directly or through
+   another procedure) and the tables nothing used names, with the last time SQL Server ran each procedure. On the
+   local copy: ZEDCS_V2_LIVE 178 of 479 procedures and 66 of 175 tables, ZED_CONSULTANT 96 of 297 and 34 of 114,
+   ZED_SURVEILLANCE 117 of 327 and 39 of 123. A listed procedure that still runs has an unknown caller: find it
+   first. Script the rest out, keep the script with the archive, then drop them; that also removes most of the
+   procedure-level findings below from the attack surface. Tables hold history: archive them, do not drop.
+   (The scan treats any V4 mention, comments included, as use, so it errs on the side of keeping.)
+4. **SECURITY-FINDINGS.md**: update each finding as below.
+
+### 5.1 Findings when the old sites are gone
+
+**Closed by decommission** (the vulnerable code or static folder no longer runs; V4 has the checked version):
+9, 15, 18, 19, 20, 21, 24, 26, 30, 31, 32, 33, 34, 35, 36, 39, 40, 41, 44, 45, 50, 56, 60, 61, 62, 63, 64, 65, 67,
+69, 70, 74, 75, 76, 79, 80, 85, 87, 88, 89, 90, 91, 92, 95, 97, 98, 100, 101, 102, 103, 104, 105, 106, 107, 108,
+109, 112, 115, 118, 124.
+
+**Contained, but the database object still needs its fix or removal** (only V4 calls it now, and V4 checks first;
+fix with the `database/fixes` scripts or drop it in step 3): 1 and 27 (master passwords: V4 refuses them), 12, 22,
+38, 48 (after the Twilio rotation), 59, 68, 72, 77, 81 (procedure part), 84, 86 (procedure), 93, 94 (₹1 list),
+116, 117, 119, 120, 121, 123.
+
+**Still open after decommission** (need their own action):
+- 2 and 111: plain-text passwords. `Security:Passwords` Migrate, then HashOnly; after that the plain column and the
+  surveillance copy hold only random values.
+- 3, 23, 29, 54, 55, 73, 82, 96, 110: rotate the keys and passwords (LIVE-HARDENING §7). Decommission does not
+  make an exposed key safe.
+- 51, 57, 99, 113: purge the captured data (step 2).
+- 53: token columns and per-client scopes of the partner APIs (V4 serves them).
+- 78: review the incentive test accounts.
+
+## 6. Settings added for production (summary)
+
+| Setting | Meaning |
+|---|---|
+| `DataProtection:KeysPath` | Folder for the keys that protect sign-in cookies and anti-forgery tokens. Required outside Development. One folder per application; back it up. Each system uses its own application name (`zed.main`, `zed.consultancy`, `zed.surveillance`, `zed.mobile.<system>`), so a cookie of one cannot be used on another |
+| `DataProtection:ProtectWithDpapi` | Default true on Windows: keys are encrypted at rest for the machine |
+| `Cache:SqlServerTable` | e.g. `dbo.V4Cache` (migration 0006): shares registration sessions and payment order state between servers. Empty: in memory (one server) |
+| `/api/health`, `/health` | Liveness: the process answers. No database call |
+| `/api/health/ready`, `/health/ready` | Readiness: the host's database answers within 5 s. Replies only `Healthy` / `Unhealthy` (503); the reason goes to the log |
+
+Each host's `web.config` (in the package): in-process ASP.NET Core Module V2, stdout logs off (switch on only to
+diagnose a host that will not start), the `Server` and `X-Powered-By` headers removed, request size limit
+150 MiB for the portals (endpoints set their own smaller limits) and 30 MiB for the mobile services (keep equal to
+`Mobile:MaxRequestBytes`), and `inheritInChildApplications="false"` so the root application's handler does not
+leak into `/Consultancy` and the others.
+
+## 7. How the scripts were tested
+
+On a development machine without IIS, against the local databases:
+- `Publish-Zed.ps1 -SkipTests -SkipNpmCi` built a package; the Consultancy and Surveillance apps carry the base
+  href `/Consultancy/` and `/surveillance/`; no `appsettings.Development.json` in it.
+- The six hosts from that package ran on Kestrel in the Staging environment. With no settings, main refused to
+  start and listed the 17 missing settings. With settings, `Test-ZedDeployment.ps1` passed 58 of 58 checks (with
+  one host stopped, it failed as expected). Each host wrote its own DPAPI-protected key file.
+- `Install-ZedIis.ps1` was run as a dry run only (no IIS on that machine). **Run it as a dry run on the staging
+  server first, then `-Apply` there, before production.**
+- `Get-ZedUnusedObjects.ps1` ran against the three local databases (numbers in section 5).
+- Automated tests: the configuration check, key storage and application isolation, readiness with a failing
+  database (`ProductionHostingTests`, `HealthTests`).

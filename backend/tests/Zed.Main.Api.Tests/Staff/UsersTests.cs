@@ -193,6 +193,23 @@ public sealed class UsersTests : IDisposable
         Assert.Contains("ZEDAA0099", mail.Subject);
     }
 
+    [Fact]
+    public async Task After_the_old_sites_a_new_agency_gets_a_random_stored_value_and_a_hash_of_the_mailed_password()
+    {
+        var passwords = new Zed.TestSupport.FakePasswords().Attach(_host.Sql.Procs);
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1"); // the fixture's staff login (no hash) under Dual
+        Zed.TestSupport.FakePasswords.SetMode(_host.Services, Zed.Core.Security.PasswordMode.HashOnly);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/agencies", AgencyBody())).StatusCode);
+        var stored = UsersMastersLogin.Arg(Call("SP_INSERT_USER").Args, "Password");
+        Assert.True(Zed.Core.Security.PasswordStore.IsReplacement(stored)); // also what main's procedure copies to ZED_SURVEILLANCE
+        var mail = Assert.Single(_host.Email.Sent).HtmlBody;
+        Assert.DoesNotContain(stored!, mail);
+        // The hash is of the password the mail shows.
+        Assert.Contains(System.Text.RegularExpressions.Regex.Matches(mail, "font-weight: 700;\">([^<]+)</td>"),
+            m => passwords.HashMatches("ZEDAA0099", m.Groups[1].Value.Trim()));
+    }
+
     [Theory]
     [InlineData("mobileNo", "12345", "mobile")]
     [InlineData("emailId", "not-an-email", "Email")]

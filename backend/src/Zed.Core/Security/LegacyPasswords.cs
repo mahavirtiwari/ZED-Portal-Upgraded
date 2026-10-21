@@ -17,11 +17,21 @@ public static class LegacyPasswords
     /// case-insensitive collation, trailing spaces ignored) so no existing user is locked out.
     /// A row without a Password column cannot be checked here and is left to the procedure.
     /// </summary>
-    public static bool MatchesStored(IDictionary<string, object?> userRow, string? typed)
+    public static bool MatchesStored(IDictionary<string, object?> userRow, string? typed) =>
+        !userRow.TryGetValue("Password", out var stored) || Matches(stored is null or DBNull ? null : stored.ToString(), typed);
+
+    /// <summary>
+    /// The procedures' comparison. A value V4 put in place of a password (<see cref="PasswordStore.ReplacementPrefix"/>)
+    /// never matches: it is not a password, and it appears on pledge certificates (the QR code holds the initial password).
+    /// </summary>
+    public static bool Matches(string? stored, string? typed) =>
+        !PasswordStore.IsReplacement(stored) && SameValue(stored, typed);
+
+    /// <summary>The bare comparison (also for a replacement value V4 passed to a procedure itself).</summary>
+    internal static bool SameValue(string? stored, string? typed)
     {
-        if (!userRow.TryGetValue("Password", out var stored)) return true;
-        if (stored is null or DBNull || typed is null) return false;
-        var a = Encoding.UTF8.GetBytes(stored.ToString()!.TrimEnd().ToUpperInvariant());
+        if (stored is null || typed is null) return false;
+        var a = Encoding.UTF8.GetBytes(stored.TrimEnd().ToUpperInvariant());
         var b = Encoding.UTF8.GetBytes(typed.TrimEnd().ToUpperInvariant());
         return CryptographicOperations.FixedTimeEquals(a, b);
     }
