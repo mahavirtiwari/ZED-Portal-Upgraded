@@ -17,18 +17,23 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IJobDatabases, JobDatabases>();
 builder.Services.AddSingleton<IProcedureCatalog, SqlProcedureCatalog>();
 builder.Services.AddSingleton<JobChecker>();
+builder.Services.AddSingleton<FolderRenameChecker>();
 if (!check)
 {
     builder.Services.AddSingleton<MailOutboxSender>();
     builder.Services.AddHostedService<MailOutboxWorker>();
     builder.Services.AddHostedService<ProcedureJobWorker>();
+    builder.Services.AddSingleton<FolderRenamer>();
+    builder.Services.AddHostedService<FolderRenameWorker>();
 }
 
 var host = builder.Build();
 if (check)
 {
-    var jobs = host.Services.GetRequiredService<IOptions<JobsOptions>>().Value.Schedules;
-    return await host.Services.GetRequiredService<JobChecker>().ReportAsync(jobs, Console.Out, CancellationToken.None);
+    var jobs = host.Services.GetRequiredService<IOptions<JobsOptions>>().Value;
+    var code = await host.Services.GetRequiredService<JobChecker>().ReportAsync(jobs.Schedules, Console.Out, CancellationToken.None);
+    var folders = await host.Services.GetRequiredService<FolderRenameChecker>().ReportAsync(jobs.FolderRename, Console.Out, CancellationToken.None);
+    return Math.Max(code, folders);
 }
 host.Run();
 return 0;

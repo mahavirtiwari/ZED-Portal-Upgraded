@@ -12,8 +12,8 @@
 -- xp_cmdshell being enabled at all (any SQL injection elsewhere, e.g. #86, then runs operating-system commands as
 -- the SQL Server service account).
 -- At the cut-over:
---   1. V4 does not run this job (Zed.Jobs leaves it out, docs/JOBS.md). Decide who renames the folders of rejected
---      units after the cut-over (or whether V4's storage paths make it unnecessary) before turning the old job off.
+--   1. Zed.Jobs takes over the renaming without xp_cmdshell (Jobs:FolderRename, migration 0007, docs/JOBS.md
+--      "Renaming the folders of rejected units"). Switch to it and disable the old Agent job first.
 --   2. Then set @DisableXpCmdShell = 1 and run this script once (needs sysadmin). Afterwards the procedure fails
 --      with "xp_cmdshell is disabled" if anything still calls it, which is the signal you want.
 -- What breaks with @DisableXpCmdShell = 1: every caller of xp_cmdshell listed by the report.

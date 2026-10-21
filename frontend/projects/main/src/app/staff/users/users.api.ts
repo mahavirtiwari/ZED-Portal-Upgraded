@@ -199,6 +199,10 @@ export interface AssessorUpdateRequest {
 
 export type ManagedKind = 'agencies' | 'assessors';
 
+/** Asked before an administrator sends a password reset link. */
+export const RESET_CONFIRM =
+  'Send this user a link to set a new password? It goes to the user’s registered e-mail address; you do not see or set the password.';
+
 /** Client for api/staff/users (Zed.Main.Api StaffAgenciesController / StaffAssessorsController). */
 @Injectable({ providedIn: 'root' })
 export class UsersApi {
@@ -275,6 +279,11 @@ export class UsersApi {
 
   resetMobile(kind: ManagedKind, userId: string, mobileNo: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/mobile`, { mobileNo });
+  }
+
+  /** E-mails the user a link to set a new password (the caller never sees or sets it). */
+  passwordReset(kind: ManagedKind, userId: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/password-reset`, null);
   }
 }
 
@@ -357,5 +366,10 @@ export class SurveillanceUsersApi {
 
   unblock(kind: ManagedKind, userId: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, null);
+  }
+
+  /** E-mails the user a link to set a new password; refused for accounts whose password the main portal holds. */
+  passwordReset(kind: ManagedKind, userId: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/password-reset`, null);
   }
 }

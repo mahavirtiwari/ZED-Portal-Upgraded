@@ -21,6 +21,9 @@ public static class RateLimitPolicies
 {
     /// <summary>Login, OTP and lookup endpoints: 10 requests per minute per client IP.</summary>
     public const string Sensitive = "sensitive";
+
+    /// <summary>Staff "Forgot password?" requests: 5 per 15 minutes per client IP (each account is also limited, migration 0008).</summary>
+    public const string PasswordReset = "password-reset";
 }
 
 public static class ZedHostingExtensions
@@ -72,6 +75,9 @@ public static class ZedHostingExtensions
             o.AddPolicy(RateLimitPolicies.Sensitive, ctx => RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+            o.AddPolicy(RateLimitPolicies.PasswordReset, ctx => RateLimitPartition.GetFixedWindowLimiter(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
         });
 
         services.Configure<ForwardedHeadersOptions>(o =>

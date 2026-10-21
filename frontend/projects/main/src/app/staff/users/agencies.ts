@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { AgencyRow, UsersApi } from './users.api';
+import { AgencyRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { PORTAL_LABELS } from '../../portal-labels';
 
 type Mode = 'all' | 'bronze';
@@ -108,6 +108,12 @@ export class AgenciesPage {
   protected async unblock(a: AgencyRow): Promise<void> {
     if (!window.confirm('Are you sure that you want to unblock?')) return;
     await this.run(this.api.unblock('agencies', a.UserId), false);
+  }
+
+  /** E-mails the agency a link to set a new password. */
+  protected async sendReset(a: AgencyRow): Promise<void> {
+    if (!window.confirm(RESET_CONFIRM)) return;
+    await this.run(this.api.passwordReset('agencies', a.UserId), false);
   }
 
   protected async enableBronze(a: AgencyRow): Promise<void> {

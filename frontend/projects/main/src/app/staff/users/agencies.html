@@ -56,6 +56,9 @@
                     <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
                     <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px">Assessors</a><br />
                     <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
+                    @if (a.IsActive) {
+                      <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(a)">Reset Link</button>
+                    }
                   } @else {
                     @if (a.AllowBronzeAssessments) {
                       <button type="button" class="btn btn-default" style="width: 130px" [disabled]="saving()" (click)="open('disable-bronze', a)">Disable Bronze Assessments</button>

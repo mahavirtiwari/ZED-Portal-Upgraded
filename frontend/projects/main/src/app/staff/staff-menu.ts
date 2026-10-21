@@ -50,6 +50,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin] },
   { label: 'Bronze Assessment Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin] },
   { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin] },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
   { label: 'Allot', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
 
   // Assessment workflow
@@ -107,6 +108,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
   { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin] },
   { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin] },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
   { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
   { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },
@@ -150,6 +152,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
   { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin] },
   { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin] },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
   { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
   { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
   { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },

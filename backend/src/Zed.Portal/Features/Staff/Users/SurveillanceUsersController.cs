@@ -5,6 +5,7 @@ using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
 using Zed.Portal.Features.Staff.Dashboard;
+using Zed.Portal.Features.Staff.PasswordReset;
 using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Users;
@@ -193,6 +194,26 @@ public sealed class SurveillanceUsersController(
 
     [HttpPost("assessors/{userId}/unblock")]
     public Task<ActionResult<MessageResponse>> UnblockAssessor(string userId, CancellationToken ct) => UnblockAsync(userId, UserRole.DesktopAssessor, ct);
+
+    [HttpPost("agencies/{userId}/password-reset")]
+    [StaffRoles(UserRole.MasterAdmin)]
+    public Task<ActionResult<MessageResponse>> AgencyPasswordReset(string userId, [FromServices] StaffPasswordResets resets, CancellationToken ct) =>
+        PasswordResetAsync(userId, UserRole.Agency, resets, ct);
+
+    [HttpPost("assessors/{userId}/password-reset")]
+    public Task<ActionResult<MessageResponse>> AssessorPasswordReset(string userId, [FromServices] StaffPasswordResets resets, CancellationToken ct) =>
+        PasswordResetAsync(userId, UserRole.DesktopAssessor, resets, ct);
+
+    /// <summary>
+    /// E-mails a link to set a new password. Accounts whose password main holds (after the switch to Migrate, #111) are
+    /// refused with a pointer to the main portal.
+    /// </summary>
+    private async Task<ActionResult<MessageResponse>> PasswordResetAsync(string userId, UserRole role, StaffPasswordResets resets, CancellationToken ct)
+    {
+        var user = await FindAsync(userId, role, ct);
+        if (user is null) return NotFound();
+        return this.ToResponse(await resets.SendByAdminAsync(user.UserId, CurrentUser, HttpContext.Connection.RemoteIpAddress?.ToString(), ct));
+    }
 
     private async Task<ActionResult<MessageResponse>> BlockAsync(string userId, UserRole role, ReasonRequest req, CancellationToken ct)
     {

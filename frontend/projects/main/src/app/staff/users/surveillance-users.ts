@@ -5,7 +5,7 @@ import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { CodeName, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
+import { CodeName, RESET_CONFIRM, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
 
 interface BronzeDialog {
   agency: SurveillanceAgency;
@@ -61,6 +61,9 @@ interface BlockDialog {
                       } @else {
                         <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="unblock('agencies', a.userId)">Unblock</button>
                       }
+                      @if (a.isActive) {
+                        <br /><button type="button" class="btn btn-default btn-sm mt-1" [disabled]="busy()" (click)="sendReset('agencies', a.userId)">Reset Link</button>
+                      }
                     </td>
                   </tr>
                 } @empty {
@@ -91,6 +94,9 @@ interface BlockDialog {
                         <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="block.set({ kind: 'assessors', userId: s.userId, reason: '' })">Block</button>
                       } @else {
                         <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="unblock('assessors', s.userId)">Unblock</button>
+                      }
+                      @if (s.isActive) {
+                        <br /><button type="button" class="btn btn-default btn-sm mt-1" [disabled]="busy()" (click)="sendReset('assessors', s.userId)">Reset Link</button>
                       }
                     </td>
                   </tr>
@@ -223,6 +229,12 @@ export class SurveillanceUsersPage {
 
   protected async confirmBlock(b: BlockDialog): Promise<void> {
     if (await this.run(this.api.block(b.kind, b.userId, b.reason.trim()))) this.block.set(null);
+  }
+
+  /** E-mails the user a link to set a new password (refused for accounts whose password the main portal holds). */
+  protected async sendReset(kind: 'agencies' | 'assessors', userId: string): Promise<void> {
+    if (!window.confirm(RESET_CONFIRM)) return;
+    await this.run(this.api.passwordReset(kind, userId));
   }
 
   protected async unblock(kind: 'agencies' | 'assessors', userId: string): Promise<void> {

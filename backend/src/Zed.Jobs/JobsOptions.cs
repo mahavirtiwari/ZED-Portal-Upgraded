@@ -27,6 +27,9 @@ public sealed class JobsOptions
     public int CommandTimeoutSeconds { get; set; } = 1800;
 
     public List<JobDefinition> Schedules { get; set; } = [];
+
+    /// <summary>The built-in job that replaces SP_JOB_TO_CREATE_RENAMING_BATCH_FILES (FolderRename.cs).</summary>
+    public FolderRenameOptions FolderRename { get; set; } = new();
 }
 
 /// <summary>

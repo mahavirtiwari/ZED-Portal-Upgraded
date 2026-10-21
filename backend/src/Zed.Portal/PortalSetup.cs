@@ -50,6 +50,7 @@ public static class PortalSetup
         MobilePaymentsSetup.AddMobilePayments(services, config);
         services.AddSingleton<PledgeCertificateService>();
         services.AddScoped<IAssessmentDocuments, AssessmentDocuments>();
+        services.AddScoped<Features.Staff.PasswordReset.StaffPasswordResets>();
         return builder;
     }
 }

@@ -63,13 +63,9 @@ public sealed class ProcedureJobWorker(
         foreach (var job in jobs) lastStart[job.Name] = now;
         try
         {
-            await using var conn = new SqlConnection(config.GetConnectionString("Main"));
-            await conn.OpenAsync(ct);
-            await using var cmd = new SqlCommand("SELECT JobName, MAX(StartedAt) FROM dbo.V4JobRuns GROUP BY JobName", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
-                if (jobs.Any(j => string.Equals(j.Name, reader.GetString(0), StringComparison.OrdinalIgnoreCase)))
-                    lastStart[reader.GetString(0)] = reader.GetDateTime(1);
+            foreach (var (name, started) in await JobRuns.LastStartsAsync(config.GetConnectionString("Main"), ct))
+                if (jobs.Any(j => string.Equals(j.Name, name, StringComparison.OrdinalIgnoreCase)))
+                    lastStart[name] = started;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -93,22 +89,11 @@ public sealed class ProcedureJobWorker(
             }
 
             // The lock is taken in Main (where dbo.V4JobRuns is), whatever databases the steps use.
-            await using var lockConn = new SqlConnection(config.GetConnectionString("Main"));
-            await lockConn.OpenAsync(ct);
-            await using (var lockCmd = new SqlCommand("sp_getapplock", lockConn) { CommandType = CommandType.StoredProcedure })
+            await using var lockConn = await JobRuns.TryLockAsync(config.GetConnectionString("Main"), job.Name, ct);
+            if (lockConn is null)
             {
-                lockCmd.Parameters.AddWithValue("@Resource", "zed-job:" + job.Name);
-                lockCmd.Parameters.AddWithValue("@LockMode", "Exclusive");
-                lockCmd.Parameters.AddWithValue("@LockOwner", "Session");
-                lockCmd.Parameters.AddWithValue("@LockTimeout", 0);
-                var rc = lockCmd.Parameters.Add("@rc", SqlDbType.Int);
-                rc.Direction = ParameterDirection.ReturnValue;
-                await lockCmd.ExecuteNonQueryAsync(ct);
-                if ((int)rc.Value < 0)
-                {
-                    log.LogInformation("Job {Job} is already running elsewhere; skipped", job.Name);
-                    return;
-                }
+                log.LogInformation("Job {Job} is already running elsewhere; skipped", job.Name);
+                return;
             }
 
             for (var i = 0; i < calls.Count; i++)
@@ -145,34 +130,10 @@ public sealed class ProcedureJobWorker(
             log.LogError(ex, "Job {Job} failed", job.Name);
         }
         var error = errors.Count == 0 ? null : string.Join(" | ", errors);
-        if (error is { Length: > 2000 }) error = error[..2000];
-        await RecordAsync(job, started, (int)Math.Min(int.MaxValue, watch.ElapsedMilliseconds), error, ct);
-    }
-
-    private async Task RecordAsync(JobDefinition job, DateTime started, int elapsedMs, string? error, CancellationToken ct)
-    {
-        try
-        {
-            await using var conn = new SqlConnection(config.GetConnectionString("Main"));
-            await conn.OpenAsync(ct);
-            await using var cmd = new SqlCommand("""
-                INSERT INTO dbo.V4JobRuns (JobName, DatabaseName, ProcedureName, StartedAt, FinishedAt, Succeeded, Error)
-                VALUES (@Job, @Db, @Proc, @Started, DATEADD(millisecond, @Elapsed, @Started), @Ok, @Error)
-                """, conn);
-            cmd.Parameters.AddWithValue("@Job", job.Name);
-            var calls = JobSchedule.Calls(job);
-            var procedures = string.Join(",", calls.Select(c => c.Procedure));
-            cmd.Parameters.AddWithValue("@Db", string.Join(",", calls.Select(c => c.Database).Distinct(StringComparer.OrdinalIgnoreCase)) is var db && db.Length > 50 ? db[..50] : db);
-            cmd.Parameters.AddWithValue("@Proc", procedures.Length > 128 ? procedures[..128] : procedures);
-            cmd.Parameters.AddWithValue("@Started", started);
-            cmd.Parameters.AddWithValue("@Elapsed", elapsedMs);
-            cmd.Parameters.AddWithValue("@Ok", error is null);
-            cmd.Parameters.AddWithValue("@Error", (object?)error ?? DBNull.Value);
-            await cmd.ExecuteNonQueryAsync(ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            log.LogWarning(ex, "Could not record the run of {Job}", job.Name);
-        }
+        var all = JobSchedule.Calls(job);
+        await JobRuns.RecordAsync(config.GetConnectionString("Main"), job.Name,
+            string.Join(",", all.Select(c => c.Database).Distinct(StringComparer.OrdinalIgnoreCase)),
+            string.Join(",", all.Select(c => c.Procedure)),
+            started, (int)Math.Min(int.MaxValue, watch.ElapsedMilliseconds), error, log, ct);
     }
 }

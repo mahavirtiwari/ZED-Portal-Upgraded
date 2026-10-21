@@ -41,6 +41,21 @@ describe('AgenciesPage', () => {
     vi.restoreAllMocks();
   });
 
+  it('sends an active agency a password reset link after confirmation', async () => {
+    await create('all');
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001'), agency('ZEDAA0002', { IsActive: false, IdStatus: 'In-Active' })]);
+    await settle();
+    expect([...el.querySelectorAll('button')].filter((b) => b.textContent!.trim() === 'Reset Link').length).toBe(1);
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    button('Reset Link')!.click();
+    http.expectOne({ method: 'POST', url: '/api/staff/users/agencies/ZEDAA0001/password-reset' }).flush({ message: 'A password reset link has been sent.' });
+    await settle();
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001')]);
+    await settle();
+    expect(el.textContent).toContain('A password reset link has been sent.');
+  });
+
   it('lists agencies, filters them and blocks one with a reason', async () => {
     await create('all');
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001'), agency('ZEDAA0002', { IsActive: false, IdStatus: 'In-Active' })]);

@@ -43,7 +43,7 @@ $Path = @($Path | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() 
 
 # Procedures that must not be enabled by a conversion, with the reason.
 $NeverEnable = @{
-    'SP_JOB_TO_CREATE_RENAMING_BATCH_FILES' = 'uses xp_cmdshell (SECURITY-FINDINGS #12); decide before enabling'
+    'SP_JOB_TO_CREATE_RENAMING_BATCH_FILES' = 'uses xp_cmdshell (SECURITY-FINDINGS #12): replaced by the built-in Jobs:FolderRename job; copy this schedule there and do not enable this entry (docs/JOBS.md)'
 }
 $SecretName = '(?i)pass|pwd|secret|token|key'
 $SecretPlaceholder = '<SET-ME: not exported, looks like a secret>'

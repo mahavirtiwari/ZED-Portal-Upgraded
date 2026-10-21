@@ -14,8 +14,10 @@ V4 replaces both with the **Zed.Jobs** service (`backend/src/Zed.Jobs`):
 |---|---|
 | `database/migrations/0003_mail_outbox.sql` (run on **all three** databases) | Adds `dbo.V4MailOutbox` and `dbo.SP_V4_SEND_DBMAIL` (same parameters as `sp_send_dbmail`, queues the mail) and changes every procedure that calls `msdb.dbo.sp_send_dbmail` to call it instead (`CREATE OR ALTER`, permissions kept; safe to re-run; it prints what it converted). |
 | `database/migrations/0004_job_runs.sql` (ZEDCS_V2_LIVE) | `dbo.V4JobRuns`: one row per job run, with errors. |
+| `database/migrations/0007_folder_rename.sql` (ZEDCS_V2_LIVE) | `dbo.SP_V4_FOLDER_RENAME_PENDING`, `dbo.SP_V4_FOLDER_RENAME_RECORD` and `dbo.V4FolderRenameResults`, for the folder rename job below. Additive. |
 | Mail worker | Every 30 s sends queued mail through the portal's SMTP settings (`Email:Profiles`, profile `ZedAdmin` → `Default`), marks it sent, or records the error and retries every 10 minutes up to 5 times. Several service instances can run; rows are claimed with `READPAST`. |
 | Job worker | Runs each enabled job of `Jobs:Schedules` at its times (`DailyAt` "HH:mm" in `Jobs:TimeZone`, default Asia/Kolkata, or `EveryMinutes` within an optional `WindowStart`/`WindowEnd`), on every day or only on `DaysOfWeek` / `DaysOfMonth`. A job is one `Procedure` (with optional fixed `Parameters`) or several `Steps` run in order, stopping at the first failure unless the step has `ContinueOnFailure`. At start each enabled job is checked against its databases (procedure exists, every parameter without a default is set, values fit the declared types); a job that fails the check is logged and not scheduled, a job whose database is unreachable is checked again before it runs. An application lock per job stops two instances running it at once. After a restart, a job whose time passed while the service was down runs once; a job that has never run waits for its next time. |
+| Folder rename worker | `Jobs:FolderRename`: renames the folders of rejected units to their archived ZED ID, without `xp_cmdshell` (replaces `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES`, see [below](#renaming-the-folders-of-rejected-units-jobsfolderrename)). Same schedule fields, lock and `dbo.V4JobRuns` history as the other jobs. |
 
 ## Before go-live
 
@@ -67,7 +69,7 @@ Moving the Agent jobs is: export from the old server → convert → paste → c
      other combinations become entries `Job (1)`, `Job (2)`;
    - each entry keeps the old server's on/off state (job and schedule). Written **disabled**, with the reason in
      `Note`: a schedule whose end date has passed, a job without a schedule, `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES`
-     (#12), and a step parameter whose name looks like a secret (password, pwd, secret, token, key: the value is
+     (#12: replaced by the built-in folder rename job; copy its time into `Jobs:FolderRename`, below), and a step parameter whose name looks like a secret (password, pwd, secret, token, key: the value is
      replaced by a placeholder and never copied into the output or the report);
    - **not converted, listed in the report** (set them up by hand or ask the developers): steps that are not one
      procedure call (several statements, inline SQL, variables or expressions as arguments, positional arguments,
@@ -105,7 +107,7 @@ mailing procedures. A procedure the script skips (no `CREATE` at the start) must
 `appsettings.json` lists the job procedures found in the databases, all disabled. Left out on purpose: the
 `_backup`, `_old`, `_manually`, `_checking`, `_optimized`, `_manualmoving` copies, `SP_JOB_FOR_UPDATE_LASTEST_CERTIFICATION`
 (misspelt older copy of `..._LATEST_...`), and `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES` (uses `xp_cmdshell`,
-SECURITY-FINDINGS #12). `SP_SEND_MAIL_STATUS_COUNTS_AGENCY` is listed as a job but may be called by the application
+SECURITY-FINDINGS #12; replaced by the built-in folder rename job, below). `SP_SEND_MAIL_STATUS_COUNTS_AGENCY` is listed as a job but may be called by the application
 instead. If the export shows that an Agent job runs one of the left-out copies, that copy is what production runs:
 keep the converted entry and tell the developers.
 
@@ -125,6 +127,89 @@ Not listed, on purpose: `SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND` (one unit pe
 - `SP_SEND_MAIL_AUTO_ALLOT_CONSULTING_ORGANISATION_TU` is called per unit with `@ZedId, @Agency`.
 
 Check the export for consultancy jobs anyway.
+
+## Renaming the folders of rejected units (Jobs:FolderRename)
+
+**What the old job did.** When a unit is rejected, its rows are archived under a new ZED ID (`ZEDMSME000123_D_45`;
+the old auto-reject used `ZEDMSME000123_D`) and the unit can apply again under its own ZED ID.
+`SP_JOB_TO_CREATE_RENAMING_BATCH_FILES` collected the rejections (MsmeHistory `StatusType LIKE '%unit rejected%'`,
+Bronze, older than 2 hours, Id above the largest Id already done) into `dbo.FolderRenameHIstory`, used `xp_cmdshell`
+and `bcp` to write a `.bat` of `REN` lines into a folder on the database server, and marked the rows done
+(`RenameDone = 'Yes'`). Running the `.bat` was commented out: someone ran it by hand. It renamed two whole folders:
+`PDFs\SA\{ZedId}` of the portal site and `Photos\{ZedId}` of the services site.
+
+**The folders of a Bronze unit** (checked against the old site, the old services and V4):
+
+| Folder | Holds | V4 setting | Renamed |
+|---|---|---|---|
+| `PDFs\SA\{ZedId}` (portal site) | payment receipts `{Level}_Milestone{n}_Payment_Receipt.pdf`, the report `{Level}_Report.pdf`; V4 writes the receipts here too | `Portal:StorageRoot` | yes (old job, default root "SA PDFs") |
+| `Photos\{ZedId}\{Level}\…` (services site) | MSME app uploads: `Selfie`, `SiteExteriorPhotos`, `BasicInfo`, `Evidences` | `Mobile:StorageRoot` (main), = `Portal:AssessmentStorageRoot\mobileapi` | yes (old job, default root "App photos") |
+| `Uploads\DA\{ZedId}\{Level}\…` (portal site) | the desktop assessor's evidence screenshots | `Portal:StorageRoot` | no. Optional third root, `PerLevel: true` |
+| `CertifiedPhotos\{ZedId}` (services) | app uploads moved there at certification | | no (a rejected unit was not certified) |
+| `Certificates\{ZedId}\Pledge.pdf`, `Certificates\DA\…` | the unit's pledge (not per application), certificates | | **never** |
+| `SaPhotos`, `Attendance` (services) | site assessment (Silver and Gold) | | no (the old job was Bronze only) |
+
+Why it matters for V4: the desktop review and the MSME's evidence files look for a rejected record's files under the
+archived ZED ID first and then in the unit's own folder (`DaFiles.StorageCandidates`). So V4 shows a rejected record's
+files before the rename too. But once the unit applies again, a folder that was not renamed holds both applications:
+each record shows the other's files, and files with the same name (the receipt of a level, a photo id) are
+overwritten. The rename has to happen before the new application writes files, which is what the race check below
+is for. Surveillance (`_S_` archives) and consultancy were never renamed by the old job and are not covered.
+
+**The new job.** Built into Zed.Jobs (`FolderRename.cs`), no `xp_cmdshell`, no batch file:
+
+- It reads and writes the same `dbo.FolderRenameHIstory`, so it carries on where the old job stopped, and the old
+  procedure still works if you switch back. `RenameDone = 'Yes'` still means done. What the job found is kept in
+  `dbo.V4FolderRenameResults` (one row per row and run).
+- **Report** mode (the default) collects nothing, moves nothing and marks nothing; it logs per unit and folder what
+  Apply would do ("would move ZEDMSME000123 -> ZEDMSME000123_D_45"). **Apply** first adds the new rejections to the
+  table (exactly as the old job selected them), then handles every waiting row:
+
+| Case | What happens | Row |
+|---|---|---|
+| Unit folder exists, archived folder does not | moved (`Directory.Move`, same volume) | done |
+| No unit folder | nothing to move | done |
+| Archived folder already there, no unit folder | moved earlier (or by hand) | done |
+| ZED ID without `_D` (the old job wrote a no-op `REN`) | nothing to rename | done |
+| **Both** the unit folder and the archived folder exist | **Conflict**: not merged, nothing moved | waiting |
+| The unit folder has files written after the rejection (+ `GraceMinutes`, default 10, for a report the rejection itself wrote) | **NewerFiles**: the unit has applied again; nothing moved. The detail also names the unit's ZED ID's new certification rows | waiting |
+| ZED ID or level that is not `^[A-Za-z]{2,12}[0-9]{1,12}(_D(_n)?)?$` / a level name, or a path that would leave the folder | **InvalidId**: not touched | waiting |
+| Disk error (a file in use, no permission) | **Error**: the run is marked failed in `dbo.V4JobRuns`; folders already moved are found as "already there" next time | waiting, retried each run |
+
+  A unit is moved only when every folder of every root can be moved, so a conflict in one root leaves the other roots
+  untouched. Several history rows of one rejection are handled once and all marked.
+- `PerLevel: true` on a root moves only `{root}\{ZedId}\{Level}` to `{root}\{ArchivedId}\{Level}` (and removes the
+  unit's folder if that leaves it empty), so the files of the unit's other levels stay. The old job moved whole folders
+  (`PerLevel: false`, the default of both roots in `appsettings.json`).
+- Settings (`Jobs:FolderRename`): `Enabled`, `Mode` (`Report`/`Apply`), the schedule fields of `Jobs:Schedules`
+  (`DailyAt`, `EveryMinutes`, ...), `DelayHours` (2), `CertificationTypes` (`["Bronze"]`), `GraceMinutes` (10),
+  `Roots` (`Name`, absolute `Path`, `PerLevel`), `StartAfterId` (only used while the table has no `'Yes'` row: the
+  old job collected nothing at all then).
+- `Zed.Jobs --check` checks it too: settings, every root exists and the service account can write in it (a temporary
+  file is created and deleted), and the two 0007 procedures exist.
+
+**Switching from the old job:**
+1. Run `database/migrations/0007_folder_rename.sql` on ZEDCS_V2_LIVE; give the Zed.Jobs login `EXECUTE` on the two
+   procedures. The service account needs modify rights on the root folders.
+2. Set `Roots` to the server's real folders (the old procedure's `REN` lines name them: the old site's `PDFs\SA` and the
+   services site's `Photos`), the time of the old Agent job (the Agent export; the converter writes it disabled with a
+   note), `"Mode": "Report"`, `"Enabled": true`. Run `Zed.Jobs --check`.
+3. **Disable the old Agent job** at the moment the service starts. Never run both: the old job marks every waiting
+   row done, including the ones V4 left waiting on purpose.
+4. Compare the first Report runs with what the old job would have renamed: the log lines "would move ..." against
+   `EXEC dbo.SP_V4_FOLDER_RENAME_PENDING;` (Report mode, writes nothing) and the last `.bat` / `FolderRename_*.txt`
+   the old job wrote.
+5. Set `"Mode": "Apply"` and restart the service.
+
+**Watching and fixing:**
+```sql
+SELECT TOP 50 * FROM dbo.V4FolderRenameResults ORDER BY Id DESC;
+SELECT * FROM dbo.FolderRenameHIstory WHERE RenameDone IS NULL;                 -- waiting rows
+-- After separating a Conflict / NewerFiles case by hand:
+EXEC dbo.SP_V4_FOLDER_RENAME_RECORD @Id = 0, @ZedId = 'ZEDMSME000000_D_0', @Outcome = 'Manual', @Done = 1, @Detail = N'moved by hand';
+```
+Going back: disable the job, re-enable the Agent job; it reads the same table (its `.bat` then also lists the rows
+V4 left waiting).
 
 ## Running it
 

@@ -106,7 +106,9 @@ sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\000
 foreach ($db in 'ZEDCS_V2_LIVE','ZED_CONSULTANT','ZED_SURVEILLANCE') {   # all three DBs
   sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0005_password_hashes.sql      # docs/PASSWORDS.md
   sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0006_distributed_cache.sql    # only used with Cache:SqlServerTable
+  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0008_staff_password_reset.sql
 }
+sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0007_folder_rename.sql   # Jobs:FolderRename
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-registration-data.sql   # eligibility data, site URL, stand-ins for missing DBs
@@ -164,6 +166,8 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `DataProtection:KeysPath` | Folder for the sign-in and anti-forgery keys; required outside Development; one per application; back it up (docs/CUTOVER.md) |
 | `Cache:SqlServerTable` | Optional, e.g. `dbo.V4Cache` (migration 0006): shared cache for more than one server |
 | `Jobs:Schedules` (Zed.Jobs) | The former SQL Agent jobs, filled from the Agent export with `tools/jobs/Convert-AgentJobs.ps1` and checked with `Zed.Jobs --check` (docs/JOBS.md) |
+| `Jobs:FolderRename` (Zed.Jobs) | Renames the folders of rejected units to their archived ZED ID (replaces SP_JOB_TO_CREATE_RENAMING_BATCH_FILES, no xp_cmdshell). Migration 0007; Report mode first; docs/JOBS.md |
+| `StaffPasswordReset:Enabled/ValidMinutes/MaxRequestsPerHour/ExcludedRoles/MainPortalUrl` | Staff "Forgot password?" and administrator reset links (migration 0008, docs/PASSWORDS.md). ExcludedRoles (default 7,10) get their link from another MasterAdmin |
 | `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Off unless `Enabled` is true |
 
 ## Tests
@@ -180,6 +184,6 @@ the mobile API and Zed.Jobs). `deploy\Install-ZedIis.ps1` (dry run, then `-Apply
 addresses (`/`, `/Consultancy`, `/surveillance` and the three mobile service paths) with settings from a
 server-side copy of `deploy\settings.example.json`. `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks it.
 Hosts refuse to start with missing settings outside Development; `/api/health/ready` and `/health/ready`
-report database readiness. Migrations `database/migrations/0001`–`0006` and the reviewed `database/fixes`
+report database readiness. Migrations `database/migrations/0001`–`0008` and the reviewed `database/fixes`
 scripts go first. Runbook, rollback and decommission: `docs/CUTOVER.md`; passwords: `docs/PASSWORDS.md`;
 jobs: `docs/JOBS.md`; mobile: `docs/MOBILE-API.md`.

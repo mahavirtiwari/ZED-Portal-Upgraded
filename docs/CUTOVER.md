@@ -75,7 +75,9 @@ and evidence are reachable only through V4's checked endpoints (closes #9, #34).
 5. `Mobile:Culture`, `Mobile:PathBase`, version gates: see MOBILE-API.md ("Open before go-live" lists the live
    checks to do on the old services first). Keep `Mobile:DeviceBinding = Monitor`.
 6. `Security:Passwords` stays `Dual` (the default) until the rollback window is over (section 4).
-7. Optional, only for more than one server per application: `Cache:SqlServerTable = dbo.V4Cache` (migration 0006).
+7. Decide `StaffPasswordReset:ExcludedRoles` (default MasterAdmin 7 and SuperAdmin 10, who get their reset link from
+   another MasterAdmin; add 1 for Admin if wanted).
+8. Optional, only for more than one server per application: `Cache:SqlServerTable = dbo.V4Cache` (migration 0006).
    One server per application needs nothing.
 
 ### 1.4 Database
@@ -89,7 +91,9 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 | 3 | `migrations/0004_job_runs.sql` | ZEDCS_V2_LIVE | |
 | 4 | `migrations/0005_password_hashes.sql` | all three | hashes next to the plain column (#2), docs/PASSWORDS.md |
 | 5 | `migrations/0006_distributed_cache.sql` | only with `Cache:SqlServerTable` | |
-| 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once the folder-rename job has an owner) |
+| 5a | `migrations/0007_folder_rename.sql` | ZEDCS_V2_LIVE | folder rename job (docs/JOBS.md); EXECUTE for the Zed.Jobs login, modify rights on the two folders |
+| 5b | `migrations/0008_staff_password_reset.sql` | all three | staff password reset (docs/PASSWORDS.md); EXECUTE on the four `SP_V4_STAFF_RESET_*` procedures; needs a working SMTP profile on each portal |
+| 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once `Jobs:FolderRename` has replaced the old rename job) |
 | 7 | `migrations/0003_mail_outbox.sql` | all three | **only together with starting Zed.Jobs and switching the Agent jobs off** (JOBS.md "Before go-live"): from then on procedure mail of the old sites is sent by Zed.Jobs too |
 
 Exception: `fixes/main/02_sp_get_user_details_master_passwords.sql` breaks the **old** Udyami Bharat hand-over;
@@ -135,6 +139,7 @@ Express is a **separate change in its own window**, before or after, never the s
 | 0:50 | `fixes/main/02_sp_get_user_details_master_passwords.sql` (V4 now serves the Udyami Bharat hand-over) | DBA |
 | 0:55 | `Test-ZedDeployment.ps1 -BaseUrl https://loginzed.msme.gov.in`: **0 failures** required | server team |
 | 1:00 | Zed.Jobs running (`dbo.V4JobRuns`, `dbo.V4MailOutbox` drain) and Agent jobs off, if not done earlier | DBA |
+| 1:05 | Disable the Agent job that runs SP_JOB_TO_CREATE_RENAMING_BATCH_FILES; enable `Jobs:FolderRename` in Report mode; compare its log with what the old .bat would contain, then switch it to Apply (can be done in the following days) | DBA |
 | 1:05 | Functional checks (below) | testers |
 | 2:30 | **Go / no-go** (2.2). Go: announce. No-go: rollback (section 3) | owner |
 
@@ -176,9 +181,11 @@ Possible at any time while `Security:Passwords` is still `Dual` and the old app 
 What the old sites find after a rollback:
 - **All data V4 wrote**: V4 writes through the same procedures into the same tables and files in the old layout.
 - V4-only tables (`V4MailOutbox`, `V4JobRuns`, `V4UserPasswords`, `MobileDeviceBindings`, `MobileDeviceEvents`,
-  `V4Cache`) are ignored by the old code. Leave them.
+  `V4Cache`, `V4FolderRenameResults`, `V4PasswordResets`) are ignored by the old code. Leave them.
 - **Mail**: the converted procedures (0003) keep queuing; **keep Zed.Jobs running**. To go fully back, re-enable the
   Agent jobs, stop Zed.Jobs, and undo 0003 per procedure (its header says how), which needs Database Mail.
+- **Folder renaming**: re-enable the old Agent job; it reads the same `FolderRenameHIstory` and continues.
+- **Password reset links** (`V4PasswordResets`) are V4-only; links sent before the rollback stop working.
 - **Passwords**: in `Dual` mode the plain column stays authoritative, so every account still signs in on the old
   sites. After `Migrate` the plain column holds random values, and a rollback would lock users out. That is why
   `Migrate` waits until the rollback window is closed.
@@ -244,6 +251,8 @@ fix with the `database/fixes` scripts or drop it in step 3): 1 and 27 (master pa
 | `DataProtection:KeysPath` | Folder for the keys that protect sign-in cookies and anti-forgery tokens. Required outside Development. One folder per application; back it up. Each system uses its own application name (`zed.main`, `zed.consultancy`, `zed.surveillance`, `zed.mobile.<system>`), so a cookie of one cannot be used on another |
 | `DataProtection:ProtectWithDpapi` | Default true on Windows: keys are encrypted at rest for the machine |
 | `Cache:SqlServerTable` | e.g. `dbo.V4Cache` (migration 0006): shares registration sessions and payment order state between servers. Empty: in memory (one server) |
+| `Jobs:FolderRename` | Zed.Jobs: renames the folders of rejected units (migration 0007, docs/JOBS.md). Report mode first |
+| `StaffPasswordReset:*` | Staff forgot-password and admin reset links (migration 0008, docs/PASSWORDS.md) |
 | `/api/health`, `/health` | Liveness: the process answers. No database call |
 | `/api/health/ready`, `/health/ready` | Readiness: the host's database answers within 5 s. Replies only `Healthy` / `Unhealthy` (503); the reason goes to the log |
 

@@ -5,6 +5,7 @@ using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.PasswordReset;
 using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Users;
@@ -299,6 +300,16 @@ public sealed class StaffAssessorsController(
                 return this.Problem400("This certificate is attached to another active Bronze Assessor, so the user cannot be unblocked.");
         }
         return await StaffUserActions.UnblockAsync(this, db, host, Mail, a, UserId, log, ct);
+    }
+
+    /// <summary>E-mails the assessor a link to set a new password (MasterAdmin, or the agency that manages the assessor).</summary>
+    [HttpPost("{userId}/password-reset")]
+    [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
+    public async Task<ActionResult<MessageResponse>> PasswordReset(string userId, [FromServices] StaffPasswordResets resets, CancellationToken ct)
+    {
+        var a = await FindAsync(userId, ct);
+        if (a is null) return NotFound();
+        return this.ToResponse(await resets.SendByAdminAsync(a.UserId, CurrentUser, HttpContext.Connection.RemoteIpAddress?.ToString(), ct));
     }
 
     public sealed record MobileRequest(string? MobileNo);

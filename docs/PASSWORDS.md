@@ -84,9 +84,47 @@ Blocking still has to be done on both sides (see LIVE-HARDENING).
 
 **Resetting an account without a hash:**
 - **MSMEs:** *Forgot password* on the MSME login (web) or in the app. The link sets a new password and its hash.
-- **Staff, agencies and assessors:** there is no self-service reset, and the old site had none either. Sign in during
-  Migrate, which moves the account to a hash, or have the account's administrator issue a new password. Run HashOnly only
-  once the PREVIEW count of staff accounts without a hash is acceptable.
+- **Staff, agencies, assessors and consultants:** *Forgot password?* on the staff login of their portal, or a reset link
+  sent by their administrator (see "Staff password reset" below). Both set a new password and its hash. MasterAdmin
+  and SuperAdmin accounts get their link from another MasterAdmin.
+
+## Staff password reset
+
+New in V4 (the old sites had no reset for staff). Migration `0008_staff_password_reset.sql`, on **all three** databases:
+each portal resets the accounts of its own Users table (Consultancy keeps its own accounts in ZED_CONSULTANT).
+
+- **Forgot password?** on the staff login (`/login`, `/Consultancy/login`, `/surveillance/login`) asks for the User ID and
+  the captcha. The answer is always the same and comes before the account is looked up: the lookup, the link and the mail
+  run in the background. Nothing is sent for an unknown, blocked or MSME account, one without a valid e-mail address, or
+  one of an excluded role; every outcome is written to the log category `Zed.Audit.PasswordReset` (never the token).
+- **The link** (`{PublicBaseUrl}/reset-password#token=…`) carries a 256-bit random token in the URL fragment, so it does
+  not reach the server's logs or other sites. Only its SHA-256 is stored (`dbo.V4PasswordResets`). It works once, for
+  `StaffPasswordReset:ValidMinutes` (30), and stops working when a newer link is sent or another one is used. Using it
+  clears the account's failed logins (the lock-out of the legacy login procedures) and sets the password through the
+  Security:Passwords mode (Dual: plain value and hash; Migrate/HashOnly: hash and a random plain value). A "password
+  changed" mail follows.
+- **Limits:** 5 requests per 15 minutes per address, and `StaffPasswordReset:MaxRequestsPerHour` (3) self-service links
+  per account and hour (more requests get the same answer and send nothing).
+- **Excluded roles:** `StaffPasswordReset:ExcludedRoles` (default `7,10`, MasterAdmin and SuperAdmin) cannot reset with
+  their e-mail account alone. Another MasterAdmin sends them a link (menu *Password Reset Link*). Add `1` to exclude
+  Admin accounts too.
+- **Links sent by an administrator:** *Reset Link* in the user screens (MasterAdmin: agencies, assessors/consultants;
+  an agency: its own assessors; Surveillance: the agency and assessor lists) and the MasterAdmin page *Password Reset
+  Link* (any staff account of the portal, `POST api/staff/password-reset/{userId}`). The link goes to the user's
+  registered address; the administrator never sees or sets the password. Not for one's own account (use Change
+  Password), nor for a blocked one.
+- **Surveillance accounts whose password main holds** (from Migrate on, #111): *Forgot password?* on the surveillance
+  portal mails them a pointer to the main portal's reset instead (at most every 15 minutes), administrators are told to
+  send the link from main, and an older surveillance link no longer works. `StaffPasswordReset:MainPortalUrl` overrides
+  the main address (default: the surveillance PublicBaseUrl without `Portal:PathBase`). In Dual their surveillance copy
+  is their password on this portal and is reset here, as Change Password does.
+- **Sessions:** V4 signs staff in with a cookie only (no server-side session list), so a reset does not end sessions
+  already open elsewhere; they expire after at most 120 minutes without activity.
+- `StaffPasswordReset:Enabled=false` turns both ways off on a portal.
+
+Setting up: run 0008 on the three databases and grant the V4 logins `EXECUTE` on `SP_V4_STAFF_RESET_ACCOUNT`,
+`SP_V4_STAFF_RESET_CREATE`, `SP_V4_STAFF_RESET_FIND` and `SP_V4_STAFF_RESET_USE`. Each portal needs a working SMTP
+profile (`Email:Profiles:Default`) and its own `Portal:PublicBaseUrl`.
 
 ## Also found
 

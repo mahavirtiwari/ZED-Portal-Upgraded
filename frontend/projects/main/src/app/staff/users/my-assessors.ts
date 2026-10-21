@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { OwnAssessorRow, UsersApi } from './users.api';
+import { OwnAssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 
 interface Dialog {
   kind: 'block' | 'mobile';
@@ -78,6 +78,9 @@ interface Dialog {
                         }
                         <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
                         <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', u)">Mobile No</button>
+                        @if (u.IsActive) {
+                          <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(u)">Reset Link</button>
+                        }
                       </td>
                     </tr>
                   } @empty {
@@ -191,6 +194,12 @@ export class MyAssessorsPage {
     }
     const call = d.kind === 'block' ? this.api.block('assessors', d.assessor.UserId, text) : this.api.resetMobile('assessors', d.assessor.UserId, text);
     if (await this.run(call, true)) this.dialog.set(null);
+  }
+
+  /** E-mails the assessor a link to set a new password. */
+  protected async sendReset(u: OwnAssessorRow): Promise<void> {
+    if (!window.confirm(RESET_CONFIRM)) return;
+    await this.run(this.api.passwordReset('assessors', u.UserId), false);
   }
 
   protected async unblock(u: OwnAssessorRow): Promise<void> {

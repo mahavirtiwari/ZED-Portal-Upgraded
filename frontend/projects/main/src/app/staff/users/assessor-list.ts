@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
-import { AssessorRow, UsersApi } from './users.api';
+import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 
 /**
  * MasterAdmin list of all assessors (optionally of one agency, `?agencyId=`, and verification type,
@@ -29,6 +29,9 @@ import { AssessorRow, UsersApi } from './users.api';
             </div>
             @if (error()) {
               <div class="alert alert-danger" role="alert">{{ error() }}</div>
+            }
+            @if (success()) {
+              <div class="alert alert-success" role="status">{{ success() }}</div>
             }
             <div class="table-responsive">
               <table class="table table-zed table-bordered bg-white">
@@ -54,6 +57,9 @@ import { AssessorRow, UsersApi } from './users.api';
                       <td><strong>{{ s.AgencyUserName }}</strong><br />{{ s.AgencyUserId }}</td>
                       <td class="text-center">
                         <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">View</a>
+                        @if (s.IsActive) {
+                          <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
+                        }
                       </td>
                     </tr>
                   } @empty {
@@ -111,6 +117,8 @@ export class AssessorListPage {
   protected readonly pageNo = signal(1);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
+  protected readonly success = signal('');
+  protected readonly busy = signal(false);
 
   /** As before: the search matches any value of the row. */
   protected readonly filtered = computed(() => {
@@ -130,6 +138,21 @@ export class AssessorListPage {
 
   protected go(n: number): void {
     this.pageNo.set(Math.min(Math.max(1, n), this.lastPage()));
+  }
+
+  /** E-mails the assessor a link to set a new password. */
+  protected async sendReset(s: AssessorRow): Promise<void> {
+    if (!window.confirm(RESET_CONFIRM)) return;
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      this.success.set((await firstValueFrom(this.api.passwordReset('assessors', s.UserId))).message);
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   private async load(): Promise<void> {

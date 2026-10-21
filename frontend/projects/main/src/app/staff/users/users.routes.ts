@@ -62,6 +62,12 @@ const MAIN_USERS_ROUTES: Routes = [
     canActivate: [agencyOrMaster],
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),
   },
+  {
+    path: 'password-reset',
+    title: 'ZED | Password Reset Link',
+    canActivate: [masterAdmin],
+    loadComponent: () => import('./password-reset-link').then((m) => m.PasswordResetLinkPage),
+  },
 ];
 
 /** Surveillance: agencies and assessors are mastered in main; this portal only views and blocks them. */
@@ -79,6 +85,12 @@ const SURVEILLANCE_USERS_ROUTES: Routes = [
     canActivate: [agencyOrMaster],
     data: { kind: 'assessors' },
     loadComponent: () => import('./surveillance-users').then((m) => m.SurveillanceUsersPage),
+  },
+  {
+    path: 'password-reset',
+    title: 'ZED | Password Reset Link',
+    canActivate: [masterAdmin],
+    loadComponent: () => import('./password-reset-link').then((m) => m.PasswordResetLinkPage),
   },
 ];
 

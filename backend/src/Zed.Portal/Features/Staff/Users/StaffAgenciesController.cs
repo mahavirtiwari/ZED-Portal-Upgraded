@@ -4,6 +4,7 @@ using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.PasswordReset;
 using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Users;
@@ -214,6 +215,15 @@ public sealed class StaffAgenciesController(
         var agency = await FindAsync(userId, ct);
         if (agency is null) return NotFound();
         return await StaffUserActions.UnblockAsync(this, db, host, Mail, agency, UserId, log, ct);
+    }
+
+    /// <summary>E-mails the agency a link to set a new password (the MasterAdmin never sees or sets it).</summary>
+    [HttpPost("{userId}/password-reset")]
+    public async Task<ActionResult<MessageResponse>> PasswordReset(string userId, [FromServices] StaffPasswordResets resets, CancellationToken ct)
+    {
+        var agency = await FindAsync(userId, ct);
+        if (agency is null) return NotFound();
+        return this.ToResponse(await resets.SendByAdminAsync(agency.UserId, CurrentUser, HttpContext.Connection.RemoteIpAddress?.ToString(), ct));
     }
 
     public sealed record BronzeRequest(bool Allow, string? Reason);

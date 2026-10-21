@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { STAFF_ROLE_IDS } from './staff-menu';
@@ -14,7 +14,7 @@ import { PORTAL_LABELS } from '../portal-labels';
  */
 @Component({
   selector: 'zed-staff-login',
-  imports: [FormsModule, Recaptcha],
+  imports: [FormsModule, RouterLink, Recaptcha],
   host: { class: 'zed-login d-block' },
   template: `
     <main class="staff-login">
@@ -42,6 +42,7 @@ import { PORTAL_LABELS } from '../portal-labels';
             <div class="d-grid col-12">
               <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
             </div>
+            <p class="text-center mt-3 mb-0"><a routerLink="/forgot-password">Forgot password?</a></p>
             @if (error()) {
               <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
             }
