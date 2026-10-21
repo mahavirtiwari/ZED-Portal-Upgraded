@@ -58,23 +58,52 @@ phase 3), Surveillance payment (`SurveillancePay`), Financial Assistance and Tec
 Handholding Support (2b), incentive pages (`Incentive/Details`, phase 5), certificate PDFs and assessment
 reports on the Certification details page (2b/4). WASH and webinar certificates link to msmekawach.org.in.
 
-## Database (SQL Server 2022 Express)
+## Database
 
-Restored from the three schema scripts by `database/setup.ps1` (details in `database/README.md`). Open items:
+Local copies are built from the schema scripts by `database/setup.ps1` (details in `database/README.md`).
 
-- **12 SEQUENCE objects were missing from the export** (`MsmeIdSequence`, `PaymentSequence`, `CertificateSequence`, …).
-  Local stand-ins start at 1. Before cut-over, script the real ones (with current values) from production.
-- **Databases referenced but not provided:** `ZED_CENTER_AUDIT_PROFESSIONAL`, `ZED_CENTER_AUDIT_V2`, `KAWACH`,
-  `ZED_IMPACT_ASSESSMENT`. Core procedures use them (e.g. the registration e-mail check). Locally, empty stubs
-  with a `candidates` table are created by `database/seed/dev-registration-data.sql`. Please provide their schemas.
+**Production sizes** (2026-10-21):
+
+| Database | Data used (allocated), GB | Log allocated (used), GB | Express 2022 (10 GB) | Express 2025 (50 GB) |
+|---|---|---|---|---|
+| ZEDCS_V2_LIVE | 76.2 (78.3) | 359.5 (0.2) | no | **no** |
+| ZED_SURVEILLANCE | 15.3 (20.3) | 43.0 (0.1) | no | yes |
+| ZED_CONSULTANT | 9.9 (10.8) | 100.6 (0.1) | no (file over 10 GB) | yes |
+| ZED_CENTER_AUDIT_PROFESSIONAL (referenced) | 19.4 (19.4) | 0.1 | no | yes |
+| ZED_IMPACT_ASSESSMENT (referenced) | 5.0 (5.7) | 6.8 (0.1) | yes | yes |
+| ZED_CENTER_AUDIT_V2 (referenced) | 2.1 (2.1) | 0.1 | yes | yes |
+| ZED_QUALITY_PROFESSIONAL (referenced by V2) | 0.4 | 0.0 | yes | yes |
+| KAWACH (referenced) | 0.2 | 0.5 | yes | yes |
+
+- **SQL Server Express cannot host ZED.** ZEDCS_V2_LIVE uses 76 GB, over the 10 GB of 2022 Express and the 50 GB of
+  2025 Express; ZED_SURVEILLANCE, ZED_CONSULTANT (its data file is 10.8 GB) and ZED_CENTER_AUDIT_PROFESSIONAL are over
+  10 GB too. **Decision needed:** SQL Server 2022 (or 2025) **Standard** edition (recommended: no size limit that
+  matters here, up to 24 cores / 128 GB buffer pool, and Agent and Database Mail are available, although V4 does not
+  need them), or keep the managed instance. 2025 Express would need ZEDCS_V2_LIVE cut below 50 GB first (archiving;
+  see what takes the space with the query in `docs/CUTOVER.md` 1.4). V4 runs the same on any of these.
+- **One instance for the related databases.** ZED procedures use three-part names into four other applications'
+  databases, and V4 reaches them: ZED_CENTER_AUDIT_PROFESSIONAL (user creation, Udyam validation, sectors),
+  ZED_CENTER_AUDIT_V2 (Udyam registration, a monitoring report), KAWACH (My Documents, the Kawach reports) and
+  ZED_IMPACT_ASSESSMENT (Udyam update). Those reference ZEDCS_V2_LIVE, ZED_CONSULTANT, KAWACH and
+  ZED_QUALITY_PROFESSIONAL in turn. So every database of the current instance except LEAN_IMPACT moves to the same
+  new instance (about 128 GB of data), and the other applications (Impact Assessment, Professional, Training,
+  Quality, Kawach) are re-pointed with it, or the cross-database calls are rewritten (synonyms to a linked server),
+  which is a project of its own. Checked: V4's procedures that cross over run against the provided schemas.
+- **Logs:** allocated 360 / 101 / 43 GB with almost nothing used. A restore re-creates them at that size: shrink the
+  log files on the old instance before the final backup, or provide the disk.
+- **Sequences: done.** `database/schema/04_missing_sequences.sql` holds the production definitions (snapshot of
+  2026-10-21; a backup/restore carries the current values). Two sequences the procedures use do not exist on
+  production: `SaCertificateSequence` (in `SP_MONITORING_UPDATE_FINAL_SUBMIT` of all three databases) and
+  `WebinarCertificateSequence` (`SP_WEBINAR_GET_CERTIFICATE_DETAILS`), so those procedures fail there today. V4 calls
+  neither.
+- **Referenced databases: three of four provided.** ZED_IMPACT_ASSESSMENT, ZED_CENTER_AUDIT_PROFESSIONAL and
+  ZED_CENTER_AUDIT_V2 are `database/schema/05`–`07` (setup builds them). **Still needed:** the KAWACH schema export
+  (locally a stand-in with the tables ZED reads), and the Professional export again **with its user-defined table
+  types** (`DynamicOption`, `DynamicQuestion`: without them 5 of its own procedures do not compile; ZED does not use them).
 - **18 procedures do not compile against the current tables** (they reference dropped/renamed columns), so they
   are already broken in production; list in `database/README.md`. Check whether any screen still uses them.
-- **SQL Server Express limits:** 10 GB per database, 1 socket / 4 cores, ~1.4 GB buffer pool, **no SQL Agent and
-  no Database Mail.** Check production database sizes first; if any is near 10 GB, Express is not suitable
-  (Standard edition, or SQL Server 2025 Express whose limit is 50 GB).
-  - 25 procedures call `msdb.dbo.sp_send_dbmail` and the `SP_JOB_*` / `SP_DAILY_RUN_*` procedures are run by
-    Agent jobs today. Plan: a .NET background worker (Hangfire or Quartz.NET) that runs those procedures on the
-    same schedules and sends their mail through `IEmailSender`. Need the production Agent job list and schedules.
+- **Agent jobs and Database Mail: done** (the production export is in Zed.Jobs, docs/JOBS.md). Open: the old
+  instance's time zone, and the mail checks listed there.
 - Confirm production compatibility level and collation (local: 160, `SQL_Latin1_General_CP1_CI_AS`).
 
 ## Behaviour changes made on purpose (pilot)

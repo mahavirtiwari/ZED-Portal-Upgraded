@@ -186,7 +186,8 @@ public static class ParameterValues
 }
 
 /// <summary>A procedure call checked against the database, with its parameter values converted.</summary>
-public sealed record PreparedCall(string Database, string Procedure, IReadOnlyList<KeyValuePair<string, object>> Parameters, bool ContinueOnFailure);
+public sealed record PreparedCall(string Database, string Procedure, IReadOnlyList<KeyValuePair<string, object>> Parameters, bool ContinueOnFailure,
+    int RetryAttempts = 0, int RetryIntervalMinutes = 0);
 
 public enum JobCheckState { Ok, Invalid, Unreachable }
 
@@ -247,7 +248,7 @@ public sealed class JobChecker(IProcedureCatalog catalog, IJobDatabases database
                 else if (!p.HasDefault && !p.IsReadOnly && info.DefinitionReadable)
                     errors.Add($"{where}@{p.Name} ({p.SqlType}) has no default: set it in Parameters.");
             }
-            calls.Add(new PreparedCall(call.Database, call.Procedure, values, call.ContinueOnFailure));
+            calls.Add(new PreparedCall(call.Database, call.Procedure, values, call.ContinueOnFailure, call.RetryAttempts, call.RetryIntervalMinutes));
         }
         var state = errors.Count > 0 ? JobCheckState.Invalid : unreachable ? JobCheckState.Unreachable : JobCheckState.Ok;
         return new(state, errors, warnings, state == JobCheckState.Ok ? calls : []);

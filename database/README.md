@@ -21,7 +21,8 @@ therefore be on the same instance, with exactly these names.
 | `setup.ps1` | Builds everything again from the cleaned scripts (see below). |
 | `verify_references.sql` | Read-only checks to run in each database: object counts, references to missing objects or databases, and modules that fail to bind. |
 | `schema\0[1-3]_*.sql` | UTF-8 copies of the SSMS "Generate Scripts" output, with the minimal cleanups listed below. |
-| `schema\04_missing_sequences.sql` | Local stand-ins for the SEQUENCE objects that the export left out (see Findings, section 3). |
+| `schema\04_missing_sequences.sql` | The SEQUENCE objects the export left out, as defined on production (see Findings, section 3). |
+| `schema\05_ZED_IMPACT_ASSESSMENT.sql`, `06_ZED_CENTER_AUDIT_PROFESSIONAL.sql`, `07_ZED_CENTER_AUDIT_V2.sql` | Schema exports (2026-10-21) of the other applications' databases that ZED procedures read with three-part names, cleaned the same way and redacted (see "Referenced databases"). KAWACH has no export yet: `seed\dev-registration-data.sql` creates stand-ins for the tables ZED reads. |
 | `logs\` | Output from the last run: `setup-*.log`, `failed-batches-*.json`, `warnings-*.txt`, and `verify-<db>.txt`. |
 
 ## How to run
@@ -179,25 +180,45 @@ Cross-database calls between the three databases otherwise resolve:
 a server part were found in `sys.sql_expression_dependencies`, and there are no OPENQUERY,
 OPENROWSET or OPENDATASOURCE calls.
 
-### 3. Missing SEQUENCE objects (fixed locally with stand-ins)
+### 3. SEQUENCE objects (production definitions)
 
-The export did not include sequences, but procedures call `NEXT VALUE FOR`. The sequences used are:
+The export did not include sequences, but procedures call `NEXT VALUE FOR`. `04_missing_sequences.sql` now creates
+them as defined on production (snapshot of `sys.sequences` of every database on the production instance, 2026-10-21):
+data type, MIN/MAX and CACHE as there, `START WITH` the production value of that day + 1. It creates only sequences
+that do not exist yet, in databases that exist on the instance.
 
-* ID sequences: `MsmeIdSequence`, `PaymentSequence`, `EvidenceIdSequence`, `FinancialIdSequence`, `RefIdSequence`
-* User and certificate sequences: `AssessorsSequence`, `BodiesSequence`, `CertificateSequence`, `SaCertificateSequence`, `WebinarCertificateSequence`
-* Invoice sequences, ZEDCS_V2_LIVE only: `Seq_Zed_Invoice_Number`, `InvoiceNumberSeq`
+* ZEDCS_V2_LIVE: 11 (`MsmeIdSequence`, `PaymentSequence`, `EvidenceIdSequence`, `FinancialIdSequence`, `RefIdSequence`,
+  `AssessorsSequence`, `BodiesSequence`, `CertificateSequence`, `Seq_Zed_Invoice_Number`, `InvoiceNumberSeq`,
+  `TechDetailsIdSequence`); ZED_CONSULTANT and ZED_SURVEILLANCE: 7 each; the referenced databases: 2 to 8 each.
+* **Not on production**, kept as stand-ins: `SaCertificateSequence` (used by `SP_MONITORING_UPDATE_FINAL_SUBMIT` in all
+  three databases) and `WebinarCertificateSequence` (`SP_WEBINAR_GET_CERTIFICATE_DETAILS`). Those procedures fail on
+  production with Msg 208; V4 does not call them.
 
-Without them, registration, payment, user creation, certificates and invoices would all fail
-with Msg 208. `04_missing_sequences.sql` creates them as `bigint START WITH 1`: 12 in
-ZEDCS_V2_LIVE, 9 in each of the other two. Replace these with the real definitions from
-production:
+A backup/restore carries the sequences with their current values. If production data is ever moved another way,
+re-create them from a fresh snapshot taken in the cut-over window, never from these numbers.
 
-```sql
-SELECT name, TYPE_NAME(system_type_id), start_value, increment, current_value, cache_size FROM sys.sequences
-```
+### 3a. Referenced databases
 
-The generated IDs are formatted with `RIGHT(...,4)` and similar, so the start values matter
-once real data is loaded.
+ZED procedures read four other applications' databases with three-part names (MIGRATION-PLAN "Database"). The
+schema exports of three were provided on 2026-10-21 and are `schema\05`-`07`, cleaned like 01-03 (UTF-8, comment
+values redacted) and with their own hard-coded credentials removed: 3 master passwords and the Twilio SID, key and
+secret in ZED_IMPACT_ASSESSMENT, a hard-coded admin user/password check in ZED_CENTER_AUDIT_PROFESSIONAL
+(SECURITY-FINDINGS #129). Local build (`setup.ps1 -Only ZED_IMPACT_ASSESSMENT,ZED_CENTER_AUDIT_PROFESSIONAL,ZED_CENTER_AUDIT_V2 -Force`
+replaces the earlier stand-ins without touching the ZED databases):
+
+| DB | tables | procs | functions | table types | sequences |
+|----|--------|-------|-----------|-------------|-----------|
+| ZED_IMPACT_ASSESSMENT | 124/124 | 290/290 | 0/0 | 19/19 | 2 |
+| ZED_CENTER_AUDIT_PROFESSIONAL | 79/79 | **105/110** | 0/0 | 0/0 | 4 |
+| ZED_CENTER_AUDIT_V2 | 70/70 | 81/81 | 1/1 | 1/1 | 4 |
+
+The 5 Professional procedures (`SP_QUESTIONNAIRE_ADD_QUESTION_BY_CODE`, `SP_QUESTIONNAIRE_UPDATE_BY_CODE`,
+`SP_QUESTIONNAIRE_UPDATE_ORDER_BY_CODE_NOT_USED`, `SP_ZEDTAC_INSERT_SELF_ASSESSMENT_QUESTIONS`,
+`SP_ZEDTAC_UPDATE_PRACTICAL_SCORES`) need the table types `DynamicOption` and `DynamicQuestion`, which that export
+(made on 2026-10-10 with other options) left out. ZED does not use them; a new export with "User-defined table types"
+ticked fixes it. Checked against the real schemas, inside a rolled-back transaction: `SP_MSME_VALIDATE_UDYAM_DETAILS`,
+`SP_MASTER_GET_SECTORS`, `SP_GET_USERS_BY_ROLE`, `SP_INSERT_USER`, `SP_MSME_UPDATE_UDYAM_DETAILS` and
+`SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_CANDIDATES_ZED_MONITORING` run without errors.
 
 ### 4. SQL Server 2022 / Express compatibility scan
 
@@ -241,7 +262,7 @@ The schema scripts are exports of the live procedures, which contain hard-coded 
 (SECURITY-FINDINGS #1, #27, #48). Before the scripts were committed these were replaced:
 master passwords in the login procedures by `#REMOVED-HARDCODED-PASSWORD#`, and the Twilio
 account SID, API key and secret in `SP_APP_MSME_REMOTE_CHECK_LOGIN` by `REDACTED`.
-Every quoted value inside a comment was also replaced by `'<redacted>'`: the procedures' example calls
+The same applies to `05`-`07` (the referenced databases; section 3a). Every quoted value inside a comment was also replaced by `'<redacted>'`: the procedures' example calls
 held user ids with passwords (#96) and real ZED IDs. Only comments changed; the code is identical.
 A database built from these scripts therefore has no working master password, which is intended.
 The live databases still contain the real values until those procedures are fixed.

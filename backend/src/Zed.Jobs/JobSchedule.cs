@@ -4,15 +4,16 @@ using System.Text.RegularExpressions;
 namespace Zed.Jobs;
 
 /// <summary>One procedure call of a job, with the step's database resolved.</summary>
-public sealed record JobCall(string Database, string Procedure, IReadOnlyDictionary<string, string?> Parameters, bool ContinueOnFailure);
+public sealed record JobCall(string Database, string Procedure, IReadOnlyDictionary<string, string?> Parameters, bool ContinueOnFailure,
+    int RetryAttempts = 0, int RetryIntervalMinutes = 0);
 
 public static partial class JobSchedule
 {
     /// <summary>The procedures the job runs, in order: its Steps, or its one Procedure.</summary>
     public static IReadOnlyList<JobCall> Calls(JobDefinition job) => job.Steps.Count > 0
         ? job.Steps.Select(s => new JobCall(string.IsNullOrWhiteSpace(s.Database) ? job.Database : s.Database!, s.Procedure,
-            s.Parameters, s.ContinueOnFailure)).ToList()
-        : [new JobCall(job.Database, job.Procedure, job.Parameters, false)];
+            s.Parameters, s.ContinueOnFailure, s.RetryAttempts, s.RetryIntervalMinutes)).ToList()
+        : [new JobCall(job.Database, job.Procedure, job.Parameters, false, job.RetryAttempts, job.RetryIntervalMinutes)];
 
     /// <summary>Configuration errors, empty when the job can run.</summary>
     public static IEnumerable<string> Validate(JobDefinition job)
@@ -45,6 +46,11 @@ public static partial class JobSchedule
             if (Day(d) is null) yield return $"'{d}' is not a day of the week (Monday ... Sunday).";
         foreach (var d in job.DaysOfMonth)
             if (d is < 1 or > 31) yield return $"{d} is not a day of the month (1 to 31).";
+        foreach (var c in Calls(job))
+        {
+            if (c.RetryAttempts is < 0 or > 10) yield return $"{c.Procedure}: RetryAttempts must be 0 to 10.";
+            if (c.RetryIntervalMinutes is < 0 or > 1440) yield return $"{c.Procedure}: RetryIntervalMinutes must be 0 to 1440.";
+        }
     }
 
     /// <summary>

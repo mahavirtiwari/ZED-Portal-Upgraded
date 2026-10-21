@@ -1,6 +1,8 @@
-# Scheduled jobs and procedure mail (SQL Server Express)
+# Scheduled jobs and procedure mail
 
-SQL Server Express has **no SQL Agent and no Database Mail**. The old servers used both:
+SQL Server Express has **no SQL Agent and no Database Mail**; on Standard edition both exist, but V4 runs the
+jobs and the procedure mail itself either way (Zed.Jobs, below), so they are kept in source control and work on any
+edition. The old instance used both:
 
 - 25 procedures send mail with `EXEC msdb.dbo.sp_send_dbmail @profile_name = 'ZedAdmin', ...`. Some run inside
   normal flows (agency auto-allotment after payment, NC auto-rejection, consulting organisation allotment), the
@@ -15,11 +17,16 @@ V4 replaces both with the **Zed.Jobs** service (`backend/src/Zed.Jobs`):
 | `database/migrations/0003_mail_outbox.sql` (run on **all three** databases) | Adds `dbo.V4MailOutbox` and `dbo.SP_V4_SEND_DBMAIL` (same parameters as `sp_send_dbmail`, queues the mail) and changes every procedure that calls `msdb.dbo.sp_send_dbmail` to call it instead (`CREATE OR ALTER`, permissions kept; safe to re-run; it prints what it converted). |
 | `database/migrations/0004_job_runs.sql` (ZEDCS_V2_LIVE) | `dbo.V4JobRuns`: one row per job run, with errors. |
 | `database/migrations/0007_folder_rename.sql` (ZEDCS_V2_LIVE) | `dbo.SP_V4_FOLDER_RENAME_PENDING`, `dbo.SP_V4_FOLDER_RENAME_RECORD` and `dbo.V4FolderRenameResults`, for the folder rename job below. Additive. |
-| Mail worker | Every 30 s sends queued mail through the portal's SMTP settings (`Email:Profiles`, profile `ZedAdmin` → `Default`), marks it sent, or records the error and retries every 10 minutes up to 5 times. Several service instances can run; rows are claimed with `READPAST`. |
-| Job worker | Runs each enabled job of `Jobs:Schedules` at its times (`DailyAt` "HH:mm" in `Jobs:TimeZone`, default Asia/Kolkata, or `EveryMinutes` within an optional `WindowStart`/`WindowEnd`), on every day or only on `DaysOfWeek` / `DaysOfMonth`. A job is one `Procedure` (with optional fixed `Parameters`) or several `Steps` run in order, stopping at the first failure unless the step has `ContinueOnFailure`. At start each enabled job is checked against its databases (procedure exists, every parameter without a default is set, values fit the declared types); a job that fails the check is logged and not scheduled, a job whose database is unreachable is checked again before it runs. An application lock per job stops two instances running it at once. After a restart, a job whose time passed while the service was down runs once; a job that has never run waits for its next time. |
+| Mail worker | Every 30 s sends queued mail through the SMTP settings of `Email:Profiles` (`Jobs:MailProfiles` maps the Database Mail profile `ZedAdmin` to the service's `Email:Profiles:ZedAdmin`, which falls back to `Default` when it is not configured), marks it sent, or records the error and retries every 10 minutes up to 5 times. Several service instances can run; rows are claimed with `READPAST`. |
+| Job worker | Runs each enabled job of `Jobs:Schedules` at its times (`DailyAt` "HH:mm" in `Jobs:TimeZone`, default Asia/Kolkata, or `EveryMinutes` within an optional `WindowStart`/`WindowEnd`), on every day or only on `DaysOfWeek` / `DaysOfMonth`. A job is one `Procedure` (with optional fixed `Parameters`) or several `Steps` run in order, stopping at the first failure unless the step has `ContinueOnFailure`; a step (or a single-procedure job) can be retried `RetryAttempts` times, `RetryIntervalMinutes` apart, as Agent's step retries. At start each enabled job is checked against its databases (procedure exists, every parameter without a default is set, values fit the declared types); a job that fails the check is logged and not scheduled, a job whose database is unreachable is checked again before it runs. An application lock per job stops two instances running it at once. After a restart, a job whose time passed while the service was down runs once; a job that has never run waits for its next time. |
 | Folder rename worker | `Jobs:FolderRename`: renames the folders of rejected units to their archived ZED ID, without `xp_cmdshell` (replaces `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES`, see [below](#renaming-the-folders-of-rejected-units-jobsfolderrename)). Same schedule fields, lock and `dbo.V4JobRuns` history as the other jobs. |
 
 ## Before go-live
+
+The production export of **2026-10-21** is already converted into `appsettings.json` (all entries off; see
+[The production jobs](#the-production-jobs-agent-export-of-2026-10-21)). What is left at go-live: steps 4 to 6, and
+the time zone and mail checks in that section. In the cut-over week, export again (step 1) and convert with
+`-CompareSettings backend\src\Zed.Jobs\appsettings.json` (step 2): the report lists anything changed since.
 
 Moving the Agent jobs is: export from the old server → convert → paste → check → enable → switch the old jobs off.
 
@@ -102,31 +109,68 @@ Moving the Agent jobs is: export from the old server → convert → paste → c
 Also before go-live: run the migrations, then compare the printed "Procedures converted" of 0003 with the list of
 mailing procedures. A procedure the script skips (no `CREATE` at the start) must be converted by hand.
 
-### What the settings list until the export arrives (the analysis)
+### The production jobs (Agent export of 2026-10-21)
 
-`appsettings.json` lists the job procedures found in the databases, all disabled. Left out on purpose: the
-`_backup`, `_old`, `_manually`, `_checking`, `_optimized`, `_manualmoving` copies, `SP_JOB_FOR_UPDATE_LASTEST_CERTIFICATION`
-(misspelt older copy of `..._LATEST_...`), and `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES` (uses `xp_cmdshell`,
-SECURITY-FINDINGS #12; replaced by the built-in folder rename job, below). `SP_SEND_MAIL_STATUS_COUNTS_AGENCY` is listed as a job but may be called by the application
-instead. If the export shows that an Agent job runs one of the left-out copies, that copy is what production runs:
-keep the converted entry and tell the developers.
+The export (`sp_add_job` script of the production instance, 16 jobs) is converted into `Jobs:Schedules`, one entry
+per Agent job with the same name, steps in the same order, the same "quit on failure" and the same retries. All
+entries are **off** in the repository: enable each on the server copy at the moment its Agent job is switched off.
+`Zed.Jobs --check` against the local copies: all 14 converted jobs OK.
 
-**Added after the phase 7/8 analysis** (all disabled; each carries a `Note` for the people editing the settings):
+| Agent job (entry) | Time | Steps (database.procedure) |
+|---|---|---|
+| AutoMail_Recertification | 23:20 | Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_RECERTIFICATION |
+| AutoReject | 00:00 | Main.SP_ASSESSMENT_DA_AUTO_REJECT (2 retries, 30 min) > Surveillance.SP_ASSESSMENT_DA_AUTO_REJECT |
+| AutoSuspendingSilverGold | 01:30 | Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION > Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW |
+| Bronze_Surveillance_Job | 02:00 | Surveillance.SP_JOB_FOR_INSERT_BRONZE_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
+| Certificate_Expiry | 02:15 | Main.SP_JOB_TO_UPDATE_3YEARS_COMPLETED_TO_EXPIRED |
+| DailyRunWebSiteCounts | every 15 min, 06:00–22:00 | Main.SP_DAILY_RUN_WEB_SITE_COUNTS |
+| Deactivating Joining Reward | 00:00 | Main.SP_MSME_DEACTIVATE_JOINING_REWARD (2 retries, 30 min) |
+| LatestCertificationUpdate | 23:00 | Main.SP_JOB_FOR_UPDATE_LATEST_CERTIFICATION |
+| Silver_Gold_Second_Surveillance_Data_job | 03:30 | Main.SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
+| Silver_Gold_Surveillance_Data_job | 00:30 | Surveillance.SP_JOB_FOR_INSERT_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
+| ZED_Auto_Reject_Expired_NC | 02:30 | Main.SP_AUTO_FINAL_REJECT_EXPIRED_NC |
+| ZED_Daily_Maintenance_Job | every 12 h from 04:00 (04:00, 16:00) | Surveillance.SURVEILLANCE_REJECTION_UPGRADED_MAINSYSTEM > Surveillance.USP_REFRESH_ADMIN_DASHBOARD_STATS |
+| ZED_Surveillance_Auto_Reject_Expiring_Bronze | 03:30 | Surveillance.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY |
+| RenamingFolder (**disabled** on production, hourly) | → `Jobs:FolderRename`, every 60 min | SP_JOB_TO_CREATE_RENAMING_BATCH_FILES is replaced by the folder rename job (below). Because the Agent job is off, nothing has been renamed for a while: the first Report runs show the backlog. |
 
-| Entry | Database | Why it is listed | Before enabling |
-|---|---|---|---|
-| `SP_AUTO_FINAL_REJECT_EXPIRED_NC` | Main and Surveillance | No parameters, called by no other procedure, works on a date window (rejects NCs left open for more than 15 days on main, 40 days on surveillance). Almost certainly an Agent job. | Find it in the Agent export. |
-| `SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY` | Surveillance | Same signs: rejects Bronze surveillance cases whose main certificate expires within 4–7 days or has already expired. | Find it in the Agent export. |
-| `SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND_BY_STATE_DISTRICT`, `SP_BACKEND_APPLY_BRONZE_SURVEILLANCE_BY_STATE_PRIORITY` | Surveillance | SURVEILLANCE-ANALYSIS 1.3 counts the `SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND*` family as the way Bronze units arrive. | **Do not enable.** Both need `@StateName` (no default): as listed, `--check` reports them and the service would not schedule them. Their code (`TOP 2000` units per call, a hard-coded example state, the note "first disable auto allocation in zero payment details", a `Temp_Reset_Queue` table) suggests an operator runs them by hand, state by state. If the Agent export shows them as jobs (`EXEC ... @StateName = 'STATE'` steps), the converter writes the state into `Parameters`, one entry per Agent job. |
+New compared with the earlier analysis: AutoReject, Deactivating Joining Reward and ZED_Daily_Maintenance_Job (none
+of their procedures sends mail or needs `xp_cmdshell`). Confirmed: SP_AUTO_FINAL_REJECT_EXPIRED_NC (main) and
+SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY.
 
-Not listed, on purpose: `SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND` (one unit per call, `@ZedId`/`@Certification`; without them it would call the zero-payment procedure with NULLs). The `_old` and `_manualmoving` copies are left out too.
+**Kept in the list but not scheduled on production** (no Agent job runs them; their `Note` says so; leave them off
+unless someone knows they are run another way): SP_JOB_ENABLE_FOR_RE_CERTIFICATION (the recertification mail job's
+description says it also "enables the recertification button"), SP_JOB_FOR_SUSPENDING_ZEDIDS_IN_SURVEILLANCE,
+Sp_Daily_ERP_Auto_Reconciliation, SP_SEND_MAIL_STATUS_COUNTS_AGENCY, the surveillance copy of
+SP_AUTO_FINAL_REJECT_EXPIRED_NC, and the two Bronze "from backend by state" procedures (need `@StateName`).
 
-**Consultancy (ZED_CONSULTANT):** it has no `SP_JOB_*` or `SP_DAILY_*` procedures and no parameterless batch procedures. The candidates are not jobs:
-- `SP_MOVING_CERTIFIED_MSME_TO_CONSULTANCY` lives in ZEDCS_V2_LIVE. `SP_MONITORING_DA_FINAL_SUBMIT` and `SP_MONITORING_RA_FINAL_SUBMIT` call it with `@ZedId, @CertificationType` when a unit is certified, so it runs inside the certification flow.
-- `SP_MOVING_MILESTONE_1_TO_PAYMENT_COMPLETION_STAGE` resets one unit's milestone 1 (`@ZedId`, `@Certification`, `@NcCount`), an admin action.
-- `SP_SEND_MAIL_AUTO_ALLOT_CONSULTING_ORGANISATION_TU` is called per unit with `@ZedId, @Agency`.
+**Not ZED jobs, not converted:**
+- `UpdateBatchDates` (enabled, daily 00:00) runs inline SQL in ZED_CENTER_AUDIT_PROFESSIONAL: it moves the start and
+  end date of training batch `ZEDTP10003` one day forward every day, i.e. keeps that batch open indefinitely. It
+  belongs to the Professional application: whoever hosts that database keeps it (Agent on Standard edition, or
+  another scheduler), or retires it.
+- `Test Job - Migration Check` (a PRINT in master, run-once, schedule off): leave it behind.
 
-Check the export for consultancy jobs anyway.
+**Time zone.** Agent times are in the old instance's time zone; `Jobs:TimeZone` (default Asia/Kolkata) must be the
+same. Confirm on the old instance with `SELECT CURRENT_TIMEZONE();` (a managed instance runs in UTC unless it was
+created with another time zone). The job descriptions fit local Indian time ("2:30 AM" for 02:30), except
+`ZED_Daily_Maintenance_Job`, whose schedule is called "TwiceDaily_8AM_8PM" but starts at 04:00: either the instance
+is not in IST, or the schedule does not do what its name says. Settle this before enabling.
+
+**Mail (Database Mail on the old instance).** Profiles: `ZedAdmin` (account QCI_ZED_Notifications, "ZED Administrator"
+<zedadmin@zed.org.in>, smtp-mail.outlook.com:587, TLS), `ZedEmailOTPs` (support.zed@qcin.org) and
+`ZED_Report_Profile` (account GeoStat_Outlook, "ZED Daily Reporting" <ks@geostat.in>, smtp.office365.com:587). An
+unused account `OutlookMail` (zed.admin@qcin.org) exists too.
+- All 25 mailing procedures of the three ZED databases use `ZedAdmin`; none attaches files. `appsettings.json` maps
+  `ZedAdmin` to `Email:Profiles:ZedAdmin` with the same sender and server; set its password as
+  `Email__Profiles__ZedAdmin__Password` (service environment or user secrets).
+- `ZedEmailOTPs` is used by two procedures of **ZED_CENTER_AUDIT_PROFESSIONAL** (the Professional application), not by
+  ZED. If that database moves to an instance without Database Mail, its mail stops: tell its owners.
+- `ZED_Report_Profile` is used by no procedure in any of the six schema exports, so something outside them sends
+  through it (a report tool, a manual script). It is a **vendor's mailbox** (SECURITY-FINDINGS #130): find the user and
+  move it to a QCI mailbox.
+- The old accounts sign in to Microsoft 365 SMTP with a user name and password. Microsoft has announced the end of
+  basic authentication for SMTP AUTH in Exchange Online: if the old Database Mail still delivers, the tenant still
+  allows it, but plan for an SMTP relay or a tenant exception before relying on it for V4 (MailKit supports both).
 
 ## Renaming the folders of rejected units (Jobs:FolderRename)
 

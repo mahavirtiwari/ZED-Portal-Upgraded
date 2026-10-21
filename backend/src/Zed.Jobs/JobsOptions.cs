@@ -74,6 +74,12 @@ public sealed class JobDefinition
 
     public bool Enabled { get; set; }
 
+    /// <summary>Single-procedure form: run a failed call again up to this many times (Agent's step "retry attempts", 0 to 10).</summary>
+    public int RetryAttempts { get; set; }
+
+    /// <summary>Minutes between those attempts (Agent's "retry interval", 0 to 1440).</summary>
+    public int RetryIntervalMinutes { get; set; }
+
     /// <summary>Free text for the people editing the settings (where the entry came from); not used.</summary>
     public string? Note { get; set; }
 }
@@ -90,4 +96,10 @@ public sealed class JobStep
 
     /// <summary>Go on with the next step when this one fails (Agent's "go to the next step" on failure).</summary>
     public bool ContinueOnFailure { get; set; }
+
+    /// <summary>run a failed call again up to this many times (Agent's step "retry attempts", 0 to 10).</summary>
+    public int RetryAttempts { get; set; }
+
+    /// <summary>Minutes between those attempts (Agent's "retry interval", 0 to 1440).</summary>
+    public int RetryIntervalMinutes { get; set; }
 }

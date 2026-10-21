@@ -38,6 +38,31 @@ Udyami Bharat keep working. Nothing moves in DNS.
 - Each V4 application gets its own app pool (`ZedV4-*`, No Managed Code). The old pools stay untouched until
   decommission, which is what makes the rollback a two-minute job.
 
+### 1.1a Database server
+
+- **Edition: not Express.** Production sizes (2026-10-21): ZEDCS_V2_LIVE 76 GB of data, beyond SQL Server 2022
+  Express (10 GB per database) and 2025 Express (50 GB). Use SQL Server 2022 (or 2025) Standard, or stay on the managed
+  instance (MIGRATION-PLAN "Database", sizes table there).
+- **Same instance** for ZEDCS_V2_LIVE, ZED_CONSULTANT, ZED_SURVEILLANCE and the databases their procedures use by
+  three-part name: ZED_CENTER_AUDIT_PROFESSIONAL, ZED_CENTER_AUDIT_V2, ZED_IMPACT_ASSESSMENT, KAWACH, and
+  ZED_QUALITY_PROFESSIONAL (used by V2). Their applications move to the new instance in the same window.
+- **Disk:** about 128 GB of data, plus the logs. Shrink the logs on the old instance first (allocated: ZEDCS_V2_LIVE
+  360 GB, ZED_CONSULTANT 101 GB, ZED_SURVEILLANCE 43 GB, almost all unused), e.g.
+  `DBCC SHRINKFILE (N'<log file name>', 8192);` after a log backup, or the restore needs that space.
+- **Moving the data off the managed instance.** A managed instance backup restores only to the SQL Server version of
+  the instance's update policy (check it in the portal: "SQL Server 2022" policy → restorable to SQL Server 2022;
+  "Always-up-to-date" → not restorable to SQL Server at all). Otherwise use a BACPAC export (slow at this size; test
+  the timing on staging) or another replication path. Rehearse on staging (1.5) with the method chosen.
+- **Time zone:** Agent times are in the old instance's time zone (`SELECT CURRENT_TIMEZONE();`); set
+  `Jobs:TimeZone` to match (docs/JOBS.md "Time zone").
+- **What takes the space** (run on the old instance, per database, before deciding on archiving):
+  ```sql
+  SELECT TOP 20 t.name, SUM(a.used_pages) * 8 / 1024 AS used_mb, MAX(p.rows) AS rows
+  FROM sys.tables t JOIN sys.partitions p ON p.object_id = t.object_id
+  JOIN sys.allocation_units a ON a.container_id = p.partition_id
+  GROUP BY t.name ORDER BY used_mb DESC;
+  ```
+
 ### 1.2 Files: V4 uses the old folders in place
 
 Nothing is copied or converted. V4 reads and writes the existing folders with the old layout, so the old code finds

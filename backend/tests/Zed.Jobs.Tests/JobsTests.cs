@@ -53,10 +53,16 @@ public sealed class JobScheduleTests
             .Build().GetSection(JobsOptions.Section).Get<JobsOptions>()!;
         Assert.NotEmpty(options.Schedules);
         Assert.All(options.Schedules, j => Assert.False(j.Enabled));
-        Assert.All(options.Schedules, j => Assert.Empty(JobSchedule.Validate(new JobDefinition
+        // The production Agent jobs (export of 2026-10-21) carry their own times; the others are given one.
+        Assert.Contains(options.Schedules, j => j.Name == "AutoReject" && j.Steps.Count == 2 && j.Steps[0].RetryAttempts == 2);
+        Assert.All(options.Schedules.Where(j => j.Note?.Contains("SQL Agent job") == true), j => Assert.True(j.DailyAt.Count > 0 || j.EveryMinutes is not null, j.Name));
+        Assert.DoesNotContain(options.Schedules, j => JobSchedule.Calls(j).Any(c => c.Procedure == "SP_JOB_TO_CREATE_RENAMING_BATCH_FILES"));
+        Assert.All(options.Schedules, j =>
         {
-            Name = j.Name, Database = j.Database, Procedure = j.Procedure, DailyAt = ["02:00"], Enabled = true,
-        })));
+            if (j.DailyAt.Count == 0 && j.EveryMinutes is null) j.DailyAt = ["02:00"];
+            j.Enabled = true;
+            Assert.Empty(JobSchedule.Validate(j));
+        });
     }
 }
 

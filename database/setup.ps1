@@ -1,21 +1,25 @@
 <#
 .SYNOPSIS
-    Creates the three ZED legacy databases (schema only) on a SQL Server instance.
+    Creates the three ZED legacy databases and the three databases their procedures reference (schema only)
+    on a SQL Server instance.
 
 .DESCRIPTION
-    Creates ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE (compat level 160,
-    recovery SIMPLE, default file locations) and applies the cleaned schema scripts in
-    .\schema batch-by-batch (split on GO lines).
+    Creates ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE, and ZED_IMPACT_ASSESSMENT,
+    ZED_CENTER_AUDIT_PROFESSIONAL and ZED_CENTER_AUDIT_V2 (other applications' databases that ZED
+    procedures read with three-part names), with compat level 160, recovery SIMPLE and default file
+    locations, and applies the cleaned schema scripts in .\schema batch-by-batch (split on GO lines).
+    KAWACH (also referenced) has no schema export yet: seed\dev-registration-data.sql creates stand-ins.
 
-    The three databases reference each other with three-part names, so batches are
-    applied in multiple passes: pass 1 runs every batch of all three scripts in order,
-    later passes retry only the failed batches until a pass makes no further progress.
+    The databases reference each other with three-part names, so batches are applied in multiple
+    passes: pass 1 runs every batch of all scripts in order, later passes retry only the failed
+    batches until a pass makes no further progress.
 
     Safety:
-      * Only the three databases above are ever created or dropped. Nothing else on the
+      * Only the six databases above are ever created or dropped. Nothing else on the
         instance is touched; no logins are created.
-      * If any of the three already exists the script stops, unless -Force is given, in
-        which case those three (and only those three) are dropped and recreated.
+      * If any of the selected databases already exists the script stops, unless -Force is given,
+        in which case those (and only those) are dropped and recreated.
+      * -Only limits the run to some of them; the others are left as they are.
 
     Logs are written to .\logs\ (setup-<timestamp>.log, failed-batches-<timestamp>.json,
     warnings-<timestamp>.txt).
@@ -28,6 +32,11 @@
 
 .PARAMETER ValidateOnly
     Parse the scripts and check connectivity / existing databases; make no changes.
+
+.PARAMETER Only
+    Create (or with -Force recreate) only these databases, e.g.
+    -Only ZED_IMPACT_ASSESSMENT,ZED_CENTER_AUDIT_PROFESSIONAL,ZED_CENTER_AUDIT_V2 -Force
+    to replace the referenced-database stand-ins without touching the three ZED databases.
 
 .PARAMETER SkipSequenceStubs
     Do not apply schema\04_missing_sequences.sql (local stand-ins for the SEQUENCE objects
@@ -46,6 +55,7 @@ param(
     [switch]$Force,
     [switch]$ValidateOnly,
     [switch]$SkipSequenceStubs,
+    [string[]]$Only = @(),
     [string]$SchemaDir = '',
     [string]$LogDir = '',
     [string]$Collation = 'SQL_Latin1_General_CP1_CI_AS',
@@ -60,11 +70,19 @@ if (-not $SchemaDir) { $SchemaDir = Join-Path $here 'schema' }
 if (-not $LogDir)    { $LogDir    = Join-Path $here 'logs' }
 
 # Order matters only for pass 1; cross-database dependencies are resolved by later passes.
-$Databases = [ordered]@{
-    'ZEDCS_V2_LIVE'    = '01_ZEDCS_V2_LIVE.sql'
-    'ZED_CONSULTANT'   = '02_ZED_CONSULTANT.sql'
-    'ZED_SURVEILLANCE' = '03_ZED_SURVEILLANCE.sql'
+$AllDatabases = [ordered]@{
+    'ZEDCS_V2_LIVE'                 = '01_ZEDCS_V2_LIVE.sql'
+    'ZED_CONSULTANT'                = '02_ZED_CONSULTANT.sql'
+    'ZED_SURVEILLANCE'              = '03_ZED_SURVEILLANCE.sql'
+    'ZED_IMPACT_ASSESSMENT'         = '05_ZED_IMPACT_ASSESSMENT.sql'
+    'ZED_CENTER_AUDIT_PROFESSIONAL' = '06_ZED_CENTER_AUDIT_PROFESSIONAL.sql'
+    'ZED_CENTER_AUDIT_V2'           = '07_ZED_CENTER_AUDIT_V2.sql'
 }
+# -File passes "a,b,c" as one string: split it.
+$Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+foreach ($name in $Only) { if (-not $AllDatabases.Contains($name)) { throw "-Only: unknown database $name (expected one of: $($AllDatabases.Keys -join ', '))" } }
+$Databases = [ordered]@{}
+foreach ($name in $AllDatabases.Keys) { if ($Only.Count -eq 0 -or $Only -contains $name) { $Databases[$name] = $AllDatabases[$name] } }
 
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir | Out-Null }
@@ -146,7 +164,7 @@ foreach ($db in $Databases.Keys) {
     $p = Join-Path $SchemaDir $Databases[$db]
     if (-not (Test-Path $p)) { throw "Missing schema script: $p" }
     $b = Get-Batches $db $p
-    Write-Log ("  {0,-18} {1,5} batches  ({2})" -f $db, $b.Count, $Databases[$db])
+    Write-Log ("  {0,-30} {1,5} batches  ({2})" -f $db, $b.Count, $Databases[$db])
     $all.AddRange($b)
 }
 
@@ -185,7 +203,7 @@ foreach ($db in $Databases.Keys) {
 # ---------------------------------------------------------------- sequence stand-ins
 $seqFile = Join-Path $SchemaDir '04_missing_sequences.sql'
 if (-not $SkipSequenceStubs -and (Test-Path $seqFile)) {
-    Write-Log "  Applying local SEQUENCE stand-ins ($([System.IO.Path]::GetFileName($seqFile)))"
+    Write-Log "  Applying the SEQUENCE objects ($([System.IO.Path]::GetFileName($seqFile)))"
     $seqSql = [System.IO.File]::ReadAllText($seqFile, [System.Text.Encoding]::UTF8)
     foreach ($chunk in ([regex]::Split($seqSql, '(?im)^\s*GO\s*$'))) {
         if ($chunk.Trim()) { Invoke-Sql $master $chunk }
@@ -267,7 +285,7 @@ foreach ($db in $Databases.Keys) {
         ' functions=$($exp.UserDefinedFunction)/', (SELECT COUNT(*) FROM [$db].sys.objects WHERE type IN ('FN','IF','TF','FS','FT') AND is_ms_shipped=0),
         ' tabletypes=$($exp.UserDefinedTableType)/', (SELECT COUNT(*) FROM [$db].sys.types WHERE is_table_type=1),
         ' sequences=', (SELECT COUNT(*) FROM [$db].sys.sequences))"
-    Write-Log ("  {0,-18} {1}" -f $db, (Get-Scalar $verify $q))
+    Write-Log ("  {0,-30} {1}" -f $db, (Get-Scalar $verify $q))
 }
 $verify.Close()
 

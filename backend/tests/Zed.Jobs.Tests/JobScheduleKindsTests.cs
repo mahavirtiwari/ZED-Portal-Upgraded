@@ -97,6 +97,28 @@ public sealed class JobScheduleKindsTests
     }
 
     [Fact]
+    public void Retries_are_kept_per_step_and_checked()
+    {
+        var job = Job(j =>
+        {
+            j.Procedure = "";
+            j.DailyAt = ["00:00"];
+            j.Steps = [new JobStep { Procedure = "SP_A", RetryAttempts = 2, RetryIntervalMinutes = 30 }, new JobStep { Database = "Surveillance", Procedure = "SP_A" }];
+        });
+        Assert.Empty(JobSchedule.Validate(job));
+        Assert.Equal([(2, 30), (0, 0)], JobSchedule.Calls(job).Select(c => (c.RetryAttempts, c.RetryIntervalMinutes)));
+
+        var single = Job(j => { j.RetryAttempts = 2; j.RetryIntervalMinutes = 30; });
+        Assert.Equal((2, 30), JobSchedule.Calls(single).Select(c => (c.RetryAttempts, c.RetryIntervalMinutes)).Single());
+
+        Assert.Empty(JobSchedule.Validate(Job(j => { j.DailyAt = ["00:00"]; j.RetryAttempts = 10; j.RetryIntervalMinutes = 1440; })));
+        Assert.Contains(JobSchedule.Validate(Job(j => { j.DailyAt = ["00:00"]; j.RetryAttempts = 11; })), e => e.Contains("RetryAttempts"));
+        Assert.Contains(JobSchedule.Validate(Job(j => { j.DailyAt = ["00:00"]; j.RetryIntervalMinutes = -1; })), e => e.Contains("RetryIntervalMinutes"));
+        Assert.Contains(JobSchedule.Validate(Job(j => { j.DailyAt = ["00:00"]; j.Procedure = ""; j.Steps = [new JobStep { Procedure = "SP_A", RetryIntervalMinutes = 2000 }]; })),
+            e => e.Contains("RetryIntervalMinutes"));
+    }
+
+    [Fact]
     public void The_old_settings_format_binds_and_new_options_bind_from_json()
     {
         var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>

@@ -73,6 +73,21 @@ public sealed class ProcedureJobWorker(
         }
     }
 
+    private async Task ExecuteAsync(PreparedCall call, CancellationToken ct)
+    {
+        await using var conn = new SqlConnection(config.GetConnectionString(call.Database)
+            ?? throw new InvalidOperationException($"ConnectionStrings:{call.Database} is not configured."));
+        await conn.OpenAsync(ct);
+        // The names were checked against ^[A-Za-z0-9_]+$ and against the database (JobChecker).
+        await using var cmd = new SqlCommand("dbo." + call.Procedure, conn)
+        {
+            CommandType = CommandType.StoredProcedure,
+            CommandTimeout = options.Value.CommandTimeoutSeconds,
+        };
+        foreach (var (name, value) in call.Parameters) cmd.Parameters.AddWithValue("@" + name, value);
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
     /// <param name="started">Start time in the schedule's time zone (what dbo.V4JobRuns stores).</param>
     private async Task RunAsync(JobDefinition job, DateTime started, CancellationToken ct)
     {
@@ -100,25 +115,32 @@ public sealed class ProcedureJobWorker(
             {
                 var call = calls[i];
                 var label = calls.Count > 1 ? $"step {i + 1} ({call.Database}.{call.Procedure})" : $"{call.Database}.{call.Procedure}";
-                try
+                // Agent's step retries: the call runs again after RetryIntervalMinutes, up to RetryAttempts times.
+                Exception? failure = null;
+                for (var attempt = 0; attempt <= call.RetryAttempts; attempt++)
                 {
-                    log.LogInformation("Job {Job}: {Step} started", job.Name, label);
-                    await using var conn = new SqlConnection(config.GetConnectionString(call.Database)
-                        ?? throw new InvalidOperationException($"ConnectionStrings:{call.Database} is not configured."));
-                    await conn.OpenAsync(ct);
-                    // The names were checked against ^[A-Za-z0-9_]+$ and against the database (JobChecker).
-                    await using var cmd = new SqlCommand("dbo." + call.Procedure, conn)
+                    if (attempt > 0)
                     {
-                        CommandType = CommandType.StoredProcedure,
-                        CommandTimeout = options.Value.CommandTimeoutSeconds,
-                    };
-                    foreach (var (name, value) in call.Parameters) cmd.Parameters.AddWithValue("@" + name, value);
-                    await cmd.ExecuteNonQueryAsync(ct);
+                        log.LogWarning(failure, "Job {Job}: {Step} failed; retry {Attempt} of {Retries} in {Minutes} min",
+                            job.Name, label, attempt, call.RetryAttempts, call.RetryIntervalMinutes);
+                        await Task.Delay(TimeSpan.FromMinutes(call.RetryIntervalMinutes), clock, ct);
+                    }
+                    try
+                    {
+                        log.LogInformation("Job {Job}: {Step} started", job.Name, label);
+                        await ExecuteAsync(call, ct);
+                        failure = null;
+                        break;
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        failure = ex;
+                    }
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException)
+                if (failure is not null)
                 {
-                    errors.Add($"{label}: {ex.Message}");
-                    log.LogError(ex, "Job {Job}: {Step} failed", job.Name, label);
+                    errors.Add($"{label}: {failure.Message}" + (call.RetryAttempts > 0 ? $" (after {call.RetryAttempts} retries)" : ""));
+                    log.LogError(failure, "Job {Job}: {Step} failed", job.Name, label);
                     if (!call.ContinueOnFailure) break;
                 }
             }

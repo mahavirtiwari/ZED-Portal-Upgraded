@@ -86,7 +86,8 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 
 ## Prerequisites
 
-- SQL Server 2022 Express (instance `localhost\SQLEXPRESS`), `sqlcmd`
+- SQL Server 2022 Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production needs Standard
+  edition or the managed instance: ZEDCS_V2_LIVE is 76 GB (docs/MIGRATION-PLAN.md, "Database")
 - .NET SDK 10.0.x
 - Node.js 24 LTS, npm 11
 
@@ -94,7 +95,7 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 
 ```powershell
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
-.\database\setup.ps1
+.\database\setup.ps1          # the three ZED databases and the three referenced ones (05-07); KAWACH comes from the seed below
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0001_mobile_devices.sql   # new V4 tables (servers too)
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the consultancy app deployment
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_SURVEILLANCE -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the surveillance app deployment
