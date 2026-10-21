@@ -1,6 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
@@ -54,7 +51,7 @@ public sealed class StaffPasswordResetOptions
 /// <see cref="PasswordStore"/> (Security:Passwords).
 /// </para>
 /// </summary>
-public sealed partial class StaffPasswordResets(
+public sealed class StaffPasswordResets(
     ISqlExecutor db,
     IServiceProvider services,
     IConfiguration config,
@@ -66,7 +63,7 @@ public sealed partial class StaffPasswordResets(
     ILoggerFactory loggers)
 {
     public const string AuditCategory = "Zed.Audit.PasswordReset";
-    public const string InvalidLink = "This reset link is invalid, has expired or has already been used. Please request a new one.";
+    public const string InvalidLink = PasswordResetTokens.InvalidLink;
     public const string ManagedByMain = "This account's password is managed on the main ZED portal. Please reset it there.";
 
     private readonly ILogger audit = loggers.CreateLogger(AuditCategory);
@@ -99,7 +96,7 @@ public sealed partial class StaffPasswordResets(
             return;
         }
 
-        var token = SecureRandom.Token(32);
+        var token = PasswordResetTokens.NewToken();
         if (!await CreateAsync(account.UserId, token, o, requestedBy: null, ip, ct))
         {
             Audit($"refused (more than {o.MaxRequestsPerHour} requests in an hour)", account.UserId, ip);
@@ -178,7 +175,7 @@ public sealed partial class StaffPasswordResets(
         if (await PasswordStore.For(db, services).IsManagedByMainAsync(account.UserId, ct))
             return new(null, "This account's password is managed on the main ZED portal. Send the link from there.");
 
-        var token = SecureRandom.Token(32);
+        var token = PasswordResetTokens.NewToken();
         if (!await CreateAsync(account.UserId, token, o, requestedBy: actor.UserId, ip, ct))
             return new(null, "The reset link could not be created. Please try again.");
         try
@@ -196,10 +193,9 @@ public sealed partial class StaffPasswordResets(
 
     // ------------------------------------------------------------------ Helpers
 
-    public static byte[] HashToken(string token) => SHA256.HashData(Encoding.ASCII.GetBytes(token));
+    public static byte[] HashToken(string token) => PasswordResetTokens.Hash(token);
 
-    /// <summary>A token as <see cref="SecureRandom.Token"/> makes it from 32 bytes (43 URL-safe characters).</summary>
-    public static bool IsToken(string? token) => token is not null && TokenPattern().IsMatch(token);
+    public static bool IsToken(string? token) => PasswordResetTokens.IsToken(token);
 
     private async Task<Account?> FindAccountAsync(string userId, CancellationToken ct)
     {
@@ -208,19 +204,8 @@ public sealed partial class StaffPasswordResets(
         return row is null ? null : ToAccount(row, active: StaffUserRules.Bool(row, "IsActive"));
     }
 
-    private async Task<bool> CreateAsync(string userId, string token, StaffPasswordResetOptions o, string? requestedBy, string? ip, CancellationToken ct)
-    {
-        var row = (await db.QueryProcMultipleAsync("SP_V4_STAFF_RESET_CREATE", new
-        {
-            UserId = userId,
-            TokenHash = HashToken(token),
-            ValidMinutes = Math.Clamp(o.ValidMinutes, 1, 1440),
-            MaxPerHour = Math.Max(o.MaxRequestsPerHour, 1),
-            RequestedBy = requestedBy,
-            RequestIp = ip is { Length: <= 45 } ? ip : null,
-        }, ct))[0].FirstOrDefault();
-        return row is not null && StaffUserRules.Bool(row, "Created");
-    }
+    private Task<bool> CreateAsync(string userId, string token, StaffPasswordResetOptions o, string? requestedBy, string? ip, CancellationToken ct) =>
+        PasswordResetTokens.CreateAsync(db, userId, token, o.ValidMinutes, o.MaxRequestsPerHour, requestedBy, ip, ct);
 
     private async Task SendLinkAsync(Account account, string to, string token, StaffPasswordResetOptions o, string? sentBy, CancellationToken ct)
     {
@@ -286,5 +271,4 @@ public sealed partial class StaffPasswordResets(
     private void Audit(string outcome, string userId, string? ip) =>
         audit.LogInformation("Staff password reset request for {UserId} from {Ip}: {Outcome}", userId.Length == 0 ? "(invalid)" : userId, ip, outcome);
 
-    [GeneratedRegex("^[A-Za-z0-9_-]{43}$")] private static partial Regex TokenPattern();
 }

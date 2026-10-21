@@ -179,57 +179,76 @@ public sealed class MsmeAppAccountTests : MsmeAppTestBase
         Assert.Contains("Too many failed attempts", e.GetProperty("errorMessage").GetString());
     }
 
-    private void ResetProcs(string message = "A Reset link has been sent your Registered Email ID.")
+    private Zed.TestSupport.FakeStaffResets ResetProcs()
     {
-        Host.Sql.Procs["SP_MSME_GET_DETAILS"] = args => FakeSql.Arg(args, "ZedId") == ZedId
-            ? FakeSql.Sets([new { ZedId, EnterpriseName = "Acme Pvt Ltd", PledgeEmailId = "pledge@example.com" }])
-            : FakeSql.Sets([]);
-        Host.Sql.Procs["SP_MSME_PWD_UPDATE_TOKEN"] = _ => FakeSql.Sets([new { ERRORMSG = message }]);
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(Host.Sql.Procs);
+        resets.Users[ZedId] = new Zed.TestSupport.FakeStaffResets.User(ZedId, 5, true, "pledge@example.com", "Acme Pvt Ltd");
+        return resets;
     }
 
     private Task<JsonElement> Reset(string user) =>
         Post("/Msme/ResetPassword", new FormUrlEncodedContent(new Dictionary<string, string> { ["userName"] = user }));
 
+    private static async Task Eventually(Func<bool> condition)
+    {
+        for (var i = 0; i < 100 && !condition(); i++) await Task.Delay(50);
+        Assert.True(condition(), "condition not met within 5 seconds");
+    }
+
     [Fact]
-    public async Task ResetPassword_mails_a_portal_link_with_a_random_token()
+    public async Task ResetPassword_mails_a_portal_link_with_a_hashed_single_use_token()
     {
         Host.Settings["Portal:PublicBaseUrl"] = "https://portal.example.test/";
-        ResetProcs();
+        var resets = ResetProcs();
         var e = await Reset(ZedId);
         Assert.Equal("1", e.GetProperty("status").GetString());
         Assert.Equal("A Reset link has been sent your Registered Email ID.", e.GetProperty("errorMessage").GetString());
 
-        var token = FakeSql.Arg(Args("SP_MSME_PWD_UPDATE_TOKEN"), "PwdCode")!;
-        Assert.Equal(43, token.Length);
-        Assert.False(Guid.TryParse(token, out _));
+        await Eventually(() => Host.Email.Sent.Count == 1);
         var mail = Assert.Single(Host.Email.Sent);
         Assert.Equal("pledge@example.com", mail.To);
         Assert.Equal("MSME Reset Password Details - " + ZedId, mail.Subject);
-        Assert.Contains("https://portal.example.test/msme/reset-password?code=" + token, mail.HtmlBody);
-    }
-
-    [Fact]
-    public async Task ResetPassword_keeps_the_old_unknown_user_message()
-    {
-        ResetProcs();
-        AssertFail(await Reset("ZEDMSME999999"), "Sorry, no User exists with these details.");
+        var token = System.Text.RegularExpressions.Regex.Match(mail.HtmlBody, "msme/reset-password#token=([A-Za-z0-9_-]{43})").Groups[1].Value;
+        Assert.Equal(43, token.Length);
+        Assert.Contains("60 minutes", mail.HtmlBody);
+        // Only the hash is stored; the legacy clear-text procedures are not used.
+        var row = Assert.Single(resets.Rows);
+        Assert.Equal(Zed.Core.Security.PasswordResetTokens.Hash(token), row.TokenHash);
         Assert.Empty(CallsTo("SP_MSME_PWD_UPDATE_TOKEN"));
+    }
+
+    [Fact]
+    public async Task ResetPassword_answers_the_same_for_unknown_and_inactive_zed_ids()
+    {
+        var resets = ResetProcs();
+        resets.Users["ZEDMSME000002"] = new Zed.TestSupport.FakeStaffResets.User("ZEDMSME000002", 5, false, "x@example.com", "Blocked Unit");
+        foreach (var id in new[] { "ZEDMSME999999", "ZEDMSME000002" })
+        {
+            var e = await Reset(id);
+            Assert.Equal("1", e.GetProperty("status").GetString());
+            Assert.Equal("A Reset link has been sent your Registered Email ID.", e.GetProperty("errorMessage").GetString());
+        }
+        await Eventually(() => CallsTo("SP_V4_MSME_RESET_ACCOUNT").Count == 2);
+        await Task.Delay(200);
+        Assert.Empty(resets.Rows);
         Assert.Empty(Host.Email.Sent);
     }
 
     [Fact]
-    public async Task ResetPassword_is_limited_per_user_name_and_honours_the_procedure_lock()
+    public async Task ResetPassword_is_limited_per_user_name_and_per_hour_in_the_database()
     {
-        ResetProcs("ACCOUNT LOCKED. PLEASE LOGIN AFTER 30 MINUTES.");
-        var locked = await Reset(ZedId);
-        Assert.Equal("0", locked.GetProperty("status").GetString());
-        Assert.Contains("30 minutes", locked.GetProperty("errorMessage").GetString());
-        Assert.Empty(Host.Email.Sent);
-
-        for (var i = 0; i < 4; i++) await Reset(ZedId);
+        var resets = ResetProcs();
+        for (var i = 0; i < 5; i++) Assert.Equal("1", (await Reset(ZedId)).GetProperty("status").GetString());
         var throttled = await Reset(ZedId);
+        Assert.Equal("0", throttled.GetProperty("status").GetString());
         Assert.Contains("15 minutes", throttled.GetProperty("errorMessage").GetString());
-        Assert.Equal(5, CallsTo("SP_MSME_GET_DETAILS").Count);
+
+        // Five requests reached the background; the database allows three links an hour.
+        await Eventually(() => CallsTo("SP_V4_STAFF_RESET_CREATE").Count == 5);
+        await Eventually(() => Host.Email.Sent.Count == 3);
+        await Task.Delay(200);
+        Assert.Equal(3, Host.Email.Sent.Count);
+        Assert.Equal(3, resets.Rows.Count);
     }
 
     [Fact]

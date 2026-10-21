@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Zed.Core.Data;
+using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
@@ -64,13 +66,15 @@ public sealed partial class MsmeController
     }
 
     /// <summary>
-    /// Mails a reset link to the pledge e-mail. Same messages as before (including "no User exists"),
-    /// now limited to 5 requests per ZED ID in 15 minutes on top of the procedure's own limit, with
-    /// a random token instead of a GUID and a link to the new portal. Not device-bound: a user who
-    /// has forgotten the password is often on a new phone.
+    /// Mails a reset link to the registered e-mail. Every ZED ID gets the same answer ("A Reset link has been sent…"),
+    /// sent before the lookup: the lookup, the link and the mail run in the background, so the app can no longer be used
+    /// to find out which ZED IDs exist (the old "no User exists" answer did that). The link is a hashed, single-use,
+    /// expiring token in dbo.V4PasswordResets (migration 0009, SECURITY-FINDINGS #128) opening the new portal's reset
+    /// page. Limited to 5 requests per ZED ID in 15 minutes here and 3 per hour in the database. Not device-bound: a
+    /// user who has forgotten the password is often on a new phone.
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> ResetPassword(string? userName, CancellationToken ct)
+    public IActionResult ResetPassword(string? userName)
     {
         var zedId = userName?.Trim();
         if (string.IsNullOrEmpty(zedId)) return Fail(NoUserMessage);
@@ -78,31 +82,45 @@ public sealed partial class MsmeController
             return Fail("Too many reset requests. Please try again after 15 minutes.");
         throttle.Failed(ResetThrottleApp, zedId); // every request counts
 
-        try
+        if (zedId.Length <= 50)
         {
-            var msme = (await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId }, ct)).FirstRow(0);
-            if (msme.Count == 0) return Fail(NoUserMessage);
-
-            var code = SecureRandom.Token();
-            var sets = await db.QueryProcMultipleAsync("SP_MSME_PWD_UPDATE_TOKEN", new { UserId = zedId, PwdCode = code }, ct);
-            // The procedure refuses a fourth link within 30 minutes; the old code ignored that and mailed a dead link.
-            if (sets.Scalar(0)?.StartsWith("ACCOUNT LOCKED", StringComparison.OrdinalIgnoreCase) == true)
-                return Fail("Too many reset requests. Please try again after 30 minutes.");
-
-            await SendMailAsync<MsmeResetPasswordEmail>(msme.Text("PledgeEmailId"), "MSME Reset Password Details - " + zedId, new Dictionary<string, object?>
-            {
-                [nameof(MsmeResetPasswordEmail.EnterpriseName)] = msme.Text("EnterpriseName"),
-                [nameof(MsmeResetPasswordEmail.ZedId)] = zedId,
-                [nameof(MsmeResetPasswordEmail.ResetUrl)] = $"{Portal.PublicBaseUrl.TrimEnd('/')}/msme/reset-password?code={Uri.EscapeDataString(code)}",
-            }, null, ct);
-            return LegacyJson(new ServiceResponse { status = "1", errorMessage = ResetSentMessage });
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            HttpContext.RequestServices.GetRequiredService<IBackgroundWork>()
+                .Enqueue("MSME app password reset request", (sp, stop) => SendResetLinkAsync(sp, zedId, ip, stop));
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        return LegacyJson(new ServiceResponse { status = "1", errorMessage = ResetSentMessage });
+    }
+
+    private static async Task SendResetLinkAsync(IServiceProvider sp, string zedId, string? ip, CancellationToken ct)
+    {
+        var audit = sp.GetRequiredService<ILoggerFactory>().CreateLogger("Zed.Audit.PasswordReset");
+        void Audit(string outcome) => audit.LogInformation("MSME app password reset request for {ZedId} from {Ip}: {Outcome}", zedId, ip, outcome);
+
+        var db = sp.GetRequiredService<ISqlExecutor>();
+        var account = await PasswordResetTokens.FindMsmeAccountAsync(db, zedId, ct);
+        if (account is null) { Audit("no MSME account"); return; }
+        if (!account.IsActive) { Audit("account inactive"); return; }
+        if (account.MailAddress is not { } to) { Audit("no valid e-mail address"); return; }
+
+        var o = PasswordResetTokens.MsmeOptions.Read(sp.GetRequiredService<IConfiguration>());
+        var token = PasswordResetTokens.NewToken();
+        if (!await PasswordResetTokens.CreateAsync(db, account.ZedId, token, o.ValidMinutes, o.MaxRequestsPerHour, requestedBy: null, ip, ct))
         {
-            // As before, any failure is answered with the "no user" text; the details go to the log.
-            log.LogError(ex, "App password reset for {ZedId} failed", zedId);
-            return Fail(NoUserMessage);
+            Audit($"refused (more than {o.MaxRequestsPerHour} requests in an hour)");
+            return;
         }
+
+        var portal = sp.GetRequiredService<IOptions<PortalOptions>>().Value;
+        var html = await sp.GetRequiredService<IHtmlTemplateRenderer>().RenderAsync<MsmeResetPasswordEmail>(new Dictionary<string, object?>
+        {
+            [nameof(MsmeResetPasswordEmail.EnterpriseName)] = account.EnterpriseName,
+            [nameof(MsmeResetPasswordEmail.ZedId)] = account.ZedId,
+            [nameof(MsmeResetPasswordEmail.ResetUrl)] = PasswordResetTokens.MsmeResetUrl(portal.PublicBaseUrl, token),
+            [nameof(MsmeResetPasswordEmail.ValidMinutes)] = Math.Clamp(o.ValidMinutes, 1, 1440),
+            [nameof(MsmeResetPasswordEmail.PublicBaseUrl)] = portal.PublicBaseUrl,
+        });
+        await sp.GetRequiredService<IEmailSender>().SendAsync(new EmailMessage(to, "MSME Reset Password Details - " + account.ZedId, html), ct);
+        Audit("link sent");
     }
 
     /// <summary>SP_APP_MSME_STATUS: the button states, with the remote and surveillance fields that Login leaves out.</summary>

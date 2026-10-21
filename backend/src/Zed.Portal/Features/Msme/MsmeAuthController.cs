@@ -1,24 +1,18 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
 using Zed.Core.Data;
-using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
-using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Msme;
 
-/// <summary>MSME login and password reset. Port of MsmeController Login / ResetPassword / ChangePassword.</summary>
+/// <summary>MSME login and password reset (<see cref="MsmePasswordResets"/>). Port of MsmeController Login / ResetPassword / ChangePassword.</summary>
 [ApiController]
 [Route("api/msme/auth")]
 public sealed class MsmeAuthController(
     ISqlExecutor db,
     ICaptchaVerifier captcha,
-    IEmailSender email,
-    IHtmlTemplateRenderer templates,
-    IOptions<PortalOptions> portal,
     ILogger<MsmeAuthController> log) : ControllerBase
 {
     public sealed record LoginRequest(string UserId, string Password, string? CaptchaToken);
@@ -73,82 +67,50 @@ public sealed class MsmeAuthController(
 
     public sealed record ForgotPasswordRequest(string UserId);
 
-    /// <summary>Sends a reset link to the pledge e-mail. Always answers the same way so ZED IDs cannot be probed.</summary>
+    public const string ForgotPasswordAnswer = "If the ZED ID is registered, a reset link has been sent to the registered Email ID.";
+
+    /// <summary>
+    /// Sends a reset link to the registered e-mail. The answer is the same for every ZED ID and is sent before the
+    /// lookup: the lookup, the link and the mail run in the background (<see cref="MsmePasswordResets"/>), so neither
+    /// the answer nor its timing tells whether a ZED ID exists.
+    /// </summary>
     [HttpPost("forgot-password")]
     [AllowAnonymous]
-    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
-    public async Task<ActionResult<MessageResponse>> ForgotPassword(ForgotPasswordRequest req, CancellationToken ct)
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
+    public ActionResult<MessageResponse> ForgotPassword(ForgotPasswordRequest req, [FromServices] IBackgroundWork background)
     {
-        const string message = "If the ZED ID is registered, a reset link has been sent to the registered Email ID.";
-        if (string.IsNullOrWhiteSpace(req.UserId)) return this.Problem400("Please enter your ZED ID.");
-
-        var zedId = req.UserId.Trim();
-        var msme = (await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId }, ct))[0].FirstOrDefault();
-        var to = msme?.Text("PledgeEmailId");
-        if (msme is null || string.IsNullOrEmpty(to)) return new MessageResponse(message);
-
-        var code = SecureRandom.Token();
-        await db.ExecuteProcAsync("SP_MSME_PWD_UPDATE_TOKEN", new { UserId = zedId, PwdCode = code }, ct);
-
-        var html = await templates.RenderAsync<ResetPasswordEmail>(new Dictionary<string, object?>
-        {
-            [nameof(ResetPasswordEmail.EnterpriseName)] = msme.Text("EnterpriseName"),
-            [nameof(ResetPasswordEmail.ZedId)] = zedId,
-            [nameof(ResetPasswordEmail.ResetUrl)] = $"{portal.Value.PublicBaseUrl.TrimEnd('/')}/msme/reset-password?code={Uri.EscapeDataString(code)}",
-            [nameof(ResetPasswordEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-        });
-        await email.SendAsync(new EmailMessage(to, "MSME Reset Password Details - " + zedId, html), ct);
-        return new MessageResponse(message);
+        var zedId = req.UserId?.Trim();
+        if (string.IsNullOrEmpty(zedId)) return this.Problem400("Please enter your ZED ID.");
+        if (zedId.Length > 50) return new MessageResponse(ForgotPasswordAnswer);
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        background.Enqueue("MSME password reset request", (sp, stop) => sp.GetRequiredService<MsmePasswordResets>().RequestAsync(zedId, ip, stop));
+        return new MessageResponse(ForgotPasswordAnswer);
     }
 
-    [HttpGet("reset-password/{code}")]
-    [AllowAnonymous]
-    public async Task<ActionResult<MessageResponse>> ValidateResetCode(string code, CancellationToken ct) =>
-        await FindUserByResetCode(code, ct) is null
-            ? this.Problem400("This reset link is invalid or has already been used.")
-            : new MessageResponse("Valid");
+    public sealed record TokenRequest(string? Token);
 
-    public sealed record ResetPasswordRequest(string Code, string NewPassword, string ConfirmPassword);
+    /// <summary>Whether a link can still be used (the reset page asks before showing the form). The token travels in the body.</summary>
+    [HttpPost("reset-password/check")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<ActionResult<MessageResponse>> CheckResetLink(TokenRequest req, [FromServices] MsmePasswordResets resets, CancellationToken ct) =>
+        await resets.IsOpenAsync(req.Token, ct)
+            ? new MessageResponse("Valid")
+            : this.Problem400(PasswordResetTokens.InvalidLink);
+
+    public sealed record ResetPasswordRequest(string? Token, string? NewPassword, string? ConfirmPassword);
 
     [HttpPost("reset-password")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
-    public async Task<ActionResult<MessageResponse>> ResetPassword(ResetPasswordRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> ResetPassword(ResetPasswordRequest req, [FromServices] MsmePasswordResets resets, CancellationToken ct)
     {
         if (req.NewPassword != req.ConfirmPassword)
             return this.Problem400("NewPassword and ConfirmPassword should be same.");
         if (PasswordPolicy.Validate(req.NewPassword) is { } policyError)
             return this.Problem400(policyError);
 
-        var user = await FindUserByResetCode(req.Code, ct);
-        if (user is null) return this.Problem400("This reset link is invalid or has already been used.");
-
-        var userId = user.Text("UserId");
-        // Legacy UserHelper.UpdateResetPassword used this inline UPDATE. The reset code is now
-        // cleared as well so a link cannot be reused. The hash is written first (docs/PASSWORDS.md).
-        var passwords = PasswordStore.For(db, HttpContext.RequestServices);
-        await passwords.SetAsync(userId, req.NewPassword, ct);
-        await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password, PwdCode = NULL WHERE UserId = @UserId AND PwdCode = @PwdCode",
-            new { Password = passwords.StoredValueFor(req.NewPassword), UserId = userId, PwdCode = req.Code }, ct);
-
-        if (user.Text("Email") is { Length: > 0 } to)
-        {
-            var html = await templates.RenderAsync<PasswordChangedEmail>(new Dictionary<string, object?>
-            {
-                [nameof(PasswordChangedEmail.UserName)] = user.Text("UserName"),
-                [nameof(PasswordChangedEmail.UserId)] = userId,
-                [nameof(PasswordChangedEmail.IsMsme)] = user.Text("RoleId") == ((int)UserRole.Msme).ToString(),
-                [nameof(PasswordChangedEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-            });
-            try { await email.SendAsync(new EmailMessage(to, "New Login Details - " + user.Text("UserName"), html), ct); }
-            catch (Exception ex) { log.LogWarning(ex, "Password changed but confirmation mail to {UserId} failed", userId); }
-        }
-        return new MessageResponse("Password reset successful.");
-    }
-
-    private async Task<IDictionary<string, object?>?> FindUserByResetCode(string? code, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(code) || code.Length > 100) return null;
-        return (await db.QueryProcMultipleAsync("SP_MSME_PWD_VALIDATE_CODE", new { PwdCode = code }, ct))[0].FirstOrDefault();
+        var error = await resets.ResetAsync(req.Token, req.NewPassword!, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        return error is null ? new MessageResponse("Password reset successful.") : this.Problem400(error);
     }
 }

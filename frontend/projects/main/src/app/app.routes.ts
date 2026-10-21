@@ -258,7 +258,8 @@ const MAIN_ROUTES: Routes = [
   { path: 'Msme/SiteAssessmentInfo/:certification', redirectTo: 'msme/site-assessment/:certification' },
   { path: 'Msme/ViewStatus', redirectTo: ({ queryParams }) => `/msme/status/${encodeURIComponent(queryParams['certification'] ?? '')}` },
   { path: 'SurveillancePay/Index/:certification', redirectTo: 'msme/surveillance-payment/:certification' },
-  { path: 'Msme/ChangePassword', redirectTo: ({ queryParams }) => `/msme/reset-password?code=${encodeURIComponent(queryParams['code'] ?? '')}` },
+  // Links of the legacy reset (?code=…) no longer work: the page explains and offers a new link; the code is dropped.
+  { path: 'Msme/ChangePassword', redirectTo: '/msme/reset-password' },
 
   { path: 'Neft/Index', redirectTo: 'staff/neft/new' },
   { path: 'Neft/NewTransactions', redirectTo: 'staff/neft/new' },

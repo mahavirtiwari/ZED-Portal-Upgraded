@@ -97,6 +97,9 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
   source, their mail templates were missing, so they answered `status "0"` after doing the work; V4 answers
   `status "1"`. If the live site had the templates, nothing changes; if not, check the app treats `1` as success.
 - One login response, for `Mobile:Culture` (date text format).
+- `Msme/ResetPassword` now answers `status "1"` with "A Reset link has been sent your Registered Email ID." for every
+  ZED ID, also unknown ones (the old "Sorry, no User exists with these details." let anyone find out which ZED IDs
+  exist, #128). The link opens the new portal's reset page; check the app shows the message as before.
 - The virtual folder (`Mobile:PathBase`) and the folder holding `Photos/`, `SaPhotos/` (`Mobile:StorageRoot`).
 - Whether the remote-assessment app builds video tokens itself from the Twilio secret it used to receive (#48).
 

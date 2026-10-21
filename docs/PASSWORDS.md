@@ -126,6 +126,34 @@ Setting up: run 0008 on the three databases and grant the V4 logins `EXECUTE` on
 `SP_V4_STAFF_RESET_CREATE`, `SP_V4_STAFF_RESET_FIND` and `SP_V4_STAFF_RESET_USE`. Each portal needs a working SMTP
 profile (`Email:Profiles:Default`) and its own `Portal:PublicBaseUrl`.
 
+## MSME password reset
+
+Migration `0009_msme_password_reset.sql` (ZEDCS_V2_LIVE, after 0008) moves the MSME reset onto the same table and rules
+as the staff reset (SECURITY-FINDINGS #128). The old procedures `SP_MSME_PWD_UPDATE_TOKEN` / `SP_MSME_PWD_VALIDATE_CODE`
+kept every code in clear (`Users.PwdCode`, `ForgotPwdLinks`), never expired them and returned `Users.*`; V4 no longer
+calls them.
+
+- **Where links are sent:** "Forgot password" on the MSME login, the staff "Resend Details" (Registered MSMEs,
+  SuperAdmin) and the MSME app's `Msme/ResetPassword`. The mail goes to the unit's pledge e-mail (`Users.Email` when
+  there is none), with `{PublicBaseUrl}/msme/reset-password#token=…`.
+- **The link:** 256-bit token in the URL fragment, only its SHA-256 stored in `dbo.V4PasswordResets`, works once for
+  `MsmePasswordReset:ValidMinutes` (60), replaced by a newer link. An MSME link cannot be used on the staff reset and
+  the reverse. Using it clears the unit's failed logins and its legacy `PwdCode` (so an older link of the old site
+  stops working too) and sets the password through the Security:Passwords mode; a "password changed" mail follows.
+- **No probing:** the portal answers before the lookup (the lookup, link and mail run in the background), and the app
+  now gives the same "A Reset link has been sent…" answer for every ZED ID (it used to say "no User exists").
+  Nothing is sent for an unknown or inactive ZED ID or one without an e-mail address; outcomes go to
+  `Zed.Audit.PasswordReset`.
+- **Limits:** 5 requests per 15 minutes per address (portal) or per ZED ID (app), and
+  `MsmePasswordReset:MaxRequestsPerHour` (3) self-service links per ZED ID and hour. Links sent by staff are not counted.
+- **Old links:** codes mailed by the old site (`/Msme/ChangePassword?code=…`, `/msme/reset-password?code=…`) are not
+  accepted; the page says so and points to "Forgot Password".
+
+Setting up: run 0009 on ZEDCS_V2_LIVE and grant the portal's and the MSME app's logins `EXECUTE` on
+`SP_V4_STAFF_RESET_CREATE`, `SP_V4_MSME_RESET_ACCOUNT`, `SP_V4_MSME_RESET_FIND` and `SP_V4_MSME_RESET_USE`.
+After decommission: `EXEC dbo.SP_V4_PURGE_LEGACY_RESET_CODES` (counts), then `@Mode = 'APPLY'` clears `Users.PwdCode`
+and empties `ForgotPwdLinks` (the old site needs them while it is live).
+
 ## Also found
 
 - **The pledge certificate QR code contains the initial password.** `SP_MSME_INSERT_UDYAM_DETAILS` builds `QrCodeNo` as

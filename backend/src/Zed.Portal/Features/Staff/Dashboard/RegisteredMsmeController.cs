@@ -1,11 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.Extensions.Options;
 using Zed.Core.Data;
-using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
-using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Dashboard;
 
@@ -23,7 +20,7 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 [StaffRoles(UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC, UserRole.MasterAdmin)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class RegisteredMsmeController(
-    ISqlExecutor db, PortalHost host, IEmailSender email, IHtmlTemplateRenderer templates, IOptions<PortalOptions> portal,
+    ISqlExecutor db, PortalHost host,
     ILogger<RegisteredMsmeController> log) : StaffApiController
 {
     /// <summary>Columns the table shows to every role (CertificationStatus drives the Assessment Details links).</summary>
@@ -101,30 +98,18 @@ public sealed class RegisteredMsmeController(
     /// <summary>
     /// "Resend Details". The legacy action (no authentication at all) e-mailed the MSME's stored password
     /// (SP_RESEND_REGISTRATION_DETAILS returns Users.Password). Here the MSME receives a password-reset link
-    /// instead, the same mail as "Forgot password" on the MSME login page.
+    /// instead, the same mail as "Forgot password" on the MSME login page (<see cref="Msme.MsmePasswordResets"/>).
     /// </summary>
     [HttpPost("{zedId}/resend")]
     [StaffRoles(UserRole.SuperAdmin)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
-    public async Task<ActionResult<MessageResponse>> Resend(string zedId, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> Resend(string zedId, [FromServices] Msme.MsmePasswordResets resets, CancellationToken ct)
     {
         if (host.System != PortalSystem.Main) return NotFound();
         if (!DashboardFilters.IsZedId(zedId)) return this.Problem400("Invalid ZED ID.");
 
-        var row = (await db.QueryProcMultipleAsync("SP_RESEND_REGISTRATION_DETAILS", new { ZedId = zedId }, ct))[0].FirstOrDefault();
-        var to = row?.Text("Email");
-        if (row is null || string.IsNullOrEmpty(to)) return this.Problem400("Resend Registration details failed.");
-
-        var code = SecureRandom.Token();
-        await db.ExecuteProcAsync("SP_MSME_PWD_UPDATE_TOKEN", new { UserId = row.Text("UserId"), PwdCode = code }, ct);
-        var html = await templates.RenderAsync<ResetPasswordEmail>(new Dictionary<string, object?>
-        {
-            [nameof(ResetPasswordEmail.EnterpriseName)] = row.Text("UnitName"),
-            [nameof(ResetPasswordEmail.ZedId)] = row.Text("UserId"),
-            [nameof(ResetPasswordEmail.ResetUrl)] = $"{portal.Value.PublicBaseUrl.TrimEnd('/')}/msme/reset-password?code={Uri.EscapeDataString(code)}",
-            [nameof(ResetPasswordEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-        });
-        await email.SendAsync(new EmailMessage(to, "Registration Details for “MSME Sustainable (ZED) Certification” Scheme – " + row.Text("UserId"), html), ct);
+        if (await resets.SendByStaffAsync(zedId, UserId, HttpContext.Connection.RemoteIpAddress?.ToString(), ct) is { } error)
+            return this.Problem400(error);
         log.LogInformation("{UserId} re-sent registration details (reset link) to {ZedId}", UserId, zedId);
         return new MessageResponse("Registration details sent to the registered Email ID.");
     }

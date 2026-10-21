@@ -51,6 +51,7 @@ public static class PortalSetup
         services.AddSingleton<PledgeCertificateService>();
         services.AddScoped<IAssessmentDocuments, AssessmentDocuments>();
         services.AddScoped<Features.Staff.PasswordReset.StaffPasswordResets>();
+        services.AddScoped<Features.Msme.MsmePasswordResets>();
         return builder;
     }
 }

@@ -34,10 +34,11 @@ public sealed class PasswordHashTests : IDisposable
             _passwords.Accounts.TryGetValue(FakeSql.Arg(args, "UserId") ?? "", out var a)
                 ? FakeSql.Sets([new { UserId = FakeSql.Arg(args, "UserId"), UserName = "Acme", RoleId = int.Parse(a.RoleId!), Email = "a@acme.test", Password = a.Stored }])
                 : FakeSql.Sets([]);
-        _host.Sql.Procs["SP_MSME_PWD_VALIDATE_CODE"] = args => FakeSql.Arg(args, "PwdCode") == "good-code"
-            ? FakeSql.Sets([new { UserId = Msme, UserName = "Acme", RoleId = 5, Email = "a@acme.test" }])
-            : FakeSql.Sets([]);
+        _resets = new FakeStaffResets().Attach(_host.Sql.Procs);
+        _resets.Add(Msme, 5, "a@acme.test");
     }
+
+    private readonly FakeStaffResets _resets;
 
     public void Dispose() => _host.Dispose();
 
@@ -305,7 +306,7 @@ public sealed class PasswordHashTests : IDisposable
     public async Task Dual_reset_password_writes_the_plain_value_and_the_hash()
     {
         var client = await _host.CreateBrowserAsync();
-        var r = await client.PostAsJsonAsync("/api/msme/auth/reset-password", new { code = "good-code", newPassword = "New#Pass22", confirmPassword = "New#Pass22" });
+        var r = await client.PostAsJsonAsync("/api/msme/auth/reset-password", new { token = _resets.Issue(Msme), newPassword = "New#Pass22", confirmPassword = "New#Pass22" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal("New#Pass22", PlainWritten());
         Assert.True(_passwords.HashMatches(Msme, "New#Pass22"));
@@ -318,7 +319,7 @@ public sealed class PasswordHashTests : IDisposable
         var client = await _host.CreateBrowserAsync();
         Assert.Equal(HttpStatusCode.BadRequest, (await MsmeLogin(client, "Right#Pass1")).StatusCode);
 
-        var r = await client.PostAsJsonAsync("/api/msme/auth/reset-password", new { code = "good-code", newPassword = "New#Pass22", confirmPassword = "New#Pass22" });
+        var r = await client.PostAsJsonAsync("/api/msme/auth/reset-password", new { token = _resets.Issue(Msme), newPassword = "New#Pass22", confirmPassword = "New#Pass22" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var stored = PlainWritten();
         Assert.True(PasswordStore.IsReplacement(stored));

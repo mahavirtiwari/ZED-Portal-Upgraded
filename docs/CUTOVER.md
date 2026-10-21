@@ -93,6 +93,7 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 | 5 | `migrations/0006_distributed_cache.sql` | only with `Cache:SqlServerTable` | |
 | 5a | `migrations/0007_folder_rename.sql` | ZEDCS_V2_LIVE | folder rename job (docs/JOBS.md); EXECUTE for the Zed.Jobs login, modify rights on the two folders |
 | 5b | `migrations/0008_staff_password_reset.sql` | all three | staff password reset (docs/PASSWORDS.md); EXECUTE on the four `SP_V4_STAFF_RESET_*` procedures; needs a working SMTP profile on each portal |
+| 5c | `migrations/0009_msme_password_reset.sql` | ZEDCS_V2_LIVE, after 0008 | MSME reset on hashed tokens (#128); EXECUTE for the portal and MSME app logins on `SP_V4_STAFF_RESET_CREATE` and the three `SP_V4_MSME_RESET_*` procedures |
 | 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once `Jobs:FolderRename` has replaced the old rename job) |
 | 7 | `migrations/0003_mail_outbox.sql` | all three | **only together with starting Zed.Jobs and switching the Agent jobs off** (JOBS.md "Before go-live"): from then on procedure mail of the old sites is sent by Zed.Jobs too |
 
@@ -185,7 +186,8 @@ What the old sites find after a rollback:
 - **Mail**: the converted procedures (0003) keep queuing; **keep Zed.Jobs running**. To go fully back, re-enable the
   Agent jobs, stop Zed.Jobs, and undo 0003 per procedure (its header says how), which needs Database Mail.
 - **Folder renaming**: re-enable the old Agent job; it reads the same `FolderRenameHIstory` and continues.
-- **Password reset links** (`V4PasswordResets`) are V4-only; links sent before the rollback stop working.
+- **Password reset links** (`V4PasswordResets`) are V4-only; links sent before the rollback stop working. The old
+  MSME reset works again as before (its codes are untouched until the purge at decommission).
 - **Passwords**: in `Dual` mode the plain column stays authoritative, so every account still signs in on the old
   sites. After `Migrate` the plain column holds random values, and a rollback would lock users out. That is why
   `Migrate` waits until the rollback window is closed.
@@ -212,7 +214,8 @@ What the old sites find after a rollback:
    database taken on the decommission day.
 2. **Purge** the request and data dumps the old code left (#51, #57, #99, #113): `App_Data\Json\…` of the old
    services and portals, the captured photos and logs in the legacy repositories. Purge the typed passwords in
-   `FailedLogins` (#2, LIVE-HARDENING §7).
+   `FailedLogins` (#2, LIVE-HARDENING §7). Clear the legacy MSME reset codes: `EXEC dbo.SP_V4_PURGE_LEGACY_RESET_CODES
+   @Mode = 'APPLY'` on ZEDCS_V2_LIVE (#128).
 3. **Unused database objects.** `Get-ZedUnusedObjects.ps1 -Server … -Database …` for each database, run on
    production a few weeks after the cut-over. It lists the procedures nothing in V4 calls (directly or through
    another procedure) and the tables nothing used names, with the last time SQL Server ran each procedure. On the

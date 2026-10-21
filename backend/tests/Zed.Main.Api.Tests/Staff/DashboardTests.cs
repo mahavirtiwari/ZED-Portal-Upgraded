@@ -172,8 +172,8 @@ public sealed class DashboardTests : IDisposable
     [Fact]
     public async Task Resend_mails_a_reset_link_instead_of_the_stored_password()
     {
-        _host.Sql.Procs["SP_RESEND_REGISTRATION_DETAILS"] = _ =>
-            FakeSql.Sets([new { UserId = "ZEDMSME000001", Password = "Plain#Text9", UnitName = "Acme", Email = "owner@acme.test" }]);
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
+        resets.Users["ZEDMSME000001"] = new Zed.TestSupport.FakeStaffResets.User("ZEDMSME000001", 5, true, "owner@acme.test", "Acme");
 
         var qc = await _host.SignInAsync("QC1");
         Assert.Equal(HttpStatusCode.Forbidden, (await qc.PostAsync("/api/staff/dashboard/registered-msme/ZEDMSME000001/resend", null)).StatusCode);
@@ -182,9 +182,14 @@ public sealed class DashboardTests : IDisposable
         (await super.PostAsync("/api/staff/dashboard/registered-msme/ZEDMSME000001/resend", null)).EnsureSuccessStatusCode();
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("owner@acme.test", mail.To);
-        Assert.DoesNotContain("Plain#Text9", mail.HtmlBody);
-        Assert.Contains("/msme/reset-password?code=", mail.HtmlBody);
-        Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MSME_PWD_UPDATE_TOKEN" && FakeSql.Arg(c.Args, "UserId") == "ZEDMSME000001");
+        var token = System.Text.RegularExpressions.Regex.Match(mail.HtmlBody, "/msme/reset-password#token=([A-Za-z0-9_-]{43})").Groups[1].Value;
+        var row = Assert.Single(resets.Rows);
+        Assert.Equal(Zed.Core.Security.PasswordResetTokens.Hash(token), row.TokenHash);
+        Assert.Equal("SUPER1", row.RequestedBy);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name is "SP_MSME_PWD_UPDATE_TOKEN" or "SP_RESEND_REGISTRATION_DETAILS");
+
+        // An unknown or inactive unit gets no mail.
+        Assert.Equal(HttpStatusCode.BadRequest, (await super.PostAsync("/api/staff/dashboard/registered-msme/ZEDMSME000009/resend", null)).StatusCode);
     }
 
     [Fact]

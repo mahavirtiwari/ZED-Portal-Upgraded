@@ -4,7 +4,7 @@ using Zed.Core.Data;
 namespace Zed.TestSupport;
 
 /// <summary>
-/// dbo.Users (staff columns) and dbo.V4PasswordResets as the procedures of migration 0008 see them, attached to a fake
+/// dbo.Users (staff and MSME columns) and dbo.V4PasswordResets as the procedures of migrations 0008 and 0009 see them, attached to a fake
 /// executor's procedure table. Shared by the API test projects.
 /// </summary>
 public sealed class FakeStaffResets
@@ -82,11 +82,51 @@ public sealed class FakeStaffResets
                 return Sets(new Dictionary<string, object?> { ["UserId"] = u.UserId, ["UserName"] = u.UserName, ["RoleId"] = u.RoleId, ["Email"] = u.Email });
             }
         };
+        // MSME accounts (migration 0009): RoleId 5 only; the link rows are shared with the staff procedures.
+        procs["SP_V4_MSME_RESET_ACCOUNT"] = args =>
+        {
+            HoldAccountLookup?.Wait(TimeSpan.FromSeconds(10));
+            return Users.TryGetValue(Text(args, "ZedId") ?? "", out var u) && u.RoleId == 5
+                ? Sets(new Dictionary<string, object?> { ["ZedId"] = u.UserId, ["EnterpriseName"] = u.UserName, ["Email"] = u.Email, ["IsActive"] = u.IsActive })
+                : Sets();
+        };
+        procs["SP_V4_MSME_RESET_FIND"] = args =>
+        {
+            lock (gate)
+            {
+                var row = Open(args);
+                return row is not null && ActiveMsme(row.UserId) is { } u
+                    ? Sets(new Dictionary<string, object?> { ["ZedId"] = u.UserId, ["EnterpriseName"] = u.UserName, ["Email"] = u.Email })
+                    : Sets();
+            }
+        };
+        procs["SP_V4_MSME_RESET_USE"] = args =>
+        {
+            lock (gate)
+            {
+                var row = Open(args);
+                if (row is null || ActiveMsme(row.UserId) is not { } u) return Sets();
+                var now = DateTime.UtcNow;
+                row.UsedAt = now;
+                foreach (var r in Rows.Where(r => Same(r.UserId, u.UserId) && r.UsedAt is null && r.InvalidatedAt is null)) r.InvalidatedAt = now;
+                FailedLoginsCleared.Enqueue(u.UserId);
+                return Sets(new Dictionary<string, object?> { ["ZedId"] = u.UserId, ["EnterpriseName"] = u.UserName, ["Email"] = u.Email });
+            }
+        };
         return this;
     }
 
     public void Add(string userId, int roleId, string? email = "staff@zed.test", bool active = true) =>
         Users[userId] = new User(userId, roleId, active, email, userId + " name");
+
+    /// <summary>An open link for <paramref name="userId"/>, as if mailed; returns its token.</summary>
+    public string Issue(string userId, int validMinutes = 60)
+    {
+        var token = Zed.Core.Security.PasswordResetTokens.NewToken();
+        var now = DateTime.UtcNow;
+        lock (gate) Rows.Add(new Row { UserId = userId, TokenHash = Zed.Core.Security.PasswordResetTokens.Hash(token), CreatedAt = now, ExpiresAt = now.AddMinutes(validMinutes) });
+        return token;
+    }
 
     /// <summary>Moves every link's expiry into the past.</summary>
     public void ExpireAll()
@@ -99,6 +139,8 @@ public sealed class FakeStaffResets
         var hash = (byte[])Value(args, "TokenHash")!;
         return Rows.FirstOrDefault(r => r.TokenHash.AsSpan().SequenceEqual(hash) && r.IsOpen(DateTime.UtcNow));
     }
+
+    private User? ActiveMsme(string userId) => Users.TryGetValue(userId, out var u) && u.IsActive && u.RoleId == 5 ? u : null;
 
     private User? ActiveUser(string userId) => Users.TryGetValue(userId, out var u) && u.IsActive && u.RoleId != 5 ? u : null;
 

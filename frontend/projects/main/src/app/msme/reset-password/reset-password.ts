@@ -1,12 +1,17 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, OnInit, inject, input, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { tokenFromFragment } from '../../staff/password-reset/staff-reset-password';
 import { LoginShell } from '../login-shell/login-shell';
 
-/** Target of the "Reset Password" e-mail link. Port of Views/Msme/ChangePassword.cshtml. */
+/**
+ * Target of the "Reset Password" e-mail link `/msme/reset-password#token=…`. Port of Views/Msme/ChangePassword.cshtml.
+ * The token is in the fragment (never sent to the server or logged) and goes to the API in the request body; old
+ * `?code=` links of the legacy reset no longer work (SECURITY-FINDINGS #128).
+ */
 @Component({
   selector: 'zed-msme-reset-password',
   imports: [FormsModule, RouterLink, LoginShell],
@@ -19,6 +24,7 @@ import { LoginShell } from '../login-shell/login-shell';
             <p>Checking your reset link…</p>
           } @else if (state() === 'invalid') {
             <div class="alert alert-danger">{{ error() }}</div>
+            <p>Use "Forgot Password" on the login page to get a new link.</p>
             <a routerLink="/msme/login" class="btn btn-primary">GO TO LOGIN</a>
           } @else if (state() === 'done') {
             <div class="alert alert-success">Password reset successful. You can now log in with your new password.</div>
@@ -50,9 +56,8 @@ import { LoginShell } from '../login-shell/login-shell';
 })
 export class ResetPasswordPage implements OnInit {
   private readonly http = inject(HttpClient);
-
-  /** ?code= query parameter (bound by the router). */
-  readonly code = input<string>('');
+  private readonly route = inject(ActivatedRoute);
+  private token = '';
 
   protected readonly state = signal<'checking' | 'ready' | 'invalid' | 'done'>('checking');
   protected readonly busy = signal(false);
@@ -61,13 +66,16 @@ export class ResetPasswordPage implements OnInit {
   protected confirmPassword = '';
 
   async ngOnInit(): Promise<void> {
-    if (!this.code()) {
-      this.error.set('This reset link is invalid or has already been used.');
+    this.token = tokenFromFragment(this.route.snapshot.fragment);
+    // Keep the token out of the browser history once read.
+    if (this.token && typeof history !== 'undefined') history.replaceState(history.state, '', location.pathname + location.search);
+    if (!this.token) {
+      this.error.set('This reset link is invalid, has expired or has already been used. Please request a new one.');
       this.state.set('invalid');
       return;
     }
     try {
-      await firstValueFrom(this.http.get<MessageResponse>(`/api/msme/auth/reset-password/${encodeURIComponent(this.code())}`));
+      await firstValueFrom(this.http.post<MessageResponse>('/api/msme/auth/reset-password/check', { token: this.token }));
       this.state.set('ready');
     } catch (err) {
       this.error.set(apiErrorMessage(err));
@@ -85,7 +93,7 @@ export class ResetPasswordPage implements OnInit {
     try {
       await firstValueFrom(
         this.http.post<MessageResponse>('/api/msme/auth/reset-password', {
-          code: this.code(),
+          token: this.token,
           newPassword: this.newPassword,
           confirmPassword: this.confirmPassword,
         }),
