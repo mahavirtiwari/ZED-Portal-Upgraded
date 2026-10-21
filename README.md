@@ -6,7 +6,7 @@ ASP.NET MVC 5 / .NET Framework / AngularJS code in `../ZEDCS main`, `../ZEDCS_CO
 
 | Layer    | Old                                    | New                                              |
 |----------|----------------------------------------|--------------------------------------------------|
-| Database | SQL Server (3 databases)               | SQL Server 2022 Express, same 3 databases, compatibility level 160 |
+| Database | SQL Server (3 databases)               | SQL Server 2022 Standard (Express for development), same 3 databases, compatibility level 160 |
 | Backend  | ASP.NET MVC 5, .NET Framework 4.8/4.5.2 | ASP.NET Core, .NET 10 (LTS)                      |
 | Frontend | Razor views + AngularJS 1.x + jQuery   | Angular 22 (standalone components, signals)     |
 
@@ -86,8 +86,8 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 
 ## Prerequisites
 
-- SQL Server 2022 Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production needs Standard
-  edition or the managed instance: ZEDCS_V2_LIVE is 76 GB (docs/MIGRATION-PLAN.md, "Database")
+- SQL Server 2022 Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production: SQL Server 2022
+  **Standard** (ZEDCS_V2_LIVE is 76 GB, beyond Express; docs/MIGRATION-PLAN.md, "Database")
 - .NET SDK 10.0.x
 - Node.js 24 LTS, npm 11
 

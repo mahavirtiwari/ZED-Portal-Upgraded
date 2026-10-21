@@ -22,7 +22,7 @@ therefore be on the same instance, with exactly these names.
 | `verify_references.sql` | Read-only checks to run in each database: object counts, references to missing objects or databases, and modules that fail to bind. |
 | `schema\0[1-3]_*.sql` | UTF-8 copies of the SSMS "Generate Scripts" output, with the minimal cleanups listed below. |
 | `schema\04_missing_sequences.sql` | The SEQUENCE objects the export left out, as defined on production (see Findings, section 3). |
-| `schema\05_ZED_IMPACT_ASSESSMENT.sql`, `06_ZED_CENTER_AUDIT_PROFESSIONAL.sql`, `07_ZED_CENTER_AUDIT_V2.sql` | Schema exports (2026-10-21) of the other applications' databases that ZED procedures read with three-part names, cleaned the same way and redacted (see "Referenced databases"). KAWACH has no export yet: `seed\dev-registration-data.sql` creates stand-ins for the tables ZED reads. |
+| `schema\05_ZED_IMPACT_ASSESSMENT.sql`, `06_ZED_CENTER_AUDIT_PROFESSIONAL.sql`, `07_ZED_CENTER_AUDIT_V2.sql` | Schema exports (2026-10-21) of the other applications' databases that ZED procedures read with three-part names, cleaned the same way and redacted (see "Referenced databases"). KAWACH stays a stand-in (decided): `seed\dev-registration-data.sql` creates the tables ZED reads. |
 | `logs\` | Output from the last run: `setup-*.log`, `failed-batches-*.json`, `warnings-*.txt`, and `verify-<db>.txt`. |
 
 ## How to run
@@ -215,8 +215,8 @@ replaces the earlier stand-ins without touching the ZED databases):
 The 5 Professional procedures (`SP_QUESTIONNAIRE_ADD_QUESTION_BY_CODE`, `SP_QUESTIONNAIRE_UPDATE_BY_CODE`,
 `SP_QUESTIONNAIRE_UPDATE_ORDER_BY_CODE_NOT_USED`, `SP_ZEDTAC_INSERT_SELF_ASSESSMENT_QUESTIONS`,
 `SP_ZEDTAC_UPDATE_PRACTICAL_SCORES`) need the table types `DynamicOption` and `DynamicQuestion`, which that export
-(made on 2026-10-10 with other options) left out. ZED does not use them; a new export with "User-defined table types"
-ticked fixes it. Checked against the real schemas, inside a rolled-back transaction: `SP_MSME_VALIDATE_UDYAM_DETAILS`,
+(made on 2026-10-10 with other options) left out. ZED does not use them, so they stay out locally (decided; production has
+the real database). Checked against the real schemas, inside a rolled-back transaction: `SP_MSME_VALIDATE_UDYAM_DETAILS`,
 `SP_MASTER_GET_SECTORS`, `SP_GET_USERS_BY_ROLE`, `SP_INSERT_USER`, `SP_MSME_UPDATE_UDYAM_DETAILS` and
 `SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_CANDIDATES_ZED_MONITORING` run without errors.
 

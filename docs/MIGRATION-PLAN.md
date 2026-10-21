@@ -12,6 +12,8 @@
    (`SA/Login`, `SA/SubmitSelfie`, `SA/SubmitSiteTour`, …). Its source is not in this folder, so the new
    endpoints must keep the **same URLs, form/JSON field names and the `{status, errorMessage}` response shape**.
    Ask the vendor for the app source before changing that contract.
+5. **Database server: SQL Server 2022 Standard** on a server (2026-10-21; Express cannot hold ZEDCS_V2_LIVE's 76 GB).
+   It hosts the three ZED databases and the other applications' databases they reference. The old instance runs in IST.
 
 ## Phases
 
@@ -28,7 +30,7 @@
 | 6 | Mobile services (`SwachhSurvekshanServices`: Home, Msme, RA, SA) with the contract kept, in `Zed.Main.MobileApi` (see MOBILE-API.md). **Done:** compatibility layer (MVC 5 binding and JSON formats, legacy errors, safe upload storage), device binding (monitor/enforce), login throttle, master-password refusal, MSME app login. **Done:** all MSME app actions (stage-checked), site assessor and remote-assessment apps (allotment-checked), mobile payment actions on the portal (`Pay/`, `SurveillancePay/`). **Before go-live:** the live checks in MOBILE-API.md, CCAvenue mobile settings, Twilio key rotation, then device binding Monitor → Enforce. **Next:** v2 token API for the next app release. | Done (v1) |
 | 7 | Consultancy (handholding; analysis in systems/CONSULTANCY-ANALYSIS.md). Staff-only portal on the shared `Zed.Portal` features (`[PortalSystems]`), with consultancy code for the milestone workflow (CO allotment, milestone review and decisions, milestone reports), the Technology Upgradation review and recommendation, and the consultant app (mobile host, `Mobile:System=Consultancy`). MSME handholding is already on main. 17 leftover controllers retired. **Done:** `Zed.Consultancy.Api` (ZED_CONSULTANT), per-system menu and routes in the one Angular app (`ng build consultancy`, base `/Consultancy/`), assessment and monitoring lists, CO allotment, milestone review (`/staff/consultancy/milestones/{zedId}/{level}`) and milestone reports, TU review and recommendation, consultancy users, reports catalogue, the consultant app (`Controllers/Consultancy`). **Before go-live:** LIVE-HARDENING.md and `database/fixes/consultancy`, `Consultancy:SharedStorageRoot`, the procedure findings (SECURITY-FINDINGS 85–99, 116–117, 120–122). | **Done** |
 | 8 | Surveillance (analysis in systems/SURVEILLANCE-ANALYSIS.md). Staff portal on the shared features: Bronze desktop flow, Silver/Gold site flow with meeting links, monitoring and certification (main certificate re-used), surveillance certificates and report (served to MSMEs from main), the Bronze surveillance app and the site-assessor app (mobile host, `Mobile:System=Surveillance`). MSME surveillance payment is already on main; SurveillancePay/ConsultancyPay here are duplicates, not ported. **Done:** `Zed.Surveillance.Api` (ZED_SURVEILLANCE), `ng build surveillance` (base `/surveillance/`), Bronze desktop and Silver/Gold site/remote flows with http/https-only meeting links, monitoring review, surveillance certificates and reports (served to MSMEs and staff from main over a read-only connection), surveillance users, the Bronze surveillance and site-assessor apps (`Controllers/Surveillance`, `SurveillancePhotoController`). **Before go-live:** LIVE-HARDENING.md and `database/fixes/surveillance`, findings 100–114, 118–119, 123. | **Done** |
-| 9 | Scheduled jobs and DB mail (see "SQL Server Express" below), cut-over, decommission. **Done:** Zed.Jobs service with the procedure mail outbox (25 procedures converted, 0003) and the job runner (0004), see JOBS.md. **Done:** schedule kinds for any Agent job (weekly, monthly, windows, parameters, steps), `Zed.Jobs --check`, the Agent export converter (`tools/jobs`); production hosting (Data Protection keys, optional SQL cache 0006, startup configuration check, readiness endpoints, web.config); `deploy/` publish, IIS install (dry run by default, rollback file) and smoke-test scripts; hashed passwords (0005, `Security:Passwords`, PASSWORDS.md); fix scripts for every open procedure finding (`database/fixes`); the runbook `docs/CUTOVER.md`; the folder-rename job without xp_cmdshell (`Jobs:FolderRename`, 0007); staff forgot-password and admin reset links (0008). **Open (needs production):** the Agent export, applying the fix scripts and rotations, the cut-over itself, then `Migrate`/`HashOnly` and decommission. | Ready for cut-over |
+| 9 | Scheduled jobs and DB mail (see "Database" below), cut-over, decommission. **Done:** Zed.Jobs service with the procedure mail outbox (25 procedures converted, 0003) and the job runner (0004), see JOBS.md. **Done:** schedule kinds for any Agent job (weekly, monthly, windows, parameters, steps), `Zed.Jobs --check`, the Agent export converter (`tools/jobs`); production hosting (Data Protection keys, optional SQL cache 0006, startup configuration check, readiness endpoints, web.config); `deploy/` publish, IIS install (dry run by default, rollback file) and smoke-test scripts; hashed passwords (0005, `Security:Passwords`, PASSWORDS.md); fix scripts for every open procedure finding (`database/fixes`); the runbook `docs/CUTOVER.md`; the folder-rename job without xp_cmdshell (`Jobs:FolderRename`, 0007); staff forgot-password and admin reset links (0008). **Open (needs production):** the Agent export, applying the fix scripts and rotations, the cut-over itself, then `Migrate`/`HashOnly` and decommission. | Ready for cut-over |
 
 Main's controllers by size (lines : actions): Msme 3189:71, Dashboard 2540:67, Payment 1578, Assessment 1566:71,
 SurveillancePay 1494, ConsultancyPay 1461, Monitoring 1127:21, SA 892:29, SelfAssessment 831:28,
@@ -75,12 +77,12 @@ Local copies are built from the schema scripts by `database/setup.ps1` (details 
 | ZED_QUALITY_PROFESSIONAL (referenced by V2) | 0.4 | 0.0 | yes | yes |
 | KAWACH (referenced) | 0.2 | 0.5 | yes | yes |
 
-- **SQL Server Express cannot host ZED.** ZEDCS_V2_LIVE uses 76 GB, over the 10 GB of 2022 Express and the 50 GB of
-  2025 Express; ZED_SURVEILLANCE, ZED_CONSULTANT (its data file is 10.8 GB) and ZED_CENTER_AUDIT_PROFESSIONAL are over
-  10 GB too. **Decision needed:** SQL Server 2022 (or 2025) **Standard** edition (recommended: no size limit that
-  matters here, up to 24 cores / 128 GB buffer pool, and Agent and Database Mail are available, although V4 does not
-  need them), or keep the managed instance. 2025 Express would need ZEDCS_V2_LIVE cut below 50 GB first (archiving;
-  see what takes the space with the query in `docs/CUTOVER.md` 1.4). V4 runs the same on any of these.
+- **Decided: SQL Server 2022 Standard edition on a server** (not Express, not a managed instance). Express cannot
+  host ZED: ZEDCS_V2_LIVE uses 76 GB, over the 10 GB of 2022 Express and the 50 GB of 2025 Express;
+  ZED_SURVEILLANCE, ZED_CONSULTANT (its data file is 10.8 GB) and ZED_CENTER_AUDIT_PROFESSIONAL are over 10 GB too.
+  Standard has no size limit that matters here, up to 24 cores / 128 GB buffer pool, and SQL Agent and Database Mail,
+  which the other applications' jobs and mail can keep using; V4 still runs ZED's own jobs and procedure mail itself
+  (Zed.Jobs). Local development stays on Express (schema only).
 - **One instance for the related databases.** ZED procedures use three-part names into four other applications'
   databases, and V4 reaches them: ZED_CENTER_AUDIT_PROFESSIONAL (user creation, Udyam validation, sectors),
   ZED_CENTER_AUDIT_V2 (Udyam registration, a monitoring report), KAWACH (My Documents, the Kawach reports) and
@@ -96,14 +98,15 @@ Local copies are built from the schema scripts by `database/setup.ps1` (details 
   production: `SaCertificateSequence` (in `SP_MONITORING_UPDATE_FINAL_SUBMIT` of all three databases) and
   `WebinarCertificateSequence` (`SP_WEBINAR_GET_CERTIFICATE_DETAILS`), so those procedures fail there today. V4 calls
   neither.
-- **Referenced databases: three of four provided.** ZED_IMPACT_ASSESSMENT, ZED_CENTER_AUDIT_PROFESSIONAL and
-  ZED_CENTER_AUDIT_V2 are `database/schema/05`–`07` (setup builds them). **Still needed:** the KAWACH schema export
-  (locally a stand-in with the tables ZED reads), and the Professional export again **with its user-defined table
-  types** (`DynamicOption`, `DynamicQuestion`: without them 5 of its own procedures do not compile; ZED does not use them).
+- **Referenced databases.** ZED_IMPACT_ASSESSMENT, ZED_CENTER_AUDIT_PROFESSIONAL and ZED_CENTER_AUDIT_V2 are
+  `database/schema/05`–`07` (setup builds them). KAWACH stays a local stand-in with the tables ZED reads, and the
+  Professional copy without its two table types (5 of its own procedures do not compile locally; ZED does not use
+  them): decided not to pursue either, since production keeps the real databases.
 - **18 procedures do not compile against the current tables** (they reference dropped/renamed columns), so they
   are already broken in production; list in `database/README.md`. Check whether any screen still uses them.
-- **Agent jobs and Database Mail: done** (the production export is in Zed.Jobs, docs/JOBS.md). Open: the old
-  instance's time zone, and the mail checks listed there.
+- **Agent jobs and Database Mail: done** (the production export is in Zed.Jobs, docs/JOBS.md; the old instance runs
+  in IST, as `Jobs:TimeZone`). The reporting profile moves from the vendor's mailbox to dev.zed@qcin.org
+  (`database/fixes/msdb/01_report_profile_qci_mailbox.sql`, SECURITY-FINDINGS #130).
 - Confirm production compatibility level and collation (local: 160, `SQL_Latin1_General_CP1_CI_AS`).
 
 ## Behaviour changes made on purpose (pilot)

@@ -40,21 +40,28 @@ Udyami Bharat keep working. Nothing moves in DNS.
 
 ### 1.1a Database server
 
-- **Edition: not Express.** Production sizes (2026-10-21): ZEDCS_V2_LIVE 76 GB of data, beyond SQL Server 2022
-  Express (10 GB per database) and 2025 Express (50 GB). Use SQL Server 2022 (or 2025) Standard, or stay on the managed
-  instance (MIGRATION-PLAN "Database", sizes table there).
+- **Edition: SQL Server 2022 Standard, on a server** (decided). Express cannot hold the data: ZEDCS_V2_LIVE has 76 GB
+  (MIGRATION-PLAN "Database", sizes table there). Install it with SQL Agent and Database Mail available for the other
+  applications (their jobs and mail, below); ZED's jobs and procedure mail run in Zed.Jobs.
 - **Same instance** for ZEDCS_V2_LIVE, ZED_CONSULTANT, ZED_SURVEILLANCE and the databases their procedures use by
   three-part name: ZED_CENTER_AUDIT_PROFESSIONAL, ZED_CENTER_AUDIT_V2, ZED_IMPACT_ASSESSMENT, KAWACH, and
   ZED_QUALITY_PROFESSIONAL (used by V2). Their applications move to the new instance in the same window.
 - **Disk:** about 128 GB of data, plus the logs. Shrink the logs on the old instance first (allocated: ZEDCS_V2_LIVE
   360 GB, ZED_CONSULTANT 101 GB, ZED_SURVEILLANCE 43 GB, almost all unused), e.g.
   `DBCC SHRINKFILE (N'<log file name>', 8192);` after a log backup, or the restore needs that space.
-- **Moving the data off the managed instance.** A managed instance backup restores only to the SQL Server version of
-  the instance's update policy (check it in the portal: "SQL Server 2022" policy → restorable to SQL Server 2022;
-  "Always-up-to-date" → not restorable to SQL Server at all). Otherwise use a BACPAC export (slow at this size; test
-  the timing on staging) or another replication path. Rehearse on staging (1.5) with the method chosen.
-- **Time zone:** Agent times are in the old instance's time zone (`SELECT CURRENT_TIMEZONE();`); set
-  `Jobs:TimeZone` to match (docs/JOBS.md "Time zone").
+- **Moving the data from the managed instance to the server.** Look up the managed instance's update policy in the
+  Azure portal (Settings > Maintenance and updates). "SQL Server 2022": take copy-only backups to a storage account
+  (`BACKUP DATABASE … TO URL … WITH COPY_ONLY`) and restore them on the server; this keeps everything, sequences
+  included. "Always-up-to-date" (or "SQL Server 2025"): its backups do not restore to SQL Server 2022, so export
+  BACPACs (SqlPackage; slow at 76 GB, needs its own downtime window) or copy the data another way. Rehearse the chosen
+  method on staging (1.5) and time it: it sets the cut-over window.
+- **Time zone:** the old instance runs in IST (confirmed), which is the default of `Jobs:TimeZone` (Asia/Kolkata), so
+  the Zed.Jobs times are the Agent times. Give the new server the same time zone: some procedures use `GETDATE()`.
+- **The other applications' jobs and mail** move with their databases to the new server's SQL Agent and Database
+  Mail: the Agent job `UpdateBatchDates` (ZED_CENTER_AUDIT_PROFESSIONAL), and the Database Mail profiles
+  `ZedEmailOTPs` (used by the Professional database) and `ZED_Report_Profile` (now dev.zed@qcin.org: run
+  `database/fixes/msdb/01_report_profile_qci_mailbox.sql` on the old instance now, and on the new server after
+  creating the profile there). ZED's own Agent jobs are not recreated on the server: Zed.Jobs runs them.
 - **What takes the space** (run on the old instance, per database, before deciding on archiving):
   ```sql
   SELECT TOP 20 t.name, SUM(a.used_pages) * 8 / 1024 AS used_mb, MAX(p.rows) AS rows
@@ -125,16 +132,15 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 Exception: `fixes/main/02_sp_get_user_details_master_passwords.sql` breaks the **old** Udyami Bharat hand-over;
 run it at the cut-over, right after V4 serves `/Msme/ZedDashboard` (section 2, step 6).
 
-Also before the cut-over (MIGRATION-PLAN "Database"): the 12 SEQUENCE objects, the 4 referenced databases, and the
-18 procedures that do not compile. They are not new problems, but check them on the staging copy.
+Also before the cut-over (MIGRATION-PLAN "Database"): the 18 procedures that do not compile. They are not new
+problems, but check them on the staging copy. (Sequences and the referenced databases are settled: section 1.1a.)
 
-**Where the databases live.** The cut-over keeps the databases where they are. Moving them to SQL Server 2022
-Express is a **separate change in its own window**, before or after, never the same night:
-- each database must be under Express's 10 GB data limit (else Standard edition, or SQL Server 2025 Express: 50 GB);
-- the three databases must stay on one instance (their procedures call each other by name);
-- from an Azure SQL Managed Instance, a backup restores on SQL Server 2022 only when the instance uses the
-  "SQL Server 2022" update policy; otherwise move them with BACPAC export/import;
-- logins, the SEQUENCE current values, compatibility level 160 and the collation must come along;
+**Where the databases live.** The application cut-over keeps the databases where they are. Moving them to the new
+SQL Server 2022 **Standard** server (1.1a) is a **separate change in its own window**, before or after, never the
+same night:
+- every related database goes together (1.1a "Same instance"), with its applications re-pointed;
+- move them as 1.1a "Moving the data" says (backup/restore if the managed instance's update policy allows it, else
+  BACPAC), with logins, compatibility level 160 and the collation; a restore keeps the SEQUENCE current values;
 - then change only the connection strings and restart the app pools and Zed.Jobs.
 
 ### 1.5 Rehearsal on staging (required)

@@ -146,15 +146,14 @@ SP_AUTO_FINAL_REJECT_EXPIRED_NC, and the two Bronze "from backend by state" proc
 **Not ZED jobs, not converted:**
 - `UpdateBatchDates` (enabled, daily 00:00) runs inline SQL in ZED_CENTER_AUDIT_PROFESSIONAL: it moves the start and
   end date of training batch `ZEDTP10003` one day forward every day, i.e. keeps that batch open indefinitely. It
-  belongs to the Professional application: whoever hosts that database keeps it (Agent on Standard edition, or
-  another scheduler), or retires it.
+  belongs to the Professional application: recreate it in the new server's SQL Agent when that database moves
+  (Standard edition), or retire it.
 - `Test Job - Migration Check` (a PRINT in master, run-once, schedule off): leave it behind.
 
-**Time zone.** Agent times are in the old instance's time zone; `Jobs:TimeZone` (default Asia/Kolkata) must be the
-same. Confirm on the old instance with `SELECT CURRENT_TIMEZONE();` (a managed instance runs in UTC unless it was
-created with another time zone). The job descriptions fit local Indian time ("2:30 AM" for 02:30), except
-`ZED_Daily_Maintenance_Job`, whose schedule is called "TwiceDaily_8AM_8PM" but starts at 04:00: either the instance
-is not in IST, or the schedule does not do what its name says. Settle this before enabling.
+**Time zone.** The old instance runs in IST (confirmed), the default of `Jobs:TimeZone` (Asia/Kolkata), so the times
+above are the times the jobs run today. One mismatch stays as production has it: `ZED_Daily_Maintenance_Job`'s
+schedule is named "TwiceDaily_8AM_8PM" but runs at 04:00 and 16:00 IST. If 08:00 and 20:00 were meant, change its
+`WindowStart` to "08:00" when enabling it.
 
 **Mail (Database Mail on the old instance).** Profiles: `ZedAdmin` (account QCI_ZED_Notifications, "ZED Administrator"
 <zedadmin@zed.org.in>, smtp-mail.outlook.com:587, TLS), `ZedEmailOTPs` (support.zed@qcin.org) and
@@ -164,10 +163,12 @@ unused account `OutlookMail` (zed.admin@qcin.org) exists too.
   `ZedAdmin` to `Email:Profiles:ZedAdmin` with the same sender and server; set its password as
   `Email__Profiles__ZedAdmin__Password` (service environment or user secrets).
 - `ZedEmailOTPs` is used by two procedures of **ZED_CENTER_AUDIT_PROFESSIONAL** (the Professional application), not by
-  ZED. If that database moves to an instance without Database Mail, its mail stops: tell its owners.
+  ZED. The new server is Standard edition: set the profile up in its Database Mail when that database moves.
 - `ZED_Report_Profile` is used by no procedure in any of the six schema exports, so something outside them sends
-  through it (a report tool, a manual script). It is a **vendor's mailbox** (SECURITY-FINDINGS #130): find the user and
-  move it to a QCI mailbox.
+  through it (a report tool, a manual script). It sent through a **vendor's mailbox** (SECURITY-FINDINGS #130) and moves
+  to **dev.zed@qcin.org**: `database/fixes/msdb/01_report_profile_qci_mailbox.sql` (PREVIEW by default; APPLY with the
+  mailbox password typed in the SSMS window; `@DeleteVendorAccount = 1` also removes the vendor account and its stored
+  password; `@SendTestTo` sends a test mail). Whatever sends through the profile then sends as dev.zed@qcin.org.
 - The old accounts sign in to Microsoft 365 SMTP with a user name and password. Microsoft has announced the end of
   basic authentication for SMTP AUTH in Exchange Online: if the old Database Mail still delivers, the tenant still
   allows it, but plan for an SMTP relay or a tenant exception before relying on it for V4 (MailKit supports both).
