@@ -81,7 +81,7 @@ const LABELS: Record<CodeNameKind, { title: string; one: string }> = {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title m-0" id="edit-title">Edit {{ labels.one }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="update()" novalidate>

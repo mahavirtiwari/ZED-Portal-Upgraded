@@ -1,4 +1,7 @@
+using System.Data;
 using System.Globalization;
+using System.Text.Json.Serialization;
+using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
@@ -31,8 +34,19 @@ namespace Zed.Portal.Features.Remote;
 /// photos are served through <see cref="File"/>; the final submit re-runs the procedure's checks and the
 /// NC decision comes from the procedure, not the browser.
 /// </para>
+/// <para>
+/// Surveillance (ZEDCS_SURVEILLANCE Remote/Index, Silver/Gold surveillance held on an external video meeting): the page
+/// opens for units allotted as "Onsite Assessment" (shown as Remote), at status 9 or 13; there is no Twilio video.
+/// Instead the details carry the agency's meeting link (Join button) and the closing meeting's recording links (up to
+/// 6, <see cref="AddRecordingLink"/>); the opening/closing meeting photos and the assessor's selfie are uploaded files,
+/// stored with the legacy names under <c>surveillancemobileapi/SaPhotos/{ZedId}/{Certification}</c> and recorded
+/// through the site-assessor photo procedure SP_APP_SA_SAVE_PHOTOS, as the old page did through the mobile
+/// SA/SaveCapturedPhoto (no sign-in, paths from the request: S9). "From Site Tour" passes the app photo's address in
+/// the form the surveillance SP_ASSESSMENT_RA_UPDATE_PHOTOS expects. Frame captures from the video do not exist there.
+/// </para>
 /// </summary>
 [Route("api/staff/remote/{zedId}/{certification}")]
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.DesktopAssessor)]
 [SubRole(SubRoles.SiteVerification)]
 public sealed class RemoteAssessmentController(
@@ -40,9 +54,17 @@ public sealed class RemoteAssessmentController(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IConfiguration config,
+    PortalHost host,
     ILogger<RemoteAssessmentController> log) : StaffApiController
 {
     public const string RemoteMode = "Remote Assessment";
+    public const string OnsiteMode = "Onsite Assessment";
+
+    /// <summary>Surveillance: at most this many recording links (the old page hid "Add Recording Link" at 6).</summary>
+    public const int MaxRecordingLinks = 6;
+
+    /// <summary>Surveillance: the remote assessment runs on the agency's meeting link (no Twilio).</summary>
+    private bool MeetingMode => host.System == PortalSystem.Surveillance;
     public static readonly string[] Levels = ["Silver", "Gold"];
 
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -87,6 +109,8 @@ public sealed class RemoteAssessmentController(
     public sealed record Selfie(string? Url, string? RepresentativeName, string? Designation);
     public sealed record Permissions(bool IsLeadAssessor, bool CanAssess, bool VideoConfigured);
 
+    public sealed record RecordingLink(long Id, string Url);
+
     public sealed record RemoteDetails(
         string ZedId,
         string Certification,
@@ -105,7 +129,17 @@ public sealed class RemoteAssessmentController(
         Meeting? OpenMeeting,
         Meeting? CloseMeeting,
         IReadOnlyList<Selfie> Selfies,
-        Permissions Permissions);
+        Permissions Permissions)
+    {
+        /// <summary>Surveillance only: the remote assessment is held on <see cref="MeetingLink"/> (null on Main).</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? UsesMeetingLink { get; init; }
+
+        /// <summary>Surveillance only: the agency's meeting link, when it is an http/https address.</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? MeetingLink { get; init; }
+
+        /// <summary>Surveillance only: recording links of the closing meeting (http/https only).</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<RecordingLink>? RecordingLinks { get; init; }
+    }
 
     // ======================================================================== read
 
@@ -186,8 +220,17 @@ public sealed class RemoteAssessmentController(
             Photos(sa[6]),
             MeetingOf(1, 2, 5),
             MeetingOf(3, 4, 8),
-            sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath")), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))).ToList(),
-            new Permissions(IsLead(record!), canAssess, TwilioVideoOptions.From(config).IsConfigured));
+            sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath"), MeetingMode), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))).ToList(),
+            new Permissions(IsLead(record!), canAssess, !MeetingMode && TwilioVideoOptions.From(config).IsConfigured))
+        {
+            UsesMeetingLink = MeetingMode ? true : null,
+            MeetingLink = MeetingMode ? Staff.SiteAssessment.AssessmentInputs.WebLink(main.Text("MeetingLink"), 5000) : null,
+            // Set 15 of the surveillance SP_ASSESSMENT_SA_DETAILS: MeetingRecordingLinks of the unit.
+            RecordingLinks = MeetingMode
+                ? sa[15].Select(r => (Id: long.TryParse(r.Text("Id"), out var rid) ? rid : 0, Url: Staff.SiteAssessment.AssessmentInputs.WebLink(r.Text("RecordingLink"), 5000)))
+                    .Where(r => r.Url is not null).Select(r => new RecordingLink(r.Id, r.Url!)).ToList()
+                : null,
+        };
     }
 
     /// <summary>GET …/files/SaPhotos/{zedId}/{certification}/x.jpg — remote-assessment photos of the unit (addresses from <see cref="Get"/>).</summary>
@@ -197,7 +240,7 @@ public sealed class RemoteAssessmentController(
         // Malformed, foreign and missing files all answer 404 so file existence is not revealed.
         var level = Level(certification);
         var requested = RemoteFiles.Normalise(path);
-        if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !RemoteFiles.BelongsTo(requested, zedId, level))
+        if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !RemoteFiles.BelongsTo(requested, zedId, level, MeetingMode))
             return NotFound();
         var (_, _, error) = await ForViewer(zedId, level, ct);
         if (error is not null) return NotFound();
@@ -232,6 +275,7 @@ public sealed class RemoteAssessmentController(
     {
         var (level, _, error) = await ForAssessor(zedId, certification, ct);
         if (error is not null) return error;
+        if (MeetingMode) return this.Problem400("This assessment is held on the meeting link given by the agency.");
         var twilio = TwilioVideoOptions.From(config);
         if (!twilio.IsConfigured) return this.Problem400("Video calls are not configured on this server. Please contact the ZED team.");
 
@@ -387,6 +431,7 @@ public sealed class RemoteAssessmentController(
     {
         var (level, record, error) = await ForAssessor(zedId, certification, ct);
         if (error is not null) return error;
+        if (MeetingMode) return await SaveSurveillancePhotoAsync(req, zedId, level!, record!, ct);
         var (target, targetError) = await TargetAsync(req, zedId, level!, record!, ct);
         if (targetError is not null) return targetError;
 
@@ -451,9 +496,160 @@ public sealed class RemoteAssessmentController(
             "SELECT TOP 1 CAST(Id AS bigint) AS Id FROM SaPhotos WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification AND AssessorId = @UserId",
             new { Id = id, ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), UserId = AssessmentInput.Ansi(UserId) }, ct);
         if (own.Count == 0) return NotFound();
+        // The surveillance procedure also deletes the SaRequirementPhotos row with the same Id (another photo of the
+        // unit): refuse rather than remove a photo the assessor did not choose.
+        if (MeetingMode && (await db.QuerySqlAsync<IdRow>(RequirementPhotoSql,
+                new { Id = id, ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).Count > 0)
+            return this.Problem400("This photo cannot be removed here. Please contact the ZED team.");
         await db.ExecuteProcAsync("SP_ASSESSMENT_RA_DELETE_PHOTOS", new { ZedId = zedId, CertificationType = level, Id = id.ToString(CultureInfo.InvariantCulture) }, ct);
         log.LogInformation("Assessor {UserId} removed remote photo {Id} of {ZedId} {Certification}", UserId, id, zedId, level);
         return new MessageResponse("Photo removed.");
+    }
+
+    // ======================================================================== surveillance: meeting link mode
+
+    public sealed record RecordingLinkRequest(string? Link);
+
+    /// <summary>
+    /// Surveillance: adds a recording link to the closing meeting (old Remote/UpdateComments with TableName
+    /// "MeetingRecordingLink", which inserts into MeetingRecordingLinks). Lead assessor of an open assessment only.
+    /// </summary>
+    [HttpPost("meetings/{id:long}/recording-links")]
+    public async Task<ActionResult<MessageResponse>> AddRecordingLink(string zedId, string certification, long id, RecordingLinkRequest req, CancellationToken ct)
+    {
+        if (!MeetingMode) return NotFound();
+        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        if (error is not null) return error;
+        var link = Staff.SiteAssessment.AssessmentInputs.WebLink(req.Link, 2000);
+        if (link is null) return this.Problem400("Please enter a valid recording link (starting with https:// or http://).");
+        if (await MeetingAsync(id, zedId, level!, ct) is not { MeetingType: "Close Meeting" }) return NotFound();
+        var existing = await db.QuerySqlAsync<IdRow>(RecordingLinksSql, new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct);
+        if (existing.Count >= MaxRecordingLinks) return this.Problem400($"At most {MaxRecordingLinks} recording links can be added.");
+
+        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_COMMENTS", new
+        {
+            ZedId = zedId, Certification = level, Id = id.ToString(CultureInfo.InvariantCulture), Comments = link, TableName = "MeetingRecordingLink",
+        }, ct);
+        log.LogInformation("Assessor {UserId} added a recording link for {ZedId} {Certification}", UserId, zedId, level);
+        return new MessageResponse("Recording link added.");
+    }
+
+    public const string RecordingLinksSql =
+        "SELECT CAST(Id AS bigint) AS Id FROM MeetingRecordingLinks WHERE ZedId = @ZedId AND CertificationType = @Certification";
+
+    /// <summary>Surveillance meeting photos and selfie of the unit by legacy name prefix.</summary>
+    public const string SurveillancePhotosSql =
+        "SELECT CAST(Id AS bigint) AS Id FROM SaPhotos WHERE ZedId = @ZedId AND Certification = @Certification AND Name LIKE @Name";
+
+    /// <summary>A site tour photo of the surveillance app (its PhotoId names the file).</summary>
+    public const string SurveillanceTourPhotoSql =
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, PhotoId, Name FROM SaPhotos WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification AND PhotoType = 'SiteTour'";
+
+    public const string RequirementPhotoSql =
+        "SELECT CAST(Id AS bigint) AS Id FROM SaRequirementPhotos WHERE Id = @Id AND ZedId = @ZedId AND Certification = @Certification";
+
+    private sealed class TourPhotoRow { public long Id { get; init; } public string? PhotoId { get; init; } public string? Name { get; init; } }
+
+    /// <summary>The surveillance upload targets: legacy name prefix and SP_APP_SA_SAVE_PHOTOS @PhotoType (the selfie was filed as Open Meeting).</summary>
+    private static readonly Dictionary<string, (string Prefix, string PhotoType)> SurveillanceUploads = new(StringComparer.Ordinal)
+    {
+        ["OpenMeeting"] = ("Opening Meeting Photo", "Open Meeting"),
+        ["CloseMeeting"] = ("Closing Meeting Photo", "Close Meeting"),
+        ["Selfie"] = ("Selfie on Site", "Open Meeting"),
+    };
+
+    private async Task<ActionResult<PhotosResponse>> SaveSurveillancePhotoAsync(PhotoRequest req, string zedId, string level, RemoteRecord record, CancellationToken ct)
+    {
+        if (req.Target == "Requirement" && req.FromPhotoId is { } fromId) return await SurveillanceFromTourAsync(req, fromId, zedId, level, record, ct);
+        if (req.Target is null || !SurveillanceUploads.TryGetValue(req.Target, out var upload))
+            return this.Problem400("In this assessment photos can be uploaded for the meetings and the selfie, and evidence can be taken from the site tour.");
+        if (req.Target != "Selfie")
+        {
+            var meetingType = req.Target == "OpenMeeting" ? "Open Meeting" : "Close Meeting";
+            if (req.TargetId is not { } meetingId || await MeetingAsync(meetingId, zedId, level, ct) is not { } meeting || meeting.MeetingType != meetingType)
+                return NotFound();
+        }
+
+        var existing = await db.QuerySqlAsync<IdRow>(SurveillancePhotosSql,
+            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), Name = AssessmentInput.Ansi(upload.Prefix + "%", 500) }, ct);
+        if (existing.Count > 0) return this.Problem400("A photo has already been uploaded here. Remove it to upload another.");
+
+        var (bytes, extension, imageError) = RemoteFiles.DecodeImage(req.Image);
+        if (imageError is not null) return this.Problem400(imageError);
+        // SP_ASSESSMENT_SA_DETAILS builds the address as {Name}.jpg.
+        if (extension != ".jpg") return this.Problem400("Only JPEG photos can be uploaded.");
+
+        var now = DateTime.Now;
+        var photoId = now.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
+        var name = upload.Prefix + "_" + photoId;
+        string saved;
+        try
+        {
+            saved = await RemoteFiles.SaveSurveillanceUploadAsync(StorageRoot, zedId, level, name, bytes!, ct);
+        }
+        catch (IOException ex)
+        {
+            log.LogWarning(ex, "Could not store the surveillance photo of {ZedId} {Certification}", zedId, level);
+            return this.Problem400("Unable to save the photo. Please try again.");
+        }
+
+        var photos = new DataTable();
+        foreach (var c in new[] { "PhotoId", "Name", "TimeStamp", "Latitude", "Longitude", "PhotoType" }) photos.Columns.Add(c, typeof(string));
+        photos.Rows.Add(photoId, name, now.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture), "", "", "");
+        try
+        {
+            await db.ExecuteProcAsync("SP_APP_SA_SAVE_PHOTOS", new
+            {
+                ZedId = zedId,
+                AssessorId = UserId,
+                CertificationType = level,
+                PhotoType = upload.PhotoType,
+                PhotoList = photos.AsTableValuedParameter("DynamicPhotoList2"),
+            }, ct);
+        }
+        catch
+        {
+            TryDelete(saved);
+            throw;
+        }
+        log.LogInformation("Assessor {UserId} uploaded the {Photo} of {ZedId} {Certification}", UserId, upload.Prefix, zedId, level);
+        return new PhotosResponse(await SurveillancePhotosAsync(req.Target, zedId, level, record, ct));
+    }
+
+    /// <summary>
+    /// Surveillance "From Site Tour": the surveillance SP_ASSESSMENT_RA_UPDATE_PHOTOS prefixes UrlsMasterData + "/surveillance"
+    /// and takes the PhotoId out of ".../surveillancemobileapi/SaPhotos/{ZedId}/{Cert}/SiteTour/{PhotoId}.jpg", so the old page
+    /// sent "mobileapi/SaPhotos/..." (its BaseUrl removed). The photo must be a site tour photo of this unit.
+    /// </summary>
+    private async Task<ActionResult<PhotosResponse>> SurveillanceFromTourAsync(PhotoRequest req, long fromId, string zedId, string level, RemoteRecord record, CancellationToken ct)
+    {
+        if (req.TargetId is not { } requirementId || await AssessmentRecords.ItemAsync(db, AssessmentRecords.RequirementSql, requirementId, zedId, level, ct) is null)
+            return NotFound();
+        var target = new PhotoTarget("MsmeRequirements", requirementId.ToString(CultureInfo.InvariantCulture), null, "Evidence Photo", 5, null);
+        if ((await TargetPhotosAsync(target, zedId, level, ct)).Count >= target.Max) return this.Problem400($"At most {target.Max} photos can be captured here.");
+        var tour = (await db.QuerySqlAsync<TourPhotoRow>(SurveillanceTourPhotoSql,
+            new { Id = fromId, ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
+        if (tour is null || !AssessmentInput.IsId(tour.PhotoId?.Trim())) return NotFound();
+        var name = AssessmentInput.Text(tour.Name) is { Length: <= 50 } n ? n : target.DefaultName;
+
+        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_PHOTOS", new
+        {
+            UserId, ZedId = zedId, CertificationType = level, target.TableName, target.Id, Name = name,
+            Url = $"mobileapi/SaPhotos/{zedId}/{level}/SiteTour/{tour.PhotoId!.Trim()}.jpg",
+        }, ct);
+        log.LogInformation("Assessor {UserId} used site tour photo {PhotoId} as evidence for {ZedId} {Certification}", UserId, fromId, zedId, level);
+        var canAssess = CanAssess(record);
+        return new PhotosResponse((await TargetPhotosAsync(target, zedId, level, ct)).Select(p => ToPhoto(p, zedId, level, canAssess, p.Text("Photo"))).ToList());
+    }
+
+    /// <summary>The uploaded meeting photo or selfie as SP_ASSESSMENT_SA_DETAILS lists it (sets 5, 8 and 12).</summary>
+    private async Task<IReadOnlyList<RemotePhoto>> SurveillancePhotosAsync(string target, string zedId, string level, RemoteRecord record, CancellationToken ct)
+    {
+        var sa = await db.QueryProcMultipleAsync("SP_ASSESSMENT_SA_DETAILS",
+            new { UserId, RoleId = ((int)UserRole.DesktopAssessor).ToString(CultureInfo.InvariantCulture), ZedId = zedId, Certification = level }, ct);
+        var canAssess = CanAssess(record);
+        var rows = target switch { "OpenMeeting" => sa[5], "CloseMeeting" => sa[8], _ => sa[12] };
+        return rows.Select(p => ToPhoto(p, zedId, level, canAssess, p.Text("src") is { Length: > 0 } s ? s : p.Text("PhotoPath"))).ToList();
     }
 
     // ======================================================================== final submit
@@ -534,7 +730,7 @@ public sealed class RemoteAssessmentController(
         if (!AssessmentInput.IsId(zedId) || level is null) return (null, null, this.Problem400("Invalid request."));
         var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
-        if (record is null || !string.Equals(record.ModeOfAssessment?.Trim(), RemoteMode, StringComparison.OrdinalIgnoreCase) ||
+        if (record is null || !ModeAllowed(record.ModeOfAssessment) ||
             !(Is(record.SiteAssessorId, UserId) || Is(record.CoAssessorId, UserId)))
             return (level, null, NotFound());
         return (level, record, null);
@@ -548,6 +744,14 @@ public sealed class RemoteAssessmentController(
         if (!IsLead(record!)) return (level, record, Forbidden("Only the lead assessor can carry out the remote assessment."));
         if (!IsOpen(record!)) return (level, record, Forbidden("This remote assessment is not open."));
         return (level, record, null);
+    }
+
+    /// <summary>Main: units allotted in remote mode. Surveillance: also "Onsite Assessment" (what its allotment stores; shown as Remote).</summary>
+    private bool ModeAllowed(string? mode)
+    {
+        var m = mode?.Trim();
+        return string.Equals(m, RemoteMode, StringComparison.OrdinalIgnoreCase) ||
+               (MeetingMode && string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase));
     }
 
     private ObjectResult Forbidden(string message) => Problem(title: message, statusCode: StatusCodes.Status403Forbidden);
@@ -599,7 +803,7 @@ public sealed class RemoteAssessmentController(
     private RemotePhoto ToPhoto(IDictionary<string, object?> p, string zedId, string level, bool canAssess, string? stored) =>
         new(long.TryParse(p.Text("Id"), out var id) ? id : 0,
             NullIfEmpty(p.Text("Name")),
-            RemoteFiles.Url(zedId, level, stored),
+            RemoteFiles.Url(zedId, level, stored, MeetingMode),
             canAssess && Is(p.Text("AssessorId"), UserId));
 
     private async Task<FinalSubmitCheck> Confirm(string zedId, string level, CancellationToken ct)

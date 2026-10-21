@@ -11,6 +11,7 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 /// </summary>
 [Route("api/staff/dashboard/financial-support")]
 [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 public sealed class FinancialSupportController(ISqlExecutor db) : StaffApiController
 {
     /// <summary>Columns of Views/Dashboard/FinancialSupport.cshtml.</summary>

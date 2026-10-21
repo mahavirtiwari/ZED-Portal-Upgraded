@@ -1,6 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { PORTAL_SYSTEM } from '../../portal-system';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
@@ -32,7 +33,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './neft-transactions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -41,6 +42,13 @@ function today(): string {
   `,
 })
 export class NeftTransactionsPage {
+  /** Consultancy: the rows are Technology Upgradation reimbursements and open the TU verification page. */
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+
+  protected tuLink(t: NeftTransaction): string[] {
+    return ['/staff/consultancy/technology/verification', t.ZedId, t.CertificationType ?? ''];
+  }
+
   private readonly api = inject(NeftApi);
 
   protected readonly list: NeftList = (inject(ActivatedRoute).snapshot.data['list'] as NeftList) ?? 'new';

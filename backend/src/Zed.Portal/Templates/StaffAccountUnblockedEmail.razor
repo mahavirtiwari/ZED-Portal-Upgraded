@@ -5,7 +5,14 @@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
-    <p style="font-size: 13px; margin-bottom: 0;">Your account under the "MSME Sustainable (ZED) Certification" Scheme has been unblocked. You can login again with your existing password.</p>
+    @if (Consultancy)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Your account for Handholding Support under the "MSME Sustainable (ZED) Certification" Scheme has been unblocked. You can login again with your existing password.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Your account under the "MSME Sustainable (ZED) Certification" Scheme has been unblocked. You can login again with your existing password.</p>
+    }
     <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
         <tbody bgcolor="#ffffff">
             <tr>
@@ -29,5 +36,7 @@
     [Parameter, EditorRequired] public string UserName { get; set; } = "";
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
     [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    /// <summary>Consultancy (handholding) wording.</summary>
+    [Parameter] public bool Consultancy { get; set; }
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 }

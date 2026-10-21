@@ -16,6 +16,7 @@ namespace Zed.Portal.Features.Account;
 /// <summary>Signed-in user's own account. Port of UserController.ChangePassword (used by every role).</summary>
 [ApiController]
 [Route("api/account")]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [Authorize]
 public sealed class AccountController(
     ISqlExecutor db,

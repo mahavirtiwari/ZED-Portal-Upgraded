@@ -6,15 +6,22 @@ using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Main.MobileApi;
 
-// Serves the installed mobile apps (MSME, site assessor, remote assessor) with the URLs and
-// formats of the old SwachhSurvekshanServices site. Host it at that site's address.
+// Serves the installed mobile apps (MSME, site assessor, remote assessor; consultant and surveillance apps on
+// their deployments) with the URLs and formats of the old services sites. Host each at that site's address.
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddZedServices(builder.Configuration, ZedDatabases.Main);
+// One host, three deployments: Mobile:System (Main, Consultancy, Surveillance) picks the database and the
+// controllers, matching the old /mobileapi, /Consultancymobileapi and /surveillancemobileapi sites. A controller
+// without [PortalSystems(...)] is served by the Main deployment only.
+var system = builder.Configuration.GetValue("Mobile:System", PortalSystem.Main);
+var host = new PortalHost(system);
+builder.Services.AddSingleton(host);
+builder.Services.AddZedServices(builder.Configuration, host.Database);
 builder.Services.AddLegacyMobile(builder.Configuration);
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<TwilioVideoTokens>();
-builder.Services.AddControllers();
+builder.Services.AddControllers().ConfigureApplicationPartManager(m =>
+    m.FeatureProviders.Add(new PortalControllerFilter(system, typeof(LoginThrottle).Assembly)));
 builder.Services.AddHealthChecks();
 
 var maxRequest = builder.Configuration.GetValue<long?>("Mobile:MaxRequestBytes") ?? new MobileOptions().MaxRequestBytes;

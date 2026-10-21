@@ -144,7 +144,9 @@ public static class ZedAuthenticationExtensions
             HttpOnly = false,
             SameSite = SameSiteMode.Strict,
             Secure = context.Request.IsHttps,
-            Path = "/",
+            // Scoped to the app's folder (/Consultancy, /surveillance) so the three systems' tokens on one domain
+            // don't overwrite each other; main's path base is empty, so "/".
+            Path = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "/",
         });
     }
 

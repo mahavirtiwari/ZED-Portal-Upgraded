@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { withApiBase } from '../../api-base';
 
 /** Agency / master-admin actions open to the signed-in user on a review page (server: ReviewRules). */
 export interface ReviewActions {
@@ -27,7 +28,7 @@ export class ReviewApi {
   private readonly http = inject(HttpClient);
 
   private base(zedId: string, certification: string): string {
-    return `/api/staff/monitoring/review/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`;
+    return withApiBase(`/api/staff/monitoring/review/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`);
   }
 
   remarks(zedId: string, certification: string, kind: RemarksKind, id: unknown, remarks: string): Observable<MessageResponse> {

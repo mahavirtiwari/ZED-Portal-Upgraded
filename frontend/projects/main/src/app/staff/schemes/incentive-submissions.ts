@@ -84,7 +84,7 @@ import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
         } @else if (!loading()) {
           <div class="label-highlight4">
             <div class="no-incentive-block">
-              <img src="/Images/svgicons/no-incentive.svg" alt="" />
+              <img src="Images/svgicons/no-incentive.svg" alt="" />
               <p>No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.</p>
             </div>
           </div>

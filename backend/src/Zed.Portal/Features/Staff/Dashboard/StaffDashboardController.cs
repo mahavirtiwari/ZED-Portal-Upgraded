@@ -14,7 +14,8 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 [Route("api/staff/dashboard")]
 [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Ministry, UserRole.Agency, UserRole.DesktopAssessor,
     UserRole.CitizenFeedback, UserRole.QC)]
-public sealed class StaffDashboardController(ISqlExecutor db) : StaffApiController
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
+public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) : StaffApiController
 {
     /// <summary>Columns shown on the four cards of Views/Dashboard/Index.cshtml.</summary>
     public static readonly string[] SummaryColumns =
@@ -25,11 +26,40 @@ public sealed class StaffDashboardController(ISqlExecutor db) : StaffApiControll
         "FaTotal", "FaCompleted", "FaPending", "FaRejected",
     ];
 
+    /// <summary>
+    /// Consultancy's cards (ZEDCS_CONSULTANCY Views/Dashboard/Index.cshtml): Silver and Gold handholding by milestone
+    /// (payments received and completed per milestone) and Technology Intervention (the Fa* columns).
+    /// </summary>
+    public static readonly string[] ConsultancySummaryColumns =
+    [
+        "SilverTotal", "SilverM1PaymentDone", "SilverCompleted", "SilverM2PaymentDone", "SilverPending", "SilverM3PaymentDone", "SaSilverCompleted",
+        "GoldTotal", "GoldM1PaymentDone", "GoldCompleted", "GoldM2PaymentDone", "GoldPending", "GoldM3PaymentDone", "SaGoldCompleted",
+        "FaTotal", "FaCompleted", "FaPending",
+    ];
+
+    /// <summary>Consultancy MasterAdmin only: empanelled Consultant Organisations and consultants.</summary>
+    public static readonly string[] ConsultancyMasterAdminColumns = ["AssessmentAgencies", "SiteAssessors"];
+
+    /// <summary>Surveillance's cards (ZEDCS_SURVEILLANCE Views/Dashboard/Index.cshtml); there is no Financial Assistance card.</summary>
+    public static readonly string[] SurveillanceSummaryColumns =
+    [
+        "BronzeTotal", "BronzePending", "BronzeCompleted", "BronzeRejected",
+        "SilverTotal", "SilverPending", "SaSilverNcRaised", "SaSilverCompleted", "SilverRejected",
+        "GoldTotal", "GoldPending", "SaGoldNcRaised", "SaGoldCompleted", "GoldRejected",
+    ];
+
     [HttpGet]
     public async Task<Dictionary<string, object?>> Summary(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_GET_DETAILS", new { UserId, RoleId = RoleId.ToString() }, ct);
-        return DashboardFilters.Pick(sets[0].FirstOrDefault(), SummaryColumns);
+        string[] columns = host.System switch
+        {
+            PortalSystem.Consultancy when IsRole(UserRole.MasterAdmin) => [.. ConsultancyMasterAdminColumns, .. ConsultancySummaryColumns],
+            PortalSystem.Consultancy => ConsultancySummaryColumns,
+            PortalSystem.Surveillance => SurveillanceSummaryColumns,
+            _ => SummaryColumns,
+        };
+        return DashboardFilters.Pick(sets[0].FirstOrDefault(), columns);
     }
 
     public sealed record CountsResponse(int Total, int Bronze, int Silver, int Gold);

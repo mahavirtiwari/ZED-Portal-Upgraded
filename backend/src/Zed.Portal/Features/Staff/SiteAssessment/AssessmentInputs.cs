@@ -42,4 +42,22 @@ internal static partial class AssessmentInputs
 
     public static int Int(IDictionary<string, object?> row, string column) =>
         row.TryGetValue(column, out var v) && v is not null and not DBNull && int.TryParse(v.ToString(), out var i) ? i : 0;
+
+    /// <summary>
+    /// An absolute http/https address without spaces or control characters, at most <paramref name="max"/>
+    /// characters (meeting and recording links typed by agencies and assessors), or null. Anything else
+    /// (javascript:, data:, relative paths) is refused, because the value ends up in an href.
+    /// </summary>
+    public static string? WebLink(string? value, int max = 2000)
+    {
+        var v = value?.Trim();
+        if (string.IsNullOrEmpty(v) || v.Length > max || v.Any(c => char.IsWhiteSpace(c) || char.IsControl(c))) return null;
+        return Uri.TryCreate(v, UriKind.Absolute, out var uri) &&
+               (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp) && uri.Host.Length > 0
+            ? v : null;
+    }
+
+    /// <summary>Comma-separated id list as the legacy procedures store it ("A,B"), split and trimmed.</summary>
+    public static List<string> SplitIds(string? csv) =>
+        (csv ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 }

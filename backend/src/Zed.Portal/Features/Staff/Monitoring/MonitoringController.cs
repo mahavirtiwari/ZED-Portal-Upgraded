@@ -18,13 +18,30 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// in the state in which the page offered the button.
 /// </para>
 /// <para>The review actions of the DA/SA details pages are in <see cref="MonitoringReviewController"/>.</para>
+/// <para>Per system (the list's status numbers are the same in all three procedures):</para>
+/// <list type="bullet">
+/// <item>Consultancy ("Consultancy Monitoring"): Silver/Gold only, tabs 2/3/5 (no NC or rejected tab), no NC closure
+/// filter (its SP_MONITORING_GET_LIST has no @NcClosingDate); rows add the milestone (NcCount), technical experts and
+/// BDS/HAP dates. Extend, step back and send back are not offered (no NC round; SP_MOVING_ONE_STEP_BACK_OF_NC and
+/// SP_MONITORING_SEND_BACK_TO_AGENCY_FOR_REALLOCATION are missing there).</item>
+/// <item>Surveillance ("Surveillance Monitoring"): rows add SurveillanceNo; send back to the agency (re-allot) is not
+/// offered (its procedure is missing there); extend and step back as on main.</item>
+/// </list>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [Route("api/staff/monitoring")]
 [StaffRoles(UserRole.MasterAdmin, UserRole.Agency)]
-public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringController> log) : StaffApiController
+public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogger<MonitoringController> log) : StaffApiController
 {
     /// <summary>Status tabs of the page (SP_MONITORING_GET_LIST @Status).</summary>
     public static readonly int[] Statuses = [2, 3, 4, 5, 7];
+
+    /// <summary>Consultancy tabs: not started, in progress, quality check.</summary>
+    private static readonly int[] ConsultancyStatuses = [2, 3, 5];
+
+    private static readonly string[] ConsultancyLevels = ["Silver", "Gold"];
+
+    private bool Consultancy => host.System == PortalSystem.Consultancy;
 
     private const int NonConformance = 4;
 
@@ -34,6 +51,21 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
         "AgencyName", "CertificationBodyUserId", "ModeOfAssessment",
         "DesktopAssessorName", "DesktopAssessorId", "SiteAssessorName", "SiteAssessorId", "CoAssessorName", "CoAssessorId",
         "SameUdyamAddress", "DocVerifiAllot", "SaAssessmentDate", "CertificationStatus", "NcStatus", "NcCount",
+    ];
+
+    private static readonly string[] ConsultancyFields =
+    [
+        "RowNumber", "ZedId", "Certification", "PUnitName", "UnitAddress", "AgencyName", "CertificationBodyUserId",
+        "SiteAssessorName", "SiteAssessorId", "CoAssessorName", "CoAssessorId", "TechExpertName", "TechExpert",
+        "DocVerifiAllot", "SaAssessmentDate", "BdsFromDate", "HapFromDate", "CertificationStatus", "NcStatus", "NcCount",
+    ];
+
+    private static readonly string[] SurveillanceFields =
+    [
+        "RowNumber", "ZedId", "Certification", "SurveillanceNo", "PUnitName", "UnitAddress",
+        "AgencyName", "CertificationBodyUserId", "ModeOfAssessment",
+        "DesktopAssessorName", "DesktopAssessorId", "SiteAssessorName", "SiteAssessorId", "CoAssessorName", "CoAssessorId",
+        "SaAssessmentDate", "CertificationStatus", "NcStatus", "NcCount",
     ];
 
     /// <summary>Shown to MasterAdmin only (the page hid the column from agencies).</summary>
@@ -55,22 +87,28 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
         if (IsRole(UserRole.Agency) && !CurrentUser.HasSubRole(SubRoles.SiteVerification) && !CurrentUser.HasSubRole(SubRoles.DesktopVerification))
             return Forbid();
 
-        var level = Level(certification, Levels);
-        if (level is null || (status is not null && !Statuses.Contains(status.Value)))
+        var level = Level(certification, Consultancy ? ConsultancyLevels : Levels);
+        if (level is null || (status is not null && !(Consultancy ? ConsultancyStatuses : Statuses).Contains(status.Value)))
             return this.Problem400("Please select valid data.");
 
         string? ncDate = null;
         if (!string.IsNullOrWhiteSpace(ncClosingDate))
         {
-            if (status != NonConformance || IsoDate(ncClosingDate) is not { } d)
+            if (Consultancy || status != NonConformance || IsoDate(ncClosingDate) is not { } d)
                 return this.Problem400("Please select a valid NC closure date.");
             ncDate = d.ToString("MM/dd/yyyy", System.Globalization.CultureInfo.InvariantCulture); // CONVERT(..., 101)
         }
 
         var sets = await ListAsync(level, status, null, ncDate, ct);
         var master = IsRole(UserRole.MasterAdmin);
+        var fields = host.System switch
+        {
+            PortalSystem.Consultancy => ConsultancyFields,
+            PortalSystem.Surveillance => SurveillanceFields,
+            _ => Fields,
+        };
         return new ListResponse(
-            Pick(sets[0], master ? Fields.Concat(MasterAdminFields) : Fields),
+            Pick(sets[0], master ? fields.Concat(MasterAdminFields) : fields),
             Pick(sets[1].Take(1), CountFields).FirstOrDefault() ?? CountFields.ToDictionary(f => f, _ => (object?)0),
             master);
     }
@@ -80,6 +118,7 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> ExtendNcClosure(ExtendRequest req, CancellationToken ct)
     {
+        if (Consultancy) return NotFound();
         if (req.NoOfDays is < 1 or > 30)
             return this.Problem400("Please select the number of days (1 to 30).");
         var (unit, problem) = await FindAsync(req.ZedId, req.Certification, [NonConformance], ct);
@@ -101,6 +140,7 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> StepBackNc(UnitRequest req, CancellationToken ct)
     {
+        if (Consultancy) return NotFound(); // SP_MOVING_ONE_STEP_BACK_OF_NC is missing in ZED_CONSULTANT
         var (unit, problem) = await FindAsync(req.ZedId, req.Certification, [NonConformance], ct);
         if (unit is null) return problem!;
         if (Int(unit, "NcCount") < 1)
@@ -130,6 +170,8 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> SendBackToAgency(UnitRequest req, CancellationToken ct)
     {
+        // SP_MONITORING_SEND_BACK_TO_AGENCY_FOR_REALLOCATION exists only in the main database.
+        if (host.System != PortalSystem.Main) return NotFound();
         if (Level(req.Certification, SiteLevels) is null)
             return this.Problem400("Please select valid data.");
         // The page offered this on "Scheduled but not started" (status 8) and "In progress" (status 9).
@@ -150,16 +192,26 @@ public sealed class MonitoringController(ISqlExecutor db, ILogger<MonitoringCont
         return new MessageResponse("Sent back to the agency for re-allocation.");
     }
 
+    /// <summary>SP_MONITORING_GET_LIST; ZED_CONSULTANT's version has no @NcClosingDate.</summary>
     private Task<ResultSets> ListAsync(string level, int? status, string? zedId, string? ncDate, CancellationToken ct) =>
-        db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST", new
-        {
-            UserId,
-            RoleId = RoleId.ToString(),
-            Status = status,
-            CertificationType = level,
-            ZedId = zedId,
-            NcClosingDate = ncDate,
-        }, ct);
+        Consultancy
+            ? db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST", new
+            {
+                UserId,
+                RoleId = RoleId.ToString(),
+                Status = status,
+                CertificationType = level,
+                ZedId = zedId,
+            }, ct)
+            : db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST", new
+            {
+                UserId,
+                RoleId = RoleId.ToString(),
+                Status = status,
+                CertificationType = level,
+                ZedId = zedId,
+                NcClosingDate = ncDate,
+            }, ct);
 
     /// <summary>The unit as the monitoring list shows it on one of the given status tabs, or the error to return.</summary>
     private async Task<(IDictionary<string, object?>? Unit, ActionResult? Problem)> FindAsync(

@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { AgencyRow, UsersApi } from './users.api';
+import { PORTAL_LABELS } from '../../portal-labels';
 
 type Mode = 'all' | 'bronze';
 
@@ -33,7 +34,8 @@ export class AgenciesPage {
   private readonly api = inject(UsersApi);
 
   protected readonly mode: Mode = inject(ActivatedRoute).snapshot.data['mode'] === 'bronze' ? 'bronze' : 'all';
-  protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : 'Assessment Agencies';
+  protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : PORTAL_LABELS.agencies;
+  protected readonly labels = PORTAL_LABELS;
 
   protected readonly agencies = signal<AgencyRow[]>([]);
   protected readonly search = signal('');

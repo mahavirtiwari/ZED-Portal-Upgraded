@@ -21,6 +21,7 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// </para>
 /// </summary>
 [Route("api/staff/masters")]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
 [StaffRoles(UserRole.Admin)]
 public sealed class StaffDocumentsController(
     ISqlExecutor db,

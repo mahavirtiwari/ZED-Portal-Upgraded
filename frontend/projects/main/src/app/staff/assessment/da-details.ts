@@ -94,6 +94,15 @@ export class DaDetailsPage {
     return (this.data()?.ncRounds ?? []).map((r) => r.ncCount).filter((n) => num(m, 'NcCount') > n - 1 && num(m, 'SecNcCount') > n - 1);
   });
 
+  /** Surveillance: answers from the Bronze surveillance app and the location of the original ZED assessment. */
+  protected readonly surveillance = computed(() => this.data()?.surveillance ?? null);
+  protected readonly zedMapUrl = computed(() => {
+    const l = this.surveillance()?.zedLocation;
+    const lat = Number(l?.['ZedLatitude']);
+    const lng = Number(l?.['ZedLongitude']);
+    return Number.isFinite(lat) && Number.isFinite(lng) && l?.['ZedLatitude'] ? `https://www.google.com/maps?q=${lat},${lng}` : '';
+  });
+
   protected readonly mapUrl = computed(() => {
     const l = this.data()?.location;
     const lat = Number(l?.['Latitude']);

@@ -14,9 +14,17 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 /// (SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO, then the ERP postings), and of
 /// PaymentReceived / GetPaymentTransactions (SP_DASHBOARD_PAYMENT_TRANSACTIONS).
 /// The pages page and search in the browser, as before; only the shown columns are sent.
+/// <para>
+/// Also served by Consultancy and Surveillance, where the MasterAdmin may also open the failed transactions (legacy
+/// filter "|SuperAdmin|MasterAdmin|"), Consultancy adds the milestone column, and a manual update is NOT posted to the ERP:
+/// the old Consultancy and Surveillance portals did not post either, and main's ERP module reads its invoice and receipt
+/// data with procedures that exist only in ZEDCS_V2_LIVE (SP_API_FINANCE_CONSULTANCY_* / _SURVEILLANCE_*). The update is
+/// logged so the finance team can post it from main.
+/// </para>
 /// </summary>
 [Route("api/staff/dashboard")]
-public sealed partial class PaymentsDashboardController(ISqlExecutor db, IBackgroundWork background, ILogger<PaymentsDashboardController> log)
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
+public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalHost host, IBackgroundWork background, ILogger<PaymentsDashboardController> log)
     : StaffApiController
 {
     /// <summary>Columns of Views/Dashboard/FailedTransactions.cshtml, including its pop-up (GSTIN, PAN, TAN of the payer).</summary>
@@ -37,13 +45,22 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, IBackgr
     /// <summary>PG Type drop-down of the pop-up (value stored in PaymentGatewayTransactions.PgType).</summary>
     public static readonly string[] PgTypes = ["Unified Payments", "Debit Card", "Credit Card", "Net Banking"];
 
+    /// <summary>Consultancy: milestone of the payment (SP_DASHBOARD_PAYMENT_FAILED_TRANSACTIONS / _TRANSACTIONS of ZED_CONSULTANT).</summary>
+    public const string ConsultancyFailedMilestone = "MileStoneNumber";
+    public const string ConsultancyReceivedMilestone = "MileStoneNum";
+
+    /// <summary>Main: SuperAdmin only; Consultancy and Surveillance: also the MasterAdmin.</summary>
+    private bool MayUseFailedTransactions => IsRole(UserRole.SuperAdmin) || (host.System != PortalSystem.Main && IsRole(UserRole.MasterAdmin));
+
     [HttpGet("failed-transactions")]
-    [StaffRoles(UserRole.SuperAdmin)]
+    [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin)]
     public async Task<ActionResult<List<Dictionary<string, object?>>>> FailedTransactions(
         string? state, string? certification, string? size, string? gender, CancellationToken ct)
     {
+        if (!MayUseFailedTransactions) return Forbid();
         if (Filters(state, certification, size, gender) is not { } f) return this.Problem400("Invalid filter.");
-        return DashboardFilters.Pick(await LoadFailed(f, ct), FailedColumns);
+        return DashboardFilters.Pick(await LoadFailed(f, ct),
+            host.System == PortalSystem.Consultancy ? [.. FailedColumns, ConsultancyFailedMilestone] : FailedColumns);
     }
 
     [HttpGet("payments-received")]
@@ -58,7 +75,8 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, IBackgr
             Status = "0", State = f.State, UserId, RoleId = RoleId.ToString(), CertificationType = f.Certification,
             Gender = f.Gender, MsmeSize = f.Size,
         }, ct);
-        return DashboardFilters.Pick(sets[0], ReceivedColumns);
+        return DashboardFilters.Pick(sets[0],
+            host.System == PortalSystem.Consultancy ? [.. ReceivedColumns, ConsultancyReceivedMilestone] : ReceivedColumns);
     }
 
     public sealed record UpdatePaymentRequest(
@@ -72,9 +90,10 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, IBackgr
     /// procedure the page's fields belong to. The transaction must be one the failed list offers for update.
     /// </summary>
     [HttpPost("failed-transactions/update-payment")]
-    [StaffRoles(UserRole.SuperAdmin)]
+    [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> UpdatePayment(UpdatePaymentRequest req, CancellationToken ct)
     {
+        if (!MayUseFailedTransactions) return Forbid();
         if (ValidateUpdate(req) is { } error) return this.Problem400(error);
         var zedId = req.ZedId!.Trim();
         var transactionId = req.TransactionId!.Trim();
@@ -103,6 +122,13 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, IBackgr
         }, ct);
         log.LogWarning("{UserId} manually marked payment {TransactionId} of {ZedId}/{Certification} as successful",
             UserId, transactionId, zedId, cert);
+
+        if (host.System != PortalSystem.Main)
+        {
+            log.LogWarning("{System}: manual payment update of {ZedId}/{Certification} ({TransactionId}) is not posted to the ERP from this portal",
+                host.System, zedId, cert, transactionId);
+            return new MessageResponse("Payment status updated.");
+        }
 
         // As PayController.SubmiCustomerDataToApi / SubmiInvoiceDataToApi / SubmiReceiptDataToApi after the update.
         var erpZedId = row.Text("ZedId");

@@ -18,9 +18,9 @@ export interface ListResponse {
 
 export interface DaAllotmentResponse {
   rows: Row[];
-  /** The agency's Silver/Gold desktop assessors. */
+  /** The agency's Silver/Gold desktop assessors (Surveillance: its assessors allowed for Bronze surveillance). */
   assessors: Person[];
-  /** The agency's Bronze assessors with fewer than 10 allotments today. */
+  /** The agency's Bronze assessors with fewer than 10 allotments today (Surveillance: same as `assessors`). */
   bronzeAssessors: Person[];
 }
 
@@ -91,6 +91,17 @@ export interface DaDetails {
   esgCheckList: Row[];
   ncRounds: NcRound[];
   permissions: DaPermissions;
+  /** Surveillance host only: Bronze surveillance app answers and the original ZED assessment's location. */
+  surveillance?: SurveillanceDetails | null;
+}
+
+export interface SurveillanceDetails {
+  /** ZedLatitude, ZedLongitude. */
+  zedLocation: Row | null;
+  /** FinancialAssistanceAvailed, AnyDocuments, DocumentTypes. */
+  financialSupport: Row | null;
+  /** SuitableForSilverUpgrade, HandholdingSupport. */
+  additionalSupport: Row | null;
 }
 
 export interface FinalSubmitCheck {

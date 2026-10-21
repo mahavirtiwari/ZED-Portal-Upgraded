@@ -16,6 +16,9 @@ namespace Zed.Portal.Features.Remote;
 /// <item><c>SaPhotos/{ZedId}/{Certification}/{file}</c> — photos captured from the video on this screen</item>
 /// <item><c>mobileapi/{SaPhotos|SaCertifiedPhotos|Photos|CertifiedPhotos}/{ZedId}/…</c> — uploads of the apps
 /// (the RA app's selfie; moved to the Certified folders once MsmeCertifications.PhotosPath is set, both are tried)</item>
+/// <item>Surveillance only (<c>surveillanceApp</c>): <c>surveillancemobileapi/SaPhotos/{ZedId}/{Certification}/…</c> — the
+/// surveillance site-assessor app's photos and the meeting photos and selfie uploaded on the surveillance remote page
+/// (stored there with the legacy names, see <see cref="SaveSurveillanceUploadAsync"/>)</item>
 /// </list>
 /// Desktop-assessment files (the MSME's own uploads) keep their <c>DaFiles</c> addresses, served by the
 /// desktop-assessment endpoint, which allows the site and co-assessor of the record.
@@ -37,23 +40,25 @@ public static class RemoteFiles
         MsmeFilePaths.Normalise(relative) is { } p && Extensions.Contains(Path.GetExtension(p)) ? p : null;
 
     /// <summary>True when the path is one of the unit's remote-assessment photo folders listed above.</summary>
-    public static bool BelongsTo(string relative, string zedId, string certification)
+    public static bool BelongsTo(string relative, string zedId, string certification, bool surveillanceApp = false)
     {
         var s = relative.Split('/');
         if (s.Length >= 4 && Eq(s[0], "SaPhotos")) return Eq(s[1], zedId) && Eq(s[2], certification);
+        if (surveillanceApp && s.Length >= 5 && Eq(s[0], SurveillanceApp) && Eq(s[1], "SaPhotos"))
+            return Eq(s[2], zedId) && Eq(s[3], certification);
         if (s.Length >= 4 && Eq(s[0], "mobileapi") && AppStores.Any(a => Eq(a.Store, s[1]))) return Eq(s[2], zedId);
         return false;
     }
 
     /// <summary>Address for a value stored by the procedures (absolute URL, site-relative path), or null when it is not a photo of this unit.</summary>
-    public static string? Url(string zedId, string certification, string? legacy) =>
-        Relative(legacy, zedId, certification) is { } p
+    public static string? Url(string zedId, string certification, string? legacy, bool surveillanceApp = false) =>
+        Relative(legacy, zedId, certification, surveillanceApp) is { } p
             ? ApiPrefix(zedId, certification) + string.Join('/', p.Split('/').Select(Uri.EscapeDataString))
             : null;
 
     /// <summary>The stored value as a validated relative path of this unit, or null.</summary>
-    public static string? Relative(string? legacy, string zedId, string certification) =>
-        MsmeFilePaths.FromLegacy(CollapseSlashes(legacy)) is { } p && Normalise(p) is { } n && BelongsTo(n, zedId, certification) ? n : null;
+    public static string? Relative(string? legacy, string zedId, string certification, bool surveillanceApp = false) =>
+        MsmeFilePaths.FromLegacy(CollapseSlashes(legacy)) is { } p && Normalise(p) is { } n && BelongsTo(n, zedId, certification, surveillanceApp) ? n : null;
 
     /// <summary>
     /// The procedures concatenate paths that the old code built with Path.Combine on Windows, so stored values
@@ -126,6 +131,25 @@ public static class RemoteFiles
         await using (var output = new FileStream(full, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             await output.WriteAsync(bytes, ct);
         return (full, "/" + relative);
+    }
+
+    /// <summary>Folder of the surveillance mobile services under the storage root (as in SiteReviewFiles / MsmeSitePhotosController).</summary>
+    public const string SurveillanceApp = "surveillancemobileapi";
+
+    /// <summary>
+    /// Writes a photo uploaded on the surveillance remote page where the surveillance SA/SaveCapturedPhoto put it:
+    /// <c>{storageRoot}/surveillancemobileapi/SaPhotos/{zedId}/{certification}/{name}.jpg</c>. The name is chosen by the
+    /// server (fixed prefix + time stamp); SP_ASSESSMENT_SA_DETAILS builds the address from it.
+    /// </summary>
+    public static async Task<string> SaveSurveillanceUploadAsync(string storageRoot, string zedId, string certification, string name,
+        byte[] bytes, CancellationToken ct)
+    {
+        var relative = $"{SurveillanceApp}/SaPhotos/{zedId}/{certification}/{name}.jpg";
+        var full = MsmeFilePaths.Resolve(storageRoot, relative) ?? throw new InvalidOperationException("Photo path outside the storage root.");
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        await using (var output = new FileStream(full, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            await output.WriteAsync(bytes, ct);
+        return full;
     }
 
     private static bool Eq(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

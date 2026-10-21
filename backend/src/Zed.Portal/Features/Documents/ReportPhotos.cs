@@ -9,6 +9,8 @@ namespace Zed.Portal.Features.Documents;
 /// Loads the assessment photos the old report page showed from the mobile-app photo stores under
 /// Portal:StorageRoot (see <see cref="SitePhotoPaths"/>), downscaled so the PDF stays small.
 /// Only files in the record's own folder (its ZED ID, or the MSME's ZED ID for a rejected copy) are read.
+/// Besides the stores of <see cref="SitePhotoPaths"/>, the surveillance app's desktop stores
+/// (<c>surveillancemobileapi/Photos</c> and <c>/CertifiedPhotos</c>, used by the surveillance report) are known here.
 /// </summary>
 public sealed partial class ReportPhotos(string storageRoot, string recordZedId) : IDisposable
 {
@@ -18,6 +20,16 @@ public sealed partial class ReportPhotos(string storageRoot, string recordZedId)
 
     [GeneratedRegex("""(https?://[^"']+)""")]
     private static partial Regex UrlInScript();
+
+    /// <summary>Application folders of the photo stores (relative to the storage root).</summary>
+    private static readonly string[] Apps = ["mobileapi", "surveillancemobileapi", "consultancymobileapi"];
+
+    /// <summary>Stores only the reports read: (application, store, moved store).</summary>
+    private static readonly (string App, string Store, string Moved)[] ExtraStores =
+    [
+        ("surveillancemobileapi", "Photos", "CertifiedPhotos"),
+        ("surveillancemobileapi", "CertifiedPhotos", "Photos"),
+    ];
 
     /// <summary>The first candidate (legacy URL, relative path, or the old page's <c>this.src="..."</c> fallback) that exists.</summary>
     public SKImage? Load(params string?[] candidates)
@@ -39,15 +51,48 @@ public sealed partial class ReportPhotos(string storageRoot, string recordZedId)
     private string? Relative(string value)
     {
         var path = MsmeFilePaths.FromLegacy(value);
-        if (path is null || SitePhotoPaths.Normalise(path) is not { } normalised) return null;
+        if (path is null || SitePhotoPaths.Normalise(WithoutSitePrefix(path)) is not { } normalised) return null;
         if (Path.GetExtension(normalised).Equals(".pdf", StringComparison.OrdinalIgnoreCase)) return null;
-        var ownFolder = SitePhotoPaths.BelongsTo(normalised, recordZedId) || SitePhotoPaths.BelongsTo(normalised, _baseZedId);
+        var ownFolder = BelongsTo(normalised, recordZedId) || BelongsTo(normalised, _baseZedId);
         return ownFolder ? normalised : null;
+    }
+
+    /// <summary>
+    /// "surveillance/mobileapi/SaPhotos/..." → "mobileapi/SaPhotos/...": procedures build some URLs from
+    /// UrlsMasterData.UrlName, which may carry the application's virtual directory.
+    /// </summary>
+    private static string WithoutSitePrefix(string path)
+    {
+        var segments = path.Split('/');
+        if (segments.Length > 1 && Apps.Contains(segments[0], StringComparer.OrdinalIgnoreCase)) return path;
+        var index = Array.FindIndex(segments, 1, s => Apps.Contains(s, StringComparer.OrdinalIgnoreCase));
+        return index is > 0 and <= 2 ? string.Join('/', segments[index..]) : path;
+    }
+
+    private static bool BelongsTo(string relative, string zedId)
+    {
+        if (SitePhotoPaths.BelongsTo(relative, zedId)) return true;
+        var s = relative.Split('/');
+        return s.Length >= 4 && ExtraStore(s) is not null && string.Equals(s[2], zedId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static (string App, string Store, string Moved)? ExtraStore(string[] s) =>
+        s.Length < 2 ? null : ExtraStores.Cast<(string App, string Store, string Moved)?>().FirstOrDefault(st =>
+            string.Equals(st!.Value.App, s[0], StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(st.Value.Store, s[1], StringComparison.OrdinalIgnoreCase));
+
+    private static IEnumerable<string> StorageCandidates(string relative)
+    {
+        var s = relative.Split('/');
+        if (ExtraStore(s) is not { } store) return SitePhotoPaths.StorageCandidates(relative);
+        var moved = (string[])s.Clone();
+        moved[1] = store.Moved;
+        return [relative, string.Join('/', moved)];
     }
 
     private SKImage? Read(string relative)
     {
-        var full = SitePhotoPaths.StorageCandidates(relative)
+        var full = StorageCandidates(relative)
             .Select(c => MsmeFilePaths.Resolve(storageRoot, c))
             .FirstOrDefault(p => p is not null && File.Exists(p));
         return full is null ? null : Downscale(full);

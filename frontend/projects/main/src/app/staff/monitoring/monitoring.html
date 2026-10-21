@@ -2,14 +2,14 @@
   <div class="mt-3">
     <div class="row mb-1">
       <div class="col-sm-12">
-        <h3 class="registration-title">Assessment Monitoring</h3>
+        <h3 class="registration-title">{{ title }}</h3>
       </div>
     </div>
 
     <div class="row mb-3">
       <div class="col-sm-12">
         <div class="mb-2">
-          <label for="certification">Certification Level </label>
+          <label for="certification">{{ consultancy ? 'Desired Certification' : 'Certification Level' }} </label>
           <select id="certification" class="form-control" style="width: 200px" [ngModel]="certification()" (ngModelChange)="setCertification($event)">
             @if (!certification()) {
               <option value="" disabled>--Select--</option>
@@ -30,7 +30,7 @@
         </div>
 
         <div class="row">
-          @if (certification() && status() === 4) {
+          @if (!consultancy && certification() && status() === 4) {
             <div class="col-sm-6" style="margin-top: 24px">
               <div class="search-input d-flex">
                 <input type="date" id="NcCloseDate" class="form-control" aria-label="NC closure date" [ngModel]="ncClosingDate()" (ngModelChange)="ncClosingDate.set($event)" />
@@ -62,27 +62,47 @@
         <div class="table-responsive">
           <table class="table table-bordered table-zed">
             <thead>
-              <tr>
-                <th>S.No.</th>
-                <th>Certification Level</th>
-                <th>Unit Details</th>
-                <th>Agency Details</th>
-                <th>Mode of Assessment</th>
-                <th>Assessors Details</th>
-                <th>Duplicates</th>
-                @if (canManage()) {
-                  <th>Assessment Dates <br />NC Closure Date</th>
-                } @else {
-                  <th>Assessment Dates</th>
-                }
-                <th>Action(s)</th>
-              </tr>
+              @if (consultancy) {
+                <tr>
+                  <th>S.No.</th>
+                  <th>Desired Certification</th>
+                  <th>Unit Details</th>
+                  <th>CO Details</th>
+                  <th>Milestone</th>
+                  <th>Consultants/Expert Details</th>
+                  <th>Site Visit Dates</th>
+                  <th>Action(s)</th>
+                </tr>
+              } @else {
+                <tr>
+                  <th>S.No.</th>
+                  @if (surveillance) {
+                    <th>Certification Level <br /><br />Surveillance No</th>
+                  } @else {
+                    <th>Certification Level</th>
+                  }
+                  <th>Unit Details</th>
+                  <th>Agency Details</th>
+                  <th>Mode of Assessment</th>
+                  <th>Assessors Details</th>
+                  @if (main) { <th>Duplicates</th> }
+                  @if (canManage()) {
+                    <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates <br />NC Closure Date</th>
+                  } @else {
+                    <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates</th>
+                  }
+                  <th>Action(s)</th>
+                </tr>
+              }
             </thead>
             <tbody>
               @for (s of page(); track s['ZedId'] + '|' + s['Certification']) {
                 <tr [class.table-danger]="highlighted(s)">
                   <td>{{ s['RowNumber'] }}</td>
-                  <td>{{ s['Certification'] }}</td>
+                  <td>
+                    {{ s['Certification'] }}
+                    @if (surveillance) { <br /><br />{{ s['SurveillanceNo'] }} }
+                  </td>
                   <td>
                     <strong>{{ s['ZedId'] }}</strong><br />
                     <strong>{{ s['PUnitName'] }}</strong><br />
@@ -92,27 +112,51 @@
                     <strong>{{ s['AgencyName'] }}</strong> <br />
                     {{ s['CertificationBodyUserId'] }}
                   </td>
-                  <td>
-                    Desktop <br /><br />
-                    @if (s['ModeOfAssessment'] === 'Remote Assessment') { Remote }
-                    @if (s['ModeOfAssessment'] === 'Onsite Assessment') { Onsite }
-                  </td>
-                  <td>
-                    <strong>{{ s['DesktopAssessorName'] }}</strong><br />{{ s['DesktopAssessorId'] }}<br /><br />
-                    <strong>{{ s['SiteAssessorName'] }}</strong><br />{{ s['SiteAssessorId'] }}<br /><br />
-                    <strong>{{ s['CoAssessorName'] }}</strong><br />{{ s['CoAssessorId'] }}<br />
-                  </td>
-                  <td [class.yellow-background]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</td>
-                  <td>
-                    {{ s['DocVerifiAllot'] }}<br /><br />{{ s['SaAssessmentDate'] }}
-                    @if (canManage()) {
-                      <br /><br /><strong>{{ s['NcFinalClosureDt'] }}</strong>
+                  @if (consultancy) {
+                    <td>Milestone {{ s['NcCount'] }}</td>
+                    <td>
+                      <strong>{{ s['SiteAssessorName'] }}</strong><br />{{ s['SiteAssessorId'] }}<br /><br />
+                      <strong>{{ s['CoAssessorName'] }}</strong><br />{{ s['CoAssessorId'] }}<br /><br />
+                      <strong>{{ s['TechExpertName'] }}</strong><br />{{ s['TechExpert'] }}<br />
+                    </td>
+                    <td>
+                      @if (num(s, 'NcCount') > 1) {
+                        {{ s['DocVerifiAllot'] }}<br /><br />PR{{ num(s, 'NcCount') - 1 }}: {{ s['SaAssessmentDate'] }}
+                      } @else {
+                        BDS: {{ s['BdsFromDate'] }}<br /><br />HAP: {{ s['HapFromDate'] }}
+                      }
+                    </td>
+                  } @else {
+                    <td>
+                      @if (surveillance) {
+                        {{ s['ModeOfAssessment'] }}
+                      } @else {
+                        Desktop <br /><br />
+                        @if (s['ModeOfAssessment'] === 'Remote Assessment') { Remote }
+                        @if (s['ModeOfAssessment'] === 'Onsite Assessment') { Onsite }
+                      }
+                    </td>
+                    <td>
+                      <strong>{{ s['DesktopAssessorName'] }}</strong><br />{{ s['DesktopAssessorId'] }}<br /><br />
+                      <strong>{{ s['SiteAssessorName'] }}</strong><br />{{ s['SiteAssessorId'] }}<br /><br />
+                      <strong>{{ s['CoAssessorName'] }}</strong><br />{{ s['CoAssessorId'] }}<br />
+                    </td>
+                    @if (main) {
+                      <td [class.yellow-background]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</td>
                     }
-                  </td>
+                    <td>
+                      @if (!surveillance) { {{ s['DocVerifiAllot'] }}<br /><br /> }{{ s['SaAssessmentDate'] }}
+                      @if (canManage()) {
+                        <br /><br /><strong>{{ s['NcFinalClosureDt'] }}</strong>
+                      }
+                    </td>
+                  }
                   <td>
-                    <a class="btn btn-primary mb-2 action-btn" [href]="profileLink(s)" title="Opens the current portal">View Profile</a>
-                    <a class="btn btn-primary btn-xs action-btn" [routerLink]="detailsLink(s)">Assessment<br /> Details</a>
-                    @if (canManage()) {
+                    <a class="btn btn-primary mb-2 action-btn" [href]="profileLink(s)">View Profile</a>
+                    <a class="btn btn-primary btn-xs action-btn" [routerLink]="detailsLink(s)">
+                      @if (consultancy) { View Details } @else { Assessment<br /> Details }
+                    </a>
+                    @if (canManage() && !consultancy) {
                       @if (status() === 4) {
                         <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'extend', unit: s, days: 1 })">Extend NC <br />Final Closure Date</button>
                         <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'stepBack', unit: s })">Step Back to NC{{ num(s, 'NcCount') - 1 }}</button>
@@ -125,7 +169,7 @@
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="9" style="padding: 0px"><div class="no-data">No Data</div></td>
+                  <td [attr.colspan]="consultancy ? 8 : main ? 9 : 8" style="padding: 0px"><div class="no-data">No Data</div></td>
                 </tr>
               }
             </tbody>

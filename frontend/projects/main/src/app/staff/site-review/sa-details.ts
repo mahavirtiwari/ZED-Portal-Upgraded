@@ -7,7 +7,7 @@ import { flag, num, text, useLegacyPortal } from '../assessment/assessment-share
 import { AssessmentApi, isZedId } from '../assessment/assessment.api';
 import { RemarksTarget, ReviewActionsBar, ReviewRemarksDialog } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
-import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
+import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -24,6 +24,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
   11: 'NC 4',
   12: 'NC 5',
   13: 'Attendance',
+  14: 'Original Certification',
 };
 
 /**
@@ -59,6 +60,9 @@ export class SaDetailsPage {
   protected readonly preview = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly remarksTarget = signal<RemarksTarget | null>(null);
+  /** Surveillance: the original certification from main, loaded when its tab is opened. */
+  protected readonly original = signal<SaOriginal | null>(null);
+  protected readonly originalError = signal('');
 
   private request = 0;
 
@@ -130,6 +134,25 @@ export class SaDetailsPage {
     return lat && lng && Number.isFinite(a) && Number.isFinite(b) ? `https://www.google.com/maps?q=${a},${b}` : '';
   }
 
+  /** Surveillance: opens the original certification tab and loads it once. */
+  protected async openOriginal(): Promise<void> {
+    this.tab.set(14);
+    const d = this.data();
+    if (!d || this.original()) return;
+    this.originalError.set('');
+    try {
+      this.original.set(await firstValueFrom(this.api.original(d.zedId, d.certification)));
+    } catch (err) {
+      this.originalError.set(
+        err instanceof HttpErrorResponse && err.status === 404 ? 'The original certification is not available.' : apiErrorMessage(err),
+      );
+    }
+  }
+
+  protected originalRequirementsOf(section: Row): Row[] {
+    return (this.original()?.requirements ?? []).filter((r) => text(r, 'SectionCode') === text(section, 'SectionCode'));
+  }
+
   protected openImage(src: string | null | undefined): void {
     if (src) this.preview.set(src);
   }
@@ -186,7 +209,10 @@ export class SaDetailsPage {
       const data = await firstValueFrom(this.api.details(zedId, level));
       if (request !== this.request) return;
       this.data.set(data);
-      if (first) this.tab.set(1);
+      if (first) {
+        this.tab.set(1);
+        this.original.set(null);
+      }
     } catch (err) {
       if (request !== this.request) return;
       this.data.set(null);

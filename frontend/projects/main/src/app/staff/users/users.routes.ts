@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
+import { PORTAL_SYSTEM } from '../../portal-system';
 
 const masterAdmin = authGuard('/staff', [StaffRole.MasterAdmin]);
 const agency = authGuard('/staff', [StaffRole.Agency]);
@@ -10,7 +11,7 @@ const agencyOrMaster = authGuard('/staff', [StaffRole.Agency, StaffRole.MasterAd
  * User management screens (children of `staff`, mounted at `staff/users`). The API checks the roles
  * again; the guards only keep other roles off pages they cannot use.
  */
-export const USERS_ROUTES: Routes = [
+const MAIN_USERS_ROUTES: Routes = [
   {
     path: 'agencies',
     title: 'ZED | Assessment Agencies',
@@ -62,3 +63,32 @@ export const USERS_ROUTES: Routes = [
     loadComponent: () => import('./assessor-form').then((m) => m.AssessorFormPage),
   },
 ];
+
+/** Surveillance: agencies and assessors are mastered in main; this portal only views and blocks them. */
+const SURVEILLANCE_USERS_ROUTES: Routes = [
+  {
+    path: 'surveillance-agencies',
+    title: 'ZED | Bronze Surveillance Agencies',
+    canActivate: [masterAdmin],
+    data: { kind: 'agencies' },
+    loadComponent: () => import('./surveillance-users').then((m) => m.SurveillanceUsersPage),
+  },
+  {
+    path: 'surveillance-assessors',
+    title: 'ZED | Assessors',
+    canActivate: [agencyOrMaster],
+    data: { kind: 'assessors' },
+    loadComponent: () => import('./surveillance-users').then((m) => m.SurveillanceUsersPage),
+  },
+];
+
+/**
+ * The user screens of this build. Consultancy: the same pages for Consultant Organisations and Consultants/Experts,
+ * without Bronze assessment agencies.
+ */
+export const USERS_ROUTES: Routes =
+  PORTAL_SYSTEM === 'surveillance'
+    ? SURVEILLANCE_USERS_ROUTES
+    : PORTAL_SYSTEM === 'consultancy'
+      ? MAIN_USERS_ROUTES.filter((r) => r.path !== 'bronze-agencies')
+      : MAIN_USERS_ROUTES;

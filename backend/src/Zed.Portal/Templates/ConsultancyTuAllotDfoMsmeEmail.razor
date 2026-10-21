@@ -1,0 +1,26 @@
+@* Port of the consultancy _FaAllotAssessorToMsmeTemplate.cshtml (FinancialAssistance/AcceptUnitForVerification): tells
+   the MSME which Consultant Organisation will verify its technology upgradation on site. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The Onsite verification for Financial Support for Zero Effect Solution is finalised. The details of the allocation are as follows:</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, do drop in a mail at: zed.support@qcin.org</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string AgencyName { get; set; } = "";
+    [Parameter] public string SpocName { get; set; } = "";
+    [Parameter] public string AgencyEmail { get; set; } = "";
+    [Parameter] public string AgencyMobileNo { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+    [
+        new("MSME ZED ID", ZedId), new("Allocated to", AgencyName), new("SPOC Name", SpocName), new("SPOC Email ID", AgencyEmail),
+        new("SPOC Mobile No.", AgencyMobileNo), new("Mode of Verification", "On-site"),
+    ];
+}

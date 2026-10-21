@@ -9,6 +9,13 @@ namespace Zed.Portal.Features.Documents;
 /// cover, about/disclaimer, assessment summary with location, certification level, basic information with
 /// photos and products, assessment findings per section, up to five non-conformance rounds, way forward and
 /// the closing page.
+/// <para>
+/// <paramref name="surveillance"/>: the ZEDCS_SURVEILLANCE copy of the page (its Frontend/SA/ReportSummary.cshtml, from
+/// ZED_SURVEILLANCE's SP_REPORT_GET_DETAILS, same result sets): "SURVEILLANCE ASSESSMENT SUMMARY/FINDINGS", the date row
+/// "Surveillance {SurveillanceNo} Completed on" / "SURVEILLANCE REJECTED ON", no Opportunities for Improvement row,
+/// photos from the surveillancemobileapi stores (falling back to main's, as the page's onerror did) and the footer
+/// "{ZedId}/SURVEILLANCE ASSESSMENT REPORT".
+/// </para>
 /// <para>Result sets: 0 unit, 1 products, 2 raw materials, 3 sections, 4 requirements, 5 options,
 /// 6 sub-options, 7 evidences, 8 site exterior photos, 9 location; NC round n (1..5) starts at 10 + 7(n-1):
 /// products, sections, requirements, options, sub-options, evidences, photos.</para>
@@ -19,7 +26,7 @@ public static class AssessmentReport
 
     private const int NcRounds = 5;
 
-    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos)
+    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos, bool surveillance = false)
     {
         var unit = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No report data.");
         var zedId = unit.Text("ZedId");
@@ -28,13 +35,14 @@ public static class AssessmentReport
         var location = sets[9].FirstOrDefault();
         var latitude = location?.Text("Latitude") ?? "";
         var longitude = location?.Text("Longitude") ?? "";
-        var photoBase = unit.Text("PhotosPath").Length > 0 ? "mobileapi/CertifiedPhotos" : "mobileapi/Photos";
+        var app = surveillance ? "surveillancemobileapi" : "mobileapi";
+        var photoBase = unit.Text("PhotosPath").Length > 0 ? $"{app}/CertifiedPhotos" : $"{app}/Photos";
         var bronze = level == "Bronze";
 
         // Fonts are subset to the characters of the data (fixed texts are covered by FontSubsetter.BasicCharacters).
         var characters = Enumerable.Range(0, sets.Count).SelectMany(i => sets[i]).SelectMany(r => r.Values)
             .OfType<string>().SelectMany(v => v);
-        using var pdf = new ReportPdf(zedId + "/ASSESSMENT REPORT", assets.Header, characters);
+        using var pdf = new ReportPdf(zedId + (surveillance ? "/SURVEILLANCE ASSESSMENT REPORT" : "/ASSESSMENT REPORT"), assets.Header, characters);
 
         Cover(pdf, assets, unit.Text("PUnitName"), $"{unit.Text("PDistrictName")}, {unit.Text("PStateName")}", latitude, longitude);
 
@@ -54,14 +62,14 @@ public static class AssessmentReport
         pdf.Space(4);
         // Keep the summary table and the location together, as the old page did.
         pdf.Ensure(assets.Map is null ? 230 : 520);
-        pdf.Panel("ASSESSMENT SUMMARY");
+        pdf.Panel(surveillance ? "SURVEILLANCE ASSESSMENT SUMMARY" : "ASSESSMENT SUMMARY");
         pdf.Table(new TableSpec(1.1f, 2f) { LabelColumn = true, FontSize = 9 }
             .Row(Cell.Of("Unit Name"), Cell.Of(unit.Text("PUnitName")))
             .Row(Cell.Of("Udyam Registration Number"), Cell.Of(unit.Text("UdyogAadharNo")))
             .Row(Cell.Of("Enterprise Type"), Cell.Of(unit.Text("EnterpriseTypee")))
             .Row(Cell.Of("NIC Sector (2 Digit)"), Cell.Of(unit.Text("TwoDigitActivity")))
             .Row(Cell.Of("Unit Address"), Cell.Of(unit.Text("PlantAddress")))
-            .Row(Cell.Of(rejected ? "Rejected Date" : "Certification Date"), Cell.Of(unit.Text("AssessmentDate"))));
+            .Row(Cell.Of(DateLabel(unit, bronze, rejected, surveillance)), Cell.Of(unit.Text("AssessmentDate"))));
         pdf.Ensure(assets.Map is null ? 40 : 300);
         pdf.Panel($"Latitude: {latitude}: Longitude: {longitude}");
         if (assets.Map is not null) pdf.Image(assets.Map, Math.Min(pdf.ContentWidth, 420));
@@ -90,7 +98,7 @@ public static class AssessmentReport
         basic.Row(Cell.Of("2"), Cell.Of("Product manufactured"), Cell.Of(""));
         pdf.Table(basic, repeatHeader: true);
         pdf.Space(-8);
-        pdf.Table(Products(sets[1], level, photoBase, photos, "Conformance"));
+        pdf.Table(Products(sets[1], level, photoBase, photos, "Conformance", app));
 
         var rest = new TableSpec(0.45f, 2.2f, 3f);
         rest.Row(Cell.Of("3"), Cell.Of("Key Domestic Customers"), Cell.Of(unit.Text("DomesticCustomers")));
@@ -112,9 +120,9 @@ public static class AssessmentReport
         pdf.Table(last);
 
         // ----- findings
-        pdf.Panel("ASSESSMENT FINDINGS");
+        pdf.Panel(surveillance ? "SURVEILLANCE ASSESSMENT FINDINGS" : "ASSESSMENT FINDINGS");
         pdf.Paragraph(Texts.Findings, 9.5f);
-        Sections(pdf, sets[3], sets[4], sets[5], sets[6], ofi: !bronze, exemptions: true);
+        Sections(pdf, sets[3], sets[4], sets[5], sets[6], ofi: !bronze && !surveillance, exemptions: true);
 
         for (var n = 1; n <= NcRounds; n++)
         {
@@ -124,7 +132,7 @@ public static class AssessmentReport
             if (sets[b].Count > 0)
             {
                 pdf.Heading("Product Manufactured");
-                pdf.Table(Products(sets[b], level, photoBase, photos, "Verified", ncRound: true));
+                pdf.Table(Products(sets[b], level, photoBase, photos, "Verified", app, ncRound: true));
             }
             Sections(pdf, sets[b + 1], sets[b + 2], sets[b + 3], sets[b + 4], ofi: false, exemptions: false);
         }
@@ -142,7 +150,14 @@ public static class AssessmentReport
         return pdf.Finish();
     }
 
-    private static void Cover(ReportPdf pdf, Assets assets, string unitName, string place, string latitude, string longitude)
+    /// <summary>Last row of the summary table.</summary>
+    private static string DateLabel(IDictionary<string, object?> unit, bool bronze, bool rejected, bool surveillance) =>
+        !surveillance ? (rejected ? "Rejected Date" : "Certification Date")
+        : bronze ? (rejected ? "SURVEILLANCE REJECTED ON" : "Surveillance Completed on")
+        : rejected ? "SURVEILLANCE 1 REJECTED ON"
+        : $"Surveillance {unit.Text("SurveillanceNo")} Completed on".Replace("  ", " ");
+
+    internal static void Cover(ReportPdf pdf, Assets assets, string unitName, string place, string latitude, string longitude)
     {
         var canvas = pdf.BarePage();
         var top = 20f;
@@ -176,7 +191,7 @@ public static class AssessmentReport
     }
 
     private static TableSpec Products(IReadOnlyList<IDictionary<string, object?>> rows, string level, string photoBase, ReportPhotos photos,
-        string verifiedHeader, bool ncRound = false)
+        string verifiedHeader, string app, bool ncRound = false)
     {
         var bronze = level == "Bronze";
         var table = new TableSpec(1.6f, 0.9f, 1.2f, 1.2f, 1f, 1.8f)
@@ -188,7 +203,7 @@ public static class AssessmentReport
         {
             var zed = p.Text("ZedId");
             var cert = p.Text("Certification");
-            var store = bronze ? photoBase : "mobileapi/SaPhotos";
+            var store = bronze ? photoBase : $"{app}/SaPhotos";
             string Path(string file) => $"{store}/{zed}/{cert}/BasicInfo/{file}";
 
             var productPhoto = p.Text("ProductPhoto");

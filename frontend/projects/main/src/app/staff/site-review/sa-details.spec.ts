@@ -219,4 +219,37 @@ describe('SaDetailsPage', () => {
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('not allotted to you');
   });
+
+  it('shows the surveillance meeting and recording links and loads the original certification on demand', async () => {
+    await open(details({
+      closeMeeting: { id: 72, comments: 'Closing', photos: [], participants: [] },
+      surveillance: { meetingLink: 'https://meet.example.test/abc', recordingLinks: [{ url: 'https://rec.example.test/1', createdDate: 'May 01, 2026' }], hasOriginal: true },
+    }));
+    expect(el.querySelector<HTMLAnchorElement>('a[href="https://meet.example.test/abc"]')!.textContent).toContain('Click here to Join');
+    tab('Closing Meeting');
+    await settle();
+    expect(el.querySelector<HTMLAnchorElement>('a[href="https://rec.example.test/1"]')!.textContent).toContain('View Recording 1');
+
+    tab('Original Certification');
+    await settle();
+    http.expectOne(API + '/original').flush({
+      zedId: 'ZEDMSME000001', certification: 'Silver', msme: { AgencyName: 'Original Agency', CertificationBodyUserId: 'AG0' },
+      products: [], rawMaterials: [], sections: [{ SectionCode: '1', SectionName: 'Leadership' }],
+      requirements: [{ SectionCode: '1', RequirementCode: '2', SaConformance: 'Yes', SaAssessorRemarks: 'fine', Photos: [] }],
+      options: [], subOptions: [], evidences: [], saSelfies: [], saSiteExterior: [], siteTour: [], openMeeting: null, closeMeeting: null,
+    });
+    await settle();
+    expect(el.textContent).toContain('AG0 - Original Agency');
+    expect(el.textContent).toContain('Level 2: Yes');
+    // Opened again: not reloaded.
+    tab('Assessment Overview');
+    tab('Original Certification');
+    await settle();
+    http.expectNone(API + '/original');
+  });
+
+  it('has no original certification tab on main', async () => {
+    await open(details());
+    expect(Array.from(el.querySelectorAll('.nav-link')).some((b) => b.textContent?.includes('Original'))).toBe(false);
+  });
 });

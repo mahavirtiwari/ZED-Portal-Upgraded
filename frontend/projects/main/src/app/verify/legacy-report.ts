@@ -11,11 +11,17 @@ export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', 
 const LEVELS = ['Bronze', 'Silver', 'Gold'];
 const MSME_ROLE = 5;
 
+/** Which application's report page the old link named (route data `system`). */
+export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
+
 /**
  * Old report address /SA/ReportSummary/{id}?certification=X, still in e-mails already sent (certificate,
  * report and rejection mails). The old page was public; now the report opens only for the signed-in MSME
  * that owns it (its own or a rejected record, ZEDMSME000123_D_45) or for staff allowed to see the record.
  * Runs in the browser after the app has loaded, so the SameSite=Strict session cookie is sent.
+ * The surveillance and consultancy applications had the same page (/surveillance/SA/ReportSummary/{id}?certification=X,
+ * /consultancy/SA/ReportSummary/{id}?certification=X&milestone=n, linked from Certification details and mails); they
+ * open the surveillance report and the handholding milestone report, which this portal now draws.
  */
 @Component({
   selector: 'zed-legacy-report',
@@ -33,6 +39,10 @@ export class LegacyReportRedirect implements OnInit {
   /** Route parameter (the ZED ID of the record) and query parameter. */
   readonly id = input<string>('');
   readonly certification = input<string>('');
+  /** Query parameter of the consultancy link (1-3). */
+  readonly milestone = input<string>('');
+  /** Route data. */
+  readonly system = input<LegacyReportSystem>('main');
 
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -46,7 +56,10 @@ export class LegacyReportRedirect implements OnInit {
   private async go(): Promise<void> {
     const level = LEVELS.find((l) => l.toLowerCase() === this.certification().trim().toLowerCase());
     const id = this.id().trim();
-    if (!level || !/^[A-Za-z0-9_]{1,50}$/.test(id)) {
+    const system = this.system() ?? 'main';
+    const milestone = String(this.milestone() ?? '').trim();
+    const milestoneOk = system !== 'consultancy' || (/^[1-3]$/.test(milestone) && level !== 'Bronze');
+    if (!level || !/^[A-Za-z0-9_]{1,50}$/.test(id) || !milestoneOk) {
       this.message.set('This report link is not valid.');
       return;
     }
@@ -56,9 +69,22 @@ export class LegacyReportRedirect implements OnInit {
       await this.router.navigateByUrl('/msme/login');
       return;
     }
+    const own = id.toLowerCase() === user.userId.toLowerCase();
+    if (system === 'consultancy') {
+      if (user.roleId === MSME_ROLE && !own) {
+        this.message.set('This report link is not valid.');
+        return;
+      }
+      this.open(
+        user.roleId === MSME_ROLE
+          ? `/api/msme/certification-documents/${level}/report?milestone=${milestone}`
+          : `/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report?milestone=${milestone}`,
+      );
+      return;
+    }
+    const type = system === 'surveillance' ? `${level}Surveillance` : level;
     if (user.roleId === MSME_ROLE) {
-      const own = id.toLowerCase() === user.userId.toLowerCase();
-      this.open(`/api/msme/certification-documents/${level}/report${own ? '' : `?record=${encodeURIComponent(id)}`}`);
+      this.open(`/api/msme/certification-documents/${type}/report${own ? '' : `?record=${encodeURIComponent(id)}`}`);
     } else {
       this.open(`/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
     }

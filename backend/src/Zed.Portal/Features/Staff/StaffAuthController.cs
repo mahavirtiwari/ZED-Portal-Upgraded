@@ -15,6 +15,7 @@ namespace Zed.Portal.Features.Staff;
 /// </summary>
 [ApiController]
 [Route("api/staff/auth")]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captcha, ILogger<StaffAuthController> log) : ControllerBase
 {
     public sealed record LoginRequest(string UserId, string Password, string? CaptchaToken);

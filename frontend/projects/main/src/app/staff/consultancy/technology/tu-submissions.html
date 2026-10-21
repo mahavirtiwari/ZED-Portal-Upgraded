@@ -1,0 +1,145 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-3">
+    <div class="row mb-2">
+      <div class="col-sm-12"><h3 class="registration-title">Technology Upgradation</h3></div>
+    </div>
+    <div class="row mb-2">
+      <div class="col-sm-12">
+        <div class="d-flex justify-content-end flex-wrap gap-1">
+          @for (t of tabs; track t.status) {
+            <button type="button" class="btn btn-primary btn-md" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status" (click)="load(t.status)">
+              {{ t.label }} <span class="badge bg-primary">{{ count(t.count) }}</span>
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="table-responsive">
+      <table class="table table-bordered table-zed">
+        <thead>
+          <tr>
+            <th>Action(s)</th>
+            @if (isAdmin() && status() === 2) {
+              <th>Status</th>
+            }
+            <th>Certification Level</th>
+            <th>Unit Details</th>
+            <th>CO Details</th>
+            @if (!isDfo()) {
+              <th>MSME-DFO Details</th>
+            }
+            <th>Verification Date</th>
+            @if (!isDfo() && (status() === 2 || status() === 9)) {
+              <th>Reason For Rejection</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of rows(); track s.Id) {
+            <tr [class.rejected]="!!s.ReasonForRejection && status() === 2">
+              <td class="text-center actions">
+                @if (canAllot(s)) {
+                  <button type="button" class="btn btn-primary btn-xs" (click)="openAllot(s)">ALLOT</button>
+                }
+                @if (canReAllot(s)) {
+                  <button type="button" class="btn btn-default btn-xs" (click)="openAllot(s)">RE-ALLOT</button>
+                }
+                @if (canRespond(s)) {
+                  <button type="button" class="btn btn-primary btn-xs" (click)="openAccept(s)">ACCEPT</button>
+                  <button type="button" class="btn btn-default btn-xs" (click)="openReject(s)">REJECT</button>
+                }
+                @if (canReAllotDfo(s)) {
+                  <button type="button" class="btn btn-primary btn-xs" (click)="openAccept(s)">RE-ALLOT</button>
+                }
+                @if (canOpen(s)) {
+                  <a class="btn btn-primary btn-xs" [routerLink]="['/staff/consultancy/technology/verification', s.ZedId, s.CertificationType]">
+                    {{ isDfo() ? 'VIEW' : 'View Details' }}
+                  </a>
+                }
+              </td>
+              @if (isAdmin() && status() === 2) {
+                <td>
+                  @if (s.ReasonForRejection) {
+                    <strong>Rejected</strong>
+                  } @else if (s.FinancialAssessorId) {
+                    <small class="text-success">Alloted to Consultant</small>
+                  } @else if (s.CertificationBodyUserId) {
+                    <small class="text-success">Alloted to CO</small>
+                  }
+                </td>
+              }
+              <td>{{ s.LastestCertification || s.CertificationType }}</td>
+              <td><strong>{{ s.ZedId }}</strong><br /><strong>{{ s.PUnitName }}</strong><br />{{ s.UnitAddress }}</td>
+              <td><strong>{{ s.CertificationBodyName }}</strong><br />{{ s.CertificationBodyUserId }}</td>
+              @if (!isDfo()) {
+                <td><strong>{{ dfoName(s) }}</strong><br />{{ s.FinancialAssessorId }}</td>
+              }
+              <td>{{ s.VerificationDate }}</td>
+              @if (!isDfo() && (status() === 2 || status() === 9)) {
+                <td>{{ reason(s) }}</td>
+              }
+            </tr>
+          } @empty {
+            @if (!loading()) {
+              <tr><td colspan="8" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+@if (dialog(); as d) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDialogTitle">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header justify-content-between">
+          <strong id="tuDialogTitle">
+            @switch (d.kind) {
+              @case ('allot') { Consultant Organisation }
+              @case ('accept') { Accept Unit }
+              @case ('reject') { Reject Unit }
+            }
+          </strong>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-2"><strong>{{ d.row.ZedId }}</strong> · {{ d.row.PUnitName }} · {{ d.row.CertificationType }}</p>
+          @if (dialogError()) {
+            <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
+          }
+          @if (d.kind === 'reject') {
+            <label for="tuReason"><strong>Reason for Rejection<span style="color: red">*</span></strong></label>
+            <textarea id="tuReason" class="form-control" maxlength="2000" rows="4" [ngModel]="d.reason" (ngModelChange)="setReason($event)"></textarea>
+          } @else {
+            <label for="tuChoice"><strong>{{ d.kind === 'allot' ? 'Consultant Organisation' : 'MSME-DFO Officer' }}<span style="color: red">*</span></strong></label>
+            <select id="tuChoice" class="form-control" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
+              <option value="">{{ d.kind === 'allot' ? '--Select Organisation--' : '--Select--' }}</option>
+              @for (o of d.options; track o.userId) {
+                <option [value]="o.userId">{{ o.userName }}</option>
+              }
+            </select>
+          }
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
+          <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="confirm()">
+            {{ d.kind === 'allot' ? 'ALLOT' : d.kind === 'accept' ? 'ACCEPT' : 'REJECT' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv"><div class="loader"></div></div>
+}

@@ -15,9 +15,14 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// Update, GetTechnologies, ActiveOrDeActive) had no sign-in check, so anyone could change them. The
 /// parameter description (iButton) was rendered as raw HTML on the old page; the new page shows it as text.
 /// </para>
+/// <para>
+/// Also served by the Consultancy host (sectors and questionnaire parameters); categories and technologies are Main only
+/// (their procedures are not in ZED_CONSULTANT).
+/// </para>
 /// </summary>
 [Route("api/staff/masters")]
 [StaffRoles(UserRole.Admin)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
 public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMastersController> log) : StaffApiController
 {
     public sealed record CodeName(int Id, string Code, string Name);
@@ -56,9 +61,11 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     // ---- Categories ---------------------------------------------------------------------------
 
     [HttpGet("categories")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<IReadOnlyList<CodeName>> Categories(CancellationToken ct) => await LoadCategoriesAsync(ct);
 
     [HttpPost("categories")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> AddCategory(CodeNameRequest req, CancellationToken ct)
     {
         var (code, name, error) = ValidateCodeName(req, "Category");
@@ -71,6 +78,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     }
 
     [HttpPut("categories/{id:int}")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> UpdateCategory(int id, NameRequest req, CancellationToken ct)
     {
         var category = (await LoadCategoriesAsync(ct)).FirstOrDefault(s => s.Id == id);
@@ -88,18 +96,21 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
 
     /// <summary>Technologies (SP_MASTER_GET_TECHNOLOGIES). Sectors/Categories are stored as comma lists of "code-name" labels.</summary>
     [HttpGet("technologies")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<IReadOnlyList<Technology>> Technologies(CancellationToken ct) => await LoadTechnologiesAsync(ct);
 
     public sealed record TechnologyOptions(IReadOnlyList<string> Sectors, IReadOnlyList<string> Categories);
 
     /// <summary>Labels offered by Technology/Create: "{SectorCode}-{SectorName}" and "{CategoryCode} -{CategoryName}" (as stored).</summary>
     [HttpGet("technologies/options")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<TechnologyOptions> TechnologyOptionsGet(CancellationToken ct) =>
         new((await LoadSectorsAsync(ct)).Select(SectorLabel).ToList(), (await LoadCategoriesAsync(ct)).Select(CategoryLabel).ToList());
 
     public sealed record TechnologyRequest(string? TechnologyCode, string? TechnologyName, string? Description, List<string>? Sectors, List<string>? Categories);
 
     [HttpPost("technologies")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> AddTechnology(TechnologyRequest req, CancellationToken ct)
     {
         var (values, error) = await ValidateTechnologyAsync(req, null, ct);
@@ -116,6 +127,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     }
 
     [HttpPut("technologies/{id:int}")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> UpdateTechnology(int id, TechnologyRequest req, CancellationToken ct)
     {
         var all = await LoadTechnologiesAsync(ct);
@@ -138,6 +150,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
 
     /// <summary>Activates or deactivates a technology (SP_MASTER_ACTIVE__DEACTIVE_TECHNOLOGIES).</summary>
     [HttpPost("technologies/{id:int}/active")]
+    [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> SetTechnologyActive(int id, ActiveRequest req, CancellationToken ct)
     {
         if ((await LoadTechnologiesAsync(ct)).All(t => t.Id != id)) return NotFound();

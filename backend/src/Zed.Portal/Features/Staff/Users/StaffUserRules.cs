@@ -114,12 +114,19 @@ public static partial class StaffUserRules
     }
 
     /// <summary>A user with the given role, read with SP_GET_USER_DETAILS_BY_USER_ID (users, states, NIC sectors, areas).</summary>
-    public static async Task<ManagedUser?> LoadAsync(ISqlExecutor db, string userId, UserRole role, CancellationToken ct)
+    public static Task<ManagedUser?> LoadAsync(ISqlExecutor db, string userId, UserRole role, CancellationToken ct) =>
+        LoadAnyAsync(db, userId, [(int)role], ct);
+
+    /// <summary>
+    /// As <see cref="LoadAsync"/>, for a user with any of the given Users.RoleId values (Consultancy keeps consultants as
+    /// RoleId 3 and technical experts as RoleId 33).
+    /// </summary>
+    public static async Task<ManagedUser?> LoadAnyAsync(ISqlExecutor db, string userId, IReadOnlyCollection<int> roleIds, CancellationToken ct)
     {
         if (!IsUserId(userId)) return null;
         var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS_BY_USER_ID", new { UserId = userId }, ct);
         var row = sets[0].FirstOrDefault();
-        if (row is null || row.Text("RoleId") != ((int)role).ToString()) return null;
+        if (row is null || !roleIds.Any(r => row.Text("RoleId") == r.ToString())) return null;
         static List<string> Values(IReadOnlyList<IDictionary<string, object?>> set) =>
             set.Select(r => r.Text("States")).Where(s => s.Length > 0).ToList();
         return new ManagedUser(row, Values(sets[1]), Values(sets[2]), Values(sets[3]));

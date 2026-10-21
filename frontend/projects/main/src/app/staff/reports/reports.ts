@@ -65,7 +65,7 @@ async function blobError(err: unknown): Promise<string> {
     @if (downloading()) {
       <div class="loadingdiv" role="status">
         <div class="text-center text-white">
-          <img src="/Images/loading.gif" alt="" /><br />
+          <img src="Images/loading.gif" alt="" /><br />
           <small>Please wait ... large reports may take a few minutes.</small>
         </div>
       </div>

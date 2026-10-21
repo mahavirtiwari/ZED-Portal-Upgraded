@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, TestRequest, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringPage } from './monitoring';
 
 describe('MonitoringPage', () => {
@@ -81,7 +82,7 @@ describe('MonitoringPage', () => {
     expect(button('Step Back')).toBeUndefined();
     expect(rows[1].classList).toContain('table-danger');
     expect(rows[1].querySelector('.yellow-background')!.textContent!.trim()).toBe('3');
-    expect((button('View Profile') as HTMLAnchorElement).href).toBe('https://old.example/Msme/Profile/ZEDMSME000001');
+    expect((button('View Profile') as HTMLAnchorElement).getAttribute('href')).toBe('staff/msme-profile/ZEDMSME000001');
     expect((button('Assessment') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Silver');
   });
 
@@ -158,5 +159,84 @@ describe('MonitoringPage', () => {
     await openNcTab(false, [unit(1, { PUnitName: '<img src=x onerror=alert(1)>' })]);
     expect(el.querySelector('tbody img')).toBeNull();
     expect(el.querySelector('tbody')!.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+});
+
+describe('MonitoringPage per system', () => {
+  let http: HttpTestingController;
+
+  async function create(system: 'consultancy' | 'surveillance') {
+    await TestBed.configureTestingModule({
+      imports: [MonitoringPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ASSESSMENT_SYSTEM, useValue: system }],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(MonitoringPage);
+    http = TestBed.inject(HttpTestingController);
+    const settle = async () => {
+      fixture.detectChanges();
+      await new Promise((r) => setTimeout(r));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    await settle();
+    http.expectOne('/api/config').flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: 'https://old.example' });
+    await settle();
+    const el: HTMLElement = fixture.nativeElement;
+    const s = el.querySelector('#certification') as HTMLSelectElement;
+    return { fixture, el, settle, select: s };
+  }
+
+  const counts = { NotStarted: 1, InProgress: 2, Qc: 3, Nc: 4, Rj: 5 };
+
+  afterEach(() => http.verify());
+
+  it('consultancy: Silver/Gold, three tabs, milestone columns and no admin actions', async () => {
+    const { el, settle, select } = await create('consultancy');
+    expect(el.textContent).toContain('Consultancy Monitoring');
+    expect([...select.options].map((o) => o.text.trim()).filter((t) => !t.startsWith('--'))).toEqual(['Silver', 'Gold']);
+    expect(el.textContent).toContain('CONSULTANCY IN-PROGRESS');
+    expect(el.textContent).not.toContain('NON-CONFORMANCE');
+    select.value = 'Silver';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/monitoring').flush({
+      units: [
+        { ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 8, NcCount: 1, BdsFromDate: 'May 1, 2026', HapFromDate: 'May 9, 2026', TechExpertName: 'Expert One' },
+        { ZedId: 'ZEDMSME000002', Certification: 'Silver', CertificationStatus: 9, NcCount: 2, SaAssessmentDate: 'June 2, 2026', DocVerifiAllot: 'May 20, 2026' },
+      ],
+      counts,
+      canManage: true,
+    });
+    await settle();
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows[0].textContent).toContain('Milestone 1');
+    expect(rows[0].textContent).toContain('BDS: May 1, 2026');
+    expect(rows[0].textContent).toContain('Expert One');
+    expect(rows[1].textContent).toContain('PR1: June 2, 2026');
+    expect(el.textContent).not.toContain('Send Back to Agency');
+    expect(el.querySelector('thead')!.textContent).not.toContain('Duplicates');
+  });
+
+  it('surveillance: Surveillance No, step back kept, no send back to the agency', async () => {
+    const { el, settle, select } = await create('surveillance');
+    expect(el.textContent).toContain('Surveillance Monitoring');
+    select.value = 'Gold';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/monitoring').flush({ units: [], counts, canManage: true });
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('SCHEDULED'))!).click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/monitoring').flush({
+      units: [{ ZedId: 'ZEDMSME000001', Certification: 'Gold', CertificationStatus: 8, SurveillanceNo: '2nd Surveillance', ModeOfAssessment: 'Remote' }],
+      counts,
+      canManage: true,
+    });
+    await settle();
+    const row = el.querySelector('tbody tr')!;
+    expect(row.textContent).toContain('2nd Surveillance');
+    expect(row.textContent).toContain('Remote');
+    expect(row.textContent).not.toContain('Send Back to Agency');
+    expect(el.querySelector('thead')!.textContent).toContain('Surveillance Dates');
   });
 });

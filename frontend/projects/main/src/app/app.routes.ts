@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+import { Route, Routes, UrlMatcher } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { STAFF_ROLE_IDS } from './staff/staff-menu';
 import { staffHomeRedirect } from './staff/staff-home.guard';
@@ -6,11 +6,112 @@ import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessme
 import { VERIFY_ROUTES } from './verify/verify.routes';
 import { SITE_REVIEW_LEGACY_REDIRECTS, SITE_REVIEW_ROUTES } from './staff/site-review/site-review.routes';
 import { MSME_SCHEME_ROUTES, PUBLIC_INCENTIVE_ROUTES, SCHEME_LEGACY_REDIRECTS } from './msme/schemes/schemes.routes';
+import { MILESTONE_LEGACY_REDIRECTS, MILESTONE_ROUTES } from './staff/consultancy/milestones/milestones.routes';
+import { PORTAL_SYSTEM } from './portal-system';
+import { PORTAL_LABELS } from './portal-labels';
 
 /** MSME role id (Users.RoleId 5, "Ulb" in the legacy enum). */
 const MSME = 5;
 
-export const routes: Routes = [
+/** Staff "View Profile" of a unit (all three systems; replaces the legacy Msme/Profile/{zedId} page). */
+const STAFF_MSME_PROFILE: Route = {
+  path: 'msme-profile/:zedId',
+  title: 'ZED | MSME Profile',
+  loadComponent: () => import('./staff/msme-profile/msme-profile').then((m) => m.StaffMsmeProfilePage),
+};
+
+/** Main's staff screens (children of `staff`). */
+const MAIN_STAFF_CHILDREN: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    title: 'ZED | Home',
+    canActivate: [staffHomeRedirect],
+    loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
+  },
+  { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
+  {
+    path: 'failed-transactions',
+    title: 'ZED | Failed Transactions',
+    loadComponent: () => import('./staff/dashboard/failed-transactions').then((m) => m.FailedTransactionsPage),
+  },
+  {
+    path: 'payments-received',
+    title: 'ZED | Payment Received',
+    loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
+  },
+  {
+    path: 'financial-support',
+    title: 'ZED | Financial Support',
+    loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
+  },
+  { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+  { path: 'history', title: 'ZED | Certification History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
+  { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
+  { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
+  ...ASSESSMENT_ROUTES,
+  ...SITE_REVIEW_ROUTES,
+  { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
+  { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+  { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
+  {
+    path: 'neft/new',
+    title: 'ZED | NEFT New Transactions',
+    data: { list: 'new' },
+    loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+  },
+  {
+    path: 'neft/approved',
+    title: 'ZED | NEFT Approved Transactions',
+    data: { list: 'approved' },
+    loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+  },
+  {
+    path: 'neft/rejected',
+    title: 'ZED | NEFT Rejected Transactions',
+    data: { list: 'rejected' },
+    loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+  },
+  {
+    path: 'financial-assistance',
+    title: 'ZED | Financial Assistance',
+    loadComponent: () => import('./staff/schemes/fa-submissions').then((m) => m.FaSubmissionsPage),
+  },
+  {
+    path: 'financial-assistance/:zedId',
+    title: 'ZED | Financial Assistance',
+    loadComponent: () => import('./staff/schemes/fa-verification').then((m) => m.FaVerificationPage),
+  },
+  {
+    path: 'incentives/submissions',
+    title: 'ZED | Incentive Submissions',
+    loadComponent: () => import('./staff/schemes/incentive-submissions').then((m) => m.IncentiveSubmissionsPage),
+  },
+  {
+    path: 'incentives/upload',
+    title: 'ZED | Upload API Incentives',
+    loadComponent: () => import('./staff/schemes/incentive-upload').then((m) => m.IncentiveUploadPage),
+  },
+  { path: 'incentives', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
+  {
+    path: 'change-password',
+    title: 'ZED | Change Password',
+    data: { loginUrl: '/login' },
+    loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
+  },
+  { path: 'monitoring', title: 'ZED | Assessment Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
+  { path: 'sa-allotment', title: 'ZED | SA Allotment', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
+  {
+    path: 'remote-assessments',
+    title: 'ZED | Remote Assessments',
+    loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
+  },
+  STAFF_MSME_PROFILE,
+];
+
+/** Main (ZEDCS) routes: the MSME portal, the staff screens and the old MVC addresses. */
+const MAIN_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'msme/login' },
 
   // Public MSME pages
@@ -103,93 +204,7 @@ export const routes: Routes = [
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
     loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
-    children: [
-      {
-        path: '',
-        pathMatch: 'full',
-        title: 'ZED | Home',
-        canActivate: [staffHomeRedirect],
-        loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
-      },
-      { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
-      { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
-      {
-        path: 'failed-transactions',
-        title: 'ZED | Failed Transactions',
-        loadComponent: () => import('./staff/dashboard/failed-transactions').then((m) => m.FailedTransactionsPage),
-      },
-      {
-        path: 'payments-received',
-        title: 'ZED | Payment Received',
-        loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
-      },
-      {
-        path: 'financial-support',
-        title: 'ZED | Financial Support',
-        loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
-      },
-      { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
-      { path: 'history', title: 'ZED | Certification History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
-      { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
-      { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
-      ...ASSESSMENT_ROUTES,
-      ...SITE_REVIEW_ROUTES,
-      { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
-      { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
-      { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
-      {
-        path: 'neft/new',
-        title: 'ZED | NEFT New Transactions',
-        data: { list: 'new' },
-        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
-      },
-      {
-        path: 'neft/approved',
-        title: 'ZED | NEFT Approved Transactions',
-        data: { list: 'approved' },
-        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
-      },
-      {
-        path: 'neft/rejected',
-        title: 'ZED | NEFT Rejected Transactions',
-        data: { list: 'rejected' },
-        loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
-      },
-      {
-        path: 'financial-assistance',
-        title: 'ZED | Financial Assistance',
-        loadComponent: () => import('./staff/schemes/fa-submissions').then((m) => m.FaSubmissionsPage),
-      },
-      {
-        path: 'financial-assistance/:zedId',
-        title: 'ZED | Financial Assistance',
-        loadComponent: () => import('./staff/schemes/fa-verification').then((m) => m.FaVerificationPage),
-      },
-      {
-        path: 'incentives/submissions',
-        title: 'ZED | Incentive Submissions',
-        loadComponent: () => import('./staff/schemes/incentive-submissions').then((m) => m.IncentiveSubmissionsPage),
-      },
-      {
-        path: 'incentives/upload',
-        title: 'ZED | Upload API Incentives',
-        loadComponent: () => import('./staff/schemes/incentive-upload').then((m) => m.IncentiveUploadPage),
-      },
-      { path: 'incentives', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
-      {
-        path: 'change-password',
-        title: 'ZED | Change Password',
-        data: { loginUrl: '/login' },
-        loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
-      },
-      { path: 'monitoring', title: 'ZED | Assessment Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
-      { path: 'sa-allotment', title: 'ZED | SA Allotment', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
-      {
-        path: 'remote-assessments',
-        title: 'ZED | Remote Assessments',
-        loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
-      },
-    ],
+    children: MAIN_STAFF_CHILDREN,
   },
 
   // Old MVC addresses that appear in e-mails already sent and in bookmarks.
@@ -271,8 +286,205 @@ export const routes: Routes = [
       `/staff/remote/${encodeURIComponent(queryParams['zedId'] ?? '')}/${encodeURIComponent(queryParams['Certification'] ?? '')}`,
   },
 
+  { path: 'Msme/Profile/:zedId', redirectTo: 'staff/msme-profile/:zedId' },
+
   // Public certificate verification (QR codes) and old report links from e-mails.
   ...VERIFY_ROUTES,
 
   { path: '**', redirectTo: 'msme/login' },
 ];
+
+// ============================================================================================================
+// Consultancy and Surveillance builds (PORTAL_SYSTEM). Staff-only portals: the root opens the staff login, no MSME
+// pages are routed, and the old addresses under /Consultancy/... and /surveillance/... (the build's baseHref) redirect.
+// ============================================================================================================
+
+/** Screens of main reused unchanged (or with per-system switches inside) by both systems. */
+const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    title: 'ZED | Home',
+    canActivate: [staffHomeRedirect],
+    loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
+  },
+  { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
+  {
+    path: 'failed-transactions',
+    title: 'ZED | Failed Transactions',
+    loadComponent: () => import('./staff/dashboard/failed-transactions').then((m) => m.FailedTransactionsPage),
+  },
+  {
+    path: 'payments-received',
+    title: 'ZED | Payment Received',
+    loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
+  },
+  { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+  { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
+  { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+  {
+    path: 'change-password',
+    title: 'ZED | Change Password',
+    data: { loginUrl: '/login' },
+    loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
+  },
+  { path: 'monitoring', title: 'ZED | Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
+  ...ASSESSMENT_ROUTES,
+  ...SITE_REVIEW_ROUTES,
+  STAFF_MSME_PROFILE,
+];
+
+/** Consultancy (handholding) staff screens. */
+const CONSULTANCY_STAFF_CHILDREN: Routes = [
+  ...SYSTEM_COMMON_STAFF_CHILDREN,
+  { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
+  { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
+  {
+    path: 'neft/new',
+    title: 'ZED | NEFT New Transactions',
+    data: { list: 'new' },
+    loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+  },
+  {
+    path: 'neft/approved',
+    title: 'ZED | NEFT Approved Transactions',
+    data: { list: 'approved' },
+    loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
+  },
+  // CO allotment and the consultants' Milestone 1-3 lists (site-assessment package; pages in staff/site-assessment).
+  {
+    path: 'site-assessment/co-allotment',
+    title: 'ZED | Allot Consultancy',
+    loadComponent: () => import('./staff/site-assessment/co-allotment').then((m) => m.CoAllotmentPage),
+  },
+  {
+    path: 'site-assessment/milestones/:milestone',
+    title: 'ZED | Milestone',
+    loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
+  },
+  // Milestone review page and Technology Upgradation (consultancy packages).
+  ...MILESTONE_ROUTES,
+  { path: 'consultancy/technology', loadChildren: () => import('./staff/consultancy/technology/technology.routes').then((m) => m.TECHNOLOGY_ROUTES) },
+  // >>> Further Consultancy staff routes of other packages go here.
+];
+
+/** Surveillance staff screens. */
+const SURVEILLANCE_STAFF_CHILDREN: Routes = [
+  ...SYSTEM_COMMON_STAFF_CHILDREN,
+  {
+    path: 'financial-support',
+    title: 'ZED | Financial Support',
+    loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
+  },
+  { path: 'sa-allotment', title: 'ZED | Allot Surveillance', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
+  {
+    path: 'remote-assessments',
+    title: 'ZED | Surveillance Assessments',
+    loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
+  },
+  { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
+  // >>> Further Surveillance staff routes of other packages go here.
+];
+
+/** Old MVC paths (lower-case) of the staff screens of these portals, and their new address. */
+const SYSTEM_LEGACY_PATHS: Record<string, string> = {
+  '': '/login',
+  home: '/login',
+  'home/index': '/login',
+  'user/login': '/login',
+  'user/logout': '/login',
+  'user/index': '/login',
+  'user/changepassword': '/staff/change-password',
+  dashboard: '/staff/dashboard',
+  'dashboard/index': '/staff/dashboard',
+  'dashboard/registeredmsme': '/staff/registered-msme',
+  'dashboard/failedtransactions': '/staff/failed-transactions',
+  'dashboard/paymentreceived': '/staff/payments-received',
+  'dashboard/financialsupport': '/staff/financial-support',
+  dynamicreports: '/staff/reports',
+  'dynamicreports/index': '/staff/reports',
+  'monitoring/index': '/staff/monitoring',
+  'assessment/allot': '/staff/assessment/allot',
+  'assessment/completed': '/staff/assessment/completed',
+  'assessment/rejected': '/staff/assessment/rejected',
+  'assessment/daallotment': '/staff/assessment/da-allotment',
+  'assessment/daverification': '/staff/assessment/da-verification',
+  'assessment/nonconfirmances': '/staff/assessment/non-conformances',
+  'assessment/paymentdetails': '/staff/fees',
+  'user/assessors': '/staff/users/my-assessors',
+  'neft/index': '/staff/neft/new',
+  'neft/newtransactions': '/staff/neft/new',
+  'neft/approvedtransactions': '/staff/neft/approved',
+  'home/pagesettings': '/staff/masters/page-settings',
+  'mydocuments/index': '/staff/masters/documents',
+  'sector/list': '/staff/masters/sectors',
+  ...(PORTAL_SYSTEM === 'consultancy'
+    ? {
+        'user/assessmentagencies': '/staff/users/agencies',
+        'user/certificationbodies': '/staff/users/agencies',
+        'user/assessorlist': '/staff/users/assessors',
+        'user/assessor': '/staff/users/my-assessors',
+        'assessment/saallotment': '/staff/site-assessment/co-allotment',
+        'assessment/remoteassessments': '/staff/site-assessment/milestones/1',
+        'assessment/remoteassessments/1': '/staff/site-assessment/milestones/1',
+        'assessment/remoteassessments/2': '/staff/site-assessment/milestones/2',
+        'assessment/remoteassessments/3': '/staff/site-assessment/milestones/3',
+        'financialassistance/submissions': '/staff/consultancy/technology',
+      }
+    : {
+        'user/assessmentagencies': '/staff/users/surveillance-agencies',
+        'user/certificationbodies': '/staff/users/surveillance-agencies',
+        'user/assessorlist': '/staff/users/surveillance-assessors',
+        'user/assessor': '/staff/users/surveillance-assessors',
+        'assessment/saallotment': '/staff/sa-allotment',
+        'assessment/remoteassessments': '/staff/remote-assessments',
+      }),
+};
+
+/** The system's own folder name as the first segment (/consultancy/... when the browser's case differs from baseHref). */
+const SYSTEM_FOLDER = PORTAL_SYSTEM === 'consultancy' ? 'consultancy' : 'surveillance';
+
+/**
+ * Matches an old address case-insensitively (IIS was case-insensitive): optionally prefixed by the system folder,
+ * then one of SYSTEM_LEGACY_PATHS, or Msme/Profile/{zedId}.
+ */
+export function systemLegacyTarget(segments: string[]): string | null {
+  const parts = segments[0]?.toLowerCase() === SYSTEM_FOLDER ? segments.slice(1) : segments;
+  const key = parts.join('/').toLowerCase();
+  if (key in SYSTEM_LEGACY_PATHS) return SYSTEM_LEGACY_PATHS[key];
+  if (parts.length === 3 && parts[0].toLowerCase() === 'msme' && parts[1].toLowerCase() === 'profile') return `/staff/msme-profile/${encodeURIComponent(parts[2])}`;
+  return null;
+}
+
+const legacyMatcher: UrlMatcher = (segments) =>
+  segments.length > 0 && systemLegacyTarget(segments.map((s) => s.path)) !== null ? { consumed: segments } : null;
+
+/** Surveillance: old addresses with query parameters (site review and the remote assessment page). */
+const SURVEILLANCE_LEGACY_REDIRECTS: Routes = [
+  ...SITE_REVIEW_LEGACY_REDIRECTS,
+  {
+    path: 'Remote/Index',
+    redirectTo: ({ queryParams }) =>
+      `/staff/remote/${encodeURIComponent(queryParams['zedId'] ?? '')}/${encodeURIComponent(queryParams['Certification'] ?? '')}`,
+  },
+];
+
+const SYSTEM_ROUTES: Routes = [
+  { path: '', pathMatch: 'full', redirectTo: 'login' },
+  { path: 'login', title: PORTAL_LABELS.loginTitle, loadComponent: () => import('./staff/staff-login').then((m) => m.StaffLoginPage) },
+  {
+    path: 'staff',
+    canActivate: [authGuard('/login', STAFF_ROLE_IDS)],
+    loadComponent: () => import('./staff/staff-layout').then((m) => m.StaffLayout),
+    children: PORTAL_SYSTEM === 'consultancy' ? CONSULTANCY_STAFF_CHILDREN : SURVEILLANCE_STAFF_CHILDREN,
+  },
+  // Old addresses with query parameters (links in mails and lists).
+  ...ASSESSMENT_LEGACY_REDIRECTS.filter((r) => r.path === 'Assessment/DaDetails'),
+  ...(PORTAL_SYSTEM === 'consultancy' ? MILESTONE_LEGACY_REDIRECTS : SURVEILLANCE_LEGACY_REDIRECTS),
+  { matcher: legacyMatcher, redirectTo: ({ url }) => systemLegacyTarget(url.map((s) => s.path)) ?? '/login' },
+  { path: '**', redirectTo: 'login' },
+];
+
+/** The routes of this build (see portal-system.ts). */
+export const routes: Routes = PORTAL_SYSTEM === 'main' ? MAIN_ROUTES : SYSTEM_ROUTES;

@@ -3,13 +3,16 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ClientPager, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, ClientPager, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
 import { ListPager } from './list-pager';
 
 /**
  * Master admin: allot MSMEs to assessment agencies. Port of Views/Assessment/Allot.cshtml
  * (Assessment/GetList, GetCb, AllotCb). Profile and site-assessment pages still open on the current portal.
+ * Consultancy ("Allot Consultancy"): paid milestones go to Consultant Organisations (Silver/Gold, Milestone column).
+ * Surveillance ("Allot Surveillance"): Surveillance No and the auto-allotment date. Neither old page linked the
+ * assessment details from here.
  */
 @Component({
   selector: 'zed-staff-allot',
@@ -17,7 +20,7 @@ import { ListPager } from './list-pager';
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
-        <div class="col-sm-12"><h3 class="registration-title">Allot Assessment</h3></div>
+        <div class="col-sm-12"><h3 class="registration-title">{{ title }}</h3></div>
 
         @if (notice(); as n) {
           <div class="col-sm-12">
@@ -38,12 +41,10 @@ import { ListPager } from './list-pager';
               </select>
             </div>
             <div>
-              <label for="allotLevel"><strong>Certification Level</strong></label>
+              <label for="allotLevel"><strong>{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</strong></label>
               <select class="form-control" style="width: 200px" id="allotLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
                 <option value="">Show All</option>
-                <option value="Bronze">Bronze</option>
-                <option value="Silver">Silver</option>
-                <option value="Gold">Gold</option>
+                @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
               </select>
             </div>
             <div>
@@ -90,10 +91,17 @@ import { ListPager } from './list-pager';
                 <tr>
                   <th>Action(s)</th>
                   <th>Status</th>
-                  <th>Certification Level</th>
+                  @if (consultancy) {
+                    <th>Desired Certification</th>
+                    <th>Milestone</th>
+                  } @else if (surveillance) {
+                    <th>Certification Level <br /><br />Surveillance No</th>
+                  } @else {
+                    <th>Certification Level</th>
+                  }
                   <th>Unit Details</th>
-                  <th>SPOC Details</th>
-                  <th>Agency Details</th>
+                  <th>{{ consultancy ? 'Unit SPOC Details' : 'SPOC Details' }}</th>
+                  <th>{{ consultancy ? 'CO Details' : 'Agency Details' }}</th>
                   <th>Reason For Rejection</th>
                 </tr>
               </thead>
@@ -104,10 +112,12 @@ import { ListPager } from './list-pager';
                       @if (legacy.profile(t(s, 'ZedId')); as href) {
                         <a style="width: 180px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
                       }
-                      @if (n(s, 'CertificationStatus') > 7) {
-                        <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
-                      } @else {
-                        <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
+                      @if (main) {
+                        @if (n(s, 'CertificationStatus') > 7) {
+                          <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
+                        } @else {
+                          <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
+                        }
                       }
                       @if (!t(s, 'CertificationBodyUserId')) {
                         <button type="button" style="width: 180px" class="btn btn-primary btn-xs mb-2" (click)="openAllot(s)">ALLOT</button>
@@ -121,26 +131,38 @@ import { ListPager } from './list-pager';
                         @if (!t(s, 'CertificationBodyUserId')) {
                           <small>Allotment Pending</small>
                         } @else if (t(s, 'DesktopAssessorId')) {
-                          <small class="text-success">Agency Accepted</small>
+                          <small class="text-success">{{ party }} Accepted</small>
                         } @else if (t(s, 'ReasonForRejection')) {
-                          <small>Agency Rejected</small>
+                          <small>{{ party }} Rejected</small>
                         } @else {
-                          <small class="text-success">Allocated to Agency</small>
+                          <small class="text-success">Allocated to {{ party }}</small>
                         }
                       </strong>
                     </td>
-                    <td><strong>{{ t(s, 'Certification') }}</strong></td>
+                    @if (consultancy) {
+                      <td><strong>{{ t(s, 'Certification') }}</strong></td>
+                      <td><strong>Milestone {{ t(s, 'NcCount') }}</strong></td>
+                    } @else if (surveillance) {
+                      <td><strong>{{ t(s, 'Certification') }}<br /><br />{{ t(s, 'SurveillanceNo') }}</strong></td>
+                    } @else {
+                      <td><strong>{{ t(s, 'Certification') }}</strong></td>
+                    }
                     <td [class.table-warning]="t(s, 'UdyamStatus') === 'Duplicate'">
                       <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
                       <strong>{{ t(s, 'PUnitName') }}</strong><br />
                       {{ t(s, 'UnitAddress') }}
                     </td>
                     <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                    <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
+                    <td>
+                      <strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}
+                      @if (surveillance && t(s, 'CertificationBodyUserId') && t(s, 'AutoAllocationDate')) {
+                        <br /><br /><small><strong>Auto Alloted on:</strong><br />{{ t(s, 'AutoAllocationDate') }}</small>
+                      }
+                    </td>
                     <td>{{ t(s, 'ReasonForRejection') }}</td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+                  <tr><td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
                 }
               </tbody>
             </table>
@@ -155,14 +177,14 @@ import { ListPager } from './list-pager';
         <div class="modal-dialog">
           <div class="modal-content">
             <div class="modal-header justify-content-between">
-              <div class="modal-title" id="allotTitle"><strong>Certification Body</strong></div>
+              <div class="modal-title" id="allotTitle"><strong>{{ consultancy ? 'Consultant Organisation' : 'Certification Body' }}</strong></div>
               <button type="button" class="close btn btn-link" aria-label="Close" (click)="current.set(null)"><strong>x&nbsp;</strong></button>
             </div>
             <div class="modal-body">
               <p class="mb-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
               <div class="text-center" style="margin-bottom: 9px">
-                <select class="form-control" aria-label="Certification body" [(ngModel)]="agencyId">
-                  <option value="">--Select Certification Body--</option>
+                <select class="form-control" [attr.aria-label]="consultancy ? 'Consultant organisation' : 'Certification body'" [(ngModel)]="agencyId">
+                  <option value="">{{ consultancy ? '--Select Consultant Organisation--' : '--Select Certification Body--' }}</option>
                   @for (a of agencies(); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
                 </select>
               </div>
@@ -191,6 +213,15 @@ export class AllotPage {
   protected readonly states = STATES;
   protected readonly t = text;
   protected readonly n = num;
+  private readonly system = inject(ASSESSMENT_SYSTEM);
+  protected readonly main = this.system === 'main';
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly surveillance = this.system === 'surveillance';
+  protected readonly title = this.consultancy ? 'Allot Consultancy' : this.surveillance ? 'Allot Surveillance' : 'Allot Assessment';
+  /** Who the record is allotted to, in the status column. */
+  protected readonly party = this.consultancy ? 'CO' : 'Agency';
+  /** Handholding is for Silver and Gold only. */
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
 
   protected filter: Required<ListFilter> = { state: '', certification: '', size: '', gender: '', allotmentType: '' };
   protected readonly pager = new ClientPager();

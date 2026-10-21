@@ -13,53 +13,83 @@ namespace Zed.Portal.Features.Documents;
 /// Certification details). On the old site the certificate was a public static file
 /// (<c>/Certificates/DA/{ZedId}/Bronze.pdf</c>) and the report a public page (<c>/SA/ReportSummary/{ZedId}</c>),
 /// readable by anyone with a ZED ID (SECURITY-FINDINGS #18). Here the ZED ID comes from the sign-in cookie.
+/// <para>
+/// Surveillance certificates and reports ("{Level}Surveillance") and handholding milestone reports (<c>?milestone=n</c>)
+/// were public pages of the ZEDCS_SURVEILLANCE and ZEDCS_CONSULTANCY applications
+/// (<c>/surveillance/SA/ReportSummary/{ZedId}</c>, <c>/consultancy/SA/ReportSummary/{ZedId}?milestone=n</c>). Main
+/// serves them to the owning MSME from those databases through read-only connections (<see cref="SystemDatabases"/>);
+/// without the connection they answer 404.
+/// </para>
 /// </summary>
 [Route("api/msme/certification-documents")]
 public sealed class MsmeCertificationDocumentsController(
     ISqlExecutor db,
     IAssessmentDocuments documents,
     IWebHostEnvironment env,
-    IOptions<PortalOptions> portal) : MsmeApiController
+    IOptions<PortalOptions> portal,
+    ILogger<DocumentRenderer> log) : MsmeApiController
 {
-    private static readonly string[] SurveillanceTypes = ["BronzeSurveillance", "SilverSurveillance", "GoldSurveillance"];
-
     /// <summary>
     /// GET api/msme/certification-documents/{Bronze|Silver|Gold}/certificate: the stored certificate, or a
     /// newly drawn one when the record is certified but the file is missing (as RegenerateCertificate did).
-    /// {Level}Surveillance: the certificate the surveillance application stored (never drawn here).
+    /// {Level}Surveillance: the certificate the surveillance host stored, or drawn from ZED_SURVEILLANCE when the
+    /// surveillance record is certified and the file is missing.
     /// </summary>
     [HttpGet("{certification}/certificate")]
     public async Task<IActionResult> Certificate(string certification, CancellationToken ct)
     {
-        var storage = new DocumentStorage(env, portal);
-        var surveillance = SurveillanceTypes.FirstOrDefault(t => string.Equals(t, certification, StringComparison.OrdinalIgnoreCase));
-        if (surveillance is not null)
+        var renderer = new DocumentRenderer(env, portal, log);
+        if (DocumentLevels.SurveillanceLevel(certification) is { } surveillanceLevel)
         {
-            var level = surveillance.Replace("Surveillance", "");
-            return storage.Find(DocumentLevels.SurveillanceCertificatePath(ZedId, level)) is { } path
-                ? DocumentResults.PhysicalFile(this, path)
-                : NotFound();
+            if (renderer.Storage.Find(DocumentLevels.SurveillanceCertificatePath(ZedId, surveillanceLevel)) is { } path)
+                return DocumentResults.PhysicalFile(this, path);
+            if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Surveillance) is not { } surveillanceDb) return NotFound();
+            var surveillanceRecord = await AssessmentRecords.CertificationAsync(surveillanceDb, ZedId, surveillanceLevel, ct);
+            if (surveillanceRecord is null || !DocumentLevels.IsCertified(surveillanceLevel, surveillanceRecord.CertificationStatus)) return NotFound();
+            return await CertificationDownloads.PdfAsync(this, () => renderer.IssueSurveillanceCertificateAsync(surveillanceDb, ZedId, surveillanceLevel, ct));
         }
 
         if (DocumentLevels.Level(certification) is not { } lvl) return this.Problem400("Invalid certification.");
         var record = await AssessmentRecords.CertificationAsync(db, ZedId, lvl, ct);
-        return await CertificationDownloads.CertificateAsync(this, storage, documents, record, ZedId, lvl, ct);
+        return await CertificationDownloads.CertificateAsync(this, renderer.Storage, documents, record, ZedId, lvl, ct);
     }
 
     /// <summary>
     /// GET api/msme/certification-documents/{Bronze|Silver|Gold}/report[?record=ZEDMSME000123_D_45]: the
     /// assessment report of the MSME's certified record, or of one of its rejected records (the rejection
     /// e-mail links to it). Drawn from the current data each time, as the old page was.
+    /// {Level}Surveillance/report: the surveillance report (ZED_SURVEILLANCE), same rules.
+    /// {Silver|Gold}/report?milestone=1..3: the handholding milestone report (ZED_CONSULTANT).
     /// </summary>
     [HttpGet("{certification}/report")]
-    public async Task<IActionResult> Report(string certification, string? record, CancellationToken ct)
+    public async Task<IActionResult> Report(string certification, string? record, int? milestone, CancellationToken ct)
     {
-        if (DocumentLevels.Level(certification) is not { } level) return this.Problem400("Invalid certification.");
+        var surveillanceLevel = DocumentLevels.SurveillanceLevel(certification);
+        if ((surveillanceLevel ?? DocumentLevels.Level(certification)) is not { } level) return this.Problem400("Invalid certification.");
+        var renderer = new DocumentRenderer(env, portal, log);
+
+        if (milestone is not null)
+        {
+            if (surveillanceLevel is not null || level == "Bronze" || milestone is < 1 or > DocumentLevels.Milestones || !string.IsNullOrEmpty(record))
+                return this.Problem400("Invalid milestone.");
+            if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Consultancy) is not { } consultancyDb) return NotFound();
+            var milestoneRecord = await AssessmentRecords.CertificationAsync(consultancyDb, ZedId, level, ct);
+            return await MilestoneDownloads.ReportAsync(this, renderer, consultancyDb, milestoneRecord, ZedId, level, milestone.Value, preview: false, ct);
+        }
+
         var recordId = string.IsNullOrEmpty(record) ? ZedId : record;
         // Another MSME's record answers 404 like a missing one.
         if (!AssessmentInput.IsId(recordId) ||
             !string.Equals(AssessmentInput.BaseZedId(recordId), ZedId, StringComparison.OrdinalIgnoreCase))
             return NotFound();
+
+        if (surveillanceLevel is not null)
+        {
+            if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Surveillance) is not { } surveillanceDb) return NotFound();
+            var surveillanceRow = await AssessmentRecords.CertificationAsync(surveillanceDb, recordId, level, ct);
+            if (!CertificationDownloads.HasReport(level, surveillanceRow)) return NotFound();
+            return await CertificationDownloads.PdfAsync(this, () => renderer.RenderSurveillanceReportAsync(surveillanceDb, recordId, level, ct));
+        }
 
         var row = await AssessmentRecords.CertificationAsync(db, recordId, level, ct);
         return await CertificationDownloads.ReportAsync(this, documents, row, recordId, level, ct);
@@ -162,6 +192,64 @@ public sealed class StaffCertificateRegenerationController(
     }
 }
 
+/// <summary>
+/// Staff downloads on the surveillance and consultancy hosts, with the same roles and visibility rule as main's
+/// <see cref="StaffCertificationDocumentsController"/> (the record of the host's own database).
+/// <list type="bullet">
+/// <item>Surveillance: GET .../{Level}/certificate (the stored surveillance certificate, drawn when missing) and
+/// .../{Level}/report (the surveillance report), for certified records and rejected copies.</item>
+/// <item>Consultancy: GET .../{Silver|Gold}/report?milestone=1..3 (default: the current milestone), the handholding
+/// milestone report the milestone review page links to; also while the milestone waits for the CO's review (status 15,
+/// not stored then). Milestones have no certificate.</item>
+/// </list>
+/// </summary>
+[Route("api/staff/certification-documents/{zedId}")]
+[PortalSystems(PortalSystem.Consultancy, PortalSystem.Surveillance)]
+[StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
+public sealed class StaffSystemDocumentsController(
+    ISqlExecutor db,
+    PortalHost host,
+    IAssessmentDocuments documents,
+    IWebHostEnvironment env,
+    IOptions<PortalOptions> portal,
+    ILogger<DocumentRenderer> log) : StaffApiController
+{
+    [HttpGet("{certification}/certificate")]
+    public async Task<IActionResult> Certificate(string zedId, string certification, CancellationToken ct)
+    {
+        if (!AssessmentInput.IsId(zedId) || Level(certification) is not { } level) return this.Problem400("Invalid request.");
+        if (host.System != PortalSystem.Surveillance) return NotFound();
+        var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (record is null || !record.CanView(CurrentUser) || !DocumentLevels.IsCertified(level, record.CertificationStatus)) return NotFound();
+        var storage = new DocumentStorage(env, portal);
+        if (storage.Find(DocumentLevels.SurveillanceCertificatePath(zedId, level)) is { } path) return DocumentResults.PhysicalFile(this, path);
+        return await CertificationDownloads.PdfAsync(this, () => documents.IssueCertificateAsync(zedId, level, ct));
+    }
+
+    [HttpGet("{certification}/report")]
+    public async Task<IActionResult> Report(string zedId, string certification, int? milestone, CancellationToken ct)
+    {
+        if (!AssessmentInput.IsId(zedId) || Level(certification) is not { } level) return this.Problem400("Invalid request.");
+        if (host.System == PortalSystem.Surveillance)
+        {
+            if (milestone is not null) return this.Problem400("Invalid request.");
+            var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+            if (record is null || !record.CanView(CurrentUser)) return NotFound();
+            return await CertificationDownloads.ReportAsync(this, documents, record, zedId, level, ct);
+        }
+
+        if (level == "Bronze" || milestone is < 1 or > DocumentLevels.Milestones) return this.Problem400("Invalid milestone.");
+        var unit = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (unit is null || !unit.CanView(CurrentUser)) return NotFound();
+        return await MilestoneDownloads.ReportAsync(this, new DocumentRenderer(env, portal, log), db, unit, zedId, level,
+            milestone ?? unit.Nc, preview: true, ct);
+    }
+
+    /// <summary>"Gold", or "GoldSurveillance" as main names it.</summary>
+    private static string? Level(string certification) =>
+        DocumentLevels.Level(certification) ?? DocumentLevels.SurveillanceLevel(certification);
+}
+
 internal static class CertificationDownloads
 {
     public static async Task<IActionResult> CertificateAsync(ControllerBase c, DocumentStorage storage, IAssessmentDocuments documents,
@@ -169,31 +257,61 @@ internal static class CertificationDownloads
     {
         if (record is null || !DocumentLevels.IsCertified(level, record.CertificationStatus)) return c.NotFound();
         if (storage.Find(DocumentLevels.CertificatePath(zedId, level)) is { } path) return DocumentResults.PhysicalFile(c, path);
+        return await PdfAsync(c, () => documents.IssueCertificateAsync(zedId, level, ct));
+    }
+
+    /// <summary>A certified record, or a rejected one (the rejection e-mail links to its report).</summary>
+    public static bool HasReport(string level, CertificationRecord? record) =>
+        record is not null &&
+        (DocumentLevels.IsCertified(level, record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected);
+
+    public static async Task<IActionResult> ReportAsync(ControllerBase c, IAssessmentDocuments documents,
+        CertificationRecord? record, string zedId, string level, CancellationToken ct)
+    {
+        if (!HasReport(level, record)) return c.NotFound();
+        return await PdfAsync(c, () => documents.RenderReportAsync(zedId, level, ct));
+    }
+
+    /// <summary>Sends a generated document under its legacy file name; 404 when it cannot be produced.</summary>
+    public static async Task<IActionResult> PdfAsync(ControllerBase c, Func<Task<DocumentFile>> generate)
+    {
         try
         {
-            var file = await documents.IssueCertificateAsync(zedId, level, ct);
-            return DocumentResults.Pdf(c, file.Content, level + ".pdf");
+            var file = await generate();
+            return DocumentResults.Pdf(c, file.Content, Path.GetFileName(file.RelativePath));
         }
         catch (DocumentNotAvailableException)
         {
             return c.NotFound();
         }
     }
+}
 
-    public static async Task<IActionResult> ReportAsync(ControllerBase c, IAssessmentDocuments documents,
-        CertificationRecord? record, string zedId, string level, CancellationToken ct)
+/// <summary>
+/// Handholding milestone reports (ZED_CONSULTANT). MsmeCertifications keeps one row per unit and level whose NcCount is
+/// the current milestone, and SP_REPORT_GET_DETAILS only answers for that milestone (C.NcCount = @NcCount); earlier
+/// milestones exist only as the files stored when they were completed (GenerateSaRepory), so they are served from storage.
+/// The current milestone is drawn from the data once the CO completed it (16), the MSME accepted it (100) or it was
+/// rejected (99), and stored under its legacy name; staff may also preview it while it waits for review (15).
+/// </summary>
+internal static class MilestoneDownloads
+{
+    /// <summary>MsmeCertifications.CertificationStatus after the consultant's final submit (CO review pending).</summary>
+    private const int Submitted = 15;
+
+    public static async Task<IActionResult> ReportAsync(ControllerBase c, DocumentRenderer renderer, ISqlExecutor consultancyDb,
+        CertificationRecord? record, string zedId, string level, int milestone, bool preview, CancellationToken ct)
     {
-        if (record is null ||
-            !(DocumentLevels.IsCertified(level, record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected))
-            return c.NotFound();
-        try
+        if (record is null || milestone < 1 || milestone > record.Nc) return c.NotFound();
+        if (milestone < record.Nc)
         {
-            var file = await documents.RenderReportAsync(zedId, level, ct);
-            return DocumentResults.Pdf(c, file.Content, level + "_Report.pdf");
+            return renderer.Storage.Find(DocumentLevels.MilestoneReportPath(zedId, level, milestone, rejected: false)) is { } stored
+                ? DocumentResults.PhysicalFile(c, stored)
+                : c.NotFound();
         }
-        catch (DocumentNotAvailableException)
-        {
-            return c.NotFound();
-        }
+
+        var final = DocumentLevels.IsMilestoneCompleted(record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected;
+        if (!final && !(preview && record.CertificationStatus == Submitted)) return c.NotFound();
+        return await CertificationDownloads.PdfAsync(c, () => renderer.RenderMilestoneReportAsync(consultancyDb, zedId, level, milestone, save: final, ct));
     }
 }

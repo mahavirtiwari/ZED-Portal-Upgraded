@@ -63,7 +63,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
       </div>
       <zed-pager-bar [pager]="pager" />
     </div>
-    @if (loading()) { <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div> }
+    @if (loading()) { <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div> }
   `,
   styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })

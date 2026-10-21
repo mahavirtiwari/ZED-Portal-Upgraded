@@ -16,6 +16,13 @@ namespace Zed.Portal.Features.Staff.Assessment;
 /// The old assessor and NC mails contained the assessor's and the MSME's portal passwords in plain
 /// text (the procedure selects Users.Password); these do not. Every value is HTML-encoded. A failed
 /// mail is logged and never fails the request: the workflow step is already saved.
+/// <para>
+/// Per system (the legacy SendMail of each portal): Surveillance uses the same bodies with the surveillance subjects
+/// ("Allocation of MSME for ZED Surveillance Assessment", "Allocation of Surveillance Assessment", "Non-conformance(s)
+/// raised for Surveillance Assessment") and copies every mail to the cc address; its NC mail has no MSME sign-in (the
+/// assessor answers the NCs in the Surveillance app). Consultancy sends only the allotment to the Consultant
+/// Organisation: "Allocation of MSME for Handholding Support (Milestone n)" (<see cref="ConsultancyAllocationEmail"/>), copied.
+/// </para>
 /// </summary>
 public sealed class DesktopAssessmentEmails(
     ISqlExecutor db,
@@ -23,6 +30,7 @@ public sealed class DesktopAssessmentEmails(
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
+    PortalHost host,
     ILogger<DesktopAssessmentEmails> log)
 {
     private const string Scheme = "“MSME Sustainable (ZED) Certification” Scheme";
@@ -47,15 +55,24 @@ public sealed class DesktopAssessmentEmails(
             }
 
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var surveillance = host.System == PortalSystem.Surveillance;
+            if (host.System == PortalSystem.Consultancy)
+            {
+                if (kind == Kind.AllottedToAgency) await ConsultancyAllottedAsync(row, zedId, cc, ct);
+                else log.LogWarning("{Kind} mail is not used on the consultancy portal ({ZedId})", kind, zedId);
+                return;
+            }
             switch (kind)
             {
                 case Kind.AllottedToAgency:
                     await SendAsync(row.Text("AgencyEmailId"),
-                        $"Allocation of MSME for Assessment under {Scheme} - {zedId}", AgencyAllotted(row, zedId, certification), null, ct);
+                        surveillance ? $"Allocation of MSME for ZED Surveillance Assessment under {Scheme} - {zedId}" : $"Allocation of MSME for Assessment under {Scheme} - {zedId}",
+                        AgencyAllotted(row, zedId, certification), surveillance ? cc : null, ct);
                     break;
                 case Kind.AllottedToAssessor:
                     await SendAsync(row.Text("AssessorEmailId"),
-                        $"Allocation of Desktop Verification under {Scheme} - {zedId}", AssessorAllotted(row, zedId), cc, ct);
+                        surveillance ? $"Allocation of Surveillance Assessment under {Scheme} - {zedId}" : $"Allocation of Desktop Verification under {Scheme} - {zedId}",
+                        AssessorAllotted(row, zedId), cc, ct);
                     break;
                 case Kind.RejectedByAgency:
                     await SendAsync(ZedTeamInbox,
@@ -68,7 +85,8 @@ public sealed class DesktopAssessmentEmails(
                 case Kind.NcRaised:
                     var level = row.Text("NcCount") switch { "1" => "First ", "2" => "Second ", "3" => "Third ", "4" => "Fourth ", "5" => "Fifth ", _ => "" };
                     await SendAsync(row.Text("EmailId"),
-                        $"{level}Non-conformance(s) raised under {Scheme} - {zedId}", NcRaised(row, zedId, certification), null, ct);
+                        surveillance ? $"{level}Non-conformance(s) raised for Surveillance Assessment under {Scheme} - {zedId}" : $"{level}Non-conformance(s) raised under {Scheme} - {zedId}",
+                        NcRaised(row, zedId, certification, surveillance), surveillance ? cc : null, ct);
                     break;
             }
         }
@@ -88,6 +106,25 @@ public sealed class DesktopAssessmentEmails(
             [nameof(EmailLayout.ChildContent)] = content,
         });
         await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
+    }
+
+    /// <summary>Consultancy: the Consultant Organisation is told of the milestone allotted to it.</summary>
+    private async Task ConsultancyAllottedAsync(IDictionary<string, object?> row, string zedId, IReadOnlyList<string>? cc, CancellationToken ct)
+    {
+        var to = row.Text("AgencyEmailId");
+        if (string.IsNullOrWhiteSpace(to)) return;
+        var milestone = row.Text("NcCount");
+        var html = await templates.RenderAsync<ConsultancyAllocationEmail>(new Dictionary<string, object?>
+        {
+            [nameof(ConsultancyAllocationEmail.ZedId)] = zedId,
+            [nameof(ConsultancyAllocationEmail.Milestone)] = milestone,
+            [nameof(ConsultancyAllocationEmail.UnitName)] = row.Text("EnterpriseName"),
+            [nameof(ConsultancyAllocationEmail.UnitAddress)] = row.Text("Address"),
+            [nameof(ConsultancyAllocationEmail.LoginUrl)] = StaffLogin,
+            [nameof(ConsultancyAllocationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+        });
+        await email.SendAsync(new EmailMessage(to.Trim(),
+            $"Allocation of MSME for Handholding Support (Milestone {milestone}) under {Scheme} - {zedId}", html, EmailProfiles.Allocation, cc), ct);
     }
 
     private string StaffLogin => portal.Value.PublicBaseUrl.TrimEnd('/') + "/login";
@@ -160,7 +197,7 @@ public sealed class DesktopAssessmentEmails(
         return sb.ToString();
     }
 
-    private string NcRaised(IDictionary<string, object?> row, string zedId, string certification)
+    private string NcRaised(IDictionary<string, object?> row, string zedId, string certification, bool surveillance)
     {
         var sb = new StringBuilder();
         P(sb, "Dear Madam/Sir,");
@@ -180,10 +217,19 @@ public sealed class DesktopAssessmentEmails(
                   $"Non-conformance(s) in these 5 attempts or within {days} days, your application for the applied Certification shall stand as Rejected " +
                   "and no Certificate will be awarded.");
         }
-        P(sb, "Your login details are as follows:");
-        Table(sb, ("Enterprise Name", row.Text("EnterpriseName")), ("ZED ID", zedId));
-        P(sb, "Sign in with your ZED ID and your existing password. (Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)");
-        Button(sb, MsmeLogin, "Go to Login");
+        if (surveillance)
+        {
+            // No MSME accounts on the surveillance portal: the assessor answers the NCs with the unit in the Surveillance app.
+            Table(sb, ("Enterprise Name", row.Text("EnterpriseName")), ("ZED ID", zedId));
+            P(sb, "(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)");
+        }
+        else
+        {
+            P(sb, "Your login details are as follows:");
+            Table(sb, ("Enterprise Name", row.Text("EnterpriseName")), ("ZED ID", zedId));
+            P(sb, "Sign in with your ZED ID and your existing password. (Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)");
+            Button(sb, MsmeLogin, "Go to Login");
+        }
         P(sb, "In case of any query, please mail us at: zed.support@qcin.org.");
         Closing(sb);
         return sb.ToString();

@@ -101,7 +101,7 @@ function emptyForm(type: string): IncentiveForm {
                       @for (n of [1, 2]; track n) {
                         <div class="mb-2">
                           @if (n === 1 ? item.hasDocument1 : item.hasDocument2) {
-                            <a [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document ' + n"><img src="/Images/svgicons/pdf-icon.svg" alt="" /></a>
+                            <a [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document ' + n"><img src="Images/svgicons/pdf-icon.svg" alt="" /></a>
                           }
                           <label class="btn btn-md btn-primary mt-1 mb-0">
                             Doc {{ n }}

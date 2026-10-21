@@ -4,7 +4,7 @@
       <div class="col-sm-10"><h3 class="registration-title">Assessment Details</h3></div>
       <div class="col-sm-2">
         <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
-          <img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+          <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
         </button>
       </div>
     </div>
@@ -53,6 +53,11 @@
             <li class="nav-item" role="presentation">
               <button class="nav-link" [class.active]="tab() === 13" type="button" role="tab" [attr.aria-selected]="tab() === 13" (click)="tab.set(13)">Attendance</button>
             </li>
+            @if (d.surveillance?.hasOriginal) {
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === 14" type="button" role="tab" [attr.aria-selected]="tab() === 14" (click)="openOriginal()">Original Certification</button>
+              </li>
+            }
           </ul>
 
           <div class="tab-content">
@@ -82,6 +87,9 @@
                           }
                         }
                         <tr><th>Site Assessment Completed On</th><td>{{ t(msme(), 'CompletedOn') }}</td></tr>
+                        @if (d.surveillance?.meetingLink; as link) {
+                          <tr><th>Meeting Link</th><td><a class="btn btn-primary btn-sm" [href]="link" target="_blank" rel="noopener noreferrer">Click here to Join</a></td></tr>
+                        }
                         @if (!isQc()) {
                           <tr><th>Agency Name</th><td>{{ t(msme(), 'CertificationBodyUserId') }} - {{ t(msme(), 'AgencyName') }}</td></tr>
                           <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
@@ -166,8 +174,64 @@
                       <div class="panel-body"><p class="sub-heading">{{ $index + 1 }}. {{ t(p, 'Name') }}</p><small>{{ t(p, 'Designation') }}</small></div>
                     </div>
                   }
+                  @if (m.id === 7 && d.surveillance?.recordingLinks?.length) {
+                    <p class="sub-heading">Meeting Recording Link</p>
+                    @for (l of d.surveillance!.recordingLinks; track l.url) {
+                      <p><a [href]="l.url" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">View Recording {{ $index + 1 }}</a> <small>{{ l.createdDate }}</small></p>
+                    }
+                  }
                 </div>
               }
+            }
+
+            <!-- ================================================= surveillance: original certification on main -->
+            @if (tab() === 14) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @if (originalError()) { <div class="alert alert-warning" role="alert">{{ originalError() }}</div> }
+                @if (original(); as o) {
+                  <table class="table table-zed bg-white">
+                    <tbody>
+                      <tr><th style="width: 40%">ZEDID</th><td>{{ o.zedId }}</td></tr>
+                      <tr><th>Certification</th><td>{{ o.certification }}</td></tr>
+                      <tr><th>Mode of Assessment</th><td>{{ t(o.msme, 'ModeOfAssessment') }}</td></tr>
+                      <tr><th>Site Assessment Date</th><td>{{ t(o.msme, 'AssessmentDate') }}</td></tr>
+                      <tr><th>Site Assessment Completed On</th><td>{{ t(o.msme, 'CompletedOn') }}</td></tr>
+                      <tr><th>Agency Name</th><td>{{ t(o.msme, 'CertificationBodyUserId') }} - {{ t(o.msme, 'AgencyName') }}</td></tr>
+                      <tr><th>Site Assessor Name</th><td>{{ t(o.msme, 'SiteAssessorId') }} - {{ t(o.msme, 'SiteAssessorName') }}</td></tr>
+                      @if (t(o.msme, 'CoAssessorId')) { <tr><th>Co Assessor Name</th><td>{{ t(o.msme, 'CoAssessorId') }} - {{ t(o.msme, 'CoAssessorName') }}</td></tr> }
+                      @if (t(o.msme, 'SaAssessorRemarks')) { <tr><th>Assessor Final Remarks</th><td>{{ t(o.msme, 'SaAssessorRemarks') }}</td></tr> }
+                    </tbody>
+                  </table>
+                  <p class="sub-heading">PRODUCTS</p>
+                  <ul>@for (p of o.products; track $index) { <li>{{ t(p, 'ProductName') }} (Exported: {{ t(p, 'Exported') }})</li> }</ul>
+                  <p class="sub-heading">PARAMETERS</p>
+                  @for (s of o.sections; track $index) {
+                    <div class="panel panel-default panel-white m-0 mb-3">
+                      <div class="panel-body">
+                        <p class="sub-heading">{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</p>
+                        @for (r of originalRequirementsOf(s); track $index) {
+                          <p class="mb-1">Level {{ t(r, 'RequirementCode') }}: {{ t(r, 'SaConformance') || t(r, 'Conformance') }} — {{ t(r, 'SaAssessorRemarks') || t(r, 'AssessorRemarks') }}</p>
+                          @for (pp of requirementPhotos(r); track $index) {
+                            @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? 'Evidence'" width="80" /></button> }
+                          }
+                        }
+                      </div>
+                    </div>
+                  }
+                  <p class="sub-heading">SITE TOUR</p>
+                  @for (pp of o.siteTour; track $index) {
+                    @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? 'Site Tour'" width="120" /></button> }
+                  }
+                  @for (m of [o.openMeeting, o.closeMeeting]; track $index) {
+                    @if (m) {
+                      <p class="sub-heading mt-3">{{ $index === 0 ? 'OPEN MEETING' : 'CLOSE MEETING' }}</p>
+                      <p>{{ m.comments }}</p>
+                    }
+                  }
+                } @else if (!originalError()) {
+                  <p>Loading…</p>
+                }
+              </div>
             }
 
             <!-- ================================================= basic information -->
@@ -277,7 +341,7 @@
                                     <button type="button" class="btn btn-link p-0" (click)="openImage(p.photoUrl)"><img [src]="p.photoUrl" height="50" alt="Product" /></button><small>Product Photo</small><br />
                                   }
                                   @if (p.descriptionKind === 'pdf') {
-                                    <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><img src="/Images/pdf-icon-blue.png" height="25" alt="Product description (PDF)" /></a><small>Product Description Photo</small>
+                                    <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Product description (PDF)" /></a><small>Product Description Photo</small>
                                   } @else if (p.descriptionKind === 'image') {
                                     <button type="button" class="btn btn-link p-0" (click)="openImage(p.descriptionUrl)"><img [src]="p.descriptionUrl" height="60" alt="Product description" /></button><small>Product Description Photo</small>
                                   }
@@ -399,7 +463,7 @@
                     <div class="panel-body">
                       {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
                       @if (t(s, 'iButton')) {
-                        <span class="z-tooltip" style="float: right"><img src="/Images/svgicons/info.svg" alt="Information" /><span class="tooltiptext left">{{ t(s, 'iButton') }}</span></span>
+                        <span class="z-tooltip" style="float: right"><img src="Images/svgicons/info.svg" alt="Information" /><span class="tooltiptext left">{{ t(s, 'iButton') }}</span></span>
                       }
                     </div>
                   </div>
@@ -572,7 +636,7 @@
                                       </td>
                                       <td class="text-center" style="width: 180px">
                                         @if (o.descriptionKind === 'pdf') {
-                                          <a [href]="o.descriptionUrl" target="_blank" rel="noopener"><img src="/Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                          <a [href]="o.descriptionUrl" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
                                         } @else if (o.descriptionKind === 'image') {
                                           <button type="button" class="btn btn-link p-0" (click)="openImage(o.descriptionUrl)"><img [src]="o.descriptionUrl" height="60" alt="Product description" /></button>
                                         }
@@ -624,7 +688,7 @@
                                     <tr>
                                       <td>
                                         @if (t(e, 'SyncedDate')) { <span>NC{{ t(e, 'NcCount') }}</span> }
-                                        @if (t(e, 'FileUrl')) { <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="/Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a> }
+                                        @if (t(e, 'FileUrl')) { <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a> }
                                       </td>
                                     </tr>
                                   }
@@ -701,7 +765,7 @@
         <div class="modal-header">
           <div class="modal-title w-100 d-flex justify-content-between align-items-center">
             <h3 class="registration-title" id="saPreviewTitle">Preview</h3>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="preview.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="preview.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
           </div>
         </div>
         <div class="modal-body text-center"><img [src]="src" alt="Preview" style="max-width: 100%" /></div>

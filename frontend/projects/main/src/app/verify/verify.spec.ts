@@ -87,7 +87,7 @@ describe('VerifyPage', () => {
 
 describe('VERIFY_ROUTES', () => {
   const seg = (...p: string[]) => p.map((s) => new UrlSegment(s, {}));
-  const [verify, report] = VERIFY_ROUTES;
+  const [verify, report, surveillance, consultancy] = VERIFY_ROUTES;
 
   it('matches the QR code addresses in any case', () => {
     const m = verify.matcher!(seg('Verify', 'BC', 'P12abcd'), null!, verify)!;
@@ -103,6 +103,16 @@ describe('VERIFY_ROUTES', () => {
     expect(m.posParams!['id'].path).toBe('ZEDMSME000001');
     expect(report.matcher!(seg('sa', 'summary1', 'ZEDMSME000001'), null!, report)).toBeNull();
   });
+
+  it('matches the old surveillance and consultancy report addresses', () => {
+    const m = surveillance.matcher!(seg('surveillance', 'SA', 'ReportSummary', 'ZEDMSME000001'), null!, surveillance)!;
+    expect(m.posParams!['id'].path).toBe('ZEDMSME000001');
+    expect(surveillance.data).toEqual({ system: 'surveillance' });
+    expect(consultancy.matcher!(seg('Consultancy', 'sa', 'reportsummary', 'ZEDMSME000001'), null!, consultancy)).toBeTruthy();
+    expect(consultancy.data).toEqual({ system: 'consultancy' });
+    expect(consultancy.matcher!(seg('surveillance', 'SA', 'ReportSummary', 'ZEDMSME000001'), null!, consultancy)).toBeNull();
+    expect(surveillance.matcher!(seg('SA', 'ReportSummary', 'ZEDMSME000001'), null!, surveillance)).toBeNull();
+  });
 });
 
 describe('LegacyReportRedirect', () => {
@@ -110,7 +120,7 @@ describe('LegacyReportRedirect', () => {
   let user: { userId: string; roleId: number } | null;
   let navigated: string[];
 
-  async function run(id: string, certification: string) {
+  async function run(id: string, certification: string, system?: 'surveillance' | 'consultancy', milestone?: string) {
     opened = [];
     navigated = [];
     await TestBed.configureTestingModule({
@@ -126,6 +136,8 @@ describe('LegacyReportRedirect', () => {
     const fixture = TestBed.createComponent(LegacyReportRedirect);
     fixture.componentRef.setInput('id', id);
     fixture.componentRef.setInput('certification', certification);
+    if (system) fixture.componentRef.setInput('system', system);
+    if (milestone) fixture.componentRef.setInput('milestone', milestone);
     await settle(fixture);
     return fixture.nativeElement as HTMLElement;
   }
@@ -148,6 +160,35 @@ describe('LegacyReportRedirect', () => {
     await run('ZEDMSME000001', 'Gold');
     expect(opened).toEqual([]);
     expect(navigated).toEqual(['/msme/login']);
+  });
+
+  it('opens the surveillance report drawn by this portal', async () => {
+    user = { userId: 'ZEDMSME000001', roleId: 5 };
+    await run('ZEDMSME000001', 'gold', 'surveillance');
+    expect(opened).toEqual(['/api/msme/certification-documents/GoldSurveillance/report']);
+    TestBed.resetTestingModule();
+    user = { userId: 'ADMIN1', roleId: 7 };
+    await run('ZEDMSME000001', 'Gold', 'surveillance');
+    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001/Gold/report']);
+  });
+
+  it('opens the handholding milestone report and checks the milestone', async () => {
+    user = { userId: 'ZEDMSME000001', roleId: 5 };
+    await run('ZEDMSME000001', 'Silver', 'consultancy', '2');
+    expect(opened).toEqual(['/api/msme/certification-documents/Silver/report?milestone=2']);
+    TestBed.resetTestingModule();
+    user = { userId: 'AGENCY1', roleId: 2 };
+    await run('ZEDMSME000001', 'Gold', 'consultancy', '3');
+    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001/Gold/report?milestone=3']);
+    TestBed.resetTestingModule();
+    user = { userId: 'ZEDMSME000001', roleId: 5 };
+    const el = await run('ZEDMSME000001', 'Silver', 'consultancy', '4');
+    expect(opened).toEqual([]);
+    expect(el.textContent).toContain('This report link is not valid.');
+    TestBed.resetTestingModule();
+    const other = await run('ZEDMSME000002', 'Silver', 'consultancy', '1');
+    expect(opened).toEqual([]);
+    expect(other.textContent).toContain('This report link is not valid.');
   });
 
   it('refuses an invalid link', async () => {

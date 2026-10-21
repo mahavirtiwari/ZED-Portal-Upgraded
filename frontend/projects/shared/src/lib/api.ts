@@ -1,13 +1,14 @@
-import { HttpErrorResponse, provideHttpClient, withXsrfConfiguration } from '@angular/common/http';
+import { HttpErrorResponse, HttpInterceptorFn, provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { EnvironmentProviders } from '@angular/core';
 
 /**
  * HttpClient set up for the ZED APIs: same-origin cookies, and the anti-forgery token the
  * API issues in the XSRF-TOKEN cookie is echoed back in the X-XSRF-TOKEN header.
  */
-export function provideZedHttp(): EnvironmentProviders {
+export function provideZedHttp(interceptors: HttpInterceptorFn[] = []): EnvironmentProviders {
   return provideHttpClient(
     withXsrfConfiguration({ cookieName: 'XSRF-TOKEN', headerName: 'X-XSRF-TOKEN' }),
+    withInterceptors(interceptors),
   );
 }
 

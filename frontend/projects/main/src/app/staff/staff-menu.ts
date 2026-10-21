@@ -1,3 +1,5 @@
+import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
+
 /** Users.RoleId values of the staff roles (legacy UserRoleEnum). */
 export const StaffRole = {
   Admin: 1,
@@ -31,10 +33,10 @@ export interface StaffMenuItem {
 const R = StaffRole;
 
 /**
- * Staff menu per role, as in the role branches of Views/Shared/_Layout.cshtml. Screens are moved from
+ * Main's staff menu per role, as in the role branches of Views/Shared/_Layout.cshtml. Screens are moved from
  * `legacyPath` to `route` as they are migrated (see docs/MIGRATION-PLAN.md, phase 4).
  */
-export const STAFF_MENU: StaffMenuItem[] = [
+export const MAIN_MENU: StaffMenuItem[] = [
   // Dashboards and reports
   { label: 'Dashboard', legacyPath: '/Dashboard/Index', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback, R.QC] },
   { label: 'Failed Transactions', legacyPath: '/Dashboard/FailedTransactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
@@ -84,11 +86,114 @@ export const STAFF_MENU: StaffMenuItem[] = [
   { label: 'Incentives', legacyPath: '/Incentive/Index', route: '/staff/incentives', roles: [R.Admin] },
 ];
 
+/**
+ * Consultancy (handholding) menu: ZEDCS_CONSULTANCY Views/Shared/_Layout.cshtml and the role table of
+ * docs/systems/CONSULTANCY-ANALYSIS.md 1.1. Agencies are Consultant Organisations, assessors Consultants/Experts.
+ */
+export const CONSULTANCY_MENU: StaffMenuItem[] = [
+  { label: 'Dashboard', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback] },
+  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
+  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry, R.MasterAdmin] },
+  { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.Ministry] },
+
+  // Admin: masters
+  { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin] },
+  { label: 'My Documents', route: '/staff/masters/documents', roles: [R.Admin] },
+  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin] },
+  { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
+  { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
+
+  // MasterAdmin: allotment and consultancy monitoring
+  { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
+  { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin] },
+  { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin] },
+  { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
+  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
+  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },
+  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.MasterAdmin] },
+
+  // Consultant Organisation (Agency)
+  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.Agency], subRoles: ['SiteVerification'] },
+  { label: 'Allot Consultancy', route: '/staff/site-assessment/co-allotment', roles: [R.Agency], subRoles: ['SiteVerification'] },
+  { label: 'Consultancy Monitoring', route: '/staff/monitoring', roles: [R.Agency], subRoles: ['SiteVerification'] },
+  { label: 'Consultants/Experts', route: '/staff/users/my-assessors', roles: [R.Agency] },
+  { label: 'Reports', route: '/staff/reports', roles: [R.Agency] },
+  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.Agency], subRoles: ['FinancialVerification'] },
+
+  // Consultant / expert (DesktopAssessor)
+  { label: 'Milestone 1', route: '/staff/site-assessment/milestones/1', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Milestone 2', route: '/staff/site-assessment/milestones/2', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Milestone 3', route: '/staff/site-assessment/milestones/3', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.DesktopAssessor], subRoles: ['FinancialVerification'] },
+
+  // State coordinator: TU reimbursements
+  { label: 'New Transactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
+  { label: 'Approved Transactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
+  { label: 'Reports', route: '/staff/reports', roles: [R.StateCoordinator] },
+];
+
+/**
+ * Surveillance menu: ZEDCS_SURVEILLANCE Views/Shared/_Layout.cshtml and docs/systems/SURVEILLANCE-ANALYSIS.md 1.1.
+ * Not ported: NEFT and Financial Assistance (dead there), the MSME menu, API Incentives (data in main).
+ */
+export const SURVEILLANCE_MENU: StaffMenuItem[] = [
+  { label: 'Dashboard', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback] },
+  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
+  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.MasterAdmin] },
+  { label: 'Financial Support', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
+  { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
+
+  { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
+
+  // MasterAdmin
+  { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
+  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin] },
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin] },
+  { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
+  { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
+  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },
+  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin] },
+
+  // Agency
+  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
+  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.Agency], subRoles: ['DesktopVerification'] },
+  { label: 'Allot Surveillance', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'] },
+  { label: 'Allot Surveillance (Site)', route: '/staff/sa-allotment', roles: [R.Agency], subRoles: ['SiteVerification'] },
+  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
+  { label: 'Reports', route: '/staff/reports', roles: [R.Agency] },
+
+  // Assessor
+  { label: 'Surveillance Assessments', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
+  { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
+  { label: 'Non-Conformances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
+  { label: 'Surveillance Assessments (Site)', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
+  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
+];
+
+export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
+
+/** The menu of this build. */
+export const STAFF_MENU: StaffMenuItem[] = MENUS[PORTAL_SYSTEM];
+
 /** Roles whose legacy home page was Dashboard/Index; the others keep the card home. */
 export const DASHBOARD_ROLE_IDS: number[] = [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback, R.QC];
 
-export function menuFor(roleId: number, subRoles: readonly string[]): StaffMenuItem[] {
-  return STAFF_MENU.filter(
+/** Where the old login sent a role on each system (UserController.Login), when not to the dashboard. */
+export const HOME_ROUTES: Record<PortalSystem, Partial<Record<number, string>>> = {
+  main: {},
+  consultancy: { [R.Admin]: '/staff/masters/parameters/Bronze', [R.StateCoordinator]: '/staff/neft/new' },
+  surveillance: { [R.Admin]: '/staff/fees' },
+};
+
+/** The landing page of a role after sign-in, or null for the card home. */
+export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM): string | null {
+  return HOME_ROUTES[system][roleId] ?? (DASHBOARD_ROLE_IDS.includes(roleId) ? '/staff/dashboard' : null);
+}
+
+export function menuFor(roleId: number, subRoles: readonly string[], system: PortalSystem = PORTAL_SYSTEM): StaffMenuItem[] {
+  return MENUS[system].filter(
     (i) =>
       i.roles.includes(roleId) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&

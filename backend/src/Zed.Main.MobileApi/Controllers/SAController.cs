@@ -3,6 +3,7 @@ using System.Data.Common;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models.Assessor;
@@ -19,13 +20,22 @@ namespace Zed.Main.MobileApi.Controllers;
 /// the certification used in upload paths must be a known one, every upload path goes through
 /// <see cref="MobileStorage"/>, and request bodies are no longer written to App_Data/Json.
 /// </para>
+/// <para>
+/// Also served by the Surveillance deployment (old SurveillanceServices SAController, site assessment of
+/// Silver/Gold surveillance against ZED_SURVEILLANCE). The procedures and parameters are the same there; the
+/// login procedure answers IsSurveillance = 1 and the unit's MinimumParameters, and the only code difference is
+/// the file name of open and closing meeting photos (see <see cref="MeetingPhotoName"/>). The old surveillance
+/// SA/SaveCapturedPhoto was called by the web page Remote/Index only and is served by the portal instead.
+/// </para>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 public sealed class SAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
     LoginThrottle throttle,
     MobileStorage storage,
+    PortalHost portal,
     ILogger<SAController> log) : LegacyMobileController
 {
     internal const string UpdateAppMessage = "Download new app from store.";
@@ -698,11 +708,19 @@ public sealed class SAController(
         {
             if (string.IsNullOrEmpty(p.photo)) continue;
             var folder = storage.Folder("SaPhotos", request.zedId, request.certificationType);
-            await storage.SaveBase64Async(p.photo, folder, MobileStorage.FileName(p.name + "_" + p.photoId, ".jpg"), ct);
+            await storage.SaveBase64Async(p.photo, folder, MobileStorage.FileName(MeetingPhotoName(p), ".jpg"), ct);
             AddPhoto(photos, p.photoId, p.name, p.timeStamp, p.latitude, p.longitude);
         }
         return photos;
     }
+
+    /// <summary>
+    /// Main: {name}_{photoId}.jpg (its SP_SA_APP_INSERT_OPEN_MEETING records PhotoFileName = Name_PhotoId).
+    /// Surveillance: {name}.jpg, as the old SurveillanceServices saved them and its procedure has no PhotoFileName,
+    /// so the review pages find the photo by its name.
+    /// </summary>
+    private string MeetingPhotoName(PhotoInformation p) =>
+        portal.System == PortalSystem.Surveillance ? p.name ?? "" : p.name + "_" + p.photoId;
 
     private Task<ServiceResponse> SaveMeetingAsync(SubmitAssessmentRequest request, DataTable? participants, DataTable? photos,
         string photoType, string? comments, CancellationToken ct)

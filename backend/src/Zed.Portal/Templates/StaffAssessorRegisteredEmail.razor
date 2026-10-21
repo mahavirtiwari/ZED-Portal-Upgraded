@@ -1,8 +1,12 @@
-@* Port of _AssessorRegisterTemplate.cshtml (welcome mail of a new assessor, sent once). *@
+@* Port of _AssessorRegisterTemplate.cshtml (welcome mail of a new assessor, or on Consultancy of a new Consultant/Expert; sent once). *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
-    @if (IsBronzeAssessor)
+    @if (Consultancy)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been authorized as a Consultant/Expert under the <b>"MSME Sustainable (ZED) Certification"</b> Scheme.</p>
+    }
+    else if (IsBronzeAssessor)
     {
         <p style="font-size: 13px; margin-bottom: 0;">You have been authorized for conducting Bronze Assessment under the <b>"MSME Sustainable (ZED) Certification"</b> Scheme.</p>
     }
@@ -22,12 +26,12 @@
                 <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Password</td>
             </tr>
             <tr>
-                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Agency Name</td>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">@(Consultancy ? "Consultant Organisation" : "Agency Name")</td>
                 <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyName</td>
             </tr>
         </tbody>
     </table>
-    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px; color: #999;">(Please use this Assessor ID in all your future communication regarding this Scheme)</span>
+    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px; color: #999;">(Please use this @(Consultancy ? "Consultant" : "Assessor") ID in all your future communication regarding this Scheme)</span>
     <p style="font-size: 13px; margin-bottom: 0;">Please change this password after your first login (Change Password in the menu under your name).</p>
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
@@ -42,5 +46,7 @@
     [Parameter] public string? AgencyName { get; set; }
     [Parameter] public bool IsBronzeAssessor { get; set; }
     [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    /// <summary>Consultancy (handholding) wording.</summary>
+    [Parameter] public bool Consultancy { get; set; }
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 }

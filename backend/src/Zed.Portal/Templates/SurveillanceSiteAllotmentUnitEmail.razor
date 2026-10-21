@@ -1,0 +1,41 @@
+@* Port of the surveillance Views/Shared/_SaAllotUnitToOnsiteAssessmentTemplate.cshtml: tells the unit the date of its
+   Silver/Gold surveillance assessment, the agency and the meeting link. Values are HTML-encoded by Razor; the link
+   is passed only when it is an http/https address. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The Date of Surveillance assessment is finalized. The details of the Agency allocated to your Unit are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Registered Assessment Agency</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Agency SPOC Name</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@SpocName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Agency SPOC Email ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyEmail</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Agency SPOC Mobile No</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyMobileNo</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Surveillance Assessment Date</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AssessmentDate</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Mode of Assessment</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">Remote Assessment</td></tr>
+            @if (!string.IsNullOrEmpty(MeetingLink))
+            {
+                <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Meeting link</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;"><a href="@MeetingLink" target="_blank">Click Here to Join</a></td></tr>
+            }
+        </tbody>
+    </table>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">You will soon be contacted by the Assessor to take this forward.</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter] public string? AgencyName { get; set; }
+    [Parameter] public string? SpocName { get; set; }
+    [Parameter] public string? AgencyEmail { get; set; }
+    [Parameter] public string? AgencyMobileNo { get; set; }
+    [Parameter] public string? AssessmentDate { get; set; }
+    /// <summary>Checked http/https address, or null.</summary>
+    [Parameter] public string? MeetingLink { get; set; }
+    /// <summary>MSME sign-in page (on main).</summary>
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

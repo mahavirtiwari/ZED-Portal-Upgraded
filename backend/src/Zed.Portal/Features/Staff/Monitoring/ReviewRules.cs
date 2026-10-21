@@ -32,6 +32,9 @@ public sealed record ReviewActions(
 /// and OFI comments, final submit, send back. At status 17 (NcCount 6): send back and reject. The master
 /// admin: send back at status 17 when the rejection was automatic.</item>
 /// </list>
+/// ZED_SURVEILLANCE uses the same status numbers (its send-back procedure accepts 5/15 and 7/17 with NcCount 6, the
+/// final submits set 6/16, the rejection 99), so these rules serve the Surveillance host unchanged. Handholding
+/// milestones (ZED_CONSULTANT) follow their own rules in Consultancy/Milestones.
 /// </summary>
 public static class ReviewRules
 {

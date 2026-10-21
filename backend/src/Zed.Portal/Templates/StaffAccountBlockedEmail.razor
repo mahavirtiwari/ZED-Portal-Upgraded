@@ -1,0 +1,43 @@
+@*
+    Consultancy: sent when a Consultant Organisation or a Consultant/Expert is blocked. Port of _AgencyBlockedTemplate.cshtml /
+    _AssessorBlockedTemplate.cshtml of ZEDCS_CONSULTANCY, without the password the old mail repeated.
+*@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    @if (IsOrganisation)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been Blocked for conducting Handholding Support under the "MSME Sustainable (ZED) Certification" Scheme.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been Blocked as a Consultant/Expert under the "MSME Sustainable (ZED) Certification" Scheme.</p>
+    }
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Name</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UserName</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">User ID</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UserId</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Reason</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Reason</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string UserName { get; set; } = "";
+    [Parameter, EditorRequired] public string UserId { get; set; } = "";
+    /// <summary>A Consultant Organisation (RoleId 2); otherwise a Consultant/Expert.</summary>
+    [Parameter] public bool IsOrganisation { get; set; }
+    [Parameter] public string? Reason { get; set; }
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

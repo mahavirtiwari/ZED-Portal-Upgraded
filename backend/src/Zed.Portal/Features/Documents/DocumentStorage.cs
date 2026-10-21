@@ -35,12 +35,60 @@ public static class DocumentLevels
     public static string CertificatePath(string zedId, string level) =>
         $"Certificates/{(IsDesktop(level) ? "DA" : "SA")}/{zedId}/{level}.pdf";
 
-    /// <summary>Surveillance certificates, written by the ZEDCS_SURVEILLANCE application (served only, never generated here).</summary>
+    /// <summary>
+    /// Surveillance certificates: Surveillance/Certificates/DA/{ZedId}/Bronze.pdf, .../SA/{ZedId}/{Level}.pdf. Written by the
+    /// surveillance host (and by main when it draws a missing one from ZED_SURVEILLANCE); the storage root is shared.
+    /// </summary>
     public static string SurveillanceCertificatePath(string zedId, string level) =>
         $"Surveillance/{CertificatePath(zedId, level)}";
 
     /// <summary>PDFs/SA/{ZedId}/{Level}_Report.pdf (MonitoringController.GenerateSaRepory).</summary>
     public static string ReportPath(string zedId, string level) => $"PDFs/SA/{zedId}/{level}_Report.pdf";
+
+    /// <summary>
+    /// Surveillance/PDFs/SA/{ZedId}/{Level}_Report.pdf. The surveillance application never stored its report (the page was
+    /// public and drawn on each visit); V4 keeps the drawn copy beside main's under the Surveillance folder of the shared root.
+    /// </summary>
+    public static string SurveillanceReportPath(string zedId, string level) => $"Surveillance/{ReportPath(zedId, level)}";
+
+    /// <summary>
+    /// Handholding milestone report, GenerateSaRepory's names under the consultancy application's PDFs/SA folder
+    /// (/consultancy/PDFs/SA/...): {Level}_Report.pdf (milestone 1), _Report_PR1 (milestone 2), _Report_PR2 (milestone 3),
+    /// {Level}_Reject_Report.pdf for a rejected milestone (GenerateRejectRepory). Kept under Consultancy/ in the shared root,
+    /// because main's own Silver/Gold report has the same name.
+    /// </summary>
+    public static string MilestoneReportPath(string zedId, string level, int milestone, bool rejected) =>
+        $"Consultancy/PDFs/SA/{zedId}/{level}" + (rejected ? "_Reject_Report" : milestone switch
+        {
+            2 => "_Report_PR1",
+            3 => "_Report_PR2",
+            _ => "_Report",
+        }) + ".pdf";
+
+    /// <summary>Handholding milestones of ZED_CONSULTANT (MsmeCertifications.NcCount).</summary>
+    public const int Milestones = 3;
+
+    /// <summary>"SilverMilestone2" → ("Silver", 2). Handholding is towards Silver or Gold only.</summary>
+    public static bool TryMilestone(string? certification, out string level, out int milestone)
+    {
+        level = "";
+        milestone = 0;
+        var m = System.Text.RegularExpressions.Regex.Match(certification ?? "", "^(Silver|Gold)Milestone([1-3])$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+        if (!m.Success) return false;
+        level = Level(m.Groups[1].Value)!;
+        milestone = m.Groups[2].Value[0] - '0';
+        return true;
+    }
+
+    /// <summary>"BronzeSurveillance" → "Bronze" (the certification names of main's Certification details page).</summary>
+    public static string? SurveillanceLevel(string? certification) =>
+        certification is { Length: > 12 } c && c.EndsWith("Surveillance", StringComparison.OrdinalIgnoreCase)
+            ? Level(c[..^"Surveillance".Length])
+            : null;
+
+    /// <summary>MsmeCertifications.CertificationStatus of a completed milestone (CO final submit) and after the MSME accepted it on main.</summary>
+    public static bool IsMilestoneCompleted(int? status) => status is SiteCertified or 100;
 
     /// <summary>Certificates/{ZedId}/Pledge.pdf (MsmeController.GenerateCertificate).</summary>
     public static string PledgePath(string zedId) => $"Certificates/{zedId}/Pledge.pdf";

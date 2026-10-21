@@ -3,7 +3,7 @@
     <div class="col-sm-10"><h3 class="registration-title">Assessment Details</h3></div>
     <div class="col-sm-2 text-end">
       <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
-        <img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+        <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
       </button>
     </div>
   </div>
@@ -101,7 +101,15 @@
                       </div>
                     }
                     @if (canAssess() && !m.photos.length) {
-                      <button type="button" class="btn btn-primary capture" (click)="captureImage(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true)">Capture Photo</button>
+                      @if (meetingMode()) {
+                        <label class="btn btn-primary btn-sm upload-meeting">
+                          Upload Photo
+                          <input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? 'Opening meeting photo' : 'Closing meeting photo'"
+                                 (change)="uploadPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, $any($event.target))" />
+                        </label>
+                      } @else {
+                        <button type="button" class="btn btn-primary capture" (click)="captureImage(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true)">Capture Photo</button>
+                      }
                     }
                   </div>
                   <div class="col-sm-12 mt-2">
@@ -110,6 +118,22 @@
                       <button type="button" class="btn btn-primary btn-sm ms-2" (click)="openMeetingComments(m)">{{ m.comments ? 'Edit' : 'Enter Comments' }}</button>
                     }
                   </div>
+                  @if (meetingMode() && kind === 'close') {
+                    <div class="col-sm-12 mt-3 recording-links">
+                      <p class="sub-heading">Meeting Recording Link:</p>
+                      @for (l of d.recordingLinks ?? []; track l.id; let i = $index) {
+                        <p class="mb-1"><a [href]="l.url" target="_blank" rel="noopener noreferrer" style="text-decoration: underline">View Recording Link {{ i + 1 }}</a></p>
+                      } @empty {
+                        <p class="mb-1">No recording link yet.</p>
+                      }
+                      @if (canAssess() && (d.recordingLinks?.length ?? 0) < maxRecordingLinks) {
+                        <div class="d-flex gap-2 mt-2">
+                          <input class="form-control" name="recordingLink" maxlength="2000" placeholder="https://..." aria-label="Recording link" [(ngModel)]="recordingLink" />
+                          <button type="button" class="btn btn-primary add-recording" [disabled]="busy()" (click)="addRecordingLink(m)">Add Recording Link</button>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
               }
             }
@@ -140,9 +164,17 @@
                             @for (s of d.selfies; track $index) {
                               <div class="evidence-img">
                                 @if (s.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(s.url)"><img [src]="s.url" alt="Remote selfie" /></button> }
-                                <p class="sub-heading"><strong>Name:</strong> {{ s.representativeName }}</p>
-                                <p class="sub-heading"><strong>Designation:</strong> {{ s.designation }}</p>
+                                @if (s.representativeName || !meetingMode()) {
+                                  <p class="sub-heading"><strong>Name:</strong> {{ s.representativeName }}</p>
+                                  <p class="sub-heading"><strong>Designation:</strong> {{ s.designation }}</p>
+                                }
                               </div>
+                            }
+                            @if (meetingMode() && canAssess()) {
+                              <label class="btn btn-primary btn-sm upload-selfie">
+                                Upload Selfie on Site
+                                <input type="file" class="d-none" accept="image/jpeg" aria-label="Selfie on site" (change)="uploadPhoto('Selfie', null, $any($event.target))" />
+                              </label>
                             }
                           </td>
                         </tr>
@@ -183,7 +215,7 @@
                                 </p>
                               </div>
                             }
-                            @if (canAssess() && d.siteExteriorPhotos.length < 2) {
+                            @if (canAssess() && !meetingMode() && d.siteExteriorPhotos.length < 2) {
                               <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('SiteExterior', null, 'Site Exterior Photo')">Capture Photo</button>
                             }
                           </td>
@@ -236,7 +268,7 @@
                                 <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'PhotoUrl'))"><img [src]="t(p, 'PhotoUrl')" alt="Product photo" height="50" /></button><br />
                               }
                               @if (t(p, 'DescriptionKind') === 'pdf') {
-                                <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="/Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
                               } @else if (t(p, 'DescriptionKind') === 'image') {
                                 <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'DescriptionUrl'))"><img [src]="t(p, 'DescriptionUrl')" alt="Product description" height="60" /></button>
                               }
@@ -255,10 +287,10 @@
                                   <br /><small>{{ pp.name }}</small>
                                 </div>
                               }
-                              @if (canAssess() && !productPhotos(p, 'Product Photo').length) {
+                              @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Photo').length) {
                                 <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('ProductPhoto', id(p), 'Product Photo', true)">Capture Product Photo</button>
                               }
-                              @if (canAssess() && !productPhotos(p, 'Product Description Photo').length) {
+                              @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Description Photo').length) {
                                 <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('ProductDescriptionPhoto', id(p), 'Product Description Photo', true)">Capture Description Photo</button>
                               }
                             </td>
@@ -341,7 +373,7 @@
 
           <!-- ===================================================== site tour -->
           @if (tab() === 'siteTour') {
-            @if (canAssess() && d.siteTourPhotos.length < 20) {
+            @if (canAssess() && !meetingMode() && d.siteTourPhotos.length < 20) {
               <button type="button" class="btn btn-primary capture mb-3" (click)="captureImage('SiteTour', null, 'Site Tour')">Capture Photo</button>
             }
             <div class="row">
@@ -407,7 +439,7 @@
                                 <td>
                                   {{ t(e, 'EvidenceName') }}
                                   @if (t(e, 'FileUrl')) {
-                                    <a class="float-end" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="/Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
+                                    <a class="float-end" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
                                   }
                                   <br />
                                   @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
@@ -440,7 +472,9 @@
                           }
                           @if (canAssess() && photosOf(r).length < 5) {
                             <div>
-                              <button type="button" class="btn btn-primary btn-sm mt-2 capture" (click)="captureImage('Requirement', id(r), 'Evidence Photo')">Capture Photo</button>
+                              @if (!meetingMode()) {
+                                <button type="button" class="btn btn-primary btn-sm mt-2 capture" (click)="captureImage('Requirement', id(r), 'Evidence Photo')">Capture Photo</button>
+                              }
                               <button type="button" class="btn btn-primary btn-sm mt-2 ms-2 from-tour" (click)="fromTourFor.set(id(r))">From Site Tour</button>
                             </div>
                           }
@@ -467,7 +501,16 @@
       <!-- ===================================================== video -->
       <div class="col-lg-4 mt-4">
         <div class="video-panel">
-          @if (canAssess()) {
+          @if (meetingMode()) {
+            <div class="meeting-panel">
+              @if (d.meetingLink) {
+                <a class="btn btn-primary join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Click here to Join</a>
+                <p class="mt-2 small">The assessment is held on the meeting link given by the agency. It opens in a new tab.</p>
+              } @else {
+                <div class="alert alert-warning" role="status">No meeting link has been given for this assessment. Please contact the agency.</div>
+              }
+            </div>
+          } @else if (canAssess()) {
             @if (!d.permissions.videoConfigured) {
               <div class="alert alert-warning" role="status">Video calls are not configured on this server.</div>
             } @else if (videoState() === 'idle' || videoState() === 'error') {
@@ -494,7 +537,7 @@
           <div class="modal-header">
             <div class="modal-title w-100 d-flex justify-content-between align-items-center">
               <strong id="captureTitle">Image</strong>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="capture.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="capture.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
           <div class="modal-body text-center">
@@ -522,7 +565,7 @@
           <div class="modal-header">
             <div class="modal-title w-100 d-flex justify-content-between align-items-center">
               <strong id="choiceTitle">{{ c.title }}</strong>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="choice.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="choice.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
           <div class="modal-body">
@@ -560,7 +603,7 @@
           <div class="modal-header">
             <div class="modal-title w-100 d-flex justify-content-between align-items-center">
               <strong id="textTitle">{{ e.title }}</strong>
-              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="textEdit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+              <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="textEdit.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
             </div>
           </div>
           <div class="modal-body">
@@ -595,7 +638,7 @@
         <div class="modal-header">
           <div class="modal-title w-100 d-flex justify-content-between align-items-center">
             <strong id="tourTitle">Site Tour Photos</strong>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="fromTourFor.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="fromTourFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
           </div>
         </div>
         <div class="modal-body">
@@ -627,7 +670,7 @@
         <div class="modal-header">
           <div class="modal-title w-100 d-flex justify-content-between align-items-center">
             <strong id="finalTitle">Confirm Final Submit</strong>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="finalSubmit.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="finalSubmit.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
           </div>
         </div>
         <div class="modal-body">

@@ -28,7 +28,7 @@
               <th>Agency Details</th>
               <th>Spoc Details</th>
               <th>Category</th>
-              <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of Assessors' }}</th>
+              <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of ' + labels.assessors }}</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -90,7 +90,7 @@
                 @case ('mobile') { SPOC Mobile Number }
               }
             </h3>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
           </div>
         </div>
         <form (ngSubmit)="submitDialog()" novalidate>

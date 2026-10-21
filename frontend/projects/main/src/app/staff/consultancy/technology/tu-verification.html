@@ -1,0 +1,292 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <h3 class="registration-title mb-0">Technology Upgradation · {{ zedId }}</h3>
+      <a class="btn btn-default btn-sm" [routerLink]="backLink">Back to list</a>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+
+    @if (applications().length > 1) {
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        @for (a of applications(); track a.certification) {
+          <li class="nav-item" role="presentation">
+            <button type="button" class="nav-link" role="tab" [class.active]="current()?.certification === a.certification"
+                    [attr.aria-selected]="current()?.certification === a.certification" (click)="selected.set(a.certification)">
+              {{ a.certification }} Certification
+            </button>
+          </li>
+        }
+      </ul>
+    }
+
+    @if (current(); as app) {
+      <h3>Overview</h3>
+      <table class="table table-default table-zed">
+        <tbody>
+          <tr><td class="w-50">Certification Level</td><td><b>{{ app.certification }}</b></td></tr>
+          <tr><td class="w-50">Stage</td><td><b>{{ app.stage }}</b></td></tr>
+          <tr><td class="w-50">Eligible Subsidy (%)</td><td><b>{{ value(app.details, 'EligibleSubsidyPer') }}</b></td></tr>
+          <tr><td class="w-50">Maximum Eligible Subsidy (Rs.)</td><td><b>{{ value(app.details, 'MaxEligibleSubsidy') }}</b></td></tr>
+          <tr><td class="w-50">Total Amount Verified (Rs.)</td><td><b>{{ value(app.details, 'TotalPaidAfterQc') }}</b></td></tr>
+          <tr><td class="w-50">Eligible Technology Support (Rs.)</td><td><b>{{ value(app.details, 'EligibleAmount') }}</b></td></tr>
+          @if (value(app.details, 'ReasonForRejection')) {
+            <tr><td class="w-50">MSME-DFO Comments</td><td>{{ value(app.details, 'ReasonForRejection') }}</td></tr>
+          }
+          @if (value(app.details, 'ReasonForRejectionAgency')) {
+            <tr><td class="w-50">Consultant Organisation Comments</td><td>{{ value(app.details, 'ReasonForRejectionAgency') }}</td></tr>
+          }
+        </tbody>
+      </table>
+      @if (app.hasReport) {
+        <p><a class="btn btn-primary btn-sm" [href]="reportUrl(app)" target="_blank" rel="noopener">Download TU Report (PDF)</a></p>
+      }
+
+      @if (app.recommended.length) {
+        <h3>Recommended Technologies</h3>
+        <ol>
+          @for (r of app.recommended; track r.code) { <li>{{ r.name }}</li> }
+        </ol>
+      }
+
+      <h3>Opening Meeting</h3>
+      @if (app.meeting; as m) {
+        <p><strong>Remark:</strong> {{ m.comments }}</p>
+        <div class="d-flex flex-wrap">
+          @for (p of m.photos; track p.id) {
+            <button type="button" class="btn btn-link p-0" (click)="showImage(p.url)" [attr.aria-label]="p.name">
+              <img class="photo" [src]="p.url" [alt]="p.name" />
+            </button>
+          }
+        </div>
+        @if (m.participants.length) {
+          <p class="sub-heading mb-1"><strong>Participants</strong></p>
+          <ol>
+            @for (p of m.participants; track $index) { <li>{{ p.name }} <small>({{ p.designation }})</small></li> }
+          </ol>
+        }
+      } @else {
+        <p class="text-muted">The MSME-DFO officer has not submitted the opening meeting from the mobile application yet.</p>
+      }
+
+      @for (t of app.technologies; track t.id) {
+        <h3>{{ value(t.details, 'TechnologyName') }} @if (!t.isEligible) { <small class="text-danger">(not eligible)</small> }</h3>
+        <table class="table table-default table-zed">
+          <tbody>
+            @for (f of technologyFields; track f.key) {
+              <tr><td class="w-50">{{ f.label }}</td><td><b>{{ value(t.details, f.key) }}</b></td><td></td></tr>
+            }
+            <tr>
+              <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
+              <td>
+                @if (amountEdit()?.id === t.id) {
+                  <input class="form-control" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
+                         (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
+                } @else {
+                  <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
+                }
+              </td>
+              <td>
+                @if (app.canEditAmounts) {
+                  @if (amountEdit()?.id === t.id) {
+                    <button type="button" class="btn btn-primary btn-sm me-1" (click)="amountEdit.set(null)">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
+                  } @else {
+                    <button type="button" class="btn btn-primary btn-sm" (click)="editAmount(t)">Edit</button>
+                  }
+                }
+              </td>
+            </tr>
+            @for (doc of docsOf(app, t); track doc.id) {
+              <tr>
+                <td class="w-50">{{ doc.photoType }}</td>
+                <td>
+                  <div class="doc-row">
+                    <span>@if (doc.timeStamp) { <small>captured at {{ doc.timeStamp }}</small> }</span>
+                    @if (doc.isPdf) {
+                      <a class="btn btn-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
+                    } @else {
+                      <button type="button" class="btn btn-primary btn-sm" (click)="showImage(doc.url, doc)">VIEW</button>
+                    }
+                  </div>
+                </td>
+                <td>
+                  <div class="doc-row">
+                    <span>
+                      @if (doc.isVerified) {
+                        <small><strong>Verified:</strong> {{ doc.isVerified }}</small>
+                        @if (doc.sourceOfValidation) { <small><br /><strong>Source of Validation:</strong> {{ doc.sourceOfValidation }}</small> }
+                        @if (doc.assessorRemarks) { <small><br /><strong>Remarks:</strong> {{ doc.assessorRemarks }}</small> }
+                        @for (s of doc.screenshots; track s.id) {
+                          <br /><a [href]="s.url" target="_blank" rel="noopener">Screenshot</a>
+                        }
+                      }
+                    </span>
+                    @if (app.canValidate && opened(doc)) {
+                      <button type="button" class="btn btn-primary btn-sm" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+
+      <div class="d-flex justify-content-between align-items-center">
+        <h3>Account Details of Reimbursement</h3>
+        @if (app.canEditAccount) {
+          @if (account()) {
+            <div>
+              <button type="button" class="btn btn-primary btn-sm me-1" (click)="account.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAccount(app)">Update Account Details</button>
+            </div>
+          } @else {
+            <button type="button" class="btn btn-primary btn-sm" (click)="editAccount(app)">Edit Account Details</button>
+          }
+        }
+      </div>
+      <table class="table table-default table-zed">
+        <tbody>
+          @for (f of accountFields; track f.key) {
+            <tr>
+              <td class="w-50">{{ f.label }}</td>
+              <td>
+                @if (account(); as acc) {
+                  <input class="form-control" [attr.aria-label]="f.label" [attr.maxlength]="f.max" [ngModel]="acc[f.key]" (ngModelChange)="patchAccount(f.key, $event)" />
+                } @else {
+                  <b>{{ value(app.details, f.column) }}</b>
+                }
+              </td>
+            </tr>
+          }
+          @for (doc of otherDocs(app); track doc.id) {
+            <tr>
+              <td class="w-50">{{ doc.photoType }}</td>
+              <td>
+                <div class="doc-row">
+                  @if (doc.isPdf) {
+                    <a class="btn btn-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
+                  } @else {
+                    <button type="button" class="btn btn-primary btn-sm" (click)="showImage(doc.url, doc)">VIEW</button>
+                  }
+                  @if (doc.isVerified) { <small><strong>Verified:</strong> {{ doc.isVerified }}</small> }
+                  @if (app.canValidate && opened(doc)) {
+                    <button type="button" class="btn btn-primary btn-sm" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (app.canDecide) {
+        <div class="d-flex justify-content-center my-3">
+          @if (app.canApprove) {
+            <button type="button" class="btn btn-primary me-2" (click)="openDecision('approve')">ACCEPT</button>
+          }
+          <button type="button" class="btn btn-default" (click)="openDecision('reject')">REJECT</button>
+        </div>
+      } @else if (app.canValidate) {
+        <p class="text-center text-muted">ACCEPT / REJECT become available once every document is validated and the opening meeting is submitted.</p>
+      }
+
+      @if (validation(); as v) {
+        <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuValidateTitle">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header justify-content-between">
+                <h3 class="registration-title" id="tuValidateTitle">Validate Evidence</h3>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+              </div>
+              <div class="modal-body">
+                <p><strong>{{ v.doc.photoType }}</strong></p>
+                @if (dialogError()) {
+                  <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
+                }
+                <div class="form-group mb-3">
+                  Verified:
+                  <label class="ms-2"><input type="radio" name="tuIsVerified" value="Yes" [checked]="v.isVerified === 'Yes'" (change)="patchValidation({ isVerified: 'Yes' })" /> Yes</label>
+                  <label class="ms-2"><input type="radio" name="tuIsVerified" value="No" [checked]="v.isVerified === 'No'" (change)="patchValidation({ isVerified: 'No' })" /> No</label>
+                </div>
+                <div class="form-group mb-3">
+                  <label for="tuSource">Source of Validation</label>
+                  <input id="tuSource" class="form-control" maxlength="200" [ngModel]="v.sourceOfValidation" (ngModelChange)="patchValidation({ sourceOfValidation: $event })" />
+                </div>
+                <div class="form-group mb-3">
+                  <label for="tuShot">Upload Screenshot @if (v.doc.needsScreenshot) {<span style="color: red">*</span>}</label>
+                  <input id="tuShot" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" (change)="pickFile($event)" />
+                  <small style="color: red">(Valid file types: PDF/JPG/PNG, file size &lt; 2MB)</small>
+                  @if (v.doc.screenshots.length) { <small class="d-block">A screenshot is already attached; choose a file only to replace it.</small> }
+                </div>
+                <div class="form-group mb-3">
+                  <label for="tuRemarks">Remarks</label>
+                  <textarea id="tuRemarks" class="form-control" style="height: 100px" maxlength="1000" [ngModel]="v.remarks" (ngModelChange)="patchValidation({ remarks: $event })"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-primary w-100" [disabled]="saving()" (click)="saveValidation(app)">Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-backdrop show"></div>
+      }
+
+      @if (decision(); as d) {
+        <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDecisionTitle">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header justify-content-between">
+                <h3 class="registration-title" id="tuDecisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+              </div>
+              <div class="modal-body">
+                @if (dialogError()) {
+                  <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
+                }
+                <label for="tuComments"><strong>Comments@if (d.decision === 'reject') {<span style="color: red">*</span>}</strong></label>
+                <textarea id="tuComments" class="form-control mb-2" style="height: 100px" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
+                <div class="form-check">
+                  <input id="tuConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />
+                  <label class="form-check-label" for="tuConfirm">I am confirming that the above data is correct</label>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" (click)="closeDialogs()">CANCEL</button>
+                <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">SUBMIT</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-backdrop show"></div>
+      }
+    } @else if (!loading() && !error()) {
+      <div class="no-data">No Data</div>
+    }
+  </div>
+</div>
+
+@if (preview(); as url) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image preview" (click)="closeDialogs()">
+    <div class="modal-dialog" (click)="$event.stopPropagation()">
+      <div class="modal-content">
+        <div class="modal-header justify-content-between">
+          <h3 class="registration-title">Image preview</h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body text-center preview"><img [src]="url" alt="Document" /></div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (loading()) {
+  <div class="loadingdiv"><div class="loader"></div></div>
+}

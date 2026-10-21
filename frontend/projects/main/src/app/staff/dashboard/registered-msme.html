@@ -32,13 +32,15 @@
             <tr>
               <th>S.No.</th>
               <th>Certification Level</th>
-              <th>Certification Phase</th>
+              @if (main) { <th>Certification Phase</th> }
+              @if (consultancy) { <th>Milestone</th> }
+              @if (surveillance) { <th>Surveillance No.</th> }
               <th>Unit Name<br />ZedId<br />Registered Date</th>
               <th>Status</th>
-              <th>First Surveillance Due Date</th>
+              @if (main) { <th>First Surveillance Due Date</th> }
               <th>Unit Address</th>
               <th>State</th>
-              @if (isSuperAdmin()) { <th>Assessment Agency<br /><br />Udyam Number</th> }
+              @if (showsAgency()) { <th>{{ agencyLabel }}<br /><br />Udyam Number</th> }
               <th></th>
             </tr>
           </thead>
@@ -47,27 +49,29 @@
               <tr>
                 <td>{{ s['RowNumber'] }}</td>
                 <td>{{ s['Certification'] }}</td>
-                <td>{{ s['CertificationPhase'] }}</td>
+                @if (main) { <td>{{ s['CertificationPhase'] }}</td> }
+                @if (consultancy) { <td>{{ s['MileStoneNo'] }}</td> }
+                @if (surveillance) { <td>{{ s['SurveillanceNo'] }}</td> }
                 <td>
                   <strong>{{ s['PUnitName'] }}</strong><br /><br />
                   {{ s['ZedId'] }}<br /><br />
                   <strong>{{ $any(s['RegisteredDate']) | date: 'medium' }}</strong>
                 </td>
                 <td>{{ s['AssessmentStatus'] }}</td>
-                <td>{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}<br />{{ s['FirstSurveDueDate'] }}</td>
+                @if (main) { <td>{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}<br />{{ s['FirstSurveDueDate'] }}</td> }
                 <td>{{ s['UnitAddress'] }}</td>
                 <td>{{ s['PStateName'] }}</td>
-                @if (isSuperAdmin()) {
+                @if (showsAgency()) {
                   <td><strong>{{ s['CertificationBodyUserId'] }}<br /><br />{{ s['UserName'] }}</strong><br /><br />{{ s['UdyogAadharNo'] }}</td>
                 }
                 <td>
                   @if (isDisabled(s)) {
                     <span class="alert alert-warning d-inline-block">DISABLED</span>
                   } @else {
-                    @if (isSuperAdmin()) {
+                    @if (isSuperAdmin() && main) {
                       <button type="button" class="btn btn-primary btn-xs action-btn mb-2" (click)="resend(s)">Resend Details</button><br />
                     }
-                    <a class="btn btn-primary btn-xs action-btn mb-2" [href]="profileUrl(s)" title="Opens the current portal">View Profile</a><br />
+                    <a class="btn btn-primary btn-xs action-btn mb-2" [routerLink]="profileUrl(s)">View Profile</a><br />
                     @if (assessmentLink(s); as link) {
                       <a class="btn btn-primary btn-xs action-btn mb-2" [routerLink]="link">Assessment<br />Details</a><br />
                     }
@@ -135,5 +139,5 @@
 }
 
 @if (loading()) {
-  <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div>
+  <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div>
 }

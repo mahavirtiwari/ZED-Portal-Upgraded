@@ -35,7 +35,7 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                 <h3 class="registration-title" id="reviewDialogTitle">
                   {{ d === 'finalSubmit' ? 'Confirm Final Submit' : d === 'reject' ? 'Confirm Reject Certification' : 'Send Back to Assessor' }}
                 </h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
@@ -176,7 +176,7 @@ export interface RemarksTarget {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : 'Agency Remarks' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closed.emit()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closed.emit()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">

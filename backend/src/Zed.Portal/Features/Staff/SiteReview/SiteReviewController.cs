@@ -6,6 +6,7 @@ using Microsoft.Net.Http.Headers;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Documents;
 using Zed.Portal.Features.Msme;
 using Zed.Portal.Features.Staff.Assessment;
 using Zed.Portal.Features.Staff.Monitoring;
@@ -30,12 +31,20 @@ namespace Zed.Portal.Features.Staff.SiteReview;
 /// exemption change in <see cref="DesktopAssessmentController"/>). The site assessor's own actions on this page
 /// (validate, conformance, remarks, final submit: RemoteController) are not part of this port; the page links to
 /// the current portal for them.
+/// <para>
+/// Also served by the Surveillance host (SurveillanceWeb Assessment/SaDetails, ZED_SURVEILLANCE procedures with the
+/// same parameters): the response then carries the meeting link and the recording links of the surveillance
+/// (<see cref="SurveillanceInfo"/>), and <see cref="Original"/> shows the original certification assessment from
+/// main (the old GetDaDetailsFromZedLive / GetSaDetailsFromZedLive, which had no role check: SECURITY-FINDINGS #112).
+/// </para>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [Route("api/staff/site-review")]
 public sealed class SiteReviewController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    PortalHost host,
     ILogger<SiteReviewController> log) : StaffApiController
 {
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -135,7 +144,42 @@ public sealed class SiteReviewController(
         IReadOnlyList<Dictionary<string, object?>> Attendance,
         IReadOnlyList<Dictionary<string, object?>> Consultants,
         IReadOnlyList<NcRound> NcRounds,
-        Permissions Permissions);
+        Permissions Permissions,
+        SurveillanceInfo? Surveillance = null);
+
+    /// <summary>Surveillance only: the meeting link of the allotment and the recordings of the remote meeting.</summary>
+    public sealed record SurveillanceInfo(string? MeetingLink, IReadOnlyList<RecordingLink> RecordingLinks, bool HasOriginal);
+
+    public sealed record RecordingLink(string Url, string? CreatedDate);
+
+    /// <summary>The original certification assessment on main, shown read-only on the surveillance review page.</summary>
+    public sealed record OriginalResponse(
+        string ZedId,
+        string Certification,
+        Dictionary<string, object?> Msme,
+        IReadOnlyList<Dictionary<string, object?>> Products,
+        IReadOnlyList<Dictionary<string, object?>> RawMaterials,
+        IReadOnlyList<Dictionary<string, object?>> Sections,
+        IReadOnlyList<Dictionary<string, object?>> Requirements,
+        IReadOnlyList<Dictionary<string, object?>> Options,
+        IReadOnlyList<Dictionary<string, object?>> SubOptions,
+        IReadOnlyList<Dictionary<string, object?>> Evidences,
+        IReadOnlyList<Photo> SaSelfies,
+        IReadOnlyList<Photo> SaSiteExterior,
+        IReadOnlyList<Photo> SiteTour,
+        Meeting? OpenMeeting,
+        Meeting? CloseMeeting);
+
+    /// <summary>Columns of main's certification row shown in the original-certification panel.</summary>
+    private static readonly string[] OriginalMsmeFields =
+    [
+        "ZedId", "Certification", "PUnitName", "UdyogAadharNo", "PlantAddress", "ModeOfAssessment", "AssessmentDate", "CompletedOn",
+        "CertificationStatus", "NcCount", "SaAssessorRemarks", "AgencyName", "CertificationBodyUserId", "SiteAssessorId", "SiteAssessorName",
+        "CoAssessorId", "CoAssessorName",
+    ];
+
+    private static readonly string[] OriginalRequirementFields =
+        ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks"];
 
     public sealed record ListResponse(IReadOnlyList<Dictionary<string, object?>> Rows);
 
@@ -233,6 +277,7 @@ public sealed class SiteReviewController(
         var saSelfies = sa[12].Select(s => new Photo(Long(s, "Id"), "Assessor Selfie",
             SiteReviewFiles.Url(zedId, level, s.Text("PhotoPath")) ?? SiteReviewFiles.Url(zedId, level, s.Text("src")), Str(s, "CreatedDate"), null, null)).ToList();
 
+        var surveillance = host.System == PortalSystem.Surveillance;
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         var rounds = ncCount > 0 ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, ct))) : [];
 
@@ -261,10 +306,11 @@ public sealed class SiteReviewController(
             Photos(sa[6], zedId, level),
             MeetingOf(sa[1], sa[2], sa[5], zedId, level),
             MeetingOf(sa[3], sa[4], sa[8], zedId, level),
-            Attendance(da[23], zedId, level),
-            Pick(da[24], ["ConsultantId", "AssessorType"]),
+            surveillance ? [] : Attendance(da[23], zedId, level),
+            surveillance ? [] : Pick(da[24], ["ConsultantId", "AssessorType"]),
             rounds,
-            permissions);
+            permissions,
+            surveillance ? SurveillanceOf(main, sa) : null);
     }
 
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
@@ -294,6 +340,102 @@ public sealed class SiteReviewController(
             comments is null ? null : Long(comments, "Id"),
             comments?.Text("SaAssessorRemarks") is { Length: > 0 } c ? c : null);
     }
+
+    // ======================================================================== surveillance: original certification
+
+    /// <summary>
+    /// Surveillance only: the assessment of the original certification on main (old Assessment/GetDaDetailsFromZedLive
+    /// and GetSaDetailsFromZedLive: SP_ASSESSMENT_DA_DETAILS_FROM_ZEDCS_LIVE / SP_ASSESSMENT_SA_DETAILS_FROM_ZEDCS_LIVE,
+    /// which run main's SP_ASSESSMENT_DA_DETAILS (@FromSurveillance = 'Surveillance', ZED ID cut to the MSME's own) and
+    /// SP_ASSESSMENT_SA_DETAILS). The old actions had no role check (#112); here the page's roles and the
+    /// surveillance allotment (<see cref="CertificationRecord.CanView"/>) are checked first. Main's procedures are read
+    /// through the read-only main connection when it is configured (<see cref="SystemDatabases"/>), otherwise through
+    /// the two cross-database wrappers in ZED_SURVEILLANCE.
+    /// </summary>
+    [HttpGet("{zedId}/{certification}/original")]
+    [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback)]
+    public async Task<ActionResult<OriginalResponse>> Original(string zedId, string certification, CancellationToken ct)
+    {
+        if (host.System != PortalSystem.Surveillance) return NotFound();
+        var level = SiteLevel(certification);
+        if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
+        var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (record is null || !record.CanView(CurrentUser)) return NotFound();
+
+        var mainId = AssessmentInput.BaseZedId(zedId);
+        var role = RoleText;
+        ResultSets da, sa;
+        if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Main) is { } mainDb)
+        {
+            var daTask = mainDb.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS",
+                new { UserId, RoleId = role, ZedId = mainId, Certification = level, FromSurveillance = "Surveillance" }, ct);
+            var saTask = mainDb.QueryProcMultipleAsync("SP_ASSESSMENT_SA_DETAILS",
+                new { UserId, RoleId = role, ZedId = mainId, Certification = level }, ct);
+            await Task.WhenAll(daTask, saTask);
+            (da, sa) = (daTask.Result, saTask.Result);
+        }
+        else
+        {
+            var daTask = db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS_FROM_ZEDCS_LIVE",
+                new { UserId, RoleId = role, ZedId = mainId, Certification = level }, ct);
+            var saTask = db.QueryProcMultipleAsync("SP_ASSESSMENT_SA_DETAILS_FROM_ZEDCS_LIVE",
+                new { UserId, RoleId = role, ZedId = mainId, Certification = level }, ct);
+            await Task.WhenAll(daTask, saTask);
+            (da, sa) = (daTask.Result, saTask.Result);
+        }
+        if (da[0].FirstOrDefault() is not { } main || !string.Equals(main.Text("ZedId").Trim(), mainId, StringComparison.OrdinalIgnoreCase)) return NotFound();
+
+        var moved = main.Text("PhotosPath").Length > 0;
+        var msme = Pick(main, OriginalMsmeFields);
+        msme["AgencyName"] ??= Value(main, "UserName");
+        var evidencePhotos = sa[7];
+        return new OriginalResponse(
+            mainId, level, msme,
+            da[1].Select(p => Pick(p, ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks"]))
+                .Concat(sa[9].Select(p => Pick(p, ["Id", "ProductName", "Exported", "IsSaVerified", "SaAssessorRemarks"]))).ToList(),
+            Pick(da[2], RawMaterialFields),
+            Pick(da[3], SectionFields),
+            da[4].Select(r =>
+            {
+                var d = Pick(r, OriginalRequirementFields);
+                d["Photos"] = Photos(evidencePhotos.Where(p => SameText(p, "RequirementId", r, "RequirementId")), zedId, level);
+                return d;
+            }).ToList(),
+            Pick(da[5], OptionFields),
+            Pick(da[6], SubOptionFields),
+            da[7].Select(e =>
+            {
+                var d = Pick(e, EvidenceFields);
+                // Main's MSME app uploads, in the MSME's own folder (the storage root is shared with main).
+                d["FileUrl"] = e.Text("EvidenceId") is { Length: > 0 } eid && !eid.Contains('/') && !eid.Contains('\\')
+                    ? SiteReviewFiles.Url(zedId, level, $"mobileapi/{(moved ? "CertifiedPhotos" : "Photos")}/{mainId}/{level}/Evidences/{eid.Trim()}.pdf")
+                    : null;
+                return d;
+            }).ToList(),
+            sa[12].Select(s => new Photo(Long(s, "Id"), "Assessor Selfie",
+                SiteReviewFiles.Url(zedId, level, s.Text("PhotoPath")) ?? SiteReviewFiles.Url(zedId, level, s.Text("src")), Str(s, "CreatedDate"), null, null)).ToList(),
+            Photos(sa[0], zedId, level),
+            Photos(sa[6], zedId, level),
+            MeetingOf(sa[1], sa[2], sa[5], zedId, level),
+            MeetingOf(sa[3], sa[4], sa[8], zedId, level));
+    }
+
+    /// <summary>Meeting link of the surveillance allotment (MsmeCertifications.MeetingLink) and the recording links (MeetingRecordingLinks, set 15).</summary>
+    private static SurveillanceInfo SurveillanceOf(IDictionary<string, object?> main, ResultSets sa)
+    {
+        var links = sa[15].Select(l => (Url: WebLink(l.Text("RecordingLink")), Created: Str(l, "CreatedDate")))
+            .Concat(sa[3].Select(m => (Url: WebLink(m.Text("MeetingRecordingLink")), Created: (string?)null)))
+            .Where(l => l.Url is not null)
+            .DistinctBy(l => l.Url)
+            .Select(l => new RecordingLink(l.Url!, l.Created))
+            .ToList();
+        return new SurveillanceInfo(WebLink(main.Text("MeetingLink")), links, true);
+    }
+
+    /// <summary>An http(s) address entered by the agency or the assessor, or null (no javascript: or other schemes reach the page).</summary>
+    private static string? WebLink(string? value) =>
+        Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri.AbsoluteUri : null;
 
     // ======================================================================== files
 

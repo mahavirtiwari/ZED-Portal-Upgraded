@@ -2,7 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Assessor, ONSITE, Row, SiteAssessmentApi, todayIso } from './site-assessment.api';
+import { Assessor, ONSITE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
+import { CoAllotmentPage } from './co-allotment';
 
 interface AllotForm {
   unit: Row;
@@ -10,26 +11,33 @@ interface AllotForm {
   modeOfAssessment: string;
   siteAssessorId: string;
   coAssessorId: string;
+  meetingLink: string;
 }
 
 /**
  * "Allot SA Assessments" for agencies with the site verification sub-role. Port of
  * Views/Assessment/SaAllotment.cshtml (Assessment/GetList allotmentType SA, Assessment/AcceptUnitForSa).
  * The old page also had a Reject pop-up, but no button opened it; it is not ported.
+ * Surveillance build: "Allot Surveillance" for Silver/Gold surveillance — surveillance date and round, the original
+ * certification's assessors, and the meeting link of the external video meeting (mode stored as Onsite, shown as
+ * Remote, as before). Consultancy build: the CO allotment page ({@link CoAllotmentPage}) instead.
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule],
+  imports: [FormsModule, CoAllotmentPage],
   template: `
+    @if (system === 'consultancy') {
+      <zed-staff-co-allotment />
+    } @else {
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme">
         <div class="row mt-3">
           <div class="col-sm-10">
-            <h3 class="registration-title">Allot SA Assessments</h3>
+            <h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot SA Assessments' }}</h3>
           </div>
           <div class="col-sm-2">
             <button type="button" class="refresh-link btn btn-link" (click)="load()">
-              <img src="/Images/svgicons/refresh.svg" alt="" />
+              <img src="Images/svgicons/refresh.svg" alt="" />
               <span>Refresh Data</span>
             </button>
           </div>
@@ -52,6 +60,7 @@ interface AllotForm {
                     <th>Certification Level</th>
                     <th>Unit Details</th>
                     <th>SPOC Details</th>
+                    @if (surveillance) { <th>Surveillance Date</th> }
                     <th>Assessor Details</th>
                   </tr>
                 </thead>
@@ -65,13 +74,17 @@ interface AllotForm {
                           <button type="button" class="btn btn-primary btn-xs" (click)="open(s)">ALLOT</button>
                         }
                       </td>
-                      <td>{{ s['Certification'] }}</td>
+                      <td>
+                        {{ s['Certification'] }}
+                        @if (surveillance && s['SurveillanceNo']) { <br /><br />{{ s['SurveillanceNo'] }} }
+                      </td>
                       <td>
                         <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
                         <strong>{{ s['PUnitName'] }}</strong><br />
                         {{ s['UnitAddress'] }}
                       </td>
                       <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
+                      @if (surveillance) { <td>{{ s['AssessmentDate'] }}</td> }
                       <td>
                         {{ s['SiteAssessorId'] }}<br />
                         {{ s['SaAssessorName'] }}
@@ -82,7 +95,7 @@ interface AllotForm {
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="5" style="padding: 0px"><div class="no-data">No Data</div></td>
+                      <td [attr.colspan]="surveillance ? 6 : 5" style="padding: 0px"><div class="no-data">No Data</div></td>
                     </tr>
                   }
                 </tbody>
@@ -100,22 +113,30 @@ interface AllotForm {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between">
                 <h3 class="registration-title" id="allot-title">Allot Unit</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
               <p class="mb-2"><strong class="dash-text-clr">{{ f.unit['ZedId'] }}</strong> ({{ f.unit['Certification'] }})</p>
               <div style="margin-bottom: 9px">
-                <label for="FinalSaDate"><strong>Assessment Date<span style="color: red">*</span></strong></label>
+                <label for="FinalSaDate"><strong>{{ surveillance ? 'Surveillance Assessment Date' : 'Assessment Date' }}<span style="color: red">*</span></strong></label>
                 <input type="date" id="FinalSaDate" name="FinalSaDate" class="form-control" [min]="minDate" [(ngModel)]="f.assessmentDate" />
               </div>
               <div style="margin-bottom: 9px">
                 <label for="ModeOfAssessment"><strong>Mode of Assessment<span style="color: red">*</span></strong></label>
                 <select id="ModeOfAssessment" name="ModeOfAssessment" class="form-control" [(ngModel)]="f.modeOfAssessment">
                   <option value="">--Select--</option>
-                  <option [value]="onsite">Onsite Assessment</option>
+                  <!-- Surveillance stores Onsite but the assessment runs on the meeting link (the old page showed "Remote Assessment"). -->
+                  <option [value]="onsite">{{ surveillance ? 'Remote Assessment' : 'Onsite Assessment' }}</option>
                 </select>
               </div>
+              @if (surveillance) {
+                <div style="margin-bottom: 9px">
+                  <label for="MeetingLink"><strong>Meeting Link<span style="color: red">*</span></strong></label>
+                  <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="2000" style="line-height: 24px; height: 100px"
+                            placeholder="https://..." [(ngModel)]="f.meetingLink"></textarea>
+                </div>
+              }
               <div style="margin-bottom: 9px">
                 <label for="SiteAssessorId"><strong>Lead Assessor<span style="color: red">*</span></strong></label>
                 <select id="SiteAssessorId" name="SiteAssessorId" class="form-control" [(ngModel)]="f.siteAssessorId" (ngModelChange)="f.coAssessorId = ''">
@@ -134,6 +155,13 @@ interface AllotForm {
                       <option [value]="a.userId">{{ a.userName }}</option>
                     }
                   </select>
+                </div>
+              }
+              @if (surveillance) {
+                <div class="mt-3 original">
+                  <div><strong>Onsite Assessment Done by</strong></div>
+                  <div><strong>Onsite Lead Assessor:</strong> {{ f.unit['LeadInCertification'] }} - {{ f.unit['LeadNameInCertification'] }}</div>
+                  <div><strong>Onsite Co Assessor:</strong> {{ f.unit['CoInCertification'] }} - {{ f.unit['CoNameInCertification'] }}</div>
                 </div>
               }
               @if (formError()) {
@@ -158,6 +186,7 @@ interface AllotForm {
         </div>
       </div>
     }
+    }
   `,
   styles: `
     .refresh-link { cursor: pointer; text-decoration: none; }
@@ -166,6 +195,8 @@ interface AllotForm {
 })
 export class SaAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
+  protected readonly system = inject(SITE_SYSTEM);
+  protected readonly surveillance = this.system === 'surveillance';
 
   protected readonly units = signal<Row[]>([]);
   protected readonly assessors = signal<Assessor[]>([]);
@@ -179,7 +210,7 @@ export class SaAllotmentPage {
   protected readonly coAssessors = (leadId: string) => this.assessors().filter((a) => a.userId !== leadId);
 
   constructor() {
-    void this.load();
+    if (this.system !== 'consultancy') void this.load();
   }
 
   protected async load(): Promise<void> {
@@ -199,7 +230,7 @@ export class SaAllotmentPage {
   protected open(unit: Row): void {
     this.success.set('');
     this.formError.set('');
-    this.form.set({ unit, assessmentDate: '', modeOfAssessment: '', siteAssessorId: '', coAssessorId: '' });
+    this.form.set({ unit, assessmentDate: '', modeOfAssessment: this.surveillance ? ONSITE : '', siteAssessorId: '', coAssessorId: '', meetingLink: '' });
   }
 
   protected close(): void {
@@ -209,6 +240,10 @@ export class SaAllotmentPage {
   protected async allot(f: AllotForm): Promise<void> {
     if (!f.siteAssessorId || !f.modeOfAssessment || !f.assessmentDate) {
       this.formError.set('Please select valid data.');
+      return;
+    }
+    if (this.surveillance && !isWebLink(f.meetingLink)) {
+      this.formError.set('Please enter a valid meeting link (starting with https:// or http://).');
       return;
     }
     this.busy.set(true);
@@ -222,6 +257,7 @@ export class SaAllotmentPage {
           coAssessorId: f.modeOfAssessment === ONSITE && f.coAssessorId ? f.coAssessorId : null,
           assessmentDate: f.assessmentDate,
           modeOfAssessment: f.modeOfAssessment,
+          ...(this.surveillance ? { meetingLink: f.meetingLink.trim() } : {}),
         }),
       );
       this.form.set(null);

@@ -3,6 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PORTAL_SYSTEM } from '../../portal-system';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, LevelRequest } from './fees.api';
 
 interface LevelInput {
@@ -25,7 +26,7 @@ interface LevelInput {
     <div class="form-page" id="zed_user_form">
       <div class="container-fluid">
         <div class="row mt-4">
-          <div class="col-sm-12"><h3 class="registration-title">Certification Payments</h3></div>
+          <div class="col-sm-12"><h3 class="registration-title">{{ consultancy ? 'Handholding Payments' : 'Certification Payments' }}</h3></div>
           <div class="col-sm-12">
             @if (error()) {
               <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -55,7 +56,7 @@ interface LevelInput {
                       </div>
                     }
                   </div>
-                  @if (type() !== 'Rejected') {
+                  @if (type() !== 'Rejected' && !byMilestone()) {
                     <div class="row mt-2">
                       <div class="col-sm-3"></div>
                       @for (l of levels(); track l.certification) {
@@ -105,6 +106,7 @@ interface LevelInput {
                       <tr>
                         <td class="text-end">
                           {{ a.certification }}
+                          @if (a.mileStone) { <br /><strong>{{ a.mileStone }}</strong> }
                           @if (a.isCouponRow || a.specialCategory) {
                             <br /><small class="text-muted">{{ a.isCouponRow ? 'with coupon' : '' }}{{ a.isCouponRow && a.specialCategory ? ', ' : '' }}{{ a.specialCategory ? 'special category ' + a.specialCategory : '' }}</small>
                           }
@@ -157,7 +159,10 @@ interface LevelInput {
 export class AssessmentFeesPage {
   private readonly api = inject(FeesApi);
 
-  protected readonly types = ENTERPRISE_TYPES;
+  /** Consultancy: handholding fees per milestone, Micro / Small / Medium only (old PaymentDetails page). */
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly types: readonly string[] = this.consultancy ? ENTERPRISE_TYPES.filter((t) => t !== 'Rejected') : ENTERPRISE_TYPES;
+  protected readonly byMilestone = signal(false);
   protected readonly type = signal<string>('Micro');
   protected readonly levels = signal<LevelInput[]>([]);
   protected readonly rows = signal<FeeRow[]>([]);
@@ -181,7 +186,8 @@ export class AssessmentFeesPage {
     return this.levels().map((l) => ({
       certification: l.certification,
       assessmentFee: l.fee,
-      coupon: this.type() !== 'Rejected' && l.hasCouponRows ? l.coupon : null,
+      // Consultancy: the fee per milestone only; the stored coupons stay as they are.
+      coupon: this.type() !== 'Rejected' && l.hasCouponRows && !this.byMilestone() ? l.coupon : null,
     }));
   }
 
@@ -196,6 +202,7 @@ export class AssessmentFeesPage {
       const res = await firstValueFrom(this.api.fees(this.type()));
       this.levels.set(AssessmentFeesPage.inputs(res.levels));
       this.rows.set(res.rows);
+      this.byMilestone.set(res.groupBy === 'MileStone');
       this.dirty.set(false);
     } catch (err) {
       this.levels.set([]);
@@ -222,7 +229,7 @@ export class AssessmentFeesPage {
   protected async save(): Promise<void> {
     this.error.set('');
     this.success.set('');
-    if (this.levels().some((l) => l.fee === null || l.fee === undefined || (l.hasCouponRows && this.type() !== 'Rejected' && (l.coupon === null || l.coupon === undefined)))) {
+    if (this.levels().some((l) => l.fee === null || l.fee === undefined || (l.hasCouponRows && this.type() !== 'Rejected' && !this.byMilestone() && (l.coupon === null || l.coupon === undefined)))) {
       this.error.set('Please enter valid data.');
       return;
     }

@@ -2,7 +2,7 @@
   <div class="row mt-4">
     <div class="col-sm-8 col-xs-12">
       <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-        <h3 class="registration-title">{{ isEdit ? 'Update Assessment Agency Details' : 'Add Assessment Agency' }}</h3>
+        <h3 class="registration-title">{{ isEdit ? 'Update ' + labels.agency + ' Details' : 'Add ' + labels.agency }}</h3>
       </div>
       @if (error()) {
         <div class="alert alert-danger" role="alert" style="margin-bottom: 0; margin-top: 15px"><strong>{{ error() }}</strong></div>
@@ -14,7 +14,7 @@
       <form class="login-form mt-3" (ngSubmit)="submit()" novalidate>
         <div class="row">
           <div class="col-sm-12 field">
-            <label class="input-group1 d-block" for="userName">Agency Name</label>
+            <label class="input-group1 d-block" for="userName">{{ consultancy ? 'Consultant Organisation Name' : 'Agency Name' }}</label>
             <input id="userName" name="userName" class="form-control input-100" maxlength="100" [(ngModel)]="model.userName" required />
             @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
           </div>
@@ -59,6 +59,7 @@
             <label class="input-group1 d-block" for="nicSectors">NIC Sector (2 Digit)</label>
             <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
           </div>
+          @if (!consultancy) {
           <div class="col-sm-6 field">
             <label class="input-group1 d-block" for="orgPartnerId">Organising Partner</label>
             <select id="orgPartnerId" name="orgPartnerId" class="form-control input-100" [(ngModel)]="model.orgPartnerId">
@@ -68,13 +69,14 @@
               }
             </select>
           </div>
+          }
 
-          <div class="col-sm-12 mb-3 mt-2"><span>Category</span></div>
+          <div class="col-sm-12 mb-3 mt-2"><span>{{ consultancy ? 'Activity Involved' : 'Category' }}</span></div>
           <div class="col-sm-6 mb-4">
             <div class="form-control">
               <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
                 <input type="checkbox" class="checkbox" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
-                Desktop Verification
+                {{ consultancy ? 'Desktop Verification (Handholding Support)' : 'Desktop Verification' }}
               </label>
             </div>
           </div>
@@ -82,7 +84,7 @@
             <div class="form-control">
               <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
                 <input type="checkbox" class="checkbox" name="siteVerification" [(ngModel)]="model.siteVerification" />
-                Remote/Site Verification
+                {{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}
               </label>
             </div>
           </div>
@@ -90,10 +92,26 @@
             <div class="form-control">
               <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
                 <input type="checkbox" class="checkbox" name="financialVerification" [(ngModel)]="model.financialVerification" />
-                Financial Assistance Verification
+                {{ consultancy ? 'Technology Upgradation' : 'Financial Assistance Verification' }}
               </label>
             </div>
           </div>
+          @if (consultancy && model.financialVerification) {
+            <div class="col-sm-6 field">
+              <label class="input-group1 d-block" for="tuPreferredState">Applicable State</label>
+              <select id="tuPreferredState" name="tuPreferredState" class="form-control input-100" [ngModel]="model.tuPreferredState ?? ''"
+                      (ngModelChange)="stateChanged($event)">
+                <option value="">Select State</option>
+                @for (st of tuStates(); track st.code) {
+                  <option [value]="st.code">{{ st.name }}</option>
+                }
+              </select>
+            </div>
+            <div class="col-sm-6 field">
+              <label class="input-group1 d-block" for="tuDistricts">Applicable Districts</label>
+              <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
+            </div>
+          }
           @if (isEdit) {
             <div class="col-sm-12 field">
               <label class="d-block" for="reasonForRejection">Reason for Block</label>

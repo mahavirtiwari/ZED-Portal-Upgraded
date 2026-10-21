@@ -1,0 +1,29 @@
+@* Port of the consultancy _FaAllotAssessorTemplate.cshtml (FinancialAssistance/AcceptUnitForVerification): to the
+   MSME-DFO officer the Consultant Organisation allotted. The legacy mail read the officer's password from
+   SP_EMAIL_GET_DETAILS_FA; only the user id is sent now. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">An application for verification has been allocated to you for Financial Support for Zero Effect Solution under the "MSME Sustainable (ZED) Certification" Scheme. The details of the MSME are as follows:</p>
+    <StaffSchemeDetailTable Rows="@Rows" />
+    <p style="font-size: 13px; margin-bottom: 0;">Please sign in to the mobile application with your user id <b>@AssessorUserId</b> and the MSME ZED ID <b>@ZedId</b> to proceed.</p>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@AppUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Download Mobile Application</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, do drop in a mail at: zed.support@qcin.org</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    public const string AppUrl = "https://play.google.com/store/apps/details?id=com.qci.zed.consultancy";
+
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string UnitName { get; set; } = "";
+    [Parameter] public string Address { get; set; } = "";
+    [Parameter] public string AssessorUserId { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+
+    private IReadOnlyList<StaffSchemeDetailTable.Row> Rows =>
+        [new("MSME ZED ID", ZedId), new("Unit Name", UnitName), new("Unit Address", Address), new("Mode of Verification", "On-site")];
+}

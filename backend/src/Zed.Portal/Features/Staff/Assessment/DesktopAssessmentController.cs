@@ -36,13 +36,23 @@ namespace Zed.Portal.Features.Staff.Assessment;
 /// The agency and master-admin review actions of the page (edit remarks, final submit, reject, send back:
 /// the old MonitoringController) are in <see cref="Monitoring.MonitoringReviewController"/>; <see cref="Permissions.Review"/>
 /// tells the page which of them apply (<see cref="Monitoring.ReviewRules"/>).
+/// <para>
+/// Surveillance (Bronze surveillance): the same procedures and state checks; the archived records of a 2nd
+/// surveillance are <c>{ZedId}_S_{Id}</c>; SP_ASSESSMENT_DA_DETAILS has no <c>@FromSurveillance</c> there and returns
+/// the location of the original ZED assessment (from main) between the screenshots and the ESG check list, then the
+/// "financial support availed" and "additional support" answers, shown as <see cref="SurveillanceDetails"/>; app
+/// uploads are under <c>surveillancemobileapi</c> (<see cref="DaFiles"/>). Not served on Consultancy (no desktop
+/// assessment there).
+/// </para>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [Route("api/staff/assessment/da/{zedId}/{certification}")]
 [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
 public sealed class DesktopAssessmentController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    PortalHost host,
     ILogger<DesktopAssessmentController> log) : StaffApiController
 {
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -78,6 +88,9 @@ public sealed class DesktopAssessmentController(
     ];
     private static readonly string[] PhotoFields = ["Id", "PhotoId", "PhotoType", "IsVerified", "AssessorRemarks", "MsmeRemarks", "NcCount", "DocumentOpenedTime"];
     private static readonly string[] EsgFields = ["Code", "Question", "Answer", "IfYesQuestion", "IfYesAnswer", "IfNoQuestion", "IfNoAnswer", "CheckListType"];
+    private static readonly string[] ZedLocationFields = ["ZedLatitude", "ZedLongitude"];
+    private static readonly string[] FinancialSupportFields = ["FinancialAssistanceAvailed", "AnyDocuments", "DocumentTypes"];
+    private static readonly string[] AdditionalSupportFields = ["SuitableForSilverUpgrade", "HandholdingSupport"];
 
     public sealed record NcRound(
         int NcCount,
@@ -97,6 +110,12 @@ public sealed class DesktopAssessmentController(
         bool CanWithdrawExemption,   // master admin: exemption Yes -> No of a Silver/Gold record at status 5, 6 or 8
         Monitoring.ReviewActions Review); // agency / master-admin review actions open to the user now
 
+    /// <summary>Surveillance only: answers captured in the Bronze surveillance app, and where the original ZED assessment took place.</summary>
+    public sealed record SurveillanceDetails(
+        Dictionary<string, object?>? ZedLocation,
+        Dictionary<string, object?>? FinancialSupport,
+        Dictionary<string, object?>? AdditionalSupport);
+
     public sealed record DaDetailsResponse(
         string ZedId,
         string Certification,
@@ -113,7 +132,9 @@ public sealed class DesktopAssessmentController(
         Dictionary<string, object?>? Location,
         IReadOnlyList<Dictionary<string, object?>> EsgCheckList,
         IReadOnlyList<NcRound> NcRounds,
-        Permissions Permissions);
+        Permissions Permissions,
+        [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        SurveillanceDetails? Surveillance = null);
 
     // ======================================================================== read
 
@@ -142,9 +163,13 @@ public sealed class DesktopAssessmentController(
         }
 
         var bronze = level == "Bronze";
-        var evidences = Evidences(da[7], zedId, level, moved);
+        var system = host.System;
+        var surveillance = system == PortalSystem.Surveillance;
+        var evidences = Evidences(da[7], zedId, level, moved, system);
         var screenshots = da[bronze ? 10 : 21];
-        foreach (var e in evidences) e["Screenshots"] = Screenshots(screenshots, e, zedId, level);
+        foreach (var e in evidences) e["Screenshots"] = Screenshots(screenshots, e, zedId, level, system);
+        // Index of the ESG check list: right after the screenshots, or after the ZED-assessment location on Surveillance.
+        var esg = (bronze ? 10 : 21) + (surveillance ? 2 : 1);
 
         // NC rounds exist only for Bronze desktop verification (Silver/Gold NCs are raised at the site assessment).
         var ncCount = Math.Clamp(record.Nc, 0, 5);
@@ -161,18 +186,24 @@ public sealed class DesktopAssessmentController(
 
         return new DaDetailsResponse(
             zedId, level, user.RoleName, msme,
-            Products(da[1], zedId, level, moved),
+            Products(da[1], zedId, level, moved, system),
             Pick(da[2], RawMaterialFields),
             Pick(da[3], SectionFields),
             Pick(da[4], RequirementFields),
             Pick(da[5], OptionFields),
             Pick(da[6], SubOptionFields),
             evidences,
-            Photos(da[8], zedId, level, moved),
+            Photos(da[8], zedId, level, moved, system),
             da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude"]) : null,
-            Pick(da[bronze ? 11 : 22], EsgFields),
+            Pick(da[esg], EsgFields),
             rounds,
-            permissions);
+            permissions,
+            surveillance
+                ? new SurveillanceDetails(
+                    da[esg - 1].FirstOrDefault() is { } z ? Pick(z, ZedLocationFields) : null,
+                    da[esg + 1].FirstOrDefault() is { } fs ? Pick(fs, FinancialSupportFields) : null,
+                    da[esg + 2].FirstOrDefault() is { } aq ? Pick(aq, AdditionalSupportFields) : null)
+                : null);
     }
 
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
@@ -181,14 +212,14 @@ public sealed class DesktopAssessmentController(
             new { UserId, RoleId = RoleText, ZedId = zedId, Certification = level, NcCount = n }, ct);
         return new NcRound(
             n,
-            Products(nc[0], zedId, level, moved),
-            Products(nc[8], zedId, level, moved),
+            Products(nc[0], zedId, level, moved, host.System),
+            Products(nc[8], zedId, level, moved, host.System),
             Pick(nc[1], SectionFields),
             Pick(nc[2], RequirementFields),
             Pick(nc[3], OptionFields),
             Pick(nc[4], SubOptionFields),
-            Evidences(nc[5], zedId, level, moved),
-            Photos(nc[6], zedId, level, moved),
+            Evidences(nc[5], zedId, level, moved, host.System),
+            Photos(nc[6], zedId, level, moved, host.System),
             nc[7].FirstOrDefault()?.Text("AssessorRemarksNc") is { Length: > 0 } r ? r : null);
     }
 
@@ -202,14 +233,14 @@ public sealed class DesktopAssessmentController(
         // Malformed, foreign and missing files all answer 404 so file existence is not revealed.
         var level = AssessmentInput.Level(certification);
         var requested = DaFiles.Normalise(path);
-        if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !DaFiles.BelongsTo(requested, zedId, level))
+        if (!AssessmentInput.IsId(zedId) || level is null || requested is null || !DaFiles.BelongsTo(requested, zedId, level, host.System))
             return NotFound();
 
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
 
         var root = StorageRoot;
-        var fullPath = DaFiles.StorageCandidates(requested, zedId)
+        var fullPath = DaFiles.StorageCandidates(requested, zedId, host.System)
             .Select(c => MsmeFilePaths.Resolve(root, c))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
@@ -331,7 +362,7 @@ public sealed class DesktopAssessmentController(
         var (checkedFiles, fileError) = await EvidenceUploads.CheckAsync(files, ct);
         if (fileError is not null) return this.Problem400(fileError);
 
-        var folder = DaFiles.ScreenshotFolder(zedId, level!, evidence.SectionCode!, evidence.RequirementCode!, evidence.EvidenceCode!);
+        var folder = DaFiles.ScreenshotFolder(zedId, level!, evidence.SectionCode!, evidence.RequirementCode!, evidence.EvidenceCode!, host.System);
         var saved = await EvidenceUploads.SaveAsync(StorageRoot, folder, checkedFiles, ct);
         try
         {
@@ -513,7 +544,8 @@ public sealed class DesktopAssessmentController(
         return null;
     }
 
-    private static List<Dictionary<string, object?>> Products(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved) =>
+    private static List<Dictionary<string, object?>> Products(
+        IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved, PortalSystem system) =>
         rows.Select(p =>
         {
             var d = Pick(p, ProductFields);
@@ -521,44 +553,47 @@ public sealed class DesktopAssessmentController(
             var kind = description.Contains(".pdf", StringComparison.OrdinalIgnoreCase) ? "pdf"
                 : description.Contains(".jpg", StringComparison.OrdinalIgnoreCase) || description.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) ||
                   description.Contains(".png", StringComparison.OrdinalIgnoreCase) ? "image" : null;
-            d["PhotoUrl"] = DaFiles.AppUpload(zedId, level, moved, "BasicInfo", p.Text("ProductPhoto"));
-            d["DescriptionUrl"] = kind is null ? null : DaFiles.AppUpload(zedId, level, moved, "BasicInfo", description);
+            d["PhotoUrl"] = DaFiles.AppUpload(zedId, level, moved, "BasicInfo", p.Text("ProductPhoto"), system);
+            d["DescriptionUrl"] = kind is null ? null : DaFiles.AppUpload(zedId, level, moved, "BasicInfo", description, system);
             d["DescriptionKind"] = kind;
             d["ProductOpened"] = p.Text("ProductOpenedTime").Length > 0;
             d["DescriptionOpened"] = p.Text("ProductDescOpenedTime").Length > 0;
             return d;
         }).ToList();
 
-    private static List<Dictionary<string, object?>> Evidences(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved) =>
+    private static List<Dictionary<string, object?>> Evidences(
+        IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved, PortalSystem system) =>
         rows.Select(e =>
         {
             var d = Pick(e, EvidenceFields);
             d["Opened"] = e.Text("DocumentOpenedTime").Length > 0;
             d["FileUrl"] = e.Text("SyncedDate").Length > 0 && e.Text("EvidenceId") is { Length: > 0 } eid
-                ? DaFiles.AppUpload(zedId, level, moved, "Evidences", eid + ".pdf")
+                ? DaFiles.AppUpload(zedId, level, moved, "Evidences", eid + ".pdf", system)
                 : null;
             return d;
         }).ToList();
 
-    private static List<string> Screenshots(IEnumerable<IDictionary<string, object?>> rows, Dictionary<string, object?> evidence, string zedId, string level)
+    private static List<string> Screenshots(
+        IEnumerable<IDictionary<string, object?>> rows, Dictionary<string, object?> evidence, string zedId, string level, PortalSystem system)
     {
         var id = Convert.ToString(evidence["Id"], CultureInfo.InvariantCulture);
         string Code(string column) => Convert.ToString(evidence[column], CultureInfo.InvariantCulture) ?? "";
         var (s, r, e) = (Code("SectionCode"), Code("RequirementCode"), Code("EvidenceCode"));
         if (string.IsNullOrEmpty(id) || !EvidenceUploads.IsCode(s) || !EvidenceUploads.IsCode(r) || !EvidenceUploads.IsCode(e)) return [];
         return rows.Where(x => x.Text("RefEvidenceId") == id && x.Text("FileName").Length > 0 && !x.Text("FileName").Contains('/'))
-            .Select(x => DaFiles.Url(zedId, level, DaFiles.ScreenshotFolder(zedId, level, s, r, e) + "/" + x.Text("FileName").Trim()))
+            .Select(x => DaFiles.Url(zedId, level, DaFiles.ScreenshotFolder(zedId, level, s, r, e, system) + "/" + x.Text("FileName").Trim(), system))
             .OfType<string>()
             .ToList();
     }
 
-    private static List<Dictionary<string, object?>> Photos(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved) =>
+    private static List<Dictionary<string, object?>> Photos(
+        IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, bool moved, PortalSystem system) =>
         rows.Select(p =>
         {
             var d = Pick(p, PhotoFields);
             var type = p.Text("PhotoType");
             d["Url"] = type is "Selfie" or "SiteExteriorPhotos" && p.Text("PhotoId") is { Length: > 0 } photoId
-                ? DaFiles.AppUpload(zedId, level, moved, type, photoId + ".jpg")
+                ? DaFiles.AppUpload(zedId, level, moved, type, photoId + ".jpg", system)
                 : null;
             return d;
         }).ToList();

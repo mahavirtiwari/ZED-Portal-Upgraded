@@ -8,6 +8,9 @@ import { StaffRole } from '../staff-menu';
 import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { flag, text } from './dashboard-filters';
 import { ListFiltersBar } from './list-controls';
+import { PORTAL_SYSTEM } from '../../portal-system';
+import { PORTAL_LABELS } from '../../portal-labels';
+import { staffProfileLink } from '../msme-profile/msme-profile';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -28,6 +31,12 @@ export class RegisteredMsmePage {
   private readonly user = inject(AuthService).currentUser;
 
   protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin);
+  /** Agency / Udyam column: SuperAdmin, and MasterAdmin on Consultancy and Surveillance (the API sends it to both). */
+  protected readonly showsAgency = computed(() => this.isSuperAdmin() || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));
+  protected readonly main = PORTAL_SYSTEM === 'main';
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly surveillance = PORTAL_SYSTEM === 'surveillance';
+  protected readonly agencyLabel = PORTAL_LABELS.agency;
   protected readonly searchFields = ['Zed Id', 'Udyam Number', 'Unit Name'];
   protected readonly pageSizes = [10, 20, 50, 100, 200, 1000];
 
@@ -114,8 +123,9 @@ export class RegisteredMsmePage {
     return this.legacyUrl() + path;
   }
 
+  /** The staff profile page of this portal (it replaced the old portal's Msme/Profile). */
   protected profileUrl(row: Row): string {
-    return this.legacy(`/Msme/Profile/${encodeURIComponent(text(row, 'ZedId'))}`);
+    return staffProfileLink(text(row, 'ZedId'));
   }
 
   /** Assessment Details page (DA for status 1-6, SA for 9-16), or null. */

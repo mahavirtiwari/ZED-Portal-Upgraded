@@ -6,34 +6,31 @@ using Zed.Core.Security;
 namespace Zed.Portal.Features.Staff.Assessment;
 
 /// <summary>
-/// Allocation of desktop assessments and the assessors' work lists. Port of the AssessmentController
-/// actions used by Views/Assessment/Allot, DaAllotment, DaVerification and NonConfirmances:
-/// GetList (SP_ASSESSMENT_ALLOT_LIST), GetCb (SP_ASSESSMENT_AGENCIES_TO_ALLOT), AllotCb
-/// (SP_ASSESSMENT_ALLOT_TO_AGENCY), AcceptUnitForDa / RejectUnitForDa (SP_ASSESSMENT_ACCEPT_UNIT_FOR_DA /
-/// SP_ASSESSMENT_REJECT_UNIT_FOR_DA) and AcceptUnitForDaVerification / RejectUnitForDaVerification.
+/// Allocation of assessments to agencies by the master admin. Port of the AssessmentController actions used by
+/// Views/Assessment/Allot: GetList (SP_ASSESSMENT_ALLOT_LIST), GetCb (SP_ASSESSMENT_AGENCIES_TO_ALLOT) and AllotCb
+/// (SP_ASSESSMENT_ALLOT_TO_AGENCY). The agency and assessor work lists are in <see cref="DesktopAllotmentController"/>.
 /// <para>
-/// The legacy POST actions had no authorisation and took the ZED ID, agency and assessor from the
-/// browser, so anyone could allot any MSME to anyone. Here every action is limited to the role of its
-/// screen, and the record (and the chosen agency or assessor) must be in the list the procedure gives
-/// the signed-in user: the list procedures are scoped by UserId/RoleId from the sign-in cookie.
+/// The legacy POST actions had no authorisation and took the ZED ID and agency from the browser, so anyone could
+/// allot any MSME to anyone. Here the record must be in the master admin's allot list and the agency in the list
+/// the procedure offers for it.
 /// </para>
+/// <para>Per system (same procedures and parameters, different rows and mails):</para>
+/// <list type="bullet">
+/// <item>Main: records at status 2/3; Bronze goes to desktop-verification agencies, Silver/Gold to site-verification agencies.</item>
+/// <item>Consultancy ("Allot Consultancy"): the paid milestone (status 6, NcCount = milestone) goes to a Consultant
+/// Organisation with site verification; mail "Allocation of MSME for Handholding Support (Milestone n)".</item>
+/// <item>Surveillance ("Allot Surveillance"): Bronze at status 1 goes to agencies allowed for Bronze surveillance
+/// (AllowBronzeSurveillance, the procedure also matches their preferred state), Silver/Gold at status 8 to site-verification
+/// agencies; rows add SurveillanceNo and AutoAllocationDate; mail subjects say Surveillance.</item>
+/// </list>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [Route("api/staff/assessment")]
-public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<AssessmentAllotmentController> log) : StaffApiController
+public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost host, ILogger<AssessmentAllotmentController> log) : StaffApiController
 {
-    /// <summary>Columns the list screens show (the procedure selects whole Msme/Users rows).</summary>
-    private static readonly string[] ListFields =
-    [
-        "RowNumber", "ZedId", "Certification", "PUnitName", "UnitAddress", "UnitSpocName", "UnitSpocMobileNo", "UnitSpocEmailId",
-        "AgencyName", "CertificationBodyUserId", "ReasonForRejection", "DesktopReasonForRejection", "DesktopAssessorId",
-        "DesktopAccepted", "CertificationStatus", "NcStatus", "ModeOfAssessment",
-    ];
-
     public sealed record ListResponse(IReadOnlyList<Dictionary<string, object?>> Rows);
 
     public sealed record Person(string UserId, string UserName);
-
-    // ---------------------------------------------------------------- master admin: allot to agency
 
     /// <summary>Allot screen (Assessment/Allot): records waiting for an agency or re-allotment.</summary>
     [HttpGet("allot")]
@@ -41,10 +38,16 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
     public async Task<ActionResult<ListResponse>> AllotList(
         string? state, string? certification, string? size, string? gender, string? allotmentType, CancellationToken ct)
     {
-        if (!Filters(state, certification, size, gender, out var f)) return this.Problem400("Invalid filter.");
+        if (!AllotmentLists.Filters(state, certification, size, gender, out var f)) return this.Problem400("Invalid filter.");
         if (!AssessmentInput.Filter(allotmentType, ["ALLOT", "REALLOT"], out var type)) return this.Problem400("Invalid filter.");
-        var sets = await List(type, null, f, ct);
-        return new ListResponse(Pick(sets[0], [.. ListFields, "TimeDuration", "UdyamStatus"]));
+        var sets = await AllotmentLists.List(db, UserId, RoleId, type, null, f, ct);
+        string[] extra = host.System switch
+        {
+            PortalSystem.Consultancy => ["TimeDuration", "NcCount"],
+            PortalSystem.Surveillance => ["TimeDuration", "SurveillanceNo", "AutoAllocationDate"],
+            _ => ["TimeDuration", "UdyamStatus"],
+        };
+        return new ListResponse(AllotmentLists.Pick(sets[0], [.. AllotmentLists.ListFields, .. extra]));
     }
 
     /// <summary>Agencies that may be given this record (GetCb), filtered as the old pop-up did.</summary>
@@ -67,8 +70,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
         if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
         if (!AssessmentInput.IsId(req.AgencyUserId)) return this.Problem400("Please select valid data.");
 
-        var listed = (await List(null, req.ZedId, Filter.None with { Certification = level }, ct))[0]
-            .Any(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
+        var listed = (await AllotmentLists.List(db, UserId, RoleId, null, req.ZedId, AllotmentLists.Filter.None with { Certification = level }, ct))[0]
+            .Any(r => AllotmentLists.Same(r, "ZedId", req.ZedId!) && AllotmentLists.Same(r, "Certification", level));
         if (!listed) return this.Problem400("This assessment can no longer be allotted.");
 
         var agency = (await AgenciesFor(req.ZedId!, level, ct)).FirstOrDefault(a => string.Equals(a.UserId, req.AgencyUserId, StringComparison.OrdinalIgnoreCase));
@@ -77,136 +80,38 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
         await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
             new { ZedId = req.ZedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
         log.LogInformation("{UserId} allotted {ZedId} {Certification} to agency {Agency}", UserId, req.ZedId, level, agency.UserId);
-        await Emails().SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, req.ZedId!, level, null, ct);
-        return new MessageResponse("Assessment allotted.");
+        await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
+            .SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, req.ZedId!, level, null, ct);
+        return new MessageResponse(host.System == PortalSystem.Consultancy ? "Consultancy allotted." : "Assessment allotted.");
     }
 
-    // ---------------------------------------------------------------- agency: allot to desktop assessor
-
-    public sealed record DaAllotmentResponse(
-        IReadOnlyList<Dictionary<string, object?>> Rows,
-        IReadOnlyList<Person> Assessors,
-        IReadOnlyList<Person> BronzeAssessors);
-
-    /// <summary>DA Allotment screen: the agency's records waiting for a desktop assessor, and its assessors.</summary>
-    [HttpGet("da-allotment")]
-    [StaffRoles(UserRole.Agency)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<DaAllotmentResponse>> DaAllotmentList(CancellationToken ct)
+    private async Task<IEnumerable<Person>> AgenciesFor(string zedId, string level, CancellationToken ct)
     {
-        var sets = await List("DA", null, Filter.None, ct);
-        return new DaAllotmentResponse(Pick(sets[0], [.. ListFields, "DaAssessorName"]), People(sets[1]), People(sets[2]));
+        var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
+        // Bronze surveillance goes only to agencies allowed for it (the old Allot page filtered on AllowBronzeSurveillance).
+        var column = level != "Bronze" ? "SiteVerification"
+            : host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification";
+        return rows.Where(r => AllotmentLists.Flag(r, column)).Select(r => new Person(r.Text("UserId"), r.Text("UserName")));
     }
+}
 
-    public sealed record AllotToAssessorRequest(string? ZedId, string? Certification, string? DesktopAssessorId);
+/// <summary>SP_ASSESSMENT_ALLOT_LIST and the helpers the allotment controllers share.</summary>
+internal static class AllotmentLists
+{
+    /// <summary>Columns the list screens show (the procedure selects whole Msme/Users rows).</summary>
+    public static readonly string[] ListFields =
+    [
+        "RowNumber", "ZedId", "Certification", "PUnitName", "UnitAddress", "UnitSpocName", "UnitSpocMobileNo", "UnitSpocEmailId",
+        "AgencyName", "CertificationBodyUserId", "ReasonForRejection", "DesktopReasonForRejection", "DesktopAssessorId",
+        "DesktopAccepted", "CertificationStatus", "NcStatus", "ModeOfAssessment",
+    ];
 
-    [HttpPost("da-allotment/allot")]
-    [StaffRoles(UserRole.Agency)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AllotToAssessor(AllotToAssessorRequest req, CancellationToken ct)
-    {
-        var level = AssessmentInput.Level(req.Certification);
-        if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
-        if (!AssessmentInput.IsId(req.DesktopAssessorId)) return this.Problem400("Please select valid data.");
-
-        var sets = await List("DA", req.ZedId, Filter.None with { Certification = level }, ct);
-        var row = sets[0].FirstOrDefault(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
-        if (row is null) return this.Problem400("This assessment is not allotted to your agency or can no longer be allotted.");
-
-        // Bronze goes to the agency's Bronze assessors (fewer than 10 allotments today), the rest to its other assessors.
-        var assessors = People(level == "Bronze" ? sets[2] : sets[1]);
-        var assessor = assessors.FirstOrDefault(a => string.Equals(a.UserId, req.DesktopAssessorId, StringComparison.OrdinalIgnoreCase));
-        if (assessor is null) return this.Problem400("Please select valid data.");
-
-        await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_DA",
-            new { ZedId = req.ZedId, Certification = level, DesktopAssessorId = assessor.UserId }, ct);
-        log.LogInformation("Agency {UserId} allotted {ZedId} {Certification} to assessor {Assessor}", UserId, req.ZedId, level, assessor.UserId);
-        await Emails().SendAsync(DesktopAssessmentEmails.Kind.AllottedToAssessor, req.ZedId!, level, null, ct);
-        return new MessageResponse("Assessment allotted to the assessor.");
-    }
-
-    public sealed record RejectRequest(string? ZedId, string? Certification, string? ReasonForRejection);
-
-    [HttpPost("da-allotment/reject")]
-    [StaffRoles(UserRole.Agency)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AgencyReject(RejectRequest req, CancellationToken ct)
-    {
-        var level = AssessmentInput.Level(req.Certification);
-        if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
-        if (Reason(req.ReasonForRejection) is not { } reason) return this.Problem400("Please enter reason for rejection.");
-
-        var row = (await List("DA", req.ZedId, Filter.None with { Certification = level }, ct))[0]
-            .FirstOrDefault(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
-        // The old page offered Reject only before an assessor was chosen, or after the assessor rejected.
-        if (row is null || (row.Text("DesktopAssessorId").Length > 0 && row.Text("DesktopReasonForRejection").Length == 0))
-            return this.Problem400("This assessment is not allotted to your agency or can no longer be rejected.");
-
-        await db.ExecuteProcAsync("SP_ASSESSMENT_REJECT_UNIT_FOR_DA", new { ZedId = req.ZedId, Certification = level, ReasonForRejection = reason }, ct);
-        log.LogInformation("Agency {UserId} rejected {ZedId} {Certification}", UserId, req.ZedId, level);
-        await Emails().SendAsync(DesktopAssessmentEmails.Kind.RejectedByAgency, req.ZedId!, level, reason, ct);
-        return new MessageResponse("Assessment rejected.");
-    }
-
-    // ---------------------------------------------------------------- desktop assessor: work lists
-
-    /// <summary>Desktop Verification screen: records allotted to the signed-in assessor (status below 4).</summary>
-    [HttpGet("da-verification")]
-    [StaffRoles(UserRole.DesktopAssessor)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<ListResponse>> DaVerificationList(CancellationToken ct) =>
-        new ListResponse(Pick((await List(null, null, Filter.None, ct))[0], ListFields));
-
-    /// <summary>Non-Conformances screen: the assessor's records with an open NC round (DA status 4, SA status 14).</summary>
-    [HttpGet("non-conformances")]
-    [StaffRoles(UserRole.DesktopAssessor)]
-    public async Task<ActionResult<ListResponse>> NonConformancesList(
-        string? state, string? certification, string? size, string? gender, CancellationToken ct)
-    {
-        if (!Filters(state, certification, size, gender, out var f)) return this.Problem400("Invalid filter.");
-        return new ListResponse(Pick((await List("NC", null, f, ct))[0], ListFields));
-    }
-
-    public sealed record UnitRequest(string? ZedId, string? Certification);
-
-    [HttpPost("da-verification/accept")]
-    [StaffRoles(UserRole.DesktopAssessor)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AssessorAccept(UnitRequest req, CancellationToken ct)
-    {
-        var level = AssessmentInput.Level(req.Certification);
-        if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
-        if (!await PendingForAssessor(req.ZedId!, level, ct)) return this.Problem400("This assessment is not allotted to you or was already answered.");
-
-        await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_DA_VERIFICATION", new { ZedId = req.ZedId, Certification = level }, ct);
-        log.LogInformation("Assessor {UserId} accepted {ZedId} {Certification}", UserId, req.ZedId, level);
-        return new MessageResponse("Unit accepted.");
-    }
-
-    [HttpPost("da-verification/reject")]
-    [StaffRoles(UserRole.DesktopAssessor)]
-    [SubRole(SubRoles.DesktopVerification)]
-    public async Task<ActionResult<MessageResponse>> AssessorReject(RejectRequest req, CancellationToken ct)
-    {
-        var level = AssessmentInput.Level(req.Certification);
-        if (!AssessmentInput.IsId(req.ZedId) || level is null) return this.Problem400("Invalid request.");
-        if (Reason(req.ReasonForRejection) is not { } reason) return this.Problem400("Please enter reason for rejection.");
-        if (!await PendingForAssessor(req.ZedId!, level, ct)) return this.Problem400("This assessment is not allotted to you or was already answered.");
-
-        await db.ExecuteProcAsync("SP_ASSESSMENT_REJECT_UNIT_FOR_DA_VERIFICATION", new { ZedId = req.ZedId, Certification = level, ReasonForRejection = reason }, ct);
-        log.LogInformation("Assessor {UserId} rejected {ZedId} {Certification}", UserId, req.ZedId, level);
-        await Emails().SendAsync(DesktopAssessmentEmails.Kind.RejectedByAssessor, req.ZedId!, level, reason, ct);
-        return new MessageResponse("Unit rejected.");
-    }
-
-    // ---------------------------------------------------------------- helpers
-
-    private sealed record Filter(string? State, string? Certification, string? Size, string? Gender)
+    public sealed record Filter(string? State, string? Certification, string? Size, string? Gender)
     {
         public static readonly Filter None = new(null, null, null, null);
     }
 
-    private static bool Filters(string? state, string? certification, string? size, string? gender, out Filter filter)
+    public static bool Filters(string? state, string? certification, string? size, string? gender, out Filter filter)
     {
         filter = Filter.None;
         if (!AssessmentInput.State(state, out var s)) return false;
@@ -217,12 +122,15 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
         return true;
     }
 
-    /// <summary>SP_ASSESSMENT_ALLOT_LIST for the signed-in user (the procedure branches on RoleId and filters by UserId).</summary>
-    private Task<ResultSets> List(string? allotmentType, string? zedId, Filter f, CancellationToken ct) =>
+    /// <summary>
+    /// SP_ASSESSMENT_ALLOT_LIST for the signed-in user (the procedure branches on RoleId and filters by UserId).
+    /// The parameters exist in all three databases (Consultancy adds @Milestone, used only by the lists not ported).
+    /// </summary>
+    public static Task<ResultSets> List(ISqlExecutor db, string userId, int roleId, string? allotmentType, string? zedId, Filter f, CancellationToken ct) =>
         db.QueryProcMultipleAsync("SP_ASSESSMENT_ALLOT_LIST", new
         {
-            UserId,
-            RoleId = RoleId.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            UserId = userId,
+            RoleId = roleId.ToString(System.Globalization.CultureInfo.InvariantCulture),
             AllotmentType = allotmentType,
             ZedId = zedId,
             CertificationType = f.Certification,
@@ -231,30 +139,10 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
             Gender = f.Gender,
         }, ct);
 
-    private async Task<IEnumerable<Person>> AgenciesFor(string zedId, string level, CancellationToken ct)
-    {
-        var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
-        var column = level == "Bronze" ? "DesktopVerification" : "SiteVerification";
-        return rows.Where(r => Flag(r, column)).Select(r => new Person(r.Text("UserId"), r.Text("UserName")));
-    }
-
-    /// <summary>The record is in the assessor's Desktop Verification list, allotted to it as desktop assessor and not yet answered.</summary>
-    private async Task<bool> PendingForAssessor(string zedId, string level, CancellationToken ct)
-    {
-        var rows = (await List(null, zedId, Filter.None with { Certification = level }, ct))[0];
-        return rows.Any(r => Same(r, "ZedId", zedId) && Same(r, "Certification", level) && Same(r, "DesktopAssessorId", UserId) &&
-                             !Flag(r, "DesktopAccepted") && r.Text("DesktopReasonForRejection").Length == 0);
-    }
-
-    private DesktopAssessmentEmails Emails() => DesktopAssessmentEmails.Create(HttpContext.RequestServices);
-
-    /// <summary>Reason for rejection: required; the old pop-ups allowed 2000 characters.</summary>
-    private static string? Reason(string? value) => AssessmentInput.Text(value) is { Length: <= 2000 } r ? r : null;
-
-    private static bool Same(IDictionary<string, object?> row, string column, string value) =>
+    public static bool Same(IDictionary<string, object?> row, string column, string value) =>
         string.Equals(row.Text(column).Trim(), value, StringComparison.OrdinalIgnoreCase);
 
-    private static bool Flag(IDictionary<string, object?> row, string column) =>
+    public static bool Flag(IDictionary<string, object?> row, string column) =>
         row.TryGetValue(column, out var v) && v switch
         {
             bool b => b,
@@ -262,9 +150,9 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, ILogger<Asses
             _ => v.ToString() is "1" or "True" or "true",
         };
 
-    private static List<Person> People(IEnumerable<IDictionary<string, object?>> rows) =>
-        rows.Select(r => new Person(r.Text("UserId"), r.Text("UserName"))).Where(p => p.UserId.Length > 0).ToList();
+    public static List<AssessmentAllotmentController.Person> People(IEnumerable<IDictionary<string, object?>> rows) =>
+        rows.Select(r => new AssessmentAllotmentController.Person(r.Text("UserId"), r.Text("UserName"))).Where(p => p.UserId.Length > 0).ToList();
 
-    private static List<Dictionary<string, object?>> Pick(IEnumerable<IDictionary<string, object?>> rows, string[] fields) =>
+    public static List<Dictionary<string, object?>> Pick(IEnumerable<IDictionary<string, object?>> rows, string[] fields) =>
         rows.Select(r => fields.ToDictionary(f => f, f => r.TryGetValue(f, out var v) && v is not DBNull ? v : null)).ToList();
 }

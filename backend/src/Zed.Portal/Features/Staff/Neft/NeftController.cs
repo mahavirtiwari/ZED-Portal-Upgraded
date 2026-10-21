@@ -34,11 +34,17 @@ namespace Zed.Portal.Features.Staff.Neft;
 /// the legacy page and is not offered.</item>
 /// <item>Who approved is recorded in MsmeHistory and the log.</item>
 /// </list>
+/// <para>
+/// Also served by Consultancy, where the rows are Technology Upgradation reimbursements (same statuses; the procedure adds
+/// the unit's eligible technologies, CertId and the TU status). Their rows open the TU verification page.
+/// </para>
 /// </summary>
 [Route("api/staff/neft")]
 [StaffRoles(UserRole.StateCoordinator)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
 public sealed partial class NeftController(
     ISqlExecutor db,
+    PortalHost host,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
@@ -61,6 +67,12 @@ public sealed partial class NeftController(
         "ApproverDateOfReceiptOfPayment", "ApproverReferenceNo", "ApproverAmount", "Comments",
     ];
 
+    /// <summary>Consultancy (ZED_CONSULTANT SP_NEFT_TRANSACTIONS_BY_STATUS): the Technology Upgradation columns.</summary>
+    public static readonly string[] ConsultancyColumns =
+    [
+        "CertId", "FinancialAssistanceId", "TechnologyName", "NameOfTheManufacturer", "MakeOrModelName", "TechUpgradeStatus", "TotalPaidAfterQc",
+    ];
+
     public enum NeftList { New, Approved, Rejected }
 
     public sealed record TransactionsResponse(IReadOnlyList<Dictionary<string, object?>> Transactions);
@@ -79,7 +91,8 @@ public sealed partial class NeftController(
             NeftList.Rejected => SchemeRows.Int(r, "VerificationStatus") == ApprovedByAgency && SchemeRows.Int(r, "TransactionStatus") == TransactionRejected,
             _ => SchemeRows.Int(r, "VerificationStatus") == ApprovedByAgency && SchemeRows.Int(r, "TransactionStatus") is not (TransactionApproved or TransactionRejected),
         });
-        return new TransactionsResponse(selected.Select(r => SchemeRows.Pick(r, Columns)).ToList());
+        string[] columns = host.System == PortalSystem.Consultancy ? [.. Columns, .. ConsultancyColumns] : Columns;
+        return new TransactionsResponse(selected.Select(r => SchemeRows.Pick(r, columns)).ToList());
     }
 
     public sealed record ApproveRequest(string? ZedId, string? DateOfReceiptOfPayment, string? ReferenceNo, string? Amount);

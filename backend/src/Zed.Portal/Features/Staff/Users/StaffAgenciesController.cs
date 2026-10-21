@@ -19,11 +19,18 @@ namespace Zed.Portal.Features.Staff.Users;
 /// password to the mobile number. The role created here is fixed by the route and the acting user
 /// comes from the sign-in cookie.
 /// </para>
+/// <para>
+/// Also served by the Consultancy host, where agencies are the Consultant Organisations (see <see cref="ConsultancyUsers"/>):
+/// no organising partners and no Bronze assessments, a Technology Upgradation state/districts preference, its own
+/// SP_INSERT_USER / SP_UPDATE_USER parameter list and an inline block / unblock.
+/// </para>
 /// </summary>
 [Route("api/staff/users/agencies")]
 [StaffRoles(UserRole.MasterAdmin)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
 public sealed class StaffAgenciesController(
     ISqlExecutor db,
+    PortalHost host,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
@@ -57,20 +64,37 @@ public sealed class StaffAgenciesController(
 
     public sealed record OrgPartner(string UserId, string Name);
     public sealed record Sector(string SectorCode, string SectorName);
-    public sealed record AgencyOptions(IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<OrgPartner> OrgPartners);
+    public sealed record CodeName(string Code, string Name);
+    public sealed record AgencyOptions(
+        IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<OrgPartner> OrgPartners, IReadOnlyList<CodeName>? TuStates = null);
 
-    /// <summary>Choices of the agency form (SP_MASTER_GET_SECTORS: sectors and organising partners not yet linked to an agency).</summary>
+    /// <summary>
+    /// Choices of the agency form (SP_MASTER_GET_SECTORS: sectors and organising partners not yet linked to an agency).
+    /// Consultancy: no organising partners; the Technology Upgradation states instead.
+    /// </summary>
     [HttpGet("options")]
     public async Task<AgencyOptions> Options(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct);
-        return new AgencyOptions(StaffUserRules.States, Sectors(sets), Partners(sets[1]));
+        return host.IsConsultancy()
+            ? new AgencyOptions(StaffUserRules.States, Sectors(sets), [], ConsultancyUsers.TuStates.Select(s => new CodeName(s.Key, s.Value)).ToList())
+            : new AgencyOptions(StaffUserRules.States, Sectors(sets), Partners(sets[1]));
+    }
+
+    /// <summary>Consultancy: districts of a Technology Upgradation state (Districts table).</summary>
+    [HttpGet("districts")]
+    public async Task<ActionResult<List<ConsultancyUsers.District>>> Districts(string? state, CancellationToken ct)
+    {
+        if (!host.IsConsultancy()) return NotFound();
+        if (state is null || !Dashboard.DashboardFilters.States.ContainsKey(state)) return this.Problem400("Please select a valid state.");
+        return await ConsultancyUsers.DistrictsAsync(db, state, ct);
     }
 
     public sealed record AgencyDetails(
         string UserId, string UserName, string? SpocName, string? EmailId, string? MobileNo, string? Address, string? PinCode,
         string? GstNumber, IReadOnlyList<string> States, IReadOnlyList<string> NicSectors, string? OrgPartnerId, string? OrgPartnerName,
-        bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection, bool IsActive);
+        bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection, bool IsActive,
+        string? TuPreferredState = null, IReadOnlyList<string>? TuPreferredDistricts = null);
 
     /// <summary>One agency for the edit form (SP_GET_USER_DETAILS_BY_USER_ID; legacy CertificationBodies?id=).</summary>
     [HttpGet("{userId}")]
@@ -80,16 +104,20 @@ public sealed class StaffAgenciesController(
         if (agency is null) return NotFound();
         var r = agency.Row;
         string? T(string c) => r.Text(c) is { Length: > 0 } v ? v : null;
-        return new AgencyDetails(agency.UserId, r.Text("UserName"), T("SpocName"), T("Email"), T("MobileNo"), T("Address"), T("Pincode"),
+        var details = new AgencyDetails(agency.UserId, r.Text("UserName"), T("SpocName"), T("Email"), T("MobileNo"), T("Address"), T("Pincode"),
             T("AgencyGstNumber"), agency.States, agency.NicSectors, T("OrgPartnerId"), T("OrgPartnerName"),
             StaffUserRules.Bool(r, "DesktopVerification"), StaffUserRules.Bool(r, "SiteVerification"), StaffUserRules.Bool(r, "FinancialVerification"),
             T("ReasonForRejection"), agency.IsActive);
+        return host.IsConsultancy()
+            ? details with { TuPreferredState = T("TuPreferredState"), TuPreferredDistricts = await ConsultancyUsers.TuDistrictsAsync(db, agency.UserId, ct) }
+            : details;
     }
 
     public sealed record AgencyRequest(
         string? UserName, string? SpocName, string? EmailId, string? MobileNo, string? Address, string? PinCode, string? GstNumber,
         List<string>? States, List<string>? NicSectors, string? OrgPartnerId,
-        bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection);
+        bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection,
+        string? TuPreferredState = null, List<string>? TuPreferredDistricts = null);
 
     public sealed record CreatedUserResponse(string Message, string? UserId);
 
@@ -101,11 +129,13 @@ public sealed class StaffAgenciesController(
     public async Task<ActionResult<CreatedUserResponse>> Create(AgencyRequest req, CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct);
-        var (values, error) = Validate(req, Sectors(sets), Partners(sets[1]).Select(p => p.UserId), existing: null);
+        var (values, error) = Validate(req, Sectors(sets), host.IsConsultancy() ? [] : Partners(sets[1]).Select(p => p.UserId), existing: null);
         if (error is not null) return this.Problem400(error);
+        var (tuState, tuDistricts, tuError) = await TuPreferenceAsync(req, ct);
+        if (tuError is not null) return this.Problem400(tuError);
 
         var password = SecureRandom.Password();
-        var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", Parameters(values!, null, password), ct);
+        var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", Parameters(values!, null, password, tuState, tuDistricts), ct);
         var newId = result.Scalar(0);
         if (!StaffUserRules.IsUserId(newId))
         {
@@ -122,7 +152,7 @@ public sealed class StaffAgenciesController(
         log.LogInformation("Agency {NewUserId} created by {Actor}", newId, UserId);
 
         var sent = await Mail.SendAsync<StaffAgencyRegisteredEmail>(values!.EmailId,
-            "Assessment Agency Login Details for “MSME Sustainable (ZED) Certification” - " + newId, new()
+            (host.IsConsultancy() ? "Consultant Organisation" : "Assessment Agency") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId, new()
             {
                 [nameof(StaffAgencyRegisteredEmail.UserName)] = values.UserName,
                 [nameof(StaffAgencyRegisteredEmail.UserId)] = newId,
@@ -134,6 +164,7 @@ public sealed class StaffAgenciesController(
                 [nameof(StaffAgencyRegisteredEmail.SiteVerification)] = values.SiteVerification,
                 [nameof(StaffAgencyRegisteredEmail.FinancialVerification)] = values.FinancialVerification,
                 [nameof(StaffAgencyRegisteredEmail.LoginUrl)] = Mail.LoginUrl,
+                [nameof(StaffAgencyRegisteredEmail.Consultancy)] = host.IsConsultancy(),
             }, ct);
         return new CreatedUserResponse(sent
             ? $"User created successfully. The login details have been sent to {values.EmailId}."
@@ -150,10 +181,14 @@ public sealed class StaffAgenciesController(
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct);
         // As on the old form, the organising partner can be kept or cleared, not moved to another one.
         var current = agency.Row.Text("OrgPartnerId");
-        var (values, error) = Validate(req, Sectors(sets), current.Length > 0 ? [current] : [], existing: agency);
+        var (values, error) = Validate(req, Sectors(sets), current.Length > 0 && !host.IsConsultancy() ? [current] : [], existing: agency);
         if (error is not null) return this.Problem400(error);
+        var (tuState, tuDistricts, tuError) = await TuPreferenceAsync(req, ct);
+        if (tuError is not null) return this.Problem400(tuError);
+        if (host.IsConsultancy() && ConsultancyUsers.AgencyUpdateError(agency, values!.SiteVerification, values.FinancialVerification) is { } roleError)
+            return this.Problem400(roleError);
 
-        await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null), ct);
+        await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null, tuState, tuDistricts), ct);
         log.LogInformation("Agency {UserId} updated by {Actor}", agency.UserId, UserId);
         return new MessageResponse("User updated successfully.");
     }
@@ -168,7 +203,7 @@ public sealed class StaffAgenciesController(
         if (agency is null) return NotFound();
         if (!StaffUserRules.TryText(req.Reason, 2000, required: true, multiline: true, out var reason))
             return this.Problem400("Please enter the reason for blocking (up to 2000 characters).");
-        return await StaffUserActions.BlockAsync(this, db, agency, reason!, UserId, log, ct);
+        return await StaffUserActions.BlockAsync(this, db, host, Mail, agency, reason!, UserId, log, ct);
     }
 
     [HttpPost("{userId}/unblock")]
@@ -176,7 +211,7 @@ public sealed class StaffAgenciesController(
     {
         var agency = await FindAsync(userId, ct);
         if (agency is null) return NotFound();
-        return await StaffUserActions.UnblockAsync(this, db, Mail, agency, UserId, log, ct);
+        return await StaffUserActions.UnblockAsync(this, db, host, Mail, agency, UserId, log, ct);
     }
 
     public sealed record BronzeRequest(bool Allow, string? Reason);
@@ -185,6 +220,8 @@ public sealed class StaffAgenciesController(
     [HttpPost("{userId}/bronze-assessments")]
     public async Task<ActionResult<MessageResponse>> BronzeAssessments(string userId, BronzeRequest req, CancellationToken ct)
     {
+        // Bronze assessments do not exist on Consultancy (and SP_BLOCK_UNBLOCK_BRONZE_AGENCY is not in ZED_CONSULTANT).
+        if (host.IsConsultancy()) return NotFound();
         var agency = await FindAsync(userId, ct);
         if (agency is null) return NotFound();
         string? reason = null;
@@ -277,8 +314,21 @@ public sealed class StaffAgenciesController(
             req.DesktopVerification, req.SiteVerification, req.FinancialVerification, reason), null);
     }
 
-    /// <summary>Parameters of SP_INSERT_USER / SP_UPDATE_USER as UserHelper.AddAssessors sent them; the role is always 2.</summary>
-    private object Parameters(AgencyValues v, string? existingUserId, string? password) => new
+    private async Task<(string? State, List<string> Districts, string? Error)> TuPreferenceAsync(AgencyRequest req, CancellationToken ct) =>
+        host.IsConsultancy()
+            ? await ConsultancyUsers.TuPreferenceAsync(db, req.FinancialVerification, req.TuPreferredState, req.TuPreferredDistricts, ct)
+            : (null, [], null);
+
+    /// <summary>Parameters of SP_INSERT_USER / SP_UPDATE_USER (per system); the role is always 2.</summary>
+    private object Parameters(AgencyValues v, string? existingUserId, string? password, string? tuState, List<string> tuDistricts) =>
+        host.IsConsultancy()
+            ? ConsultancyUsers.Parameters(existingUserId, v.UserName, password, (int)UserRole.Agency, v.EmailId, v.MobileNo, UserId,
+                v.SpocName, v.Address, v.PinCode, v.States, v.NicSectors, [], null, null, v.GstNumber,
+                v.DesktopVerification, v.SiteVerification, v.FinancialVerification, v.ReasonForRejection, tuState, tuDistricts, null, null)
+            : MainParameters(v, existingUserId, password);
+
+    /// <summary>Main's SP_INSERT_USER / SP_UPDATE_USER as UserHelper.AddAssessors sent them.</summary>
+    private object MainParameters(AgencyValues v, string? existingUserId, string? password) => new
     {
         UserId = existingUserId,
         v.UserName,

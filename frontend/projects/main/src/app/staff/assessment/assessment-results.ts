@@ -4,20 +4,24 @@ import { RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
-import { PAGE_SIZES, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, PAGE_SIZES, STATES, milestoneReportUrl, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
+import { withApiBase } from '../../api-base';
 
 /** Folders a stored pledge certificate is in (SP_MONITORING_GET_LIST_PAGINATION PledgePath). */
 const CERT_FOLDERS = ['Certificates', 'Certifications'];
 
 /** Certificates and reports for staff (authorised downloads, same visibility as the DA review page). */
-const DOCUMENTS_API = '/api/staff/certification-documents';
+const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
 
 /**
  * Completed and rejected certifications of the master admin, the agency or the assessor. Port of
  * Views/Assessment/Completed.cshtml and Rejected.cshtml (Assessment/GetCompletedList, paged on the
  * server). Certificates and reports download from this portal; profiles and site-assessment pages
  * open on the current portal.
+ * <p>Consultancy ("Consultancy Completed"; no rejected list): one row per completed milestone, with the milestone
+ * reports and "Recommended Technologies" after milestone 3. Surveillance ("Completed / Rejected Surveillance"):
+ * Surveillance No; no phase, due-date, duplicates or pledge columns.</p>
  */
 @Component({
   selector: 'zed-staff-assessment-results',
@@ -26,7 +30,7 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-3">
         <div class="col-sm-12">
-          <h3 class="registration-title">{{ completed() ? 'Completed Assessment' : 'Rejected Certification' }}</h3>
+          <h3 class="registration-title">{{ heading() }}</h3>
         </div>
 
         @if (error()) {
@@ -43,12 +47,10 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
               </select>
             </div>
             <div>
-              <label for="resLevel"><strong>Certification Level</strong></label>
+              <label for="resLevel"><strong>{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</strong></label>
               <select class="form-select" style="width: 200px" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
                 <option value="">Show All</option>
-                <option value="Bronze">Bronze</option>
-                <option value="Silver">Silver</option>
-                <option value="Gold">Gold</option>
+                @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
               </select>
             </div>
             <div>
@@ -85,11 +87,26 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
           <div class="table-responsive">
             <table class="table table-bordered table-zed">
               <thead>
-                @if (completed()) {
+                @if (consultancy) {
                   <tr>
                     <th>S.No</th>
-                    <th>Certification Level</th>
-                    <th>Certification Phase</th>
+                    <th>Desired Certification</th>
+                    <th>Unit Details</th>
+                    <th>Milestone</th>
+                    @if (!isAgency()) { <th>CO Details</th> }
+                    @if (!isAssessor()) { <th>Consultant Details</th> }
+                    <th>Date of Completion</th>
+                    <th>Action(s)</th>
+                  </tr>
+                } @else if (completed()) {
+                  <tr>
+                    <th>S.No</th>
+                    @if (surveillance) {
+                      <th>Certification Level <br /><br />Surveillance No</th>
+                    } @else {
+                      <th>Certification Level</th>
+                      <th>Certification Phase</th>
+                    }
                     <th>Unit Details</th>
                     <th>Mode of Assessment</th>
                     @if (!isAgency()) { <th>Agency Details</th> }
@@ -99,9 +116,9 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
                       <th>Assessment Completed On</th>
                     } @else {
                       <th>Assessment Dates <br />Completion Date</th>
-                      <th>Surveillance Due Date</th>
+                      @if (!surveillance) { <th>Surveillance Due Date</th> }
                     }
-                    <th>Duplicates</th>
+                    @if (!surveillance) { <th>Duplicates</th> }
                     @if (!isAssessor()) { <th>Action(s)</th> }
                   </tr>
                 } @else {
@@ -117,16 +134,57 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
               </thead>
               <tbody>
                 @for (s of rows(); track $index) {
-                  @if (completed()) {
+                  @if (consultancy) {
                     <tr>
                       <td>{{ t(s, 'RowNumber') }}</td>
                       <td>{{ t(s, 'Certification') }}</td>
-                      <td>{{ t(s, 'CertificationPhase') }}</td>
+                      <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>
+                      <td>Milestone {{ t(s, 'NcCount') }}</td>
+                      @if (!isAgency()) {
+                        <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
+                      }
+                      @if (!isAssessor()) {
+                        <td>
+                          <strong>Lead Consultant<br />{{ t(s, 'SiteAssessorName') }}</strong><br />{{ t(s, 'SiteAssessorId') }}
+                          @if (t(s, 'CoAssessorName') || t(s, 'CoAssessorId')) {
+                            <br /><br /><strong>CO Consultant<br />{{ t(s, 'CoAssessorName') }}</strong><br />{{ t(s, 'CoAssessorId') }}
+                          }
+                        </td>
+                      }
+                      <td>{{ t(s, 'DocVerifiAllot') }}<br /><br />{{ t(s, 'CertificationStatusDate') }}</td>
+                      <td>
+                        @if (!isAssessor()) {
+                          @if (legacy.profile(t(s, 'ZedId')); as href) {
+                            <a style="width: 180px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
+                          }
+                          <a style="width: 180px" [routerLink]="[milestoneDetailsRoute, t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">View Details</a>
+                          @for (m of milestones(s); track m.n) {
+                            <a style="width: 180px" [href]="m.href" class="btn btn-primary mb-2" target="_blank" rel="noopener">{{ m.label }}</a>
+                          }
+                        }
+                        @if (recTech(s); as label) {
+                          <a style="width: 180px" [routerLink]="['/staff/consultancy/technology', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">{{ label }}</a>
+                        }
+                      </td>
+                    </tr>
+                  } @else if (completed()) {
+                    <tr>
+                      <td>{{ t(s, 'RowNumber') }}</td>
+                      @if (surveillance) {
+                        <td>{{ t(s, 'Certification') }}<br /><br />{{ t(s, 'SurveillanceNo') }}</td>
+                      } @else {
+                        <td>{{ t(s, 'Certification') }}</td>
+                        <td>{{ t(s, 'CertificationPhase') }}</td>
+                      }
                       <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>
                       <td>
-                        Desktop<br /><br />
-                        @if (t(s, 'ModeOfAssessment') === 'Remote Assessment') { Remote }
-                        @if (t(s, 'ModeOfAssessment') === 'Onsite Assessment') { Onsite }
+                        @if (surveillance) {
+                          {{ t(s, 'ModeOfAssessment') }}
+                        } @else {
+                          Desktop<br /><br />
+                          @if (t(s, 'ModeOfAssessment') === 'Remote Assessment') { Remote }
+                          @if (t(s, 'ModeOfAssessment') === 'Onsite Assessment') { Onsite }
+                        }
                       </td>
                       @if (!isAgency()) {
                         <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
@@ -149,12 +207,16 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
                         </td>
                       } @else {
                         <td>{{ t(s, 'DocVerifiAllot') }}<br /><br />{{ t(s, 'SaAssessmentDate') }}<br /><br />{{ t(s, 'CertificationStatusDate') }}</td>
-                        <td>
-                          @if (t(s, 'Certification') !== 'Bronze') { Surveillance 1 date:<br /> }
-                          {{ t(s, 'FirstSurveDueDate') }}
-                        </td>
+                        @if (!surveillance) {
+                          <td>
+                            @if (t(s, 'Certification') !== 'Bronze') { Surveillance 1 date:<br /> }
+                            {{ t(s, 'FirstSurveDueDate') }}
+                          </td>
+                        }
                       }
-                      <td [style.background-color]="n(s, 'SameUdyamAddress') > 0 ? 'yellow' : null">{{ t(s, 'SameUdyamAddress') }}</td>
+                      @if (!surveillance) {
+                        <td [style.background-color]="n(s, 'SameUdyamAddress') > 0 ? 'yellow' : null">{{ t(s, 'SameUdyamAddress') }}</td>
+                      }
                       @if (isMasterAdmin()) {
                         <td class="text-center">
                           <a style="width: 180px" [href]="legacy.profile(t(s, 'ZedId'))" class="btn btn-primary mb-2">View Profile</a>
@@ -163,7 +225,7 @@ const DOCUMENTS_API = '/api/staff/certification-documents';
                           } @else {
                             <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
                           }
-                          @if (pledgeUrl(s); as href) {
+                          @if (!surveillance && pledgeUrl(s); as href) {
                             <a style="width: 180px" [href]="href" class="btn btn-primary mb-2" target="_blank" rel="noopener">Download Pledge Certificate</a>
                           }
                           @if (certificateUrl(s); as href) {
@@ -249,6 +311,16 @@ export class AssessmentResultsPage {
   protected readonly sizes = PAGE_SIZES;
   protected readonly t = text;
   protected readonly n = num;
+  private readonly system = inject(ASSESSMENT_SYSTEM);
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly surveillance = this.system === 'surveillance';
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
+  /**
+   * Consultancy "View Details": the milestone review page (the old SaDetails). The route of the consultancy milestone
+   * page replaces this when it is wired (coordinator).
+   */
+  /** Consultancy rows open the milestone review page; the others the site assessment details page. */
+  protected readonly milestoneDetailsRoute = this.system === 'consultancy' ? '/staff/consultancy/milestones' : '/staff/assessment/sa-details';
 
   protected state = '';
   protected level = '';
@@ -265,6 +337,10 @@ export class AssessmentResultsPage {
   private request = 0;
 
   protected readonly completed = computed(() => this.kind() !== 'rejected');
+  protected readonly heading = computed(() =>
+    this.consultancy ? 'Consultancy Completed'
+    : this.surveillance ? (this.completed() ? 'Completed Surveillance' : 'Rejected Surveillance')
+    : this.completed() ? 'Completed Assessment' : 'Rejected Certification');
   protected readonly isMasterAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
@@ -291,6 +367,25 @@ export class AssessmentResultsPage {
   protected go(page: number): void {
     this.pageNo.set(Math.min(Math.max(page, 1), this.lastPage()));
     void this.load();
+  }
+
+  /** Consultancy: the report of each milestone up to the row's (Milestone 1 Report, Progress Review 1, Progress Review 2). */
+  protected milestones(s: Row): { n: number; label: string; href: string }[] {
+    const labels = ['MileStone 1 Report', 'Progress Review 1', 'Progress Review 2'];
+    const upTo = Math.min(Math.max(num(s, 'NcCount'), 1), 3);
+    return labels.slice(0, upTo).map((label, i) => ({ n: i + 1, label, href: milestoneReportUrl(text(s, 'ZedId'), text(s, 'Certification'), i + 1) }));
+  }
+
+  /**
+   * Consultancy, after milestone 3 (as the old Completed page): master admin and CO view the recommended technologies
+   * once recommended (TuStatus 1); the lead consultant recommends them (TuStatus 0) or views them, once the MSME accepted
+   * the milestone (status 100) and before the TU application closed them (TuStatus 98+).
+   */
+  protected recTech(s: Row): string {
+    if (num(s, 'DisplayRecTech') !== 1 || num(s, 'NcCount') !== 3) return '';
+    const tu = num(s, 'TuStatus');
+    if (this.isAssessor()) return num(s, 'CertificationStatus') === 100 && tu < 98 ? (tu === 0 ? 'Recommend Technologies' : 'View Recommended Technologies') : '';
+    return tu === 1 ? 'View Recommended Technologies' : '';
   }
 
   /** Shown when the procedure names the folder of a stored pledge certificate, as before. */

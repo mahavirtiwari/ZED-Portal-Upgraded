@@ -177,7 +177,7 @@ interface EvidenceDialog {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title m-0" id="bullet-title">Bullet Point</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="bulletFor.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="bulletFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="addBullet()" novalidate>
@@ -201,7 +201,7 @@ interface EvidenceDialog {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title m-0" id="evidence-title">Evidence ({{ ev.kind === 'mandatory' ? 'Mandatory' : 'Optional' }})</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="evidenceDialog.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="evidenceDialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">

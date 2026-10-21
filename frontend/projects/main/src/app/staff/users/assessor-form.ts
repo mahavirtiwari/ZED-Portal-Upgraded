@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PORTAL_SYSTEM } from '../../portal-system';
 import { StaffRole } from '../staff-menu';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { Professional, UsersApi } from './users.api';
@@ -82,9 +83,21 @@ export class AssessorFormPage {
     return this.isAgency ? '/staff/users/my-assessors' : '/staff/users/assessors';
   }
 
+  /**
+   * Consultancy build: a CO adds Consultants (RoleId 3, found by certificate number and registered e-mail like
+   * main's assessors) and Technical Experts (RoleId 33, name, e-mail and mobile typed in), as on the old form.
+   */
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly noun = this.consultancy ? 'Consultant' : 'Assessor';
+
+  /** Consultancy technical expert: no lookup, the details are typed. */
+  protected get typed(): boolean {
+    return this.consultancy && this.model.assessorType === 'TechnicalExpert';
+  }
+
   protected get title(): string {
-    if (!this.isAgency) return 'Assessor Details';
-    return this.isNew ? 'Add Assessor' : 'Update Assessor Details';
+    if (!this.isAgency) return this.noun + ' Details';
+    return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' Details';
   }
 
   protected get lookupDone(): boolean {
@@ -106,7 +119,7 @@ export class AssessorFormPage {
         const a = await firstValueFrom(this.api.assessor(this.userId));
         this.model = {
           ...emptyAssessor(),
-          assessorType: a.assessorType ?? '', certificateNo: a.certificateNo ?? '', userName: a.userName, emailId: a.emailId ?? '',
+          assessorType: (this.consultancy ? a.userType : a.assessorType) ?? '', certificateNo: a.certificateNo ?? '', userName: a.userName, emailId: a.emailId ?? '',
           mobileNo: a.mobileNo ?? '', address: a.address ?? '', pinCode: a.pinCode ?? '', idProofType: a.idProofType ?? '',
           states: a.states, nicSectors: a.nicSectors, areasOfKnowledge: a.areasOfKnowledge, reasonForRejection: a.reasonForRejection ?? '',
         };
@@ -164,7 +177,11 @@ export class AssessorFormPage {
     this.error.set('');
     this.success.set('');
     const m = this.model;
-    if (this.isNew && !this.lookupDone) {
+    if (this.isNew && this.typed && [m.userName, m.emailId, m.mobileNo].some((v) => !v.trim())) {
+      this.error.set('Please enter the name, e-mail and mobile number.');
+      return;
+    }
+    if (this.isNew && !this.typed && !this.lookupDone) {
       this.error.set('Please SEARCH the certified professional first.');
       return;
     }
@@ -181,6 +198,7 @@ export class AssessorFormPage {
             assessorType: m.assessorType, certificateNo: m.certificateNo.trim(), professionalEmail: m.professionalEmail.trim(),
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber,
             states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge,
+            ...(this.typed ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
           }),
         );
         await this.router.navigate(['/staff/users/my-assessors'], { state: { message: r.message } });

@@ -1,0 +1,56 @@
+@* Mail of the CO's final submit of a handholding milestone (consultancy Monitoring/RaFinalSubmit, subject
+   "Handholding Support (Milestone n) Report ..."). The old mail reused the Silver/Gold certificate template and
+   attached nothing; here the milestone report is attached when it could be generated, and the MSME is asked to
+   sign in on the ZED portal to accept the milestone. No passwords. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings from the Quality Council of India!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Milestone @Milestone of the Handholding Support for @Certification Certification of your unit under the "MSME Sustainable (ZED) Certification" Scheme of the Ministry of MSME, Government of India has been completed by the Consultant Organisation.</p>
+    @if (ReportAttached)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Handholding Support (Milestone @Milestone) Report of your unit.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">The Handholding Support (Milestone @Milestone) Report can be seen after you sign in.</p>
+    }
+    <p style="font-size: 13px; margin-bottom: 0;">Please sign in to review and accept the milestone.</p>
+
+    <p style="font-size: 14px; margin-bottom: 0;background: #F0F0F0;padding:15px;font-weight: 700;">Details:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Enterprise Name</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@EnterpriseName</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">ZED ID</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ZedId</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Certification</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Certification</td>
+            </tr>
+            <tr>
+                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Milestone</td>
+                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Milestone</td>
+            </tr>
+        </tbody>
+    </table>
+    <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)</span>
+
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Go to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter] public bool ReportAttached { get; set; }
+    [Parameter] public int Milestone { get; set; }
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Certification { get; set; } = "";
+    [Parameter] public string? EnterpriseName { get; set; }
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

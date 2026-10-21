@@ -13,20 +13,22 @@ namespace Zed.Portal.Features.Staff.Reports;
 /// ExportAssessmentData and GetSwachhataAppSummary / StatusReportDate (not used by this page).
 /// </summary>
 [Route("api/staff/reports")]
-public sealed class ReportsController(ISqlExecutor db, ILogger<ReportsController> log) : StaffApiController
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
+public sealed class ReportsController(ISqlExecutor db, PortalHost host, ILogger<ReportsController> log) : StaffApiController
 {
     public sealed record ReportItem(string Id, string Name);
 
     [HttpGet]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
-    public IEnumerable<ReportItem> List() => ReportCatalog.For(RoleId).Select(r => new ReportItem(r.Id, r.Name));
+    public IEnumerable<ReportItem> List() =>
+        ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).Select(r => new ReportItem(r.Id, r.Name));
 
     /// <summary>Runs an allow-listed report with the signed-in user's RoleId/UserId and returns it as .xlsx.</summary>
     [HttpGet("{id}/download")]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
     public async Task<IActionResult> Download(string id, CancellationToken ct)
     {
-        if (ReportCatalog.Find(RoleId, id) is not { } report) return NotFound();
+        if (ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report) return NotFound();
 
         ResultSets sets;
         try

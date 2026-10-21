@@ -1,11 +1,12 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@zed/shared';
 import { StaffRole } from '../staff-menu';
+import { PORTAL_SYSTEM } from '../../portal-system';
 
 const admin = authGuard('/staff', [StaffRole.Admin]);
 
 /** Admin master data screens (children of `staff`, mounted at `staff/masters`). The API checks the role again. */
-export const MASTERS_ROUTES: Routes = [
+const ALL_MASTERS_ROUTES: Routes = [
   {
     path: 'sectors',
     title: 'ZED | Sectors',
@@ -48,3 +49,7 @@ export const MASTERS_ROUTES: Routes = [
     loadComponent: () => import('./parameters').then((m) => m.ParametersPage),
   },
 ];
+
+/** Consultancy has no category or technology masters (their procedures are not in ZED_CONSULTANT). */
+export const MASTERS_ROUTES: Routes =
+  PORTAL_SYSTEM === 'main' ? ALL_MASTERS_ROUTES : ALL_MASTERS_ROUTES.filter((r) => !/^(categories|technologies)/.test(r.path ?? ''));

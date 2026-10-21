@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { withApiBase } from '../../api-base';
 
 export type Row = Record<string, unknown>;
 
@@ -44,7 +45,16 @@ export interface RemoteDetails {
   closeMeeting: Meeting | null;
   selfies: Selfie[];
   permissions: { isLeadAssessor: boolean; canAssess: boolean; videoConfigured: boolean };
+  /** Surveillance only: the assessment is held on the agency's meeting link (no video on this page). */
+  usesMeetingLink?: boolean;
+  /** Surveillance only: http/https address checked by the API. */
+  meetingLink?: string | null;
+  /** Surveillance only: recording links of the closing meeting (at most 6). */
+  recordingLinks?: { id: number; url: string }[];
 }
+
+/** Surveillance: the old page allowed up to 6 recording links. */
+export const MAX_RECORDING_LINKS = 6;
 
 export interface JoinResponse {
   token: string;
@@ -59,7 +69,8 @@ export interface FinalSubmitCheck {
   raisesNc: boolean;
 }
 
-export type PhotoTarget = 'SiteExterior' | 'SiteTour' | 'OpenMeeting' | 'CloseMeeting' | 'ProductPhoto' | 'ProductDescriptionPhoto' | 'Requirement';
+/** 'Selfie' is surveillance only (the assessor's "Selfie on Site" upload). */
+export type PhotoTarget = 'SiteExterior' | 'SiteTour' | 'OpenMeeting' | 'CloseMeeting' | 'ProductPhoto' | 'ProductDescriptionPhoto' | 'Requirement' | 'Selfie';
 
 export interface PhotoRequest {
   target: PhotoTarget;
@@ -75,7 +86,7 @@ export class RemoteApi {
   private readonly http = inject(HttpClient);
 
   private base(zedId: string, certification: string): string {
-    return `/api/staff/remote/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`;
+    return withApiBase(`/api/staff/remote/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`);
   }
 
   details(zedId: string, certification: string): Observable<RemoteDetails> {
@@ -120,6 +131,11 @@ export class RemoteApi {
 
   deletePhoto(zedId: string, certification: string, id: number): Observable<MessageResponse> {
     return this.http.delete<MessageResponse>(`${this.base(zedId, certification)}/photos/${id}`);
+  }
+
+  /** Surveillance: adds a recording link to the closing meeting. */
+  addRecordingLink(zedId: string, certification: string, meetingId: number, link: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/meetings/${meetingId}/recording-links`, { link });
   }
 
   checkFinalSubmit(zedId: string, certification: string): Observable<FinalSubmitCheck> {

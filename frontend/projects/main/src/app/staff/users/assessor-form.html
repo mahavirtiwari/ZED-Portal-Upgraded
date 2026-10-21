@@ -16,16 +16,21 @@
       @if (isNew) {
         <div class="row">
           <div class="col-sm-6 field">
-            <label class="d-block" for="assessorType">Assessor Type</label>
+            <label class="d-block" for="assessorType">{{ consultancy ? 'Consultant/Technical Expert' : 'Assessor Type' }}</label>
             <select id="assessorType" name="assessorType" class="form-control input-100" [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()">
               <option value="">Select</option>
-              <option value="BronzeAssessor">Bronze Assessor</option>
-              <option value="Assessor">Assessor</option>
+              @if (consultancy) {
+                <option value="Consultant">Consultant</option>
+                <option value="TechnicalExpert">Technical Expert</option>
+              } @else {
+                <option value="BronzeAssessor">Bronze Assessor</option>
+                <option value="Assessor">Assessor</option>
+              }
             </select>
             @if (submitted() && !model.assessorType) { <span class="help-block">Assessor Type required.</span> }
           </div>
         </div>
-        @if (model.assessorType) {
+        @if (model.assessorType && !typed) {
           <div class="row align-items-end">
             <div class="col-sm-3 field">
               <label class="d-block" for="certificateNo">Certificate Number</label>
@@ -51,23 +56,35 @@
 
       <div class="row">
         <div class="col-sm-12 field">
-          <label class="d-block" for="userName">Assessor Name</label>
-          <input id="userName" name="userName" class="form-control input-100 readonly" readonly [ngModel]="model.userName" />
+          <label class="d-block" for="userName">{{ noun }} Name</label>
+          @if (isNew && typed) {
+            <input id="userName" name="userName" class="form-control input-100" maxlength="100" [(ngModel)]="model.userName" />
+          } @else {
+            <input id="userName" name="userName" class="form-control input-100 readonly" readonly [ngModel]="model.userName" />
+          }
         </div>
       </div>
       <div class="row">
         <div class="col-sm-6 field">
-          <label class="d-block" for="emailId">Assessor Email ID</label>
-          <input id="emailId" name="emailId" class="form-control input-100 readonly" readonly [ngModel]="model.emailId" />
+          <label class="d-block" for="emailId">{{ noun }} Email ID</label>
+          @if (isNew && typed) {
+            <input id="emailId" name="emailId" type="email" class="form-control input-100" maxlength="100" [(ngModel)]="model.emailId" />
+          } @else {
+            <input id="emailId" name="emailId" class="form-control input-100 readonly" readonly [ngModel]="model.emailId" />
+          }
         </div>
         <div class="col-sm-6 field">
-          <label class="d-block" for="mobileNo">Assessor Mobile Number</label>
-          <input id="mobileNo" name="mobileNo" class="form-control input-100 readonly" readonly [ngModel]="model.mobileNo" />
+          <label class="d-block" for="mobileNo">{{ noun }} Mobile Number</label>
+          @if (isNew && typed) {
+            <input id="mobileNo" name="mobileNo" class="form-control input-100" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" />
+          } @else {
+            <input id="mobileNo" name="mobileNo" class="form-control input-100 readonly" readonly [ngModel]="model.mobileNo" />
+          }
         </div>
       </div>
       <div class="row">
         <div class="col-sm-12 field">
-          <label class="d-block" for="address">Assessor Address</label>
+          <label class="d-block" for="address">{{ noun }} Address</label>
           <textarea id="address" name="address" class="form-control input-100" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="model.address"></textarea>
           @if (missing(model.address)) { <span class="help-block">This is required.</span> }
         </div>
@@ -123,7 +140,7 @@
       <div class="stepper-footer-sec initial-step1">
         <a [routerLink]="backLink" class="btn btn-back pull-left">BACK</a>
         @if (canEdit()) {
-          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || (isNew && !lookupDone)">{{ isNew ? 'Create' : 'Update' }}</button>
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading() || (isNew && !typed && !lookupDone)">{{ isNew ? 'Create' : 'Update' }}</button>
         }
       </div>
     </div>

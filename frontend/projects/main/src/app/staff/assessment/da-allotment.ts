@@ -2,12 +2,14 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { flag, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Person, Row } from './assessment.api';
 
 /**
  * Agency (desktop verification): allot its MSMEs to its desktop assessors, or reject them. Port of
  * Views/Assessment/DaAllotment.cshtml (Assessment/GetList 'DA', AcceptUnitForDa, RejectUnitForDa).
+ * Surveillance ("Allot Surveillance Assessments", Bronze): one assessor list; allotting needs no acceptance by the
+ * assessor, and the unit can be re-allotted until the assessor starts it in the Surveillance app (status 1).
  */
 @Component({
   selector: 'zed-staff-da-allotment',
@@ -16,10 +18,10 @@ import { AssessmentApi, Person, Row } from './assessment.api';
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme">
         <div class="row">
-          <div class="col-sm-10"><h3 class="registration-title">Allot DA Assessments</h3></div>
+          <div class="col-sm-10"><h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3></div>
           <div class="col-sm-2">
             <button type="button" class="refresh-link btn btn-link" (click)="load()">
-              <img src="/Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
+              <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
             </button>
           </div>
         </div>
@@ -59,13 +61,13 @@ import { AssessmentApi, Person, Row } from './assessment.api';
                         @if (!t(s, 'DesktopAssessorId') || t(s, 'DesktopReasonForRejection')) {
                           <button type="button" class="btn btn-default btn-xs me-1" (click)="openReject(s)">REJECT</button>
                         }
-                        @if (t(s, 'DesktopAssessorId') && (t(s, 'DesktopReasonForRejection') || !f(s, 'DesktopAccepted'))) {
+                        @if (canReallot(s)) {
                           <button type="button" class="btn btn-primary btn-xs" (click)="openAllot(s)">RE-ALLOT</button>
                         }
                       </td>
                       <td>
                         @if (t(s, 'DesktopReasonForRejection')) { <small class="text-danger">ASSESSOR REJECTED</small> }
-                        @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && !f(s, 'DesktopAccepted')) {
+                        @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
                           <small class="text-danger">ALLOTED TO ASSESSOR</small>
                         }
                         @if (!t(s, 'DesktopAssessorId')) { <small>Allotment Pending</small> }
@@ -77,7 +79,12 @@ import { AssessmentApi, Person, Row } from './assessment.api';
                         {{ t(s, 'UnitAddress') }}
                       </td>
                       <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                      <td><strong>{{ t(s, 'DaAssessorName') }}</strong><br />{{ t(s, 'DesktopAssessorId') }}</td>
+                      <td>
+                        <strong>{{ t(s, 'DaAssessorName') }}</strong><br />{{ t(s, 'DesktopAssessorId') }}
+                        @if (surveillance && (t(s, 'LeadInCertification') || t(s, 'CoInCertification'))) {
+                          <br /><br /><small>Original certification: {{ t(s, 'LeadInCertification') }}@if (t(s, 'CoInCertification')) { / {{ t(s, 'CoInCertification') }} }</small>
+                        }
+                      </td>
                       <td>{{ t(s, 'DesktopReasonForRejection') }}</td>
                     </tr>
                   } @empty {
@@ -98,7 +105,7 @@ import { AssessmentApi, Person, Row } from './assessment.api';
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title" id="daAllotTitle">Accept Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="allotFor.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="allotFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
@@ -127,7 +134,7 @@ import { AssessmentApi, Person, Row } from './assessment.api';
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title" id="daRejectTitle">Reject Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="rejectFor.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="rejectFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
@@ -157,6 +164,7 @@ export class DaAllotmentPage {
   protected readonly legacy = useLegacyPortal();
   protected readonly t = text;
   protected readonly f = flag;
+  protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
   private readonly assessors = signal<Person[]>([]);
@@ -191,6 +199,15 @@ export class DaAllotmentPage {
   /** Bronze goes to the agency's Bronze assessors, other levels to its other desktop assessors. */
   protected assessorsFor(s: Row): Person[] {
     return text(s, 'Certification') === 'Bronze' ? this.bronzeAssessors() : this.assessors();
+  }
+
+  /**
+   * Main: after the assessor rejected, or while it has not accepted. Surveillance: any allotted unit the assessor has
+   * not started in the app (the list holds only those, status 1).
+   */
+  protected canReallot(s: Row): boolean {
+    if (!text(s, 'DesktopAssessorId')) return false;
+    return this.surveillance ? num(s, 'CertificationStatus') < 2 : !!text(s, 'DesktopReasonForRejection') || !flag(s, 'DesktopAccepted');
   }
 
   protected openAllot(s: Row): void {

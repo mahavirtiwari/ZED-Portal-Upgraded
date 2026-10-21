@@ -12,6 +12,10 @@ export interface NeftTransaction {
   PUnitName: string | null;
   EnterpriseName: string | null;
   CertificationType: string | null;
+  /** Consultancy (Technology Upgradation reimbursements). */
+  TechnologyName?: string | null;
+  CertId?: string | null;
+  TechUpgradeStatus?: number | string | null;
   CategoryOfCertificate: string | null;
   NameOfCertficate: string | null;
   CertificationAgency: string | null;

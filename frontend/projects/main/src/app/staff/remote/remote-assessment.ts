@@ -4,7 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { num, text } from '../assessment/assessment-shared';
-import { FinalSubmitCheck, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
+import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
 
 export type RemoteTab = 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting';
@@ -44,6 +44,9 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
  * parameter conformance with evidence photos, product and site exterior validation, final submit, and the
  * Twilio video call with the MSME's RA app ("Start Assessment"). Photos are frames captured from the
  * MSME's video. Tabs and pop-ups are signal-controlled markup; nothing from the server is rendered as HTML.
+ * Surveillance (the API sends usesMeetingLink): no video; "Join Meeting" opens the agency's meeting link in a new tab,
+ * the opening/closing meeting photos and the assessor's selfie are uploaded JPEG files, the closing meeting takes up
+ * to 6 recording links, and parameter evidence comes from the site tour photos of the app.
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
@@ -91,6 +94,10 @@ export class RemoteAssessmentPage {
 
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly canAssess = computed(() => this.data()?.permissions.canAssess ?? false);
+  /** Surveillance: held on the agency's meeting link, no Twilio video. */
+  protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
+  protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;
+  protected recordingLink = '';
   protected readonly currentTab = computed(() => TABS.find((x) => x.id === this.tab())!);
   protected readonly daSelfies = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'Selfie'));
   protected readonly daSiteExterior = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'SiteExteriorPhotos'));
@@ -275,6 +282,31 @@ export class RemoteAssessmentPage {
     );
   }
 
+  /** Surveillance: uploads a JPEG chosen by the assessor (opening/closing meeting photo or "Selfie on Site"). */
+  protected async uploadPhoto(target: PhotoTarget, targetId: number | null, input: HTMLInputElement): Promise<void> {
+    this.notice.set(null);
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!/^image\/jpe?g$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
+      this.notice.set({ ok: false, text: 'Please upload a JPEG photo of at most 5 MB.' });
+      return;
+    }
+    const image = await readAsDataUrl(file);
+    await this.run(this.api.savePhoto(this.zedId, this.certification, { target, targetId, image }), () => undefined, false);
+  }
+
+  /** Surveillance: adds a recording link of the closing meeting. */
+  protected async addRecordingLink(meeting: Meeting): Promise<void> {
+    const link = this.recordingLink.trim();
+    if (!/^https?:\/\/\S+$/i.test(link)) {
+      this.notice.set({ ok: false, text: 'Please enter a valid recording link (starting with https:// or http://).' });
+      return;
+    }
+    const ok = await this.run(this.api.addRecordingLink(this.zedId, this.certification, meeting.id, link), () => undefined, false);
+    if (ok) this.recordingLink = '';
+  }
+
   protected async useTourPhoto(photo: RemotePhoto): Promise<void> {
     const requirementId = this.fromTourFor();
     if (requirementId === null) return;
@@ -399,4 +431,13 @@ export class RemoteAssessmentPage {
       this.notice.set({ ok: true, text: 'Assessment submitted.' });
     }
   }
+}
+
+function readAsDataUrl(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }

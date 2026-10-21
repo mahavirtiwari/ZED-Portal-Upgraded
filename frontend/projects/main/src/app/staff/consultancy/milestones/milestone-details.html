@@ -1,0 +1,374 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="mt-4">
+    <div class="row justify-content-between">
+      <div class="col-sm-10"><h3 class="registration-title">Consultancy Details</h3></div>
+      <div class="col-sm-2">
+        <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
+          <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+        </button>
+      </div>
+    </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">
+        {{ error() }}
+        <a class="btn btn-link" routerLink="/staff">Back to home</a>
+      </div>
+    }
+
+    @if (notice(); as nt) {
+      <div class="alert alert-dismissible" [class.alert-success]="nt.ok" [class.alert-danger]="!nt.ok" role="status">
+        {{ nt.text }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+      </div>
+    }
+
+    @if (loading() && !data()) { <p>Loading…</p> }
+
+    @if (data(); as d) {
+      <div class="row">
+        <div class="col-sm-12 zed-tabs bg-grey">
+          <div class="tab-title">
+            <div class="numberCircle">{{ tab() }}</div>
+            <h4>{{ tabs[tab()] }} — Milestone {{ d.milestone }}</h4>
+          </div>
+          <ul class="nav nav-tabs" role="tablist">
+            @for (id of tabIds; track id) {
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === id" type="button" role="tab" [attr.aria-selected]="tab() === id" (click)="tab.set(id)">{{ tabs[id] }}</button>
+              </li>
+            }
+          </ul>
+
+          <div class="tab-content">
+            <!-- ================================================= overview -->
+            @if (tab() === 1) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <table class="table table-zed bg-white">
+                  <tbody>
+                    <tr><th style="width: 40%">ZEDID</th><td>{{ d.zedId }}</td></tr>
+                    <tr><th>Unit Name</th><td>{{ t(current(), 'PUnitName') }}</td></tr>
+                    <tr><th>Udyam Registration Number</th><td>{{ t(current(), 'UdyogAadharNo') }}</td></tr>
+                    <tr><th>Unit Address</th><td>{{ t(current(), 'PlantAddress') }}</td></tr>
+                    <tr><th>Certification</th><td>{{ d.certification }}</td></tr>
+                    <tr><th>Current Milestone</th><td>{{ d.milestone }} ({{ statusText() }})</td></tr>
+                    <tr><th>Consultant Organisation</th><td>{{ t(current(), 'CertificationBodyUserId') }} - {{ t(current(), 'AgencyName') }}</td></tr>
+                    <tr><th>Lead Consultant</th><td>{{ t(current(), 'SiteAssessorId') }} - {{ t(current(), 'SiteAssessorName') }}</td></tr>
+                    <tr><th>Technical Experts</th><td>{{ t(current(), 'TechExpertName') }}</td></tr>
+                  </tbody>
+                </table>
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>Milestone</th><th>Status</th><th>Status Date</th><th>BDS</th><th>HAP</th></tr></thead>
+                  <tbody>
+                    @for (m of d.milestones; track $index) {
+                      <tr>
+                        <td>{{ t(m, 'NcCount') }}</td>
+                        <td>{{ t(m, 'CertificationStatus') }}</td>
+                        <td>{{ t(m, 'CertificationStatusDate') }}</td>
+                        <td>{{ t(m, 'BdsFromDate') }} – {{ t(m, 'BdsToDate') }}</td>
+                        <td>{{ t(m, 'HapFromDate') }} – {{ t(m, 'HapToDate') }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- ================================================= consultancy plan -->
+            @if (tab() === 2) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <h5>Co-consultants of milestone {{ d.milestone }}</h5>
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>Consultant</th><th>Final submit</th></tr></thead>
+                  <tbody>
+                    @for (c of d.coConsultants; track c.userId) {
+                      <tr><td>{{ c.userId }}</td><td>{{ c.submitted ? 'Submitted ' + (c.submittedOn ?? '') : 'Pending' }}</td></tr>
+                    } @empty {
+                      <tr><td colspan="2">No co-consultants.</td></tr>
+                    }
+                  </tbody>
+                </table>
+                <h5>Parameters allotted</h5>
+                <table class="table table-bordered table-zed bg-white">
+                  <thead><tr><th>Parameter</th><th>Milestone</th><th>Consultant</th><th>Role</th></tr></thead>
+                  <tbody>
+                    @for (a of d.allotments; track $index) {
+                      <tr><td>{{ t(a, 'SectionCode') }}</td><td>{{ t(a, 'NcCount') }}</td><td>{{ t(a, 'AllotedAssessorId') }} - {{ t(a, 'AllotedAssessorName') }}</td><td>{{ t(a, 'AssessorRank') }}</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            <!-- ================================================= attendance -->
+            @if (tab() === 3) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @for (c of d.attendanceConsultants; track $index) {
+                  <h5>{{ t(c, 'ConsultantId') }} ({{ t(c, 'AssessorType') }})</h5>
+                  <table class="table table-bordered table-zed bg-white">
+                    <thead><tr><th>Milestone</th><th>Day</th><th>Date</th><th>Login</th><th>Logout</th><th>Duration</th></tr></thead>
+                    <tbody>
+                      @for (a of attendanceOf(c); track $index) {
+                        <tr>
+                          <td>{{ t(a, 'MileStoneNo') }}</td><td>{{ t(a, 'RowNumber') }}</td><td>{{ t(a, 'TimeStamps') }}</td>
+                          <td>{{ t(a, 'LoginTime') }} @if (a['LoginPhotoUrl']) { <button type="button" class="btn btn-link btn-sm" (click)="openImage($any(a['LoginPhotoUrl']))">Selfie</button> }</td>
+                          <td>{{ t(a, 'LogoutTime') }} @if (a['LogoutPhotoUrl']) { <button type="button" class="btn btn-link btn-sm" (click)="openImage($any(a['LogoutPhotoUrl']))">Selfie</button> }</td>
+                          <td>{{ t(a, 'NoOfHours') }}h {{ t(a, 'NoOfMinutes') }}m</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                } @empty {
+                  <p>No attendance recorded.</p>
+                }
+              </div>
+            }
+
+            <!-- ================================================= opening meeting -->
+            @if (tab() === 4) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @for (m of d.openMeetings; track $index) {
+                  <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m }" />
+                } @empty { <p>The opening meeting has not been held yet.</p> }
+              </div>
+            }
+
+            <!-- ================================================= selfies -->
+            @if (tab() === 5) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: d.selfies }" />
+                <h5 class="mt-3">Site Exterior</h5>
+                <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: d.siteExterior }" />
+              </div>
+            }
+
+            <!-- ================================================= basic information -->
+            @if (tab() === 6) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @for (b of d.basicInformation; track $index) {
+                  <h5>Milestone {{ t(b, 'NcCount') }}</h5>
+                  <table class="table table-bordered table-zed bg-white">
+                    <tbody>
+                      @for (k of basicInfoKeys(b); track k) {
+                        <tr><th style="width: 40%">{{ k }}</th><td>{{ t(b, k) }}</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                } @empty { <p>No basic information submitted.</p> }
+              </div>
+            }
+
+            <!-- ================================================= site tour -->
+            @if (tab() === 7) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: d.siteTour }" />
+              </div>
+            }
+
+            <!-- ================================================= trainings -->
+            @if (tab() === 8) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                <h5>Training on ZED</h5>
+                <ng-container [ngTemplateOutlet]="trainings" [ngTemplateOutletContext]="{ $implicit: d.zedTrainings }" />
+                <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: d.zedTrainingPhotos }" />
+                <h5 class="mt-3">Training on Handholding Implementation Plan</h5>
+                <ng-container [ngTemplateOutlet]="trainings" [ngTemplateOutletContext]="{ $implicit: d.handholdingTrainings }" />
+                <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: d.handholdingTrainingPhotos }" />
+              </div>
+            }
+
+            <!-- ================================================= parameters -->
+            @if (tab() === 9) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @for (s of d.sections; track $index) {
+                  <div class="panel panel-default panel-white m-0 mb-4">
+                    <h5 class="p-2">{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</h5>
+                    @for (r of requirementsOf(s); track $index) {
+                      <div class="p-2 border-top" [attr.data-requirement]="t(r, 'Id')">
+                        <p><strong>Level {{ t(r, 'RequirementCode') }}</strong> — Conformance: {{ t(r, 'SaConformance') || '—' }}</p>
+                        @for (o of optionsOf(r); track $index) { <p class="small">{{ t(o, 'OptionName') }}</p> }
+
+                        @if (d.milestone === 1 || bulletsOf(r, 'BaselineDiagnostic').length) {
+                          @for (list of bulletLists; track list.type) {
+                            <p class="mb-1 mt-2"><strong>{{ list.label }}</strong></p>
+                            <ul class="mb-1">
+                              @for (b of bulletsOf(r, list.type); track b.id) {
+                                <li>
+                                  @if (isEditing({ kind: 'bullet', id: b.id })) {
+                                    <ng-container [ngTemplateOutlet]="editor" [ngTemplateOutletContext]="{ multiline: false }" />
+                                  } @else {
+                                    {{ b.text }}
+                                    @if (b.editable) {
+                                      <button type="button" class="btn btn-link btn-sm" (click)="startEdit({ kind: 'bullet', id: b.id }, b.text)">Edit</button>
+                                      <button type="button" class="btn btn-link btn-sm text-danger" (click)="deleteBullet(b)">Delete</button>
+                                    }
+                                  }
+                                </li>
+                              }
+                            </ul>
+                            @if (canAddBullet(r)) {
+                              @if (isEditing({ kind: 'newBullet', requirementId: r['Id'], type: list.type })) {
+                                <ng-container [ngTemplateOutlet]="editor" [ngTemplateOutletContext]="{ multiline: false }" />
+                              } @else {
+                                <input type="button" value="Add More" class="btn btn-primary btn-sm mb-2" (click)="startEdit({ kind: 'newBullet', requirementId: r['Id'], type: list.type }, '')" />
+                              }
+                            }
+                          }
+                        }
+
+                        @for (f of shownFields(); track f) {
+                          <p class="mb-1 mt-2"><strong>{{ fieldInfo[f].label }}</strong></p>
+                          @if (isEditing({ kind: 'field', id: r['Id'], field: f })) {
+                            <ng-container [ngTemplateOutlet]="editor" [ngTemplateOutletContext]="{ multiline: fieldInfo[f].multiline }" />
+                          } @else {
+                            <div class="panel panel-info" style="padding: 10px; min-height: 40px">{{ t(r, f) }}</div>
+                            @if (canEditField(r, f)) {
+                              <input type="button" value="EDIT" class="btn btn-primary btn-sm" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
+                            }
+                          }
+                        }
+                        @if (d.milestone >= 2) {
+                          <p class="small mt-1">Proposed activity completed (PR1): {{ t(r, 'IsProposedActivityCompleted') || '—' }}
+                            @if (d.milestone >= 3) { · (PR2): {{ t(r, 'IsProposedActivityCompleted2') || '—' }} }</p>
+                        }
+                        <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: photosOf(r) }" />
+                      </div>
+                    }
+                  </div>
+                } @empty { <p>No parameters.</p> }
+              </div>
+            }
+
+            <!-- ================================================= closing meeting and decisions -->
+            @if (tab() === 10) {
+              <div class="tab-pane fade show active" role="tabpanel">
+                @for (m of d.closeMeetings; track $index) {
+                  <ng-container [ngTemplateOutlet]="meeting" [ngTemplateOutletContext]="{ $implicit: m }" />
+                } @empty { <p>The closing meeting has not been held yet.</p> }
+                @if (t(current(), 'SaAssessorRemarks') && d.status > 13) {
+                  <div class="alert alert-success"><strong>Consultant Final Comments:</strong> {{ t(current(), 'SaAssessorRemarks') }}</div>
+                }
+                <div class="text-center mt-3">
+                  @if (d.permissions.canConsultantFinalSubmit) {
+                    <input type="button" value="Final Submit" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="openConsultantSubmit()" />
+                  }
+                  @if (d.permissions.canCoFinalSubmit) {
+                    <input type="button" value="Final Submit" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="openDialog('coSubmit')" />
+                  }
+                  @if (d.permissions.canSendBack) {
+                    <input type="button" value="Send Back to Consultant" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="openDialog('sendBack')" />
+                  }
+                  @if (d.permissions.canReject) {
+                    <input type="button" value="Reject" class="btn btn-danger btn-md" [disabled]="busy()" (click)="openDialog('reject')" />
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<!-- ================================================= templates -->
+<ng-template #photos let-list>
+  <div class="row">
+    @for (p of $any(list); track $index) {
+      <div class="col-sm-3 mb-2">
+        @if (p.url) {
+          <button type="button" class="btn btn-link p-0" (click)="openImage(p.url)"><img [src]="p.url" [alt]="p.name ?? 'Photo'" style="max-width: 100%; max-height: 160px" /></button>
+        } @else {
+          <span class="text-muted small">Photo not available</span>
+        }
+        <div class="small">{{ p.name }} {{ p.createdDate }}</div>
+      </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #meeting let-m>
+  <div class="panel panel-default panel-white m-0 mb-3 p-2">
+    <h5>Milestone {{ $any(m).ncCount }}</h5>
+    <p>{{ $any(m).comments }}</p>
+    <ng-container [ngTemplateOutlet]="photos" [ngTemplateOutletContext]="{ $implicit: $any(m).photos }" />
+    @for (p of $any(m).participants; track $index) { <p class="mb-0">{{ $index + 1 }}. {{ p['Name'] }} — {{ p['Designation'] }}</p> }
+  </div>
+</ng-template>
+
+<ng-template #trainings let-rows>
+  <table class="table table-bordered table-zed bg-white">
+    <thead><tr><th>Milestone</th><th>Topic</th><th>Date</th><th>Consultant</th><th>Remarks</th></tr></thead>
+    <tbody>
+      @for (tr of $any(rows); track $index) {
+        <tr>
+          <td>{{ t(tr, 'NcCount') }}</td><td>{{ t(tr, 'TrainingTopic') }}</td><td>{{ t(tr, 'TrainingDate') }} {{ t(tr, 'TrainingTime') }}</td>
+          <td>{{ t(tr, 'AssessorId') }} {{ t(tr, 'AssessorRank') }}</td>
+          <td>
+            @if (isEditing({ kind: 'training', id: tr['Id'] })) {
+              <ng-container [ngTemplateOutlet]="editor" [ngTemplateOutletContext]="{ multiline: true }" />
+            } @else {
+              {{ t(tr, 'Remarks') }}
+              @if (tr['Editable'] === true) {
+                <input type="button" value="EDIT" class="btn btn-primary btn-sm ms-2" (click)="startEdit({ kind: 'training', id: tr['Id'] }, tr['Remarks'])" />
+              }
+            }
+          </td>
+        </tr>
+      } @empty { <tr><td colspan="5">No trainings recorded.</td></tr> }
+    </tbody>
+  </table>
+</ng-template>
+
+<ng-template #editor let-multiline="multiline">
+  <div class="mb-2">
+    @if (multiline) {
+      <textarea class="form-control" maxlength="2000" style="max-width: 100%" aria-label="Text" [ngModel]="draft()" (ngModelChange)="draft.set($event)"></textarea>
+    } @else {
+      <input type="text" class="form-control" maxlength="500" aria-label="Text" [ngModel]="draft()" (ngModelChange)="draft.set($event)" />
+    }
+    <input type="button" value="CANCEL" class="btn btn-default btn-sm m-t-1 me-1" (click)="cancelEdit()" />
+    <input type="button" value="UPDATE" class="btn btn-primary btn-sm m-t-1" [disabled]="busy()" (click)="saveEdit()" />
+  </div>
+</ng-template>
+
+@if (dialog(); as dlg) {
+  <div class="modal d-block text-start" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="milestoneDialogTitle">
+    <div class="modal-dialog modal-popup">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="registration-title" id="milestoneDialogTitle">
+            {{ dlg === 'reject' ? 'Confirm Reject' : dlg === 'sendBack' ? 'Send Back to Consultant' : 'Confirm Final Submit' }}
+          </h3>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+        </div>
+        <div class="modal-body">
+          @if (dlg === 'consultantSubmit' || dlg === 'sendBack') {
+            <label for="milestoneDialogText"><strong>{{ dlg === 'sendBack' ? 'Send Back Remarks' : 'Final Comments' }}<span style="color: red">*</span></strong></label>
+            <textarea id="milestoneDialogText" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px" [ngModel]="dialogText()" (ngModelChange)="dialogText.set($event)"></textarea>
+          } @else {
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="milestoneConfirm" [ngModel]="confirmed()" (ngModelChange)="confirmed.set($event)" />
+              <label class="form-check-label" for="milestoneConfirm">
+                {{ dlg === 'reject' ? 'I confirm that the milestone has been reviewed and the handholding support is rejected.' : 'I confirm that the review of the milestone has been done and relevant amendments made wherever applicable.' }}
+              </label>
+            </div>
+          }
+          @if (dialogError()) { <div class="alert alert-danger mt-2" role="alert">{{ dialogError() }}</div> }
+        </div>
+        <div class="modal-footer">
+          <input type="button" class="btn btn-default" value="CANCEL" (click)="dialog.set(null)" />
+          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'REJECT' : 'SUBMIT'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}
+
+@if (preview(); as src) {
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Photo" (click)="preview.set(null)">
+    <div class="modal-dialog modal-lg"><div class="modal-content p-2"><img [src]="src" alt="Photo" style="max-width: 100%" /></div></div>
+  </div>
+  <div class="modal-backdrop show"></div>
+}

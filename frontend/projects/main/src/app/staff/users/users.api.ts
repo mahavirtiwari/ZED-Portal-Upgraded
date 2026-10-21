@@ -33,10 +33,22 @@ export interface OrgPartner {
   name: string;
 }
 
+export interface CodeName {
+  code: string;
+  name: string;
+}
+
 export interface AgencyOptions {
   states: string[];
   sectors: Sector[];
   orgPartners: OrgPartner[];
+  /** Consultancy: states a Consultant Organisation can prefer for Technology Upgradation (LGD code). */
+  tuStates?: CodeName[] | null;
+}
+
+export interface District {
+  districtCode: string;
+  districtName: string;
 }
 
 export interface AgencyRequest {
@@ -54,6 +66,9 @@ export interface AgencyRequest {
   siteVerification: boolean;
   financialVerification: boolean;
   reasonForRejection: string;
+  /** Consultancy only (Technology Upgradation preference of a CO with financial verification). */
+  tuPreferredState?: string;
+  tuPreferredDistricts?: string[];
 }
 
 export interface AgencyDetails {
@@ -74,6 +89,8 @@ export interface AgencyDetails {
   financialVerification: boolean;
   reasonForRejection: string | null;
   isActive: boolean;
+  tuPreferredState?: string | null;
+  tuPreferredDistricts?: string[] | null;
 }
 
 export interface CreatedUserResponse {
@@ -111,6 +128,8 @@ export interface OwnAssessorRow {
   IsCertAttached: number;
   IdProofNumber: string | null;
   PhotoPath: string | null;
+  /** Consultancy: "Consultant" or "Technical Expert" (RoleId 3 / 33). */
+  UserType?: string | null;
 }
 
 export interface AssessorOptions {
@@ -137,6 +156,8 @@ export interface AssessorDetails {
   isActive: boolean;
   agencyUserId: string | null;
   canEdit: boolean;
+  /** Consultancy: Consultant | TechnicalExpert. */
+  userType?: string | null;
 }
 
 export interface Professional {
@@ -159,6 +180,10 @@ export interface AssessorCreateRequest {
   states: string[];
   nicSectors: string[];
   areasOfKnowledge: string[];
+  /** Consultancy technical experts (assessorType "TechnicalExpert"): typed name, e-mail and mobile. */
+  userName?: string;
+  emailId?: string;
+  mobileNo?: string;
 }
 
 export interface AssessorUpdateRequest {
@@ -182,6 +207,11 @@ export class UsersApi {
 
   agencies(): Observable<AgencyRow[]> {
     return this.http.get<AgencyRow[]>(`${this.base}/agencies`);
+  }
+
+  /** Consultancy: districts of a Technology Upgradation state. */
+  districts(state: string): Observable<District[]> {
+    return this.http.get<District[]>(`${this.base}/agencies/districts`, { params: new HttpParams().set('state', state) });
   }
 
   agencyOptions(): Observable<AgencyOptions> {
@@ -245,5 +275,87 @@ export class UsersApi {
 
   resetMobile(kind: ManagedKind, userId: string, mobileNo: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/mobile`, { mobileNo });
+  }
+}
+
+/** Surveillance: agency row of api/staff/surveillance-users/agencies. */
+export interface SurveillanceAgency {
+  userId: string;
+  userName: string | null;
+  spocName: string | null;
+  email: string | null;
+  mobileNo: string | null;
+  isActive: boolean | null;
+  reasonForRejection: string | null;
+  desktopVerification: boolean | null;
+  siteVerification: boolean | null;
+  allowBronzeSurveillance: boolean | null;
+  reasonForRejectionForBS: string | null;
+  tuPreferredState: string | null;
+  noOfUsers: number;
+}
+
+export interface SurveillanceAssessor {
+  userId: string;
+  userName: string | null;
+  email: string | null;
+  mobileNo: string | null;
+  isActive: boolean | null;
+  reasonForRejection: string | null;
+  desktopVerification: boolean | null;
+  siteVerification: boolean | null;
+  allowBronzeSurveillance: boolean | null;
+  agencyUserId: string | null;
+  agencyUserName: string | null;
+}
+
+export interface BronzeSurveillanceRequest {
+  allow: boolean;
+  reason?: string;
+  preferredState?: string;
+  districts?: string[];
+}
+
+/** Client for api/staff/surveillance-users (Surveillance host: accounts are mastered in main, nothing is created here). */
+@Injectable({ providedIn: 'root' })
+export class SurveillanceUsersApi {
+  private readonly http = inject(HttpClient);
+  private readonly base = '/api/staff/surveillance-users';
+
+  states(): Observable<CodeName[]> {
+    return this.http.get<CodeName[]>(`${this.base}/states`);
+  }
+
+  districts(state: string): Observable<District[]> {
+    return this.http.get<District[]>(`${this.base}/districts`, { params: new HttpParams().set('state', state) });
+  }
+
+  agencies(): Observable<SurveillanceAgency[]> {
+    return this.http.get<SurveillanceAgency[]>(`${this.base}/agencies`);
+  }
+
+  agency(userId: string): Observable<{ agency: SurveillanceAgency; districts: string[] }> {
+    return this.http.get<{ agency: SurveillanceAgency; districts: string[] }>(`${this.base}/agencies/${encodeURIComponent(userId)}`);
+  }
+
+  setAgencyBronze(userId: string, req: BronzeSurveillanceRequest): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/agencies/${encodeURIComponent(userId)}/bronze-surveillance`, req);
+  }
+
+  assessors(agencyId = ''): Observable<SurveillanceAssessor[]> {
+    const params = agencyId ? new HttpParams().set('agencyId', agencyId) : undefined;
+    return this.http.get<SurveillanceAssessor[]>(`${this.base}/assessors`, { params });
+  }
+
+  setAssessorBronze(userId: string, allow: boolean): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/assessors/${encodeURIComponent(userId)}/bronze-surveillance`, { allow });
+  }
+
+  block(kind: ManagedKind, userId: string, reason: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/block`, { reason });
+  }
+
+  unblock(kind: ManagedKind, userId: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, null);
   }
 }

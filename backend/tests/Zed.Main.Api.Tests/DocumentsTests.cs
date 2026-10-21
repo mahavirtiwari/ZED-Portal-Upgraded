@@ -274,7 +274,9 @@ public sealed class DocumentsTests : IDisposable
     [Theory]
     [InlineData("/api/msme/certification-documents/Platinum/certificate")]
     [InlineData("/api/msme/certification-documents/SilverMilestone1/report")]
-    [InlineData("/api/msme/certification-documents/BronzeSurveillance/report")]
+    [InlineData("/api/msme/certification-documents/PlatinumSurveillance/report")]
+    [InlineData("/api/msme/certification-documents/Bronze/report?milestone=1")]
+    [InlineData("/api/msme/certification-documents/Silver/report?milestone=4")]
     public async Task Unknown_certifications_are_refused(string url)
     {
         var client = await SignIn(Me);

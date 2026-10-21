@@ -54,6 +54,77 @@ public sealed class SiteAllotmentEmails(
         }
     }
 
+    /// <summary>
+    /// Surveillance (ZEDCS_SURVEILLANCE AssessmentController.SendMail "AcceptUnitForSa", Onsite branch): the unit, the
+    /// assessor and the co-assessor, subject "Allocation of Surveillance Assessment ...", with the meeting link
+    /// (shown only when it is an http/https address). No passwords.
+    /// </summary>
+    public async Task SendSurveillanceAllotmentAsync(string zedId, string certification, CancellationToken ct)
+    {
+        try
+        {
+            var row = (await db.QueryProcMultipleAsync("SP_EMAIL_GET_DETAILS", new { ZedId = zedId, Certification = certification }, ct))[0].FirstOrDefault();
+            if (row is null)
+            {
+                log.LogWarning("No e-mail details for {ZedId} {Certification}; surveillance allotment mails not sent", zedId, certification);
+                return;
+            }
+
+            var subject = $"Allocation of Surveillance Assessment under {Scheme} - {zedId}";
+            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var link = AssessmentInputs.WebLink(row.Text("MeetingLink"), 5000);
+            var baseUrl = portal.Value.PublicBaseUrl.TrimEnd('/');
+
+            await SendTemplateAsync<SurveillanceSiteAllotmentUnitEmail>(row.Text("EmailId"), subject, new()
+            {
+                [nameof(SurveillanceSiteAllotmentUnitEmail.AgencyName)] = row.Text("AgencyName"),
+                [nameof(SurveillanceSiteAllotmentUnitEmail.SpocName)] = row.Text("SpocName"),
+                [nameof(SurveillanceSiteAllotmentUnitEmail.AgencyEmail)] = row.Text("AgencyEmailId"),
+                [nameof(SurveillanceSiteAllotmentUnitEmail.AgencyMobileNo)] = row.Text("AgencyMobileNo"),
+                [nameof(SurveillanceSiteAllotmentUnitEmail.AssessmentDate)] = row.Text("FinalSaDate"),
+                [nameof(SurveillanceSiteAllotmentUnitEmail.MeetingLink)] = link,
+                // MSMEs sign in on main (the surveillance portal has no MSME accounts).
+                [nameof(SurveillanceSiteAllotmentUnitEmail.LoginUrl)] = MainOrigin + "/Msme/Login",
+            }, cc, ct);
+
+            async Task Assessor(string to, string role, string assessorId)
+            {
+                if (assessorId.Length == 0) return;
+                await SendTemplateAsync<SurveillanceSiteAllotmentAssessorEmail>(to, subject, new()
+                {
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.Role)] = role,
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.ZedId)] = zedId,
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.UnitName)] = row.Text("PUnitName") is { Length: > 0 } u ? u : row.Text("EnterpriseName"),
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.UnitAddress)] = row.Text("Address"),
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.AssessmentDate)] = row.Text("FinalSaDate"),
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.MeetingLink)] = link,
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.AssessorId)] = assessorId,
+                    [nameof(SurveillanceSiteAllotmentAssessorEmail.LoginUrl)] = baseUrl + "/User/Login",
+                }, cc, ct);
+            }
+
+            await Assessor(row.Text("AssessorEmailId"), "Assessor", row.Text("AssessorUserId"));
+            await Assessor(row.Text("CoAssessorEmailId"), "Co-assessor", row.Text("CoAssessorUserId"));
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogWarning(ex, "Surveillance assessment allotted for {ZedId} {Certification} but a notification mail failed", zedId, certification);
+        }
+    }
+
+    /// <summary>Scheme and host of <see cref="PortalOptions.PublicBaseUrl"/> (main's address when the system runs under a sub-path).</summary>
+    private string MainOrigin =>
+        Uri.TryCreate(portal.Value.PublicBaseUrl, UriKind.Absolute, out var u) ? u.GetLeftPart(UriPartial.Authority) : portal.Value.PublicBaseUrl.TrimEnd('/');
+
+    private async Task SendTemplateAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters,
+        IReadOnlyList<string>? cc, CancellationToken ct) where TTemplate : IComponent
+    {
+        if (string.IsNullOrWhiteSpace(to)) return;
+        parameters["PublicBaseUrl"] = portal.Value.PublicBaseUrl;
+        var html = await templates.RenderAsync<TTemplate>(parameters);
+        await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
+    }
+
     private async Task SendAsync(string to, string subject, string body, IReadOnlyList<string>? cc, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(to)) return;

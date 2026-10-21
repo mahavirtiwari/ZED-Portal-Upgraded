@@ -181,15 +181,6 @@ export class CertificationDetailsPage {
     return Number(row[field] ?? 0) || 0;
   }
 
-  /** Address on the old portal, or '' when its base address is not known. */
-  private legacy(path: string): string {
-    return this.legacyUrl() ? `${this.legacyUrl()}${path}` : '';
-  }
-
-  private zedId(): string {
-    return encodeURIComponent(String(this.msme()['ZedId'] ?? ''));
-  }
-
   /**
    * Certificates come from api/msme/certification-documents (the signed-in MSME only). Bronze/Silver/Gold are
    * drawn there if the file is missing; a surveillance certificate is only served once the surveillance
@@ -201,14 +192,17 @@ export class CertificationDetailsPage {
     return CERT_PATH.test(String(this.cert()['SurveCertPath'] ?? '')) ? `${DOCUMENTS_API}/${level}Surveillance/certificate` : '';
   }
 
-  /** Bronze/Silver/Gold reports are drawn by this portal; surveillance and milestone reports still come from those systems. */
+  /**
+   * Reports are drawn by this portal for the signed-in MSME: Bronze/Silver/Gold from its own database, surveillance
+   * reports from ZED_SURVEILLANCE and handholding milestone reports from ZED_CONSULTANT (read-only connections).
+   */
   private reportUrl(): string {
     const level = this.level();
     switch (this.kind()) {
       case 'surveillance':
-        return this.legacy(`/surveillance/SA/ReportSummary/${this.zedId()}?certification=${level}`);
+        return `${DOCUMENTS_API}/${level}Surveillance/report`;
       case 'milestone':
-        return this.legacy(`/consultancy/SA/ReportSummary/${this.zedId()}?certification=${level}&milestone=${this.milestone()}`);
+        return `${DOCUMENTS_API}/${level}/report?milestone=${this.milestone()}`;
       default:
         return `${DOCUMENTS_API}/${level}/report`;
     }

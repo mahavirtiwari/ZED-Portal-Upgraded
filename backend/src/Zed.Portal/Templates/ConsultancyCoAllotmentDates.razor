@@ -1,0 +1,24 @@
+@* The "Handholding Date(s)" cell of the consultancy allotment mails: BDS dates, plus the HAP dates for milestone 1. *@
+@if (Milestone == "1")
+{
+    <span>BDS From Date: @BdsFromDate<br />HAP From Date: @HapFromDate<br />BDS To Date: @BdsToDate<br />HAP To Date: @HapToDate</span>
+}
+else
+{
+    <span>BDS From Date: @BdsFromDate<br />BDS To Date: @BdsToDate</span>
+}
+
+@code {
+    [Parameter] public string Milestone { get; set; } = "";
+    [Parameter] public string? BdsFromDate { get; set; }
+    [Parameter] public string? BdsToDate { get; set; }
+    [Parameter] public string? HapFromDate { get; set; }
+    [Parameter] public string? HapToDate { get; set; }
+
+    public static string Stage(string milestone) => milestone switch
+    {
+        "1" => "Milestone 1 : Baseline Diagnostic study and Handholding action plan",
+        "2" => "Milestone 2: Implementation & Progress Review 1",
+        _ => "Milestone 3: Implementation & Progress Review 2",
+    };
+}

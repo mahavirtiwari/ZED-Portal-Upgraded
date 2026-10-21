@@ -34,6 +34,8 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="Zed.Main.Api.Tests" />
+    <InternalsVisibleTo Include="Zed.Consultancy.Api.Tests" />
+    <InternalsVisibleTo Include="Zed.Surveillance.Api.Tests" />
   </ItemGroup>
 
   <ItemGroup>

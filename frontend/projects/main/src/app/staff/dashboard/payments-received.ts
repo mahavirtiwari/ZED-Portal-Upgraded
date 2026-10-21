@@ -45,7 +45,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
               @for (t of pager.page(); track $index) {
                 <tr>
                   <td>{{ t['RowNumber'] }}</td>
-                  <td><strong>{{ t['ZedId'] }}</strong><br /><br />{{ t['Certification'] }}</td>
+                  <td><strong>{{ t['ZedId'] }}</strong><br /><br />{{ t['Certification'] }}@if (t['MileStoneNum']) { <br />Milestone {{ t['MileStoneNum'] }} }</td>
                   <td><strong>{{ t['PUnitName'] }}</strong></td>
                   <td>{{ t['EnterpriseTypee'] }}<br /><br />{{ t['Gender'] }}</td>
                   <td>{{ t['SocialCategoryName'] }}</td>
@@ -65,7 +65,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
         <zed-pager-bar [pager]="pager" />
       </div>
     </div>
-    @if (loading()) { <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div> }
+    @if (loading()) { <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div> }
   `,
   styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })

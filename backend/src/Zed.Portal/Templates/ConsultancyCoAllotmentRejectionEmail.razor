@@ -1,0 +1,28 @@
+@* Port of the consultancy Views/Shared/_SaRejectionTemplate.cshtml: the Consultant Organisation returned a unit
+   (mailed to the ZED team). The reason is HTML-encoded by Razor. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The Handholding Support allocated to this Consultant Organisation is being returned as rejected. The details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">MSME ZED ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ZedId</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Unit Name</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UnitName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Milestone</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Milestone</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Registered Consultant Organisation Name</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Registered Consultant Organisation ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyUserId</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Reason for Rejection</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Reason</td></tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string? UnitName { get; set; }
+    [Parameter] public string? Milestone { get; set; }
+    [Parameter] public string? AgencyName { get; set; }
+    [Parameter, EditorRequired] public string AgencyUserId { get; set; } = "";
+    [Parameter, EditorRequired] public string Reason { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

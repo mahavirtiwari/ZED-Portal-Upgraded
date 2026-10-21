@@ -1,0 +1,42 @@
+@* Port of the surveillance _SaAllotUnitToLeadAssessorTemplate / _SaAllotUnitToCoAssessorTemplate.cshtml. The old mails
+   printed the assessor's portal password (SP_EMAIL_GET_DETAILS selects Users.Password); this one does not. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">You have been allocated a Surveillance Assessment as @Role under "MSME Sustainable (ZED) Certification" Scheme. The details are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">MSME ZED ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ZedId</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Unit Name</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UnitName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Unit Address</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UnitAddress</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Mode Of Assessment</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">Remote Assessment</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Surveillance Assessment Date</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AssessmentDate</td></tr>
+            @if (!string.IsNullOrEmpty(MeetingLink))
+            {
+                <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Meeting link</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;"><a href="@MeetingLink" target="_blank">Click Here to Join</a></td></tr>
+            }
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Assessor ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AssessorId</td></tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0;">Please sign in with your Assessor ID and your existing password. If you do not remember it, use "Forgot Password" on the login page.</p>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    /// <summary>"Assessor" (lead) or "Co-assessor".</summary>
+    [Parameter, EditorRequired] public string Role { get; set; } = "";
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter] public string? UnitName { get; set; }
+    [Parameter] public string? UnitAddress { get; set; }
+    [Parameter] public string? AssessmentDate { get; set; }
+    /// <summary>Checked http/https address, or null.</summary>
+    [Parameter] public string? MeetingLink { get; set; }
+    [Parameter, EditorRequired] public string AssessorId { get; set; } = "";
+    /// <summary>Surveillance staff sign-in page.</summary>
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

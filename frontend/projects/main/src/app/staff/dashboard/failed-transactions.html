@@ -42,7 +42,7 @@
                   <button type="button" class="btn btn-primary btn-xs" style="width: 180px; margin-top: 10px" (click)="open(s)">UPDATE <br />PAYMENT STATUS</button>
                 }
               </td>
-              <td><strong>{{ s['ZedId'] }}</strong><br /><br />{{ s['Certification'] }}<br /><br />{{ s['TransactionDate'] }}</td>
+              <td><strong>{{ s['ZedId'] }}</strong><br /><br />{{ s['Certification'] }}@if (s['MileStoneNumber']) { <br />Milestone {{ s['MileStoneNumber'] }} }<br /><br />{{ s['TransactionDate'] }}</td>
               <td><strong>{{ s['PUnitName'] }}<br /><br />{{ s['TransactionId'] }}</strong></td>
               <td>{{ s['EnterpriseTypee'] }}<br /><br />{{ s['Gender'] }}</td>
               <td>{{ s['SocialCategoryName'] }}</td>
@@ -150,5 +150,5 @@
 }
 
 @if (loading()) {
-  <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div>
+  <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div>
 }

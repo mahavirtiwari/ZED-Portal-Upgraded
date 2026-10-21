@@ -109,7 +109,7 @@
       <ng-template #docView let-doc>
         <div class="doc-row">
           <span>
-            <img [src]="doc.isPdf ? '/Images/svgicons/pdf-icon.svg' : '/Images/svgicons/document.svg'" alt="" height="24" />
+            <img [src]="doc.isPdf ? 'Images/svgicons/pdf-icon.svg' : 'Images/svgicons/document.svg'" alt="" height="24" />
             @if (doc.timeStamp) { <small> captured at {{ doc.timeStamp }}</small> }
           </span>
           @if (doc.isPdf) {
@@ -128,7 +128,7 @@
               @if (doc.sourceOfValidation) { <small><br /><strong>Source of Validation:</strong> {{ doc.sourceOfValidation }}</small> }
               @if (doc.assessorRemarks) { <small><br /><strong>Remarks:</strong> <span style="word-break: break-all">{{ doc.assessorRemarks }}</span></small> }
               @for (s of doc.screenshots; track s.id) {
-                <br /><a [href]="s.url" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + s.fileName"><img src="/Images/pdf-icon.png" height="25" alt="" /></a>
+                <br /><a [href]="s.url" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + s.fileName"><img src="Images/pdf-icon.png" height="25" alt="" /></a>
               }
             }
           </span>
@@ -144,7 +144,7 @@
             <div class="modal-content">
               <div class="modal-header justify-content-between">
                 <h3 class="registration-title" id="validateTitle">Validate Evidence</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
               <div class="modal-body">
                 <p><strong>{{ v.doc.photoType }}</strong></p>
@@ -189,7 +189,7 @@
             <div class="modal-content">
               <div class="modal-header justify-content-between">
                 <h3 class="registration-title" id="decisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
               <div class="modal-body">
                 @if (dialogError()) {
@@ -223,7 +223,7 @@
       <div class="modal-content">
         <div class="modal-header justify-content-between">
           <h3 class="registration-title">Image preview</h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body text-center preview"><img [src]="url" alt="Document" /></div>
       </div>

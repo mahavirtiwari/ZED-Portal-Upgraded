@@ -1,10 +1,15 @@
 @* Port of _BronzeDaReportTemplate.cshtml (Bronze, Monitoring/FinalSubmit) and _SaReportTemplate.cshtml (Silver/Gold,
    Monitoring/RaFinalSubmit). The old mails linked to SA/ReportSummary/{ZedId}, a page anyone could open for any ZED ID
-   (SECURITY-FINDINGS #18); here the report is attached when it could be generated and the button opens the MSME login. *@
+   (SECURITY-FINDINGS #18); here the report is attached when it could be generated and the button opens the MSME login.
+   Surveillance (SurveillanceWeb Monitoring): the surveillance certificate only, no report attachment. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings of the day!</p>
     <p style="font-size: 13px; margin-bottom: 0;">At the outset, we thank you for being a part of the "MSME Sustainable (ZED) Certification" Scheme of Ministry of MSME, Government of India.</p>
-    @if (ReportAttached)
+    @if (Surveillance)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">The surveillance assessment of your unit has been completed. Please find attached the Certificate of your unit issued after the surveillance. The same can also be downloaded from your dashboard after you sign in.</p>
+    }
+    else if (ReportAttached)
     {
         <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Certificate and the Assessment Report of your unit. The Assessment Report can also be downloaded from your dashboard after you sign in.</p>
     }
@@ -57,6 +62,8 @@
     /// <summary>Silver/Gold certified after the site assessment (the _SaReportTemplate layout); false for Bronze.</summary>
     [Parameter] public bool SiteAssessment { get; set; }
     [Parameter] public bool ReportAttached { get; set; }
+    /// <summary>Sent by the Surveillance portal: surveillance certificate wording, no report.</summary>
+    [Parameter] public bool Surveillance { get; set; }
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";
     [Parameter, EditorRequired] public string Certification { get; set; } = "";
     [Parameter] public string? EnterpriseName { get; set; }

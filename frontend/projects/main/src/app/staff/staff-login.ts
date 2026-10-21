@@ -5,8 +5,13 @@ import { Router } from '@angular/router';
 import { AuthService, CurrentUser, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { STAFF_ROLE_IDS } from './staff-menu';
+import { PORTAL_SYSTEM } from '../portal-system';
+import { PORTAL_LABELS } from '../portal-labels';
 
-/** Staff, agency and assessor login. Port of Views/User/Login.cshtml. */
+/**
+ * Staff, agency and assessor login. Port of Views/User/Login.cshtml. The Consultancy and Surveillance builds open it
+ * at their root (old /Consultancy/User/Login, /surveillance/User/Login) and name their portal under the title.
+ */
 @Component({
   selector: 'zed-staff-login',
   imports: [FormsModule, Recaptcha],
@@ -14,13 +19,16 @@ import { STAFF_ROLE_IDS } from './staff-menu';
   template: `
     <main class="staff-login">
       <header class="d-flex justify-content-between align-items-center px-4 py-3">
-        <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
+        <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
       </header>
       <section class="login-section-inner mx-auto">
-        <div class="logo-zed-brand text-center"><img src="/Images/header/zed-logo.png" alt="ZED" width="110" /></div>
+        <div class="logo-zed-brand text-center"><img src="Images/header/zed-logo.png" alt="ZED" width="110" /></div>
         <div class="login-inner-block">
-          <div class="text-center"><img src="/Images/header/user.png" width="100" alt="" /></div>
+          <div class="text-center"><img src="Images/header/user.png" width="100" alt="" /></div>
           <h1 class="text-center fw-bold" style="font-size: 32px">User Login</h1>
+          @if (systemName) {
+            <p class="text-center text-muted mb-3">{{ systemName }}</p>
+          }
           <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
             <div class="mb-3">
               <label for="userId">User ID</label>
@@ -41,7 +49,7 @@ import { STAFF_ROLE_IDS } from './staff-menu';
         </div>
       </section>
       <footer>
-        <div class="footer"><div><small>ZED © {{ year }} All Rights Reserved</small></div><div><img src="/Images/footer/footer-icon.png" alt="QCI" /></div></div>
+        <div class="footer"><div><small>ZED © {{ year }} All Rights Reserved</small></div><div><img src="Images/footer/footer-icon.png" alt="QCI" /></div></div>
       </footer>
     </main>
   `,
@@ -61,6 +69,7 @@ export class StaffLoginPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly year = new Date().getFullYear();
+  protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
   protected userId = '';
   protected password = '';
   protected captchaToken = '';

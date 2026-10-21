@@ -9,10 +9,10 @@ public sealed record CellText(string Text, bool Bold = false, bool Italic = fals
 
 public sealed record CellImage(SKImage Image, float MaxHeight, string? Caption = null) : CellItem;
 
-public sealed record Cell(IReadOnlyList<CellItem> Items, int ColSpan = 1, bool Bold = false, bool Center = false)
+public sealed record Cell(IReadOnlyList<CellItem> Items, int ColSpan = 1, bool Bold = false, bool Center = false, SKColor? Fill = null)
 {
-    public static Cell Of(string? text, bool bold = false, bool center = false, int colSpan = 1) =>
-        new([new CellText(text ?? "", bold)], colSpan, bold, center);
+    public static Cell Of(string? text, bool bold = false, bool center = false, int colSpan = 1, SKColor? fill = null) =>
+        new([new CellText(text ?? "", bold)], colSpan, bold, center, fill);
 }
 
 public sealed class TableSpec(params float[] widths)
@@ -215,9 +215,14 @@ public sealed class ReportPdf : IDisposable
     }
 
     /// <summary>Images side by side with a caption under each, wrapping to new rows.</summary>
-    public void Gallery(IReadOnlyList<SKImage> images, string caption, float maxWidth = 160, float maxHeight = 200)
+    public void Gallery(IReadOnlyList<SKImage> images, string caption, float maxWidth = 160, float maxHeight = 200) =>
+        Gallery(images.Select(i => (i, caption)).ToList(), maxWidth, maxHeight);
+
+    /// <summary>Images side by side, each with its own caption.</summary>
+    public void Gallery(IReadOnlyList<(SKImage Image, string Caption)> items, float maxWidth = 160, float maxHeight = 200)
     {
-        if (images.Count == 0) return;
+        if (items.Count == 0) return;
+        var images = items.Select(i => i.Image).ToList();
         var perRow = Math.Max(1, (int)(ContentWidth / (maxWidth + 12)));
         using var font = Font(9, bold: true);
         using var ink = Paint(Ink);
@@ -233,7 +238,9 @@ public sealed class ReportPdf : IDisposable
                 var cx = Margin + slot * i + slot / 2;
                 var (w, h) = sizes[i];
                 Canvas.DrawImage(row[i], SKRect.Create(cx - w / 2, Y, w, h), Sampling);
-                Canvas.DrawText(caption, cx, Y + h + font.Size + 3, SKTextAlign.Center, font, ink);
+                var text = items[start + i].Caption;
+                while (text.Length > 1 && font.MeasureText(text) > slot - 6) text = text[..^1];
+                Canvas.DrawText(text, cx, Y + h + font.Size + 3, SKTextAlign.Center, font, ink);
             }
             Y += rowHeight;
         }
@@ -373,10 +380,10 @@ public sealed class ReportPdf : IDisposable
 
     private void DrawCell(TableSpec table, float x, float width, float height, Cell cell, int col, List<Placed> items, bool isHeader)
     {
-        var label = table.LabelColumn && col == 0;
-        if (isHeader || label)
+        var label = table.LabelColumn && col == 0 && cell.Fill is null;
+        if (isHeader || label || cell.Fill is not null)
         {
-            using var fill = Paint(Teal);
+            using var fill = Paint(cell.Fill ?? Teal);
             Canvas.DrawRect(SKRect.Create(x, Y, width, height), fill);
         }
         using (var stroke = new SKPaint { Color = Grid, IsStroke = true, StrokeWidth = 0.6f })

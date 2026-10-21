@@ -23,7 +23,16 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// the table is chosen on the server from the kind of item, and the row must belong to the ZED ID and
 /// certification.
 /// </para>
+/// <para>
+/// Also served by the Surveillance host (ZED_SURVEILLANCE): the procedures there have the same parameters and the
+/// same review statuses (desktop 5/7, site 15/17, certified 6/16, rejected 99), so <see cref="ReviewRules"/> apply
+/// unchanged. The surveillance procedures re-use main's certificate number and set main's certificate ACTIVE
+/// (final submit) or WITHDRAWN with re-certification enabled (SP_MONITORING_REJECT_FINAL_SUBMIT) themselves;
+/// <see cref="CertificationCompletion"/> sends the surveillance mails. Consultancy milestones have their own
+/// controller (Consultancy/Milestones).
+/// </para>
 /// </summary>
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [Route("api/staff/monitoring/review/{zedId}/{certification}")]
 public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<MonitoringReviewController> log) : StaffApiController
 {

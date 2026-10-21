@@ -13,11 +13,17 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 /// Registered MSMEs list. Port of DashboardController.RegisteredMsme / GetRegisteredMsme
 /// (SP_DASHBOARD_REGISTERED_MSME, paged in the procedure), Dashboard/Resend and Msme/DisablePlant
 /// (SP_MSME_DISABLE_PLANT) as used by Views/Dashboard/RegisteredMsme.cshtml.
+/// <para>
+/// Also served by Consultancy (SuperAdmin, Ministry, MasterAdmin; ZED_CONSULTANT's procedure takes @NoOfRecords instead
+/// of @PageSize; milestone column) and Surveillance (SuperAdmin, Ministry, MasterAdmin, CitizenFeedback; SurveillanceNo
+/// column, no first-surveillance due date or phase). "Resend Details" is Main only: those portals have no MSME logins.
+/// </para>
 /// </summary>
 [Route("api/staff/dashboard/registered-msme")]
-[StaffRoles(UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
+[StaffRoles(UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC, UserRole.MasterAdmin)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class RegisteredMsmeController(
-    ISqlExecutor db, IEmailSender email, IHtmlTemplateRenderer templates, IOptions<PortalOptions> portal,
+    ISqlExecutor db, PortalHost host, IEmailSender email, IHtmlTemplateRenderer templates, IOptions<PortalOptions> portal,
     ILogger<RegisteredMsmeController> log) : StaffApiController
 {
     /// <summary>Columns the table shows to every role (CertificationStatus drives the Assessment Details links).</summary>
@@ -35,6 +41,22 @@ public sealed class RegisteredMsmeController(
 
     public sealed record ListResponse(List<Dictionary<string, object?>> Rows, int TotalCounts, int PageNo, int PageSize);
 
+    /// <summary>Roles of the page per system (legacy AuthenticationFilter of Dashboard/RegisteredMsme).</summary>
+    public static UserRole[] RolesFor(PortalSystem system) => system switch
+    {
+        PortalSystem.Consultancy => [UserRole.SuperAdmin, UserRole.Ministry, UserRole.MasterAdmin],
+        PortalSystem.Surveillance => [UserRole.SuperAdmin, UserRole.Ministry, UserRole.MasterAdmin, UserRole.CitizenFeedback],
+        _ => [UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC],
+    };
+
+    /// <summary>Columns of the list per system.</summary>
+    public static string[] ColumnsFor(PortalSystem system) => system switch
+    {
+        PortalSystem.Consultancy => [.. Columns, "MileStoneNo"],
+        PortalSystem.Surveillance => [.. Columns.Where(c => c is not "FirstSurveDueDate" and not "CertificationPhase"), "SurveillanceNo"],
+        _ => Columns,
+    };
+
     [HttpGet]
     public async Task<ActionResult<ListResponse>> List(
         string? state, string? certification, string? size, string? gender, string? searchBy, string? search,
@@ -47,6 +69,7 @@ public sealed class RegisteredMsmeController(
         var genderValue = DashboardFilters.Pick(gender, DashboardFilters.Genders, ref invalid);
         var field = DashboardFilters.Pick(searchBy, SearchFields, ref invalid) ?? "Zed Id";
         search = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        if (!IsRole(RolesFor(host.System))) return Forbid();
         if (invalid || search?.Length > 50 || pageNo < 1 || !PageSizes.Contains(pageSize))
             return this.Problem400("Invalid filter.");
 
@@ -55,13 +78,22 @@ public sealed class RegisteredMsmeController(
         if (IsRole(UserRole.Ministry) && !string.IsNullOrWhiteSpace(CurrentUser.StateCode))
             stateCode = CurrentUser.StateCode.Trim();
 
-        var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_REGISTERED_MSME", new
-        {
-            ZedId = search, Status = field, State = stateCode, UserId, CertificationType = cert, RoleId = RoleId.ToString(),
-            Gender = genderValue, MsmeSize = sizeValue, PageNo = pageNo, PageSize = pageSize,
-        }, ct);
+        // ZED_CONSULTANT's SP_DASHBOARD_REGISTERED_MSME names the page size @NoOfRecords (@PageSize is "not a parameter" there).
+        object parameters = host.System == PortalSystem.Consultancy
+            ? new
+            {
+                ZedId = search, Status = field, State = stateCode, UserId, CertificationType = cert, RoleId = RoleId.ToString(),
+                Gender = genderValue, MsmeSize = sizeValue, PageNo = pageNo, NoOfRecords = pageSize,
+            }
+            : new
+            {
+                ZedId = search, Status = field, State = stateCode, UserId, CertificationType = cert, RoleId = RoleId.ToString(),
+                Gender = genderValue, MsmeSize = sizeValue, PageNo = pageNo, PageSize = pageSize,
+            };
+        var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_REGISTERED_MSME", parameters, ct);
 
-        var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) ? [.. Columns, .. AdminColumns] : Columns;
+        var baseColumns = ColumnsFor(host.System);
+        var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) ? [.. baseColumns, .. AdminColumns] : baseColumns;
         var total = sets[1].FirstOrDefault();
         return new ListResponse(DashboardFilters.Pick(sets[0], columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
     }
@@ -76,6 +108,7 @@ public sealed class RegisteredMsmeController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<ActionResult<MessageResponse>> Resend(string zedId, CancellationToken ct)
     {
+        if (host.System != PortalSystem.Main) return NotFound();
         if (!DashboardFilters.IsZedId(zedId)) return this.Problem400("Invalid ZED ID.");
 
         var row = (await db.QueryProcMultipleAsync("SP_RESEND_REGISTRATION_DETAILS", new { ZedId = zedId }, ct))[0].FirstOrDefault();

@@ -2,10 +2,13 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
 import { StaffMenuItem, menuFor } from './staff-menu';
+import { PORTAL_SYSTEM } from '../portal-system';
+import { PORTAL_LABELS } from '../portal-labels';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
- * Views/Shared/_Layout.cshtml. Menu entries not migrated yet open the old portal.
+ * Views/Shared/_Layout.cshtml (per system: staff-menu.ts). Menu entries not migrated yet open the old portal.
+ * Images are relative so that they load from the build's baseHref (/Consultancy/, /surveillance/).
  */
 @Component({
   selector: 'zed-staff-layout',
@@ -16,15 +19,15 @@ import { StaffMenuItem, menuFor } from './staff-menu';
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>
-            <a routerLink="/staff"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></a>
+            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            <a routerLink="/staff"><img class="zedv2-logo" src="Images/header/zed-logo.png" alt="ZED" /></a>
           </div>
         </div>
       </header>
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
         <div class="container nav-bar-sec">
-          <span class="navbar-brand">{{ user()?.role }}<br /><span>Home</span></span>
+          <span class="navbar-brand">{{ user()?.role }}<br /><span>{{ systemName || 'Home' }}</span></span>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -33,7 +36,7 @@ import { StaffMenuItem, menuFor } from './staff-menu';
             <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0 flex-wrap">
               <li class="nav-item tag">
                 <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" aria-label="Home">
-                  <img src="/Images/svgicons/home.svg" alt="" />
+                  <img src="Images/svgicons/home.svg" alt="" />
                 </a>
               </li>
               @for (item of menu(); track item.label + (item.route ?? item.legacyPath)) {
@@ -65,7 +68,7 @@ import { StaffMenuItem, menuFor } from './staff-menu';
         <div class="footer">
           <div class="container d-flex justify-content-between align-items-center py-2">
             <small>ZED © {{ year }} All Rights Reserved</small>
-            <img src="/Images/footer/footer-icon.png" alt="QCI" height="32" />
+            <img src="Images/footer/footer-icon.png" alt="QCI" height="32" />
           </div>
         </div>
       </footer>
@@ -88,6 +91,8 @@ export class StaffLayout {
     return u ? menuFor(u.roleId, u.subRoles ?? []) : [];
   });
   protected readonly year = new Date().getFullYear();
+  /** Consultancy / Surveillance builds: the portal's name in the menu bar. */
+  protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
 

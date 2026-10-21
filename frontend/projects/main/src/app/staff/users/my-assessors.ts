@@ -1,4 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { PORTAL_SYSTEM } from '../../portal-system';
+import { PORTAL_LABELS } from '../../portal-labels';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -25,7 +27,7 @@ interface Dialog {
         <div class="row">
           <div class="col-sm-12">
             <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-              <h3 class="registration-title">Assessors</h3>
+              <h3 class="registration-title">{{ labels.assessors }}</h3>
               <div class="search-input" style="margin-left: auto">
                 <input type="text" placeholder="Search.." aria-label="Search assessors" [ngModel]="search()" (ngModelChange)="search.set($event)" />
                 <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
@@ -48,8 +50,8 @@ interface Dialog {
                   <tr class="text-center" style="font-size: 16px">
                     <th>Status</th>
                     <th>Selfie</th>
-                    <th>Assessor Type</th>
-                    <th>Assessor ID</th>
+                    <th>{{ consultancy ? 'Type' : 'Assessor Type' }}</th>
+                    <th>{{ consultancy ? 'ID' : 'Assessor ID' }}</th>
                     <th>Assessor Details</th>
                     <th>Assessor Conctact Details</th>
                     <th>Action(s)</th>
@@ -64,7 +66,7 @@ interface Dialog {
                           <a [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" class="align-center img-responsive" style="max-height: 60px" /></a>
                         }
                       </td>
-                      <td><strong>{{ u.AssessorType }}</strong></td>
+                      <td><strong>{{ consultancy ? u.UserType : u.AssessorType }}</strong></td>
                       <td><strong>{{ u.UserId }}</strong></td>
                       <td><strong>{{ u.UserName }}</strong><br />{{ u.Address }}<br /><strong>{{ u.IdProofNumber }}</strong></td>
                       <td>{{ u.MobileNo }}<br />{{ u.Email }}</td>
@@ -98,7 +100,7 @@ interface Dialog {
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title m-0" id="assessor-dialog-title">{{ d.kind === 'block' ? 'Reason for Block the Assessor' : 'Assessor Mobile Number' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <form (ngSubmit)="submitDialog()" novalidate>
@@ -135,6 +137,8 @@ interface Dialog {
   `,
 })
 export class MyAssessorsPage {
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly labels = PORTAL_LABELS;
   private readonly api = inject(UsersApi);
 
   protected readonly assessors = signal<OwnAssessorRow[]>([]);

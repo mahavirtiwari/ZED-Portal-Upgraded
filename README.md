@@ -63,8 +63,18 @@ Phase 4 (staff, in progress): staff login and role menu; dashboards, registered 
 payments, financial support, reports (allow-listed), ZED ID history; monitoring, SA allotment, remote
 assessments; agencies, assessors and admin masters. Menu entries not migrated yet still open the old portal.
 
-Phase 6 (mobile, in progress): `Zed.Main.MobileApi` serves the installed apps at the old addresses and
-formats; see `docs/MOBILE-API.md`.
+Phase 6 (mobile): `Zed.Main.MobileApi` serves the installed apps at the old addresses and
+formats; see `docs/MOBILE-API.md`. `Mobile:System` (Main, Consultancy, Surveillance) picks the database and
+the app controllers, so one build is deployed three times.
+
+Phases 7 and 8: the Consultancy (`Zed.Consultancy.Api`, ZED_CONSULTANT) and Surveillance
+(`Zed.Surveillance.Api`, ZED_SURVEILLANCE) staff portals. All three APIs host the shared features in
+`backend/src/Zed.Portal`; `[PortalSystems(...)]` on a controller says which systems serve it (none = main only).
+The Angular app is one source built three times (`ng build main|consultancy|surveillance`); `portal-system.ts`
+is swapped per build and picks the routes, menu and labels.
+
+Fixes for the live (old) sites, to apply before or independently of the cut-over: `docs/LIVE-HARDENING.md`
+and `database/fixes/{main,consultancy,surveillance}` (preview by default; review each script).
 
 Everything else is listed in `docs/MIGRATION-PLAN.md`.
 
@@ -80,6 +90,8 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
 .\database\setup.ps1
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0001_mobile_devices.sql   # new V4 tables (servers too)
+sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the consultancy app deployment
+sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_SURVEILLANCE -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the surveillance app deployment
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0002_api_incentives_index.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0003_mail_outbox.sql   # all three DBs (docs/JOBS.md)
 sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0003_mail_outbox.sql
@@ -121,6 +133,10 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 |---|---|
 | `ConnectionStrings:Main/Consultancy/Surveillance` | `connString` app setting |
 | `Portal:PublicBaseUrl` | `BaseUrl`; used in e-mail links and logo |
+| `Portal:PathBase` (Consultancy, Surveillance) | The old IIS application path (`/Consultancy`, `/surveillance`); must match the build's base href. The XSRF cookie is scoped to it |
+| `ConnectionStrings:Consultancy/Surveillance` on the main API | Read-only connection (`ApplicationIntent=ReadOnly`, writes refused in code) for milestone and surveillance reports and certificates served from main. Use a login with only `EXECUTE` on the report procedures |
+| `Consultancy:SharedStorageRoot` (Consultancy) | Extra folder searched for technology-upgradation files uploaded through main (normally main's `Portal:StorageRoot`) |
+| `Portal:AssessmentStorageRoot` | Folder of the old services' photos and evidence (`mobileapi/Photos/…`) served to MSMEs; empty = `Portal:StorageRoot` |
 | `Portal:StorageRoot` | Folder with `Certificates/…`, `Certifications/…`, `PDFs/…`, `ReceiptInvoice/…`, `Uploads/Documents/…`. In production point it at the old site root (e.g. `E:\Publish\ZEDCS_LIVE\ZEDCS_V2_LIVE`) so existing certificates and receipts are found |
 | `Portal:LegacyBaseUrl` | Old portal address; links to modules not migrated yet (payments, incentives, financial assistance) open there |
 | `Recaptcha:Enabled/SiteKey/SecretKey` | `isEnabledCaptcha` + keys that were hard-coded in controllers/views |
@@ -148,6 +164,9 @@ cd frontend; npx ng test main --watch=false
 1. `npx ng build main` → copy `frontend/dist/main/browser/*` into the API's `wwwroot/`
    (the API serves the Angular app and falls back to `index.html` for client routes).
 2. `dotnet publish backend/src/Zed.Main.Api -c Release` → host on IIS (ASP.NET Core Hosting Bundle 10) or as a Windows service.
+   Consultancy and Surveillance: `ng build consultancy` / `ng build surveillance` into the `wwwroot/` of
+   `Zed.Consultancy.Api` / `Zed.Surveillance.Api`, hosted as the IIS applications `/Consultancy` and `/surveillance`
+   with `Portal:PathBase` set to match.
 3. `dotnet publish backend/src/Zed.Main.MobileApi -c Release` → host at the old services address (same virtual folder,
    `Mobile:PathBase`), with `Mobile:DeviceBinding` = `Monitor` first. Apply `database/migrations/*.sql` before go-live.
 4. `dotnet publish backend/src/Zed.Jobs -c Release` → Windows service; fill `Jobs:Schedules` from the old Agent jobs

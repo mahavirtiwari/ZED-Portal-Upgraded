@@ -3,6 +3,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Counts, CountsFilter, DashboardApi, Row } from './dashboard.api';
 import { SIZES, STATE_NAMES, text } from './dashboard-filters';
+import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
 
 interface Card {
   css: string;
@@ -11,7 +12,7 @@ interface Card {
 }
 
 /** The four cards of Views/Dashboard/Index.cshtml (column names of SP_DASHBOARD_GET_DETAILS). */
-const CARDS: Card[] = [
+const MAIN_CARDS: Card[] = [
   {
     css: 'panel-bronze', title: 'BRONZE CERTIFICATION', lines: [
       { label: 'Total Application', field: 'BronzeTotal' }, { label: 'DA Pending', field: 'BronzePending' },
@@ -37,6 +38,60 @@ const CARDS: Card[] = [
     ],
   },
 ];
+
+/** Consultancy (ZEDCS_CONSULTANCY Dashboard/Index.cshtml): handholding by milestone and Technology Intervention. */
+const CONSULTANCY_CARDS: Card[] = [
+  {
+    css: 'panel-bronze', title: 'Consultant Organisations', lines: [
+      { label: 'Empanelled Consultant Organisations', field: 'AssessmentAgencies' }, { label: 'Consultants', field: 'SiteAssessors' },
+    ],
+  },
+  {
+    css: 'panel-silver', title: 'Silver Level', lines: [
+      { label: 'Total Applications', field: 'SilverTotal' },
+      { label: 'Milestone 1 Payment Received', field: 'SilverM1PaymentDone' }, { label: 'Milestone 1 Completed', field: 'SilverCompleted' },
+      { label: 'Milestone 2 Payment Received', field: 'SilverM2PaymentDone' }, { label: 'Milestone 2 Completed', field: 'SilverPending' },
+      { label: 'Milestone 3 Payment Received', field: 'SilverM3PaymentDone' }, { label: 'Milestone 3 Completed', field: 'SaSilverCompleted' },
+    ],
+  },
+  {
+    css: 'panel-gold', title: 'Gold Level', lines: [
+      { label: 'Total Applications', field: 'GoldTotal' },
+      { label: 'Milestone 1 Payment Received', field: 'GoldM1PaymentDone' }, { label: 'Milestone 1 Completed', field: 'GoldCompleted' },
+      { label: 'Milestone 2 Payment Received', field: 'GoldM2PaymentDone' }, { label: 'Milestone 2 Completed', field: 'GoldPending' },
+      { label: 'Milestone 3 Payment Received', field: 'GoldM3PaymentDone' }, { label: 'Milestone 3 Completed', field: 'SaGoldCompleted' },
+    ],
+  },
+  {
+    css: 'panel-finance', title: 'Technology Intervention', lines: [
+      { label: 'Total Application', field: 'FaTotal' }, { label: 'Approved', field: 'FaCompleted' }, { label: 'Pending', field: 'FaPending' },
+    ],
+  },
+];
+
+/** Surveillance (ZEDCS_SURVEILLANCE Dashboard/Index.cshtml): no Financial Assistance card. */
+const SURVEILLANCE_CARDS: Card[] = [
+  {
+    css: 'panel-bronze', title: 'BRONZE SURVEILLANCE', lines: [
+      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Pending', field: 'BronzePending' },
+      { label: 'Completed', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
+    ],
+  },
+  {
+    css: 'panel-silver', title: 'SILVER SURVEILLANCE', lines: [
+      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Pending', field: 'SilverPending' },
+      { label: 'NC Raised', field: 'SaSilverNcRaised' }, { label: 'Completed', field: 'SaSilverCompleted' }, { label: 'Rejected', field: 'SilverRejected' },
+    ],
+  },
+  {
+    css: 'panel-gold', title: 'GOLD SURVEILLANCE', lines: [
+      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Pending', field: 'GoldPending' },
+      { label: 'NC Raised', field: 'SaGoldNcRaised' }, { label: 'Completed', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
+    ],
+  },
+];
+
+export const DASHBOARD_CARDS: Record<PortalSystem, Card[]> = { main: MAIN_CARDS, consultancy: CONSULTANCY_CARDS, surveillance: SURVEILLANCE_CARDS };
 
 /**
  * Staff home dashboard. Port of Views/Dashboard/Index.cshtml: certification cards (scoped to the user by the
@@ -126,7 +181,7 @@ const CARDS: Card[] = [
       </div>
     </div>
     @if (loading()) {
-      <div class="loadingdiv" role="status"><img src="/Images/loading.gif" alt="Loading" /></div>
+      <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div>
     }
   `,
   styles: `
@@ -137,7 +192,11 @@ const CARDS: Card[] = [
 export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
 
-  protected readonly cards = CARDS;
+  /** Cards of this system; Consultancy's organisation card only when the API sent its columns (MasterAdmin). */
+  protected get cards(): Card[] {
+    const s = this.summary();
+    return DASHBOARD_CARDS[PORTAL_SYSTEM].filter((c) => c.title !== 'Consultant Organisations' || (s !== null && 'AssessmentAgencies' in s));
+  }
   protected readonly stateNames = STATE_NAMES;
   protected readonly sizes = SIZES;
   protected readonly socialCategories = ['General', 'SC', 'ST', 'OBC'];

@@ -1,7 +1,20 @@
-import { computed, inject, signal } from '@angular/core';
+import { InjectionToken, computed, inject, signal } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
+import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
 import { Row } from './assessment.api';
+import { withApiBase } from '../../api-base';
+
+/**
+ * The system this build serves (PORTAL_SYSTEM), injectable so the assessment and monitoring pages can be tested
+ * for each system. Consultancy and Surveillance differ in labels, columns and the actions their procedures support.
+ */
+export const ASSESSMENT_SYSTEM = new InjectionToken<PortalSystem>('ASSESSMENT_SYSTEM', { factory: () => PORTAL_SYSTEM });
+
+/** Milestone report of a handholding unit (served by the certification documents API). */
+export function milestoneReportUrl(zedId: string, certification: string, milestone: number): string {
+  return withApiBase(`/api/staff/certification-documents/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}/report?milestone=${milestone}`);
+}
 
 /** State filter of the old list pages (LG state codes). */
 export const STATES: readonly (readonly [code: string, name: string])[] = [
@@ -39,7 +52,8 @@ export function useLegacyPortal() {
   inject(ClientConfigService).get().then((c) => base.set(c.legacyPortalUrl ?? '')).catch(() => undefined);
   return {
     base,
-    profile: (zedId: string) => (base() ? `${base()}/Msme/Profile/${encodeURIComponent(zedId)}` : ''),
+    // The staff MSME profile page of this portal; relative, so it stays under the build's base href.
+    profile: (zedId: string) => `staff/msme-profile/${encodeURIComponent(zedId)}`,
     saDetails: (zedId: string, certification: string) =>
       base() ? `${base()}/Assessment/SaDetails?zedId=${encodeURIComponent(zedId)}&Certification=${encodeURIComponent(certification)}` : '',
     daDetails: (zedId: string, certification: string) =>

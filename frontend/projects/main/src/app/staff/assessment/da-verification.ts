@@ -3,13 +3,15 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { flag, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
 
 /**
  * Desktop assessor: units allotted for desktop verification — accept/reject, then assess. Port of
  * Views/Assessment/DaVerification.cshtml (Assessment/GetList, AcceptUnitForDaVerification,
  * RejectUnitForDaVerification).
+ * Surveillance ("Surveillance Assessments", Bronze): the agency's allotment is already accepted; units are listed from
+ * status 1, while the assessor captures the unit in the Surveillance app, and are verified here after its final submit.
  */
 @Component({
   selector: 'zed-staff-da-verification',
@@ -21,9 +23,9 @@ import { AssessmentApi, Row } from './assessment.api';
           <div class="zed-tabs">
             <div class="tab-content">
               <div class="d-flex align-items-center justify-content-between mb-1">
-                <h3 class="registration-title">Desktop Verification</h3>
+                <h3 class="registration-title">{{ surveillance ? 'Surveillance Assessments' : 'Desktop Verification' }}</h3>
                 <button type="button" class="refresh-link btn btn-link" (click)="load()">
-                  <img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+                  <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
                 </button>
               </div>
 
@@ -58,6 +60,9 @@ import { AssessmentApi, Row } from './assessment.api';
                           }
                           @if (f(s, 'DesktopAccepted')) {
                             <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs">ASSESS</a>
+                            @if (surveillance && nm(s, 'CertificationStatus') < 2) {
+                              <br /><small class="text-danger">Pending in the Surveillance app</small>
+                            }
                           }
                         </td>
                         <td>{{ t(s, 'Certification') }}</td>
@@ -88,7 +93,7 @@ import { AssessmentApi, Row } from './assessment.api';
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
                 <h3 class="registration-title" id="dvAcceptTitle">Accept Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="acceptFor.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="acceptFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
@@ -143,6 +148,8 @@ export class DaVerificationPage {
   protected readonly legacy = useLegacyPortal();
   protected readonly t = text;
   protected readonly f = flag;
+  protected readonly nm = num;
+  protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
   protected readonly loading = signal(false);

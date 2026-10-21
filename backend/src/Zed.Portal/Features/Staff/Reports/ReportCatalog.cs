@@ -1,3 +1,4 @@
+using Zed.Core.Http;
 using Zed.Core.Security;
 
 namespace Zed.Portal.Features.Staff.Reports;
@@ -10,6 +11,10 @@ public sealed record ReportDefinition(string Id, string Name, string Procedure);
 /// whatever it received, so any signed-in user of those roles could execute any stored procedure taking
 /// RoleId/UserId/UlbCode. Here the browser sends only a report id; the procedure comes from this list and
 /// receives the signed-in user's own RoleId and UserId (the procedures scope by them).
+/// <para>
+/// Each system has its own list (its DynamicReports/Index.cshtml; every procedure checked to exist in that database with
+/// @UlbCode, @Userid, @RoleId): ConsultancyEntries and SurveillanceEntries.
+/// </para>
 /// </summary>
 public static class ReportCatalog
 {
@@ -92,6 +97,94 @@ public static class ReportCatalog
         (UserRole.StateCoordinator, "List Of New Transactions", "SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS"),
         (UserRole.StateCoordinator, "List Of Approved Transactions", "SP_DYNAMIC_REPORT_LIST_OF_APPROVED_TRANSACTIONS"),
     ];
+
+    private const string Site = SubRoles.SiteVerification;
+    private const string Financial = SubRoles.FinancialVerification;
+
+    /// <summary>
+    /// ZEDCS_CONSULTANCY's list. An agency (Consultant Organisation) with Site verification gets the milestone lists; one
+    /// with Financial (Technology Upgradation) verification but not Site the TU status list (the page's if / else-if).
+    /// </summary>
+    private static readonly (UserRole Role, string Name, string Procedure, string? SubRole, string? NotSubRole)[] ConsultancyEntries =
+    [
+        (UserRole.SuperAdmin, "List Of Consultant Organisations", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES", null, null),
+        (UserRole.SuperAdmin, "List Of Consultants", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS", null, null),
+        (UserRole.SuperAdmin, "List of Consultancy Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
+        (UserRole.SuperAdmin, "List of Consultancy Payment Failed", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_FAILED_TRANSACTIONS", null, null),
+        (UserRole.SuperAdmin, "List Of Consultancy", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.SuperAdmin, "List Of Consultancy latest status only", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_LATEST_RECORDS", null, null),
+        (UserRole.SuperAdmin, "Basic Info of OCCUPATIONAL (WORKPLACE) SAFETY", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_01", null, null),
+        (UserRole.SuperAdmin, "Basic Info of MEASUREMENT OF TIMELY DELIVERY", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_02", null, null),
+        (UserRole.SuperAdmin, "Basic Info of PLANNED MAINTENANCE & CALIBRATION", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_03", null, null),
+        (UserRole.SuperAdmin, "Basic Info of ENERGY MANAGEMENT", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_04", null, null),
+        (UserRole.SuperAdmin, "Basic Info of ENVIRONMENT MANAGEMENT", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_05", null, null),
+        (UserRole.SuperAdmin, "Basic Info of HUMAN RESOURCE MANAGEMENT", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_06", null, null),
+        (UserRole.SuperAdmin, "Basic Info of MEASUREMENT & ANALYSIS", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_07", null, null),
+        (UserRole.SuperAdmin, "Basic Info of NATURAL RESOURCES MANAGEMENT", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_08", null, null),
+        (UserRole.SuperAdmin, "Basic Info of FINANCIAL PERFORMANCE (PREVIOUS FINANCIAL YEAR)", "SP_DYNAMIC_REPORT_BASIC_INFO_PARAMETER_09", null, null),
+        (UserRole.SuperAdmin, "List Of Technolgy Upgradation Statuses", "SP_DYNAMIC_REPORT_LIST_TECH_UPGRADE_STATUSES", null, null),
+
+        (UserRole.StateCoordinator, "List Of New Transactions", "SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS", null, null),
+        (UserRole.StateCoordinator, "List Of Approved Transactions", "SP_DYNAMIC_REPORT_LIST_OF_APPROVED_TRANSACTIONS", null, null),
+
+        (UserRole.Agency, "List Of Milestone 1 In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE1_INPROGRESS", Site, null),
+        (UserRole.Agency, "List Of Milestone 1 Completed", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE1_COMPLETED", Site, null),
+        (UserRole.Agency, "List Of Milestone 2 In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE2_INPROGRESS", Site, null),
+        (UserRole.Agency, "List Of Milestone 2 Completed", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE2_COMPLETED", Site, null),
+        (UserRole.Agency, "List Of Milestone 3 In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE3_INPROGRESS", Site, null),
+        (UserRole.Agency, "List Of Milestone 3 Completed", "SP_DYNAMIC_REPORT_LIST_OF_MILESTONE3_COMPLETED", Site, null),
+        (UserRole.Agency, "List Of Technology Upgradation Statuses", "SP_DYNAMIC_REPORT_LIST_TECH_UPGRADE_STATUSES", Financial, Site),
+    ];
+
+    /// <summary>ZEDCS_SURVEILLANCE's list (its commented-out entries are not offered).</summary>
+    private static readonly (UserRole Role, string Name, string Procedure, string? SubRole, string? NotSubRole)[] SurveillanceEntries =
+    [
+        (UserRole.SuperAdmin, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
+        (UserRole.SuperAdmin, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.SuperAdmin, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
+        (UserRole.SuperAdmin, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
+        (UserRole.SuperAdmin, "List Of 1st Suveillance Payment Records who applied for 2nd", "SP_DYNAMIC_REPORT_SECOND_SURVELLIANCE", null, null),
+        (UserRole.SuperAdmin, "ZED Surveillance Report", "SP_DYNAMIC_REPORT_ZED_SURVEILLANCE_REPORT", null, null),
+
+        (UserRole.CitizenFeedback, "List Of Surveillance Inprogress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.CitizenFeedback, "List of Surveillance Completed", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
+        (UserRole.CitizenFeedback, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Financial Support", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS", null, null),
+        (UserRole.CitizenFeedback, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY", null, null),
+        (UserRole.CitizenFeedback, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY", null, null),
+
+        (UserRole.Ministry, "List Of Surveillance Inprogress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.Ministry, "List of Surveillance Completed", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
+        (UserRole.Ministry, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH", null, null),
+        (UserRole.Ministry, "List of KAWACH Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME_KAWACH", null, null),
+
+        (UserRole.Agency, "List Of ZED Cases In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
+        (UserRole.Agency, "List Of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
+        (UserRole.Agency, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
+    ];
+
+    /// <summary>Reports of a role on a system, filtered by the user's sub-roles where the old page did.</summary>
+    public static IReadOnlyList<ReportDefinition> For(PortalSystem system, int roleId, IReadOnlyCollection<string> subRoles)
+    {
+        if (system == PortalSystem.Main) return For(roleId);
+        var entries = system == PortalSystem.Consultancy ? ConsultancyEntries : SurveillanceEntries;
+        return entries
+            .Where(e => (int)e.Role == roleId && (e.SubRole is null || subRoles.Contains(e.SubRole)) && (e.NotSubRole is null || !subRoles.Contains(e.NotSubRole)))
+            .Select(e => new ReportDefinition(IdOf(e.Procedure), e.Name, e.Procedure)).ToList();
+    }
+
+    public static ReportDefinition? Find(PortalSystem system, int roleId, IReadOnlyCollection<string> subRoles, string id) =>
+        For(system, roleId, subRoles).FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.Ordinal));
+
+    /// <summary>Every allow-listed procedure of a system (for tests).</summary>
+    public static IEnumerable<string> AllProceduresOf(PortalSystem system) => system switch
+    {
+        PortalSystem.Consultancy => ConsultancyEntries.Select(e => e.Procedure).Distinct(),
+        PortalSystem.Surveillance => SurveillanceEntries.Select(e => e.Procedure).Distinct(),
+        _ => AllProcedures,
+    };
 
     /// <summary>Roles that have the Reports page (legacy AuthenticationFilter of DynamicReportsController.Index).</summary>
     public static readonly UserRole[] Roles = [UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator];

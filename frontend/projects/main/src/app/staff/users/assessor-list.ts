@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PORTAL_SYSTEM } from '../../portal-system';
+import { PORTAL_LABELS } from '../../portal-labels';
 import { AssessorRow, UsersApi } from './users.api';
 
 /**
@@ -18,7 +20,7 @@ import { AssessorRow, UsersApi } from './users.api';
         <div class="row">
           <div class="col-sm-12">
             <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-              <h3 class="registration-title">Assessors{{ agencyId ? ' of ' + agencyId : '' }}</h3>
+              <h3 class="registration-title">{{ labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
               <div class="search-input" style="margin-left: auto">
                 <input type="text" class="form-control" style="display: inline; width: 100%" maxlength="50" aria-label="Search assessors"
                        [ngModel]="search()" (ngModelChange)="search.set($event); pageNo.set(1)" />
@@ -34,10 +36,10 @@ import { AssessorRow, UsersApi } from './users.api';
                   <tr class="btn-default text-center" style="font-size: 16px">
                     <th>S.No</th>
                     <th>Status</th>
-                    <th>Assessor Type</th>
-                    <th>Assessor ID</th>
+                    <th>{{ consultancy ? 'Type' : 'Assessor Type' }}</th>
+                    <th>{{ consultancy ? 'ID' : 'Assessor ID' }}</th>
                     <th>Assessor Details</th>
-                    <th>Agency Details</th>
+                    <th>{{ labels.agency }} Details</th>
                     <th>Action(s)</th>
                   </tr>
                 </thead>
@@ -46,7 +48,7 @@ import { AssessorRow, UsersApi } from './users.api';
                     <tr class="filterClass">
                       <td><strong>{{ s.RowNumber }}</strong></td>
                       <td><strong>{{ s.IdStatus }}</strong></td>
-                      <td><strong>{{ s.AssessorType }}</strong></td>
+                      <td><strong>{{ consultancy ? 'Consultant' : s.AssessorType }}</strong></td>
                       <td><strong>{{ s.UserId }}</strong></td>
                       <td class="word-break"><strong>{{ s.UserName }}</strong><br />{{ s.MobileNo }}<br />{{ s.Email }}<br />{{ s.Address }}</td>
                       <td><strong>{{ s.AgencyUserName }}</strong><br />{{ s.AgencyUserId }}</td>
@@ -96,6 +98,8 @@ import { AssessorRow, UsersApi } from './users.api';
   styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class AssessorListPage {
+  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly labels = PORTAL_LABELS;
   private readonly api = inject(UsersApi);
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
 

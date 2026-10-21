@@ -1,14 +1,20 @@
 import { Component, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Row, SiteAssessmentApi } from './site-assessment.api';
+import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
  * Views/Assessment/RemoteAssessments.cshtml (Assessment/GetList allotmentType RA). Its Accept/Reject
  * pop-ups had no button opening them and are not ported. VIEW DETAILS opens the SA details page
  * (staff/assessment/sa-details/...); ASSESS opens the remote assessment screen (staff/remote/...).
+ * <p>
+ * Surveillance build: units allotted as "Onsite Assessment" are held on the agency's meeting link, so their ASSESS
+ * opens the remote screen (mode shown as Remote, "Surveillance Date"), as on the old surveillance list.
+ * Consultancy build: "Milestone n" lists (route parameter `milestone`, 1-3; old RemoteAssessments/{n}) of the
+ * consultant's units with the BDS/HAP dates; VIEW DETAILS opens the milestone review page.
+ * </p>
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
@@ -17,9 +23,9 @@ import { Row, SiteAssessmentApi } from './site-assessment.api';
     <div class="container form-page" id="zed_user_form">
       <div class="zed-tabs mt-3">
         <div class="d-flex align-items-center justify-content-between mb-1">
-          <h3 class="registration-title">Remote/Onsite Assessment</h3>
+          <h3 class="registration-title">{{ consultancy ? 'Milestone ' + milestone : 'Remote/Onsite Assessment' }}</h3>
           <button type="button" class="refresh-link btn btn-link" (click)="load()">
-            <img src="/Images/svgicons/refresh.svg" alt="" />
+            <img src="Images/svgicons/refresh.svg" alt="" />
             <span>REFRESH</span>
           </button>
         </div>
@@ -29,46 +35,87 @@ import { Row, SiteAssessmentApi } from './site-assessment.api';
         }
 
         <div class="table-responsive">
-          <table class="table table-zed table-bordered">
-            <thead>
-              <tr>
-                <th>Action(s)</th>
-                <th>Certification Level</th>
-                <th>Unit Details</th>
-                <th>Unit SPOC Details</th>
-                <th>Agency Details</th>
-                <th>Mode of Assessment</th>
-                <th>Assessment Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of rows(); track s['ZedId'] + '|' + s['Certification']) {
+          @if (consultancy) {
+            <table class="table table-zed table-bordered">
+              <thead>
                 <tr>
-                  <td>
-                    @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                      <a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
-                    } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
-                      <a class="btn btn-primary btn-xs" [href]="remoteLink(s)">ASSESS</a>
+                  <th>Desired Certification</th>
+                  <th>Unit Details</th>
+                  <th>Unit SPOC Details</th>
+                  <th>Consultant Organisation</th>
+                  <th>Site Visit dates</th>
+                  <th>Action(s)</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (s of rows(); track s['ZedId'] + '|' + s['Certification']) {
+                  <tr>
+                    <td>{{ s['Certification'] }}<br /><small>{{ s['ConsultantRole'] }}</small></td>
+                    <td>
+                      <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
+                      <strong>{{ s['EnterpriseName'] }}</strong><br />
+                      {{ s['UnitAddress'] }}
+                    </td>
+                    <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
+                    <td><strong>{{ s['AgencyName'] }}</strong><br />{{ s['CertificationBodyUserId'] }}</td>
+                    @if (milestone === 1) {
+                      <td>BDS: {{ s['BdsToDate'] }}<br />HAP: {{ s['HapToDate'] }}</td>
+                    } @else {
+                      <td>{{ s['BdsToDate'] }}</td>
                     }
-                  </td>
-                  <td>{{ s['Certification'] }}</td>
-                  <td>
-                    <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
-                    <strong>{{ s['EnterpriseName'] }}</strong><br />
-                    {{ s['UnitAddress'] }}
-                  </td>
-                  <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
-                  <td><strong>{{ s['AgencyName'] }}</strong><br />{{ s['CertificationBodyUserId'] }}</td>
-                  <td>{{ mode(s) }}</td>
-                  <td>{{ s['AssessmentDate'] }}</td>
-                </tr>
-              } @empty {
+                    <td>
+                      <a class="btn btn-primary btn-xs details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <table class="table table-zed table-bordered">
+              <thead>
                 <tr>
-                  <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
+                  <th>Action(s)</th>
+                  <th>Certification Level</th>
+                  <th>Unit Details</th>
+                  <th>Unit SPOC Details</th>
+                  <th>Agency Details</th>
+                  <th>Mode of Assessment</th>
+                  <th>{{ surveillance ? 'Surveillance Date' : 'Assessment Date' }}</th>
                 </tr>
-              }
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                @for (s of rows(); track s['ZedId'] + '|' + s['Certification']) {
+                  <tr>
+                    <td>
+                      @if (s['ModeOfAssessment'] === 'Onsite Assessment' && !surveillance) {
+                        <a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
+                      } @else if (s['ModeOfAssessment'] === 'Remote Assessment' || (surveillance && s['ModeOfAssessment'] === 'Onsite Assessment')) {
+                        <a class="btn btn-primary btn-xs assess" [href]="remoteLink(s)">ASSESS</a>
+                      }
+                    </td>
+                    <td>{{ s['Certification'] }}</td>
+                    <td>
+                      <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
+                      <strong>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</strong><br />
+                      {{ s['UnitAddress'] }}
+                    </td>
+                    <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
+                    <td><strong>{{ s['AgencyName'] }}</strong><br />{{ s['CertificationBodyUserId'] }}</td>
+                    <td>{{ mode(s) }}</td>
+                    <td>{{ s['AssessmentDate'] }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          }
         </div>
       </div>
     </div>
@@ -90,6 +137,12 @@ import { Row, SiteAssessmentApi } from './site-assessment.api';
 export class RemoteAssessmentsPage {
   private readonly api = inject(SiteAssessmentApi);
   private readonly legacyUrl = signal('');
+  private readonly system = inject(SITE_SYSTEM);
+
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly surveillance = this.system === 'surveillance';
+  /** Consultancy: milestone of the list (1-3, route parameter; 1 when missing or invalid). */
+  protected readonly milestone = RemoteAssessmentsPage.milestoneOf(inject(ActivatedRoute).snapshot.paramMap.get('milestone'));
 
   protected readonly rows = signal<Row[]>([]);
   protected readonly loading = signal(false);
@@ -100,11 +153,17 @@ export class RemoteAssessmentsPage {
     void this.load();
   }
 
+  static milestoneOf(value: string | null): number {
+    const n = Number(value);
+    return n === 2 || n === 3 ? n : 1;
+  }
+
   protected async load(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
     try {
-      this.rows.set((await firstValueFrom(this.api.remoteAssessments())) ?? []);
+      const call = this.consultancy ? this.api.milestone(this.milestone) : this.api.remoteAssessments();
+      this.rows.set((await firstValueFrom(call)) ?? []);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
@@ -113,6 +172,7 @@ export class RemoteAssessmentsPage {
   }
 
   protected mode(s: Row): string {
+    if (this.surveillance) return s['ModeOfAssessment'] ? 'Remote' : 'Desktop';
     return s['ModeOfAssessment'] === 'Remote Assessment' ? 'Remote' : s['ModeOfAssessment'] === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
   }
 
@@ -120,4 +180,7 @@ export class RemoteAssessmentsPage {
     return `/staff/remote/${encodeURIComponent(String(s['ZedId'] ?? ''))}/${encodeURIComponent(String(s['Certification'] ?? ''))}`;
   }
 
+  protected reviewLink(s: Row): string {
+    return milestoneReviewLink(String(s['ZedId'] ?? ''), String(s['Certification'] ?? ''), this.milestone);
+  }
 }

@@ -153,7 +153,7 @@ describe('CertificationDetailsPage', () => {
     expect(action('Download Surveillance Certificate')!.querySelector('a')!.getAttribute('href'))
       .toBe('/api/msme/certification-documents/BronzeSurveillance/certificate');
     expect(action('Download Surveillance Report')!.querySelector('a')!.getAttribute('href'))
-      .toBe(`${LEGACY}/surveillance/SA/ReportSummary/ZEDMSME000001?certification=Bronze`);
+      .toBe('/api/msme/certification-documents/BronzeSurveillance/report');
     expect(action('View Onsite/Remote Assessment Information')).toBeUndefined();
   });
 
@@ -171,7 +171,7 @@ describe('CertificationDetailsPage', () => {
     expect(text()).not.toContain('HAP on May 2, 2025'); // only milestone 1 lists the HAP date
     expect(action('View Milestone 2')!.querySelector('a')!.getAttribute('href')).toBe('/msme/site-assessment/GoldMilestone2');
     expect(action('Download Report')!.querySelector('a')!.getAttribute('href'))
-      .toBe(`${LEGACY}/consultancy/SA/ReportSummary/ZEDMSME000001?certification=Gold&milestone=2`);
+      .toBe('/api/msme/certification-documents/Gold/report?milestone=2');
     expect(action('Download Certificate')).toBeUndefined();
   });
 

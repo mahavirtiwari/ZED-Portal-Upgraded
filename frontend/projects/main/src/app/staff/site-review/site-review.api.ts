@@ -115,6 +115,35 @@ export interface SaDetails {
   consultants: Row[];
   ncRounds: SaNcRound[];
   permissions: SaPermissions;
+  /** Surveillance portal only: meeting link and recording links of the surveillance; the original certification is at original(). */
+  surveillance?: SaSurveillance | null;
+}
+
+export interface SaSurveillance {
+  meetingLink: string | null;
+  recordingLinks: { url: string; createdDate: string | null }[];
+  hasOriginal: boolean;
+}
+
+/** The original certification assessment on main, shown read-only on the surveillance review page. */
+export interface SaOriginal {
+  zedId: string;
+  certification: string;
+  msme: Row;
+  products: Row[];
+  rawMaterials: Row[];
+  sections: Row[];
+  /** With Photos. */
+  requirements: Row[];
+  options: Row[];
+  subOptions: Row[];
+  /** With FileUrl. */
+  evidences: Row[];
+  saSelfies: SaPhoto[];
+  saSiteExterior: SaPhoto[];
+  siteTour: SaPhoto[];
+  openMeeting: SaMeeting | null;
+  closeMeeting: SaMeeting | null;
 }
 
 export const SITE_LEVELS = ['Silver', 'Gold'] as const;
@@ -131,6 +160,11 @@ export class SiteReviewApi {
 
   details(zedId: string, certification: string): Observable<SaDetails> {
     return this.http.get<SaDetails>(`/api/staff/site-review/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`);
+  }
+
+  /** Surveillance portal: the original certification from main. */
+  original(zedId: string, certification: string): Observable<SaOriginal> {
+    return this.http.get<SaOriginal>(`/api/staff/site-review/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}/original`);
   }
 
   siteVerification(): Observable<{ rows: Row[] }> {

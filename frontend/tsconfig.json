@@ -34,13 +34,7 @@
       "path": "./projects/consultancy/tsconfig.app.json"
     },
     {
-      "path": "./projects/consultancy/tsconfig.spec.json"
-    },
-    {
       "path": "./projects/surveillance/tsconfig.app.json"
-    },
-    {
-      "path": "./projects/surveillance/tsconfig.spec.json"
     },
     {
       "path": "./projects/shared/tsconfig.lib.json"

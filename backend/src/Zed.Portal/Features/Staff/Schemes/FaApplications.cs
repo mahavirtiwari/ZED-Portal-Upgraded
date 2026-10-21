@@ -89,9 +89,15 @@ public static class FaApplications
     /// SP_FINANCIAL_ASSISTANCE_GET_DETAILS: sets 0–2 are the Bronze/Silver/Gold applications (latest first,
     /// rejected ones excluded), 3–5 their documents, 6–8 the assessor's validation screenshots.
     /// </summary>
-    public static async Task<List<FaApplication>> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct)
+    public static async Task<List<FaApplication>> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
+        FromSets(await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_DETAILS", new { ZedId = zedId }, ct));
+
+    /// <summary>
+    /// The applications in the first nine sets of SP_FINANCIAL_ASSISTANCE_GET_DETAILS (same layout in
+    /// ZED_CONSULTANT, whose version of the procedure returns further sets after them).
+    /// </summary>
+    public static List<FaApplication> FromSets(ResultSets sets)
     {
-        var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_DETAILS", new { ZedId = zedId }, ct);
         var result = new List<FaApplication>();
         for (var i = 0; i < Certifications.Length; i++)
         {

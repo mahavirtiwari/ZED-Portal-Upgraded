@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
@@ -14,7 +15,11 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
  * (Monitoring/GetList; for MasterAdmin also ExtendNcClosureDate, StepBackToAssessor and
  * SendBackToAgencyForReAllot). Paging and the ZED ID search work on the loaded list, as before.
  * "Assessment Details" opens the new DA / SA review page (as before: SA once the status is above 7);
- * "View Profile" opens the current portal until that screen moves.
+ * "View Profile" opens the staff MSME profile page.
+ * <p>Consultancy ("Consultancy Monitoring"): Silver/Gold, tabs not started / in progress / quality check, milestone,
+ * consultants and experts, BDS/HAP or progress-review dates; no NC closure filter and no master-admin actions (no NC
+ * round; the step-back and send-back procedures are missing there). Surveillance ("Surveillance Monitoring"):
+ * Surveillance No and surveillance dates; no duplicates column; no send back to the agency (procedure missing).</p>
  */
 @Component({
   selector: 'zed-staff-monitoring',
@@ -30,15 +35,26 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
 export class MonitoringPage {
   private readonly api = inject(MonitoringApi);
   private readonly legacyUrl = signal('');
+  private readonly system = inject(ASSESSMENT_SYSTEM);
+  protected readonly main = this.system === 'main';
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly surveillance = this.system === 'surveillance';
+  protected readonly title = this.consultancy ? 'Consultancy Monitoring' : this.surveillance ? 'Surveillance Monitoring' : 'Assessment Monitoring';
 
-  protected readonly levels = ['Bronze', 'Silver', 'Gold'];
-  protected readonly tabs = [
-    { status: 2, label: 'SCHEDULED BUT NOT STARTED', count: 'NotStarted' },
-    { status: 3, label: 'ASSESSMENT IN-PROGRESS', count: 'InProgress' },
-    { status: 5, label: 'QUALITY CHECK', count: 'Qc' },
-    { status: 4, label: 'NON-CONFORMANCE', count: 'Nc' },
-    { status: 7, label: 'REJECTED', count: 'Rj' },
-  ] as const;
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
+    ? [
+        { status: 2, label: 'SCHEDULED BUT NOT STARTED', count: 'NotStarted' },
+        { status: 3, label: 'CONSULTANCY IN-PROGRESS', count: 'InProgress' },
+        { status: 5, label: 'QUALITY CHECK', count: 'Qc' },
+      ]
+    : [
+        { status: 2, label: 'SCHEDULED BUT NOT STARTED', count: 'NotStarted' },
+        { status: 3, label: this.surveillance ? 'IN-PROGRESS' : 'ASSESSMENT IN-PROGRESS', count: 'InProgress' },
+        { status: 5, label: 'QUALITY CHECK', count: 'Qc' },
+        { status: 4, label: 'NON-CONFORMANCE', count: 'Nc' },
+        { status: 7, label: 'REJECTED', count: 'Rj' },
+      ];
   protected readonly pageSizes = [10, 20, 50, 100];
   protected readonly extendDays = Array.from({ length: 30 }, (_, i) => i + 1);
 
@@ -105,7 +121,11 @@ export class MonitoringPage {
     this.search.set('');
     try {
       const data = await firstValueFrom(
-        this.api.list({ certification: this.certification(), status: this.status(), ncClosingDate: this.status() === 4 ? this.ncClosingDate() || null : null }),
+        this.api.list({
+          certification: this.certification(),
+          status: this.status(),
+          ncClosingDate: !this.consultancy && this.status() === 4 ? this.ncClosingDate() || null : null,
+        }),
       );
       this.all.set(data.units ?? []);
       this.counts.set(data.counts ?? NO_COUNTS);
@@ -133,17 +153,21 @@ export class MonitoringPage {
     return this.num(r, 'NcStatus') === 2 && (cs === 4 || cs === 14);
   }
 
+  /** Main only: the re-allocation procedure is missing in the consultancy and surveillance databases. */
   protected canSendBack(r: Row): boolean {
+    if (!this.main) return false;
     const cs = this.num(r, 'CertificationStatus');
     return ((this.status() === 2 && cs === 8) || (this.status() === 3 && cs === 9)) && this.certification() !== 'Bronze';
   }
 
   protected profileLink(r: Row): string {
-    return `${this.legacyUrl()}/Msme/Profile/${encodeURIComponent(String(r['ZedId'] ?? ''))}`;
+    return `staff/msme-profile/${encodeURIComponent(String(r['ZedId'] ?? ''))}`;
   }
 
   /** The review page of the unit: the site assessment page once the site stage started (status above 7). */
   protected detailsLink(r: Row): string[] {
+    // Consultancy: the milestone review page of the unit's current milestone.
+    if (this.system === 'consultancy') return ['/staff/consultancy/milestones', String(r['ZedId'] ?? ''), String(r['Certification'] ?? '')];
     const page = this.num(r, 'CertificationStatus') > 7 ? 'sa-details' : 'da-details';
     return ['/staff/assessment', page, String(r['ZedId'] ?? ''), String(r['Certification'] ?? '')];
   }

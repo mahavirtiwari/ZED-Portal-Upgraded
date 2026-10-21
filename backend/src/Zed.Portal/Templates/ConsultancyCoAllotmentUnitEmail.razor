@@ -1,0 +1,38 @@
+@* Port of the consultancy Views/Shared/_SaAllotUnitToOnsiteAssessmentTemplate.cshtml: tells the unit the handholding
+   dates of milestone n and its Consultant Organisation. Values are HTML-encoded by Razor. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The Date of Handholding Support (Milestone @Milestone) is finalized. The details of the Consultant Organisation allocated to your Unit are as follows:</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
+        <tbody bgcolor="#ffffff">
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Registered Consultant Organisation</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Consultant Organisation SPOC Name</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@SpocName</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Consultant Organisation SPOC Email ID</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyEmail</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Consultant Organisation SPOC Mobile No</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@AgencyMobileNo</td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Handholding Date</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;"><ConsultancyCoAllotmentDates Milestone="@Milestone" BdsFromDate="@BdsFromDate" BdsToDate="@BdsToDate" HapFromDate="@HapFromDate" HapToDate="@HapToDate" /></td></tr>
+            <tr><td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Stage</td><td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@ConsultancyCoAllotmentDates.Stage(Milestone)</td></tr>
+        </tbody>
+    </table>
+    <div style="text-align: center; padding: 30px 0;">
+        <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+    </div>
+    <p style="font-size: 13px; margin-bottom: 0;">You will soon be contacted by the Consultants to take this forward.</p>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string Milestone { get; set; } = "";
+    [Parameter] public string? AgencyName { get; set; }
+    [Parameter] public string? SpocName { get; set; }
+    [Parameter] public string? AgencyEmail { get; set; }
+    [Parameter] public string? AgencyMobileNo { get; set; }
+    [Parameter] public string? BdsFromDate { get; set; }
+    [Parameter] public string? BdsToDate { get; set; }
+    [Parameter] public string? HapFromDate { get; set; }
+    [Parameter] public string? HapToDate { get; set; }
+    /// <summary>MSME sign-in page (the MSME side of handholding is on main).</summary>
+    [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

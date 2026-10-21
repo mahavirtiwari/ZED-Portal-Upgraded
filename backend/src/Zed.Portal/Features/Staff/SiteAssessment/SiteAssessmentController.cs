@@ -16,9 +16,17 @@ namespace Zed.Portal.Features.Staff.SiteAssessment;
 /// SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA updates any ZED ID without checking that the unit belongs to the
 /// calling agency or that the assessors are the agency's own. Both are verified here.
 /// </para>
+/// <para>
+/// Surveillance (ZEDCS_SURVEILLANCE Assessment/SaAllotment, Silver/Gold surveillance): the agency also enters the
+/// MeetingLink of the external video meeting (http/https only), which is passed to the surveillance
+/// SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA (@MeetingLink) and put in the allotment mails; the list procedure there also
+/// returns units at status 9 that nobody has joined yet (re-allotment), and the original certification's lead and
+/// co-assessor. Consultancy uses <see cref="ConsultancyAllotmentController"/> instead (milestones, several co-consultants).
+/// </para>
 /// </summary>
 [Route("api/staff/site-assessment")]
-public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssessmentController> log) : StaffApiController
+[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
+public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, ILogger<SiteAssessmentController> log) : StaffApiController
 {
     /// <summary>The only mode the old allotment pop-up offers ("Remote Assessment" is commented out there).</summary>
     public const string Onsite = "Onsite Assessment";
@@ -29,6 +37,18 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
         "UnitSpocName", "UnitSpocMobileNo", "UnitSpocEmailId",
         "SiteAssessorId", "SaAssessorName", "CoAssessorName", "ReasonForRejection", "CertificationStatus", "RowNumber",
     ];
+
+    /// <summary>Surveillance list adds the surveillance date and round, and who assessed the original certification.</summary>
+    private static readonly string[] SurveillanceAllotmentFields =
+    [
+        .. AllotmentFields, "CoAssessorId", "AssessmentDate", "SurveillanceNo",
+        "LeadInCertification", "LeadNameInCertification", "CoInCertification", "CoNameInCertification",
+    ];
+
+    /// <summary>Meeting links: SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA @MeetingLink is varchar(5000); 2000 is plenty for Teams/Meet/Zoom links.</summary>
+    public const int MaxMeetingLink = 2000;
+
+    private bool Surveillance => host.System == PortalSystem.Surveillance;
 
     private static readonly string[] RemoteFields =
     [
@@ -43,7 +63,7 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
 
     public sealed record AllotRequest(
         string? ZedId, string? Certification, string? SiteAssessorId, string? CoAssessorId,
-        string? AssessmentDate, string? ModeOfAssessment);
+        string? AssessmentDate, string? ModeOfAssessment, string? MeetingLink = null);
 
     /// <summary>Units waiting for (re-)allotment of the site assessment, and the agency's site assessors.</summary>
     [HttpGet("allotments")]
@@ -52,7 +72,7 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
     public async Task<ActionResult<AllotmentsResponse>> Allotments(CancellationToken ct)
     {
         var sets = await AgencyListAsync(null, null, ct);
-        return new AllotmentsResponse(Pick(sets[0], AllotmentFields), Assessors(sets));
+        return new AllotmentsResponse(Pick(sets[0], Surveillance ? SurveillanceAllotmentFields : AllotmentFields), Assessors(sets));
     }
 
     /// <summary>Allots (or re-allots) the on-site assessment of one of the agency's units.</summary>
@@ -75,6 +95,10 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
             return this.Problem400("Please select a valid assessment date.");
         if (co is not null && string.Equals(co, lead, StringComparison.OrdinalIgnoreCase))
             return this.Problem400("Lead Assessor and Co Assessor must be different.");
+        // Only the surveillance procedure has @MeetingLink; on Main the value is ignored.
+        var meetingLink = Surveillance ? AssessmentInputs.WebLink(req.MeetingLink, MaxMeetingLink) : null;
+        if (Surveillance && meetingLink is null)
+            return this.Problem400("Please enter a valid meeting link (starting with https:// or http://).");
 
         // The unit must be in this agency's list, in the state where the old page offered ALLOT/RE-ALLOT.
         var sets = await AgencyListAsync(zedId, certification, ct);
@@ -91,15 +115,11 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
 
         try
         {
-            await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA", new
-            {
-                ZedId = zedId,
-                Certification = certification,
-                SiteAssessorId = lead,
-                CoAssessorId = co,
-                AssessmentDate = date.Value.ToString("yyyy-MM-dd"),
-                ModeOfAssessment = Onsite,
-            }, ct);
+            var assessmentDate = date.Value.ToString("yyyy-MM-dd");
+            object args = Surveillance
+                ? new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate, ModeOfAssessment = Onsite, MeetingLink = meetingLink }
+                : new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate, ModeOfAssessment = Onsite };
+            await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA", args, ct);
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
@@ -107,8 +127,9 @@ public sealed class SiteAssessmentController(ISqlExecutor db, ILogger<SiteAssess
             return this.Problem400("Unable to allot the unit. Please try again.");
         }
 
-        await ActivatorUtilities.CreateInstance<SiteAllotmentEmails>(HttpContext.RequestServices)
-            .SendOnsiteAllotmentAsync(zedId!, certification, ct);
+        var mails = ActivatorUtilities.CreateInstance<SiteAllotmentEmails>(HttpContext.RequestServices);
+        if (Surveillance) await mails.SendSurveillanceAllotmentAsync(zedId!, certification, ct);
+        else await mails.SendOnsiteAllotmentAsync(zedId!, certification, ct);
         return new MessageResponse("Unit allotted.");
     }
 

@@ -28,6 +28,8 @@ export interface FeeRow {
   netPaybleTds15: number | null;
   netPaybleTds75: number | null;
   isCouponRow: boolean;
+  /** Consultancy: the handholding milestone of the row. */
+  mileStone?: string | null;
 }
 
 export interface LevelFee {
@@ -41,6 +43,8 @@ export interface FeesResponse {
   enterpriseType: string;
   levels: LevelFee[];
   rows: FeeRow[];
+  /** "Certification", or "MileStone" on Consultancy (levels[].certification is then the milestone). */
+  groupBy?: string;
 }
 
 export interface LevelRequest {

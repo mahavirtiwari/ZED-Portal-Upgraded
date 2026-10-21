@@ -41,7 +41,14 @@
                   @if (list === 'new') {
                     <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
                   }
-                  <td>{{ t.ZedId }}</td>
+                  <td>
+                    @if (consultancy) {
+                      <a [routerLink]="tuLink(t)" title="Technology Upgradation verification">{{ t.ZedId }}</a>
+                      @if (t.TechnologyName) { <br /><small>{{ t.TechnologyName }}</small> }
+                    } @else {
+                      {{ t.ZedId }}
+                    }
+                  </td>
                   <td>{{ t.PUnitName || t.EnterpriseName }}</td>
                   <td>{{ t.CategoryOfCertificate }}</td>
                   <td>{{ t.NameOfCertficate }}<br /><br />{{ t.CertificationAgency }}</td>
@@ -79,7 +86,7 @@
         <form class="form-horizontal" (ngSubmit)="submit()" novalidate>
           <div class="modal-header justify-content-between">
             <h3 class="registration-title" id="neftTitle">NEFT Transaction Details</h3>
-            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="/Images/svgicons/close.svg" alt="" /></button>
+            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
           </div>
           <div class="modal-body">
             @if (formError()) {

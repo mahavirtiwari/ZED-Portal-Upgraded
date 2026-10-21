@@ -59,7 +59,7 @@ describe('assessment list pages', () => {
     await settle(fixture);
     expect(el.textContent).toContain('Allotment Pending');
     expect(el.textContent).toContain('Agency Rejected');
-    expect(el.querySelector('a[href="https://legacy.example.test/Msme/Profile/ZEDMSME000001"]')).toBeTruthy();
+    expect(el.querySelector('a[href="staff/msme-profile/ZEDMSME000001"]')).toBeTruthy();
     expect(el.querySelector('a[href="/staff/assessment/da-details/ZEDMSME000001/Bronze"]')).toBeTruthy();
     expect(buttons(el, 'RE-ALLOT').length).toBe(1);
 
