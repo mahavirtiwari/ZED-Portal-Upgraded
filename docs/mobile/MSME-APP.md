@@ -86,7 +86,7 @@ Other bases:
 | `mobileapi/RA/SubmitSelfie`, `GetToken`, `CheckAssessment` | `RAController` (Main) | unreachable (needs `remoteStatus` "1"); fields match (the app's extra `siteExteriorPhoto` was ignored by the old service too) |
 | `Pay/GetToken`, `Pay/SubmitZeroPaymentDetails`, `Msme/GetPaymentDetailsByType` | portal `MobilePaymentController` | OK: same request (PaymentRefId, ZedId, Certification, Amount, UseCoupon, UnitGstin, Gst, TdsDeductible, Tds, Tan) and response (requestHash, orderId, merchantId, accessCode, amount) |
 | `pay/successtransmobile`, `pay/failuretransmobile` | portal | OK |
-| `Msme/FinalSubmit`, `ValidateCaptcha`, `ValidatePlantAndActivity`, `SendPledgeEmailOtp`, `VerifyPledgeEmailOtp` | **not in V4** | hidden in this build (registration button gone). See "Open" below. |
+| `Msme/FinalSubmit`, `ValidateCaptcha`, `ValidatePlantAndActivity`, `SendPledgeEmailOtp`, `VerifyPledgeEmailOtp` | **served by V4 since 2026-10-22** (MOBILE-API "MSME app registration") | hidden in this build (registration button gone), used by the store MSME app's shared code. |
 | `Certificates/{ZedId}/Pledge.pdf` | **not served anonymously** (404) | deliberate: files only through signed-in endpoints (SECURITY-FINDINGS #34), and the pledge QR code holds the initial password (#127). The app shows its download failure. |
 | `Msme/ViewStatus?zedId=…` | redirect to `/msme/status/{level}`, which needs an MSME sign-in | deliberate (the old page had no sign-in); the WebView shows the login page |
 | `Incentive/DetailsMobile` | redirect to `/incentives/mobile` (client-side) | OK |
@@ -108,11 +108,12 @@ protection for this app until a release that fills `deviceInfo`.
 
 ## Open
 
-1. **App registration endpoints on the portal.** The old portal served `Msme/FinalSubmit` (JSON registration),
-   `ValidateCaptcha`, `ValidatePlantAndActivity`, `SendPledgeEmailOtp` and `VerifyPledgeEmailOtp` for the app; V4 has
-   its own registration API for the web and none of these. Hidden in this build, but the **store MSME app** shares
-   this code base: if its registration is enabled, app registration stops at the cut-over. The MSME app's own source
-   is not in the package (only this fork); ask for it, or check the IIS logs for these five paths.
+1. **App registration endpoints on the portal: done.** V4 now serves `Msme/FinalSubmit`, `ValidateCaptcha`,
+   `ValidatePlantAndActivity`, `SendPledgeEmailOtp` and `VerifyPledgeEmailOtp` with this code base's contract, and
+   registers from its own Udyam lookup (MOBILE-API "MSME app registration"). Still to do: test it with the **store**
+   MSME app on staging (its own source is not in the package; if its requests differ from this fork's, the tests in
+   `MsmeAppRegistrationTests` show what V4 expects), and set `Recaptcha:AppSecretKey`. The OTP stays 4 characters
+   because the app's field allows only 4.
 2. The incomplete parts of the package (other apps: `ZED_SA_Studio` without its login and network classes,
    `ZEDMonitoring` and `ZED_Training` empty) are outside this report.
 

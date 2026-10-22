@@ -145,6 +145,8 @@ public static class ZedConfigurationCheck
             if (env.IsProduction() && (config["CcAvenue:GatewayUrl"] ?? "").Contains("test.ccavenue.com", StringComparison.OrdinalIgnoreCase))
                 problems.Add("CcAvenue:GatewayUrl points at the CCAvenue test gateway");
             Require("Udyam:AccessKey", "Udyam registration lookups");
+            if (config.GetValue("Recaptcha:Enabled", true))
+                Require("Recaptcha:AppSecretKey", "MSME app registration captcha, the Android reCAPTCHA key");
             foreach (var k in new[] { "Url", "UserId", "Password" }) Require("ProteanGstin:" + k, "GSTIN check at payment");
             if (config.GetValue<bool>("UdyamiBharat:Enabled"))
                 foreach (var k in new[] { "TokenUrl", "VerifyUrl", "ClientId", "ClientSecret" }) Require("UdyamiBharat:" + k, "UdyamiBharat:Enabled is true");

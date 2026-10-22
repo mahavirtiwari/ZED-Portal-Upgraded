@@ -198,9 +198,10 @@ same night:
 2. A staging site with a name that marks it as staging (e.g. `staging.loginzed.…`), its own certificate, and the
    same six applications. Install with the real procedure: `Publish-Zed.ps1`, `Install-ZedIis.ps1` (dry run, then
    `-Apply`), `Test-ZedDeployment.ps1 -BaseUrl https://staging…`. CCAvenue in test mode with test keys.
-3. Testers go through the journeys in 2.1 step 9 with real accounts of the restored copy. If the store MSME app
-   registers new units, test app registration: V4 does not serve the old portal's `Msme/FinalSubmit`, `ValidateCaptcha`,
-   `ValidatePlantAndActivity` and `Send/VerifyPledgeEmailOtp` for the app (MOBILE-API "Check on the live services").
+3. Testers go through the journeys in 2.1 step 9 with real accounts of the restored copy. Test app registration
+   with the store MSME app: V4 serves its `Msme/FinalSubmit`, `ValidateCaptcha`, `ValidatePlantAndActivity` and
+   `Send/VerifyPledgeEmailOtp` calls (MOBILE-API "MSME app registration"), built from the code base in the Bronze copy
+   because the store app's source was not delivered; needs `Recaptcha:AppSecretKey`.
    Also run the consultant app's TU screens (DFO login, then GetDetails, evidence, amount correction, final submit).
 4. Mobile apps: their addresses are built in. Use the vendor's staging build, or an emulator / test phone whose
    hosts file points loginzed.msme.gov.in at the staging server.

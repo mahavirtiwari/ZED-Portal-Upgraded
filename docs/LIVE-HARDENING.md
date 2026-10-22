@@ -544,7 +544,7 @@ README).
 | **CCAvenue mobile**: mobile access code and working key | `Web.config` (mobile variants) | #3, #47 |
 | PayU key and salt (unused, but committed) | `Web.config` | #3 |
 | **SMS gateways**: ValueFirst user and password (in a URL), TextLocal API key, and whatever `SmsProvider` points at | consultancy `OtpController` (live code), `Web.config` | #96 |
-| **reCAPTCHA** secret keys | `MsmeController` (main), surveillance `UserController` | #3, #110 |
+| **reCAPTCHA** secret keys | `MsmeController` (main; also the **Android** key's secret in `ValidateCaptcha`, which the MSME app's registration uses), surveillance `UserController` | #3, #110: put the new Android secret in V4's `Recaptcha:AppSecretKey` |
 | **Google Maps** JavaScript API key | 52 views | #82 (restrict it to the portal's referrers, or rotate) |
 | Udyam service access key | `MsmeController`; also built into the MSME app (EnterpriseInfoFragment) | #3, #132: rotate only after an app version without it is the minimum supported version |
 | App signing keystores of the obsolete apps (passwords in their build.gradle) | ZEDSurveillance, ZED_MAM | #135: if either still signs a live app, move to a new upload key under Play App Signing |

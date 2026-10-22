@@ -40,6 +40,8 @@ public static class PortalSetup
             services.AddSingleton<IUdyamClient, SampleUdyamClient>();
         }
         services.AddSingleton<RegistrationSessionStore>();
+        services.AddScoped<MsmeRegistrationService>();
+        services.AddSingleton<AppRegistrationStore>();
 
         services.Configure<ProteanGstinOptions>(config.GetSection(ProteanGstinOptions.Section));
         services.AddHttpClient<IGstinVerifier, ProteanGstinVerifier>(c => c.Timeout = TimeSpan.FromSeconds(30));

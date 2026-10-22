@@ -96,10 +96,9 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
 - **Production services code is newer than the copy V4 was built from** (`SA/SubmitAttendance` was missing from it).
   Compare a month of IIS log paths of `/mobileapi`, `/consultancymobileapi`, `/surveillancemobileapi` and
   `/Consultancy/FinancialAssistance` with V4's actions, and port anything not covered.
-- **App registration.** The store MSME app's source was not delivered. Its code base (seen in the Bronze surveillance
-  copy) has a registration flow calling the old portal's `Msme/FinalSubmit` (JSON), `ValidateCaptcha`,
-  `ValidatePlantAndActivity`, `SendPledgeEmailOtp` and `VerifyPledgeEmailOtp`, which V4 does not serve. If the store app
-  registers units, those calls stop at cut-over: check the IIS logs and ask the vendor.
+- **App registration** is served by V4 (see "MSME app registration" below). The store MSME app's own source was not
+  delivered; the contract comes from its code base in the Bronze surveillance copy. Test it on staging with the store
+  app, and set `Recaptcha:AppSecretKey` (the Android reCAPTCHA key's secret).
 - **No released app sends `deviceInfo`** (all current apps checked, 2026-10-22): device binding records "Missing" for
   them. Keep `Mobile:RefuseMissingDevice = false` under `Enforce` until a new app release sends it.
 
@@ -112,6 +111,37 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
   exist, #128). The link opens the new portal's reset page; check the app shows the message as before.
 - The virtual folder (`Mobile:PathBase`) and the folder holding `Photos/`, `SaPhotos/` (`Mobile:StorageRoot`).
 - Whether the remote-assessment app builds video tokens itself from the Twilio secret it used to receive (#48).
+
+## MSME app registration (on the portal)
+
+The store MSME app's registration (code base seen in the Bronze surveillance copy, `RegistrationWebService`, base
+`{site}/Msme/`) calls five actions on the **main portal**, all `POST` with a JSON body, no cookies, no anti-forgery
+token, answered with `{status:"1"|"0", errorMessage}` (`MsmeAppRegistrationController`, `MsmeAppRegistrationTests`):
+
+| Action | Body | V4 |
+|---|---|---|
+| `Msme/ValidateCaptcha` | `{token}` (SafetyNet reCAPTCHA, the app's Android key) | Verified with `Recaptcha:AppSecretKey` ("Invalid Captcha."); a pass is remembered for the client address for 30 minutes |
+| `Msme/ValidatePlantAndActivity` | `{UdyogAadharNo, PlantIdNo, TwoDigitActivity}` | `SP_MSME_VALIDATE_UDYAM_DETAILS`, legacy messages ("Selected Plant already registered.", "Currently this scheme is not applicable…") |
+| `Msme/SendPledgeEmailOtp` | `{email}` | 4-character OTP (the app's field takes 4 capitals; no look-alike characters), mailed through the web registration's mail; 5 mails per address in 30 minutes |
+| `Msme/VerifyPledgeEmailOtp` | `{email, otp}` | Valid 10 minutes, once, 5 wrong attempts, case-insensitive; marks the address verified for 30 minutes |
+| `Msme/FinalSubmit` | `RegistrationRequest`: `PledgeEmailId`, `RegistrationType` ("UDYAM"), `RegistrationFrom` ("Android"), `BasicDetails`, `PlantDetails`, `ActivityDetails` (the app's own copy of the Udyam record) | See below |
+
+The app sends no session or registration id, so the calls are linked only by the client address (captcha) and the
+pledge e-mail address (OTP and verification), held server-side in the distributed cache. **FinalSubmit trusts none of
+the app's Udyam data** (the legacy action stored whatever it posted, and the app reads Udyam itself with a built-in key,
+SECURITY-FINDINGS #132): it needs an OTP-verified pledge e-mail (single use), fetches the Udyam record itself with
+the Udyam number and the mobile from `BasicDetails`, finds the chosen plant (`PlantIdNo`) and activity
+(`ActivityDetail_Id`, else the 2/4/5-digit codes) in that record ("Invalid Data, please select details again" if not
+there), re-checks eligibility, and registers through `MsmeRegistrationService`, the web registration's code
+(`SP_MSME_INSERT_UDYAM_DETAILS` with `RegistrationFrom = Android`, initial password through PasswordStore, pledge
+certificate and mail). UAM registrations (`RegistrationType` other than UDYAM) are refused. The app shows only the
+status and message; it is not signed in (it has no cookies).
+
+Limits: the per-address `Sensitive` rate limit (10 calls a minute) on all five, plus the per-e-mail limits above. Every
+outcome goes to the log category `Zed.Audit.MsmeAppRegistration`. Settings: `Recaptcha:AppSecretKey` (required on the
+main portal when `Recaptcha:Enabled`, startup check), `MsmeAppRegistration:RequireCaptchaFromSameIp` (default true:
+the plant check and the OTP mail need a captcha pass from the same address; set false only if users behind changing
+carrier addresses cannot finish). `GET` of these addresses is not affected (the web pages' routes and redirects).
 
 ## Mobile payments (on the portal)
 

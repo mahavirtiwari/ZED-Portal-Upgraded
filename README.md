@@ -154,6 +154,8 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Portal:StorageRoot` | Folder with `Certificates/…`, `Certifications/…`, `PDFs/…`, `ReceiptInvoice/…`, `Uploads/Documents/…`. In production point it at the old site root (e.g. `E:\Publish\ZEDCS_LIVE\ZEDCS_V2_LIVE`) so existing certificates and receipts are found |
 | `Portal:LegacyBaseUrl` | Old portal address; links to modules not migrated yet (payments, incentives, financial assistance) open there |
 | `Recaptcha:Enabled/SiteKey/SecretKey` | `isEnabledCaptcha` + keys that were hard-coded in controllers/views |
+| `Recaptcha:AppSecretKey` (main portal) | Secret of the MSME app's Android reCAPTCHA key (hard-coded in the old MsmeController.ValidateCaptcha; rotate), for the app's registration; required when Recaptcha is enabled |
+| `MsmeAppRegistration:RequireCaptchaFromSameIp` (main portal) | Default true: the app's plant check and OTP mail need a captcha pass from the same address (docs/MOBILE-API.md, "MSME app registration") |
 | `Udyam:AccessKey` | key that was hard-coded in `MsmeController` |
 | `Email:Profiles:{Default,Registration,Otp,Allocation}` | `fromAddress/Host/password` and the `Second`, `Otp`, `Third` variants |
 | `Email:RegistrationCc` | `ccAddress` |

@@ -44,6 +44,7 @@ public sealed class ProductionHostingTests : IDisposable
         ["Email:Profiles:Default:From"] = "zed@example.test",
         ["Recaptcha:SiteKey"] = "site",
         ["Recaptcha:SecretKey"] = "secret",
+        ["Recaptcha:AppSecretKey"] = "app-secret",
         ["CcAvenue:MerchantId"] = "1",
         ["CcAvenue:AccessCode"] = "a",
         ["CcAvenue:WorkingKey"] = "w",
@@ -73,7 +74,7 @@ public sealed class ProductionHostingTests : IDisposable
         foreach (var key in new[]
                  {
                      "ConnectionStrings:Main", "ConnectionStrings:Consultancy", "ConnectionStrings:Surveillance",
-                     "DataProtection:KeysPath", "Email:Profiles:Default:Host", "Recaptcha:SecretKey",
+                     "DataProtection:KeysPath", "Email:Profiles:Default:Host", "Recaptcha:SecretKey", "Recaptcha:AppSecretKey",
                      "CcAvenue:WorkingKey", "CcAvenue:ReconciliationWorkingKey", "Udyam:AccessKey", "ProteanGstin:Password",
                  })
             Assert.Contains(key, problems);

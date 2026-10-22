@@ -53,6 +53,7 @@ public static class ZedHostingExtensions
 
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));
         services.AddHttpClient<ICaptchaVerifier, RecaptchaVerifier>();
+        services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();
 
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.Section));
         services.AddSingleton<IEmailSender, SmtpEmailSender>();
