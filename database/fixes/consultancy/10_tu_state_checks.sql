@@ -25,15 +25,19 @@
 --     TechUpgradeStatus 4 or 5 (before the opening meeting / during validation). It used to reset any status-2
 --     application to TechUpgradeStatus 4, also after the opening meeting or a send-back; it now writes the history
 --     row only when it allotted.
--- SP_FINANCIAL_ASSISTANCE_UPDATE_TECHNOLOGY_DATA (paid amount, which drives the subsidy) and
+-- SP_FINANCIAL_ASSISTANCE_UPDATE_TECHNOLOGY_DATA (paid amount, which drives the subsidy)
+--   - Only while the DFO verifies (VerificationStatus 2: the consultant app's DFO corrects the amount against the
+--     invoice, app source 2026-10-22) or while the payout is pending (VerificationStatus 4, no NEFT transaction in
+--     process, TransactionStatus not 1 or 2). It used to accept any status but 7, including after the payout.
 -- SP_FINANCIAL_ASSISTANCE_UPDATE_ACCOUNT_DETAILS (payout bank account)
 --   - Only while the payout is pending: VerificationStatus 4 (CO approved) and no NEFT transaction in process
---     (TransactionStatus not 1 or 2). They used to accept any status but 7, including before the review and after
+--     (TransactionStatus not 1 or 2). It used to accept any status but 7, including before the review and after
 --     the payout.
 --
 -- What breaks: calls outside those states, which the old pages only make when used out of order (the edit buttons for
--- amounts and the account were shown to state coordinators without a status check). A state coordinator correcting an
--- amount or account before the CO's approval, or after the NEFT was initiated, now gets an error.
+-- amounts and the account were shown to state coordinators without a status check). Correcting an amount between the
+-- DFO's decision and the CO's approval, or an account before the CO's approval, or either after the NEFT was initiated,
+-- now gets an error.
 --
 -- Idempotent: a second run finds nothing to change and says so. Contains no password, key or ZED ID: the edits are
 -- made by pattern on the definition read from the database at run time (helper below).
@@ -362,7 +366,7 @@ INSERT @check VALUES
     (N'dbo.SP_FINANCIAL_ASSISTANCE_VALIDATE_EVIDENCES', N'SELECT @FinancialAssistanceId=FinancialAssistanceId, @TechnologyCode=TechnologyCode FROM FinancialAssistancePhotos where Id=@Id AND ZedId=@ZedId', N'The application is not with the DFO'),
     (N'dbo.SP_FINANCIAL_ASSESSMENT_ACCEPT_UNIT_FOR_VERIFICATION', N'AND VerificationStatus in (1,2)', N'The application cannot be allotted in its current status'),
     (N'dbo.SP_FINANCIAL_ASSISTANCE_UPDATE_ACCOUNT_DETAILS', N'AND TechUpgradeStatus != 7', N'The account can be changed only while the payout is pending'),
-    (N'dbo.SP_FINANCIAL_ASSISTANCE_UPDATE_TECHNOLOGY_DATA', N'update TechnologyUpgradation set AmountPaid=@AmountPaid WHERE Id=@Id AND ZedId=@ZedId', N'The amount can be changed only while the payout is pending');
+    (N'dbo.SP_FINANCIAL_ASSISTANCE_UPDATE_TECHNOLOGY_DATA', N'update TechnologyUpgradation set AmountPaid=@AmountPaid WHERE Id=@Id AND ZedId=@ZedId', N'The amount can be changed only while the application is with the DFO or the payout is pending');
 IF EXISTS (SELECT 1 FROM @check c CROSS APPLY (SELECT OBJECT_DEFINITION(OBJECT_ID(c.Proc_, 'P')) d) x
            WHERE x.d IS NOT NULL AND CHARINDEX(c.Bad, x.d) = 0 AND CHARINDEX(c.Good, x.d) = 0)
 BEGIN
@@ -407,10 +411,11 @@ DECLARE @amountUpdate nvarchar(max) =
     N'UPDATE T SET AmountPaid = @AmountPaid FROM TechnologyUpgradation T' + @nl +
     N'	WHERE T.Id = @Id AND T.ZedId = @ZedId' + @nl +
     N'	  AND EXISTS (SELECT 1 FROM FinancialAssistance F WHERE F.ZedId = T.ZedId AND F.CertificationType = T.CertificationType' + @nl +
-    N'	              AND F.FinancialAssistanceId = T.FinancialAssistanceId AND F.VerificationStatus = 4 AND ISNULL(F.TransactionStatus, 0) NOT IN (1, 2))' + @nl +
+    N'	              AND F.FinancialAssistanceId = T.FinancialAssistanceId' + @nl +
+    N'	              AND (F.VerificationStatus = 2 OR F.VerificationStatus = 4 AND ISNULL(F.TransactionStatus, 0) NOT IN (1, 2)))' + @nl +
     N'	IF @@ROWCOUNT = 0' + @nl +
     N'	BEGIN' + @nl +
-    N'		RAISERROR(''The amount can be changed only while the payout is pending. Nothing changed.'', 16, 1);' + @nl +
+    N'		RAISERROR(''The amount can be changed only while the application is with the DFO or the payout is pending. Nothing changed.'', 16, 1);' + @nl +
     N'		RETURN;' + @nl +
     N'	END';
 

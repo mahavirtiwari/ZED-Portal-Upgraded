@@ -51,10 +51,13 @@ var app = builder.Build();
 
 var pathBase = app.Configuration["Mobile:PathBase"];
 if (!string.IsNullOrEmpty(pathBase)) app.UsePathBase(pathBase);
+// The consultant app requests ".../SA//SubmitAllocation"; collapse the slashes before routing (hence the explicit UseRouting).
+app.UseLegacyPathNormalization();
 app.UseForwardedHeaders();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 else app.UseHsts();
+app.UseRouting();
 app.UseRateLimiter();
 
 app.MapControllers();

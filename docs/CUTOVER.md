@@ -138,7 +138,10 @@ and evidence are reachable only through V4's checked endpoints (closes #9, #34).
 6. `Security:Passwords` stays `Dual` (the default) until the rollback window is over (section 4).
 7. Decide `StaffPasswordReset:ExcludedRoles` (default MasterAdmin 7 and SuperAdmin 10, who get their reset link from
    another MasterAdmin; add 1 for Admin if wanted).
-8. Optional, only for more than one server per application: `Cache:SqlServerTable = dbo.V4Cache` (migration 0006).
+8. Consultant app TU calls: set `Consultancy:TuApp:LoginHours` (default 12) and `Consultancy:TuApp:SameIp` (default
+   false) to the same values on the consultancy portal and on the **main** mobile host, which also needs
+   `ConnectionStrings:Consultancy` (read-only login) for the TU documents.
+9. Optional, only for more than one server per application: `Cache:SqlServerTable = dbo.V4Cache` (migration 0006).
    One server per application needs nothing.
 
 ### 1.4 Database
@@ -154,6 +157,7 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 | 5 | `migrations/0006_distributed_cache.sql` | only with `Cache:SqlServerTable` | |
 | 5a | `migrations/0007_folder_rename.sql` | ZEDCS_V2_LIVE | folder rename job (docs/JOBS.md); EXECUTE for the Zed.Jobs login, modify rights on the two folders |
 | 5b | `migrations/0008_staff_password_reset.sql` | all three | staff password reset (docs/PASSWORDS.md); EXECUTE on the four `SP_V4_STAFF_RESET_*` procedures; needs a working SMTP profile on each portal |
+| 5d | `migrations/0010_app_sessions.sql` | ZED_CONSULTANT | consultant app sign-ins for the TU calls (#88; MOBILE-API "Checked against the app source"). **Before the consultancy mobile host goes live:** without it every TU app call is refused |
 | 5c | `migrations/0009_msme_password_reset.sql` | ZEDCS_V2_LIVE, after 0008 | MSME reset on hashed tokens (#128); EXECUTE for the portal and MSME app logins on `SP_V4_STAFF_RESET_CREATE` and the three `SP_V4_MSME_RESET_*` procedures |
 | 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once `Jobs:FolderRename` has replaced the old rename job) |
 | 7 | `migrations/0003_mail_outbox.sql` | all three | **only together with starting Zed.Jobs and switching the Agent jobs off** (JOBS.md "Before go-live"): from then on procedure mail of the old sites is sent by Zed.Jobs too |
@@ -171,6 +175,10 @@ against `live\`. Apply reviewed fixes with `-SkipMigrations -ApplyFixes 'main/05
 names; each is previewed again and its live definitions saved first. `main/02` is refused without `-AtCutover`;
 `msdb/01` (mailbox password) and `main/13` (a report) are run by hand in SSMS. Logs and summary:
 `database\logs\cutover-<time>`. Exit code 0 only when every step succeeded.
+
+`fixes/consultancy/10_tu_state_checks.sql` changed on 2026-10-22 (the consultant app corrects amounts at
+VerificationStatus 2): amounts can change at 2, or 4 with no transfer in progress. If the earlier version was applied
+anywhere, restore that procedure's saved definition first, then run 10 again.
 
 The 18 procedures that do not compile (MIGRATION-PLAN "Database") are broken on production already and no V4 path
 depends on them; nothing to do. (Sequences and the referenced databases are settled: section 1.1a.)
@@ -190,7 +198,10 @@ same night:
 2. A staging site with a name that marks it as staging (e.g. `staging.loginzed.…`), its own certificate, and the
    same six applications. Install with the real procedure: `Publish-Zed.ps1`, `Install-ZedIis.ps1` (dry run, then
    `-Apply`), `Test-ZedDeployment.ps1 -BaseUrl https://staging…`. CCAvenue in test mode with test keys.
-3. Testers go through the journeys in 2.1 step 9 with real accounts of the restored copy.
+3. Testers go through the journeys in 2.1 step 9 with real accounts of the restored copy. If the store MSME app
+   registers new units, test app registration: V4 does not serve the old portal's `Msme/FinalSubmit`, `ValidateCaptcha`,
+   `ValidatePlantAndActivity` and `Send/VerifyPledgeEmailOtp` for the app (MOBILE-API "Check on the live services").
+   Also run the consultant app's TU screens (DFO login, then GetDetails, evidence, amount correction, final submit).
 4. Mobile apps: their addresses are built in. Use the vendor's staging build, or an emulator / test phone whose
    hosts file points loginzed.msme.gov.in at the staging server.
 5. Rehearse the rollback too (`Install-ZedIis.ps1 -Rollback … -Apply`) and time both directions.
@@ -243,6 +254,7 @@ Go only if all are true:
 - [ ] Mail is being sent; Zed.Jobs shows no errors.
 - [ ] Payments: the test payment and its reconciliation went through (or the owner waived it).
 - [ ] The rollback file exists and the old folders, pools and request-rule copy are in place.
+- [ ] The other applications on the site still answer (`/impactmobileapi`, `/liamobileapi`): the installer leaves them alone.
 
 ## 3. Rollback
 
@@ -257,7 +269,7 @@ Possible at any time while `Security:Passwords` is still `Dual` and the old app 
 What the old sites find after a rollback:
 - **All data V4 wrote**: V4 writes through the same procedures into the same tables and files in the old layout.
 - V4-only tables (`V4MailOutbox`, `V4JobRuns`, `V4UserPasswords`, `MobileDeviceBindings`, `MobileDeviceEvents`,
-  `V4Cache`, `V4FolderRenameResults`, `V4PasswordResets`) are ignored by the old code. Leave them.
+  `V4Cache`, `V4FolderRenameResults`, `V4PasswordResets`, `V4AppSessions`) are ignored by the old code. Leave them.
 - **Mail**: the converted procedures (0003) keep queuing; **keep Zed.Jobs running**. To go fully back, re-enable the
   Agent jobs, stop Zed.Jobs, and undo 0003 per procedure (its header says how), which needs Database Mail.
 - **Folder renaming**: re-enable the old Agent job; it reads the same `FolderRenameHIstory` and continues.
@@ -277,7 +289,7 @@ What the old sites find after a rollback:
 |---|---|
 | Day 1–3 | Watch the event log, IIS 5xx, `/api/health/ready`, `V4JobRuns` errors, the mail outbox, `MobileDeviceEvents`. Keep the testers' accounts on hand |
 | Day 1 | Old SQL Agent jobs are off (JOBS.md step 4); the old mail profile is unused |
-| Week 1 | Device binding: when `MobileDeviceEvents` shows every app version sending `deviceInfo`, set `Mobile:DeviceBinding = Enforce` (MOBILE-API.md) |
+| Week 1 | Device binding: when `MobileDeviceEvents` shows every app version sending `deviceInfo`, set `Mobile:DeviceBinding = Enforce` (MOBILE-API.md). Keep `Mobile:RefuseMissingDevice = false` on every deployment: no released app sends `deviceInfo` (app source, 2026-10-22) |
 | End of the rollback window (e.g. 2 weeks) | `Security:Passwords = Migrate` on all hosts (docs/PASSWORDS.md): every sign-in moves the account to its hash and randomises the plain column. **No rollback after this.** |
 | A few months later | `Security:Passwords = HashOnly` once almost every active account has a hash; the rest reset their password |
 | Same time | Remove the old app pools and the old code folders (keep the data folders: they are V4's storage). Revoke the old SQL login and the old mail profile |

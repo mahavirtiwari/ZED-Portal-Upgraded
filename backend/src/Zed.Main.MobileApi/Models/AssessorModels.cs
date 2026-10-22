@@ -309,3 +309,15 @@ public sealed class AssessorAllotment
     public string? SiteAssessorId { get; set; }
     public string? CoAssessorId { get; set; }
 }
+
+/// <summary>The site assessor app's daily attendance (multipart form: these fields, the selfie as the part <c>files</c>).</summary>
+public sealed class SubmitAttendanceRequest
+{
+    public string? saId { get; set; }
+    public string? zedId { get; set; }
+    public string? certificationType { get; set; }
+    public string? attendanceType { get; set; }
+    public string? comments { get; set; }
+    /// <summary>JSON text of a <see cref="PhotoInformation"/>.</summary>
+    public string? selfieMetadata { get; set; }
+}

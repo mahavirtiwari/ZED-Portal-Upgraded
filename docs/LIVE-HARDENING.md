@@ -546,7 +546,8 @@ README).
 | **SMS gateways**: ValueFirst user and password (in a URL), TextLocal API key, and whatever `SmsProvider` points at | consultancy `OtpController` (live code), `Web.config` | #96 |
 | **reCAPTCHA** secret keys | `MsmeController` (main), surveillance `UserController` | #3, #110 |
 | **Google Maps** JavaScript API key | 52 views | #82 (restrict it to the portal's referrers, or rotate) |
-| Udyam service access key | `MsmeController` | #3 |
+| Udyam service access key | `MsmeController`; also built into the MSME app (EnterpriseInfoFragment) | #3, #132: rotate only after an app version without it is the minimum supported version |
+| App signing keystores of the obsolete apps (passwords in their build.gradle) | ZEDSurveillance, ZED_MAM | #135: if either still signs a live app, move to a new upload key under Play App Signing |
 | **SQL login** of the applications, and the production SQL Managed Instance address | `connString` in every `Web.config` (both surveillance ones name the instance) | #110 |
 | SMTP mailbox password (`password` key) | every `Web.config` | #3 |
 | Partner tokens: the Saathi/Cleartrip base64 token, `apiToken`, the ApiSecure test client and AES key | `MsmeController` comments, `Web.config`, `ApiSecureController` comments | #54, #55 |

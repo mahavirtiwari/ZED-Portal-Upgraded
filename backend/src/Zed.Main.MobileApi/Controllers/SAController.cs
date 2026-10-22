@@ -263,6 +263,71 @@ public sealed class SAController(
         return LegacyJson(await SavePhotosAsync(nameof(SubmitSelfie), request.saId, request.zedId, request.certificationType, "Selfie", photos, ct));
     });
 
+    /// <summary>
+    /// Daily attendance of the site assessor app (punch in / punch out): the selfie is the multipart part <c>files</c>, its
+    /// details the JSON text in <c>selfieMetadata</c>. SP_APP_SA_INSERT_DAILY_ATTENDANCE (ZEDCS_V2_LIVE) records it. The
+    /// app calls SA/SubmitAttendance on the main services (app source, ZED_SA_Studio); the services source we were given
+    /// has no such action although the procedure exists, so this follows the consultancy app's action: the lead or
+    /// co-assessor allotted to the unit only, the photo stored as Attendance/{zed}/{cert}/{photoId}.jpg, the procedure's
+    /// Status / Message answered as status / errorMessage.
+    /// </summary>
+    [HttpPost]
+    [DeviceBound(MobileApps.SiteAssessor, "saId")]
+    public Task<IActionResult> SubmitAttendance(SubmitAttendanceRequest request, IFormFile? files, CancellationToken ct) => Guarded(nameof(SubmitAttendance), async () =>
+    {
+        RequireCertification(request.certificationType);
+        if (!await IsAllottedAsync(request.saId, request.zedId, request.certificationType, Role.LeadOrCo, ct))
+            return NotAllotted(nameof(SubmitAttendance), request.saId, request.zedId);
+        if (files is null || files.Length <= 0) return Fail("Assessor selfie data not found.");
+        if (request.attendanceType?.Length > 50 || request.comments?.Length > 4000) return Fail("Invalid Data.");
+
+        PhotoInformation? selfie = null;
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(request.selfieMetadata))
+                selfie = System.Text.Json.JsonSerializer.Deserialize<PhotoInformation>(request.selfieMetadata, Zed.Core.Mobile.LegacyJson.Read);
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            selfie = null;
+        }
+        if (selfie is null || string.IsNullOrWhiteSpace(selfie.photoId)) return Fail(ErrorText);
+
+        var folder = storage.Folder("Attendance", request.zedId, request.certificationType);
+        await storage.SaveAsync(files, folder, MobileStorage.FileName(selfie.photoId, ".jpg"), ct);
+
+        ResultSets sets;
+        try
+        {
+            sets = await db.QueryProcMultipleAsync("SP_APP_SA_INSERT_DAILY_ATTENDANCE", new
+            {
+                RefId = DateTime.Now.ToString("yyyyMMddHHmmss", System.Globalization.CultureInfo.InvariantCulture),
+                ZedId = request.zedId,
+                AssessorId = request.saId,
+                CertificationType = request.certificationType,
+                AttendanceType = request.attendanceType,
+                Comments = request.comments,
+                PhotoId = selfie.photoId,
+                Latitude = selfie.latitude,
+                Longitude = selfie.longitude,
+                TimeStamp = selfie.timeStamp,
+            }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogError(ex, "SP_APP_SA_INSERT_DAILY_ATTENDANCE failed for {ZedId}", request.zedId);
+            return Fail(ErrorText);
+        }
+        // One row: Status, Message.
+        if (sets.Count == 0 || sets[0].Count == 0) return Fail(ErrorText);
+        var values = sets[0][0].Values.ToList();
+        return LegacyJson(new ServiceResponse
+        {
+            status = values.Count > 0 ? Convert.ToString(values[0], System.Globalization.CultureInfo.InvariantCulture) : null,
+            errorMessage = values.Count > 1 ? Convert.ToString(values[1], System.Globalization.CultureInfo.InvariantCulture) : null,
+        });
+    });
+
     [HttpPost]
     [DeviceBound(MobileApps.SiteAssessor, "saId")]
     public Task<IActionResult> SubmitSiteTour(SubmitSiteTourRequest request, CancellationToken ct) => Guarded(nameof(SubmitSiteTour), async () =>

@@ -93,6 +93,16 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
 
 ## Check on the live services before cut-over
 
+- **Production services code is newer than the copy V4 was built from** (`SA/SubmitAttendance` was missing from it).
+  Compare a month of IIS log paths of `/mobileapi`, `/consultancymobileapi`, `/surveillancemobileapi` and
+  `/Consultancy/FinancialAssistance` with V4's actions, and port anything not covered.
+- **App registration.** The store MSME app's source was not delivered. Its code base (seen in the Bronze surveillance
+  copy) has a registration flow calling the old portal's `Msme/FinalSubmit` (JSON), `ValidateCaptcha`,
+  `ValidatePlantAndActivity`, `SendPledgeEmailOtp` and `VerifyPledgeEmailOtp`, which V4 does not serve. If the store app
+  registers units, those calls stop at cut-over: check the IIS logs and ask the vendor.
+- **No released app sends `deviceInfo`** (all current apps checked, 2026-10-22): device binding records "Missing" for
+  them. Keep `Mobile:RefuseMissingDevice = false` under `Enforce` until a new app release sends it.
+
 - One response each of `Msme/ChangePassword`, `Msme/ResetPassword` and `Msme/FinalSubmit`. As built from
   source, their mail templates were missing, so they answered `status "0"` after doing the work; V4 answers
   `status "1"`. If the live site had the templates, nothing changes; if not, check the app treats `1` as success.
@@ -188,6 +198,26 @@ Not ported (no evidence the apps call them): the hotel leftovers `GetSiteAssessm
 controllers. Check IIS logs of `/Consultancymobileapi` before go-live. The DFO app's open meeting posts to the web host
 (`/Consultancy/FinancialAssistance/SubmitOpenMeeting`), not here.
 
+### Checked against the app source (2026-10-22)
+
+The consultant app (1.2/74), the site assessor app (1.2/45) and the two Impact Assessment apps were compared call by
+call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`, `TuAppTests`):
+- **Legacy paths.** The consultant app requests `SA//<Action>` for the RestHelper actions. The mobile host collapses
+  repeated slashes before routing (`UseLegacyPathNormalization`), as IIS/MVC 5 did.
+- **Main `SA/SubmitAttendance`** (site assessor app): multipart `saId`, `zedId`, `certificationType`, `attendanceType`
+  (≤50), `comments` (≤4000), `selfieMetadata` (JSON with `photoId`), file `files`. Lead or co-assessor allotted to the
+  unit. Stored as `Attendance/{zed}/{cert}/{photoId}.jpg`, then `SP_APP_SA_INSERT_DAILY_ATTENDANCE`; the answer is the
+  procedure's Status and Message.
+- **Technology upgradation (consultant app).** The consultancy portal serves `POST /Consultancy/FinancialAssistance/GetDetails
+  | ValidateEvidence | updatetechnology | FinalSubmit` (no anti-forgery token, legacy JSON). The main mobile deployment
+  serves `GET /mobileapi/photos/{zedId}/TechnologyUpgradation/{photoId}`. All require the unit's allotted DFO to have
+  signed in to the consultant app for that unit within `Consultancy:TuApp:LoginHours` (`dbo.V4AppSessions`, migration
+  0010). Reads at VerificationStatus 2–3, writes at 2. FinalSubmit runs as that DFO, role 3. The app sends no identity on
+  these calls: until a token release, anyone who knows the ZED ID can act during a DFO's window.
+- **deviceInfo.** None of the consultant, site assessor or Impact apps sends it. Under `Enforce` their calls are "Missing".
+- The Impact apps' own APIs (`/impactmobileapi`, `/liamobileapi`) are not V4; they run on the same IIS site and
+  `Install-ZedIis.ps1` leaves them alone.
+
 ## Surveillance (Bronze surveillance app, site assessor app, surveillance photos)
 
 Deployment: `Mobile:System = Surveillance` (launch profile `surveillance`, port 5106), database ZED_SURVEILLANCE
@@ -240,11 +270,12 @@ SubmitFinancialPhotos) and `RA/*` (Index, Login, CheckAssessment, GetToken, Subm
 accounts exist in ZED_SURVEILLANCE and remote surveillance uses meeting links. `SA/SaveCapturedPhoto` is called by the
 web page `Remote/Index` and is served by the portal. Check the IIS logs of `/surveillancemobileapi` before go-live.
 
-**Ask the vendor:** is the Bronze surveillance app a separate build (package name, store listing), which base URL it
-uses, and which `Surveillance/*` (and `Msme/*`) actions it calls, in which order (in particular whether
-`SubmitFinancialAssistanceDetails` and `SubmitEsgChecklist` come before `FinalSubmit`), and whether it sends
-`deviceInfo` and the assessor id (`saId`) on calls after login. Also which app calls `Msme/SubmitSurveillancePhoto`
-(the main MSME app during a surveillance meeting?).
+**Answered by the app source** (docs/mobile/MSME-APP.md): the Bronze surveillance app is a separate build
+(`com.qci.zed.bronzesurveillance` 1.8, delivered as `ZED_MSME_Bronze`). It uses `/surveillancemobileapi/surveillance/*`
+for the whole assessment and never fills `deviceInfo`, so keep `Mobile:RefuseMissingDevice = false` for it. It sends no
+assessor id after login, and calls `SubmitFinancialAssistanceDetails` and `SubmitEsgChecklist` before `FinalSubmit`.
+Its `msme/*` and `RA/*` calls are unreachable, since the login status carries no surveillance or remote flags.
+`SurveillanceAppContractTests` replays its exact requests.
 
 ## v2: token-based API (for the next app release)
 

@@ -170,6 +170,11 @@ public sealed partial class ConsultancySAController(
             return LoginFail(notAllotted);
         }
 
+        // The app's technology upgradation calls to the consultancy web site carry no identity; the portal accepts them for a
+        // unit whose allotted DFO signed in here recently (dbo.V4AppSessions, migration 0010; TuAppController).
+        await AppSessions.RecordAsync(db, log, AppSessions.Consultant, first.Text("UserId") is { Length: > 0 } uid ? uid : userId,
+            request.zedId!.Trim(), certification, ClientIp, ct);
+
         var flags = sets.FirstRow(8);
         var response = new AssessmentDetails
         {

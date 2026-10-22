@@ -11,7 +11,10 @@
 4. **Mobile API compatibility.** The mobile app in the stores calls `SwachhSurvekshanServices` / `SurveillanceServices`
    (`SA/Login`, `SA/SubmitSelfie`, `SA/SubmitSiteTour`, …). Its source is not in this folder, so the new
    endpoints must keep the **same URLs, form/JSON field names and the `{status, errorMessage}` response shape**.
-   Ask the vendor for the app source before changing that contract.
+   Ask the vendor for the app source before changing that contract. **Source received 2026-10-22** (16 projects,
+   partly incomplete; docs/mobile/APPS-INVENTORY.md): the consultant, site assessor, Bronze surveillance and Impact apps
+   were checked call by call against V4 and the mismatches fixed in V4 (docs/mobile/). Still missing: the store MSME app
+   and the surveillance site assessor app.
 5. **Database server: SQL Server 2022 Standard** on a server (2026-10-21; Express cannot hold ZEDCS_V2_LIVE's 76 GB).
    It hosts the three ZED databases and the other applications' databases they reference. The old instance runs in IST.
 

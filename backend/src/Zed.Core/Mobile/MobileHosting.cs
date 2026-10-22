@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -96,6 +97,24 @@ public sealed class LegacyErrorsAttribute : Attribute, IExceptionFilter
 
 public static class MobileHostingExtensions
 {
+    /// <summary>
+    /// Collapses repeated slashes in the request path ("SA//SubmitAllocation" becomes "SA/SubmitAllocation"). The consultant
+    /// app joins its base address ".../SA/" with paths that start with "/", and the old IIS/MVC 5 site routed those;
+    /// ASP.NET Core does not match an empty segment. Must run before routing.
+    /// </summary>
+    public static IApplicationBuilder UseLegacyPathNormalization(this IApplicationBuilder app) => app.Use((context, next) =>
+    {
+        var path = context.Request.Path.Value;
+        if (path is not null && path.Contains("//", StringComparison.Ordinal))
+        {
+            var collapsed = new System.Text.StringBuilder(path.Length);
+            foreach (var c in path)
+                if (c != '/' || collapsed.Length == 0 || collapsed[^1] != '/') collapsed.Append(c);
+            context.Request.Path = new PathString(collapsed.ToString());
+        }
+        return next(context);
+    });
+
     /// <summary>Legacy mobile support: options, device records and upload storage.</summary>
     public static IServiceCollection AddLegacyMobile(this IServiceCollection services, IConfiguration config)
     {

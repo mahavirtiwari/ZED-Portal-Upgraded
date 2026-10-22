@@ -213,10 +213,27 @@ public sealed class ConsultancyAppLoginTests : IDisposable
         await main.Json("/SA/Login", new { zedId = Zed, assessorId = Lead, password = Password });
         Assert.Single(main.CallsTo("SP_APP_SA_CHECK_LOGIN"));
         Assert.Empty(main.CallsTo("SP_APP_SA_CHECK_LOGIN_V2"));
-        // The consultancy-only actions do not exist on the Main deployment.
-        foreach (var path in new[] { "/SA/SubmitAttendance", "/SA/SubmitBaselineDiagnostic", "/SA/CheckParameterSyncStatus" })
+        // The consultancy-only actions do not exist on the Main deployment (SA/SubmitAttendance does: the site assessor
+        // app calls it too, SubmitAttendanceTests).
+        foreach (var path in new[] { "/SA/SubmitBaselineDiagnostic", "/SA/CheckParameterSyncStatus" })
             Assert.Equal(HttpStatusCode.NotFound,
                 (await main.Client.PostAsync(path, new StringContent("{}", Encoding.UTF8, "application/json"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Successful_login_records_the_app_sign_in_for_the_technology_upgradation_calls()
+    {
+        Assert.Equal("1", (await Login()).GetProperty("status").GetString());
+        var call = Assert.Single(_t.Fake.Calls, c => c.Name.Contains("INSERT INTO dbo.V4AppSessions", StringComparison.Ordinal));
+        Assert.Equal(Lead, FakeSql.Arg(call.Args, "UserId"));
+        Assert.Equal(Zed, FakeSql.Arg(call.Args, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(call.Args, "Certification"));
+        Assert.Equal("Consultant", FakeSql.Arg(call.Args, "AppKind"));
+
+        // A refused login records nothing.
+        _failure = "Invalid Credentials. Please check";
+        await Login();
+        Assert.Single(_t.Fake.Calls, c => c.Name.Contains("INSERT INTO dbo.V4AppSessions", StringComparison.Ordinal));
     }
 
     [Fact]

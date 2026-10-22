@@ -171,6 +171,9 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Jobs:FolderRename` (Zed.Jobs) | Renames the folders of rejected units to their archived ZED ID (replaces SP_JOB_TO_CREATE_RENAMING_BATCH_FILES, no xp_cmdshell). Migration 0007; Report mode first; docs/JOBS.md |
 | `StaffPasswordReset:Enabled/ValidMinutes/MaxRequestsPerHour/ExcludedRoles/MainPortalUrl` | Staff "Forgot password?" and administrator reset links (migration 0008, docs/PASSWORDS.md). ExcludedRoles (default 7,10) get their link from another MasterAdmin |
 | `MsmePasswordReset:ValidMinutes/MaxRequestsPerHour` (main portal and MSME app) | MSME reset links (migration 0009, docs/PASSWORDS.md): 60 minutes, 3 per ZED ID and hour |
+| `Consultancy:TuApp:LoginHours` (consultancy portal, main mobile host) | Default 12: how recently the allotted DFO must have signed in to the consultant app for the unit, for the TU calls and documents; 0 turns the check off |
+| `Consultancy:TuApp:SameIp` (consultancy portal) | Default false: also require the IP address of that sign-in |
+| `ConnectionStrings:Consultancy` (main mobile host) | ZED_CONSULTANT, opened read-only, for the TU document downloads |
 | `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Off unless `Enabled` is true |
 
 ## Tests
