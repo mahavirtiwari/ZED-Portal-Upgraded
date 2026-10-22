@@ -136,6 +136,9 @@ and evidence are reachable only through V4's checked endpoints (closes #9, #34).
 5. `Mobile:Culture`, `Mobile:PathBase`, version gates: see MOBILE-API.md ("Open before go-live" lists the live
    checks to do on the old services first). Keep `Mobile:DeviceBinding = Monitor`.
 6. `Security:Passwords` stays `Dual` (the default) until the rollback window is over (section 4).
+   **Mail rule:** in Production `Email:RedirectAllTo`, `Email:AllowedRecipientDomains` and `Portal:EnvironmentLabel`
+   must be empty (every host and Zed.Jobs refuse to start otherwise). On staging the reverse: one of the two mail
+   settings is required, so a copy of production data never mails real MSMEs or agencies.
 7. Decide `StaffPasswordReset:ExcludedRoles` (default MasterAdmin 7 and SuperAdmin 10, who get their reset link from
    another MasterAdmin; add 1 for Admin if wanted).
 8. Consultant app TU calls: set `Consultancy:TuApp:LoginHours` (default 12) and `Consultancy:TuApp:SameIp` (default
@@ -193,8 +196,11 @@ same night:
 
 ### 1.5 Rehearsal on staging (required)
 
-1. Restore last night's production backups of the three databases on a staging instance, and copy (or share
-   read-only) a sample of the storage folders.
+The staging server is https://zedv3.qci.org.in (20.219.21.200): its step-by-step runbook, settings file, data script
+and timing sheet are in **docs/STAGING.md**.
+
+1. Restore last night's production backups of all related databases on the staging server (STAGING.md section 3),
+   prepare the copy with `database/staging/01_prepare_restored_copy.sql`, and copy the storage folders.
 2. A staging site with a name that marks it as staging (e.g. `staging.loginzed.…`), its own certificate, and the
    same six applications. Install with the real procedure: `Publish-Zed.ps1`, `Install-ZedIis.ps1` (dry run, then
    `-Apply`), `Test-ZedDeployment.ps1 -BaseUrl https://staging…`. CCAvenue in test mode with test keys.

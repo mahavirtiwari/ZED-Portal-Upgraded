@@ -1,0 +1,107 @@
+{
+  "_comment": "STAGING (https://zedv3.qci.org.in, docs/STAGING.md). Copy to the staging server (e.g. D:\\ZedV4\\settings.json), fill in, restrict to administrators, never commit the filled copy. Same structure as settings.example.json: keys are environment variable names (':' becomes '__'); sections merge Common, then Portals or Mobile, then the application's own section. Install with -EnvironmentName Staging. Staging runs on a restored copy of production: every mail is redirected, payments use the CCAvenue TEST gateway, partner APIs and ERP stay off, Zed.Jobs schedules stay off. Storage roots point at a staging COPY of the folders, never at the production share.",
+  "Common": {
+    "ASPNETCORE_ENVIRONMENT": "Staging",
+    "ConnectionStrings__Main": "",
+    "Portal__EnvironmentLabel": "STAGING",
+    "_Email_comment": "Decided: every staging mail goes to dev.zed@qcin.org (portals and mobile API here; Zed.Jobs in its own section below). Do not add Email__AllowedRecipientDomains: with it, mail to those domains would go to the real recipients. The hosts refuse to start in Staging when neither setting is given.",
+    "Email__RedirectAllTo": "dev.zed@qcin.org",
+    "Security__Passwords": "Dual"
+  },
+  "Portals": {
+    "Email__Profiles__Default__Host": "",
+    "Email__Profiles__Default__Port": "587",
+    "Email__Profiles__Default__From": "",
+    "Email__Profiles__Default__UserName": "",
+    "Email__Profiles__Default__Password": "",
+    "_Recaptcha_comment": "Use a separate reCAPTCHA v2 key pair registered for zedv3.qci.org.in (not the production keys): the captcha is then exercised without production secrets on this server. Recaptcha__Enabled=false is the fallback if no staging key is registered: login and registration then skip the captcha, so that part goes untested. App registration (Msme/ValidateCaptcha) uses the app's built-in Android site key, whose secret is AppSecretKey: give it only on rehearsal days, or the app's registration test stops at the captcha.",
+    "Recaptcha__Enabled": "true",
+    "Recaptcha__SiteKey": "",
+    "Recaptcha__SecretKey": ""
+  },
+  "Mobile": {
+    "_comment": "The mobile hosts refuse to start outside Production while these still name loginzed.msme.gov.in.",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
+    "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in",
+    "Mobile__Culture": "en-US",
+    "Mobile__DeviceBinding": "Monitor",
+    "Mobile__RefuseMissingDevice": "false"
+  },
+  "Main": {
+    "_comment": "IIS application /. Consultancy and Surveillance connections: the read-only login (database/security/01). Storage: a copy of the production folders on the staging server.",
+    "ConnectionStrings__Consultancy": "",
+    "ConnectionStrings__Surveillance": "",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
+    "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in",
+    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Portal__AssessmentStorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
+    "Udyam__AccessKey": "",
+    "_CcAvenue_comment": "CCAvenue TEST account and keys only (never the production merchant on staging). Ask CCAvenue to allow https://zedv3.qci.org.in for the test merchant's return URLs ({PublicBaseUrl}/api/payments/ccavenue/response, .../surveillance-response, .../consultancy-response).",
+    "CcAvenue__GatewayUrl": "https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
+    "CcAvenue__MerchantId": "",
+    "CcAvenue__AccessCode": "",
+    "CcAvenue__WorkingKey": "",
+    "CcAvenue__ReconciliationWorkingKey": "",
+    "CcAvenue__MobileAccessCode": "",
+    "CcAvenue__MobileWorkingKey": "",
+    "ProteanGstin__Url": "",
+    "ProteanGstin__UserId": "",
+    "ProteanGstin__Password": "",
+    "Twilio__AccountSid": "",
+    "Twilio__ApiKey": "",
+    "Twilio__ApiSecret": "",
+    "Erp__Enabled": "false",
+    "UdyamiBharat__Enabled": "false",
+    "Recaptcha__AppSecretKey": ""
+  },
+  "Consultancy": {
+    "_comment": "IIS application /Consultancy. StorageRoot: the same staging copy as main's.",
+    "ConnectionStrings__Consultancy": "",
+    "Portal__PathBase": "/Consultancy",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/Consultancy",
+    "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in/Consultancy",
+    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Consultancy__SharedStorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Consultancy__TuApp__LoginHours": "12",
+    "Consultancy__TuApp__SameIp": "false"
+  },
+  "Surveillance": {
+    "_comment": "IIS application /surveillance. StorageRoot: the same staging copy as main's.",
+    "ConnectionStrings__Surveillance": "",
+    "Portal__PathBase": "/surveillance",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/surveillance",
+    "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in/surveillance",
+    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE"
+  },
+  "MobileMain": {
+    "_comment": "IIS application /mobileapi. StorageRoot: the staging copy of the old services folder (Photos, SaPhotos, Videos). Consultancy connection: read-only, for the TU documents.",
+    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
+    "ConnectionStrings__Consultancy": "",
+    "Consultancy__TuApp__LoginHours": "12",
+    "Mobile__CheckMsmeVersion": "false",
+    "Mobile__MsmeVersion": "",
+    "Mobile__Twilio__AccountSid": "",
+    "Mobile__Twilio__ApiKey": "",
+    "Mobile__Twilio__ApiSecret": ""
+  },
+  "MobileConsultancy": {
+    "_comment": "IIS application /Consultancymobileapi (database ZED_CONSULTANT).",
+    "ConnectionStrings__Consultancy": "",
+    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES"
+  },
+  "MobileSurveillance": {
+    "_comment": "IIS application /surveillancemobileapi (database ZED_SURVEILLANCE).",
+    "ConnectionStrings__Surveillance": "",
+    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZED_SURVEILLANCE_SERVICES"
+  },
+  "ZedJobs": {
+    "_comment": "NOT read by Install-ZedIis.ps1: environment of the Zed.Jobs Windows service on staging (docs/JOBS.md 'Running it'). Leave every Jobs:Schedules entry and Jobs:FolderRename disabled (the shipped appsettings.json has them off); the mail worker may run, and then sends only to dev.zed@qcin.org.",
+    "DOTNET_ENVIRONMENT": "Staging",
+    "ConnectionStrings__Main": "",
+    "ConnectionStrings__Consultancy": "",
+    "ConnectionStrings__Surveillance": "",
+    "Email__RedirectAllTo": "dev.zed@qcin.org",
+    "Email__Profiles__ZedAdmin__Password": "",
+    "Jobs__FolderRename__Enabled": "false"
+  }
+}

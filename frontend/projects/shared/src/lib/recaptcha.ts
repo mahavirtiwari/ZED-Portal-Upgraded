@@ -17,6 +17,8 @@ export interface ClientConfig {
   captchaSiteKey: string;
   /** Old MVC portal, for links to modules not migrated yet. */
   legacyPortalUrl: string;
+  /** Portal:EnvironmentLabel (e.g. "STAGING"); null in Production. */
+  environmentLabel?: string | null;
 }
 
 interface GRecaptcha {

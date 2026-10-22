@@ -89,6 +89,7 @@ public static class ZedHostingExtensions
     public static WebApplication UseZedPlatform(this WebApplication app)
     {
         app.UseForwardedHeaders();
+        app.UseZedEnvironmentLabel();
         app.UseExceptionHandler();
         app.UseStatusCodePages();
         if (app.Environment.IsDevelopment()) app.MapOpenApi();
@@ -107,6 +108,33 @@ public static class ZedHostingExtensions
         app.MapFallback("/api/{**rest}", () => Results.NotFound());
         app.MapFallbackToFile("index.html");
         return app;
+    }
+
+    /// <summary>
+    /// With <c>Portal:EnvironmentLabel</c> set (a test environment such as staging): every response says
+    /// <c>X-Robots-Tag: noindex, nofollow</c> and <c>/robots.txt</c> disallows everything, so search engines keep the
+    /// copy of production data out of their index. Without the label nothing changes.
+    /// </summary>
+    public static IApplicationBuilder UseZedEnvironmentLabel(this IApplicationBuilder app)
+    {
+        var label = app.ApplicationServices.GetRequiredService<IConfiguration>()["Portal:EnvironmentLabel"];
+        if (string.IsNullOrWhiteSpace(label)) return app;
+        return app.Use(async (context, next) =>
+        {
+            context.Response.OnStarting(() =>
+            {
+                context.Response.Headers["X-Robots-Tag"] = "noindex, nofollow";
+                return Task.CompletedTask;
+            });
+            if ((HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method))
+                && context.Request.Path.Equals("/robots.txt", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Response.ContentType = "text/plain; charset=utf-8";
+                await context.Response.WriteAsync("User-agent: *\nDisallow: /\n");
+                return;
+            }
+            await next();
+        });
     }
 
     /// <summary>

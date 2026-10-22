@@ -24,10 +24,11 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
         return NoContent();
     }
 
-    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaSiteKey, string LegacyPortalUrl);
+    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaSiteKey, string LegacyPortalUrl, string? EnvironmentLabel);
 
     [HttpGet("config")]
     [AllowAnonymous]
     public ClientConfig Config() =>
-        new(recaptcha.Value.Enabled, recaptcha.Value.SiteKey, portal.Value.LegacyBaseUrl.TrimEnd('/'));
+        new(recaptcha.Value.Enabled, recaptcha.Value.SiteKey, portal.Value.LegacyBaseUrl.TrimEnd('/'),
+            string.IsNullOrWhiteSpace(portal.Value.EnvironmentLabel) ? null : portal.Value.EnvironmentLabel.Trim());
 }

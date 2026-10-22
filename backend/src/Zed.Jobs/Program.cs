@@ -8,6 +8,11 @@ using Zed.Jobs;
 // (non-zero when an enabled job has a problem); run it before enabling jobs on a server.
 var check = args.Contains("--check", StringComparer.OrdinalIgnoreCase);
 var builder = Host.CreateApplicationBuilder(args.Where(a => !a.Equals("--check", StringComparison.OrdinalIgnoreCase)).ToArray());
+// The outbox worker mails what the procedures queue: outside Production that must not reach real people (staging runs
+// on copies of production data), and a staging mail setting must never be active in Production.
+if (!check && MailSafety.Problems(builder.Configuration, builder.Environment) is { Count: > 0 } mailProblems)
+    throw new InvalidOperationException($"Zed.Jobs cannot start in {builder.Environment.EnvironmentName}:" + Environment.NewLine +
+        string.Join(Environment.NewLine, mailProblems.Select(p => " - " + p)));
 builder.Services.AddWindowsService(o => o.ServiceName = "ZedJobs");
 
 builder.Services.Configure<JobsOptions>(builder.Configuration.GetSection(JobsOptions.Section));

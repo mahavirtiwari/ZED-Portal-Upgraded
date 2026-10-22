@@ -15,10 +15,18 @@
     - main only: Msme/Login with empty credentials answers in the old JSON contract (status "0", or "2" when the
       version gate is on). No real credentials are ever sent.
 
+  Environment label (docs/STAGING.md):
+    - with -ExpectEnvironmentLabel STAGING: each portal's /api/config says that label, responses carry
+      X-Robots-Tag noindex and /robots.txt disallows everything;
+    - without it (the live site): a portal that carries a label fails the run.
+  -CheckHttpsRedirect: http://<host>/ answers 301/308 to the same address on https.
+
   Read-only: nothing is created or changed. Windows PowerShell 5.1 or later.
 
 .EXAMPLE
   .\Test-ZedDeployment.ps1 -BaseUrl https://loginzed.msme.gov.in
+.EXAMPLE
+  .\Test-ZedDeployment.ps1 -BaseUrl https://zedv3.qci.org.in -ExpectEnvironmentLabel STAGING -CheckHttpsRedirect
 .EXAMPLE
   # Hosts on separate ports (a local check of a package; see docs/CUTOVER.md)
   .\Test-ZedDeployment.ps1 -MainUrl http://localhost:5201 -ConsultancyUrl http://localhost:5202/Consultancy `
@@ -37,6 +45,8 @@ param(
     [ValidateSet('Main', 'Consultancy', 'Surveillance', 'MobileMain', 'MobileConsultancy', 'MobileSurveillance')]
     [string[]]$Skip = @(),
     [string]$AppVersion = '0.0.0-smoketest',
+    [string]$ExpectEnvironmentLabel,
+    [switch]$CheckHttpsRedirect,
     [int]$TimeoutSeconds = 30
 )
 
@@ -82,12 +92,15 @@ function Send([string]$Method, [string]$Url, [hashtable]$Form) {
         $server = @()
         if ($response.Headers.TryGetValues('Server', [ref]$values)) { $server += $values }
         if ($response.Headers.TryGetValues('X-Powered-By', [ref]$values)) { $server += $values }
-        [pscustomobject]@{ Status = [int]$response.StatusCode; Body = $body; Type = $type; Cookies = $cookies; Server = ($server -join ' '); Error = $null }
+        $robots = ''
+        if ($response.Headers.TryGetValues('X-Robots-Tag', [ref]$values)) { $robots = ($values -join ', ') }
+        $location = if ($response.Headers.Location) { [string]$response.Headers.Location } else { '' }
+        [pscustomobject]@{ Status = [int]$response.StatusCode; Body = $body; Type = $type; Cookies = $cookies; Server = ($server -join ' '); Robots = $robots; Location = $location; Error = $null }
     }
     catch {
         $e = $_.Exception
         while ($e.InnerException) { $e = $e.InnerException }
-        [pscustomobject]@{ Status = 0; Body = ''; Type = ''; Cookies = @(); Server = ''; Error = $e.Message }
+        [pscustomobject]@{ Status = 0; Body = ''; Type = ''; Cookies = @(); Server = ''; Robots = ''; Location = ''; Error = $e.Message }
     }
 }
 
@@ -126,6 +139,7 @@ function Test-Portal([string]$Name, [string]$Url, [string[]]$Pages, [string[]]$G
 
     $r = Send 'GET' "$Url/"
     Report (Test-Spa $r $base) "$Name / serves the Angular app with base href $base" (Describe $r)
+    Test-Label $Name $Url $r
     if ($r.Server -match 'IIS|ASP\.NET') { $script:warnings++; Write-Host "  WARN  $Name sends '$($r.Server)': web.config should remove it" -ForegroundColor Yellow }
 
     foreach ($page in $Pages) {
@@ -151,6 +165,31 @@ function Test-Portal([string]$Name, [string]$Url, [string[]]$Pages, [string[]]$G
     }
 }
 
+function Test-Label([string]$Name, [string]$Url, $Landing) {
+    $config = Send 'GET' "$Url/api/config"
+    $label = $null
+    try { $label = ($config.Body | ConvertFrom-Json).environmentLabel } catch { }
+    if ($ExpectEnvironmentLabel) {
+        Report ($label -eq $ExpectEnvironmentLabel) "$Name /api/config says environment label $ExpectEnvironmentLabel" ("label '$label'; " + (Describe $config))
+        Report ($Landing.Robots -match 'noindex') "$Name responses carry X-Robots-Tag noindex" ("X-Robots-Tag '$($Landing.Robots)'")
+        $robots = Send 'GET' "$Url/robots.txt"
+        Report ($robots.Status -eq 200 -and $robots.Body -match 'Disallow:\s*/\s*$') "$Name /robots.txt disallows everything" (Describe $robots)
+    }
+    else {
+        Report ([string]::IsNullOrWhiteSpace($label) -and $Landing.Robots -notmatch 'noindex') "$Name carries no test-environment label (live site)" ("label '$label', X-Robots-Tag '$($Landing.Robots)'")
+    }
+}
+
+function Test-HttpsRedirect([string]$Url) {
+    $u = [Uri]$Url
+    if ($u.Scheme -ne 'https') { Write-Host "  SKIP  -CheckHttpsRedirect: $Url is not https" -ForegroundColor DarkGray; return }
+    $http = "http://$($u.Host)/"
+    Write-Host "http -> https ($http)" -ForegroundColor Cyan
+    $r = Send 'GET' $http
+    $ok = ($r.Status -eq 301 -or $r.Status -eq 308) -and $r.Location -like "https://$($u.Host)/*"
+    Report $ok "http://$($u.Host)/ redirects permanently to https" ("HTTP $($r.Status) Location '$($r.Location)'" + $(if ($r.Error) { " ($($r.Error))" } else { '' }))
+}
+
 function Test-Mobile([string]$Name, [string]$Url, [bool]$MsmeLogin) {
     $Url = $Url.TrimEnd('/')
     Write-Host "$Name mobile services ($Url)" -ForegroundColor Cyan
@@ -158,6 +197,7 @@ function Test-Mobile([string]$Name, [string]$Url, [bool]$MsmeLogin) {
     Report ($r.Status -eq 200 -and $r.Body -match 'ZED services') "$Name / answers like the old services" (Describe $r)
     Test-Healthy "$Name /health" "$Url/health"
     Test-Healthy "$Name /health/ready (database)" "$Url/health/ready"
+    if ($ExpectEnvironmentLabel) { Report ($r.Robots -match 'noindex') "$Name mobile responses carry X-Robots-Tag noindex" ("X-Robots-Tag '$($r.Robots)'") }
     if ($MsmeLogin) {
         $r = Send 'POST' "$Url/Msme/Login" @{ userName = ''; password = ''; version = $AppVersion }
         $status = $null
@@ -183,6 +223,7 @@ $targets = @(
 )
 
 $ran = 0
+if ($CheckHttpsRedirect -and $MainUrl) { Test-HttpsRedirect $MainUrl }
 foreach ($t in $targets) {
     if ($Skip -contains $t.Key) { continue }
     if (-not $t.Url) { Write-Host "$($t.Key): no address given, skipped" -ForegroundColor DarkGray; continue }

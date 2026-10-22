@@ -22,6 +22,13 @@ public sealed class PortalOptions
     /// incentives, financial assistance, ...) open there until those modules move.
     /// </summary>
     public string LegacyBaseUrl { get; set; } = "https://loginzed.msme.gov.in";
+
+    /// <summary>
+    /// Test environments only (e.g. "STAGING"; must be empty in Production): the Angular app shows it as a ribbon on every
+    /// page and in the title, mail subjects carry it, and the hosts ask search engines not to index them
+    /// (<c>X-Robots-Tag</c>, <c>robots.txt</c>).
+    /// </summary>
+    public string? EnvironmentLabel { get; set; }
 }
 
 public sealed record MessageResponse(string Message);

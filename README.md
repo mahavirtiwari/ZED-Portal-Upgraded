@@ -176,6 +176,8 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Consultancy:TuApp:LoginHours` (consultancy portal, main mobile host) | Default 12: how recently the allotted DFO must have signed in to the consultant app for the unit, for the TU calls and documents; 0 turns the check off |
 | `Consultancy:TuApp:SameIp` (consultancy portal) | Default false: also require the IP address of that sign-in |
 | `ConnectionStrings:Consultancy` (main mobile host) | ZED_CONSULTANT, opened read-only, for the TU document downloads |
+| `Email:RedirectAllTo` / `Email:AllowedRecipientDomains` (every host and Zed.Jobs) | **Test environments only** (staging runs on a copy of production data): all mail goes to the redirect address(es), or only to recipients in the allowed domains (comma separated), with the original recipients named at the top and in `X-Zed-Original-To/Cc/Bcc`, subject prefixed `[STAGING] `. Outside Production and Development one of them (or a mail pickup folder) is required; in Production both must be empty, or the host refuses to start |
+| `Portal:EnvironmentLabel` (every host) | **Test environments only**, e.g. `STAGING`: red ribbon on every page and title prefix in all three apps, mail subject prefix, `X-Robots-Tag: noindex, nofollow` and a disallow-all `robots.txt`. Must be empty in Production. Outside Production `Portal:PublicBaseUrl` / `Portal:LegacyBaseUrl` may not point at the live site |
 | `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Off unless `Enabled` is true |
 
 ## Tests
@@ -194,5 +196,6 @@ server-side copy of `deploy\settings.example.json`. `deploy\Test-ZedDeployment.p
 Hosts refuse to start with missing settings outside Development; `/api/health/ready` and `/health/ready`
 report database readiness. Migrations `database/migrations/0001`–`0009` and the reviewed `database/fixes`
 scripts go first (`deploy\Invoke-ZedDatabaseScripts.ps1` runs them in order; `database/security/` creates the
-least-privilege logins; `deploy\Compare-ZedDatabases.ps1` checks a database move). Runbook, rollback and decommission: `docs/CUTOVER.md`; passwords: `docs/PASSWORDS.md`;
+least-privilege logins; `deploy\Compare-ZedDatabases.ps1` checks a database move). Runbook, rollback and decommission: `docs/CUTOVER.md`; staging (https://zedv3.qci.org.in): `docs/STAGING.md` and
+`deploy\settings.staging.example.json`; passwords: `docs/PASSWORDS.md`;
 jobs: `docs/JOBS.md`; mobile: `docs/MOBILE-API.md`.

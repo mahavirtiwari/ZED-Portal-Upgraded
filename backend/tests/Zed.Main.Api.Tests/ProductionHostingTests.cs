@@ -56,6 +56,13 @@ public sealed class ProductionHostingTests : IDisposable
         ["ProteanGstin:Password"] = "p",
     };
 
+    /// <summary>A complete main configuration for a test environment: its own addresses, not the live site's.</summary>
+    private Dictionary<string, string?> StagingMain() => new(CompleteMain())
+    {
+        ["Portal:PublicBaseUrl"] = "https://zedv3.qci.org.in",
+        ["Portal:LegacyBaseUrl"] = "https://zedv3.qci.org.in",
+    };
+
     private IReadOnlyList<string> Check(Dictionary<string, string?> settings, PortalSystem system = PortalSystem.Main,
         ZedHostKind kind = ZedHostKind.Portal, string environment = "Production") =>
         ZedConfigurationCheck.Problems(new ConfigurationBuilder().AddInMemoryCollection(settings).Build(),
@@ -100,12 +107,57 @@ public sealed class ProductionHostingTests : IDisposable
     [Fact]
     public void Mail_pickup_folder_is_refused_in_production_only()
     {
-        var s = CompleteMain();
+        var s = StagingMain();
         s.Remove("Email:Profiles:Default:Host");
         s.Remove("Email:Profiles:Default:From");
         s["Email:PickupDirectory"] = folder;
-        Assert.Contains(Check(s), p => p.StartsWith("Email:PickupDirectory"));
+        Assert.Contains(Check(new Dictionary<string, string?>(s) { ["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in", ["Portal:LegacyBaseUrl"] = null }),
+            p => p.StartsWith("Email:PickupDirectory"));
         Assert.Empty(Check(s, environment: "Staging"));
+    }
+
+    [Theory]
+    [InlineData(ZedHostKind.Portal)]
+    [InlineData(ZedHostKind.Mobile)]
+    public void Staging_must_not_mail_real_people_and_production_must_not_carry_staging_settings(ZedHostKind kind)
+    {
+        var s = StagingMain();
+        s["Mobile:StorageRoot"] = folder;
+        // Staging without any of the three: refused (portal and mobile host).
+        Assert.Contains(Check(s, kind: kind, environment: "Staging"), p => p.StartsWith("Email:RedirectAllTo or Email:AllowedRecipientDomains"));
+        foreach (var (key, value) in new[] { ("Email:RedirectAllTo", "testers@qcin.org"), ("Email:AllowedRecipientDomains", "qcin.org") })
+        {
+            var staging = new Dictionary<string, string?>(s) { [key] = value, ["Portal:EnvironmentLabel"] = "STAGING" };
+            Assert.Empty(Check(staging, kind: kind, environment: "Staging"));
+            // The same settings in Production: refused, label included.
+            var live = new Dictionary<string, string?>(s) { [key] = value, ["Portal:EnvironmentLabel"] = "STAGING" };
+            var problems = Check(live, kind: kind);
+            Assert.Contains(problems, p => p.StartsWith(key + " is set"));
+            Assert.Contains(problems, p => p.StartsWith("Portal:EnvironmentLabel is set"));
+        }
+        Assert.Contains(Check(new Dictionary<string, string?>(s) { ["Email:RedirectAllTo"] = "not an address" }, kind: kind, environment: "Staging"),
+            p => p.Contains("is not an e-mail address"));
+        // Production with the live addresses and no staging settings passes.
+        var live2 = CompleteMain();
+        live2["Mobile:StorageRoot"] = folder;
+        Assert.Empty(Check(live2, kind: kind));
+    }
+
+    [Theory]
+    [InlineData(ZedHostKind.Portal)]
+    [InlineData(ZedHostKind.Mobile)]
+    public void A_test_environment_may_not_point_at_the_live_site(ZedHostKind kind)
+    {
+        var s = StagingMain();
+        s["Mobile:StorageRoot"] = folder;
+        s["Email:RedirectAllTo"] = "testers@qcin.org";
+        Assert.Empty(Check(s, kind: kind, environment: "Staging"));
+
+        s["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in";
+        s.Remove("Portal:LegacyBaseUrl"); // the shipped default is the live site too
+        var problems = Check(s, kind: kind, environment: "Staging");
+        Assert.Contains(problems, p => p.StartsWith("Portal:PublicBaseUrl points at the live site"));
+        Assert.Contains(problems, p => p.StartsWith("Portal:LegacyBaseUrl points at the live site"));
     }
 
     [Fact]

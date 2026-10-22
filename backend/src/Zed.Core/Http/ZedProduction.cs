@@ -73,6 +73,16 @@ public enum ZedHostKind { Portal, Mobile }
 
 public static class ZedConfigurationCheck
 {
+    /// <summary>The live portal's host, the shipped default of the Portal addresses.</summary>
+    public const string LiveHost = "loginzed.msme.gov.in";
+
+    private static string? DefaultFor(string key) => key switch
+    {
+        "Portal:PublicBaseUrl" => new PortalOptions().PublicBaseUrl,
+        "Portal:LegacyBaseUrl" => new PortalOptions().LegacyBaseUrl,
+        _ => null,
+    };
+
     public static IReadOnlyList<string> Problems(IConfiguration config, IHostEnvironment env, PortalSystem system, ZedHostKind kind)
     {
         var problems = new List<string>();
@@ -95,6 +105,14 @@ public static class ZedConfigurationCheck
 
         var database = new PortalHost(system).Database;
         Require($"ConnectionStrings:{database}");
+        // Staging runs on copies of production data: no mail to real people, and never a staging setting in Production.
+        problems.AddRange(Zed.Core.Email.MailSafety.Problems(config, env));
+        // The shipped defaults are the live addresses: a test environment must set its own, or its mail links and
+        // "open in the old portal" links would send testers (and their actions) to the live site.
+        if (!env.IsProduction())
+            foreach (var key in new[] { "Portal:PublicBaseUrl", "Portal:LegacyBaseUrl" })
+                if (Uri.TryCreate(config[key] ?? DefaultFor(key), UriKind.Absolute, out var u) && u.Host.Equals(LiveHost, StringComparison.OrdinalIgnoreCase))
+                    problems.Add($"{key} points at the live site ({LiveHost}): set this environment's own address");
 
         if (kind == ZedHostKind.Mobile)
         {

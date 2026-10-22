@@ -54,6 +54,7 @@ if (!string.IsNullOrEmpty(pathBase)) app.UsePathBase(pathBase);
 // The consultant app requests ".../SA//SubmitAllocation"; collapse the slashes before routing (hence the explicit UseRouting).
 app.UseLegacyPathNormalization();
 app.UseForwardedHeaders();
+app.UseZedEnvironmentLabel();
 app.UseExceptionHandler();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 else app.UseHsts();

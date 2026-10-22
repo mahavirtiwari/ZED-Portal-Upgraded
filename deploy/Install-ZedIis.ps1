@@ -18,12 +18,24 @@
     - creates or updates the app pool (No Managed Code, integrated, always running, no idle timeout),
     - sets the app pool's environment variables from the settings file (sections "Common", then "Portals" or
       "Mobile", then the app's own section),
-      plus ASPNETCORE_ENVIRONMENT=Production and DataProtection__KeysPath=<KeysRoot>\<app> unless given,
+      plus ASPNETCORE_ENVIRONMENT=<EnvironmentName> (default Production) and DataProtection__KeysPath=<KeysRoot>\<app>
+      unless given,
     - creates the key folder and grants the pool identity Modify on it and on every *StorageRoot folder,
     - points the IIS application at the new folder and pool.
 
   Before changing anything it writes <InstallRoot>\rollback-<time>.json with each application's previous
   physical path and app pool. -Rollback <that file> puts them back (the old pools and folders are not touched).
+
+  A new server (staging, docs/STAGING.md) has no site yet. With -HostName and -CertificateThumbprint it also:
+    - creates the site -SiteName if it does not exist (-CreateSite must be given; root folder <InstallRoot>\main),
+    - adds an https binding <HostName>:443 with SNI and the certificate (LocalMachine\My; it must exist, have its
+      private key, be valid now and cover the host name, wildcards included),
+    - adds the same for every -AdditionalHostNames entry (e.g. the production host name on staging, for the phone
+      tests of docs/STAGING.md),
+    - with -HttpRedirect: an http binding <HostName>:80 and a site-level IIS URL Rewrite rule "ZED-HTTPS" that
+      redirects http to https (301), except /.well-known/acme-challenge/ (win-acme renewals). Needs the IIS URL
+      Rewrite module; without it the http binding is not added.
+  The rollback file records what was created; -Rollback removes those bindings, the rule and a created site.
 
   The settings file holds the secrets: keep it outside source control, readable by administrators only.
   deploy\settings.example.json lists the names. Environment variables of app pools are stored in
@@ -40,6 +52,10 @@
   .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json -Apps Consultancy -Apply
 .EXAMPLE
   .\Install-ZedIis.ps1 -Rollback D:\ZedV4\rollback-20261102-0915.json -Apply
+.EXAMPLE
+  # Staging (docs/STAGING.md): new site, certificate by thumbprint, http -> https
+  .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json `
+      -EnvironmentName Staging -SiteName ZED -CreateSite -HostName zedv3.qci.org.in -CertificateThumbprint <thumbprint> -HttpRedirect
 #>
 [CmdletBinding(DefaultParameterSetName = 'Install')]
 param(
@@ -48,8 +64,13 @@ param(
     [Parameter(ParameterSetName = 'Install')][string]$InstallRoot = 'D:\ZedV4',
     [Parameter(ParameterSetName = 'Install')][string]$KeysRoot,
     [Parameter(ParameterSetName = 'Install')]
-    [ValidateSet('Main', 'Consultancy', 'Surveillance', 'MobileMain', 'MobileConsultancy', 'MobileSurveillance')]
     [string[]]$Apps = @('Main', 'Consultancy', 'Surveillance', 'MobileMain', 'MobileConsultancy', 'MobileSurveillance'),
+    [Parameter(ParameterSetName = 'Install')][ValidateSet('Production', 'Staging')][string]$EnvironmentName = 'Production',
+    [Parameter(ParameterSetName = 'Install')][string]$HostName,
+    [Parameter(ParameterSetName = 'Install')][string]$CertificateThumbprint,
+    [Parameter(ParameterSetName = 'Install')][string[]]$AdditionalHostNames = @(),
+    [Parameter(ParameterSetName = 'Install')][switch]$CreateSite,
+    [Parameter(ParameterSetName = 'Install')][switch]$HttpRedirect,
     [Parameter(Mandatory, ParameterSetName = 'Rollback')][string]$Rollback,
     [string]$SiteName = 'Default Web Site',
     [switch]$Apply
@@ -66,6 +87,11 @@ $catalog = [ordered]@{
     MobileConsultancy  = @{ Path = '/Consultancymobileapi';   Folder = 'mobile';       Pool = 'ZedV4-Mobile-Consultancy';  System = 'Consultancy' }
     MobileSurveillance = @{ Path = '/surveillancemobileapi';  Folder = 'mobile';       Pool = 'ZedV4-Mobile-Surveillance'; System = 'Surveillance' }
 }
+
+# powershell -File passes "a,b" as one string: split the lists.
+$Apps = @($Apps | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$AdditionalHostNames = @($AdditionalHostNames | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+foreach ($a in $Apps) { if (-not $catalog.Contains($a)) { throw "-Apps: unknown application $a (expected: $($catalog.Keys -join ', '))." } }
 
 $mode = if ($Apply) { 'APPLY' } else { 'DRY RUN (add -Apply to make these changes)' }
 Write-Host "Install-ZedIis: $mode" -ForegroundColor Yellow
@@ -94,9 +120,16 @@ $ancm = Join-Path $env:ProgramFiles 'IIS\Asp.Net Core Module\V2\aspnetcorev2.dll
 if (-not (Test-Path $ancm)) { Write-Warning "ASP.NET Core Module V2 not found ($ancm): install the .NET 10 Hosting Bundle." }
 $runtimes = (& dotnet --list-runtimes 2>$null) -join "`n"
 if ($runtimes -notmatch 'Microsoft\.AspNetCore\.App 10\.') { Write-Warning 'ASP.NET Core runtime 10 not found (dotnet --list-runtimes).' }
-if ($iis -and -not (Test-Path "IIS:\Sites\$SiteName")) {
-    $msg = "IIS site '$SiteName' does not exist (Get-Website lists the sites)."
+$siteExists = $iis -and (Test-Path "IIS:\Sites\$SiteName")
+if ($iis -and -not $siteExists -and -not ($PSCmdlet.ParameterSetName -eq 'Install' -and $CreateSite)) {
+    $msg = "IIS site '$SiteName' does not exist (Get-Website lists the sites; -CreateSite with -HostName creates it)."
     if ($Apply) { throw $msg } else { Write-Warning $msg }
+}
+if ($PSCmdlet.ParameterSetName -eq 'Install') {
+    if (($CreateSite -or $HttpRedirect -or $AdditionalHostNames.Count -gt 0 -or $CertificateThumbprint) -and -not $HostName) {
+        throw '-CreateSite, -HttpRedirect, -AdditionalHostNames and -CertificateThumbprint need -HostName.'
+    }
+    if ($HostName -and -not $CertificateThumbprint) { throw '-HostName needs -CertificateThumbprint (the https binding).' }
 }
 
 function Get-AppLocation([string]$Path) {
@@ -141,6 +174,24 @@ function Set-App([string]$Path, [string]$PhysicalPath, [string]$Pool) {
 # ---- rollback -------------------------------------------------------------------------------------------------
 if ($PSCmdlet.ParameterSetName -eq 'Rollback') {
     $saved = Get-Content $Rollback -Raw | ConvertFrom-Json
+    if ($saved.PSObject.Properties['CreatedSite'] -and $saved.CreatedSite) {
+        Step "remove site $SiteName (created by the install; its applications go with it)" { Remove-Website -Name $SiteName }
+        Write-Host 'Rollback done.'
+        return
+    }
+    if ($saved.PSObject.Properties['AddedBindings']) {
+        foreach ($b in @($saved.AddedBindings)) {
+            Step "remove binding $($b.Protocol) $($b.BindingInformation)" {
+                $parts = $b.BindingInformation -split ':'
+                Get-WebBinding -Name $SiteName -Protocol $b.Protocol -Port $parts[1] -HostHeader $parts[2] | Remove-WebBinding
+            }
+        }
+    }
+    if ($saved.PSObject.Properties['AddedRedirectRule'] -and $saved.AddedRedirectRule) {
+        Step "remove the URL Rewrite rule ZED-HTTPS of $SiteName" {
+            Clear-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "system.webServer/rewrite/rules/rule[@name='ZED-HTTPS']"
+        }
+    }
     foreach ($a in $saved.Applications) {
         if (-not $a.PhysicalPath) {
             Step "remove application $($a.Path) (it did not exist before)" { Remove-WebApplication -Site $SiteName -Name $a.Path.TrimStart('/') }
@@ -164,6 +215,85 @@ function Get-Section([string]$Name) {
     $result
 }
 
+# ---- site and bindings (new servers: -HostName) ----------------------------------------------------------------
+$createdSite = $false
+$addedBindings = New-Object System.Collections.Generic.List[object]
+$addedRule = $false
+function Test-HostCovered([string]$Name, [string[]]$DnsNames) {
+    foreach ($d in $DnsNames) {
+        if ($d -ieq $Name) { return $true }
+        if ($d.StartsWith('*.') -and $Name -like "*.$($d.Substring(2))" -and ($Name.Split('.').Count -eq $d.Split('.').Count)) { return $true }
+    }
+    return $false
+}
+if ($HostName) {
+    $hosts = @($HostName) + @($AdditionalHostNames | Where-Object { $_ -and $_ -ne $HostName })
+    $thumb = ($CertificateThumbprint -replace '[^0-9A-Fa-f]', '').ToUpperInvariant()
+    $cert = Get-Item "Cert:\LocalMachine\My\$thumb" -ErrorAction SilentlyContinue
+    if (-not $cert) {
+        $msg = "Certificate $thumb is not in LocalMachine\My (import the .pfx there first; docs/STAGING.md)."
+        if ($Apply) { throw $msg } else { Write-Warning $msg }
+    }
+    else {
+        $dns = @($cert.DnsNameList | ForEach-Object { $_.Unicode })
+        if (-not $cert.HasPrivateKey) { throw "Certificate $thumb has no private key." }
+        if ($cert.NotAfter -lt (Get-Date) -or $cert.NotBefore -gt (Get-Date)) { throw "Certificate $thumb is not valid now ($($cert.NotBefore) - $($cert.NotAfter))." }
+        foreach ($h in $hosts) { if (-not (Test-HostCovered $h $dns)) { Write-Warning "Certificate $thumb does not cover $h (it covers: $($dns -join ', '))." } }
+        Write-Host "    certificate: $($cert.Subject), valid to $($cert.NotAfter.ToString('yyyy-MM-dd'))"
+    }
+    if ($iis -and -not $siteExists) {
+        $rootFolder = Join-Path $InstallRoot 'main'
+        Step "create site $SiteName (root $rootFolder, https ${HostName}:443)" {
+            New-Item -ItemType Directory -Force -Path $rootFolder | Out-Null
+            New-Website -Name $SiteName -PhysicalPath $rootFolder -HostHeader $HostName -Port 443 -Ssl -SslFlags 1 | Out-Null
+        }
+        $createdSite = $true
+        $addedBindings.Add([pscustomobject]@{ Protocol = 'https'; BindingInformation = "*:443:$HostName" })
+    }
+    elseif (-not $iis) { Write-Warning 'IIS is not installed here: the site and bindings cannot be checked.' }
+    foreach ($h in $hosts) {
+        $existing = if ($iis -and ($siteExists -or -not $Apply)) { Get-WebBinding -Name $SiteName -Protocol https -Port 443 -HostHeader $h -ErrorAction SilentlyContinue } else { $null }
+        if (-not $existing -and -not ($createdSite -and $h -eq $HostName)) {
+            Step "add binding https *:443:$h (SNI) to $SiteName" { New-WebBinding -Name $SiteName -Protocol https -Port 443 -HostHeader $h -SslFlags 1 }
+            $addedBindings.Add([pscustomobject]@{ Protocol = 'https'; BindingInformation = "*:443:$h" })
+        }
+        Step "attach certificate $thumb to ${h}:443 (SNI)" {
+            $binding = Get-WebBinding -Name $SiteName -Protocol https -Port 443 -HostHeader $h
+            $binding.AddSslCertificate($thumb, 'My')
+        }
+    }
+    if ($HttpRedirect) {
+        $rewrite = $iis -and (Get-WebGlobalModule -Name RewriteModule -ErrorAction SilentlyContinue)
+        if (-not $rewrite) {
+            Write-Warning 'IIS URL Rewrite is not installed: no http binding is added (http keeps answering 404). Install URL Rewrite 2.1 and run again for the redirect.'
+        }
+        else {
+            foreach ($h in $hosts) {
+                $existingHttp = Get-WebBinding -Name $SiteName -Protocol http -Port 80 -HostHeader $h -ErrorAction SilentlyContinue
+                if (-not $existingHttp) {
+                    Step "add binding http *:80:$h to $SiteName (redirected to https)" { New-WebBinding -Name $SiteName -Protocol http -Port 80 -HostHeader $h }
+                    $addedBindings.Add([pscustomobject]@{ Protocol = 'http'; BindingInformation = "*:80:$h" })
+                }
+            }
+            $ruleExists = Get-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "system.webServer/rewrite/rules/rule[@name='ZED-HTTPS']" -Name name -ErrorAction SilentlyContinue
+            if (-not $ruleExists) {
+                Step "add URL Rewrite rule ZED-HTTPS on $SiteName (http -> https 301, except /.well-known/acme-challenge/)" {
+                    $filter = 'system.webServer/rewrite/rules'
+                    Add-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $filter -Name '.' -Value @{ name = 'ZED-HTTPS'; stopProcessing = 'True' }
+                    $rule = "$filter/rule[@name='ZED-HTTPS']"
+                    Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/match" -Name url -Value '(.*)'
+                    Add-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/conditions" -Name '.' -Value @{ input = '{HTTPS}'; pattern = '^OFF$' }
+                    Add-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/conditions" -Name '.' -Value @{ input = '{REQUEST_URI}'; pattern = '^/\.well-known/acme-challenge/'; negate = 'True' }
+                    Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/action" -Name type -Value 'Redirect'
+                    Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/action" -Name url -Value 'https://{HTTP_HOST}/{R:1}'
+                    Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "$rule/action" -Name redirectType -Value 'Permanent'
+                }
+                $addedRule = $true
+            }
+        }
+    }
+}
+
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmm'
 $rollbackFile = Join-Path $InstallRoot "rollback-$timestamp.json"
 $before = foreach ($name in $Apps) {
@@ -172,7 +302,8 @@ $before = foreach ($name in $Apps) {
 }
 Step "save the current applications to $rollbackFile" {
     New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-    @{ Site = $SiteName; Saved = (Get-Date).ToString('o'); Applications = @($before) } | ConvertTo-Json -Depth 4 | Set-Content $rollbackFile -Encoding UTF8
+    @{ Site = $SiteName; Saved = (Get-Date).ToString('o'); Applications = @($before); CreatedSite = $createdSite
+       AddedBindings = @($addedBindings); AddedRedirectRule = $addedRule } | ConvertTo-Json -Depth 4 | Set-Content $rollbackFile -Encoding UTF8
 }
 foreach ($b in $before) { Write-Host "    now: $($b.Path) -> $($b.PhysicalPath) [$($b.ApplicationPool)]" }
 
@@ -191,7 +322,10 @@ foreach ($name in $Apps) {
     foreach ($group in @($(if ($app.System) { 'Mobile' } else { 'Portals' }), $name)) {
         foreach ($kv in (Get-Section $group).GetEnumerator()) { $vars[$kv.Key] = $kv.Value }
     }
-    if (-not $vars.Contains('ASPNETCORE_ENVIRONMENT')) { $vars['ASPNETCORE_ENVIRONMENT'] = 'Production' }
+    if (-not $vars.Contains('ASPNETCORE_ENVIRONMENT')) { $vars['ASPNETCORE_ENVIRONMENT'] = $EnvironmentName }
+    if ($vars['ASPNETCORE_ENVIRONMENT'] -ne $EnvironmentName) {
+        Write-Warning "$name`: the settings say ASPNETCORE_ENVIRONMENT=$($vars['ASPNETCORE_ENVIRONMENT']) but -EnvironmentName is $EnvironmentName; the settings win."
+    }
     if (-not $vars.Contains('DataProtection__KeysPath')) { $vars['DataProtection__KeysPath'] = $keys }
     if ($app.System) { $vars['Mobile__System'] = $app.System }
     $empty = @($vars.Keys | Where-Object { [string]::IsNullOrWhiteSpace($vars[$_]) })
