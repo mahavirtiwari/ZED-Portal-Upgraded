@@ -4,6 +4,16 @@ The rehearsal of the cut-over (CUTOVER.md 1.5) runs here: V4 in **its own databa
 server's SQL Server 2025 Express (`ZEDV4_…`, section 3), Environment `Staging`. Everything below is done by the server team; the developers have no access to
 the server. Run each step in order and fill in the timing sheet (section 9): the timings decide the cut-over window.
 
+**From Git, scripted.** `deploy\Build-ZedRelease.ps1 -Output <folder> [-Ref <branch, tag or commit>]` clones the
+repository at that commit, runs `Publish-Zed.ps1` (tests included) and zips the package; it runs wherever Git, the
+.NET 10 SDK and Node 24 are installed (the server has none of them, so normally a build PC). On the server,
+`deploy\Invoke-ZedStaging.ps1 -Step <step> [-Apply]` runs sections 3.0 to 6 from the package folder, one step at a
+time, each a preview until `-Apply`: Check, Databases, Migrations, Fixes, ReferenceData, ProcedureLinks, Settings,
+Site, Jobs, Logins, Accounts, CutoverFix, Test (also Rollback and TearDown). It fills in the SQL scripts' variables
+itself (in copies under `E:\ZedStaging\run`), checks the settings file by name without showing values, and logs each
+step to `E:\ZedStaging\logs` (except Accounts, which shows the one-time links on screen only). The database steps also
+run from a plain Git checkout of the repository.
+
 ## 1. What the server looks like from outside (2026-10-22)
 
 | Check | Result | Meaning |
