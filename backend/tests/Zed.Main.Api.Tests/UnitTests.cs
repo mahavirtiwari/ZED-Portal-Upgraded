@@ -36,6 +36,22 @@ public sealed class UdyamParsingTests
     }
 
     [Fact]
+    public void Builds_the_legacy_path_with_the_key_as_configured()
+    {
+        // A made-up key in the service's format (prefix + base64 ending in '=').
+        Assert.Equal("GetUdyam/UDYAM-XX-00-0000001,9000000000,testkey-QUJDRA==",
+            UdyamClient.BuildPath("UDYAM-XX-00-0000001", "9000000000", "testkey-QUJDRA=="));
+        // Typed values are escaped, so they cannot add path segments or a query.
+        Assert.Equal("GetUdyam/UDYAM%2F..%3Fx%3D1,90%2C00,k+1",
+            UdyamClient.BuildPath("UDYAM/..?x=1", "90,00", "k+1"));
+        // A key character that would break the path is escaped.
+        Assert.EndsWith(",a%2Fb", UdyamClient.BuildPath("U", "M", "a/b"));
+        // The full address keeps the key as built.
+        var uri = new Uri(new Uri("https://udyogaadhaar.gov.in/sv/UAMRestServiceAssist.svc/"), UdyamClient.BuildPath("UDYAM-XX-00-0000001", "9000000000", "testkey-QUJDRA=="));
+        Assert.EndsWith("/sv/UAMRestServiceAssist.svc/GetUdyam/UDYAM-XX-00-0000001,9000000000,testkey-QUJDRA==", uri.AbsoluteUri);
+    }
+
+    [Fact]
     public void Rejects_dtd_entities()
     {
         const string xml = """<?xml version="1.0"?><!DOCTYPE x [<!ENTITY e SYSTEM "file:///c:/windows/win.ini">]><NewDataSet><BasicDetail><A>&e;</A></BasicDetail></NewDataSet>""";

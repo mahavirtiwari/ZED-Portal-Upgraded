@@ -36,9 +36,19 @@ public sealed class UdyamClient(HttpClient http, IOptions<UdyamOptions> options)
         if (string.IsNullOrEmpty(o.AccessKey))
             throw new InvalidOperationException("Udyam:AccessKey is not configured.");
 
-        var path = "GetUdyam/" + Uri.EscapeDataString($"{registrationNo},{mobileNo},{o.AccessKey}").Replace("%2C", ",");
-        await using var stream = await http.GetStreamAsync(new Uri(new Uri(o.BaseUrl), path), ct);
+        await using var stream = await http.GetStreamAsync(new Uri(new Uri(o.BaseUrl), BuildPath(registrationNo, mobileNo, o.AccessKey)), ct);
         return Parse(stream);
+    }
+
+    /// <summary>
+    /// GetUdyam/{registration},{mobile},{key}, as the legacy MsmeController built it. The typed values are escaped; the
+    /// configured key is sent as it is (its base64 '=' and '+' unescaped, as the service has always received them), with
+    /// only the characters that would break the path escaped.
+    /// </summary>
+    public static string BuildPath(string registrationNo, string mobileNo, string accessKey)
+    {
+        var key = accessKey.Replace("%", "%25").Replace("/", "%2F").Replace("?", "%3F").Replace("#", "%23").Replace(" ", "%20");
+        return "GetUdyam/" + Uri.EscapeDataString(registrationNo) + "," + Uri.EscapeDataString(mobileNo) + "," + key;
     }
 
     /// <summary>
