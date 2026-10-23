@@ -28,6 +28,9 @@
 --                                never save them in this file. Needed for new logins (and with @ResetPasswords = 1).
 --   @AuthMode = 'WINDOWS'        Windows logins: a gMSA (N'DOMAIN\ZedV4Main$') or, only when SQL Server runs on the
 --                                IIS machine, the app pool identity (N'IIS APPPOOL\ZedV4-Main'). Passwords are ignored.
+--   @DatabasePrefix = N'ZEDV4_'  for a prefixed set (database\setup.ps1 -DatabasePrefix): every database below gets
+--                                the prefix (ZEDV4_ZEDCS_V2_LIVE, ZEDV4_KAWACH, ...; also DefaultDatabase in @Logins:
+--                                keep the logical names there). Databases without the prefix are not touched.
 --
 -- What breaks: nothing for the old sites (their login is not touched). A V4 process gets a permission error if it
 -- needs something not granted here; add it here and re-run, never grant db_owner. Revoke the old login only after the
@@ -39,6 +42,7 @@ SET XACT_ABORT ON;
 DECLARE @Mode varchar(10) = 'PREVIEW';
 DECLARE @AuthMode varchar(10) = 'SQL';
 DECLARE @ResetPasswords bit = 0;
+DECLARE @DatabasePrefix sysname = N'';
 
 -- One row per login. Family: app (the three portals and the three mobile deployments), jobs (Zed.Jobs),
 -- readonly (main's ConnectionStrings:Consultancy/Surveillance and the Consultancy/Surveillance hosts' ConnectionStrings:Main).
@@ -70,6 +74,14 @@ INSERT @CrossDb VALUES
     (N'KAWACH', N'UserAreaOfKnowledge', 'SELECT'), (N'KAWACH', N'UserNicSectors', 'SELECT'), (N'KAWACH', N'Users', 'SELECT'),
     (N'KAWACH', N'WebinarRegistrations', 'SELECT'),
     (N'ZED_IMPACT_ASSESSMENT', N'Msme', 'SELECT'), (N'ZED_IMPACT_ASSESSMENT', N'Msme', 'UPDATE');
+
+-- The names on this instance (@DatabasePrefix).
+IF @DatabasePrefix LIKE N'%[^A-Za-z0-9_]%' OR LEN(@DatabasePrefix) > 20 THROW 50204, '@DatabasePrefix: letters, digits and _ only (at most 20).', 1;
+UPDATE @Logins SET DefaultDatabase = @DatabasePrefix + DefaultDatabase;
+UPDATE @ZedDbs SET Db = @DatabasePrefix + Db;
+UPDATE @ReadOnlyProcs SET Db = @DatabasePrefix + Db;
+UPDATE @CrossDb SET Db = @DatabasePrefix + Db;
+DECLARE @MainDb sysname = @DatabasePrefix + N'ZEDCS_V2_LIVE';
 
 IF @Mode NOT IN ('PREVIEW', 'APPLY') THROW 50200, '@Mode must be PREVIEW or APPLY.', 1;
 IF @AuthMode NOT IN ('SQL', 'WINDOWS') THROW 50201, '@AuthMode must be SQL or WINDOWS.', 1;
@@ -163,9 +175,9 @@ SELECT d.Db, N'GRANT ' + g.Perm + N' ON SCHEMA::[dbo] TO ' + QUOTENAME(g.RoleNam
 FROM #Db d CROSS JOIN @SchemaGrants g WHERE d.Kind = 'zed'
   AND NOT EXISTS (SELECT 1 FROM #G x WHERE x.Db = d.Db AND x.Grantee = g.RoleName AND x.Perm = g.Perm AND x.ClassDesc = 'SCHEMA' AND x.ObjName = N'dbo');
 INSERT #Plan (Db, Sql, Display)
-SELECT N'ZEDCS_V2_LIVE', N'GRANT ALTER ON [dbo].[WebSiteCounts] TO [zed_v4_jobs];', NULL
-WHERE EXISTS (SELECT 1 FROM #O WHERE Db = N'ZEDCS_V2_LIVE' AND Name = N'WebSiteCounts' AND Type = 'U')
-  AND NOT EXISTS (SELECT 1 FROM #G WHERE Db = N'ZEDCS_V2_LIVE' AND Grantee = N'zed_v4_jobs' AND Perm = N'ALTER' AND ObjName = N'WebSiteCounts');
+SELECT @MainDb, N'GRANT ALTER ON [dbo].[WebSiteCounts] TO [zed_v4_jobs];', NULL
+WHERE EXISTS (SELECT 1 FROM #O WHERE Db = @MainDb AND Name = N'WebSiteCounts' AND Type = 'U')
+  AND NOT EXISTS (SELECT 1 FROM #G WHERE Db = @MainDb AND Grantee = N'zed_v4_jobs' AND Perm = N'ALTER' AND ObjName = N'WebSiteCounts');
 INSERT #Plan (Db, Sql, Display)
 SELECT r.Db, N'GRANT EXECUTE ON [dbo].' + QUOTENAME(r.ProcName) + N' TO [zed_v4_readonly];', NULL
 FROM @ReadOnlyProcs r JOIN #Db d ON d.Db = r.Db

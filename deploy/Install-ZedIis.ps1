@@ -37,6 +37,13 @@
       Rewrite module; without it the http binding is not added.
   The rollback file records what was created; -Rollback removes those bindings, the rule and a created site.
 
+  -AllowedIpRanges (e.g. 203.0.113.10, 198.51.100.0/24) limits the site to those addresses with IIS IP and Domain
+  Restrictions (feature Web-IP-Security), configured for this site only: other sites of a shared server keep their
+  access. Everything else gets 404. The rollback file keeps the site's previous IP restrictions; -Rollback restores them.
+
+  The install folder, the key folder and every *StorageRoot / KeysPath setting are refused on an Azure temporary disk
+  (it holds DATALOSS_WARNING_README.txt and is wiped when the VM is redeployed).
+
   The settings file holds the secrets: keep it outside source control, readable by administrators only.
   deploy\settings.example.json lists the names. Environment variables of app pools are stored in
   applicationHost.config (readable by administrators only).
@@ -45,23 +52,24 @@
   Windows PowerShell 5.1 or later.
 
 .EXAMPLE
-  .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json            # dry run
+  .\Install-ZedIis.ps1 -Package E:\Releases\zed-2026.11.02-0900 -Settings E:\ZedV4\settings.json            # dry run
 .EXAMPLE
-  .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json -Apply
+  .\Install-ZedIis.ps1 -Package E:\Releases\zed-2026.11.02-0900 -Settings E:\ZedV4\settings.json -Apply
 .EXAMPLE
-  .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json -Apps Consultancy -Apply
+  .\Install-ZedIis.ps1 -Package E:\Releases\zed-2026.11.02-0900 -Settings E:\ZedV4\settings.json -Apps Consultancy -Apply
 .EXAMPLE
-  .\Install-ZedIis.ps1 -Rollback D:\ZedV4\rollback-20261102-0915.json -Apply
+  .\Install-ZedIis.ps1 -Rollback E:\ZedV4\rollback-20261102-0915.json -Apply
 .EXAMPLE
   # Staging (docs/STAGING.md): new site, certificate by thumbprint, http -> https
-  .\Install-ZedIis.ps1 -Package D:\Releases\zed-2026.11.02-0900 -Settings D:\ZedV4\settings.json `
-      -EnvironmentName Staging -SiteName ZED -CreateSite -HostName zedv3.qci.org.in -CertificateThumbprint <thumbprint> -HttpRedirect
+  .\Install-ZedIis.ps1 -Package E:\Releases\zed-2026.11.02-0900 -Settings E:\ZedV4\settings.json `
+      -EnvironmentName Staging -SiteName ZED -CreateSite -HostName zedv3.qci.org.in -CertificateThumbprint <thumbprint> -HttpRedirect `
+      -AllowedIpRanges 203.0.113.10,198.51.100.0/24
 #>
 [CmdletBinding(DefaultParameterSetName = 'Install')]
 param(
     [Parameter(Mandatory, ParameterSetName = 'Install')][string]$Package,
     [Parameter(Mandatory, ParameterSetName = 'Install')][string]$Settings,
-    [Parameter(ParameterSetName = 'Install')][string]$InstallRoot = 'D:\ZedV4',
+    [Parameter(ParameterSetName = 'Install')][string]$InstallRoot = 'E:\ZedV4',
     [Parameter(ParameterSetName = 'Install')][string]$KeysRoot,
     [Parameter(ParameterSetName = 'Install')]
     [string[]]$Apps = @('Main', 'Consultancy', 'Surveillance', 'MobileMain', 'MobileConsultancy', 'MobileSurveillance'),
@@ -71,6 +79,7 @@ param(
     [Parameter(ParameterSetName = 'Install')][string[]]$AdditionalHostNames = @(),
     [Parameter(ParameterSetName = 'Install')][switch]$CreateSite,
     [Parameter(ParameterSetName = 'Install')][switch]$HttpRedirect,
+    [Parameter(ParameterSetName = 'Install')][string[]]$AllowedIpRanges = @(),
     [Parameter(Mandatory, ParameterSetName = 'Rollback')][string]$Rollback,
     [string]$SiteName = 'Default Web Site',
     [switch]$Apply
@@ -91,6 +100,31 @@ $catalog = [ordered]@{
 # powershell -File passes "a,b" as one string: split the lists.
 $Apps = @($Apps | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 $AdditionalHostNames = @($AdditionalHostNames | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+$AllowedIpRanges = @($AllowedIpRanges | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
+# "1.2.3.4" or "1.2.3.0/24" -> @{ ipAddress; subnetMask }
+function ConvertTo-IpEntry([string]$Range) {
+    $parts = $Range -split '/'
+    $ip = $null
+    if (-not [System.Net.IPAddress]::TryParse($parts[0], [ref]$ip) -or $ip.AddressFamily -ne 'InterNetwork') { throw "-AllowedIpRanges: '$Range' is not an IPv4 address or range." }
+    $bits = 32
+    if ($parts.Count -eq 2) { if (-not [int]::TryParse($parts[1], [ref]$bits) -or $bits -lt 8 -or $bits -gt 32) { throw "-AllowedIpRanges: '$Range' needs a prefix /8 to /32." } }
+    elseif ($parts.Count -gt 2) { throw "-AllowedIpRanges: '$Range' is not a range." }
+    $mask = [uint32]0
+    if ($bits -gt 0) { $mask = [uint32]([math]::Pow(2, 32) - [math]::Pow(2, 32 - $bits)) }
+    $maskText = (3..0 | ForEach-Object { ($mask -shr ($_ * 8)) -band 255 }) -join '.'
+    @{ ipAddress = $ip.ToString(); subnetMask = $maskText }
+}
+$ipEntries = @($AllowedIpRanges | ForEach-Object { ConvertTo-IpEntry $_ })
+
+# Azure's temporary disk is wiped on redeploy: nothing of V4 may live there.
+function Assert-NotTemporaryDisk([string]$Path, [string]$What) {
+    if (-not $Path) { return }
+    $root = [System.IO.Path]::GetPathRoot($Path)
+    if ($root -and (Test-Path (Join-Path $root 'DATALOSS_WARNING_README.txt'))) {
+        throw "$What ($Path) is on $root, an Azure temporary disk (DATALOSS_WARNING_README.txt): it is wiped when the VM is redeployed. Use a data disk."
+    }
+}
 foreach ($a in $Apps) { if (-not $catalog.Contains($a)) { throw "-Apps: unknown application $a (expected: $($catalog.Keys -join ', '))." } }
 
 $mode = if ($Apply) { 'APPLY' } else { 'DRY RUN (add -Apply to make these changes)' }
@@ -192,6 +226,16 @@ if ($PSCmdlet.ParameterSetName -eq 'Rollback') {
             Clear-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "system.webServer/rewrite/rules/rule[@name='ZED-HTTPS']"
         }
     }
+    if ($saved.PSObject.Properties['IpSecurityChanged'] -and $saved.IpSecurityChanged) {
+        Step "restore the IP restrictions of $SiteName (allowUnlisted=$($saved.IpSecurityBefore.AllowUnlisted), $(@($saved.IpSecurityBefore.Entries).Count) entries)" {
+            $f = 'system.webServer/security/ipSecurity'
+            Clear-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "$f/add" -ErrorAction SilentlyContinue
+            Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name allowUnlisted -Value ([bool]$saved.IpSecurityBefore.AllowUnlisted)
+            foreach ($e in @($saved.IpSecurityBefore.Entries)) {
+                Add-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name '.' -Value @{ ipAddress = $e.ipAddress; subnetMask = $e.subnetMask; allowed = [bool]$e.allowed }
+            }
+        }
+    }
     foreach ($a in $saved.Applications) {
         if (-not $a.PhysicalPath) {
             Step "remove application $($a.Path) (it did not exist before)" { Remove-WebApplication -Site $SiteName -Name $a.Path.TrimStart('/') }
@@ -207,6 +251,14 @@ $Package = (Resolve-Path $Package).Path
 if (-not (Test-Path (Join-Path $Package 'VERSION.txt'))) { throw "$Package is not a Publish-Zed.ps1 package (no VERSION.txt)." }
 if (-not $KeysRoot) { $KeysRoot = Join-Path $InstallRoot 'keys' }
 $settingsData = Get-Content $Settings -Raw | ConvertFrom-Json
+Assert-NotTemporaryDisk $InstallRoot '-InstallRoot'
+Assert-NotTemporaryDisk $KeysRoot '-KeysRoot'
+foreach ($section in $settingsData.PSObject.Properties) {
+    if ($section.Value -isnot [pscustomobject]) { continue }
+    foreach ($p in $section.Value.PSObject.Properties) {
+        if ($p.Name -match '(StorageRoot|KeysPath)$') { Assert-NotTemporaryDisk ([string]$p.Value) "$($section.Name).$($p.Name)" }
+    }
+}
 
 function Get-Section([string]$Name) {
     $result = [ordered]@{}
@@ -294,6 +346,35 @@ if ($HostName) {
     }
 }
 
+# ---- IP restrictions (-AllowedIpRanges, this site only) ---------------------------------------------------------
+$ipChanged = $false
+$ipBefore = $null
+if ($ipEntries.Count -gt 0) {
+    $f = 'system.webServer/security/ipSecurity'
+    $ipModule = $iis -and (Get-WebGlobalModule -Name IpRestrictionModule -ErrorAction SilentlyContinue)
+    if (-not $ipModule) {
+        $msg = 'IIS IP and Domain Restrictions is not installed: Install-WindowsFeature Web-IP-Security, then run again.'
+        if ($Apply) { throw $msg } else { Write-Warning $msg }
+    }
+    if ($iis -and $siteExists) {
+        $ipBefore = [pscustomobject]@{
+            AllowUnlisted = [bool](Get-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name allowUnlisted).Value
+            Entries = @(Get-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "$f/add" | ForEach-Object { [pscustomobject]@{ ipAddress = $_.ipAddress; subnetMask = $_.subnetMask; allowed = $_.allowed } })
+        }
+    }
+    else { $ipBefore = [pscustomobject]@{ AllowUnlisted = $true; Entries = @() } }
+    $list = ($ipEntries | ForEach-Object { "$($_.ipAddress)/$($_.subnetMask)" }) -join ', '
+    Step "limit site $SiteName to $list (IIS IP restrictions, other addresses get 404; other sites unchanged)" {
+        Clear-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "$f/add" -ErrorAction SilentlyContinue
+        foreach ($e in $ipEntries) {
+            Add-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name '.' -Value @{ ipAddress = $e.ipAddress; subnetMask = $e.subnetMask; allowed = $true }
+        }
+        Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name allowUnlisted -Value $false
+        Set-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name denyAction -Value 'NotFound'
+    }
+    $ipChanged = $true
+}
+
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmm'
 $rollbackFile = Join-Path $InstallRoot "rollback-$timestamp.json"
 $before = foreach ($name in $Apps) {
@@ -303,7 +384,8 @@ $before = foreach ($name in $Apps) {
 Step "save the current applications to $rollbackFile" {
     New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
     @{ Site = $SiteName; Saved = (Get-Date).ToString('o'); Applications = @($before); CreatedSite = $createdSite
-       AddedBindings = @($addedBindings); AddedRedirectRule = $addedRule } | ConvertTo-Json -Depth 4 | Set-Content $rollbackFile -Encoding UTF8
+       AddedBindings = @($addedBindings); AddedRedirectRule = $addedRule; IpSecurityChanged = $ipChanged; IpSecurityBefore = $ipBefore } |
+            ConvertTo-Json -Depth 5 | Set-Content $rollbackFile -Encoding UTF8
 }
 foreach ($b in $before) { Write-Host "    now: $($b.Path) -> $($b.PhysicalPath) [$($b.ApplicationPool)]" }
 

@@ -30,6 +30,9 @@
 --      site. One module at a time; a module that cannot be re-created is listed and left as it is. This makes the
 --      staging code differ from production: run it AFTER the fix scripts were rehearsed (docs/STAGING.md 3.5).
 -- Step 1 also rewrites the production host in PageSettings.FilePath (home-page banner) and ApiClientTokens.BaseUrl.
+-- @RewriteHosts = 0 skips step 1 (for databases another staging site shares and whose links must stay as they are).
+-- @DatabasePrefix = N'ZEDV4_': work on the prefixed set (database\setup.ps1 -DatabasePrefix: ZEDV4_ZEDCS_V2_LIVE, ...)
+-- instead; databases without the prefix (an older staging set on the same server) are then not touched.
 -- The other applications' databases on the server are not touched.
 --
 -- @Mode = 'PREVIEW' (default): counts only, changes nothing. 'APPLY': steps 1-5 in one transaction per database, then
@@ -46,14 +49,17 @@ DECLARE @ThisIsStaging varchar(3) = NULL;               -- type YES to confirm t
 DECLARE @ExpectedServerName sysname = NULL;             -- must equal SELECT @@SERVERNAME on this server
 DECLARE @ProductionHost varchar(200) = 'loginzed.msme.gov.in';
 DECLARE @StagingBaseUrl varchar(200) = 'https://zedv3.qci.org.in';
+DECLARE @RewriteHosts bit = 1;                          -- step 1 (0: leave stored links as they are)
 DECLARE @DisableApiClients bit = 1;
 DECLARE @ScramblePasswords bit = 0;
 DECLARE @MaskContacts bit = 0;
 DECLARE @RewriteModuleHosts bit = 0;
 DECLARE @Testers nvarchar(max) = N'';                   -- comma-separated UserIds / ZED IDs kept as they are
+DECLARE @DatabasePrefix sysname = N'';                  -- N'ZEDV4_' for the prefixed V4 set
 
 -- ---------------------------------------------------------------- guards
 IF @Mode NOT IN ('PREVIEW', 'APPLY') THROW 50200, '@Mode must be PREVIEW or APPLY.', 1;
+IF @DatabasePrefix LIKE N'%[^A-Za-z0-9_]%' OR LEN(@DatabasePrefix) > 20 THROW 50205, '@DatabasePrefix: letters, digits and _ only (at most 20).', 1;
 IF CAST(SERVERPROPERTY('EngineEdition') AS int) = 8 OR @@SERVERNAME LIKE '%.database.windows.net%'
     THROW 50201, 'This is an Azure SQL Managed Instance (production runs on one): refused.', 1;
 IF ISNULL(@ThisIsStaging, '') <> 'YES' THROW 50202, 'Refused: set @ThisIsStaging = ''YES'' after checking this is the staging server.', 1;
@@ -64,8 +70,8 @@ IF RIGHT(@StagingBaseUrl, 1) = '/' SET @StagingBaseUrl = LEFT(@StagingBaseUrl, L
 IF @StagingBaseUrl NOT LIKE 'https://%' OR @StagingBaseUrl LIKE '%' + @ProductionHost + '%'
     THROW 50204, 'Refused: @StagingBaseUrl must be an https address that is not the production host.', 1;
 PRINT CONCAT('Mode ', @Mode, ' on ', @@SERVERNAME, ': ', @ProductionHost, ' -> ', @StagingBaseUrl,
-             ' | partner APIs off: ', @DisableApiClients, ' | scramble passwords: ', @ScramblePasswords, ' | mask contacts: ', @MaskContacts,
-             ' | rewrite module hosts: ', @RewriteModuleHosts);
+             ' | stored links -> staging: ', @RewriteHosts, ' | partner APIs off: ', @DisableApiClients, ' | scramble passwords: ', @ScramblePasswords, ' | mask contacts: ', @MaskContacts,
+             ' | rewrite module hosts: ', @RewriteModuleHosts, ' | databases: ', @DatabasePrefix, 'ZEDCS_V2_LIVE, ', @DatabasePrefix, 'ZED_CONSULTANT, ', @DatabasePrefix, 'ZED_SURVEILLANCE');
 
 IF OBJECT_ID('tempdb..#Testers') IS NOT NULL DROP TABLE #Testers;
 CREATE TABLE #Testers (Id varchar(50) COLLATE DATABASE_DEFAULT PRIMARY KEY);
@@ -78,7 +84,7 @@ CREATE TABLE #Report (Db sysname, Step varchar(120), Rows bigint, Note nvarchar(
 
 DECLARE @apply bit = CASE WHEN @Mode = 'APPLY' THEN 1 ELSE 0 END;
 DECLARE @hostPattern varchar(220) = '%://' + @ProductionHost + '%';
-DECLARE @params nvarchar(400) = N'@apply bit, @host varchar(200), @hostPattern varchar(220), @base varchar(200), @disableApi bit, @scramble bit';
+DECLARE @params nvarchar(400) = N'@apply bit, @host varchar(200), @hostPattern varchar(220), @base varchar(200), @disableApi bit, @scramble bit, @rewriteHosts bit';
 
 -- ---------------------------------------------------------------- steps 1-5, run inside each database
 DECLARE @body nvarchar(max) = N'
@@ -86,8 +92,8 @@ SET NOCOUNT ON; SET XACT_ABORT ON;
 DECLARE @n bigint;
 IF @apply = 1 BEGIN TRAN;
 
--- 1. UrlsMasterData
-IF OBJECT_ID(N''dbo.UrlsMasterData'', N''U'') IS NOT NULL
+-- 1. UrlsMasterData (@RewriteHosts = 1)
+IF @rewriteHosts = 1 AND OBJECT_ID(N''dbo.UrlsMasterData'', N''U'') IS NOT NULL
 BEGIN
     SELECT @n = COUNT(*) FROM dbo.UrlsMasterData WHERE UrlName LIKE @hostPattern;
     INSERT #Report VALUES (DB_NAME(), ''1 UrlsMasterData rows on the production host -> staging'', @n, NULL);
@@ -101,7 +107,7 @@ BEGIN
 END
 -- 1b. other stored absolute links: the home-page banner (SP_MASTER_INSERT_HOME_PAGE_SETTINGS prefixes the live host)
 --     and the partners'' base addresses (SP_API_KEY_MAKER)
-IF COL_LENGTH(N''dbo.PageSettings'', N''FilePath'') IS NOT NULL
+IF @rewriteHosts = 1 AND COL_LENGTH(N''dbo.PageSettings'', N''FilePath'') IS NOT NULL
 BEGIN
     EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.PageSettings WHERE FilePath LIKE @hp'', N''@hp varchar(220), @n bigint OUTPUT'', @hp = @hostPattern, @n = @n OUTPUT;
     INSERT #Report VALUES (DB_NAME(), ''1 PageSettings.FilePath on the production host -> staging'', @n, NULL);
@@ -109,7 +115,7 @@ BEGIN
         EXEC sp_executesql N''UPDATE dbo.PageSettings SET FilePath = @b + SUBSTRING(FilePath, CHARINDEX(@h, FilePath) + LEN(@h), 500) WHERE FilePath LIKE @hp'',
              N''@b varchar(200), @h varchar(200), @hp varchar(220)'', @b = @base, @h = @host, @hp = @hostPattern;
 END
-IF COL_LENGTH(N''dbo.ApiClientTokens'', N''BaseUrl'') IS NOT NULL
+IF @rewriteHosts = 1 AND COL_LENGTH(N''dbo.ApiClientTokens'', N''BaseUrl'') IS NOT NULL
 BEGIN
     EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.ApiClientTokens WHERE BaseUrl LIKE @hp'', N''@hp varchar(220), @n bigint OUTPUT'', @hp = @hostPattern, @n = @n OUTPUT;
     INSERT #Report VALUES (DB_NAME(), ''1 ApiClientTokens.BaseUrl on the production host -> staging'', @n, NULL);
@@ -315,17 +321,17 @@ IF @bad > 0 INSERT #Report VALUES (DB_NAME(), ''7 modules left as they are'', @b
 -- ---------------------------------------------------------------- run
 DECLARE @db sysname, @call nvarchar(max);
 DECLARE dbs CURSOR LOCAL FAST_FORWARD FOR
-    SELECT Name FROM (VALUES (N'ZEDCS_V2_LIVE'), (N'ZED_CONSULTANT'), (N'ZED_SURVEILLANCE')) AS D(Name) WHERE DB_ID(Name) IS NOT NULL;
+    SELECT @DatabasePrefix + Name FROM (VALUES (N'ZEDCS_V2_LIVE'), (N'ZED_CONSULTANT'), (N'ZED_SURVEILLANCE')) AS D(Name) WHERE DB_ID(@DatabasePrefix + Name) IS NOT NULL;
 OPEN dbs;
 FETCH NEXT FROM dbs INTO @db;
 WHILE @@FETCH_STATUS = 0
 BEGIN
     SET @call = N'EXEC ' + QUOTENAME(@db) + N'.sys.sp_executesql @body, @params, @apply = @apply, @host = @host, @hostPattern = @hostPattern, '
-              + N'@base = @base, @disableApi = @disableApi, @scramble = @scramble;';
+              + N'@base = @base, @disableApi = @disableApi, @scramble = @scramble, @rewriteHosts = @rewriteHosts;';
     EXEC sp_executesql @call,
-        N'@body nvarchar(max), @params nvarchar(400), @apply bit, @host varchar(200), @hostPattern varchar(220), @base varchar(200), @disableApi bit, @scramble bit',
+        N'@body nvarchar(max), @params nvarchar(400), @apply bit, @host varchar(200), @hostPattern varchar(220), @base varchar(200), @disableApi bit, @scramble bit, @rewriteHosts bit',
         @body = @body, @params = @params, @apply = @apply, @host = @ProductionHost, @hostPattern = @hostPattern,
-        @base = @StagingBaseUrl, @disableApi = @DisableApiClients, @scramble = @ScramblePasswords;
+        @base = @StagingBaseUrl, @disableApi = @DisableApiClients, @scramble = @ScramblePasswords, @rewriteHosts = @RewriteHosts;
     IF @MaskContacts = 1
     BEGIN
         SET @call = N'EXEC ' + QUOTENAME(@db) + N'.sys.sp_executesql @maskBody, N''@apply bit'', @apply = @apply;';

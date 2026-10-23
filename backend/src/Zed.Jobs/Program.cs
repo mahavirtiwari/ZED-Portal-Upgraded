@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Jobs;
 
@@ -10,9 +11,12 @@ var check = args.Contains("--check", StringComparer.OrdinalIgnoreCase);
 var builder = Host.CreateApplicationBuilder(args.Where(a => !a.Equals("--check", StringComparison.OrdinalIgnoreCase)).ToArray());
 // The outbox worker mails what the procedures queue: outside Production that must not reach real people (staging runs
 // on copies of production data), and a staging mail setting must never be active in Production.
-if (!check && MailSafety.Problems(builder.Configuration, builder.Environment) is { Count: > 0 } mailProblems)
+// A database prefix (a second, prefixed set of test databases) is refused in Production.
+if (MailSafety.Problems(builder.Configuration, builder.Environment).Where(_ => !check)
+        .Concat(ZedDatabaseNames.Problems(builder.Configuration, builder.Environment)).ToList() is { Count: > 0 } startProblems)
     throw new InvalidOperationException($"Zed.Jobs cannot start in {builder.Environment.EnvironmentName}:" + Environment.NewLine +
-        string.Join(Environment.NewLine, mailProblems.Select(p => " - " + p)));
+        string.Join(Environment.NewLine, startProblems.Select(p => " - " + p)));
+ZedDatabaseNames.Configure(builder.Configuration);
 builder.Services.AddWindowsService(o => o.ServiceName = "ZedJobs");
 
 builder.Services.Configure<JobsOptions>(builder.Configuration.GetSection(JobsOptions.Section));

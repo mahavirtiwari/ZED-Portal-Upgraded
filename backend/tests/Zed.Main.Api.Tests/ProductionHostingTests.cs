@@ -160,6 +160,25 @@ public sealed class ProductionHostingTests : IDisposable
         Assert.Contains(problems, p => p.StartsWith("Portal:LegacyBaseUrl points at the live site"));
     }
 
+    [Theory]
+    [InlineData(ZedHostKind.Portal)]
+    [InlineData(ZedHostKind.Mobile)]
+    public void A_database_prefix_is_for_test_environments_only(ZedHostKind kind)
+    {
+        var s = StagingMain();
+        s["Mobile:StorageRoot"] = folder;
+        s["Email:RedirectAllTo"] = "testers@qcin.org";
+        s["Database:Prefix"] = "ZEDV4_";
+        Assert.Empty(Check(s, kind: kind, environment: "Staging"));
+        Assert.Contains(Check(new Dictionary<string, string?>(s) { ["Database:Prefix"] = "ZED V4;" }, kind: kind, environment: "Staging"),
+            p => p.StartsWith("Database:Prefix 'ZED V4;'"));
+
+        var live = CompleteMain();
+        live["Mobile:StorageRoot"] = folder;
+        live["Database:Prefix"] = "ZEDV4_";
+        Assert.Contains(Check(live, kind: kind), p => p.StartsWith("Database:Prefix is set"));
+    }
+
     [Fact]
     public void Disabled_recaptcha_needs_no_keys()
     {

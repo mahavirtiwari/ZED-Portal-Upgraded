@@ -1,8 +1,9 @@
 {
-  "_comment": "STAGING (https://zedv3.qci.org.in, docs/STAGING.md). Copy to the staging server (e.g. D:\\ZedV4\\settings.json), fill in, restrict to administrators, never commit the filled copy. Same structure as settings.example.json: keys are environment variable names (':' becomes '__'); sections merge Common, then Portals or Mobile, then the application's own section. Install with -EnvironmentName Staging. Staging runs on a restored copy of production: every mail is redirected, payments use the CCAvenue TEST gateway, partner APIs and ERP stay off, Zed.Jobs schedules stay off. Storage roots point at a staging COPY of the folders, never at the production share.",
+  "_comment": "STAGING (https://zedv3.qci.org.in, docs/STAGING.md). Copy to the staging server (e.g. E:\\ZedV4\\settings.json), fill in, restrict to administrators, never commit the filled copy. Same structure as settings.example.json: keys are environment variable names (':' becomes '__'); sections merge Common, then Portals or Mobile, then the application's own section. Install with -EnvironmentName Staging. Staging is for testing (and may later hold a copy of production data): every mail is redirected, payments use the CCAvenue TEST gateway, partner APIs and ERP stay off, Zed.Jobs schedules stay off. Storage roots point at a staging COPY of the folders, never at the production share. On the staging VM (20.219.21.200) D: is the Azure TEMPORARY disk (wiped on redeploy): everything lives on E: or a data disk; Install-ZedIis.ps1 refuses the temporary disk. Databases: the V4 set built from scratch with the prefix ZEDV4_ on the server's own SQL Server 2025 Express instance (ZEDV4_ZEDCS_V2_LIVE, ZEDV4_ZED_CONSULTANT, ZEDV4_ZED_SURVEILLANCE, ...; docs/STAGING.md 3.0), never the older ZED databases on that instance. Connection strings use integrated security: each app pool identity (IIS APPPOOL\\ZedV4-...) and the Zed.Jobs service account has a Windows login with the least-privilege roles (database/security/01 with @AuthMode = 'WINDOWS' and @DatabasePrefix = N'ZEDV4_'), so there are no database passwords. Database__Prefix=ZEDV4_ makes the few inline queries that name another database (ZED_CONSULTANT.dbo....) use the prefixed names too; the hosts refuse it in Production. Everything is on E: (install E:\\ZedV4, keys E:\\ZedV4\\keys, storage E:\\ZedStaging).",
   "Common": {
     "ASPNETCORE_ENVIRONMENT": "Staging",
-    "ConnectionStrings__Main": "",
+    "ConnectionStrings__Main": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZEDCS_V2_LIVE;Integrated Security=true;TrustServerCertificate=true",
+    "Database__Prefix": "ZEDV4_",
     "Portal__EnvironmentLabel": "STAGING",
     "_Email_comment": "Decided: every staging mail goes to dev.zed@qcin.org (portals and mobile API here; Zed.Jobs in its own section below). Do not add Email__AllowedRecipientDomains: with it, mail to those domains would go to the real recipients. The hosts refuse to start in Staging when neither setting is given.",
     "Email__RedirectAllTo": "dev.zed@qcin.org",
@@ -28,13 +29,13 @@
     "Mobile__RefuseMissingDevice": "false"
   },
   "Main": {
-    "_comment": "IIS application /. Consultancy and Surveillance connections: the read-only login (database/security/01). Storage: a copy of the production folders on the staging server.",
-    "ConnectionStrings__Consultancy": "",
-    "ConnectionStrings__Surveillance": "",
+    "_comment": "IIS application /. Consultancy and Surveillance connections: opened read-only by the host (read intent), with the app pool's own Windows login (database/security/01). Storage: a copy of the production folders on the staging server.",
+    "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
+    "ConnectionStrings__Surveillance": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_SURVEILLANCE;Integrated Security=true;TrustServerCertificate=true",
     "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in",
-    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
-    "Portal__AssessmentStorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
+    "Portal__StorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Portal__AssessmentStorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
     "Udyam__AccessKey": "",
     "_CcAvenue_comment": "CCAvenue TEST account and keys only (never the production merchant on staging). Ask CCAvenue to allow https://zedv3.qci.org.in for the test merchant's return URLs ({PublicBaseUrl}/api/payments/ccavenue/response, .../surveillance-response, .../consultancy-response).",
     "CcAvenue__GatewayUrl": "https://test.ccavenue.com/transaction/transaction.do?command=initiateTransaction",
@@ -56,27 +57,27 @@
   },
   "Consultancy": {
     "_comment": "IIS application /Consultancy. StorageRoot: the same staging copy as main's.",
-    "ConnectionStrings__Consultancy": "",
+    "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
     "Portal__PathBase": "/Consultancy",
     "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/Consultancy",
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in/Consultancy",
-    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
-    "Consultancy__SharedStorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Portal__StorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
+    "Consultancy__SharedStorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE",
     "Consultancy__TuApp__LoginHours": "12",
     "Consultancy__TuApp__SameIp": "false"
   },
   "Surveillance": {
     "_comment": "IIS application /surveillance. StorageRoot: the same staging copy as main's.",
-    "ConnectionStrings__Surveillance": "",
+    "ConnectionStrings__Surveillance": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_SURVEILLANCE;Integrated Security=true;TrustServerCertificate=true",
     "Portal__PathBase": "/surveillance",
     "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/surveillance",
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in/surveillance",
-    "Portal__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE"
+    "Portal__StorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE"
   },
   "MobileMain": {
     "_comment": "IIS application /mobileapi. StorageRoot: the staging copy of the old services folder (Photos, SaPhotos, Videos). Consultancy connection: read-only, for the TU documents.",
-    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
-    "ConnectionStrings__Consultancy": "",
+    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZEDCS_V2_LIVE_SERVICES",
+    "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
     "Consultancy__TuApp__LoginHours": "12",
     "Mobile__CheckMsmeVersion": "false",
     "Mobile__MsmeVersion": "",
@@ -85,21 +86,22 @@
     "Mobile__Twilio__ApiSecret": ""
   },
   "MobileConsultancy": {
-    "_comment": "IIS application /Consultancymobileapi (database ZED_CONSULTANT).",
-    "ConnectionStrings__Consultancy": "",
-    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES"
+    "_comment": "IIS application /Consultancymobileapi (database ZEDV4_ZED_CONSULTANT).",
+    "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
+    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES"
   },
   "MobileSurveillance": {
-    "_comment": "IIS application /surveillancemobileapi (database ZED_SURVEILLANCE).",
-    "ConnectionStrings__Surveillance": "",
-    "Mobile__StorageRoot": "D:\\ZedStaging\\storage\\ZED_SURVEILLANCE_SERVICES"
+    "_comment": "IIS application /surveillancemobileapi (database ZEDV4_ZED_SURVEILLANCE).",
+    "ConnectionStrings__Surveillance": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_SURVEILLANCE;Integrated Security=true;TrustServerCertificate=true",
+    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_SURVEILLANCE_SERVICES"
   },
   "ZedJobs": {
     "_comment": "NOT read by Install-ZedIis.ps1: environment of the Zed.Jobs Windows service on staging (docs/JOBS.md 'Running it'). Leave every Jobs:Schedules entry and Jobs:FolderRename disabled (the shipped appsettings.json has them off); the mail worker may run, and then sends only to dev.zed@qcin.org.",
     "DOTNET_ENVIRONMENT": "Staging",
-    "ConnectionStrings__Main": "",
-    "ConnectionStrings__Consultancy": "",
-    "ConnectionStrings__Surveillance": "",
+    "ConnectionStrings__Main": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZEDCS_V2_LIVE;Integrated Security=true;TrustServerCertificate=true",
+    "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
+    "ConnectionStrings__Surveillance": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_SURVEILLANCE;Integrated Security=true;TrustServerCertificate=true",
+    "Database__Prefix": "ZEDV4_",
     "Email__RedirectAllTo": "dev.zed@qcin.org",
     "Email__Profiles__ZedAdmin__Password": "",
     "Jobs__FolderRename__Enabled": "false"

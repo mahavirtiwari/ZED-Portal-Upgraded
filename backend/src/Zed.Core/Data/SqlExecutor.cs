@@ -18,7 +18,10 @@ public interface ISqlExecutor
 
     Task<int> ExecuteProcAsync(string procedure, object? parameters = null, CancellationToken ct = default);
 
-    /// <summary>Parameterised inline SQL, for the few places the legacy code did not use a procedure.</summary>
+    /// <summary>
+    /// Parameterised inline SQL, for the few places the legacy code did not use a procedure. Database names in it
+    /// (ZED_CONSULTANT.dbo.X) get the <c>Database:Prefix</c> of a prefixed test set (<see cref="ZedDatabaseNames"/>).
+    /// </summary>
     Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default);
 
     Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default);
@@ -64,13 +67,13 @@ public sealed class SqlExecutor(string connectionString, int commandTimeoutSecon
     public async Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default)
     {
         await using var conn = new SqlConnection(connectionString);
-        return await conn.ExecuteAsync(Command(sql, parameters, CommandType.Text, ct));
+        return await conn.ExecuteAsync(Command(ZedDatabaseNames.Map(sql), parameters, CommandType.Text, ct));
     }
 
     public async Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {
         await using var conn = new SqlConnection(connectionString);
-        var rows = await conn.QueryAsync<T>(Command(sql, parameters, CommandType.Text, ct));
+        var rows = await conn.QueryAsync<T>(Command(ZedDatabaseNames.Map(sql), parameters, CommandType.Text, ct));
         return rows.AsList();
     }
 

@@ -54,6 +54,11 @@
     Do not run the fix scripts.
 .PARAMETER LogDir
     Output folder.
+.PARAMETER DatabasePrefix
+    Run against a prefixed set (database\setup.ps1 -DatabasePrefix), e.g. ZEDV4_ for ZEDV4_ZEDCS_V2_LIVE, ... . Every
+    script is run from a copy whose database names (USE, three-part names, DB_ID('X')) are mapped to the prefixed
+    names (database\ZedDatabaseNames.ps1); the copies are kept under <LogDir>\scripts-as-run. The plan and the
+    -ApplyFixes names stay logical (main/05_mail_passwords). Databases without the prefix are not touched.
 
 .EXAMPLE
     .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server PRODSQL01 -TrustServerCertificate
@@ -77,7 +82,8 @@ param(
     [switch]$AtCutover,
     [switch]$SkipMigrations,
     [switch]$SkipFixes,
-    [string]$LogDir = ''
+    [string]$LogDir = '',
+    [string]$DatabasePrefix = ''
 )
 
 Set-StrictMode -Version 2.0
@@ -86,6 +92,10 @@ $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvoca
 $repo = Split-Path -Parent $here
 $dbDir = Join-Path $repo 'database'
 if (-not $LogDir) { $LogDir = Join-Path $dbDir ('logs\cutover-' + (Get-Date -Format 'yyyyMMdd-HHmmss')) }
+. (Join-Path $dbDir 'ZedDatabaseNames.ps1')
+Test-ZedDatabasePrefix $DatabasePrefix
+# The plan uses the logical names; sqlcmd gets the name on the instance.
+function Phys([string]$db) { Get-ZedDatabaseName $db $DatabasePrefix }
 
 $Main = 'ZEDCS_V2_LIVE'; $Cons = 'ZED_CONSULTANT'; $Surv = 'ZED_SURVEILLANCE'
 $Zed = @($Main, $Cons, $Surv)
@@ -117,7 +127,7 @@ if (-not $sqlcmd) { throw 'sqlcmd was not found. Install the SQL Server command 
 $sqlcmd = $sqlcmd.Source
 function Get-SqlArgs([string]$db, [bool]$wide) {
     # -y 0: long text (definitions) is not cut; it cannot be combined with -W, which the short queries use.
-    $a = @('-S', $Server, '-d', $db, '-b', '-f', 'i:65001,o:65001')
+    $a = @('-S', $Server, '-d', (Phys $db), '-b', '-f', 'i:65001,o:65001')
     if ($wide) { $a += @('-y', '0') }
     if ($Credential) { $a += @('-U', $Credential.UserName) } else { $a += '-E' }
     if ($TrustServerCertificate) { $a += '-C' }
@@ -142,7 +152,15 @@ function Write-Line([string]$text, [string]$color = 'Gray') { Write-Host $text -
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $script:Transcript = Join-Path $LogDir 'summary.txt'
-Set-Content -LiteralPath $script:Transcript -Value ("ZED database scripts, {0}, server {1}, {2}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm'), $Server, $(if ($Apply) { 'APPLY' } else { 'DRY RUN' })) -Encoding UTF8
+Set-Content -LiteralPath $script:Transcript -Value ("ZED database scripts, {0}, server {1}, {2}{3}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm'), $Server, $(if ($Apply) { 'APPLY' } else { 'DRY RUN' }), $(if ($DatabasePrefix) { ", database prefix $DatabasePrefix" } else { '' })) -Encoding UTF8
+function Get-ScriptAsRun([string]$path, [string]$name) {
+    # The script with its database names mapped to the prefixed set; without a prefix, the script itself.
+    if (-not $DatabasePrefix) { return $path }
+    $dir = Join-Path $LogDir 'scripts-as-run'; New-Item -ItemType Directory -Force -Path $dir | Out-Null
+    $out = Join-Path $dir $name
+    [System.IO.File]::WriteAllText($out, (Convert-ZedDatabaseNames ([System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)) $DatabasePrefix), (New-Object System.Text.UTF8Encoding($true)))
+    return $out
+}
 $results = New-Object System.Collections.Generic.List[object]
 $failed = $false
 
@@ -179,18 +197,18 @@ if ($info[0] -ne '16') { Write-Line "  WARNING: not SQL Server 2022 (major versi
 if ($info[2] -match 'Express') { Write-Line '  WARNING: Express edition: fine for development, not for production (ZEDCS_V2_LIVE is 76 GB; MIGRATION-PLAN "Database").' 'Yellow' }
 elseif ($info[2] -notmatch 'Standard|Enterprise|Developer') { Write-Line "  WARNING: edition '$($info[2])': the decided target is SQL Server 2022 Standard." 'Yellow' }
 
-$names = ($Zed + $Related + @('msdb') | ForEach-Object { "N'$_'" }) -join ','
+$names = ($Zed + $Related + @('msdb') | ForEach-Object { "N'$(Phys $_)'" }) -join ','
 $dbRows = @{}
 foreach ($l in (Get-Rows 'master' "SELECT name COLLATE DATABASE_DEFAULT + N'|' + CAST(compatibility_level AS nvarchar(5)) + N'|' + ISNULL(collation_name COLLATE DATABASE_DEFAULT, N'') + N'|' + state_desc COLLATE DATABASE_DEFAULT + N'|' + CAST(is_auto_close_on AS nvarchar(1)) FROM sys.databases WHERE name IN ($names)")) {
     $c = $l.Split('|'); $dbRows[$c[0]] = $c
 }
 foreach ($db in ($Zed + $Related)) {
-    if (-not $dbRows.ContainsKey($db)) {
-        if ($Zed -contains $db) { Write-Line "  MISSING: $db" 'Red'; $failed = $true }
-        else { Write-Line "  missing: $db (a related database used by three-part names; it must be on this instance in production: CUTOVER 1.1a)" 'Yellow' }
+    if (-not $dbRows.ContainsKey((Phys $db))) {
+        if ($Zed -contains $db) { Write-Line "  MISSING: $(Phys $db)" 'Red'; $failed = $true }
+        else { Write-Line "  missing: $(Phys $db) (a related database used by three-part names; it must be on this instance in production: CUTOVER 1.1a)" 'Yellow' }
         continue
     }
-    $c = $dbRows[$db]
+    $c = $dbRows[(Phys $db)]
     # A closed database (AUTO_CLOSE) shows no collation in sys.databases: ask the database itself.
     if (-not $c[2]) { $c[2] = (Get-Rows $db "SELECT CONVERT(nvarchar(128), DATABASEPROPERTYEX(DB_NAME(), 'Collation'))")[0] }
     $note = @()
@@ -198,7 +216,7 @@ foreach ($db in ($Zed + $Related)) {
     if ($c[1] -ne '160') { $note += "compatibility level $($c[1]), expected 160" }
     if ($c[2] -ne 'SQL_Latin1_General_CP1_CI_AS') { $note += "collation $($c[2]), expected SQL_Latin1_General_CP1_CI_AS" }
     if ($c[3] -ne 'ONLINE') { $note += "state $($c[3])" }
-    if ($note.Count) { Write-Line ("  {0,-30} {1}" -f $db, ($note -join '; ')) 'Yellow' } else { Write-Line ("  {0,-30} ok (160, {1})" -f $db, $c[2]) }
+    if ($note.Count) { Write-Line ("  {0,-30} {1}" -f (Phys $db), ($note -join '; ')) 'Yellow' } else { Write-Line ("  {0,-30} ok (160, {1})" -f (Phys $db), $c[2]) }
 }
 if ($failed) { Write-Line 'A ZED database is missing: nothing was run.' 'Red'; exit 1 }
 
@@ -238,7 +256,7 @@ if (-not $SkipMigrations) {
 }
 
 Write-Line '' ; Write-Line 'Plan' 'Cyan'
-foreach ($p in $plan) { Write-Line ("  {0,-9} {1,-52} {2,-17} {3,-28} {4}" -f $p.Kind, $p.Name, $p.Db, $p.Mode, $p.State) }
+foreach ($p in $plan) { Write-Line ("  {0,-9} {1,-52} {2,-17} {3,-28} {4}" -f $p.Kind, $p.Name, (Phys $p.Db), $p.Mode, $p.State) }
 if ($IncludeMailOutbox) { Write-Line '  NOTE: 0003 changes every procedure that mails: from now on their mail waits in dbo.V4MailOutbox for Zed.Jobs. Start Zed.Jobs and switch the old Agent jobs off in the same step.' 'Yellow' }
 if (-not $Apply) {
     Write-Line ''; Write-Line 'DRY RUN: nothing was executed. Add -Apply to run the plan.' 'Green'
@@ -289,19 +307,19 @@ foreach ($p in $plan) {
     if ($p.Kind -eq 'migration') {
         $dir = Join-Path $LogDir 'migrations'; New-Item -ItemType Directory -Force -Path $dir | Out-Null
         $log = Join-Path $dir ("{0}.{1}.log" -f [System.IO.Path]::GetFileNameWithoutExtension($p.Name), $p.Db)
-        $code = Invoke-Sqlcmd2 $p.Db @('-i', $p.Path) $log
+        $code = Invoke-Sqlcmd2 $p.Db @('-i', (Get-ScriptAsRun $p.Path ("{0}.{1}.sql" -f [System.IO.Path]::GetFileNameWithoutExtension($p.Name), $p.Db))) $log
         $after = Get-MarkerState $p.Db $(if ($p.Name -eq $MailOutbox.File) { $MailOutbox.Markers } else { ($Migrations | Where-Object { $_.File -eq $p.Name }).Markers })
         $status = if ($code -eq 0 -and $after -eq 'applied') { "ok (was: $($p.State))" } elseif ($code -eq 0) { "ran, but objects: $after" } else { "FAILED (exit $code)" }
         if ($code -ne 0 -or $after -ne 'applied') { $failed = $true; $stopMigrations = $true }
         $results.Add([pscustomobject]@{ Step = $p.Name; Db = $p.Db; Mode = 'run'; Status = $status; Seconds = [int]$watch.Elapsed.TotalSeconds; Log = $log })
-        Write-Line ("  {0,-34} {1,-17} {2}" -f $p.Name, $p.Db, $status) $(if ($status -like 'ok*') { 'Gray' } else { 'Red' })
+        Write-Line ("  {0,-34} {1,-17} {2}" -f $p.Name, (Phys $p.Db), $status) $(if ($status -like 'ok*') { 'Gray' } else { 'Red' })
         continue
     }
 
     # fix: PREVIEW (with full definitions where the script offers them), save live and new definitions, then APPLY if listed
     $dir = Join-Path $LogDir ("fixes\" + $p.Name.Replace('/', '_'))
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    $text = [System.IO.File]::ReadAllText($p.Path, [System.Text.Encoding]::UTF8)
+    $text = Convert-ZedDatabaseNames ([System.IO.File]::ReadAllText($p.Path, [System.Text.Encoding]::UTF8)) $DatabasePrefix
     $preview = $text
     if ($preview.Contains($PrintLine)) { $preview = $preview.Replace($PrintLine, 'DECLARE @PrintDefinitions bit = 1;') }
     $previewFile = Join-Path $dir 'preview-script.sql'
@@ -335,7 +353,7 @@ foreach ($p in $plan) {
     else { $pstatus = 'previewed' }
     $detail = "$($procs.Count) procedure(s), live saved: $saved, new definitions: $newDefs"
     $results.Add([pscustomobject]@{ Step = $p.Name; Db = $p.Db; Mode = 'PREVIEW'; Status = "$pstatus; $detail"; Seconds = [int]$watch.Elapsed.TotalSeconds; Log = $previewLog })
-    Write-Line ("  {0,-52} {1,-17} PREVIEW  {2}; {3}" -f $p.Name, $p.Db, $pstatus, $detail) $(if ($pstatus -like 'FAILED*') { 'Red' } else { 'Gray' })
+    Write-Line ("  {0,-52} {1,-17} PREVIEW  {2}; {3}" -f $p.Name, (Phys $p.Db), $pstatus, $detail) $(if ($pstatus -like 'FAILED*') { 'Red' } else { 'Gray' })
 
     if ($p.Mode -eq 'PREVIEW, then APPLY') {
         if ($pstatus -like 'FAILED*') {
@@ -353,7 +371,7 @@ foreach ($p in $plan) {
         $astatus = if ($code -eq 0) { 'applied (undo: the live\*.sql saved before)' } else { "FAILED (exit $code; all or nothing: nothing changed)" }
         if ($code -ne 0) { $failed = $true }
         $results.Add([pscustomobject]@{ Step = $p.Name; Db = $p.Db; Mode = 'APPLY'; Status = $astatus; Seconds = [int]$watch.Elapsed.TotalSeconds; Log = $applyLog })
-        Write-Line ("  {0,-52} {1,-17} APPLY    {2}" -f $p.Name, $p.Db, $astatus) $(if ($code -eq 0) { 'Green' } else { 'Red' })
+        Write-Line ("  {0,-52} {1,-17} APPLY    {2}" -f $p.Name, (Phys $p.Db), $astatus) $(if ($code -eq 0) { 'Green' } else { 'Red' })
     }
 }
 

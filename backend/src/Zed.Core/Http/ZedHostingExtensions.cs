@@ -49,6 +49,7 @@ public static class ZedHostingExtensions
         services.AddOpenApi();
         services.Configure<PortalOptions>(config.GetSection(PortalOptions.Section));
 
+        ZedDatabaseNames.Configure(config);
         services.AddSingleton<ISqlExecutor>(_ => new SqlExecutor(config.RequireConnectionString(defaultDatabase)));
 
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));

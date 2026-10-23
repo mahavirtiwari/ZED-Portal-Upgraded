@@ -33,8 +33,16 @@
 .EXAMPLE
   .\Compare-ZedDatabases.ps1 -Snapshot -Server NEWSQL01 -Out D:\ZedV4\move\new.json
   .\Compare-ZedDatabases.ps1 -Compare D:\ZedV4\move\old.json, D:\ZedV4\move\new.json -Report D:\ZedV4\move\compare.txt
+  A prefixed set (database\setup.ps1 -DatabasePrefix ZEDV4_): -DatabasePrefix ZEDV4_ (Snapshot) or
+  -SourceDatabasePrefix / -TargetDatabasePrefix (Live) read ZEDV4_ZEDCS_V2_LIVE, ... and store them under the logical
+  names, so a prefixed set compares with an unprefixed one; -Databases always takes the logical names. Names outside the
+  ZED map (ZED_QUALITY_PROFESSIONAL) are read as given. Module checksums of code that names another database then
+  differ by design (the names are mapped).
+
 .EXAMPLE
   .\Compare-ZedDatabases.ps1 -Source old-instance.example -SourceCredential (Get-Credential) -Target NEWSQL01 -Fast
+.EXAMPLE
+  .\Compare-ZedDatabases.ps1 -Snapshot -Server .\SQLEXPRESS -DatabasePrefix ZEDV4_ -Out E:\ZedStaging\v4.json
 #>
 [CmdletBinding(DefaultParameterSetName = 'Compare')]
 param(
@@ -42,6 +50,7 @@ param(
     [Parameter(ParameterSetName = 'Snapshot', Mandatory)][string]$Server,
     [Parameter(ParameterSetName = 'Snapshot')][System.Management.Automation.PSCredential]$Credential,
     [Parameter(ParameterSetName = 'Snapshot', Mandatory)][string]$Out,
+    [Parameter(ParameterSetName = 'Snapshot')][string]$DatabasePrefix = '',
 
     [Parameter(ParameterSetName = 'Compare', Mandatory)][string[]]$Compare,
 
@@ -51,6 +60,8 @@ param(
     [Parameter(ParameterSetName = 'Live')][System.Management.Automation.PSCredential]$TargetCredential,
     # Live mode: also keep both snapshots in this folder.
     [Parameter(ParameterSetName = 'Live')][string]$SnapshotFolder,
+    [Parameter(ParameterSetName = 'Live')][string]$SourceDatabasePrefix = '',
+    [Parameter(ParameterSetName = 'Live')][string]$TargetDatabasePrefix = '',
 
     [string[]]$Databases = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE', 'ZED_CENTER_AUDIT_PROFESSIONAL',
         'ZED_CENTER_AUDIT_V2', 'ZED_IMPACT_ASSESSMENT', 'KAWACH', 'ZED_QUALITY_PROFESSIONAL'),
@@ -64,6 +75,8 @@ param(
 Set-StrictMode -Version 2.0
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Data
+. (Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'database\ZedDatabaseNames.ps1')
+foreach ($px in @($DatabasePrefix, $SourceDatabasePrefix, $TargetDatabasePrefix)) { Test-ZedDatabasePrefix $px }
 
 # -File passes "a,b" as one string.
 $Databases = @($Databases | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
@@ -98,7 +111,7 @@ function Invoke-ZedQuery($conn, [string]$sql) {
 
 function Get-Text($v) { if ($null -eq $v -or $v -is [DBNull]) { return $null } return [string]$v }
 
-function Get-ZedSnapshot([string]$srv, $cred, [string[]]$dbs, [bool]$fastCounts) {
+function Get-ZedSnapshot([string]$srv, $cred, [string[]]$dbs, [bool]$fastCounts, [string]$prefix = '') {
     Write-Host "Snapshot of $srv ($(if ($fastCounts) { 'row counts from sys.partitions' } else { 'exact row counts' }))"
     $master = New-ZedConnection $srv 'master' $cred
     try {
@@ -126,16 +139,18 @@ SELECT CAST(SERVERPROPERTY('ServerName') AS nvarchar(256)) AS server_name,
 
     $result = [ordered]@{
         tool = 'Compare-ZedDatabases'; taken_at = (Get-Date).ToString('o'); row_counts = $(if ($fastCounts) { 'sys.partitions' } else { 'COUNT_BIG' })
-        server = $server; databases = [ordered]@{}
+        server = $server; database_prefix = $prefix; databases = [ordered]@{}
     }
     foreach ($db in $dbs) {
-        if (-not $present.ContainsKey($db)) { Write-Host "  $db : not on this server"; $result.databases[$db] = [ordered]@{ missing = $true }; continue }
-        if ($present[$db] -ne 'ONLINE') { Write-Host "  $db : $($present[$db])"; $result.databases[$db] = [ordered]@{ missing = $false; state = $present[$db]; unreadable = $true }; continue }
+        # Stored under the logical name; read from the name on this server.
+        $pdb = Get-ZedDatabaseName $db $prefix
+        if (-not $present.ContainsKey($pdb)) { Write-Host "  $pdb : not on this server"; $result.databases[$db] = [ordered]@{ missing = $true }; continue }
+        if ($present[$pdb] -ne 'ONLINE') { Write-Host "  $pdb : $($present[$pdb])"; $result.databases[$db] = [ordered]@{ missing = $false; state = $present[$pdb]; unreadable = $true }; continue }
         $watch = [Diagnostics.Stopwatch]::StartNew()
-        $c = New-ZedConnection $srv $db $cred
+        $c = New-ZedConnection $srv $pdb $cred
         try { $result.databases[$db] = Get-ZedDatabaseSnapshot $c $db $fastCounts }
         finally { $c.Close() }
-        Write-Host ("  {0} : {1} tables, {2} modules ({3:0}s)" -f $db, $result.databases[$db].tables.Count, $result.databases[$db].modules.Count, $watch.Elapsed.TotalSeconds)
+        Write-Host ("  {0} : {1} tables, {2} modules ({3:0}s)" -f $pdb, $result.databases[$db].tables.Count, $result.databases[$db].modules.Count, $watch.Elapsed.TotalSeconds)
     }
     return $result
 }
@@ -307,7 +322,7 @@ function Save-Snapshot($snap, [string]$path) {
 }
 
 if ($PSCmdlet.ParameterSetName -eq 'Snapshot') {
-    Save-Snapshot (Get-ZedSnapshot $Server $Credential $Databases $Fast.IsPresent) $Out
+    Save-Snapshot (Get-ZedSnapshot $Server $Credential $Databases $Fast.IsPresent $DatabasePrefix) $Out
     exit 0
 }
 if ($PSCmdlet.ParameterSetName -eq 'Compare') {
@@ -316,8 +331,8 @@ if ($PSCmdlet.ParameterSetName -eq 'Compare') {
     $label = '{0} ({1}) -> {2} ({3})' -f $old.server.server_name, $old.taken_at, $new.server.server_name, $new.taken_at
 }
 else {
-    $snapA = Get-ZedSnapshot $Source $SourceCredential $Databases $Fast.IsPresent
-    $snapB = Get-ZedSnapshot $Target $TargetCredential $Databases $Fast.IsPresent
+    $snapA = Get-ZedSnapshot $Source $SourceCredential $Databases $Fast.IsPresent $SourceDatabasePrefix
+    $snapB = Get-ZedSnapshot $Target $TargetCredential $Databases $Fast.IsPresent $TargetDatabasePrefix
     if ($SnapshotFolder) { Save-Snapshot $snapA (Join-Path $SnapshotFolder 'source.json'); Save-Snapshot $snapB (Join-Path $SnapshotFolder 'target.json') }
     # Round-trip through JSON so live and file comparisons see the same shapes.
     $old = ($snapA | ConvertTo-Json -Depth 8 | ConvertFrom-Json); $new = ($snapB | ConvertTo-Json -Depth 8 | ConvertFrom-Json)

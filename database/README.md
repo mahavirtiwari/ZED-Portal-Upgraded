@@ -12,13 +12,17 @@ so the .NET 10 / Angular rewrite can run against the existing stored procedures.
 
 The procedures use three-part names to reach each other's databases (for example
 `ZED_CONSULTANT.dbo.MsmeCertifications` and `ZEDCS_V2_LIVE.dbo.Msme`). All three databases must
-therefore be on the same instance, with exactly these names.
+therefore be on the same instance, with exactly these names. A second set on the same instance (V4 staging next to
+an older ZED set) gets a prefix instead: `setup.ps1 -DatabasePrefix ZEDV4_` builds ZEDV4_ZEDCS_V2_LIVE, ... with the
+names in the scripts mapped as they are read (`ZedDatabaseNames.ps1`; docs/STAGING.md 3.0).
 
 ## Files
 
 | File | Purpose |
 |------|---------|
-| `setup.ps1` | Builds everything again from the cleaned scripts (see below). |
+| `setup.ps1` | Builds everything again from the cleaned scripts (see below). `-DatabasePrefix` builds a prefixed set, `-WithKawachStandIn` adds KAWACH with empty stand-ins of the tables ZED reads. |
+| `ZedDatabaseNames.ps1` | The one map from the logical database names to the names on an instance (prefix), used by setup.ps1, `deploy\Invoke-ZedDatabaseScripts.ps1`, `deploy\Compare-ZedDatabases.ps1` and `staging\Copy-ZedReferenceData.ps1`; the hosts apply the same rules to inline SQL (`Database:Prefix`). |
+| `staging\` | Staging only: `01_prepare_restored_copy.sql` (a restored copy, or the procedure links of a new set), `Copy-ZedReferenceData.ps1` (reference tables into a new set), `03_first_accounts.sql` (first staff accounts and one-time links). |
 | `verify_references.sql` | Read-only checks to run in each database: object counts, references to missing objects or databases, and modules that fail to bind. |
 | `schema\0[1-3]_*.sql` | UTF-8 copies of the SSMS "Generate Scripts" output, with the minimal cleanups listed below. |
 | `schema\04_missing_sequences.sql` | The SEQUENCE objects the export left out, as defined on production (see Findings, section 3). |

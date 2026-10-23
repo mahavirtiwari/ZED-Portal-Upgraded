@@ -15,8 +15,8 @@
     batches until a pass makes no further progress.
 
     Safety:
-      * Only the six databases above are ever created or dropped. Nothing else on the
-        instance is touched; no logins are created.
+      * Only the six databases above (with -WithKawachStandIn also KAWACH; with -DatabasePrefix their prefixed
+        names) are ever created or dropped. Nothing else on the instance is touched; no logins are created.
       * If any of the selected databases already exists the script stops, unless -Force is given,
         in which case those (and only those) are dropped and recreated.
       * -Only limits the run to some of them; the others are left as they are.
@@ -38,9 +38,26 @@
     -Only ZED_IMPACT_ASSESSMENT,ZED_CENTER_AUDIT_PROFESSIONAL,ZED_CENTER_AUDIT_V2 -Force
     to replace the referenced-database stand-ins without touching the three ZED databases.
 
+.PARAMETER DataPath
+    Folder for the new databases' data and log files (e.g. E:\ZedStaging\SqlData on the staging server). Default:
+    the instance's default locations. Run setup.ps1 on the SQL Server machine itself when using it: the folder is
+    created here and the SQL Server service account gets Modify on it.
+
 .PARAMETER SkipSequenceStubs
     Do not apply schema\04_missing_sequences.sql (local stand-ins for the SEQUENCE objects
     that the SSMS export omitted; see README).
+
+.PARAMETER DatabasePrefix
+    Build a second, separately named set on an instance that already holds ZED databases, e.g. ZEDV4_ gives
+    ZEDV4_ZEDCS_V2_LIVE, ZEDV4_ZED_CONSULTANT, ... . The schema scripts' database names (USE, three-part names,
+    DB_ID('X')) are mapped to the prefixed names as they are read (ZedDatabaseNames.ps1), so the procedures of the
+    new set reach only the new set. Databases without the prefix are never created, dropped or changed, -Force
+    included. -Only still takes the logical names.
+
+.PARAMETER WithKawachStandIn
+    Also create KAWACH (prefixed like the others), which has no schema export: its tables that the ZED procedures
+    read (Users, Msme, MsmeCertifications, ...) are created empty, as copies of the same-named tables in the ZED
+    databases, after the first pass; later passes then compile what needed them.
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
@@ -48,6 +65,10 @@
     powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server "MYPC\SQLEXPRESS" -Force
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\setup.ps1 -ValidateOnly
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server ".\SQLEXPRESS" -DataPath E:\ZedStaging\SqlData
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server ".\SQLEXPRESS" -DatabasePrefix ZEDV4_ -WithKawachStandIn -DataPath E:\ZedStaging\SqlData
 #>
 [CmdletBinding()]
 param(
@@ -56,6 +77,9 @@ param(
     [switch]$ValidateOnly,
     [switch]$SkipSequenceStubs,
     [string[]]$Only = @(),
+    [string]$DataPath = '',
+    [string]$DatabasePrefix = '',
+    [switch]$WithKawachStandIn,
     [string]$SchemaDir = '',
     [string]$LogDir = '',
     [string]$Collation = 'SQL_Latin1_General_CP1_CI_AS',
@@ -68,8 +92,11 @@ $ErrorActionPreference = 'Stop'
 $here = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
 if (-not $SchemaDir) { $SchemaDir = Join-Path $here 'schema' }
 if (-not $LogDir)    { $LogDir    = Join-Path $here 'logs' }
+. (Join-Path $here 'ZedDatabaseNames.ps1')
+Test-ZedDatabasePrefix $DatabasePrefix
 
 # Order matters only for pass 1; cross-database dependencies are resolved by later passes.
+# Keys are the logical names; Phys gives the name on the instance (with -DatabasePrefix).
 $AllDatabases = [ordered]@{
     'ZEDCS_V2_LIVE'                 = '01_ZEDCS_V2_LIVE.sql'
     'ZED_CONSULTANT'                = '02_ZED_CONSULTANT.sql'
@@ -78,6 +105,8 @@ $AllDatabases = [ordered]@{
     'ZED_CENTER_AUDIT_PROFESSIONAL' = '06_ZED_CENTER_AUDIT_PROFESSIONAL.sql'
     'ZED_CENTER_AUDIT_V2'           = '07_ZED_CENTER_AUDIT_V2.sql'
 }
+if ($WithKawachStandIn) { $AllDatabases['KAWACH'] = $null }   # no script: stand-in tables only
+function Phys([string]$db) { Get-ZedDatabaseName $db $DatabasePrefix }
 # -File passes "a,b,c" as one string: split it.
 $Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 foreach ($name in $Only) { if (-not $AllDatabases.Contains($name)) { throw "-Only: unknown database $name (expected one of: $($AllDatabases.Keys -join ', '))" } }
@@ -119,7 +148,7 @@ function Get-Scalar($conn, [string]$sql) {
 
 # ---------------------------------------------------------------- parse scripts
 function Get-Batches([string]$db, [string]$path) {
-    $text  = [System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)
+    $text  = Convert-ZedDatabaseNames ([System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)) $DatabasePrefix
     $lines = $text -split "\r?\n"
     $list  = New-Object System.Collections.Generic.List[object]
     $buf   = New-Object System.Text.StringBuilder
@@ -141,7 +170,7 @@ function Get-Batches([string]$db, [string]$path) {
         if ($code -match '^(?i)SET\s+ANSI_NULLS\s+(ON|OFF)\s*;?$') { $ansiNulls = ($Matches[1] -eq 'ON'); if ($hdr) { $pendingName = $hdr }; continue }
         if ($code -match '^(?i)SET\s+QUOTED_IDENTIFIER\s+(ON|OFF)\s*;?$') { $quotedId = ($Matches[1] -eq 'ON'); continue }
         if ($code -match '^(?i)USE\s+\[?([^\]\s;]+)\]?\s*;?$') {
-            if ($Matches[1] -ne $db) { throw "$path line $start switches to database $($Matches[1]); expected $db" }
+            if ($Matches[1] -ne (Phys $db)) { throw "$path line $start switches to database $($Matches[1]); expected $(Phys $db)" }
             continue
         }
         $name = $null
@@ -159,12 +188,14 @@ function Get-Batches([string]$db, [string]$path) {
 }
 
 Write-Log "ZED schema setup -> $Server  (schema dir: $SchemaDir)" 'Cyan'
+if ($DatabasePrefix) { Write-Log "  Database prefix $DatabasePrefix : creates $(@($Databases.Keys | ForEach-Object { Phys $_ }) -join ', ')" 'Cyan' }
 $all = New-Object System.Collections.Generic.List[object]
 foreach ($db in $Databases.Keys) {
+    if ($null -eq $Databases[$db]) { Write-Log ("  {0,-30} stand-in tables only" -f (Phys $db)); continue }
     $p = Join-Path $SchemaDir $Databases[$db]
     if (-not (Test-Path $p)) { throw "Missing schema script: $p" }
     $b = Get-Batches $db $p
-    Write-Log ("  {0,-30} {1,5} batches  ({2})" -f $db, $b.Count, $Databases[$db])
+    Write-Log ("  {0,-30} {1,5} batches  ({2})" -f (Phys $db), $b.Count, $Databases[$db])
     $all.AddRange($b)
 }
 
@@ -174,29 +205,46 @@ $ver = Get-Scalar $master "SELECT CAST(SERVERPROPERTY('ProductVersion') AS nvarc
 Write-Log "  Connected: $ver"
 $existing = @()
 foreach ($db in $Databases.Keys) {
-    if ([int](Get-Scalar $master "SELECT COUNT(*) FROM sys.databases WHERE name = N'$db'") -gt 0) { $existing += $db }
+    if ([int](Get-Scalar $master "SELECT COUNT(*) FROM sys.databases WHERE name = N'$(Phys $db)'") -gt 0) { $existing += $db }
 }
 if ($ValidateOnly) {
-    Write-Log ("  Existing target databases: {0}" -f ($(if ($existing) { $existing -join ', ' } else { '(none)' })))
+    Write-Log ("  Existing target databases: {0}" -f ($(if ($existing) { @($existing | ForEach-Object { Phys $_ }) -join ', ' } else { '(none)' })))
     Write-Log 'ValidateOnly: scripts parsed and connection OK; no changes made.' 'Green'
     $master.Close(); return
 }
 if ($existing.Count -gt 0) {
     if (-not $Force) {
         $master.Close()
-        throw ("Database(s) already exist: {0}. Re-run with -Force to drop and recreate them." -f ($existing -join ', '))
+        throw ("Database(s) already exist: {0}. Re-run with -Force to drop and recreate them." -f (@($existing | ForEach-Object { Phys $_ }) -join ', '))
     }
     foreach ($db in $existing) {
         if (-not $Databases.Contains($db)) { throw "Refusing to drop unexpected database $db" }
-        Write-Log "  -Force: dropping [$db]" 'Yellow'
-        Invoke-Sql $master "ALTER DATABASE [$db] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$db];"
+        $pdb = Phys $db
+        if ($DatabasePrefix -and -not $pdb.StartsWith($DatabasePrefix)) { throw "Refusing to drop $pdb (not a $DatabasePrefix database)" }
+        Write-Log "  -Force: dropping [$pdb]" 'Yellow'
+        Invoke-Sql $master "ALTER DATABASE [$pdb] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [$pdb];"
     }
 }
 
 # ---------------------------------------------------------------- create databases
-foreach ($db in $Databases.Keys) {
-    Write-Log "  Creating [$db] (default file paths, COLLATE $Collation)"
-    Invoke-Sql $master "CREATE DATABASE [$db] COLLATE $Collation;"
+if ($DataPath) {
+    if (-not (Test-Path $DataPath)) { New-Item -ItemType Directory -Path $DataPath | Out-Null }
+    # The service account of the instance must be able to create files there.
+    $instance = if ($Server -match '\\(.+)$') { $Matches[1] } else { 'MSSQLSERVER' }
+    $account = if ($instance -ieq 'MSSQLSERVER') { 'NT SERVICE\MSSQLSERVER' } else { "NT SERVICE\MSSQL`$$instance" }
+    & icacls $DataPath /grant "${account}:(OI)(CI)M" | Out-Null
+    Write-Log "  Data and log files in $DataPath (Modify granted to $account)"
+}
+foreach ($db in @($Databases.Keys | ForEach-Object { Phys $_ })) {
+    if ($DataPath) {
+        $mdf = Join-Path $DataPath "$db.mdf"; $ldf = Join-Path $DataPath "${db}_log.ldf"
+        Write-Log "  Creating [$db] ($mdf, COLLATE $Collation)"
+        Invoke-Sql $master "CREATE DATABASE [$db] ON (NAME = N'$db', FILENAME = N'$mdf') LOG ON (NAME = N'${db}_log', FILENAME = N'$ldf') COLLATE $Collation;"
+    }
+    else {
+        Write-Log "  Creating [$db] (default file paths, COLLATE $Collation)"
+        Invoke-Sql $master "CREATE DATABASE [$db] COLLATE $Collation;"
+    }
     Invoke-Sql $master "ALTER DATABASE [$db] SET COMPATIBILITY_LEVEL = 160; ALTER DATABASE [$db] SET RECOVERY SIMPLE;"
 }
 
@@ -204,7 +252,7 @@ foreach ($db in $Databases.Keys) {
 $seqFile = Join-Path $SchemaDir '04_missing_sequences.sql'
 if (-not $SkipSequenceStubs -and (Test-Path $seqFile)) {
     Write-Log "  Applying the SEQUENCE objects ($([System.IO.Path]::GetFileName($seqFile)))"
-    $seqSql = [System.IO.File]::ReadAllText($seqFile, [System.Text.Encoding]::UTF8)
+    $seqSql = Convert-ZedDatabaseNames ([System.IO.File]::ReadAllText($seqFile, [System.Text.Encoding]::UTF8)) $DatabasePrefix
     foreach ($chunk in ([regex]::Split($seqSql, '(?im)^\s*GO\s*$'))) {
         if ($chunk.Trim()) { Invoke-Sql $master $chunk }
     }
@@ -220,7 +268,7 @@ foreach ($db in $Databases.Keys) { $conns[$db] = $null }
 function Get-DbConn([string]$db) {
     $c = $conns[$db]
     if ($null -eq $c -or $c.State -ne 'Open') {
-        $c = New-Conn $db
+        $c = New-Conn (Phys $db)
         $c.add_InfoMessage({ param($s, $e) foreach ($er in $e.Errors) { $script:pending.Add($er.Message) } })
         $conns[$db] = $c
         $state[$db] = $null
@@ -249,6 +297,34 @@ function Invoke-Batch($b) {
     }
 }
 
+function New-KawachStandIn {
+    # The KAWACH tables the ZED scripts name (KAWACH.dbo.X, sequences excepted), created empty as copies of the
+    # same-named table in the first ZED database that has one. Existing tables are left as they are.
+    $names = @{}
+    foreach ($f in $AllDatabases.Values) {
+        if (-not $f) { continue }
+        $t = [System.IO.File]::ReadAllText((Join-Path $SchemaDir $f), [System.Text.Encoding]::UTF8)
+        foreach ($m in [regex]::Matches($t, '(?i)(?<![A-Za-z0-9_\\/])\[?KAWACH\]?\.\[?dbo\]?\.\[?([A-Za-z0-9_]+)')) {
+            $n = $m.Groups[1].Value
+            if ($n -notmatch '(?i)Sequence$' -and -not $names.ContainsKey($n.ToLowerInvariant())) { $names[$n.ToLowerInvariant()] = $n }
+        }
+    }
+    $k = Phys 'KAWACH'
+    $c = New-Conn $k
+    foreach ($n in ($names.Values | Sort-Object)) {
+        if ([int](Get-Scalar $c "SELECT COUNT(*) FROM sys.tables WHERE name = N'$n'") -gt 0) { continue }
+        $src = $null
+        foreach ($s in 'ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE', 'ZED_IMPACT_ASSESSMENT') {
+            if ([int](Get-Scalar $c "SELECT CASE WHEN DB_ID(N'$(Phys $s)') IS NOT NULL AND OBJECT_ID(N'[$(Phys $s)].dbo.[$n]', N'U') IS NOT NULL THEN 1 ELSE 0 END") -eq 1) { $src = Phys $s; break }
+        }
+        if (-not $src) { Write-Log "  KAWACH stand-in: no ZED table named $n to copy; left out" 'Yellow'; continue }
+        $n = [string](Get-Scalar $c "SELECT OBJECT_NAME(OBJECT_ID(N'[$src].dbo.[$n]'), DB_ID(N'$src'))")   # the source's spelling (Users, not users)
+        Invoke-Sql $c "SELECT TOP (0) * INTO dbo.[$n] FROM [$src].dbo.[$n];"
+        Write-Log "  KAWACH stand-in: [$k].dbo.[$n] (empty, columns of [$src].dbo.[$n])"
+    }
+    $c.Close()
+}
+
 $pass = 0
 $todo = $all.ToArray()
 while ($todo.Count -gt 0 -and $pass -lt $MaxPasses) {
@@ -262,8 +338,10 @@ while ($todo.Count -gt 0 -and $pass -lt $MaxPasses) {
     }
     $todo = @($all | Where-Object { -not $_.Done })
     Write-Log ("Pass {0}: {1} succeeded, {2} still failing" -f $pass, ($before - $todo.Count), $todo.Count)
+    if ($pass -eq 1 -and $Databases.Contains('KAWACH')) { New-KawachStandIn; continue }   # retry with the stand-in in place
     if ($todo.Count -eq $before) { break }   # no progress
 }
+if ($pass -eq 0 -and $Databases.Contains('KAWACH')) { New-KawachStandIn }   # -Only KAWACH
 foreach ($c in $conns.Values) { if ($null -ne $c) { $c.Close() } }
 
 # ---------------------------------------------------------------- report
@@ -279,13 +357,14 @@ foreach ($db in $Databases.Keys) {
     foreach ($k in 'Table', 'StoredProcedure', 'View', 'UserDefinedFunction', 'UserDefinedTableType') {
         $exp[$k] = @($all | Where-Object { $_.Db -eq $db -and $_.Name -like "$k *" }).Count
     }
-    $q = "SELECT CONCAT('tables=$($exp.Table)/', (SELECT COUNT(*) FROM [$db].sys.tables WHERE is_ms_shipped=0),
-        ' procs=$($exp.StoredProcedure)/', (SELECT COUNT(*) FROM [$db].sys.procedures WHERE is_ms_shipped=0),
-        ' views=$($exp.View)/', (SELECT COUNT(*) FROM [$db].sys.views WHERE is_ms_shipped=0),
-        ' functions=$($exp.UserDefinedFunction)/', (SELECT COUNT(*) FROM [$db].sys.objects WHERE type IN ('FN','IF','TF','FS','FT') AND is_ms_shipped=0),
-        ' tabletypes=$($exp.UserDefinedTableType)/', (SELECT COUNT(*) FROM [$db].sys.types WHERE is_table_type=1),
-        ' sequences=', (SELECT COUNT(*) FROM [$db].sys.sequences))"
-    Write-Log ("  {0,-30} {1}" -f $db, (Get-Scalar $verify $q))
+    $pdb = Phys $db
+    $q = "SELECT CONCAT('tables=$($exp.Table)/', (SELECT COUNT(*) FROM [$pdb].sys.tables WHERE is_ms_shipped=0),
+        ' procs=$($exp.StoredProcedure)/', (SELECT COUNT(*) FROM [$pdb].sys.procedures WHERE is_ms_shipped=0),
+        ' views=$($exp.View)/', (SELECT COUNT(*) FROM [$pdb].sys.views WHERE is_ms_shipped=0),
+        ' functions=$($exp.UserDefinedFunction)/', (SELECT COUNT(*) FROM [$pdb].sys.objects WHERE type IN ('FN','IF','TF','FS','FT') AND is_ms_shipped=0),
+        ' tabletypes=$($exp.UserDefinedTableType)/', (SELECT COUNT(*) FROM [$pdb].sys.types WHERE is_table_type=1),
+        ' sequences=', (SELECT COUNT(*) FROM [$pdb].sys.sequences))"
+    Write-Log ("  {0,-30} {1}" -f $pdb, (Get-Scalar $verify $q))
 }
 $verify.Close()
 

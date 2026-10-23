@@ -107,6 +107,7 @@ public static class ZedConfigurationCheck
         Require($"ConnectionStrings:{database}");
         // Staging runs on copies of production data: no mail to real people, and never a staging setting in Production.
         problems.AddRange(Zed.Core.Email.MailSafety.Problems(config, env));
+        problems.AddRange(ZedDatabaseNames.Problems(config, env));
         // The shipped defaults are the live addresses: a test environment must set its own, or its mail links and
         // "open in the old portal" links would send testers (and their actions) to the live site.
         if (!env.IsProduction())
