@@ -10,6 +10,9 @@
     mobile\          Zed.Main.MobileApi    (deployed three times by Install-ZedIis.ps1, Mobile:System per copy)
     jobs\            Zed.Jobs              (Windows service, docs/JOBS.md)
     database\        migrations and fixes, for the DBA
+    deploy\          Install-ZedIis.ps1, Invoke-ZedDatabaseScripts.ps1, Test-ZedDeployment.ps1 and the other
+                     deployment scripts, with the settings templates; run them from the package folder
+                     (.\deploy\...), where they find database\ beside them
     VERSION.txt
 
   No settings or secrets go into the package: appsettings.Development.json is removed, and the servers get their
@@ -101,6 +104,11 @@ Remove-Item $angularOut -Recurse -Force
 
 Copy-Item (Join-Path $repo 'database') (Join-Path $target 'database') -Recurse
 Get-ChildItem (Join-Path $target 'database') -Recurse -Directory -Filter 'logs' | Remove-Item -Recurse -Force
+# The deployment scripts resolve database\ as ..\database, so they run from the package as they do from the repository.
+# Only the shipped files: no filled-in settings or logs a developer may have left in the folder.
+$deployOut = New-Item -ItemType Directory -Force -Path (Join-Path $target 'deploy')
+Get-ChildItem (Join-Path $repo 'deploy') -File | Where-Object { $_.Extension -eq '.ps1' -or $_.Name -like '*.example.json' } |
+    Copy-Item -Destination $deployOut.FullName
 
 $commit = ''
 if (Get-Command git -ErrorAction SilentlyContinue) {

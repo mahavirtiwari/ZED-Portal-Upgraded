@@ -90,8 +90,8 @@ few inline queries that name another database. The map changes `USE`, `X.dbo.Y` 
 literals that are exactly a name (`DB_ID(N'X')`); never folder names in file paths (`E:\Publish\ZEDCS_LIVE\ZEDCS_V2_LIVE\…`)
 or names inside longer identifiers. The hosts refuse `Database__Prefix` in Production.
 
-Steps, in this order: an administrator PowerShell on the server, in the repository's folder (`E:\Releases\zed-<version>\repo`
-or a checkout on E:). Each script previews first; nothing below asks for a password.
+Steps, in this order: an administrator PowerShell on the server, in the release package's folder
+(`E:\Releases\zed-<version>`, section 4: it holds `database\` and `deploy\`). Each script previews first; nothing below asks for a password.
 
 1. **Build the databases** (about 10 minutes; data and log files in `E:\ZedStaging\SqlData`; the script gives the SQL
    Server service account Modify on the folder; it refuses to touch a database that exists, and even with `-Force` it
@@ -202,10 +202,11 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    untested); **CCAvenue test** merchant and keys only (ask CCAvenue to allow the staging return URLs); Protean and
    Twilio test credentials or none. `Portal__EnvironmentLabel=STAGING` shows a STAGING banner and title prefix and
    tells search engines not to index the site. The hosts refuse to start in Staging without a mail redirect.
-2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server.
-3. Install, dry run first, then the same with `-Apply`:
+2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
+   (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
+3. Install from the package folder, dry run first, then the same with `-Apply`:
    ```powershell
-   .\Install-ZedIis.ps1 -Package E:\Releases\zed-<version> -Settings E:\ZedV4\settings.json -InstallRoot E:\ZedV4 `
+   .\deploy\Install-ZedIis.ps1 -Package E:\Releases\zed-<version> -Settings E:\ZedV4\settings.json -InstallRoot E:\ZedV4 `
        -EnvironmentName Staging -SiteName ZEDV4 -CreateSite -HostName zedv3.qci.org.in `
        -CertificateThumbprint 787885A2C39981E31205F66DB5C91FB45315CE86 -HttpRedirect
    ```
@@ -233,7 +234,7 @@ job).
 ## 6. Check
 
 ```powershell
-.\Test-ZedDeployment.ps1 -BaseUrl https://zedv3.qci.org.in -ExpectEnvironmentLabel STAGING -CheckHttpsRedirect
+.\deploy\Test-ZedDeployment.ps1 -BaseUrl https://zedv3.qci.org.in -ExpectEnvironmentLabel STAGING -CheckHttpsRedirect
 ```
 0 failures required: health and database readiness of all six applications, the Angular apps and their base
 addresses, the old mail links, the XSRF cookie paths, the old dangerous actions gone, the mobile contract, the STAGING
@@ -264,7 +265,7 @@ agencies, assessors and MSMEs they create), plus:
 - **Search engines**: noindex and robots.txt come with the STAGING label; keep the IP restriction anyway.
 - **Production passwords or keys** in the settings file: use new ones (LIVE-HARDENING §7 lists what is rotated anyway).
 
-**Rollback rehearsal**: `.\Install-ZedIis.ps1 -Rollback E:\ZedV4\rollback-<time>.json -Apply` removes what the install
+**Rollback rehearsal**: `.\deploy\Install-ZedIis.ps1 -Rollback E:\ZedV4\rollback-<time>.json -Apply` removes what the install
 created (the site, its bindings and the redirect rule when the install created them); time it, then install again.
 
 **Tear-down** when the rehearsals are over: stop the app pools and Zed.Jobs, drop the seven `ZEDV4_` databases (and
