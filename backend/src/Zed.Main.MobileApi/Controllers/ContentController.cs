@@ -13,7 +13,8 @@ namespace Zed.Main.MobileApi.Controllers;
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class ContentController(ContentTexts texts, PortalHost host) : LegacyMobileController
 {
+    // The legacy serializer keeps the C# names: the camel-case names of the contract are spelled out.
     [HttpGet, HttpPost]
     public async Task<IActionResult> Texts(CancellationToken ct) =>
-        LegacyJson(new { status = "1", texts = await texts.ForAsync(host.System, ContentChannel.App, ct) });
+        LegacyJson(new { status = "1", texts = (await texts.ForAsync(host.System, ContentChannel.App, ct)).Select(t => new { key = t.Key, enabled = t.Enabled, html = t.Html }) });
 }

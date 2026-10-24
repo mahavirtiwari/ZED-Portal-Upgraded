@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { LookupResponse, RegistrationApi, SubmitResponse, UdyamRow } from './registration.api';
 import { PublicLayout } from '../public-layout/public-layout';
 
@@ -18,7 +19,7 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
  */
 @Component({
   selector: 'zed-msme-register',
-  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout],
+  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent],
   templateUrl: './register.html',
   styleUrl: './register.scss',
 })
@@ -26,6 +27,7 @@ export class RegisterPage {
   private readonly api = inject(RegistrationApi);
   private readonly auth = inject(AuthService);
   private readonly captcha = viewChild(Recaptcha);
+  private readonly content = inject(ContentService);
 
   protected readonly step = signal<Step>('welcome');
   protected readonly stepNumber = computed(() => STEP_NUMBER[this.step()]);
@@ -62,12 +64,11 @@ export class RegisterPage {
   protected readonly pledgeReady = signal(false);
   protected readonly result = signal<SubmitResponse | null>(null);
 
-  protected readonly pledgeLines = [
-    'We undertake to conform to the values of Zero Defect Zero Effect in our',
-    'enterprise and ensure that our processes shall be environmentally sound and',
-    'socially responsible with safe and high quality products. We will give back, in',
-    'every way we can, to our people, our community and to our planet.',
-  ];
+  /** The pledge (Admin → Texts), faded in line by line: one <p> per line. Nothing while loading or when hidden. */
+  protected readonly pledgeLines = computed(() => {
+    const pledge = this.content.text('msme.registration.pledge');
+    return pledge?.enabled ? textParts(pledge.html, 'p') : [];
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopResendTimer());

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../../content/content-text';
 import { StaffRole } from '../../staff-menu';
 import { TuAccount, TuApi, TuApplication, TuDocument, TuMeeting, TuTechnology, TuValues } from './tu.api';
 
@@ -104,7 +105,7 @@ interface DecisionForm {
  */
 @Component({
   selector: 'zed-staff-tu-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent],
   templateUrl: './tu-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }

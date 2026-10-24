@@ -42,6 +42,10 @@ describe('LoginPage', () => {
 
   afterEach(() => http.verify());
 
+  it('shows the new-user eligibility from the Texts', () => {
+    expect(el.querySelector('.login-bottom-newuser [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
+  });
+
   it('signs in and opens the dashboard', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     type('#userId', ' ZEDMSME000001 ');

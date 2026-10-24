@@ -11,5 +11,6 @@ describe('PrivacyPolicyPage', () => {
 
     expect(el.querySelector('h3')?.textContent).toContain('Privacy Policy');
     expect(el.querySelector('a[href="/msme/login"]')).not.toBeNull();
+    expect(el.querySelector('[data-key="public.privacyPolicy"]')).not.toBeNull();
   });
 });

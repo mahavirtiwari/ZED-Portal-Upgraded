@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../../content/content-text';
 import { RecommendationPage, TuApi } from './tu.api';
 
 /**
@@ -14,7 +15,7 @@ import { RecommendationPage, TuApi } from './tu.api';
  */
 @Component({
   selector: 'zed-staff-technology-recommendation',
-  imports: [FormsModule],
+  imports: [FormsModule, ContentTextComponent],
   templateUrl: './technology-recommendation.html',
   styles: `
     table tbody tr td { font-size: 14px; }

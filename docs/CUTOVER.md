@@ -168,6 +168,7 @@ Do these **before** the cut-over; all are additive, idempotent and harmless to t
 | 5h | `migrations/0014_msme_edit_history.sql` | ZEDCS_V2_LIVE | the applicant's change history (web and MSME app). Without it changes work but are not recorded |
 | 5i | `migrations/0015_email_templates.sql` | all three | Admin → Email Templates (switch an e-mail off, own subject and text). Without it the standard e-mails are sent and the page cannot save |
 | 5j | `migrations/0016_content_blocks.sql` | all three | Admin → Texts (disclaimers, instructions, undertakings and pledges of the web pages and the apps). Without it the standard texts are shown and the page cannot save |
+| 5k | `migrations/0017_app_forms.sql` | all three | Admin → App Forms (fields of the apps' Basic Information forms: labels, order, required, disabled, the Admin's own fields and their answers). Without it the apps get the standard forms and the page cannot save |
 | 6 | `fixes/*` per LIVE-HARDENING §4 (PREVIEW, diff, APPLY) | as named | protect the old sites now; all are compatible with V4. `main/05_mail_passwords` **must** be in before the reminder jobs run in Zed.Jobs (they mail passwords otherwise); `main/11` needs SELECT on `ZED_SURVEILLANCE.dbo.MsmeCertifications` for the executing login; `main/13` is a report (switch xp_cmdshell off once `Jobs:FolderRename` has replaced the old rename job) |
 | 7 | `migrations/0003_mail_outbox.sql` | all three | **only together with starting Zed.Jobs and switching the Agent jobs off** (JOBS.md "Before go-live"): from then on procedure mail of the old sites is sent by Zed.Jobs too |
 
@@ -282,7 +283,7 @@ Possible at any time while `Security:Passwords` is still `Dual` and the old app 
 What the old sites find after a rollback:
 - **All data V4 wrote**: V4 writes through the same procedures into the same tables and files in the old layout.
 - V4-only tables (`V4MailOutbox`, `V4JobRuns`, `V4UserPasswords`, `MobileDeviceBindings`, `MobileDeviceEvents`,
-  `V4Cache`, `V4FolderRenameResults`, `V4PasswordResets`, `V4AppSessions`, `V4Settings`, `V4SubUsers`, `V4LoginEvents`, `V4MsmeEditHistory`, `V4EmailTemplates`, `V4ContentBlocks`) are ignored by the old code. Leave them.
+  `V4Cache`, `V4FolderRenameResults`, `V4PasswordResets`, `V4AppSessions`, `V4Settings`, `V4SubUsers`, `V4LoginEvents`, `V4MsmeEditHistory`, `V4EmailTemplates`, `V4ContentBlocks`, `V4AppFormFields`, `V4AppFormValues`) are ignored by the old code. Leave them.
 - **Mail**: the converted procedures (0003) keep queuing; **keep Zed.Jobs running**. To go fully back, re-enable the
   Agent jobs, stop Zed.Jobs, and undo 0003 per procedure (its header says how), which needs Database Mail.
 - **Folder renaming**: re-enable the old Agent job; it reads the same `FolderRenameHIstory` and continues.

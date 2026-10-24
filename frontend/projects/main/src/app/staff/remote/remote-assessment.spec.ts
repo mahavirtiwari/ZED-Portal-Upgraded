@@ -223,6 +223,7 @@ describe('RemoteAssessmentPage', () => {
     const comments = el.querySelector('#finalComments') as HTMLTextAreaElement;
     comments.value = 'Assessment done';
     comments.dispatchEvent(new Event('input'));
+    expect(el.querySelector('label[for="finalConfirm"] [data-key="staff.assessment.remote.fairConfirm.checkbox"]')).not.toBeNull();
     const confirm = el.querySelector('#finalConfirm') as HTMLInputElement;
     confirm.click();
     await settle(fixture);

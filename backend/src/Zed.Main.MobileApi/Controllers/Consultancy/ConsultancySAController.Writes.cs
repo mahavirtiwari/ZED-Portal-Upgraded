@@ -2,6 +2,8 @@ using System.Data;
 using System.Data.Common;
 using System.Text.Json;
 using Zed.Core.Data;
+using Zed.Core.Forms;
+using Zed.Core.Http;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Mobile;
@@ -180,7 +182,14 @@ public sealed partial class ConsultancySAController
         if (request.basicInformation is not { } info) return Fail("No data found.");
         if (await RequireOpenAsync(request.zedId, request.certificationType, request.saId, ct) is { } stage) return stage;
 
-        // The old code read every group without a null check and failed (exception text) when one was missing.
+        // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
+        var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.ConsultantBasicInfo, PortalSystem.Consultancy,
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+        if (appForm.Error is { } formError) return Fail(formError);
+        appForm.FillOptionalGroups(info);
+
+        // The old code read every group without a null check and failed (exception text) when one was missing; a group is
+        // only required while one of its fields is (Admin → App Forms).
         if (info is not
             {
                 occupationalSafety: { } safety, measurementOfTimelyDelivery: { } delivery, plannedMaintenanceCalibration: { } maintenance,
@@ -190,7 +199,7 @@ public sealed partial class ConsultancySAController
             })
             return Fail(ErrorText);
 
-        return LegacyJson(await ExecAsync("SP_APP_SA_CONSULTANCY_INSERT_BASIC_INFO", new
+        var result = await ExecAsync("SP_APP_SA_CONSULTANCY_INSERT_BASIC_INFO", new
         {
             RefId = RefId(),
             ZedId = request.zedId,
@@ -250,7 +259,10 @@ public sealed partial class ConsultancySAController
             NrmMeasuresTaken = nrm.measuresTaken,
             Turnover = fin.turnover,
             GrossProfit = fin.grossProfit,
-        }, ct));
+        }, ct);
+        if (result.status == "1" && !await appForm.SaveAsync(request.zedId ?? "", request.certificationType ?? "", First(request.saId, request.userName) ?? "", log, ct))
+            result = ServiceResponse.Fail(ErrorText);
+        return LegacyJson(result);
     });
 
     [HttpPost]

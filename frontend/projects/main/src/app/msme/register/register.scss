@@ -74,3 +74,8 @@ label.panel-item {
   justify-content: center;
   z-index: 2000;
 }
+
+// The e-mail note on the summary: its box is drawn by zed-text (Admin → Texts).
+:host ::ng-deep .email-note {
+  background-color: rgba(179, 224, 121, 0.2);
+}

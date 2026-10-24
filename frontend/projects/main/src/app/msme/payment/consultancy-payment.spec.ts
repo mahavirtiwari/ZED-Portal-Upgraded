@@ -57,7 +57,7 @@ describe('ConsultancyPaymentPage', () => {
     await open();
     button('ACCEPT & PROCEED').click();
     await settled();
-    expect(el.textContent).toContain('There are 3 milestones in the handholding process');
+    expect(el.querySelector('[data-key="msme.handholding.payment.instructions"]')).not.toBeNull();
     button('ACCEPT & PROCEED').click();
     await settled();
     http.expectOne(`${API}/Silver/options`).flush(o);
@@ -95,7 +95,7 @@ describe('ConsultancyPaymentPage', () => {
   it('shows the handholding disclaimer, instructions and fee summary of the milestone due', async () => {
     await open();
     expect(el.textContent).not.toContain('Handholding for Silver Level');   // no level / milestone line, as the live page
-    expect(el.textContent).toContain('requirements of the handholding process');
+    expect(el.querySelector('[data-key="msme.handholding.payment.disclaimer"]')).not.toBeNull();
     expect(button('BACK').getAttribute('href')).toBe('/msme/handholding?level=Silver');
     button('ACCEPT & PROCEED').click();
     await settled();

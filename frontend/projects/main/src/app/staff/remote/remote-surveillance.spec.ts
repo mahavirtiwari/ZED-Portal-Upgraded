@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ContentService, ContentText } from '../../content/content-text';
 import { RemoteAssessmentPage } from './remote-assessment';
 import { RemoteDetails } from './remote.api';
 
@@ -44,6 +45,12 @@ function details(recordings = 1, meetingLink: string | null = 'https://meet.exam
   };
 }
 
+/** The instructions as the Admin set them (Admin → Texts); the standard text is in the catalogue (backend). */
+const INSTRUCTIONS: ContentText = {
+  key: 'staff.surveillance.remote.instructions', enabled: true,
+  html: '<ol>\n  <li>Surveillance Assessments are mandatory.</li>\n  <li>A Weblink will be provided by the <b>Assessment Agency</b>.</li>\n</ol>',
+};
+
 describe('RemoteAssessmentPage (surveillance meeting link)', () => {
   let fixture: ComponentFixture<RemoteAssessmentPage>;
   let http: HttpTestingController;
@@ -55,6 +62,7 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
       providers: [
         provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ zedId: 'ZEDMSME000001', certification: 'Silver' }) } } },
+        { provide: ContentService, useValue: { text: (key: string) => (key === INSTRUCTIONS.key ? INSTRUCTIONS : null) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(RemoteAssessmentPage);
@@ -101,9 +109,8 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect(el.querySelector('.tab-title h4')!.textContent).toContain('Instructions');
     expect(el.textContent).toContain('Instructions for Completing the Silver/Gold Surveillance Process');
     const rows = [...el.querySelectorAll('.tab-content tbody tr')].map((r) => r.textContent!.trim());
-    expect(rows.length).toBe(13);
-    expect(rows[0]).toBe('1. Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.');
-    expect(rows[12]).toContain('13. A Weblink will be provided by the Assessment Agency');
+    expect(rows).toEqual(['1. Surveillance Assessments are mandatory.', '2. A Weblink will be provided by the Assessment Agency.']);
+    expect(el.querySelector('.tab-content tbody tr:last-child b')!.textContent).toBe('Assessment Agency');
     expect([...el.querySelectorAll('.nav-link')].map((b) => b.textContent!.trim())).toEqual([
       'Instructions', 'Assessment Overview', 'Opening Meeting', 'Basic Info', 'Assessment Evidence', 'Parameters', 'Closing Meeting',
     ]);

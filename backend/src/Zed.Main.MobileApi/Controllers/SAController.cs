@@ -3,6 +3,7 @@ using System.Data.Common;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
@@ -473,8 +474,16 @@ public sealed class SAController(
         var st = await CheckSaStatusAsync(request.zedId, request.certificationType, request.saId, ct);
         if (st.ClosingMeetingSubmitted) return Fail(Closed + request.zedId);
         if (!st.OpenMeetingSubmitted) return Fail(OpenNotSubmitted + request.zedId);
-        // The old code joined the list without a null check and failed here.
-        if (info.energySources is null) return Fail(ErrorText);
+        // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
+        var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.AssessorBasicInfo, portal.System,
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+        if (appForm.Error is { } formError) return Fail(formError);
+        // The old code joined the list without a null check and failed here; it may be left out once the Admin made it optional or hid it.
+        if (info.energySources is null)
+        {
+            if (appForm.Form.IsRequired("energySources")) return Fail(ErrorText);
+            info.energySources = [];
+        }
 
         var productPhotos = PhotoTable();
         var descriptionPhotos = PhotoTable();
@@ -510,16 +519,19 @@ public sealed class SAController(
         args.Add("MonthlyUtilizationUnits", info.monthlyUtilizationUnits);
         args.Add("MonthlyUtilizationValue", info.monthlyUtilizationValue);
         // The old code sent each photo list only when the *other* list had rows, and an empty list
-        // made SqlClient throw; so exactly one empty photo list failed the call. Kept as it was.
-        if ((productPhotos.Rows.Count > 0) != (descriptionPhotos.Rows.Count > 0)) return EmptyList(nameof(SubmitBasicInformation));
-        if (productPhotos.Rows.Count > 0)
-        {
-            args.Add("ProductDescriptionPhotos", descriptionPhotos.AsTableValuedParameter("DynamicPhotoList2"));
-            args.Add("ProductPhotos", productPhotos.AsTableValuedParameter("DynamicPhotoList2"));
-        }
+        // made SqlClient throw; so exactly one empty photo list failed the call. Kept as it was, unless the Admin made the
+        // missing photo optional or hid it: then only the list with rows is sent (an omitted table parameter is empty).
+        if ((productPhotos.Rows.Count > 0) != (descriptionPhotos.Rows.Count > 0) &&
+            appForm.Form.IsRequired(productPhotos.Rows.Count == 0 ? "productDetailsList/productPhoto" : "productDetailsList/productDescriptionPhoto"))
+            return EmptyList(nameof(SubmitBasicInformation));
+        if (descriptionPhotos.Rows.Count > 0) args.Add("ProductDescriptionPhotos", descriptionPhotos.AsTableValuedParameter("DynamicPhotoList2"));
+        if (productPhotos.Rows.Count > 0) args.Add("ProductPhotos", productPhotos.AsTableValuedParameter("DynamicPhotoList2"));
         if (products.Rows.Count > 0) args.Add("ProductList", products.AsTableValuedParameter("ProductDetails2"));
         if (rawMaterials.Rows.Count > 0) args.Add("RawMaterialList", rawMaterials.AsTableValuedParameter("RawMaterial"));
-        return LegacyJson(await ExecAsync("SP_APP_SA_INSERT_BASIC_INFO", args, ct));
+        var result = await ExecAsync("SP_APP_SA_INSERT_BASIC_INFO", args, ct);
+        if (result.status == "1" && !await appForm.SaveAsync(request.zedId ?? "", request.certificationType ?? "", First(request.saId, request.userName) ?? "", log, ct))
+            result = ServiceResponse.Fail(ErrorText);
+        return LegacyJson(result);
     });
 
     [HttpPost]

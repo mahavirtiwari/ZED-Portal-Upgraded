@@ -748,7 +748,7 @@
             <div class="form-check">
               <input class="form-check-input" type="checkbox" id="milestoneConfirm" [ngModel]="confirmed()" (ngModelChange)="confirmed.set($event)" />
               <label class="form-check-label" for="milestoneConfirm">
-                {{ dlg === 'reject' ? 'I confirm that the milestone has been reviewed and the handholding support is rejected.' : 'I confirm that the review of the milestone has been done and relevant amendments made wherever applicable.' }}
+                <zed-text [key]="dlg === 'reject' ? 'staff.consultancy.milestone.reject.checkbox' : 'staff.consultancy.milestone.review.checkbox'" [inline]="true" />
               </label>
             </div>
           }

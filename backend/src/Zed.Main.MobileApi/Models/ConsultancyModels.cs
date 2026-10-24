@@ -229,6 +229,10 @@ public sealed class BasicInfoConsultancyRequest
     public string? saId { get; set; }
     public string? certificationType { get; set; }
     public BasicInfoConsultancy? basicInformation { get; set; }
+    /// <summary>New in V4 (Admin → App Forms): answers to the Admin's own fields by field key (docs/mobile/APP-FORMS.md).</summary>
+    public Dictionary<string, System.Text.Json.JsonElement>? customFields { get; set; }
+    /// <summary>New in V4: version of the form definition the app filled in; when sent, the required fields are enforced.</summary>
+    public string? formVersion { get; set; }
 }
 
 public sealed class BasicInfoConsultancy

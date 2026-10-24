@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ContentService, ContentText } from '../../content/content-text';
 import { RegisterPage } from './register';
 
 describe('RegisterPage', () => {
@@ -50,6 +51,11 @@ describe('RegisterPage', () => {
     window.scrollTo = () => undefined;
   });
 
+  it('shows the welcome text from the Texts', async () => {
+    await settle();
+    expect(el.querySelector('[data-key="msme.registration.welcome"]')).not.toBeNull();
+  });
+
   it('validates the Udyam number format before calling the API', async () => {
     await goToUdyamStep();
     type('#regNo', '12345');
@@ -81,6 +87,7 @@ describe('RegisterPage', () => {
     expect(el.textContent).toContain('Unit and Activity');
     expect(el.textContent).toContain('Acme Castings');
     expect(el.textContent).toContain('Plot 4, KANPUR, UP, 208001');
+    expect(el.querySelector('[data-key="msme.registration.plant.validatedNote"]')).not.toBeNull();
   });
 
   it('shows the API message when the lookup is rejected', async () => {
@@ -103,5 +110,34 @@ describe('RegisterPage', () => {
   afterEach(() => {
     answerCaptchaConfig();
     http.verify();
+  });
+});
+
+describe('RegisterPage pledge', () => {
+  const texts = new Map<string, ContentText>();
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [RegisterPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ContentService, useValue: { text: (key: string) => texts.get(key) ?? null } }],
+    }).compileComponents();
+    window.scrollTo = () => undefined;
+  });
+
+  function pledgeLines(): string[] {
+    const fixture = TestBed.createComponent(RegisterPage);
+    (fixture.componentInstance as unknown as { step: { set(s: string): void } }).step.set('pledge');
+    fixture.detectChanges();
+    return [...fixture.nativeElement.querySelectorAll('.pledge-line')].map((l: Element) => l.innerHTML.trim());
+  }
+
+  it('fades in the Admin pledge line by line', () => {
+    texts.set('msme.registration.pledge', { key: 'msme.registration.pledge', enabled: true, html: '<p>We undertake</p>\n<p>to give <b>back</b></p>' });
+    expect(pledgeLines()).toEqual(['We undertake', 'to give <b>back</b>']);
+  });
+
+  it('shows no pledge when the Admin hid it', () => {
+    texts.set('msme.registration.pledge', { key: 'msme.registration.pledge', enabled: false, html: '<p>We undertake</p>' });
+    expect(pledgeLines()).toEqual([]);
   });
 });

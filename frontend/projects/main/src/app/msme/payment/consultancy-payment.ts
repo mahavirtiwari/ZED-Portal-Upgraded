@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { handholdingLevel } from '../handholding/handholding.api';
 import { ConsultancyOptions, ConsultancyPaymentApi } from './consultancy-payment.api';
@@ -22,7 +23,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-consultancy-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
   templateUrl: './consultancy-payment.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

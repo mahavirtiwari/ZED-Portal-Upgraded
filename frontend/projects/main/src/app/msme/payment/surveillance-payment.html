@@ -12,15 +12,7 @@
             <div class="panel panel-default panel-design">
               <div class="panel-body disclaimer-sec">
                 <h3 class="registration-title">DISCLAIMER</h3>
-                <p>This disclaimer/declaration governs the use of the MSME Standard, various documents, reports and any content therein. The following is accepted in full by the User/applicant Unit:</p>
-                <ol>
-                  <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this voluntary scheme on their own volition.</li>
-                  <li>The applicant has read and understood the requirements of the Certification Level and the Surveillance assessment for which the payment is being made and take full responsibility for any non-conformities that may occur during the Surveillance assessment.</li>
-                  <li>The amount once remitted is non-refundable, non-adjustable &amp; non-transferable irrespective of the outcome of the Surveillance process.</li>
-                  <li>Submission of relevant documents/evidences/responses in a timely manner is essential and non-conformance to timelines may lead to suspension or withdrawal of the Certification.</li>
-                  <li>The final payment being made is only the “beneficiary contribution”; the subsidies applicable for this Certification Level is pre-applied.</li>
-                  <li>Mere submission of relevant payment does not guarantee continuation of Certification. The Certification will only be continued after completion of due process of Surveillance assessment and closure of all non-conformities, if any, within the stipulated time.</li>
-                </ol>
+                <zed-text key="msme.surveillance.payment.disclaimer" />
                 <div class="stepper-footer-sec initial-step1">
                   <a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
                   <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
@@ -37,13 +29,7 @@
             <div class="panel panel-default panel-design">
               <div class="panel-body disclaimer-sec">
                 <h3 class="registration-title">INSTRUCTIONS</h3>
-                <ol>
-                  <li>After making the payment, the applicant MSME would receive a call from QCI empanelled Assessment Agency and the applicant MSME will require to select a mutually agreed date for Surveillance Assessment.</li>
-                  <li>The Surveillance assessment will be done remotely and the MSME must download the Mobile Application from Google Play Store as and when prompted (if not downloaded already)</li>
-                  <li>The MSME must ensure that there is a good internet connection.</li>
-                  <li>The conclusions of the Surveillance assessment will be derived solely from the information provided by the applicant and it is expected that the applicant honestly shares the relevant information/ documents/evidences.</li>
-                  <li>A User Manual with detailed instructions &amp; guidance on “Surveillance Assessment process” can be downloaded from “My Documents” section of the ZED website.</li>
-                </ol>
+                <zed-text key="msme.surveillance.payment.instructions" />
                 <div class="stepper-footer-sec initial-step1">
                   <a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
                   <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="openPayment()">ACCEPT &amp; PROCEED</button>
@@ -112,7 +98,7 @@
                             <div>
                               <h4>Joining Reward*</h4>
                               <strong>{{ 10000 | number: '1.2-2' }}</strong>
-                              <div>*Applicable only on one certification (either Bronze or Silver or Gold).</div>
+                              <div><zed-text key="msme.surveillance.payment.joiningReward.note" [inline]="true" /></div>
                             </div>
                             <div>
                               @if (useReward()) {

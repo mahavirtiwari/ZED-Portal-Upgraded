@@ -108,7 +108,7 @@ describe('HandholdingPage', () => {
 
     (el.querySelector('[aria-label="About Handholding for Silver Level"]') as HTMLElement).click();
     await settled();
-    expect(el.textContent).toContain('The Handholding Support cost is Rs. 2,00,000/- inclusive of taxes');
+    expect(el.querySelector('.modal [data-key="msme.handholding.info.level"]')).not.toBeNull();
   });
 
   it('accepts a milestone waiting for the unit after the declaration is ticked, then reloads', async () => {
@@ -125,6 +125,7 @@ describe('HandholdingPage', () => {
     await settled();
     const submit = find('button', 'SUBMIT') as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
+    expect(el.querySelector('input[name="isAccepted"]')!.closest('label')!.querySelector('[data-key="msme.handholding.acceptMilestone.checkbox"]')).not.toBeNull();
     (el.querySelector('input[name="isAccepted"]') as HTMLInputElement).click();
     await settled();
     expect(submit.disabled).toBe(false);

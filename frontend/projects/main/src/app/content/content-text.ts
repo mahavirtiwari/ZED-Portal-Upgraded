@@ -17,6 +17,16 @@ export function fillText(html: string, values: Record<string, unknown>): string 
 }
 
 /**
+ * The inner HTML of each <tag> element of a text (e.g. the <p> lines of the pledge, the <li> items of a list) for a
+ * page that lays them out itself (not nested); the whole text as one part when it has none.
+ */
+export function textParts(html: string, tag: 'p' | 'li'): string[] {
+  const element = tag === 'p' ? /<p(?:\s[^>]*)?>([\s\S]*?)<\/p>/gi : /<li(?:\s[^>]*)?>([\s\S]*?)<\/li>/gi;
+  const parts = [...html.matchAll(element)].map((m) => m[1].trim()).filter((p) => p);
+  return parts.length ? parts : html.trim() ? [html.trim()] : [];
+}
+
+/**
  * The Admin's Texts (Admin → Texts, new in V4): the disclaimers, instructions, undertakings and pledges of this portal,
  * loaded once per visit from api/content. Until they arrive, or when they cannot, pages show their own copy.
  */
@@ -41,16 +51,18 @@ export class ContentService {
 }
 
 /**
- * One editable text: <c>&lt;zed-text key="msme.payment.disclaimer" [values]="{ Fee: fee() }"&gt;standard copy&lt;/zed-text&gt;</c>.
- * Shows the Admin's version (with the fields filled in), nothing when the Admin hid it, and the projected copy until the
- * texts are loaded or when they cannot be. The HTML goes through Angular's sanitizer.
+ * One editable text: <c>&lt;zed-text key="msme.payment.disclaimer" [values]="{ Fee: fee() }" /&gt;</c>. Shows the
+ * Admin's version or the standard one (ContentCatalogue, with the fields filled in), nothing when the Admin hid it, and
+ * the projected content (if any) until the texts are loaded or when they cannot be. The HTML goes through Angular's
+ * sanitizer. The key is rendered as data-key (for the specs).
  */
 @Component({
   selector: 'zed-text',
+  host: { '[attr.data-key]': 'key()' },
   template: `
     @if (text(); as t) {
       @if (t.enabled) {
-        @if (inline()) { <span [innerHTML]="html()"></span> } @else { <div class="zed-text" [innerHTML]="html()"></div> }
+        @if (inline()) { <span [innerHTML]="html()"></span> } @else { <div [class]="box() ? 'zed-text ' + box() : 'zed-text'" [innerHTML]="html()"></div> }
       }
     } @else {
       <ng-content />
@@ -65,6 +77,8 @@ export class ContentTextComponent {
   readonly values = input<Record<string, unknown>>({});
   /** Inside a label or a sentence. */
   readonly inline = input(false);
+  /** Classes of the box the text is shown in (e.g. "alert alert-warning"): no empty box when the text is hidden. */
+  readonly box = input('');
 
   protected readonly text = computed(() => this.content.text(this.key()));
   protected readonly html = computed(() => fillText(this.text()?.html ?? '', this.values()));

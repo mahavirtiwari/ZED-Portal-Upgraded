@@ -1,6 +1,8 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Core.Forms;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Main.MobileApi.Models;
 using Zed.Main.MobileApi.Templates;
@@ -39,9 +41,13 @@ public sealed partial class SurveillanceController
         if (info is null) return Fail(NoDataFound);
 
         var zedId = request.userName?.Trim() ?? "";
-        var (_, refused) = await UnitAsync(nameof(SubmitBasicInformation), zedId, request.certificationType, Need.BeforeFinalSubmit, ct);
+        var (unit, refused) = await UnitAsync(nameof(SubmitBasicInformation), zedId, request.certificationType, Need.BeforeFinalSubmit, ct);
         if (refused is not null) return refused;
         var cert = CertificationSegment(request.certificationType);
+        // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
+        var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.MsmeBasicInfo, PortalSystem.Surveillance,
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+        if (appForm.Error is { } formError) return Fail(formError);
 
         var uploads = new Uploads(Storage);
         var productPhotos = PhotoTable();
@@ -94,7 +100,9 @@ public sealed partial class SurveillanceController
         AddTable(args, "Selfie", selfie, "DynamicPhotoList2");
         AddTable(args, "ProductList", products, "ProductDetails2");
         AddTable(args, "RawMaterialList", rawMaterials, "RawMaterial");
-        return Answer(await TryExecuteAsync("SP_APP_SURVEILLANCE_INSERT_BASIC_INFO", args, ct));
+        var error = await TryExecuteAsync("SP_APP_SURVEILLANCE_INSERT_BASIC_INFO", args, ct);
+        if (error is null && !await appForm.SaveAsync(zedId, cert, unit?.DesktopAssessorId?.Trim() ?? zedId, log, ct)) error = GenericError;
+        return Answer(error);
     }
 
     /// <summary>SP_APP_SURVEILLANCE_INSERT_ESG_CHECKLIST (answers Status / ErrorMessage itself): only before final submit.</summary>

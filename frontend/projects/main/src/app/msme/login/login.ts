@@ -4,12 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { LoginShell } from '../login-shell/login-shell';
 
 /** MSME login and forgot-password. Port of Views/Msme/Login.cshtml. */
 @Component({
   selector: 'zed-msme-login',
-  imports: [FormsModule, RouterLink, Recaptcha, LoginShell],
+  imports: [FormsModule, RouterLink, Recaptcha, LoginShell, ContentTextComponent],
   templateUrl: './login.html',
 })
 export class LoginPage {

@@ -117,7 +117,7 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
    2): those 23 procedures are broken in production too (database\README.md "Findings" 1, and the five
    ZED_CENTER_AUDIT_PROFESSIONAL procedures whose table types the export lacks), as in an unprefixed build. Any other
    failure: stop and read `database\logs\failed-batches-*.json`.
-2. **V4 scripts** (migrations 0001–0016 and 0003, then the fix previews):
+2. **V4 scripts** (migrations 0001–0017 and 0003, then the fix previews):
    ```powershell
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_ -Apply -IncludeMailOutbox

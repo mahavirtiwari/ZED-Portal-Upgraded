@@ -62,6 +62,19 @@ describe('TechnologyUpgradationPage', () => {
     expect(el.textContent).not.toContain('DISCLAIMER');
   });
 
+  it('shows the schemes disclaimer, then the unit confirmation and the declaration from the Texts', async () => {
+    http.expectOne('/api/msme/schemes/tu').flush(page(false));
+    await settle();
+    expect(el.querySelector('[data-key="msme.schemes.disclaimer"]')).not.toBeNull();
+    const p = fixture.componentInstance as unknown as Page;
+    p.go(3);
+    await settle();
+    expect(el.querySelector('#tuConfirm')!.closest('label')!.querySelector('[data-key="msme.tu.confirm.checkbox"]')).not.toBeNull();
+    p.go('account');
+    await settle();
+    expect(el.querySelector('#tuDeclaration')!.closest('label')!.querySelector('[data-key="msme.schemes.declaration.checkbox"]')).not.toBeNull();
+  });
+
   it('lists technologies and only proceeds once one is submitted', async () => {
     http.expectOne('/api/msme/schemes/tu').flush(page(false));
     await settle();

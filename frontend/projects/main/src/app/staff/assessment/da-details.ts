@@ -4,8 +4,10 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { ReviewActionsBar, ReviewRemarksDialog, RemarksTarget } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
+import { AppFormValuesPanel } from './app-form-values';
 import { ASSESSMENT_SYSTEM, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
 
@@ -42,7 +44,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed:
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog],
+  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel],
   templateUrl: './da-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })

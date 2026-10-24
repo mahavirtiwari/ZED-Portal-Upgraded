@@ -20,22 +20,7 @@
     @case ('welcome') {
       <div class="col-sm-8 offset-sm-2">
         <h3 class="registration-title">Welcome</h3>
-        <p class="info-heading">To proceed, please keep the following ready:</p>
-        <ol style="padding-left: 18px">
-          <li>The <strong>Udyam Registration Number</strong> of the Enterprise.</li>
-          <li>The <strong>Mobile Number</strong> that is associated with the Udyam Registration.</li>
-        </ol>
-        <div class="label-highlight">
-          <div class="text-center">
-            <p>
-              If your Enterprise is not registered under Udyam Registration, then you may first register on<br />
-              <a class="udyam-info-link" href="https://udyamregistration.gov.in" target="_blank" rel="noopener">
-                https://udyamregistration.gov.in <img src="/Images/svgicons/nav.svg" alt="" />
-              </a><br />
-              and then register here.
-            </p>
-          </div>
-        </div>
+        <zed-text key="msme.registration.welcome" />
         <div class="stepper-footer-sec initial-step1">
           <a routerLink="/msme/login" class="btn btn-default">BACK</a>
           <button type="button" class="btn btn-primary" (click)="go('udyam')">PROCEED</button>
@@ -80,9 +65,7 @@
       <div class="row">
         <div class="col-sm-12">
           <h3 class="registration-title">Unit and Activity</h3>
-          <div class="label-highlight">
-            <p>Your details have been validated from MSME Database (Ministry of MSME, Government of India)</p>
-          </div>
+          <zed-text key="msme.registration.plant.validatedNote" box="label-highlight" />
         </div>
       </div>
       <div class="row">
@@ -194,9 +177,7 @@
             </div></div>
           </div>
           <div class="unit-selection"><img src="/Images/svgicons/email.svg" width="20" alt="" /><p>{{ verifiedEmail() }}</p></div>
-          <div class="unit-selection" style="background-color: rgba(179, 224, 121, 0.2)">
-            <p>Your ZED ID &amp; Password along with your ZED Pledge Certificate will be sent on this email ID.</p>
-          </div>
+          <zed-text key="msme.registration.emailNote" box="unit-selection email-note" />
         </div>
         <div class="col-sm-3">
           <div class="panel panel-default panel-black">
@@ -222,7 +203,7 @@
       <div class="label-highlight2">
         <label class="checkbox-inline">
           <input type="checkbox" class="option-input1 yes checkbox" [(ngModel)]="accepted" name="accepted" />
-          <span>I confirm the above and agree to proceed with the information provided.</span>
+          <zed-text key="msme.registration.confirm.checkbox" [inline]="true" />
         </label>
       </div>
       <div class="stepper-footer-sec initial-step1">
@@ -240,8 +221,8 @@
           <div class="text-center">
             <div class="zed-pledge">
               <div class="zed-pledge-text">
-                @for (line of pledgeLines; track $index) {
-                  <span class="pledge-line" [style.animation-delay.ms]="$index * 1000">{{ line }} </span>
+                @for (line of pledgeLines(); track $index) {
+                  <span class="pledge-line" [style.animation-delay.ms]="$index * 1000" [innerHTML]="line + ' '"></span>
                 }
               </div>
             </div>
@@ -269,16 +250,7 @@
             and use “Forgot Password” on the login page if you do not receive your password.
           </div>
         }
-        <strong>Congratulations! You can now avail:</strong>
-        <ul>
-          <li>Joining reward of Rs. 10,000/- for ZED Certification.</li>
-        </ul>
-        <strong>What next?</strong>
-        <ul>
-          <li>Check your email for Pledge Certificate and ZED ID/ Password.</li>
-          <li>If you did not receive any email, please check in Spam/Junk folder.</li>
-          <li>Use the received ZED ID and Password to login again.</li>
-        </ul>
+        <zed-text key="msme.registration.success" />
         <div class="stepper-footer-sec initial-step">
           <a class="btn btn-primary" routerLink="/msme/dashboard">GO TO DASHBOARD</a>
         </div>
@@ -297,7 +269,7 @@
           <button type="button" class="btn-close" aria-label="Close" (click)="modal.set(null)"></button>
         </div>
         <div class="modal-body">
-          <p class="small">Your ZED ID, password and Pledge Certificate will be sent to this Email ID.</p>
+          <zed-text key="msme.registration.emailModalNote" />
           <label class="input-title" for="email">Email ID</label>
           <input id="email" name="email" type="email" class="form-control mb-3" maxlength="100" autocomplete="email" [(ngModel)]="email" required />
           <label class="input-title" for="confirmEmail">Confirm Email ID</label>

@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { withApiBase } from '../../api-base';
+import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
@@ -38,23 +39,6 @@ export const SURVEILLANCE_TABS: { id: RemoteTab; no: number; title: string }[] =
   { id: 'siteTour', no: 5, title: 'Assessment Evidence' },
   { id: 'parameters', no: 6, title: 'Parameters' },
   { id: 'closeMeeting', no: 7, title: 'Closing Meeting' },
-];
-
-/** The Instructions tab of the surveillance page, word for word. */
-export const SURVEILLANCE_INSTRUCTIONS: readonly string[] = [
-  'Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.',
-  'Each certified MSME must undergo Two Surveillance Assessments within a Certification cycle of three years.',
-  'MSMEs that upgrade from Silver to Gold Certification during the certification cycle will not require to undergo Surveillance Assessments for the previous level.',
-  'The Certification shall be suspended/withdrawn if the MSME fails to apply for Surveillance Assessments or the MSME doesn’t successfully completes the Surveillance Assessments.',
-  'In the cases of Withdrawal, the MSME will have to apply a fresh by paying the entire Assessment/ Certification Fee.',
-  'Surveillance Assessment Fee for Silver and Gold Certifications are is Rs.10,000/- and Rs.20,000/-, respectively.',
-  'The MSME shall require to pay the beneficiary contribution in advance (as applicable) at the beginning of each Surveillance Assessment.',
-  'MSMEs will be eligible for the subsidies as specified in ZED Scheme Guidelines for Surveillance Assessment.',
-  'Remote Surveillance Assessment will be conducted by Assessor(s) as allocated by empaneled Assessment Agency.',
-  'A certificate and report will be provided to applicant after successful completion of Surveillance Assessment.',
-  'The Assessment Fee mentioned in the User Manual and at other relevant sources, are all inclusive and are required to be paid online through the ZED portal. MSME shall not pay any other amount to anyone.',
-  'MSME must download ZED MSME mobile application available on Google Play Store (Android) and App Store (iPhone) on or before the day of Surveillance Assessment.',
-  'A Weblink will be provided by the Assessment Agency to conduct the remote assessment. MSME must join the meeting by clicking on the link on the day of assessment.',
 ];
 
 /** Basic Info rows: DA answer column, remote answer column, Yes/No choice. */
@@ -92,13 +76,14 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, ContentTextComponent],
   templateUrl: './remote-assessment.html',
   styleUrl: './remote-assessment.css',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class RemoteAssessmentPage {
   private readonly api = inject(RemoteApi);
+  private readonly content = inject(ContentService);
   private readonly assessmentApi = inject(AssessmentApi);
   private readonly params = inject(ActivatedRoute).snapshot.paramMap;
   protected readonly zedId = this.params.get('zedId') ?? '';
@@ -106,7 +91,11 @@ export class RemoteAssessmentPage {
 
   protected readonly t = text;
   protected readonly n = num;
-  protected readonly instructions = SURVEILLANCE_INSTRUCTIONS;
+  /** The Instructions tab of the surveillance page (Admin → Texts): one row per item. */
+  protected readonly instructions = computed(() => {
+    const t = this.content.text('staff.surveillance.remote.instructions');
+    return t?.enabled ? textParts(t.html, 'li') : [];
+  });
   protected readonly basicInfo = BASIC_INFO;
 
   protected readonly data = signal<RemoteDetails | null>(null);

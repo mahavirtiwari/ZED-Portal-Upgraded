@@ -189,27 +189,12 @@
             <div class="panel-body">
               <h4 class="step-title">HANDHOLDING SUPPORT STEPS</h4>
               <ul class="cert-steps">
-                <li>
-                  <div class="step-num"><span>1</span></div>
-                  <div class="step-details">
-                    <h4>Milestone 1: Baseline Diagnostic Study and Handholding Action Plan</h4>
-                    <p>Provides a clear understanding of where the MSME stands and a time-bound improvement plan identifying the steps, tools and resources required to achieve the desired objectives.</p>
-                  </div>
-                </li>
-                <li>
-                  <div class="step-num"><span>2</span></div>
-                  <div class="step-details">
-                    <h4>Milestone 2 &amp; 3: Implementation &amp; Progress Review 1 &amp; 2</h4>
-                    <p>The plan identified will be implemented by MSME and the progress will be regularly monitored and reviewed.</p>
-                  </div>
-                </li>
-                <li>
-                  <div class="step-num"><span>3</span></div>
-                  <div class="step-details">
-                    <h4>Completion of Handholding activity</h4>
-                    <p>The handholding process will be considered to be completed when all the identified activities as mentioned in the Implementation plan are complete.</p>
-                  </div>
-                </li>
+                @for (n of [1, 2, 3]; track n) {
+                  <li>
+                    <div class="step-num"><span>{{ n }}</span></div>
+                    <div class="step-details"><zed-text [key]="'msme.handholding.steps.' + n" /></div>
+                  </li>
+                }
               </ul>
             </div>
           </div>
@@ -229,14 +214,7 @@
           <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="info.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
-          <ul>
-            @if (topic === 'My') {
-              <li><p>Please read the complete instructions and requirements before applying for consultancy. These are available under "My Documents".</p></li>
-            } @else {
-              <li><p>Baseline Diagnostic Study and Handholding Action Plan with defined activities, expected outcome is to achieve the desired level.</p></li>
-              <li><p>The Handholding Support cost is Rs. 2,00,000/- inclusive of taxes; subsidy as applicable.</p></li>
-            }
-          </ul>
+          <zed-text [key]="topic === 'My' ? 'msme.handholding.info.general' : 'msme.handholding.info.level'" />
         </div>
       </div>
     </div>
@@ -278,7 +256,7 @@
           <div class="checkbox-text">
             <label class="checkbox-inline">
               <input type="checkbox" name="isAccepted" class="option-input yes checkbox" [(ngModel)]="accepted" />
-              <span>I accept the activities conducted &amp; recommendations given in Milestone-{{ a.milestone }}</span>
+              <zed-text key="msme.handholding.acceptMilestone.checkbox" [values]="{ Milestone: a.milestone }" [inline]="true" />
             </label>
           </div>
         </div>

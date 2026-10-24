@@ -297,6 +297,7 @@ describe('Consultancy technology pages', () => {
     button('PROCEED')[0].click();
     await settle();
     expect((button('Submit')[0] as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('label[for="recConfirm"] [data-key="staff.consultancy.technologyRecommendation.fairConfirm.checkbox"]')).not.toBeNull();
     (el.querySelector('#recConfirm') as HTMLInputElement).click();
     await settle();
     button('Submit')[0].click();

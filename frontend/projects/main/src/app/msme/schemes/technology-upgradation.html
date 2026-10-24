@@ -39,7 +39,7 @@
                 <div class="label-highlight2">
                   <label class="checkbox-inline">
                     <input type="checkbox" id="tuConfirm" class="option-input1 yes checkbox" [checked]="confirmed()" (change)="confirmed.set(!confirmed())" />
-                    <span>I confirm the above and agree to proceed with the information provided.</span>
+                    <zed-text key="msme.tu.confirm.checkbox" [inline]="true" />
                   </label>
                 </div>
               </div>
@@ -220,7 +220,7 @@
                   <div class="label-highlight2 mt-2">
                     <label class="checkbox-inline">
                       <input type="checkbox" name="Declaration" id="tuDeclaration" class="option-input1 yes checkbox" [(ngModel)]="declaration" />
-                      <span>I hereby declare that the particulars given in the application are correct. In case any of the statement/information/documents furnished in the application/documents is later found to be wrong or incorrect or misleading, I do hereby bind myself and my unit to pay to the Government on demand the full amount received as reimbursement in respect of the above mentioned activity, within seven days of the demand being raised.</span>
+                      <zed-text key="msme.schemes.declaration.checkbox" [inline]="true" />
                     </label>
                   </div>
                   <div class="stepper-footer-sec initial-step1">

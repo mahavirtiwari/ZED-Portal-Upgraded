@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { StaffRole } from '../staff-menu';
 import { FaAccount, FaApi, FaApplication, FaDocument, FaStatus } from './fa.api';
 
@@ -87,7 +88,7 @@ interface DecisionForm {
  */
 @Component({
   selector: 'zed-staff-fa-verification',
-  imports: [FormsModule, RouterLink, NgTemplateOutlet],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent],
   templateUrl: './fa-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }

@@ -1,14 +1,15 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { ContentTextComponent } from '../content/content-text';
 
 /**
  * Public privacy policy page (old Home/PrivacyPolicy). No sign-in, no data. The old page had a heading
- * only; the policy text is to be supplied by the scheme team (the address may be the one listed in the
- * mobile app stores, so it is kept).
+ * only; the policy text is the Admin's (Admin → Texts). The address may be the one listed in the mobile
+ * app stores, so it is kept.
  */
 @Component({
   selector: 'zed-privacy-policy',
-  imports: [RouterLink],
+  imports: [RouterLink, ContentTextComponent],
   template: `
     <header class="container py-3 d-flex align-items-center justify-content-between">
       <a href="https://msme.gov.in/" target="_blank" rel="noopener">
@@ -21,6 +22,7 @@ import { RouterLink } from '@angular/router';
         <h3 style="font-weight: 600">Privacy Policy</h3>
         <hr />
       </div>
+      <zed-text key="public.privacyPolicy" />
       <p class="text-center"><a routerLink="/msme/login">Back to login</a></p>
     </main>
   `,

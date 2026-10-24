@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
 
 type Row = Record<string, string | number | boolean | null>;
@@ -58,10 +59,12 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
  */
 @Component({
   selector: 'zed-msme-dashboard',
-  imports: [RouterLink, PaymentStep, DatePipe],
+  imports: [RouterLink, PaymentStep, DatePipe, ContentTextComponent],
   templateUrl: './dashboard.html',
   styles: `
     .refresh-link { cursor: pointer; }
+    /* The three parts of the disclaimer read as one list. */
+    .disclaimer-points > zed-text:not(:last-child) ::ng-deep ol { margin-bottom: 0; }
     .apply-btn, .clickable { cursor: pointer; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -96,13 +99,8 @@ export class DashboardPage {
     { type: 'Other', title: 'Other Incentives', text: 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs', image: '/Images/Dashboard/incentive.png', imageStyle: null },
   ] as const;
 
-  protected readonly certificationSteps = [
-    { title: 'Basic Information and Document Upload', text: 'Provide processes and systems information' },
-    { title: 'Desktop Verification', text: 'Desktop verification of documents uploaded. Bronze level applicants will receive certification after this step.' },
-    { title: 'Remote/Onsite Assessment', text: 'Applicable only for Silver and Gold Certification' },
-    { title: 'Certification', text: 'After conforming to relevant requirements, download your Certificate and Report from your dashboard.' },
-    { title: 'Avail Incentives', text: 'Various incentives will be unlocked and available under "My Incentives"' },
-  ];
+  /** The keys of the steps' texts (Admin → Texts). */
+  protected readonly certificationSteps = [1, 2, 3, 4, 5].map((n) => `msme.dashboard.certificationSteps.${n}`);
 
   /** True once any level is certified; unlocks most incentives. */
   protected readonly anyCertified = computed(() =>

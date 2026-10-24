@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../../content/content-text';
 import { num, text } from '../../assessment/assessment-shared';
 import { isZedId } from '../../assessment/assessment.api';
 import { BulletType, MilestoneBullet, MilestoneDetails, MilestoneMeeting, MilestonePhoto, MilestonesApi, Row, milestoneLevel } from './milestones.api';
@@ -159,7 +160,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet],
+  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: `

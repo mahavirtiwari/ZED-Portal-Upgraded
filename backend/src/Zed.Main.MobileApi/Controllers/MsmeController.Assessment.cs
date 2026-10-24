@@ -1,6 +1,8 @@
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Core.Forms;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
@@ -44,6 +46,10 @@ public sealed partial class MsmeController
         var stage = await StageAsync(zedId, request.certificationType, ct);
         if (stage is not { BeforeFinalSubmit: true }) return StageRefused(nameof(SubmitBasicInformation), zedId, request.certificationType, stage);
         var cert = CertificationSegment(request.certificationType);
+        // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
+        var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.MsmeBasicInfo, PortalSystem.Main,
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+        if (appForm.Error is { } formError) return Fail(formError);
 
         var uploads = new Uploads(Storage);
         var productPhotos = PhotoTable();
@@ -98,6 +104,7 @@ public sealed partial class MsmeController
         AddTable(args, "RawMaterialList", rawMaterials, "RawMaterial");
 
         var error = await TryExecuteAsync("SP_APP_MSME_INSERT_BASIC_INFO", args, ct);
+        if (error is null && !await appForm.SaveAsync(zedId, cert, zedId, log, ct)) error = GenericError;
         return LegacyJson(error is null ? new ServiceResponse { status = "1" } : ServiceResponse.Fail(error));
     }
 

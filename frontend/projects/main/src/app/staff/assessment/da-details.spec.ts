@@ -240,8 +240,10 @@ describe('DaDetailsPage', () => {
     const submit = () => Array.from(el.querySelectorAll<HTMLInputElement>('.modal input[type=button]')).find((b) => b.value === 'SUBMIT')!;
     expect(submit().disabled).toBe(true);
     expect(el.querySelector('#reviewQuality')).toBeNull();
+    expect(el.querySelector('label[for="reviewExemptions"] [data-key="staff.monitoring.review.exemptionsReviewed.checkbox"]')).not.toBeNull();
     el.querySelector<HTMLInputElement>('#reviewExemptions')!.click();
     await settle();
+    expect(el.querySelector('label[for="reviewQuality"] [data-key="staff.monitoring.review.qualityChecked.checkbox"]')).not.toBeNull();
     el.querySelector<HTMLInputElement>('#reviewQuality')!.click();
     await settle();
     expect(submit().disabled).toBe(false);

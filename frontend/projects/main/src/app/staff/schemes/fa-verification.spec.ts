@@ -161,6 +161,7 @@ describe('FaVerificationPage', () => {
     expect(el.querySelector('#decisionTitle')!.textContent!.trim()).toBe('Confirm Final Submit');
     const submit = button('SUBMIT')[0] as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
+    expect(el.querySelector('label[for="faConfirm"] [data-key="staff.schemes.faVerification.dataCorrect.checkbox"]')).not.toBeNull();
     const confirm = el.querySelector('#faConfirm') as HTMLInputElement;
     confirm.checked = true;
     confirm.dispatchEvent(new Event('change'));

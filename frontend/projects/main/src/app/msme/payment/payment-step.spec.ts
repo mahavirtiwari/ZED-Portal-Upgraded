@@ -56,6 +56,7 @@ describe('PaymentStep', () => {
 
   it('updates the summary for the reward and TDS choices', async () => {
     expect(el.textContent).toContain('2,360.00');
+    expect(el.querySelector('.payment-reward-block [data-key="msme.payment.joiningReward.note"]')).not.toBeNull();
     button('APPLY REWARD').click();
     await settle();
     expect(el.textContent).toContain('Reward Applied');

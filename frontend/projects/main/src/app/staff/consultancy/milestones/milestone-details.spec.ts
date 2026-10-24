@@ -209,6 +209,7 @@ describe('MilestoneDetailsPage', () => {
     button('Final Submit')!.click();
     await settle();
     expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
+    expect(el.querySelector('label[for="milestoneConfirm"] [data-key="staff.consultancy.milestone.review.checkbox"]')).not.toBeNull();
     el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
     await settle();
     button('SUBMIT')!.click();

@@ -75,6 +75,9 @@ public static class ZedHostingExtensions
         // The Admin's Texts: disclaimers, instructions, undertakings and pledges of the web pages and the apps.
         services.AddSingleton<Zed.Core.Content.IContentBlockStore, Zed.Core.Content.SqlContentBlockStore>();
         services.AddSingleton<Zed.Core.Content.ContentTexts>();
+        // The Admin's App Forms: fields of the apps' Basic Information forms (definition served to the apps, checked on submit).
+        services.AddSingleton<Zed.Core.Forms.IAppFormStore, Zed.Core.Forms.SqlAppFormStore>();
+        services.AddSingleton<Zed.Core.Forms.AppForms>();
         services.AddSingleton<IHtmlTemplateRenderer, HtmlTemplateRenderer>();
 
         services.Configure<CcAvenueOptions>(config.GetSection(CcAvenueOptions.Section));

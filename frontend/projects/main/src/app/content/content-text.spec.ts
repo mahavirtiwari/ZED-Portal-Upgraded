@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ContentService, ContentTextComponent, fillText } from './content-text';
+import { ContentService, ContentTextComponent, fillText, textParts } from './content-text';
 
 @Component({
   imports: [ContentTextComponent],
@@ -72,5 +72,30 @@ describe('zed-text', () => {
 
   it('encodes the values it fills in', () => {
     expect(fillText('<b>{{ A }}</b>{{b}}', { a: '"x"', B: 0 })).toBe('<b>&quot;x&quot;</b>0');
+  });
+
+  it('renders the key as data-key and shows the text in its box, no box when hidden', async () => {
+    @Component({
+      imports: [ContentTextComponent],
+      template: `<zed-text key="staff.note" box="alert alert-warning" /><zed-text key="staff.hidden" box="alert alert-danger" />`,
+    })
+    class BoxHost {}
+    const fixture = TestBed.createComponent(BoxHost);
+    await settle(fixture);
+    http.expectOne('/api/content').flush([
+      { key: 'staff.note', enabled: true, html: '<strong>Note:</strong> check' },
+      { key: 'staff.hidden', enabled: false, html: 'x' },
+    ]);
+    await settle(fixture);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelector('[data-key="staff.note"] .zed-text.alert.alert-warning')!.innerHTML).toBe('<strong>Note:</strong> check');
+    expect(el.querySelector('[data-key="staff.hidden"]')!.children.length).toBe(0);
+  });
+
+  it('splits a text into its lines or items', () => {
+    expect(textParts('<p>One</p>\n<p class="x"> Two <b>2</b></p>', 'p')).toEqual(['One', 'Two <b>2</b>']);
+    expect(textParts('<ol><li>A</li><li>B</li></ol>', 'li')).toEqual(['A', 'B']);
+    expect(textParts('Just a line', 'p')).toEqual(['Just a line']);
+    expect(textParts(' ', 'li')).toEqual([]);
   });
 });

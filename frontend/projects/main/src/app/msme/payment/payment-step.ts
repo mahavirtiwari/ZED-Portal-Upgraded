@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { CheckoutRequest, FeeRow, PaymentApi, PaymentOptions, postToGateway } from './payment.api';
 
@@ -16,7 +17,7 @@ const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
  */
 @Component({
   selector: 'zed-payment-step',
-  imports: [FormsModule, DecimalPipe, AlertDialog],
+  imports: [FormsModule, DecimalPipe, AlertDialog, ContentTextComponent],
   templateUrl: './payment-step.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import {
   HANDHOLDING_LEVELS,
   HandholdingApi,
@@ -46,7 +47,7 @@ interface MilestoneRow {
  */
 @Component({
   selector: 'zed-msme-handholding',
-  imports: [RouterLink, FormsModule, DatePipe],
+  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent],
   templateUrl: './handholding.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

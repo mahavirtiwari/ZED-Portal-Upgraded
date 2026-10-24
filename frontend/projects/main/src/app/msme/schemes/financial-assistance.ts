@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
 import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
@@ -29,7 +30,7 @@ const STATUS: Record<number, string> = {
  */
 @Component({
   selector: 'zed-msme-financial-assistance',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent],
   templateUrl: './financial-assistance.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

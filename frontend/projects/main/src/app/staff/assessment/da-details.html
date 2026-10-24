@@ -55,7 +55,7 @@
             @if (tab() === 1) {
               <div class="tab-pane fade show active" role="tabpanel">
                 @if (isAssessorRole()) {
-                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the site exterior photos to validate</span></div>
+                  <zed-text key="staff.assessment.desktop.validateNote.sitePhotos" box="alert alert-warning" />
                 }
                 <div class="row">
                   <div class="col-sm-12">
@@ -122,7 +122,7 @@
             @if (tab() === 2) {
               <div class="tab-pane fade show active" role="tabpanel">
                 @if (isAssessorRole()) {
-                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the Product photos to validate</span></div>
+                  <zed-text key="staff.assessment.desktop.validateNote.productPhotos" box="alert alert-warning" />
                 }
                 <table class="table table-bordered table-zed bg-white">
                   <thead><tr><th>S.No</th><th>Description</th><th>Responses</th></tr></thead>
@@ -253,6 +253,7 @@
                     </tbody>
                   </table>
                 }
+                <zed-app-form-values [zedId]="zedId()" [certification]="level() ?? certification()" />
               </div>
             }
 
@@ -304,7 +305,7 @@
             @if (tab() === 3) {
               <div class="tab-pane fade show active" role="tabpanel">
                 @if (isAssessorRole()) {
-                  <div class="alert alert-warning"><span><strong>Note: </strong>Click on the uploaded documents (PDFs) to validate</span></div>
+                  <zed-text key="staff.assessment.desktop.validateNote.documents" box="alert alert-warning" />
                 }
                 <div class="row">
                   @for (s of d.sections; track t(s, 'Id')) {
@@ -895,7 +896,7 @@
           <div style="padding-left: 20px">
             <label class="checkbox-inline">
               <input type="checkbox" class="option-input1 yes checkbox" [(ngModel)]="e.confirmed" />
-              <span>I confirm that I have verified the information provided by the unit against each requirement in a fair and unbiased manner.</span>
+              <zed-text key="staff.assessment.desktop.fairConfirm.checkbox" [inline]="true" />
             </label>
           </div>
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }

@@ -30,4 +30,10 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./texts').then((m) => m.TextsPage),
   },
+  {
+    path: 'app-forms',
+    title: 'ZED | App Forms',
+    canActivate: [admin],
+    loadComponent: () => import('./app-forms').then((m) => m.AppFormsPage),
+  },
 ];

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { CheckoutRequest, FeeRow, postToGateway } from './payment.api';
 import { SurveillanceOptions, SurveillancePaymentApi } from './surveillance-payment.api';
@@ -22,7 +23,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-surveillance-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
   templateUrl: './surveillance-payment.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

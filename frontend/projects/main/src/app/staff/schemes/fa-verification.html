@@ -199,7 +199,7 @@
                 <textarea id="faComments" class="form-control mb-2" style="height: 100px" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
                 <div class="form-check">
                   <input id="faConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />
-                  <label class="form-check-label" for="faConfirm">I am confirming that the above data is correct</label>
+                  <label class="form-check-label" for="faConfirm"><zed-text key="staff.schemes.faVerification.dataCorrect.checkbox" [inline]="true" /></label>
                 </div>
               </div>
               <div class="modal-footer">

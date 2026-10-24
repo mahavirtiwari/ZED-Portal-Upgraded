@@ -2,6 +2,7 @@ import { Component, effect, inject, input, output, signal, untracked } from '@an
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { RemarksKind, ReviewActions, ReviewApi } from './review.api';
 
 type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
@@ -14,7 +15,7 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
  */
 @Component({
   selector: 'zed-review-actions',
-  imports: [FormsModule],
+  imports: [FormsModule, ContentTextComponent],
   template: `
     @if (actions().finalSubmit) {
       <input type="button" value="Final Submit" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="open('finalSubmit')" />
@@ -45,14 +46,14 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                     <div class="form-check">
                       <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewExemptions" name="exemptionsReviewed"
                         [ngModel]="exemptionsReviewed()" (ngModelChange)="setExemptionsReviewed($event)" />
-                      <label class="form-check-label" for="reviewExemptions" style="display: inline">I have reviewed all the exemptions, and they have been applied correctly.</label>
+                      <label class="form-check-label" for="reviewExemptions" style="display: inline"><zed-text key="staff.monitoring.review.exemptionsReviewed.checkbox" [inline]="true" /></label>
                     </div>
                   }
                   @if (stage() === 'site' || exemptionsReviewed()) {
                     <div class="form-check" style="margin-top: 10px">
                       <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewQuality" name="qualityChecked"
                         [ngModel]="qualityChecked()" (ngModelChange)="qualityChecked.set($event)" />
-                      <label class="form-check-label" for="reviewQuality" style="display: inline">I confirm that the quality check of the assessment has been done and relevant amendments made wherever applicable.</label>
+                      <label class="form-check-label" for="reviewQuality" style="display: inline"><zed-text key="staff.monitoring.review.qualityChecked.checkbox" [inline]="true" /></label>
                     </div>
                   }
                 </div>
@@ -60,7 +61,7 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                 <div class="form-check" style="padding-left: 20px">
                   <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewReject" name="rejectConfirmed"
                     [ngModel]="rejectConfirmed()" (ngModelChange)="rejectConfirmed.set($event)" />
-                  <label class="form-check-label" for="reviewReject" style="display: inline">I confirm that the quality check of the assessment has been done and rejecting the certification.</label>
+                  <label class="form-check-label" for="reviewReject" style="display: inline"><zed-text key="staff.monitoring.review.reject.checkbox" [inline]="true" /></label>
                 </div>
               } @else {
                 <div style="margin-bottom: 9px">

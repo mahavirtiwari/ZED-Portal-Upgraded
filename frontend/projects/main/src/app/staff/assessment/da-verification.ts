@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ContentTextComponent } from '../../content/content-text';
 import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
 import { PagedView, PagerComponent } from '../pager';
@@ -16,7 +17,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-da-verification',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row">
@@ -99,7 +100,7 @@ import { PagedView, PagerComponent } from '../pager';
               </div>
             </div>
             <div class="modal-body">
-              <strong>Are you sure you want to accept Unit for Desktop Verification?</strong>
+              <zed-text key="staff.desktopVerification.accept.confirm" [inline]="true" />
               <p class="mt-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
               @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
             </div>

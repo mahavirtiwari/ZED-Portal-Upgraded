@@ -71,7 +71,7 @@
             <div class="col-sm-9">
               <div class="zed-payment-success">
                 <div class="label-highlight">
-                  <p>You can now start the <strong>"Bronze/Silver/Gold certification"</strong> from the ZED MSME Mobile Application</p>
+                  <zed-text key="msme.dashboard.mobileAppHint" />
                   <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
                   <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
                   <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
@@ -315,10 +315,7 @@
                     @for (s of certificationSteps; track $index) {
                       <li>
                         <div class="step-num"><span>{{ $index + 1 }}</span></div>
-                        <div class="step-details">
-                          <h4>{{ s.title }}</h4>
-                          <p>{{ s.text }}</p>
-                        </div>
+                        <div class="step-details"><zed-text [key]="s" /></div>
                       </li>
                     }
                   </ul>
@@ -334,18 +331,16 @@
               <div class="panel panel-default panel-design">
                 <div class="panel-body disclaimer-sec">
                   <h3 class="registration-title">DISCLAIMER</h3>
-                  <p>This disclaimer/declaration governs the use of the MSME Standard, various documents, reports and any content therein. The following is accepted in full by the User/applicant Unit:</p>
-                  <ol>
-                    <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this voluntary scheme on their own volition.</li>
-                    <li>The applicant has read and understood the requirements of the Certification Level for which the payment is being made and take full responsibility for any non-conformities that may occur during the Certification process.</li>
-                    <li>The amount once remitted is non-refundable, non-adjustable &amp; non-transferable irrespective of the outcome of the Certification process.</li>
-                    <li>Submission of relevant documents/evidences/responses in a timely manner is essential and non-conformance to timelines may result in forfeiture of any amount paid.</li>
+                  <!-- Points 5–6 are not shown for a re-certification: the last point is then number 5. -->
+                  <div class="disclaimer-points">
+                    <zed-text key="msme.certification.payment.disclaimer" />
                     @if (!(num('ReCertification', basic()) > 0)) {
-                      <li>The “Joining Reward” (Rs. 10,000/-) will be unlocked only once and can be applied for any Certification Level. Once availed, the Joining Reward cannot be reverted, reinstated or reused in any manner.</li>
-                      <li>The final payment being made is only the “beneficiary contribution”; the subsidies applicable for this Certification Level is pre-applied.</li>
+                      <zed-text key="msme.certification.payment.disclaimer.firstCertification" />
+                      <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 7 }" />
+                    } @else {
+                      <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 5 }" />
                     }
-                    <li>Mere submission of relevant payment does not guarantee a Certification. The Certification will only be accorded after completion of due process and closure of all non-conformities, if any, within the stipulated time.</li>
-                  </ol>
+                  </div>
                   <div class="stepper-footer-sec initial-step1">
                     <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
                     <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
@@ -362,15 +357,7 @@
               <div class="panel panel-default panel-design">
                 <div class="panel-body disclaimer-sec">
                   <h3 class="registration-title">Instructions</h3>
-                  <ol>
-                    <li>After making the payment, the applicant MSME would need to submit necessary information/documents on the “Basic Information &amp; Document Upload” section.</li>
-                    <li>During the process of “Basic Information and Document Upload”, most relevant information and evidences should be provided/uploaded.</li>
-                    <li>The desktop assessor will not attempt to ensure the accuracy of information/documents provided and the conclusions of this process will be derived solely from the information provided by the applicant.</li>
-                    <li>It is expected that the applicants honestly upload the relevant documents/evidences. Information not disclosed or erroneously uploaded by the applicant may lead to non-conformities.</li>
-                    <li>After the completion of the Basic Information and Document Upload process, a desktop verification of the documents uploaded will be done. Thereafter, the way forward will be provided to the MSME via email.</li>
-                    <li>Please download the Mobile Application from Google Playstore as and when prompted.</li>
-                    <li>Please download the User Manual from “My Documents” for detailed instructions &amp; guidance on “Basic Information &amp; Document Upload”</li>
-                  </ol>
+                  <zed-text key="msme.certification.payment.instructions" />
                   <div class="stepper-footer-sec initial-step1">
                     <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
                     <button type="button" class="btn btn-primary" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
@@ -413,28 +400,13 @@
               <div class="text-center mt-4"><img [src]="'/Images/Dashboard/' + m.level.toLowerCase() + '.png'" alt="" /></div>
             }
             @case ('info') {
-              <ul>
-                @switch (m.topic) {
-                  @case ('Bronze') {
-                    <li><p>This level has 5 parameters, which need to be conformed to, for achieving a Certification.</p></li>
-                    <li><p>The certification cost is Rs. 10,000/- inclusive of taxes; subsidy, as applicable.</p></li>
-                  }
-                  @case ('Silver') {
-                    <li><p>This level has 14 parameters, which need to be conformed to, for achieving a Certification.</p></li>
-                    <li><p>The certification cost is Rs. 40,000/- inclusive of taxes; subsidy, as applicable.</p></li>
-                  }
-                  @case ('Gold') {
-                    <li><p>This level has 20 parameters, which need to be conformed to, for achieving a Certification.</p></li>
-                    <li><p>The certification cost is Rs. 90,000/- inclusive of taxes; subsidy, as applicable.</p></li>
-                  }
-                  @case ('My') {
-                    <li><p>Please read the complete instructions and requirements before applying for any Certification Level. These are available under "My Documents".</p></li>
-                  }
-                  @case ('MyIncentives') {
-                    <li><p>MSME KAWACH and Joining Reward incentives are available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under "My Documents".</p></li>
-                  }
-                }
-              </ul>
+              @switch (m.topic) {
+                @case ('Bronze') { <zed-text key="msme.dashboard.levelInfo.bronze" /> }
+                @case ('Silver') { <zed-text key="msme.dashboard.levelInfo.silver" /> }
+                @case ('Gold') { <zed-text key="msme.dashboard.levelInfo.gold" /> }
+                @case ('My') { <zed-text key="msme.dashboard.info.myCertifications" /> }
+                @case ('MyIncentives') { <zed-text key="msme.dashboard.info.myIncentives" /> }
+              }
             }
             @case ('joining') {
               @if (is(msme(), 'IsCouponUsed', 1)) {
@@ -444,7 +416,7 @@
                   <tr><th>Certification level:</th><td>{{ msme()['LatestCertification'] }}</td></tr>
                 </table>
               } @else {
-                <ul><li><p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p></li></ul>
+                <zed-text key="msme.dashboard.joiningReward.availInfo" />
               }
             }
             @case ('fa') {

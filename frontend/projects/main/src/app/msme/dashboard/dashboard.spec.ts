@@ -16,7 +16,7 @@ describe('DashboardPage', () => {
     fixture.detectChanges();
   }
 
-  async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}) {
+  async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -24,13 +24,14 @@ describe('DashboardPage', () => {
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: 'https://old.example' });
     http.expectOne('/api/msme/dashboard').flush({
       msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme Castings', EnterpriseType: 'Micro', ...msme },
-      basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: 0 },
+      basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: reCertification },
       certStatus: { BronzeStatus: 0, SilverStatus: 0, GoldStatus: 0, ...certStatus },
     });
     await settle();
   }
 
   const card = (level: string) => el.querySelector(`.panel-${level}`) as HTMLElement;
+  const keys = () => [...el.querySelectorAll('zed-text')].map((t) => t.getAttribute('data-key'));
   const button = (label: string) => [...el.querySelectorAll('button, a')].find((b) => b.textContent!.trim().startsWith(label)) as HTMLElement;
 
   beforeEach(async () => {
@@ -86,10 +87,14 @@ describe('DashboardPage', () => {
     (card('gold').querySelector('.apply-btn') as HTMLElement).click();
     await settle();
     expect(el.textContent).toContain('DISCLAIMER');
+    expect(keys()).toEqual([
+      'msme.certification.payment.disclaimer', 'msme.certification.payment.disclaimer.firstCertification', 'msme.certification.payment.disclaimer.closing',
+    ]);
 
     button('ACCEPT & PROCEED').click();
     await settle();
     expect(el.textContent).toContain('Instructions');
+    expect(keys()).toEqual(['msme.certification.payment.instructions']);
 
     button('ACCEPT & PROCEED').click();
     await settle();
@@ -100,5 +105,19 @@ describe('DashboardPage', () => {
     await settle();
     expect(el.textContent).toContain('Payment Options');
     expect(el.textContent).toContain('21,240.00');
+  });
+
+  it('leaves out the first-certification points of the disclaimer for a re-certification', async () => {
+    await render({}, {}, 1);
+    (card('gold').querySelector('.apply-btn') as HTMLElement).click();
+    await settle();
+    expect(keys()).toEqual(['msme.certification.payment.disclaimer', 'msme.certification.payment.disclaimer.closing']);
+  });
+
+  it('shows the certification steps from the Texts', async () => {
+    await render({});
+    expect([...el.querySelectorAll('.cert-steps .step-details zed-text')].map((t) => t.getAttribute('data-key'))).toEqual(
+      [1, 2, 3, 4, 5].map((n) => `msme.dashboard.certificationSteps.${n}`),
+    );
   });
 });

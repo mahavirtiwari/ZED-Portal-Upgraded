@@ -67,19 +67,23 @@ describe('FinancialAssistancePage', () => {
     await settle();
 
     expect(el.textContent).toContain('DISCLAIMER');
+    expect(el.querySelector('[data-key="msme.schemes.disclaimer"]')).not.toBeNull();
     buttons('ACCEPT & PROCEED')[0].click();
     await settle();
     expect(el.textContent).toContain('Instructions');
+    expect(el.querySelector('[data-key="msme.schemes.instructions"]')).not.toBeNull();
     buttons('ACCEPT & PROCEED')[0].click();
     await settle();
 
     expect(el.textContent).toContain('UDYAM-UP-29-0003915');
     expect((el.querySelector('#faConfirmProceed') as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('#faConfirm')!.closest('label')!.querySelector('[data-key="msme.fa.confirm.checkbox"]')).not.toBeNull();
     click('#faConfirm');
     await settle();
     click('#faConfirmProceed');
     await settle();
     expect(el.querySelector('#faForm')).not.toBeNull();
+    expect(el.querySelector('#faForm [data-key="msme.fa.eligibleAmountNote"]')).not.toBeNull();
     expect(el.textContent).toContain('Certification Details');
     expect(el.textContent).not.toContain('Certification Details (Silver)');
   });

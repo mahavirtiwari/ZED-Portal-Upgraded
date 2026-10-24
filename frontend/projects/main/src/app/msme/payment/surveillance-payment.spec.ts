@@ -60,6 +60,7 @@ describe('SurveillancePaymentPage', () => {
     button('ACCEPT & PROCEED').click();
     await settled();
     expect(el.textContent).toContain('INSTRUCTIONS');
+    expect(el.querySelector('[data-key="msme.surveillance.payment.instructions"]')).not.toBeNull();
     button('ACCEPT & PROCEED').click();
     await settled();
     http.expectOne(`${API}/Bronze/options`).flush(o);
@@ -96,11 +97,12 @@ describe('SurveillancePaymentPage', () => {
 
   it('shows the surveillance disclaimer and instructions, then the surveillance fee summary', async () => {
     await open('bronze');
-    expect(el.textContent).toContain('Surveillance assessment for which the payment is being made');
+    expect(el.querySelector('[data-key="msme.surveillance.payment.disclaimer"]')).not.toBeNull();
     await toPaymentFromDisclaimer();
     expect(el.textContent).toContain('Surveillance Assessment Fee');
     expect(el.textContent).toContain('1,180.00');
     expect(el.textContent).not.toContain('Andhra Pradesh');
+    expect(el.querySelector('.payment-reward-block [data-key="msme.surveillance.payment.joiningReward.note"]')).not.toBeNull();
 
     button('APPLY REWARD').click();
     await settled();
