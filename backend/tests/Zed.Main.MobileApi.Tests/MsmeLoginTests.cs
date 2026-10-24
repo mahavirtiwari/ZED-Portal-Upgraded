@@ -113,6 +113,36 @@ public sealed class MsmeLoginTests : IDisposable
         Assert.Equal(Password, FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == "SP_APP_MSME_CHECK_LOGIN").Args, "Password"));
         Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(passwords.Accounts["ZEDMSME000001"].Stored));
     }
+
+    [Fact]
+    public async Task Every_app_sign_in_is_recorded_with_the_device()
+    {
+        var r = await _client.PostAsync("/Msme/Login", new StringContent(
+            "{\"userName\":\"ZEDMSME000001\",\"password\":\"" + Password + "\",\"version\":\"2.7.2\",\"deviceInfo\":{\"deviceId\":\"a1b2c3d4\",\"osVersion\":\"13\",\"apiLevel\":33,\"device\":\"a52q\",\"modelProduct\":\"SM-A525F\",\"manufacturer\":\"samsung\"}}",
+            Encoding.UTF8, "application/json"));
+        r.EnsureSuccessStatusCode();
+        await Login("wrong");
+
+        var events = _host.Sql.Calls.Where(c => c.Name.StartsWith("INSERT INTO dbo.V4LoginEvents")).ToList();
+        Assert.Equal(2, events.Count);
+        var ok = events[0].Args;
+        Assert.Equal("Mobile", FakeSql.Arg(ok, "Channel"));
+        Assert.Equal("MSME app", FakeSql.Arg(ok, "App"));
+        Assert.Equal("Success", FakeSql.Arg(ok, "Result"));
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(ok, "UserId"));
+        Assert.Equal("a1b2c3d4", FakeSql.Arg(ok, "DeviceId"));
+        Assert.Equal("a52q / SM-A525F", FakeSql.Arg(ok, "DeviceModel"));
+        Assert.Equal("samsung", FakeSql.Arg(ok, "Manufacturer"));
+        Assert.Equal("13", FakeSql.Arg(ok, "OsVersion"));
+        Assert.Equal("33", FakeSql.Arg(ok, "ApiLevel"));
+        Assert.Equal("2.7.2", FakeSql.Arg(ok, "AppVersion"));
+        Assert.Equal("App", FakeSql.Arg(ok, "DeviceType"));
+        var failed = events[1].Args;
+        Assert.Equal("Failed", FakeSql.Arg(failed, "Result"));
+        Assert.Equal("Invalid Credentials.", FakeSql.Arg(failed, "Reason"));
+        Assert.Equal("dev-1", FakeSql.Arg(failed, "DeviceId"));
+        Assert.DoesNotContain(events, e => FakeSql.Arg(e.Args, "Reason")?.Contains(Password) == true);
+    }
 }
 
 public sealed class MsmeVersionCheckTests : IDisposable
@@ -133,7 +163,11 @@ public sealed class MsmeVersionCheckTests : IDisposable
         var e = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal("2", e.GetProperty("status").GetString());
         Assert.Equal("Download new app from store.", e.GetProperty("errorMessage").GetString());
-        Assert.Empty(_host.Sql.Calls);
+        // No login procedure ran; only the refused attempt was recorded.
+        var call = Assert.Single(_host.Sql.Calls);
+        Assert.StartsWith("INSERT INTO dbo.V4LoginEvents", call.Name);
+        Assert.Equal("Failed", FakeSql.Arg(call.Args, "Result"));
+        Assert.Equal("1.0.0", FakeSql.Arg(call.Args, "AppVersion"));
     }
 }
 

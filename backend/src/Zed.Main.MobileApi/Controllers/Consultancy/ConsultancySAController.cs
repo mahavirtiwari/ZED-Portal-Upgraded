@@ -106,6 +106,7 @@ public sealed partial class ConsultancySAController(
     /// 5 requirements, 6 options, 7 sub-options, 8 flags, 9 requirement bullets.
     /// </summary>
     [HttpPost]
+    [LoginAudit(LoginChannels.Mobile, "Consultant app")]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
         // The old mobile Web.config had no checkSAVersion, so the old code failed before its try; here the check is

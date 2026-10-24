@@ -122,6 +122,7 @@ public sealed partial class UdyamiBharatSignInController(
     [HttpPost]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [LoginAudit(LoginChannels.Web, "Udyami Bharat")]
     public async Task<ActionResult<SignInResponse>> SignIn(SignInRequest req, CancellationToken ct)
     {
         if (!options.Value.Enabled) return this.Problem400("Sign-in from Udyami Bharat is not available at the moment. Please use the MSME login.");

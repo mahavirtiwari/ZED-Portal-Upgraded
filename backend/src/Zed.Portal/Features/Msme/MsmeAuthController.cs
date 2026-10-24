@@ -28,6 +28,7 @@ public sealed class MsmeAuthController(
     [HttpPost("login")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [LoginAudit(LoginChannels.Web, "MSME")]
     public async Task<ActionResult<CurrentUserResponse>> Login(LoginRequest req, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(req.UserId) || string.IsNullOrEmpty(req.Password))

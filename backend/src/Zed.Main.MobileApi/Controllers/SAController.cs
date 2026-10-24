@@ -63,6 +63,7 @@ public sealed class SAController(
     // ------------------------------------------------------------------ Login
 
     [HttpPost]
+    [LoginAudit(LoginChannels.Mobile, "Site assessment app")]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
         if (config.GetValue<bool>("Mobile:CheckSaVersion") &&

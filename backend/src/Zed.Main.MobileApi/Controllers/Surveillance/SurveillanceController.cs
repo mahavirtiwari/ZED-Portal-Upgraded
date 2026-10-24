@@ -66,6 +66,7 @@ public sealed partial class SurveillanceController(
     /// accepts a hard-coded master password, so the typed password must equal the assessor's own.
     /// </summary>
     [HttpPost]
+    [LoginAudit(LoginChannels.Mobile, "Surveillance app")]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (VersionCheck(request.version) is { } update) return update;

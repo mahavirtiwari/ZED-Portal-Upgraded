@@ -172,6 +172,7 @@ public sealed partial class MsmeRegistrationController(
 
     /// <summary>Step 4: summary confirmed and pledge taken. Creates the MSME, the pledge certificate and the login.</summary>
     [HttpPost("{id}/submit")]
+    [LoginAudit(LoginChannels.Web, "MSME registration")]
     public async Task<ActionResult<SubmitResponse>> Submit(string id, SubmitRequest req, CancellationToken ct)
     {
         if (await sessions.GetAsync(id, ct) is not { } s) return SessionExpired();

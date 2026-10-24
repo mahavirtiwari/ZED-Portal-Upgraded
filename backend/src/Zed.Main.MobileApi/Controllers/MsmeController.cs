@@ -28,6 +28,7 @@ public sealed partial class MsmeController(
             : null;
 
     [HttpPost]
+    [LoginAudit(LoginChannels.Mobile, "MSME app")]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (VersionCheck(request.version) is { } update) return update;

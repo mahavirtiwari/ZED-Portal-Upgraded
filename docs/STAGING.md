@@ -117,7 +117,7 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
    2): those 23 procedures are broken in production too (database\README.md "Findings" 1, and the five
    ZED_CENTER_AUDIT_PROFESSIONAL procedures whose table types the export lacks), as in an unprefixed build. Any other
    failure: stop and read `database\logs\failed-batches-*.json`.
-2. **V4 scripts** (migrations 0001–0012 and 0003, then the fix previews):
+2. **V4 scripts** (migrations 0001–0013 and 0003, then the fix previews):
    ```powershell
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_ -Apply -IncludeMailOutbox
@@ -236,6 +236,11 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    **Logins:** the Admin creates Master Admin, Ministry, MSME DFO and dashboard logins under **User Management**; Master
    Admins add operation admins and agencies add sub-users under **Operation Admins / Sub-Users** (migration 0012;
    docs/USER-MANAGEMENT.md).
+   **Sign-in records:** every web and app sign-in, successful or not, is stored in `dbo.V4LoginEvents` of the portal's
+   database (migration 0013; the mobile API host writes to main): user, sub-user, role, result and reason, IP address,
+   for the web the browser, OS, device type and a persistent browser ID, for the apps the device registration ID,
+   model, manufacturer, OS version, API level and app version. Never the password. Example:
+   `SELECT TOP 50 * FROM dbo.V4LoginEvents ORDER BY Id DESC`.
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:

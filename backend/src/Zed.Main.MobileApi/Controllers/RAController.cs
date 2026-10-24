@@ -37,6 +37,7 @@ public sealed class RAController(
         new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold" };
 
     [HttpPost]
+    [LoginAudit(LoginChannels.Mobile, "Remote assessment app")]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (config.GetValue<bool>("Mobile:CheckRaVersion") &&
