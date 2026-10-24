@@ -76,7 +76,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-Set-StrictMode -Version 2.0
+# No Set-StrictMode here: it would carry over into Install-ZedIis.ps1 and the other scripts this one runs, which are
+# not written for it (Install-ZedIis reads $app.System, absent on the web portals).
 $deployDir = $PSScriptRoot
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmm'
 
@@ -128,16 +129,27 @@ function Get-InstalledVersion {
     return '(no VERSION.txt under main)'
 }
 
+# Stops each pool, waits until it has stopped (IIS refuses a start while it is still stopping), starts it. A pool that
+# does not start is reported and the others are still started; the caller gets an error at the end.
 function Restart-Pools([string[]]$Names) {
     Import-Module WebAdministration
+    $failed = @()
     foreach ($n in $Names) {
         $pool = $catalog[$n].Pool
-        if (Test-Path "IIS:\AppPools\$pool") {
-            if ((Get-WebAppPoolState $pool).Value -ne 'Stopped') { Stop-WebAppPool $pool }
+        if (-not (Test-Path "IIS:\AppPools\$pool")) { continue }
+        try {
+            if ((Get-WebAppPoolState $pool).Value -eq 'Started') { Stop-WebAppPool $pool }
+            for ($i = 0; $i -lt 60 -and (Get-WebAppPoolState $pool).Value -ne 'Stopped'; $i++) { Start-Sleep -Seconds 1 }
             Start-WebAppPool $pool
-            Write-Ok "restarted $pool"
+            for ($i = 0; $i -lt 30 -and (Get-WebAppPoolState $pool).Value -ne 'Started'; $i++) { Start-Sleep -Seconds 1 }
+            Write-Ok "restarted $pool ($((Get-WebAppPoolState $pool).Value))"
+        }
+        catch {
+            Write-Host "   $pool did not start: $($_.Exception.Message)" -ForegroundColor Red
+            $failed += $pool
         }
     }
+    if ($failed.Count) { throw "App pools not started: $($failed -join ', '). Start them in IIS Manager." }
 }
 
 function Copy-Folder([string]$From, [string]$To) {
