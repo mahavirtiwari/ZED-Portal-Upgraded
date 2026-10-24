@@ -2,8 +2,6 @@ import { Component, HostListener, computed, inject, signal } from '@angular/core
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
 import { StaffMenuItem, menuEntries, menuFor } from './staff-menu';
-import { PORTAL_SYSTEM } from '../portal-system';
-import { PORTAL_LABELS } from '../portal-labels';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
@@ -27,7 +25,7 @@ import { PORTAL_LABELS } from '../portal-labels';
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
         <div class="container nav-bar-sec">
-          <span class="navbar-brand">{{ user()?.role }}<br /><span>{{ systemName || 'Home' }}</span></span>
+          <span class="navbar-brand">Dashboard<br /><span>Home</span></span>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -121,8 +119,6 @@ export class StaffLayout {
   protected readonly entries = computed(() => menuEntries(this.menu()));
   protected readonly openGroup = signal<string | null>(null);
   protected readonly year = new Date().getFullYear();
-  /** Consultancy / Surveillance builds: the portal's name in the menu bar. */
-  protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
 

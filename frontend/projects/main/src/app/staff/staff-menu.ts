@@ -66,23 +66,25 @@ const R = StaffRole;
  */
 export const MAIN_MENU: StaffMenuItem[] = [
   // Dashboards and reports
-  { label: 'Dashboard', legacyPath: '/Dashboard/Index', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback, R.QC] },
   { label: 'Failed Transactions', legacyPath: '/Dashboard/FailedTransactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
   { label: 'Registered MSMEs', legacyPath: '/Dashboard/RegisteredMsme', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC, R.Ministry] },
   { label: 'Financial Support', legacyPath: '/Dashboard/FinancialSupport', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
-  { label: 'Payments Received', legacyPath: '/Dashboard/PaymentReceived', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Reports', legacyPath: '/DynamicReports/Index', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator] },
-  { label: 'ZED ID History', legacyPath: '/Msme/History', route: '/staff/history', roles: [R.MasterAdmin] },
 
   // Master admin: agencies, assessors and allocation
+  // The old "Assessment" drop-down (Views/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
   { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Assessment' },
-  { label: 'Bronze Assessment Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Bronze Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Payment Received', legacyPath: '/Dashboard/PaymentReceived', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Allot Assessment', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Assessment Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Assessment Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Assessment' },
-  { label: 'Allot', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'ZED ID History', legacyPath: '/Msme/History', route: '/staff/history', roles: [R.MasterAdmin], group: 'Assessment' },
 
   // Assessment workflow
-  { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
   { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency] },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'] },
@@ -90,10 +92,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Desktop Verification', legacyPath: '/Assessment/DaVerification', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
   { label: 'Non-Conformances', legacyPath: '/Assessment/NonConfirmances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor] },
   { label: 'Remote Assessments', legacyPath: '/Assessment/RemoteAssessments', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
-  { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor] },
   { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
-  { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
   { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
 
@@ -122,7 +122,6 @@ export const MAIN_MENU: StaffMenuItem[] = [
  * docs/systems/CONSULTANCY-ANALYSIS.md 1.1. Agencies are Consultant Organisations, assessors Consultants/Experts.
  */
 export const CONSULTANCY_MENU: StaffMenuItem[] = [
-  { label: 'Dashboard', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback] },
   { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
   { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry, R.MasterAdmin] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.Ministry] },
@@ -135,13 +134,14 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin: allotment and consultancy monitoring
-  { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Consultancy' },
-  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Consultancy' },
+  // As the old layout: "Allot Consultancy", then the "Consultancy Monitoring" drop-down (its labels and order), then the V4 addition.
+  { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
+  { label: 'Consulting Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.MasterAdmin] },
 
   // Consultant Organisation (Agency)
@@ -170,7 +170,6 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
  * Not ported: NEFT and Financial Assistance (dead there), the MSME menu, API Incentives (data in main).
  */
 export const SURVEILLANCE_MENU: StaffMenuItem[] = [
-  { label: 'Dashboard', route: '/staff/dashboard', roles: [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback] },
   { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
   { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.MasterAdmin] },
   { label: 'Financial Support', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
