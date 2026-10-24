@@ -9,7 +9,7 @@
 --   1. Creates the accounts in @Accounts that do not exist yet (an existing UserId is left exactly as it is). Each gets
 --      a random password value ("V4!" + 46 hex digits), which V4 never accepts as a password, even typed exactly
 --      (docs/PASSWORDS.md), so nobody knows a password of these accounts until they set their own; Email = @MailTo.
---   2. Issues a one-time password link for the accounts in @IssueLinks (by default the MasterAdmins only), as an
+--   2. Issues a one-time password link for the accounts in @IssueLinks (by default the MasterAdmins and Admins), as an
 --      administrator would (V4PasswordResets, RequestedBy = 'staging-setup'): StaffPasswordReset:ExcludedRoles is kept,
 --      MasterAdmin (7) and SuperAdmin (10) still cannot reset through "Forgot password?", but an administrator may send
 --      them a link, and that is what this step is. The links are shown once, in this window's results; they work once,
@@ -33,7 +33,7 @@ DECLARE @ExpectedServerName sysname = NULL;              -- must equal SELECT @@
 DECLARE @DatabasePrefix sysname = N'ZEDV4_';
 DECLARE @StagingBaseUrl varchar(200) = 'https://zedv3.qci.org.in';
 DECLARE @MailTo varchar(200) = 'dev.zed@qcin.org';       -- Users.Email of every new account
-DECLARE @IssueLinks varchar(20) = 'MASTERADMIN';         -- MASTERADMIN, ALL or NONE
+DECLARE @IssueLinks varchar(20) = 'MASTERADMIN';         -- MASTERADMIN (MasterAdmins and Admins), ALL or NONE
 DECLARE @LinkValidMinutes int = 1440;                     -- 1 to 1440
 
 -- One row per account and system. Change the ids and names if you like; keep the roles. Sub-roles are the
@@ -41,10 +41,12 @@ DECLARE @LinkValidMinutes int = 1440;                     -- 1 to 1440
 DECLARE @Accounts TABLE (System varchar(20), UserId varchar(50), UserName varchar(200), RoleId int, Desktop bit, Site bit, Financial bit, CreatedBy varchar(50), Purpose varchar(100));
 INSERT @Accounts VALUES
     ('Main',         'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Main',         'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: sectors, categories, technologies, questionnaire, fees'),
     ('Main',         'ZEDV4AG01',  'STAGING ASSESSMENT AGENCY',  2, 1, 1, 1, 'staging-setup', 'certification agency'),
     ('Main',         'ZEDV4DA01',  'STAGING DESKTOP ASSESSOR',   3, 1, 0, 0, 'ZEDV4AG01',     'desktop assessor of the agency'),
     ('Main',         'ZEDV4SA01',  'STAGING SITE ASSESSOR',      4, 0, 1, 0, 'ZEDV4AG01',     'site assessor of the agency'),
     ('Consultancy',  'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Consultancy',  'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: sectors, questionnaire'),
     ('Consultancy',  'ZEDV4CO01',  'STAGING CONSULTANT ORG',     2, 1, 1, 1, 'staging-setup', 'consultant organisation (CO)'),
     ('Consultancy',  'ZEDV4CC01',  'STAGING CONSULTANT',         3, 0, 1, 0, 'ZEDV4CO01',     'consultant of the CO'),
     ('Consultancy',  'ZEDV4DFO01', 'STAGING DFO',                3, 0, 0, 1, 'ZEDV4CO01',     'TU verifier (DFO)'),
@@ -82,7 +84,7 @@ IF OBJECT_ID('tempdb..#Plan') IS NOT NULL DROP TABLE #Plan;
 CREATE TABLE #Plan (Seq int IDENTITY PRIMARY KEY, System varchar(20), Db sysname, UserId varchar(50), RoleId int, Purpose varchar(100), Exists_ bit, Link bit);
 INSERT #Plan (System, Db, UserId, RoleId, Purpose, Exists_, Link)
 SELECT a.System, s.Db, a.UserId, a.RoleId, a.Purpose, 0,
-       CASE WHEN @IssueLinks = 'ALL' OR (@IssueLinks = 'MASTERADMIN' AND a.RoleId = 7) THEN 1 ELSE 0 END
+       CASE WHEN @IssueLinks = 'ALL' OR (@IssueLinks = 'MASTERADMIN' AND a.RoleId IN (1, 7)) THEN 1 ELSE 0 END
 FROM @Accounts a JOIN @Systems s ON s.System = a.System;
 DECLARE @seq int = 0, @db sysname, @uid varchar(50), @found int, @q nvarchar(max), @exec nvarchar(300);
 WHILE 1 = 1
