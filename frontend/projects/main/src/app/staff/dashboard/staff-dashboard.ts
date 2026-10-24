@@ -215,7 +215,7 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
       </div>
     </div>
     @if (loading()) {
-      <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div>
+      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
     }
   `,
   styles: `

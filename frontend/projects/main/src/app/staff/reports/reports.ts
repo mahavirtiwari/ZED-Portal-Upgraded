@@ -63,12 +63,7 @@ async function blobError(err: unknown): Promise<string> {
       </div>
     </div>
     @if (downloading()) {
-      <div class="loadingdiv" role="status">
-        <div class="text-center text-white">
-          <img src="Images/loading.gif" alt="" /><br />
-          <small>Please wait ... large reports may take a few minutes.</small>
-        </div>
-      </div>
+      <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... large reports may take a few minutes.</small></div></div></div>
     }
   `,
   styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,

@@ -29,7 +29,7 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
   templateUrl: './monitoring.html',
   styles: `
     table tbody tr td { font-size: 14px; }
-    .yellow-background { background-color: yellow; }
+    .yellow-background { background-color: #fff3c4; }
     .action-btn { width: 180px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,

@@ -66,10 +66,5 @@
 </div>
 
 @if (loading()) {
-  <div class="loadingdiv" role="status">
-    <div class="text-center text-white">
-      <img src="Images/loading.gif" alt="" /><br />
-      <small>Please wait ... It may take upto 60 seconds</small>
-    </div>
-  </div>
+  <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... It may take upto 60 seconds</small></div></div></div>
 }

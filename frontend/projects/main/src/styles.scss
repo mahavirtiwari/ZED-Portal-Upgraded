@@ -12,6 +12,8 @@ body {
 // Here they apply only inside elements with .zed-legacy (MSME layout, registration).
 .zed-legacy {
   @include meta.load-css('styles/legacy-site');
+  // V4 look of the common blocks (tables, boxes, inputs, buttons, tabs, pop-ups), after the old styles.
+  @include meta.load-css('styles/v4-skin');
 }
 
 // Content/zed-login.css was only loaded by the login page; keep it scoped to the login pages.

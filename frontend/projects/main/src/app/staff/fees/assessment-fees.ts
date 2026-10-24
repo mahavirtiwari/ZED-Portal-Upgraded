@@ -151,8 +151,8 @@ interface LevelInput {
   `,
   styles: `
     table tbody tr td { font-size: 12px; }
-    .hl-yellow { background-color: yellow; color: black; }
-    th.hl-blue, td.hl-blue { background-color: blue; color: white; }
+    .hl-yellow { background-color: #fff3c4; color: #232527; }
+    th.hl-blue, td.hl-blue { background-color: #dcebfb; color: #1d3f66; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

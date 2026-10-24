@@ -1,5 +1,5 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '@zed/shared';
 
 /**
@@ -23,7 +23,7 @@ import { AuthService } from '@zed/shared';
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="MSME menu">
         <div class="container nav-bar-sec">
-          <span class="navbar-brand">Dashboard<br /><span>Home</span></span>
+          <span class="navbar-brand">{{ pageTitle() }}<br /><span>MSME</span></span>
           <button class="navbar-toggler" type="button" aria-controls="msme-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -83,12 +83,23 @@ export class MsmeLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
+  /** The open page's name (its route title without "ZED | "), shown in the bar (V4; the old bar always said Dashboard). */
+  protected readonly pageTitle = signal('Dashboard');
 
   constructor() {
-    this.router.events.subscribe(() => {
+    this.router.events.subscribe((e) => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);
+      if (e instanceof NavigationEnd) this.pageTitle.set(MsmeLayout.titleOf(this.router.routerState.snapshot.root));
     });
+    this.pageTitle.set(MsmeLayout.titleOf(this.router.routerState.snapshot.root));
+  }
+
+  /** The deepest route title ("ZED | Profile" -> "Profile"). */
+  private static titleOf(route: ActivatedRouteSnapshot): string {
+    let title = '';
+    for (let r: ActivatedRouteSnapshot | null = route; r; r = r.firstChild) if (typeof r.title === 'string' && r.title) title = r.title;
+    return title.replace(/^.*\|\s*/, '').trim() || 'Dashboard';
   }
 
   protected toggleUserMenu(event: Event): void {

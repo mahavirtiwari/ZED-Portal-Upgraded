@@ -1,0 +1,219 @@
+// V4 look of the inner pages (staff and MSME), loaded after the legacy site styles inside .zed-legacy so that it wins
+// over them at the same specificity. It keeps the ZED colours (teal #45A5AD, green #B3E079) and the page structure the
+// old screens had; it changes how the common blocks look: page titles, tables, filter and form boxes, inputs,
+// buttons, tabs, pop-ups, notes, empty lists and the loading overlay.
+
+$teal: #45a5ad;
+$teal-dark: #2f7c83;
+$teal-ink: #23474a;
+$teal-tint: #eef6f6;
+$line: #dfe9ea;
+$input-line: #cbd9da;
+$text: #232527;
+$muted: #5f6f70;
+$radius: 10px;
+$shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
+
+// ---- Page titles -----------------------------------------------------------------------------------------------
+.registration-title {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 30px;
+  color: $teal-ink;
+  margin-bottom: 14px;
+}
+h4.registration-title, h5.registration-title { font-size: 18px; line-height: 26px; }
+
+// ---- Tables ----------------------------------------------------------------------------------------------------
+.table {
+  --bs-table-hover-bg: #f3f9f9;
+  --bs-table-striped-bg: #fafcfc;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid $line;
+  border-radius: $radius;
+  overflow: hidden;
+  background: #fff;
+  font-size: 14px;
+  box-shadow: $shadow;
+  margin-bottom: 16px;
+}
+.table > :not(caption) > * > * {
+  padding: 10px 12px;
+  vertical-align: middle;
+  border-color: #e8eff0;
+}
+.table.table-bordered > :not(caption) > * > * { border-width: 0 0 1px 0; }
+.table.table-bordered > :not(caption) > * > *:not(:last-child) { border-right-width: 1px; }
+.table > tbody > tr:last-child > * { border-bottom-width: 0; }
+.table > tbody > tr:hover > * { --bs-table-bg-state: #f3f9f9; }
+// Header rows: the teal of the old tables, also for the rows the old pages marked with "btn-default".
+.table > thead > tr > th,
+.table > thead > tr > td,
+.table > thead > tr.btn-default > th,
+table.table.table-zed thead tr th {
+  --bs-table-bg: #{$teal};
+  --bs-table-color: #fff;
+  background-color: $teal !important;
+  color: #fff !important;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.1px;
+  white-space: normal;
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+.table > thead > tr.btn-default { background: $teal !important; }
+.table-responsive { border-radius: $radius; margin-bottom: 16px; }
+.table-responsive > .table { margin-bottom: 0; }
+
+// "No data" rows
+.no-data {
+  background: #f7fafa;
+  color: $muted;
+  font-weight: 500;
+  padding: 28px 16px;
+  text-align: center;
+}
+
+// ---- Boxes: filters, forms, panels -------------------------------------------------------------------------------
+.jumbotron,
+.panel,
+.panel-default,
+.panel-grey {
+  background: #fff;
+  border: 1px solid $line;
+  border-radius: 12px;
+  box-shadow: $shadow;
+}
+.jumbotron { padding: 20px 22px; margin-bottom: 20px; }
+.panel { margin-bottom: 16px; overflow: hidden; }
+.panel > .panel-heading,
+.panel-default > .panel-heading {
+  background: $teal-tint;
+  color: $teal-ink;
+  font-weight: 700;
+  border-bottom: 1px solid $line;
+  padding: 12px 16px;
+}
+.panel > .panel-body { padding: 16px; }
+.card { border-color: $line; border-radius: 12px; box-shadow: $shadow; }
+.card > .card-header { background: $teal-tint; color: $teal-ink; font-weight: 700; border-bottom-color: $line; }
+
+// ---- Inputs ----------------------------------------------------------------------------------------------------
+.form-control,
+.form-select {
+  min-height: 40px;
+  border: 1px solid $input-line;
+  border-radius: 8px;
+  font-size: 14px;
+  color: $text;
+  background-color: #fff;
+}
+textarea.form-control { min-height: 80px; }
+.form-control:focus,
+.form-select:focus {
+  border-color: $teal;
+  box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18) !important;
+  outline: none;
+}
+.form-control:disabled, .form-control[readonly], .form-select:disabled { background-color: #f4f7f7; color: $muted; }
+.form-label, .control-label { font-weight: 600; color: #3b4b4c; font-size: 14px; }
+.input-group-text { border-color: $input-line; background: $teal-tint; color: $teal-ink; font-size: 14px; }
+.form-check-input:checked { background-color: $teal; border-color: $teal; }
+.form-check-input:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); border-color: $teal; }
+
+// ---- Buttons ---------------------------------------------------------------------------------------------------
+.btn {
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  box-shadow: none;
+  top: 0 !important;
+  transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.btn:hover { box-shadow: 0 2px 6px rgba(16, 61, 64, 0.15); }
+.btn:focus-visible { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.3); }
+.btn-sm { border-radius: 6px; font-size: 13px; }
+.btn-primary,
+.btn-primary:focus { background-color: $teal; border: 1px solid $teal; color: #fff; }
+.btn-primary:hover { background-color: #3b939a; border-color: #3b939a; color: #fff; filter: none; }
+.btn-primary:disabled, .btn-primary.disabled { background-color: #9ccdd1; border-color: #9ccdd1; }
+// The old grey "default" button (BACK, CANCEL, RESET, BLOCK): a quiet outlined button.
+.btn.btn-default,
+.btn.btn-default:focus,
+input.btn-default {
+  background-color: #fff !important;
+  color: #3b4b4c !important;
+  border: 1px solid $input-line !important;
+}
+.btn.btn-default:hover, input.btn-default:hover { background-color: $teal-tint !important; border-color: $teal !important; color: $teal-ink !important; }
+.btn-danger { background-color: #d64550; border-color: #d64550; }
+.btn-danger:hover { background-color: #c13a45; border-color: #c13a45; }
+.btn-link { color: $teal-dark; font-weight: 600; }
+.btn-link:hover { color: $teal; }
+
+// ---- Tabs ------------------------------------------------------------------------------------------------------
+.nav-tabs:not(.zed-tabs .nav-tabs) { border-bottom: 1px solid $line; }
+.nav-tabs:not(.zed-tabs .nav-tabs) .nav-link {
+  color: $muted;
+  font-weight: 600;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  padding: 10px 16px;
+  background: transparent;
+}
+.nav-tabs:not(.zed-tabs .nav-tabs) .nav-link:hover { color: $teal-dark; border-bottom-color: rgba(69, 165, 173, 0.35); }
+.nav-tabs:not(.zed-tabs .nav-tabs) .nav-link.active { color: $teal-dark; border-bottom-color: $teal; background: transparent; }
+.nav-tabs > li > a::after, .nav-tabs > li > .nav-link::after { display: none; }
+.zed-tabs .nav.nav-tabs { border-radius: 10px 10px 0 0; padding: 6px 8px 0; }
+.zed-tabs .nav.nav-tabs > li > .nav-link,
+.zed-tabs .nav.nav-tabs > li > a { opacity: 0.75; border-radius: 8px 8px 0 0; }
+.zed-tabs .nav.nav-tabs > li > .nav-link.active,
+.zed-tabs .nav.nav-tabs > li > a.active { opacity: 1; background: #fff; color: $teal-ink; }
+.zed-tabs .tab-content { background: #fff; border: 1px solid $line; border-top: 0; border-radius: 0 0 12px 12px; padding: 16px; }
+
+// ---- Pop-ups ---------------------------------------------------------------------------------------------------
+.modal-content { border: 0; border-radius: 14px; box-shadow: 0 12px 40px rgba(16, 61, 64, 0.25); overflow: hidden; }
+.modal-header { background: $teal-tint; border-bottom: 1px solid $line; padding: 14px 18px; }
+.modal-header .modal-title, .modal-header .modal-title strong { color: $teal-ink; font-weight: 700; font-size: 17px; }
+.modal-header .close, .modal-header .btn-close { color: $teal-ink; opacity: 0.8; }
+.modal-body { padding: 18px; }
+.modal-footer { border-top: 1px solid $line; padding: 12px 18px; gap: 8px; }
+.modal-backdrop.show { opacity: 0.45; }
+
+// ---- Notes and alerts ------------------------------------------------------------------------------------------
+.alert { border-radius: 10px; border-width: 1px; font-size: 14px; }
+.label-highlight { background-color: #f1f8e9; border: 1px solid #dcecc6; border-radius: 10px; padding: 12px 14px; }
+.label-highlight1 { background-color: #fff6dc; border: 1px solid #f3e1a6; border-radius: 10px; }
+.label-highlight2 { background-color: #fffaf0; border: 1px solid #f6ebcf; border-radius: 10px; }
+
+// ---- Loading overlay -------------------------------------------------------------------------------------------
+// The old pages covered the whole screen with the green gradient on every load; now a light veil with the spinner.
+.loadingdiv {
+  background: rgba(255, 255, 255, 0.6) !important;
+  opacity: 1 !important;
+  backdrop-filter: blur(1px);
+}
+.loadingdiv .loader {
+  border-color: rgba(69, 165, 173, 0.2) !important;
+  border-top-color: $teal !important;
+}
+.loadingimage small { color: $teal-dark !important; font-weight: 600; }
+
+// ---- Pager line ("Show 10 Entries ... FIRST PREV 1 NEXT LAST") ---------------------------------------------------
+.zed-pager { color: $muted; font-size: 14px; }
+.zed-pager .btn,
+.zed-pager .btn.btn-primary {
+  min-width: 40px;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 13px;
+  text-transform: none;
+  background-color: #fff;
+  color: $teal-dark;
+  border: 1px solid $input-line;
+}
+.zed-pager .btn:hover:not(:disabled) { background-color: $teal-tint; border-color: $teal; color: $teal-ink; }
+.zed-pager .btn:disabled { opacity: 0.45; }
