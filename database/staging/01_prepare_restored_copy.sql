@@ -12,10 +12,12 @@
 --      same length ("staging-disabled-..." for tokens), ApiClientDynamicTokens.IsValid = 0, so partners' production
 --      credentials do not work on staging. Give testers their own rows if partner APIs are to be tested.
 --   4. Reset and login secrets: Users.PwdCode = NULL, ForgotPwdLinks emptied, open V4PasswordResets links invalidated,
---      OTP and OTP_old emptied, FailedLogins.Password = NULL.
+--      OTP and OTP_old emptied, FailedLogins.Password = NULL. The Admin's office mailboxes (V4Settings 'Email.%', migration
+--      0011) are deleted, so staging uses the addresses of its own configuration.
 --   5. @ScramblePasswords = 1 (optional): every Users.Password except the @Testers accounts gets a random V4 value
 --      ("V4!" + hex, never accepted as a password, docs/PASSWORDS.md) and their V4UserPasswords hash rows go, so the
---      production passwords of this copy cannot sign in on staging. Testers keep theirs (or reset them).
+--      production passwords of this copy cannot sign in on staging. Testers keep theirs (or reset them). Sub-users
+--      (V4SubUsers, migration 0012) lose their password hash unless their UserId is in @Testers (their owner resets it).
 --   6. @MaskContacts = 1 (optional, defence in depth on top of Email:RedirectAllTo): every char/varchar column of every
 --      user table whose name says it holds an e-mail address or a mobile/phone number (%Email%, %Mobile%No%,
 --      %MobileNumber%, %Phone%, %ContactNo%; not ...Body, ...Subject, ...Template, ...Status, ...Sent, ...Verified, ...Otp,
@@ -186,6 +188,12 @@ BEGIN
     INSERT #Report VALUES (DB_NAME(), ''4 OTP_old rows deleted'', @n, NULL);
     IF @apply = 1 EXEC sp_executesql N''DELETE FROM dbo.OTP_old'';
 END
+IF OBJECT_ID(N''dbo.V4Settings'', N''U'') IS NOT NULL
+BEGIN
+    EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.V4Settings WHERE SettingKey LIKE ''''Email.%'''''', N''@n bigint OUTPUT'', @n = @n OUTPUT;
+    INSERT #Report VALUES (DB_NAME(), ''4 V4Settings office mailboxes deleted'', @n, NULL);
+    IF @apply = 1 EXEC sp_executesql N''DELETE FROM dbo.V4Settings WHERE SettingKey LIKE ''''Email.%'''''';
+END
 IF COL_LENGTH(N''dbo.FailedLogins'', N''Password'') IS NOT NULL
 BEGIN
     EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.FailedLogins WHERE Password IS NOT NULL'', N''@n bigint OUTPUT'', @n = @n OUTPUT;
@@ -207,6 +215,14 @@ BEGIN
         IF OBJECT_ID(N''dbo.V4UserPasswords'', N''U'') IS NOT NULL
             EXEC sp_executesql N''DELETE P FROM dbo.V4UserPasswords P WHERE NOT EXISTS (SELECT 1 FROM #Testers T WHERE T.Id = P.UserId)'';
     END
+END
+IF @scramble = 1 AND OBJECT_ID(N''dbo.V4SubUsers'', N''U'') IS NOT NULL
+BEGIN
+    EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.V4SubUsers S WHERE S.PasswordHash IS NOT NULL AND NOT EXISTS (SELECT 1 FROM #Testers T WHERE T.Id = S.UserId)'',
+        N''@n bigint OUTPUT'', @n = @n OUTPUT;
+    INSERT #Report VALUES (DB_NAME(), ''5 V4SubUsers passwords removed (non-testers)'', @n, NULL);
+    IF @apply = 1
+        EXEC sp_executesql N''UPDATE S SET PasswordHash = NULL FROM dbo.V4SubUsers S WHERE S.PasswordHash IS NOT NULL AND NOT EXISTS (SELECT 1 FROM #Testers T WHERE T.Id = S.UserId)'';
 END
 
 IF @apply = 1 COMMIT;';
