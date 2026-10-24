@@ -202,8 +202,10 @@ public sealed class MsmeFinancialAssistanceController(
         if (SchemeInput.Date(r.InvoiceBillDate) is null) return "Please enter a valid invoice/bill date (not in the future).";
         if (SchemeInput.Amount(r.AmountPaid) is null) return "Please enter a valid amount paid.";
         if (!PaymentModes.Contains(r.ModeOfPayment)) return "Please select the mode of payment.";
-        return AccountProblem(r.Account) ?? DocumentsProblem(r.Documents,
-            [CertificateCopy, CaCertificate, InvoiceCopy, CancelledCheque], DocumentTypes);
+        // As the live FA form: the CA certificate is "(Optional)", but the expenditure section needs two documents at least
+        // (Photos.length <= 1 refused), e.g. the invoice and the CA certificate, or two invoices.
+        return AccountProblem(r.Account) ?? DocumentsProblem(r.Documents, [CertificateCopy, InvoiceCopy, CancelledCheque], DocumentTypes)
+            ?? (r.Documents!.Count(d => d.Type is CaCertificate or InvoiceCopy) < 2 ? "Please upload the required documents." : null);
     }
 
     public static string? AccountProblem(SchemeAccount? a)

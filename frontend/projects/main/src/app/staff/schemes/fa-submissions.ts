@@ -57,6 +57,8 @@ export class FaSubmissionsPage {
 
   /** Status and reason columns are shown on the allotment list only, as before. */
   protected readonly showStatusColumn = computed(() => this.status() === FaStatus.New);
+  /** Legacy ng-hide="status>1 && status<5": the reason shows on FA ALLOTMENT and on REJECTED. */
+  protected readonly showReasonColumn = computed(() => this.status() === FaStatus.New || this.status() === FaStatus.Rejected);
 
   constructor() {
     // Assessors only have their in-progress list (the old page had no tabs for them).

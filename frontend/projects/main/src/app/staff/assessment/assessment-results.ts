@@ -168,7 +168,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                       </td>
                     </tr>
                   } @else if (completed()) {
-                    <tr>
+                    <!-- As the old Completed list: a rejected unit's row in the danger colour. -->
+                    <tr [class.btn-danger]="!!t(s, 'ReasonForRejection')">
                       <td>{{ t(s, 'RowNumber') }}</td>
                       @if (surveillance) {
                         <td>{{ t(s, 'Certification') }}<br /><br />{{ t(s, 'SurveillanceNo') }}</td>
@@ -246,7 +247,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                       }
                     </tr>
                   } @else {
-                    <tr>
+                    <!-- As the old Rejected list: an open NC (NcStatus 2, status 4 or 14) in the warning colour. -->
+                    <tr [class.btn-warning]="n(s, 'NcStatus') === 2 && (n(s, 'CertificationStatus') === 4 || n(s, 'CertificationStatus') === 14)">
                       <td>{{ t(s, 'RowNumber') }}</td>
                       <td>{{ t(s, 'Certification') }}</td>
                       <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>

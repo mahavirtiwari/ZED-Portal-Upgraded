@@ -679,9 +679,23 @@
           }
           @if (ncProducts().length) {
             <table class="table table-zed table-bordered bg-white">
-              <thead><tr><th>Product Name</th><th>Assessor Remarks</th></tr></thead>
+              <thead><tr><th>Product Name</th><th>Product Photo</th><th>Product Description Photo</th><th>Assessor Remarks</th></tr></thead>
               <tbody>
-                @for (p of ncProducts(); track t(p, 'Id')) { <tr><td>{{ t(p, 'ProductName') }}</td><td>{{ t(p, 'SaAssessorRemarks') }}</td></tr> }
+                @for (p of ncProducts(); track t(p, 'Id')) {
+                  <tr>
+                    <td>{{ t(p, 'ProductName') }}</td>
+                    <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" alt="Product photo" height="60" /> }</td>
+                    <td>
+                      @if (t(p, 'DescriptionKind') === 'pdf') {
+                        <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                      } @else if (t(p, 'DescriptionKind') === 'image') {
+                        <img [src]="t(p, 'DescriptionUrl')" alt="Product description" height="60" />
+                      }
+                    </td>
+                    <!-- The site assessor's remarks that raise the NC (the old pop-up showed the desktop AssessorRemarks here). -->
+                    <td>{{ t(p, 'SaAssessorRemarks') }}</td>
+                  </tr>
+                }
               </tbody>
             </table>
           }

@@ -42,7 +42,7 @@
                 <th>Category Of Certificate</th>
                 <th>Name of the Certificate<br /><br />Certification Agency</th>
                 <th>Verification Date</th>
-                @if (showStatusColumn() && !isAssessor()) {
+                @if (showReasonColumn() && !isAssessor()) {
                   <th>Reason For Rejection</th>
                 }
               </tr>
@@ -88,7 +88,7 @@
                   <td>{{ s.CategoryOfCertificate }}</td>
                   <td>{{ s.NameOfCertficate }}<br /><br />{{ s.CertificationAgency }}</td>
                   <td>{{ s.VerificationDate }}</td>
-                  @if (showStatusColumn() && !isAssessor()) {
+                  @if (showReasonColumn() && !isAssessor()) {
                     <td>{{ s.ReasonForRejection }}</td>
                   }
                 </tr>

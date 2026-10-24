@@ -14,7 +14,7 @@ public sealed class SchemeUnit(IDictionary<string, object?> msme, IDictionary<st
     [
         "ZedId", "EnterpriseName", "EnterpriseType", "EnterpriseTypee", "RegistrationType", "PledgeEmailId",
         "PUnitName", "PAddress", "PDistrictName", "PStateName", "PPin",
-        "Activity", "TwoDigitActivity", "FourDigitActivity", "FiveDigitActivity",
+        "Activity", "TwoDigitActivity", "FourDigitActivity", "FiveDigitActivity", "PledgeOn",
     ];
 
     public Dictionary<string, object?> Panel()

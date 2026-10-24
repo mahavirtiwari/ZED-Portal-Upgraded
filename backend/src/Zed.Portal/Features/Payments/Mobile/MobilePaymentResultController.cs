@@ -83,8 +83,8 @@ public sealed class MobilePaymentResultController(
 
     private static string E(string? s) => WebUtility.HtmlEncode(s ?? "");
 
-    // Views/Pay/successmobile.cshtml (the same as Views/SurveillancePay/successmobile.cshtml) without the
-    // site layout and images.
+    // Frontend/Pay/successmobile.cshtml (the same for SurveillancePay and ConsultancyPay) without the site layout: the
+    // success icon, the app download block and BACK TO DASHBOARD as on the live page. Images come from the main portal.
     private static string SuccessPage(string trackingId, string orderStatus) => $$"""
         <!DOCTYPE html>
         <html>
@@ -99,6 +99,7 @@ public sealed class MobilePaymentResultController(
             <div class="row">
                 <div class="col-sm-offset-3 col-sm-18 Dashboard zed-payment-success">
                     <div class="jumbotron text-center">
+                        <img src="/Images/svgicons/payment-success.svg" alt="" />
                         <h2>Registration Successful!</h2>
         				<table>
         					<tr>
@@ -112,6 +113,14 @@ public sealed class MobilePaymentResultController(
         				</table>
                         <p>Your payment towards ZED Certification has been successful.</p>
                         <p>Please download the ZED MSME Mobile Application to proceed to the next step, i.e. Basic Information and Document Upload</p>
+                        <div class="label-highlight">
+                            <p>You may now download the ZED Assessment Mobile App</p>
+                            <img src="/Images/google-play.png" alt="Google Play" width="110" />
+                            <img src="/Images/qrcode.png" alt="" width="80" />
+                        </div>
+                    </div>
+                    <div class="stepper-footer-sec initial-step">
+                        <a class="btn btn-primary" href="/msme/dashboard">BACK TO DASHBOARD</a>
                     </div>
                 </div>
             </div>
@@ -120,7 +129,8 @@ public sealed class MobilePaymentResultController(
         </html>
         """;
 
-    // Views/Pay/failuremobile.cshtml (the same as Views/SurveillancePay/failuremobile.cshtml).
+    // Frontend/Pay/failuremobile.cshtml (the same for SurveillancePay and ConsultancyPay), with its error image, contact
+    // address and BACK TO DASHBOARD.
     private static string FailurePage(string trackingId, string orderStatus, string? message) => $$"""
         <!DOCTYPE html>
         <html>
@@ -135,8 +145,9 @@ public sealed class MobilePaymentResultController(
                 <div class="row">
                     <div class="col-sm-offset-3 col-sm-18 Dashboard zed-payment-success">
                         <div class="jumbotron text-center">
+                            <img src="/Images/payment-error.png" alt="" width="150" />
                             <h2>Payment Failed</h2>
-                            <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed@qcin.org</p>
+                            <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support@qcin.org</p>
                             <p><b>Error Message </b>: <span>{{E(message)}}</span></p>
                         </div>
         				<table>
@@ -149,6 +160,9 @@ public sealed class MobilePaymentResultController(
         						<td>{{E(orderStatus)}}</td>
         					</tr>
         				</table>
+                        <div class="stepper-footer-sec initial-step">
+                            <a class="btn btn-primary" href="/msme/dashboard">BACK TO DASHBOARD</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -163,6 +177,12 @@ public sealed class MobilePaymentResultController(
             h2 { font-size: 22px; }
             table { margin: 16px auto; border-collapse: collapse; }
             td { padding: 4px 12px; border: 1px solid #ddd; }
+            .jumbotron img { max-width: 100%; }
+            .label-highlight { margin: 16px auto; padding: 12px; background: #f0f8f2; border-radius: 8px; max-width: 420px; }
+            .label-highlight img { vertical-align: middle; margin: 0 6px; }
+            .stepper-footer-sec { text-align: center; margin-top: 16px; }
+            .btn-primary { display: inline-block; padding: 10px 20px; border-radius: 4px; background: #45a5ad; color: #fff;
+                           text-decoration: none; font-weight: 600; font-size: 14px; }
         </style>
         """;
 }

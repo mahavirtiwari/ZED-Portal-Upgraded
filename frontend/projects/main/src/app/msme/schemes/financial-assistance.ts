@@ -136,7 +136,9 @@ export class FinancialAssistancePage {
       this.error.set('Invalid IFSC Code format. Please enter the correct 11-digit code.');
       return;
     }
-    if (Object.values(FA_DOCUMENTS).some((t) => this.docs(t).length === 0)) {
+    // The CA certificate is optional, but the expenditure section needs two documents at least (as the live form).
+    const requiredDocs = [FA_DOCUMENTS.certificate, FA_DOCUMENTS.invoice, FA_DOCUMENTS.cheque];
+    if (requiredDocs.some((t) => this.docs(t).length === 0) || this.docs(FA_DOCUMENTS.ca).length + this.docs(FA_DOCUMENTS.invoice).length < 2) {
       this.error.set('Please upload the required documents.');
       return;
     }

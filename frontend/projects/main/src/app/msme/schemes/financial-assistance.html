@@ -11,7 +11,7 @@
       @if (!p.canApply && step() !== 'done') {
         <!-- Already applied, not eligible or not certified: the MSME's own applications (old Details page). -->
         <div class="row">
-          <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
+          <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [pledge]="true" /></div>
           <div class="col-sm-9">
             <div class="refresh-bar d-flex justify-content-between mb-2">
               <a routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
@@ -118,7 +118,7 @@
                         @for (c of ['Quality', 'Product', 'Testing']; track c) {
                           <label class="radio-inline-item">
                             <input type="radio" class="option-input yes radio" name="CategoryOfCertificate" [value]="c" [(ngModel)]="form.categoryOfCertificate" />
-                            <span>{{ c }}</span>
+                            <span>{{ c === 'Quality' ? 'System/Quality' : c }}</span>
                           </label>
                         }
                       </div>
@@ -183,7 +183,7 @@
                       <option value="Online">Online</option>
                     </select>
                   </div></div>
-                  <zed-scheme-document label="CA certificate of expenditure" inputId="faDocCa" [required]="true" [busy]="busy()"
+                  <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="faDocCa" [required]="false" [busy]="busy()"
                     [documents]="docs(docTypes.ca)" (pick)="upload(docTypes.ca, $event)" (remove)="removeDoc($event)" />
                   <zed-scheme-document label="Upload Invoice Copy" inputId="faDocInvoice" [required]="true" [busy]="busy()"
                     [documents]="docs(docTypes.invoice)" (pick)="upload(docTypes.invoice, $event)" (remove)="removeDoc($event)" />

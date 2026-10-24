@@ -35,11 +35,23 @@ import { SchemeDocument, UnitPanel } from './schemes.api';
       <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ u['FourDigitActivity'] }}</p></div>
       <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ u['FiveDigitActivity'] }}</p></div>
     }
+    @if (pledge() && u['PledgeOn']) {
+      <!-- As FinancialAssistance/Details.cshtml: the pledge certificate under the unit. -->
+      <div class="card card-default panel-black panel-msme-black"><div class="card-body">ZED Pledge Certificate</div></div>
+      <div class="unit-selection">
+        <div class="col-sm-12" style="padding: 0">
+          <p>Pledge taken on {{ u['PledgeOn'] }}</p>
+          <div class="btn-download"><a href="/api/msme/files/pledge-certificate" target="_blank" rel="noopener">DOWNLOAD</a></div>
+        </div>
+      </div>
+    }
   `,
 })
 export class SchemeUnitPanel {
   readonly unit = input.required<UnitPanel>();
   readonly full = input(true);
+  /** The "ZED Pledge Certificate" block (the old applications page only). */
+  readonly pledge = input(false);
 
   protected address(): string {
     const u = this.unit();

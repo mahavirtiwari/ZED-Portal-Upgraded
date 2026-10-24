@@ -453,12 +453,7 @@
                                 }
                               </div>
                             </td>
-                            <td>
-                              {{ t(cur, 'IsVerified') }}
-                              @if (canChange(nc) && n(cur, 'DocumentOpenedTime') === 0) {
-                                <input type="button" [value]="t(cur, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editSiteExterior(cur)" />
-                              }
-                            </td>
+                            <td>{{ t(cur, 'IsVerified') }}</td>
                             <td>
                               {{ t(cur, 'AssessorRemarks') }}
                               @if (review().editRemarks && t(cur, 'IsVerified')) {
@@ -470,6 +465,29 @@
                         }
                       </tbody>
                     </table>
+                    @if (roundPhotos(nc).length > 0) {
+                      @let cur = roundPhotos(nc)[0];
+                      <!-- Under the table, as the old NC2-NC5 tabs: the verification, the remarks and the buttons. -->
+                      <div class="row">
+                        <hr />
+                        @if (t(cur, 'IsVerified')) {
+                          <div class="col-sm-12">
+                            <label>Verified: {{ t(cur, 'IsVerified') }}</label><br />
+                            <label>
+                              Remarks: {{ t(cur, 'AssessorRemarks') }}
+                              @if (review().editRemarks) {
+                                <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('photo', cur)" />
+                              }
+                            </label>
+                          </div>
+                        }
+                        @if (canChange(nc) && n(cur, 'DocumentOpenedTime') === 0) {
+                          <div class="col-sm-12" [class.text-center]="!t(cur, 'IsVerified')">
+                            <input type="button" [value]="t(cur, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-primary btn-sm" (click)="editSiteExterior(cur)" />
+                          </div>
+                        }
+                      </div>
+                    }
                   }
 
                   @if ((rd?.products ?? []).length > 0) {
@@ -817,12 +835,19 @@
           }
           @if (bronze && noRows(sr.products, 'IsVerified').length > 0) {
             <table class="table table-striped">
-              <thead><tr><th>Product Name</th><th>Product Photo</th><th>Assessor Remarks</th></tr></thead>
+              <thead><tr><th>Product Name</th><th>Product Photo</th><th>Product Description Photo</th><th>Assessor Remarks</th></tr></thead>
               <tbody>
                 @for (p of noRows(sr.products, 'IsVerified'); track t(p, 'Id')) {
                   <tr>
                     <td>{{ t(p, 'ProductName') }}</td>
                     <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /> }</td>
+                    <td>
+                      @if (t(p, 'DescriptionKind') === 'pdf') {
+                        <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                      } @else if (t(p, 'DescriptionKind') === 'image') {
+                        <img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" />
+                      }
+                    </td>
                     <td>{{ t(p, 'AssessorRemarks') }}</td>
                   </tr>
                 }

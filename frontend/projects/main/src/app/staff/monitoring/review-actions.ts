@@ -180,7 +180,7 @@ export interface RemarksTarget {
               </div>
             </div>
             <div class="modal-body">
-              <label for="reviewRemarksText"><strong>{{ tg.kind === 'ofi' ? 'OFI Comments' : 'Remarks' }}<span style="color: red">*</span></strong></label>
+              <label for="reviewRemarksText"><strong>{{ tg.kind === 'ofi' ? 'OFI Comments' : 'Assessment Agency Final Remarks' }}<span style="color: red">*</span></strong></label>
               <textarea id="reviewRemarksText" name="reviewRemarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px"
                 [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
