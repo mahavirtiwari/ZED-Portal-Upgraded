@@ -38,7 +38,8 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
     public const int HelpTextMax = 2000;   // MasterOption2.HelpText varchar(2000)
 
     public sealed record Bullet(long Id, string SubOptionCode, string Name);
-    public sealed record Point(long Id, string OptionCode, string Name, IReadOnlyList<Bullet> Bullets);
+    /// <summary>OptionImage: Options.OptionImage (a path under the site root the old page showed below the point), null when empty.</summary>
+    public sealed record Point(long Id, string OptionCode, string Name, IReadOnlyList<Bullet> Bullets, string? OptionImage = null);
     public sealed record Evidence(string EvidenceCode, string EvidenceName, string? HelpText, bool ValidationRequired);
     public sealed record Requirement(long Id, string RequirementCode, IReadOnlyList<Point> Points,
         IReadOnlyList<Evidence> MandatoryEvidences, IReadOnlyList<Evidence> OptionalEvidences, bool CanRemove);
@@ -174,7 +175,8 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
             var points = sets[1].Where(o => o.Text("RequirementCode") == code)
                 .Select(o => new Point(Long(o, "Id"), o.Text("OptionCode"), o.Text("OptionName"),
                     sets[2].Where(s => s.Text("RequirementCode") == code && s.Text("OptionCode") == o.Text("OptionCode"))
-                        .Select(s => new Bullet(Long(s, "Id"), s.Text("SubOptionCode"), s.Text("SubOptionName"))).ToList()))
+                        .Select(s => new Bullet(Long(s, "Id"), s.Text("SubOptionCode"), s.Text("SubOptionName"))).ToList(),
+                    o.Text("OptionImage").Trim() is { Length: > 0 } image ? image : null))
                 .ToList();
             return new Requirement(Long(r, "Id"), code, points,
                 sets[3].Where(e => e.Text("RequirementCode") == code).Select(ToEvidence).ToList(),

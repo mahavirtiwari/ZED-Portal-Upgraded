@@ -84,7 +84,16 @@ public sealed class SiteReviewController(
     private static readonly string[] EvidenceFields = ["Id", "SectionCode", "RequirementCode", "EvidenceName", "NcCount", "SyncedDate"];
     private static readonly string[] AttendanceFields = ["ConsultantId", "RowNumber", "TimeStamps", "LoginTime", "LogoutTime", "NoOfHours", "NoOfMinutes"];
     private static readonly string[] SiteVerificationFields =
-        ["ZedId", "Certification", "CertificationBodyUserId", "EnterpriseName", "UnitAddress", "StateName", "DesktopReasonForRejection"];
+        ["ZedId", "Certification", "CertificationBodyUserId", "AssessorName", "EnterpriseName", "UnitAddress", "StateName", "DesktopReasonForRejection"];
+
+    /// <summary>
+    /// The "Assessment Agency" column is CertificationBodyUserId and AssessorName (the agency's name). The SA branch of
+    /// SP_ASSESSMENT_ALLOT_LIST (main and surveillance) returns the id only, so the old page's AssessorName was always blank;
+    /// the names are read from Users here.
+    /// </summary>
+    internal const string AgencyNamesSql = "SELECT UserId, UserName FROM dbo.Users WHERE RoleId = 2 AND UserId IN @UserIds";
+
+    private sealed record UserNameRow(string? UserId, string? UserName);
 
     public sealed record Photo(long? Id, string? Name, string? Url, string? CreatedDate, string? IsVerified, string? AssessorRemarks);
 
@@ -204,7 +213,18 @@ public sealed class SiteReviewController(
     {
         var sets = await db.QueryProcMultipleAsync("SP_ASSESSMENT_ALLOT_LIST",
             new { UserId, RoleId = RoleText, AllotmentType = "SA" }, ct);
-        return new ListResponse(Pick(sets[0], SiteVerificationFields));
+        var rows = Pick(sets[0], SiteVerificationFields);
+        var agencies = rows.Where(r => r["AssessorName"] is null).Select(r => r.Text("CertificationBodyUserId").Trim())
+            .Where(id => id.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (agencies.Count > 0)
+        {
+            var names = (await db.QuerySqlAsync<UserNameRow>(AgencyNamesSql, new { UserIds = agencies }, ct))
+                .Where(u => u.UserId is not null).GroupBy(u => u.UserId!.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().UserName, StringComparer.OrdinalIgnoreCase);
+            foreach (var r in rows)
+                if (r["AssessorName"] is null && names.TryGetValue(r.Text("CertificationBodyUserId").Trim(), out var name)) r["AssessorName"] = name;
+        }
+        return new ListResponse(rows);
     }
 
     // ======================================================================== review page

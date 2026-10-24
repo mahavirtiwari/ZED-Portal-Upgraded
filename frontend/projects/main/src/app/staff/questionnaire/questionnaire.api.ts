@@ -14,6 +14,8 @@ export interface Point {
   optionCode: string;
   name: string;
   bullets: Bullet[];
+  /** Options.OptionImage: a path under the site root shown below the point (null when there is none). */
+  optionImage?: string | null;
 }
 
 export interface Evidence {

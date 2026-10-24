@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Zed.Portal.Features.Staff.Assessment;
+using Zed.Portal.Features.Staff.SiteReview;
 
 namespace Zed.Main.Api.Tests.Staff;
 
@@ -277,5 +278,24 @@ public sealed class SiteReviewTests : IDisposable
 
         var agency = await As("AGENCYSV");
         Assert.Equal(HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/site-review/site-verification")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Site_verification_names_the_agency_the_procedure_only_gives_the_id_of()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = _ => FakeSql.Sets([
+            new { ZedId = Zed, Certification = "Silver", CertificationBodyUserId = "AGENCYSV" },
+            new { ZedId = "ZEDMSME000002", Certification = "Gold", CertificationBodyUserId = "agencysv " },
+            new { ZedId = "ZEDMSME000003", Certification = "Gold", CertificationBodyUserId = "GONE" },
+        ]);
+        _host.Sql.Queries[SiteReviewController.AgencyNamesSql] = _ => [new { UserId = "AGENCYSV", UserName = "Agency SV" }];
+        var rows = (await (await As("ASSESSORSV")).GetFromJsonAsync<JsonElement>("/api/staff/site-review/site-verification")).GetProperty("rows");
+        Assert.Equal("Agency SV", rows[0].GetProperty("AssessorName").GetString());
+        Assert.Equal("Agency SV", rows[1].GetProperty("AssessorName").GetString());
+        Assert.Equal(JsonValueKind.Null, rows[2].GetProperty("AssessorName").ValueKind);
+
+        // One query for the distinct agency ids of the list.
+        var lookup = Assert.Single(_host.Sql.Calls, c => c.Name == SiteReviewController.AgencyNamesSql);
+        Assert.Equal(["AGENCYSV", "GONE"], (IEnumerable<string>)lookup.Args!.GetType().GetProperty("UserIds")!.GetValue(lookup.Args)!);
     }
 }

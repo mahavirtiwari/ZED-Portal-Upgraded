@@ -15,7 +15,11 @@ namespace Zed.Portal.Features.Staff.Assessment;
 /// procedure: their pages called Monitoring/GetList (SP_MONITORING_GET_LIST, all rows of the status), so the search
 /// and paging are done here on that list, and the response has the same shape. Consultancy rows are milestones
 /// (NcCount) with the milestone-report and recommended-technology columns; Consultancy has no Rejected list.
-/// Surveillance rows add SurveillanceNo.
+/// Surveillance rows add SurveillanceNo; its Completed page also had a Gender filter (the procedure's @Gender), and its one
+/// Search box matched any column of the rows (<c>JSON.stringify(row).indexOf(text)</c>), so searchBy is ignored there.
+/// </para>
+/// <para>
+/// Completed rows carry ReasonForRejection (all three procedures return it): the old Completed pages coloured those rows red.
 /// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
@@ -53,22 +57,26 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
 
     public sealed record PageResponse(IReadOnlyList<Dictionary<string, object?>> Rows, int TotalCount, int PageNo, int PageSize);
 
+    /// <summary>Status 6 of SP_MONITORING_GET_LIST(_PAGINATION).</summary>
+    private const int CompletedStatus = 6;
+
     [HttpGet("completed")]
     public Task<ActionResult<PageResponse>> Completed(
-        string? state, string? certification, string? size, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct) =>
-        List(6, state, certification, size, searchBy, search, pageNo, pageSize, ct);
+        string? state, string? certification, string? size, string? gender, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct) =>
+        List(CompletedStatus, state, certification, size, gender, searchBy, search, pageNo, pageSize, ct);
 
     [HttpGet("rejected")]
     public async Task<ActionResult<PageResponse>> Rejected(
-        string? state, string? certification, string? size, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct)
+        string? state, string? certification, string? size, string? gender, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct)
     {
         // The consultancy portal had no rejected list in use (its page was master-admin only and not in the menu).
         if (host.System == PortalSystem.Consultancy) return NotFound();
-        return await List(99, state, certification, size, searchBy, search, pageNo, pageSize, ct);
+        return await List(99, state, certification, size, gender, searchBy, search, pageNo, pageSize, ct);
     }
 
     private async Task<ActionResult<PageResponse>> List(
-        int status, string? state, string? certification, string? size, string? searchBy, string? search, int? pageNo, int? pageSize, CancellationToken ct)
+        int status, string? state, string? certification, string? size, string? gender, string? searchBy, string? search, int? pageNo, int? pageSize,
+        CancellationToken ct)
     {
         // Agencies use these screens with desktop or site verification (menu: either sub-role).
         var user = CurrentUser;
@@ -78,6 +86,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         if (!AssessmentInput.State(state, out var s) ||
             !AssessmentInput.Filter(certification, AssessmentInput.Levels, out var c) ||
             !AssessmentInput.Filter(size, AssessmentInput.Sizes, out var z) ||
+            !AssessmentInput.Filter(gender, AssessmentInput.Genders, out var g) ||
             !AssessmentInput.Filter(searchBy, SearchBy, out var by))
             return this.Problem400("Invalid filter.");
         var text = AssessmentInput.Text(search);
@@ -85,8 +94,9 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         var page = Math.Max(pageNo ?? 1, 1);
         var size2 = pageSize is 10 or 20 or 50 or 100 or 200 ? pageSize.Value : 20;
 
+        // Main's paginated procedure has @Gender but its condition is commented out (and main's pages had no Gender filter).
         if (host.System != PortalSystem.Main)
-            return await FromMonitoringList(status, s, c, z, text is null ? null : by ?? "Zed Id", text, page, size2, ct);
+            return await FromMonitoringList(status, s, c, z, g, text is null ? null : by ?? "Zed Id", text, page, size2, ct);
 
         var sets = await db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST_PAGINATION", new
         {
@@ -104,15 +114,18 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         }, ct);
 
         var total = sets[1].FirstOrDefault() is { } t && int.TryParse(t.Text("TotalCounts"), out var n) ? n : 0;
-        return new PageResponse(Pick(sets[0], Fields), total, page, size2);
+        return new PageResponse(Pick(sets[0], WithReason(status, Fields)), total, page, size2);
     }
+
+    private static string[] WithReason(int status, string[] fields) => status == CompletedStatus ? [.. fields, "ReasonForRejection"] : fields;
 
     /// <summary>
     /// Consultancy and Surveillance: SP_MONITORING_GET_LIST (@UserId, @RoleId, @Status, @CertificationType, @State,
-    /// @MsmeSize; Consultancy has no @NcClosingDate, Surveillance's is left at its default), then search and paging here.
+    /// @MsmeSize, @Gender; Consultancy has no @NcClosingDate, Surveillance's is left at its default), then search and paging here.
     /// </summary>
     private async Task<PageResponse> FromMonitoringList(
-        int status, string? state, string? level, string? size, string? searchBy, string? search, int page, int pageSize, CancellationToken ct)
+        int status, string? state, string? level, string? size, string? gender, string? searchBy, string? search, int page, int pageSize,
+        CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST", new
         {
@@ -122,10 +135,17 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
             CertificationType = level,
             State = state,
             MsmeSize = size,
+            Gender = gender,
         }, ct);
 
         IEnumerable<IDictionary<string, object?>> rows = sets[0];
-        if (search is not null)
+        if (search is not null && host.System == PortalSystem.Surveillance)
+        {
+            // As the old SearchText: any column of the row (case-insensitive here).
+            rows = rows.Where(r => r.Values.Any(v => v is not null and not DBNull &&
+                (Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture) ?? "").Contains(search, StringComparison.OrdinalIgnoreCase)));
+        }
+        else if (search is not null)
         {
             string[] columns = searchBy switch
             {
@@ -136,7 +156,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
             rows = rows.Where(r => columns.Any(col => r.Text(col).Contains(search, StringComparison.OrdinalIgnoreCase)));
         }
         var all = rows.ToList();
-        var fields = host.System == PortalSystem.Consultancy ? ConsultancyFields : SurveillanceFields;
+        var fields = WithReason(status, host.System == PortalSystem.Consultancy ? ConsultancyFields : SurveillanceFields);
         return new PageResponse(Pick(all.Skip((page - 1) * pageSize).Take(pageSize), fields), all.Count, page, pageSize);
     }
 

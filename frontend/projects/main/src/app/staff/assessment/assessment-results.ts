@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, text, useLegacyPortal } from './assessment-shared';
 import { PagerComponent, ServerPager } from '../pager';
-import { AssessmentApi, Row } from './assessment.api';
+import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
 
 /** Folders a stored pledge certificate is in (SP_MONITORING_GET_LIST_PAGINATION PledgePath). */
@@ -22,8 +22,9 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
  * open on the current portal.
  * <p>Consultancy ("Consultancy Completed"; no rejected list): one row per completed milestone, with the milestone
  * reports and "Recommended Technologies" after milestone 3. Surveillance ("Completed / Rejected Surveillance"):
- * Surveillance No; no phase, due-date, duplicates or pledge columns; Completed has one search box that searches as you
- * type, Rejected only the Certification Level filter; the agency's "Assessment Details" opens SaDetails from status 9.</p>
+ * Surveillance No; no phase, due-date, duplicates or pledge columns; Completed has a Gender filter and one search box that
+ * searches any column as you type (on the server), Rejected only the Certification Level filter; the agency's "Assessment
+ * Details" opens SaDetails from status 9.</p>
  */
 @Component({
   selector: 'zed-staff-assessment-results',
@@ -73,6 +74,16 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                   <option value="Medium">Medium</option>
                 </select>
               </div>
+              @if (surveillance) {
+                <!-- Completed Surveillance's Gender filter (the procedure's @Gender), with the old option values. -->
+                <div>
+                  <label for="resGender"><strong>Gender</strong></label>
+                  <select class="form-select" style="width: 200px" id="resGender" [(ngModel)]="gender" (ngModelChange)="search()">
+                    <option value="">Show All</option>
+                    @for (g of genders; track g[0]) { <option [value]="g[0]">{{ g[1] }}</option> }
+                  </select>
+                </div>
+              }
             </div>
           </div>
 
@@ -332,6 +343,9 @@ export class AssessmentResultsPage {
   protected state = '';
   protected level = '';
   protected size = '';
+  /** Surveillance Completed only: value and label of the old Gender options, in their order. */
+  protected readonly genders = [['male', 'Male'], ['female', 'Female'], ['Others', 'Others']] as const;
+  protected gender = '';
   protected searchBy = 'Zed Id';
   protected searchText = '';
 
@@ -404,17 +418,18 @@ export class AssessmentResultsPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      const res = await firstValueFrom(
-        this.api.results(this.completed() ? 'completed' : 'rejected', {
-          state: this.state,
-          certification: this.level,
-          size: this.size,
-          searchBy: this.searchText.trim() ? this.searchBy : '',
-          search: this.searchText.trim(),
-          pageNo: this.pager.pageNo(),
-          pageSize: this.pager.pageSize(),
-        }),
-      );
+      const filter: ResultsFilter & { gender?: string } = {
+        state: this.state,
+        certification: this.level,
+        size: this.size,
+        searchBy: this.searchText.trim() ? this.searchBy : '',
+        search: this.searchText.trim(),
+        pageNo: this.pager.pageNo(),
+        pageSize: this.pager.pageSize(),
+      };
+      // Sent as a query parameter like the others (empty values are left out).
+      if (this.surveillance && this.completed()) filter.gender = this.gender;
+      const res = await firstValueFrom(this.api.results(this.completed() ? 'completed' : 'rejected', filter));
       if (request !== this.request) return;
       this.rows.set(res.rows);
       this.pager.total.set(res.totalCount);

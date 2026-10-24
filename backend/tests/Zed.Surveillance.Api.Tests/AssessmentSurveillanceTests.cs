@@ -169,6 +169,34 @@ public sealed class AssessmentSurveillanceTests : IDisposable
     }
 
     [Fact]
+    public async Task Completed_search_matches_any_column_and_gender_goes_to_the_procedure()
+    {
+        _s.Sql.Procs["SP_MONITORING_GET_LIST"] = _ => FakeSql.Sets([
+            new { RowNumber = 1, ZedId = "ZEDMSME000001", Certification = "Silver", PUnitName = "Acme Castings", UnitSpocEmailId = "spoc@acme.test", AgencyName = "Agency One",
+                  ReasonForRejection = (string?)null },
+            new { RowNumber = 2, ZedId = "ZEDMSME000002", Certification = "Gold", PUnitName = "Beta Works", UnitSpocEmailId = "owner@beta.test", AgencyName = "Agency Two",
+                  ReasonForRejection = (string?)"Disabled" },
+        ]);
+        var client = await _s.SignInAsync("MADMIN", 7);
+
+        // The page sends its default searchBy (Zed Id); the old SearchText looked in every column, whatever it was.
+        async Task<string[]> Found(string query) =>
+            (await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?searchBy=Zed%20Id&" + query))
+                .GetProperty("rows").EnumerateArray().Select(r => r.GetProperty("ZedId").GetString()!).ToArray();
+        Assert.Equal(["ZEDMSME000002"], await Found("search=BETA"));
+        Assert.Equal(["ZEDMSME000001"], await Found("search=spoc@acme"));
+        Assert.Equal(["ZEDMSME000002"], await Found("search=Agency%20Two"));
+        Assert.Equal(["ZEDMSME000001", "ZEDMSME000002"], await Found("search=ZEDMSME00000"));
+
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?gender=Female");
+        Assert.Equal("Disabled", json.GetProperty("rows")[1].GetProperty("ReasonForRejection").GetString());
+        Assert.False(json.GetProperty("rows")[0].TryGetProperty("UnitSpocEmailId", out _));
+        // The legacy option values (male / female / Others), in their spelling.
+        Assert.Equal("female", FakeSql.Arg(_s.Sql.Calls.Last(c => c.Name == "SP_MONITORING_GET_LIST").Args, "Gender"));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/staff/assessment/completed?gender=x")).StatusCode);
+    }
+
+    [Fact]
     public async Task Monitoring_hides_re_allot_and_returns_surveillance_columns()
     {
         _s.Sql.Procs["SP_MONITORING_GET_LIST"] = args => FakeSql.Sets(

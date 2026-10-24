@@ -47,6 +47,7 @@ export interface NeftTransaction {
   Gender?: string | null;
   SocialCategoryName?: string | null;
   IsCouponUsed?: boolean | number | null;
+  /** Rejected list only: the unit's MsmePaymentInfo (payment of the row's level, else the latest); null without one. */
   GstinNumber?: string | null;
   TanNumber?: string | null;
   UtrNumber?: string | null;

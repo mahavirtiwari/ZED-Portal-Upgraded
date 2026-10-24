@@ -71,13 +71,15 @@ public sealed class AssessmentConsultancyTests : IDisposable
     public async Task Completed_list_reads_the_monitoring_list_with_milestone_columns()
     {
         _s.Sql.Procs["SP_MONITORING_GET_LIST"] = _ => FakeSql.Sets([
-            new { RowNumber = 1, ZedId = Zed, Certification = "Silver", NcCount = 3, DisplayRecTech = 1, TuStatus = 1, CertificationStatus = 100, PUnitName = "Acme", UdyogAadharNo = "UDYAM-1" },
+            new { RowNumber = 1, ZedId = Zed, Certification = "Silver", NcCount = 3, DisplayRecTech = 1, TuStatus = 1, CertificationStatus = 100, PUnitName = "Acme", UdyogAadharNo = "UDYAM-1",
+                  ReasonForRejection = "Disabled by admin" },
         ]);
         var client = await _s.SignInAsync("CO1", 2, "SiteVerification");
         var json = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?searchBy=Unit%20Name&search=acme");
         var row = json.GetProperty("rows")[0];
         Assert.Equal(3, row.GetProperty("NcCount").GetInt32());
         Assert.Equal(1, row.GetProperty("DisplayRecTech").GetInt32());
+        Assert.Equal("Disabled by admin", row.GetProperty("ReasonForRejection").GetString());
         var args = _s.Sql.Calls.Single(c => c.Name == "SP_MONITORING_GET_LIST").Args!;
         Assert.Null(args.GetType().GetProperty("NcClosingDate"));
         Assert.Equal("6", FakeSql.Arg(args, "Status"));

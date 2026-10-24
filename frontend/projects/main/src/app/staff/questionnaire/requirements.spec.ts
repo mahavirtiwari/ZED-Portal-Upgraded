@@ -89,10 +89,12 @@ describe('RequirementsPage', () => {
   });
 
   it("shows a point's existing option image below it, as the old page", async () => {
-    // MasterOption.OptionImage as the API would add it to a point.
+    // Options.OptionImage as the API returns it with a point.
     const points = [
       { id: 201, optionCode: '1', name: 'First', bullets: [], optionImage: 'Images/Questions/p1.png' },
       { id: 202, optionCode: '2', name: 'Second', bullets: [], optionImage: 'javascript:alert(1)' },
+      // Points saved by this page store no image: the API sends null.
+      { id: 203, optionCode: '3', name: 'Third', bullets: [], optionImage: null },
     ];
     const withImages: RequirementsResponse = { ...response, requirements: [{ ...response.requirements[1], points }] };
     // A fresh page with the images in the response.

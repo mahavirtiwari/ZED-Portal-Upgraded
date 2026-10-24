@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Zed.Main.Api.Tests;
+using Zed.Portal.Features.Staff.SiteAssessment;
 
 namespace Zed.Surveillance.Api.Tests;
 
@@ -70,6 +71,31 @@ public sealed class SurveillanceSiteAllotmentTests : IDisposable
     }
 
     [Fact]
+    public async Task Re_allot_rows_carry_the_current_meeting_link_and_co_assessor()
+    {
+        _host.Sql.Queries[SiteAssessmentController.AllotmentSql] = _ =>
+            [new { ZedId = Zed, Certification = "Silver", MeetingLink = Link, CoAssessorId = "ASR2" }];
+        var unit = (await (await Agency()).GetFromJsonAsync<JsonElement>(Base + "/allotments")).GetProperty("units")[0];
+        Assert.Equal(Link, unit.GetProperty("MeetingLink").GetString());
+        Assert.Equal("ASR2", unit.GetProperty("CoAssessorId").GetString());
+
+        // One lookup, of this agency's own records, for the listed (already allotted) units.
+        var args = Assert.Single(_host.Sql.Calls, c => c.Name == SiteAssessmentController.AllotmentSql).Args;
+        Assert.Equal("AGENCY1", FakeSql.Arg(args, "UserId"));
+        Assert.Equal($$"""[{"z":"{{Zed}}","c":"Silver"}]""", FakeSql.Arg(args, "Units"));
+    }
+
+    [Fact]
+    public async Task Units_not_yet_allotted_need_no_lookup()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = _ => FakeSql.Sets(
+            [new { ZedId = Zed, Certification = "Silver", SiteAssessorId = (string?)null, CertificationStatus = 8 }], []);
+        var unit = (await (await Agency()).GetFromJsonAsync<JsonElement>(Base + "/allotments")).GetProperty("units")[0];
+        Assert.Equal(JsonValueKind.Null, unit.GetProperty("MeetingLink").ValueKind);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == SiteAssessmentController.AllotmentSql);
+    }
+
+    [Fact]
     public async Task Allots_with_the_meeting_link_and_mails_it_without_passwords()
     {
         var r = await (await Agency()).PostAsJsonAsync(Base + "/allotments", Allot());
@@ -106,8 +132,19 @@ public sealed class SurveillanceSiteAllotmentTests : IDisposable
     [Fact]
     public async Task Overlong_meeting_links_are_refused()
     {
-        var r = await (await Agency()).PostAsJsonAsync(Base + "/allotments", Allot("https://meet.example/" + new string('a', 2000)));
+        // MsmeCertifications.MeetingLink and the procedure's @MeetingLink are varchar(5000), as the page's maxlength.
+        Assert.Equal(5000, SiteAssessmentController.MaxMeetingLink);
+        var r = await (await Agency()).PostAsJsonAsync(Base + "/allotments", Allot("https://meet.example/" + new string('a', 5000)));
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+    }
+
+    [Fact]
+    public async Task Meeting_links_up_to_the_column_size_are_accepted()
+    {
+        var link = "https://meet.example/" + new string('a', 5000 - "https://meet.example/".Length);
+        var r = await (await Agency()).PostAsJsonAsync(Base + "/allotments", Allot(link));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(link, FakeSql.Arg(Assert.Single(CallsTo("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA")), "MeetingLink"));
     }
 
     [Fact]

@@ -108,8 +108,38 @@ public sealed class NeftTests : IDisposable
         Assert.Equal("Male", t.GetProperty("Gender").GetString());
         Assert.Equal("General", t.GetProperty("SocialCategoryName").GetString());
         Assert.True(t.GetProperty("IsCouponUsed").GetBoolean());
-        // GSTIN / TAN / UTR are not returned by the procedure (MsmePaymentInfo is not joined).
-        Assert.False(t.TryGetProperty("GstinNumber", out _));
+        // GSTIN / TAN / UTR are not returned by the procedure; without a MsmePaymentInfo record they are empty.
+        Assert.Equal(JsonValueKind.Null, t.GetProperty("GstinNumber").ValueKind);
+    }
+
+    [Fact]
+    public async Task Rejected_list_adds_gstin_tan_and_utr_from_the_units_payment_records()
+    {
+        _rows.Add(Row(16, "ZEDMSME000016", state: 9, verification: 4, transaction: 2)); // UP, rejected, Silver below
+        _rows[^1]["CertificationType"] = "Silver";
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Neft.NeftController.PaymentInfoSql] = _ =>
+        [
+            new { Id = 1, ZedId = "ZEDMSME000013", Certification = "Bronze", GstinNumber = "09AAAAA0000A1Z5", TanNumber = "DELA00000A", UtrNumber = "UTR13" },
+            new { Id = 2, ZedId = "ZEDMSME000016", Certification = "Silver", GstinNumber = "09BBBBB0000B1Z5", TanNumber = (string?)null, UtrNumber = "UTR16-SILVER" },
+            new { Id = 3, ZedId = "ZEDMSME000016", Certification = "Gold", GstinNumber = "09CCCCC0000C1Z5", TanNumber = (string?)null, UtrNumber = "UTR16-GOLD" },
+        ];
+        var up = await SignIn("SC_UP");
+        var list = (await up.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=rejected")).GetProperty("transactions");
+        var byZed = list.EnumerateArray().ToDictionary(t => t.GetProperty("ZedId").GetString()!);
+        Assert.Equal("09AAAAA0000A1Z5", byZed["ZEDMSME000013"].GetProperty("GstinNumber").GetString());
+        Assert.Equal("DELA00000A", byZed["ZEDMSME000013"].GetProperty("TanNumber").GetString());
+        Assert.Equal("UTR13", byZed["ZEDMSME000013"].GetProperty("UtrNumber").GetString());
+        // The payment of the row's own level, although a later one exists for another level.
+        Assert.Equal("UTR16-SILVER", byZed["ZEDMSME000016"].GetProperty("UtrNumber").GetString());
+
+        // One lookup for the listed units only (the coordinator's state, rejected).
+        var lookup = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Staff.Neft.NeftController.PaymentInfoSql);
+        Assert.Equal("""["ZEDMSME000013","ZEDMSME000016"]""", FakeSql.Arg(lookup.Args, "ZedIds"));
+
+        // The New and Approved lists do not need it.
+        await up.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=new");
+        Assert.False((await up.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=approved")).GetProperty("transactions")[0].TryGetProperty("UtrNumber", out _));
+        Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Staff.Neft.NeftController.PaymentInfoSql);
     }
 
     [Fact]

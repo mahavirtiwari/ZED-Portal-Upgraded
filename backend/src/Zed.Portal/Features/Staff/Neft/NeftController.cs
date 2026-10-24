@@ -60,7 +60,8 @@ public sealed partial class NeftController(
     /// <summary>
     /// Columns shown on the three pages (the procedure returns Msme.*, MsmeBasicInformation's Udyog Aadhaar, employees,
     /// gender and social category, and FinancialAssistance.*). The legacy Rejected page also had GSTIN / TAN / UTR columns;
-    /// those come from MsmePaymentInfo, which only the procedure's commented-out query joined, so they were always blank.
+    /// those are in MsmePaymentInfo, which only the procedure's commented-out query joined (on ZedId), so they were always
+    /// blank there: the main Rejected list adds them with <see cref="PaymentInfoSql"/>.
     /// </summary>
     public static readonly string[] Columns =
     [
@@ -77,6 +78,19 @@ public sealed partial class NeftController(
     [
         "CertId", "FinancialAssistanceId", "TechnologyName", "NameOfTheManufacturer", "MakeOrModelName", "TechUpgradeStatus", "TotalPaidAfterQc",
     ];
+
+    /// <summary>
+    /// Main's Rejected page: GstinNumber, TanNumber and UtrNumber from the payment records of the listed units, joined on
+    /// ZedId as the procedure's commented-out query did. A unit has one per paid level (and possibly retries): the row's
+    /// own level (FinancialAssistance.CertificationType) is preferred, then the latest.
+    /// </summary>
+    internal const string PaymentInfoSql = """
+        SELECT P.Id, P.ZedId, P.Certification, P.GstinNumber, P.TanNumber, P.UtrNumber
+        FROM OPENJSON(@ZedIds) WITH (ZedId varchar(50) '$') J
+        JOIN dbo.MsmePaymentInfo P ON P.ZedId = J.ZedId
+        """;
+
+    private sealed record PaymentInfoRow(int Id, string? ZedId, string? Certification, string? GstinNumber, string? TanNumber, string? UtrNumber);
 
     public enum NeftList { New, Approved, Rejected }
 
@@ -97,7 +111,29 @@ public sealed partial class NeftController(
             _ => SchemeRows.Int(r, "VerificationStatus") == ApprovedByAgency && SchemeRows.Int(r, "TransactionStatus") is not (TransactionApproved or TransactionRejected),
         });
         string[] columns = host.System == PortalSystem.Consultancy ? [.. Columns, .. ConsultancyColumns] : Columns;
-        return new TransactionsResponse(selected.Select(r => SchemeRows.Pick(r, columns)).ToList());
+        var picked = selected.Select(r => SchemeRows.Pick(r, columns)).ToList();
+        if (which == NeftList.Rejected && host.System == PortalSystem.Main && picked.Count > 0)
+            await AddPaymentInfoAsync(picked, ct);
+        return new TransactionsResponse(picked);
+    }
+
+    private async Task AddPaymentInfoAsync(List<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        var zedIds = rows.Select(r => r.Text("ZedId").Trim()).Where(z => z.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var payments = (await db.QuerySqlAsync<PaymentInfoRow>(PaymentInfoSql,
+                new { ZedIds = new Dapper.DbString { Value = System.Text.Json.JsonSerializer.Serialize(zedIds), IsAnsi = false, Length = -1 } }, ct))
+            .ToLookup(p => p.ZedId?.Trim() ?? "", StringComparer.OrdinalIgnoreCase);
+        foreach (var row in rows)
+        {
+            var level = row.Text("CertificationType");
+            var payment = payments[row.Text("ZedId").Trim()]
+                .OrderByDescending(p => SchemeRows.Same(p.Certification, level))
+                .ThenByDescending(p => p.Id)
+                .FirstOrDefault();
+            row["GstinNumber"] = payment?.GstinNumber;
+            row["TanNumber"] = payment?.TanNumber;
+            row["UtrNumber"] = payment?.UtrNumber;
+        }
     }
 
     public sealed record ApproveRequest(string? ZedId, string? DateOfReceiptOfPayment, string? ReferenceNo, string? Amount);

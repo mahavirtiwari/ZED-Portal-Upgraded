@@ -274,4 +274,21 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.Equal("99", FakeSql.Arg(call.Args, "Status"));
         Assert.Equal("Unit Name", FakeSql.Arg(call.Args, "SearchBy"));
     }
+
+    [Fact]
+    public async Task Completed_rows_carry_the_reason_for_rejection_the_page_colours_red()
+    {
+        _host.Sql.Procs["SP_MONITORING_GET_LIST_PAGINATION"] = _ => FakeSql.Sets(
+            [new { RowNumber = 1, ZedId = "ZEDMSME000001", Certification = "Bronze", ReasonForRejection = "Withdrawn by the unit" }],
+            [new { TotalCounts = 1, PageNo = 1, PageSize = 20 }]);
+        var client = await DaTestUsers.SignInAsync(_host, "AGENCY1");
+        var completed = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed");
+        Assert.Equal("Withdrawn by the unit", completed.GetProperty("rows")[0].GetProperty("ReasonForRejection").GetString());
+        // Main's procedure ignores @Gender (its condition is commented out): the value is not passed on.
+        await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/completed?gender=female");
+        Assert.Null(DaTestUsers.CallsTo(_host.Sql, "SP_MONITORING_GET_LIST_PAGINATION").Last().Args!.GetType().GetProperty("Gender"));
+
+        var rejected = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/rejected");
+        Assert.False(rejected.GetProperty("rows")[0].TryGetProperty("ReasonForRejection", out _));
+    }
 }

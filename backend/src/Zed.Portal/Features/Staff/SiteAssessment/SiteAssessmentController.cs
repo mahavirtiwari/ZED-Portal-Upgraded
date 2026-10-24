@@ -38,15 +38,34 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         "SiteAssessorId", "SaAssessorName", "CoAssessorName", "ReasonForRejection", "CertificationStatus", "RowNumber",
     ];
 
-    /// <summary>Surveillance list adds the surveillance date and round, and who assessed the original certification.</summary>
+    /// <summary>
+    /// Surveillance list adds the surveillance date and round, who assessed the original certification, and the current
+    /// MeetingLink (RE-ALLOT opens with it). The procedure returns neither MeetingLink nor CoAssessorId: see <see cref="AllotmentSql"/>.
+    /// </summary>
     private static readonly string[] SurveillanceAllotmentFields =
     [
         .. AllotmentFields, "CoAssessorId", "AssessmentDate", "SurveillanceNo",
-        "LeadInCertification", "LeadNameInCertification", "CoInCertification", "CoNameInCertification",
+        "LeadInCertification", "LeadNameInCertification", "CoInCertification", "CoNameInCertification", "MeetingLink",
     ];
 
-    /// <summary>Meeting links: SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA @MeetingLink is varchar(5000); 2000 is plenty for Teams/Meet/Zoom links.</summary>
-    public const int MaxMeetingLink = 2000;
+    /// <summary>
+    /// Meeting links: ZED_SURVEILLANCE MsmeCertifications.MeetingLink and SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA @MeetingLink are
+    /// varchar(5000), as the old textarea's maxlength.
+    /// </summary>
+    public const int MaxMeetingLink = 5000;
+
+    /// <summary>
+    /// The meeting link and co-assessor of the listed units already allotted (surveillance SP_ASSESSMENT_ALLOT_LIST, agency
+    /// branch, does not select them), limited to the agency's own records.
+    /// </summary>
+    internal const string AllotmentSql = """
+        SELECT C.ZedId, C.Certification, C.MeetingLink, C.CoAssessorId
+        FROM OPENJSON(@Units) WITH (ZedId varchar(50) '$.z', Certification varchar(50) '$.c') J
+        JOIN dbo.MsmeCertifications C ON C.ZedId = J.ZedId AND C.Certification = J.Certification
+        WHERE C.CertificationBodyUserId = @UserId
+        """;
+
+    private sealed record AllotmentRow(string? ZedId, string? Certification, string? MeetingLink, string? CoAssessorId);
 
     private bool Surveillance => host.System == PortalSystem.Surveillance;
 
@@ -72,8 +91,28 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     public async Task<ActionResult<AllotmentsResponse>> Allotments(CancellationToken ct)
     {
         var sets = await AgencyListAsync(null, null, ct);
-        return new AllotmentsResponse(Pick(sets[0], Surveillance ? SurveillanceAllotmentFields : AllotmentFields), Assessors(sets));
+        if (!Surveillance) return new AllotmentsResponse(Pick(sets[0], AllotmentFields), Assessors(sets));
+
+        var units = Pick(sets[0], SurveillanceAllotmentFields);
+        var allotted = units.Where(u => u.Text("SiteAssessorId").Length > 0).ToList();
+        if (allotted.Count > 0)
+        {
+            var keys = System.Text.Json.JsonSerializer.Serialize(allotted.Select(u => new { z = u.Text("ZedId"), c = u.Text("Certification") }));
+            var found = (await db.QuerySqlAsync<AllotmentRow>(AllotmentSql,
+                    new { Units = new Dapper.DbString { Value = keys, IsAnsi = false, Length = -1 }, UserId }, ct))
+                .GroupBy(r => UnitKey(r.ZedId, r.Certification)).ToDictionary(g => g.Key, g => g.First());
+            foreach (var u in allotted)
+            {
+                if (!found.TryGetValue(UnitKey(u.Text("ZedId"), u.Text("Certification")), out var r)) continue;
+                u["MeetingLink"] ??= r.MeetingLink;
+                u["CoAssessorId"] ??= r.CoAssessorId;
+            }
+        }
+        return new AllotmentsResponse(units, Assessors(sets));
     }
+
+    private static string UnitKey(string? zedId, string? certification) =>
+        $"{zedId?.Trim().ToUpperInvariant()}|{certification?.Trim().ToUpperInvariant()}";
 
     /// <summary>Allots (or re-allots) the on-site assessment of one of the agency's units.</summary>
     [HttpPost("allotments")]

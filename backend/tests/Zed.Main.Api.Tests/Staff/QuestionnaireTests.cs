@@ -74,6 +74,25 @@ public sealed class QuestionnaireTests : IDisposable
         Assert.Equal("P1", FakeSql.Arg(Call("SP_MASTER_GET_REQUIREMENTS_BY_QUESTION_ID").Args, "SectionCode"));
     }
 
+    [Fact]
+    public async Task Points_carry_their_option_image_from_the_procedure()
+    {
+        // The procedure selects Options.*, OptionImage included; points saved by this page store "" there.
+        _host.Sql.Procs["SP_MASTER_GET_REQUIREMENTS_BY_QUESTION_ID"] = _ => FakeSql.Sets(
+            [new { Id = 11L, RequirementCode = "1", OrderNo = 1 }],
+            [
+                new { Id = 101L, RequirementCode = "1", OptionCode = "1", OptionName = "With image", OptionImage = (string?)" Images/Questions/p1.png " },
+                new { Id = 102L, RequirementCode = "1", OptionCode = "2", OptionName = "Blank", OptionImage = (string?)"" },
+                new { Id = 103L, RequirementCode = "1", OptionCode = "3", OptionName = "Null", OptionImage = (string?)null },
+            ],
+            [], [], []);
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var points = (await admin.GetFromJsonAsync<JsonElement>(Base)).GetProperty("requirements")[0].GetProperty("points");
+        Assert.Equal("Images/Questions/p1.png", points[0].GetProperty("optionImage").GetString());
+        Assert.Equal(JsonValueKind.Null, points[1].GetProperty("optionImage").ValueKind);
+        Assert.Equal(JsonValueKind.Null, points[2].GetProperty("optionImage").ValueKind);
+    }
+
     [Theory]
     [InlineData("/api/staff/questionnaire/Hotel/P1/requirements")]
     [InlineData("/api/staff/questionnaire/Silver/P1/requirements")]

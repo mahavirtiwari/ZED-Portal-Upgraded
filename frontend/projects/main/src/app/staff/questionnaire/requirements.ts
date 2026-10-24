@@ -308,10 +308,10 @@ export class RequirementsPage {
   }
 
   /**
-   * A point's MasterOption.OptionImage, shown below it as the old page did (`<img src="~/{{o.OptionImage}}">`, a path under
+   * A point's Options.OptionImage, shown below it as the old page did (`<img src="~/{{o.OptionImage}}">`, a path under
    * the site root). Only a plain relative path is used; anything with a scheme or "//" is ignored.
    */
-  protected optionImage(point: Point & { optionImage?: string | null }): string | null {
+  protected optionImage(point: Point): string | null {
     const path = point.optionImage?.trim().replace(/^~?\/+/, '');
     return path && !/^[a-z][a-z0-9+.-]*:|^\/\/|\\/i.test(path) ? '/' + path : null;
   }

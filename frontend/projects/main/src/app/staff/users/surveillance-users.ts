@@ -275,8 +275,8 @@ export class SurveillanceUsersPage {
   }
 
   /**
-   * A column the old lists showed that the surveillance users API may not send yet (agency address and pincode, assessor
-   * address and ID proof number); empty until it does.
+   * A column the old lists showed that is not in SurveillanceAgency / SurveillanceAssessor (users.api.ts): the API sends the
+   * agency's address and pinCode and the assessor's address and idProofNumber (Users.Address, Pincode, IdProofNumber).
    */
   protected field(u: object, key: string): string {
     const v = (u as Record<string, unknown>)[key];

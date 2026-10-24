@@ -55,12 +55,14 @@ public sealed class SurveillanceUsersController(
         public bool? AllowBronzeSurveillance { get; init; }
         public string? ReasonForRejectionForBS { get; init; }
         public string? TuPreferredState { get; init; }
+        public string? Address { get; init; }
+        public string? PinCode { get; init; }
         public int NoOfUsers { get; init; }
     }
 
     public const string AgenciesSql =
         "SELECT U.UserId, U.UserName, U.SpocName, U.Email, U.MobileNo, U.IsActive, U.ReasonForRejection, U.DesktopVerification, " +
-        "U.SiteVerification, U.AllowBronzeSurveillance, U.ReasonForRejectionForBS, U.TuPreferredState, " +
+        "U.SiteVerification, U.AllowBronzeSurveillance, U.ReasonForRejectionForBS, U.TuPreferredState, U.Address, U.Pincode AS PinCode, " +
         "(SELECT COUNT(*) FROM Users A WHERE A.CreatedBy = U.UserId AND A.RoleId = 3) AS NoOfUsers " +
         "FROM Users U WHERE U.RoleId = 2 ORDER BY U.UserId";
 
@@ -148,6 +150,8 @@ public sealed class SurveillanceUsersController(
         public bool? AllowBronzeSurveillance { get; init; }
         public string? AgencyUserId { get; init; }
         public string? AgencyUserName { get; init; }
+        public string? Address { get; init; }
+        public string? IdProofNumber { get; init; }
     }
 
     /// <summary>Assessors: all of them for the MasterAdmin (optionally of one agency), the agency's own for an agency.</summary>
@@ -158,7 +162,7 @@ public sealed class SurveillanceUsersController(
         var agency = IsRole(UserRole.Agency) ? UserId : string.IsNullOrEmpty(agencyId) ? null : agencyId;
         return Ok(await db.QuerySqlAsync<AssessorRow>(
             "SELECT A.UserId, A.UserName, A.Email, A.MobileNo, A.IsActive, A.ReasonForRejection, A.DesktopVerification, A.SiteVerification, " +
-            "A.AllowBronzeSurveillance, A.CreatedBy AS AgencyUserId, G.UserName AS AgencyUserName " +
+            "A.AllowBronzeSurveillance, A.CreatedBy AS AgencyUserId, G.UserName AS AgencyUserName, A.Address, A.IdProofNumber " +
             "FROM Users A LEFT JOIN Users G ON G.UserId = A.CreatedBy AND G.RoleId = 2 " +
             "WHERE A.RoleId = 3 AND (@AgencyId IS NULL OR A.CreatedBy = @AgencyId) ORDER BY A.CreatedBy, A.UserId",
             new { AgencyId = agency }, ct));

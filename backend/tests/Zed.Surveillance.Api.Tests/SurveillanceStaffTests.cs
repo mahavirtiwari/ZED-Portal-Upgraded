@@ -85,6 +85,26 @@ public sealed class SurveillanceStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task Lists_carry_the_address_pincode_and_id_proof_the_old_lists_showed()
+    {
+        _host.Sql.Queries["SELECT U.UserId, U.UserName"] = _ => [new { UserId = "ZEDAA0001", UserName = "Acme", Address = "Plot 4, Okhla", PinCode = "110020" }];
+        _host.Sql.Queries["SELECT A.UserId"] = _ => [new { UserId = "ZEDAS0001", UserName = "Asr", Address = "12 MG Road", IdProofNumber = "ABCDE1234F" }];
+        var client = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
+
+        var agency = (await client.GetFromJsonAsync<JsonElement>("/api/staff/surveillance-users/agencies"))[0];
+        Assert.Equal("Plot 4, Okhla", agency.GetProperty("address").GetString());
+        Assert.Equal("110020", agency.GetProperty("pinCode").GetString());
+        Assert.Contains("U.Address, U.Pincode AS PinCode", _host.Sql.Calls.Last(c => c.Name.StartsWith("SELECT U.UserId", StringComparison.Ordinal)).Name);
+
+        var assessor = (await client.GetFromJsonAsync<JsonElement>("/api/staff/surveillance-users/assessors"))[0];
+        Assert.Equal("12 MG Road", assessor.GetProperty("address").GetString());
+        Assert.Equal("ABCDE1234F", assessor.GetProperty("idProofNumber").GetString());
+        var sql = _host.Sql.Calls.Last(c => c.Name.StartsWith("SELECT A.UserId", StringComparison.Ordinal)).Name;
+        Assert.Contains("A.Address, A.IdProofNumber", sql);
+        Assert.DoesNotContain("Password", sql);
+    }
+
+    [Fact]
     public async Task Bronze_surveillance_needs_a_state_valid_districts_and_a_reason_to_disable()
     {
         var client = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
