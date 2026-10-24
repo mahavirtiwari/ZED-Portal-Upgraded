@@ -5,6 +5,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { LookupResponse, RegistrationApi, SubmitResponse, UdyamRow } from './registration.api';
+import { PublicLayout } from '../public-layout/public-layout';
 
 type Step = 'welcome' | 'udyam' | 'plant' | 'summary' | 'pledge' | 'success';
 
@@ -17,8 +18,7 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
  */
 @Component({
   selector: 'zed-msme-register',
-  host: { class: 'zed-legacy d-block' },
-  imports: [FormsModule, RouterLink, Recaptcha],
+  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout],
   templateUrl: './register.html',
   styleUrl: './register.scss',
 })

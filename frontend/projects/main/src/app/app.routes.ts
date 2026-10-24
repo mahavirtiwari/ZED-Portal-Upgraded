@@ -117,6 +117,7 @@ const MAIN_ROUTES: Routes = [
   // Public MSME pages
   { path: 'msme/login', title: 'ZED | Login', loadComponent: () => import('./msme/login/login').then((m) => m.LoginPage) },
   { path: 'msme/register', title: 'ZED | Registration', loadComponent: () => import('./msme/register/register').then((m) => m.RegisterPage) },
+  { path: 'contact', title: 'ZED | Contact', loadComponent: () => import('./msme/public-layout/public-layout').then((m) => m.PublicContactPage) },
   {
     path: 'msme/reset-password',
     title: 'ZED | Change Password',
@@ -213,7 +214,8 @@ const MAIN_ROUTES: Routes = [
   { path: 'Home', pathMatch: 'full', redirectTo: '' },
   { path: 'Home/Index', redirectTo: '' },
   { path: 'Home/PrivacyPolicy', redirectTo: 'privacy-policy' },
-  { path: 'Home/Contact', redirectTo: 'msme/contact' },
+  // The old Home/Contact was public: the public page (signed-in MSMEs also have msme/contact in their menu).
+  { path: 'Home/Contact', redirectTo: 'contact' },
   { path: 'User/Login', redirectTo: 'login' },
   { path: 'Monitoring/Index', redirectTo: 'staff/monitoring' },
   { path: 'Dashboard', pathMatch: 'full', redirectTo: 'staff/dashboard' },

@@ -1,7 +1,4 @@
-<header class="register-header">
-  <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" height="56" /></a>
-  <img src="/Images/header/zed-logo.png" alt="ZED" height="64" />
-</header>
+<zed-public-layout title="Registration">
 
 <main class="container register-page">
   @if (stepNumber() > 0) {
@@ -353,3 +350,4 @@
 @if (busy()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
 }
+</zed-public-layout>
