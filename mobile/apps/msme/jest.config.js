@@ -1,4 +1,6 @@
 module.exports = {
+  // Off C: (disk rule): the cache lives in mobile/.jest-cache, ignored by Git.
+  cacheDirectory: '<rootDir>/../../.jest-cache',
   preset: '@react-native/jest-preset',
   testMatch: ['<rootDir>/__tests__/**/*.test.ts?(x)'],
   transformIgnorePatterns: [
