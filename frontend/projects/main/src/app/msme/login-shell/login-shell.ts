@@ -3,6 +3,9 @@ import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 
+/** The live portal's banner (Banner_20220428033601.png, resized), shown until an Admin uploads one in Home Page Settings. */
+export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
+
 /** Two-column frame of the MSME login pages: ministry/ZED header and banner on the left, form on the right. */
 @Component({
   selector: 'zed-login-shell',
@@ -66,8 +69,8 @@ export class LoginShell {
     inject(HttpClient)
       .get<{ imageUrl: string | null }>('/api/msme/auth/banner')
       .pipe(
-        map((r) => r.imageUrl),
-        catchError(() => of(null)),
+        map((r) => r.imageUrl ?? DEFAULT_BANNER),
+        catchError(() => of(DEFAULT_BANNER)),
       ),
     { initialValue: null },
   );

@@ -141,7 +141,8 @@ public sealed class StaffDocumentsController(
     private static string? DocumentPath(string value) =>
         MsmeFilePaths.FromLegacy(value) is { } p && MsmeFilePaths.IsPublicFolder(p) ? p : null;
 
-    private static string? BannerPath(string? value) =>
+    /// <summary>A stored banner FilePath (legacy full URL or relative) as a relative path under Images/HomePage, or null.</summary>
+    public static string? BannerPath(string? value) =>
         MsmeFilePaths.FromLegacy(value) is { } p && p.StartsWith(BannerFolder + "/", StringComparison.OrdinalIgnoreCase) &&
         MsmeFilePaths.IsInline(p) ? p : null;
 

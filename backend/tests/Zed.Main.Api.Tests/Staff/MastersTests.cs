@@ -208,5 +208,21 @@ public sealed class MastersTests : IDisposable
         var image = await client.GetAsync(settings.GetProperty("imageUrl").GetString());
         Assert.Equal(HttpStatusCode.OK, image.StatusCode);
         Assert.Equal("image/png", image.Content.Headers.ContentType?.MediaType);
+
+        // The public login page gets the same file from the storage root, not the old site's URL (not served by V4).
+        var anonymous = _host.CreateClient();
+        var banner = (await anonymous.GetFromJsonAsync<JsonElement>("/api/msme/auth/banner")).GetProperty("imageUrl").GetString()!;
+        Assert.StartsWith("/api/msme/auth/banner/image?v=Banner_", banner);
+        var publicImage = await anonymous.GetAsync(banner);
+        Assert.Equal(HttpStatusCode.OK, publicImage.StatusCode);
+        Assert.Equal("image/png", publicImage.Content.Headers.ContentType?.MediaType);
+
+        // A recorded banner whose file is not in the storage root (only on the old site): no URL, the page's default shows.
+        _host.Sql.Procs["SP_MASTER_GET_HOME_PAGE_SETTINGS"] = _ => FakeSql.Sets([new
+        {
+            FileName = "HomePageBanner", FilePath = "https://zedstaging.qcin.org/Images/HomePage/Banner_20260820121144.png", CreatedDate = new DateTime(2026, 8, 20),
+        }]);
+        Assert.Equal(JsonValueKind.Null, (await anonymous.GetFromJsonAsync<JsonElement>("/api/msme/auth/banner")).GetProperty("imageUrl").ValueKind);
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/msme/auth/banner/image")).StatusCode);
     }
 }

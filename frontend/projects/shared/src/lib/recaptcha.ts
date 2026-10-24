@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import {
+  afterNextRender,
   Component,
   ElementRef,
-  Injectable,
-  OnDestroy,
-  afterNextRender,
   inject,
+  Injectable,
+  input,
+  OnDestroy,
   output,
   signal,
   viewChild,
@@ -60,12 +61,16 @@ function loadRecaptcha(): Promise<GRecaptcha> {
 
 /**
  * Google reCAPTCHA v2 checkbox. Emits the token when solved and '' when it expires.
- * Renders nothing when the API reports the captcha as disabled (development).
+ * Renders nothing when the API reports the captcha as disabled (development, or Recaptcha:Enabled=false), the
+ * optional `label` heading included.
  */
 @Component({
   selector: 'zed-recaptcha',
   template: `
     @if (enabled()) {
+      @if (label()) {
+        <label>{{ label() }}</label>
+      }
       <div #host class="d-flex justify-content-center"></div>
     }
     @if (loadError()) {
@@ -80,6 +85,8 @@ export class Recaptcha implements OnDestroy {
   private api: GRecaptcha | null = null;
 
   readonly token = output<string>();
+  /** Heading above the widget (e.g. "Verification"), shown only with the widget. */
+  readonly label = input('');
   protected readonly enabled = signal(false);
   protected readonly loadError = signal('');
 

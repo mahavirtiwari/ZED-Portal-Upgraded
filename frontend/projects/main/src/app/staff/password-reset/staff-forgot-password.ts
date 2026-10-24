@@ -6,6 +6,7 @@ import { MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { StaffLoginShell } from '../staff-login-shell';
 
 /**
  * Staff "Forgot password?" (new in V4; the old sites had no staff reset). The answer is the same for every User ID:
@@ -13,49 +14,38 @@ import { PORTAL_LABELS } from '../../portal-labels';
  */
 @Component({
   selector: 'zed-staff-forgot-password',
-  imports: [FormsModule, RouterLink, Recaptcha],
-  host: { class: 'zed-login d-block' },
+  imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
-    <main class="staff-login">
-      <header class="d-flex justify-content-between align-items-center px-4 py-3">
-        <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
-      </header>
-      <section class="login-section-inner mx-auto">
-        <div class="logo-zed-brand text-center"><img src="Images/header/zed-logo.png" alt="ZED" width="110" /></div>
-        <div class="login-inner-block">
-          <h1 class="text-center fw-bold" style="font-size: 28px">Forgot Password</h1>
-          @if (systemName) {
-            <p class="text-center text-muted mb-3">{{ systemName }}</p>
+    <zed-staff-login-shell>
+      <h1 class="text-center fw-bold" style="font-size: 28px">Forgot Password</h1>
+      @if (systemName) {
+        <p class="text-center text-muted mb-3">{{ systemName }}</p>
+      }
+      @if (sent()) {
+        <div class="alert alert-success" role="status">{{ sent() }}</div>
+        <a routerLink="/login" class="btn btn-primary w-100">Back to Login</a>
+      } @else {
+        <form class="login-form zed-user-form" (ngSubmit)="submit()" novalidate>
+          <p class="text-muted small">Enter your User ID. A link to set a new password will be sent to the e-mail address registered for it.</p>
+          <div class="mb-3">
+            <label for="userId">User ID</label>
+            <input id="userId" name="userId" class="form-control" autocomplete="username" [(ngModel)]="userId" required maxlength="50" />
+          </div>
+          <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
+          <div class="d-grid col-12">
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">Send Reset Link</button>
+          </div>
+          <p class="text-center mt-3 mb-0"><a routerLink="/login">Back to Login</a></p>
+          @if (error()) {
+            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
           }
-          @if (sent()) {
-            <div class="alert alert-success" role="status">{{ sent() }}</div>
-            <a routerLink="/login" class="btn btn-primary w-100">Back to Login</a>
-          } @else {
-            <form class="login-form zed-user-form" (ngSubmit)="submit()" novalidate>
-              <p class="text-muted small">Enter your User ID. A link to set a new password will be sent to the e-mail address registered for it.</p>
-              <div class="mb-3">
-                <label for="userId">User ID</label>
-                <input id="userId" name="userId" class="form-control" autocomplete="username" [(ngModel)]="userId" required maxlength="50" />
-              </div>
-              <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-              <div class="d-grid col-12">
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">Send Reset Link</button>
-              </div>
-              <p class="text-center mt-3 mb-0"><a routerLink="/login">Back to Login</a></p>
-              @if (error()) {
-                <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
-              }
-            </form>
-          }
-        </div>
-      </section>
-    </main>
+        </form>
+      }
+    </zed-staff-login-shell>
   `,
   styles: `
-    .staff-login { min-height: 100vh; display: flex; flex-direction: column; }
-    .login-section-inner { max-width: 420px; width: 100%; padding: 24px 16px; flex: 1; }
-    .login-inner-block { background: #fff; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 24px; }
-    .zed-user-form label { color: #8d8f90; font-weight: 600; }
+    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
+    .btn-primary, .btn-primary:hover { color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 14px; text-transform: uppercase; }
   `,
 })
 export class StaffForgotPasswordPage {

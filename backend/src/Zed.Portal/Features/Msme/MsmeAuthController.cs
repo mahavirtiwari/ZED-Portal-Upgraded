@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Masters;
 
 namespace Zed.Portal.Features.Msme;
 
@@ -13,8 +17,12 @@ namespace Zed.Portal.Features.Msme;
 public sealed class MsmeAuthController(
     ISqlExecutor db,
     ICaptchaVerifier captcha,
+    IWebHostEnvironment env,
+    IOptions<PortalOptions> portal,
     ILogger<MsmeAuthController> log) : ControllerBase
 {
+    private static readonly FileExtensionContentTypeProvider ContentTypes = new();
+
     public sealed record LoginRequest(string UserId, string Password, string? CaptchaToken);
 
     [HttpPost("login")]
@@ -55,14 +63,37 @@ public sealed class MsmeAuthController(
 
     public sealed record BannerResponse(string? ImageUrl);
 
-    /// <summary>Banner image shown on the login page (SP_MASTER_GET_HOME_PAGE_SETTINGS, as before).</summary>
+    /// <summary>
+    /// Banner image shown on the login page (SP_MASTER_GET_HOME_PAGE_SETTINGS, as before). The old site stored it as a
+    /// full URL into its own Images/HomePage folder, which V4 does not serve: the file is read from the storage root
+    /// (where the Admin's Home Page Settings screen saves it) and served by <see cref="BannerImage"/>. Null when no
+    /// stored file exists: the page then shows its built-in default banner.
+    /// </summary>
     [HttpGet("banner")]
     [AllowAnonymous]
-    public async Task<BannerResponse> Banner(CancellationToken ct)
+    public async Task<BannerResponse> Banner(CancellationToken ct) =>
+        new(await StoredBannerAsync(ct) is { } path ? "/api/msme/auth/banner/image?v=" + Uri.EscapeDataString(Path.GetFileNameWithoutExtension(path)) : null);
+
+    [HttpGet("banner/image")]
+    [AllowAnonymous]
+    public async Task<IActionResult> BannerImage(CancellationToken ct)
     {
-        var row = (await db.QueryProcMultipleAsync("SP_MASTER_GET_HOME_PAGE_SETTINGS", new { FileName = "HomePageBanner" }, ct))[0].FirstOrDefault();
-        var path = row?.Text("FilePath");
-        return new BannerResponse(string.IsNullOrEmpty(path) ? null : path.Replace('\\', '/'));
+        if (await StoredBannerAsync(ct) is not { } path) return NotFound();
+        var full = MsmeFilePaths.Resolve(StorageRoot, path)!;
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.CacheControl = "public, max-age=3600";
+        return PhysicalFile(full, ContentTypes.TryGetContentType(full, out var type) ? type : "application/octet-stream");
+    }
+
+    private string StorageRoot => Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
+
+    /// <summary>The current banner's relative path when its file is in the storage root, else null.</summary>
+    private async Task<string?> StoredBannerAsync(CancellationToken ct)
+    {
+        var row = (await db.QueryProcMultipleAsync("SP_MASTER_GET_HOME_PAGE_SETTINGS", new { FileName = StaffDocumentsController.BannerSetting }, ct))[0].FirstOrDefault();
+        var path = StaffDocumentsController.BannerPath(row?.Text("FilePath"));
+        var full = path is null ? null : MsmeFilePaths.Resolve(StorageRoot, path);
+        return full is not null && System.IO.File.Exists(full) ? path : null;
     }
 
     public sealed record ForgotPasswordRequest(string UserId);

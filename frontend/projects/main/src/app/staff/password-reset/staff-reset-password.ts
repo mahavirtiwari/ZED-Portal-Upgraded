@@ -6,6 +6,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { StaffLoginShell } from '../staff-login-shell';
 
 /** The token of a link `…/reset-password#token=…` (the fragment never reaches the server). */
 export function tokenFromFragment(fragment: string | null): string {
@@ -15,61 +16,50 @@ export function tokenFromFragment(fragment: string | null): string {
 /** Target of the staff reset link: checks the link, then sets the new password. */
 @Component({
   selector: 'zed-staff-reset-password',
-  imports: [FormsModule, RouterLink],
-  host: { class: 'zed-login d-block' },
+  imports: [FormsModule, RouterLink, StaffLoginShell],
   template: `
-    <main class="staff-login">
-      <header class="d-flex justify-content-between align-items-center px-4 py-3">
-        <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
-      </header>
-      <section class="login-section-inner mx-auto">
-        <div class="logo-zed-brand text-center"><img src="Images/header/zed-logo.png" alt="ZED" width="110" /></div>
-        <div class="login-inner-block">
-          <h1 class="text-center fw-bold" style="font-size: 28px">Set a New Password</h1>
-          @if (systemName) {
-            <p class="text-center text-muted mb-3">{{ systemName }}</p>
-          }
-          @switch (state()) {
-            @case ('checking') {
-              <p>Checking your link…</p>
+    <zed-staff-login-shell>
+      <h1 class="text-center fw-bold" style="font-size: 28px">Set a New Password</h1>
+      @if (systemName) {
+        <p class="text-center text-muted mb-3">{{ systemName }}</p>
+      }
+      @switch (state()) {
+        @case ('checking') {
+          <p>Checking your link…</p>
+        }
+        @case ('invalid') {
+          <div class="alert alert-danger" role="alert">{{ error() }}</div>
+          <a routerLink="/forgot-password" class="btn btn-primary w-100">Request a New Link</a>
+        }
+        @case ('done') {
+          <div class="alert alert-success" role="status">{{ done() }}</div>
+          <a routerLink="/login" class="btn btn-primary w-100">Go to Login</a>
+        }
+        @default {
+          <form class="login-form zed-user-form" (ngSubmit)="submit()" novalidate>
+            <div class="mb-3">
+              <label for="newPassword">New Password</label>
+              <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password" [(ngModel)]="newPassword" required maxlength="50" />
+              <small class="text-muted">8 to 50 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
+            </div>
+            <div class="mb-3">
+              <label for="confirmPassword">Confirm Password</label>
+              <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password" [(ngModel)]="confirmPassword" required maxlength="50" />
+            </div>
+            <div class="d-grid col-12">
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">Change Password</button>
+            </div>
+            @if (error()) {
+              <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
             }
-            @case ('invalid') {
-              <div class="alert alert-danger" role="alert">{{ error() }}</div>
-              <a routerLink="/forgot-password" class="btn btn-primary w-100">Request a New Link</a>
-            }
-            @case ('done') {
-              <div class="alert alert-success" role="status">{{ done() }}</div>
-              <a routerLink="/login" class="btn btn-primary w-100">Go to Login</a>
-            }
-            @default {
-              <form class="login-form zed-user-form" (ngSubmit)="submit()" novalidate>
-                <div class="mb-3">
-                  <label for="newPassword">New Password</label>
-                  <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password" [(ngModel)]="newPassword" required maxlength="50" />
-                  <small class="text-muted">8 to 50 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
-                </div>
-                <div class="mb-3">
-                  <label for="confirmPassword">Confirm Password</label>
-                  <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password" [(ngModel)]="confirmPassword" required maxlength="50" />
-                </div>
-                <div class="d-grid col-12">
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">Change Password</button>
-                </div>
-                @if (error()) {
-                  <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
-                }
-              </form>
-            }
-          }
-        </div>
-      </section>
-    </main>
+          </form>
+        }
+      }
+    </zed-staff-login-shell>
   `,
   styles: `
-    .staff-login { min-height: 100vh; display: flex; flex-direction: column; }
-    .login-section-inner { max-width: 420px; width: 100%; padding: 24px 16px; flex: 1; }
-    .login-inner-block { background: #fff; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 24px; }
-    .zed-user-form label { color: #8d8f90; font-weight: 600; }
+    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
+    .btn-primary, .btn-primary:hover { color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 14px; text-transform: uppercase; }
   `,
 })
 export class StaffResetPasswordPage implements OnInit {

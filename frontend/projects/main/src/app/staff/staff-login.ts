@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { STAFF_ROLE_IDS } from './staff-menu';
+import { StaffLoginShell } from './staff-login-shell';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { PORTAL_LABELS } from '../portal-labels';
 
@@ -14,51 +15,37 @@ import { PORTAL_LABELS } from '../portal-labels';
  */
 @Component({
   selector: 'zed-staff-login',
-  imports: [FormsModule, RouterLink, Recaptcha],
-  host: { class: 'zed-login d-block' },
+  imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
-    <main class="staff-login">
-      <header class="d-flex justify-content-between align-items-center px-4 py-3">
-        <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
-      </header>
-      <section class="login-section-inner mx-auto">
-        <div class="logo-zed-brand text-center"><img src="Images/header/zed-logo.png" alt="ZED" width="110" /></div>
-        <div class="login-inner-block">
-          <div class="text-center"><img src="Images/header/user.png" width="100" alt="" /></div>
-          <h1 class="text-center fw-bold" style="font-size: 32px">User Login</h1>
-          @if (systemName) {
-            <p class="text-center text-muted mb-3">{{ systemName }}</p>
-          }
-          <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
-            <div class="mb-3">
-              <label for="userId">User ID</label>
-              <input id="userId" name="userId" class="form-control" placeholder="Username" autocomplete="username" [(ngModel)]="userId" required maxlength="100" />
-            </div>
-            <div class="mb-3">
-              <label for="password">Password</label>
-              <input id="password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
-            </div>
-            <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-            <div class="d-grid col-12">
-              <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
-            </div>
-            <p class="text-center mt-3 mb-0"><a routerLink="/forgot-password">Forgot password?</a></p>
-            @if (error()) {
-              <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
-            }
-          </form>
+    <zed-staff-login-shell>
+      <div class="text-center"><img src="Images/header/user.png" width="100" alt="" /></div>
+      <h1 class="text-center fw-bold" style="font-size: 32px">User Login</h1>
+      @if (systemName) {
+        <p class="text-center text-muted mb-3">{{ systemName }}</p>
+      }
+      <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
+        <div class="mb-3">
+          <label for="userId">User ID</label>
+          <input id="userId" name="userId" class="form-control" placeholder="Username" autocomplete="username" [(ngModel)]="userId" required maxlength="100" />
         </div>
-      </section>
-      <footer>
-        <div class="footer"><div><small>ZED © {{ year }} All Rights Reserved</small></div><div><img src="Images/footer/footer-icon.png" alt="QCI" /></div></div>
-      </footer>
-    </main>
+        <div class="mb-3">
+          <label for="password">Password</label>
+          <input id="password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
+        </div>
+        <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
+        <div class="d-grid col-12">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
+        </div>
+        <p class="text-center mt-3 mb-0"><a routerLink="/forgot-password">Forgot password?</a></p>
+        @if (error()) {
+          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
+        }
+      </form>
+    </zed-staff-login-shell>
   `,
   styles: `
-    .staff-login { min-height: 100vh; display: flex; flex-direction: column; }
-    .login-section-inner { max-width: 420px; width: 100%; padding: 24px 16px; flex: 1; }
-    .login-inner-block { background: #fff; border-radius: 16px; box-shadow: 0 10px 24px rgba(0,0,0,.12); padding: 24px; }
-    .zed-user-form label { color: #8d8f90; font-weight: 600; }
+    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
+    .btn-primary, .btn-primary:hover { color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 14px; text-transform: uppercase; }
   `,
 })
 export class StaffLoginPage {
@@ -69,7 +56,6 @@ export class StaffLoginPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
-  protected readonly year = new Date().getFullYear();
   protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
   protected userId = '';
   protected password = '';
