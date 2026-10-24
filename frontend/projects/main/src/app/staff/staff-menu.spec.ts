@@ -40,7 +40,7 @@ describe('staff menu', () => {
     it('gives the master admin allotment, the CO and consultant lists and TU', () => {
       expect(c(StaffRole.MasterAdmin, [])).toEqual(expect.arrayContaining([
         'Allot Consultancy', 'Consultant Organisations', 'Consultants', 'Payment Received', 'Monitoring', 'Consultancy Completed',
-        'Technology Upgradation', 'Failed Transactions', 'Registered MSME',
+        'Technology Upgradation',
       ]));
     });
 
@@ -98,8 +98,8 @@ describe('staff menu', () => {
       // As the old layouts: the house icon is the dashboard link; the old drop-downs with their names.
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Assessment (10)', 'Financial Assistance', 'Upload API Incentives']);
       expect(bar(StaffRole.Admin, 'main')).toEqual(['Masters (4)', 'Payment Details', 'Home Page Settings', 'Documents', 'Incentives']);
-      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Failed Transactions', 'Registered MSME', 'Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation']);
-      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Failed Transactions', 'Registered MSME', 'Allot Surveillance', 'Surveillance Monitoring (7)']);
+      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation']);
+      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)']);
     });
 
     it('leaves the other roles flat, as before', () => {

@@ -122,8 +122,9 @@ export const MAIN_MENU: StaffMenuItem[] = [
  * docs/systems/CONSULTANCY-ANALYSIS.md 1.1. Agencies are Consultant Organisations, assessors Consultants/Experts.
  */
 export const CONSULTANCY_MENU: StaffMenuItem[] = [
-  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
-  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry, R.MasterAdmin] },
+  // SuperAdmin's (and Ministry's) as in the live layout; MasterAdmin does not have them there.
+  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
+  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.Ministry] },
 
   // Admin: masters
@@ -171,8 +172,9 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
  * Not ported: NEFT and Financial Assistance (dead there), the MSME menu, API Incentives (data in main).
  */
 export const SURVEILLANCE_MENU: StaffMenuItem[] = [
-  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin, R.MasterAdmin] },
-  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.MasterAdmin] },
+  // SuperAdmin's (and Ministry's, CitizenFeedback's) as in the live layout; MasterAdmin's link is commented out there.
+  { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
+  { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
   { label: 'Financial Support', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
 
