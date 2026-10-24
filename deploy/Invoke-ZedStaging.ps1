@@ -288,7 +288,9 @@ try {
             $fixes = @($all | Where-Object { $FixesNotApplied -notcontains $_ })
             Write-Step "$($fixes.Count) fixes"
             $fixes | ForEach-Object { Write-Host "    $_" }
-            if ($Apply) { Invoke-DatabaseScripts (@('-Apply', '-SkipMigrations', '-ApplyFixes') + $fixes) }
+            # One comma-separated value: through powershell.exe -File an array parameter takes only the first of
+            # several values; Invoke-ZedDatabaseScripts.ps1 splits on commas.
+            if ($Apply) { Invoke-DatabaseScripts @('-Apply', '-SkipMigrations', '-ApplyFixes', ($fixes -join ',')) }
             else {
                 Write-Host '    Previewing each fix (live and new definitions saved under database\logs\cutover-<time>\fixes; nothing applied):'
                 Invoke-DatabaseScripts @('-Apply', '-SkipMigrations')
