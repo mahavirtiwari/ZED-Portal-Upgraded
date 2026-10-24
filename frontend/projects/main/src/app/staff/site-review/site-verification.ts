@@ -4,6 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { text } from '../assessment/assessment-shared';
 import { Row, SiteReviewApi } from './site-review.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /**
  * "SA Verification": the site assessor's units in NC or quality check, each opening the site assessment
@@ -12,7 +13,7 @@ import { Row, SiteReviewApi } from './site-review.api';
  */
 @Component({
   selector: 'zed-staff-site-verification',
-  imports: [RouterLink],
+  imports: [RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="text-center mt-4"><h3 style="font-weight: 600">SA Verification</h3></div>
@@ -24,9 +25,9 @@ import { Row, SiteReviewApi } from './site-review.api';
             <tr><th>S.No.</th><th></th><th>ZedId</th><th>Certification Level</th><th>Assessment Agency</th><th>Unit Name</th><th>Unit Address</th><th>State</th><th>Reason For Rejection</th></tr>
           </thead>
           <tbody>
-            @for (s of rows(); track $index) {
+            @for (s of view.page(); track $index) {
               <tr>
-                <td>{{ $index + 1 }}</td>
+                <td>{{ view.serial($index) }}</td>
                 <td><a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]">ASSESS</a></td>
                 <td>{{ t(s, 'ZedId') }}</td>
                 <td>{{ t(s, 'Certification') }}</td>
@@ -42,6 +43,7 @@ import { Row, SiteReviewApi } from './site-review.api';
           </tbody>
         </table>
       </div>
+      <zed-pager [pager]="view" />
     </div>
   `,
 })
@@ -49,6 +51,8 @@ export class SiteVerificationPage {
   private readonly api = inject(SiteReviewApi);
   protected readonly t = text;
   protected readonly rows = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

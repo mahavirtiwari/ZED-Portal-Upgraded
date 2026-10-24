@@ -11,6 +11,7 @@ import { ListFiltersBar } from './list-controls';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
 import { staffProfileLink } from '../msme-profile/msme-profile';
+import { PagerComponent, ServerPager } from '../pager';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -19,7 +20,7 @@ import { staffProfileLink } from '../msme-profile/msme-profile';
  */
 @Component({
   selector: 'zed-staff-registered-msme',
-  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar],
+  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent],
   templateUrl: './registered-msme.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -38,18 +39,16 @@ export class RegisteredMsmePage {
   protected readonly surveillance = PORTAL_SYSTEM === 'surveillance';
   protected readonly agencyLabel = PORTAL_LABELS.agency;
   protected readonly searchFields = ['Zed Id', 'Udyam Number', 'Unit Name'];
-  protected readonly pageSizes = [10, 20, 50, 100, 200, 1000];
+  /** As the old pages: main and surveillance up to 1000 per page, consultancy up to 100. */
+  protected readonly pageSizes = PORTAL_SYSTEM === 'consultancy' ? [10, 20, 50, 100] : [10, 20, 50, 100, 200, 1000];
 
   protected readonly filter = signal<ListFilter>({});
   protected searchBy = 'Zed Id';
   protected search = '';
-  protected readonly pageNo = signal(1);
-  protected readonly pageSize = signal(10);
+  /** Paged by the procedure (PageNo / PageSize / TotalCounts). */
+  protected readonly pager = new ServerPager(10, () => void this.load());
 
   protected readonly rows = signal<Row[]>([]);
-  protected readonly total = signal(0);
-  protected readonly lastPage = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
-  protected readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly message = signal('');
@@ -75,10 +74,10 @@ export class RegisteredMsmePage {
     this.error.set('');
     try {
       const r = await firstValueFrom(this.api.registeredMsme({
-        ...this.filter(), searchBy: this.searchBy, search: this.search.trim(), pageNo: this.pageNo(), pageSize: this.pageSize(),
+        ...this.filter(), searchBy: this.searchBy, search: this.search.trim(), pageNo: this.pager.pageNo(), pageSize: this.pager.pageSize(),
       }));
       this.rows.set(r.rows ?? []);
-      this.total.set(r.totalCounts ?? 0);
+      this.pager.total.set(r.totalCounts ?? 0);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
@@ -88,30 +87,12 @@ export class RegisteredMsmePage {
 
   protected onFilter(f: ListFilter): void {
     this.filter.set(f);
-    this.pageNo.set(1);
+    this.pager.reset();
     void this.load();
   }
 
   protected doSearch(): void {
-    this.pageNo.set(1);
-    void this.load();
-  }
-
-  protected setPageSize(value: string): void {
-    this.pageSize.set(Number(value) || 10);
-    this.pageNo.set(1);
-    void this.load();
-  }
-
-  protected go(step: -2 | -1 | 1 | 2): void {
-    const p = this.pageNo();
-    this.goTo(step === -2 ? 1 : step === 2 ? this.lastPage() : p + step);
-  }
-
-  protected goTo(page: number | string): void {
-    const next = Math.min(this.lastPage(), Math.max(1, Number(page) || 1));
-    if (next === this.pageNo() && this.rows().length) return;
-    this.pageNo.set(next);
+    this.pager.reset();
     void this.load();
   }
 

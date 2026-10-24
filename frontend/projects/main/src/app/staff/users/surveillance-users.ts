@@ -6,6 +6,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { CodeName, RESET_CONFIRM, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
+import { PagedView, PagerComponent } from '../pager';
 
 interface BronzeDialog {
   agency: SurveillanceAgency;
@@ -29,7 +30,7 @@ interface BlockDialog {
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect],
+  imports: [FormsModule, MultiSelect, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -46,7 +47,7 @@ interface BlockDialog {
                 <tr><th>Status</th><th>Agency</th><th>SPOC</th><th>Assessors</th><th>Bronze Surveillance</th><th>Preferred State</th><th>Action(s)</th></tr>
               </thead>
               <tbody>
-                @for (a of filteredAgencies(); track a.userId) {
+                @for (a of agenciesView.page(); track a.userId) {
                   <tr>
                     <td>{{ a.isActive ? 'Active' : 'In-Active' }}</td>
                     <td><strong>{{ a.userId }}</strong><br />{{ a.userName }}</td>
@@ -71,13 +72,14 @@ interface BlockDialog {
                 }
               </tbody>
             </table>
+            <zed-pager [pager]="agenciesView" />
           } @else {
             <table class="table table-bordered">
               <thead>
                 <tr><th>Status</th><th>Assessor</th><th>Contact</th><th>Agency</th><th>Bronze Surveillance</th><th>Action(s)</th></tr>
               </thead>
               <tbody>
-                @for (s of filteredAssessors(); track s.userId) {
+                @for (s of assessorsView.page(); track s.userId) {
                   <tr>
                     <td>{{ s.isActive ? 'Active' : 'In-Active' }}</td>
                     <td><strong>{{ s.userId }}</strong><br />{{ s.userName }}</td>
@@ -105,6 +107,7 @@ interface BlockDialog {
                 }
               </tbody>
             </table>
+            <zed-pager [pager]="assessorsView" />
           }
         </div>
       </div>
@@ -169,10 +172,14 @@ export class SurveillanceUsersPage {
     const s = this.search().trim().toLowerCase();
     return this.agencies().filter((a) => !s || [a.userId, a.userName, a.spocName, a.email].some((v) => (v ?? '').toLowerCase().includes(s)));
   });
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly agenciesView = new PagedView(() => this.filteredAgencies());
   protected readonly filteredAssessors = computed(() => {
     const s = this.search().trim().toLowerCase();
     return this.assessors().filter((a) => !s || [a.userId, a.userName, a.email, a.agencyUserId].some((v) => (v ?? '').toLowerCase().includes(s)));
   });
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly assessorsView = new PagedView(() => this.filteredAssessors());
 
   constructor() {
     void this.load();

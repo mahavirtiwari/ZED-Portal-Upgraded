@@ -33,7 +33,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (a of filtered(); track a.UserId) {
+            @for (a of view.page(); track a.UserId) {
               <tr class="filterClass">
                 <td><strong>{{ a.IdStatus }}</strong></td>
                 <td><strong>{{ a.UserId }}</strong></td>
@@ -76,6 +76,7 @@
           </tbody>
         </table>
       </div>
+      <zed-pager [pager]="view" />
     </div>
   </div>
 </div>

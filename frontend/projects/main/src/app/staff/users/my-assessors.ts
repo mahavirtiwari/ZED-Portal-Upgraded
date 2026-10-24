@@ -6,6 +6,7 @@ import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { OwnAssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
+import { PagedView, PagerComponent } from '../pager';
 
 interface Dialog {
   kind: 'block' | 'mobile';
@@ -20,7 +21,7 @@ interface Dialog {
  */
 @Component({
   selector: 'zed-staff-my-assessors',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme mt-4">
@@ -58,7 +59,7 @@ interface Dialog {
                   </tr>
                 </thead>
                 <tbody>
-                  @for (u of filtered(); track u.UserId) {
+                  @for (u of view.page(); track u.UserId) {
                     <tr class="filterClass">
                       <td><strong>{{ u.IdStatus }}</strong></td>
                       <td>
@@ -91,6 +92,7 @@ interface Dialog {
                 </tbody>
               </table>
             </div>
+            <zed-pager [pager]="view" />
           </div>
         </div>
       </div>
@@ -160,6 +162,8 @@ export class MyAssessorsPage {
       [a.UserId, a.UserName, a.AssessorType, a.MobileNo, a.Email, a.Address, a.IdStatus].some((v) => (v ?? '').toLowerCase().includes(s)),
     );
   });
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.filtered());
 
   constructor() {
     const message = (globalThis.history?.state as { message?: unknown } | null)?.message;

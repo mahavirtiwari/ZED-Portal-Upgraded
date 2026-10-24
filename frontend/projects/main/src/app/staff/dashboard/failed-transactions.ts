@@ -4,7 +4,8 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DashboardApi, ListFilter, Row, UpdatePaymentRequest } from './dashboard.api';
 import { ClientPager, flag, text } from './dashboard-filters';
-import { ListFiltersBar, PagerBar } from './list-controls';
+import { PagerComponent } from '../pager';
+import { ListFiltersBar } from './list-controls';
 
 export const PG_TYPES = [
   { value: 'Unified Payments', label: 'UPI' },
@@ -26,7 +27,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-failed-transactions',
-  imports: [FormsModule, ListFiltersBar, PagerBar],
+  imports: [FormsModule, ListFiltersBar, PagerComponent],
   templateUrl: './failed-transactions.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -36,7 +37,7 @@ function today(): string {
 export class FailedTransactionsPage {
   private readonly api = inject(DashboardApi);
 
-  protected readonly pager = new ClientPager();
+  protected readonly pager = new ClientPager<Row>();
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
   protected readonly error = signal('');

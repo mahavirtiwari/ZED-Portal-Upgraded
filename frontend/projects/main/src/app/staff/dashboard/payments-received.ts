@@ -1,9 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { DashboardApi, ListFilter } from './dashboard.api';
+import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { ClientPager, flag } from './dashboard-filters';
-import { ListFiltersBar, PagerBar } from './list-controls';
+import { PagerComponent } from '../pager';
+import { ListFiltersBar } from './list-controls';
 
 /**
  * MSME payments received (MasterAdmin). Port of Views/Dashboard/PaymentReceived.cshtml. The old page's
@@ -11,7 +12,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
  */
 @Component({
   selector: 'zed-staff-payments-received',
-  imports: [ListFiltersBar, PagerBar],
+  imports: [ListFiltersBar, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="mt-4">
@@ -62,7 +63,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
             </tbody>
           </table>
         </div>
-        <zed-pager-bar [pager]="pager" />
+        <zed-pager [pager]="pager" />
       </div>
     </div>
     @if (loading()) { <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div> }
@@ -72,7 +73,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
 export class PaymentsReceivedPage {
   private readonly api = inject(DashboardApi);
 
-  protected readonly pager = new ClientPager();
+  protected readonly pager = new ClientPager<Row>();
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
   protected readonly error = signal('');

@@ -90,24 +90,7 @@
     </div>
   </div>
 
-  <div class="row justify-content-between mb-4">
-    <div class="col-sm-6">
-      Show
-      <select class="btn btn-primary" aria-label="Entries per page" (change)="setPageSize($any($event.target).value)">
-        @for (n of pageSizes; track n) { <option [value]="n" [selected]="n === pageSize()">{{ n }}</option> }
-      </select>
-      Entries <span class="ms-2 text-muted">({{ total() }} records)</span>
-    </div>
-    <div class="col-sm-auto">
-      <button type="button" class="btn btn-primary me-1" (click)="go(-2)">First</button>
-      <button type="button" class="btn btn-primary me-1" (click)="go(-1)">Prev</button>
-      <select class="btn btn-primary me-1" aria-label="Page" (change)="goTo($any($event.target).value)">
-        @for (p of pages(); track p) { <option [value]="p" [selected]="p === pageNo()">{{ p }}</option> }
-      </select>
-      <button type="button" class="btn btn-primary me-1" (click)="go(1)">Next</button>
-      <button type="button" class="btn btn-primary" (click)="go(2)">Last</button>
-    </div>
-  </div>
+  <zed-pager [pager]="pager" [sizes]="pageSizes" />
 </div>
 
 @if (disabling(); as m) {

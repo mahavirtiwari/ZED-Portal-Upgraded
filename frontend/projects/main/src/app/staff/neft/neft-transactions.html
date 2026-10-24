@@ -36,7 +36,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (t of transactions(); track t.TransactionId) {
+              @for (t of view.page(); track t.TransactionId) {
                 <tr>
                   @if (list === 'new') {
                     <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
@@ -74,6 +74,7 @@
             </tbody>
           </table>
         </div>
+        <zed-pager [pager]="view" />
       </div>
     </div>
   </div>

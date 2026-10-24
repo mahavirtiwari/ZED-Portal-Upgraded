@@ -5,6 +5,7 @@ import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../../staff-menu';
 import { TuApi, TuCounts, TuSubmission, TuTab, UserOption } from './tu.api';
+import { PagedView, PagerComponent } from '../../pager';
 
 type Dialog =
   | { kind: 'allot'; row: TuSubmission; options: UserOption[]; choice: string }
@@ -21,7 +22,7 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
  */
 @Component({
   selector: 'zed-staff-tu-submissions',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './tu-submissions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -48,6 +49,8 @@ export class TuSubmissionsPage {
 
   protected readonly status = signal<number>(TuTab.Allotment);
   protected readonly rows = signal<TuSubmission[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly counts = signal<TuCounts>(NO_COUNTS);
   protected readonly loading = signal(false);
   protected readonly error = signal('');

@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, STATES, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Row } from './assessment.api';
-import { ListPager } from './list-pager';
+import { PagerComponent } from '../pager';
 
 /**
  * Desktop assessor: records with an open non-conformance round (DA status 4, site assessment status 14).
@@ -15,7 +15,7 @@ import { ListPager } from './list-pager';
  */
 @Component({
   selector: 'zed-staff-non-conformances',
-  imports: [FormsModule, RouterLink, ListPager],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -125,7 +125,7 @@ import { ListPager } from './list-pager';
             </table>
           </div>
         </div>
-        <zed-list-pager [pager]="pager" />
+        <zed-pager [pager]="pager" />
       </div>
     </div>
 

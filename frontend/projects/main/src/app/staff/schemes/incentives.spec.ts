@@ -167,7 +167,7 @@ describe('incentive pages', () => {
     ]);
     await settle();
     // No type select: the menu's Incentives drop-down chooses the type.
-    expect(el.querySelector('select')).toBeNull();
+    expect(el.querySelector('select[aria-label="Incentive type"]')).toBeNull();
     expect(el.querySelector('.modal')).toBeNull();
 
     button('Edit').click();

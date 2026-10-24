@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { PagedView, PagerComponent } from '../pager';
 
 interface AccountType {
   roleId: number;
@@ -43,7 +44,7 @@ const API = '/api/staff/accounts';
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -72,7 +73,7 @@ const API = '/api/staff/accounts';
                 </tr>
               </thead>
               <tbody>
-                @for (a of shown(); track a.userId + a.roleId) {
+                @for (a of view.page(); track a.userId + a.roleId) {
                   <tr>
                     <td><strong>{{ a.isActive ? 'Active' : 'Blocked' }}</strong></td>
                     <td><strong>{{ a.userId }}</strong></td>
@@ -96,6 +97,7 @@ const API = '/api/staff/accounts';
               </tbody>
             </table>
           </div>
+          <zed-pager [pager]="view" />
         </div>
       </div>
     </div>
@@ -178,6 +180,8 @@ export class AccountsPage {
   protected readonly accounts = signal<Account[]>([]);
   protected readonly filter = signal(0);
   protected readonly shown = computed(() => this.accounts().filter((a) => !this.filter() || a.roleId === this.filter()));
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.shown());
   protected readonly form = signal<AccountForm | null>(null);
   protected readonly editing = signal<string | null>(null);
   protected readonly needsState = computed(() => this.types().find((t) => t.roleId === this.form()?.roleId)?.needsState ?? false);

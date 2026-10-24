@@ -4,6 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, ONSITE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
+import { PagedView, PagerComponent } from '../pager';
 
 interface AllotForm {
   unit: Row;
@@ -24,7 +25,7 @@ interface AllotForm {
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, CoAllotmentPage],
+  imports: [FormsModule, CoAllotmentPage, PagerComponent],
   template: `
     @if (system === 'consultancy') {
       <zed-staff-co-allotment />
@@ -65,7 +66,7 @@ interface AllotForm {
                   </tr>
                 </thead>
                 <tbody>
-                  @for (s of units(); track s['ZedId'] + '|' + s['Certification']) {
+                  @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                     <tr>
                       <td>
                         @if (s['SiteAssessorId']) {
@@ -101,6 +102,7 @@ interface AllotForm {
                 </tbody>
               </table>
             </div>
+            <zed-pager [pager]="view" />
           </div>
         </div>
       </div>
@@ -199,6 +201,8 @@ export class SaAllotmentPage {
   protected readonly surveillance = this.system === 'surveillance';
 
   protected readonly units = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.units());
   protected readonly assessors = signal<Assessor[]>([]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');

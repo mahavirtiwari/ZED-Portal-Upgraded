@@ -27,7 +27,7 @@ export const STATES: readonly (readonly [code: string, name: string])[] = [
   ['5', 'UTTARAKHAND'], ['19', 'WEST BENGAL'],
 ];
 
-export const PAGE_SIZES = [10, 20, 50, 100] as const;
+export { ClientPager, PAGE_SIZES } from '../pager';
 
 /** Text of a column ('' when empty). */
 export function text(row: Row | null | undefined, column: string): string {
@@ -60,53 +60,6 @@ export function useLegacyPortal() {
       base() ? `${base()}/Assessment/DaDetails?zedId=${encodeURIComponent(zedId)}&Certification=${encodeURIComponent(certification)}` : '',
     path: (path: string) => (base() ? base() + path : ''),
   };
-}
-
-/**
- * Paging and text search done in the browser over a loaded list, as on the old pages
- * (First/Prev/page/Next/Last and a search box that matches any shown value).
- */
-export class ClientPager {
-  readonly all = signal<Row[]>([]);
-  readonly search = signal('');
-  readonly pageSize = signal(10);
-  readonly pageNo = signal(1);
-
-  readonly filtered = computed(() => {
-    const s = this.search().trim().toLowerCase();
-    const rows = this.all();
-    if (!s) return rows;
-    return rows.filter((r) => Object.values(r).some((v) => v !== null && v !== undefined && String(v).toLowerCase().includes(s)));
-  });
-  readonly lastPage = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
-  readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
-  readonly page = computed(() => {
-    const size = this.pageSize();
-    const start = (Math.min(this.pageNo(), this.lastPage()) - 1) * size;
-    return this.filtered().slice(start, start + size);
-  });
-
-  set(rows: Row[]): void {
-    this.all.set(rows);
-    this.pageNo.set(1);
-  }
-
-  setSearch(value: string): void {
-    this.search.set(value);
-    this.pageNo.set(1);
-  }
-
-  setPageSize(value: string | number): void {
-    this.pageSize.set(Number(value) || 10);
-    this.pageNo.set(1);
-  }
-
-  go(where: 'first' | 'prev' | 'next' | 'last' | number): void {
-    const last = this.lastPage();
-    const current = Math.min(this.pageNo(), last);
-    const next = where === 'first' ? 1 : where === 'last' ? last : where === 'prev' ? current - 1 : where === 'next' ? current + 1 : Number(where);
-    this.pageNo.set(Math.min(Math.max(next, 1), last));
-  }
 }
 
 /** Child-route guard: the screen's roles (Users.RoleId) and sub-roles; others go back to the staff home page. */

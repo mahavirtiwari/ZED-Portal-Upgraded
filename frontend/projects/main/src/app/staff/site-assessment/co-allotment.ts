@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, Row, SiteAssessmentApi, todayIso } from './site-assessment.api';
+import { PagedView, PagerComponent } from '../pager';
 
 interface CoForm {
   unit: Row;
@@ -32,7 +33,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
  */
 @Component({
   selector: 'zed-staff-co-allotment',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme">
@@ -68,7 +69,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
               </tr>
             </thead>
             <tbody>
-              @for (s of units(); track s['ZedId'] + '|' + s['Certification']) {
+              @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                 <tr>
                   <td>
                     @if (s['SiteAssessorId']) {
@@ -106,6 +107,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
             </tbody>
           </table>
         </div>
+        <zed-pager [pager]="view" />
       </div>
     </div>
 
@@ -238,6 +240,8 @@ export class CoAllotmentPage {
   private readonly api = inject(SiteAssessmentApi);
 
   protected readonly units = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.units());
   protected readonly consultants = signal<Assessor[]>([]);
   protected readonly experts = signal<Assessor[]>([]);
   protected readonly busy = signal(false);

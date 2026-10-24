@@ -5,6 +5,7 @@ import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { FaApi, FaCounts, FaStatus, FaSubmission, UserOption } from './fa.api';
+import { PagedView, PagerComponent } from '../pager';
 
 type Dialog =
   | { kind: 'allot'; row: FaSubmission; options: UserOption[]; choice: string }
@@ -21,7 +22,7 @@ const NO_COUNTS: FaCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
  */
 @Component({
   selector: 'zed-staff-fa-submissions',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './fa-submissions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -47,6 +48,8 @@ export class FaSubmissionsPage {
 
   protected readonly status = signal<number>(FaStatus.New);
   protected readonly rows = signal<FaSubmission[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly counts = signal<FaCounts>(NO_COUNTS);
   protected readonly loading = signal(false);
   protected readonly error = signal('');

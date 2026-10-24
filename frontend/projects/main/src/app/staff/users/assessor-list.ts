@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
 import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
+import { ClientPager, PagerComponent } from '../pager';
 
 /**
  * MasterAdmin list of all assessors (optionally of one agency, `?agencyId=`, and verification type,
@@ -13,7 +14,7 @@ import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
  */
 @Component({
   selector: 'zed-staff-assessor-list',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="mt-4">
@@ -23,7 +24,7 @@ import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
               <h3 class="registration-title">{{ labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
               <div class="search-input" style="margin-left: auto">
                 <input type="text" class="form-control" style="display: inline; width: 100%" maxlength="50" aria-label="Search assessors"
-                       [ngModel]="search()" (ngModelChange)="search.set($event); pageNo.set(1)" />
+                       [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
                 <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
               </div>
             </div>
@@ -73,28 +74,7 @@ import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
           </div>
         </div>
 
-        <div class="row justify-content-between mb-4">
-          <div class="col-sm-6">
-            Show
-            <select class="btn btn-primary" aria-label="Entries per page" [ngModel]="pageSize()" (ngModelChange)="pageSize.set(+$event); pageNo.set(1)">
-              @for (n of [10, 20, 50, 100]; track n) {
-                <option [ngValue]="n">{{ n }}</option>
-              }
-            </select>
-            Entries
-          </div>
-          <div class="col-sm-6 text-end">
-            <button type="button" class="btn btn-primary me-1" (click)="pageNo.set(1)">First</button>
-            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() - 1)">Prev</button>
-            <select class="btn btn-primary me-1" aria-label="Page" [ngModel]="pageNo()" (ngModelChange)="go(+$event)">
-              @for (i of pages(); track i) {
-                <option [ngValue]="i">{{ i }}</option>
-              }
-            </select>
-            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() + 1)">Next</button>
-            <button type="button" class="btn btn-primary" (click)="go(lastPage())">Last</button>
-          </div>
-        </div>
+        <zed-pager [pager]="pager" />
       </div>
     </div>
     @if (loading()) {
@@ -111,33 +91,17 @@ export class AssessorListPage {
 
   protected readonly agencyId = this.query.get('agencyId') ?? '';
   protected readonly type = this.query.get('type') ?? '';
-  protected readonly assessors = signal<AssessorRow[]>([]);
-  protected readonly search = signal('');
-  protected readonly pageSize = signal(20);
-  protected readonly pageNo = signal(1);
+  /** Paged (20 per page) and searched (any value of the row) in the browser, as before. */
+  protected readonly pager = new ClientPager<AssessorRow>(20);
+  protected readonly search = this.pager.search;
+  protected readonly page = this.pager.page;
   protected readonly loading = signal(true);
   protected readonly error = signal('');
   protected readonly success = signal('');
   protected readonly busy = signal(false);
 
-  /** As before: the search matches any value of the row. */
-  protected readonly filtered = computed(() => {
-    const s = this.search().trim().toLowerCase();
-    return s ? this.assessors().filter((a) => Object.values(a).some((v) => String(v ?? '').toLowerCase().includes(s))) : this.assessors();
-  });
-  protected readonly lastPage = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
-  protected readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
-  protected readonly page = computed(() => {
-    const start = (this.pageNo() - 1) * this.pageSize();
-    return this.filtered().slice(start, start + this.pageSize());
-  });
-
   constructor() {
     void this.load();
-  }
-
-  protected go(n: number): void {
-    this.pageNo.set(Math.min(Math.max(1, n), this.lastPage()));
   }
 
   /** E-mails the assessor a link to set a new password. */
@@ -157,7 +121,7 @@ export class AssessorListPage {
 
   private async load(): Promise<void> {
     try {
-      this.assessors.set(await firstValueFrom(this.api.allAssessors(this.agencyId, this.type)));
+      this.pager.set(await firstValueFrom(this.api.allAssessors(this.agencyId, this.type)));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

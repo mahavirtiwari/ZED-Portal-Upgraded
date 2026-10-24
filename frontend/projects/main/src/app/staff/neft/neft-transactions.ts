@@ -5,6 +5,7 @@ import { PORTAL_SYSTEM } from '../../portal-system';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
+import { PagedView, PagerComponent } from '../pager';
 
 interface ApprovalForm {
   transaction: NeftTransaction;
@@ -33,7 +34,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './neft-transactions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -56,6 +57,8 @@ export class NeftTransactionsPage {
   protected readonly maxDate = today();
 
   protected readonly transactions = signal<NeftTransaction[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.transactions());
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');

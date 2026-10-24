@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /**
  * Desktop assessor: units allotted for desktop verification — accept/reject, then assess. Port of
@@ -15,7 +16,7 @@ import { AssessmentApi, Row } from './assessment.api';
  */
 @Component({
   selector: 'zed-staff-da-verification',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row">
@@ -48,7 +49,7 @@ import { AssessmentApi, Row } from './assessment.api';
                     </tr>
                   </thead>
                   <tbody>
-                    @for (s of rows(); track t(s, 'ZedId') + t(s, 'Certification')) {
+                    @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
                       <tr>
                         <td>
                           @if (legacy.profile(t(s, 'ZedId')); as href) {
@@ -80,6 +81,7 @@ import { AssessmentApi, Row } from './assessment.api';
                   </tbody>
                 </table>
               </div>
+              <zed-pager [pager]="view" />
             </div>
           </div>
         </div>
@@ -152,6 +154,8 @@ export class DaVerificationPage {
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);

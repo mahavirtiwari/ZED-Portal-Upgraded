@@ -4,6 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Person, Row } from './assessment.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /**
  * Agency (desktop verification): allot its MSMEs to its desktop assessors, or reject them. Port of
@@ -13,7 +14,7 @@ import { AssessmentApi, Person, Row } from './assessment.api';
  */
 @Component({
   selector: 'zed-staff-da-allotment',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme">
@@ -49,7 +50,7 @@ import { AssessmentApi, Person, Row } from './assessment.api';
                   </tr>
                 </thead>
                 <tbody>
-                  @for (s of rows(); track t(s, 'ZedId') + t(s, 'Certification')) {
+                  @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
                     <tr>
                       <td>
                         @if (legacy.profile(t(s, 'ZedId')); as href) {
@@ -93,6 +94,7 @@ import { AssessmentApi, Person, Row } from './assessment.api';
                 </tbody>
               </table>
             </div>
+            <zed-pager [pager]="view" />
           </div>
         </div>
       </div>
@@ -167,6 +169,8 @@ export class DaAllotmentPage {
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   private readonly assessors = signal<Person[]>([]);
   private readonly bronzeAssessors = signal<Person[]>([]);
   protected readonly loading = signal(false);

@@ -4,7 +4,8 @@ import { RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
-import { ASSESSMENT_SYSTEM, PAGE_SIZES, STATES, milestoneReportUrl, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, text, useLegacyPortal } from './assessment-shared';
+import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
 
@@ -25,7 +26,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
  */
 @Component({
   selector: 'zed-staff-assessment-results',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-3">
@@ -274,24 +275,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
           </div>
         </div>
 
-        <div class="row justify-content-between">
-          <div class="col-sm-6">
-            Show
-            <select class="btn btn-primary" aria-label="Entries per page" (change)="setPageSize(+$any($event.target).value)">
-              @for (p of sizes; track p) { <option [value]="p" [selected]="p === pageSize()">{{ p }}</option> }
-            </select>
-            Entries
-          </div>
-          <div class="col-sm-5 text-end">
-            <button type="button" class="btn btn-primary me-1" (click)="go(1)">First</button>
-            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() - 1)">Prev</button>
-            <select class="btn btn-primary me-1" aria-label="Page" (change)="go(+$any($event.target).value)">
-              @for (i of pages(); track i) { <option [value]="i" [selected]="i === pageNo()">{{ i }}</option> }
-            </select>
-            <button type="button" class="btn btn-primary me-1" (click)="go(pageNo() + 1)">Next</button>
-            <button type="button" class="btn btn-primary" (click)="go(lastPage())">Last</button>
-          </div>
-        </div>
+        <zed-pager [pager]="pager" [sizes]="sizes" />
       </div>
     </div>
 
@@ -310,7 +294,6 @@ export class AssessmentResultsPage {
   private readonly user = inject(AuthService).currentUser;
   protected readonly legacy = useLegacyPortal();
   protected readonly states = STATES;
-  protected readonly sizes = PAGE_SIZES;
   protected readonly t = text;
   protected readonly n = num;
   private readonly system = inject(ASSESSMENT_SYSTEM);
@@ -331,9 +314,11 @@ export class AssessmentResultsPage {
   protected searchText = '';
 
   protected readonly rows = signal<Row[]>([]);
-  protected readonly total = signal(0);
-  protected readonly pageNo = signal(1);
-  protected readonly pageSize = signal(20);
+  /**
+   * Paged by the procedure, as the old pages: main 20 per page (up to 200), consultancy and surveillance 10 (up to 100).
+   */
+  protected readonly sizes = this.system === 'main' ? [10, 20, 50, 100, 200] : [10, 20, 50, 100];
+  protected readonly pager = new ServerPager(this.system === 'main' ? 20 : 10, () => void this.load());
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   private request = 0;
@@ -346,8 +331,6 @@ export class AssessmentResultsPage {
   protected readonly isMasterAdmin = computed(() => this.user()?.roleId === StaffRole.MasterAdmin);
   protected readonly isAgency = computed(() => this.user()?.roleId === StaffRole.Agency);
   protected readonly isAssessor = computed(() => this.user()?.roleId === StaffRole.DesktopAssessor);
-  protected readonly lastPage = computed(() => Math.max(1, Math.ceil(this.total() / this.pageSize())));
-  protected readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
 
   constructor() {
     effect(() => {
@@ -357,17 +340,7 @@ export class AssessmentResultsPage {
   }
 
   protected search(): void {
-    this.pageNo.set(1);
-    void this.load();
-  }
-
-  protected setPageSize(size: number): void {
-    this.pageSize.set(size);
-    this.search();
-  }
-
-  protected go(page: number): void {
-    this.pageNo.set(Math.min(Math.max(page, 1), this.lastPage()));
+    this.pager.reset();
     void this.load();
   }
 
@@ -416,13 +389,13 @@ export class AssessmentResultsPage {
           size: this.size,
           searchBy: this.searchText.trim() ? this.searchBy : '',
           search: this.searchText.trim(),
-          pageNo: this.pageNo(),
-          pageSize: this.pageSize(),
+          pageNo: this.pager.pageNo(),
+          pageSize: this.pager.pageSize(),
         }),
       );
       if (request !== this.request) return;
       this.rows.set(res.rows);
-      this.total.set(res.totalCount);
+      this.pager.total.set(res.totalCount);
     } catch (err) {
       if (request === this.request) this.error.set(apiErrorMessage(err));
     } finally {

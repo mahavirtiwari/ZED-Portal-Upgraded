@@ -48,7 +48,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (s of rows(); track s.Id) {
+              @for (s of view.page(); track s.Id) {
                 <tr [class.rejected]="!!s.ReasonForRejection">
                   <td class="text-center">
                     @if (canAllot(s)) {
@@ -100,6 +100,7 @@
             </tbody>
           </table>
         </div>
+        <zed-pager [pager]="view" />
       </div>
     </div>
   </div>

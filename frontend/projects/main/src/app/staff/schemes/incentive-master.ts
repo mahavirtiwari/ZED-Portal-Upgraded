@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { CatalogueItem, INCENTIVE_TYPES, IncentiveForm, IncentivesApi } from './incentives.api';
+import { PagedView, PagerComponent } from '../pager';
 
 export const MAX_INCENTIVE_DOC_BYTES = 2 * 1024 * 1024;
 
@@ -22,7 +23,7 @@ function emptyForm(type: string): IncentiveForm {
  */
 @Component({
   selector: 'zed-staff-incentive-master',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row justify-content-center mt-3">
@@ -72,9 +73,9 @@ function emptyForm(type: string): IncentiveForm {
                 </tr>
               </thead>
               <tbody>
-                @for (item of items(); track item.incentive['Id']) {
+                @for (item of view.page(); track item.incentive['Id']) {
                   <tr>
-                    <td>{{ $index + 1 }}</td>
+                    <td>{{ view.serial($index) }}</td>
                     <td>{{ item.incentive['Incentive'] }}</td>
                     <td>{{ item.incentive['Details'] }}</td>
                     <td>{{ item.incentive['MinistryOrDepartment'] }}</td>
@@ -110,6 +111,7 @@ function emptyForm(type: string): IncentiveForm {
               </tbody>
             </table>
           </div>
+          <zed-pager [pager]="view" />
         </div>
       </div>
     </div>
@@ -169,6 +171,8 @@ export class IncentiveMasterPage {
 
   protected readonly type = signal(inject(ActivatedRoute).snapshot.queryParamMap.get('type') || 'Common');
   protected readonly items = signal<CatalogueItem[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.items());
   protected readonly form = signal<IncentiveForm>(emptyForm(this.type()));
   protected readonly editingId = signal<number | null>(null);
   /** The incentive in the Edit pop-up (the form above the list only adds). */

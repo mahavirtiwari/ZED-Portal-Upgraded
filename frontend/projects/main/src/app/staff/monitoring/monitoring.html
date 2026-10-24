@@ -178,32 +178,7 @@
       </div>
     </div>
 
-    <div class="row justify-content-between mb-4">
-      <div class="col-sm-8">
-        <label>
-          Show
-          <select class="btn btn-primary" [ngModel]="pageSize()" (ngModelChange)="setPageSize($event)" aria-label="Entries per page">
-            @for (n of pageSizes; track n) {
-              <option [ngValue]="n">{{ n }}</option>
-            }
-          </select>
-          Entries
-        </label>
-      </div>
-      <div class="col-sm-4">
-        <nav aria-label="Pages">
-          <button type="button" class="btn btn-primary" (click)="goTo(1)">First</button>
-          <button type="button" class="btn btn-primary" (click)="goTo(pageNo() - 1)">Prev</button>
-          <select class="btn btn-primary" [ngModel]="pageNo()" (ngModelChange)="goTo($event)" aria-label="Page">
-            @for (p of pages(); track p) {
-              <option [ngValue]="p">{{ p }}</option>
-            }
-          </select>
-          <button type="button" class="btn btn-primary" (click)="goTo(pageNo() + 1)">Next</button>
-          <button type="button" class="btn btn-primary" (click)="goTo(lastPage())">Last</button>
-        </nav>
-      </div>
-    </div>
+    <zed-pager [pager]="pager" />
   </div>
 </div>
 

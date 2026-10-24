@@ -1,9 +1,10 @@
 import { Component, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { DashboardApi, ListFilter } from './dashboard.api';
+import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { ClientPager } from './dashboard-filters';
-import { ListFiltersBar, PagerBar } from './list-controls';
+import { PagerComponent } from '../pager';
+import { ListFiltersBar } from './list-controls';
 
 /**
  * Financial support per unit (SuperAdmin, CitizenFeedback). Port of Views/Dashboard/FinancialSupport.cshtml.
@@ -11,7 +12,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
  */
 @Component({
   selector: 'zed-staff-financial-support',
-  imports: [ListFiltersBar, PagerBar],
+  imports: [ListFiltersBar, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-3">
@@ -61,7 +62,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
           </div>
         </div>
       </div>
-      <zed-pager-bar [pager]="pager" />
+      <zed-pager [pager]="pager" />
     </div>
     @if (loading()) { <div class="loadingdiv" role="status"><img src="Images/loading.gif" alt="Loading" /></div> }
   `,
@@ -70,7 +71,7 @@ import { ListFiltersBar, PagerBar } from './list-controls';
 export class FinancialSupportPage {
   private readonly api = inject(DashboardApi);
 
-  protected readonly pager = new ClientPager();
+  protected readonly pager = new ClientPager<Row>();
   protected readonly filter = signal<ListFilter>({});
   protected readonly loading = signal(false);
   protected readonly error = signal('');

@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, ClientPager, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
-import { ListPager } from './list-pager';
+import { PagerComponent } from '../pager';
 
 /**
  * Master admin: allot MSMEs to assessment agencies. Port of Views/Assessment/Allot.cshtml
@@ -16,7 +16,7 @@ import { ListPager } from './list-pager';
  */
 @Component({
   selector: 'zed-staff-allot',
-  imports: [FormsModule, RouterLink, ListPager],
+  imports: [FormsModule, RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -168,7 +168,7 @@ import { ListPager } from './list-pager';
             </table>
           </div>
         </div>
-        <zed-list-pager [pager]="pager" />
+        <zed-pager [pager]="pager" />
       </div>
     </div>
 
@@ -246,7 +246,7 @@ export class AllotPage {
       const res = await firstValueFrom(this.api.allotList(this.filter));
       if (request !== this.request) return;
       this.pager.set(res.rows);
-      if (keepPage) this.pager.go(page);
+      if (keepPage) this.pager.goTo(page);
     } catch (err) {
       if (request === this.request) this.notice.set({ ok: false, text: apiErrorMessage(err) });
     } finally {

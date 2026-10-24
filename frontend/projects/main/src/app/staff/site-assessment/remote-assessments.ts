@@ -3,6 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -18,7 +19,7 @@ import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
-  imports: [RouterLink],
+  imports: [RouterLink, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="zed-tabs mt-3">
@@ -48,7 +49,7 @@ import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site
                 </tr>
               </thead>
               <tbody>
-                @for (s of rows(); track s['ZedId'] + '|' + s['Certification']) {
+                @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                   <tr>
                     <td>{{ s['Certification'] }}<br /><small>{{ s['ConsultantRole'] }}</small></td>
                     <td>
@@ -74,6 +75,7 @@ import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site
                 }
               </tbody>
             </table>
+            <zed-pager [pager]="view" />
           } @else {
             <table class="table table-zed table-bordered">
               <thead>
@@ -88,7 +90,7 @@ import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site
                 </tr>
               </thead>
               <tbody>
-                @for (s of rows(); track s['ZedId'] + '|' + s['Certification']) {
+                @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                   <tr>
                     <td>
                       @if (s['ModeOfAssessment'] === 'Onsite Assessment' && !surveillance) {
@@ -115,6 +117,7 @@ import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site
                 }
               </tbody>
             </table>
+            <zed-pager [pager]="view" />
           }
         </div>
       </div>
@@ -145,6 +148,8 @@ export class RemoteAssessmentsPage {
   protected readonly milestone = RemoteAssessmentsPage.milestoneOf(inject(ActivatedRoute).snapshot.paramMap.get('milestone'));
 
   protected readonly rows = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

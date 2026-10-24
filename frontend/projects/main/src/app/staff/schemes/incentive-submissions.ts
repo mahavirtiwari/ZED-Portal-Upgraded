@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /**
  * "API Incentives Submitted" for the super admin. Port of Views/Incentive/Submissions.cshtml
@@ -10,7 +11,7 @@ import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
  */
 @Component({
   selector: 'zed-staff-incentive-submissions',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="incentive-page">
@@ -68,9 +69,9 @@ import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
                 </tr>
               </thead>
               <tbody>
-                @for (r of rows(); track $index) {
+                @for (r of view.page(); track $index) {
                   <tr>
-                    <td>{{ $index + 1 }}</td>
+                    <td>{{ view.serial($index) }}</td>
                     <td>{{ r['PUnitName'] }}<br />{{ r['PStateName'] }}</td>
                     <td>{{ r['UdyamNo'] }}<br />{{ r['ApplicationId'] }}</td>
                     <td>{{ r['ServiceName'] }}<br />{{ r['IncentiveName'] }}</td>
@@ -81,6 +82,7 @@ import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
               </tbody>
             </table>
           </div>
+          <zed-pager [pager]="view" />
         } @else if (!loading()) {
           <div class="label-highlight4">
             <div class="no-incentive-block">
@@ -105,6 +107,8 @@ export class IncentiveSubmissionsPage {
   protected readonly states = STATES;
   protected readonly filter: IncentiveFilter = { state: '', certification: '', msmeSize: '', gender: '' };
   protected readonly rows = signal<Row[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.rows());
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

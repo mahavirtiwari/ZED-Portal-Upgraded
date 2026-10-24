@@ -4,6 +4,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { PagedView, PagerComponent } from '../pager';
 
 interface PermissionOption {
   key: string;
@@ -45,7 +46,7 @@ const API = '/api/staff/sub-users';
  */
 @Component({
   selector: 'zed-staff-sub-users',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, PagerComponent],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -72,7 +73,7 @@ const API = '/api/staff/sub-users';
                 </tr>
               </thead>
               <tbody>
-                @for (u of users(); track u.userId) {
+                @for (u of view.page(); track u.userId) {
                   <tr>
                     <td><strong>{{ u.isActive ? (u.locked ? 'Locked' : 'Active') : 'Blocked' }}</strong></td>
                     <td><strong>{{ u.userId }}</strong></td>
@@ -93,6 +94,7 @@ const API = '/api/staff/sub-users';
               </tbody>
             </table>
           </div>
+          <zed-pager [pager]="view" />
         </div>
       </div>
     </div>
@@ -165,6 +167,8 @@ export class SubUsersPage {
   protected readonly accountType = signal('Sub-User');
   protected readonly options = signal<PermissionOption[]>([]);
   protected readonly users = signal<SubUser[]>([]);
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.users());
   protected readonly form = signal<SubUserForm | null>(null);
   protected readonly editing = signal<string | null>(null);
   protected readonly busy = signal(false);

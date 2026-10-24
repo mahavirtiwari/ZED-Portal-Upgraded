@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { CERTIFICATIONS, ClientPager, GENDERS, SIZES, STATES } from './dashboard-filters';
+import { CERTIFICATIONS, GENDERS, SIZES, STATES } from './dashboard-filters';
 import { ListFilter } from './dashboard.api';
 
 /** State / Certification Level / MSME Size / Gender drop-downs of the list pages. */
@@ -50,34 +50,4 @@ export class ListFiltersBar {
   protected set(key: keyof ListFilter, event: Event): void {
     this.filterChange.emit({ ...this.filter(), [key]: (event.target as HTMLSelectElement).value });
   }
-}
-
-/** "Show N Entries" and First / Prev / page / Next / Last of the client-paged lists. */
-@Component({
-  selector: 'zed-pager-bar',
-  template: `
-    <div class="row justify-content-between mb-4">
-      <div class="col-sm-6">
-        Show
-        <select class="btn btn-primary" aria-label="Entries per page" (change)="pager().setPageSize($any($event.target).value)">
-          @for (n of sizes; track n) { <option [value]="n" [selected]="n === pager().pageSize()">{{ n }}</option> }
-        </select>
-        Entries
-        <span class="ms-2 text-muted">({{ pager().filtered().length }} records)</span>
-      </div>
-      <div class="col-sm-auto">
-        <button type="button" class="btn btn-primary me-1" (click)="pager().go(-2)">First</button>
-        <button type="button" class="btn btn-primary me-1" (click)="pager().go(-1)">Prev</button>
-        <select class="btn btn-primary me-1" aria-label="Page" (change)="pager().goTo($any($event.target).value)">
-          @for (p of pager().pages(); track p) { <option [value]="p" [selected]="p === pager().pageNo()">{{ p }}</option> }
-        </select>
-        <button type="button" class="btn btn-primary me-1" (click)="pager().go(1)">Next</button>
-        <button type="button" class="btn btn-primary" (click)="pager().go(2)">Last</button>
-      </div>
-    </div>
-  `,
-})
-export class PagerBar {
-  readonly pager = input.required<ClientPager>();
-  protected readonly sizes = [10, 20, 50, 100];
 }

@@ -5,6 +5,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { AgencyRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { PORTAL_LABELS } from '../../portal-labels';
+import { PagedView, PagerComponent } from '../pager';
 
 type Mode = 'all' | 'bronze';
 
@@ -21,7 +22,7 @@ interface Dialog {
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './agencies.html',
   styles: `
     .sub-heading { font-weight: 600; margin-bottom: 0; }
@@ -53,6 +54,8 @@ export class AgenciesPage {
       [a.UserId, a.UserName, a.SpocName, a.MobileNo, a.Email, a.Address, a.IdStatus].some((v) => (v ?? '').toLowerCase().includes(s)),
     );
   });
+  /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
+  protected readonly view = new PagedView(() => this.filtered());
 
   constructor() {
     // Message of the form page after creating an agency.

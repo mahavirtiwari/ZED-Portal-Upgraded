@@ -1,10 +1,11 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService, ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
+import { ClientPager, PagerComponent } from '../pager';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -23,7 +24,7 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './monitoring.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -55,37 +56,24 @@ export class MonitoringPage {
         { status: 4, label: 'NON-CONFORMANCE', count: 'Nc' },
         { status: 7, label: 'REJECTED', count: 'Rj' },
       ];
-  protected readonly pageSizes = [10, 20, 50, 100];
   protected readonly extendDays = Array.from({ length: 30 }, (_, i) => i + 1);
 
   protected readonly certification = signal('');
   protected readonly status = signal<number | null>(null);
   protected readonly ncClosingDate = signal('');
-  protected readonly search = signal('');
-  protected readonly all = signal<Row[]>([]);
+  /** The units of the chosen list, paged and searched in the browser as on the old page. */
+  protected readonly pager = new ClientPager<Row>();
+  protected readonly search = this.pager.search;
+  protected readonly page = this.pager.page;
   protected readonly counts = signal<MonitoringCounts>(NO_COUNTS);
   // The server says so with each list; until the first list (no certification level chosen yet), the role decides,
   // as the old page's header did (MasterAdmin: "Assessment Dates / NC Closure Date").
   protected readonly canManage = signal(inject(AuthService).currentUser()?.roleId === 7);
-  protected readonly pageSize = signal(10);
-  protected readonly pageNo = signal(1);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
   protected readonly action = signal<Action | null>(null);
   protected readonly actionError = signal('');
-
-  /** The old page matched the search text anywhere in the row (JSON.stringify(row).indexOf(text)). */
-  protected readonly filtered = computed(() => {
-    const text = this.search().trim();
-    return text ? this.all().filter((r) => JSON.stringify(r).includes(text)) : this.all();
-  });
-  protected readonly lastPage = computed(() => Math.max(1, Math.ceil(this.filtered().length / this.pageSize())));
-  protected readonly pages = computed(() => Array.from({ length: this.lastPage() }, (_, i) => i + 1));
-  protected readonly page = computed(() => {
-    const start = (this.pageNo() - 1) * this.pageSize();
-    return this.filtered().slice(start, start + this.pageSize());
-  });
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
@@ -103,17 +91,7 @@ export class MonitoringPage {
   }
 
   protected setSearch(value: string): void {
-    this.search.set(value);
-    this.pageNo.set(1);
-  }
-
-  protected setPageSize(value: number | string): void {
-    this.pageSize.set(Number(value));
-    this.pageNo.set(1);
-  }
-
-  protected goTo(p: number | string): void {
-    this.pageNo.set(Math.min(Math.max(1, Number(p)), this.lastPage()));
+    this.pager.setSearch(value);
   }
 
   protected async load(): Promise<void> {
@@ -129,10 +107,9 @@ export class MonitoringPage {
           ncClosingDate: !this.consultancy && this.status() === 4 ? this.ncClosingDate() || null : null,
         }),
       );
-      this.all.set(data.units ?? []);
+      this.pager.set(data.units ?? []);
       this.counts.set(data.counts ?? NO_COUNTS);
       this.canManage.set(!!data.canManage);
-      this.pageNo.set(1);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
