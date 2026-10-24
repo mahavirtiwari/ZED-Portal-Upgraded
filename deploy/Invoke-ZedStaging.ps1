@@ -358,6 +358,23 @@ try {
                     if ($v -match 'loginzed\.msme\.gov\.in') { Write-Bad "$s.$($p.Name) names the production host" }
                 }
             }
+            # What the portals check at startup outside Development (Zed.Core ZedConfigurationCheck): a missing one
+            # stops that portal with HTTP 500.30. Values merge as the installer does: Common, Portals, then the portal.
+            Write-Step 'Settings the portals need at startup'
+            foreach ($portal in 'Main', 'Consultancy', 'Surveillance') {
+                $merged = @{}
+                foreach ($s in 'Common', 'Portals', $portal) { foreach ($p in (Get-Section $json $s)) { $merged[$p.Name] = [string]$p.Value } }
+                $required = @('Email__Profiles__Default__Host', 'Email__Profiles__Default__From')
+                $captcha = -not ($merged['Recaptcha__Enabled'] -eq 'false')
+                if ($captcha) { $required += 'Recaptcha__SiteKey', 'Recaptcha__SecretKey' }
+                if ($portal -eq 'Main') {
+                    $required += 'CcAvenue__MerchantId', 'CcAvenue__AccessCode', 'CcAvenue__WorkingKey', 'CcAvenue__ReconciliationWorkingKey',
+                        'Udyam__AccessKey', 'ProteanGstin__Url', 'ProteanGstin__UserId', 'ProteanGstin__Password'
+                    if ($captcha) { $required += 'Recaptcha__AppSecretKey' }
+                }
+                $missing = @($required | Where-Object { [string]::IsNullOrWhiteSpace($merged[$_]) })
+                if ($missing.Count) { Write-Bad "$portal portal will not start without: $($missing -join ', ')" } else { Write-Ok "$portal portal: all set" }
+            }
             Write-Step 'Empty values (fill in, or leave empty where docs/STAGING.md 4 allows it)'
             $empty = foreach ($s in $sections) { Get-Section $json $s | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } | ForEach-Object { "$s.$($_.Name)" } }
             if ($empty) { $empty | ForEach-Object { Write-Host "    --  $_" -ForegroundColor Yellow } } else { Write-Ok 'none' }

@@ -209,9 +209,15 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    Zed.Jobs (the prefixed databases of section 3.0, the app pool's own Windows login, no passwords), with
    `Database__Prefix=ZEDV4_`; change them only if the databases get other names. Also: an SMTP account for `Email__Profiles__Default__*` (mail still only reaches dev.zed@qcin.org); a **separate
    reCAPTCHA key pair registered for zedv3.qci.org.in** (or `Recaptcha__Enabled=false`, which leaves the captcha
-   untested); **CCAvenue test** merchant and keys only (ask CCAvenue to allow the staging return URLs); Protean and
-   Twilio test credentials or none. `Portal__EnvironmentLabel=STAGING` shows a STAGING banner and title prefix and
-   tells search engines not to index the site. The hosts refuse to start in Staging without a mail redirect.
+   untested); **CCAvenue test** merchant and keys only (ask CCAvenue to allow the staging return URLs); the
+   **Udyam access key** (`Udyam__AccessKey`); Protean test credentials; Twilio test credentials or none.
+   `Portal__EnvironmentLabel=STAGING` shows a STAGING banner and title prefix and tells search engines not to index
+   the site. The hosts refuse to start in Staging without a mail redirect.
+   **Required at startup** (otherwise HTTP 500.30, the reason in the Application event log): every portal needs
+   `Email__Profiles__Default__Host` and `__From`, and with the captcha on `Recaptcha__SiteKey` and `__SecretKey`; the
+   main portal also needs the four `CcAvenue__MerchantId/AccessCode/WorkingKey/ReconciliationWorkingKey`,
+   `Udyam__AccessKey`, `ProteanGstin__Url/UserId/Password` and, with the captcha on, `Recaptcha__AppSecretKey`.
+   `Invoke-ZedStaging.ps1 -Step Settings` checks them. Empty values are not set on the app pools (IIS refuses them).
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:
