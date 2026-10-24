@@ -23,4 +23,5 @@ signing.properties
 
 # Metro
 .metro-health-check*
+.metro-cache/
 *.jsbundle

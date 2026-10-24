@@ -69,6 +69,11 @@ cd mobile/apps/msme/android
 ./gradlew installDebug -PreactNativeArchitectures=x86_64
 ```
 
+Disk use: Metro keeps its caches in `mobile/.metro-cache` (ignored), not in `%TEMP%`; keep Gradle's cache off the
+system drive with `GRADLE_USER_HOME` (this PC: `E:\DevCache\gradle`, SDK `E:\Android\Sdk`, AVDs `D:\.android\avd`).
+Build outputs (`android/app/build`, `android/.gradle`, `.cxx`, `node_modules/**/android/build`) can be deleted at any
+time; the next build recreates them (about 12 minutes for a release build here).
+
 The server is chosen at build time with `-PzedEnvironment=production|staging|local` (debug default `staging`,
 release default `production`; Android string resource `zed_environment`). `local` is the V4 MobileApi on this PC
 (below); debug builds allow plain http only to `10.0.2.2`/`localhost` (`src/debug/res/xml/network_security_config.xml`),
