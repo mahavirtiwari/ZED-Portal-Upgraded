@@ -185,6 +185,29 @@ public sealed class AssessmentSurveillanceTests : IDisposable
     }
 
     [Fact]
+    public async Task Master_admin_extends_the_nc_closure_date_from_the_rejected_tab_too()
+    {
+        // Rejected tab (status 7) only; the page offered "Extend NC Final Closure Date" on the NC and rejected tabs.
+        _s.Sql.Procs["SP_MONITORING_GET_LIST"] = args => FakeSql.Sets(
+            FakeSql.Arg(args, "Status") == "7" && FakeSql.Arg(args, "CertificationType") == "Silver"
+                ? [new { ZedId = Zed, Certification = "Silver", CertificationStatus = 17, NcCount = 2, NcFinalClosureDt = "October 30, 2026" }]
+                : [],
+            [new { NotStarted = 0, InProgress = 0, Qc = 0, Nc = 0, Rj = 1 }]);
+        var client = await _s.SignInAsync("MADMIN", 7);
+        var res = await client.PostAsJsonAsync("/api/staff/monitoring/extend-nc-closure", new { zedId = Zed, certification = "Silver", noOfDays = 5 });
+        res.EnsureSuccessStatusCode();
+        var call = Assert.Single(_s.Sql.Calls, c => c.Name == "SP_EXTEND_NC_CLOSURE_DATE").Args;
+        Assert.Equal(Zed, FakeSql.Arg(call, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(call, "CertificationType"));
+        Assert.Equal("5", FakeSql.Arg(call, "NoOfDays"));
+
+        // Step back stays on the NC tab.
+        var stepBack = await client.PostAsJsonAsync("/api/staff/monitoring/step-back-nc", new { zedId = Zed, certification = "Silver" });
+        Assert.Equal(HttpStatusCode.BadRequest, stepBack.StatusCode);
+        Assert.DoesNotContain(_s.Sql.Calls, c => c.Name == "SP_MOVING_ONE_STEP_BACK_OF_NC");
+    }
+
+    [Fact]
     public async Task Nc_raised_mail_has_the_surveillance_subject_and_no_msme_sign_in()
     {
         _record = Record(3);

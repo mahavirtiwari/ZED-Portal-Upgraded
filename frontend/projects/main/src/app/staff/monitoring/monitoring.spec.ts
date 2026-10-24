@@ -239,4 +239,31 @@ describe('MonitoringPage per system', () => {
     expect(row.textContent).not.toContain('Send Back to Agency');
     expect(el.querySelector('thead')!.textContent).toContain('Surveillance Dates');
   });
+  it('surveillance: Extend NC Final Closure Date on the REJECTED tab as well, step back only in NC', async () => {
+    const { el, settle, select } = await create('surveillance');
+    select.value = 'Silver';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/monitoring').flush({ units: [], counts, canManage: true });
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('REJECTED'))!).click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/monitoring' && r.params.get('status') === '7').flush({
+      units: [{ ZedId: 'ZEDMSME000001', Certification: 'Silver', CertificationStatus: 17, NcCount: 2, NcFinalClosureDt: 'October 30, 2026' }],
+      counts,
+      canManage: true,
+    });
+    await settle();
+    const row = el.querySelector('tbody tr')!;
+    expect(row.textContent).not.toContain('Step Back');
+    ([...row.querySelectorAll('button')].find((b) => b.textContent!.includes('Extend NC'))!).click();
+    await settle();
+    ([...el.querySelectorAll('.modal button')].find((b) => b.textContent!.trim() === 'SUBMIT') as HTMLButtonElement).click();
+    await settle();
+    const req = http.expectOne('/api/staff/monitoring/extend-nc-closure');
+    expect(req.request.body).toEqual({ zedId: 'ZEDMSME000001', certification: 'Silver', noOfDays: 1 });
+    req.flush({ message: 'NC final closure date extended.' });
+    await settle();
+    for (const r of http.match((r) => r.url === '/api/staff/monitoring')) r.flush({ units: [], counts, canManage: true });
+  });
 });

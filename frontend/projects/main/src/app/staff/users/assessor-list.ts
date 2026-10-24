@@ -3,8 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { PORTAL_SYSTEM } from '../../portal-system';
-import { PORTAL_LABELS } from '../../portal-labels';
+import { LABELS } from '../../portal-labels';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { AssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { ClientPager, PagerComponent } from '../pager';
 
@@ -21,7 +21,7 @@ import { ClientPager, PagerComponent } from '../pager';
         <div class="row">
           <div class="col-sm-12">
             <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-              <h3 class="registration-title">{{ labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
+              <h3 class="registration-title">{{ consultancy ? 'Consultants' : labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
               <div class="search-input" style="margin-left: auto">
                 <input type="text" class="form-control" style="display: inline; width: 100%" maxlength="50" aria-label="Search assessors"
                        [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
@@ -40,10 +40,18 @@ import { ClientPager, PagerComponent } from '../pager';
                   <tr class="btn-default text-center" style="font-size: 16px">
                     <th>S.No</th>
                     <th>Status</th>
-                    <th>{{ consultancy ? 'Type' : 'Assessor Type' }}</th>
-                    <th>{{ consultancy ? 'ID' : 'Assessor ID' }}</th>
-                    <th>Assessor Details</th>
-                    <th>{{ labels.agency }} Details</th>
+                    @if (consultancy) {
+                      <!-- ZEDCS_CONSULTANCY Frontend/User/AssessorList.cshtml -->
+                      <th>Consultant ID</th>
+                      <th>Consultant Details</th>
+                      <th>Consultant Organisation Details</th>
+                      <th>No. Of Consulting Completed</th>
+                    } @else {
+                      <th>Assessor Type</th>
+                      <th>Assessor ID</th>
+                      <th>Assessor Details</th>
+                      <th>{{ labels.agency }} Details</th>
+                    }
                     <th>Action(s)</th>
                   </tr>
                 </thead>
@@ -52,10 +60,16 @@ import { ClientPager, PagerComponent } from '../pager';
                     <tr class="filterClass">
                       <td><strong>{{ s.RowNumber }}</strong></td>
                       <td><strong>{{ s.IdStatus }}</strong></td>
-                      <td><strong>{{ consultancy ? 'Consultant' : s.AssessorType }}</strong></td>
+                      @if (!consultancy) {
+                        <td><strong>{{ s.AssessorType }}</strong></td>
+                      }
                       <td><strong>{{ s.UserId }}</strong></td>
                       <td class="word-break"><strong>{{ s.UserName }}</strong><br />{{ s.MobileNo }}<br />{{ s.Email }}<br />{{ s.Address }}</td>
                       <td><strong>{{ s.AgencyUserName }}</strong><br />{{ s.AgencyUserId }}</td>
+                      @if (consultancy) {
+                        <!-- The live page prints 0 for each milestone (no count is read). -->
+                        <td><strong>Milestone 1: 0</strong><br /><strong>Milestone 2: 0</strong><br /><strong>Milestone 3: 0</strong></td>
+                      }
                       <td class="text-center">
                         <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">View</a>
                         @if (s.IsActive) {
@@ -84,8 +98,9 @@ import { ClientPager, PagerComponent } from '../pager';
   styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class AssessorListPage {
-  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
-  protected readonly labels = PORTAL_LABELS;
+  private readonly system = inject(STAFF_SYSTEM);
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly labels = LABELS[this.system];
   private readonly api = inject(UsersApi);
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
 

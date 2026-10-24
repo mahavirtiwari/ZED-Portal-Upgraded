@@ -20,7 +20,8 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
  * <p>Consultancy ("Consultancy Monitoring"): Silver/Gold, tabs not started / in progress / quality check, milestone,
  * consultants and experts, BDS/HAP or progress-review dates; no NC closure filter and no master-admin actions (no NC
  * round; the step-back and send-back procedures are missing there). Surveillance ("Surveillance Monitoring"):
- * Surveillance No and surveillance dates; no duplicates column; no send back to the agency (procedure missing).</p>
+ * Surveillance No and surveillance dates; no duplicates column; "Extend NC Final Closure Date" also on the REJECTED tab,
+ * as that portal's page offered it; no send back to the agency (procedure missing).</p>
  */
 @Component({
   selector: 'zed-staff-monitoring',

@@ -1,3 +1,4 @@
+import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
 import { INCENTIVE_TYPES } from './schemes/incentives.api';
 
@@ -248,6 +249,9 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 ];
 
 export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
+
+/** The system of this build for the staff pages that differ per portal (a token, so specs can render each variant). */
+export const STAFF_SYSTEM = new InjectionToken<PortalSystem>('STAFF_SYSTEM', { providedIn: 'root', factory: () => PORTAL_SYSTEM });
 
 /** The menu of this build. */
 export const STAFF_MENU: StaffMenuItem[] = MENUS[PORTAL_SYSTEM];

@@ -47,22 +47,25 @@
             }
             @for (nc of ncTabs(); track nc) {
               <li class="nav-item" role="presentation">
-                <button class="nav-link" [class.active]="tab() === nc + 7" type="button" role="tab" [attr.aria-selected]="tab() === nc + 7" (click)="tab.set(nc + 7)">NC{{ nc }}</button>
+                <button class="nav-link" [class.active]="tab() === nc + 7" type="button" role="tab" [attr.aria-selected]="tab() === nc + 7" (click)="tab.set(nc + 7)">{{ surveillance ? 'NC ' + nc : 'NC' + nc }}</button>
               </li>
             }
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" [class.active]="tab() === 13" type="button" role="tab" [attr.aria-selected]="tab() === 13" (click)="tab.set(13)">Attendance</button>
-            </li>
-            @if (d.surveillance?.hasOriginal) {
+            @if (!surveillance) {
               <li class="nav-item" role="presentation">
-                <button class="nav-link" [class.active]="tab() === 14" type="button" role="tab" [attr.aria-selected]="tab() === 14" (click)="openOriginal()">Original Certification</button>
+                <button class="nav-link" [class.active]="tab() === 13" type="button" role="tab" [attr.aria-selected]="tab() === 13" (click)="tab.set(13)">Attendance</button>
               </li>
             }
           </ul>
 
           <div class="tab-content">
+            <!-- ================================================= surveillance: tabs 1-7 with the original certification -->
+            @if (surveillance && tab() <= 7) {
+              <zed-sa-surveillance-tab [tab]="tab()" [details]="d" [original]="original()" [admin]="isAdmin()" [review]="review()"
+                (preview)="openImage($event)" (remarks)="editSurveillanceRemarks($event)" (done)="reviewed($event)" />
+            }
+
             <!-- ================================================= overview -->
-            @if (tab() === 1) {
+            @if (tab() === 1 && !surveillance) {
               <div class="tab-pane fade show active" role="tabpanel">
                 <div class="row">
                   <div class="col-sm-12">
@@ -121,7 +124,7 @@
             }
 
             <!-- ================================================= assessment plan -->
-            @if (tab() === 2) {
+            @if (tab() === 2 && !surveillance) {
               <div class="tab-pane fade show active" role="tabpanel">
                 <div class="panel panel-default panel-black mt-4"><div class="panel-body">Assessment Plan</div></div>
                 @for (pl of d.sections; track t(pl, 'Id')) {
@@ -144,7 +147,7 @@
 
             <!-- ================================================= opening / closing meeting -->
             @for (m of [{ id: 3, title: 'OPEN MEETING', label: 'ASSESSOR REMARK', photo: 'Opening Meeting Photo:', meeting: d.openMeeting }, { id: 7, title: 'CLOSE MEETING', label: 'SITE ASSESSOR REMARK', photo: 'Closing Meeting Photo:', meeting: d.closeMeeting }]; track m.id) {
-              @if (tab() === m.id) {
+              @if (tab() === m.id && !surveillance) {
                 <div class="tab-pane fade show active" role="tabpanel">
                   <div class="panel panel-default panel-black mt-4"><div class="panel-body">{{ m.title }}</div></div>
                   <table class="table table-zed bg-white">
@@ -184,58 +187,8 @@
               }
             }
 
-            <!-- ================================================= surveillance: original certification on main -->
-            @if (tab() === 14) {
-              <div class="tab-pane fade show active" role="tabpanel">
-                @if (originalError()) { <div class="alert alert-warning" role="alert">{{ originalError() }}</div> }
-                @if (original(); as o) {
-                  <table class="table table-zed bg-white">
-                    <tbody>
-                      <tr><th style="width: 40%">ZEDID</th><td>{{ o.zedId }}</td></tr>
-                      <tr><th>Certification</th><td>{{ o.certification }}</td></tr>
-                      <tr><th>Mode of Assessment</th><td>{{ t(o.msme, 'ModeOfAssessment') }}</td></tr>
-                      <tr><th>Site Assessment Date</th><td>{{ t(o.msme, 'AssessmentDate') }}</td></tr>
-                      <tr><th>Site Assessment Completed On</th><td>{{ t(o.msme, 'CompletedOn') }}</td></tr>
-                      <tr><th>Agency Name</th><td>{{ t(o.msme, 'CertificationBodyUserId') }} - {{ t(o.msme, 'AgencyName') }}</td></tr>
-                      <tr><th>Site Assessor Name</th><td>{{ t(o.msme, 'SiteAssessorId') }} - {{ t(o.msme, 'SiteAssessorName') }}</td></tr>
-                      @if (t(o.msme, 'CoAssessorId')) { <tr><th>Co Assessor Name</th><td>{{ t(o.msme, 'CoAssessorId') }} - {{ t(o.msme, 'CoAssessorName') }}</td></tr> }
-                      @if (t(o.msme, 'SaAssessorRemarks')) { <tr><th>Assessor Final Remarks</th><td>{{ t(o.msme, 'SaAssessorRemarks') }}</td></tr> }
-                    </tbody>
-                  </table>
-                  <p class="sub-heading">PRODUCTS</p>
-                  <ul>@for (p of o.products; track $index) { <li>{{ t(p, 'ProductName') }} (Exported: {{ t(p, 'Exported') }})</li> }</ul>
-                  <p class="sub-heading">PARAMETERS</p>
-                  @for (s of o.sections; track $index) {
-                    <div class="panel panel-default panel-white m-0 mb-3">
-                      <div class="panel-body">
-                        <p class="sub-heading">{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</p>
-                        @for (r of originalRequirementsOf(s); track $index) {
-                          <p class="mb-1">Level {{ t(r, 'RequirementCode') }}: {{ t(r, 'SaConformance') || t(r, 'Conformance') }} — {{ t(r, 'SaAssessorRemarks') || t(r, 'AssessorRemarks') }}</p>
-                          @for (pp of requirementPhotos(r); track $index) {
-                            @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? 'Evidence'" width="80" /></button> }
-                          }
-                        }
-                      </div>
-                    </div>
-                  }
-                  <p class="sub-heading">SITE TOUR</p>
-                  @for (pp of o.siteTour; track $index) {
-                    @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="openImage(pp.url)"><img [src]="pp.url" [alt]="pp.name ?? 'Site Tour'" width="120" /></button> }
-                  }
-                  @for (m of [o.openMeeting, o.closeMeeting]; track $index) {
-                    @if (m) {
-                      <p class="sub-heading mt-3">{{ $index === 0 ? 'OPEN MEETING' : 'CLOSE MEETING' }}</p>
-                      <p>{{ m.comments }}</p>
-                    }
-                  }
-                } @else if (!originalError()) {
-                  <p>Loading…</p>
-                }
-              </div>
-            }
-
             <!-- ================================================= basic information -->
-            @if (tab() === 4) {
+            @if (tab() === 4 && !surveillance) {
               <div class="tab-pane fade show active" role="tabpanel">
                 <table class="table table-bordered table-zed bg-white">
                   <thead><tr><th>S.No</th><th>Description</th><th>Responses</th></tr></thead>
@@ -439,7 +392,7 @@
             }
 
             <!-- ================================================= site tour -->
-            @if (tab() === 5) {
+            @if (tab() === 5 && !surveillance) {
               <div class="tab-pane fade show active" role="tabpanel">
                 <div class="panel panel-default panel-black mt-4"><div class="panel-body">SITE TOUR</div></div>
                 <div class="row">
@@ -456,7 +409,7 @@
             }
 
             <!-- ================================================= parameters -->
-            @if (tab() === 6) {
+            @if (tab() === 6 && !surveillance) {
               <div class="tab-pane fade show active" role="tabpanel">
                 @for (s of d.sections; track t(s, 'Id')) {
                   <div class="panel panel-default panel-black mt-2">
@@ -663,7 +616,12 @@
                   <hr />
                   @for (s of rd?.sections ?? []; track $index) {
                     <div class="panel panel-default panel-black mt-4">
-                      <div class="panel-body">{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</div>
+                      <div class="panel-body">
+                        {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
+                        @if (surveillance && t(s, 'iButton')) {
+                          <span class="z-tooltip" style="float: right"><img src="Images/svgicons/info.svg" alt="Information" /><span class="tooltiptext left">{{ t(s, 'iButton') }}</span></span>
+                        }
+                      </div>
                     </div>
                     <table class="table table-bordered table-zed bg-white" style="margin-bottom: 0">
                       <thead><tr><th>Code</th><th>Requirement</th><th>Document Uploaded</th><th>Conformance (Yes/No)</th><th>Assessor Remark</th><th>MSME Comments</th></tr></thead>
@@ -679,7 +637,8 @@
                             <td style="padding: 0">
                               <table class="table table-striped">
                                 <tbody>
-                                  @for (p of evidencePhotosOf(r); track $index) {
+                                  <!-- The surveillance page showed no site assessment photos in the NC rounds. -->
+                                  @for (p of surveillance ? [] : evidencePhotosOf(r); track $index) {
                                     @if (p.url) {
                                       <tr><td class="text-center"><h5>{{ p.name }}</h5><button type="button" class="btn btn-link p-0" (click)="openImage(p.url)"><img [src]="p.url" height="60" alt="Evidence photo" /></button></td></tr>
                                     }
@@ -711,10 +670,10 @@
 
                   <div class="col-sm-12 text-center mt-3">
                     @if (rd?.assessorComments) {
-                      <div class="alert alert-success"><strong>Assessor Comments:</strong> {{ rd?.assessorComments }}</div>
+                      <div [class]="surveillance ? 'label-highlight label-highlight-assesor-remark' : 'alert alert-success'"><strong>Assessor Comments:</strong> {{ rd?.assessorComments }}</div>
                     }
                     @if (nc === 5 && n(msme(), 'SendBackStatus') === 1 && t(msme(), 'SendBackRemarks')) {
-                      <div class="alert alert-success"><strong>Agency Send Back Comments:</strong> {{ t(msme(), 'SendBackRemarks') }}</div>
+                      <div [class]="surveillance ? 'label-highlight label-highlight-assesor-remark' : 'alert alert-success'"><strong>Agency Send Back Comments:</strong> {{ t(msme(), 'SendBackRemarks') }}</div>
                     }
                     @if (review().editRemarks && rd?.commentsId) {
                       <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm me-2" (click)="editRemarks('nc-comments', rd?.commentsId, rd?.assessorComments)" />

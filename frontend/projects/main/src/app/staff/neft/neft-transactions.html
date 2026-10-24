@@ -14,60 +14,99 @@
         <div class="table-responsive">
           <table class="table table-zed table-bordered bg-white">
             <thead>
-              <tr>
-                @if (list === 'new') {
+              @if (consultancy) {
+                <!-- ZEDCS_CONSULTANCY Frontend/Neft/NewTransactions.cshtml and ApprovedTransactions.cshtml -->
+                <tr>
                   <th></th>
-                }
-                <th>ZED ID</th>
-                <th>Enterprise Name</th>
-                <th>Category Of Certificate</th>
-                <th>Name of the Certificate<br /><br />Certification Agency</th>
-                <th>Certificate Number<br /><br />Date Of Issue<br /><br />Validity</th>
-                <th>Expenditure Certificate<br /><br />Agency or Supplier</th>
-                <th>Invoice No.<br /><br />Invoice Bill date<br /><br />Amount Paid</th>
-                <th>Account No.<br /><br />IFSC Code</th>
-                <th>Branch Address</th>
-                @if (list === 'approved') {
-                  <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
-                }
-                @if (list !== 'new') {
-                  <th>Comments</th>
-                }
-              </tr>
+                  <th>ZED ID</th>
+                  <th>Plant Name</th>
+                  <th>TechnologyName</th>
+                  <th>Name Of The Manufacturer<br /><br />Make Or Model Name<br /><br />Agency or Supplier</th>
+                  <th>Amount Paid<br /><br />Eligible Amount</th>
+                  <th>Account No.<br /><br />IFSC Code</th>
+                  <th>Branch Address</th>
+                  @if (list !== 'new') {
+                    <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
+                    <th>Comments</th>
+                  }
+                </tr>
+              } @else {
+                <tr>
+                  @if (list === 'new') {
+                    <th></th>
+                  }
+                  <th>ZED ID</th>
+                  <th>Enterprise Name</th>
+                  <th>Category Of Certificate</th>
+                  <th>Name of the Certificate<br /><br />Certification Agency</th>
+                  <th>Certificate Number<br /><br />Date Of Issue<br /><br />Validity</th>
+                  <th>Expenditure Certificate<br /><br />Agency or Supplier</th>
+                  <th>Invoice No.<br /><br />Invoice Bill date<br /><br />Amount Paid</th>
+                  <th>Account No.<br /><br />IFSC Code</th>
+                  <th>Branch Address</th>
+                  @if (list === 'approved') {
+                    <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
+                  }
+                  @if (list !== 'new') {
+                    <th>Comments</th>
+                  }
+                </tr>
+              }
             </thead>
             <tbody>
               @for (t of view.page(); track t.TransactionId) {
-                <tr>
-                  @if (list === 'new') {
-                    <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
-                  }
-                  <td>
-                    @if (consultancy) {
-                      <a [routerLink]="tuLink(t)" title="Technology Upgradation verification">{{ t.ZedId }}</a>
-                      @if (t.TechnologyName) { <br /><small>{{ t.TechnologyName }}</small> }
-                    } @else {
-                      {{ t.ZedId }}
+                @if (consultancy) {
+                  <tr>
+                    <td>
+                      @if (list === 'new') {
+                        @if (t.VerificationStatus === 6) {
+                          <strong class="text-success">APPROVED</strong>
+                        }
+                        @if (t.VerificationStatus === 4) {
+                          <button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button><br /><br />
+                        }
+                      }
+                      <a style="width: 120px" [routerLink]="tuLink(t)" class="btn btn-primary mb-2">View Details</a>
+                      <a style="width: 180px" [href]="reportLink(t)" target="_blank" rel="noopener" class="btn btn-primary mb-2">Visit Report</a>
+                    </td>
+                    <td>{{ t.ZedId }}</td>
+                    <td>{{ t.PUnitName }}</td>
+                    <td>{{ t.TechnologyName }}</td>
+                    <td>{{ t.NameOfTheManufacturer }}<br />{{ t.MakeOrModelName }}<br />{{ t.AgencyOrSupplier }}</td>
+                    <td>{{ t.TotalPaidAfterQc }}<br /><br />{{ t.EligibleAmount }}<br /><br /></td>
+                    <td>{{ t.AccountNo }} {{ t.IfscCode }}</td>
+                    <td>{{ t.BranchAddress }}</td>
+                    @if (list !== 'new') {
+                      <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
+                      <td>{{ t.Comments }}</td>
                     }
-                  </td>
-                  <td>{{ t.PUnitName || t.EnterpriseName }}</td>
-                  <td>{{ t.CategoryOfCertificate }}</td>
-                  <td>{{ t.NameOfCertficate }}<br /><br />{{ t.CertificationAgency }}</td>
-                  <td>{{ t.CertficateNumber }}<br /><br />{{ t.DateOfIssue }}<br /><br />{{ t.ValidityOfCertificate }}</td>
-                  <td>{{ t.ExpenditureCertficate }}<br /><br />{{ t.AgencyOrSupplier }}</td>
-                  <td>{{ t.InvoiceNo }}<br /><br />{{ t.InvoiceBillDate }}<br /><br />{{ t.AmountPaid }}</td>
-                  <td>{{ t.AccountNo }}<br /><br />{{ t.IfscCode }}</td>
-                  <td>{{ t.BranchAddress }}</td>
-                  @if (list === 'approved') {
-                    <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
-                  }
-                  @if (list !== 'new') {
-                    <td>{{ t.Comments }}</td>
-                  }
-                </tr>
+                  </tr>
+                } @else {
+                  <tr>
+                    @if (list === 'new') {
+                      <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
+                    }
+                    <td>{{ t.ZedId }}</td>
+                    <td>{{ t.PUnitName || t.EnterpriseName }}</td>
+                    <td>{{ t.CategoryOfCertificate }}</td>
+                    <td>{{ t.NameOfCertficate }}<br /><br />{{ t.CertificationAgency }}</td>
+                    <td>{{ t.CertficateNumber }}<br /><br />{{ t.DateOfIssue }}<br /><br />{{ t.ValidityOfCertificate }}</td>
+                    <td>{{ t.ExpenditureCertficate }}<br /><br />{{ t.AgencyOrSupplier }}</td>
+                    <td>{{ t.InvoiceNo }}<br /><br />{{ t.InvoiceBillDate }}<br /><br />{{ t.AmountPaid }}</td>
+                    <td>{{ t.AccountNo }}<br /><br />{{ t.IfscCode }}</td>
+                    <td>{{ t.BranchAddress }}</td>
+                    @if (list === 'approved') {
+                      <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
+                    }
+                    @if (list !== 'new') {
+                      <td>{{ t.Comments }}</td>
+                    }
+                  </tr>
+                }
               } @empty {
                 @if (!loading()) {
                   <tr>
-                    <td [attr.colspan]="list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
+                    <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
                   </tr>
                 }
               }

@@ -157,8 +157,10 @@
                       @if (consultancy) { View Details } @else { Assessment<br /> Details }
                     </a>
                     @if (canManage() && !consultancy) {
-                      @if (status() === 4) {
+                      @if (status() === 4 || (surveillance && status() === 7)) {
                         <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'extend', unit: s, days: 1 })">Extend NC <br />Final Closure Date</button>
+                      }
+                      @if (status() === 4) {
                         <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'stepBack', unit: s })">Step Back to NC{{ num(s, 'NcCount') - 1 }}</button>
                       }
                       @if (canSendBack(s)) {

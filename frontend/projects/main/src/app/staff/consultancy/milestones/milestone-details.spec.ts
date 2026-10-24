@@ -35,12 +35,14 @@ function details(overrides: Partial<MilestoneDetails> = {}): MilestoneDetails {
     closeMeetings: [],
     siteExterior: [],
     siteTour: [
-      { id: 1, name: 'Shop floor', url: FILES + 'consultancymobileapi/SaPhotos/ZEDMSME000836/Silver/SiteTour/1.jpg', createdDate: null, ncCount: 1 },
-      { id: 2, name: 'Foreign', url: null, createdDate: null, ncCount: 1 },
+      { id: 1, name: 'Shop floor', url: FILES + 'consultancymobileapi/SaPhotos/ZEDMSME000836/Silver/SiteTour/1.jpg', createdDate: null, ncCount: 1, assessorId: null },
+      { id: 2, name: 'Foreign', url: null, createdDate: null, ncCount: 1, assessorId: null },
     ],
     selfies: [],
     attendance: [],
     attendanceConsultants: [],
+    locations: [],
+    zedLocation: null,
     permissions: {
       canEdit: true, editableFields: ['BaselineRemarks', 'EstimatedTimeInDays', 'HActionPlanRemarks', 'Intervention', 'InterventionRemarks'],
       canEditBullets: true, canConsultantFinalSubmit: true, canCoFinalSubmit: false, canSendBack: false, canReject: false,
@@ -63,8 +65,14 @@ describe('MilestoneDetailsPage', () => {
 
   function button(label: string): HTMLInputElement | HTMLButtonElement | undefined {
     return Array.from(el.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input[type=button], button')).find(
-      (b) => (b instanceof HTMLInputElement ? b.value : b.textContent?.trim()) === label,
+      (b) => (b instanceof HTMLInputElement ? b.value : b.textContent?.trim() || b.getAttribute('aria-label')) === label,
     );
+  }
+
+  /** Opens a section of the parameters accordion. */
+  async function expand(section: string) {
+    Array.from(el.querySelectorAll<HTMLElement>('.section-toggle')).find((h) => h.textContent?.includes(section))!.click();
+    await settle();
   }
 
   async function tab(label: string) {
@@ -111,8 +119,12 @@ describe('MilestoneDetailsPage', () => {
   it('edits an allow-listed requirement field and reloads', async () => {
     await open(details());
     await tab('Parameters');
-    // Progress review columns are not shown (or editable) in milestone 1.
-    expect(el.textContent).not.toContain('Progress Review 1 Remarks');
+    // The accordion starts closed.
+    expect(el.querySelector('[data-requirement]')).toBeNull();
+    await expand('Leadership');
+    expect(el.textContent).toContain('Milestone 1 : Basic Diagnostic Study');
+    // Progress reviews are not shown before the section reaches milestone 2.
+    expect(el.textContent).not.toContain('Progress Review 1');
     el.querySelector<HTMLInputElement>('input[aria-label="Edit Baseline Diagnostic Remarks"]')!.click();
     await settle();
     type('textarea', 'new remarks');
@@ -132,9 +144,10 @@ describe('MilestoneDetailsPage', () => {
   it('adds and deletes bullets', async () => {
     await open(details());
     await tab('Parameters');
+    await expand('Leadership');
     Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).filter((b) => b.value === 'Add More')[1].click();
     await settle();
-    type('input[type=text]', 'plan A');
+    type('textarea', 'plan A');
     await settle();
     button('UPDATE')!.click();
     await settle();
@@ -205,9 +218,65 @@ describe('MilestoneDetailsPage', () => {
     const perms = { canEdit: false, editableFields: [], canEditBullets: false, canConsultantFinalSubmit: false, canCoFinalSubmit: false, canSendBack: false, canReject: false };
     await open(details({ party: 'Viewer', permissions: perms, requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '1', Editable: false, Photos: [] }], bullets: [] }));
     await tab('Parameters');
+    await expand('Leadership');
     expect(button('EDIT')).toBeUndefined();
     expect(button('Add More')).toBeUndefined();
     await tab('Closing Meeting');
     expect(button('Final Submit')).toBeUndefined();
+  });
+
+  it('shows the overview per milestone and the locations', async () => {
+    await open(details({
+      milestones: [
+        { NcCount: 1, ZedId: 'ZEDMSME000836', PUnitName: 'ACME', Certification: 'Silver', LastestCertification: 'Bronze', BdsFromDate: 'May 1, 2025', CoAssessorId: 'ZEDCC1019', CoAssessorName: 'Co One', SiteAssessorId: 'ZEDCC0015', SiteAssessorName: 'Lead' },
+        { NcCount: 2, BdsFromDate: 'June 1, 2025', SiteAssessorId: 'ZEDCC0015', SiteAssessorName: 'Lead' },
+      ],
+      locations: [{ SaLatitude: '28.6', SaLongitude: '77.2' }],
+      zedLocation: { ZedSaLatitude: '28.5', ZedSaLongitude: '77.1' },
+    }));
+    expect(el.textContent).toContain('Existing Level of Certification');
+    expect(el.textContent).toContain('BDSR From: May 1, 2025');
+    expect(el.textContent).toContain('Milestone 1 Co-consultant Name & ID');
+    expect(el.textContent).toContain('ZEDCC1019 - Co One');
+    expect(el.textContent).toContain('PR 1 From: June 1, 2025');
+    expect(el.textContent).not.toContain('Milestone 2 Co-consultant');
+    expect(el.textContent).not.toContain('Milestone 3 Date');
+    expect(el.textContent).toContain('Location-ZED Certification');
+    const maps = Array.from(el.querySelectorAll<HTMLAnchorElement>('a[target=_blank]')).map((a) => a.getAttribute('href'));
+    expect(maps).toEqual(['https://www.google.com/maps?q=28.5,77.1', 'https://www.google.com/maps?q=28.6,77.2']);
+  });
+
+  it('shows the basic information by section and milestone', async () => {
+    await open(details({ basicInformation: [{ NcCount: 1, NumOfAccedents: '2', ElectriUnit: '500', TurnOver: '10 Cr' }] }));
+    await tab('Basic Information');
+    expect(el.textContent).toContain('Occupational (Workplace) Safety');
+    expect(el.textContent).toContain('Financial Performance (Previous Financial Year)');
+    expect(el.textContent).toContain('Electrical');
+    const value = (label: string) => el.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)?.value;
+    expect(value('No. of accidents (incl. fatalities & disabilities caused, if any)')).toBe('2');
+    expect(value('Turnover')).toBe('10 Cr');
+  });
+
+  it('edits the remarks of a meeting the server marks editable', async () => {
+    const meeting = { id: 7, ncCount: 1, comments: 'Opening held', photos: [], participants: [{ Name: 'Owner', Designation: 'MD' }], editable: true };
+    await open(details({ openMeetings: [meeting], closeMeetings: [{ ...meeting, id: 8, editable: false }] }));
+    await tab('Closing Meeting');
+    expect(button('Edit Remarks')).toBeUndefined();
+    await tab('Opening Meeting');
+    expect(el.textContent).toContain('1. Owner');
+    button('Edit Remarks')!.click();
+    await settle();
+    expect(el.querySelector<HTMLTextAreaElement>('#milestoneDialogText')!.value).toBe('Opening held');
+    type('#milestoneDialogText', 'Opening held with the owner');
+    await settle();
+    button('UPDATE')!.click();
+    await settle();
+    const req = http.expectOne(API + '/meetings/7/remarks');
+    expect(req.request.body).toEqual({ remarks: 'Opening held with the owner' });
+    req.flush({ message: 'Remarks updated.' });
+    await settle();
+    http.expectOne(API).flush(details());
+    await settle();
+    expect(el.textContent).toContain('Remarks updated.');
   });
 });

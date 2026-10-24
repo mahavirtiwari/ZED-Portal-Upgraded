@@ -187,6 +187,10 @@ describe('SaAllotmentPage (surveillance)', () => {
     button(el, 'ALLOT')!.click();
     await settle(fixture);
     expect(el.textContent).toContain('Original Lead');
+    // One "Assessor" and no Co Assessor choice, as on the surveillance page.
+    expect(el.querySelector('label[for=SiteAssessorId]')!.textContent).toContain('Assessor');
+    expect(el.querySelector('label[for=SiteAssessorId]')!.textContent).not.toContain('Lead');
+    expect(el.querySelector('#CoAssessorId')).toBeNull();
     choose(el, '#FinalSaDate', inDays(1));
     choose(el, '#SiteAssessorId', 'ASR1');
     choose(el, '#MeetingLink', 'javascript:alert(1)');
@@ -202,6 +206,7 @@ describe('SaAllotmentPage (surveillance)', () => {
     const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/site-assessment/allotments');
     expect(req.request.body.meetingLink).toBe('https://meet.example/abc');
     expect(req.request.body.modeOfAssessment).toBe('Onsite Assessment');
+    expect(req.request.body.coAssessorId).toBeNull();
     req.flush({ message: 'ok' });
     await settle(fixture);
     http.expectOne('/api/staff/site-assessment/allotments').flush({ units, assessors });

@@ -53,14 +53,24 @@ public sealed class MilestoneReviewTests : IDisposable
         };
         q[MilestoneFields.TrainingSql] = args => FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "Id") == "31"
             ? [new { Id = 31L, NcCount = 1, TrainingType = "ZedTraining", AssessorId = Lead }] : [];
+        // Meeting 1 is milestone 1's opening meeting, 2 its closing meeting, 3 an opening meeting of milestone 2.
+        q[MilestoneFields.MeetingSql] = args => FakeSql.Arg(args, "ZedId") != Zed ? [] : FakeSql.Arg(args, "Id") switch
+        {
+            "1" => [new { Id = 1L, NcCount = 1, MeetingType = "Open Meeting" }],
+            "2" => [new { Id = 2L, NcCount = 1, MeetingType = "Close Meeting" }],
+            "3" => [new { Id = 3L, NcCount = 2, MeetingType = "Open Meeting" }],
+            _ => [],
+        };
 
         _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
-            [new { ZedId = Zed, Certification = "Silver", NcCount = 1, CertificationStatus = _status, PUnitName = "ACME", Password = "secret", BdsFromDate = "May 1, 2025" }],
+            [new { ZedId = Zed, Certification = "Silver", NcCount = 1, CertificationStatus = _status, PUnitName = "ACME", Password = "secret", BdsFromDate = "May 1, 2025", CoAssessorName = "CO-CONSULTANT" }],
             [], [],
             [new { Id = 41L, SectionCode = "1", SectionName = "Leadership", NcCount = 1 }, new { Id = 42L, SectionCode = "2", SectionName = "Quality", NcCount = 1 }],
             [new { Id = 11L, SectionCode = "1", RequirementCode = "1", RequirementId = "101", BaselineRemarks = "old", ProgressReviewRemarks2 = (string?)null },
              new { Id = 12L, SectionCode = "2", RequirementCode = "1", RequirementId = "102", BaselineRemarks = "b" }],
-            [], [], [], [], [], [], [], [], [], [], [], [], [], [], [],
+            [], [], [], [],
+            [new { SaLatitude = "28.6", SaLongitude = "77.2", Latitude = "1" }],
+            [], [], [], [], [], [], [], [], [], [],
             [new { ConsultantId = Lead, MileStoneNo = 1, LoginPhotoId1 = "77", LoginPhotoId = "https://loginzed.msme.gov.in/consultancymobileapi/Attendance/" + Zed + "/Silver/77.jpg" }],
             [new { ConsultantId = Lead, AssessorType = "Consultant" }]);
         _host.Sql.Procs["SP_ASSESSMENT_SA_DETAILS"] = _ => FakeSql.Sets(
@@ -94,6 +104,7 @@ public sealed class MilestoneReviewTests : IDisposable
     [
         "SP_ASSESSMENT_RA_FINAL_SUBMIT", "SP_MONITORING_RA_FINAL_SUBMIT", "SP_MONITORING_SEND_BACK_TO_ASSESSOR", "SP_MONITORING_REJECT_FINAL_SUBMIT",
         "SP_MONITORING_REJECT_CERTIFICATION", "SP_CONSULTANCY_INSERT_BULLETS", "SP_CONSULTANCY_UPDATE_COLUMN_VALUE",
+        "SP_MONITORING_RA_UPDATE_AGENCY_REMARKS",
     ];
 
     private bool NothingWritten() =>
@@ -123,6 +134,14 @@ public sealed class MilestoneReviewTests : IDisposable
         Assert.StartsWith("/api/consultancy/milestones/ZEDMSME000836/Silver/files/consultancymobileapi/Attendance/",
             json.GetProperty("attendance")[0].GetProperty("LoginPhotoUrl").GetString());
         Assert.Equal(JsonValueKind.Null, json.GetProperty("siteTour")[0].GetProperty("url").ValueKind);
+        // The overview: the co-consultant's name and the consultants' location (the unit's ZED location set is absent here).
+        Assert.Equal("CO-CONSULTANT", json.GetProperty("milestones")[0].GetProperty("CoAssessorName").GetString());
+        var location = json.GetProperty("locations")[0];
+        Assert.Equal("28.6", location.GetProperty("SaLatitude").GetString());
+        Assert.False(location.TryGetProperty("Latitude", out _));
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("zedLocation").ValueKind);
+        // The lead edits the opening meeting's remarks of the current milestone.
+        Assert.True(json.GetProperty("openMeetings")[0].GetProperty("editable").GetBoolean());
 
         // The procedures get the milestone (DA: @Milestone, SA: @MileStone, as declared in ZED_CONSULTANT).
         Assert.Equal("1", FakeSql.Arg(CallsTo("SP_ASSESSMENT_DA_DETAILS").Single(), "Milestone"));
@@ -251,6 +270,51 @@ public sealed class MilestoneReviewTests : IDisposable
         // A CO without the site verification sub-role does not review.
         var finOnly = await As(Co, UserRole.Agency, [SubRoles.FinancialVerification]);
         Assert.Equal(HttpStatusCode.Forbidden, (await finOnly.PostAsJsonAsync(Base + "/send-back", new { remarks = "x" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Meeting_remarks_go_through_the_remarks_procedure_for_the_lead_and_the_co()
+    {
+        var lead = await As(Lead);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = " Opening done " })).StatusCode);
+        var call = CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS").Single();
+        Assert.Equal("Meetings", FakeSql.Arg(call, "TableName"));
+        Assert.Equal("1", FakeSql.Arg(call, "Id"));
+        Assert.Equal("Opening done", FakeSql.Arg(call, "Remarks"));
+        Assert.Equal(Zed, FakeSql.Arg(call, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(call, "CertificationType"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = " " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = new string('x', 2001) })).StatusCode);
+        // Another milestone's meeting, another unit's meeting.
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Base + "/meetings/3/remarks", new { remarks = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Base + "/meetings/4/remarks", new { remarks = "x" })).StatusCode);
+        // Co-consultants did not edit meetings.
+        var coConsultant = await As(CoConsultant);
+        Assert.Equal(HttpStatusCode.Forbidden, (await coConsultant.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = "x" })).StatusCode);
+        var page = await coConsultant.GetFromJsonAsync<JsonElement>(Base);
+        Assert.False(page.GetProperty("openMeetings")[0].GetProperty("editable").GetBoolean());
+        Assert.Single(CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS"));
+    }
+
+    [Fact]
+    public async Task The_closing_meeting_remarks_are_the_leads_at_13_and_the_cos_at_15()
+    {
+        _status = 9;
+        var lead = await As(Lead);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = "open" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await lead.PostAsJsonAsync(Base + "/meetings/2/remarks", new { remarks = "close" })).StatusCode);
+        _status = 13;
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/meetings/2/remarks", new { remarks = "close" })).StatusCode);
+
+        var co = await As(Co, UserRole.Agency);
+        Assert.Equal(HttpStatusCode.Forbidden, (await co.PostAsJsonAsync(Base + "/meetings/2/remarks", new { remarks = "co" })).StatusCode);
+        _status = 15;
+        Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync(Base + "/meetings/2/remarks", new { remarks = "co" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await lead.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = "late" })).StatusCode);
+        var admin = await As("MADMIN", UserRole.MasterAdmin);
+        Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = "x" })).StatusCode);
+        Assert.Equal(3, CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS").Count());
     }
 
     // ------------------------------------------------------------------ consultant final submit

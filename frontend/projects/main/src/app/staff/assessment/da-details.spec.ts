@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { ASSESSMENT_SYSTEM } from './assessment-shared';
 import { DaDetails } from './assessment.api';
 import { DaDetailsPage } from './da-details';
 import { NO_REVIEW } from '../monitoring/review.api';
@@ -296,5 +297,46 @@ describe('DaDetailsPage', () => {
     flushConfig();
     http.expectNone((r) => r.url.startsWith('/api/staff/assessment'));
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Invalid request.');
+  });
+});
+
+describe('DaDetailsPage (surveillance ESG tab)', () => {
+  it('numbers the ESG questions and the tabs as the surveillance page did', async () => {
+    await TestBed.configureTestingModule({
+      imports: [DaDetailsPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ASSESSMENT_SYSTEM, useValue: 'surveillance' }],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(DaDetailsPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    const settle = async () => {
+      fixture.detectChanges();
+      await new Promise((r) => setTimeout(r));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    fixture.componentRef.setInput('zedId', 'ZEDMSME000001');
+    fixture.componentRef.setInput('certification', 'Bronze');
+    await settle();
+    for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '' });
+    http.expectOne(BASE).flush(
+      details({
+        esgCheckList: [
+          { Code: 'E1', CheckListType: 'ESG', Question: 'Waste segregated?', Answer: 'Yes' },
+          { Code: 'S1', CheckListType: 'SOCIAL/OHS', Question: 'First aid kit?', Answer: 'No' },
+        ],
+      }),
+    );
+    await settle();
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.nav-link')).find((b) => b.textContent?.trim() === 'Esg Compliance')!.click();
+    await settle();
+
+    expect(el.querySelector('.numberCircle')!.textContent!.trim()).toBe('3');
+    const [esg, social] = Array.from(el.querySelectorAll('table'));
+    expect(Array.from(esg.querySelectorAll('th')).map((th) => th.textContent!.trim())[0]).toBe('S.No');
+    expect(esg.querySelector('tbody td')!.textContent!.trim()).toBe('E1');
+    expect(social.querySelector('tbody td')!.textContent!.trim()).toBe('S1');
+    expect(Array.from(el.querySelectorAll('.panel-black')).map((p) => p.textContent!.trim())).toEqual(['ESG Check List', 'Social/OHS Check List']);
+    http.verify();
   });
 });

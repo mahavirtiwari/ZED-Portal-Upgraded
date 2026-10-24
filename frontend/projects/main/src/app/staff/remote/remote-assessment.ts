@@ -7,7 +7,7 @@ import { num, text } from '../assessment/assessment-shared';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
 
-export type RemoteTab = 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting';
+export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting';
 
 export const TABS: { id: RemoteTab; no: number; title: string }[] = [
   { id: 'overview', no: 1, title: 'Assessment Overview' },
@@ -16,6 +16,34 @@ export const TABS: { id: RemoteTab; no: number; title: string }[] = [
   { id: 'siteTour', no: 2, title: 'Site Tour' },
   { id: 'parameters', no: 5, title: 'Parameters' },
   { id: 'closeMeeting', no: 6, title: 'Closing Meeting' },
+];
+
+/** Surveillance (that portal's Remote/Index.cshtml): an Instructions tab first, the site tour as "Assessment Evidence". */
+export const SURVEILLANCE_TABS: { id: RemoteTab; no: number; title: string }[] = [
+  { id: 'instructions', no: 1, title: 'Instructions' },
+  { id: 'overview', no: 2, title: 'Assessment Overview' },
+  { id: 'openMeeting', no: 3, title: 'Opening Meeting' },
+  { id: 'basicInfo', no: 4, title: 'Basic Info' },
+  { id: 'siteTour', no: 5, title: 'Assessment Evidence' },
+  { id: 'parameters', no: 6, title: 'Parameters' },
+  { id: 'closeMeeting', no: 7, title: 'Closing Meeting' },
+];
+
+/** The Instructions tab of the surveillance page, word for word. */
+export const SURVEILLANCE_INSTRUCTIONS: readonly string[] = [
+  'Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.',
+  'Each certified MSME must undergo Two Surveillance Assessments within a Certification cycle of three years.',
+  'MSMEs that upgrade from Silver to Gold Certification during the certification cycle will not require to undergo Surveillance Assessments for the previous level.',
+  'The Certification shall be suspended/withdrawn if the MSME fails to apply for Surveillance Assessments or the MSME doesn’t successfully completes the Surveillance Assessments.',
+  'In the cases of Withdrawal, the MSME will have to apply a fresh by paying the entire Assessment/ Certification Fee.',
+  'Surveillance Assessment Fee for Silver and Gold Certifications are is Rs.10,000/- and Rs.20,000/-, respectively.',
+  'The MSME shall require to pay the beneficiary contribution in advance (as applicable) at the beginning of each Surveillance Assessment.',
+  'MSMEs will be eligible for the subsidies as specified in ZED Scheme Guidelines for Surveillance Assessment.',
+  'Remote Surveillance Assessment will be conducted by Assessor(s) as allocated by empaneled Assessment Agency.',
+  'A certificate and report will be provided to applicant after successful completion of Surveillance Assessment.',
+  'The Assessment Fee mentioned in the User Manual and at other relevant sources, are all inclusive and are required to be paid online through the ZED portal. MSME shall not pay any other amount to anyone.',
+  'MSME must download ZED MSME mobile application available on Google Play Store (Android) and App Store (iPhone) on or before the day of Surveillance Assessment.',
+  'A Weblink will be provided by the Assessment Agency to conduct the remote assessment. MSME must join the meeting by clicking on the link on the day of assessment.',
 ];
 
 /** Basic Info rows: DA answer column, remote answer column, Yes/No choice. */
@@ -46,7 +74,8 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
  * MSME's video. Tabs and pop-ups are signal-controlled markup; nothing from the server is rendered as HTML.
  * Surveillance (the API sends usesMeetingLink): no video; "Join Meeting" opens the agency's meeting link in a new tab,
  * the opening/closing meeting photos and the assessor's selfie are uploaded JPEG files, the closing meeting takes up
- * to 6 recording links, and parameter evidence comes from the site tour photos of the app.
+ * to 6 recording links, and parameter evidence comes from the site tour photos of the app; the page opens on that
+ * portal's Instructions tab and calls the site tour "Assessment Evidence".
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
@@ -63,7 +92,7 @@ export class RemoteAssessmentPage {
 
   protected readonly t = text;
   protected readonly n = num;
-  protected readonly tabs = TABS;
+  protected readonly instructions = SURVEILLANCE_INSTRUCTIONS;
   protected readonly basicInfo = BASIC_INFO;
 
   protected readonly data = signal<RemoteDetails | null>(null);
@@ -98,7 +127,8 @@ export class RemoteAssessmentPage {
   protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
   protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;
   protected recordingLink = '';
-  protected readonly currentTab = computed(() => TABS.find((x) => x.id === this.tab())!);
+  protected readonly tabs = computed(() => (this.meetingMode() ? SURVEILLANCE_TABS : TABS));
+  protected readonly currentTab = computed(() => this.tabs().find((x) => x.id === this.tab()) ?? this.tabs()[0]);
   protected readonly daSelfies = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'Selfie'));
   protected readonly daSiteExterior = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'SiteExteriorPhotos'));
   protected readonly timerText = computed(() => {
@@ -125,7 +155,9 @@ export class RemoteAssessmentPage {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
+      const first = this.data() === null;
       this.data.set(await firstValueFrom(this.api.details(this.zedId, this.certification)));
+      if (first && this.meetingMode()) this.tab.set('instructions');
       this.error.set('');
     } catch (err) {
       this.error.set(apiErrorMessage(err));

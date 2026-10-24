@@ -123,15 +123,22 @@ export interface SaSurveillance {
   meetingLink: string | null;
   recordingLinks: { url: string; createdDate: string | null }[];
   hasOriginal: boolean;
+  /** Id, SectionCode, SectionName, AllotedAssessorId, AllotedAssessorName, AssessorRank: the surveillance assessment plan. */
+  planSections?: Row[] | null;
 }
 
-/** The original certification assessment on main, shown read-only on the surveillance review page. */
+/**
+ * The original certification assessment on main, shown read-only on the surveillance review page: its unit and
+ * certification details, its parameters (the page's skeleton; SurveMandatories decides what non-admins see) and, for
+ * MasterAdmin, its "ONSITE" plan, meetings, site tour, selfies, site exterior photos and site assessment results.
+ */
 export interface SaOriginal {
   zedId: string;
   certification: string;
   msme: Row;
   products: Row[];
   rawMaterials: Row[];
+  /** With AllotedAssessorId, AllotedAssessorName, AssessorRank and SurveMandatories. */
   sections: Row[];
   /** With Photos. */
   requirements: Row[];
@@ -144,6 +151,8 @@ export interface SaOriginal {
   siteTour: SaPhoto[];
   openMeeting: SaMeeting | null;
   closeMeeting: SaMeeting | null;
+  /** Latitude, Longitude, SaLatitude, SaLongitude of the original assessment. */
+  location?: Row | null;
 }
 
 export const SITE_LEVELS = ['Silver', 'Gold'] as const;

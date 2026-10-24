@@ -64,6 +64,30 @@ $zed-search-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/s
   // The old 300px search boxes stay inside their column on tablets and phones.
   max-width: 100%;
 }
+// The same pencil as a dark icon link (the consultancy milestone page's bullet "Edit"), and its "Delete" bin.
+.cursor-pointer > .fa.fa-pencil-square-o {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23232527' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath d='M7 2.5H2.5v11h11V9'/%3E%3Cpath d='M12.2 1.8 14.2 3.8 8 10H6V8z'/%3E%3C/svg%3E");
+}
+.fa.fa-trash {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  vertical-align: -1px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23232527' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2 4h12M6 4V2h4v2M3.5 4l.8 10h7.4l.8-10M6.5 7v4.5M9.5 7v4.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+// Accordion "fa fa-plus" / "fa fa-minus" on the black panels (white).
+.fa.fa-plus,
+.fa.fa-minus {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 4px;
+  vertical-align: 0;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M2 8h12M8 2v12'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+.fa.fa-minus {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M2 8h12'/%3E%3C/svg%3E");
+}
 .search-input > input[type='text']:only-child,
 input[type='search'].form-control {
   background-image: $zed-search-icon;

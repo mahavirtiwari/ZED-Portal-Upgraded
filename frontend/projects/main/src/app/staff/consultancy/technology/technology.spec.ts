@@ -86,9 +86,21 @@ describe('Consultancy technology pages', () => {
     details: { EligibleSubsidyPer: 80, TotalPaidAfterQc: '125000.00', EligibleAmount: '100000.00', AccountNo: '123456789012', IfscCode: 'SBIN0001234', BranchAddress: 'X', BankName: 'SBI' },
     technologies: [{ id: 301, isEligible: true, details: { TechnologyCode: '12', TechnologyName: 'Solar dryer', AmountPaid: '125000', MsmeAmountPaid: '125000' } }],
     documents: [{ id: 7001, photoType: 'Purchased Technology', technologyCode: '12', timeStamp: null, isPdf: true, url: '/api/doc', opened: true, isVerified: 'Yes', sourceOfValidation: null, assessorRemarks: null, needsScreenshot: true, screenshots: [] }],
-    meeting: null, recommended: [{ code: '12', name: 'Solar dryer' }],
-    canValidate: false, canDecide: false, canApprove: false, canEditAmounts: true, canEditAccount: true, hasReport: true, ...extra,
+    meeting: null, recommended: [{ code: '12', name: 'Solar dryer', description: null }],
+    canValidate: false, canDecide: false, canApprove: false, canEditAmounts: true, canEditAccount: true, hasReport: true,
+    attendance: [], overview: null, location: null, ...extra,
   });
+
+  /** Opens a collapsible section of the level's tab by its heading. */
+  async function expand(title: string) {
+    ([...el.querySelectorAll('.section-toggle')] as HTMLElement[]).find((h) => text(h) === title)!.click();
+    await settle();
+  }
+
+  async function openTab(label: string) {
+    ([...el.querySelectorAll('.nav-link')] as HTMLElement[]).find((b) => text(b) === label)!.click();
+    await settle();
+  }
 
   it('lets the state coordinator correct a verified amount and links the report', async () => {
     await create(TuVerificationPage, StaffRole.StateCoordinator, { zedId: 'ZEDMSME000500', level: 'Silver' });
@@ -96,7 +108,15 @@ describe('Consultancy technology pages', () => {
     await settle();
 
     expect(el.textContent).toContain('Solar dryer');
+    // The sections start closed.
+    expect(el.textContent).not.toContain('Technology Support Eligible Amount');
+    await expand('Summary');
+    expect(el.textContent).toContain('Technology Support Eligible Amount');
     expect(el.textContent).toContain('100000.00');
+    expect(el.textContent).toContain('125000.00');
+    await expand('Solar dryer');
+    expect(el.textContent).toContain('CA certificate of expenditure');
+    expect(el.textContent).toContain('Invoice Copy');
     const report = [...el.querySelectorAll('a')].find((a) => text(a).startsWith('Download TU Report'));
     expect(report?.getAttribute('href')).toBe('/api/staff/consultancy/tu/ZEDMSME000500/Silver/report');
 
@@ -124,6 +144,33 @@ describe('Consultancy technology pages', () => {
     expect(button('REJECT').length).toBe(1);
     expect(button('ACCEPT').length).toBe(0);
     expect(el.textContent).not.toContain('Download TU Report');
+  });
+
+  it('shows the unit overview, the recommended technologies and the DFO attendance', async () => {
+    await create(TuVerificationPage, StaffRole.Agency, { zedId: 'ZEDMSME000500', level: 'Silver' });
+    http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([application({
+      overview: { ZedId: 'ZEDMSME000500', PUnitName: 'Acme Unit', UdyogAadharNo: 'UDYAM-UP-00-0000001', Milestone3Date: 'May 1, 2026' },
+      location: { Latitude: '28.61', Longitude: '77.2' },
+      recommended: [{ code: '12', name: 'Solar dryer', description: 'Dries produce' }, { code: '14', name: 'Heat pump', description: null }],
+      attendance: [{ date: '05-Jan-2026', loginTime: '10:00:00', logoutTime: '17:30:00', hours: 7, minutes: 30, loginPhotoUrl: '/api/in.jpg', logoutPhotoUrl: null }],
+      details: { VerificationStatus: 4, EligibleAmount: '1' },
+    })]);
+    await settle();
+    expect(el.textContent).toContain('ACCEPTED');
+    await expand('Attendance');
+    expect(el.textContent).toContain('Day 1');
+    expect(el.textContent).toContain('7 (30 Minutes)');
+    expect((el.querySelector('img[alt="Login Selfie"]') as HTMLImageElement).getAttribute('src')).toBe('/api/in.jpg');
+
+    await openTab('Overview');
+    expect(el.textContent).toContain('UDYAM-UP-00-0000001');
+    expect(el.textContent).toContain('Milestone 3 Completed on');
+    expect([...el.querySelectorAll('a[target="_blank"]')].map((a) => a.getAttribute('href'))).toContain('https://www.google.com/maps?q=28.61,77.2');
+
+    await openTab('Technologies Recommended');
+    expect(el.textContent).toContain('Dries produce');
+    expect(el.textContent).toContain('No detailed log summary description submitted.');
+    expect(el.textContent).not.toContain('Technology Support Eligible Amount');
   });
 
   it('lets the lead consultant recommend selected technologies after confirming', async () => {

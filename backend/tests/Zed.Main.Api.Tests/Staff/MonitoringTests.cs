@@ -28,6 +28,7 @@ public sealed class MonitoringTests : IDisposable
             Add("ZEDMSME000004", "Silver", 4, 14, 0);
             Add("ZEDMSME000003", "Gold", 2, 8, 0);
             Add("ZEDMSME000005", "Bronze", 4, 4, 2);
+            Add("ZEDMSME000006", "Silver", 7, 17, 2);
             var list = rows.Where(r => r["_Status"]!.ToString() == status && (string)r["Certification"]! == cert && (zed is null || (string)r["ZedId"]! == zed))
                 .Select(r => (object)r).ToList();
             return FakeSql.Sets(list, [new { NotStarted = 1, InProgress = 2, Qc = 3, Nc = 4, Rj = 5 }]);
@@ -146,6 +147,7 @@ public sealed class MonitoringTests : IDisposable
 
     [Theory]
     [InlineData("ZEDMSME000003", "Gold", 5)]   // not in NC
+    [InlineData("ZEDMSME000006", "Silver", 5)] // rejected: offered on the surveillance portal only
     [InlineData("ZEDMSME009999", "Silver", 5)] // unknown unit
     [InlineData("ZEDMSME000001", "Silver", 0)]
     [InlineData("ZEDMSME000001", "Silver", 31)]

@@ -147,8 +147,13 @@ public sealed class SiteReviewController(
         Permissions Permissions,
         SurveillanceInfo? Surveillance = null);
 
-    /// <summary>Surveillance only: the meeting link of the allotment and the recordings of the remote meeting.</summary>
-    public sealed record SurveillanceInfo(string? MeetingLink, IReadOnlyList<RecordingLink> RecordingLinks, bool HasOriginal);
+    /// <summary>
+    /// Surveillance only: the meeting link of the allotment, the recordings of the remote meeting and the sections of
+    /// the surveillance with their assessors (SP_ASSESSMENT_SA_DETAILS set 14: the page's "SURVEILLANCE ASSESSMENT PLAN").
+    /// </summary>
+    public sealed record SurveillanceInfo(
+        string? MeetingLink, IReadOnlyList<RecordingLink> RecordingLinks, bool HasOriginal,
+        IReadOnlyList<Dictionary<string, object?>>? PlanSections = null);
 
     public sealed record RecordingLink(string Url, string? CreatedDate);
 
@@ -168,7 +173,8 @@ public sealed class SiteReviewController(
         IReadOnlyList<Photo> SaSiteExterior,
         IReadOnlyList<Photo> SiteTour,
         Meeting? OpenMeeting,
-        Meeting? CloseMeeting);
+        Meeting? CloseMeeting,
+        Dictionary<string, object?>? Location = null);
 
     /// <summary>Columns of main's certification row shown in the original-certification panel.</summary>
     private static readonly string[] OriginalMsmeFields =
@@ -179,7 +185,13 @@ public sealed class SiteReviewController(
     ];
 
     private static readonly string[] OriginalRequirementFields =
-        ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks"];
+        ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
+
+    /// <summary>
+    /// Main's sections as the surveillance page lists them: SurveMandatories (main's Sections master, sent with
+    /// @FromSurveillance) decides which parameters other roles than MasterAdmin see; the assessors make the "ONSITE ASSESSMENT PLAN".
+    /// </summary>
+    private static readonly string[] OriginalSectionFields = [.. SectionFields, .. SectionAssessorFields, "SurveMandatories"];
 
     public sealed record ListResponse(IReadOnlyList<Dictionary<string, object?>> Rows);
 
@@ -273,11 +285,15 @@ public sealed class SiteReviewController(
             return d;
         }).ToList();
 
+        var surveillance = host.System == PortalSystem.Surveillance;
+
         // Selfies of the assessors: onsite rows carry PhotoPath ({store}/{ZedId}/{Cert}/{AssessorId}.jpg), remote ones MsmeSelfies.PhotoPath.
-        var saSelfies = sa[12].Select(s => new Photo(Long(s, "Id"), "Assessor Selfie",
+        // The surveillance page called a selfie taken by the unit itself (AssessorId = ZED ID) "Msme Representative Selfie".
+        var saSelfies = sa[12].Select(s => new Photo(Long(s, "Id"),
+            surveillance && s.Text("AssessorId").Trim() is { Length: > 0 } by && string.Equals(by, s.Text("ZedId").Trim(), StringComparison.OrdinalIgnoreCase)
+                ? "Msme Representative Selfie" : "Assessor Selfie",
             SiteReviewFiles.Url(zedId, level, s.Text("PhotoPath")) ?? SiteReviewFiles.Url(zedId, level, s.Text("src")), Str(s, "CreatedDate"), null, null)).ToList();
 
-        var surveillance = host.System == PortalSystem.Surveillance;
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         var rounds = ncCount > 0 ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, ct))) : [];
 
@@ -289,7 +305,8 @@ public sealed class SiteReviewController(
 
         return new SaDetailsResponse(
             zedId, level, user.RoleName, msme,
-            da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude", "SaLatitude", "SaLongitude"]) : null,
+            // Surveillance onsite (meeting link) rows: SurLatitude/SurLongitude of the first site tour photo.
+            da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude", "SaLatitude", "SaLongitude", "SurLatitude", "SurLongitude"]) : null,
             daPhotos.Where(p => p.Type == "Selfie").Select(p => p.Photo).ToList(),
             daPhotos.Where(p => p.Type == "SiteExteriorPhotos").Select(p => p.Photo).ToList(),
             saSelfies,
@@ -310,7 +327,7 @@ public sealed class SiteReviewController(
             surveillance ? [] : Pick(da[24], ["ConsultantId", "AssessorType"]),
             rounds,
             permissions,
-            surveillance ? SurveillanceOf(main, sa) : null);
+            surveillance ? SurveillanceOf(main, sa, qc) : null);
     }
 
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
@@ -394,7 +411,7 @@ public sealed class SiteReviewController(
             da[1].Select(p => Pick(p, ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks"]))
                 .Concat(sa[9].Select(p => Pick(p, ["Id", "ProductName", "Exported", "IsSaVerified", "SaAssessorRemarks"]))).ToList(),
             Pick(da[2], RawMaterialFields),
-            Pick(da[3], SectionFields),
+            Pick(da[3], OriginalSectionFields),
             da[4].Select(r =>
             {
                 var d = Pick(r, OriginalRequirementFields);
@@ -417,11 +434,12 @@ public sealed class SiteReviewController(
             Photos(sa[0], zedId, level),
             Photos(sa[6], zedId, level),
             MeetingOf(sa[1], sa[2], sa[5], zedId, level),
-            MeetingOf(sa[3], sa[4], sa[8], zedId, level));
+            MeetingOf(sa[3], sa[4], sa[8], zedId, level),
+            da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude", "SaLatitude", "SaLongitude"]) : null);
     }
 
     /// <summary>Meeting link of the surveillance allotment (MsmeCertifications.MeetingLink) and the recording links (MeetingRecordingLinks, set 15).</summary>
-    private static SurveillanceInfo SurveillanceOf(IDictionary<string, object?> main, ResultSets sa)
+    private static SurveillanceInfo SurveillanceOf(IDictionary<string, object?> main, ResultSets sa, bool qc)
     {
         var links = sa[15].Select(l => (Url: WebLink(l.Text("RecordingLink")), Created: Str(l, "CreatedDate")))
             .Concat(sa[3].Select(m => (Url: WebLink(m.Text("MeetingRecordingLink")), Created: (string?)null)))
@@ -429,7 +447,13 @@ public sealed class SiteReviewController(
             .DistinctBy(l => l.Url)
             .Select(l => new RecordingLink(l.Url!, l.Created))
             .ToList();
-        return new SurveillanceInfo(WebLink(main.Text("MeetingLink")), links, true);
+        var plan = sa[14].Select(s =>
+        {
+            var d = Pick(s, ["Id", "SectionCode", "SectionName"]);
+            if (!qc) foreach (var f in SectionAssessorFields) d[f] = Value(s, f);
+            return d;
+        }).ToList();
+        return new SurveillanceInfo(WebLink(main.Text("MeetingLink")), links, true, plan);
     }
 
     /// <summary>An http(s) address entered by the agency or the assessor, or null (no javascript: or other schemes reach the page).</summary>

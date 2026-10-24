@@ -86,7 +86,13 @@ public sealed class TechnologyUpgradationTests : IDisposable
             return FakeSql.Sets([], [_fa], [], [], _photos, [], [], [], [], [], _techs, [], _meetings,
                 [new { Name = "A Person", Designation = "Owner", CertificationType = "Silver", FinancialAssistanceId = 900 }],
                 [new { Id = 55, Name = "Opening Meeting Photo", PhotoId = "p1", Certification = "Silver", FinancialAssistanceId = 900, TimeStamp = "now" }],
-                [], [], [], [new { TechnologyCode = "12", TechnologyName = "Solar dryer", Certification = "Silver" }]);
+                [new { Certification = "Silver", TimeStamps = "05-Jan-2026", LoginTime = "10:00:00", LogoutTime = "17:30:00", NoOfHours = 7, NoOfMinutes = 30,
+                       LoginPhotoId1 = "in1", LogoutPhotoId1 = "../x", LoginPhotoId = "https://loginzed.msme.gov.in/consultancymobileapi/Attendance/x.jpg" },
+                 new { Certification = "Gold", TimeStamps = "06-Jan-2026", LoginTime = "10:00:00", LogoutTime = (string?)null, NoOfHours = (int?)null, NoOfMinutes = (int?)null,
+                       LoginPhotoId1 = "in2", LogoutPhotoId1 = (string?)null, LoginPhotoId = (string?)null }],
+                [new { ZedId = Zed, PUnitName = "Acme Unit", UdyogAadharNo = "UDYAM-XX-00-0000001", Certification = "Silver", PlantAddress = "Plot 4", Milestone3Date = "May 1, 2026", EnterpriseName = "Acme" }],
+                [new { Latitude = "28.61", Longitude = "77.20", NcCount = 3 }],
+                [new { TechnologyCode = "12", TechnologyName = "Solar dryer", Certification = "Silver", Description = "Dries produce" }]);
         };
         _host.Sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_LIST"] = _ => FakeSql.Sets(
             [new { Id = 41, ZedId = Zed, PUnitName = "Acme", CertificationType = "Silver", TechUpgradeStatus = 2, Password = "leak", RoleId = 7 }],
@@ -188,6 +194,32 @@ public sealed class TechnologyUpgradationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync($"{Base}/accept", new { zedId = Zed, certification = "Silver", assessorUserId = "DFO2" })).StatusCode);
         At(2, 10, "DFO1");
         Assert.Equal(HttpStatusCode.BadRequest, (await co.PostAsJsonAsync($"{Base}/accept", new { zedId = Zed, certification = "Silver", assessorUserId = "DFO2" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_page_gets_the_unit_overview_the_recommendations_and_the_dfos_attendance_of_the_level()
+    {
+        At(2, 4, "DFO1");
+        var app = (await (await SignIn("DFO1")).GetFromJsonAsync<JsonElement>($"{Base}/{Zed}"))[0];
+        Assert.Equal("UDYAM-XX-00-0000001", app.GetProperty("overview").GetProperty("UdyogAadharNo").GetString());
+        Assert.False(app.GetProperty("overview").TryGetProperty("EnterpriseName", out _));
+        Assert.Equal("28.61", app.GetProperty("location").GetProperty("Latitude").GetString());
+        Assert.Equal("Dries produce", app.GetProperty("recommended")[0].GetProperty("description").GetString());
+        // Only the level's days; selfies through the API, and only plain photo ids.
+        var day = Assert.Single(app.GetProperty("attendance").EnumerateArray());
+        Assert.Equal("05-Jan-2026", day.GetProperty("date").GetString());
+        Assert.Equal(7, day.GetProperty("hours").GetInt32());
+        Assert.Equal($"{Base}/{Zed}/Silver/attendance-photos/in1", day.GetProperty("loginPhotoUrl").GetString());
+        Assert.Equal(JsonValueKind.Null, day.GetProperty("logoutPhotoUrl").ValueKind);
+
+        var folder = Path.Combine(_host.StorageRoot, "consultancymobileapi", "Attendance", Zed, "Silver");
+        Directory.CreateDirectory(folder);
+        await File.WriteAllBytesAsync(Path.Combine(folder, "in1.jpg"), Jpeg);
+        var dfo = await SignIn("DFO1");
+        Assert.Equal(HttpStatusCode.OK, (await dfo.GetAsync($"{Base}/{Zed}/Silver/attendance-photos/in1")).StatusCode);
+        // A photo id that is not in the application's attendance, and a stranger.
+        Assert.Equal(HttpStatusCode.NotFound, (await dfo.GetAsync($"{Base}/{Zed}/Silver/attendance-photos/in2")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await (await SignIn("DFO2")).GetAsync($"{Base}/{Zed}/Silver/attendance-photos/in1")).StatusCode);
     }
 
     [Fact]

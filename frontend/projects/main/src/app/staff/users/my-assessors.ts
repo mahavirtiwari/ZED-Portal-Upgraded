@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { PORTAL_SYSTEM } from '../../portal-system';
-import { PORTAL_LABELS } from '../../portal-labels';
+import { LABELS } from '../../portal-labels';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -50,11 +50,21 @@ interface Dialog {
                 <thead>
                   <tr class="text-center" style="font-size: 16px">
                     <th>Status</th>
-                    <th>Selfie</th>
-                    <th>{{ consultancy ? 'Type' : 'Assessor Type' }}</th>
-                    <th>{{ consultancy ? 'ID' : 'Assessor ID' }}</th>
-                    <th>Assessor Details</th>
-                    <th>Assessor Conctact Details</th>
+                    @if (consultancy) {
+                      <!-- ZEDCS_CONSULTANCY Frontend/User/Assessors.cshtml -->
+                      <th>User Type</th>
+                      <th>Consultant/Expert ID</th>
+                      <th>Consultant/Expert Details</th>
+                      <th>Consultant/Expert Contact Details</th>
+                      <th>No. Of Assignments Completed</th>
+                      <th>Reason for Block</th>
+                    } @else {
+                      <th>Selfie</th>
+                      <th>Assessor Type</th>
+                      <th>Assessor ID</th>
+                      <th>Assessor Details</th>
+                      <th>Assessor Conctact Details</th>
+                    }
                     <th>Action(s)</th>
                   </tr>
                 </thead>
@@ -62,15 +72,22 @@ interface Dialog {
                   @for (u of view.page(); track u.UserId) {
                     <tr class="filterClass">
                       <td><strong>{{ u.IdStatus }}</strong></td>
-                      <td>
-                        @if (u.PhotoPath) {
-                          <a [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" class="align-center img-responsive" style="max-height: 60px" /></a>
-                        }
-                      </td>
+                      @if (!consultancy) {
+                        <td>
+                          @if (u.PhotoPath) {
+                            <a [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" class="align-center img-responsive" style="max-height: 60px" /></a>
+                          }
+                        </td>
+                      }
                       <td><strong>{{ consultancy ? u.UserType : u.AssessorType }}</strong></td>
                       <td><strong>{{ u.UserId }}</strong></td>
                       <td><strong>{{ u.UserName }}</strong><br />{{ u.Address }}<br /><strong>{{ u.IdProofNumber }}</strong></td>
                       <td>{{ u.MobileNo }}<br />{{ u.Email }}</td>
+                      @if (consultancy) {
+                        <!-- Both cells are empty on the live page. -->
+                        <td></td>
+                        <td></td>
+                      }
                       <td class="text-center">
                         @if (u.IsActive) {
                           <button type="button" class="btn btn-default" style="width: 100px" [disabled]="saving()" (click)="open('block', u)">Block</button><br />
@@ -86,7 +103,7 @@ interface Dialog {
                     </tr>
                   } @empty {
                     <tr>
-                      <td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td>
+                      <td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">No Data</div></td>
                     </tr>
                   }
                 </tbody>
@@ -104,7 +121,7 @@ interface Dialog {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="assessor-dialog-title">{{ d.kind === 'block' ? 'Reason for Block the Assessor' : 'Assessor Mobile Number' }}</h3>
+                <h3 class="registration-title m-0" id="assessor-dialog-title">{{ d.kind === 'block' ? 'Reason for Block the ' + (consultancy ? 'Consultant' : 'Assessor') : labels.assessor + ' Mobile Number' }}</h3>
                 <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
@@ -142,8 +159,9 @@ interface Dialog {
   `,
 })
 export class MyAssessorsPage {
-  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
-  protected readonly labels = PORTAL_LABELS;
+  private readonly system = inject(STAFF_SYSTEM);
+  protected readonly consultancy = this.system === 'consultancy';
+  protected readonly labels = LABELS[this.system];
   private readonly api = inject(UsersApi);
 
   protected readonly assessors = signal<OwnAssessorRow[]>([]);

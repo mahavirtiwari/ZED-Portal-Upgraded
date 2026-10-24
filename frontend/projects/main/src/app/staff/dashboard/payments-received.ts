@@ -4,11 +4,14 @@ import { firstValueFrom } from 'rxjs';
 import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { ClientPager, flag } from './dashboard-filters';
 import { PagerComponent } from '../pager';
+import { STAFF_SYSTEM } from '../staff-menu';
 import { ListFiltersBar } from './list-controls';
 
 /**
  * MSME payments received (MasterAdmin). Port of Views/Dashboard/PaymentReceived.cshtml. The old page's
- * Approve/Reject handlers had no pop-up markup and could not be used; they are not ported.
+ * Approve/Reject handlers had no pop-up markup and could not be used; they are not ported. Consultancy's page
+ * (ZEDCS_CONSULTANCY Frontend/Dashboard/PaymentReceived.cshtml) has a Milestone column where the others have
+ * Joining Reward.
  */
 @Component({
   selector: 'zed-staff-payments-received',
@@ -34,7 +37,7 @@ import { ListFiltersBar } from './list-controls';
                 <th>Unit Name</th>
                 <th>Size/Gender</th>
                 <th>Social Category</th>
-                <th>Joining Reward</th>
+                <th>{{ consultancy ? 'Milestone' : 'Joining Reward' }}</th>
                 <th>StateName<br /><br />District Name</th>
                 <th>TAN (%)</th>
                 <th>Subsidy (%)</th>
@@ -46,12 +49,20 @@ import { ListFiltersBar } from './list-controls';
               @for (t of pager.page(); track $index) {
                 <tr>
                   <td>{{ t['RowNumber'] }}</td>
-                  <td><strong>{{ t['ZedId'] }}</strong><br /><br />{{ t['Certification'] }}@if (t['MileStoneNum']) { <br />Milestone {{ t['MileStoneNum'] }} }</td>
+                  <td><strong>{{ t['ZedId'] }}</strong><br /><br />{{ t['Certification'] }}@if (!consultancy && t['MileStoneNum']) { <br />Milestone {{ t['MileStoneNum'] }} }</td>
                   <td><strong>{{ t['PUnitName'] }}</strong></td>
                   <td>{{ t['EnterpriseTypee'] }}<br /><br />{{ t['Gender'] }}</td>
                   <td>{{ t['SocialCategoryName'] }}</td>
-                  <td>{{ flag(t, 'IsCouponUsed') ? 'Yes' : 'No' }}</td>
-                  <td><strong>{{ t['PStateName'] }}</strong><br /><br />{{ t['PDistrictName'] }}</td>
+                  @if (consultancy) {
+                    <td>{{ t['MileStoneNum'] }}</td>
+                  } @else {
+                    <td>{{ flag(t, 'IsCouponUsed') ? 'Yes' : 'No' }}</td>
+                  }
+                  @if (consultancy) {
+                    <td>{{ t['PStateName'] }}<br />{{ t['PDistrictName'] }}</td>
+                  } @else {
+                    <td><strong>{{ t['PStateName'] }}</strong><br /><br />{{ t['PDistrictName'] }}</td>
+                  }
                   <td>{{ t['Tds'] }}</td>
                   <td>{{ t['SubsidyPercentage'] }}</td>
                   <td>{{ t['GstinNumber'] }} {{ t['TanNumber'] }}</td>
@@ -78,6 +89,7 @@ export class PaymentsReceivedPage {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly flag = flag;
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
 
   constructor() {
     void this.load();

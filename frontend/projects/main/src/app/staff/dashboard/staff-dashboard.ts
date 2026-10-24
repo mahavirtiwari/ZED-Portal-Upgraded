@@ -3,12 +3,14 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Counts, CountsFilter, DashboardApi, Row } from './dashboard.api';
 import { SIZES, STATE_NAMES, text } from './dashboard-filters';
-import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
+import { PortalSystem } from '../../portal-system';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 interface Card {
   css: string;
   title: string;
-  lines: { label: string; field: string }[];
+  /** `fixed`: a number the template printed as it is (Surveillance's Bronze "NC Raised: 0"). */
+  lines: { label: string; field: string; fixed?: string }[];
 }
 
 /** The four cards of Views/Dashboard/Index.cshtml (column names of SP_DASHBOARD_GET_DETAILS). */
@@ -39,13 +41,11 @@ const MAIN_CARDS: Card[] = [
   },
 ];
 
-/** Consultancy (ZEDCS_CONSULTANCY Dashboard/Index.cshtml): handholding by milestone and Technology Intervention. */
+/**
+ * Consultancy (ZEDCS_CONSULTANCY Frontend/Dashboard/Index.cshtml): handholding by milestone and Technology
+ * Intervention. MasterAdmin's two count tiles above them are CONSULTANT_TILES.
+ */
 const CONSULTANCY_CARDS: Card[] = [
-  {
-    css: 'panel-bronze', title: 'Consultant Organisations', lines: [
-      { label: 'Empanelled Consultant Organisations', field: 'AssessmentAgencies' }, { label: 'Consultants', field: 'SiteAssessors' },
-    ],
-  },
   {
     css: 'panel-silver', title: 'Silver Level', lines: [
       { label: 'Total Applications', field: 'SilverTotal' },
@@ -69,29 +69,45 @@ const CONSULTANCY_CARDS: Card[] = [
   },
 ];
 
-/** Surveillance (ZEDCS_SURVEILLANCE Dashboard/Index.cshtml): no Financial Assistance card. */
+/** Surveillance (ZEDCS_SURVEILLANCE Frontend/Dashboard/Index.cshtml): no Financial Assistance card. */
 const SURVEILLANCE_CARDS: Card[] = [
   {
     css: 'panel-bronze', title: 'BRONZE SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Pending', field: 'BronzePending' },
-      { label: 'Completed', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
+      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Surveillance Pending', field: 'BronzePending' },
+      { label: 'Surveillance Completed', field: 'BronzeCompleted' }, { label: 'NC Raised', field: '', fixed: '0' },
+      { label: 'Rejected', field: 'BronzeRejected' },
     ],
   },
   {
     css: 'panel-silver', title: 'SILVER SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Pending', field: 'SilverPending' },
-      { label: 'NC Raised', field: 'SaSilverNcRaised' }, { label: 'Completed', field: 'SaSilverCompleted' }, { label: 'Rejected', field: 'SilverRejected' },
+      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Surveillance Pending', field: 'SilverPending' },
+      { label: 'Surveillance Completed', field: 'SaSilverCompleted' }, { label: 'NC Raised', field: 'SaSilverNcRaised' },
+      { label: 'Rejected', field: 'SilverRejected' },
     ],
   },
   {
     css: 'panel-gold', title: 'GOLD SURVEILLANCE', lines: [
-      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Pending', field: 'GoldPending' },
-      { label: 'NC Raised', field: 'SaGoldNcRaised' }, { label: 'Completed', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
+      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Surveillance Pending', field: 'GoldPending' },
+      { label: 'Surveillance Completed', field: 'SaGoldCompleted' }, { label: 'NC Raised', field: 'SaGoldNcRaised' },
+      { label: 'Rejected', field: 'GoldRejected' },
     ],
   },
 ];
 
 export const DASHBOARD_CARDS: Record<PortalSystem, Card[]> = { main: MAIN_CARDS, consultancy: CONSULTANCY_CARDS, surveillance: SURVEILLANCE_CARDS };
+
+/** Consultancy MasterAdmin's tiles ("dashboard-consultant-block"): count only, the number under the title. */
+export const CONSULTANT_TILES = [
+  { css: 'panel-empanel', title: 'Empanelled Consultant Organisations', field: 'AssessmentAgencies' },
+  { css: 'panel-consultant', title: 'Consultants', field: 'SiteAssessors' },
+];
+
+/** Captions of the counts strip; Consultancy's show the TI count where the others show Bronze. */
+const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
+  main: { total: 'Registered', bronze: 'Bronze' },
+  consultancy: { total: 'Application', bronze: 'TI' },
+  surveillance: { total: 'Registered', bronze: 'Bronze' },
+};
 
 /**
  * Staff home dashboard. Port of Views/Dashboard/Index.cshtml: certification cards (scoped to the user by the
@@ -114,16 +130,34 @@ export const DASHBOARD_CARDS: Record<PortalSystem, Card[]> = { main: MAIN_CARDS,
         <div class="panel panel-default panel-dashboard panel-bg-default">
           <div class="panel-body">
             <div class="row mb-4">
+              @if (showConsultantTiles()) {
+                <div class="col-sm-12">
+                  <div class="dashboard-consultant-block">
+                    @for (tile of consultantTiles; track tile.field) {
+                      <div class="item">
+                        <div class="panel panel-default w-100" [class]="tile.css">
+                          <div class="panel-heading">
+                            <h5>{{ tile.title }}</h5>
+                            <h1 [attr.data-field]="tile.field">{{ value(tile.field) }}</h1>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
               <div class="col-sm-12">
-                <div class="dashboard-cert-block">
+                <div class="dashboard-cert-block" [class.cert-items]="itemLayout" [class.cert-items-consultancy]="system === 'consultancy'">
                   @for (card of cards; track card.title) {
-                    <div class="panel panel-default panel-cert-block" [class]="card.css">
-                      <div class="panel-heading"><h5>{{ card.title }}</h5></div>
-                      <div class="panel-body">
-                        <div class="inner">
-                          @for (line of card.lines; track line.field) {
-                            <p>{{ line.label }}: <span [attr.data-field]="line.field">{{ value(line.field) }}</span></p>
-                          }
+                    <div [class.item]="itemLayout">
+                      <div class="panel panel-default panel-cert-block" [class]="card.css">
+                        <div class="panel-heading"><h5>{{ card.title }}</h5></div>
+                        <div class="panel-body">
+                          <div class="inner">
+                            @for (line of card.lines; track line.label) {
+                              <p>{{ line.label }}: <span [attr.data-field]="line.field || null">{{ line.fixed ?? value(line.field) }}</span></p>
+                            }
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -169,8 +203,8 @@ export const DASHBOARD_CARDS: Record<PortalSystem, Card[]> = { main: MAIN_CARDS,
               </div>
               <div class="col-sm-12">
                 <div class="cert-section certDetail-block unitDetail-sec1">
-                  <div class="registered"><p>Registered</p><h1 id="registered">{{ count('total') }}</h1></div>
-                  <div class="bronzeVerified"><p>Bronze</p><h1 id="bronze">{{ count('bronze') }}</h1></div>
+                  <div class="registered"><p>{{ stripLabels.total }}</p><h1 id="registered">{{ count('total') }}</h1></div>
+                  <div class="bronzeVerified"><p>{{ stripLabels.bronze }}</p><h1 id="bronze">{{ count('bronze') }}</h1></div>
                   <div class="goldVerified"><p>Gold</p><h1 id="gold">{{ count('gold') }}</h1></div>
                   <div class="silverVerified"><p>Silver</p><h1 id="silver">{{ count('silver') }}</h1></div>
                 </div>
@@ -186,16 +220,40 @@ export const DASHBOARD_CARDS: Record<PortalSystem, Card[]> = { main: MAIN_CARDS,
   `,
   styles: `
     .Dashboard .panel-cert-block, .Dashboard .panel-cert-block:hover { height: 200px; width: 250px; }
+    /* Consultancy and Surveillance: the cards share the row in ".item" wrappers (their Dashboard/Index.cshtml). */
+    .dashboard-cert-block.cert-items { gap: 10px; }
+    .cert-items .item { flex: 1 1 0; }
+    .Dashboard .cert-items .panel-cert-block, .Dashboard .cert-items .panel-cert-block:hover { width: 100%; }
+    .cert-items-consultancy { justify-content: flex-start; }
+    .cert-items-consultancy .item { flex: 1; background: rgba(179, 224, 121, 0.2); border-radius: 8px; }
+    .Dashboard .cert-items-consultancy .panel-cert-block, .Dashboard .cert-items-consultancy .panel-cert-block:hover { height: auto; overflow: visible; background: transparent; }
+    .cert-items-consultancy .inner p { margin-bottom: 5px; }
+    .dashboard-consultant-block { display: flex; flex-wrap: wrap; gap: 10px; border-radius: 10px; margin-bottom: 10px; }
+    .dashboard-consultant-block .item { flex: 1; border-radius: 8px; }
+    .dashboard-consultant-block .panel { margin-bottom: 0; border: none; border-radius: 8px; box-shadow: none; }
+    .dashboard-consultant-block .panel-empanel { background-color: #73d085; }
+    .dashboard-consultant-block .panel-consultant { background-color: #45a5ad; }
+    .dashboard-consultant-block .panel-heading { background-color: transparent; border: none; }
+    .dashboard-consultant-block .panel-heading h1 { color: #fff; font-weight: 700; }
+    @media only screen and (max-width: 480px) {
+      .dashboard-consultant-block .item, .cert-items .item { flex: auto; }
+    }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
 
-  /** Cards of this system; Consultancy's organisation card only when the API sent its columns (MasterAdmin). */
-  protected get cards(): Card[] {
+  protected readonly system = inject(STAFF_SYSTEM);
+  protected readonly cards = DASHBOARD_CARDS[this.system];
+  protected readonly itemLayout = this.system !== 'main';
+  protected readonly stripLabels = STRIP_LABELS[this.system];
+  protected readonly consultantTiles = CONSULTANT_TILES;
+
+  /** Consultancy MasterAdmin's tiles, shown when the API sent their columns (it does for MasterAdmin only). */
+  protected showConsultantTiles(): boolean {
     const s = this.summary();
-    return DASHBOARD_CARDS[PORTAL_SYSTEM].filter((c) => c.title !== 'Consultant Organisations' || (s !== null && 'AssessmentAgencies' in s));
+    return this.system === 'consultancy' && s !== null && 'AssessmentAgencies' in s;
   }
   protected readonly stateNames = STATE_NAMES;
   protected readonly sizes = SIZES;

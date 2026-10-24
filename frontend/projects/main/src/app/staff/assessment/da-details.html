@@ -27,7 +27,7 @@
       <div class="row">
         <div class="col-sm-12 zed-tabs bg-grey">
           <div class="tab-title">
-            <div class="numberCircle">{{ tab() }}</div>
+            <div class="numberCircle">{{ tabNumber(tab()) }}</div>
             <h4>{{ tabTitles[tab()] }}</h4>
           </div>
           <ul class="nav nav-tabs" role="tablist">
@@ -259,19 +259,33 @@
             <!-- ================================================= ESG -->
             @if (tab() === 9) {
               <div class="tab-pane fade show active" role="tabpanel">
-                <h2>ESG Check List</h2>
+                @if (surveillanceSystem) {
+                  <div class="panel panel-default panel-black mt-4"><div class="panel-body">ESG Check List</div></div>
+                } @else {
+                  <h2>ESG Check List</h2>
+                }
                 <table class="table table-bordered table-zed bg-white">
-                  <thead><tr><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th></tr></thead>
+                  <thead>
+                    <tr>
+                      @if (surveillanceSystem) { <th>S.No</th> }
+                      <th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                    </tr>
+                  </thead>
                   <tbody>
                     @for (p of esg(); track $index) {
                       <tr>
+                        @if (surveillanceSystem) { <td>{{ t(p, 'Code') }}</td> }
                         <td>{{ t(p, 'Question') }}</td><td>{{ t(p, 'Answer') }}</td><td>{{ t(p, 'IfYesQuestion') }}</td>
                         <td>{{ t(p, 'IfYesAnswer') }}</td><td>{{ t(p, 'IfNoQuestion') }}</td><td>{{ t(p, 'IfNoAnswer') }}</td>
                       </tr>
                     }
                   </tbody>
                 </table>
-                <h2>Social/OHS Check List</h2>
+                @if (surveillanceSystem) {
+                  <div class="panel panel-default panel-black"><div class="panel-body">Social/OHS Check List</div></div>
+                } @else {
+                  <h2>Social/OHS Check List</h2>
+                }
                 <table class="table table-bordered table-zed bg-white">
                   <thead><tr><th>S.No</th><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th></tr></thead>
                   <tbody>
