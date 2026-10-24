@@ -123,6 +123,18 @@ function Invoke-DeployScript([string]$Name, [hashtable]$Arguments, [switch]$Exit
     $global:LASTEXITCODE = 0
 }
 
+# A value of the settings file: the first of the sections that sets it, names as the app pools get them (Portal__X).
+function Get-SettingValue([string]$Name, [string[]]$Sections) {
+    $json = Get-Content $Settings -Raw | ConvertFrom-Json
+    foreach ($s in $Sections) {
+        $section = $json.PSObject.Properties[$s]
+        if (-not $section) { continue }
+        $p = $section.Value.PSObject.Properties[$Name]
+        if ($p -and -not [string]::IsNullOrWhiteSpace([string]$p.Value)) { return ([string]$p.Value).Trim() }
+    }
+    return $null
+}
+
 function Get-InstalledVersion {
     $file = Join-Path $InstallRoot 'main\VERSION.txt'
     if (Test-Path $file) { return (Get-Content $file -TotalCount 1) }
@@ -321,7 +333,11 @@ try {
         $skip = @($catalog.Keys | ForEach-Object { $catalog[$_].Test } | Where-Object { $tested -notcontains $_ })
         $test = @{ BaseUrl = $BaseUrl }
         if ($skip.Count) { $test.Skip = $skip }
-        if ($preset.NoIndex) { $test.ExpectNoIndex = $true }
+        # The label the settings file gives the portals (the Main section wins over Portals and Common, as in
+        # Install-ZedIis.ps1): the test expects exactly that one; without one, a staging site is checked for noindex.
+        $label = Get-SettingValue 'Portal__EnvironmentLabel' @('Main', 'Portals', 'Common')
+        if ($label) { $test.ExpectEnvironmentLabel = $label; Write-Note "expecting the environment label '$label' (settings file)" }
+        elseif ($preset.NoIndex) { $test.ExpectNoIndex = $true }
         Invoke-DeployScript 'Test-ZedDeployment.ps1' $test -ExitCode
         Write-Ok "$newVersion is installed and answers."
     }
