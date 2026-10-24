@@ -20,7 +20,7 @@ public sealed class PaymentCompletion(
     IBackgroundWork background,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     ILogger<PaymentCompletion> log)
 {
     /// <param name="postToErp">The legacy zero-amount path did not post to the ERP; the gateway path did.</param>
@@ -51,7 +51,7 @@ public sealed class PaymentCompletion(
                     [nameof(PaymentConfirmationEmail.Lines)] = lines,
                     [nameof(PaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
-                var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
+                var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
                 await email.SendAsync(new EmailMessage(to, $"ZED {certOrReCert} Payment Confirmation Details - {zedId}", html, EmailProfiles.Default, cc), ct);
             }
         }

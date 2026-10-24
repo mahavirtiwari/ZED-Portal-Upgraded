@@ -239,7 +239,7 @@ public sealed partial class SurveillanceController
             parameters["PublicBaseUrl"] = Portal.PublicBaseUrl;
             var html = await templates.RenderAsync<TComponent>(parameters);
             var copies = cc?.Where(a => !string.IsNullOrWhiteSpace(a)).ToList();
-            var office = copyOffice ? HttpContext.RequestServices.GetRequiredService<IOptions<EmailOptions>>().Value.RegistrationCc : null;
+            var office = copyOffice ? await HttpContext.RequestServices.GetRequiredService<EmailAddresses>().GetAsync(EmailAddresses.RegistrationCc, ct) : null;
             await email.SendAsync(new EmailMessage(to.Trim(), subject, html,
                 Cc: copies is { Count: > 0 } ? copies : null,
                 Bcc: string.IsNullOrWhiteSpace(office) ? null : [office]), ct);

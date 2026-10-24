@@ -12,4 +12,10 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./captcha-settings').then((m) => m.CaptchaSettingsPage),
   },
+  {
+    path: 'email',
+    title: 'ZED | Email Settings',
+    canActivate: [admin],
+    loadComponent: () => import('./email-settings').then((m) => m.EmailSettingsPage),
+  },
 ];

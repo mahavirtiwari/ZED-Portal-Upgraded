@@ -1,8 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SkiaSharp;
 using Zed.Core.Data;
@@ -35,33 +33,18 @@ public interface ICaptchaSettings
     Task SetAsync(CaptchaMode mode, string userId, CancellationToken ct = default);
 }
 
-public sealed class CaptchaSettings(ISqlExecutor db, IOptions<RecaptchaOptions> options, ILogger<CaptchaSettings> log) : ICaptchaSettings
+public sealed class CaptchaSettings(IPortalSettings settings, IOptions<RecaptchaOptions> options) : ICaptchaSettings
 {
     public const string Key = "CaptchaMode";
-    private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(30);
-    private sealed record Cached(CaptchaMode Mode, DateTime Until);
-    private volatile Cached? cached;
 
     public bool GoogleConfigured =>
         !string.IsNullOrWhiteSpace(options.Value.SiteKey) && !string.IsNullOrWhiteSpace(options.Value.SecretKey);
 
-    public async Task<CaptchaMode> GetAsync(CancellationToken ct = default)
-    {
-        if (cached is { } c && c.Until > DateTime.UtcNow) return c.Mode;
-        var mode = Effective(await StoredAsync(ct));
-        cached = new Cached(mode, DateTime.UtcNow + Lifetime);
-        return mode;
-    }
+    public async Task<CaptchaMode> GetAsync(CancellationToken ct = default) =>
+        Effective(Enum.TryParse<CaptchaMode>(await settings.GetAsync(Key, ct), ignoreCase: true, out var m) ? (CaptchaMode?)m : null);
 
-    public async Task SetAsync(CaptchaMode mode, string userId, CancellationToken ct = default)
-    {
-        await db.ExecuteSqlAsync(
-            "MERGE dbo.V4Settings AS t USING (SELECT @SettingKey AS SettingKey) AS s ON t.SettingKey = s.SettingKey " +
-            "WHEN MATCHED THEN UPDATE SET SettingValue = @SettingValue, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
-            "WHEN NOT MATCHED THEN INSERT (SettingKey, SettingValue, UpdatedBy) VALUES (@SettingKey, @SettingValue, @UpdatedBy);",
-            new { SettingKey = Key, SettingValue = mode.ToString(), UpdatedBy = userId.Length <= 50 ? userId : userId[..50] }, ct);
-        cached = new Cached(Effective(mode), DateTime.UtcNow + Lifetime);
-    }
+    public Task SetAsync(CaptchaMode mode, string userId, CancellationToken ct = default) =>
+        settings.SetAsync(Key, mode.ToString(), userId, ct);
 
     private CaptchaMode Effective(CaptchaMode? stored) => stored switch
     {
@@ -70,21 +53,6 @@ public sealed class CaptchaSettings(ISqlExecutor db, IOptions<RecaptchaOptions> 
         null when !options.Value.Enabled => CaptchaMode.Off,
         null => GoogleConfigured ? CaptchaMode.Google : CaptchaMode.Text,
     };
-
-    private async Task<CaptchaMode?> StoredAsync(CancellationToken ct)
-    {
-        try
-        {
-            var rows = await db.QuerySqlAsync<string>(
-                "SELECT SettingValue FROM dbo.V4Settings WHERE SettingKey = @SettingKey;", new { SettingKey = Key }, ct);
-            return rows.Count > 0 && Enum.TryParse<CaptchaMode>(rows[0], ignoreCase: true, out var m) ? m : null;
-        }
-        catch (SqlException ex)
-        {
-            log.LogWarning(ex, "Could not read the captcha setting (is migration 0011 applied?); using the configuration.");
-            return null;
-        }
-    }
 }
 
 /// <summary>

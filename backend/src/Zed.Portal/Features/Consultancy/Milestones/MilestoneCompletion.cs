@@ -20,7 +20,7 @@ public sealed class MilestoneCompletion(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     PortalHost host,
     ILogger<MilestoneCompletion> log)
 {
@@ -102,7 +102,7 @@ public sealed class MilestoneCompletion(
                 return false;
             }
             var html = await render(to, report is not null);
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             var attachments = report is null ? null : new[] { new EmailAttachment(attachmentName, report.Content) };
             await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Default, cc, attachments), ct);
             return true;

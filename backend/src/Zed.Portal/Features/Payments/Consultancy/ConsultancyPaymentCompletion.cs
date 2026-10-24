@@ -30,7 +30,7 @@ public sealed class ConsultancyPaymentCompletion(
     IBackgroundWork background,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     ILogger<ConsultancyPaymentCompletion> log)
 {
     public const string ModuleName = "CONSULTANCY";
@@ -52,7 +52,7 @@ public sealed class ConsultancyPaymentCompletion(
             var payment = sets[4].FirstOrDefault();
             milestone = msme?.Text("MileStoneNo") is { Length: > 0 } m && m != "0" ? m : payment?.Text("MileStoneNum");
             var lines = payment is null ? [] : ConsultancyPaymentSummary.Lines(payment);
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
+            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
 
             if (payment is not null)
                 await SaveReceiptAsync(zedId, $"{certification}_Milestone{milestone}_Payment_Receipt.pdf", lines, ct);

@@ -19,7 +19,7 @@ public sealed class CaptchaSettingsTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private void Stored(string mode) => _host.Sql.Queries["SELECT SettingValue FROM dbo.V4Settings"] = _ => [mode];
+    private void Stored(string mode) => _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ => [new { SettingKey = "CaptchaMode", SettingValue = mode }];
 
     private sealed record Challenge(string Id, string Image);
 
@@ -102,7 +102,8 @@ public sealed class CaptchaSettingsTests : IDisposable
         var merge = Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith("MERGE dbo.V4Settings"));
         Assert.Equal("Text", FakeSql.Arg(merge.Args, "SettingValue"));
         Assert.Equal("ADMIN1", FakeSql.Arg(merge.Args, "UpdatedBy"));
-        // In force at once on this server.
+        // In force at once on this server (the saved row is read again, not the cached "off").
+        Stored("Text");
         Assert.Equal("text", (await anonymous.GetFromJsonAsync<SessionController.ClientConfig>("/api/config"))!.CaptchaMode);
     }
 

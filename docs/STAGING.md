@@ -228,6 +228,11 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    needed), *Disable captcha*, or Google reCAPTCHA when its keys are set. Until the Admin saves a choice,
    `Recaptcha__Enabled` decides (false: off; true: Google with keys, else the 6-character captcha). The MSME app's
    captcha still follows `Recaptcha__Enabled` and `Recaptcha__AppSecretKey`.
+   **Office mailboxes:** the Admin sets them under **Settings → Email Settings** (per portal): Contact ZED queries, the
+   copy of registration/payment/allotment mails, the ZED team inbox for allotment rejections, the FA/TU rejection
+   inbox, and for the database procedures' mail (sent by Zed.Jobs) a blind copy of every mail and the daily status
+   report's recipients. An empty box uses the configuration (`Email__ContactInbox`, `Email__RegistrationCc`, ...). On
+   staging every mail still goes to `Email__RedirectAllTo`. The SMTP accounts and passwords stay in the settings files.
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:

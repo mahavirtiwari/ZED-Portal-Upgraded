@@ -18,7 +18,7 @@ public sealed class MsmeRegistrationService(
     PledgeCertificateService certificates,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     IOptions<PortalOptions> portal,
     ILogger<MsmeRegistrationService> log)
 {
@@ -160,7 +160,7 @@ public sealed class MsmeRegistrationService(
                 [nameof(PledgeCertificateEmail.Password)] = password,
                 [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             await email.SendAsync(new EmailMessage(to,
                 "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + cert.ZedId,
                 html, EmailProfiles.Registration, cc, [new EmailAttachment("Pledge.pdf", pdf)]), ct);

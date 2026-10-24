@@ -149,6 +149,30 @@ public sealed class MailOutboxTests
     }
 
     [Fact]
+    public void Admin_email_settings_copy_every_database_mail_and_redirect_the_status_report()
+    {
+        var settings = new Dictionary<string, string>
+        {
+            [EmailAddresses.DbMailBcc] = "monitor@zed.test",
+            [EmailAddresses.DbReportRecipients] = "reports@zed.test; head@zed.test",
+        };
+        var report = MailOutboxSender.ToMessage(
+            new OutboxMail(1, "ZedAdmin", "keerthisreenu@gmail.com;ks@geostat.in", null, null, "Daily Skill Express Status Report", "<b>r</b>", "HTML", 1),
+            new JobsOptions(), settings);
+        Assert.Equal("reports@zed.test; head@zed.test", report.To);
+        Assert.Equal(["monitor@zed.test"], report.Bcc!);
+
+        var other = MailOutboxSender.ToMessage(new OutboxMail(2, "ZedAdmin", "msme@x.test", null, "b@x.test", "S", "B", "HTML", 1), new JobsOptions(), settings);
+        Assert.Equal("msme@x.test", other.To);
+        Assert.Equal(["b@x.test", "monitor@zed.test"], other.Bcc!);
+
+        // Without settings: as the procedure queued it.
+        var plain = MailOutboxSender.ToMessage(new OutboxMail(3, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "S", "B", "HTML", 1), new JobsOptions());
+        Assert.Equal("ks@geostat.in;keerthisreenu@gmail.com", plain.To);
+        Assert.Null(plain.Bcc);
+    }
+
+    [Fact]
     public void The_claim_takes_only_unsent_mail_and_skips_rows_locked_by_another_instance()
     {
         Assert.Contains("SentAt IS NULL", MailOutboxSender.ClaimSql);

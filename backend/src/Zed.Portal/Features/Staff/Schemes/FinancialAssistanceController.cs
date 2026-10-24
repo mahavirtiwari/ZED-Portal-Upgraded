@@ -175,7 +175,7 @@ public sealed class FinancialAssistanceController(
 
             var mailer = Mailer();
             var d = await mailer.DetailsAsync(zedId, cert, ct);
-            await mailer.SendAsync<StaffSchemeFaAgencyRejectedEmail>(config["Schemes:FaRejectionInbox"] ?? "zed@qcin.org",
+            await mailer.SendAsync<StaffSchemeFaAgencyRejectedEmail>(await HttpContext.RequestServices.GetRequiredService<EmailAddresses>().GetAsync(EmailAddresses.SchemeRejectionInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
                 $"Rejection of Application for Verification: Financial Assistance on {d?.Text("CategoryOfCertificate")} – {zedId}",
                 new()
                 {

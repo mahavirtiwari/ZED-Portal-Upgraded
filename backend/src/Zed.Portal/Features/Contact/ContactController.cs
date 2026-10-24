@@ -21,7 +21,7 @@ public sealed partial class ContactController(
     ICaptchaVerifier captcha,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     ILogger<ContactController> log) : ControllerBase
 {
     [GeneratedRegex(@"^\d{10}$")] private static partial Regex MobilePattern();
@@ -45,7 +45,7 @@ public sealed partial class ContactController(
 
         await db.ExecuteProcAsync("SP_INSERT_QUERY", new { Name = name, MobileNumber = mobile, Email = mail, Query = query }, ct);
 
-        if (emailOptions.Value.ContactInbox is { Length: > 0 } inbox)
+        if (await addresses.GetAsync(EmailAddresses.ContactInbox, ct) is { } inbox)
         {
             var html = await templates.RenderAsync<ContactQueryEmail>(new Dictionary<string, object?>
             {
@@ -64,7 +64,7 @@ public sealed partial class ContactController(
         }
         else
         {
-            log.LogWarning("Email:ContactInbox is not configured; contact query stored without notification mail.");
+            log.LogWarning("No Contact ZED inbox (Email Settings or Email:ContactInbox); contact query stored without notification mail.");
         }
         return new MessageResponse("Your Query submitted.");
     }

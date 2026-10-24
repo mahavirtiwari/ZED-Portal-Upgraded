@@ -213,7 +213,7 @@ public sealed class TuSubmissionsController(
 
             var mailer = Mailer();
             var d = await mailer.DetailsAsync(zedId, cert, ct);
-            await mailer.SendAsync<ConsultancyTuAgencyRejectedEmail>(config["Schemes:FaRejectionInbox"] ?? "zed@qcin.org",
+            await mailer.SendAsync<ConsultancyTuAgencyRejectedEmail>(await HttpContext.RequestServices.GetRequiredService<EmailAddresses>().GetAsync(EmailAddresses.SchemeRejectionInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
                 $"Rejection of Application for Verification: Technology Upgradation – {zedId}",
                 new()
                 {

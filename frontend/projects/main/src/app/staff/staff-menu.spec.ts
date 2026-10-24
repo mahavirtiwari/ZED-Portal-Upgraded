@@ -61,7 +61,7 @@ describe('staff menu', () => {
 
     it('has no categories, technologies masters or legacy links', () => {
       const admin = c(StaffRole.Admin, []);
-      expect(admin).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'Bronze', 'Silver', 'Gold', 'Captcha Settings']);
+      expect(admin).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'Bronze', 'Silver', 'Gold', 'Captcha Settings', 'Email Settings']);
       expect(menuFor(StaffRole.MasterAdmin, [], 'consultancy').every((i) => i.route && !i.legacyPath)).toBe(true);
     });
 
@@ -99,10 +99,10 @@ describe('staff menu', () => {
       // As the old layouts: the house icon is the dashboard link; the old drop-downs with their names.
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Assessment (10)', 'Financial Assistance', 'Upload API Incentives']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
-        'Upload Image', 'My Documents', 'Sectors', 'Payments', 'Questionnaire (3)', 'Technology Upgradation (2)', `Incentives (${INCENTIVE_TYPES.length})`, 'Captcha Settings',
+        'Upload Image', 'My Documents', 'Sectors', 'Payments', 'Questionnaire (3)', 'Technology Upgradation (2)', `Incentives (${INCENTIVE_TYPES.length})`, 'Settings (2)',
       ]);
-      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'Questionnaire (3)', 'Captcha Settings']);
-      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Payments', 'Sectors', 'Questionnaire (3)', 'Captcha Settings']);
+      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'Questionnaire (3)', 'Settings (2)']);
+      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Payments', 'Sectors', 'Questionnaire (3)', 'Settings (2)']);
       // Each incentive type is its own entry: the same page with ?type=.
       expect(menuFor(StaffRole.Admin, [], 'main').find((i) => i.label === 'ASSAM')?.queryParams).toEqual({ type: 'ASSAM' });
       expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation']);

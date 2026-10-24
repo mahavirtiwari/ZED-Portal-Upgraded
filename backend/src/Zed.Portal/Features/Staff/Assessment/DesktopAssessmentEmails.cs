@@ -29,14 +29,11 @@ public sealed class DesktopAssessmentEmails(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     PortalHost host,
     ILogger<DesktopAssessmentEmails> log)
 {
     private const string Scheme = "“MSME Sustainable (ZED) Certification” Scheme";
-
-    /// <summary>Mailbox of the ZED team that received agency rejections (hard-coded in the old code).</summary>
-    public const string ZedTeamInbox = "zed@qcin.org";
 
     public enum Kind { AllottedToAgency, AllottedToAssessor, RejectedByAgency, RejectedByAssessor, NcRaised }
 
@@ -54,7 +51,7 @@ public sealed class DesktopAssessmentEmails(
                 return;
             }
 
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             var surveillance = host.System == PortalSystem.Surveillance;
             if (host.System == PortalSystem.Consultancy)
             {
@@ -75,7 +72,7 @@ public sealed class DesktopAssessmentEmails(
                         AssessorAllotted(row, zedId), cc, ct);
                     break;
                 case Kind.RejectedByAgency:
-                    await SendAsync(ZedTeamInbox,
+                    await SendAsync(await addresses.GetAsync(EmailAddresses.ZedTeamInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
                         $"Rejection by Agency under {Scheme} - {zedId}", AgencyRejected(row, zedId, reason), cc, ct);
                     break;
                 case Kind.RejectedByAssessor:

@@ -57,7 +57,9 @@ public static class ZedHostingExtensions
 
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));
         services.AddHttpClient<RecaptchaVerifier>();
+        services.AddSingleton<IPortalSettings, PortalSettings>();
         services.AddSingleton<ICaptchaSettings, CaptchaSettings>();
+        services.AddSingleton<EmailAddresses>();
         services.AddSingleton<TextCaptcha>();
         services.AddTransient<ICaptchaVerifier, CaptchaVerifier>();
         services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();

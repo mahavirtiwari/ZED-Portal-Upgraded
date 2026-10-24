@@ -21,7 +21,7 @@ public sealed class ConsultancyAllotmentEmails(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     ILogger<ConsultancyAllotmentEmails> log)
 {
     private const string Scheme = "“MSME Sustainable (ZED) Certification” Scheme";
@@ -88,7 +88,7 @@ public sealed class ConsultancyAllotmentEmails(
         try
         {
             var row = (await db.QueryProcMultipleAsync("SP_EMAIL_GET_DETAILS", new { ZedId = zedId, Certification = certification }, ct))[0].FirstOrDefault();
-            await SendAsync<ConsultancyCoAllotmentRejectionEmail>(DesktopAssessmentEmails.ZedTeamInbox,
+            await SendAsync<ConsultancyCoAllotmentRejectionEmail>(await addresses.GetAsync(EmailAddresses.ZedTeamInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
                 $"Rejection by Consultant Organization under {Scheme} - {zedId}", new()
                 {
                     [nameof(ConsultancyCoAllotmentRejectionEmail.ZedId)] = zedId,
@@ -115,7 +115,7 @@ public sealed class ConsultancyAllotmentEmails(
         if (string.IsNullOrWhiteSpace(to)) return;
         parameters["PublicBaseUrl"] = portal.Value.PublicBaseUrl;
         var html = await templates.RenderAsync<TTemplate>(parameters);
-        var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+        var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
         await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
     }
 }

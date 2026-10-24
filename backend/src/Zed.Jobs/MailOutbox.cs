@@ -68,11 +68,13 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
                 log.LogError(ex, "Could not read the mail outbox of {Database}", name);
                 continue;
             }
+            // The Admin's Email Settings of this database (copy of every mail, report recipients).
+            var settings = batch.Count > 0 ? await PortalSettings.ReadAsync(db, log, ct) : null;
             foreach (var mail in batch)
             {
                 try
                 {
-                    await email.SendAsync(ToMessage(mail, o), ct);
+                    await email.SendAsync(ToMessage(mail, o, settings), ct);
                     await db.ExecuteSqlAsync(SentSql, new { mail.Id }, ct);
                     sent++;
                 }
@@ -87,9 +89,17 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
         return sent;
     }
 
-    internal static EmailMessage ToMessage(OutboxMail mail, JobsOptions options)
+    /// <summary>Fixed recipients of SP_SEND_MAIL_STATUS_COUNTS_AGENCY (the daily status report) in the old procedure.</summary>
+    internal static readonly string[] LegacyReportRecipients = ["ks@geostat.in", "keerthisreenu@gmail.com"];
+
+    internal static EmailMessage ToMessage(OutboxMail mail, JobsOptions options, IReadOnlyDictionary<string, string>? settings = null)
     {
-        var to = string.IsNullOrWhiteSpace(mail.Recipients) ? mail.CopyRecipients ?? mail.BlindCopyRecipients ?? "" : mail.Recipients;
+        var recipients = mail.Recipients;
+        if (settings?.GetValueOrDefault(EmailAddresses.DbReportRecipients) is { Length: > 0 } report
+            && EmailAddresses.Split(recipients).Order(StringComparer.OrdinalIgnoreCase)
+                .SequenceEqual(LegacyReportRecipients.Order(StringComparer.OrdinalIgnoreCase), StringComparer.OrdinalIgnoreCase))
+            recipients = report;
+        var to = string.IsNullOrWhiteSpace(recipients) ? mail.CopyRecipients ?? mail.BlindCopyRecipients ?? "" : recipients;
         if (string.IsNullOrWhiteSpace(to)) throw new InvalidOperationException("The mail has no recipients.");
         var profile = mail.ProfileName is { Length: > 0 } p && options.MailProfiles.TryGetValue(p, out var mapped) ? mapped : EmailProfiles.Default;
         var body = string.Equals(mail.BodyFormat, "HTML", StringComparison.OrdinalIgnoreCase)
@@ -97,7 +107,14 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
             : "<pre style=\"font-family: inherit; white-space: pre-wrap\">" + WebUtility.HtmlEncode(mail.Body ?? "") + "</pre>";
         return new EmailMessage(to, mail.Subject ?? "", body, profile,
             Cc: string.IsNullOrWhiteSpace(mail.CopyRecipients) || ReferenceEquals(to, mail.CopyRecipients) ? null : [mail.CopyRecipients],
-            Bcc: string.IsNullOrWhiteSpace(mail.BlindCopyRecipients) || ReferenceEquals(to, mail.BlindCopyRecipients) ? null : [mail.BlindCopyRecipients]);
+            Bcc: Bcc(string.IsNullOrWhiteSpace(mail.BlindCopyRecipients) || ReferenceEquals(to, mail.BlindCopyRecipients) ? null : mail.BlindCopyRecipients,
+                settings?.GetValueOrDefault(EmailAddresses.DbMailBcc)));
+    }
+
+    private static IReadOnlyList<string>? Bcc(params string?[] lists)
+    {
+        var all = lists.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l!).ToList();
+        return all.Count > 0 ? all : null;
     }
 }
 

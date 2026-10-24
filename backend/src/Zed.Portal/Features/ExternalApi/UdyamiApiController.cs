@@ -28,7 +28,7 @@ public sealed class UdyamiApiController(
     PledgeCertificateService certificates,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     IOptions<PortalOptions> portal,
     IWebHostEnvironment env,
     ILogger<UdyamiApiController> log) : ExternalApiController
@@ -136,7 +136,7 @@ public sealed class UdyamiApiController(
                 [nameof(PledgeCertificateEmail.Password)] = row.Text("Password"),
                 [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             await email.SendAsync(new EmailMessage(msme.UserEmail!,
                 "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + zedId,
                 html, EmailProfiles.Registration, cc, [new EmailAttachment("Pledge.pdf", pdf)]), ct);
