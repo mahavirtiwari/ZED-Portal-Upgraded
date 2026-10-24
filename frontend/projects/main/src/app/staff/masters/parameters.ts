@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { MastersApi, Parameter } from './masters.api';
 
@@ -17,7 +18,7 @@ import { MastersApi, Parameter } from './masters.api';
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4 justify-content-center">
         <div class="col-sm-10">
-          <h3 class="registration-title">Parameters ({{ sectionType }})</h3>
+          <h3 class="registration-title">Parameters ({{ sectionType() }})</h3>
           @if (error()) {
             <div class="alert alert-danger" role="alert">{{ error() }}</div>
           }
@@ -67,7 +68,7 @@ import { MastersApi, Parameter } from './masters.api';
                     <th>{{ s.sectionName }}</th>
                     <td class="text-justify"><pre>{{ s.description }}</pre></td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-danger btn-sm" (click)="edit(s)">Edit</button><br /><br />
+                      <button type="button" class="btn btn-danger btn-sm" (click)="edit(s)"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> Edit</button><br /><br />
                       <a class="btn btn-primary btn-sm" [href]="requirementsUrl(s)">Requirements</a>
                     </td>
                   </tr>
@@ -122,7 +123,8 @@ export class ParametersPage {
   private readonly api = inject(MastersApi);
   private readonly legacyUrl = signal('');
 
-  protected readonly sectionType: string = inject(ActivatedRoute).snapshot.paramMap.get('sectionType') ?? 'Bronze';
+  /** Bronze, Silver or Gold; the page reloads when the menu's Questionnaire drop-down switches level. */
+  protected readonly sectionType = signal('Bronze');
   protected readonly parameters = signal<Parameter[]>([]);
   protected readonly editing = signal<{ id: number; sectionName: string; description: string } | null>(null);
   protected readonly submitted = signal(false);
@@ -136,16 +138,22 @@ export class ParametersPage {
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
-    void this.load();
+    inject(ActivatedRoute).paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      this.sectionType.set(params.get('sectionType') ?? 'Bronze');
+      this.editing.set(null);
+      this.success.set('');
+      this.error.set('');
+      void this.load();
+    });
   }
 
   protected requirementsUrl(p: Parameter): string {
-    return `/staff/questionnaire/${encodeURIComponent(p.sectionType || this.sectionType)}/${encodeURIComponent(p.sectionCode)}`;
+    return `/staff/questionnaire/${encodeURIComponent(p.sectionType || this.sectionType())}/${encodeURIComponent(p.sectionCode)}`;
   }
 
   private async load(): Promise<void> {
     try {
-      this.parameters.set(await firstValueFrom(this.api.parameters(this.sectionType)));
+      this.parameters.set(await firstValueFrom(this.api.parameters(this.sectionType())));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }
@@ -161,7 +169,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType, this.code.trim(), this.name.trim(), this.description))).message);
+      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description))).message);
       this.code = this.name = this.description = '';
       this.submitted.set(false);
       await this.load();
@@ -187,7 +195,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType, e.id, e.sectionName.trim(), e.description))).message);
+      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description))).message);
       this.editing.set(null);
       await this.load();
     } catch (err) {

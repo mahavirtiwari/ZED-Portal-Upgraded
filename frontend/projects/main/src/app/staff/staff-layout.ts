@@ -48,7 +48,7 @@ import { StaffMenuItem, menuEntries, menuFor } from './staff-menu';
                       @for (item of entry.items; track item.label + (item.route ?? item.legacyPath)) {
                         <li>
                           @if (item.route) {
-                            <a class="dropdown-item" [routerLink]="item.route" routerLinkActive="active">{{ item.label }}</a>
+                            <a class="dropdown-item" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
                           } @else {
                             <a class="dropdown-item" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
                           }
@@ -59,7 +59,7 @@ import { StaffMenuItem, menuEntries, menuFor } from './staff-menu';
                 } @else {
                   <li class="nav-item tag">
                     @if (entry.item.route) {
-                      <a class="nav-link" [routerLink]="entry.item.route" routerLinkActive="active">{{ entry.item.label }}</a>
+                      <a class="nav-link" [routerLink]="entry.item.route" [queryParams]="entry.item.queryParams" routerLinkActive="active">{{ entry.item.label }}</a>
                     } @else {
                       <a class="nav-link" [href]="legacy(entry.item)" title="Opens the current portal">{{ entry.item.label }}</a>
                     }
@@ -145,6 +145,11 @@ export class StaffLayout {
     event.stopPropagation();
     this.userMenuOpen.set(false);
     this.openGroup.update((g) => (g === group ? null : group));
+  }
+
+  /** Entries that differ only by query parameters (incentive types) are active only for their own parameters. */
+  protected activeOptions(item: StaffMenuItem): { exact: boolean } | { paths: 'subset'; queryParams: 'exact'; matrixParams: 'ignored'; fragment: 'ignored' } {
+    return item.queryParams ? { paths: 'subset', queryParams: 'exact', matrixParams: 'ignored', fragment: 'ignored' } : { exact: false };
   }
 
   /** A drop-down is highlighted while one of its pages is open. */

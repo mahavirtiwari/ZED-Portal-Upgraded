@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { IncentiveMasterPage } from './incentive-master';
 import { IncentiveSubmissionsPage } from './incentive-submissions';
 import { IncentiveUploadPage } from './incentive-upload';
@@ -24,7 +25,7 @@ describe('incentive pages', () => {
       imports: [component],
       providers: [
         provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap({}) } } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap({}) }, queryParamMap: of(convertToParamMap(query)), paramMap: of(convertToParamMap({})) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(component);
@@ -133,7 +134,7 @@ describe('incentive pages', () => {
     expect(el.querySelector('tbody a[target="_blank"][href^="javascript"]')).toBeNull();
     expect(el.querySelector('a[aria-label="Document 1"]')!.getAttribute('href')).toBe('/api/staff/schemes/incentive-master/41/documents/1');
 
-    button('SUBMIT').click();
+    button('SAVE').click();
     await settle();
     http.expectNone('/api/staff/schemes/incentive-master');
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Incentive required.');
@@ -147,7 +148,7 @@ describe('incentive pages', () => {
       input.dispatchEvent(new Event('input'));
     }
     await settle();
-    button('SUBMIT').click();
+    button('SAVE').click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master');
     expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'Financial', incentive: 'Scheme B', webLink: 'https://x.in' }));
@@ -156,6 +157,40 @@ describe('incentive pages', () => {
     http.expectOne((r) => r.method === 'GET').flush([]);
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Incentive saved.');
+  });
+
+  it('edits an incentive in the Edit Incentive pop-up, as the live page', async () => {
+    await create(IncentiveMasterPage, { type: 'Common' });
+    http.expectOne((r) => r.params.get('type') === 'Common').flush([
+      { incentive: { Id: 41, Incentive: 'Scheme A', Details: 'd', MinistryOrDepartment: 'm', ContactPerson: 'c', Email: 'a@b.in', MobileNo: '011',
+        WebLink: 'https://x.in', ActiveStatus: true }, hasDocument1: false, hasDocument2: false },
+    ]);
+    await settle();
+    // No type select: the menu's Incentives drop-down chooses the type.
+    expect(el.querySelector('select')).toBeNull();
+    expect(el.querySelector('.modal')).toBeNull();
+
+    button('Edit').click();
+    await settle();
+    expect(el.querySelector('#edit-incentive-title')!.textContent).toBe('Edit Incentive');
+    expect((el.querySelector('#edit-incentive') as HTMLInputElement).value).toBe('Scheme A');
+    // The add form above stays empty.
+    expect((el.querySelector('#inc-incentive') as HTMLInputElement).value).toBe('');
+
+    const input = el.querySelector('#edit-incentive') as HTMLInputElement;
+    input.value = 'Scheme A2';
+    input.dispatchEvent(new Event('input'));
+    await settle();
+    button('UPDATE').click();
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master/41');
+    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'Common', incentive: 'Scheme A2', activeStatus: true }));
+    post.flush({ message: 'Incentive updated.' });
+    await settle();
+    http.expectOne((r) => r.method === 'GET').flush([]);
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Incentive updated.');
   });
 
   it('refuses non-PDF documents before uploading', async () => {

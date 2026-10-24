@@ -1,4 +1,5 @@
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
+import { INCENTIVE_TYPES } from './schemes/incentives.api';
 
 /** Users.RoleId values of the staff roles (legacy UserRoleEnum). */
 export const StaffRole = {
@@ -23,6 +24,8 @@ export interface StaffMenuItem {
   route?: string;
   /** Address on the old portal until then (relative to legacyPortalUrl). */
   legacyPath?: string;
+  /** Query parameters of `route` (e.g. the incentive type). */
+  queryParams?: Record<string, string>;
   roles: number[];
   /** All of these sub-roles are required (UserHelper.CheckSubRole). */
   subRoles?: SubRole[];
@@ -106,15 +109,19 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'NEFT: Approved Transactions', legacyPath: '/Neft/ApprovedTransactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
 
-  // Admin: content and masters
-  { label: 'Questionnaire', legacyPath: '/Questionaire/Index?SectionType=Bronze', route: '/staff/masters/parameters/Bronze', roles: [R.Admin], group: 'Masters' },
-  { label: 'Payment Details', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin] },
-  { label: 'Home Page Settings', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin] },
-  { label: 'Documents', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin] },
-  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], group: 'Masters' },
-  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], group: 'Masters' },
-  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], group: 'Masters' },
-  { label: 'Incentives', legacyPath: '/Incentive/Index', route: '/staff/incentives', roles: [R.Admin] },
+  // Admin: as the live layout (Frontend/Shared/_Layout.cshtml, Admin), labels, order and drop-downs.
+  { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin] },
+  { label: 'My Documents', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin] },
+  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin] },
+  { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin] },
+  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
+    label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
+  })),
+  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], group: 'Technology Upgradation' },
+  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], group: 'Technology Upgradation' },
+  ...INCENTIVE_TYPES.map((t) => ({
+    label: t.label, legacyPath: '/Incentive/Index', route: '/staff/incentives', queryParams: { type: t.value }, roles: [R.Admin as number], group: 'Incentives',
+  })),
 ];
 
 /**
@@ -127,12 +134,14 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.Ministry] },
 
-  // Admin: masters
+  // Admin: as the live layout; its Incentives drop-down is not ported (ZED_CONSULTANT incentives are not served here).
   { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin] },
   { label: 'My Documents', route: '/staff/masters/documents', roles: [R.Admin] },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin] },
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
-  { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
+  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
+    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
+  })),
 
   // MasterAdmin: allotment and consultancy monitoring
   // As the live layout (ZEDCS_CONSULTANCY Frontend/Shared/_Layout.cshtml): "Allot Consultancy", then the "Consultancy
@@ -180,7 +189,9 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin] },
-  { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
+  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
+    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
+  })),
 
   // MasterAdmin
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance

@@ -2,7 +2,8 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, ParamMap, convertToParamMap, provideRouter } from '@angular/router';
+import { of } from 'rxjs';
 import { CodeNamesPage } from './code-names';
 import { DocumentsAdminPage } from './documents';
 import { PageSettingsPage } from './page-settings';
@@ -20,10 +21,16 @@ function chooseFile(input: HTMLInputElement, file: File) {
   input.dispatchEvent(new Event('change'));
 }
 
+/** The route with paramMap / queryParamMap streams of its snapshot (pages that follow route changes subscribe to them). */
+function withStreams(route: object): object {
+  const snap = (route as { snapshot?: { paramMap?: ParamMap; queryParamMap?: ParamMap } }).snapshot ?? {};
+  return { ...route, paramMap: of(snap.paramMap ?? convertToParamMap({})), queryParamMap: of(snap.queryParamMap ?? convertToParamMap({})) };
+}
+
 async function setup<T>(component: Type<T>, route: object = { snapshot: { data: {}, paramMap: convertToParamMap({}) } }) {
   await TestBed.configureTestingModule({
     imports: [component],
-    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: ActivatedRoute, useValue: route }],
+    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: ActivatedRoute, useValue: withStreams(route) }],
   }).compileComponents();
   const fixture = TestBed.createComponent(component);
   const http = TestBed.inject(HttpTestingController);

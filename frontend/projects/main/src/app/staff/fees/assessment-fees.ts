@@ -152,7 +152,7 @@ interface LevelInput {
   styles: `
     table tbody tr td { font-size: 12px; }
     .hl-yellow { background-color: yellow; color: black; }
-    th.hl-blue, td.hl-blue { background-color: #9ec5fe; color: black; }
+    th.hl-blue, td.hl-blue { background-color: blue; color: white; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
