@@ -112,14 +112,15 @@ public static class ZedHostingExtensions
     }
 
     /// <summary>
-    /// With <c>Portal:EnvironmentLabel</c> set (a test environment such as staging): every response says
+    /// In the Staging environment, and wherever <c>Portal:EnvironmentLabel</c> is set: every response says
     /// <c>X-Robots-Tag: noindex, nofollow</c> and <c>/robots.txt</c> disallows everything, so search engines keep the
-    /// copy of production data out of their index. Without the label nothing changes.
+    /// test site out of their index (MSMEs must not find it and register there). The label itself (banner, title and
+    /// mail prefix) is optional: a staging site may run without one. Elsewhere nothing changes.
     /// </summary>
     public static IApplicationBuilder UseZedEnvironmentLabel(this IApplicationBuilder app)
     {
         var label = app.ApplicationServices.GetRequiredService<IConfiguration>()["Portal:EnvironmentLabel"];
-        if (string.IsNullOrWhiteSpace(label)) return app;
+        if (string.IsNullOrWhiteSpace(label) && !app.ApplicationServices.GetRequiredService<IHostEnvironment>().IsStaging()) return app;
         return app.Use(async (context, next) =>
         {
             context.Response.OnStarting(() =>

@@ -62,7 +62,7 @@ public sealed class StagingMailTests : IDisposable
         var m = Assert.Single(Written());
         // No To left in the domains: the allowed Cc/Bcc recipients receive it.
         Assert.Equal(["agency@qcin.org", "office@zed.org.in"], m.To.Mailboxes.Select(a => a.Address));
-        Assert.Equal("[STAGING] Allotment details", m.Subject);
+        Assert.Equal("Allotment details", m.Subject); // no Portal:EnvironmentLabel: the subject is left as it is
         Assert.Contains("only to the allowed domains", m.HtmlBody);
         Assert.Contains("unit@acme.example", m.Headers["X-Zed-Original-To"]);
     }

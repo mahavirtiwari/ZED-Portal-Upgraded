@@ -1,7 +1,7 @@
 import { Component, HostListener, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
-import { StaffMenuItem, menuFor } from './staff-menu';
+import { StaffMenuItem, menuEntries, menuFor } from './staff-menu';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { PORTAL_LABELS } from '../portal-labels';
 
@@ -39,14 +39,34 @@ import { PORTAL_LABELS } from '../portal-labels';
                   <img src="Images/svgicons/home.svg" alt="" />
                 </a>
               </li>
-              @for (item of menu(); track item.label + (item.route ?? item.legacyPath)) {
-                <li class="nav-item tag">
-                  @if (item.route) {
-                    <a class="nav-link" [routerLink]="item.route" routerLinkActive="active">{{ item.label }}</a>
-                  } @else {
-                    <a class="nav-link" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
-                  }
-                </li>
+              @for (entry of entries(); track $index) {
+                @if ('group' in entry) {
+                  <li class="nav-item dropdown tag">
+                    <button type="button" class="nav-link dropdown-toggle btn btn-link" [class.active]="groupActive(entry.items)"
+                            [attr.aria-expanded]="openGroup() === entry.group" (click)="toggleGroup(entry.group, $event)">
+                      {{ entry.group }}
+                    </button>
+                    <ul class="dropdown-menu" [class.show]="openGroup() === entry.group">
+                      @for (item of entry.items; track item.label + (item.route ?? item.legacyPath)) {
+                        <li>
+                          @if (item.route) {
+                            <a class="dropdown-item" [routerLink]="item.route" routerLinkActive="active">{{ item.label }}</a>
+                          } @else {
+                            <a class="dropdown-item" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  </li>
+                } @else {
+                  <li class="nav-item tag">
+                    @if (entry.item.route) {
+                      <a class="nav-link" [routerLink]="entry.item.route" routerLinkActive="active">{{ entry.item.label }}</a>
+                    } @else {
+                      <a class="nav-link" [href]="legacy(entry.item)" title="Opens the current portal">{{ entry.item.label }}</a>
+                    }
+                  </li>
+                }
               }
               <li class="nav-item dropdown tag">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)">
@@ -78,6 +98,13 @@ import { PORTAL_LABELS } from '../portal-labels';
     :host { padding-top: 100px; color: #333; }
     .staff-content { min-height: calc(100vh - 260px); }
     .dropdown-toggle.btn-link { text-decoration: none; }
+    /* The drop-downs are buttons; the old stylesheet styles only the links (.zed-navbar .nav > li > a). */
+    .zed-navbar .nav > li > button.nav-link {
+      margin-top: 10px; color: #fff; font-size: 14px; font-weight: 600; line-height: 24px;
+      border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    }
+    .zed-navbar .nav > li > button.nav-link.active { border-bottom: 2px solid #fff; }
+    .zed-navbar .nav > li > button.nav-link:hover, .zed-navbar .nav > li > button.nav-link:focus { opacity: 0.9; }
   `,
 })
 export class StaffLayout {
@@ -90,6 +117,9 @@ export class StaffLayout {
     const u = this.user();
     return u ? menuFor(u.roleId, u.subRoles ?? []) : [];
   });
+  /** The menu bar: long menus fold into drop-downs as in the old layout (StaffMenuItem.group). */
+  protected readonly entries = computed(() => menuEntries(this.menu()));
+  protected readonly openGroup = signal<string | null>(null);
   protected readonly year = new Date().getFullYear();
   /** Consultancy / Surveillance builds: the portal's name in the menu bar. */
   protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
@@ -101,6 +131,7 @@ export class StaffLayout {
     this.router.events.subscribe(() => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);
+      this.openGroup.set(null);
     });
   }
 
@@ -110,12 +141,26 @@ export class StaffLayout {
 
   protected toggleUserMenu(event: Event): void {
     event.stopPropagation();
+    this.openGroup.set(null);
     this.userMenuOpen.update((v) => !v);
+  }
+
+  protected toggleGroup(group: string, event: Event): void {
+    event.stopPropagation();
+    this.userMenuOpen.set(false);
+    this.openGroup.update((g) => (g === group ? null : group));
+  }
+
+  /** A drop-down is highlighted while one of its pages is open. */
+  protected groupActive(items: readonly StaffMenuItem[]): boolean {
+    const url = this.router.url.split(/[?#]/)[0];
+    return items.some((i) => !!i.route && (url === i.route || url.startsWith(i.route + '/')));
   }
 
   @HostListener('document:click')
   protected closeMenus(): void {
     this.userMenuOpen.set(false);
+    this.openGroup.set(null);
   }
 
   protected async logout(): Promise<void> {

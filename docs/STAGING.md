@@ -215,8 +215,9 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    reCAPTCHA key pair registered for zedv3.qci.org.in** (or `Recaptcha__Enabled=false`, which leaves the captcha
    untested); **CCAvenue test** merchant and keys only (ask CCAvenue to allow the staging return URLs); the
    **Udyam access key** (`Udyam__AccessKey`); Protean test credentials; Twilio test credentials or none.
-   `Portal__EnvironmentLabel=STAGING` shows a STAGING banner and title prefix and tells search engines not to index
-   the site. The hosts refuse to start in Staging without a mail redirect.
+   No visible label (decided 2026-10-24: no STAGING banner, title prefix or mail subject prefix); the Staging
+   environment still tells search engines not to index the site (X-Robots-Tag, robots.txt), with or without
+   `Portal__EnvironmentLabel`. The hosts refuse to start in Staging without a mail redirect.
    **Required at startup** (otherwise HTTP 500.30, the reason in the Application event log): every portal needs
    `Email__Profiles__Default__Host` and `__From`, and with the captcha on `Recaptcha__SiteKey` and `__SecretKey`; the
    main portal also needs the four `CcAvenue__MerchantId/AccessCode/WorkingKey/ReconciliationWorkingKey`,
@@ -254,12 +255,12 @@ job).
 ## 6. Check
 
 ```powershell
-.\deploy\Test-ZedDeployment.ps1 -BaseUrl https://zedv3.qci.org.in -ExpectEnvironmentLabel STAGING -CheckHttpsRedirect
+.\deploy\Test-ZedDeployment.ps1 -BaseUrl https://zedv3.qci.org.in -ExpectNoIndex -CheckHttpsRedirect
 ```
 0 failures required: health and database readiness of all six applications, the Angular apps and their base
-addresses, the old mail links, the XSRF cookie paths, the old dangerous actions gone, the mobile contract, the STAGING
-label, noindex and robots.txt, and http redirected to https. Then by hand: the STAGING banner shows; a password reset
-mail arrives at dev.zed@qcin.org.
+addresses, the old mail links, the XSRF cookie paths, the old dangerous actions gone, the mobile contract, no
+environment label, noindex and robots.txt, and http redirected to https. Then by hand: a password reset mail arrives
+at dev.zed@qcin.org.
 
 ## 7. Rehearsal journeys
 
@@ -282,7 +283,7 @@ agencies, assessors and MSMEs they create), plus:
 - **Partner traffic**: no partner tokens are copied (3.0 step 3); do not give partners the staging address unless a
   test is agreed (then give them test rows of their own).
 - **Zed.Jobs schedules, ERP, Udyami Bharat**: off (`Erp__Enabled=false`, `UdyamiBharat__Enabled=false`).
-- **Search engines**: noindex and robots.txt come with the STAGING label; keep the IP restriction anyway.
+- **Search engines**: noindex and robots.txt come with the Staging environment; keep the IP restriction anyway.
 - **Production passwords or keys** in the settings file: use new ones (LIVE-HARDENING §7 lists what is rotated anyway).
 
 **Rollback rehearsal**: `.\deploy\Install-ZedIis.ps1 -Rollback E:\ZedV4\rollback-<time>.json -Apply` removes what the install

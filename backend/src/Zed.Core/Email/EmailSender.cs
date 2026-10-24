@@ -254,11 +254,12 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
         }, headers);
     }
 
-    /// <summary>"[STAGING] " (or the environment label) before the subject, whenever the staging rule is active.</summary>
+    /// <summary>"[LABEL] " before the subject while the staging rule is active and Portal:EnvironmentLabel is set; without a label the subject is unchanged.</summary>
     private string Prefix(string subject)
     {
         var label = config?[MailSafety.EnvironmentLabelSetting];
-        var prefix = "[" + (string.IsNullOrWhiteSpace(label) ? "STAGING" : label.Trim()) + "] ";
+        if (string.IsNullOrWhiteSpace(label)) return subject;
+        var prefix = "[" + label.Trim() + "] ";
         return subject.StartsWith(prefix, StringComparison.Ordinal) ? subject : prefix + subject;
     }
 }

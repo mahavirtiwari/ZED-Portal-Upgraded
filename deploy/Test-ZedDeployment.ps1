@@ -46,6 +46,8 @@ param(
     [string[]]$Skip = @(),
     [string]$AppVersion = '0.0.0-smoketest',
     [string]$ExpectEnvironmentLabel,
+    # A test site without a label (staging): no label in /api/config, but noindex and robots.txt as with one.
+    [switch]$ExpectNoIndex,
     [switch]$CheckHttpsRedirect,
     [int]$TimeoutSeconds = 30
 )
@@ -175,6 +177,12 @@ function Test-Label([string]$Name, [string]$Url, $Landing) {
         $robots = Send 'GET' "$Url/robots.txt"
         Report ($robots.Status -eq 200 -and $robots.Body -match 'Disallow:\s*/\s*$') "$Name /robots.txt disallows everything" (Describe $robots)
     }
+    elseif ($ExpectNoIndex) {
+        Report ([string]::IsNullOrWhiteSpace($label)) "$Name shows no environment label" ("label '$label'")
+        Report ($Landing.Robots -match 'noindex') "$Name responses carry X-Robots-Tag noindex" ("X-Robots-Tag '$($Landing.Robots)'")
+        $robots = Send 'GET' "$Url/robots.txt"
+        Report ($robots.Status -eq 200 -and $robots.Body -match 'Disallow:\s*/\s*$') "$Name /robots.txt disallows everything" (Describe $robots)
+    }
     else {
         Report ([string]::IsNullOrWhiteSpace($label) -and $Landing.Robots -notmatch 'noindex') "$Name carries no test-environment label (live site)" ("label '$label', X-Robots-Tag '$($Landing.Robots)'")
     }
@@ -197,7 +205,7 @@ function Test-Mobile([string]$Name, [string]$Url, [bool]$MsmeLogin) {
     Report ($r.Status -eq 200 -and $r.Body -match 'ZED services') "$Name / answers like the old services" (Describe $r)
     Test-Healthy "$Name /health" "$Url/health"
     Test-Healthy "$Name /health/ready (database)" "$Url/health/ready"
-    if ($ExpectEnvironmentLabel) { Report ($r.Robots -match 'noindex') "$Name mobile responses carry X-Robots-Tag noindex" ("X-Robots-Tag '$($r.Robots)'") }
+    if ($ExpectEnvironmentLabel -or $ExpectNoIndex) { Report ($r.Robots -match 'noindex') "$Name mobile responses carry X-Robots-Tag noindex" ("X-Robots-Tag '$($r.Robots)'") }
     if ($MsmeLogin) {
         $r = Send 'POST' "$Url/Msme/Login" @{ userName = ''; password = ''; version = $AppVersion }
         $status = $null

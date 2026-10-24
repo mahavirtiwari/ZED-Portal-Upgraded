@@ -28,6 +28,34 @@ export interface StaffMenuItem {
   subRoles?: SubRole[];
   /** At least one of these sub-roles is required. */
   anySubRole?: SubRole[];
+  /**
+   * Drop-down this entry belongs to in the menu bar (the old layout grouped the long menus the same way, e.g.
+   * MasterAdmin's "Assessment"); the drop-down stands where its first entry is.
+   */
+  group?: string;
+}
+
+/** A menu bar entry: a link, or a drop-down of links. */
+export type StaffMenuEntry = { item: StaffMenuItem } | { group: string; items: StaffMenuItem[] };
+
+/** Folds the entries of each group into one drop-down, keeping the menu order. */
+export function menuEntries(items: readonly StaffMenuItem[]): StaffMenuEntry[] {
+  const entries: StaffMenuEntry[] = [];
+  const groups = new Map<string, StaffMenuItem[]>();
+  for (const item of items) {
+    if (!item.group) {
+      entries.push({ item });
+      continue;
+    }
+    const existing = groups.get(item.group);
+    if (existing) existing.push(item);
+    else {
+      const list = [item];
+      groups.set(item.group, list);
+      entries.push({ group: item.group, items: list });
+    }
+  }
+  return entries;
 }
 
 const R = StaffRole;
@@ -42,19 +70,19 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Failed Transactions', legacyPath: '/Dashboard/FailedTransactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
   { label: 'Registered MSMEs', legacyPath: '/Dashboard/RegisteredMsme', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC, R.Ministry] },
   { label: 'Financial Support', legacyPath: '/Dashboard/FinancialSupport', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
-  { label: 'Payments Received', legacyPath: '/Dashboard/PaymentReceived', route: '/staff/payments-received', roles: [R.MasterAdmin] },
+  { label: 'Payments Received', legacyPath: '/Dashboard/PaymentReceived', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Reports', legacyPath: '/DynamicReports/Index', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator] },
   { label: 'ZED ID History', legacyPath: '/Msme/History', route: '/staff/history', roles: [R.MasterAdmin] },
 
   // Master admin: agencies, assessors and allocation
-  { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin] },
-  { label: 'Bronze Assessment Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin] },
-  { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin] },
-  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
-  { label: 'Allot', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
+  { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Bronze Assessment Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Allot', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Assessment' },
 
   // Assessment workflow
-  { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.MasterAdmin] },
+  { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Monitoring', legacyPath: '/Monitoring/Index', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
   { label: 'Assessors', legacyPath: '/User/Assessors', route: '/staff/users/my-assessors', roles: [R.Agency] },
   { label: 'DA Allotment', legacyPath: '/Assessment/DaAllotment', route: '/staff/assessment/da-allotment', roles: [R.Agency], subRoles: ['DesktopVerification'] },
@@ -62,9 +90,11 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Desktop Verification', legacyPath: '/Assessment/DaVerification', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
   { label: 'Non-Conformances', legacyPath: '/Assessment/NonConfirmances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor] },
   { label: 'Remote Assessments', legacyPath: '/Assessment/RemoteAssessments', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
-  { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin, R.DesktopAssessor] },
+  { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor] },
   { label: 'Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
-  { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin, R.DesktopAssessor] },
+  { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Assessment' },
+  { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
   { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },
 
   // Schemes and finance
@@ -77,13 +107,13 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
 
   // Admin: content and masters
-  { label: 'Questionnaire', legacyPath: '/Questionaire/Index?SectionType=Bronze', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
+  { label: 'Questionnaire', legacyPath: '/Questionaire/Index?SectionType=Bronze', route: '/staff/masters/parameters/Bronze', roles: [R.Admin], group: 'Masters' },
   { label: 'Payment Details', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin] },
   { label: 'Home Page Settings', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin] },
   { label: 'Documents', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin] },
-  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin] },
-  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin] },
-  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin] },
+  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], group: 'Masters' },
+  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], group: 'Masters' },
+  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], group: 'Masters' },
   { label: 'Incentives', legacyPath: '/Incentive/Index', route: '/staff/incentives', roles: [R.Admin] },
 ];
 
@@ -105,13 +135,13 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin: allotment and consultancy monitoring
-  { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
-  { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin] },
-  { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin] },
-  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
-  { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
-  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
-  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },
+  { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Consultancy' },
+  { label: 'Consultancy Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Consultancy' },
   { label: 'Technology Upgradation', route: '/staff/consultancy/technology', roles: [R.MasterAdmin] },
 
   // Consultant Organisation (Agency)
@@ -151,14 +181,14 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin
-  { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
-  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin] },
-  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin] },
-  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin] },
-  { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin] },
-  { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin] },
-  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin] },
-  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin] },
+  { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Surveillance' },
+  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Surveillance' },
 
   // Agency
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },

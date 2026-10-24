@@ -40,20 +40,20 @@ DECLARE @LinkValidMinutes int = 1440;                     -- 1 to 1440
 -- Users.DesktopVerification / SiteVerification / FinancialVerification bits (menus and procedures read them).
 DECLARE @Accounts TABLE (System varchar(20), UserId varchar(50), UserName varchar(200), RoleId int, Desktop bit, Site bit, Financial bit, CreatedBy varchar(50), Purpose varchar(100));
 INSERT @Accounts VALUES
-    ('Main',         'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
-    ('Main',         'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: sectors, categories, technologies, questionnaire, fees'),
-    ('Main',         'ZEDV4AG01',  'STAGING ASSESSMENT AGENCY',  2, 1, 1, 1, 'staging-setup', 'certification agency'),
-    ('Main',         'ZEDV4DA01',  'STAGING DESKTOP ASSESSOR',   3, 1, 0, 0, 'ZEDV4AG01',     'desktop assessor of the agency'),
-    ('Main',         'ZEDV4SA01',  'STAGING SITE ASSESSOR',      4, 0, 1, 0, 'ZEDV4AG01',     'site assessor of the agency'),
-    ('Consultancy',  'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
-    ('Consultancy',  'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: sectors, questionnaire'),
-    ('Consultancy',  'ZEDV4CO01',  'STAGING CONSULTANT ORG',     2, 1, 1, 1, 'staging-setup', 'consultant organisation (CO)'),
-    ('Consultancy',  'ZEDV4CC01',  'STAGING CONSULTANT',         3, 0, 1, 0, 'ZEDV4CO01',     'consultant of the CO'),
-    ('Consultancy',  'ZEDV4DFO01', 'STAGING DFO',                3, 0, 0, 1, 'ZEDV4CO01',     'TU verifier (DFO)'),
-    ('Surveillance', 'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
-    ('Surveillance', 'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: Payments (surveillance fee master)'),
-    ('Surveillance', 'ZEDV4AG01',  'STAGING ASSESSMENT AGENCY',  2, 1, 1, 1, 'staging-setup', 'surveillance agency'),
-    ('Surveillance', 'ZEDV4SA01',  'STAGING SITE ASSESSOR',      4, 0, 1, 0, 'ZEDV4AG01',     'surveillance site assessor');
+    ('Main',         'ZEDV4MA01',  'MASTER ADMIN',               7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Main',         'ZEDV4AD01',  'ADMIN',                      1, 0, 0, 0, 'staging-setup', 'Admin: sectors, categories, technologies, questionnaire, fees'),
+    ('Main',         'ZEDV4AG01',  'ASSESSMENT AGENCY',          2, 1, 1, 1, 'staging-setup', 'certification agency'),
+    ('Main',         'ZEDV4DA01',  'DESKTOP ASSESSOR',           3, 1, 0, 0, 'ZEDV4AG01',     'desktop assessor of the agency'),
+    ('Main',         'ZEDV4SA01',  'SITE ASSESSOR',              4, 0, 1, 0, 'ZEDV4AG01',     'site assessor of the agency'),
+    ('Consultancy',  'ZEDV4MA01',  'MASTER ADMIN',               7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Consultancy',  'ZEDV4AD01',  'ADMIN',                      1, 0, 0, 0, 'staging-setup', 'Admin: sectors, questionnaire'),
+    ('Consultancy',  'ZEDV4CO01',  'CONSULTANT ORGANISATION',    2, 1, 1, 1, 'staging-setup', 'consultant organisation (CO)'),
+    ('Consultancy',  'ZEDV4CC01',  'CONSULTANT',                 3, 0, 1, 0, 'ZEDV4CO01',     'consultant of the CO'),
+    ('Consultancy',  'ZEDV4DFO01', 'DFO',                        3, 0, 0, 1, 'ZEDV4CO01',     'TU verifier (DFO)'),
+    ('Surveillance', 'ZEDV4MA01',  'MASTER ADMIN',               7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Surveillance', 'ZEDV4AD01',  'ADMIN',                      1, 0, 0, 0, 'staging-setup', 'Admin: Payments (surveillance fee master)'),
+    ('Surveillance', 'ZEDV4AG01',  'ASSESSMENT AGENCY',          2, 1, 1, 1, 'staging-setup', 'surveillance agency'),
+    ('Surveillance', 'ZEDV4SA01',  'SITE ASSESSOR',              4, 0, 1, 0, 'ZEDV4AG01',     'surveillance site assessor');
 
 -- ---------------------------------------------------------------- guards
 IF @Mode NOT IN ('PREVIEW', 'APPLY') THROW 50300, '@Mode must be PREVIEW or APPLY.', 1;

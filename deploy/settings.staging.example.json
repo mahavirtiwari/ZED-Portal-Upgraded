@@ -4,7 +4,6 @@
     "ASPNETCORE_ENVIRONMENT": "Staging",
     "ConnectionStrings__Main": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZEDCS_V2_LIVE;Integrated Security=true;TrustServerCertificate=true",
     "Database__Prefix": "ZEDV4_",
-    "Portal__EnvironmentLabel": "STAGING",
     "_Email_comment": "Decided: every staging mail goes to dev.zed@qcin.org (portals and mobile API here; Zed.Jobs in its own section below). Do not add Email__AllowedRecipientDomains: with it, mail to those domains would go to the real recipients. The hosts refuse to start in Staging when neither setting is given.",
     "Email__RedirectAllTo": "dev.zed@qcin.org",
     "Security__Passwords": "Dual"

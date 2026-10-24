@@ -344,7 +344,7 @@ try {
             foreach ($s in $sections) { if (-not $json.PSObject.Properties[$s]) { Write-Bad "section $s missing" } }
             $value = { param($section, $name) $p = (Get-Section $json $section) | Where-Object Name -eq $name; if ($p) { [string]$p.Value } else { $null } }
             foreach ($check in @(
-                    @('Common', 'ASPNETCORE_ENVIRONMENT', 'Staging'), @('Common', 'Database__Prefix', $Prefix), @('Common', 'Portal__EnvironmentLabel', 'STAGING'),
+                    @('Common', 'ASPNETCORE_ENVIRONMENT', 'Staging'), @('Common', 'Database__Prefix', $Prefix),
                     @('Common', 'Email__RedirectAllTo', 'dev.zed@qcin.org'), @('ZedJobs', 'Email__RedirectAllTo', 'dev.zed@qcin.org'),
                     @('ZedJobs', 'Database__Prefix', $Prefix), @('ZedJobs', 'DOTNET_ENVIRONMENT', 'Staging'), @('ZedJobs', 'Jobs__FolderRename__Enabled', 'false'),
                     @('Mobile', 'Portal__PublicBaseUrl', $BaseUrl))) {
@@ -552,7 +552,8 @@ try {
         }
 
         'Test' {
-            $test = @('-BaseUrl', $BaseUrl, '-ExpectEnvironmentLabel', 'STAGING')
+            # No visible label on this site (decided 2026-10-24); search engines are still kept out in Staging.
+            $test = @('-BaseUrl', $BaseUrl, '-ExpectNoIndex')
             if (Test-Path "$env:SystemRoot\System32\inetsrv\rewrite.dll") { $test += '-CheckHttpsRedirect' }
             Write-Step "Test-ZedDeployment.ps1 $BaseUrl"
             $code = Invoke-ScriptProcess (Join-Path $deployDir 'Test-ZedDeployment.ps1') $test

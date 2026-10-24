@@ -1,4 +1,4 @@
-import { StaffRole, homeFor, menuFor } from './staff-menu';
+import { StaffMenuEntry, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
 
 describe('staff menu', () => {
   const labels = (roleId: number, subRoles: string[]) => menuFor(roleId, subRoles).map((i) => i.label);
@@ -87,6 +87,23 @@ describe('staff menu', () => {
       expect(s(StaffRole.StateCoordinator, [])).toEqual([]);
       expect(homeFor(StaffRole.Admin, 'surveillance')).toBe('/staff/fees');
       expect(homeFor(StaffRole.StateCoordinator, 'surveillance')).toBeNull();
+    });
+  });
+
+  describe('menu bar drop-downs (the old layout grouped the long menus)', () => {
+    const bar = (roleId: number, system: 'main' | 'consultancy' | 'surveillance') =>
+      menuEntries(menuFor(roleId, [], system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
+
+    it('folds MasterAdmin and Admin menus into one row of entries', () => {
+      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Dashboard', 'Assessment (9)', 'ZED ID History', 'Financial Assistance', 'Upload API Incentives']);
+      expect(bar(StaffRole.Admin, 'main')).toEqual(['Masters (4)', 'Payment Details', 'Home Page Settings', 'Documents', 'Incentives']);
+      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Dashboard', 'Failed Transactions', 'Registered MSME', 'Consultancy (7)', 'Technology Upgradation']);
+      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Dashboard', 'Failed Transactions', 'Registered MSME', 'Surveillance (8)']);
+    });
+
+    it('leaves the other roles flat, as before', () => {
+      expect(menuEntries(menuFor(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'], 'main')).every((e) => 'item' in e)).toBe(true);
+      expect(menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification', 'SiteVerification'], 'surveillance')).every((e) => 'item' in e)).toBe(true);
     });
   });
 });
