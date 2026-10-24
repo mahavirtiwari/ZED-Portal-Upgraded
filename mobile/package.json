@@ -1,0 +1,17 @@
+{
+  "name": "zed-mobile",
+  "private": true,
+  "description": "ZED mobile apps (React Native): shared foundation and one workspace per app",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">= 22.11.0"
+  }
+}

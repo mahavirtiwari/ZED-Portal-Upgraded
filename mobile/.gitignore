@@ -1,0 +1,26 @@
+node_modules/
+.DS_Store
+*.log
+coverage/
+
+# Android / Gradle
+build/
+.gradle/
+.cxx/
+.kotlin/
+local.properties
+*.iml
+.idea/
+
+# Signing material never goes into the repository
+*.keystore
+*.jks
+keystore.properties
+signing.properties
+
+# Local environment files (test accounts etc.)
+.env*.local
+
+# Metro
+.metro-health-check*
+*.jsbundle

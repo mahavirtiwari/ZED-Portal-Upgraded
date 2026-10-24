@@ -1,0 +1,20 @@
+<resources>
+    <!-- As the legacy Theme.ZEDMSME: light, no action bar, status bar in the secondary colour. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="colorPrimary">@color/app_color</item>
+        <item name="colorPrimaryDark">@color/app_color_dark</item>
+        <item name="colorAccent">@color/app_color_secondary</item>
+        <item name="android:statusBarColor">@color/app_color_secondary</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="alertDialogTheme">@style/AppAlertDialog</item>
+        <item name="android:alertDialogTheme">@style/AppAlertDialog</item>
+    </style>
+
+    <!-- Legacy dialogs (MaterialComponents theme) draw their buttons in colorPrimary. -->
+    <style name="AppAlertDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorAccent">@color/app_color</item>
+        <item name="android:colorAccent">@color/app_color</item>
+    </style>
+</resources>

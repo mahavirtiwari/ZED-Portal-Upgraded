@@ -1,0 +1,107 @@
+apply plugin: "com.android.application"
+apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "com.facebook.react"
+
+/**
+ * ZED Bronze Surveillance (legacy ZED_MSME_Bronze). The applicationId must stay
+ * com.qci.zed.bronzesurveillance so that the Play Store app updates in place.
+ */
+react {
+    // npm workspaces: the app is mobile/apps/msme, React Native is hoisted to mobile/node_modules.
+    root = file("../../")
+    reactNativeDir = file("../../../../node_modules/react-native")
+    codegenDir = file("../../../../node_modules/@react-native/codegen")
+    cliFile = file("../../../../node_modules/react-native/cli.js")
+
+    autolinkLibrariesWithApp()
+}
+
+/** R8 shrinking/obfuscation in release (APPS-SECURITY "No shrinking/obfuscation"). */
+def enableProguardInReleaseBuilds = true
+
+def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
+
+/**
+ * Release signing: the existing upload keystore of the Play Store app, never stored in the repository.
+ * Taken from Gradle properties (~/.gradle/gradle.properties or -P...) or, failing that, environment variables:
+ *   ZED_UPLOAD_STORE_FILE      absolute path of the .jks/.keystore file
+ *   ZED_UPLOAD_STORE_PASSWORD
+ *   ZED_UPLOAD_KEY_ALIAS
+ *   ZED_UPLOAD_KEY_PASSWORD
+ * Without them the release build is signed with the local debug key (for testing only; Play refuses it).
+ */
+def signingValue(String name) {
+    def fromProps = project.findProperty(name)
+    return fromProps != null ? fromProps.toString() : System.getenv(name)
+}
+def releaseStoreFile = signingValue("ZED_UPLOAD_STORE_FILE")
+def hasReleaseKey = releaseStoreFile != null && !releaseStoreFile.isEmpty() && file(releaseStoreFile).exists()
+
+android {
+    ndkVersion rootProject.ext.ndkVersion
+    buildToolsVersion rootProject.ext.buildToolsVersion
+    compileSdk rootProject.ext.compileSdkVersion
+
+    namespace "com.qci.zed.bronzesurveillance"
+    defaultConfig {
+        applicationId "com.qci.zed.bronzesurveillance"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        // Legacy store build: versionCode 12, versionName 1.8. Must only grow.
+        versionCode 13
+        versionName "1.9"
+    }
+    signingConfigs {
+        debug {
+            // Android's default local debug key (~/.android/debug.keystore), created by the SDK.
+        }
+        if (hasReleaseKey) {
+            release {
+                storeFile file(releaseStoreFile)
+                storePassword signingValue("ZED_UPLOAD_STORE_PASSWORD")
+                keyAlias signingValue("ZED_UPLOAD_KEY_ALIAS")
+                keyPassword signingValue("ZED_UPLOAD_KEY_PASSWORD")
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+            // Server environment (@zed/shared config/environments.ts): -PzedEnvironment=production|staging|local
+            resValue "string", "zed_environment", (project.findProperty("zedEnvironment") ?: "staging").toString()
+        }
+        release {
+            resValue "string", "zed_environment", (project.findProperty("zedEnvironment") ?: "production").toString()
+            signingConfig hasReleaseKey ? signingConfigs.release : signingConfigs.debug
+            minifyEnabled enableProguardInReleaseBuilds
+            shrinkResources enableProguardInReleaseBuilds
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+    applicationVariants.configureEach { variant ->
+        variant.outputs.configureEach {
+            // As the legacy build: Android_ZED_BronzeSurveillance_<MMM-dd-yyyy>-<versionName>-<versionCode>.apk
+            def date = new Date().format('MMM-dd-yyyy')
+            outputFileName = "Android_ZED_BronzeSurveillance_${date}-${variant.versionName}-${variant.versionCode}.apk"
+        }
+    }
+}
+
+if (!hasReleaseKey) {
+    gradle.taskGraph.whenReady { graph ->
+        if (graph.allTasks.any { it.name.toLowerCase().contains("release") }) {
+            logger.warn("ZED: ZED_UPLOAD_STORE_FILE not set or missing: the release build is signed with the DEBUG key (not for the Play Store).")
+        }
+    }
+}
+
+dependencies {
+    // The version of react-native is set by the React Native Gradle Plugin
+    implementation("com.facebook.react:react-android")
+
+    if (hermesEnabled.toBoolean()) {
+        implementation("com.facebook.react:hermes-android")
+    } else {
+        implementation jscFlavor
+    }
+}
