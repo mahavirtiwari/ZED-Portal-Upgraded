@@ -8,6 +8,9 @@
 --      (CREATE OR ALTER, so permissions are kept). Re-running it is safe: already converted procedures no
 --      longer match.
 -- The Zed.Jobs worker sends queued mail through the portal's SMTP settings (backend/src/Zed.Jobs).
+-- Each queued mail records the procedure that sent it (V4MailOutbox.Source; every converted procedure passes
+-- @source = N'<its name>'), so the Admin can switch it off or change its subject and text (Email Templates, key
+-- "db:<procedure>", migration 0015). Re-running this script adds that to an outbox created by an earlier version.
 -- To undo step 2 for one procedure, replace dbo.SP_V4_SEND_DBMAIL with msdb.dbo.sp_send_dbmail again.
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
@@ -31,6 +34,9 @@ CREATE TABLE dbo.V4MailOutbox
     LastError           nvarchar(1000) NULL
 );
 GO
+IF COL_LENGTH('dbo.V4MailOutbox', 'Source') IS NULL
+    ALTER TABLE dbo.V4MailOutbox ADD Source sysname NULL;
+GO
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID('dbo.V4MailOutbox') AND name = 'IX_V4MailOutbox_Pending')
 CREATE INDEX IX_V4MailOutbox_Pending ON dbo.V4MailOutbox (Id) WHERE SentAt IS NULL;
 GO
@@ -46,7 +52,8 @@ CREATE OR ALTER PROCEDURE dbo.SP_V4_SEND_DBMAIL
     @importance            varchar(6)     = 'NORMAL',
     @from_address          varchar(max)   = NULL,
     @reply_to              varchar(max)   = NULL,
-    @mailitem_id           int            = NULL OUTPUT
+    @mailitem_id           int            = NULL OUTPUT,
+    @source                sysname        = NULL   -- the calling procedure (V4)
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -55,8 +62,8 @@ BEGIN
        AND NULLIF(LTRIM(RTRIM(ISNULL(@blind_copy_recipients, ''))), '') IS NULL
         RETURN 1;  -- sp_send_dbmail also refuses a mail without recipients
 
-    INSERT INTO dbo.V4MailOutbox (ProfileName, Recipients, CopyRecipients, BlindCopyRecipients, Subject, Body, BodyFormat)
-    VALUES (@profile_name, @recipients, @copy_recipients, @blind_copy_recipients, @subject, @body, UPPER(ISNULL(@body_format, 'TEXT')));
+    INSERT INTO dbo.V4MailOutbox (ProfileName, Recipients, CopyRecipients, BlindCopyRecipients, Subject, Body, BodyFormat, Source)
+    VALUES (@profile_name, @recipients, @copy_recipients, @blind_copy_recipients, @subject, @body, UPPER(ISNULL(@body_format, 'TEXT')), @source);
 
     SET @mailitem_id = CONVERT(int, SCOPE_IDENTITY() % 2147483647);
     RETURN 0;
@@ -68,7 +75,8 @@ DECLARE procs CURSOR LOCAL FAST_FORWARD FOR
     SELECT QUOTENAME(SCHEMA_NAME(o.schema_id)) + '.' + QUOTENAME(o.name), m.definition
     FROM sys.sql_modules m JOIN sys.objects o ON o.object_id = m.object_id
     WHERE o.type = 'P' AND o.name <> 'SP_V4_SEND_DBMAIL'
-      AND m.definition LIKE '%msdb.dbo.sp_send_dbmail%'
+      AND (m.definition LIKE '%msdb.dbo.sp_send_dbmail%'
+           OR (m.definition LIKE '%dbo.SP_V4_SEND_DBMAIL%' AND m.definition NOT LIKE '%SP_V4_SEND_DBMAIL @source =%'))
       AND m.uses_ansi_nulls = 1 AND m.uses_quoted_identifier = 1;
 OPEN procs;
 FETCH NEXT FROM procs INTO @name, @def;
@@ -97,6 +105,8 @@ BEGIN
     BEGIN
         SET @def = STUFF(@def, @pos, 6, N'CREATE OR ALTER');
         SET @def = REPLACE(@def, N'msdb.dbo.sp_send_dbmail', N'dbo.SP_V4_SEND_DBMAIL');
+        -- Tag the calls with the procedure's name (named parameters follow, as every converted call uses them).
+        SET @def = REPLACE(@def, N'dbo.SP_V4_SEND_DBMAIL', N'dbo.SP_V4_SEND_DBMAIL @source = N''' + PARSENAME(@name, 1) + N''',');
         EXEC sys.sp_executesql @def;
         SET @converted += 1;
         PRINT 'Converted ' + @name;
@@ -111,6 +121,12 @@ END
 CLOSE procs; DEALLOCATE procs;
 DECLARE @remaining int = (SELECT COUNT(*) FROM sys.sql_modules
                           WHERE definition LIKE '%msdb.dbo.sp_send_dbmail%' AND object_id <> OBJECT_ID('dbo.SP_V4_SEND_DBMAIL'));
+-- Converted earlier but not tagged (created with ANSI_NULLS or QUOTED_IDENTIFIER off): their mail is sent, but the
+-- Admin's Email Templates cannot apply to it.
+DECLARE @untagged int = (SELECT COUNT(*) FROM sys.sql_modules
+                         WHERE definition LIKE '%dbo.SP_V4_SEND_DBMAIL%' AND definition NOT LIKE '%SP_V4_SEND_DBMAIL @source =%'
+                           AND object_id <> OBJECT_ID('dbo.SP_V4_SEND_DBMAIL'));
 PRINT CONCAT('Procedures converted: ', @converted, ', skipped: ', @skipped,
-             ', still calling msdb.dbo.sp_send_dbmail (convert by hand): ', @remaining);
+             ', still calling msdb.dbo.sp_send_dbmail (convert by hand): ', @remaining,
+             ', queuing without @source (add it by hand for Email Templates): ', @untagged);
 GO

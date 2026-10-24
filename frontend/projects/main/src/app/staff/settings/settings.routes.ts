@@ -18,4 +18,16 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./email-settings').then((m) => m.EmailSettingsPage),
   },
+  {
+    path: 'email-templates',
+    title: 'ZED | Email Templates',
+    canActivate: [admin],
+    loadComponent: () => import('./email-templates').then((m) => m.EmailTemplatesPage),
+  },
+  {
+    path: 'texts',
+    title: 'ZED | Texts',
+    canActivate: [admin],
+    loadComponent: () => import('./texts').then((m) => m.TextsPage),
+  },
 ];

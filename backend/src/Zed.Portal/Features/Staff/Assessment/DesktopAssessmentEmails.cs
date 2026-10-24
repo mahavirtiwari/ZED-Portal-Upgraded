@@ -62,26 +62,26 @@ public sealed class DesktopAssessmentEmails(
             switch (kind)
             {
                 case Kind.AllottedToAgency:
-                    await SendAsync(row.Text("AgencyEmailId"),
+                    await SendAsync(kind, zedId, certification, row.Text("AgencyEmailId"),
                         surveillance ? $"Allocation of MSME for ZED Surveillance Assessment under {Scheme} - {zedId}" : $"Allocation of MSME for Assessment under {Scheme} - {zedId}",
                         AgencyAllotted(row, zedId, certification), surveillance ? cc : null, ct);
                     break;
                 case Kind.AllottedToAssessor:
-                    await SendAsync(row.Text("AssessorEmailId"),
+                    await SendAsync(kind, zedId, certification, row.Text("AssessorEmailId"),
                         surveillance ? $"Allocation of Surveillance Assessment under {Scheme} - {zedId}" : $"Allocation of Desktop Verification under {Scheme} - {zedId}",
                         AssessorAllotted(row, zedId), cc, ct);
                     break;
                 case Kind.RejectedByAgency:
-                    await SendAsync(await addresses.GetAsync(EmailAddresses.ZedTeamInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
+                    await SendAsync(kind, zedId, certification, await addresses.GetAsync(EmailAddresses.ZedTeamInbox, ct) ?? EmailAddresses.LegacyTeamInbox,
                         $"Rejection by Agency under {Scheme} - {zedId}", AgencyRejected(row, zedId, reason), cc, ct);
                     break;
                 case Kind.RejectedByAssessor:
-                    await SendAsync(row.Text("AgencyEmailId"),
+                    await SendAsync(kind, zedId, certification, row.Text("AgencyEmailId"),
                         $"Rejection by Assessor for Desktop Verification under {Scheme} - {zedId}", AssessorRejected(row, zedId, reason), cc, ct);
                     break;
                 case Kind.NcRaised:
                     var level = row.Text("NcCount") switch { "1" => "First ", "2" => "Second ", "3" => "Third ", "4" => "Fourth ", "5" => "Fifth ", _ => "" };
-                    await SendAsync(row.Text("EmailId"),
+                    await SendAsync(kind, zedId, certification, row.Text("EmailId"),
                         surveillance ? $"{level}Non-conformance(s) raised for Surveillance Assessment under {Scheme} - {zedId}" : $"{level}Non-conformance(s) raised under {Scheme} - {zedId}",
                         NcRaised(row, zedId, certification, surveillance), surveillance ? cc : null, ct);
                     break;
@@ -93,15 +93,18 @@ public sealed class DesktopAssessmentEmails(
         }
     }
 
-    private async Task SendAsync(string to, string subject, string body, IReadOnlyList<string>? cc, CancellationToken ct)
+    /// <summary>Email Templates key of each mail (Admin → Email Templates).</summary>
+    public static string TemplateKey(Kind kind) => "DesktopAssessment." + kind;
+
+    private async Task SendAsync(Kind kind, string zedId, string certification, string to, string subject, string body, IReadOnlyList<string>? cc, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(to)) return;
         RenderFragment content = b => b.AddMarkupContent(0, body);
-        var html = await templates.RenderAsync<EmailLayout>(new Dictionary<string, object?>
+        var html = await templates.RenderAsync<EmailLayout>(TemplateKey(kind), new Dictionary<string, object?>
         {
             [nameof(EmailLayout.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             [nameof(EmailLayout.ChildContent)] = content,
-        });
+        }, new Dictionary<string, object?> { ["ZedId"] = zedId, ["Certification"] = certification });
         await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
     }
 

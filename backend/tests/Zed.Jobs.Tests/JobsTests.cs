@@ -71,10 +71,12 @@ public sealed class MailOutboxTests
     private sealed class FakeDb : ISqlExecutor
     {
         public List<OutboxMail> Pending { get; } = [];
+        public List<EmailTemplateOverride> Templates { get; } = [];
         public ConcurrentQueue<(string Sql, object? Args)> Executed { get; } = new();
 
         public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
         {
+            if (sql == MailOutboxSender.TemplatesSql) return Task.FromResult<IReadOnlyList<T>>(Templates.Cast<T>().ToList());
             var batch = Pending.Cast<T>().ToList();
             Pending.Clear();
             return Task.FromResult<IReadOnlyList<T>>(batch);
@@ -170,6 +172,34 @@ public sealed class MailOutboxTests
         var plain = MailOutboxSender.ToMessage(new OutboxMail(3, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "S", "B", "HTML", 1), new JobsOptions());
         Assert.Equal("ks@geostat.in;keerthisreenu@gmail.com", plain.To);
         Assert.Null(plain.Bcc);
+    }
+
+    [Fact]
+    public async Task Email_Templates_switch_a_procedures_mail_off_or_rewrite_it()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(1, "ZedAdmin", "a@x.test", null, null, "Reminder", "<p>Apply</p>", "HTML", 1, "SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM1"));
+        main.Pending.Add(new OutboxMail(2, "ZedAdmin", "b@x.test", null, null, "Allotted", "<p>Agency</p>", "HTML", 1, "SP_SEND_MAIL_AUTO_ALLOT_AGENCY"));
+        main.Pending.Add(new OutboxMail(3, "ZedAdmin", "c@x.test", null, null, "Other", "1 < 2", "TEXT", 1, "SP_SEND_MAIL_STATUS_COUNTS_AGENCY"));
+        main.Pending.Add(new OutboxMail(4, "ZedAdmin", "d@x.test", null, null, "Untagged", "<p>Old</p>", "HTML", 1));
+        main.Templates.Add(new EmailTemplateOverride("db:SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM1", false, null, null, "ADMIN1", null));
+        main.Templates.Add(new EmailTemplateOverride("db:SP_SEND_MAIL_AUTO_ALLOT_AGENCY", true, "ZED: {{StandardSubject}}", "<h1>Note</h1>{{StandardBody}}", "ADMIN1", null));
+        main.Templates.Add(new EmailTemplateOverride("db:SP_SEND_MAIL_STATUS_COUNTS_AGENCY", true, null, "<div>{{StandardBody}}</div>", "ADMIN1", null));
+        var email = new FakeEmail();
+        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main }), email,
+            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+
+        Assert.Equal(3, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.DoesNotContain(email.Sent, m => m.To == "a@x.test");
+        Assert.Contains(main.Executed, e => e.Sql == MailOutboxSender.SkippedSql && Equals(e.Args!.GetType().GetProperty("Id")!.GetValue(e.Args), 1L));
+        var allotted = email.Sent.Single(m => m.To == "b@x.test");
+        Assert.Equal("ZED: Allotted", allotted.Subject);
+        Assert.Equal("<h1>Note</h1><p>Agency</p>", allotted.HtmlBody);
+        var text = email.Sent.Single(m => m.To == "c@x.test");
+        Assert.Equal("Other", text.Subject);
+        Assert.StartsWith("<div><pre", text.HtmlBody);
+        Assert.Contains("1 &lt; 2", text.HtmlBody);
+        Assert.Equal("<p>Old</p>", email.Sent.Single(m => m.To == "d@x.test").HtmlBody);
     }
 
     [Fact]

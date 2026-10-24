@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Portal.Features.Msme;
@@ -36,7 +37,8 @@ public sealed class TestHost : WebApplicationFactory<Program>
         builder.ConfigureServices(s =>
         {
             s.RemoveAll<ISqlExecutor>(); s.AddSingleton<ISqlExecutor>(Sql);
-            s.RemoveAll<IEmailSender>(); s.AddSingleton<IEmailSender>(Email);
+            // As in production, the Admin's Email Templates apply before the message reaches the (fake) SMTP sender.
+            s.RemoveAll<IEmailSender>(); s.AddSingleton<IEmailSender>(sp => new TemplatedEmailSender(Email, sp.GetRequiredService<ILogger<TemplatedEmailSender>>()));
             s.RemoveAll<IUdyamClient>(); s.AddSingleton<IUdyamClient>(Udyam);
             s.RemoveAll<Zed.Portal.Features.Payments.IGstinVerifier>(); s.AddSingleton<Zed.Portal.Features.Payments.IGstinVerifier>(Gstin);
         });

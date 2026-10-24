@@ -40,11 +40,11 @@ public sealed class SiteAllotmentEmails(
             var subject = $"Allocation of Onsite Assessment under {Scheme} - {zedId}";
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
 
-            await SendAsync(row.Text("EmailId"), subject, UnitBody(row), cc, ct);
-            await SendAsync(row.Text("AssessorEmailId"), subject,
+            await SendAsync(OnsiteUnitKey, zedId, row.Text("EmailId"), subject, UnitBody(row), cc, ct);
+            await SendAsync(OnsiteAssessorKey, zedId, row.Text("AssessorEmailId"), subject,
                 AssessorBody(row, zedId, "Lead Assessor", row.Text("AssessorUserId")), cc, ct);
             if (row.Text("CoAssessorUserId").Length > 0)
-                await SendAsync(row.Text("CoAssessorEmailId"), subject,
+                await SendAsync(OnsiteAssessorKey, zedId, row.Text("CoAssessorEmailId"), subject,
                     AssessorBody(row, zedId, "a Co-assessor", row.Text("CoAssessorUserId")), cc, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -125,15 +125,18 @@ public sealed class SiteAllotmentEmails(
         await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
     }
 
-    private async Task SendAsync(string to, string subject, string body, IReadOnlyList<string>? cc, CancellationToken ct)
+    /// <summary>Email Templates keys of the onsite allotment mails (Admin → Email Templates).</summary>
+    public const string OnsiteUnitKey = "OnsiteAllotment.Unit", OnsiteAssessorKey = "OnsiteAllotment.Assessor";
+
+    private async Task SendAsync(string key, string zedId, string to, string subject, string body, IReadOnlyList<string>? cc, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(to)) return;
         RenderFragment content = b => b.AddMarkupContent(0, body);
-        var html = await templates.RenderAsync<EmailLayout>(new Dictionary<string, object?>
+        var html = await templates.RenderAsync<EmailLayout>(key, new Dictionary<string, object?>
         {
             [nameof(EmailLayout.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             [nameof(EmailLayout.ChildContent)] = content,
-        });
+        }, new Dictionary<string, object?> { ["ZedId"] = zedId });
         await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Allocation, cc), ct);
     }
 

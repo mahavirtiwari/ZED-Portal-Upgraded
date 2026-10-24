@@ -129,6 +129,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings' },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
@@ -157,6 +159,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings' },
 
   // MasterAdmin: allotment and consultancy monitoring
   // As the live layout (ZEDCS_CONSULTANCY Frontend/Shared/_Layout.cshtml): "Allot Consultancy", then the "Consultancy
@@ -215,6 +219,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings' },
 
   // MasterAdmin
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance
@@ -239,8 +245,9 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 
   // Assessor
   { label: 'Surveillance Assessments', route: '/staff/assessment/da-verification', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
-  { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
-  { label: 'Non-Conformances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
+  // Shown to every assessor, as the live layout does (no sub-role check on these two).
+  { label: 'Completed', route: '/staff/assessment/completed', roles: [R.DesktopAssessor] },
+  { label: 'Non-Conformances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor] },
   { label: 'Surveillance Assessments (Site)', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).

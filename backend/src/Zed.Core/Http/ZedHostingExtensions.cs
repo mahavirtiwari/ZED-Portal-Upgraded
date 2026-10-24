@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Finance;
@@ -67,7 +68,13 @@ public static class ZedHostingExtensions
         services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();
 
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.Section));
-        services.AddSingleton<IEmailSender, SmtpEmailSender>();
+        services.AddSingleton<SmtpEmailSender>();
+        // The Admin's Email Templates: switched-off mails are not sent, own subjects replace the standard ones.
+        services.AddSingleton<IEmailSender>(sp => new TemplatedEmailSender(sp.GetRequiredService<SmtpEmailSender>(), sp.GetRequiredService<ILogger<TemplatedEmailSender>>()));
+        services.AddSingleton<IEmailTemplateStore, SqlEmailTemplateStore>();
+        // The Admin's Texts: disclaimers, instructions, undertakings and pledges of the web pages and the apps.
+        services.AddSingleton<Zed.Core.Content.IContentBlockStore, Zed.Core.Content.SqlContentBlockStore>();
+        services.AddSingleton<Zed.Core.Content.ContentTexts>();
         services.AddSingleton<IHtmlTemplateRenderer, HtmlTemplateRenderer>();
 
         services.Configure<CcAvenueOptions>(config.GetSection(CcAvenueOptions.Section));
