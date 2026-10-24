@@ -325,11 +325,15 @@ try {
         throw
     }
 
-    # Old packages and backups: the newest -KeepReleases of each stay.
-    foreach ($dir in @((Join-Path $InstallRoot 'backups'), $ReleasesRoot)) {
-        if (-not (Test-Path $dir)) { continue }
-        Get-ChildItem $dir -Directory | Where-Object { $_.Name -ne '_src' } | Sort-Object LastWriteTime -Descending |
-            Select-Object -Skip $KeepReleases | ForEach-Object { Remove-Item $_.FullName -Recurse -Force; Write-Note "removed old $($_.FullName)" }
+    # Old packages (zed-* with VERSION.txt) and backups (with backup.json): the newest -KeepReleases of each stay.
+    # Nothing else in those folders is touched (the build checkout _src, a checkout of these scripts, zips).
+    foreach ($set in @(@{ Dir = (Join-Path $InstallRoot 'backups'); Mark = 'backup.json' }, @{ Dir = $ReleasesRoot; Mark = 'VERSION.txt' })) {
+        if (-not (Test-Path $set.Dir)) { continue }
+        Get-ChildItem $set.Dir -Directory |
+            Where-Object { ($set.Mark -eq 'backup.json' -or $_.Name -like 'zed-*') -and (Test-Path (Join-Path $_.FullName $set.Mark)) } |
+            Where-Object { $_.FullName -ne $Package -and -not $PSScriptRoot.StartsWith($_.FullName, [StringComparison]::OrdinalIgnoreCase) } |
+            Sort-Object LastWriteTime -Descending | Select-Object -Skip $KeepReleases |
+            ForEach-Object { Remove-Item $_.FullName -Recurse -Force; Write-Note "removed old $($_.FullName)" }
     }
     Write-Step "Done: $newVersion. Backup of the previous files: $backup. Log: $log"
 }
