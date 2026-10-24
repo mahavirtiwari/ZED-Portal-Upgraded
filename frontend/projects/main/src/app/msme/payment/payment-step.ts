@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { CheckoutRequest, FeeRow, PaymentApi, PaymentOptions, postToGateway } from './payment.api';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
@@ -15,7 +16,7 @@ const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
  */
 @Component({
   selector: 'zed-payment-step',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, AlertDialog],
   templateUrl: './payment-step.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -31,10 +32,10 @@ export class PaymentStep implements OnInit {
 
   protected readonly options = signal<PaymentOptions | null>(null);
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
+  /** Error / success pop-up (the legacy swal). */
+  protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly submitted = signal(false);
   protected readonly panModal = signal(false);
-  protected readonly panError = signal('');
 
   protected gstinApplicable: 'Yes' | 'No' | null = null;
   protected gstin = '';
@@ -90,9 +91,8 @@ export class PaymentStep implements OnInit {
   /** "PROCEED TO PAY": GSTIN check (and PAN correction if needed), then checkout. */
   protected async proceed(): Promise<void> {
     this.submitted.set(true);
-    this.error.set('');
     if (!this.formValid()) {
-      this.error.set('Please enter required data.');
+      this.alert.set(errorAlert('Please enter required data.'));
       return;
     }
     if (this.gstinApplicable === 'Yes') {
@@ -101,7 +101,6 @@ export class PaymentStep implements OnInit {
       if (!g.panMatches) {
         this.gstinPan = g.gstinPan;
         this.correctedPan = '';
-        this.panError.set('');
         this.panModal.set(true);
         return;
       }
@@ -112,16 +111,18 @@ export class PaymentStep implements OnInit {
   protected async savePan(): Promise<void> {
     const pan = this.correctedPan.trim().toUpperCase();
     if (pan.length !== 10) {
-      this.panError.set('Please enter a valid 10-character PAN.');
+      this.alert.set(errorAlert('Please enter a valid 10-character PAN.'));
       return;
     }
     if (pan !== this.gstinPan) {
-      this.panError.set('Please enter the correct PAN associated with that GSTIN.');
+      this.alert.set(errorAlert('Please enter the correct PAN associated with that GSTIN.'));
       return;
     }
     this.panModal.set(false);
     const ok = await this.call(this.api.correctPan(this.certification(), this.gstin.trim().toUpperCase(), pan));
-    if (ok) await this.checkout();
+    if (!ok) return;
+    this.alert.set(successAlert('PAN updated successfully. Proceeding...'));
+    await this.checkout();
   }
 
   private async checkout(): Promise<void> {
@@ -148,8 +149,7 @@ export class PaymentStep implements OnInit {
     try {
       return await firstValueFrom(req);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.alert.set(errorAlert(apiErrorMessage(err)));
       return null;
     } finally {
       this.busy.set(false);

@@ -1,13 +1,8 @@
 <div class="container form-page" id="zed_user_form">
   <div class="Dashboard-msme">
-    @if (error()) {
-      <div class="alert alert-danger alert-dismissible mt-3" role="alert">
-        {{ error() }}
-        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
-      </div>
-      @if (!step()) {
-        <div class="stepper-footer-sec initial-step1"><a class="btn btn-default" routerLink="/msme/handholding">BACK TO HANDHOLDING SUPPORT</a></div>
-      }
+    @if (!step() && !busy()) {
+      <!-- The page could not open (the reason is in the pop-up). -->
+      <div class="stepper-footer-sec initial-step1 mt-3"><a class="btn btn-default" routerLink="/msme/handholding">BACK TO HANDHOLDING SUPPORT</a></div>
     }
 
     @switch (step()) {
@@ -17,7 +12,6 @@
             <div class="panel panel-default panel-design">
               <div class="panel-body disclaimer-sec">
                 <h3 class="registration-title">DISCLAIMER</h3>
-                <p><strong>Handholding for {{ level() }} Level: {{ milestoneTitle() }}</strong></p>
                 <ol>
                   <li>By agreeing to proceed and make relevant payment it is assumed that the applicant has read &amp; understood the Scheme Guidelines &amp; the provisions contained therein and is participating in this activity on their own volition.</li>
                   <li>The applicant has read and understood the requirements of the handholding process for which the payment is being made and take full responsibility for the outcome of the process.</li>
@@ -27,7 +21,7 @@
                   <li>The payment being made is only the “beneficiary contribution”; the subsidies applicable for this activity is pre-applied.</li>
                 </ol>
                 <div class="stepper-footer-sec initial-step1">
-                  <a class="btn btn-default" routerLink="/msme/handholding">BACK</a>
+                  <a class="btn btn-default" routerLink="/msme/handholding" [queryParams]="{ level: level() }">BACK</a>
                   <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
                 </div>
               </div>
@@ -50,7 +44,7 @@
                   <li>Activity for each milestone would commence only after payment of that milestone and acceptance of activities performed in the previous milestone, if &amp; as applicable.</li>
                 </ol>
                 <div class="stepper-footer-sec initial-step1">
-                  <a class="btn btn-default" routerLink="/msme/handholding">BACK</a>
+                  <a class="btn btn-default" routerLink="/msme/handholding" [queryParams]="{ level: level() }">BACK</a>
                   <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="openPayment()">ACCEPT &amp; PROCEED</button>
                 </div>
               </div>
@@ -67,7 +61,6 @@
                 <div class="panel panel-default panel-payment">
                   <div class="panel-heading">
                     <div class="text-center"><img [src]="'/Images/Dashboard/' + level()!.toLowerCase() + '.png'" [alt]="level()" /></div>
-                    <p class="text-center mb-0"><strong>{{ milestoneTitle() }}</strong></p>
                   </div>
                   <div class="panel-body">
                     <div class="row">
@@ -177,7 +170,7 @@
 
                       <div class="col-sm-12">
                         <div class="stepper-footer-sec initial-step1">
-                          <a class="btn btn-default" routerLink="/msme/handholding">BACK TO DASHBOARD</a>
+                          <a class="btn btn-default" routerLink="/msme/handholding" [queryParams]="{ level: level() }">BACK TO DASHBOARD</a>
                           <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
                         </div>
                       </div>
@@ -203,7 +196,6 @@
           <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
           <label for="correctedPan">Please enter the correct PAN number:</label>
           <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
-          @if (panError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ panError() }}</div> }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
@@ -218,3 +210,5 @@
 @if (busy()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
 }
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

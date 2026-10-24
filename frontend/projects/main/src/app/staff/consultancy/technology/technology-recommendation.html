@@ -21,9 +21,11 @@
             }
           </tbody>
         </table>
-      } @else if (!p.canRecommend) {
+      } @else if (!p.canRecommend && !p.technologies.length) {
         <div class="alert alert-info">{{ p.message || 'The technologies have not been recommended yet.' }}</div>
       } @else if (!summary()) {
+        <!-- The old page's fixed counter of the selected technologies. -->
+        <div class="counter-block"><p>Selected: {{ chosen().size }}/{{ max() }}</p></div>
         <div class="row mb-2">
           <div class="col-sm-6"><h3>List of Technologies</h3></div>
           <div class="col-sm-6">
@@ -46,10 +48,16 @@
             }
           </tbody>
         </table>
+        <!-- When the lead consultant cannot recommend yet (e.g. PreviousRecomInProgress), its text takes PROCEED's place, as on the old page. -->
         <div class="text-end">
-          <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">PROCEED</button>
+          @if (p.canRecommend) {
+            <button type="button" class="btn btn-primary" [disabled]="chosen().size === 0" (click)="summary.set(true)">PROCEED</button>
+          } @else {
+            <span>{{ p.message }}</span>
+          }
         </div>
       } @else {
+        <div class="counter-block"><p>Selected: {{ chosen().size }}/{{ max() }}</p></div>
         <h3>Summary Of Recommended Technologies</h3>
         <table class="table table-bordered table-zed">
           <thead><tr><th>Technology Name</th><th>Description</th></tr></thead>

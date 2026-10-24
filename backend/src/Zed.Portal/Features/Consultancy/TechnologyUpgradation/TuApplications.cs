@@ -33,6 +33,9 @@ public static class TuStatus
     /// <summary>The list tabs of SP_FINANCIAL_ASSISTANCE_GET_LIST (2 = 2+4, 5 = 5+10, 9 = 7+9).</summary>
     public static readonly int[] Tabs = [Applied, Verifying, DfoApproved, CoApproved, SentBack];
 
+    /// <summary>The list's landing status for the master admin and the CO (legacy GetSections(99)); the DFO lands on <see cref="Applied"/>.</summary>
+    public const int Landing = 99;
+
     public static string Text(int? tuStatus, int? verificationStatus) => verificationStatus == FaStatus.Reimbursed ? "Reimbursed" : tuStatus switch
     {
         Applied => "Allotted to Consultant Organisation",
@@ -121,21 +124,27 @@ public sealed class TuApplication(
     public bool CanValidate(ZedUser user) => IsDfo(user) && Status == FaStatus.InProgress;
 
     /// <summary>
-    /// SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT: the DFO (status 2, every document validated, opening meeting
-    /// submitted), the CO in QC (status 3 after the DFO approved), or the master admin (reject only, before the
-    /// DFO's decision; the procedure's RoleId 7 branch).
+    /// SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT on the web: the CO in QC (status 3 after the DFO approved) or the master admin
+    /// (reject only, <see cref="CanAdminReject"/>; the procedure's RoleId 7 branch). The DFO decides from the consultant
+    /// app (<see cref="TuAppController.FinalSubmit"/>): the legacy page has the DFO's ACCEPT / REJECT commented out and
+    /// shows the DFO only the ACCEPTED / REJECTED outcome.
     /// </summary>
     public bool CanDecide(ZedUser user) => user.RoleId switch
     {
-        (int)UserRole.DesktopAssessor => CanValidate(user) && Fa.AllVerified && MeetingDone,
         (int)UserRole.Agency => IsAgency(user) && Status == FaStatus.Qc && IsApproved == 1,
         (int)UserRole.MasterAdmin => CanAdminReject,
         _ => false,
     };
 
-    public bool CanAdminReject => (Status is FaStatus.New or FaStatus.InProgress) && Tu != TuStatus.Rejected;
+    /// <summary>
+    /// As the legacy page's master admin REJECT (<c>IsApproved==0 &amp;&amp; CertificationBodyUserId==null</c>): before the
+    /// DFO's decision and while no CO is set, on an application that is still open.
+    /// </summary>
+    public bool CanAdminReject =>
+        (IsApproved is null or 0) && string.IsNullOrWhiteSpace(AgencyUserId) &&
+        (Status is FaStatus.New or FaStatus.InProgress) && Tu != TuStatus.Rejected;
 
-    /// <summary>Approve is offered to the DFO and the CO; the master admin can only reject.</summary>
+    /// <summary>Approve is offered to the CO in QC; the master admin can only reject.</summary>
     public bool CanApprove(ZedUser user) => user.RoleId != (int)UserRole.MasterAdmin && CanDecide(user);
 
     /// <summary>

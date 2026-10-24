@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { routes } from '../../app.routes';
 import { USERS_ROUTES } from '../users/users.routes';
 import { MASTERS_ROUTES } from './masters.routes';
 import { TechnologiesPage } from './technologies';
@@ -72,8 +73,51 @@ describe('TechnologyFormPage', () => {
     expect(req.request.body).toEqual({ technologyCode: 'T1', technologyName: 'Solar', description: 'Roof top', sectors: ['24-Basic metals', '99-Old sector'], categories: ['C1 -Energy'] });
     req.flush({ message: 'Technology data updated.' });
     await settle(fixture);
-    expect(navigate).toHaveBeenCalledWith(['/staff/masters/technologies'], { state: { message: 'Technology data updated.' } });
+    // Stays on the form with the values, as the old page.
+    expect(navigate).not.toHaveBeenCalled();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Technology data updated.');
+    expect((el.querySelector('#technologyCode') as HTMLInputElement).value).toBe('T1');
     http.verify();
+    vi.restoreAllMocks();
+  });
+
+  it('clears the form after adding a technology and stays on the page', async () => {
+    await TestBed.configureTestingModule({
+      imports: [TechnologyFormPage],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({}) } } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(TechnologyFormPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/technologies/options').flush({ sectors: ['24-Basic metals'], categories: [] });
+    await settle(fixture);
+    expect(el.querySelector('h3')!.textContent).toContain('Add New Technology');
+    for (const [id, value] of [['#technologyCode', 'T2'], ['#technologyName', 'Wind']]) {
+      const input = el.querySelector(id) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+    }
+    await settle(fixture);
+
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const req = http.expectOne('/api/staff/masters/technologies');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ technologyCode: 'T2', technologyName: 'Wind', description: '', sectors: [], categories: [] });
+    req.flush({ message: 'Technology saved.' });
+    await settle(fixture);
+    await settle(fixture);
+    expect(navigate).not.toHaveBeenCalled();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Sector saved.');
+    expect((el.querySelector('#technologyCode') as HTMLInputElement).value).toBe('');
+    expect(el.querySelector('.help-block')).toBeNull();
+    http.verify();
+    vi.restoreAllMocks();
   });
 });
 
@@ -84,5 +128,14 @@ describe('route tables', () => {
     }
     expect(USERS_ROUTES.map((r) => r.path)).toContain('agencies/:userId');
     expect(MASTERS_ROUTES.map((r) => r.path)).toContain('parameters/:sectionType');
+  });
+
+  it('redirects bookmarked edit addresses of the old site to the new forms', () => {
+    const redirect = (path: string) => routes.find((r) => r.path === path)?.redirectTo;
+    expect(redirect('User/Assessor/:id')).toBe('staff/users/assessors/:id');
+    expect(redirect('Technology/Create/:id')).toBe('staff/masters/technologies/:id');
+    expect(redirect('Technology/Create')).toBe('staff/masters/technologies/new');
+    expect(USERS_ROUTES.map((r) => r.path)).toContain('assessors/:userId');
+    expect(MASTERS_ROUTES.map((r) => r.path)).toContain('technologies/:id');
   });
 });

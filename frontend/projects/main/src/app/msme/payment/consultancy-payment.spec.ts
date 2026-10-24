@@ -94,10 +94,12 @@ describe('ConsultancyPaymentPage', () => {
 
   it('shows the handholding disclaimer, instructions and fee summary of the milestone due', async () => {
     await open();
-    expect(el.textContent).toContain('Milestone 2: Implementation & Progress Review 1');
+    expect(el.textContent).not.toContain('Handholding for Silver Level');   // no level / milestone line, as the live page
     expect(el.textContent).toContain('requirements of the handholding process');
+    expect(button('BACK').getAttribute('href')).toBe('/msme/handholding?level=Silver');
     button('ACCEPT & PROCEED').click();
     await settled();
+    expect(button('BACK').getAttribute('href')).toBe('/msme/handholding?level=Silver');
     button('ACCEPT & PROCEED').click();
     await settled();
     http.expectOne(`${API}/Silver/options`).flush(options());
@@ -106,6 +108,8 @@ describe('ConsultancyPaymentPage', () => {
     expect(el.textContent).toContain('Handholding Fee');
     expect(el.textContent).toContain('(On Handholding fee)');
     expect(el.textContent).toContain('23,600.00');
+    expect(el.textContent).not.toContain('Implementation & Progress Review 1');
+    expect(button('BACK TO DASHBOARD').getAttribute('href')).toBe('/msme/handholding?level=Silver');
     expect(el.textContent).not.toContain('APPLY REWARD');
     expect(el.textContent).not.toContain('Andhra pradesh');
 
@@ -165,7 +169,9 @@ describe('ConsultancyPaymentPage', () => {
     await settled();
     button('Save & Proceed').click();
     await settled();
-    expect(el.textContent).toContain('Please enter the correct PAN associated with that GSTIN.');
+    expect(el.querySelector('zed-alert-dialog')!.textContent).toContain('Please enter the correct PAN associated with that GSTIN.');
+    button('OK').click();
+    await settled();
     type('#correctedPan', 'pqrst6789k');
     await settled();
     button('Save & Proceed').click();
@@ -175,6 +181,7 @@ describe('ConsultancyPaymentPage', () => {
     expect(pan.request.body).toEqual({ certification: 'Silver', gstin: '09PQRST6789K1Z2', pan: 'PQRST6789K' });
     pan.flush({ message: 'PAN updated successfully.' });
     await settled();
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('PAN updated successfully. Proceeding...');
     const req = http.expectOne(`${API}/Silver/checkout`);
     expect(req.request.body.gstin).toBe('09PQRST6789K1Z2');
     req.flush({ status: 'paid' });

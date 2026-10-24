@@ -213,6 +213,25 @@ describe('SaAllotmentPage (surveillance)', () => {
   });
 });
 
+describe('SaAllotmentPage (surveillance RE-ALLOT)', () => {
+  it('opens with the current assessor and meeting link, and takes links of up to 5000 characters', async () => {
+    const { fixture, http, el } = setup(SaAllotmentPage, 'surveillance');
+    await settle(fixture);
+    http.expectOne('/api/staff/site-assessment/allotments').flush({
+      units: [{ ZedId: 'ZEDMSME000001', Certification: 'Silver', SiteAssessorId: 'ASR1', MeetingLink: 'https://meet.example/old', ReasonForRejection: null }],
+      assessors: [{ userId: 'ASR1', userName: 'Lead One' }, { userId: 'ASR2', userName: 'Two' }],
+    });
+    await settle(fixture);
+    button(el, 'RE-ALLOT')!.click();
+    await settle(fixture);
+    expect((el.querySelector('#SiteAssessorId') as HTMLSelectElement).value).toBe('ASR1');
+    const link = el.querySelector('#MeetingLink') as HTMLTextAreaElement;
+    expect(link.value).toBe('https://meet.example/old');
+    expect(link.getAttribute('maxlength')).toBe('5000');
+    http.verify();
+  });
+});
+
 describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
   it('loads the milestone from the route and links VIEW DETAILS to the milestone page', async () => {
     const { fixture, http, el } = setup(RemoteAssessmentsPage, 'consultancy', { milestone: '2' });
@@ -225,6 +244,12 @@ describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Milestone 2');
     expect(el.textContent).toContain('October 30, 2026');
     expect((el.querySelector('a.details') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/consultancy/milestones/ZEDMSME000001/Silver');
+    // As the old list: "View Profile" before VIEW DETAILS, and no consultant role under the certification.
+    const actions = [...el.querySelectorAll('tbody tr td:last-child a')];
+    expect(actions.map((a) => a.textContent!.trim())).toEqual(['View Profile', 'VIEW DETAILS']);
+    expect(actions[0].getAttribute('href')).toBe('/staff/msme-profile/ZEDMSME000001');
+    expect((actions[0] as HTMLElement).style.width).toBe('150px');
+    expect(el.textContent).not.toContain('Lead Consultant');
   });
 
   it('falls back to milestone 1 for an invalid parameter', () => {
@@ -247,5 +272,19 @@ describe('RemoteAssessmentsPage (surveillance)', () => {
     expect(el.textContent).toContain('Remote');
     expect(el.textContent).toContain('Surveillance Date');
     expect(el.textContent).not.toContain('VIEW DETAILS');
+  });
+
+  it('offers ASSESS only on onsite rows', async () => {
+    const { fixture, http, el } = setup(RemoteAssessmentsPage, 'surveillance');
+    await settle(fixture);
+    http.expectOne('/api/config').flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '' });
+    http.expectOne('/api/staff/site-assessment/remote-assessments').flush([
+      { ZedId: 'ZEDMSME000001', Certification: 'Silver', ModeOfAssessment: 'Remote Assessment' },
+      { ZedId: 'ZEDMSME000002', Certification: 'Gold', ModeOfAssessment: 'Onsite Assessment' },
+    ]);
+    await settle(fixture);
+    const rows = el.querySelectorAll('tbody tr');
+    expect(rows[0].querySelector('a')).toBeNull();
+    expect((rows[1].querySelector('a.assess') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/remote/ZEDMSME000002/Gold');
   });
 });

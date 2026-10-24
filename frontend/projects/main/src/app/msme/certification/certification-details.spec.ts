@@ -117,6 +117,9 @@ describe('CertificationDetailsPage', () => {
       .toBe('/api/msme/certification-documents/Silver/report');
     expect(action('View My Incentives')!.querySelector('a')!.getAttribute('href'))
       .toBe('/incentives?ct=Silver&id=9'); // the public incentive list, now in this portal
+    expect(action('View My Incentives')!.querySelector('a')!.getAttribute('target')).toBeNull();   // same tab
+    expect(action('Download Certificate')!.querySelector('a')!.getAttribute('target')).toBe('_blank');
+    expect(el.querySelector('.cert-steps a')!.getAttribute('target')).toBeNull();
     expect(action('View Onsite/Remote Assessment Information')!.classList).not.toContain('btn-disabled');
     expect(action('Download Certificate')!.classList).not.toContain('btn-disabled');
     expect(action('View Basic Information & Documents Upload')!.querySelector('a')!.getAttribute('href'))
@@ -148,7 +151,7 @@ describe('CertificationDetailsPage', () => {
 
     expect(text()).toContain('Application Received for Surveillance Assessment');
     expect(visibleSteps()).toEqual(['Surveillance Assessment', 'Get Certified!', 'Avail Incentives']);
-    expect(Array.from(el.querySelectorAll('.cert-steps > li .step-num')).map((n) => n.textContent!.trim())).toEqual(['1', '2', '3']);
+    expect(Array.from(el.querySelectorAll('.cert-steps > li .step-num')).map((n) => n.textContent!.trim())).toEqual(['1', '3', '4']);   // as the live page (no step 2)
     expect(el.querySelector('.zed-payment-success')).toBeNull();
     expect(action('Download Surveillance Certificate')!.querySelector('a')!.getAttribute('href'))
       .toBe('/api/msme/certification-documents/BronzeSurveillance/certificate');

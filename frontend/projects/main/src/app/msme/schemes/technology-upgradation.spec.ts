@@ -82,6 +82,39 @@ describe('TechnologyUpgradationPage', () => {
     expect(p.tech['amountPaid']).toBe(500000);
     expect((el.querySelector('#tuPurchase') as HTMLInputElement).min).toBe('2024-01-01');
     expect(el.querySelector('a[href="/api/msme/schemes/tu/files/p.jpg"]')).not.toBeNull();
+    expect(el.textContent).not.toContain('Eligible Technology Support');
+    expect(el.querySelector('#tuTechnologyForm b')!.parentElement!.textContent!.trim()).toBe('1. Solar rooftop');   // no description
+  });
+
+  it('shows the messages under the empty technology fields after submit', async () => {
+    http.expectOne('/api/msme/schemes/tu').flush(page(false));
+    await settle();
+    (fixture.componentInstance as unknown as Page).open(page(false).technologies[0]);
+    await settle();
+    (el.querySelector('#tuTechnologyForm') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('Please enter required data.');
+    expect(el.querySelector('#tuMaker')!.parentElement!.textContent).toContain('This is required.');
+    expect(el.querySelector('#tuMode')!.parentElement!.textContent).toContain('This is required.');
+    http.expectNone('/api/msme/schemes/tu/technologies/T1');
+  });
+
+  it('checks the account form under the fields, the IFSC code while typing', async () => {
+    http.expectOne('/api/msme/schemes/tu').flush(page(true));
+    await settle();
+    (fixture.componentInstance as unknown as Page).go('account');
+    await settle();
+    const ifsc = el.querySelector('#tuIfsc') as HTMLInputElement;
+    ifsc.value = 'SBIN1';
+    ifsc.dispatchEvent(new Event('input'));
+    await settle();
+    expect(ifsc.parentElement!.textContent).toContain('Invalid IFSC code format.');
+    expect(ifsc.parentElement!.textContent).toContain('The IFSC code must be 11 characters long.');
+
+    (el.querySelector('#tuAccountForm') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('#tuAccount')!.parentElement!.textContent).toContain('This is required.');
+    expect(el.querySelector('#tuAccount2')!.parentElement!.textContent).toContain('Re-Enter Account Number is required.');
   });
 
   it('submits a technology, reloads the list and shows the server totals in the summary', async () => {
@@ -108,7 +141,9 @@ describe('TechnologyUpgradationPage', () => {
     http.expectOne('/api/msme/schemes/tu').flush(page(true));
     await settle();
 
-    expect(el.textContent).toContain('Solar rooftop: details submitted.');
+    expect(el.textContent).not.toContain('details submitted');   // back on the list, without a notice (as the live page)
+    expect(el.textContent).toContain('List of Technologies');
+    expect(el.textContent).not.toContain('List of Technologies (Silver)');
     (el.querySelector('#tuProceed') as HTMLButtonElement).click();
     await settle();
     const summary = el.querySelector('#tuSummary')!.textContent!;

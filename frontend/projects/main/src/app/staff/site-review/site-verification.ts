@@ -31,7 +31,7 @@ import { PagedView, PagerComponent } from '../pager';
                 <td><a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]">ASSESS</a></td>
                 <td>{{ t(s, 'ZedId') }}</td>
                 <td>{{ t(s, 'Certification') }}</td>
-                <td>{{ t(s, 'CertificationBodyUserId') }}</td>
+                <td>{{ t(s, 'CertificationBodyUserId') }}<br />{{ t(s, 'AssessorName') }}</td>
                 <td>{{ t(s, 'EnterpriseName') }}</td>
                 <td>{{ t(s, 'UnitAddress') }}</td>
                 <td>{{ t(s, 'StateName') }}</td>

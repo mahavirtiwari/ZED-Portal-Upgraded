@@ -150,6 +150,12 @@ public sealed class TechnologyUpgradationTests : IDisposable
         Assert.Contains("ZEDMSME000500", body);
         Assert.DoesNotContain("leak", body);
         Assert.Equal("2", FakeSql.Arg(CallsTo("SP_FINANCIAL_ASSISTANCE_GET_LIST").Last(), "Status"));
+
+        // 99: the master admin's and the CO's landing view on the legacy page, passed on to the procedure.
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync($"{Base}/submissions?status=99")).StatusCode);
+        Assert.Equal("99", FakeSql.Arg(CallsTo("SP_FINANCIAL_ASSISTANCE_GET_LIST").Last(), "Status"));
+        Assert.Equal(HttpStatusCode.OK, (await (await SignIn("CO1")).GetAsync($"{Base}/submissions?status=99")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"{Base}/submissions?status=98")).StatusCode);
     }
 
     [Fact]
@@ -330,30 +336,29 @@ public sealed class TechnologyUpgradationTests : IDisposable
     [Fact]
     public async Task Decisions_follow_the_tu_states()
     {
+        // The DFO decides from the consultant app only: the legacy page has its ACCEPT / REJECT commented out.
         At(2, 5, "DFO1");
         _photos.ForEach(p => p["IsVerified"] = "Yes");
-        var dfo = await SignIn("DFO1");
-        var noMeeting = await dfo.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "approve" });
-        Assert.Equal(HttpStatusCode.BadRequest, noMeeting.StatusCode);
-        Assert.Contains("opening meeting", await noMeeting.ProblemTitle() ?? "");
-
         _fa["MeetingSubmitted"] = 1;
-        Assert.Equal(HttpStatusCode.OK, (await dfo.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "approve" })).StatusCode);
-        var call = CallsTo("SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT").Last();
-        Assert.Equal("1", FakeSql.Arg(call, "IsApproved"));
-        Assert.Equal("3", FakeSql.Arg(call, "RoleId"));
+        var dfo = await SignIn("DFO1");
+        var page = await dfo.GetFromJsonAsync<JsonElement>($"{Base}/{Zed}");
+        Assert.False(page[0].GetProperty("canDecide").GetBoolean());
+        Assert.Equal(HttpStatusCode.Forbidden, (await dfo.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "approve" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await dfo.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "x" })).StatusCode);
+        Assert.Empty(CallsTo("SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT"));
 
-        Assert.Equal(HttpStatusCode.OK, (await dfo.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "Invoice mismatch" })).StatusCode);
-        Assert.Equal("msme@acme.test", Assert.Single(_host.Email.Sent).To);
-
-        // The CO in QC; the master admin may only reject, and only before the DFO's decision.
+        // The CO in QC; the master admin may only reject, and only before the DFO's decision while no CO is set.
         At(3, 6, "DFO1", 1);
         var co = await SignIn("CO1");
         Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "Recheck" })).StatusCode);
         Assert.Equal("2", FakeSql.Arg(CallsTo("SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT").Last(), "RoleId"));
+        Assert.Empty(_host.Email.Sent);
         var admin = await SignIn("MADMIN");
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "x" })).StatusCode);
         At(1, 2);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "x" })).StatusCode);
+        _fa["CertificationBodyUserId"] = null;
+        Assert.True((await admin.GetFromJsonAsync<JsonElement>($"{Base}/{Zed}"))[0].GetProperty("canDecide").GetBoolean());
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "approve" })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync($"{Base}/{Zed}/Silver/decision", new { decision = "reject", comments = "Duplicate" })).StatusCode);
         Assert.Equal("7", FakeSql.Arg(CallsTo("SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT").Last(), "RoleId"));

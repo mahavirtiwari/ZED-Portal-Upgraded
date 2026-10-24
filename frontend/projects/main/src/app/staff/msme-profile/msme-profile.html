@@ -1,0 +1,121 @@
+<div class="container form-page view-profile" id="zed_user_form">
+  <div class="row mt-3 justify-content-center">
+    <div class="col-sm-9">
+      <div class="d-flex justify-content-end mb-2">
+        <button type="button" class="btn btn-back" (click)="back()">BACK</button>
+      </div>
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      }
+      @if (success()) {
+        <div class="alert alert-success alert-dismissible" role="status">
+          {{ success() }}
+          <button type="button" class="btn-close" aria-label="Close" (click)="success.set('')"></button>
+        </div>
+      }
+      @if (profile(); as p) {
+        <div class="panel panel-default panel-design">
+          <div class="panel-body">
+            <div class="col-sm-12">
+              <h3 class="registration-title title-with-action">
+                Basic Information
+                @if (canEdit && !editing()) {
+                  <button type="button" class="btn btn-primary btn-lg" (click)="startEdit()">EDIT PROFILE</button>
+                }
+              </h3>
+              @if (p.certifications.length) {
+                <p class="text-muted">Certifications: {{ p.certifications.join(', ') }}</p>
+              }
+              <table class="table">
+                <tbody>
+                  @for (r of rows; track r.field) {
+                    <tr>
+                      <td width="35%"><p>{{ r.label }}</p></td>
+                      <td [attr.data-field]="r.field">
+                        @if (editing() && r.edit) {
+                          <input type="text" class="form-control" style="min-width: 100%" [attr.aria-label]="r.label" [attr.name]="r.edit"
+                                 [attr.maxlength]="r.edit === 'ownerName' ? 200 : 250" [(ngModel)]="form[r.edit]" />
+                        } @else {
+                          <p>{{ show(r.source === 'unit' ? p.unit : p.enterprise, r.field) }}</p>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="col-sm-12">
+              <h3 class="registration-title">Selected Unit</h3>
+              <div class="unit-selection" data-field="PUnitName">
+                @if (editing()) {
+                  <input type="text" class="form-control" style="min-width: 100%" aria-label="Unit Name" name="pUnitName" maxlength="250"
+                         [(ngModel)]="form.pUnitName" />
+                } @else {
+                  <p>{{ show(p.unit, 'PUnitName') }}</p>
+                }
+              </div>
+              <div class="unit-selection">
+                <img src="/Images/svgicons/mapicon.svg" alt="" />
+                <div><p data-field="PAddress">{{ unitAddress() }}</p></div>
+              </div>
+            </div>
+
+            <div class="col-sm-12">
+              <h3 class="registration-title">Selected Unit Activity</h3>
+              <div class="unit-selection" data-field="Activity">
+                <img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ show(p.unit, 'Activity') }}</p>
+              </div>
+              <div class="unit-selection" data-field="TwoDigitActivity">
+                <img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" />
+                @if (editing()) {
+                  <select class="form-select" style="min-width: 100%" aria-label="NIC 2 Digit" name="twoDigitActivity" [(ngModel)]="form.twoDigitActivity">
+                    @for (s of sectorOptions(); track s) {
+                      <option [value]="s">{{ s }}</option>
+                    }
+                  </select>
+                } @else {
+                  <p>{{ show(p.unit, 'TwoDigitActivity') }}</p>
+                }
+              </div>
+              <div class="unit-selection" data-field="FourDigitActivity">
+                <img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" />
+                @if (editing()) {
+                  <input type="text" class="form-control" style="min-width: 100%" aria-label="NIC 4 Digit" name="fourDigitActivity" maxlength="250"
+                         [(ngModel)]="form.fourDigitActivity" />
+                } @else {
+                  <p>{{ show(p.unit, 'FourDigitActivity') }}</p>
+                }
+              </div>
+              <div class="unit-selection" data-field="FiveDigitActivity">
+                <img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" />
+                @if (editing()) {
+                  <input type="text" class="form-control" style="min-width: 100%" aria-label="NIC 5 Digit" name="fiveDigitActivity" maxlength="250"
+                         [(ngModel)]="form.fiveDigitActivity" />
+                } @else {
+                  <p>{{ show(p.unit, 'FiveDigitActivity') }}</p>
+                }
+              </div>
+            </div>
+
+            @if (editing()) {
+              <div class="col-sm-12 text-center">
+                <button type="button" class="btn btn-primary" (click)="cancelEdit()">CANCEL</button>
+                <button type="button" class="btn btn-primary ms-2" [disabled]="saving()" (click)="update()">UPDATE</button>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (seesEditHistory) {
+          <div class="panel panel-default mt-3">
+            <div class="panel-heading"><h5 class="m-0">Edit History (changes made by the applicant)</h5></div>
+            <div class="p-2"><zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" /></div>
+          </div>
+        }
+      } @else if (loading()) {
+        <p role="status">Loading…</p>
+      }
+    </div>
+  </div>
+</div>

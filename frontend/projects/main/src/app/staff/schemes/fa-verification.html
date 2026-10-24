@@ -53,7 +53,7 @@
                       @case ('BankName') { <input class="form-control" aria-label="Name of the Bank" maxlength="200" [ngModel]="acc.bankName" (ngModelChange)="patchAccount({ bankName: $event })" /> }
                     }
                   } @else {
-                    <div class="row-data"><b>{{ value(app, f.key) }}</b></div>
+                    <div class="row-data"><b>{{ f.prefix ?? '' }}{{ value(app, f.key) }}</b></div>
                   }
                 </td>
                 <td></td>
@@ -95,8 +95,8 @@
 
       @if (app.canDecide) {
         <div class="d-flex justify-content-center my-3">
-          <button type="button" class="btn btn-primary me-2" (click)="openDecision('approve')">ACCEPT</button>
-          <button type="button" class="btn btn-default" (click)="openDecision('reject')">REJECT</button>
+          <button type="button" class="btn btn-primary me-2" [disabled]="saving()" (click)="openDecision(app, 'approve')">ACCEPT</button>
+          <button type="button" class="btn btn-default" [disabled]="saving()" (click)="openDecision(app, 'reject')">REJECT</button>
         </div>
       } @else if (app.canValidate) {
         <p class="text-center text-muted">ACCEPT / REJECT become available once every document is validated.</p>
@@ -188,14 +188,14 @@
           <div class="modal-dialog modal-popup">
             <div class="modal-content">
               <div class="modal-header justify-content-between">
-                <h3 class="registration-title" id="decisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
+                <h3 class="registration-title" id="decisionTitle">Confirm Final Submit</h3>
                 <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
               <div class="modal-body">
                 @if (dialogError()) {
                   <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
                 }
-                <label for="faComments"><strong>Comments@if (d.decision === 'reject') {<span style="color: red">*</span>}</strong></label>
+                <label for="faComments"><strong>Comments<span style="color: red">*</span></strong></label>
                 <textarea id="faComments" class="form-control mb-2" style="height: 100px" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
                 <div class="form-check">
                   <input id="faConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />

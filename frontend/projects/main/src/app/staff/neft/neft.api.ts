@@ -41,6 +41,15 @@ export interface NeftTransaction {
   ApproverReferenceNo: string | null;
   ApproverAmount: number | string | null;
   Comments: string | null;
+  /** Columns of the main portal's "Rejected Transaction" page (Msme / MsmeBasicInformation / FinancialAssistance). */
+  UdyogAadharNo?: string | null;
+  TotalEmp?: string | number | null;
+  Gender?: string | null;
+  SocialCategoryName?: string | null;
+  IsCouponUsed?: boolean | number | null;
+  GstinNumber?: string | null;
+  TanNumber?: string | null;
+  UtrNumber?: string | null;
 }
 
 export interface NeftApproval {

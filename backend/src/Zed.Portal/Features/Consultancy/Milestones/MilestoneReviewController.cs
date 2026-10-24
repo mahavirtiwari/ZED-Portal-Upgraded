@@ -108,7 +108,8 @@ public sealed class MilestoneReviewController(
         bool CanConsultantFinalSubmit,
         bool CanCoFinalSubmit,
         bool CanSendBack,
-        bool CanReject);
+        bool CanReject,
+        bool CanEditFinalComments);
 
     public sealed record MilestoneDetails(
         string ZedId,
@@ -213,7 +214,7 @@ public sealed class MilestoneReviewController(
 
         var permissions = new Permissions(
             ctx.CanEdit, fields, bulletsEditable,
-            ctx.CanConsultantFinalSubmit, ctx.CoCanReview, ctx.CoCanReview, ctx.CoCanReview);
+            ctx.CanConsultantFinalSubmit, ctx.CoCanReview, ctx.CoCanReview, ctx.CoCanReview, ctx.CoCanReview);
 
         return new MilestoneDetails(
             z, level, ctx.Milestone, ctx.Status, ctx.Party.ToString(), CurrentUser.RoleName,
@@ -394,6 +395,43 @@ public sealed class MilestoneReviewController(
             Remarks = AssessmentInput.Ansi(remarks, 5000),
         }, ct);
         log.LogInformation("{UserId} ({Party}) edited the remarks of meeting {Id} of {ZedId} {Level}", UserId, ctx.Party, id, ctx.ZedId, ctx.Level);
+        return new MessageResponse("Remarks updated.");
+    }
+
+    /// <summary>
+    /// The CO's "Edit Remarks" of the consultant's final comments in its review (status 15; Remote/UpdateRemarks,
+    /// SP_MONITORING_RA_UPDATE_AGENCY_REMARKS). The old page sent TableName MsmeCertifications, whose branch updates the
+    /// NcCount 0 row of AssessorComments and so never the milestone's comments the page shows; here the shown row (the
+    /// milestone's latest 'SA' row) is updated through the procedure's AssessorComments branch.
+    /// </summary>
+    [HttpPost("final-comments")]
+    [StaffRoles(UserRole.Agency)]
+    public async Task<ActionResult<MessageResponse>> FinalComments(string zedId, string certification, RemarksRequest req, CancellationToken ct)
+    {
+        var remarks = AssessmentInput.Text(req.Remarks);
+        if (remarks is null) return this.Problem400("Please enter remarks.");
+        if (remarks.Length > MaxRemarks) return this.Problem400($"Remarks must be at most {MaxRemarks} characters.");
+        var (ctx, error) = await ForDecision(zedId, certification, ct);
+        if (error is not null) return error;
+
+        var row = (await db.QuerySqlAsync<MilestoneItem>(MilestoneFields.FinalCommentsSql, new
+        {
+            ZedId = AssessmentInput.Ansi(ctx!.ZedId),
+            Certification = AssessmentInput.Ansi(ctx.Level),
+            NcCount = ctx.Milestone,
+        }, ct)).FirstOrDefault();
+        if (row is null) return NotFound();
+
+        await db.ExecuteProcAsync("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS", new
+        {
+            UserId = AssessmentInput.Ansi(UserId),
+            ZedId = AssessmentInput.Ansi(ctx.ZedId),
+            CertificationType = AssessmentInput.Ansi(ctx.Level),
+            TableName = AssessmentInput.Ansi("AssessorComments"),
+            Id = AssessmentInput.Ansi(row.Id.ToString(CultureInfo.InvariantCulture)),
+            Remarks = AssessmentInput.Ansi(remarks, 5000),
+        }, ct);
+        log.LogInformation("CO {UserId} edited the consultant's final comments of milestone {Milestone} of {ZedId} {Level}", UserId, ctx.Milestone, ctx.ZedId, ctx.Level);
         return new MessageResponse("Remarks updated.");
     }
 

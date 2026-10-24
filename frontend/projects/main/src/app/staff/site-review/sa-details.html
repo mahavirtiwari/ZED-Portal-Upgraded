@@ -317,6 +317,8 @@
                                     @if (p.isSaVerified === 'Yes' || p.isSaVerified === 'No') {
                                       <strong>Verified:</strong> {{ p.isSaVerified }}<br /><strong>Assessor Remark:</strong><br />{{ p.saAssessorRemarks }}
                                     }
+                                    <!-- Not for SaProducts rows (source 'sa'): the old button saved nothing (SP_MONITORING_RA_UPDATE_AGENCY_REMARKS has
+                                         no SaProducts branch) and the API's product remarks are MsmeProducts only. -->
                                     @if (review().editRemarks && p.source === 'da') {
                                       <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="editRemarks('product', p.id, p.saAssessorRemarks)" />
                                     }
@@ -712,7 +714,7 @@
         </div>
       </div>
 
-      <zed-review-remarks [zedId]="d.zedId" [certification]="d.certification" [target]="remarksTarget()" (saved)="reviewed($event)" (closed)="remarksTarget.set(null)" />
+      <zed-review-remarks [zedId]="d.zedId" [certification]="d.certification" stage="site" [target]="remarksTarget()" (saved)="reviewed($event)" (closed)="remarksTarget.set(null)" />
     }
   </div>
 </div>

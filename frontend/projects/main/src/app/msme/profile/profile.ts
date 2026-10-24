@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { ProfileApi, ProfileRow, UdyamActivity } from './profile.api';
 
 /** One row of the "Basic Information" table: label and the column it shows. */
@@ -43,6 +44,7 @@ const BASIC_INFO: InfoRow[] = [
 @Component({
   selector: 'zed-msme-profile',
   host: { class: 'd-block' },
+  imports: [AlertDialog],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
@@ -53,8 +55,8 @@ export class ProfilePage {
   protected readonly msme = signal<ProfileRow>({});
   protected readonly basicInfo = signal<ProfileRow>({});
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
-  protected readonly success = signal('');
+  /** Error / success pop-up (the legacy swal). */
+  protected readonly alert = signal<AlertMessage | null>(null);
 
   protected readonly editMode = signal(false);
   protected readonly activities = signal<UdyamActivity[]>([]);
@@ -81,7 +83,6 @@ export class ProfilePage {
   }
 
   protected async editActivity(): Promise<void> {
-    this.success.set('');
     const list = await this.call(this.api.activities());
     if (!list) return;
     this.activities.set(list);
@@ -90,7 +91,6 @@ export class ProfilePage {
   }
 
   protected cancelEdit(): void {
-    this.error.set('');
     this.editMode.set(false);
   }
 
@@ -100,7 +100,7 @@ export class ProfilePage {
     if (!res) return;
     this.editMode.set(false);
     await this.load();
-    this.success.set('Activity updated successfully.');
+    this.alert.set(successAlert('Activity updated successfully.'));
   }
 
   private async load(): Promise<void> {
@@ -110,15 +110,13 @@ export class ProfilePage {
     this.basicInfo.set(res.basicInfo ?? {});
   }
 
-  /** Runs a request with the loading overlay; shows the API message on failure. */
+  /** Runs a request with the loading overlay; shows the API message in the pop-up on failure. */
   private async call<T>(req: Observable<T>): Promise<T | null> {
     this.busy.set(true);
-    this.error.set('');
     try {
       return await firstValueFrom(req);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.alert.set(errorAlert(apiErrorMessage(err)));
       return null;
     } finally {
       this.busy.set(false);

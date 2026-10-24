@@ -7,6 +7,12 @@ import { withApiBase } from '../../../api-base';
 /** List tabs of SP_FINANCIAL_ASSISTANCE_GET_LIST on ZED_CONSULTANT (FinancialAssistance.TechUpgradeStatus). */
 export const TuTab = { Allotment: 2, InProgress: 5, Qc: 6, Approved: 8, Rejected: 9 } as const;
 
+/**
+ * Where the master admin and the CO land (the old page's GetSections(99)): the procedure answers with the tab counts and,
+ * as on the old page, no rows. The MSME-DFO officer lands on TU ALLOTMENT and has no tabs.
+ */
+export const TU_LANDING = 99;
+
 /** A row of the TU list (procedure column names). */
 export interface TuSubmission {
   Id: number;
@@ -24,6 +30,8 @@ export interface TuSubmission {
   ReasonForRejectionAgency: string | null;
   VerificationDate: string | null;
   TechUpgradeStatus: number | null;
+  /** Reddens the action cell, as on the old page (the TU procedure does not return it at present). */
+  TimeDuration?: string | null;
 }
 
 export interface TuCounts {

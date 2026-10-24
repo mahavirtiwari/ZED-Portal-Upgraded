@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../../staff-menu';
-import { TuApi, TuCounts, TuSubmission, TuTab, UserOption } from './tu.api';
+import { TU_LANDING, TuApi, TuCounts, TuSubmission, TuTab, UserOption } from './tu.api';
 import { PagedView, PagerComponent } from '../../pager';
 
 type Dialog =
@@ -19,6 +19,8 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
  * and MSME-DFO officers. Port of Frontend/FinancialAssistance/Submissions.cshtml: the master admin allots (or
  * re-allots) to a CO, the CO accepts with one of its DFOs (or re-allots the DFO before the opening meeting) or
  * rejects, and everyone opens the verification page. The API checks every action again.
+ * The master admin and the CO land on status 99 (the counts, no rows, as the old page) with the tab bar; the DFO lands on
+ * TU ALLOTMENT and has no tabs. The Status and Reason columns follow the old page's per-tab conditions.
  */
 @Component({
   selector: 'zed-staff-tu-submissions',
@@ -26,8 +28,9 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
   templateUrl: './tu-submissions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
-    tr.rejected td { background-color: #f2dede; }
-    .actions .btn { display: block; width: 150px; margin: 0 auto 6px; }
+    /* The old page's btn-danger rows (a reason for rejection) and action cells (TimeDuration). */
+    tr.rejected td, td.late { background-color: #f2dede; }
+    .actions .btn { display: block; width: 180px; margin: 0 auto 6px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -47,7 +50,7 @@ export class TuSubmissionsPage {
     { status: TuTab.Rejected, label: 'REJECTED', count: 'Rejected' },
   ] as const;
 
-  protected readonly status = signal<number>(TuTab.Allotment);
+  protected readonly status = signal<number>(this.isDfo() ? TuTab.Allotment : TU_LANDING);
   protected readonly rows = signal<TuSubmission[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() => this.rows());
@@ -60,7 +63,7 @@ export class TuSubmissionsPage {
   protected readonly saving = signal(false);
 
   constructor() {
-    void this.load(TuTab.Allotment);
+    void this.load(this.status());
   }
 
   protected count(key: keyof TuCounts): number {
@@ -86,7 +89,7 @@ export class TuSubmissionsPage {
   // ----- what each role may do with a row (mirrors the old page; the API decides) -----
 
   protected canAllot(r: TuSubmission): boolean {
-    return this.isAdmin() && this.status() === TuTab.Allotment && !r.CertificationBodyUserId;
+    return this.isAdmin() && !r.CertificationBodyUserId;
   }
 
   protected canReAllot(r: TuSubmission): boolean {
@@ -105,6 +108,23 @@ export class TuSubmissionsPage {
   protected canOpen(r: TuSubmission): boolean {
     if (this.isAgency()) return !!r.CertificationBodyUserId;
     return true;
+  }
+
+  /** "View Profile" of the unit, for the master admin and the CO. */
+  protected canViewProfile(): boolean {
+    return this.isAdmin() || this.isAgency();
+  }
+
+  /** The old page hid the Status column on the tabs 2–5 (shown on QC, APPROVED, REJECTED and the landing view). */
+  protected showStatus(): boolean {
+    const s = this.status();
+    return !(s > 1 && s <= 5);
+  }
+
+  /** The Reason For Rejection column: not for the DFO, and hidden for the statuses 3–4 (no tab uses them). */
+  protected showReason(): boolean {
+    const s = this.status();
+    return !this.isDfo() && !(s > 2 && s < 5);
   }
 
   protected dfoName(r: TuSubmission): string | null {

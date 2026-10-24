@@ -42,68 +42,72 @@ interface BlockDialog {
           <input class="form-control mb-2" style="max-width: 320px" placeholder="Search" aria-label="Search" [ngModel]="search()" (ngModelChange)="search.set($event)" />
 
           @if (kind === 'agencies') {
-            <table class="table table-bordered">
+            <!-- Columns of the old User/AssessmentAgencies.cshtml; the Bronze surveillance setting and Reset Link sit in Actions. -->
+            <table class="table table-zed table-bordered">
               <thead>
-                <tr><th>Status</th><th>Agency</th><th>SPOC</th><th>Assessors</th><th>Bronze Surveillance</th><th>Preferred State</th><th>Action(s)</th></tr>
+                <tr class="text-center"><th>Status</th><th>Agency Id</th><th>Agency Details</th><th>Spoc Details</th><th>No. of Assessors</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 @for (a of agenciesView.page(); track a.userId) {
                   <tr>
-                    <td>{{ a.isActive ? 'Active' : 'In-Active' }}</td>
-                    <td><strong>{{ a.userId }}</strong><br />{{ a.userName }}</td>
-                    <td>{{ a.spocName }}<br />{{ a.email }}<br />{{ a.mobileNo }}</td>
+                    <td><strong>{{ status(a) }}</strong></td>
+                    <td><strong>{{ a.userId }}</strong></td>
+                    <td><p class="sub-heading">{{ a.userName }}</p><p>{{ field(a, 'address') }}</p><p>{{ field(a, 'pinCode') }}</p></td>
+                    <td><strong>{{ a.spocName }}</strong><br />{{ a.mobileNo }}<br />{{ a.email }}</td>
                     <td>{{ a.noOfUsers }}</td>
-                    <td>{{ a.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}@if (!a.allowBronzeSurveillance && a.reasonForRejectionForBS) { <br /><small>{{ a.reasonForRejectionForBS }}</small> }</td>
-                    <td>{{ stateName(a.tuPreferredState) }}</td>
-                    <td>
-                      <button type="button" class="btn btn-primary btn-sm mb-1" [disabled]="busy()" (click)="openBronze(a)">Bronze Surveillance</button><br />
+                    <td class="text-center">
                       @if (a.isActive) {
-                        <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="block.set({ kind: 'agencies', userId: a.userId, reason: '' })">Block</button>
+                        <button type="button" class="btn btn-default btn-sm" style="width: 100px" [disabled]="busy()" (click)="block.set({ kind: 'agencies', userId: a.userId, reason: '' })">Block</button>
                       } @else {
-                        <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="unblock('agencies', a.userId)">Unblock</button>
+                        <button type="button" class="btn btn-primary btn-sm" style="width: 100px" [disabled]="busy()" (click)="unblock('agencies', a.userId)">UnBlock</button>
                       }
+                      <br /><button type="button" class="btn btn-primary btn-sm mt-1 bronze" [disabled]="busy()" (click)="openBronze(a)">Bronze Surveillance</button>
+                      <br /><small class="bronze-status">
+                        {{ a.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}
+                        @if (!a.allowBronzeSurveillance && a.reasonForRejectionForBS) { <br />{{ a.reasonForRejectionForBS }} }
+                        @if (a.tuPreferredState) { <br />Preferred State: {{ stateName(a.tuPreferredState) }} }
+                      </small>
                       @if (a.isActive) {
-                        <br /><button type="button" class="btn btn-default btn-sm mt-1" [disabled]="busy()" (click)="sendReset('agencies', a.userId)">Reset Link</button>
+                        <br /><button type="button" class="btn btn-default btn-sm mt-1" style="width: 100px" [disabled]="busy()" (click)="sendReset('agencies', a.userId)">Reset Link</button>
                       }
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="7"><div class="no-data">No Data</div></td></tr>
+                  <tr><td colspan="6" style="padding: 0"><div class="no-data">No Data</div></td></tr>
                 }
               </tbody>
             </table>
             <zed-pager [pager]="agenciesView" />
           } @else {
-            <table class="table table-bordered">
+            <!-- Columns of the old User/Assessors.cshtml; the Bronze surveillance switch and Reset Link sit in Actions. -->
+            <table class="table table-zed table-bordered">
               <thead>
-                <tr><th>Status</th><th>Assessor</th><th>Contact</th><th>Agency</th><th>Bronze Surveillance</th><th>Action(s)</th></tr>
+                <tr><th>Status</th><th>Assessor ID</th><th>Assessor Details</th><th>Assessor Contact Details</th><th>Action(s)</th></tr>
               </thead>
               <tbody>
                 @for (s of assessorsView.page(); track s.userId) {
                   <tr>
-                    <td>{{ s.isActive ? 'Active' : 'In-Active' }}</td>
-                    <td><strong>{{ s.userId }}</strong><br />{{ s.userName }}</td>
-                    <td>{{ s.email }}<br />{{ s.mobileNo }}</td>
-                    <td>{{ s.agencyUserId }}<br />{{ s.agencyUserName }}</td>
-                    <td>
-                      <label class="d-flex align-items-center gap-2 m-0">
-                        <input type="checkbox" [checked]="!!s.allowBronzeSurveillance" [disabled]="busy()" (change)="setAssessorBronze(s, $any($event.target).checked)" />
-                        {{ s.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}
-                      </label>
-                    </td>
+                    <td><strong>{{ status(s) }}</strong></td>
+                    <td><strong>{{ s.userId }}</strong></td>
+                    <td><strong>{{ s.userName }}</strong><br />{{ field(s, 'address') }}<br /><strong>{{ field(s, 'idProofNumber') }}</strong></td>
+                    <td>{{ s.mobileNo }}<br />{{ s.email }}</td>
                     <td>
                       @if (s.isActive) {
-                        <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="block.set({ kind: 'assessors', userId: s.userId, reason: '' })">Block</button>
+                        <button type="button" class="btn btn-default btn-sm" style="width: 100px" [disabled]="busy()" (click)="block.set({ kind: 'assessors', userId: s.userId, reason: '' })">Block</button>
                       } @else {
-                        <button type="button" class="btn btn-default btn-sm" [disabled]="busy()" (click)="unblock('assessors', s.userId)">Unblock</button>
+                        <button type="button" class="btn btn-primary btn-sm" style="width: 100px" [disabled]="busy()" (click)="unblock('assessors', s.userId)">UnBlock</button>
                       }
+                      <label class="d-flex align-items-center gap-2 mt-1 mb-0">
+                        <input type="checkbox" [checked]="!!s.allowBronzeSurveillance" [disabled]="busy()" (change)="setAssessorBronze(s, $any($event.target).checked)" />
+                        Bronze Surveillance: {{ s.allowBronzeSurveillance ? 'Allowed' : 'Not allowed' }}
+                      </label>
                       @if (s.isActive) {
-                        <br /><button type="button" class="btn btn-default btn-sm mt-1" [disabled]="busy()" (click)="sendReset('assessors', s.userId)">Reset Link</button>
+                        <button type="button" class="btn btn-default btn-sm mt-1" style="width: 100px" [disabled]="busy()" (click)="sendReset('assessors', s.userId)">Reset Link</button>
                       }
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="6"><div class="no-data">No Data</div></td></tr>
+                  <tr><td colspan="5" style="padding: 0"><div class="no-data">No Data</div></td></tr>
                 }
               </tbody>
             </table>
@@ -263,6 +267,20 @@ export class SurveillanceUsersPage {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /** The old IdStatus column: Active / In-Active from IsActive. */
+  protected status(u: { isActive: boolean | null }): string {
+    return u.isActive ? 'Active' : 'In-Active';
+  }
+
+  /**
+   * A column the old lists showed that the surveillance users API may not send yet (agency address and pincode, assessor
+   * address and ID proof number); empty until it does.
+   */
+  protected field(u: object, key: string): string {
+    const v = (u as Record<string, unknown>)[key];
+    return v === null || v === undefined ? '' : String(v);
   }
 
   /** The agency column is only meaningful to the MasterAdmin. */

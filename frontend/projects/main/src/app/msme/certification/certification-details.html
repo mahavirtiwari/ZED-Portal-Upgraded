@@ -104,7 +104,8 @@
                       } @else if (a.route) {
                         <span aria-hidden="true"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></span>
                       } @else if (a.href !== undefined) {
-                        <a [href]="a.href" target="_blank" rel="noopener" [attr.aria-label]="a.label" [style.width.px]="a.wide ? 180 : null">
+                        <!-- Downloads open a new tab; "View My Incentives" opens in the same tab, as the live page. -->
+                        <a [href]="a.href" [attr.target]="a.download ? '_blank' : null" [attr.rel]="a.download ? 'noopener' : null" [attr.aria-label]="a.label" [style.width.px]="a.wide ? 180 : null">
                           <img [src]="a.download ? '/Images/svgicons/download.svg' : '/Images/svgicons/arrow-right-black.svg'" alt="" />
                         </a>
                       } @else {

@@ -3,17 +3,20 @@
     <div class="row mb-2">
       <div class="col-sm-12"><h3 class="registration-title">Technology Upgradation</h3></div>
     </div>
-    <div class="row mb-2">
-      <div class="col-sm-12">
-        <div class="d-flex justify-content-end flex-wrap gap-1">
-          @for (t of tabs; track t.status) {
-            <button type="button" class="btn btn-primary btn-md" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status" (click)="load(t.status)">
-              {{ t.label }} <span class="badge bg-primary">{{ count(t.count) }}</span>
-            </button>
-          }
+    <!-- No tab bar for the MSME-DFO officer, as on the old page. -->
+    @if (!isDfo()) {
+      <div class="row mb-2">
+        <div class="col-sm-12">
+          <div class="d-flex justify-content-end flex-wrap gap-1">
+            @for (t of tabs; track t.status) {
+              <button type="button" class="btn btn-primary btn-md" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status" (click)="load(t.status)">
+                {{ t.label }} <span class="badge bg-primary">{{ count(t.count) }}</span>
+              </button>
+            }
+          </div>
         </div>
       </div>
-    </div>
+    }
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -25,25 +28,28 @@
         <thead>
           <tr>
             <th>Action(s)</th>
-            @if (isAdmin() && status() === 2) {
+            @if (showStatus()) {
               <th>Status</th>
             }
             <th>Certification Level</th>
             <th>Unit Details</th>
             <th>CO Details</th>
             @if (!isDfo()) {
-              <th>MSME-DFO Details</th>
+              <th>CC Details</th>
             }
             <th>Verification Date</th>
-            @if (!isDfo() && (status() === 2 || status() === 9)) {
+            @if (showReason()) {
               <th>Reason For Rejection</th>
             }
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track s.Id) {
-            <tr [class.rejected]="!!s.ReasonForRejection && status() === 2">
-              <td class="text-center actions">
+            <tr [class.rejected]="!!s.ReasonForRejection">
+              <td class="text-center actions" [class.late]="!!s.TimeDuration">
+                @if (canViewProfile()) {
+                  <a class="btn btn-primary mb-2" [routerLink]="['/staff/msme-profile', s.ZedId]">View Profile</a>
+                }
                 @if (canAllot(s)) {
                   <button type="button" class="btn btn-primary btn-xs" (click)="openAllot(s)">ALLOT</button>
                 }
@@ -63,14 +69,19 @@
                   </a>
                 }
               </td>
-              @if (isAdmin() && status() === 2) {
+              @if (showStatus()) {
+                <!-- The old page's three independent conditions (master admin only). -->
                 <td>
-                  @if (s.ReasonForRejection) {
-                    <strong>Rejected</strong>
-                  } @else if (s.FinancialAssessorId) {
-                    <small class="text-success">Alloted to Consultant</small>
-                  } @else if (s.CertificationBodyUserId) {
-                    <small class="text-success">Alloted to CO</small>
+                  @if (isAdmin()) {
+                    @if (s.CertificationBodyUserId && !s.FinancialAssessorId && !s.ReasonForRejection) {
+                      <small class="text-success">Alloted to CO</small>
+                    }
+                    @if (s.FinancialAssessorId) {
+                      <small class="text-success">Alloted to Consultant</small>
+                    }
+                    @if (s.ReasonForRejection) {
+                      <strong>Rejected</strong>
+                    }
                   }
                 </td>
               }
@@ -81,7 +92,7 @@
                 <td><strong>{{ dfoName(s) }}</strong><br />{{ s.FinancialAssessorId }}</td>
               }
               <td>{{ s.VerificationDate }}</td>
-              @if (!isDfo() && (status() === 2 || status() === 9)) {
+              @if (showReason()) {
                 <td>{{ reason(s) }}</td>
               }
             </tr>
@@ -120,7 +131,7 @@
             <label for="tuReason"><strong>Reason for Rejection<span style="color: red">*</span></strong></label>
             <textarea id="tuReason" class="form-control" maxlength="2000" rows="4" [ngModel]="d.reason" (ngModelChange)="setReason($event)"></textarea>
           } @else {
-            <label for="tuChoice"><strong>{{ d.kind === 'allot' ? 'Consultant Organisation' : 'MSME-DFO Officer' }}<span style="color: red">*</span></strong></label>
+            <label for="tuChoice"><strong>{{ d.kind === 'allot' ? 'Consultant Organisation' : 'Consultant/Expert' }}<span style="color: red">*</span></strong></label>
             <select id="tuChoice" class="form-control" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
               <option value="">{{ d.kind === 'allot' ? '--Select Organisation--' : '--Select--' }}</option>
               @for (o of d.options; track o.userId) {

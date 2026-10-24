@@ -146,12 +146,13 @@ type Editing =
   | { kind: 'newBullet'; requirementId: unknown; type: BulletType }
   | { kind: 'training'; id: unknown };
 
-type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meetingRemarks' | null;
+type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meetingRemarks' | 'finalComments' | null;
 
 /**
  * The handholding milestone page of the Consultancy portal (old Assessment/SaDetails of ZEDCS_CONSULTANCY): the
  * consultants' and the Consultant Organisation's view of a milestone, the allow-listed edits (requirement remarks,
- * bullet lists, training remarks), the consultants' final submit and the CO's final submit, send back and reject.
+ * bullet lists, training remarks), the consultants' final submit and the CO's final submit, send back and "Edit Remarks"
+ * of the consultant's final comments (the old page never showed a Reject button, so neither does this one).
  * The server decides what is editable (`permissions`, `Editable` per row, `editable` per meeting) and checks it again on
  * every call. The layout is the old page's: the overview per milestone, the parameters as an accordion with a table per
  * milestone, the basic information per section.
@@ -382,6 +383,18 @@ export class MilestoneDetailsPage {
     this.dialogText.set(m.comments ?? '');
   }
 
+  /** The CO's "Edit Remarks" of the consultant's final comments of the milestone under review (prefilled). */
+  protected openFinalComments(row: Row): void {
+    if (!this.perms()?.canEditFinalComments) return;
+    this.openDialog('finalComments');
+    this.dialogText.set(text(row, 'SaAssessorRemarks'));
+  }
+
+  /** "Edit Remarks" under a closing meeting: the CO, for the milestone under review (status 15), as on the old page. */
+  protected canEditFinalComments(m: MilestoneMeeting, row: Row): boolean {
+    return !!this.perms()?.canEditFinalComments && m.ncCount === this.milestone() && num(row, 'CertificationStatus') === 15;
+  }
+
   protected openDialog(d: Exclude<Dialog, null>): void {
     this.dialogText.set('');
     this.confirmed.set(false);
@@ -394,6 +407,7 @@ export class MilestoneDetailsPage {
       case 'consultantSubmit':
       case 'sendBack':
       case 'meetingRemarks':
+      case 'finalComments':
         return this.dialogText().trim().length > 0;
       case 'coSubmit':
       case 'reject':
@@ -417,7 +431,9 @@ export class MilestoneDetailsPage {
             ? this.api.sendBack(d.zedId, d.certification, remarks)
             : dlg === 'meetingRemarks'
               ? this.api.meetingRemarks(d.zedId, d.certification, this.meetingId ?? 0, remarks)
-              : this.api.reject(d.zedId, d.certification);
+              : dlg === 'finalComments'
+                ? this.api.finalComments(d.zedId, d.certification, remarks)
+                : this.api.reject(d.zedId, d.certification);
     this.busy.set(true);
     this.dialogError.set('');
     try {

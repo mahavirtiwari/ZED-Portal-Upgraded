@@ -48,7 +48,7 @@
             @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
           </div>
           <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="gstNumber">GSTIN</label>
+            <label class="input-group1 d-block" for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
             <input id="gstNumber" name="gstNumber" class="form-control input-100" maxlength="20" [(ngModel)]="model.gstNumber" />
           </div>
           <div class="col-sm-6 field">
@@ -71,19 +71,24 @@
           </div>
           }
 
-          <div class="col-sm-12 mb-3 mt-2"><span>{{ consultancy ? 'Activity Involved' : 'Category' }}</span></div>
-          <div class="col-sm-6 mb-4">
-            <div class="form-control">
-              <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                <input type="checkbox" class="checkbox" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
-                {{ consultancy ? 'Desktop Verification (Handholding Support)' : 'Desktop Verification' }}
-              </label>
+          <div class="col-sm-12 mb-3 mt-2"><span>Category</span></div>
+          <!-- Consultancy: the old form had Desktop Verification commented out, and Handholding Support and Technology
+               Intervention exclude each other (ticking one unticks and disables the other). -->
+          @if (!consultancy) {
+            <div class="col-sm-6 mb-4">
+              <div class="form-control">
+                <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
+                  <input type="checkbox" class="checkbox" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
+                  Desktop Verification
+                </label>
+              </div>
             </div>
-          </div>
+          }
           <div class="col-sm-6 mb-4">
             <div class="form-control">
               <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                <input type="checkbox" class="checkbox" name="siteVerification" [(ngModel)]="model.siteVerification" />
+                <input type="checkbox" class="checkbox" id="siteVerification" name="siteVerification" [disabled]="siteLocked()"
+                       [ngModel]="model.siteVerification" (ngModelChange)="setSiteVerification($event)" />
                 {{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}
               </label>
             </div>
@@ -91,8 +96,9 @@
           <div class="col-sm-6 mb-4">
             <div class="form-control">
               <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                <input type="checkbox" class="checkbox" name="financialVerification" [(ngModel)]="model.financialVerification" />
-                {{ consultancy ? 'Technology Upgradation' : 'Financial Assistance Verification' }}
+                <input type="checkbox" class="checkbox" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
+                       [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
+                {{ consultancy ? 'Technology Intervention' : 'Financial Assistance Verification' }}
               </label>
             </div>
           </div>

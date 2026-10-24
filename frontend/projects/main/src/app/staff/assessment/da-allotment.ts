@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -19,7 +19,16 @@ import { PagedView, PagerComponent } from '../pager';
     <div class="container form-page" id="zed_user_form">
       <div class="Dashboard-msme">
         <div class="row">
-          <div class="col-sm-10"><h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3></div>
+          <div [class.col-sm-10]="!surveillance" [class.col-sm-4]="surveillance"><h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3></div>
+          @if (surveillance) {
+            <!-- That portal's DaAllotment.cshtml: an "Enter ZED ID" search box. -->
+            <div class="col-sm-6" style="margin-top: 10px; margin-bottom: 10px">
+              <div class="d-flex gap-1">
+                <input type="text" class="form-control" placeholder="Enter ZED ID" aria-label="Enter ZED ID" maxlength="50" [(ngModel)]="zedIdText" (keyup.enter)="searchZedId()" />
+                <button type="button" class="btn btn-primary search-zed" aria-label="Search" (click)="searchZedId()"><i class="fa fa-search"></i></button>
+              </div>
+            </div>
+          }
           <div class="col-sm-2">
             <button type="button" class="refresh-link btn btn-link" (click)="load()">
               <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
@@ -82,9 +91,6 @@ import { PagedView, PagerComponent } from '../pager';
                       <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
                       <td>
                         <strong>{{ t(s, 'DaAssessorName') }}</strong><br />{{ t(s, 'DesktopAssessorId') }}
-                        @if (surveillance && (t(s, 'LeadInCertification') || t(s, 'CoInCertification'))) {
-                          <br /><br /><small>Original certification: {{ t(s, 'LeadInCertification') }}@if (t(s, 'CoInCertification')) { / {{ t(s, 'CoInCertification') }} }</small>
-                        }
                       </td>
                       <td>{{ t(s, 'DesktopReasonForRejection') }}</td>
                     </tr>
@@ -169,8 +175,15 @@ export class DaAllotmentPage {
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
+  /** Surveillance: the ZED ID searched for (applied on Search / Enter, as the old page reloaded the list then). */
+  private readonly zedIdFilter = signal('');
+  protected zedIdText = '';
+  protected readonly filtered = computed(() => {
+    const q = this.zedIdFilter().toLowerCase();
+    return q ? this.rows().filter((s) => text(s, 'ZedId').toLowerCase().includes(q)) : this.rows();
+  });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.rows());
+  protected readonly view = new PagedView(() => this.filtered());
   private readonly assessors = signal<Person[]>([]);
   private readonly bronzeAssessors = signal<Person[]>([]);
   protected readonly loading = signal(false);
@@ -214,8 +227,13 @@ export class DaAllotmentPage {
     return this.surveillance ? num(s, 'CertificationStatus') < 2 : !!text(s, 'DesktopReasonForRejection') || !flag(s, 'DesktopAccepted');
   }
 
+  protected searchZedId(): void {
+    this.zedIdFilter.set(this.zedIdText.trim());
+  }
+
+  /** As the old pop-up (a copy of the row): RE-ALLOT opens with the current assessor selected. */
   protected openAllot(s: Row): void {
-    this.assessorId = '';
+    this.assessorId = text(s, 'DesktopAssessorId');
     this.modalError.set('');
     this.allotFor.set(s);
   }

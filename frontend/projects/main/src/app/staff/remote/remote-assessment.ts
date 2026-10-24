@@ -3,9 +3,20 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { withApiBase } from '../../api-base';
 import { num, text } from '../assessment/assessment-shared';
+import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
+
+/** Google Maps address of a latitude/longitude pair ('' when either is missing or not a number). */
+export function mapUrl(lat: unknown, lng: unknown): string {
+  const a = Number(lat);
+  const b = Number(lng);
+  return lat && lng && Number.isFinite(a) && Number.isFinite(b) ? `https://www.google.com/maps?q=${a},${b}` : '';
+}
+
+export interface MapLocation { title: string; lat: string; lng: string; href: string }
 
 export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting';
 
@@ -72,7 +83,9 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
  * parameter conformance with evidence photos, product and site exterior validation, final submit, and the
  * Twilio video call with the MSME's RA app ("Start Assessment"). Photos are frames captured from the
  * MSME's video. Tabs and pop-ups are signal-controlled markup; nothing from the server is rendered as HTML.
- * Surveillance (the API sends usesMeetingLink): no video; "Join Meeting" opens the agency's meeting link in a new tab,
+ * Surveillance (the API sends usesMeetingLink): no video and full-width tabs; the Overview tab shows the surveillance dates,
+ * the assessor, "Click here to Join" (the agency's meeting link, in a new tab) and the site/surveillance locations; the header
+ * has Refresh and ASSESSMENT REPORT;
  * the opening/closing meeting photos and the assessor's selfie are uploaded JPEG files, the closing meeting takes up
  * to 6 recording links, and parameter evidence comes from the site tour photos of the app; the page opens on that
  * portal's Instructions tab and calls the site tour "Assessment Evidence".
@@ -86,6 +99,7 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
 })
 export class RemoteAssessmentPage {
   private readonly api = inject(RemoteApi);
+  private readonly assessmentApi = inject(AssessmentApi);
   private readonly params = inject(ActivatedRoute).snapshot.paramMap;
   protected readonly zedId = this.params.get('zedId') ?? '';
   protected readonly certification = this.params.get('certification') ?? '';
@@ -135,12 +149,24 @@ export class RemoteAssessmentPage {
     const s = this.seconds();
     return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
   });
-  protected readonly mapUrl = computed(() => {
-    const l = this.data()?.location;
-    const lat = Number(l?.['Latitude']);
-    const lng = Number(l?.['Longitude']);
-    return l?.['Latitude'] && Number.isFinite(lat) && Number.isFinite(lng) ? `https://www.google.com/maps?q=${lat},${lng}` : '';
+  protected readonly mapUrl = computed(() => mapUrl(this.data()?.location?.['Latitude'], this.data()?.location?.['Longitude']));
+  /**
+   * Surveillance Overview (that portal's Remote/Index.cshtml): the site assessment's location (ZedSaLatitude/ZedSaLongitude)
+   * and, once the assessor recorded one, the surveillance assessment's (SurLatitude/SurLongitude).
+   */
+  protected readonly locations = computed<MapLocation[]>(() => {
+    const rows = [this.data()?.location ?? {}, this.msme()];
+    const value = (column: string) => rows.map((r) => text(r, column)).find((v) => v) ?? '';
+    const box = (title: string, lat: string, lng: string): MapLocation => ({ title, lat: value(lat), lng: value(lng), href: mapUrl(value(lat), value(lng)) });
+    const site = box('Site Assessment', 'ZedSaLatitude', 'ZedSaLongitude');
+    const surveillance = box('Surveillance Assessment', 'SurLatitude', 'SurLongitude');
+    return surveillance.lat ? [site, surveillance] : [site];
   });
+  /** "ASSESSMENT REPORT" (the old SA/ReportSummary/{ZedId}?Certification=…), served by the certification documents API. */
+  protected readonly reportUrl = computed(() =>
+    withApiBase(`/api/staff/certification-documents/${encodeURIComponent(this.zedId)}/${encodeURIComponent(this.data()?.certification ?? this.certification)}/report`));
+  /** Product descriptions opened on this page (the old page marked them opened without a reload). */
+  private readonly opened = signal<ReadonlySet<string>>(new Set());
   /** Products and parameters marked "No" (shown in the final-submit pop-up). */
   protected readonly ncProducts = computed(() => (this.data()?.products ?? []).filter((p) => text(p, 'IsSaVerified') === 'No'));
   protected readonly ncRequirements = computed(() => (this.data()?.requirements ?? []).filter((r) => text(r, 'SaConformance') === 'No'));
@@ -227,6 +253,27 @@ export class RemoteAssessmentPage {
 
   protected section(r: Row): Row | undefined {
     return (this.data()?.sections ?? []).find((s) => text(s, 'SectionCode') === text(r, 'SectionCode'));
+  }
+
+  /** The product description PDF was opened (ProductDescOpenedTime, or on this page): the icon turns blue. */
+  protected descriptionOpened(p: Row): boolean {
+    return !!text(p, 'ProductDescOpenedTime') || this.opened().has('ProductDescriptionPhoto:' + text(p, 'Id'));
+  }
+
+  /** Records that the assessor opened a document (the old Assessment/SaveTimestamp, as the desktop assessment page does). */
+  protected markOpened(type: OpenedType, row: Row): void {
+    if (!this.canAssess()) return;
+    const key = type + ':' + text(row, 'Id');
+    if (this.opened().has(key)) return;
+    this.opened.update((s) => new Set(s).add(key));
+    firstValueFrom(this.assessmentApi.opened(this.zedId, this.data()?.certification ?? this.certification, type, row['Id'])).catch((err) => {
+      this.opened.update((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+      this.notice.set({ ok: false, text: apiErrorMessage(err) });
+    });
   }
 
   // ------------------------------------------------------------------ video

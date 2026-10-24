@@ -1,13 +1,8 @@
 <div class="container form-page" id="zed_user_form">
   <div class="Dashboard-msme">
-    @if (error()) {
-      <div class="alert alert-danger alert-dismissible mt-3" role="alert">
-        {{ error() }}
-        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
-      </div>
-      @if (!step()) {
-        <div class="stepper-footer-sec initial-step1"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
-      }
+    @if (!step() && !busy()) {
+      <!-- The page could not open (the reason is in the pop-up). -->
+      <div class="stepper-footer-sec initial-step1 mt-3"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
     }
 
     @switch (step()) {
@@ -195,7 +190,6 @@
           <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
           <label for="correctedPan">Please enter the correct PAN number:</label>
           <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
-          @if (panError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ panError() }}</div> }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
@@ -210,3 +204,5 @@
 @if (busy()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
 }
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

@@ -99,6 +99,13 @@ describe('SaAllotmentPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('ZEDMSME000001 allotted');
   });
 
+  it('opens RE-ALLOT with the current assessor selected', async () => {
+    (el.querySelectorAll('tbody tr')[1].querySelector('button') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect((el.querySelector('#SiteAssessorId') as HTMLSelectElement).value).toBe('ASR1');
+    expect(el.querySelector('#MeetingLink')).toBeNull();
+  });
+
   it('shows the API message when the allotment is refused', async () => {
     button(el, 'ALLOT')!.click();
     await settle(fixture);
@@ -145,7 +152,8 @@ describe('RemoteAssessmentsPage', () => {
     expect(rows.length).toBe(3);
     expect((rows[0].querySelector('a') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Silver');
     expect(rows[0].textContent).toContain('Onsite');
-    expect((rows[1].querySelector('a') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/remote/ZED%26X/Gold');
+    // A router link (the router keeps '&' in a path segment).
+    expect((rows[1].querySelector('a.assess') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/remote/ZED&X/Gold');
     expect(rows[2].querySelector('a')).toBeNull();
     expect(rows[2].textContent).toContain('Desktop');
   });

@@ -88,6 +88,22 @@ describe('RequirementsPage', () => {
     expect(el.querySelector('a.btn')!.getAttribute('href')).toBe('/staff/masters/parameters/Bronze');
   });
 
+  it("shows a point's existing option image below it, as the old page", async () => {
+    // MasterOption.OptionImage as the API would add it to a point.
+    const points = [
+      { id: 201, optionCode: '1', name: 'First', bullets: [], optionImage: 'Images/Questions/p1.png' },
+      { id: 202, optionCode: '2', name: 'Second', bullets: [], optionImage: 'javascript:alert(1)' },
+    ];
+    const withImages: RequirementsResponse = { ...response, requirements: [{ ...response.requirements[1], points }] };
+    // A fresh page with the images in the response.
+    const page = TestBed.createComponent(RequirementsPage);
+    await settle(page);
+    http.expectOne(BASE).flush(withImages);
+    await settle(page);
+    const images = [...(page.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('table.requirements img.option-image')];
+    expect(images.map((i) => i.getAttribute('src'))).toEqual(['/Images/Questions/p1.png']);
+  });
+
   it('builds a requirement from points and bullets and saves it', async () => {
     type(el, '#requirementName', 'Point one');
     click(el, 'form button[type=submit]');

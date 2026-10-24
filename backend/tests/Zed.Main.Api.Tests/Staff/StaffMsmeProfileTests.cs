@@ -67,4 +67,86 @@ public sealed class StaffMsmeProfileTests : IDisposable
         Assert.Equal("ZEDMSME000001", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == "SP_ASSESSMENT_VIEW_PROFILE").Args, "ZedId"));
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/staff/msme-profile/ZED%27--")).StatusCode);
     }
+
+    private static readonly object Edit = new
+    {
+        ownerName = " New Owner ", enterpriseName = "New Enterprise", emailId = "new@unit.test", pUnitName = "Unit One",
+        twoDigitActivity = "24-Manufacture of basic metals", fourDigitActivity = "2431", fiveDigitActivity = "",
+    };
+
+    private void SetupEdit()
+    {
+        _host.Sql.Queries["SELECT b.OwnerName"] = args => FakeSql.Arg(args, "ZedId") == "ZEDMSME000001"
+            ? [new { OwnerName = "Owner", EnterpriseName = "Old Enterprise", EmailId = "owner@unit.test", PUnitName = "Unit One", TwoDigitActivity = "10-Food", FourDigitActivity = "1010", FiveDigitActivity = "10101" }]
+            : [];
+        _host.Sql.Procs["SP_MASTER_GET_SECTORS"] = _ => FakeSql.Sets(
+            [new { Id = 1, SectorCode = "10", SectorName = "Food" }, new { Id = 2, SectorCode = "24", SectorName = "Manufacture of basic metals" }]);
+    }
+
+    [Fact]
+    public async Task Only_the_super_admin_can_edit_the_profile()
+    {
+        SetupEdit();
+        foreach (var user in new[] { "MASTER1", "AGENCY1", "ASSESSOR1" })
+        {
+            var client = await UsersMastersLogin.SignInAsync(_host, user);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync("/api/staff/msme-profile/ZEDMSME000001", Edit)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/staff/msme-profile/sectors")).StatusCode);
+        }
+        var anon = await _host.CreateBrowserAsync();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anon.PutAsJsonAsync("/api/staff/msme-profile/ZEDMSME000001", Edit)).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_UPDATE_PROFILE");
+
+        var super = await UsersMastersLogin.SignInAsync(_host, "SUPER1");
+        var sectors = await super.GetFromJsonAsync<string[]>("/api/staff/msme-profile/sectors");
+        Assert.Equal(["10-Food", "24-Manufacture of basic metals"], sectors);
+        (await super.PutAsJsonAsync("/api/staff/msme-profile/ZEDMSME000001", Edit)).EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task The_edit_passes_the_legacy_parameters_to_the_procedure()
+    {
+        SetupEdit();
+        var super = await UsersMastersLogin.SignInAsync(_host, "SUPER1");
+        (await super.PutAsJsonAsync("/api/staff/msme-profile/ZEDMSME000001", Edit)).EnsureSuccessStatusCode();
+        var call = _host.Sql.Calls.Single(c => c.Name == "SP_MSME_UPDATE_PROFILE");
+        Assert.Equal("SUPER1", FakeSql.Arg(call.Args, "UserId"));
+        Assert.Equal("10", FakeSql.Arg(call.Args, "RoleId"));
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(call.Args, "ZedId"));
+        Assert.Equal("New Owner", FakeSql.Arg(call.Args, "OwnerName"));
+        Assert.Equal("New Enterprise", FakeSql.Arg(call.Args, "EnterpriseName"));
+        Assert.Equal("new@unit.test", FakeSql.Arg(call.Args, "EmailId"));
+        Assert.Equal("Unit One", FakeSql.Arg(call.Args, "PUnitName"));
+        Assert.Equal("24-Manufacture of basic metals", FakeSql.Arg(call.Args, "TwoDigitActivity"));
+        Assert.Equal("2431", FakeSql.Arg(call.Args, "FourDigitActivity"));
+        Assert.Null(FakeSql.Arg(call.Args, "FiveDigitActivity"));
+    }
+
+    [Fact]
+    public async Task Bad_edits_are_refused_before_the_procedure()
+    {
+        SetupEdit();
+        var super = await UsersMastersLogin.SignInAsync(_host, "SUPER1");
+        async Task<HttpStatusCode> Put(string zedId, object body) => (await super.PutAsJsonAsync("/api/staff/msme-profile/" + zedId, body)).StatusCode;
+        object With(string field, string? value)
+        {
+            var d = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string?>>(System.Text.Json.JsonSerializer.Serialize(Edit))!;
+            d[field] = value;
+            return d;
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("emailId", "not-an-email")));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("ownerName", " ")));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("ownerName", new string('a', 201))));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("enterpriseName", new string('a', 251))));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("pUnitName", null)));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("fourDigitActivity", new string('1', 251))));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001", With("twoDigitActivity", "99-Not a sector")));
+        Assert.Equal(HttpStatusCode.BadRequest, await Put("ZEDMSME000001_D_45", Edit));
+        Assert.Equal(HttpStatusCode.NotFound, await Put("ZEDMSME000002", Edit));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_UPDATE_PROFILE");
+
+        // The unit's present NIC 2 digit value is accepted even when it is not in the master.
+        _host.Sql.Queries["SELECT b.OwnerName"] = _ => [new { OwnerName = "Owner", TwoDigitActivity = "99-Old sector" }];
+        Assert.Equal(HttpStatusCode.OK, await Put("ZEDMSME000001", With("twoDigitActivity", "99-Old sector")));
+    }
 }

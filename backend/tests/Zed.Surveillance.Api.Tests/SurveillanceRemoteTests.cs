@@ -51,8 +51,16 @@ public sealed class SurveillanceRemoteTests : IDisposable
         _host.Sql.Queries[RemoteAssessmentController.RequirementPhotoSql[..50]] = args =>
             FakeSql.Arg(args, "Id") == "62" ? [new { Id = 62L }] : [];
 
-        _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
-            [new { ZedId = Zed, Certification = "Silver", EnterpriseName = "Acme", CertificationStatus = _status, MeetingLink = Link, PhotosPath = (string?)null }]);
+        _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ =>
+        {
+            var sets = Enumerable.Range(0, 23).Select(_ => (IEnumerable<object>)[]).ToArray();
+            sets[0] = [new { ZedId = Zed, Certification = "Silver", EnterpriseName = "Acme", CertificationStatus = _status, MeetingLink = Link, PhotosPath = (string?)null,
+                             SiteAssessorId = "ASR1", SiteAssessorName = "R Verma", CoAssessorId = "ASR2" }];
+            sets[1] = [new { Id = 31L, ProductName = "Valve", ProductDescriptionPhoto = "d1.pdf", ProductDescOpenedTime = new DateTime(2026, 1, 2, 10, 0, 0) }];
+            sets[9] = [new { SurLatitude = "26.5", SurLongitude = "80.3" }];   // the site-tour photo of the surveillance
+            sets[22] = [new { ZedLatitude = "26.0", ZedLongitude = "80.0", ZedSaLatitude = "26.1", ZedSaLongitude = "80.2", NcCount = 0 }];
+            return FakeSql.Sets(sets);
+        };
         _host.Sql.Procs["SP_ASSESSMENT_SA_DETAILS"] = _ =>
         {
             var sets = Enumerable.Range(0, 16).Select(_ => (IEnumerable<object>)[]).ToArray();
@@ -104,6 +112,23 @@ public sealed class SurveillanceRemoteTests : IDisposable
         Assert.True(photo.GetProperty("deletable").GetBoolean());
         Assert.EndsWith("Selfie%20on%20Site_2.jpg", json.GetProperty("selfies")[0].GetProperty("url").GetString());
         Assert.NotNull(json.GetProperty("siteTourPhotos")[0].GetProperty("url").GetString());
+    }
+
+    [Fact]
+    public async Task Overview_shows_the_surveillance_assessor_both_locations_and_opened_descriptions()
+    {
+        var json = await (await Assessor()).GetFromJsonAsync<JsonElement>(Base);
+        var msme = json.GetProperty("msme");
+        Assert.Equal("ASR1", msme.GetProperty("SiteAssessorId").GetString());
+        Assert.Equal("R Verma", msme.GetProperty("SiteAssessorName").GetString());
+        Assert.False(msme.TryGetProperty("CoAssessorId", out _));
+        var location = json.GetProperty("location");
+        Assert.Equal("26.5", location.GetProperty("SurLatitude").GetString());
+        Assert.Equal("80.3", location.GetProperty("SurLongitude").GetString());
+        Assert.Equal("26.1", location.GetProperty("ZedSaLatitude").GetString());
+        Assert.Equal("80.2", location.GetProperty("ZedSaLongitude").GetString());
+        Assert.False(location.TryGetProperty("ZedLatitude", out _));
+        Assert.False(string.IsNullOrEmpty(json.GetProperty("products")[0].GetProperty("ProductDescOpenedTime").GetString()));
     }
 
     [Fact]

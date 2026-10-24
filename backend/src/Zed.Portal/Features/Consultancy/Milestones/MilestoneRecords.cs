@@ -198,6 +198,14 @@ public static class MilestoneFields
     public const string MeetingSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount, MeetingType FROM Meetings WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
 
+    /// <summary>
+    /// The consultant's final comments of a milestone as the page reads them (SP_ASSESSMENT_DA_DETAILS: the latest 'SA' row of
+    /// AssessorComments for the milestone, written by SP_ASSESSMENT_RA_FINAL_SUBMIT).
+    /// </summary>
+    public const string FinalCommentsSql =
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM AssessorComments " +
+        "WHERE ZedId = @ZedId AND Certification = @Certification AND NcCount = @NcCount AND AssessmentType = 'SA' ORDER BY Id DESC";
+
     public const string UpdateTrainingSql =
         "UPDATE TrainingInfo SET Remarks = @Value WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
 

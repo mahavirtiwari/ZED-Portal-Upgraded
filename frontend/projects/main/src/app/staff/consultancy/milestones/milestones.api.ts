@@ -49,6 +49,8 @@ export interface MilestonePermissions {
   canCoFinalSubmit: boolean;
   canSendBack: boolean;
   canReject: boolean;
+  /** The CO may edit the consultant's final comments ("Edit Remarks", status 15). */
+  canEditFinalComments: boolean;
 }
 
 /** Viewer, Lead, CoConsultant or Co (Consultant Organisation). */
@@ -148,6 +150,10 @@ export class MilestonesApi {
 
   sendBack(zedId: string, level: string, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base(zedId, level)}/send-back`, { remarks });
+  }
+
+  finalComments(zedId: string, level: string, remarks: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/final-comments`, { remarks });
   }
 
   reject(zedId: string, level: string): Observable<MessageResponse> {

@@ -89,14 +89,14 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                     {{ s['UnitAddress'] }}
                   </td>
                   <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
-                  <td>
-                    @if (s['SiteAssessorId']) {
-                      <div><strong>Lead:</strong> {{ s['SiteAssessorId'] }} {{ s['SaAssessorName'] }}</div>
-                      @if (s['CoConsultantNames']) { <div><strong>Co-consultant(s):</strong> {{ s['CoConsultantNames'] }}</div> }
-                      @if (s['TechnicalExpertNames']) { <div><strong>Technical Expert(s):</strong> {{ s['TechnicalExpertNames'] }}</div> }
-                      @if (s['BdsFromDate']) { <div><small>BDS: {{ s['BdsFromDate'] }} - {{ s['BdsToDate'] }}</small></div> }
-                      @if (s['HapFromDate']) { <div><small>HAP: {{ s['HapFromDate'] }} - {{ s['HapToDate'] }}</small></div> }
-                    }
+                  <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
+                  <td class="consultants">
+                    {{ s['SiteAssessorId'] }}<br />
+                    {{ s['SaAssessorName'] }}<br /><br />
+                    {{ s['CoAssessorId'] }}<br />
+                    {{ s['CoConsultantNames'] }}<br /><br />
+                    {{ s['TechExpert'] }}<br />
+                    {{ s['TechnicalExpertNames'] }}
                   </td>
                 </tr>
               } @empty {

@@ -84,11 +84,27 @@ export class AssessorFormPage {
   }
 
   /**
-   * Consultancy build: a CO adds Consultants (RoleId 3, found by certificate number and registered e-mail like
-   * main's assessors) and Technical Experts (RoleId 33, name, e-mail and mobile typed in), as on the old form.
+   * Consultancy build: a CO adds Consultant/Experts (RoleId 3, found by certificate number and registered e-mail like
+   * main's assessors) and, when it has the SiteVerification sub-role, Technical Experts (RoleId 33, name, e-mail and
+   * mobile typed in), as on the old form.
    */
   protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
-  protected readonly noun = this.consultancy ? 'Consultant' : 'Assessor';
+  /** The signed-in user's SiteVerification sub-role (the old form's UserHelper.CheckSubRole("SiteVerification")). */
+  protected readonly siteVerification = (this.auth.currentUser()?.subRoles ?? []).includes('SiteVerification');
+
+  protected get noun(): string {
+    return this.consultancy ? 'Consultant/Expert' : 'Assessor';
+  }
+
+  /** Consultancy: Technical Expert is offered only to a CO with SiteVerification. */
+  protected get offersTechnicalExpert(): boolean {
+    return this.consultancy && this.siteVerification;
+  }
+
+  /** Consultancy: the Applicable States only with SiteVerification, as on the old form; elsewhere always. */
+  protected get showStates(): boolean {
+    return !this.consultancy || this.siteVerification;
+  }
 
   /** Consultancy technical expert: no lookup, the details are typed. */
   protected get typed(): boolean {

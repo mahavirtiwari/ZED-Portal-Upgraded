@@ -1,10 +1,3 @@
-@if (error()) {
-  <div class="alert alert-danger alert-dismissible" role="alert">
-    {{ error() }}
-    <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
-  </div>
-}
-
 @if (options(); as o) {
   <div class="row justify-content-center">
     <div class="col-sm-10 Dashboard">
@@ -137,6 +130,11 @@
       </form>
     </div>
   </div>
+} @else if (!busy()) {
+  <!-- As the legacy step 4 (always rendered): the way back stays when the fee summary could not load. -->
+  <div class="stepper-footer-sec initial-step1">
+    <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
+  </div>
 }
 
 <!-- #PanCorrectionModal -->
@@ -149,7 +147,6 @@
           <p>PAN registered in your Udyam portal is not matching with given GSTIN Number.</p>
           <label for="correctedPan">Please enter the correct PAN number:</label>
           <input id="correctedPan" type="text" class="form-control" maxlength="10" placeholder="Enter Correct PAN" [(ngModel)]="correctedPan" />
-          @if (panError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ panError() }}</div> }
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-default" (click)="panModal.set(false)">Cancel</button>
@@ -164,3 +161,5 @@
 @if (busy()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Please wait…</span></div>
 }
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

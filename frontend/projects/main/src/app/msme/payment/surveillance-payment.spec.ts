@@ -136,7 +136,9 @@ describe('SurveillancePaymentPage', () => {
     await toPayment();
     button('PROCEED TO PAY').click();
     await settled();
-    expect(el.textContent).toContain('Please enter required data.');
+    const dialog = el.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Error!');
+    expect(dialog.textContent).toContain('Please enter required data.');
     http.expectNone(`${API}/Bronze/checkout`);
   });
 
@@ -186,6 +188,7 @@ describe('SurveillancePaymentPage', () => {
     expect(pan.request.body).toEqual({ certification: 'Bronze', gstin: '09PQRST6789K1Z2', pan: 'PQRST6789K' });
     pan.flush({ message: 'ok' });
     await settled();
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('PAN updated successfully. Proceeding...');
 
     const checkout = http.expectOne(`${API}/Bronze/checkout`);
     expect(checkout.request.body.gstin).toBe('09PQRST6789K1Z2');

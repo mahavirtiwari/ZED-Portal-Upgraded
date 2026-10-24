@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
+import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
 import { FaApplication, FaPage, FaSubmission, SchemeDocument, SchemesApi, inr, todayIso, uploadProblem } from './schemes.api';
 
@@ -27,7 +29,7 @@ const STATUS: Record<number, string> = {
  */
 @Component({
   selector: 'zed-msme-financial-assistance',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog],
   templateUrl: './financial-assistance.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -40,14 +42,15 @@ export class FinancialAssistancePage {
   protected readonly docTypes = FA_DOCUMENTS;
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
+  /** Error pop-up (the legacy swal). */
+  protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly page = signal<FaPage | null>(null);
   protected readonly step = signal<Step>(1);
   protected readonly confirmed = signal(false);
   protected readonly documents = signal<SchemeDocument[]>([]);
-  protected readonly result = signal<{ amountPaid: number; eligibleAmount: number } | null>(null);
   protected readonly today = todayIso();
   protected readonly inr = inr;
+  protected readonly fieldError = fieldError;
 
   protected readonly unit = computed(() => this.page()?.unit ?? {});
   protected readonly applications = computed(() => this.page()?.applications ?? []);
@@ -91,7 +94,6 @@ export class FinancialAssistancePage {
   }
 
   protected go(step: Step): void {
-    this.error.set('');
     this.step.set(step);
     window.scrollTo?.(0, 0);
   }
@@ -99,16 +101,15 @@ export class FinancialAssistancePage {
   protected async upload(type: string, file: File): Promise<void> {
     const problem = uploadProblem(file);
     if (problem) {
-      this.error.set(problem);
+      this.alert.set(errorAlert(problem));
       return;
     }
     this.busy.set(true);
-    this.error.set('');
     try {
       const doc = await firstValueFrom(this.api.upload('fa', type, file));
       this.documents.update((list) => [...list, doc]);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.busy.set(false);
     }
@@ -125,25 +126,25 @@ export class FinancialAssistancePage {
     const required = [f.categoryOfCertificate, f.nameOfCertficate, f.certificationAgency, f.certficateNumber, f.dateOfIssue,
       f.invoiceNo, f.invoiceBillDate, f.modeOfPayment, a.accountNo, a.confirmAccountNo, a.ifscCode, a.branchAddress, a.bankName];
     if (required.some((v) => !String(v ?? '').trim()) || !f.validityOfCertificate || !f.amountPaid) {
-      this.error.set('Please enter required data.');
+      this.alert.set(errorAlert('Please enter required data.'));
       return;
     }
     if (a.accountNo.trim() !== a.confirmAccountNo.trim()) {
-      this.error.set('Account Number and Re-Enter Account Number must match.');
+      this.alert.set(errorAlert('Account Number and Re-Enter Account Number must match.'));
       return;
     }
     if (!/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(a.ifscCode.trim())) {
-      this.error.set('Invalid IFSC Code format. Please enter the correct 11-digit code.');
+      this.alert.set(errorAlert('Invalid IFSC Code format. Please enter the correct 11-digit code.'));
       return;
     }
     // The CA certificate is optional, but the expenditure section needs two documents at least (as the live form).
     const requiredDocs = [FA_DOCUMENTS.certificate, FA_DOCUMENTS.invoice, FA_DOCUMENTS.cheque];
     if (requiredDocs.some((t) => this.docs(t).length === 0) || this.docs(FA_DOCUMENTS.ca).length + this.docs(FA_DOCUMENTS.invoice).length < 2) {
-      this.error.set('Please upload the required documents.');
+      this.alert.set(errorAlert('Please upload the required documents.'));
       return;
     }
     if (!f.declaration) {
-      this.error.set('Please accept the declaration.');
+      this.alert.set(errorAlert('Please accept the declaration.'));
       return;
     }
     this.go('summary');
@@ -151,17 +152,15 @@ export class FinancialAssistancePage {
 
   protected async submit(): Promise<void> {
     this.busy.set(true);
-    this.error.set('');
     try {
       const body: FaSubmission = {
         ...this.form,
         documents: this.documents().map((d) => ({ fileName: d.fileName, type: d.type ?? '' })),
       };
-      const r = await firstValueFrom(this.api.submitFa(body));
-      this.result.set({ amountPaid: r.amountPaid, eligibleAmount: r.eligibleAmount });
+      await firstValueFrom(this.api.submitFa(body));
       this.go('done');
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.busy.set(false);
     }
@@ -169,11 +168,10 @@ export class FinancialAssistancePage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set('');
     try {
       this.page.set(await firstValueFrom(this.api.faPage()));
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.loading.set(false);
     }

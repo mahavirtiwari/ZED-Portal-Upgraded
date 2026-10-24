@@ -29,7 +29,7 @@ describe('AgencyFormPage', () => {
     orgPartners: [{ userId: 'OP2', name: 'Partner Two' }],
   };
 
-  async function create(userId: string | null) {
+  async function create(userId: string | null, consultancy = false) {
     await TestBed.configureTestingModule({
       imports: [AgencyFormPage],
       providers: [
@@ -38,6 +38,8 @@ describe('AgencyFormPage', () => {
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(AgencyFormPage);
+    // The page reads the build's PORTAL_SYSTEM; the consultancy spec switches the instance before its first render.
+    if (consultancy) (fixture.componentInstance as unknown as { consultancy: boolean }).consultancy = true;
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
     await settle();
@@ -82,6 +84,36 @@ describe('AgencyFormPage', () => {
     req.flush({ message: 'User created successfully.', userId: 'ZEDAA0099' });
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/staff/users/agencies'], { state: { message: 'User created successfully.' } });
+  });
+
+  it('consultancy: the old Category boxes, Handholding Support and Technology Intervention excluding each other', async () => {
+    await create(null, true);
+    http.expectOne('/api/staff/users/agencies/options').flush({ ...options, tuStates: [{ code: '09', name: 'UTTAR PRADESH' }] });
+    await settle();
+    expect(el.textContent).toContain('Category');
+    expect(el.textContent).not.toContain('Activity Involved');
+    expect(el.querySelector('input[name=desktopVerification]')).toBeNull();
+    expect(el.querySelector('label[for="gstNumber"]')!.textContent).toContain('GST Number');
+    const label = (name: string) => el.querySelector(`input[name=${name}]`)!.closest('label')!.textContent!.trim();
+    expect(label('siteVerification')).toBe('Handholding Support');
+    expect(label('financialVerification')).toBe('Technology Intervention');
+
+    const site = () => el.querySelector('input[name=siteVerification]') as HTMLInputElement;
+    const tu = () => el.querySelector('input[name=financialVerification]') as HTMLInputElement;
+    // Ticking one unticks and disables the other, as the old form's script.
+    site().click();
+    await settle();
+    expect(site().checked).toBe(true);
+    expect(tu().disabled).toBe(true);
+    expect(el.querySelector('#tuPreferredState')).toBeNull();
+    site().click();
+    await settle();
+    expect(tu().disabled).toBe(false);
+    tu().click();
+    await settle();
+    expect(tu().checked).toBe(true);
+    expect(site().disabled).toBe(true);
+    expect(el.querySelector('#tuPreferredState')).not.toBeNull();
   });
 
   it('loads an agency for update and only offers its own organising partner', async () => {

@@ -237,6 +237,7 @@ const MAIN_ROUTES: Routes = [
   { path: 'User/AssessorList', redirectTo: 'staff/users/assessors' },
   { path: 'User/Assessors', redirectTo: 'staff/users/my-assessors' },
   { path: 'User/Assessor', redirectTo: 'staff/users/my-assessors' },
+  { path: 'User/Assessor/:id', redirectTo: 'staff/users/assessors/:id' },
   { path: 'Home/PageSettings', redirectTo: 'staff/masters/page-settings' },
   { path: 'MyDocuments/Index', redirectTo: 'staff/masters/documents' },
   { path: 'Sector/List', redirectTo: 'staff/masters/sectors' },
@@ -245,6 +246,7 @@ const MAIN_ROUTES: Routes = [
   { path: 'Technology/List', redirectTo: 'staff/masters/technologies' },
   { path: 'Technology/list', redirectTo: 'staff/masters/technologies' },
   { path: 'Technology/Create', redirectTo: 'staff/masters/technologies/new' },
+  { path: 'Technology/Create/:id', redirectTo: 'staff/masters/technologies/:id' },
   {
     path: 'Questionaire/Index',
     redirectTo: ({ queryParams }) => `/staff/masters/parameters/${encodeURIComponent(queryParams['SectionType'] ?? 'Bronze')}`,

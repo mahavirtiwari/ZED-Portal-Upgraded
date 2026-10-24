@@ -19,6 +19,25 @@ export const TECHNOLOGY_FIELDS: { label: string; key: string }[] = [
   { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
 ];
 
+/** Bronze: the certificate the MSME obtained (the old page's Name of Certificate row is commented out there). */
+export const BRONZE_CERTIFICATE_FIELDS: { label: string; key: string }[] = [
+  { label: 'Category of Certificate', key: 'CategoryOfCertificate' },
+  { label: 'Name of Certification Agency', key: 'CertificationAgency' },
+  { label: 'Certificate Number', key: 'CertficateNumber' },
+  { label: 'Date of Issue of Certificate', key: 'DateOfIssue' },
+  { label: 'Period of validity of Certificate', key: 'ValidityOfCertificate' },
+  { label: 'Any other information related to this certificate', key: 'AnyOtherInformation' },
+];
+
+/** Bronze: the "Details of Expenditure" before the amounts and the mode of payment. */
+export const BRONZE_EXPENDITURE_FIELDS: { label: string; key: string }[] = [
+  { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
+  { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
+  { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
+];
+
+const CERTIFICATE_COPY = 'Copy of Certificate';
+
 /** The document rows of a technology and of the account, in the old page's order and captions (by PhotoType). */
 export const TECHNOLOGY_DOCUMENTS: { label: string; type: string }[] = [
   { label: 'CA certificate of expenditure', type: 'CA certificate of expenditure' },
@@ -48,6 +67,10 @@ function groupDocuments(docs: TuDocument[], rows: { label: string; type: string 
   return [...groups, ...[...others].map(([label, list]) => ({ label, docs: list }))];
 }
 
+function isCertificateCopy(d: TuDocument): boolean {
+  return (d.photoType ?? '').toLowerCase() === CERTIFICATE_COPY.toLowerCase();
+}
+
 export const ACCOUNT_FIELDS: { label: string; key: keyof TuAccount; column: string; max: number }[] = [
   { label: 'Account No.', key: 'accountNo', column: 'AccountNo', max: 18 },
   { label: 'IFSC Code', key: 'ifscCode', column: 'IfscCode', max: 11 },
@@ -73,9 +96,10 @@ interface DecisionForm {
  * One unit's Technology Upgradation application for the master admin, the allotted CO, the assigned MSME-DFO officer
  * and the state coordinator (from the NEFT lists). Port of Frontend/FinancialAssistance/Verification.cshtml: a tab per
  * certification level with the old page's collapsible sections (the DFO's attendance, the site photos and the opening
- * meeting from the app, each purchased technology with its documents and the DFO's validation, the payout account, the
- * summary with the eligible amount), then the unit's Overview and the Technologies Recommended tabs; the decisions and
- * the TU report (PDF).
+ * meeting from the app, each purchased technology with its documents and the DFO's validation (Bronze: the certificate
+ * and its Details of Expenditure; Gold: all under "New tech with live sectors"), the payout account, the summary with
+ * the eligible amount), then the unit's Overview and the Technologies Recommended tabs; the decisions of the CO and the
+ * master admin (the DFO decides from the app and sees only the outcome) and the TU report (PDF).
  * Route: /staff/consultancy/technology/verification/:zedId/:level
  */
 @Component({
@@ -98,7 +122,7 @@ export class TuVerificationPage {
   private readonly route = inject(ActivatedRoute);
   private readonly user = inject(AuthService).currentUser;
 
-  protected readonly technologyFields = TECHNOLOGY_FIELDS;
+  protected readonly bronzeCertificateFields = BRONZE_CERTIFICATE_FIELDS;
   protected readonly accountFields = ACCOUNT_FIELDS;
   protected readonly zedId = this.route.snapshot.paramMap.get('zedId') ?? '';
   protected readonly level = this.route.snapshot.paramMap.get('level') ?? '';
@@ -188,8 +212,27 @@ export class TuVerificationPage {
     return m.photos.filter((p) => p.name !== OPENING_MEETING_PHOTO);
   }
 
+  protected isBronze(app: TuApplication): boolean {
+    return app.certification.toLowerCase() === 'bronze';
+  }
+
+  protected isGold(app: TuApplication): boolean {
+    return app.certification.toLowerCase() === 'gold';
+  }
+
+  /** The purchase details of a technology by level: on Bronze its Details of Expenditure, on Silver and Gold the machine bought. */
+  protected fieldsFor(app: TuApplication): { label: string; key: string }[] {
+    return this.isBronze(app) ? BRONZE_EXPENDITURE_FIELDS : TECHNOLOGY_FIELDS;
+  }
+
+  /** Bronze: the certificate copy is shown with the certificate, the other documents with the expenditure. */
+  protected certificateDocumentRows(app: TuApplication, t: TuTechnology): DocumentGroup[] {
+    return [{ label: CERTIFICATE_COPY, docs: this.docsOf(app, t).filter(isCertificateCopy) }];
+  }
+
   protected documentRows(app: TuApplication, t: TuTechnology): DocumentGroup[] {
-    return groupDocuments(this.docsOf(app, t), TECHNOLOGY_DOCUMENTS);
+    const docs = this.docsOf(app, t);
+    return groupDocuments(this.isBronze(app) ? docs.filter((d) => !isCertificateCopy(d)) : docs, TECHNOLOGY_DOCUMENTS);
   }
 
   protected accountDocumentRows(app: TuApplication): DocumentGroup[] {

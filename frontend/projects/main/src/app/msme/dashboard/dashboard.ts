@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
@@ -57,7 +58,7 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
  */
 @Component({
   selector: 'zed-msme-dashboard',
-  imports: [RouterLink, PaymentStep],
+  imports: [RouterLink, PaymentStep, DatePipe],
   templateUrl: './dashboard.html',
   styles: `
     .refresh-link { cursor: pointer; }

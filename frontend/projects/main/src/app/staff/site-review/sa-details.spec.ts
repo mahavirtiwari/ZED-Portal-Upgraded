@@ -151,6 +151,9 @@ describe('SaDetailsPage', () => {
     expect(el.textContent).toContain('Owner');
     button('Edit Remarks')!.click();
     await settle();
+    // The site page's pop-up is "Remarks" (SaDetails.cshtml #AgencyRemarks), not the desktop page's "Agency Remarks".
+    expect(el.querySelector('#reviewRemarksTitle')!.textContent!.trim()).toBe('Remarks');
+    expect(el.querySelector('label[for=reviewRemarksText]')!.textContent!.trim()).toBe('Remarks*');
     button('UPDATE')!.click();
     await settle();
     const meeting = http.expectOne(REVIEW + '/remarks');

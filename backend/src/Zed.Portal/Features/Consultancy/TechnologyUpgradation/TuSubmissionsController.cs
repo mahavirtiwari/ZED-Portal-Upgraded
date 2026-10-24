@@ -42,16 +42,22 @@ public sealed class TuSubmissionsController(
         "Id", "ZedId", "PUnitName", "UnitAddress", "CertificationType", "LastestCertification", "UamNumber",
         "CertificationBodyUserId", "CertificationBodyName", "FinancialAssessorId", "FaAssessorName", "FinAssessorName",
         "ReasonForRejection", "ReasonForRejectionAgency", "VerificationDate", "TechUpgradeStatus",
+        // The legacy page reddens the action cell when it is set; the TU procedure does not return it (yet).
+        "TimeDuration",
     ];
 
     public sealed record SubmissionsResponse(IReadOnlyList<Dictionary<string, object?>> Rows, Dictionary<string, object?>? Counts);
 
-    /// <summary>GET api/staff/consultancy/tu/submissions?status=2|5|6|8|9 — the signed-in user's applications of one tab.</summary>
+    /// <summary>
+    /// GET api/staff/consultancy/tu/submissions?status=2|5|6|8|9|99 — the signed-in user's applications of one tab. 99 is
+    /// the landing view of the master admin and the CO on the legacy page (GetSections(99)); the procedure passes it on
+    /// as a TechUpgradeStatus, so it answers with the tab counts and no rows, as the old page did.
+    /// </summary>
     [HttpGet("submissions")]
     public async Task<ActionResult<SubmissionsResponse>> Submissions([FromQuery] int status, CancellationToken ct)
     {
         if (NeedsFinancialVerification()) return Forbid();
-        if (!TuStatus.Tabs.Contains(status)) return this.Problem400("Invalid status.");
+        if (!TuStatus.Tabs.Contains(status) && status != TuStatus.Landing) return this.Problem400("Invalid status.");
         // The procedure scopes by the user's role: master admin all, CO CertificationBodyUserId, DFO FinancialAssessorId.
         var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
             new { UserId, Status = status, CertificationType = (string?)null, ZedId = (string?)null }, ct);

@@ -51,21 +51,32 @@ describe('Consultancy technology pages', () => {
 
   it('lets the CO accept a new allotment with one of its DFOs and re-allot the DFO later', async () => {
     await create(TuSubmissionsPage, StaffRole.Agency);
+    // The CO lands on 99 (the counts, as the old page's GetSections(99)), then opens TU ALLOTMENT.
+    const landing = http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions');
+    expect(landing.request.params.get('status')).toBe('99');
+    landing.flush({ rows: [], counts: { New: 2 } });
+    await settle();
+    expect(el.textContent).toContain('TU ALLOTMENT 2');
+    button('TU ALLOTMENT 2')[0].click();
+    await settle();
     const list = http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions');
     expect(list.request.params.get('status')).toBe('2');
     list.flush({ rows: [row(), row({ Id: 2, ZedId: 'ZEDMSME000501', FinancialAssessorId: 'DFO1', TechUpgradeStatus: 4 })], counts: { New: 2 } });
     await settle();
 
-    expect(el.textContent).toContain('TU ALLOTMENT 2');
     expect(button('ACCEPT').length).toBe(1);
     expect(button('RE-ALLOT').length).toBe(1);
+    expect(button('View Profile').length).toBe(2);
+    expect(el.textContent).toContain('CC Details');
     const links = [...el.querySelectorAll('a')].map((a) => a.getAttribute('href'));
     expect(links).toContain('/staff/consultancy/technology/verification/ZEDMSME000500/Silver');
+    expect(links).toContain('/staff/msme-profile/ZEDMSME000500');
 
     button('ACCEPT')[0].click();
     await settle();
     http.expectOne('/api/staff/consultancy/tu/assessors').flush([{ userId: 'DFO1', userName: 'Dfo One' }]);
     await settle();
+    expect(el.querySelector('label[for="tuChoice"]')!.textContent).toContain('Consultant/Expert');
     const select = el.querySelector('#tuChoice') as HTMLSelectElement;
     select.value = 'DFO1';
     select.dispatchEvent(new Event('change'));
@@ -79,6 +90,53 @@ describe('Consultancy technology pages', () => {
     http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions').flush({ rows: [], counts: null });
     await settle();
     expect(el.textContent).toContain('Application accepted.');
+  });
+
+  it('opens the DFO on TU ALLOTMENT without tabs, CC details, reason or profile', async () => {
+    await create(TuSubmissionsPage, StaffRole.DesktopAssessor);
+    const list = http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions');
+    expect(list.request.params.get('status')).toBe('2');
+    list.flush({ rows: [row({ FinancialAssessorId: 'U1', ReasonForRejection: 'x' })], counts: { New: 1 } });
+    await settle();
+    expect(el.textContent).not.toContain('TU ALLOTMENT');
+    expect(el.textContent).not.toContain('CC Details');
+    expect(el.textContent).not.toContain('Reason For Rejection');
+    expect(button('View Profile').length).toBe(0);
+    expect(button('VIEW').length).toBe(1);
+  });
+
+  it('shows the master admin the Status and Reason columns and the red rows of the old page per tab', async () => {
+    await create(TuSubmissionsPage, StaffRole.MasterAdmin);
+    const landing = http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions');
+    expect(landing.request.params.get('status')).toBe('99');
+    landing.flush({ rows: [], counts: { Rejected: 1 } });
+    await settle();
+    const headers = () => [...el.querySelectorAll('th')].map((h) => text(h));
+    expect(headers()).toContain('Status');
+
+    button('REJECTED 1')[0].click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions' && r.params.get('status') === '9').flush({
+      rows: [row({ FinancialAssessorId: 'DFO1', ReasonForRejection: 'Assessor comments: bad', ReasonForRejectionAgency: 'Agency comments: worse', TimeDuration: 'Reallot' })],
+      counts: { Rejected: 1 },
+    });
+    await settle();
+    expect(headers()).toEqual(['Action(s)', 'Status', 'Certification Level', 'Unit Details', 'CO Details', 'CC Details', 'Verification Date', 'Reason For Rejection']);
+    expect(el.textContent).toContain('Alloted to Consultant');
+    expect(el.textContent).toContain('Rejected');
+    expect(el.textContent).toContain('Agency comments: worse');
+    expect(el.textContent).not.toContain('Assessor comments: bad');
+    expect(el.querySelector('tbody tr')!.classList).toContain('rejected');
+    expect(el.querySelector('tbody td.actions')!.classList).toContain('late');
+    expect(button('View Profile').length).toBe(1);
+
+    button('TU ALLOTMENT 0')[0].click();
+    await settle();
+    http.expectOne((r) => r.url === '/api/staff/consultancy/tu/submissions' && r.params.get('status') === '2').flush({ rows: [row()], counts: null });
+    await settle();
+    expect(headers()).not.toContain('Status');
+    expect(headers()).toContain('Reason For Rejection');
+    expect(el.querySelector('tbody tr')!.classList).not.toContain('rejected');
   });
 
   const application = (extra: Record<string, unknown> = {}) => ({
@@ -146,6 +204,57 @@ describe('Consultancy technology pages', () => {
     expect(el.textContent).not.toContain('Download TU Report');
   });
 
+  it('shows the DFO only the outcome, no ACCEPT / REJECT (decided from the app)', async () => {
+    await create(TuVerificationPage, StaffRole.DesktopAssessor, { zedId: 'ZEDMSME000500', level: 'Silver' });
+    http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([application({
+      canValidate: true, canDecide: false, canEditAmounts: false, canEditAccount: false, hasReport: false, details: { IsApproved: 1 },
+    })]);
+    await settle();
+    expect(button('ACCEPT').length).toBe(0);
+    expect(button('REJECT').length).toBe(0);
+    expect(el.textContent).toContain('ACCEPTED');
+  });
+
+  it('shows the Bronze certificate and its Details of Expenditure, and Gold under one accordion', async () => {
+    await create(TuVerificationPage, StaffRole.MasterAdmin, { zedId: 'ZEDMSME000500', level: 'Bronze' });
+    const bronze = application({
+      certification: 'Bronze', canEditAmounts: false, canEditAccount: false, hasReport: false,
+      technologies: [{ id: 301, isEligible: true, details: { TechnologyCode: '12', TechnologyName: 'ZED Bronze', CertficateNumber: 'C-77', AgencyOrSupplier: 'Supplier X' } }],
+      documents: [
+        { id: 7001, photoType: 'Copy of Certificate', technologyCode: '12', timeStamp: null, isPdf: true, url: '/api/cert', opened: true, isVerified: null, sourceOfValidation: null, assessorRemarks: null, needsScreenshot: true, screenshots: [] },
+        { id: 7002, photoType: 'CA certificate of expenditure', technologyCode: '12', timeStamp: null, isPdf: true, url: '/api/ca', opened: true, isVerified: null, sourceOfValidation: null, assessorRemarks: null, needsScreenshot: false, screenshots: [] },
+      ],
+    });
+    const gold = application({
+      certification: 'Gold', canEditAmounts: false, canEditAccount: false, hasReport: false,
+      technologies: [
+        { id: 401, isEligible: true, details: { TechnologyCode: '21', TechnologyName: 'Heat pump', NameOfTheManufaturer: 'Maker' } },
+        { id: 402, isEligible: true, details: { TechnologyCode: '22', TechnologyName: 'Solar roof' } },
+      ],
+      documents: [],
+    });
+    http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([bronze, gold]);
+    await settle();
+    await expand('ZED Bronze');
+    expect(el.textContent).toContain('Category of Certificate');
+    expect(el.textContent).toContain('Certificate Number');
+    expect(el.textContent).toContain('C-77');
+    expect(el.textContent).toContain('Details of Expenditure');
+    expect(el.textContent).not.toContain('Name of Manufacturer');
+    expect(el.textContent).toContain('Copy of Certificate');
+    // The certificate copy is listed once, with the certificate.
+    expect([...el.querySelectorAll('td.w-50')].filter((td) => text(td) === 'Copy of Certificate').length).toBe(1);
+    expect(el.textContent).toContain('Supplier X');
+
+    await openTab('Gold Certification');
+    expect(el.textContent).not.toContain('Heat pump');
+    await expand('New tech with live sectors');
+    expect([...el.querySelectorAll('td.w-50')].filter((td) => text(td) === 'Technology Name').length).toBe(2);
+    expect(el.textContent).toContain('Heat pump');
+    expect(el.textContent).toContain('Solar roof');
+    expect(el.textContent).toContain('Name of Manufacturer');
+  });
+
   it('shows the unit overview, the recommended technologies and the DFO attendance', async () => {
     await create(TuVerificationPage, StaffRole.Agency, { zedId: 'ZEDMSME000500', level: 'Silver' });
     http.expectOne('/api/staff/consultancy/tu/ZEDMSME000500').flush([application({
@@ -203,5 +312,21 @@ describe('Consultancy technology pages', () => {
     await settle();
     expect(el.textContent).toContain('Selected Technologies updated.');
     expect(el.textContent).toContain('Summary Of Recommended Technologies');
+  });
+
+  it('counts the selection and puts a previous recommendation in progress in place of PROCEED', async () => {
+    await create(TechnologyRecommendationPage, StaffRole.DesktopAssessor, { zedId: 'ZEDMSME000600', level: 'Silver' });
+    const techs = [1, 2].map((i) => ({ code: String(i), name: `Tech ${i}`, description: 'd', selected: false }));
+    http.expectOne('/api/staff/consultancy/technology/ZEDMSME000600/Silver').flush({
+      zedId: 'ZEDMSME000600', certification: 'Silver', recommended: false, canRecommend: false,
+      message: 'Recommendation of Gold is in progress.', maxSelection: 10, technologies: techs,
+    });
+    await settle();
+    expect(text(el.querySelector('.counter-block')!)).toBe('Selected: 0/10');
+    (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    await settle();
+    expect(text(el.querySelector('.counter-block')!)).toBe('Selected: 1/10');
+    expect(button('PROCEED').length).toBe(0);
+    expect(el.textContent).toContain('Recommendation of Gold is in progress.');
   });
 });

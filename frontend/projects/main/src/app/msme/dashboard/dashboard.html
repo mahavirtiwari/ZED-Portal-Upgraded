@@ -18,7 +18,7 @@
               }
               <button type="button" class="refresh-link float-sm-end btn btn-link p-0" (click)="load()">
                 <img src="/Images/svgicons/refresh.svg" alt="" />
-                <span>Refresh on {{ refreshedAt().toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' }) }}</span>
+                <span>Refresh on {{ refreshedAt() | date: 'dd/MM/yyyy hh:mm a' }}</span>
               </button>
             </div>
           </div>
@@ -113,7 +113,7 @@
                                 <div class="stepper">
                                   <ul class="nav nav-tabs" role="list">
                                     @for (rule of steps(level); track $index) {
-                                      <li [class]="(level === 'Bronze' ? 'w-33 ' : '') + stepClass(level, rule)">
+                                      <li [class]="(level === 'Bronze' ? 'w-33 ' : 'w-25 ') + stepClass(level, rule)">
                                         <span class="round-tab">
                                           @if (stepClass(level, rule) === 'completed') {
                                             <img src="/Images/svgicons/stepper-completed.svg" alt="" />

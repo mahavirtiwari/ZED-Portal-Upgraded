@@ -24,7 +24,8 @@ public sealed class NeftTests : IDisposable
         ["TransactionId"] = id, ["ZedId"] = zedId, ["StateId"] = state, ["PStateId"] = null, ["PUnitName"] = "Unit " + zedId,
         ["CertificationType"] = "Bronze", ["VerificationStatus"] = verification, ["TransactionStatus"] = transaction,
         ["AmountPaid"] = "50000", ["AccountNo"] = "123456789012", ["IfscCode"] = "SBIN0001234", ["Password"] = "msme-password",
-        ["OTP"] = "1234",
+        ["OTP"] = "1234", ["UdyogAadharNo"] = "UDYAM-UP-01-0000011", ["TotalEmp"] = 25, ["Gender"] = "Male",
+        ["SocialCategoryName"] = "General", ["IsCouponUsed"] = true,
     };
 
     public NeftTests()
@@ -95,6 +96,20 @@ public sealed class NeftTests : IDisposable
         var none = await SignIn("SC_NONE");
         Assert.Empty(ZedIds(await none.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=new")));
         Assert.Equal(HttpStatusCode.BadRequest, (await none.GetAsync("/api/staff/neft/transactions?list=all")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Lists_include_the_unit_columns_of_the_legacy_rejected_page()
+    {
+        var up = await SignIn("SC_UP");
+        var t = (await up.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=rejected")).GetProperty("transactions")[0];
+        Assert.Equal("UDYAM-UP-01-0000011", t.GetProperty("UdyogAadharNo").GetString());
+        Assert.Equal(25, t.GetProperty("TotalEmp").GetInt32());
+        Assert.Equal("Male", t.GetProperty("Gender").GetString());
+        Assert.Equal("General", t.GetProperty("SocialCategoryName").GetString());
+        Assert.True(t.GetProperty("IsCouponUsed").GetBoolean());
+        // GSTIN / TAN / UTR are not returned by the procedure (MsmePaymentInfo is not joined).
+        Assert.False(t.TryGetProperty("GstinNumber", out _));
     }
 
     [Fact]

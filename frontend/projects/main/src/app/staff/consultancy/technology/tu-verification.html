@@ -208,53 +208,34 @@
                           }
                         }
 
-                        <!-- One section per purchased technology -->
-                        @for (t of app.technologies; track t.id) {
-                          <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'tech' + t.id, title: value(t.details, 'TechnologyName') }" />
-                          @if (isOpen('tech' + t.id)) {
-                            <table class="table table-default table-zed bg-white m-t-1">
-                              <tbody>
-                                @for (f of technologyFields; track f.key) {
-                                  <tr><td class="w-50">{{ f.label }}</td><td><div class="row-data"><b>{{ value(t.details, f.key) }}</b></div></td><td></td></tr>
-                                }
-                                <tr>
-                                  <td class="w-50">Amount Paid (Rs.) (Entered by MSME)</td>
-                                  <td><div class="row-data"><b>Rs. {{ value(t.details, 'MsmeAmountPaid') }}</b></div></td>
-                                  <td></td>
-                                </tr>
-                                <tr>
-                                  <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
-                                  <td>
-                                    <div class="row-data">
-                                      @if (amountEdit()?.id === t.id) {
-                                        <input class="form-control" style="min-width: 100%" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
-                                               (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
-                                      } @else {
-                                        <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
-                                      }
-                                    </div>
-                                  </td>
-                                  @if (app.canEditAmounts) {
-                                    <td>
-                                      @if (amountEdit()?.id === t.id) {
-                                        <button type="button" class="btn btn-primary btn-sm me-1" (click)="amountEdit.set(null)">Cancel</button>
-                                        <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
-                                      } @else {
-                                        <button type="button" class="btn btn-primary btn-sm" (click)="editAmount(t)">Edit</button>
-                                      }
-                                    </td>
-                                  }
-                                </tr>
-                                <tr>
-                                  <td class="w-50">Mode of Payment</td>
-                                  <td><div class="row-data"><b>{{ value(t.details, 'ModeOfPayment') }}</b></div></td>
-                                  <td></td>
-                                </tr>
-                                @for (group of documentRows(app, t); track group.label) {
-                                  <ng-container [ngTemplateOutlet]="documentRow" [ngTemplateOutletContext]="{ app, group }" />
-                                }
-                              </tbody>
-                            </table>
+                        <!-- The purchased technologies: on Silver a section per technology; on Gold all of them under "New tech with
+                             live sectors", each with its Technology Name row; on Bronze the certificate, then its Details of Expenditure. -->
+                        @if (isGold(app)) {
+                          <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'goldTech', title: 'New tech with live sectors' }" />
+                          @if (isOpen('goldTech')) {
+                            @for (t of app.technologies; track t.id) {
+                              <ng-container [ngTemplateOutlet]="technologyTable" [ngTemplateOutletContext]="{ app, t, named: true }" />
+                            }
+                          }
+                        } @else {
+                          @for (t of app.technologies; track t.id) {
+                            <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'tech' + t.id, title: value(t.details, 'TechnologyName') }" />
+                            @if (isOpen('tech' + t.id)) {
+                              @if (isBronze(app)) {
+                                <table class="table table-default table-zed bg-white m-t-1">
+                                  <tbody>
+                                    @for (f of bronzeCertificateFields; track f.key) {
+                                      <tr><td class="w-50">{{ f.label }}</td><td><div class="row-data"><b>{{ value(t.details, f.key) }}</b></div></td><td></td></tr>
+                                    }
+                                    @for (group of certificateDocumentRows(app, t); track group.label) {
+                                      <ng-container [ngTemplateOutlet]="documentRow" [ngTemplateOutletContext]="{ app, group }" />
+                                    }
+                                  </tbody>
+                                </table>
+                                <h3 class="sub-heading mt-3">Details of Expenditure</h3>
+                              }
+                              <ng-container [ngTemplateOutlet]="technologyTable" [ngTemplateOutletContext]="{ app, t, named: false }" />
+                            }
                           }
                         }
 
@@ -326,9 +307,8 @@
                             }
                           </div>
                         </div>
-                      } @else if (app.canValidate) {
-                        <p class="text-center text-muted mt-3">ACCEPT / REJECT become available once every document is validated and the opening meeting is submitted.</p>
                       }
+                      <!-- The MSME-DFO officer's ACCEPT / REJECT are commented out on the old page: the DFO decides from the consultant app. -->
                     </div>
                   }
 
@@ -437,6 +417,56 @@
     </div>
     <button type="button" class="btn btn-primary pull-right" (click)="showImage(p.url)">VIEW</button>
   </div>
+</ng-template>
+
+<!-- A purchased technology's details, amounts and documents (Gold: with its Technology Name row first). -->
+<ng-template #technologyTable let-app="app" let-t="t" let-named="named">
+  <table class="table table-default table-zed bg-white m-t-1">
+    <tbody>
+      @if (named) {
+        <tr><td class="w-50">Technology Name</td><td><div class="row-data"><b>{{ value(t.details, 'TechnologyName') }}</b></div></td><td></td></tr>
+      }
+      @for (f of fieldsFor(app); track f.key) {
+        <tr><td class="w-50">{{ f.label }}</td><td><div class="row-data"><b>{{ value(t.details, f.key) }}</b></div></td><td></td></tr>
+      }
+      <tr>
+        <td class="w-50">Amount Paid (Rs.) (Entered by MSME)</td>
+        <td><div class="row-data"><b>Rs. {{ value(t.details, 'MsmeAmountPaid') }}</b></div></td>
+        <td></td>
+      </tr>
+      <tr>
+        <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
+        <td>
+          <div class="row-data">
+            @if (amountEdit()?.id === t.id) {
+              <input class="form-control" style="min-width: 100%" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
+                     (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
+            } @else {
+              <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
+            }
+          </div>
+        </td>
+        @if ($any(app).canEditAmounts) {
+          <td>
+            @if (amountEdit()?.id === t.id) {
+              <button type="button" class="btn btn-primary btn-sm me-1" (click)="amountEdit.set(null)">Cancel</button>
+              <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
+            } @else {
+              <button type="button" class="btn btn-primary btn-sm" (click)="editAmount(t)">Edit</button>
+            }
+          </td>
+        }
+      </tr>
+      <tr>
+        <td class="w-50">Mode of Payment</td>
+        <td><div class="row-data"><b>{{ value(t.details, 'ModeOfPayment') }}</b></div></td>
+        <td></td>
+      </tr>
+      @for (group of documentRows(app, t); track group.label) {
+        <ng-container [ngTemplateOutlet]="documentRow" [ngTemplateOutletContext]="{ app, group }" />
+      }
+    </tbody>
+  </table>
 </ng-template>
 
 <!-- A document row: the files (VIEW) and the DFO's validation of each. -->

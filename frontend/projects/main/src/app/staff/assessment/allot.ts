@@ -107,8 +107,9 @@ import { PagerComponent } from '../pager';
               </thead>
               <tbody>
                 @for (s of pager.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-                  <tr [class.table-danger]="t(s, 'ReasonForRejection')">
-                    <td [class.table-danger]="t(s, 'TimeDuration')">
+                  <!-- Row colours of the old pages: main table-danger; surveillance and consultancy btn-danger. -->
+                  <tr [class.table-danger]="main && !!t(s, 'ReasonForRejection')" [class.btn-danger]="!main && !!t(s, 'ReasonForRejection')">
+                    <td [class.table-danger]="main && !!t(s, 'TimeDuration')" [class.btn-danger]="!main && !!t(s, 'TimeDuration')">
                       @if (legacy.profile(t(s, 'ZedId')); as href) {
                         <a style="width: 180px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
                       }
@@ -122,8 +123,13 @@ import { PagerComponent } from '../pager';
                       @if (!t(s, 'CertificationBodyUserId')) {
                         <button type="button" style="width: 180px" class="btn btn-primary btn-xs mb-2" (click)="openAllot(s)">ALLOT</button>
                       }
-                      @if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId')) {
-                        <button type="button" class="btn btn-default btn-xs re-allot" (click)="openAllot(s)">RE-ALLOT</button>
+                      @if (consultancy) {
+                        <!-- That portal's Allot.cshtml: also once a consultant was allotted (DesktopAssessorId). -->
+                        @if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId') || t(s, 'DesktopAssessorId')) {
+                          <button type="button" style="width: 180px" class="btn btn-default mb-2 re-allot" (click)="openAllot(s)">RE-ALLOT</button>
+                        }
+                      } @else if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId')) {
+                        <button type="button" [style.width]="surveillance ? '180px' : null" class="btn btn-default btn-xs re-allot" (click)="openAllot(s)">RE-ALLOT</button>
                       }
                     </td>
                     <td>
@@ -147,7 +153,8 @@ import { PagerComponent } from '../pager';
                     } @else {
                       <td><strong>{{ t(s, 'Certification') }}</strong></td>
                     }
-                    <td [class.table-warning]="t(s, 'UdyamStatus') === 'Duplicate'">
+                    <!-- Only main's old page marked a duplicate Udyam number. -->
+                    <td [class.table-warning]="main && t(s, 'UdyamStatus') === 'Duplicate'">
                       <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
                       <strong>{{ t(s, 'PUnitName') }}</strong><br />
                       {{ t(s, 'UnitAddress') }}

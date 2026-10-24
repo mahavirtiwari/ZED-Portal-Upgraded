@@ -15,11 +15,14 @@ async function settle(fixture: ComponentFixture<unknown>) {
 }
 
 /** What the Surveillance API returns: meeting link mode, no video. */
-function details(recordings = 1, meetingLink: string | null = 'https://meet.example/abc'): RemoteDetails {
+function details(recordings = 1, meetingLink: string | null = 'https://meet.example/abc', surLatitude: string | null = '26.5'): RemoteDetails {
   return {
     zedId: 'ZEDMSME000001',
     certification: 'Silver',
-    msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme', CertificationStatus: 9 },
+    msme: {
+      ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme', PUnitName: 'Acme Plant 2', UdyogAadharNo: 'UDYAM-UP-01-0000001', PlantAddress: 'Kanpur',
+      AssessmentDate: '12/03/2025', SiteAssessorId: 'AS0042', SiteAssessorName: 'R Verma', DaAllocationDate: '01/01/2024', CertificationStatus: 9,
+    },
     products: [{ Id: 31, ProductName: 'Valve', Exported: 'No', IsSaVerified: null, RemotePhotos: [] }],
     rawMaterials: [],
     sections: [{ Id: 41, SectionCode: '1', SectionName: 'Leadership', IsAssessmentExcempted: 'No', OfiComments: null }],
@@ -28,7 +31,7 @@ function details(recordings = 1, meetingLink: string | null = 'https://meet.exam
     subOptions: [],
     evidences: [],
     daPhotos: [],
-    location: null,
+    location: { ZedSaLatitude: '26.1', ZedSaLongitude: '80.2', SurLatitude: surLatitude, SurLongitude: surLatitude ? '80.3' : null },
     siteExteriorPhotos: [],
     siteTourPhotos: [{ id: 85, name: 'Shop floor', url: BASE + '/files/surveillancemobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/1.jpg', deletable: false }],
     openMeeting: { id: 71, comments: 'Hello', participants: [], photos: [] },
@@ -73,6 +76,11 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
 
   it('offers the meeting link instead of the video call and no frame captures', async () => {
     await create(details());
+    expect(el.querySelector('.video-panel')).toBeNull();
+    expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-12');
+    expect(el.querySelector('.zed-tabs')!.classList).not.toContain('col-lg-8');
+    expect(el.querySelector('a.join-meeting')).toBeNull(); // on the Overview tab, not beside the tabs
+    await openTab('Assessment Overview');
     const join = el.querySelector('a.join-meeting') as HTMLAnchorElement;
     expect(join.getAttribute('href')).toBe('https://meet.example/abc');
     expect(join.getAttribute('target')).toBe('_blank');
@@ -101,8 +109,51 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     ]);
   });
 
+  it('shows the surveillance overview: dates, assessor, meeting link and both locations', async () => {
+    await create(details());
+    await openTab('Assessment Overview');
+    const rows = [...el.querySelectorAll('.tab-content table.table-bordered tr')].map((r) => [r.querySelector('th')!.textContent!.trim(), r.querySelector('td')!.textContent!.trim()]);
+    expect(rows).toEqual([
+      ['ZED ID', 'ZEDMSME000001'],
+      ['Unit Name', 'Acme Plant 2'],
+      ['UDYAM Number', 'UDYAM-UP-01-0000001'],
+      ['Unit Address', 'Kanpur'],
+      ['Surveillance Assessment Allocation Date', '12/03/2025'],
+      ['Surveillance Assessment Date', '12/03/2025'],
+      ['Surveillance Assessor Name', 'AS0042 - R Verma'],
+      ['Meeting link', 'Click here to Join'],
+    ]);
+    expect(el.textContent).not.toContain('Document Verification Allocation Date');
+    const boxes = [...el.querySelectorAll('.locations > div')];
+    expect(boxes.map((b) => b.querySelector('.sub-heading')!.textContent!.trim())).toEqual(['Site Assessment', 'Surveillance Assessment']);
+    expect([...el.querySelectorAll('.locations a.view-map')].map((a) => a.getAttribute('href'))).toEqual([
+      'https://www.google.com/maps?q=26.1,80.2', 'https://www.google.com/maps?q=26.5,80.3',
+    ]);
+    expect(boxes[0].textContent).toContain('Latitude26.1');
+    expect(boxes[1].textContent).toContain('Longitude80.3');
+  });
+
+  it('shows the surveillance location box only once it was recorded', async () => {
+    await create(details(1, 'https://meet.example/abc', null));
+    await openTab('Assessment Overview');
+    expect([...el.querySelectorAll('.locations .sub-heading')].map((b) => b.textContent!.trim())).toEqual(['Site Assessment']);
+  });
+
+  it('has Refresh and ASSESSMENT REPORT buttons', async () => {
+    await create(details());
+    expect(el.querySelector('.refresh-link')).toBeNull();
+    const report = el.querySelector('a.assessment-report') as HTMLAnchorElement;
+    expect(report.getAttribute('href')).toBe('/api/staff/certification-documents/ZEDMSME000001/Silver/report');
+    expect(report.getAttribute('target')).toBe('_blank');
+    (el.querySelector('button.refresh') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'GET' && r.url === BASE).flush(details());
+    await settle(fixture);
+  });
+
   it('warns when the agency gave no meeting link', async () => {
     await create(details(1, null));
+    await openTab('Assessment Overview');
     expect(el.querySelector('a.join-meeting')).toBeNull();
     expect(el.textContent).toContain('No meeting link');
   });

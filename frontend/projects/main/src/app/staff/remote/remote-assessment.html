@@ -2,10 +2,19 @@
   <div class="row mt-4">
     <div class="col-sm-10"><h3 class="registration-title">Assessment Details</h3></div>
     <div class="col-sm-2 text-end">
-      <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
-        <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-      </button>
+      @if (!meetingMode()) {
+        <button type="button" class="refresh-link btn btn-link" (click)="refresh()">
+          <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+        </button>
+      }
     </div>
+    <!-- Surveillance (that portal's Remote/Index.cshtml): a Refresh button and the unit's assessment report. -->
+    @if (meetingMode()) {
+      <div class="col-sm-12 text-end">
+        <button type="button" class="btn btn-primary refresh" (click)="refresh()">Refresh</button>
+        <a class="btn btn-info ms-1 assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">ASSESSMENT REPORT <i class="fa fa-download" aria-hidden="true"></i></a>
+      </div>
+    }
   </div>
 
   @if (error()) {
@@ -30,7 +39,7 @@
     }
 
     <div class="row">
-      <div class="col-lg-8 zed-tabs">
+      <div class="zed-tabs" [class.col-lg-8]="!meetingMode()" [class.col-lg-12]="meetingMode()">
         <div class="tab-title">
           <div class="numberCircle">{{ currentTab().no }}</div>
           <h4>{{ currentTab().title }}</h4>
@@ -62,22 +71,68 @@
 
           <!-- ===================================================== overview -->
           @if (tab() === 'overview') {
-            <table class="table table-zed table-bordered bg-white">
-              <tbody>
-                <tr><th style="width: 40%">ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
-                <tr><th>Unit Name</th><td>{{ t(msme(), 'EnterpriseName') }}</td></tr>
-                <tr><th>UDYAM Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
-                <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
-                <tr><th>Document Verification Allocation Date</th><td>{{ t(msme(), 'DaAllocationDate') }}</td></tr>
-                <tr><th>Document Verification Date</th><td>{{ t(msme(), 'DaVerificationDate') }}</td></tr>
-                <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
-              </tbody>
-            </table>
-            <p class="sub-heading">Location</p>
-            @if (mapUrl()) {
-              <a class="btn btn-primary btn-sm map-link" [href]="mapUrl()" target="_blank" rel="noopener noreferrer">Open the unit's location in Google Maps</a>
+            @if (meetingMode()) {
+              <!-- Surveillance overview (that portal's Remote/Index.cshtml): the surveillance dates, assessor and meeting link. -->
+              <table class="table table-zed table-bordered bg-white">
+                <tbody>
+                  <tr><th style="width: 40%">ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
+                  <tr><th style="width: 40%">Unit Name</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
+                  <tr><th>UDYAM Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
+                  <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
+                  <tr><th>Surveillance Assessment Allocation Date</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
+                  <tr><th>Surveillance Assessment Date</th><td>{{ t(msme(), 'AssessmentDate') }}</td></tr>
+                  <tr><th>Surveillance Assessor Name</th><td>{{ t(msme(), 'SiteAssessorId') }} - {{ t(msme(), 'SiteAssessorName') }}</td></tr>
+                  <tr>
+                    <th>Meeting link</th>
+                    <td colspan="2">
+                      @if (d.meetingLink) {
+                        <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Click here to Join</a>
+                      } @else {
+                        <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
+                      }
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <p class="sub-heading">Location</p>
+              <div class="row locations">
+                @for (loc of locations(); track loc.title) {
+                  <div class="col-sm-6">
+                    <div class="p-2" style="border: 1px solid #8d8f90; border-radius: 4px"><p class="sub-heading mb-0">{{ loc.title }}</p></div>
+                    <table class="table table-zed bg-white">
+                      <tbody>
+                        <tr>
+                          <td class="text-center" colspan="2">
+                            @if (loc.href) {
+                              <a class="btn btn-primary btn-sm view-map" [href]="loc.href" target="_blank" rel="noopener noreferrer">Click here to view map</a>
+                            }
+                          </td>
+                        </tr>
+                        <tr><td>Latitude</td><td>{{ loc.lat }}</td></tr>
+                        <tr><td>Longitude</td><td>{{ loc.lng }}</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </div>
             } @else {
-              <p>No location recorded.</p>
+              <table class="table table-zed table-bordered bg-white">
+                <tbody>
+                  <tr><th style="width: 40%">ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
+                  <tr><th>Unit Name</th><td>{{ t(msme(), 'EnterpriseName') }}</td></tr>
+                  <tr><th>UDYAM Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
+                  <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
+                  <tr><th>Document Verification Allocation Date</th><td>{{ t(msme(), 'DaAllocationDate') }}</td></tr>
+                  <tr><th>Document Verification Date</th><td>{{ t(msme(), 'DaVerificationDate') }}</td></tr>
+                  <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
+                </tbody>
+              </table>
+              <p class="sub-heading">Location</p>
+              @if (mapUrl()) {
+                <a class="btn btn-primary btn-sm map-link" [href]="mapUrl()" target="_blank" rel="noopener noreferrer">Open the unit's location in Google Maps</a>
+              } @else {
+                <p>No location recorded.</p>
+              }
             }
           }
 
@@ -283,8 +338,11 @@
                               @if (t(p, 'PhotoUrl')) {
                                 <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'PhotoUrl'))"><img [src]="t(p, 'PhotoUrl')" alt="Product photo" height="50" /></button><br />
                               }
+                              <!-- As the old page: the PDF icon turns blue once the description was opened (SaveTimestamp). -->
                               @if (t(p, 'DescriptionKind') === 'pdf') {
-                                <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                <a class="product-description" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener">
+                                  <img [src]="descriptionOpened(p) ? 'Images/pdf-icon-blue.png' : 'Images/pdf-icon.png'" height="25" alt="Product description (PDF)" />
+                                </a>
                               } @else if (t(p, 'DescriptionKind') === 'image') {
                                 <button type="button" class="btn btn-link p-0" (click)="preview.set(t(p, 'DescriptionUrl'))"><img [src]="t(p, 'DescriptionUrl')" alt="Product description" height="60" /></button>
                               }
@@ -455,7 +513,7 @@
                                 <td>
                                   {{ t(e, 'EvidenceName') }}
                                   @if (t(e, 'FileUrl')) {
-                                    <a class="float-end" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
+                                    <a class="float-end evidence-file" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
                                   }
                                   <br />
                                   @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
@@ -514,32 +572,25 @@
         </div>
       </div>
 
-      <!-- ===================================================== video -->
-      <div class="col-lg-4 mt-4">
-        <div class="video-panel">
-          @if (meetingMode()) {
-            <div class="meeting-panel">
-              @if (d.meetingLink) {
-                <a class="btn btn-primary join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Click here to Join</a>
-                <p class="mt-2 small">The assessment is held on the meeting link given by the agency. It opens in a new tab.</p>
-              } @else {
-                <div class="alert alert-warning" role="status">No meeting link has been given for this assessment. Please contact the agency.</div>
+      <!-- ===================================================== video (surveillance: none; the meeting link is on the Overview tab) -->
+      @if (!meetingMode()) {
+        <div class="col-lg-4 mt-4">
+          <div class="video-panel">
+            @if (canAssess()) {
+              @if (!d.permissions.videoConfigured) {
+                <div class="alert alert-warning" role="status">Video calls are not configured on this server.</div>
+              } @else if (videoState() === 'idle' || videoState() === 'error') {
+                <button type="button" class="btn btn-primary start" (click)="startAssessment()">Start Assessment</button>
               }
-            </div>
-          } @else if (canAssess()) {
-            @if (!d.permissions.videoConfigured) {
-              <div class="alert alert-warning" role="status">Video calls are not configured on this server.</div>
-            } @else if (videoState() === 'idle' || videoState() === 'error') {
-              <button type="button" class="btn btn-primary start" (click)="startAssessment()">Start Assessment</button>
             }
-          }
-          @if (videoState() === 'connecting') { <span class="alert alert-info d-block" role="status">Connecting ...</span> }
-          @if (videoState() === 'waiting') { <span class="alert alert-success d-block" role="status">Assessment started. Waiting for MSME</span> }
-          @if (videoState() === 'waiting' || videoState() === 'connected') { <span class="alert alert-success d-block timer">{{ timerText() }}</span> }
-          @if (videoError()) { <div class="alert alert-danger" role="alert">{{ videoError() }}</div> }
-          <div id="output" #output></div>
+            @if (videoState() === 'connecting') { <span class="alert alert-info d-block" role="status">Connecting ...</span> }
+            @if (videoState() === 'waiting') { <span class="alert alert-success d-block" role="status">Assessment started. Waiting for MSME</span> }
+            @if (videoState() === 'waiting' || videoState() === 'connected') { <span class="alert alert-success d-block timer">{{ timerText() }}</span> }
+            @if (videoError()) { <div class="alert alert-danger" role="alert">{{ videoError() }}</div> }
+            <div id="output" #output></div>
+          </div>
         </div>
-      </div>
+      }
     </div>
   }
 </div>
@@ -722,7 +773,16 @@
                 @for (r of ncRequirements(); track t(r, 'Id')) {
                   <tr>
                     <th style="width: 60px">{{ t(r, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
-                    <td>@for (o of optionsOf(r); track $index) { <div>{{ t(o, 'OptionName') }}</div> }</td>
+                    <td style="width: 50%">
+                      @for (o of optionsOf(r); track $index) {
+                        <div>
+                          {{ t(o, 'OptionName') }}
+                          <ul>
+                            @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
+                          </ul>
+                        </div>
+                      }
+                    </td>
                     <td>{{ t(r, 'SaAssessorRemarks') }}</td>
                   </tr>
                 }

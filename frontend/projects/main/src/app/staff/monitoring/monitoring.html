@@ -9,9 +9,12 @@
     <div class="row mb-3">
       <div class="col-sm-12">
         <div class="mb-2">
-          <label for="certification">{{ consultancy ? 'Desired Certification' : 'Certification Level' }} </label>
+          <label for="certification">Certification Level </label>
           <select id="certification" class="form-control" style="width: 200px" [ngModel]="certification()" (ngModelChange)="setCertification($event)">
-            @if (!certification()) {
+            <!-- Consultancy (that portal's page): a disabled "Select" option is always first. -->
+            @if (consultancy) {
+              <option value="" disabled>Select</option>
+            } @else if (!certification()) {
               <option value="" disabled>--Select--</option>
             }
             @for (l of levels; track l) {
@@ -97,7 +100,8 @@
             </thead>
             <tbody>
               @for (s of page(); track s['ZedId'] + '|' + s['Certification']) {
-                <tr [class.table-danger]="highlighted(s)">
+                <!-- An open NC: main table-danger; surveillance and consultancy btn-warning (as their old pages). -->
+                <tr [class.table-danger]="main && highlighted(s)" [class.btn-warning]="!main && highlighted(s)">
                   <td>{{ s['RowNumber'] }}</td>
                   <td>
                     {{ s['Certification'] }}
@@ -145,7 +149,8 @@
                       <td [class.yellow-background]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</td>
                     }
                     <td>
-                      @if (!surveillance) { {{ s['DocVerifiAllot'] }}<br /><br /> }{{ s['SaAssessmentDate'] }}
+                      <!-- Surveillance: the master admin's column has no allotment date (that portal's page). -->
+                      @if (!surveillance || !canManage()) { {{ s['DocVerifiAllot'] }}<br /><br /> }{{ s['SaAssessmentDate'] }}
                       @if (canManage()) {
                         <br /><br /><strong>{{ s['NcFinalClosureDt'] }}</strong>
                       }
@@ -158,7 +163,7 @@
                     </a>
                     @if (canManage() && !consultancy) {
                       @if (status() === 4 || (surveillance && status() === 7)) {
-                        <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'extend', unit: s, days: 1 })">Extend NC <br />Final Closure Date</button>
+                        <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'extend', unit: s, days: 0 })">Extend NC <br />Final Closure Date</button>
                       }
                       @if (status() === 4) {
                         <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'stepBack', unit: s })">Step Back to NC{{ num(s, 'NcCount') - 1 }}</button>

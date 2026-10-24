@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { MILESTONE_TITLES, handholdingLevel } from '../handholding/handholding.api';
+import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
+import { handholdingLevel } from '../handholding/handholding.api';
 import { ConsultancyOptions, ConsultancyPaymentApi } from './consultancy-payment.api';
 import { FeeRow, postToGateway } from './payment.api';
 
@@ -21,7 +22,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-consultancy-payment',
-  imports: [FormsModule, DecimalPipe, RouterLink],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink],
   templateUrl: './consultancy-payment.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -40,10 +41,10 @@ export class ConsultancyPaymentPage implements OnInit {
   protected readonly milestone = signal(0);
   protected readonly options = signal<ConsultancyOptions | null>(null);
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
+  /** Error / success pop-up (the legacy swal). */
+  protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly submitted = signal(false);
   protected readonly panModal = signal(false);
-  protected readonly panError = signal('');
 
   protected gstinApplicable: 'Yes' | 'No' | null = null;
   protected gstin = '';
@@ -54,11 +55,6 @@ export class ConsultancyPaymentPage implements OnInit {
   protected correctedPan = '';
   private gstinPan = '';
 
-  protected readonly milestoneTitle = computed(() => {
-    const level = this.level();
-    return level && this.milestone() ? MILESTONE_TITLES[level][this.milestone() - 1] : '';
-  });
-
   protected readonly fee = computed<FeeRow>(() => {
     const o = this.options();
     if (!o) return {};
@@ -68,13 +64,13 @@ export class ConsultancyPaymentPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const level = this.level();
     if (!level) {
-      this.error.set('Invalid certification.');
+      this.alert.set(errorAlert('Invalid certification.'));
       return;
     }
     const status = await this.call(this.api.status(level));
     if (!status) return;
     if (!status.canPay) {
-      this.error.set(status.refusal ?? 'Handholding Support is not available for this level.');
+      this.alert.set(errorAlert(status.refusal ?? 'Handholding Support is not available for this level.'));
       return;
     }
     this.milestone.set(status.nextMilestone);
@@ -136,9 +132,8 @@ export class ConsultancyPaymentPage implements OnInit {
   /** "PROCEED TO PAY": GSTIN check (and PAN correction if needed), then checkout. */
   protected async proceed(): Promise<void> {
     this.submitted.set(true);
-    this.error.set('');
     if (!this.formValid()) {
-      this.error.set('Please enter required data.');
+      this.alert.set(errorAlert('Please enter required data.'));
       return;
     }
     if (this.gstinApplicable === 'Yes') {
@@ -147,7 +142,6 @@ export class ConsultancyPaymentPage implements OnInit {
       if (!g.panMatches) {
         this.gstinPan = g.gstinPan;
         this.correctedPan = '';
-        this.panError.set('');
         this.panModal.set(true);
         return;
       }
@@ -158,16 +152,18 @@ export class ConsultancyPaymentPage implements OnInit {
   protected async savePan(): Promise<void> {
     const pan = this.correctedPan.trim().toUpperCase();
     if (pan.length !== 10) {
-      this.panError.set('Please enter a valid 10-character PAN.');
+      this.alert.set(errorAlert('Please enter a valid 10-character PAN.'));
       return;
     }
     if (pan !== this.gstinPan) {
-      this.panError.set('Please enter the correct PAN associated with that GSTIN.');
+      this.alert.set(errorAlert('Please enter the correct PAN associated with that GSTIN.'));
       return;
     }
     this.panModal.set(false);
     const ok = await this.call(this.api.correctPan(this.level()!, this.gstin.trim().toUpperCase(), pan));
-    if (ok) await this.checkout();
+    if (!ok) return;
+    this.alert.set(successAlert('PAN updated successfully. Proceeding...'));
+    await this.checkout();
   }
 
   private async checkout(): Promise<void> {
@@ -199,8 +195,7 @@ export class ConsultancyPaymentPage implements OnInit {
     try {
       return await firstValueFrom(req);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      this.alert.set(errorAlert(apiErrorMessage(err)));
       return null;
     } finally {
       this.busy.set(false);

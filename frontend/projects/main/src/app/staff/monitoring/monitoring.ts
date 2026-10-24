@@ -57,7 +57,8 @@ export class MonitoringPage {
         { status: 4, label: 'NON-CONFORMANCE', count: 'Nc' },
         { status: 7, label: 'REJECTED', count: 'Rj' },
       ];
-  protected readonly extendDays = Array.from({ length: 30 }, (_, i) => i + 1);
+  /** "No. of Days to Extend": 0 to 30, 0 chosen first, as the old pop-up. */
+  protected readonly extendDays = Array.from({ length: 31 }, (_, i) => i);
 
   protected readonly certification = signal('');
   protected readonly status = signal<number | null>(null);
@@ -165,6 +166,11 @@ export class MonitoringPage {
   }
 
   protected async submit(a: Action): Promise<void> {
+    // The API extends by 1 to 30 days; 0 (the old default) would change nothing.
+    if (a.kind === 'extend' && !(Number(a.days) >= 1 && Number(a.days) <= 30)) {
+      this.actionError.set('Please select the number of days (1 to 30).');
+      return;
+    }
     const zedId = String(a.unit['ZedId']);
     const certification = String(a.unit['Certification']);
     this.loading.set(true);

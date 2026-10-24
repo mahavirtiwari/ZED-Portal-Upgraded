@@ -11,7 +11,8 @@ export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
 
 interface Section {
   title: string;
-  fields: { label: string; key: string }[];
+  /** `prefix`: shown before the value, as the old page's "Rs." amounts. */
+  fields: { label: string; key: string; prefix?: string }[];
   documents: { label: string; type: string }[];
   account?: boolean;
 }
@@ -27,7 +28,7 @@ const SECTIONS: Section[] = [
       { label: 'Certificate Number', key: 'CertficateNumber' },
       { label: 'Date of Issue of Certificate', key: 'DateOfIssue' },
       { label: 'Period of validity of Certificate', key: 'ValidityOfCertificate' },
-      { label: 'Any other information', key: 'AnyOtherInformation' },
+      { label: 'Any other information related to this certificate', key: 'AnyOtherInformation' },
     ],
     documents: [{ label: 'Copy of Certificate', type: 'Copy of Certificate' }],
   },
@@ -38,13 +39,14 @@ const SECTIONS: Section[] = [
       { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
       { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
       { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
-      { label: 'Amount Paid(Rs.)', key: 'AmountPaid' },
-      { label: 'Eligible Financial Assistance(Rs.)', key: 'EligibleAmount' },
+      { label: 'Amount Paid(Rs.)', key: 'AmountPaid', prefix: 'Rs.' },
+      { label: 'Eligible Financial Assistance(Rs.)', key: 'EligibleAmount', prefix: 'Rs.' },
       { label: 'Mode of Payment', key: 'ModeOfPayment' },
     ],
+    // Order and labels of the old page: the CA certificate row came before the invoice.
     documents: [
-      { label: 'Copy of Invoice', type: 'Copy of Invoice' },
       { label: 'CA certificate of expenditure (Optional)', type: 'CA certificate of expenditure' },
+      { label: 'Invoice Copy', type: 'Copy of Invoice' },
     ],
   },
   {
@@ -243,10 +245,16 @@ export class FaVerificationPage {
 
   // ----- final decision -----
 
-  protected openDecision(decision: 'approve' | 'reject'): void {
+  /** REJECT asks for comments and a confirmation ("Confirm Final Submit"); ACCEPT submitted straight away on the old page. */
+  protected async openDecision(app: FaApplication, decision: 'approve' | 'reject'): Promise<void> {
     this.success.set('');
     this.dialogError.set('');
-    this.decision.set({ decision, comments: '', confirmed: false });
+    if (decision === 'reject') {
+      this.decision.set({ decision, comments: '', confirmed: false });
+      return;
+    }
+    if (this.saving()) return;
+    await this.run(() => this.api.decide(this.zedId, app.certification, 'approve', ''), () => undefined, (message) => this.error.set(message));
   }
 
   protected patchDecision(patch: Partial<DecisionForm>): void {

@@ -46,6 +46,7 @@ function details(overrides: Partial<MilestoneDetails> = {}): MilestoneDetails {
     permissions: {
       canEdit: true, editableFields: ['BaselineRemarks', 'EstimatedTimeInDays', 'HActionPlanRemarks', 'Intervention', 'InterventionRemarks'],
       canEditBullets: true, canConsultantFinalSubmit: true, canCoFinalSubmit: false, canSendBack: false, canReject: false,
+      canEditFinalComments: false,
     },
     ...overrides,
   };
@@ -123,6 +124,8 @@ describe('MilestoneDetailsPage', () => {
     expect(el.querySelector('[data-requirement]')).toBeNull();
     await expand('Leadership');
     expect(el.textContent).toContain('Milestone 1 : Basic Diagnostic Study');
+    // The requirement has no evidence: the old page's empty row.
+    expect(el.textContent).toContain('No Documents Uploaded');
     // Progress reviews are not shown before the section reaches milestone 2.
     expect(el.textContent).not.toContain('Progress Review 1');
     el.querySelector<HTMLInputElement>('input[aria-label="Edit Baseline Diagnostic Remarks"]')!.click();
@@ -197,25 +200,57 @@ describe('MilestoneDetailsPage', () => {
     expect(el.textContent).toContain('Milestone submitted');
   });
 
-  it('shows the CO decisions only when the server allows them and needs the confirmation', async () => {
+  it('shows the CO decisions the server allows, without the Reject button the old page never showed', async () => {
     await open(details({ party: 'Co', status: 15, permissions: { ...details().permissions, canConsultantFinalSubmit: false, canCoFinalSubmit: true, canSendBack: true, canReject: true } }));
     await tab('Closing Meeting');
     expect(button('Send Back to Consultant')).toBeDefined();
-    button('Reject')!.click();
+    expect(button('Final Submit')).toBeDefined();
+    expect(button('Reject')).toBeUndefined();
+    button('Final Submit')!.click();
     await settle();
-    expect((button('REJECT') as HTMLInputElement).disabled).toBe(true);
+    expect((button('SUBMIT') as HTMLInputElement).disabled).toBe(true);
     el.querySelector<HTMLInputElement>('#milestoneConfirm')!.click();
     await settle();
-    button('REJECT')!.click();
+    button('SUBMIT')!.click();
     await settle();
-    http.expectOne(API + '/reject').flush({ message: 'Handholding rejected.' });
+    http.expectOne(API + '/final-submit').flush({ message: 'Milestone 1 completed.' });
     await settle();
-    http.expectOne(API).flush(details({ status: 99 }));
+    http.expectOne(API).flush(details({ status: 16 }));
     await settle();
   });
 
+  it('lets the CO edit the consultant final comments in its review (status 15)', async () => {
+    const closing = { id: 8, ncCount: 1, comments: 'Closed', photos: [], participants: [], editable: false };
+    const co = details({
+      party: 'Co', status: 15, closeMeetings: [closing],
+      milestones: [{ NcCount: 1, CertificationStatus: 15, PUnitName: 'ACME', SaAssessorRemarks: 'Milestone done' }],
+      permissions: { ...details().permissions, canConsultantFinalSubmit: false, canCoFinalSubmit: true, canSendBack: true, canEditFinalComments: true },
+    });
+    await open(co);
+    await tab('Closing Meeting');
+    expect(el.textContent).toContain('Consultant Final Comments :');
+    button('Edit Remarks')!.click();
+    await settle();
+    expect(el.querySelector<HTMLTextAreaElement>('#milestoneDialogText')!.value).toBe('Milestone done');
+    expect(el.querySelector<HTMLTextAreaElement>('#milestoneDialogText')!.maxLength).toBe(2000);
+    type('#milestoneDialogText', 'Milestone done and reviewed');
+    await settle();
+    button('UPDATE')!.click();
+    await settle();
+    const req = http.expectOne(API + '/final-comments');
+    expect(req.request.body).toEqual({ remarks: 'Milestone done and reviewed' });
+    req.flush({ message: 'Remarks updated.' });
+    await settle();
+    http.expectOne(API).flush(co);
+    await settle();
+    expect(el.textContent).toContain('Remarks updated.');
+  });
+
   it('shows no edit buttons to a viewer', async () => {
-    const perms = { canEdit: false, editableFields: [], canEditBullets: false, canConsultantFinalSubmit: false, canCoFinalSubmit: false, canSendBack: false, canReject: false };
+    const perms = {
+      canEdit: false, editableFields: [], canEditBullets: false, canConsultantFinalSubmit: false, canCoFinalSubmit: false, canSendBack: false, canReject: false,
+      canEditFinalComments: false,
+    };
     await open(details({ party: 'Viewer', permissions: perms, requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '1', Editable: false, Photos: [] }], bullets: [] }));
     await tab('Parameters');
     await expand('Leadership');
@@ -223,6 +258,7 @@ describe('MilestoneDetailsPage', () => {
     expect(button('Add More')).toBeUndefined();
     await tab('Closing Meeting');
     expect(button('Final Submit')).toBeUndefined();
+    expect(button('Edit Remarks')).toBeUndefined();
   });
 
   it('shows the overview per milestone and the locations', async () => {

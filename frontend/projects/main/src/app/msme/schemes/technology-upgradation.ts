@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
+import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
 import {
   SchemeAccount, SchemeDocument, SchemesApi, TuPage, TuTechnology, TuTechnologySubmission, inr, toInputDate, todayIso, uploadProblem,
@@ -26,7 +28,7 @@ type TechnologyForm = Omit<TuTechnologySubmission, 'documents'>;
  */
 @Component({
   selector: 'zed-msme-technology-upgradation',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog],
   templateUrl: './technology-upgradation.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -39,8 +41,8 @@ export class TechnologyUpgradationPage {
   protected readonly docTypes = TU_DOCUMENTS;
   protected readonly loading = signal(true);
   protected readonly busy = signal(false);
-  protected readonly error = signal('');
-  protected readonly notice = signal('');
+  /** Error pop-up (the legacy swal). */
+  protected readonly alert = signal<AlertMessage | null>(null);
   protected readonly page = signal<TuPage | null>(null);
   protected readonly step = signal<Step>(1);
   protected readonly confirmed = signal(false);
@@ -50,6 +52,7 @@ export class TechnologyUpgradationPage {
   protected readonly chequeDocs = signal<SchemeDocument[]>([]);
   protected readonly today = todayIso();
   protected readonly inr = inr;
+  protected readonly fieldError = fieldError;
 
   protected readonly unit = computed(() => this.page()?.unit ?? {});
   protected readonly technologies = computed(() => this.page()?.technologies ?? []);
@@ -65,7 +68,6 @@ export class TechnologyUpgradationPage {
   }
 
   protected go(step: Step): void {
-    this.error.set('');
     this.step.set(step);
     window.scrollTo?.(0, 0);
   }
@@ -97,16 +99,15 @@ export class TechnologyUpgradationPage {
   protected async upload(target: 'tech' | 'cheque', type: string, file: File): Promise<void> {
     const problem = uploadProblem(file);
     if (problem) {
-      this.error.set(problem);
+      this.alert.set(errorAlert(problem));
       return;
     }
     this.busy.set(true);
-    this.error.set('');
     try {
       const doc = await firstValueFrom(this.api.upload('tu', type, file));
       (target === 'tech' ? this.techDocs : this.chequeDocs).update((list) => [...list, doc]);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.busy.set(false);
     }
@@ -122,25 +123,23 @@ export class TechnologyUpgradationPage {
     const f = this.tech;
     const required = [f.nameOfTheManufaturer, f.makeOrModelName, f.dateOfPurchase, f.agencyOrSupplier, f.invoiceNo, f.invoiceBillDate, f.modeOfPayment];
     if (required.some((v) => !String(v ?? '').trim()) || !f.amountPaid) {
-      this.error.set('Please enter required data.');
+      this.alert.set(errorAlert('Please enter required data.'));
       return;
     }
     if (!this.docs(this.techDocs(), TU_DOCUMENTS.purchased).length || !this.docs(this.techDocs(), TU_DOCUMENTS.invoice).length) {
-      this.error.set('Please upload the required documents.');
+      this.alert.set(errorAlert('Please upload the required documents.'));
       return;
     }
     this.busy.set(true);
-    this.error.set('');
     try {
       await firstValueFrom(this.api.submitTechnology(t.code, {
         ...f,
         documents: this.techDocs().map((d) => ({ fileName: d.fileName, type: d.type ?? '' })),
       }));
       this.page.set(await firstValueFrom(this.api.tuPage()));
-      this.notice.set(`${t.name}: details submitted.`);
       this.go('list');
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.busy.set(false);
     }
@@ -149,27 +148,26 @@ export class TechnologyUpgradationPage {
   protected async submit(): Promise<void> {
     const a = this.account;
     if (![a.accountNo, a.confirmAccountNo, a.ifscCode, a.branchAddress, a.bankName].every((v) => v.trim())) {
-      this.error.set('Please enter required data.');
+      this.alert.set(errorAlert('Please enter required data.'));
       return;
     }
     if (a.accountNo.trim() !== a.confirmAccountNo.trim()) {
-      this.error.set('Account Number and Re-Enter Account Number must match.');
+      this.alert.set(errorAlert('Account Number and Re-Enter Account Number must match.'));
       return;
     }
     if (!/^[A-Za-z]{4}0[A-Za-z0-9]{6}$/.test(a.ifscCode.trim())) {
-      this.error.set('Invalid IFSC code format.');
+      this.alert.set(errorAlert('Invalid IFSC code format.'));
       return;
     }
     if (!this.chequeDocs().length) {
-      this.error.set('Please upload the required documents.');
+      this.alert.set(errorAlert('Please upload the required documents.'));
       return;
     }
     if (!this.declaration) {
-      this.error.set('Please accept the declaration.');
+      this.alert.set(errorAlert('Please accept the declaration.'));
       return;
     }
     this.busy.set(true);
-    this.error.set('');
     try {
       await firstValueFrom(this.api.submitTu({
         account: a,
@@ -178,7 +176,7 @@ export class TechnologyUpgradationPage {
       }));
       this.go('done');
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.busy.set(false);
     }
@@ -186,11 +184,10 @@ export class TechnologyUpgradationPage {
 
   protected async load(): Promise<void> {
     this.loading.set(true);
-    this.error.set('');
     try {
       this.page.set(await firstValueFrom(this.api.tuPage()));
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.alert.set(errorAlert(apiErrorMessage(err)));
     } finally {
       this.loading.set(false);
     }

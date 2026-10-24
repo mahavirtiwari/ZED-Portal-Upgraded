@@ -37,8 +37,9 @@ describe('HandholdingPage', () => {
   const find = (selector: string, label: string) =>
     [...el.querySelectorAll(selector)].find((b) => b.textContent!.trim().startsWith(label)) as HTMLElement | undefined;
 
-  async function open(data: HandholdingSummary = summary()) {
+  async function open(data: HandholdingSummary = summary(), levelParam?: string) {
     fixture = TestBed.createComponent(HandholdingPage);
+    if (levelParam !== undefined) fixture.componentRef.setInput('level', levelParam);
     el = fixture.nativeElement;
     await settled();
     http.expectOne(API).flush(data);
@@ -84,6 +85,17 @@ describe('HandholdingPage', () => {
     expect(applies.map((b) => b.disabled)).toEqual([false, true]);   // milestone 2 can be paid, milestone 3 not yet
     applies[0].click();
     expect(navigate).toHaveBeenCalledWith(['/msme/handholding', 'Silver', 'payment']);
+  });
+
+  it('opens the milestones of the level in ?level= (BACK of the payment page)', async () => {
+    await open(summary(), 'silver');
+    expect(el.textContent).toContain('Milestone 1: Baseline Diagnostic Study and Handholding Action Plan');
+    expect(el.textContent).not.toContain('HANDHOLDING FOR SILVER LEVEL');
+  });
+
+  it('ignores ?level= for a disabled level', async () => {
+    await open(summary(), 'Gold');
+    expect(el.textContent).toContain('HANDHOLDING FOR GOLD LEVEL');
   });
 
   it('shows the details pop-up for an unpaid level and the information pop-ups', async () => {

@@ -19,8 +19,9 @@ function emptyAgency(): AgencyRequest {
 /**
  * Add / update an assessment agency (MasterAdmin). Port of Views/User/CertificationBodies.cshtml.
  * The role and the creating user are decided by the API; the generated password is e-mailed to the SPOC.
- * Consultancy build: a Consultant Organisation (Handholding Support / Technology Upgradation), no organising partner,
- * and with Technology Upgradation the applicable state and districts it is auto-allotted TU applications from.
+ * Consultancy build: a Consultant Organisation (Handholding Support or Technology Intervention, not both; no Desktop
+ * Verification), no organising partner, and with Technology Intervention the applicable state and districts it is
+ * auto-allotted TU applications from.
  */
 @Component({
   selector: 'zed-staff-agency-form',
@@ -106,6 +107,32 @@ export class AgencyFormPage {
       this.districts.set(list.map((d) => ({ value: d.districtCode, label: d.districtName })));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
+    }
+  }
+
+  /** Consultancy: Handholding Support (site) and Technology Intervention (financial) exclude each other, as the old form's script. */
+  protected siteLocked(): boolean {
+    return this.consultancy && this.model.financialVerification && !this.model.siteVerification;
+  }
+
+  protected financialLocked(): boolean {
+    return this.consultancy && this.model.siteVerification && !this.model.financialVerification;
+  }
+
+  protected setSiteVerification(on: boolean): void {
+    this.model.siteVerification = on;
+    if (on && this.consultancy && this.model.financialVerification) void this.setFinancialVerification(false);
+  }
+
+  protected async setFinancialVerification(on: boolean): Promise<void> {
+    this.model.financialVerification = on;
+    if (!this.consultancy) return;
+    if (on) {
+      this.model.siteVerification = false;
+    } else {
+      // As the old script: unticking clears the applicable state and districts.
+      this.model.tuPreferredState = '';
+      await this.loadDistricts('', true);
     }
   }
 

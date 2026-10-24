@@ -62,6 +62,10 @@ public sealed class MilestoneReviewTests : IDisposable
             _ => [],
         };
 
+        // The consultant's final comments of milestone 1 (AssessorComments row 61).
+        q[MilestoneFields.FinalCommentsSql] = args => FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "NcCount") == "1"
+            ? [new { Id = 61L, NcCount = 1 }] : [];
+
         _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
             [new { ZedId = Zed, Certification = "Silver", NcCount = 1, CertificationStatus = _status, PUnitName = "ACME", Password = "secret", BdsFromDate = "May 1, 2025", CoAssessorName = "CO-CONSULTANT" }],
             [], [],
@@ -315,6 +319,33 @@ public sealed class MilestoneReviewTests : IDisposable
         var admin = await As("MADMIN", UserRole.MasterAdmin);
         Assert.Equal(HttpStatusCode.Forbidden, (await admin.PostAsJsonAsync(Base + "/meetings/1/remarks", new { remarks = "x" })).StatusCode);
         Assert.Equal(3, CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS").Count());
+    }
+
+    [Fact]
+    public async Task The_co_edits_the_consultants_final_comments_at_15_only()
+    {
+        var co = await As(Co, UserRole.Agency);
+        Assert.Equal(HttpStatusCode.Forbidden, (await co.PostAsJsonAsync(Base + "/final-comments", new { remarks = "x" })).StatusCode);
+        Assert.False((await co.GetFromJsonAsync<JsonElement>(Base)).GetProperty("permissions").GetProperty("canEditFinalComments").GetBoolean());
+
+        _status = 15;
+        Assert.True((await co.GetFromJsonAsync<JsonElement>(Base)).GetProperty("permissions").GetProperty("canEditFinalComments").GetBoolean());
+        Assert.Equal(HttpStatusCode.BadRequest, (await co.PostAsJsonAsync(Base + "/final-comments", new { remarks = " " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await co.PostAsJsonAsync(Base + "/final-comments", new { remarks = new string('x', 2001) })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await co.PostAsJsonAsync(Base + "/final-comments", new { remarks = " Reviewed and corrected " })).StatusCode);
+        var call = CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS").Single();
+        Assert.Equal("AssessorComments", FakeSql.Arg(call, "TableName"));
+        Assert.Equal("61", FakeSql.Arg(call, "Id"));
+        Assert.Equal("Reviewed and corrected", FakeSql.Arg(call, "Remarks"));
+        Assert.Equal(Zed, FakeSql.Arg(call, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(call, "CertificationType"));
+
+        // Not the consultants', not the master admin's; nothing to edit when the milestone has no final comments.
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await As(Lead)).PostAsJsonAsync(Base + "/final-comments", new { remarks = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await As("MADMIN", UserRole.MasterAdmin)).PostAsJsonAsync(Base + "/final-comments", new { remarks = "x" })).StatusCode);
+        _milestone = 2;
+        Assert.Equal(HttpStatusCode.NotFound, (await co.PostAsJsonAsync(Base + "/final-comments", new { remarks = "x" })).StatusCode);
+        Assert.Single(CallsTo("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS"));
     }
 
     // ------------------------------------------------------------------ consultant final submit

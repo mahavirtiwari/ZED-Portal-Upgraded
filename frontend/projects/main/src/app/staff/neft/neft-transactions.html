@@ -30,6 +30,20 @@
                     <th>Comments</th>
                   }
                 </tr>
+              } @else if (list === 'rejected') {
+                <!-- Frontend/Neft/RejectedTransactions.cshtml -->
+                <tr>
+                  <th>ZED ID</th>
+                  <th>EnterpriseName</th>
+                  <th>UAM/ Udyam Number</th>
+                  <th>TotalEmp</th>
+                  <th>Gender and Social category</th>
+                  <th>Coupon</th>
+                  <th>GSTIN/ TAN Number</th>
+                  <th>Amount Paid</th>
+                  <th>UTR Number</th>
+                  <th>Reason for Rejection</th>
+                </tr>
               } @else {
                 <tr>
                   @if (list === 'new') {
@@ -80,6 +94,19 @@
                       <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
                       <td>{{ t.Comments }}</td>
                     }
+                  </tr>
+                } @else if (list === 'rejected') {
+                  <tr>
+                    <td>{{ t.ZedId }}</td>
+                    <td>{{ t.EnterpriseName }}</td>
+                    <td>{{ t.UdyogAadharNo }}</td>
+                    <td>{{ t.TotalEmp }}</td>
+                    <td>{{ t.Gender }}<br />{{ t.SocialCategoryName }}</td>
+                    <td>{{ t.IsCouponUsed ? 'Yes' : '' }}</td>
+                    <td>{{ t.GstinNumber }} {{ t.TanNumber }}</td>
+                    <td>{{ t.AmountPaid }}</td>
+                    <td>{{ t.UtrNumber }}</td>
+                    <td>{{ t.Comments }}</td>
                   </tr>
                 } @else {
                   <tr>

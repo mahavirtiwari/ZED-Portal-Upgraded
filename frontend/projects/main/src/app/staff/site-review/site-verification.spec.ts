@@ -15,12 +15,14 @@ describe('SiteVerificationPage', () => {
     const http = TestBed.inject(HttpTestingController);
     fixture.detectChanges();
     http.expectOne('/api/staff/site-review/site-verification').flush({
-      rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Gold', CertificationBodyUserId: 'AGENCYSV', EnterpriseName: 'Acme', UnitAddress: 'Plot 4', StateName: 'Delhi' }],
+      rows: [{ ZedId: 'ZEDMSME000001', Certification: 'Gold', CertificationBodyUserId: 'AGENCYSV', AssessorName: 'A Assessor', EnterpriseName: 'Acme', UnitAddress: 'Plot 4', StateName: 'Delhi' }],
     });
     await fixture.whenStable();
     fixture.detectChanges();
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Acme');
+    // Assessment Agency cell: agency id, line break, assessor name (SiteVerification.cshtml).
+    expect(el.querySelectorAll('tbody td')[4].innerHTML).toMatch(/AGENCYSV<br>A Assessor/);
     expect(el.querySelector('a')!.getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Gold');
     http.verify();
   });

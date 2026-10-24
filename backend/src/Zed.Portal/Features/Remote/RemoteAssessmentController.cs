@@ -81,7 +81,12 @@ public sealed class RemoteAssessmentController(
         "SaManufacturingCapacityUnits", "SaManufacturingCapacityValue", "SaMonthlyUtilizationUnits", "SaMonthlyUtilizationValue",
     ];
 
-    private static readonly string[] ProductFields = ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks"];
+    /// <summary>Surveillance overview: "Surveillance Assessor Name" (the lead assessor; SiteAssessorName is Users.UserName).</summary>
+    private static readonly string[] SurveillanceMsmeFields = ["SiteAssessorId", "SiteAssessorName"];
+
+    /// <summary>ProductDescOpenedTime: the description was opened (SP_ASSESSMENT_DA_UPDATE_TIMESTAMP), the PDF icon turns blue.</summary>
+    private static readonly string[] ProductFields =
+        ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks", "ProductDescOpenedTime"];
     private static readonly string[] RawMaterialFields = ["ModeOfAssessment", "RawMaterialName", "Percentage", "CountryName"];
     private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "iButton", "IsAssessmentExcempted", "OfiComments"];
     private static readonly string[] RequirementFields = ["Id", "SectionCode", "RequirementCode", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks"];
@@ -203,10 +208,9 @@ public sealed class RemoteAssessmentController(
                 ? new Meeting(id, NullIfEmpty(m.Text("Comments")), Pick(sa[participantSet], ["Name", "Designation"]), Photos(sa[photoSet]))
                 : null;
 
-        var lat = da[9].FirstOrDefault();
         return new RemoteDetails(
             zedId, level!,
-            Pick(main, MsmeFields),
+            Pick(main, MeetingMode ? [.. MsmeFields, .. SurveillanceMsmeFields] : MsmeFields),
             products,
             Pick(da[2], RawMaterialFields),
             Pick(da[3], SectionFields),
@@ -215,7 +219,7 @@ public sealed class RemoteAssessmentController(
             Pick(da[6], SubOptionFields),
             evidences,
             daPhotos,
-            lat is null ? null : Pick(lat, ["Latitude", "Longitude"]),
+            LocationOf(da),
             Photos(sa[0]),
             Photos(sa[6]),
             MeetingOf(1, 2, 5),
@@ -260,6 +264,23 @@ public sealed class RemoteAssessmentController(
         Response.Headers.CacheControl = "private, no-store";
         Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("inline") { FileNameStar = fileName }.ToString();
         return PhysicalFile(fullPath, contentType, enableRangeProcessing: true);
+    }
+
+    /// <summary>
+    /// Set 9 of SP_ASSESSMENT_DA_DETAILS: Latitude/Longitude (Main, and Surveillance units allotted in remote mode) or, for an
+    /// on-site Silver/Gold surveillance, SurLatitude/SurLongitude of its site-tour photo. Surveillance adds set 22, the location
+    /// of the original ZED site assessment (ZedSaLatitude/ZedSaLongitude, from main), as the old page's Table22.
+    /// </summary>
+    private Dictionary<string, object?>? LocationOf(ResultSets da)
+    {
+        var lat = da[9].FirstOrDefault();
+        if (!MeetingMode) return lat is null ? null : Pick(lat, ["Latitude", "Longitude"]);
+        var zed = da[22].FirstOrDefault();
+        if (lat is null && zed is null) return null;
+        Dictionary<string, object?> location = lat is null ? [] : Pick(lat, ["Latitude", "Longitude", "SurLatitude", "SurLongitude"]);
+        if (zed is not null)
+            foreach (var (k, v) in Pick(zed, ["ZedSaLatitude", "ZedSaLongitude"])) location[k] = v;
+        return location;
     }
 
     // ======================================================================== video
@@ -746,12 +767,30 @@ public sealed class RemoteAssessmentController(
         return (level, record, null);
     }
 
+    private bool ModeAllowed(string? mode) => ModeAllowed(mode, host.System);
+
     /// <summary>Main: units allotted in remote mode. Surveillance: also "Onsite Assessment" (what its allotment stores; shown as Remote).</summary>
-    private bool ModeAllowed(string? mode)
+    private static bool ModeAllowed(string? mode, PortalSystem system)
     {
         var m = mode?.Trim();
         return string.Equals(m, RemoteMode, StringComparison.OrdinalIgnoreCase) ||
-               (MeetingMode && string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase));
+               (system == PortalSystem.Surveillance && string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The certification level when <paramref name="userId"/> is the lead assessor of the unit's open remote assessment
+    /// (the checks of <see cref="ForAssessor"/>), else null. Used by the desktop assessment's "opened" call, which this page
+    /// makes for evidences as the old page did (<see cref="DesktopAssessmentController.Opened"/>).
+    /// </summary>
+    public static async Task<string?> LeadOfOpenAssessmentAsync(
+        ISqlExecutor db, PortalSystem system, string userId, string zedId, string certification, CancellationToken ct)
+    {
+        var level = Level(certification);
+        if (!AssessmentInput.IsId(zedId) || level is null) return null;
+        var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
+            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
+        return record is not null && ModeAllowed(record.ModeOfAssessment, system) && Is(record.SiteAssessorId, userId) && IsOpen(record)
+            ? level : null;
     }
 
     private ObjectResult Forbidden(string message) => Problem(title: message, statusCode: StatusCodes.Status403Forbidden);

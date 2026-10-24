@@ -117,7 +117,22 @@ describe('FaVerificationPage', () => {
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('less than 2 MB');
   });
 
-  it('submits the final decision only after confirmation', async () => {
+  it('lays out the expenditure rows and labels as the old page', async () => {
+    await create(StaffRole.Agency);
+    http.expectOne(base).flush([app({ canValidate: false, details: { VerificationStatus: 3, AmountPaid: '5000', EligibleAmount: '4000', AnyOtherInformation: 'None' } })]);
+    await settle();
+    const labels = [...el.querySelectorAll('td.w-50')].map((td) => td.textContent!.trim());
+    expect(labels).toContain('Any other information related to this certificate');
+    const ca = labels.indexOf('CA certificate of expenditure (Optional)');
+    expect(ca).toBeGreaterThan(-1);
+    expect(labels[ca + 1]).toBe('Invoice Copy');
+    const valueOf = (label: string) => [...el.querySelectorAll('tr')].find((tr) => tr.querySelector('td')?.textContent?.trim() === label)!
+      .querySelectorAll('td')[1].textContent!.trim();
+    expect(valueOf('Amount Paid(Rs.)')).toBe('Rs.5000');
+    expect(valueOf('Eligible Financial Assistance(Rs.)')).toBe('Rs.4000');
+  });
+
+  it('accepts straight away, as the old page did', async () => {
     await create(StaffRole.Agency);
     http.expectOne(base).flush([app({ canValidate: false, canDecide: true, canEditAccount: false, details: { VerificationStatus: 3, IsApproved: 1 } })]);
     await settle();
@@ -125,6 +140,25 @@ describe('FaVerificationPage', () => {
 
     button('ACCEPT')[0].click();
     await settle();
+    expect(el.querySelector('#decisionTitle')).toBeNull();
+    const req = http.expectOne(`${base}/Bronze/decision`);
+    expect(req.request.body).toEqual({ decision: 'approve', comments: '' });
+    req.flush({ message: 'Application approved.' });
+    await settle();
+    http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 4, IsApproved: 1 } })]);
+    await settle();
+    expect(el.textContent).toContain('ACCEPTED');
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Application approved.');
+  });
+
+  it('rejects only after the comments and the confirmation', async () => {
+    await create(StaffRole.DesktopAssessor);
+    http.expectOne(base).flush([app({ canValidate: false, canDecide: true, canEditAccount: false })]);
+    await settle();
+
+    button('REJECT')[0].click();
+    await settle();
+    expect(el.querySelector('#decisionTitle')!.textContent!.trim()).toBe('Confirm Final Submit');
     const submit = button('SUBMIT')[0] as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
     const confirm = el.querySelector('#faConfirm') as HTMLInputElement;
@@ -133,14 +167,21 @@ describe('FaVerificationPage', () => {
     await settle();
     (button('SUBMIT')[0] as HTMLButtonElement).click();
     await settle();
+    expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('enter the comments');
 
+    const comments = el.querySelector('#faComments') as HTMLTextAreaElement;
+    comments.value = 'Invoice does not match';
+    comments.dispatchEvent(new Event('input'));
+    await settle();
+    (button('SUBMIT')[0] as HTMLButtonElement).click();
+    await settle();
     const req = http.expectOne(`${base}/Bronze/decision`);
-    expect(req.request.body).toEqual({ decision: 'approve', comments: '' });
-    req.flush({ message: 'Application approved.' });
+    expect(req.request.body).toEqual({ decision: 'reject', comments: 'Invoice does not match' });
+    req.flush({ message: 'Application rejected.' });
     await settle();
-    http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 4, IsApproved: 1 } })]);
+    http.expectOne(base).flush([app({ canValidate: false, canDecide: false, details: { VerificationStatus: 5, IsApproved: 2 } })]);
     await settle();
-    expect(el.textContent).toContain('ACCEPTED');
+    expect(el.textContent).toContain('REJECTED');
   });
 
   it('edits the reimbursement account when allowed', async () => {

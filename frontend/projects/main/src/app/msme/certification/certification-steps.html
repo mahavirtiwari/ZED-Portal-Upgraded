@@ -37,7 +37,7 @@
     <div class="step-details">
       <h4>Avail Incentives</h4>
       <ul>
-        <li><a class="dash-text-clr f-w-700" [href]="incentiveUrl()" target="_blank" rel="noopener">Click here to view your Incentives</a></li>
+        <li><a class="dash-text-clr f-w-700" [href]="incentiveUrl()">Click here to view your Incentives</a></li>
       </ul>
     </div>
   </li>
@@ -114,7 +114,7 @@
           </ul>
         </div>
       </li>
-      <ng-container *ngTemplateOutlet="certified; context: { from: 2 }" />
+      <ng-container *ngTemplateOutlet="certified; context: { from: 3 }" />
     }
 
     @case ('milestone') {

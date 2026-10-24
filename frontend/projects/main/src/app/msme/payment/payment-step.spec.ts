@@ -73,8 +73,14 @@ describe('PaymentStep', () => {
   it('requires the options before calling the API', async () => {
     button('PROCEED TO PAY').click();
     await settle();
-    expect(el.textContent).toContain('Please enter required data.');
+    const dialog = el.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Error!');
+    expect(dialog.textContent).toContain('Please enter required data.');
     http.expectNone('/api/msme/payments/Bronze/checkout');
+
+    button('OK').click();
+    await settle();
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
   });
 
   it('asks for the PAN when the GSTIN belongs to another PAN, then checks out', async () => {
@@ -99,6 +105,7 @@ describe('PaymentStep', () => {
     expect(pan.request.body).toEqual({ certification: 'Bronze', gstin: '09PQRST6789K1Z2', pan: 'PQRST6789K' });
     pan.flush({ message: 'ok' });
     await settle();
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('PAN updated successfully. Proceeding...');
 
     const checkout = http.expectOne('/api/msme/payments/Bronze/checkout');
     expect(checkout.request.body.gstin).toBe('09PQRST6789K1Z2');
@@ -121,5 +128,31 @@ describe('PaymentStep', () => {
     req.flush({ status: 'paid' });
     await settle();
     expect(navigate).toHaveBeenCalledWith(['/msme/payment/result'], { queryParams: { status: 'success', certification: 'Bronze' } });
+  });
+});
+
+describe('PaymentStep without options', () => {
+  it('keeps BACK TO DASHBOARD when the fee summary cannot load', async () => {
+    await TestBed.configureTestingModule({
+      imports: [PaymentStep],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(PaymentStep);
+    fixture.componentRef.setInput('certification', 'Bronze');
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    let back = 0;
+    fixture.componentInstance.back.subscribe(() => back++);
+    fixture.detectChanges();
+    http.expectOne('/api/msme/payments/Bronze/options').flush({ title: 'Payment is not available.' }, { status: 400, statusText: 'Bad Request' });
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('Payment is not available.');
+    const backButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'BACK TO DASHBOARD') as HTMLButtonElement;
+    backButton.click();
+    expect(back).toBe(1);
+    http.verify();
   });
 });

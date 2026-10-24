@@ -8,7 +8,9 @@ import { RecommendationPage, TuApi } from './tu.api';
 /**
  * "Recommend / View Recommended Technologies" after Handholding milestone 3 (port of Frontend/Technology/Index.cshtml):
  * the unit's lead consultant selects 1 to 10 technologies, reviews the summary, confirms and submits once; the CO and
- * the master admin see the recommendation. Route: /staff/consultancy/technology/:zedId/:level
+ * the master admin see the recommendation. A fixed counter shows "Selected: n/10"; while the lead consultant cannot
+ * recommend (PreviousRecomInProgress and the other reasons the API gives) the list stays visible and the reason
+ * replaces PROCEED. Route: /staff/consultancy/technology/:zedId/:level
  */
 @Component({
   selector: 'zed-staff-technology-recommendation',
@@ -16,6 +18,8 @@ import { RecommendationPage, TuApi } from './tu.api';
   templateUrl: './technology-recommendation.html',
   styles: `
     table tbody tr td { font-size: 14px; }
+    .counter-block { position: fixed; top: 48%; right: 0; background-color: #b3e079; padding: 4px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; z-index: 10; }
+    .counter-block p { text-align: center; margin: 0; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

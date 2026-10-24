@@ -39,11 +39,8 @@ namespace Zed.Portal.Features.Consultancy.TechnologyUpgradation;
 [PortalSystems(PortalSystem.Consultancy)]
 public sealed partial class TuVerificationController(
     ISqlExecutor db,
-    IEmailSender email,
-    IHtmlTemplateRenderer templates,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
     IConfiguration config,
     ILogger<TuVerificationController> log) : StaffApiController
 {
@@ -64,10 +61,16 @@ public sealed partial class TuVerificationController(
         "TransactionStatus", "ApproverDateOfReceiptOfPayment", "ApproverReferenceNo", "ApproverAmount",
     ];
 
+    /// <summary>
+    /// The purchased technology's columns. The Bronze page shows the certificate the MSME obtained (CategoryOfCertificate ..
+    /// AnyOtherInformation, as the legacy page read them from the technology row; of these only AnyOtherInformation is a
+    /// TechnologyUpgradation column today, the others come back empty, as on the legacy page).
+    /// </summary>
     public static readonly string[] TechnologyColumns =
     [
         "TechnologyCode", "TechnologyName", "NameOfTheManufaturer", "MakeOrModelName", "DateOfPurchase", "AgencyOrSupplier",
         "InvoiceNo", "InvoiceBillDate", "MsmeAmountPaid", "AmountPaid", "ModeOfPayment",
+        "CategoryOfCertificate", "CertificationAgency", "CertficateNumber", "DateOfIssue", "ValidityOfCertificate", "AnyOtherInformation",
     ];
 
     public sealed record ScreenshotDto(int Id, string FileName, string Url);
@@ -298,12 +301,12 @@ public sealed partial class TuVerificationController(
 
     /// <summary>
     /// POST api/staff/consultancy/tu/{zedId}/{certification}/decision — SP_FINANCIAL_ASSISTANCE_FINAL_AUBMIT.
-    /// DFO: approve (2 → 3, TechUpgradeStatus 6) or reject (→ 5/7, MSME mailed). CO in QC: approve (3 → 4/8; the procedure
-    /// mails the MSME) or send back to the DFO (→ 2/9; the procedure resets the meeting and validations and mails the DFO).
-    /// Master admin: reject before the DFO's decision (→ 5/7).
+    /// CO in QC: approve (3 → 4/8; the procedure mails the MSME) or send back to the DFO (→ 2/9; the procedure resets the
+    /// meeting and validations and mails the DFO). Master admin: reject before the DFO's decision while no CO is set (→ 5/7).
+    /// The DFO decides from the consultant app (<see cref="TuAppController.FinalSubmit"/>), as on the legacy page.
     /// </summary>
     [HttpPost("{zedId}/{certification}/decision")]
-    [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor)]
+    [StaffRoles(UserRole.MasterAdmin, UserRole.Agency)]
     public async Task<ActionResult<MessageResponse>> Decide(string zedId, string certification, DecisionRequest req, CancellationToken ct)
     {
         var approve = req.Decision?.Trim().ToLowerInvariant() switch { "approve" => true, "reject" => false, _ => (bool?)null };
@@ -319,13 +322,7 @@ public sealed partial class TuVerificationController(
             (app, _) = await ViewableAsync(zedId, certification, ct);
             if (app is null) return NotFound();
             if (!app.CanDecide(user) || (approve.Value && !app.CanApprove(user)))
-            {
-                if (user.RoleId == (int)UserRole.DesktopAssessor && app.CanValidate(user))
-                    return this.Problem400(!app.MeetingDone
-                        ? "The opening meeting has not been submitted from the mobile application yet."
-                        : "Please validate all the documents first.");
                 return this.Problem400("This application is not pending your decision.");
-            }
 
             try
             {
@@ -349,20 +346,6 @@ public sealed partial class TuVerificationController(
                 approve.Value ? "approved" : "rejected", user.RoleName, UserId);
         }
 
-        // As the legacy action, the MSME is mailed of the DFO's rejection (the procedure mails the CO's decisions itself).
-        if (!approve.Value && user.RoleId == (int)UserRole.DesktopAssessor)
-        {
-            var mailer = new SchemeMailer(db, email, templates, portal, emailOptions, log);
-            var d = await mailer.DetailsAsync(app.ZedId, app.Certification, ct);
-            await mailer.SendAsync<ConsultancyTuRejectedEmail>(d?.Text("EmailId"),
-                $"Rejection of Application for Technology Upgradation – {app.ZedId}",
-                new()
-                {
-                    [nameof(ConsultancyTuRejectedEmail.ZedId)] = app.ZedId,
-                    [nameof(ConsultancyTuRejectedEmail.UnitName)] = d?.Text("PUnitName") is { Length: > 0 } p ? p : d?.Text("EnterpriseName") ?? "",
-                    [nameof(ConsultancyTuRejectedEmail.Reason)] = comments ?? "",
-                }, ct);
-        }
         return new MessageResponse(approve.Value ? "Application approved."
             : user.RoleId == (int)UserRole.Agency ? "Application sent back to the MSME-DFO officer." : "Application rejected.");
     }

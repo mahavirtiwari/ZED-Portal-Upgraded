@@ -164,7 +164,7 @@ export interface RemarksTarget {
   remarks: string;
 }
 
-/** "Agency Remarks" / "OFI Comments" pop-up of the old review pages. */
+/** "Agency Remarks" (desktop) / "Remarks" (site) / "OFI Comments" pop-up of the old review pages. */
 @Component({
   selector: 'zed-review-remarks',
   imports: [FormsModule],
@@ -175,12 +175,12 @@ export interface RemarksTarget {
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : 'Agency Remarks' }}</h3>
+                <h3 class="registration-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Agency Remarks' }}</h3>
                 <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closed.emit()"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
             <div class="modal-body">
-              <label for="reviewRemarksText"><strong>{{ tg.kind === 'ofi' ? 'OFI Comments' : 'Assessment Agency Final Remarks' }}<span style="color: red">*</span></strong></label>
+              <label for="reviewRemarksText"><strong>{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Assessment Agency Final Remarks' }}<span style="color: red">*</span></strong></label>
               <textarea id="reviewRemarksText" name="reviewRemarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px"
                 [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
@@ -200,6 +200,8 @@ export class ReviewRemarksDialog {
   readonly zedId = input.required<string>();
   readonly certification = input.required<string>();
   readonly target = input<RemarksTarget | null>(null);
+  /** The site assessment page titles the pop-up "Remarks" (SaDetails.cshtml #AgencyRemarks); the desktop page "Agency Remarks". */
+  readonly stage = input<'desktop' | 'site'>('desktop');
   readonly saved = output<string>();
   readonly closed = output<void>();
 

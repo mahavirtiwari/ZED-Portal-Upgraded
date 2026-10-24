@@ -57,10 +57,15 @@ public sealed partial class NeftController(
     public const int TransactionApproved = 1;
     public const int TransactionRejected = 2;
 
-    /// <summary>Columns shown on the three pages (the procedure returns Msme.* and FinancialAssistance.*).</summary>
+    /// <summary>
+    /// Columns shown on the three pages (the procedure returns Msme.*, MsmeBasicInformation's Udyog Aadhaar, employees,
+    /// gender and social category, and FinancialAssistance.*). The legacy Rejected page also had GSTIN / TAN / UTR columns;
+    /// those come from MsmePaymentInfo, which only the procedure's commented-out query joined, so they were always blank.
+    /// </summary>
     public static readonly string[] Columns =
     [
         "TransactionId", "ZedId", "PUnitName", "EnterpriseName", "StateName", "PStateName", "CertificationType",
+        "UdyogAadharNo", "TotalEmp", "Gender", "SocialCategoryName", "IsCouponUsed",
         "CategoryOfCertificate", "NameOfCertficate", "CertificationAgency", "CertficateNumber", "DateOfIssue", "ValidityOfCertificate",
         "ExpenditureCertficate", "AgencyOrSupplier", "InvoiceNo", "InvoiceBillDate", "AmountPaid", "EligibleAmount", "ModeOfPayment",
         "AccountNo", "IfscCode", "BranchAddress", "BankName", "VerificationStatus", "TransactionStatus",

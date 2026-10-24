@@ -16,8 +16,8 @@ interface Dialog {
 
 /**
  * The signed-in agency's assessors. Port of Views/User/Assessors.cshtml: block (with reason), unblock
- * (not offered while the certificate is attached to another active Bronze Assessor), edit, and the
- * mobile number change the old ResetMobileNo action provided without a page.
+ * (on main not offered while the certificate is attached to another active Bronze Assessor; on consultancy always),
+ * edit, and the mobile number change the old ResetMobileNo action provided without a page.
  */
 @Component({
   selector: 'zed-staff-my-assessors',
@@ -91,10 +91,12 @@ interface Dialog {
                       <td class="text-center">
                         @if (u.IsActive) {
                           <button type="button" class="btn btn-default" style="width: 100px" [disabled]="saving()" (click)="open('block', u)">Block</button><br />
-                        } @else if (u.IsCertAttached === 0) {
+                        } @else if (consultancy || u.IsCertAttached === 0) {
+                          <!-- Consultancy: UnBlock for every blocked user, as on the old page (no Bronze certificate rule there). -->
                           <button type="button" class="btn btn-primary" style="width: 100px" [disabled]="saving()" (click)="unblock(u)">UnBlock</button><br />
                         }
                         <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
+                        <!-- V4 addition (not on the old consultancy list): Mobile No and Reset Link. -->
                         <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', u)">Mobile No</button>
                         @if (u.IsActive) {
                           <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(u)">Reset Link</button>

@@ -14,7 +14,7 @@ import { PagedView, PagerComponent } from '../pager';
  * Surveillance build: units allotted as "Onsite Assessment" are held on the agency's meeting link, so their ASSESS
  * opens the remote screen (mode shown as Remote, "Surveillance Date"), as on the old surveillance list.
  * Consultancy build: "Milestone n" lists (route parameter `milestone`, 1-3; old RemoteAssessments/{n}) of the
- * consultant's units with the BDS/HAP dates; VIEW DETAILS opens the milestone review page.
+ * consultant's units with the BDS/HAP dates; View Profile opens the unit's profile and VIEW DETAILS the milestone review page.
  * </p>
  */
 @Component({
@@ -51,7 +51,7 @@ import { PagedView, PagerComponent } from '../pager';
               <tbody>
                 @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                   <tr>
-                    <td>{{ s['Certification'] }}<br /><small>{{ s['ConsultantRole'] }}</small></td>
+                    <td>{{ s['Certification'] }}</td>
                     <td>
                       <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
                       <strong>{{ s['EnterpriseName'] }}</strong><br />
@@ -65,6 +65,7 @@ import { PagedView, PagerComponent } from '../pager';
                       <td>{{ s['BdsToDate'] }}</td>
                     }
                     <td>
+                      <a style="width: 150px" class="btn btn-primary mb-2 profile" [routerLink]="['/staff/msme-profile', s['ZedId']]">View Profile</a>
                       <a class="btn btn-primary btn-xs details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
                     </td>
                   </tr>
@@ -93,10 +94,15 @@ import { PagedView, PagerComponent } from '../pager';
                 @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
                   <tr>
                     <td>
-                      @if (s['ModeOfAssessment'] === 'Onsite Assessment' && !surveillance) {
+                      @if (surveillance) {
+                        <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
+                        @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
+                          <a class="btn btn-primary btn-xs assess" [routerLink]="remoteLink(s)">ASSESS</a>
+                        }
+                      } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
                         <a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
-                      } @else if (s['ModeOfAssessment'] === 'Remote Assessment' || (surveillance && s['ModeOfAssessment'] === 'Onsite Assessment')) {
-                        <a class="btn btn-primary btn-xs assess" [href]="remoteLink(s)">ASSESS</a>
+                      } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
+                        <a class="btn btn-primary btn-xs assess" [routerLink]="remoteLink(s)">ASSESS</a>
                       }
                     </td>
                     <td>{{ s['Certification'] }}</td>
@@ -181,8 +187,8 @@ export class RemoteAssessmentsPage {
     return s['ModeOfAssessment'] === 'Remote Assessment' ? 'Remote' : s['ModeOfAssessment'] === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
   }
 
-  protected remoteLink(s: Row): string {
-    return `/staff/remote/${encodeURIComponent(String(s['ZedId'] ?? ''))}/${encodeURIComponent(String(s['Certification'] ?? ''))}`;
+  protected remoteLink(s: Row): string[] {
+    return ['/staff/remote', String(s['ZedId'] ?? ''), String(s['Certification'] ?? '')];
   }
 
   protected reviewLink(s: Row): string {

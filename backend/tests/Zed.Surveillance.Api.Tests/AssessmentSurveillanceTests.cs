@@ -172,11 +172,13 @@ public sealed class AssessmentSurveillanceTests : IDisposable
     public async Task Monitoring_hides_re_allot_and_returns_surveillance_columns()
     {
         _s.Sql.Procs["SP_MONITORING_GET_LIST"] = args => FakeSql.Sets(
-            [new { ZedId = Zed, Certification = "Silver", CertificationStatus = 8, SurveillanceNo = "1st Surveillance", SameUdyamAddress = 2 }],
+            [new { ZedId = Zed, Certification = "Silver", CertificationStatus = 8, SurveillanceNo = "1st Surveillance", SameUdyamAddress = 2,
+                   DocVerifiAllot = "October 1, 2026" }],
             [new { NotStarted = 1, InProgress = 0, Qc = 0, Nc = 0, Rj = 0 }]);
         var client = await _s.SignInAsync("MADMIN", 7);
         var row = (await client.GetFromJsonAsync<JsonElement>("/api/staff/monitoring?certification=Silver&status=2")).GetProperty("units")[0];
         Assert.Equal("1st Surveillance", row.GetProperty("SurveillanceNo").GetString());
+        Assert.Equal("October 1, 2026", row.GetProperty("DocVerifiAllot").GetString());
         Assert.False(row.TryGetProperty("SameUdyamAddress", out _));
 
         var res = await client.PostAsJsonAsync("/api/staff/monitoring/send-back-to-agency", new { zedId = Zed, certification = "Silver" });

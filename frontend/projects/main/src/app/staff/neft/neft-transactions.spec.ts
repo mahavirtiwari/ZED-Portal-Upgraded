@@ -113,6 +113,26 @@ describe('NeftTransactionsPage', () => {
     expect(button('Approve')).toBeUndefined();
   });
 
+  it('shows rejected transactions with the columns of the old Rejected Transaction page', async () => {
+    await create('rejected');
+    http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({
+      transactions: [tx(15, {
+        EnterpriseName: 'Acme', UdyogAadharNo: 'UDYAM-UP-01', TotalEmp: 12, Gender: 'Male', SocialCategoryName: 'General', IsCouponUsed: true,
+        GstinNumber: '09ABCDE1234F1Z5', TanNumber: 'DELA12345B', UtrNumber: 'UTR42', Comments: 'Bank details mismatch',
+      })],
+    });
+    await settle();
+    expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual([
+      'ZED ID', 'EnterpriseName', 'UAM/ Udyam Number', 'TotalEmp', 'Gender and Social category', 'Coupon', 'GSTIN/ TAN Number', 'Amount Paid',
+      'UTR Number', 'Reason for Rejection',
+    ]);
+    const cells = [...el.querySelectorAll('tbody td')].map((td) => td.textContent!.replace(/\s+/g, ' ').trim());
+    expect(cells).toEqual([
+      'ZEDMSME000015', 'Acme', 'UDYAM-UP-01', '12', 'MaleGeneral', 'Yes', '09ABCDE1234F1Z5 DELA12345B', '50000', 'UTR42', 'Bank details mismatch',
+    ]);
+    expect(button('Approve')).toBeUndefined();
+  });
+
   it('shows "No Data" and API errors', async () => {
     await create('rejected');
     http.expectOne((r) => r.url === '/api/staff/neft/transactions').flush({ title: 'Failed' }, { status: 500, statusText: 'Error' });

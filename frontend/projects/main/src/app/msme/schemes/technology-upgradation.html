@@ -1,12 +1,5 @@
 <div class="container form-page financial-assistance" id="zed_user_form">
   <div class="mt-4">
-    @if (error()) {
-      <div class="alert alert-danger alert-dismissible" role="alert">
-        {{ error() }}
-        <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
-      </div>
-    }
-
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
         <div class="row">
@@ -62,8 +55,7 @@
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9">
-                @if (notice()) { <div class="alert alert-success" role="status">{{ notice() }}</div> }
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">List of Technologies ({{ p.certification }})</div></div></div>
+                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">List of Technologies</div></div></div>
                 <div class="card card-default m-b-0">
                   <div class="card-body">
                     <label class="col-sm-12 p-l-0">Select one or more technologies</label>
@@ -101,39 +93,43 @@
               <div class="row">
                 <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
                 <div class="col-sm-9">
-                  <form class="form-horizontal" id="tuTechnologyForm" (ngSubmit)="saveTechnology()">
+                  <form class="form-horizontal" id="tuTechnologyForm" #techForm="ngForm" (ngSubmit)="saveTechnology()">
                     <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Technology Details</div></div></div>
-                    <div class="card card-default m-b-0"><div class="card-body"><b>{{ t.sNo }}. {{ t.name }}</b>@if (t.description) { <p class="mb-0">{{ t.description }}</p> }</div></div>
+                    <div class="card card-default m-b-0"><div class="card-body"><b>{{ t.sNo }}. {{ t.name }}</b></div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuMaker">Name of Manufacturer <span style="color: red;">*</span></label>
                       <input id="tuMaker" name="NameOfTheManufaturer" class="form-control" maxlength="500" required [(ngModel)]="tech.nameOfTheManufaturer" />
+                      @if (fieldError(techForm, 'NameOfTheManufaturer')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuModel">Make / Model Name <span style="color: red;">*</span></label>
                       <input id="tuModel" name="MakeOrModelName" class="form-control" maxlength="500" required [(ngModel)]="tech.makeOrModelName" />
+                      @if (fieldError(techForm, 'MakeOrModelName')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuPurchase">Date of Purchase <span style="color: red;">*</span></label>
                       <input id="tuPurchase" name="DateOfPurchase" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.dateOfPurchase" />
+                      @if (fieldError(techForm, 'DateOfPurchase')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuSupplier">Name of Agency/Supplier <span style="color: red;">*</span></label>
                       <input id="tuSupplier" name="AgencyOrSupplier" class="form-control" maxlength="200" required [(ngModel)]="tech.agencyOrSupplier" />
+                      @if (fieldError(techForm, 'AgencyOrSupplier')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuInvoice">Invoice/Bill No. <span style="color: red;">*</span></label>
                       <input id="tuInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="tech.invoiceNo" />
+                      @if (fieldError(techForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuInvoiceDate">Invoice/Bill Date <span style="color: red;">*</span></label>
                       <input id="tuInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.invoiceBillDate" />
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0">Eligible Technology Support: {{ t.eligibleSubsidyPer }}% of invoice amount and max. up to 3,00,000 only</label>
+                      @if (fieldError(techForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuAmount">Amount Paid (Rs.) <span style="color: red;">*</span></label>
                       <input id="tuAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="tech.amountPaid" />
+                      @if (fieldError(techForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <div class="card card-default m-b-0"><div class="card-body">
                       <label class="col-sm-12 p-l-0" for="tuMode">Mode of Payment <span style="color: red;">*</span></label>
@@ -142,6 +138,7 @@
                         <option value="Offline">Offline</option>
                         <option value="Online">Online</option>
                       </select>
+                      @if (fieldError(techForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
                     </div></div>
                     <zed-scheme-document label="Picture of Purchased Technology" inputId="tuDocPurchased" [required]="true" [busy]="busy()"
                       [documents]="docs(techDocs(), docTypes.purchased)" (pick)="upload('tech', docTypes.purchased, $event)" (remove)="remove('tech', $event)" />
@@ -186,30 +183,37 @@
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9">
-                <form class="form-horizontal" id="tuAccountForm" (ngSubmit)="submit()">
+                <form class="form-horizontal" id="tuAccountForm" #accountForm="ngForm" (ngSubmit)="submit()">
                   <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Account Details of Reimbursement</div></div></div>
                   <div class="card card-default m-b-0"><div class="card-body">
                     <label class="col-sm-12 p-l-0" for="tuAccount">Account No.<span style="color: red;">*</span></label>
                     <input id="tuAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.accountNo" />
+                    @if (fieldError(accountForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
                   </div></div>
                   <div class="card card-default m-b-0"><div class="card-body">
                     <label class="col-sm-12 p-l-0" for="tuAccount2">Re-Enter Account No.<span style="color: red;">*</span></label>
                     <input id="tuAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.confirmAccountNo" />
+                    @if (fieldError(accountForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
                     @if (account.confirmAccountNo && account.accountNo !== account.confirmAccountNo) {
                       <span class="help-block" style="color: red;">Account Numbers must match.</span>
                     }
                   </div></div>
                   <div class="card card-default m-b-0"><div class="card-body">
                     <label class="col-sm-12 p-l-0" for="tuIfsc">IFSC Code <span style="color: red;">*</span></label>
-                    <input id="tuIfsc" name="IfscCode" class="form-control" maxlength="11" style="text-transform: uppercase" required [(ngModel)]="account.ifscCode" />
+                    <input id="tuIfsc" name="IfscCode" class="form-control" minlength="11" maxlength="11" style="text-transform: uppercase" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="account.ifscCode" />
+                    @if (fieldError(accountForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
+                    @if (fieldError(accountForm, 'IfscCode', 'pattern')) { <span class="help-block">Invalid IFSC code format.</span> }
+                    @if (fieldError(accountForm, 'IfscCode', 'minlength') || fieldError(accountForm, 'IfscCode', 'maxlength')) { <span class="help-block">The IFSC code must be 11 characters long.</span> }
                   </div></div>
                   <div class="card card-default m-b-0"><div class="card-body">
                     <label class="col-sm-12 p-l-0" for="tuBranch">Branch Address <span style="color: red;">*</span></label>
                     <input id="tuBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="account.branchAddress" />
+                    @if (fieldError(accountForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
                   </div></div>
                   <div class="card card-default m-b-0"><div class="card-body">
                     <label class="col-sm-12 p-l-0" for="tuBank">Name of the Bank <span style="color: red;">*</span></label>
                     <input id="tuBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="account.bankName" />
+                    @if (fieldError(accountForm, 'BankName')) { <span class="help-block">This is required.</span> }
                   </div></div>
                   <zed-scheme-document label="Cancelled Cheque Copy" inputId="tuDocCheque" [required]="true" [busy]="busy()"
                     [documents]="chequeDocs()" (pick)="upload('cheque', docTypes.cheque, $event)" (remove)="remove('cheque', $event)" />
@@ -251,3 +255,5 @@
     <div class="text-center text-white"><div class="loader"></div><small>Please wait ...</small></div>
   </div>
 }
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />

@@ -578,9 +578,6 @@
       </ng-template>
 
       <ng-template #milestonePhotos let-photos let-s="section">
-        @if (photos.length === 0) {
-          <p class="p-2">No Documents Uploaded</p>
-        }
         @if (!exempted(s)) {
           <table class="table m-0">
             @for (pp of photos; track $index) {

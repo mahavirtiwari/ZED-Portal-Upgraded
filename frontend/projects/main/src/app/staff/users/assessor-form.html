@@ -16,12 +16,14 @@
       @if (isNew) {
         <div class="row">
           <div class="col-sm-6 field">
-            <label class="d-block" for="assessorType">{{ consultancy ? 'Consultant/Technical Expert' : 'Assessor Type' }}</label>
+            <label class="d-block" for="assessorType">{{ consultancy ? 'Consultant/Expert' : 'Assessor Type' }}</label>
             <select id="assessorType" name="assessorType" class="form-control input-100" [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()">
               <option value="">Select</option>
               @if (consultancy) {
-                <option value="Consultant">Consultant</option>
-                <option value="TechnicalExpert">Technical Expert</option>
+                <option value="Consultant">Consultant/Expert</option>
+                @if (offersTechnicalExpert) {
+                  <option value="TechnicalExpert">Technical Expert</option>
+                }
               } @else {
                 <option value="BronzeAssessor">Bronze Assessor</option>
                 <option value="Assessor">Assessor</option>
@@ -115,10 +117,12 @@
         }
       </div>
       <div class="row">
-        <div class="col-sm-12 field">
-          <label class="d-block" for="states">Applicable States</label>
-          <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" />
-        </div>
+        @if (showStates) {
+          <div class="col-sm-12 field">
+            <label class="d-block" for="states">Applicable States</label>
+            <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [disabled]="!canEdit()" [(value)]="model.states" />
+          </div>
+        }
         <div class="col-sm-12 field">
           <label class="d-block" for="nicSectors">NIC Sector (2 Digit)</label>
           <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" />

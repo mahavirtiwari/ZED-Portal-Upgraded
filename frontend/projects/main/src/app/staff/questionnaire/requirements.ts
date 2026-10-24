@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Evidence, NewPoint, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
+import { Evidence, NewPoint, Point, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
 
 type EvidenceKind = 'mandatory' | 'optional';
 
@@ -123,6 +123,9 @@ interface EvidenceDialog {
                             <li>{{ s.name }}</li>
                           }
                         </ul>
+                        @if (optionImage(o); as src) {
+                          <span><img class="option-image" [src]="src" alt="" /></span>
+                        }
                       </div>
                     }
                   </td>
@@ -302,6 +305,15 @@ export class RequirementsPage {
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }
+  }
+
+  /**
+   * A point's MasterOption.OptionImage, shown below it as the old page did (`<img src="~/{{o.OptionImage}}">`, a path under
+   * the site root). Only a plain relative path is used; anything with a scheme or "//" is ignored.
+   */
+  protected optionImage(point: Point & { optionImage?: string | null }): string | null {
+    const path = point.optionImage?.trim().replace(/^~?\/+/, '');
+    return path && !/^[a-z][a-z0-9+.-]*:|^\/\/|\\/i.test(path) ? '/' + path : null;
   }
 
   private clearMessages(): void {

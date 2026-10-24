@@ -235,4 +235,71 @@ describe('RemoteAssessmentPage', () => {
     await reload();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Assessment submitted.');
   });
+
+  it('keeps the side video panel and the refresh link on main', async () => {
+    await create(details());
+    expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-8');
+    expect(el.querySelector('.video-panel')).not.toBeNull();
+    expect(el.querySelector('.refresh-link')).not.toBeNull();
+    expect(el.querySelector('a.assessment-report')).toBeNull();
+  });
+
+  it('shows the saved opened state of product descriptions and records opened evidence (SaveTimestamp)', async () => {
+    const data = details();
+    data.products = [
+      { Id: 31, ProductName: 'Valve', Exported: 'No', DescriptionKind: 'pdf', DescriptionUrl: '/files/d.pdf', RemotePhotos: [] },
+      { Id: 32, ProductName: 'Pump', Exported: 'No', DescriptionKind: 'pdf', DescriptionUrl: '/files/e.pdf', ProductDescOpenedTime: '2024-01-01', RemotePhotos: [] },
+    ];
+    data.evidences = [{ Id: 91, SectionCode: '1', RequirementCode: '1', EvidenceName: 'Policy', FileUrl: '/files/p.pdf' }];
+    await create(data);
+    await openTab('Basic Info');
+    const icons = () => [...el.querySelectorAll('a.product-description img')].map((i) => i.getAttribute('src'));
+    expect(icons()).toEqual(['Images/pdf-icon.png', 'Images/pdf-icon-blue.png']);
+
+    // The legacy remote page never recorded product descriptions (its UpdateTimestamp2 did not exist): nothing is sent.
+    const link = el.querySelector('a.product-description') as HTMLAnchorElement;
+    link.addEventListener('click', (e) => e.preventDefault());
+    link.click();
+    await settle(fixture);
+    expect(http.match('/api/staff/assessment/da/ZEDMSME000001/Silver/opened').length).toBe(0);
+
+    await openTab('Parameters');
+    const evidence = el.querySelector('a.evidence-file') as HTMLAnchorElement;
+    evidence.addEventListener('click', (e) => e.preventDefault());
+    evidence.click();
+    await settle(fixture);
+    http.expectOne('/api/staff/assessment/da/ZEDMSME000001/Silver/opened').flush({ message: 'Saved' });
+    expect(http.match(BASE).length).toBe(0);
+  });
+
+  it('does not record opened documents for the read-only co-assessor', async () => {
+    const data = details(false);
+    data.evidences = [{ Id: 91, SectionCode: '1', RequirementCode: '1', EvidenceName: 'Policy', FileUrl: '/files/p.pdf' }];
+    await create(data);
+    await openTab('Parameters');
+    const evidence = el.querySelector('a.evidence-file') as HTMLAnchorElement;
+    evidence.addEventListener('click', (e) => e.preventDefault());
+    evidence.click();
+    await settle(fixture);
+    http.expectNone('/api/staff/assessment/da/ZEDMSME000001/Silver/opened');
+  });
+
+  it('lists the sub-options of each option in the final-submit pop-up', async () => {
+    const data = details();
+    data.requirements = [{ Id: 51, SectionCode: '1', RequirementCode: '1', Conformance: 'Yes', SaConformance: 'No', SaAssessorRemarks: 'Missing', RemotePhotos: [] }];
+    data.options = [{ SectionCode: '1', RequirementCode: '1', OptionCode: '1', OptionName: 'Policy exists' }];
+    data.subOptions = [
+      { SectionCode: '1', RequirementCode: '1', OptionCode: '1', SubOptionCode: '1', SubOptionName: 'Signed by owner' },
+      { SectionCode: '1', RequirementCode: '1', OptionCode: '2', SubOptionCode: '1', SubOptionName: 'Other option' },
+    ];
+    await create(data);
+    await openTab('Parameters');
+    (el.querySelector('.final-submit') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne(BASE + '/final-submit/check').flush({ allowed: true, message: null, raisesNc: true });
+    await settle(fixture);
+    const items = [...el.querySelectorAll('.modal li')].map((li) => li.textContent!.trim());
+    expect(items).toEqual(['Signed by owner']);
+    expect(el.querySelector('.modal')!.textContent).toContain('Policy exists');
+  });
 });

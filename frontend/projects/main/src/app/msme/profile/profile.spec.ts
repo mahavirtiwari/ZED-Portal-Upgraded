@@ -75,7 +75,9 @@ describe('ProfilePage', () => {
     await settle();
     http.expectOne('/api/msme/profile').flush({ title: 'Session expired' }, { status: 400, statusText: 'Bad Request' });
     await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('Session expired');
+    const dialog = el.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Error!');
+    expect(dialog.textContent).toContain('Session expired');
   });
 
   it('edits the activity: lists the Udyam activities, offers UPDATE only for a different one, and reloads', async () => {
@@ -98,7 +100,9 @@ describe('ProfilePage', () => {
 
     http.expectOne('/api/msme/profile').flush({ ...profile, msme: { ...profile.msme, FiveDigitActivity: '26101' } });
     await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Activity updated successfully.');
+    const dialog = el.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain('Success!');
+    expect(dialog.textContent).toContain('Activity updated successfully.');
     expect(el.querySelector('input[name="Activity"]')).toBeNull();
     expect(button('Edit Activity')).toBeDefined();
   });
@@ -115,7 +119,7 @@ describe('ProfilePage', () => {
       { status: 400, statusText: 'Bad Request' },
     );
     await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('not applicable');
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('not applicable');
     expect(el.querySelectorAll('input[name="Activity"]').length).toBe(2);
   });
 

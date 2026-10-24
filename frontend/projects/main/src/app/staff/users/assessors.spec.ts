@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
-import { StaffRole } from '../staff-menu';
+import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { AssessorFormPage } from './assessor-form';
 import { AssessorListPage } from './assessor-list';
 import { MyAssessorsPage } from './my-assessors';
@@ -16,8 +16,13 @@ async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
 }
 
-function signIn(roleId: number) {
-  TestBed.inject(AuthService).setUser({ userId: roleId === StaffRole.Agency ? 'AGENCY1' : 'MASTER1', userName: 'Acme', roleId, role: 'x', subRoles: [] });
+function signIn(roleId: number, subRoles: string[] = []) {
+  TestBed.inject(AuthService).setUser({ userId: roleId === StaffRole.Agency ? 'AGENCY1' : 'MASTER1', userName: 'Acme', roleId, role: 'x', subRoles });
+}
+
+/** The page reads the build's PORTAL_SYSTEM; the consultancy specs switch the instance before its first render. */
+function asConsultancy(page: unknown) {
+  (page as { consultancy: boolean }).consultancy = true;
 }
 
 const options = {
@@ -38,7 +43,7 @@ describe('AssessorFormPage', () => {
     await settle(fixture);
   }
 
-  async function create(roleId: number, userId: string | null) {
+  async function create(roleId: number, userId: string | null, consultancy = false, subRoles: string[] = []) {
     await TestBed.configureTestingModule({
       imports: [AssessorFormPage],
       providers: [
@@ -46,8 +51,9 @@ describe('AssessorFormPage', () => {
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap(userId ? { userId } : {}) } } },
       ],
     }).compileComponents();
-    signIn(roleId);
+    signIn(roleId, subRoles);
     fixture = TestBed.createComponent(AssessorFormPage);
+    if (consultancy) asConsultancy(fixture.componentInstance);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
     await settle(fixture);
@@ -94,6 +100,25 @@ describe('AssessorFormPage', () => {
     req.flush({ message: 'User created successfully.', userId: 'ZEDBA0001' });
     await settle(fixture);
     expect(navigate).toHaveBeenCalledWith(['/staff/users/my-assessors'], { state: { message: 'User created successfully.' } });
+  });
+
+  it('consultancy: names the Consultant/Expert and offers Technical Expert and the states only with SiteVerification', async () => {
+    await create(StaffRole.Agency, null, true, ['SiteVerification']);
+    http.expectOne('/api/staff/users/assessors/options').flush(options);
+    await settle(fixture);
+    expect(el.querySelector('h3')!.textContent).toContain('Add Consultant/Expert');
+    expect(el.querySelector('label[for="assessorType"]')!.textContent).toContain('Consultant/Expert');
+    expect([...el.querySelectorAll('#assessorType option')].map((o) => o.textContent!.trim())).toEqual(['Select', 'Consultant/Expert', 'Technical Expert']);
+    expect(el.querySelector('label[for="userName"]')!.textContent).toContain('Consultant/Expert Name');
+    expect(el.textContent).toContain('Applicable States');
+  });
+
+  it('consultancy: a CO without SiteVerification adds Consultant/Experts only, without states', async () => {
+    await create(StaffRole.Agency, null, true, ['FinancialVerification']);
+    http.expectOne('/api/staff/users/assessors/options').flush(options);
+    await settle(fixture);
+    expect([...el.querySelectorAll('#assessorType option')].map((o) => o.textContent!.trim())).toEqual(['Select', 'Consultant/Expert']);
+    expect(el.textContent).not.toContain('Applicable States');
   });
 
   it('shows an assessor read-only to the MasterAdmin', async () => {
@@ -166,6 +191,24 @@ describe('MyAssessorsPage', () => {
     req.flush({ message: 'Mobile No updated successful' });
     await settle(fixture);
     http.expectOne('/api/staff/users/assessors/mine').flush([]);
+  });
+});
+
+describe('MyAssessorsPage (consultancy)', () => {
+  it('offers UnBlock for every blocked user', async () => {
+    await TestBed.configureTestingModule({
+      imports: [MyAssessorsPage],
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: STAFF_SYSTEM, useValue: 'consultancy' }],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(MyAssessorsPage);
+    const http = TestBed.inject(HttpTestingController);
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/mine').flush([
+      { Id: 1, UserId: 'ZEDCC0001', UserName: 'C1', IdStatus: 'Blocked', IsActive: false, IsCertAttached: 1, UserType: 'Consultant' },
+    ]);
+    await settle(fixture);
+    expect((fixture.nativeElement as HTMLElement).querySelector('tbody tr')!.textContent).toContain('UnBlock');
+    http.verify();
   });
 });
 

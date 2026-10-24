@@ -1,5 +1,5 @@
 import { DatePipe } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -13,6 +13,7 @@ import {
   MILESTONE_TITLES,
   Row,
   completionColumn,
+  handholdingLevel,
 } from './handholding.api';
 
 type InfoTopic = 'My' | HandholdingLevel;
@@ -60,6 +61,9 @@ export class HandholdingPage {
   private readonly api = inject(HandholdingApi);
   private readonly router = inject(Router);
 
+  /** `?level=Silver`: open that level's milestones (the BACK of the payment page, as the old DisplayStep = 1). */
+  readonly levelParam = input('', { alias: 'level' });
+
   protected readonly levels = HANDHOLDING_LEVELS;
   protected readonly data = signal<HandholdingSummary | null>(null);
   protected readonly busy = signal(false);
@@ -72,6 +76,7 @@ export class HandholdingPage {
   protected readonly detailsOf = signal<HandholdingLevel | null>(null);
   protected readonly accepting = signal<{ level: HandholdingLevel; milestone: number } | null>(null);
   protected accepted = false;
+  private preselected = false;
 
   protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
@@ -105,7 +110,16 @@ export class HandholdingPage {
     if (d) {
       this.data.set(d);
       this.loadedAt.set(new Date());
+      this.preselect();
     }
+  }
+
+  /** Once, after the first load: the level of the query parameter, if its card is enabled. */
+  private preselect(): void {
+    if (this.preselected) return;
+    this.preselected = true;
+    const level = handholdingLevel(this.levelParam());
+    if (level && !this.cardDisabled(level)) this.selected.set(level);
   }
 
   protected state(level: HandholdingLevel): LevelState | undefined {

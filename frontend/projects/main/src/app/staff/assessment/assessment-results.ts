@@ -22,7 +22,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
  * open on the current portal.
  * <p>Consultancy ("Consultancy Completed"; no rejected list): one row per completed milestone, with the milestone
  * reports and "Recommended Technologies" after milestone 3. Surveillance ("Completed / Rejected Surveillance"):
- * Surveillance No; no phase, due-date, duplicates or pledge columns.</p>
+ * Surveillance No; no phase, due-date, duplicates or pledge columns; Completed has one search box that searches as you
+ * type, Rejected only the Certification Level filter; the agency's "Assessment Details" opens SaDetails from status 9.</p>
  */
 @Component({
   selector: 'zed-staff-assessment-results',
@@ -38,51 +39,70 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
           <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
         }
 
-        <div class="col-sm-12 mb-4">
-          <div class="d-flex flex-wrap gap-2">
-            <div>
-              <label for="resState"><strong>State</strong></label>
-              <select class="form-select" style="width: 200px" id="resState" [(ngModel)]="state" (ngModelChange)="search()">
-                <option value="">Show All</option>
-                @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
-              </select>
-            </div>
-            <div>
-              <label for="resLevel"><strong>{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</strong></label>
-              <select class="form-select" style="width: 200px" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
-                <option value="">Show All</option>
-                @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
-              </select>
-            </div>
-            <div>
-              <label for="resSize"><strong>MSME Size</strong></label>
-              <select class="form-select" style="width: 200px" id="resSize" [(ngModel)]="size" (ngModelChange)="search()">
-                <option value="">Show All</option>
-                <option value="Micro">Micro</option>
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="row mb-2">
-          <div class="col-sm-3">
-            <label for="resSearchBy"><strong>Search By</strong></label>
-            <select class="form-select" style="width: 200px" id="resSearchBy" [(ngModel)]="searchBy">
-              <option value="Zed Id">Zed Id</option>
-              <option value="Udyam Number">Udyam Number</option>
-              <option value="Unit Name">Unit Name</option>
+        @if (surveillance && !completed()) {
+          <!-- Rejected Surveillance (that portal's Rejected.cshtml): only the level, Bronze/Silver/Gold. -->
+          <div class="col-sm-12 mb-3">
+            <label for="resLevel"><strong>Certification Level</strong></label>
+            <select class="form-select" style="width: 200px" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
+              @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
             </select>
           </div>
-          <div class="col-sm-3">
-            <label for="resSearch">{{ searchBy }}</label>
-            <input type="text" id="resSearch" class="form-control" maxlength="50" [(ngModel)]="searchText" (keyup.enter)="search()" />
+        } @else {
+          <div class="col-sm-12 mb-4">
+            <div class="d-flex flex-wrap gap-2">
+              <div>
+                <label for="resState"><strong>State</strong></label>
+                <select class="form-select" style="width: 200px" id="resState" [(ngModel)]="state" (ngModelChange)="search()">
+                  <option value="">Show All</option>
+                  @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
+                </select>
+              </div>
+              <div>
+                <label for="resLevel"><strong>{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</strong></label>
+                <select class="form-select" style="width: 200px" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
+                  <option value="">Show All</option>
+                  @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+                </select>
+              </div>
+              <div>
+                <label for="resSize"><strong>MSME Size</strong></label>
+                <select class="form-select" style="width: 200px" id="resSize" [(ngModel)]="size" (ngModelChange)="search()">
+                  <option value="">Show All</option>
+                  <option value="Micro">Micro</option>
+                  <option value="Small">Small</option>
+                  <option value="Medium">Medium</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div class="col-sm-3" style="margin-top: 30px">
-            <button type="button" class="btn btn-primary btn-sm" (click)="search()">Search</button>
-          </div>
-        </div>
+
+          @if (surveillance) {
+            <!-- Completed Surveillance: one search box that filters as you type (the old SearchText). -->
+            <div class="row mb-2">
+              <div class="col-sm-6 ms-auto">
+                <input type="text" id="resSearch" class="form-control" placeholder="Search" aria-label="Search" maxlength="50" [(ngModel)]="searchText" (ngModelChange)="search()" />
+              </div>
+            </div>
+          } @else {
+            <div class="row mb-2">
+              <div class="col-sm-3">
+                <label for="resSearchBy"><strong>Search By</strong></label>
+                <select class="form-select" style="width: 200px" id="resSearchBy" [(ngModel)]="searchBy">
+                  <option value="Zed Id">Zed Id</option>
+                  <option value="Udyam Number">Udyam Number</option>
+                  <option value="Unit Name">Unit Name</option>
+                </select>
+              </div>
+              <div class="col-sm-3">
+                <label for="resSearch">{{ searchBy }}</label>
+                <input type="text" id="resSearch" class="form-control" maxlength="50" [(ngModel)]="searchText" (keyup.enter)="search()" />
+              </div>
+              <div class="col-sm-3" style="margin-top: 30px">
+                <button type="button" class="btn btn-primary btn-sm" (click)="search()">Search</button>
+              </div>
+            </div>
+          }
+        }
 
         <div class="col-sm-12 mt-3">
           <div class="table-responsive">
@@ -136,7 +156,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
               <tbody>
                 @for (s of rows(); track $index) {
                   @if (consultancy) {
-                    <tr>
+                    <!-- As the old Consultancy Completed list: a rejected milestone's row in the danger colour. -->
+                    <tr [class.btn-danger]="!!t(s, 'ReasonForRejection')">
                       <td>{{ t(s, 'RowNumber') }}</td>
                       <td>{{ t(s, 'Certification') }}</td>
                       <td><strong>{{ t(s, 'ZedId') }}</strong><br /><strong>{{ t(s, 'PUnitName') }}</strong><br />{{ t(s, 'UnitAddress') }}</td>
@@ -241,7 +262,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                           @if (n(s, 'CertificationStatus') < 9) {
                             <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
                           }
-                          @if (n(s, 'CertificationStatus') >= 15) {
+                          <!-- Surveillance (that portal's Completed.cshtml): SaDetails from status 9; main from 15. -->
+                          @if (n(s, 'CertificationStatus') >= (surveillance ? 9 : 15)) {
                             <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary mb-2">Assessment Details</a>
                           }
                         </td>

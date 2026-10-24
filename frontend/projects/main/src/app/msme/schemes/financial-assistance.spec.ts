@@ -80,7 +80,8 @@ describe('FinancialAssistancePage', () => {
     click('#faConfirmProceed');
     await settle();
     expect(el.querySelector('#faForm')).not.toBeNull();
-    expect(el.textContent).toContain('Certification Details (Silver)');
+    expect(el.textContent).toContain('Certification Details');
+    expect(el.textContent).not.toContain('Certification Details (Silver)');
   });
 
   it('checks the form in the browser, uploads documents and submits them by name', async () => {
@@ -96,7 +97,11 @@ describe('FinancialAssistancePage', () => {
 
     (el.querySelector('#faForm') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
-    expect(el.textContent).toContain('Please enter required data.');
+    expect(el.querySelector('[role="dialog"]')!.textContent).toContain('Please enter required data.');
+    expect(el.querySelector('#faName')!.parentElement!.textContent).toContain('This is required.');
+    expect(el.querySelector('#faAccount2')!.parentElement!.textContent).toContain('Re-Enter Account Number is required.');
+    [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'OK')!.click();
+    await settle();
 
     Object.assign(page.form, {
       categoryOfCertificate: 'Quality', nameOfCertficate: 'ISO 9001', certificationAgency: 'BIS', certficateNumber: 'C-1',
@@ -127,6 +132,22 @@ describe('FinancialAssistancePage', () => {
     req.flush({ message: 'ok', amountPaid: 100000, eligibleAmount: 50000 });
     await settle();
     expect(el.querySelector('#faDone')!.textContent).toContain('submitted successfully');
+  });
+
+  it('shows the IFSC format message while typing', async () => {
+    http.expectOne('/api/msme/schemes/fa').flush(open);
+    await settle();
+    (fixture.componentInstance as unknown as { go(s: number): void }).go(4);
+    await settle();
+    const ifsc = el.querySelector('#faIfsc') as HTMLInputElement;
+    ifsc.value = 'SBIN1';
+    ifsc.dispatchEvent(new Event('input'));
+    await settle();
+    expect(ifsc.parentElement!.textContent).toContain('Invalid IFSC Code format. (Example: ABCD0123456)');
+    ifsc.value = 'SBIN0001234';
+    ifsc.dispatchEvent(new Event('input'));
+    await settle();
+    expect(ifsc.parentElement!.textContent).not.toContain('Invalid IFSC Code format.');
   });
 
   it('refuses a large or non-document file before uploading', async () => {

@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
@@ -17,6 +17,9 @@ import { MastersApi, TechnologyRequest } from './masters.api';
           <h3 class="registration-title">{{ id ? 'Edit Technology' : 'Add New Technology' }}</h3>
           @if (error()) {
             <div class="alert alert-danger" role="alert">{{ error() }}</div>
+          }
+          @if (success()) {
+            <div class="alert alert-success" role="status">{{ success() }}</div>
           }
           <form class="jumbotron row" (ngSubmit)="save()" novalidate>
             <div class="row">
@@ -62,10 +65,9 @@ import { MastersApi, TechnologyRequest } from './masters.api';
 })
 export class TechnologyFormPage {
   private readonly api = inject(MastersApi);
-  private readonly router = inject(Router);
 
   protected readonly id: number | null = Number(inject(ActivatedRoute).snapshot.paramMap.get('id')) || null;
-  protected model: TechnologyRequest = { technologyCode: '', technologyName: '', description: '', sectors: [], categories: [] };
+  protected model: TechnologyRequest = emptyTechnology();
   protected readonly sectors = signal<MultiSelectOption[]>([]);
   protected readonly categories = signal<MultiSelectOption[]>([]);
   /** Also re-renders the form once the (plain, ngModel-bound) model is loaded. */
@@ -73,6 +75,7 @@ export class TechnologyFormPage {
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
+  protected readonly success = signal('');
 
   constructor() {
     void this.load();
@@ -104,18 +107,31 @@ export class TechnologyFormPage {
   protected async save(): Promise<void> {
     this.submitted.set(true);
     this.error.set('');
+    this.success.set('');
     if (!this.model.technologyCode.trim() || !this.model.technologyName.trim()) {
       this.error.set('Please enter valid data.');
       return;
     }
     this.saving.set(true);
     try {
-      const r = await firstValueFrom(this.id ? this.api.updateTechnology(this.id, this.model) : this.api.addTechnology(this.model));
-      await this.router.navigate(['/staff/masters/technologies'], { state: { message: r.message } });
+      // The old page stayed on the form: an added technology cleared it ("Sector saved.", its wording), an edit kept it.
+      if (this.id) {
+        await firstValueFrom(this.api.updateTechnology(this.id, this.model));
+        this.success.set('Technology data updated.');
+      } else {
+        await firstValueFrom(this.api.addTechnology(this.model));
+        this.model = emptyTechnology();
+        this.submitted.set(false);
+        this.success.set('Sector saved.');
+      }
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
       this.saving.set(false);
     }
   }
+}
+
+function emptyTechnology(): TechnologyRequest {
+  return { technologyCode: '', technologyName: '', description: '', sectors: [], categories: [] };
 }

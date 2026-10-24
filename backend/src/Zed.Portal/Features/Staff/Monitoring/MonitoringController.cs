@@ -68,7 +68,7 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
         "RowNumber", "ZedId", "Certification", "SurveillanceNo", "PUnitName", "UnitAddress",
         "AgencyName", "CertificationBodyUserId", "ModeOfAssessment",
         "DesktopAssessorName", "DesktopAssessorId", "SiteAssessorName", "SiteAssessorId", "CoAssessorName", "CoAssessorId",
-        "SaAssessmentDate", "CertificationStatus", "NcStatus", "NcCount",
+        "DocVerifiAllot", "SaAssessmentDate", "CertificationStatus", "NcStatus", "NcCount",
     ];
 
     /// <summary>Shown to MasterAdmin only (the page hid the column from agencies).</summary>

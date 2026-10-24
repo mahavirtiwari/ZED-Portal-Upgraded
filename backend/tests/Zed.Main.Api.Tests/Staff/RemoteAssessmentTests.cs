@@ -234,6 +234,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         var product = body.GetProperty("products")[0];
         Assert.Equal("/api/staff/assessment/da/ZEDMSME000001/Silver/files/mobileapi/Photos/ZEDMSME000001/Silver/BasicInfo/p1.jpg", product.GetProperty("PhotoUrl").GetString());
         Assert.Equal("pdf", product.GetProperty("DescriptionKind").GetString());
+        Assert.Equal(JsonValueKind.Null, product.GetProperty("ProductDescOpenedTime").ValueKind);
         Assert.Equal(96, product.GetProperty("RemotePhotos")[0].GetProperty("id").GetInt64());
         var requirement = body.GetProperty("requirements")[0];
         Assert.False(requirement.TryGetProperty("RequirementId", out _));
@@ -245,6 +246,27 @@ public sealed class RemoteAssessmentTests : IDisposable
         var permissions = body.GetProperty("permissions");
         Assert.True(permissions.GetProperty("canAssess").GetBoolean());
         Assert.True(permissions.GetProperty("videoConfigured").GetBoolean());
+    }
+
+    [Fact]
+    public async Task Lead_records_opened_evidences_through_the_desktop_opened_call_as_the_old_page_did()
+    {
+        _host.Sql.Queries["SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount, SectionCode, RequirementCode, EvidenceCode"] = args =>
+            FakeSql.Arg(args, "Id") == "81" && FakeSql.Arg(args, "ZedId") == Zed ? [new { Id = 81L, NcCount = 0 }] : [];
+        const string Opened = "/api/staff/assessment/da/" + Zed + "/Silver/opened";
+
+        var lead = await As("ASSESSOR1");
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Opened, new { type = "Evidence", id = 81 })).StatusCode);
+        var call = Call("SP_ASSESSMENT_DA_UPDATE_TIMESTAMP").Args;
+        Assert.Equal("81", FakeSql.Arg(call, "Id"));
+        Assert.Null(FakeSql.Arg(call, "PhotoType"));
+
+        // The old remote page recorded nothing else; the co-assessor and closed assessments record nothing.
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Opened, new { type = "ProductDescriptionPhoto", id = 31 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await (await As("ASSESSOR2")).PostAsJsonAsync(Opened, new { type = "Evidence", id = 81 })).StatusCode);
+        _status = 10;
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Opened, new { type = "Evidence", id = 81 })).StatusCode);
+        Assert.Single(_host.Sql.Calls, c => c.Name == "SP_ASSESSMENT_DA_UPDATE_TIMESTAMP");
     }
 
     [Fact]

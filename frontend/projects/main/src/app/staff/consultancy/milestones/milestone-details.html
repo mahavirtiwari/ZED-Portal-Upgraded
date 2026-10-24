@@ -455,6 +455,11 @@
                         <div class="alert alert-success"><strong>Consultant Final Comments :</strong> {{ t(row, 'SaAssessorRemarks') }}</div>
                       </div>
                     }
+                    @if (canEditFinalComments(m, row)) {
+                      <div class="text-center">
+                        <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="openFinalComments(row)" />
+                      </div>
+                    }
                   }
                 }
                 <div class="col-sm-12 text-center">
@@ -468,9 +473,7 @@
                   @if (d.permissions.canSendBack) {
                     <input type="button" value="Send Back to Consultant" class="btn btn-primary btn-md me-1" [disabled]="busy()" (click)="openDialog('sendBack')" />
                   }
-                  @if (d.permissions.canReject) {
-                    <input type="button" value="Reject" class="btn btn-danger btn-md" [disabled]="busy()" (click)="openDialog('reject')" />
-                  }
+                  <!-- No Reject button: the old page has the reject dialog but never shows a button for it. -->
                 </div>
               </div>
             }
@@ -540,6 +543,8 @@
           </div>
         </td>
       </tr>
+    } @empty {
+      <tr><td><p class="p-2">No Documents Uploaded</p></td></tr>
     }
   </table>
 </ng-template>
@@ -727,15 +732,16 @@
               @case ('reject') { Confirm Reject }
               @case ('sendBack') { Send Back to Consultant }
               @case ('meetingRemarks') { Remarks }
+              @case ('finalComments') { Remarks }
               @default { Confirm Final Submit }
             }
           </h3>
           <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
-          @if (dlg === 'consultantSubmit' || dlg === 'sendBack' || dlg === 'meetingRemarks') {
+          @if (dlg === 'consultantSubmit' || dlg === 'sendBack' || dlg === 'meetingRemarks' || dlg === 'finalComments') {
             <label for="milestoneDialogText">
-              <strong>{{ dlg === 'sendBack' ? 'Send Back Remarks' : dlg === 'meetingRemarks' ? 'Remarks' : 'Final Comments' }}<span style="color: red">*</span></strong>
+              <strong>{{ dlg === 'sendBack' ? 'Send Back Remarks' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'Remarks' : 'Final Comments' }}<span style="color: red">*</span></strong>
             </label>
             <textarea id="milestoneDialogText" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px" [ngModel]="dialogText()" (ngModelChange)="dialogText.set($event)"></textarea>
           } @else {
@@ -750,7 +756,7 @@
         </div>
         <div class="modal-footer">
           <input type="button" class="btn btn-default" value="CANCEL" (click)="dialog.set(null)" />
-          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'REJECT' : dlg === 'meetingRemarks' ? 'UPDATE' : 'SUBMIT'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
+          <input type="button" class="btn btn-primary" [value]="dlg === 'reject' ? 'REJECT' : dlg === 'meetingRemarks' || dlg === 'finalComments' ? 'UPDATE' : 'SUBMIT'" [disabled]="!canSubmitDialog() || busy()" (click)="submitDialog()" />
         </div>
       </div>
     </div>

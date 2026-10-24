@@ -432,13 +432,25 @@ public sealed class DesktopAssessmentController(
     /// <summary>
     /// Records that the assessor opened a document or photo (SaveTimestamp); the procedure then marks the
     /// requirement as ready to validate once all its documents were opened.
+    /// <para>
+    /// Also called by the remote-assessment page: the old Remote/Index recorded opened evidences through the same
+    /// Assessment/SaveTimestamp (its product-description links called an UpdateTimestamp2 the page never defined, so
+    /// nothing else was recorded there). So the lead assessor of an open remote assessment (site verification sub-role,
+    /// see <see cref="Remote.RemoteAssessmentController"/>) may record "Evidence" only.
+    /// </para>
     /// </summary>
     [HttpPost("opened")]
     [StaffRoles(UserRole.DesktopAssessor)]
-    [SubRole(SubRoles.DesktopVerification)]
     public async Task<ActionResult<MessageResponse>> Opened(string zedId, string certification, OpenedRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var user = CurrentUser;
+        string? level = null;
+        ActionResult? error = Forbid();
+        if (user.HasSubRole(SubRoles.DesktopVerification))
+            (level, _, error) = await ForAssessor(zedId, certification, ct);
+        if (error is not null && req.Type == "Evidence" && user.HasSubRole(SubRoles.SiteVerification) &&
+            await Remote.RemoteAssessmentController.LeadOfOpenAssessmentAsync(db, host.System, user.UserId, zedId, certification, ct) is { } remoteLevel)
+            (level, error) = (remoteLevel, null);
         if (error is not null) return error;
         var (sql, photoType) = req.Type switch
         {

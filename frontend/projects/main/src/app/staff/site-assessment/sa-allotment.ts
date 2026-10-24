@@ -138,7 +138,7 @@ interface AllotForm {
               @if (surveillance) {
                 <div style="margin-bottom: 9px">
                   <label for="MeetingLink"><strong>Meeting Link<span style="color: red">*</span></strong></label>
-                  <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="2000" style="line-height: 24px; height: 100px"
+                  <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="5000" style="line-height: 24px; height: 100px"
                             placeholder="https://..." [(ngModel)]="f.meetingLink"></textarea>
                 </div>
               }
@@ -235,10 +235,19 @@ export class SaAllotmentPage {
     }
   }
 
+  /** As the old pop-up (a copy of the row): RE-ALLOT opens with the current assessor and meeting link filled in. */
   protected open(unit: Row): void {
     this.success.set('');
     this.formError.set('');
-    this.form.set({ unit, assessmentDate: '', modeOfAssessment: this.surveillance ? ONSITE : '', siteAssessorId: '', coAssessorId: '', meetingLink: '' });
+    const value = (column: string) => (unit[column] === null || unit[column] === undefined ? '' : String(unit[column]));
+    this.form.set({
+      unit,
+      assessmentDate: '',
+      modeOfAssessment: this.surveillance ? ONSITE : '',
+      siteAssessorId: value('SiteAssessorId'),
+      coAssessorId: '',
+      meetingLink: this.surveillance ? value('MeetingLink') : '',
+    });
   }
 
   protected close(): void {

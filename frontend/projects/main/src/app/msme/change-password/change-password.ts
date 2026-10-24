@@ -5,6 +5,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
+/** ChangePwdViewModel's RegularExpression on the new and the confirm password. */
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{8,}$/;
+const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.';
+
 /** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml (the live design: eye toggles, full-width SUBMIT). */
 @Component({
   selector: 'zed-msme-change-password',
@@ -27,6 +31,7 @@ import { firstValueFrom } from 'rxjs';
                     <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? 'Hide password' : 'Show password'" (click)="toggle('old')">
                       <img [src]="show().old ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                     </button>
+                    @if (problem(oldPassword, false); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
                   </div>
                   <label for="newPassword">New Password</label>
                   <div class="mb-3">
@@ -35,7 +40,7 @@ import { firstValueFrom } from 'rxjs';
                     <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? 'Hide password' : 'Show password'" (click)="toggle('new')">
                       <img [src]="show().new ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                     </button>
-                    <small class="text-muted d-block mt-1">At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
+                    @if (problem(newPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
                   </div>
                   <label for="confirmPassword">Confirm Password</label>
                   <div class="mb-3">
@@ -44,6 +49,7 @@ import { firstValueFrom } from 'rxjs';
                     <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggle('confirm')">
                       <img [src]="show().confirm ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
                     </button>
+                    @if (problem(confirmPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
                   </div>
                   <div class="d-grid gap-2 col-12 mx-auto mb-3">
                     <button type="submit" class="btn btn-primary" style="height: 48px" [disabled]="busy()">SUBMIT</button>
@@ -70,6 +76,8 @@ export class ChangePasswordPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  /** Field messages show once SUBMIT was pressed (the old page validated the model on post). */
+  protected readonly submitted = signal(false);
   protected readonly show = signal({ old: false, new: false, confirm: false });
   protected oldPassword = '';
   protected newPassword = '';
@@ -79,12 +87,17 @@ export class ChangePasswordPage {
     this.show.update((v) => ({ ...v, [field]: !v[field] }));
   }
 
+  /** The ChangePwdViewModel message under a field, or '' (`strong`: the new / confirm password rule). */
+  protected problem(value: string, strong = true): string {
+    if (!this.submitted()) return '';
+    if (!value) return 'This is required';
+    return strong && !STRONG_PASSWORD.test(value) ? WEAK_PASSWORD : '';
+  }
+
   protected async submit(): Promise<void> {
     this.error.set('');
-    if (!this.oldPassword || !this.newPassword) {
-      this.error.set('Please enter valid data.');
-      return;
-    }
+    this.submitted.set(true);
+    if (this.problem(this.oldPassword, false) || this.problem(this.newPassword) || this.problem(this.confirmPassword)) return;
     if (this.newPassword !== this.confirmPassword) {
       this.error.set('NewPassword and ConfirmPassword should be same.');
       return;
@@ -104,6 +117,7 @@ export class ChangePasswordPage {
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       this.oldPassword = this.newPassword = this.confirmPassword = '';
+      this.submitted.set(false);   // the old page came back with empty fields and only the error on top
     } finally {
       this.busy.set(false);
     }

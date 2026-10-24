@@ -51,6 +51,12 @@ describe('DashboardPage', () => {
       expect(card(level).textContent).toContain('Get started');
       expect(card(level).classList).not.toContain('plant-activity-disabled');
     }
+    // Bronze has three steps, Silver and Gold four (legacy w-33 / w-25).
+    expect([...card('bronze').querySelectorAll('.stepper li')].every((li) => li.classList.contains('w-33'))).toBe(true);
+    for (const level of ['silver', 'gold']) {
+      expect([...card(level).querySelectorAll('.stepper li')].every((li) => li.classList.contains('w-25'))).toBe(true);
+    }
+    expect(el.textContent).toMatch(/Refresh on \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (AM|PM)/);
   });
 
   it('greys out Silver and Gold while Bronze is in progress, and marks Bronze steps', async () => {

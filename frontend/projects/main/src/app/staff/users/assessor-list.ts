@@ -72,6 +72,7 @@ import { ClientPager, PagerComponent } from '../pager';
                       }
                       <td class="text-center">
                         <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">View</a>
+                        <!-- V4 addition (not on the old consultancy list): Reset Link. -->
                         @if (s.IsActive) {
                           <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
                         }
