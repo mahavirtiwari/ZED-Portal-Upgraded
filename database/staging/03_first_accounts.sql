@@ -51,6 +51,7 @@ INSERT @Accounts VALUES
     ('Consultancy',  'ZEDV4CC01',  'STAGING CONSULTANT',         3, 0, 1, 0, 'ZEDV4CO01',     'consultant of the CO'),
     ('Consultancy',  'ZEDV4DFO01', 'STAGING DFO',                3, 0, 0, 1, 'ZEDV4CO01',     'TU verifier (DFO)'),
     ('Surveillance', 'ZEDV4MA01',  'STAGING MASTER ADMIN',       7, 1, 1, 1, 'staging-setup', 'MasterAdmin'),
+    ('Surveillance', 'ZEDV4AD01',  'STAGING ADMIN',              1, 0, 0, 0, 'staging-setup', 'Admin: Payments (surveillance fee master)'),
     ('Surveillance', 'ZEDV4AG01',  'STAGING ASSESSMENT AGENCY',  2, 1, 1, 1, 'staging-setup', 'surveillance agency'),
     ('Surveillance', 'ZEDV4SA01',  'STAGING SITE ASSESSOR',      4, 0, 1, 0, 'ZEDV4AG01',     'surveillance site assessor');
 

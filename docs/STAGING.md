@@ -173,11 +173,12 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
 7. **First accounts**: `database\staging\03_first_accounts.sql` in SSMS (PREVIEW, then `@Mode = 'APPLY'`,
    `@ThisIsStaging = 'YES'`, `@ExpectedServerName`). It creates a MasterAdmin, an Admin, an agency, a desktop and a
    site assessor on main; a MasterAdmin, an Admin, a consultant organisation (CO), a consultant and a DFO on
-   consultancy; a MasterAdmin, an agency and a site assessor on surveillance (ids `ZEDV4MA01`, `ZEDV4AD01`,
+   consultancy; a MasterAdmin, an Admin, an agency and a site assessor on surveillance (ids `ZEDV4MA01`, `ZEDV4AD01`,
    `ZEDV4AG01`, …; e-mail dev.zed@qcin.org), each with a random value that is never accepted as a password. The Admin
    (role 1, as in the old portal; no screen creates one) is the only role with the master data screens: sectors,
    categories, technologies, the questionnaire parameters, fees and incentives (main), sectors and parameters
-   (consultancy). For the MasterAdmins and Admins it shows a **one-time link** each
+   (consultancy), Payments, the surveillance fee master (surveillance; its Sector, Questionnaire and Documents screens
+   were already switched off in the old site). For the MasterAdmins and Admins it shows a **one-time link** each
    (valid 24 hours; treat it like a password): open it, set the password. MasterAdmin cannot use "Forgot password?"
    (`StaffPasswordReset:ExcludedRoles`, unchanged); the link is an administrator's link, issued by the script. The
    other accounts use "Forgot password?" on their portal's staff login (the mail arrives at dev.zed@qcin.org), or the
