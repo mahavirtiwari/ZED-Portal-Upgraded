@@ -127,4 +127,10 @@ describe('staff menu', () => {
       expect(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main', null).map((i) => i.label)).toContain('Sub-Users');
     });
   });
+  it('gives the dashboard logins Customer History on every portal', () => {
+    for (const system of ['main', 'consultancy', 'surveillance'] as const)
+      for (const role of [StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC])
+        expect(menuFor(role, [], system).find((i) => i.label === 'Customer History')?.route).toBe('/staff/history');
+    expect(menuFor(StaffRole.Ministry, [], 'main').some((i) => i.label === 'Customer History')).toBe(false);
+  });
 });

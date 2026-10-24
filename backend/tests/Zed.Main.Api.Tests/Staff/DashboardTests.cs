@@ -73,7 +73,7 @@ public sealed class DashboardTests : IDisposable
     [InlineData("MASTER1", "/api/staff/dashboard/failed-transactions")]
     [InlineData("SUPER1", "/api/staff/dashboard/payments-received")]
     [InlineData("QC1", "/api/staff/dashboard/financial-support")]
-    [InlineData("SUPER1", "/api/staff/history/ZEDMSME000001")]
+    [InlineData("AGENCY1", "/api/staff/history/ZEDMSME000001")]
     [InlineData("MINISTRY1", "/api/staff/history/ZEDMSME000001")]
     public async Task Roles_outside_the_legacy_menu_get_403(string userId, string url)
     {
@@ -301,25 +301,32 @@ public sealed class DashboardTests : IDisposable
         Assert.Equal("11", FakeSql.Arg(call.Args, "RoleId"));
     }
 
-    [Fact]
-    public async Task History_search_is_master_admin_only_and_takes_plain_zed_ids()
+    [Theory]
+    [InlineData("MASTER1")]
+    [InlineData("SUPER1")]
+    [InlineData("CFB1")]
+    [InlineData("QC1")]
+    public async Task Customer_history_is_for_the_master_admin_and_dashboard_logins_and_takes_plain_zed_ids(string userId)
     {
-        _host.Sql.Procs["SP_MSME_GET_ZEDID_ENTIRE_HISTORY"] = _ => FakeSql.Sets([new
+        _host.Sql.Queries["SELECT Source_DB, ZedId"] = _ => [new
         {
-            Source_DB = "CERTIFICATION", Id = 5, ZedId = "ZEDMSME000001", BaseZedId = "ZEDMSME000001", Description = "Registered",
+            Source_DB = "CERTIFICATION", ZedId = "ZEDMSME000001", Description = "Registered",
             CreatedDate = new DateTime(2024, 1, 2), CertificationType = (string?)null, StatusType = (string?)null, MiletoneNo = "",
-        }]);
-        var master = await _host.SignInAsync("MASTER1");
+        }];
+        var client = await _host.SignInAsync(userId);
 
-        var rows = await master.GetFromJsonAsync<JsonElement>("/api/staff/history/ZEDMSME000001");
+        var rows = await client.GetFromJsonAsync<JsonElement>("/api/staff/history/ZEDMSME000001");
         Assert.Equal("Registered", rows[0].GetProperty("Description").GetString());
-        Assert.False(rows[0].TryGetProperty("Id", out _));
-        var call = _host.LastCall("SP_MSME_GET_ZEDID_ENTIRE_HISTORY");
-        Assert.Equal("7", FakeSql.Arg(call.Args, "RoleId"));
-        Assert.Equal("ZEDMSME000001", FakeSql.Arg(call.Args, "SearchZedID"));
+        Assert.Equal("CERTIFICATION", rows[0].GetProperty("Source_DB").GetString());
+        var call = _host.Sql.Calls.Last(c => c.Name.StartsWith("SELECT Source_DB, ZedId"));
+        Assert.Equal("ZEDMSME000001", FakeSql.Arg(call.Args, "ZedId"));
+        // The three systems' history, without the procedure's MasterAdmin-only gate.
+        Assert.Contains("ZEDCS_V2_LIVE.dbo.MsmeHistory", call.Name);
+        Assert.Contains("ZED_CONSULTANT.dbo.MsmeHistory", call.Name);
+        Assert.Contains("ZED_SURVEILLANCE.dbo.MsmeHistory", call.Name);
 
-        var calls = _host.Sql.Calls.Count(c => c.Name == "SP_MSME_GET_ZEDID_ENTIRE_HISTORY");
-        Assert.Equal(HttpStatusCode.BadRequest, (await master.GetAsync("/api/staff/history/ZED%25")).StatusCode);
-        Assert.Equal(calls, _host.Sql.Calls.Count(c => c.Name == "SP_MSME_GET_ZEDID_ENTIRE_HISTORY"));
+        var calls = _host.Sql.Calls.Count(c => c.Name.StartsWith("SELECT Source_DB"));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/staff/history/ZED%25")).StatusCode);
+        Assert.Equal(calls, _host.Sql.Calls.Count(c => c.Name.StartsWith("SELECT Source_DB")));
     }
 }

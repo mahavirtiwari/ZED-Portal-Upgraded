@@ -329,6 +329,7 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
     loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
   },
   { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+  { path: 'history', title: 'ZED | Customer History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },

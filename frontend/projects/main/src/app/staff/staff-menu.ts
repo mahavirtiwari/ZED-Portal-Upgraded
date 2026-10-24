@@ -73,6 +73,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Registered MSMEs', legacyPath: '/Dashboard/RegisteredMsme', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC, R.Ministry] },
   { label: 'Financial Support', legacyPath: '/Dashboard/FinancialSupport', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
   { label: 'Reports', legacyPath: '/DynamicReports/Index', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator] },
+  // New in V4: the dashboard logins' customer (ZED ID) history across the three systems.
+  { label: 'Customer History', route: '/staff/history', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC] },
 
   // Master admin: agencies, assessors and allocation
   // The live "Assessment" drop-down (Frontend/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
@@ -140,6 +142,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Failed Transactions', route: '/staff/failed-transactions', roles: [R.SuperAdmin] },
   { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.Ministry] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.Ministry] },
+  { label: 'Customer History', route: '/staff/history', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC] },
 
   // Admin: as the live layout; its Incentives drop-down is not ported (ZED_CONSULTANT incentives are not served here).
   { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin] },
@@ -200,6 +203,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Registered MSME', route: '/staff/registered-msme', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
   { label: 'Financial Support', route: '/staff/financial-support', roles: [R.SuperAdmin, R.CitizenFeedback] },
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
+  { label: 'Customer History', route: '/staff/history', roles: [R.SuperAdmin, R.CitizenFeedback, R.QC] },
 
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin] },

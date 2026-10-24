@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { DatePipe, LowerCasePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { apiErrorMessage } from '@zed/shared';
+import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
 export interface HistoryRow {
@@ -77,8 +77,9 @@ export function buildTimeline(rows: HistoryRow[]): TimelineGroup[] {
 }
 
 /**
- * Certification history of a ZED ID (MasterAdmin). Port of Views/Msme/History.cshtml. The old page had no
- * search box and posted an empty ZED ID; here the ZED ID is entered (or given as ?zedId=).
+ * Certification history of a ZED ID across certification, handholding and surveillance (MasterAdmin; on every portal also
+ * the dashboard logins, as "Customer History"). Port of Views/Msme/History.cshtml. The old page had no search box and
+ * posted an empty ZED ID; here the ZED ID is entered (or given as ?zedId=).
  */
 @Component({
   selector: 'zed-staff-zed-history',
@@ -89,6 +90,8 @@ export function buildTimeline(rows: HistoryRow[]): TimelineGroup[] {
 export class ZedHistoryPage {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  /** The dashboard logins (SuperAdmin, CitizenFeedback, QC) know it as Customer History. */
+  protected readonly heading = [10, 11, 17].includes(inject(AuthService).currentUser()?.roleId ?? 0) ? 'Customer History' : 'Certification History';
 
   protected zedId = '';
   protected readonly rows = signal<HistoryRow[]>([]);

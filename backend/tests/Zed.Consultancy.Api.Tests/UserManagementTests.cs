@@ -30,4 +30,19 @@ public sealed class UserManagementTests : IDisposable
         var m = await master.GetFromJsonAsync<JsonElement>("/api/staff/sub-users");
         Assert.Equal(["users", "payments", "allot", "monitoring", "results", "password-reset", "technology-upgradation"], Strings(m.GetProperty("permissions"), "key"));
     }
+
+    [Fact]
+    public async Task Dashboard_logins_see_the_customer_history_of_all_three_systems()
+    {
+        foreach (var role in new[] { 10, 11, 17, 7 })
+        {
+            var client = await _staff.SignInAsync("DASH" + role, role);
+            var r = await client.GetAsync("/api/staff/history/ZEDMSME000001");
+            Assert.Equal(System.Net.HttpStatusCode.OK, r.StatusCode);
+        }
+        var history = _staff.Sql.Calls.Last(c => c.Name.StartsWith("SELECT Source_DB"));
+        Assert.Contains("ZED_SURVEILLANCE.dbo.MsmeHistory", history.Name);
+        var agency = await _staff.SignInAsync("AGENCY1", 2);
+        Assert.Equal(System.Net.HttpStatusCode.Forbidden, (await agency.GetAsync("/api/staff/history/ZEDMSME000001")).StatusCode);
+    }
 }
