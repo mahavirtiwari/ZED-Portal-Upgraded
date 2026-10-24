@@ -6,7 +6,7 @@ import { provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { AllotPage } from './allot';
 import { AssessmentResultsPage } from './assessment-results';
-import { ClientPager } from './assessment-shared';
+import { ClientPager } from '../pager';
 import { DaAllotmentPage } from './da-allotment';
 import { DaVerificationPage } from './da-verification';
 import { NonConformancesPage } from './non-conformances';

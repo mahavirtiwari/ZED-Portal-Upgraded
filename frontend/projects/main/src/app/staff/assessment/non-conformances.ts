@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ClientPager, STATES, flag, num, text, useLegacyPortal } from './assessment-shared';
+import { ClientPager, PagerComponent } from '../pager';
+import { STATES, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Row } from './assessment.api';
-import { PagerComponent } from '../pager';
 
 /**
  * Desktop assessor: records with an open non-conformance round (DA status 4, site assessment status 14).

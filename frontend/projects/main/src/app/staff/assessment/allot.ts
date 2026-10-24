@@ -3,9 +3,9 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ASSESSMENT_SYSTEM, ClientPager, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { ClientPager, PagerComponent } from '../pager';
+import { ASSESSMENT_SYSTEM, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
-import { PagerComponent } from '../pager';
 
 /**
  * Master admin: allot MSMEs to assessment agencies. Port of Views/Assessment/Allot.cshtml

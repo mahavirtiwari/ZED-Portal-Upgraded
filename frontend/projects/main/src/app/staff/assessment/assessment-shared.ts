@@ -27,7 +27,6 @@ export const STATES: readonly (readonly [code: string, name: string])[] = [
   ['5', 'UTTARAKHAND'], ['19', 'WEST BENGAL'],
 ];
 
-export { ClientPager, PAGE_SIZES } from '../pager';
 
 /** Text of a column ('' when empty). */
 export function text(row: Row | null | undefined, column: string): string {
