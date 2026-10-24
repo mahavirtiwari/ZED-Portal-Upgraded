@@ -57,7 +57,8 @@ import { firstValueFrom } from 'rxjs';
     </div>
   `,
   styles: `
-    .field-icon { border: 0; background: transparent; padding: 0; line-height: 0; }
+    /* A 32px tap area around the eye icon; the margins keep the icon where the old page had it. */
+    .field-icon { border: 0; background: transparent; padding: 6px; margin-top: -36px; margin-right: 4px; line-height: 0; }
   `,
 })
 export class ChangePasswordPage {

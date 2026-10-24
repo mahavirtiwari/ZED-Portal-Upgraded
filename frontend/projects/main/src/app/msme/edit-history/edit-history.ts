@@ -82,7 +82,7 @@ export function submittedValues(data: string | null): string[] {
               </td>
               <td>
                 @if (r.data) {
-                  <button type="button" class="btn btn-link btn-sm p-0" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
+                  <button type="button" class="btn btn-link btn-sm" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
                     {{ open() === r.id ? 'Hide' : 'View' }}
                   </button>
                   @if (open() === r.id) {
