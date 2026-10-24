@@ -9,7 +9,10 @@ public sealed class RecaptchaOptions
 {
     public const string Section = "Recaptcha";
 
-    /// <summary>Same switch as the legacy isEnabledCaptcha app setting.</summary>
+    /// <summary>
+    /// Same switch as the legacy isEnabledCaptcha app setting. For the web forms it is only the default until the Admin
+    /// chooses a captcha (Captcha Settings, <see cref="ICaptchaSettings"/>); the MSME app's captcha still follows it.
+    /// </summary>
     public bool Enabled { get; set; } = true;
     public string SiteKey { get; set; } = "";
     /// <summary>Server secret. Keep it out of source control (user secrets / environment).</summary>
@@ -33,11 +36,14 @@ public interface IAppCaptchaVerifier
     Task<bool> VerifyAsync(string? token, string? remoteIp, CancellationToken ct = default);
 }
 
+/// <summary>
+/// Google's check of a web form's reCAPTCHA token. Used by <see cref="CaptchaVerifier"/> when the captcha mode is Google,
+/// so it always checks (the mode, not Recaptcha:Enabled, decides whether a captcha is asked for).
+/// </summary>
 public sealed class RecaptchaVerifier(HttpClient http, IOptions<RecaptchaOptions> options, ILogger<RecaptchaVerifier> log)
-    : ICaptchaVerifier
 {
     public Task<bool> VerifyAsync(string? token, string? remoteIp, CancellationToken ct = default) =>
-        SiteVerify.CheckAsync(http, options.Value.Enabled, options.Value.SecretKey, "Recaptcha:SecretKey", token, remoteIp, log, ct);
+        SiteVerify.CheckAsync(http, enabled: true, options.Value.SecretKey, "Recaptcha:SecretKey", token, remoteIp, log, ct);
 }
 
 public sealed class RecaptchaAppVerifier(HttpClient http, IOptions<RecaptchaOptions> options, ILogger<RecaptchaAppVerifier> log)

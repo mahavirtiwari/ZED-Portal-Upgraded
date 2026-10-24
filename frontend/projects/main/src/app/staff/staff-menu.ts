@@ -122,6 +122,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   ...INCENTIVE_TYPES.map((t) => ({
     label: t.label, legacyPath: '/Incentive/Index', route: '/staff/incentives', queryParams: { type: t.value }, roles: [R.Admin as number], group: 'Incentives',
   })),
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin] }, // new in V4
 ];
 
 /**
@@ -142,6 +143,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
   })),
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin] }, // new in V4
 
   // MasterAdmin: allotment and consultancy monitoring
   // As the live layout (ZEDCS_CONSULTANCY Frontend/Shared/_Layout.cshtml): "Allot Consultancy", then the "Consultancy
@@ -192,6 +194,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
   })),
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin] }, // new in V4
 
   // MasterAdmin
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance

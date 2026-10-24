@@ -9,7 +9,8 @@
 
       1. Migrations, in this order (each on its databases; "safe to re-run" scripts, so an applied one just repeats):
            0001 all three | 0002 ZEDCS_V2_LIVE | 0004 ZEDCS_V2_LIVE | 0005 all three |
-           0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT
+           0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
+           0011 all three
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -112,6 +113,7 @@ $Migrations = @(
     @{ File = '0008_staff_password_reset.sql';  Dbs = $Zed;      Markers = @('U:dbo.V4PasswordResets', 'P:dbo.SP_V4_STAFF_RESET_ACCOUNT', 'P:dbo.SP_V4_STAFF_RESET_CREATE', 'P:dbo.SP_V4_STAFF_RESET_FIND', 'P:dbo.SP_V4_STAFF_RESET_USE') }
     @{ File = '0009_msme_password_reset.sql';   Dbs = @($Main);  Markers = @('P:dbo.SP_V4_MSME_RESET_ACCOUNT', 'P:dbo.SP_V4_MSME_RESET_FIND', 'P:dbo.SP_V4_MSME_RESET_USE', 'P:dbo.SP_V4_PURGE_LEGACY_RESET_CODES') }
     @{ File = '0010_app_sessions.sql';          Dbs = @($Cons);  Markers = @('U:dbo.V4AppSessions') }
+    @{ File = '0011_settings.sql';              Dbs = $Zed;      Markers = @('U:dbo.V4Settings') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

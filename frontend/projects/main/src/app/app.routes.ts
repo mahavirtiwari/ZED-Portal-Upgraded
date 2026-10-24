@@ -54,6 +54,7 @@ const MAIN_STAFF_CHILDREN: Routes = [
   ...SITE_REVIEW_ROUTES,
   { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+  { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
   { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
   {
     path: 'neft/new',
@@ -328,6 +329,7 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
   { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
+  { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
   {
     path: 'change-password',
     title: 'ZED | Change Password',

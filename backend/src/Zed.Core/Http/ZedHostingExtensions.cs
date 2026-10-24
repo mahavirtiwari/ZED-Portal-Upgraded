@@ -24,6 +24,9 @@ public static class RateLimitPolicies
 
     /// <summary>Staff "Forgot password?" requests: 5 per 15 minutes per client IP (each account is also limited, migration 0008).</summary>
     public const string PasswordReset = "password-reset";
+
+    /// <summary>New captcha pictures: 30 per minute per client IP.</summary>
+    public const string Captcha = "captcha";
 }
 
 public static class ZedHostingExtensions
@@ -53,7 +56,10 @@ public static class ZedHostingExtensions
         services.AddSingleton<ISqlExecutor>(_ => new SqlExecutor(config.RequireConnectionString(defaultDatabase)));
 
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));
-        services.AddHttpClient<ICaptchaVerifier, RecaptchaVerifier>();
+        services.AddHttpClient<RecaptchaVerifier>();
+        services.AddSingleton<ICaptchaSettings, CaptchaSettings>();
+        services.AddSingleton<TextCaptcha>();
+        services.AddTransient<ICaptchaVerifier, CaptchaVerifier>();
         services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();
 
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.Section));
@@ -80,6 +86,9 @@ public static class ZedHostingExtensions
             o.AddPolicy(RateLimitPolicies.PasswordReset, ctx => RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(15) }));
+            o.AddPolicy(RateLimitPolicies.Captcha, ctx => RateLimitPartition.GetFixedWindowLimiter(
+                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                _ => new FixedWindowRateLimiterOptions { PermitLimit = 30, Window = TimeSpan.FromMinutes(1) }));
         });
 
         services.Configure<ForwardedHeadersOptions>(o =>

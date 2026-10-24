@@ -117,7 +117,7 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
    2): those 23 procedures are broken in production too (database\README.md "Findings" 1, and the five
    ZED_CENTER_AUDIT_PROFESSIONAL procedures whose table types the export lacks), as in an unprefixed build. Any other
    failure: stop and read `database\logs\failed-batches-*.json`.
-2. **V4 scripts** (migrations 0001–0010 and 0003, then the fix previews):
+2. **V4 scripts** (migrations 0001–0011 and 0003, then the fix previews):
    ```powershell
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_ -Apply -IncludeMailOutbox
@@ -223,6 +223,11 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    main portal also needs the four `CcAvenue__MerchantId/AccessCode/WorkingKey/ReconciliationWorkingKey`,
    `Udyam__AccessKey`, `ProteanGstin__Url/UserId/Password` and, with the captcha on, `Recaptcha__AppSecretKey`.
    `Invoke-ZedStaging.ps1 -Step Settings` checks them. Empty values are not set on the app pools (IIS refuses them).
+   **Captcha on the web forms:** once migration 0011 is in, the Admin of each portal chooses it under **Captcha
+   Settings** (menu, new in V4): *Enable captcha* (the portal's own picture of 6 letters and digits, no Google keys
+   needed), *Disable captcha*, or Google reCAPTCHA when its keys are set. Until the Admin saves a choice,
+   `Recaptcha__Enabled` decides (false: off; true: Google with keys, else the 6-character captcha). The MSME app's
+   captcha still follows `Recaptcha__Enabled` and `Recaptcha__AppSecretKey`.
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:
