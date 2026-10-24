@@ -77,8 +77,9 @@ legacy code only.
 - Server check: the release APK (R8, debug-signed, `-PzedEnvironment=staging`) reached a server over HTTPS and a fake
   login answered "Invalid credetials." (the server's spelling). **Correction (found with the consultant app):** the
   resource shrinker had removed `zed_environment`, so that build fell back to **production**, not staging; fixed in
-  `@zed/shared` (`res/raw/zed_shared_keep.xml`), the APK needs a rebuild for a staging check. Production builds were
-  not affected (their fallback is production). No staging test account (staging holds production copies), so the
+  `@zed/shared` (`res/raw/zed_shared_keep.xml`). Production builds were not affected (their fallback is production).
+  Re-checked with the rebuilt APK: `aapt2 dump resources` shows `zed_environment = "staging"` (on the file and on the
+  installed copy, before the emulator went online); a fake login answered "Invalid credetials." from staging. No staging test account (staging holds production copies), so the
   signed-in flows were run against the local Main MobileApi with fake data.
 - Local Main MobileApi (fake Silver unit `ZEDRNSA0001`, lead `ZEDRNLA01`, co-assessor `ZEDRNCA01`; emulator
   android-35 x86_64; debug APK with the bundle embedded), 2026-10-24:
@@ -108,5 +109,5 @@ legacy code only.
   - lead: Sync Assessment → saved Closing Meeting row → SubmitEndAssessment → "Assessment completed successfully…" →
     local data removed → login. (This run found a crash once the data was removed while the options screen was still
     in the stack; fixed in `App.tsx`, covered by a screen test.)
-  - release APK (R8, debug-signed): starts, login screen, a server reachable (production, see the correction above).
+  - release APK (R8, debug-signed): starts, login screen, staging reachable (rebuilt APK, see above).
 - Tests: 25 unit/screen tests for the app (108 in all with `@zed/shared` and `@zed/msme`); typecheck clean.

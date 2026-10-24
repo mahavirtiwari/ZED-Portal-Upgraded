@@ -99,6 +99,17 @@ release default `production`; Android string resource `zed_environment`). `local
 (below); debug builds allow plain http only to `10.0.2.2`/`localhost` (`src/debug/res/xml/network_security_config.xml`),
 release builds are HTTPS only.
 
+**Never call production from a build or a test**, not even with a fake login. The app reads `zed_environment` by
+name and falls back to production when it is missing; release builds keep it through
+`packages/shared/android/src/main/res/raw/zed_shared_keep.xml` (before that, the resource shrinker removed it and
+staging release APKs went to production). Before running any APK with a network, check what it points at:
+
+```bash
+aapt2 dump resources <app>.apk | grep -A1 "string/zed_environment"
+```
+
+It must print `"staging"` or `"local"`; if it prints nothing or `"production"`, do not run the APK with a network.
+
 Tests and checks:
 
 ```bash
