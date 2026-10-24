@@ -117,7 +117,7 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
    2): those 23 procedures are broken in production too (database\README.md "Findings" 1, and the five
    ZED_CENTER_AUDIT_PROFESSIONAL procedures whose table types the export lacks), as in an unprefixed build. Any other
    failure: stop and read `database\logs\failed-batches-*.json`.
-2. **V4 scripts** (migrations 0001–0013 and 0003, then the fix previews):
+2. **V4 scripts** (migrations 0001–0014 and 0003, then the fix previews):
    ```powershell
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_ -Apply -IncludeMailOutbox
@@ -241,6 +241,12 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    for the web the browser, OS, device type and a persistent browser ID, for the apps the device registration ID,
    model, manufacturer, OS version, API level and app version. Never the password. Example:
    `SELECT TOP 50 * FROM dbo.V4LoginEvents ORDER BY Id DESC`.
+   **Applicant change history:** every change an MSME makes on the web (profile activity, payment GSTIN/PAN and payment
+   start, financial assistance and technology upgradation documents and submissions, handholding milestone acceptance,
+   password) or in the MSME app (basic information, photos, ESG checklist, financial assistance, NC replies, final
+   submit, password) is kept in `ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory` (migration 0014) with the submitted values
+   (passwords, OTPs and tokens masked; files as name and size), IP address and device. The MSME sees it under its name →
+   Edit History; MasterAdmin, SuperAdmin, Ministry, CitizenFeedback and QC see it in the MSME profile on all three portals.
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:

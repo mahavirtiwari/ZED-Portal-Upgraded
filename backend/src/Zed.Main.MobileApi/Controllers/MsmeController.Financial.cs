@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Mobile;
+using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
 using Zed.Main.MobileApi.Templates;
 
@@ -24,6 +25,7 @@ public sealed partial class MsmeController
     /// <summary>SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE; answered as Newtonsoft text (text/html), as before.</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "ZedId")]
+    [MsmeEditAudit("App: financial assistance data submitted")]
     public async Task<IActionResult> SubmitFinancialData(FinancialViewModel model, CancellationToken ct)
     {
         static ContentResult Answer(ServiceResponse r) => LegacyContent(JsonSerializer.Serialize(r, Zed.Core.Mobile.LegacyJson.Write));
@@ -109,6 +111,7 @@ public sealed partial class MsmeController
     /// <summary>Claim documents (Photos/{zedId or userName}/FinancialAssistance). Files only, as before.</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "zedId", "userName")]
+    [MsmeEditAudit("App: financial assistance photos submitted")]
     public async Task<IActionResult> SubmitFinancialPhotos(SubmitPhotosRequestFile request, List<IFormFile>? files, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(request.zedId)) request.userName = request.zedId;

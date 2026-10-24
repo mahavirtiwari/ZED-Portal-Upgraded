@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
+using Zed.Core.Security;
 using Zed.Portal.Features.Staff.Schemes;
 using Zed.Portal.Templates;
 
@@ -77,6 +78,7 @@ public sealed class MsmeTechnologyUpgradationController(
 
     /// <summary>POST api/msme/schemes/tu/documents (multipart: type, file) — PDF/JPEG/PNG up to 5 MB.</summary>
     [HttpPost("documents")]
+    [MsmeEditAudit("Technology upgradation: document uploaded")]
     [RequestSizeLimit(SchemeUploads.MaxBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = SchemeUploads.MaxBytes + 64 * 1024)]
     public async Task<ActionResult<MsmeFinancialAssistanceController.UploadResponse>> Upload([FromForm] string? type, IFormFile? file, CancellationToken ct)
@@ -112,6 +114,7 @@ public sealed class MsmeTechnologyUpgradationController(
 
     /// <summary>POST api/msme/schemes/tu/technologies/{code} — SP_APP_MSME_INSERT_TECHNOLOGY_DETAILS (saves or replaces one technology).</summary>
     [HttpPost("technologies/{code}")]
+    [MsmeEditAudit("Technology upgradation: technology details saved")]
     public async Task<ActionResult<MessageResponse>> SubmitTechnology(string code, TechnologyRequest req, CancellationToken ct)
     {
         using (await SchemeLocks.EnterAsync(ct))
@@ -179,6 +182,7 @@ public sealed class MsmeTechnologyUpgradationController(
     /// completes the application (the procedure computes the eligible amount and allots an agency).
     /// </summary>
     [HttpPost]
+    [MsmeEditAudit("Technology upgradation: application submitted")]
     public async Task<ActionResult<MessageResponse>> Submit(SubmitRequest req, CancellationToken ct)
     {
         if (!req.Declaration) return this.Problem400("Please accept the declaration.");

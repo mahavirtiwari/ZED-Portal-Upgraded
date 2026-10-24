@@ -2,6 +2,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Mobile;
+using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
 using Zed.Main.MobileApi.Templates;
 
@@ -33,6 +34,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: basic information submitted")]
     public async Task<IActionResult> SubmitBasicInformation(BasicInformationRequest request, CancellationToken ct)
     {
         var info = request.basicInformation;
@@ -102,6 +104,7 @@ public sealed partial class MsmeController
     /// <summary>SP_APP_MSME_INSERT_ESG_CHECKLIST; the procedure itself refuses a level the unit has no row for ("Invalid Details.").</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: ESG checklist submitted")]
     public async Task<IActionResult> SubmitEsgChecklist(EsgChecklistRequest request, CancellationToken ct)
     {
         if (request.esgChecklist is null || request.socialOhsChecklist is null) return Fail(NoDataFound);
@@ -153,6 +156,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: evidence marked not used")]
     public async Task<IActionResult> SubmitEvidenceNotUsed(EvidenceRequest request, CancellationToken ct)
     {
         var zedId = request.userName ?? "";
@@ -262,6 +266,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: photos submitted")]
     public async Task<IActionResult> SubmitPhotos(SubmitPhotosRequestFile request, List<IFormFile>? files, CancellationToken ct)
     {
         if (request.photos is null && files is not { Count: > 0 }) return Fail(NoPhotosFound);
@@ -316,6 +321,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: final submit")]
     public async Task<IActionResult> FinalSubmit(BaseServiceRequest request, CancellationToken ct)
     {
         var args = new { CertificationType = request.certificationType, ZedId = request.userName };
@@ -403,6 +409,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: facilitator details submitted")]
     public async Task<IActionResult> SubmitFacilitatorDetails(FacilitatorDetails request, IFormFile? files, CancellationToken ct)
     {
         var zedId = request.userName ?? "";

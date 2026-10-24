@@ -63,6 +63,7 @@ public static class ZedHostingExtensions
         services.AddSingleton<TextCaptcha>();
         services.AddTransient<ICaptchaVerifier, CaptchaVerifier>();
         services.AddSingleton<ILoginAudit, SqlLoginAudit>();
+        services.AddSingleton<IMsmeEditHistory, SqlMsmeEditHistory>();
         services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();
 
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.Section));

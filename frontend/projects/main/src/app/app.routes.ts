@@ -144,6 +144,7 @@ const MAIN_ROUTES: Routes = [
     children: [
       { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./msme/dashboard/dashboard').then((m) => m.DashboardPage) },
       { path: 'profile', title: 'ZED | Profile', loadComponent: () => import('./msme/profile/profile').then((m) => m.ProfilePage) },
+      { path: 'edit-history', title: 'ZED | Edit History', loadComponent: () => import('./msme/edit-history/edit-history').then((m) => m.EditHistoryPage) },
       { path: 'documents', title: 'ZED | My Documents', loadComponent: () => import('./msme/documents/documents').then((m) => m.DocumentsPage) },
       {
         path: 'certification/:certification',

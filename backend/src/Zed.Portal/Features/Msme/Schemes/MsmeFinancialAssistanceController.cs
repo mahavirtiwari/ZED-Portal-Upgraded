@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
+using Zed.Core.Security;
 using Zed.Portal.Features.Staff.Schemes;
 using Zed.Portal.Templates;
 
@@ -74,6 +75,7 @@ public sealed class MsmeFinancialAssistanceController(
 
     /// <summary>POST api/msme/schemes/fa/documents (multipart: type, file) — one document, PDF/JPEG/PNG up to 5 MB.</summary>
     [HttpPost("documents")]
+    [MsmeEditAudit("Financial assistance: document uploaded")]
     [RequestSizeLimit(SchemeUploads.MaxBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = SchemeUploads.MaxBytes + 64 * 1024)]
     public async Task<ActionResult<UploadResponse>> Upload([FromForm] string? type, IFormFile? file, CancellationToken ct)
@@ -113,6 +115,7 @@ public sealed class MsmeFinancialAssistanceController(
 
     /// <summary>POST api/msme/schemes/fa — SP_APP_MSME_INSERT_FINANCIAL_ASSISTANCE, then the confirmation mail.</summary>
     [HttpPost]
+    [MsmeEditAudit("Financial assistance: application submitted")]
     public async Task<ActionResult<SubmitResponse>> Submit(SubmitRequest req, CancellationToken ct)
     {
         if (Validate(req) is { } invalid) return this.Problem400(invalid);

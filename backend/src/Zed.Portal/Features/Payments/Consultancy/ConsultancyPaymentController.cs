@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Payments;
+using Zed.Core.Security;
 using Zed.Portal.Features.Msme;
 using Zed.Portal.Features.Msme.Handholding;
 
@@ -93,6 +94,7 @@ public sealed class ConsultancyPaymentController(
     /// <summary>Verifies the unit's GSTIN with Protean (as Msme/ValidateGstinProtean); remembered for 30 minutes for checkout.</summary>
     [HttpPost("gstin")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Handholding payment: GSTIN entered")]
     public async Task<ActionResult<MsmePaymentController.GstinResponse>> VerifyGstin(MsmePaymentController.GstinRequest req, CancellationToken ct)
     {
         if (HandholdingEligibility.Canonical(req.Certification) is not { } level) return this.Problem400("Invalid certification.");
@@ -119,6 +121,7 @@ public sealed class ConsultancyPaymentController(
     /// old PAN from the browser; here both come from the server and the GSTIN must have been verified first.
     /// </summary>
     [HttpPost("pan")]
+    [MsmeEditAudit("Handholding payment: PAN corrected")]
     public async Task<ActionResult<MessageResponse>> CorrectPan(MsmePaymentController.PanRequest req, CancellationToken ct)
     {
         if (HandholdingEligibility.Canonical(req.Certification) is not { } level) return this.Problem400("Invalid certification.");
@@ -149,6 +152,7 @@ public sealed class ConsultancyPaymentController(
 
     [HttpPost("{certification}/checkout")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Handholding payment: payment started")]
     public async Task<ActionResult<MsmePaymentController.CheckoutResponse>> Checkout(string certification, CheckoutRequest req, CancellationToken ct)
     {
         if (HandholdingEligibility.Canonical(certification) is not { } level) return this.Problem400("Invalid certification.");

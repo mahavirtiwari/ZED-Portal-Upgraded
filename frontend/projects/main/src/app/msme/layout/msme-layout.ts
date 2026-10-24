@@ -44,6 +44,7 @@ import { AuthService } from '@zed/shared';
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
                   <li><a class="dropdown-item" routerLink="/msme/profile">View Profile</a></li>
+                  <li><a class="dropdown-item" routerLink="/msme/edit-history">Edit History</a></li>
                   <li><a class="dropdown-item" routerLink="/msme/change-password">Change Password</a></li>
                   <li><button type="button" class="dropdown-item" (click)="logout()">Logout</button></li>
                 </ul>

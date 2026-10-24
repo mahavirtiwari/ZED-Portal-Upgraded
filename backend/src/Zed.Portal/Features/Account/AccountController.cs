@@ -35,6 +35,7 @@ public sealed class AccountController(
     /// </summary>
     [HttpPost("change-password")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Password changed")]
     public async Task<ActionResult<MessageResponse>> ChangePassword(ChangePasswordRequest req, CancellationToken ct)
     {
         var user = ZedUser.FromPrincipal(User)!;

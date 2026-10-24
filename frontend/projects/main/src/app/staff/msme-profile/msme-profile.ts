@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { apiErrorMessage } from '@zed/shared';
+import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { EditHistoryTable } from '../../msme/edit-history/edit-history';
 
 export type ProfileRow = Record<string, string | number | boolean | null>;
 
@@ -38,6 +39,7 @@ const ENTERPRISE_FIELDS: [string, string][] = [
  */
 @Component({
   selector: 'zed-staff-msme-profile',
+  imports: [EditHistoryTable],
   template: `
     <div class="container form-page" id="zed_user_form">
       <div class="row mt-4">
@@ -73,6 +75,12 @@ const ENTERPRISE_FIELDS: [string, string][] = [
                 </tbody>
               </table>
             </div>
+            @if (seesEditHistory) {
+              <div class="panel panel-default mt-3">
+                <div class="panel-heading"><h5 class="m-0">Edit History (changes made by the applicant)</h5></div>
+                <div class="p-2"><zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" /></div>
+              </div>
+            }
           } @else if (loading()) {
             <p role="status">Loading…</p>
           }
@@ -89,6 +97,9 @@ export class StaffMsmeProfilePage {
   protected readonly profile = signal<StaffMsmeProfile | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
+  /** The applicant's change history: MasterAdmin, SuperAdmin, Ministry, CitizenFeedback and QC (as the API allows). */
+  protected readonly seesEditHistory = [7, 10, 8, 11, 17].includes(inject(AuthService).currentUser()?.roleId ?? 0);
+  protected readonly editHistoryUrl = `/api/staff/msme-edit-history/${encodeURIComponent(this.zedId)}`;
 
   constructor() {
     void this.load();

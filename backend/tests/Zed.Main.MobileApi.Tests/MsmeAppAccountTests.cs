@@ -145,6 +145,15 @@ public sealed class MsmeAppAccountTests : MsmeAppTestBase
         Assert.Contains("Acme Pvt Ltd", mail.HtmlBody);
         Assert.DoesNotContain(NewPassword, mail.HtmlBody);
         Assert.DoesNotContain(OldPassword, mail.HtmlBody);
+
+        // In the applicant's change history, without the passwords.
+        var edit = Assert.Single(Host.Sql.Calls, c => c.Name.StartsWith("INSERT INTO ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory", StringComparison.Ordinal));
+        Assert.Equal(ZedId, FakeSql.Arg(edit.Args, "ZedId"));
+        Assert.Equal("Mobile", FakeSql.Arg(edit.Args, "Channel"));
+        Assert.Equal("App: password changed", FakeSql.Arg(edit.Args, "Action"));
+        Assert.Equal("Success", FakeSql.Arg(edit.Args, "Result"));
+        Assert.DoesNotContain(NewPassword, FakeSql.Arg(edit.Args, "Data"));
+        Assert.DoesNotContain(OldPassword, FakeSql.Arg(edit.Args, "Data"));
     }
 
     [Fact]

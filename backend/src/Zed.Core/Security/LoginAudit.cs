@@ -152,7 +152,7 @@ public sealed class LoginAuditAttribute(string channel, string app) : Attribute,
 
         var executed = await next();
 
-        var (success, reason, user, signedInId) = Outcome(executed);
+        var (success, reason, user, signedInId) = ActionOutcome.Read(executed);
         var ua = http.Request.Headers.UserAgent.ToString();
         var (browser, os, type, model) = UserAgentInfo.Parse(ua);
         var e = new LoginEvent
@@ -175,39 +175,6 @@ public sealed class LoginAuditAttribute(string channel, string app) : Attribute,
         await http.RequestServices.GetRequiredService<ILoginAudit>().RecordAsync(e, http.RequestAborted);
     }
 
-    private static (bool Success, string? Reason, CurrentUserResponse? User, string? SignedInId) Outcome(ActionExecutedContext executed)
-    {
-        if (executed.Exception is not null && !executed.ExceptionHandled) return (false, null, null, null);
-        switch (executed.Result)
-        {
-            case ObjectResult { Value: CurrentUserResponse u }:
-                return (true, null, u, null);
-            case ObjectResult { Value: ProblemDetails p }:
-                return (false, p.Title, null, null);
-            case ObjectResult { Value: { } value } o when o.StatusCode is null or (>= 200 and < 300):
-                // A response that carries the user (Udyami Bharat) or the new ZED ID (registration).
-                var inner = value.GetType().GetProperties().Select(p => p.GetValue(value)).OfType<CurrentUserResponse>().FirstOrDefault();
-                return (true, null, inner, inner is null ? Read(value, "ZedId") as string ?? Read(value, "UserId") as string : null);
-            case ContentResult { Content: { Length: > 0 } json }:
-                try
-                {
-                    using var doc = JsonDocument.Parse(json);
-                    var root = doc.RootElement;
-                    var status = root.TryGetProperty("status", out var s) ? s.ToString() : null;
-                    var message = root.TryGetProperty("errorMessage", out var m) && m.ValueKind == JsonValueKind.String ? m.GetString() : null;
-                    return (status == "1", message, null, null);
-                }
-                catch (JsonException)
-                {
-                    return (false, "Unreadable response", null, null);
-                }
-            case IStatusCodeActionResult { StatusCode: { } code }:
-                return (code is >= 200 and < 300, $"HTTP {code}", null, null);
-            default:
-                return (false, null, null, null);
-        }
-    }
-
     private static string? JoinModel(DeviceInfo? d)
     {
         if (d is null) return null;
@@ -226,6 +193,5 @@ public sealed class LoginAuditAttribute(string channel, string app) : Attribute,
         return id;
     }
 
-    private static object? Read(object? obj, string property) =>
-        obj?.GetType().GetProperty(property, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)?.GetValue(obj);
+    private static object? Read(object? obj, string property) => ActionOutcome.Property(obj, property);
 }

@@ -3,6 +3,7 @@ using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Mobile;
+using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
 
 namespace Zed.Main.MobileApi.Controllers;
@@ -51,6 +52,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: NC requirement submitted")]
     public async Task<IActionResult> SubmitNcRequirement(NcRequirementSubmitRequest request, IFormFile? file_data, CancellationToken ct)
     {
         var zedId = request.userName ?? "";
@@ -116,6 +118,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: NC product submitted")]
     public async Task<IActionResult> SubmitNcProduct(NcProductSubmitRequest request, List<IFormFile>? files, CancellationToken ct)
     {
         request.productDetailsNcObj = ParseEmbedded<ProductDetails>(request.productDetailsNc);
@@ -162,6 +165,7 @@ public sealed partial class MsmeController
     /// <summary>New site exterior photos for an NC (SP_APP_MSME_INSERT_SITE_EXTERIOR).</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: site exterior information submitted")]
     public async Task<IActionResult> SubmitSiteExteriorInfo(NcSiteSubmitRequest request, CancellationToken ct)
     {
         var zedId = request.userName ?? "";

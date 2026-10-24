@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Core.Security;
 
 namespace Zed.Portal.Features.Msme.Handholding;
 
@@ -71,6 +72,7 @@ public sealed class HandholdingController(ISqlExecutor db, ILogger<HandholdingCo
     /// posted an empty ZED ID and level; here the button's level and milestone must be the one waiting.
     /// </summary>
     [HttpPost("accept-milestone")]
+    [MsmeEditAudit("Handholding: milestone accepted")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<ActionResult<MessageResponse>> AcceptMilestone(AcceptRequest req, CancellationToken ct)
     {

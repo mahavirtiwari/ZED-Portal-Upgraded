@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Payments;
+using Zed.Core.Security;
 using Zed.Portal.Features.Msme;
 
 namespace Zed.Portal.Features.Payments;
@@ -75,6 +76,7 @@ public sealed class MsmePaymentController(
     /// <summary>Verifies the unit's GSTIN with Protean; the answer is remembered for 30 minutes for checkout.</summary>
     [HttpPost("gstin")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Certification payment: GSTIN entered")]
     public async Task<ActionResult<GstinResponse>> VerifyGstin(GstinRequest req, CancellationToken ct)
     {
         if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
@@ -103,6 +105,7 @@ public sealed class MsmePaymentController(
     /// The old page only compared them in the browser; here the GSTIN must have been verified first.
     /// </summary>
     [HttpPost("pan")]
+    [MsmeEditAudit("Certification payment: PAN corrected")]
     public async Task<ActionResult<MessageResponse>> CorrectPan(PanRequest req, CancellationToken ct)
     {
         if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
@@ -135,6 +138,7 @@ public sealed class MsmePaymentController(
 
     [HttpPost("{certification}/checkout")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Certification payment: payment started")]
     public async Task<ActionResult<CheckoutResponse>> Checkout(string certification, CheckoutRequest req, CancellationToken ct)
     {
         if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");

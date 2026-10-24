@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Core.Security;
 
 namespace Zed.Portal.Features.Msme;
 
@@ -68,6 +69,7 @@ public sealed class MsmeProfileController(ISqlExecutor db, IUdyamClient udyam, I
     /// </summary>
     [HttpPost("activity")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    [MsmeEditAudit("Profile: activity updated")]
     public async Task<ActionResult<MessageResponse>> UpdateActivity(UpdateActivityRequest req, CancellationToken ct)
     {
         var chosen = (req.FiveDigitActivity ?? "").Trim();

@@ -14,7 +14,8 @@
 --   4. Reset and login secrets: Users.PwdCode = NULL, ForgotPwdLinks emptied, open V4PasswordResets links invalidated,
 --      OTP and OTP_old emptied, FailedLogins.Password = NULL. The Admin's office mailboxes (V4Settings 'Email.%', migration
 --      0011) are deleted, so staging uses the addresses of its own configuration. The production sign-in history
---      (V4LoginEvents, migration 0013: IP addresses, devices) is emptied.
+--      (V4LoginEvents, migration 0013: IP addresses, devices) and the applicants' change history (V4MsmeEditHistory,
+--      migration 0014: submitted values, IP addresses) are emptied.
 --   5. @ScramblePasswords = 1 (optional): every Users.Password except the @Testers accounts gets a random V4 value
 --      ("V4!" + hex, never accepted as a password, docs/PASSWORDS.md) and their V4UserPasswords hash rows go, so the
 --      production passwords of this copy cannot sign in on staging. Testers keep theirs (or reset them). Sub-users
@@ -200,6 +201,12 @@ BEGIN
     EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.V4LoginEvents'', N''@n bigint OUTPUT'', @n = @n OUTPUT;
     INSERT #Report VALUES (DB_NAME(), ''4 V4LoginEvents rows deleted'', @n, NULL);
     IF @apply = 1 EXEC sp_executesql N''DELETE FROM dbo.V4LoginEvents'';
+END
+IF OBJECT_ID(N''dbo.V4MsmeEditHistory'', N''U'') IS NOT NULL
+BEGIN
+    EXEC sp_executesql N''SELECT @n = COUNT(*) FROM dbo.V4MsmeEditHistory'', N''@n bigint OUTPUT'', @n = @n OUTPUT;
+    INSERT #Report VALUES (DB_NAME(), ''4 V4MsmeEditHistory rows deleted'', @n, NULL);
+    IF @apply = 1 EXEC sp_executesql N''DELETE FROM dbo.V4MsmeEditHistory'';
 END
 IF COL_LENGTH(N''dbo.FailedLogins'', N''Password'') IS NOT NULL
 BEGIN

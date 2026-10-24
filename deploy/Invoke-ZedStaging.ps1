@@ -7,7 +7,7 @@
 
     Check            read-only checks of the server and the package
     Databases        the seven ZEDV4_ databases from the schema scripts (database\setup.ps1)
-    Migrations       migrations 0001-0013 and the mail outbox 0003
+    Migrations       migrations 0001-0014 and the mail outbox 0003
     Fixes            the procedure fixes (all but main/02, main/13, consultancy/06b, msdb/01)
     ReferenceData    reference tables from a read-only source (-SourceServer)
     ProcedureLinks   procedures re-created with https://zedv3.qci.org.in (-ExpectedServerName)
@@ -281,7 +281,7 @@ try {
         }
 
         'Migrations' {
-            Write-Step 'Migrations 0001-0013 and 0003 (mail outbox)'
+            Write-Step 'Migrations 0001-0014 and 0003 (mail outbox)'
             if ($Apply) { Invoke-DatabaseScripts @('-Apply', '-IncludeMailOutbox') } else { Invoke-DatabaseScripts @() }
         }
 

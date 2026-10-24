@@ -27,6 +27,7 @@ public sealed partial class MsmeController
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: password changed")]
     public async Task<IActionResult> ChangePassword(ChangePwdRequest request, CancellationToken ct)
     {
         var userName = request.userName?.Trim();
