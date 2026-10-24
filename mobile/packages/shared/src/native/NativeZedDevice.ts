@@ -73,6 +73,8 @@ export type NativeInlineImage = {
   height: number;
 };
 
+export type NativePickedTime = { text: string; hour: number; minute: number };
+
 export interface Spec extends TurboModule {
   getDeviceInfo(): NativeDeviceInfo;
   getAppInfo(): NativeAppInfo;
@@ -98,6 +100,8 @@ export interface Spec extends TurboModule {
    * (wrapped, Base64.DEFAULT) of JPEG 75. No file is written.
    */
   processImageInline(uri: string, latitude: string | null, longitude: string | null): Promise<NativeInlineImage>;
+  /** processImageInline with another JPEG quality (the consultant app compressed at 100). */
+  processImageInlineQuality(uri: string, latitude: string | null, longitude: string | null, quality: number): Promise<NativeInlineImage>;
   /** Copies a picked PDF to filesDir/<UUID>.pdf and returns the path. */
   copyPdf(uri: string): Promise<string>;
   /** Reads a file as base64 (used for PDFs, which have no thumbnail). */
@@ -111,6 +115,12 @@ export interface Spec extends TurboModule {
 
   /** DatePickerDialog (new: the Admin's custom date fields); `yyyy-MM-dd` in and out, null when cancelled. */
   pickDate(initial: string | null): Promise<string | null>;
+  /** DatePickerDialog limited to [minMillis, maxMillis] (negative: no limit); `yyyy-MM-dd`, null when cancelled. */
+  pickDateInRange(initial: string | null, minMillis: number, maxMillis: number): Promise<string | null>;
+  /** TimePickerDialog (12-hour) at hour:minute (negative: now); the time in the device's format, null when cancelled. */
+  pickTime(hour: number, minute: number): Promise<NativePickedTime | null>;
+  /** Downloads to cacheDir/downloads/<fileName> and returns the path. */
+  downloadFile(url: string, fileName: string): Promise<string>;
 
   setClipboard(text: string): void;
   /** PBKDF2-HMAC-SHA256, hex encoded. */

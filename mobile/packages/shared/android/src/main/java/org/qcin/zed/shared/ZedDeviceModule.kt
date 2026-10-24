@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -30,6 +31,8 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.net.HttpURLConnection
+import java.net.URL
 import java.security.SecureRandom
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -191,10 +194,14 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         }.start()
     }
 
-    override fun processImageInline(uri: String, latitude: String?, longitude: String?, promise: Promise) {
+    override fun processImageInline(uri: String, latitude: String?, longitude: String?, promise: Promise) =
+        processImageInlineQuality(uri, latitude, longitude, PhotoPipeline.PREVIEW_JPEG_QUALITY.toDouble(), promise)
+
+    /** The consultant app's getBitmapString compressed at 100 instead of 75. */
+    override fun processImageInlineQuality(uri: String, latitude: String?, longitude: String?, quality: Double, promise: Promise) {
         Thread {
             try {
-                val result = PhotoPipeline.processInline(context, Uri.parse(uri), latitude, longitude)
+                val result = PhotoPipeline.processInline(context, Uri.parse(uri), latitude, longitude, quality.toInt())
                 if (result == null) {
                     promise.reject("PROCESS_FAILED", "Failed to process the captured photo, please try again")
                 } else {
@@ -295,6 +302,80 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
             dialog.setOnDismissListener { if (!settled) { settled = true; promise.resolve(null) } }
             dialog.show()
         }
+    }
+
+    /** DatePickerFragment with allowOnlyFuture / allowOnlyPast: limits in epoch milliseconds, negative for none. */
+    override fun pickDateInRange(initial: String?, minMillis: Double, maxMillis: Double, promise: Promise) {
+        val activity = reactApplicationContext.getCurrentActivity() ?: return promise.reject("NO_ACTIVITY", "No activity")
+        val c = Calendar.getInstance()
+        initial?.let { runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(it) }.getOrNull() }?.let { c.time = it }
+        activity.runOnUiThread {
+            var settled = false
+            val dialog = DatePickerDialog(activity, { _, y, m, d ->
+                settled = true
+                promise.resolve(String.format(Locale.ENGLISH, "%04d-%02d-%02d", y, m + 1, d))
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH))
+            if (minMillis >= 0) dialog.datePicker.minDate = minMillis.toLong()
+            if (maxMillis >= 0) dialog.datePicker.maxDate = maxMillis.toLong()
+            dialog.setOnDismissListener { if (!settled) { settled = true; promise.resolve(null) } }
+            dialog.show()
+        }
+    }
+
+    /**
+     * TimePickerFragment (12-hour dialog at the given time, or now) and TimeInputHelper.setTime: the time in the
+     * device's own format (DateFormat.getTimeFormat). Resolves {text, hour, minute}, or null when cancelled.
+     */
+    override fun pickTime(hour: Double, minute: Double, promise: Promise) {
+        val activity = reactApplicationContext.getCurrentActivity() ?: return promise.reject("NO_ACTIVITY", "No activity")
+        val now = Calendar.getInstance()
+        val h = if (hour >= 0) hour.toInt() else now.get(Calendar.HOUR_OF_DAY)
+        val m = if (minute >= 0) minute.toInt() else now.get(Calendar.MINUTE)
+        activity.runOnUiThread {
+            var settled = false
+            val dialog = TimePickerDialog(activity, { _, hourOfDay, min ->
+                settled = true
+                val c = Calendar.getInstance().apply {
+                    set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    set(Calendar.MINUTE, min)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                promise.resolve(Arguments.createMap().apply {
+                    putString("text", android.text.format.DateFormat.getTimeFormat(activity).format(c.time))
+                    putInt("hour", hourOfDay)
+                    putInt("minute", min)
+                })
+            }, h, m, false)
+            dialog.setOnDismissListener { if (!settled) { settled = true; promise.resolve(null) } }
+            dialog.show()
+        }
+    }
+
+    /** MobileApiWebService.getPhoto: downloads to cacheDir/downloads/<fileName> and resolves the path. */
+    override fun downloadFile(url: String, fileName: String, promise: Promise) {
+        Thread {
+            var connection: HttpURLConnection? = null
+            try {
+                connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                    connectTimeout = 60_000
+                    readTimeout = 60_000
+                }
+                if (connection.responseCode !in 200..299) {
+                    promise.reject("DOWNLOAD_FAILED", "HTTP " + connection.responseCode)
+                    return@Thread
+                }
+                val dir = File(context.cacheDir, "downloads").apply { mkdirs() }
+                val safeName = fileName.replace(Regex("[^A-Za-z0-9._-]"), "_").ifEmpty { "file" }
+                val file = File(dir, safeName)
+                connection.inputStream.use { writeStreamToFile(it, file) }
+                promise.resolve(file.absolutePath)
+            } catch (e: Exception) {
+                promise.reject("DOWNLOAD_FAILED", e.message, e)
+            } finally {
+                connection?.disconnect()
+            }
+        }.start()
     }
 
     override fun setClipboard(text: String) {

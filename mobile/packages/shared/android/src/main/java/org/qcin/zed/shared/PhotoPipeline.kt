@@ -86,7 +86,7 @@ object PhotoPipeline {
         return Result(path, base64 ?: "", stamp, bitmap.width, bitmap.height)
     }
 
-    fun processInline(context: Context, uri: Uri, latitude: String?, longitude: String?): InlineResult? {
+    fun processInline(context: Context, uri: Uri, latitude: String?, longitude: String?, quality: Int = PREVIEW_JPEG_QUALITY): InlineResult? {
         val stamp = currentTimeStamp()
         for (i in 1..9) {
             try {
@@ -102,7 +102,7 @@ object PhotoPipeline {
                 scaledBitmap = imageOrientationValidator(scaledBitmap, uri, context)
                 drawStamp(scaledBitmap, latitude, longitude, stamp)
                 val stream = ByteArrayOutputStream()
-                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, PREVIEW_JPEG_QUALITY, stream)
+                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, stream)
                 val base64 = Base64.encodeToString(stream.toByteArray(), Base64.DEFAULT)
                 stream.close()
                 return InlineResult(base64, stamp, scaledBitmap.width, scaledBitmap.height)

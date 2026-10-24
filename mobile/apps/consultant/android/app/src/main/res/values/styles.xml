@@ -1,0 +1,19 @@
+<resources>
+    <!-- As the legacy Theme.Styled (MaterialComponents.Light.NoActionBar): primary = accent = status bar (light status bar icons, as the legacy enforceStatusBarContrast). -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary</item>
+        <item name="colorAccent">@color/primary</item>
+        <item name="android:statusBarColor">@color/primary</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:forceDarkAllowed">false</item>
+        <item name="alertDialogTheme">@style/AppAlertDialog</item>
+        <item name="android:alertDialogTheme">@style/AppAlertDialog</item>
+    </style>
+
+    <style name="AppAlertDialog" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="colorAccent">@color/primary</item>
+        <item name="android:colorAccent">@color/primary</item>
+    </style>
+</resources>

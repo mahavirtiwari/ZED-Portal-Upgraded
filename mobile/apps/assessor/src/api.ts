@@ -110,7 +110,7 @@ export class SaApi {
     ];
     if (a.comments != null) fields.push({ name: 'comments', value: a.comments });
     if (a.selfie) {
-      const { photo: _photo, ...meta } = a.selfie;
+      const meta = { ...a.selfie, photo: undefined };
       fields.push({ name: 'selfieMetadata', value: JSON.stringify(meta, (_k, v) => (v === null ? undefined : v)) });
       const path = a.selfie.photoPath ?? '';
       fields.push({

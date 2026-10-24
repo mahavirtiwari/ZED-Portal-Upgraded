@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ZedDeviceModule.getAppInfo reads the app's build-time server (resValue "zed_environment") by name, which the resource
+  shrinker of release builds cannot see: without this, a staging or local release build fell back to production.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@string/zed_environment" />

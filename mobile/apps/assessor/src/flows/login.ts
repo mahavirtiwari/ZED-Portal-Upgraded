@@ -24,8 +24,8 @@ export type LoginOutcome =
   | { kind: 'alert'; message: string }
   | { kind: 'toast'; message: string };
 
-/** SiteTourStatusHelper.useLocalStatus: the ids are empty strings, so only an empty ZED ID matches (dead in practice). */
-const useLocalStatus = (zedId: string | null | undefined) => zedId === '';
+/** SiteTourStatusHelper.useLocalStatus (not a hook): the ids are empty strings, so only an empty ZED ID matches (dead in practice). */
+const localStatusApplies = (zedId: string | null | undefined) => zedId === '';
 
 /**
  * LoginActivity.processLogin + handleResponse + getLoginRespose. Online: the answer of SA/Login is stored the first
@@ -81,7 +81,7 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     if (loginResp.isOpenMeetingSubmitted) d.isOpenMeetingSubmitted = true;
     if (loginResp.isSelfieSubmitted) d.isSelfieSubmitted = true;
     if (loginResp.isSiteTourSubmitted) d.isSiteTourSubmitted = true;
-    if (useLocalStatus(loginResp.companyProfile?.zedId)) {
+    if (localStatusApplies(loginResp.companyProfile?.zedId)) {
       const flag = (k: string) => app.prefs.get(PREFS.siteTourStatus, k) === 'true';
       d.isSiteTourSubmitted = flag(loginResp.companyProfile?.zedId ?? '');
       if (!flag('BasicInfo') && d.saBasicInformation) d.saBasicInformation.status = Status.COMPLETED;

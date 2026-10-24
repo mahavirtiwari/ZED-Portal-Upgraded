@@ -22,6 +22,11 @@ export type PhotoCaptureOptions = {
   findingStyle?: 'toast' | 'snackbar';
   /** The app's R.string.failed_to_get_location (the site assessor app's is shorter than the MSME app's). */
   failedLocationMessage?: string;
+  /**
+   * The consultant app's LocationFetcher.getNotAvailable: without a fix (and without a last known location) it went on
+   * with these coordinates instead of failing.
+   */
+  noFixCoordinates?: Coordinates;
 };
 
 export type Capturer = {
@@ -65,6 +70,7 @@ export function usePhotoCapture(options: PhotoCaptureOptions): Capturer {
         ui.showAlert('Location permission needed to access current location');
         return null;
       }
+      if (outcome.kind === 'failed' && optionsRef.current.noFixCoordinates) return optionsRef.current.noFixCoordinates;
       const message = outcome.kind === 'failed' && optionsRef.current.failedLocationMessage ? optionsRef.current.failedLocationMessage : outcome.message;
       const retry = await new Promise<boolean>(resolve =>
         ui.alert(null, message, [{ text: 'Try Again', onPress: () => resolve(true), style: 'cancel' }], true, () => resolve(false)),

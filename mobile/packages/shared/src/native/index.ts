@@ -7,6 +7,7 @@ export type {
   NativeLocation,
   NativeMemoryInfo,
   NativePickResult,
+  NativePickedTime,
   NativeProcessedImage,
 } from './NativeZedDevice';
 

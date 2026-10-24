@@ -31,7 +31,7 @@ const texts = (r: ReactTestRenderer.ReactTestRenderer) =>
   r.root.findAll(n => (n.type as unknown) === 'Text').map(n => (Array.isArray(n.props.children) ? n.props.children.join('') : String(n.props.children ?? '')));
 
 async function appWith(answer = loginAnswer()) {
-  const { app, server } = await makeApp(new FakeServer()).then(m => ({ ...m, server: undefined }));
+  const { app } = await makeApp(new FakeServer());
   await app.saveDetails(answer, SA_ID, ZED_ID);
   return app;
 }

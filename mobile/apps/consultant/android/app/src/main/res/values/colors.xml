@@ -1,0 +1,5 @@
+<resources>
+    <!-- Legacy res/values/colors.xml (theme Theme.Styled): primary is the toolbar, status bar and accent colour. -->
+    <color name="primary">#FF45A5AD</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>

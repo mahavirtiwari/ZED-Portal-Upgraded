@@ -8,9 +8,9 @@ applicationId and signing key, so installed apps update in place). Requirements:
 | `packages/shared` (`@zed/shared`) | Foundation shared by all apps | — | — | done |
 | `apps/msme` (`@zed/msme`) | **ZED Surveillance** (Bronze surveillance desktop assessor) | `ZED_MSME_Bronze` | `com.qci.zed.bronzesurveillance` | done, see [docs/MSME-PARITY.md](docs/MSME-PARITY.md) |
 | `apps/assessor` (`@zed/assessor`) | **ZED SA** (site assessment, lead and co-assessor) | `ZED_SA_Studio` | `com.qci.zed.siteassessment` | done, see [docs/SA-PARITY.md](docs/SA-PARITY.md); no source for a surveillance build |
+| `apps/consultant` (`@zed/consultant`) | **ZED Consultancy** (handholding: lead and co-consultant, DFO technology upgradation) | `ZEDConsultant` | `com.qci.zed.consultancy` | done, see [docs/CONSULTANT-PARITY.md](docs/CONSULTANT-PARITY.md) |
 | `apps/desktop-assessment` | Desktop assessment | `ZED_DA/ZED_DA_App` | `com.zed.zeddaapplication` | later |
 | `apps/surveillance` | Surveillance | `ZEDSurveillance` | `com.prd.zedsa.surveillance` | later |
-| `apps/consultant` | Handholding (consultant) | `ZEDConsultant` | `com.qci.zed.consultancy` | later |
 
 **About `apps/msme`:** `ZED_MSME_Bronze` is not the store MSME app. It is the Bronze surveillance build for the
 desktop assessor ("ZED Surveillance"; sign-in with assessor ID, the unit's ZED ID and the assessor's password), built
@@ -25,6 +25,18 @@ theme tokens, and from `src/ui/kit.tsx`. Locally it runs against the Main Mobile
 credentials in `apps/assessor/.env.local`, ignored). Migrations 0016/0017 on the local `ZEDCS_V2_LIVE` and
 `tools/dev-seed/admin-changes-demo-sa.sql -v Mode=apply` play fake Admin changes to `assessor.basicInfo` and an
 `app.assessor.*` text (`Mode=remove` takes them out).
+
+**About `apps/consultant`:** the handholding app as `ZEDConsultant` builds it (Consultancy system,
+`consultancymobileapi/SA/`; the technology upgradation calls the consultancy web site `Consultancy/FinancialAssistance/…`
+and `mobileapi/photos/…`). It started as a copy of `apps/assessor` (the legacy app is a fork of the site assessment app)
+and was changed to match its source: teal look (`src/palette.ts`, `src/ui/kit.tsx`), milestone dashboard, training,
+baseline study / action plan / technology suggestion / progress review pages, nine-group basic information
+(`consultant.basicInfo`), attendance per day. Locally it runs against the V4 MobileApi started as the consultancy host
+(`Mobile__System=Consultancy`, `Mobile__PathBase=/consultancymobileapi`, port 5105, database `ZED_CONSULTANT`,
+`-PzedEnvironment=local`) with `tools/dev-seed/seed-local-consultant.ps1 [-Milestone 1|2|3]` (fake Silver unit at
+status 8, lead and co-consultant; credentials in `apps/consultant/.env.local`, ignored). Migrations 0001, 0010, 0016 and
+0017 on the local `ZED_CONSULTANT`; `tools/dev-seed/admin-changes-demo-consultant.sql -v Mode=apply` plays fake Admin
+changes (`Mode=remove` takes them out). The technology upgradation also needs the consultancy web site on port 5102.
 
 ## Choices
 

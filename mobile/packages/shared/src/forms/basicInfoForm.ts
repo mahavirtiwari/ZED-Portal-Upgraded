@@ -65,6 +65,19 @@ export function stampFormAnswers(def: FormDefinition, info: BasicInfoDraft, stan
   info.optionalFields = def.fields.filter(f => !f.custom && !f.required).map(f => f.key);
 }
 
+/** Empties the value at a property path (`energyManagement.solar.unit`): null, or an empty list. */
+function emptyAtPath(obj: Record<string, unknown>, path: string) {
+  const parts = path.split('.');
+  let cur: Record<string, unknown> | null = obj;
+  for (const part of parts.slice(0, -1)) {
+    const next: unknown = cur?.[part];
+    if (next == null || typeof next !== 'object') return;
+    cur = next as Record<string, unknown>;
+  }
+  const last = parts[parts.length - 1]!;
+  if (cur) cur[last] = Array.isArray(cur[last]) ? [] : null;
+}
+
 /**
  * The copy of the draft that goes into `basicInformation`: the app's own properties removed and the standard fields
  * the Admin disabled emptied (null, or an empty list), plus the `customFields`/`formVersion` to send next to it.
@@ -72,7 +85,7 @@ export function stampFormAnswers(def: FormDefinition, info: BasicInfoDraft, stan
 export function basicInfoForSubmit<T extends BasicInfoDraft>(info: T): { basicInformation: T; form?: { customFields: Record<string, unknown>; formVersion: string } } {
   const copy = JSON.parse(JSON.stringify(info)) as Record<string, unknown>;
   for (const k of LOCAL_FORM_PROPERTIES) delete copy[k];
-  for (const k of info.omittedFields ?? []) copy[k] = Array.isArray(copy[k]) ? [] : null;
+  for (const k of info.omittedFields ?? []) emptyAtPath(copy, k);
   return {
     basicInformation: copy as T,
     form: info.formVersion ? { customFields: info.customFields ?? {}, formVersion: info.formVersion } : undefined,
