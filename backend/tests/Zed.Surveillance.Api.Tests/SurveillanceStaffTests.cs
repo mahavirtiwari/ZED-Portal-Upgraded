@@ -162,7 +162,24 @@ public sealed class SurveillanceStaffTests : IDisposable
         Assert.Equal("Certification", fees.GetProperty("groupBy").GetString());
         var coord = await SurveillanceLogin.SignInAsync(_host, "COORD1");
         Assert.Equal(HttpStatusCode.NotFound, (await coord.GetAsync("/api/staff/neft/transactions")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/sectors")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_maintains_sectors_and_the_questionnaire_but_not_categories_technologies_or_documents()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_SECTORS"] = _ => FakeSql.Sets([new { Id = 1, Code = "S01", Name = "Auto components" }]);
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([new { Id = 7, SectionCode = "P01", SectionName = "Leadership", Description = "", SectionType = "Bronze" }]);
+        var admin = await SurveillanceLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/staff/masters/sectors")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.GetAsync("/api/staff/masters/parameters/Bronze")).StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MASTER_GET_SECTIONS");
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/categories")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/technologies")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/documents")).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("CATEGOR", StringComparison.Ordinal) || c.Name.Contains("TECHNOLOG", StringComparison.Ordinal));
+
+        var master = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await master.GetAsync("/api/staff/masters/sectors")).StatusCode);
     }
 
     [Fact]

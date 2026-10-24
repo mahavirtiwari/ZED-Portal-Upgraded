@@ -25,7 +25,7 @@ namespace Zed.Portal.Features.Staff.Questionnaire;
 /// </para>
 /// </summary>
 [Route("api/staff/questionnaire/{sectionType}/{sectionCode}/requirements")]
-[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.Admin)]
 public sealed class QuestionnaireController(ISqlExecutor db, ILogger<QuestionnaireController> log) : StaffApiController
 {

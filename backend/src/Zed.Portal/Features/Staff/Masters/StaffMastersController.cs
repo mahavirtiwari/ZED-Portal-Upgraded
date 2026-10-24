@@ -16,13 +16,14 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// parameter description (iButton) was rendered as raw HTML on the old page; the new page shows it as text.
 /// </para>
 /// <para>
-/// Also served by the Consultancy host (sectors and questionnaire parameters); categories and technologies are Main only
-/// (their procedures are not in ZED_CONSULTANT).
+/// Also served by the Consultancy and Surveillance hosts (sectors and questionnaire parameters; their procedures are
+/// the same in ZED_CONSULTANT and ZED_SURVEILLANCE); categories and technologies are Main only (their procedures are
+/// not in those databases). The old surveillance site had these screens with the menu entries commented out.
 /// </para>
 /// </summary>
 [Route("api/staff/masters")]
 [StaffRoles(UserRole.Admin)]
-[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMastersController> log) : StaffApiController
 {
     public sealed record CodeName(int Id, string Code, string Name);

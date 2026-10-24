@@ -32,7 +32,7 @@ maps, `v4_feature_missing.txt`) was produced in the session scratchpad `surv\` f
 | MasterAdmin (7) | Allot Surveillance; Bronze Surveillance Agencies; Surveillance Payment Received; Surveillance Monitoring; Completed / Rejected | Allots units, watches the pipeline, edits agencies' preferred state/districts, blocks/unblocks agencies |
 | Agency (2) | Monitoring, Completed, Assessors, Allot Surveillance (DaAllotment for desktop/Bronze, SaAllotment for site/Silver-Gold), Rejected, Reports | Bronze: assign a desktop assessor allowed for Bronze surveillance. Silver/Gold: lead + co-assessor, date, mode and **MeetingLink**. Then QC, certify, send back, reject |
 | DesktopAssessor (3) | Surveillance Assessments (DaVerification; RemoteAssessments), Completed, Non-Conformances, Rejected | Bronze: reviews what was captured in the Surveillance app, raises NCs. Silver/Gold: works `Remote/Index` during an external video meeting |
-| Admin (1) | Payments only (surveillance fee master); login lands there | Maintains the fee rows main's surveillance payment charges |
+| Admin (1) | Payments (surveillance fee master; login lands there); since 2026-10-24 in V4 also Sectors and Questionnaire (parameters and requirements) | Maintains the fee rows main's surveillance payment charges |
 | SuperAdmin (10) | Failed Transactions, Registered MSME, Financial Support, API Incentives, Reports | Reports, manual payment fixes |
 | CitizenFeedback (11) | Registered MSME, Financial Support, Reports | Reports |
 | Ministry (8) | Registered MSME, Reports | Reports |
@@ -104,7 +104,7 @@ maps, `v4_feature_missing.txt`) was produced in the session scratchpad `surv\` f
 | Incentive | partly (SuperAdmin API incentives) | duplicate | Data lives in main: link to main |
 | Monitoring (176) | live | variant | **No class filter.** No re-allot or regeneration (procs absent). Certificate prints DateOfSurveillance and SurveillanceNo on different artwork (Bronze and site Gold backgrounds differ). Report not attached to mail; surveillance subjects. Details page broken (`SP_MONITORING_GET_DETAILS` missing) |
 | Msme (1308) | mostly dead | older copy | Live for staff only: Profile / GetProfileDetails ("View Profile") and Download (evidence links) |
-| MyDocuments, Questionaire, Sector | dead (menu commented out) | same | |
+| MyDocuments, Questionaire, Sector | dead (menu commented out) | Sector and Questionnaire served again for Admin (2026-10-24, asked for by the owner; same procedures as consultancy's); MyDocuments and page settings stay off (no MSME pages or public home page here) | |
 | Pdf, Token, Unit, Verify, Webinar | dead | same | Verify: certificate QR uses main's sequence, so main's verify page answers it |
 | Remote (4) | live | variant (page/flow) | Opened for "Onsite Assessment" units (shown as Remote), status 9/13. Meeting-link Join button instead of Twilio, up to 6 recording links, photo capture via mobile `SA/SaveCapturedPhoto` |
 | SA (4) | partly | variant | ReportSummary / Summary1/2 / PDF header/footer live (public report linked from main). Hotel actions dead |

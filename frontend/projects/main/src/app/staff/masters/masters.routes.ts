@@ -50,6 +50,13 @@ const ALL_MASTERS_ROUTES: Routes = [
   },
 ];
 
-/** Consultancy has no category or technology masters (their procedures are not in ZED_CONSULTANT). */
+/**
+ * Consultancy has no category or technology masters (their procedures are not in ZED_CONSULTANT). Surveillance has
+ * sectors and the questionnaire only: it has no MSME pages or public home page that would show documents or banners.
+ */
 export const MASTERS_ROUTES: Routes =
-  PORTAL_SYSTEM === 'main' ? ALL_MASTERS_ROUTES : ALL_MASTERS_ROUTES.filter((r) => !/^(categories|technologies)/.test(r.path ?? ''));
+  PORTAL_SYSTEM === 'main'
+    ? ALL_MASTERS_ROUTES
+    : ALL_MASTERS_ROUTES.filter(
+        (r) => !(PORTAL_SYSTEM === 'surveillance' ? /^(categories|technologies|documents|page-settings)/ : /^(categories|technologies)/).test(r.path ?? ''),
+      );

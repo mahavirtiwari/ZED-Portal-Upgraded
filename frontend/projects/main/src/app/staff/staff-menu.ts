@@ -147,6 +147,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Reports', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry] },
 
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin] },
+  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin] },
+  { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin
   { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
