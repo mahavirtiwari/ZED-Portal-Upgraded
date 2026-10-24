@@ -34,10 +34,9 @@ public sealed class StaffAssessorsController(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
     ILogger<StaffAssessorsController> log) : StaffApiController
 {
-    private StaffUserMail Mail => new(email, templates, portal, emailOptions, log);
+    private StaffUserMail Mail => new(email, templates, portal, HttpContext.RequestServices.GetRequiredService<EmailAddresses>(), log);
     private const string Assessor = "3";
 
     private static readonly string[] AllColumns =

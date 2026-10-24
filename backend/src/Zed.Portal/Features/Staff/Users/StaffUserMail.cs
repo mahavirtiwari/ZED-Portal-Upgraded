@@ -14,7 +14,7 @@ public sealed class StaffUserMail(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
+    EmailAddresses addresses,
     ILogger log)
 {
     public string PublicBaseUrl => portal.Value.PublicBaseUrl;
@@ -23,14 +23,15 @@ public sealed class StaffUserMail(
     public string LoginUrl => PublicBaseUrl.TrimEnd('/') + "/User/Login";
 
     /// <summary>Renders and sends; false (logged, without the body) when sending fails.</summary>
-    public async Task<bool> SendAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters, CancellationToken ct)
+    /// <param name="copyOffice">Copy to the office mailbox (Email Settings), as the legacy user mails did.</param>
+    public async Task<bool> SendAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters, CancellationToken ct, bool copyOffice = true)
         where TTemplate : IComponent
     {
         try
         {
             parameters["PublicBaseUrl"] = PublicBaseUrl;
             var html = await templates.RenderAsync<TTemplate>(parameters);
-            var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
+            var cc = copyOffice ? await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct) : null;
             await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Default, cc), ct);
             return true;
         }

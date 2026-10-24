@@ -67,8 +67,9 @@ import { StaffMenuItem, menuEntries, menuFor } from './staff-menu';
                 }
               }
               <li class="nav-item dropdown tag">
-                <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)">
-                  {{ user()?.userName }}
+                <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
+                        [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
+                  {{ user()?.actingUserName || user()?.userName }}
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
                   <li><a class="dropdown-item" routerLink="/staff/change-password">Change Password</a></li>
@@ -113,7 +114,7 @@ export class StaffLayout {
   protected readonly user = this.auth.currentUser;
   protected readonly menu = computed(() => {
     const u = this.user();
-    return u ? menuFor(u.roleId, u.subRoles ?? []) : [];
+    return u ? menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes) : [];
   });
   /** The menu bar: long menus fold into drop-downs as in the old layout (StaffMenuItem.group). */
   protected readonly entries = computed(() => menuEntries(this.menu()));

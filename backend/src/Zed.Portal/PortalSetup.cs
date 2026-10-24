@@ -54,6 +54,12 @@ public static class PortalSetup
         services.AddScoped<IAssessmentDocuments, AssessmentDocuments>();
         services.AddScoped<Features.Staff.PasswordReset.StaffPasswordResets>();
         services.AddScoped<Features.Msme.MsmePasswordResets>();
+
+        // Sub-users (operation admins of MasterAdmins, sub-users of agencies): checked on every request.
+        services.AddMemoryCache();
+        services.AddScoped<Features.Staff.SubUsers.SubUserStore>();
+        services.AddScoped<Features.Staff.SubUsers.SubUserAccessFilter>();
+        services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.SubUsers.SubUserAccessFilter>());
         return builder;
     }
 }

@@ -37,10 +37,9 @@ public sealed class SurveillanceUsersController(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
     ILogger<SurveillanceUsersController> log) : StaffApiController
 {
-    private StaffUserMail Mail => new(email, templates, portal, emailOptions, log);
+    private StaffUserMail Mail => new(email, templates, portal, HttpContext.RequestServices.GetRequiredService<EmailAddresses>(), log);
 
     public sealed class AgencyRow
     {

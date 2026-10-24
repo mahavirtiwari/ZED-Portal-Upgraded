@@ -31,7 +31,6 @@ public sealed class FinancialAssistanceController(
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
-    IConfiguration config,
     ILogger<FinancialAssistanceController> log) : StaffApiController
 {
     public static readonly string[] ListColumns =

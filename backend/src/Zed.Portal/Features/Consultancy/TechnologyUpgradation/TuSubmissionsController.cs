@@ -34,7 +34,6 @@ public sealed class TuSubmissionsController(
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
-    IConfiguration config,
     ILogger<TuSubmissionsController> log) : StaffApiController
 {
     /// <summary>Columns of SP_FINANCIAL_ASSISTANCE_GET_LIST (ZED_CONSULTANT) shown on the list.</summary>

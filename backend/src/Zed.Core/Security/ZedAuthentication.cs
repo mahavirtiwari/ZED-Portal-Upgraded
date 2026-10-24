@@ -23,6 +23,11 @@ public static class ZedClaims
     public const string DistrictCode = "zed:district";
     public const string UnitName = "zed:unit";
     public const string SubRole = "zed:subrole";
+    /// <summary>A sub-user working as the signed-in owner (dbo.V4SubUsers): its own ID and name.</summary>
+    public const string ActingUserId = "zed:acting_user";
+    public const string ActingUserName = "zed:acting_name";
+    /// <summary>Staff screens (Angular routes) a sub-user may open; the API checks its permissions on every call.</summary>
+    public const string PermissionRoute = "zed:route";
 }
 
 /// <summary>
@@ -39,9 +44,16 @@ public static class SubRoles
 
 public sealed record ZedUser(
     string UserId, string UserName, int RoleId, string? Email, string? MobileNo,
-    string? StateCode, string? DistrictCode, string? UnitName = null, IReadOnlyList<string>? SubRoles = null)
+    string? StateCode, string? DistrictCode, string? UnitName = null, IReadOnlyList<string>? SubRoles = null,
+    string? ActingUserId = null, string? ActingUserName = null, IReadOnlyList<string>? PermissionRoutes = null)
 {
     public bool HasSubRole(string subRole) => SubRoles?.Contains(subRole) == true;
+
+    /// <summary>
+    /// Signed in as a sub-user (<see cref="ActingUserId"/>) working as its owner: <see cref="UserId"/>, the role and the
+    /// sub-roles are the owner's, so every procedure and check sees the owner.
+    /// </summary>
+    public bool IsSubUser => !string.IsNullOrEmpty(ActingUserId);
 
     public string RoleName => Enum.IsDefined(typeof(UserRole), RoleId) ? ((UserRole)RoleId).ToString() : "None";
 
@@ -61,6 +73,9 @@ public sealed record ZedUser(
         Add(ZedClaims.DistrictCode, DistrictCode);
         Add(ZedClaims.UnitName, UnitName);
         foreach (var sub in SubRoles ?? []) claims.Add(new Claim(ZedClaims.SubRole, sub));
+        Add(ZedClaims.ActingUserId, ActingUserId);
+        Add(ZedClaims.ActingUserName, ActingUserName);
+        foreach (var route in PermissionRoutes ?? []) claims.Add(new Claim(ZedClaims.PermissionRoute, route));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
     }
 
@@ -73,7 +88,9 @@ public sealed record ZedUser(
             int.TryParse(Get(ZedClaims.RoleId), out var r) ? r : 0,
             Get(ZedClaims.Email), Get(ZedClaims.MobileNo), Get(ZedClaims.StateCode),
             Get(ZedClaims.DistrictCode), Get(ZedClaims.UnitName),
-            principal.FindAll(ZedClaims.SubRole).Select(c => c.Value).ToList());
+            principal.FindAll(ZedClaims.SubRole).Select(c => c.Value).ToList(),
+            Get(ZedClaims.ActingUserId), Get(ZedClaims.ActingUserName),
+            Get(ZedClaims.ActingUserId) is null ? null : principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList());
     }
 }
 

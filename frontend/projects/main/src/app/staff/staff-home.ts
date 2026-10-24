@@ -35,7 +35,7 @@ export class StaffHomePage {
   protected readonly legacyUrl = signal('');
   protected readonly menu = computed(() => {
     const u = this.user();
-    return u ? menuFor(u.roleId, u.subRoles ?? []) : [];
+    return u ? menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes) : [];
   });
   protected readonly subRoleText = computed(() => {
     const subs = this.user()?.subRoles ?? [];

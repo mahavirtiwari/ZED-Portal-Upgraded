@@ -117,7 +117,7 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
    2): those 23 procedures are broken in production too (database\README.md "Findings" 1, and the five
    ZED_CENTER_AUDIT_PROFESSIONAL procedures whose table types the export lacks), as in an unprefixed build. Any other
    failure: stop and read `database\logs\failed-batches-*.json`.
-2. **V4 scripts** (migrations 0001–0011 and 0003, then the fix previews):
+2. **V4 scripts** (migrations 0001–0012 and 0003, then the fix previews):
    ```powershell
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_
    .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server .\SQLEXPRESS -TrustServerCertificate -DatabasePrefix ZEDV4_ -Apply -IncludeMailOutbox
@@ -233,6 +233,9 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    inbox, and for the database procedures' mail (sent by Zed.Jobs) a blind copy of every mail and the daily status
    report's recipients. An empty box uses the configuration (`Email__ContactInbox`, `Email__RegistrationCc`, ...). On
    staging every mail still goes to `Email__RedirectAllTo`. The SMTP accounts and passwords stay in the settings files.
+   **Logins:** the Admin creates Master Admin, Ministry, MSME DFO and dashboard logins under **User Management**; Master
+   Admins add operation admins and agencies add sub-users under **Operation Admins / Sub-Users** (migration 0012;
+   docs/USER-MANAGEMENT.md).
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:

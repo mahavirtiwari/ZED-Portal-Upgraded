@@ -35,10 +35,12 @@ public sealed record MessageResponse(string Message);
 
 public sealed record CurrentUserResponse(
     string UserId, string UserName, int RoleId, string Role, string? Email, string? MobileNo, string? UnitName,
-    IReadOnlyList<string> SubRoles)
+    IReadOnlyList<string> SubRoles, string? ActingUserId = null, string? ActingUserName = null, IReadOnlyList<string>? PermissionRoutes = null)
 {
+    /// <summary>For a sub-user, <c>UserId</c>/<c>UserName</c> are the owner's and the <c>Acting…</c> fields its own.</summary>
     public static CurrentUserResponse From(ZedUser u) =>
-        new(u.UserId, u.UserName, u.RoleId, u.RoleName, u.Email, u.MobileNo, u.UnitName, u.SubRoles ?? []);
+        new(u.UserId, u.UserName, u.RoleId, u.RoleName, u.Email, u.MobileNo, u.UnitName, u.SubRoles ?? [],
+            u.ActingUserId, u.ActingUserName, u.PermissionRoutes);
 }
 
 public static class PasswordPolicy

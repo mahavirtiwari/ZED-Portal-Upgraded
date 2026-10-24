@@ -35,10 +35,9 @@ public sealed class StaffAgenciesController(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
-    IOptions<EmailOptions> emailOptions,
     ILogger<StaffAgenciesController> log) : StaffApiController
 {
-    private StaffUserMail Mail => new(email, templates, portal, emailOptions, log);
+    private StaffUserMail Mail => new(email, templates, portal, HttpContext.RequestServices.GetRequiredService<EmailAddresses>(), log);
 
     private static readonly string[] ListColumns =
     [

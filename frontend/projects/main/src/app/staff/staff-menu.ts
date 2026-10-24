@@ -122,9 +122,13 @@ export const MAIN_MENU: StaffMenuItem[] = [
   ...INCENTIVE_TYPES.map((t) => ({
     label: t.label, legacyPath: '/Incentive/Index', route: '/staff/incentives', queryParams: { type: t.value }, roles: [R.Admin as number], group: 'Incentives',
   })),
-  // New in V4: the Admin's settings.
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
+  // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
+  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
 
 /**
@@ -145,7 +149,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
   })),
-  // New in V4: the Admin's settings.
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
 
@@ -180,6 +185,9 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'New Transactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
   { label: 'Approved Transactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'Reports', route: '/staff/reports', roles: [R.StateCoordinator] },
+  // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
+  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
 
 /**
@@ -198,7 +206,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire',
   })),
-  // New in V4: the Admin's settings.
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings' },
 
@@ -229,6 +238,9 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Non-Conformances', route: '/staff/assessment/non-conformances', roles: [R.DesktopAssessor], subRoles: ['DesktopVerification'] },
   { label: 'Surveillance Assessments (Site)', route: '/staff/remote-assessments', roles: [R.DesktopAssessor], subRoles: ['SiteVerification'] },
   { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.DesktopAssessor] },
+  // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
+  { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
+  { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
 ];
 
 export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
@@ -251,11 +263,21 @@ export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM): s
   return HOME_ROUTES[system][roleId] ?? (DASHBOARD_ROLE_IDS.includes(roleId) ? '/staff/dashboard' : null);
 }
 
-export function menuFor(roleId: number, subRoles: readonly string[], system: PortalSystem = PORTAL_SYSTEM): StaffMenuItem[] {
+/**
+ * The menu of a role. A sub-user (operation admin, agency sub-user) gets its owner's menu limited to the screens its owner
+ * gave it (`permissionRoutes`, from the sign-in); the API checks them again.
+ */
+export function menuFor(
+  roleId: number,
+  subRoles: readonly string[],
+  system: PortalSystem = PORTAL_SYSTEM,
+  permissionRoutes?: readonly string[] | null,
+): StaffMenuItem[] {
   return MENUS[system].filter(
     (i) =>
       i.roles.includes(roleId) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&
-      (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))),
+      (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))) &&
+      (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))),
   );
 }

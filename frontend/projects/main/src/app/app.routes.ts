@@ -55,6 +55,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
+  { path: 'user-management', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.USER_MANAGEMENT_ROUTES) },
+  { path: 'sub-users', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.SUB_USERS_ROUTES) },
   { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },
   {
     path: 'neft/new',
@@ -330,6 +332,8 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
+  { path: 'user-management', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.USER_MANAGEMENT_ROUTES) },
+  { path: 'sub-users', loadChildren: () => import('./staff/user-management/user-management.routes').then((m) => m.SUB_USERS_ROUTES) },
   {
     path: 'change-password',
     title: 'ZED | Change Password',

@@ -13,6 +13,11 @@ export interface CurrentUser {
   unitName?: string | null;
   /** Agency/assessor sub-roles: DesktopVerification, SiteVerification, FinancialVerification. */
   subRoles?: string[];
+  /** A sub-user working as the owner above (userId, userName and role are the owner's): its own ID and name. */
+  actingUserId?: string | null;
+  actingUserName?: string | null;
+  /** A sub-user's screens (staff routes); null for everyone else. */
+  permissionRoutes?: string[] | null;
 }
 
 /** Signed-in user, held in a signal. The session itself is an HttpOnly cookie set by the API. */
