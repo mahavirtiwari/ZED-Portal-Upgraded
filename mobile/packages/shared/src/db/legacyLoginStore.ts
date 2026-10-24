@@ -43,6 +43,13 @@ export class LegacyLoginStore<T> {
     return res.rowsAffected > 0;
   }
 
+  /** startUserDataUpdate: rewrites the data, keeping the stored credential. */
+  async saveData(userId: string, data: T): Promise<boolean> {
+    const { table, userColumn, dataColumn } = this.t;
+    const res = await this.db.execute(`UPDATE ${table} SET ${dataColumn} = ? WHERE ${userColumn} = ?`, [JSON.stringify(data), userId]);
+    return res.rowsAffected > 0;
+  }
+
   /** getLoginData: null when there is no row or the JSON cannot be read (GsonProvider.jsonToObject). */
   async load(userId: string): Promise<T | null> {
     const { table, userColumn, dataColumn } = this.t;

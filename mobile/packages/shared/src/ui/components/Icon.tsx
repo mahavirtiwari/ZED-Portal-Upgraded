@@ -1,5 +1,5 @@
 import React from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Svg, { ClipPath, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 /** An Android vector drawable converted by mobile/tools/convert-vector-drawables.mjs. */
@@ -98,15 +98,23 @@ export function GradientFill({
       : angle === 270
       ? { x1: '0', y1: '0', x2: '0', y2: '1' }
       : { x1: '0.3', y1: '0', x2: '0.7', y2: '1' };
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
   return (
-    <Svg style={[{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }, style]} width="100%" height="100%">
-      <Defs>
-        <LinearGradient id="g" {...coords}>
-          <Stop offset="0" stopColor={from} />
-          <Stop offset="1" stopColor={to} />
-        </LinearGradient>
-      </Defs>
-      <Rect x="0" y="0" width="100%" height="100%" rx={radius} ry={radius} fill="url(#g)" />
-    </Svg>
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, style]}
+      onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size ? (
+        <Svg width={size.w} height={size.h}>
+          <Defs>
+            <LinearGradient id="g" {...coords}>
+              <Stop offset="0" stopColor={from} />
+              <Stop offset="1" stopColor={to} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={size.w} height={size.h} rx={radius} ry={radius} fill="url(#g)" />
+        </Svg>
+      ) : null}
+    </View>
   );
 }

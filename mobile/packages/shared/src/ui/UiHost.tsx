@@ -12,6 +12,7 @@ import {
   ToastAndroid,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, dimens } from './theme';
 
 /**
@@ -64,6 +65,7 @@ export function UiHost({ children }: { children: React.ReactNode }) {
   const [snack, setSnack] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ItemsDialog | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const insets = useSafeAreaInsets();
   const loadingRef = useRef(false);
 
   const ui = useMemo<Ui>(
@@ -124,7 +126,7 @@ export function UiHost({ children }: { children: React.ReactNode }) {
       <View style={styles.fill}>
         {children}
         {snack != null && (
-          <View style={styles.snackbar} pointerEvents="none">
+          <View style={[styles.snackbar, { bottom: 8 + insets.bottom }]} pointerEvents="none" testID="snackbar">
             <Text style={styles.snackbarText}>{snack}</Text>
           </View>
         )}

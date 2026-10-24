@@ -12,6 +12,13 @@ react {
     reactNativeDir = file("../../../../node_modules/react-native")
     codegenDir = file("../../../../node_modules/@react-native/codegen")
     cliFile = file("../../../../node_modules/react-native/cli.js")
+    hermesCommand = file("../../../../node_modules/hermes-compiler/hermesc").absolutePath + "/%OS-BIN%/hermesc"
+
+    // -PzedBundleDebug=true embeds the JS bundle in the debug APK too, so a debug build starts without Metro
+    // (cold start in airplane mode when testing the offline mode against a local MobileApi).
+    if (project.findProperty("zedBundleDebug") == "true") {
+        debuggableVariants = []
+    }
 
     autolinkLibrariesWithApp()
 }

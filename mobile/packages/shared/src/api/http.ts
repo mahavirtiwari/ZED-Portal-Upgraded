@@ -98,7 +98,7 @@ export class HttpClient {
     return res.text();
   }
 
-  private async send(method: string, url: string, body: BodyInit | undefined, headers: Record<string, string>) {
+  private async send(method: string, url: string, body: string | FormData | undefined, headers: Record<string, string>) {
     this.onRequest?.(method, url);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);

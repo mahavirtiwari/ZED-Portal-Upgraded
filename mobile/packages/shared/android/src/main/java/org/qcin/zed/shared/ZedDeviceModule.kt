@@ -3,6 +3,7 @@ package org.qcin.zed.shared
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.ActivityManager
+import android.app.DatePickerDialog
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -30,6 +31,7 @@ import java.io.IOException
 import java.io.InputStream
 import java.security.SecureRandom
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
@@ -248,6 +250,21 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
     }
 
     // ---- Misc ----------------------------------------------------------------------------------------------
+
+    override fun pickDate(initial: String?, promise: Promise) {
+        val activity = reactApplicationContext.getCurrentActivity() ?: return promise.reject("NO_ACTIVITY", "No activity")
+        val c = Calendar.getInstance()
+        initial?.let { runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.ENGLISH).parse(it) }.getOrNull() }?.let { c.time = it }
+        activity.runOnUiThread {
+            var settled = false
+            val dialog = DatePickerDialog(activity, { _, y, m, d ->
+                settled = true
+                promise.resolve(String.format(Locale.ENGLISH, "%04d-%02d-%02d", y, m + 1, d))
+            }, c.get(Calendar.YEAR), c.get(Calendar.MONTH), c.get(Calendar.DAY_OF_MONTH))
+            dialog.setOnDismissListener { if (!settled) { settled = true; promise.resolve(null) } }
+            dialog.show()
+        }
+    }
 
     override fun setClipboard(text: String) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager

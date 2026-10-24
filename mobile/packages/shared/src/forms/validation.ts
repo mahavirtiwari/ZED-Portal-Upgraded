@@ -22,6 +22,14 @@ export function numericFilter(text: string): string {
   return text.replace(/[^0-9]/g, '').substring(0, NUMERIC_MAX_LENGTH);
 }
 
+/** New (Admin form fields): digits, one decimal point and a leading minus. */
+export function decimalFilter(text: string): string {
+  const cleaned = text.replace(/[^0-9.-]/g, '');
+  const sign = cleaned.startsWith('-') ? '-' : '';
+  const [whole = '', ...rest] = cleaned.replace(/-/g, '').split('.');
+  return sign + whole + (rest.length ? '.' + rest.join('') : '');
+}
+
 /**
  * ViewUtils.setPercentageValidator: once the text has more than one digit and is outside 0..100, the last typed
  * character is deleted (a KEYCODE_DEL is sent).

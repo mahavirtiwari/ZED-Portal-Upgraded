@@ -13,7 +13,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { COMMENT_LENGTH, NUMERIC_MAX_LENGTH, numericFilter, percentageFilter, REQUIRED } from '../../forms/validation';
+import { COMMENT_LENGTH, decimalFilter, NUMERIC_MAX_LENGTH, numericFilter, percentageFilter, REQUIRED } from '../../forms/validation';
 import { sharedIcons } from '../sharedIcons';
 import { colors, dimens, shapes, textStyles } from '../theme';
 import { useUi } from '../UiHost';
@@ -140,6 +140,8 @@ export function TextField({
   onChange,
   error,
   numeric,
+  decimal,
+  maxLength,
   percentage,
   multiline,
   disabled,
@@ -151,6 +153,9 @@ export function TextField({
   onChange: (v: string) => void;
   error?: string | null;
   numeric?: boolean;
+  /** New (Admin form fields): a number with decimals. */
+  decimal?: boolean;
+  maxLength?: number | null;
   /** enablePercentageValidator */
   percentage?: boolean;
   multiline?: boolean;
@@ -163,11 +168,11 @@ export function TextField({
       <FieldLabel label={label} />
       <OutlinedInput
         value={value}
-        onChangeText={t => onChange(percentage ? percentageFilter(value, t) : numeric ? numericFilter(t) : t)}
+        onChangeText={t => onChange(percentage ? percentageFilter(value, t) : numeric ? numericFilter(t) : decimal ? decimalFilter(t) : t)}
         error={error}
         multiline={multiline}
-        keyboardType={numeric ? 'number-pad' : 'default'}
-        maxLength={multiline ? COMMENT_LENGTH : numeric ? NUMERIC_MAX_LENGTH : undefined}
+        keyboardType={numeric ? 'number-pad' : decimal ? 'decimal-pad' : 'default'}
+        maxLength={maxLength ?? (multiline ? COMMENT_LENGTH : numeric ? NUMERIC_MAX_LENGTH : undefined)}
         showCounter={multiline}
         editable={!disabled}
         autoCapitalize={autoCapitalize ?? (multiline ? 'sentences' : 'words')}

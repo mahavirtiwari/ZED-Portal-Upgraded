@@ -94,6 +94,9 @@ export interface Spec extends TurboModule {
   /** Copies to cacheDir/SharedDocs/<fileName> and opens a PDF viewer (legacy openPdf). */
   openPdf(path: string, fileName: string): void;
 
+  /** DatePickerDialog (new: the Admin's custom date fields); `yyyy-MM-dd` in and out, null when cancelled. */
+  pickDate(initial: string | null): Promise<string | null>;
+
   setClipboard(text: string): void;
   /** PBKDF2-HMAC-SHA256, hex encoded. */
   hashPassword(password: string, saltHex: string, iterations: number): string;
