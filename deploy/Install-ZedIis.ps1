@@ -327,7 +327,13 @@ if ($HostName) {
                     $addedBindings.Add([pscustomobject]@{ Protocol = 'http'; BindingInformation = "*:80:$h" })
                 }
             }
-            $ruleExists = Get-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "system.webServer/rewrite/rules/rule[@name='ZED-HTTPS']" -Name name -ErrorAction SilentlyContinue
+            # A site that does not exist yet (dry run with -CreateSite) has no configuration path: reading it throws even
+            # with -ErrorAction SilentlyContinue, and it has no rule.
+            $ruleExists = $null
+            if (Test-Path "IIS:\Sites\$SiteName") {
+                try { $ruleExists = Get-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter "system.webServer/rewrite/rules/rule[@name='ZED-HTTPS']" -Name name -ErrorAction SilentlyContinue }
+                catch { $ruleExists = $null }
+            }
             if (-not $ruleExists) {
                 Step "add URL Rewrite rule ZED-HTTPS on $SiteName (http -> https 301, except /.well-known/acme-challenge/)" {
                     $filter = 'system.webServer/rewrite/rules'
