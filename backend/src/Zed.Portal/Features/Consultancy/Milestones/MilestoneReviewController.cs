@@ -50,11 +50,11 @@ public sealed class MilestoneReviewController(
     private static readonly string[] MilestoneRowFields =
     [
         "NcCount", "CertificationStatus", "CertificationStatusDate", "ZedId", "Certification", "EnterpriseName", "PUnitName", "UdyogAadharNo",
-        "PlantAddress", "CertificationBodyUserId", "AgencyName", "SiteAssessorId", "SiteAssessorName", "CoAssessorId", "TechExpert", "TechExpertName",
+        "PlantAddress", "CertificationBodyUserId", "AgencyName", "SiteAssessorId", "SiteAssessorName", "CoAssessorId", "CoAssessorName", "TechExpert", "TechExpertName",
         "BdsFromDate", "BdsToDate", "HapFromDate", "HapToDate", "ModeOfAssessment", "LastestCertification", "SendBackStatus", "SaAssessorRemarks",
     ];
 
-    private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "iButton", "IsAssessmentExcempted", "NcCount"];
+    private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "SectionsOrder", "iButton", "IsAssessmentExcempted", "NcCount"];
 
     private static readonly string[] RequirementFields =
     [
@@ -68,7 +68,7 @@ public sealed class MilestoneReviewController(
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] AllotmentFields = ["SectionCode", "AllotedAssessorId", "AllotedAssessorName", "NcCount", "AssessorRank"];
-    private static readonly string[] TrainingFields = ["Id", "TrainingType", "TrainingTopic", "TrainingDate", "TrainingTime", "Remarks", "NcCount", "AssessorId", "AssessorRank"];
+    private static readonly string[] TrainingFields = ["Id", "TrainingType", "TrainingTopic", "TrainingDate", "TrainingTime", "Remarks", "NcCount", "AssessorId", "AssessorRank", "CreatedDate"];
     private static readonly string[] AttendanceFields = ["ConsultantId", "MileStoneNo", "RowNumber", "TimeStamps", "LoginTime", "LogoutTime", "NoOfHours", "NoOfMinutes"];
 
     /// <summary>ConsultancyBasicInformation, one row per milestone ("Basic Information" tab).</summary>
@@ -91,9 +91,11 @@ public sealed class MilestoneReviewController(
 
     // ------------------------------------------------------------------ response
 
-    public sealed record Photo(long? Id, string? Name, string? Url, string? CreatedDate, int? NcCount);
+    /// <summary>A photo; <c>AssessorId</c>: the consultant who took it (handholding training photos are shown per consultant).</summary>
+    public sealed record Photo(long? Id, string? Name, string? Url, string? CreatedDate, int? NcCount, string? AssessorId);
 
-    public sealed record Meeting(long? Id, int? NcCount, string? Comments, IReadOnlyList<Photo> Photos, IReadOnlyList<Dictionary<string, object?>> Participants);
+    /// <summary>An opening or closing meeting; <c>Editable</c>: the user may change its remarks ("Edit Remarks").</summary>
+    public sealed record Meeting(long? Id, int? NcCount, string? Comments, IReadOnlyList<Photo> Photos, IReadOnlyList<Dictionary<string, object?>> Participants, bool Editable);
 
     public sealed record Bullet(long Id, string? RequirementId, string? ReqType, string? Text, int? NcCount, bool Editable);
 
@@ -135,6 +137,8 @@ public sealed class MilestoneReviewController(
         IReadOnlyList<Photo> Selfies,
         IReadOnlyList<Dictionary<string, object?>> Attendance,
         IReadOnlyList<Dictionary<string, object?>> AttendanceConsultants,
+        IReadOnlyList<Dictionary<string, object?>> Locations,
+        Dictionary<string, object?>? ZedLocation,
         Permissions Permissions);
 
     public sealed record FieldRequest(string? Field, string? Value);
@@ -227,13 +231,16 @@ public sealed class MilestoneReviewController(
             Trainings(sa[15]),
             Photos(sa[16], z, level, "src"),
             Pick(sa[17], BasicInfoFields),
-            Meetings(sa[1], sa[2], sa[5], z, level),
-            Meetings(sa[3], sa[4], sa[8], z, level),
+            Meetings(sa[1], sa[2], sa[5], z, level, MeetingEditor(ctx, OpenMeeting) ? ctx.Milestone : null),
+            Meetings(sa[3], sa[4], sa[8], z, level, MeetingEditor(ctx, CloseMeeting) ? ctx.Milestone : null),
             Photos(sa[0], z, level, "src"),
             Photos(sa[6], z, level, "src", "PhotoPath"),
             Photos(sa[12], z, level, "PhotoPath", "src"),
             attendance,
             Pick(da[21], ["ConsultantId", "AssessorType"]),
+            // The overview's locations: the consultants' per milestone (set 9) and the unit's ZED certification (set 22).
+            Pick(da[9], ["SaLatitude", "SaLongitude"]),
+            da[22].FirstOrDefault() is { } zedLocation ? Pick(zedLocation, ["ZedSaLatitude", "ZedSaLongitude"]) : null,
             permissions);
     }
 
@@ -355,6 +362,38 @@ public sealed class MilestoneReviewController(
         if (row is null || row.NcCount != ctx!.Milestone) return NotFound();
         await db.ExecuteSqlAsync(MilestoneFields.UpdateTrainingSql, Args(ctx, id, remarks), ct);
         log.LogInformation("{UserId} ({Party}) edited TrainingInfo {Id} remarks of {ZedId} {Level}", UserId, ctx.Party, id, ctx.ZedId, ctx.Level);
+        return new MessageResponse("Remarks updated.");
+    }
+
+    /// <summary>
+    /// Remarks of an opening or closing meeting of the current milestone ("Edit Remarks": Remote/UpdateRemarks with TableName
+    /// Meetings, SP_MONITORING_RA_UPDATE_AGENCY_REMARKS). The old page offered it to the lead consultant (opening meeting at
+    /// status 9–13, closing meeting at 13) and to the CO in its review.
+    /// </summary>
+    [HttpPost("meetings/{id:long}/remarks")]
+    [StaffRoles(UserRole.Agency, UserRole.DesktopAssessor)]
+    public async Task<ActionResult<MessageResponse>> MeetingRemarks(string zedId, string certification, long id, RemarksRequest req, CancellationToken ct)
+    {
+        var (ctx, error) = await Context(zedId, certification, ct);
+        if (error is not null) return error;
+        var remarks = AssessmentInput.Text(req.Remarks);
+        if (remarks is null) return this.Problem400("Please enter remarks.");
+        if (remarks.Length > MilestoneFields.MeetingRemarksMaxLength) return this.Problem400($"Remarks must be at most {MilestoneFields.MeetingRemarksMaxLength} characters.");
+
+        var meeting = await Item(MilestoneFields.MeetingSql, id, ctx!, ct);
+        if (meeting is null || meeting.NcCount != ctx!.Milestone) return NotFound();
+        if (!MeetingEditor(ctx, meeting.MeetingType?.Trim())) return Forbidden("The meeting remarks cannot be edited in the current status.");
+
+        await db.ExecuteProcAsync("SP_MONITORING_RA_UPDATE_AGENCY_REMARKS", new
+        {
+            UserId = AssessmentInput.Ansi(UserId),
+            ZedId = AssessmentInput.Ansi(ctx.ZedId),
+            CertificationType = AssessmentInput.Ansi(ctx.Level),
+            TableName = AssessmentInput.Ansi("Meetings"),
+            Id = AssessmentInput.Ansi(id.ToString(CultureInfo.InvariantCulture)),
+            Remarks = AssessmentInput.Ansi(remarks, 5000),
+        }, ct);
+        log.LogInformation("{UserId} ({Party}) edited the remarks of meeting {Id} of {ZedId} {Level}", UserId, ctx.Party, id, ctx.ZedId, ctx.Level);
         return new MessageResponse("Remarks updated.");
     }
 
@@ -566,6 +605,15 @@ public sealed class MilestoneReviewController(
         return (ctx, bullet, null);
     }
 
+    private const string OpenMeeting = "Open Meeting";
+    private const string CloseMeeting = "Close Meeting";
+
+    /// <summary>The lead consultant (opening meeting while editing is open, closing meeting at 13) or the CO in its review.</summary>
+    private static bool MeetingEditor(MilestoneContext ctx, string? meetingType) =>
+        ctx.CoCanReview ||
+        (ctx.ConsultantCanEdit && ctx.Party == MilestoneParty.Lead &&
+         (meetingType == OpenMeeting || (meetingType == CloseMeeting && ctx.Status == MilestoneStatus.InProgress)));
+
     /// <summary>Lead consultant (while editing is open) or the CO in its review; co-consultants did not edit trainings on the old page.</summary>
     private static bool TrainingEditor(MilestoneContext ctx) =>
         (ctx.ConsultantCanEdit && ctx.Party == MilestoneParty.Lead) || ctx.CoCanReview;
@@ -621,16 +669,18 @@ public sealed class MilestoneReviewController(
         return problem is null ? text : null;
     }
 
+    /// <summary>The meetings of one type; the remarks of <paramref name="editableMilestone"/>'s meeting are the user's to edit.</summary>
     private static List<Meeting> Meetings(IEnumerable<IDictionary<string, object?>> meetings, IReadOnlyList<IDictionary<string, object?>> participants,
-        IReadOnlyList<IDictionary<string, object?>> photos, string zedId, string level) =>
+        IReadOnlyList<IDictionary<string, object?>> photos, string zedId, string level, int? editableMilestone) =>
         meetings.Select(m => new Meeting(Long(m, "Id"), Int(m, "NcCount"), Str(m, "Comments"),
             Photos(photos.Where(p => SameText(p, "NcCount", m, "NcCount")), zedId, level, "src", "PhotoPath"),
-            Pick(participants.Where(p => SameText(p, "NcCount", m, "NcCount")), ["Name", "Designation"]))).ToList();
+            Pick(participants.Where(p => SameText(p, "NcCount", m, "NcCount")), ["Name", "Designation"]),
+            editableMilestone is not null && Long(m, "Id") is not null && Int(m, "NcCount") == editableMilestone)).ToList();
 
     private static List<Photo> Photos(IEnumerable<IDictionary<string, object?>> rows, string zedId, string level, params string[] columns) =>
         rows.Select(r => new Photo(Long(r, "Id"), Str(r, "name") ?? Str(r, "Name"),
             columns.Select(c => MilestoneFiles.Url(zedId, level, r.Text(c))).FirstOrDefault(u => u is not null),
-            Str(r, "CreatedDate"), Int(r, "NcCount"))).ToList();
+            Str(r, "CreatedDate"), Int(r, "NcCount"), Str(r, "AssessorId"))).ToList();
 
     private static bool SameText(IDictionary<string, object?> a, string columnA, IDictionary<string, object?> b, string columnB)
     {

@@ -152,6 +152,55 @@ public sealed class SurveillanceReviewTests : IDisposable
         Assert.Empty(_main.Calls);
     }
 
+    [Fact]
+    public async Task The_review_page_carries_the_surveillance_plan_location_and_selfie_names()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
+            [new { ZedId = Zed, Certification = "Silver", CertificationStatus = 15, NcCount = 0, MeetingLink = (string?)null }],
+            [], [], [], [], [], [], [], [],
+            [new { SurLatitude = "28.9", SurLongitude = "77.9" }]);
+        _host.Sql.Procs["SP_ASSESSMENT_SA_DETAILS"] = _ =>
+        {
+            var sets = new List<IEnumerable<object>>();
+            while (sets.Count < 12) sets.Add([]);
+            // Set 12: the unit's own selfie (AssessorId = ZED ID) and the assessor's.
+            sets.Add([
+                new { Id = 1, ZedId = Zed, AssessorId = Zed, PhotoPath = $"{Host}/surveillancemobileapi/SaPhotos/{Zed}/Silver/SiteTour/1.jpg" },
+                new { Id = 2, ZedId = Zed, AssessorId = "ASSESSORSV", PhotoPath = $"{Host}/surveillancemobileapi/SaPhotos/{Zed}/Silver/Selfie on Site.jpg" },
+            ]);
+            sets.Add([]);
+            sets.Add([new { Id = 41, SectionCode = "1", SectionName = "Leadership", AllotedAssessorId = "ASSESSORSV", AllotedAssessorName = "Lead SV", AssessorRank = "Lead Assessor" }]);
+            return FakeSql.Sets([.. sets]);
+        };
+
+        var client = await ReviewTestHost.SignInAsync(App(), "AGENCYSV", UserRole.Agency, Sv);
+        var json = await client.GetFromJsonAsync<JsonElement>(Review);
+        Assert.Equal("28.9", json.GetProperty("location").GetProperty("SurLatitude").GetString());
+        Assert.Equal(["Msme Representative Selfie", "Assessor Selfie"], json.GetProperty("saSelfies").EnumerateArray().Select(p => p.GetProperty("name").GetString()));
+        var plan = json.GetProperty("surveillance").GetProperty("planSections")[0];
+        Assert.Equal("Lead SV", plan.GetProperty("AllotedAssessorName").GetString());
+        Assert.Equal("Lead Assessor", plan.GetProperty("AssessorRank").GetString());
+    }
+
+    [Fact]
+    public async Task The_original_certification_brings_survemandatories_its_plan_and_its_location()
+    {
+        _main.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(
+            [new { ZedId = Zed, Certification = "Silver", PUnitName = "Unit" }],
+            [], [],
+            [new { Id = 41, SectionCode = "1", SectionName = "Leadership", SurveMandatories = "Yes", AllotedAssessorId = "ORIGSA", AllotedAssessorName = "Original Lead", AssessorRank = "Lead Assessor" }],
+            [new { Id = 11, SectionCode = "1", RequirementCode = "2", RequirementId = "R12", SaConformance = "Yes", SaUpdatedDate = "May 6, 2025" }],
+            [], [], [], [],
+            [new { Latitude = "28.6", Longitude = "77.2", SaLatitude = "28.7", SaLongitude = "77.3" }]);
+        var client = await ReviewTestHost.SignInAsync(App(), "MADMIN", UserRole.MasterAdmin);
+        var json = await client.GetFromJsonAsync<JsonElement>(Review + "/original");
+        var section = json.GetProperty("sections")[0];
+        Assert.Equal("Yes", section.GetProperty("SurveMandatories").GetString());
+        Assert.Equal("Original Lead", section.GetProperty("AllotedAssessorName").GetString());
+        Assert.Equal("May 6, 2025", json.GetProperty("requirements")[0].GetProperty("SaUpdatedDate").GetString());
+        Assert.Equal("28.7", json.GetProperty("location").GetProperty("SaLatitude").GetString());
+    }
+
     // ------------------------------------------------------------------ agency decisions
 
     [Fact]

@@ -84,12 +84,23 @@ public sealed partial class TuVerificationController(
 
     public sealed record MeetingDto(string? Comments, IReadOnlyList<ParticipantDto> Participants, IReadOnlyList<MeetingPhotoDto> Photos);
 
-    public sealed record RecommendedDto(string? Code, string? Name);
+    public sealed record RecommendedDto(string? Code, string? Name, string? Description);
 
+    /// <summary>A day of the DFO's attendance; the selfies are served by <see cref="AttendancePhoto"/>.</summary>
+    public sealed record AttendanceDto(string? Date, string? LoginTime, string? LogoutTime, int? Hours, int? Minutes, string? LoginPhotoUrl, string? LogoutPhotoUrl);
+
+    /// <summary>
+    /// <paramref name="Overview"/> and <paramref name="Location"/> are the unit's (the "Overview" tab), the same on every
+    /// application of the unit.
+    /// </summary>
     public sealed record ApplicationDto(
         string Certification, string Stage, Dictionary<string, object?> Details, IReadOnlyList<TechnologyDto> Technologies,
         IReadOnlyList<DocumentDto> Documents, MeetingDto? Meeting, IReadOnlyList<RecommendedDto> Recommended,
-        bool CanValidate, bool CanDecide, bool CanApprove, bool CanEditAmounts, bool CanEditAccount, bool HasReport);
+        bool CanValidate, bool CanDecide, bool CanApprove, bool CanEditAmounts, bool CanEditAccount, bool HasReport,
+        IReadOnlyList<AttendanceDto> Attendance, Dictionary<string, object?>? Overview, Dictionary<string, object?>? Location);
+
+    public static readonly string[] OverviewColumns =
+        ["ZedId", "PUnitName", "UdyogAadharNo", "Certification", "PlantAddress", "Milestone1Date", "Milestone2Date", "Milestone3Date"];
 
     /// <summary>GET api/staff/consultancy/tu/{zedId} — the applications of the unit this user may see.</summary>
     [HttpGet("{zedId}")]
@@ -151,6 +162,17 @@ public sealed partial class TuVerificationController(
         var (app, _) = await ViewableAsync(zedId, certification, ct);
         if (app?.MeetingPhoto(id) is not { } p || TuStorage.MeetingFile(p.Text("Name"), p.Text("PhotoId")) is not { } file) return NotFound();
         var path = Storage.Find([$"{TuStorage.MeetingFolder(app.ZedId, app.Certification)}/{file}"]);
+        return path is null ? NotFound() : Serve(path);
+    }
+
+    /// <summary>GET api/staff/consultancy/tu/{zedId}/{certification}/attendance-photos/{photoId} — a punch-in or punch-out selfie of the DFO.</summary>
+    [HttpGet("{zedId}/{certification}/attendance-photos/{photoId}")]
+    public async Task<IActionResult> AttendancePhoto(string zedId, string certification, string photoId, CancellationToken ct)
+    {
+        var (app, _) = await ViewableAsync(zedId, certification, ct);
+        if (app is null || !app.Attendance.Any(a => a.Text("LoginPhotoId1") == photoId || a.Text("LogoutPhotoId1") == photoId)
+            || TuStorage.AttendanceFile(app.ZedId, app.Certification, photoId) is not { } file) return NotFound();
+        var path = Storage.Find([file]);
         return path is null ? NotFound() : Serve(path);
     }
 
@@ -458,9 +480,16 @@ public sealed partial class TuVerificationController(
             a.Participants.Select(p => new ParticipantDto(Nullable(p.Text("Name")), Nullable(p.Text("Designation")))).ToList(),
             a.MeetingPhotos.Select(p => new MeetingPhotoDto(SchemeRows.Int(p, "Id") ?? 0, Nullable(p.Text("Name")), Nullable(p.Text("TimeStamp")),
                 $"{baseUrl}/meeting-photos/{SchemeRows.Int(p, "Id") ?? 0}")).ToList());
-        var recommended = a.Recommended.Select(r => new RecommendedDto(Nullable(r.Text("TechnologyCode")), Nullable(r.Text("TechnologyName")))).ToList();
+        var recommended = a.Recommended.Select(r => new RecommendedDto(Nullable(r.Text("TechnologyCode")), Nullable(r.Text("TechnologyName")), Nullable(r.Text("Description")))).ToList();
+        string? Selfie(string? photoId) => TuStorage.AttendanceFile(a.ZedId, a.Certification, photoId) is null ? null
+            : $"{baseUrl}/attendance-photos/{Uri.EscapeDataString(photoId!)}";
+        var attendance = a.Attendance.Select(r => new AttendanceDto(Nullable(r.Text("TimeStamps")), Nullable(r.Text("LoginTime")), Nullable(r.Text("LogoutTime")),
+            SchemeRows.Int(r, "NoOfHours"), SchemeRows.Int(r, "NoOfMinutes"), Selfie(r.Text("LoginPhotoId1")), Selfie(r.Text("LogoutPhotoId1")))).ToList();
         return new ApplicationDto(a.Certification, TuStatus.Text(a.Tu, a.Status), SchemeRows.Pick(a.Row, DetailColumns), techs, docs, meeting, recommended,
-            a.CanValidate(user), a.CanDecide(user), a.CanApprove(user), a.CanEditAmounts(user, scope), a.CanEditAccount(user, scope), a.HasReport);
+            a.CanValidate(user), a.CanDecide(user), a.CanApprove(user), a.CanEditAmounts(user, scope), a.CanEditAccount(user, scope), a.HasReport,
+            attendance,
+            a.Overview is null ? null : SchemeRows.Pick(a.Overview, OverviewColumns),
+            a.Location is null ? null : SchemeRows.Pick(a.Location, ["Latitude", "Longitude"]));
     }
 
     private static string? Nullable(string s) => s.Length == 0 ? null : s;

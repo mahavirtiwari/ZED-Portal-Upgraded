@@ -25,7 +25,8 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// BDS/HAP dates. Extend, step back and send back are not offered (no NC round; SP_MOVING_ONE_STEP_BACK_OF_NC and
 /// SP_MONITORING_SEND_BACK_TO_AGENCY_FOR_REALLOCATION are missing there).</item>
 /// <item>Surveillance ("Surveillance Monitoring"): rows add SurveillanceNo; send back to the agency (re-allot) is not
-/// offered (its procedure is missing there); extend and step back as on main.</item>
+/// offered (its procedure is missing there); step back as on main; extend also on the rejected tab (its page showed
+/// "Extend NC Final Closure Date" for <c>filter.status==4 || filter.status==7</c>).</item>
 /// </list>
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
@@ -44,6 +45,8 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
     private bool Consultancy => host.System == PortalSystem.Consultancy;
 
     private const int NonConformance = 4;
+
+    private const int Rejected = 7;
 
     private static readonly string[] Fields =
     [
@@ -113,7 +116,7 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
             master);
     }
 
-    /// <summary>Moves the NC final closure date of a unit in non-conformance by 1 to 30 days.</summary>
+    /// <summary>Moves the NC final closure date of a unit in non-conformance (surveillance: or rejected) by 1 to 30 days.</summary>
     [HttpPost("extend-nc-closure")]
     [StaffRoles(UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> ExtendNcClosure(ExtendRequest req, CancellationToken ct)
@@ -121,7 +124,8 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
         if (Consultancy) return NotFound();
         if (req.NoOfDays is < 1 or > 30)
             return this.Problem400("Please select the number of days (1 to 30).");
-        var (unit, problem) = await FindAsync(req.ZedId, req.Certification, [NonConformance], ct);
+        int[] tabs = host.System == PortalSystem.Surveillance ? [NonConformance, Rejected] : [NonConformance];
+        var (unit, problem) = await FindAsync(req.ZedId, req.Certification, tabs, ct);
         if (unit is null) return problem!;
 
         await db.ExecuteProcAsync("SP_EXTEND_NC_CLOSURE_DATE", new

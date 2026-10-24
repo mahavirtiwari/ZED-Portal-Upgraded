@@ -36,7 +36,7 @@
           <h4>{{ currentTab().title }}</h4>
         </div>
         <ul class="nav nav-tabs" role="tablist">
-          @for (x of tabs; track x.id) {
+          @for (x of tabs(); track x.id) {
             <li class="nav-item" role="presentation">
               <button class="nav-link" type="button" role="tab" [class.active]="tab() === x.id" [attr.aria-selected]="tab() === x.id" (click)="tab.set(x.id)">{{ x.title }}</button>
             </li>
@@ -44,6 +44,22 @@
         </ul>
 
         <div class="tab-content pt-3">
+          <!-- ===================================================== surveillance: instructions -->
+          @if (tab() === 'instructions') {
+            <h4>Instructions for Completing the Silver/Gold Surveillance Process</h4>
+            <div class="row mt-4">
+              <div class="col-sm-12">
+                <table class="table table-bordered">
+                  <tbody>
+                    @for (line of instructions; track $index) {
+                      <tr><td>{{ $index + 1 }}. {{ line }}</td></tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+
           <!-- ===================================================== overview -->
           @if (tab() === 'overview') {
             <table class="table table-zed table-bordered bg-white">

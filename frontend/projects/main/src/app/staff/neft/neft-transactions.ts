@@ -1,10 +1,11 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { PORTAL_SYSTEM } from '../../portal-system';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
+import { TuApi } from '../consultancy/technology/tu.api';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 interface ApprovalForm {
   transaction: NeftTransaction;
@@ -19,6 +20,9 @@ const TITLES: Record<NeftList, string> = {
   approved: 'Approved Transactions',
   rejected: 'Rejected Transactions',
 };
+
+/** Consultancy's titles (ZEDCS_CONSULTANCY Frontend/Neft). */
+const CONSULTANCY_TITLES: Record<NeftList, string> = { ...TITLES, approved: 'Approved Transaction' };
 
 /** Local date as yyyy-MM-dd (the max of the date picker: no payment date in the future). */
 function today(): string {
@@ -42,17 +46,25 @@ function today(): string {
   `,
 })
 export class NeftTransactionsPage {
-  /** Consultancy: the rows are Technology Upgradation reimbursements and open the TU verification page. */
-  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  /**
+   * Consultancy: the rows are Technology Upgradation reimbursements, one per technology, with the old page's columns,
+   * "View Details" (the TU verification page) and "Visit Report" (the TU report).
+   */
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
 
   protected tuLink(t: NeftTransaction): string[] {
     return ['/staff/consultancy/technology/verification', t.ZedId, t.CertificationType ?? ''];
   }
 
+  protected reportLink(t: NeftTransaction): string {
+    return this.tu.reportUrl(t.ZedId, t.CertificationType ?? '');
+  }
+
   private readonly api = inject(NeftApi);
+  private readonly tu = inject(TuApi);
 
   protected readonly list: NeftList = (inject(ActivatedRoute).snapshot.data['list'] as NeftList) ?? 'new';
-  protected readonly title = TITLES[this.list] ?? TITLES.new;
+  protected readonly title = (this.consultancy ? CONSULTANCY_TITLES : TITLES)[this.list] ?? TITLES.new;
   protected readonly maxDate = today();
 
   protected readonly transactions = signal<NeftTransaction[]>([]);

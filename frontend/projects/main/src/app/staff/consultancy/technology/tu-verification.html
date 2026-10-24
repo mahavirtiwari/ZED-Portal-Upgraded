@@ -1,276 +1,490 @@
+<!-- Layout of ZEDCS_CONSULTANCY Frontend/FinancialAssistance/Verification.cshtml (24-column classes halved for Bootstrap 5). -->
 <div class="container form-page" id="zed_user_form">
-  <div class="mt-3">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h3 class="registration-title mb-0">Technology Upgradation · {{ zedId }}</h3>
-      <a class="btn btn-default btn-sm" [routerLink]="backLink">Back to list</a>
-    </div>
-    @if (error()) {
-      <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
-
-    @if (applications().length > 1) {
-      <ul class="nav nav-tabs mb-3" role="tablist">
-        @for (a of applications(); track a.certification) {
-          <li class="nav-item" role="presentation">
-            <button type="button" class="nav-link" role="tab" [class.active]="current()?.certification === a.certification"
-                    [attr.aria-selected]="current()?.certification === a.certification" (click)="selected.set(a.certification)">
-              {{ a.certification }} Certification
-            </button>
-          </li>
-        }
-      </ul>
-    }
-
-    @if (current(); as app) {
-      <h3>Overview</h3>
-      <table class="table table-default table-zed">
-        <tbody>
-          <tr><td class="w-50">Certification Level</td><td><b>{{ app.certification }}</b></td></tr>
-          <tr><td class="w-50">Stage</td><td><b>{{ app.stage }}</b></td></tr>
-          <tr><td class="w-50">Eligible Subsidy (%)</td><td><b>{{ value(app.details, 'EligibleSubsidyPer') }}</b></td></tr>
-          <tr><td class="w-50">Maximum Eligible Subsidy (Rs.)</td><td><b>{{ value(app.details, 'MaxEligibleSubsidy') }}</b></td></tr>
-          <tr><td class="w-50">Total Amount Verified (Rs.)</td><td><b>{{ value(app.details, 'TotalPaidAfterQc') }}</b></td></tr>
-          <tr><td class="w-50">Eligible Technology Support (Rs.)</td><td><b>{{ value(app.details, 'EligibleAmount') }}</b></td></tr>
-          @if (value(app.details, 'ReasonForRejection')) {
-            <tr><td class="w-50">MSME-DFO Comments</td><td>{{ value(app.details, 'ReasonForRejection') }}</td></tr>
-          }
-          @if (value(app.details, 'ReasonForRejectionAgency')) {
-            <tr><td class="w-50">Consultant Organisation Comments</td><td>{{ value(app.details, 'ReasonForRejectionAgency') }}</td></tr>
-          }
-        </tbody>
-      </table>
-      @if (app.hasReport) {
-        <p><a class="btn btn-primary btn-sm" [href]="reportUrl(app)" target="_blank" rel="noopener">Download TU Report (PDF)</a></p>
-      }
-
-      @if (app.recommended.length) {
-        <h3>Recommended Technologies</h3>
-        <ol>
-          @for (r of app.recommended; track r.code) { <li>{{ r.name }}</li> }
-        </ol>
-      }
-
-      <h3>Opening Meeting</h3>
-      @if (app.meeting; as m) {
-        <p><strong>Remark:</strong> {{ m.comments }}</p>
-        <div class="d-flex flex-wrap">
-          @for (p of m.photos; track p.id) {
-            <button type="button" class="btn btn-link p-0" (click)="showImage(p.url)" [attr.aria-label]="p.name">
-              <img class="photo" [src]="p.url" [alt]="p.name" />
-            </button>
-          }
+  <div class="Dashboard-msme msme-cer-details mt-3">
+    <div class="row">
+      <div class="col-sm-12 zed-tabs">
+        <div class="refresh-bar">
+          <div>
+            <a [routerLink]="backLink"><img src="Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
+          </div>
+          <button type="button" class="refresh-link btn btn-link p-0" (click)="load()">
+            <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh</span>
+          </button>
         </div>
-        @if (m.participants.length) {
-          <p class="sub-heading mb-1"><strong>Participants</strong></p>
-          <ol>
-            @for (p of m.participants; track $index) { <li>{{ p.name }} <small>({{ p.designation }})</small></li> }
-          </ol>
+        @if (error()) {
+          <div class="alert alert-danger" role="alert">{{ error() }}</div>
         }
-      } @else {
-        <p class="text-muted">The MSME-DFO officer has not submitted the opening meeting from the mobile application yet.</p>
-      }
+        @if (success()) {
+          <div class="alert alert-success" role="status">{{ success() }}</div>
+        }
 
-      @for (t of app.technologies; track t.id) {
-        <h3>{{ value(t.details, 'TechnologyName') }} @if (!t.isEligible) { <small class="text-danger">(not eligible)</small> }</h3>
-        <table class="table table-default table-zed">
-          <tbody>
-            @for (f of technologyFields; track f.key) {
-              <tr><td class="w-50">{{ f.label }}</td><td><b>{{ value(t.details, f.key) }}</b></td><td></td></tr>
-            }
-            <tr>
-              <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
-              <td>
-                @if (amountEdit()?.id === t.id) {
-                  <input class="form-control" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
-                         (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
-                } @else {
-                  <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
+        @if (applications().length) {
+          <div class="panel panel-steps panel-bg-default">
+            <div class="panel-body">
+              <ul class="nav nav-tabs" role="tablist">
+                @for (a of applications(); track a.certification) {
+                  <li class="nav-item" role="presentation">
+                    <button type="button" class="nav-link" role="tab" [class.active]="tab() === a.certification" [attr.aria-selected]="tab() === a.certification"
+                            (click)="selectTab(a.certification)">{{ a.certification }} Certification</button>
+                  </li>
                 }
-              </td>
-              <td>
-                @if (app.canEditAmounts) {
-                  @if (amountEdit()?.id === t.id) {
-                    <button type="button" class="btn btn-primary btn-sm me-1" (click)="amountEdit.set(null)">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
-                  } @else {
-                    <button type="button" class="btn btn-primary btn-sm" (click)="editAmount(t)">Edit</button>
+                <li class="nav-item" role="presentation">
+                  <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'overview'" [attr.aria-selected]="tab() === 'overview'" (click)="selectTab('overview')">Overview</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button type="button" class="nav-link" role="tab" [class.active]="tab() === 'recommended'" [attr.aria-selected]="tab() === 'recommended'" (click)="selectTab('recommended')">Technologies Recommended</button>
+                </li>
+              </ul>
+
+              <div class="tab-content">
+                <!-- ================================================= overview -->
+                @if (tab() === 'overview') {
+                  <div class="tab-pane fade show active" role="tabpanel">
+                    <div class="row" style="margin-top: 15px; padding: 15px">
+                      <div class="panel-heading" style="background-color: #f5f7fa; border-bottom: 1px solid #e1e8ed; padding: 10px 15px">
+                        <h3 class="panel-title" style="color: #002d62; font-size: 14px; font-weight: bold; margin: 0">Unit Details</h3>
+                      </div>
+                      <div class="col-sm-12 p-0">
+                        @let ov = overview();
+                        <table class="table table-zed bg-white">
+                          <tbody>
+                            <tr><th style="width: 40%">ZEDID</th><td>{{ value(ov, 'ZedId') }}</td></tr>
+                            <tr><th style="width: 40%">Unit Name</th><td>{{ value(ov, 'PUnitName') }}</td></tr>
+                            <tr><th>Udyam Registration Number</th><td>{{ value(ov, 'UdyogAadharNo') }}</td></tr>
+                            <tr><th>Certification</th><td>{{ value(ov, 'Certification') }}</td></tr>
+                            <tr><th>Unit Address</th><td>{{ value(ov, 'PlantAddress') }}</td></tr>
+                            <tr><th>Milestone 1 Completed on</th><td>{{ value(ov, 'Milestone1Date') }}</td></tr>
+                            <tr><th>Milestone 2 Completed on</th><td>{{ value(ov, 'Milestone2Date') }}</td></tr>
+                            <tr><th>Milestone 3 Completed on</th><td>{{ value(ov, 'Milestone3Date') }}</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <!-- The old page also drew a Google static map; V4 links to the map instead. -->
+                    <div class="col-sm-12">
+                      <p class="sub-heading">Unit Location</p>
+                      @let loc = location();
+                      <table class="table table-zed bg-white">
+                        <tbody>
+                          @if (mapUrl(loc); as href) {
+                            <tr><td class="text-center" colspan="2"><a class="btn btn-primary btn-sm" [href]="href" target="_blank" rel="noopener">Click here to view map</a></td></tr>
+                          }
+                          <tr><td>Latitude</td><td>{{ value(loc, 'Latitude') }}</td></tr>
+                          <tr><td>Longitude</td><td>{{ value(loc, 'Longitude') }}</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                }
+
+                <!-- ================================================= technologies recommended -->
+                @if (tab() === 'recommended') {
+                  <div class="tab-pane fade show active" role="tabpanel">
+                    <div class="row" style="margin-top: 15px; padding: 15px">
+                      <div class="col-sm-12">
+                        <div class="panel panel-default" style="border: 1px solid #ddd; border-radius: 4px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05)">
+                          <div class="panel-heading" style="background-color: #f5f7fa; padding: 10px 15px; border-bottom: 1px solid #e1e8ed">
+                            <h3 class="panel-title" style="color: #002d62; font-size: 15px; font-weight: bold; margin: 0">Recommended Technologies Checklist</h3>
+                          </div>
+                          <div class="panel-body" style="padding: 15px">
+                            @if (recommended().length) {
+                              <table class="table table-striped table-bordered bg-white" style="margin-bottom: 0">
+                                <thead>
+                                  <tr style="background-color: #f9fafc; color: #333; font-weight: 600">
+                                    <th style="width: 70px" class="text-center">S.No</th>
+                                    <th style="width: 130px" class="text-center">Technology Code</th>
+                                    <th>Technology Name</th>
+                                    <th>Description</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  @for (r of recommended(); track $index) {
+                                    <tr>
+                                      <td class="text-center" style="font-weight: bold; color: #555">{{ $index + 1 }}</td>
+                                      <td class="text-center" style="color: #2c3e50; font-weight: bold">{{ r.code }}</td>
+                                      <td style="color: #2c3e50; font-weight: bold">{{ r.name }}</td>
+                                      <td style="font-size: 13px; color: #555; line-height: 1.5">{{ r.description || 'No detailed log summary description submitted.' }}</td>
+                                    </tr>
+                                  }
+                                </tbody>
+                              </table>
+                            } @else {
+                              <div class="alert alert-info" style="margin-bottom: 0; border-left: 4px solid #31708f">
+                                No target technologies recommendation records compiled inside this target verification layout.
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
+
+                <!-- ================================================= one certification level -->
+                @if (current(); as app) {
+                  @if (tab() === app.certification) {
+                    <div class="tab-pane fade show active" role="tabpanel">
+                      @if (app.hasReport) {
+                        <p class="text-end mt-2 mb-0"><a class="btn btn-primary btn-sm" [href]="reportUrl(app)" target="_blank" rel="noopener">Download TU Report (PDF)</a></p>
+                      }
+                      <div class="panel-group">
+                        <!-- Attendance -->
+                        <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'attendance', title: 'Attendance' }" />
+                        @if (isOpen('attendance')) {
+                          <div class="m-t-1">
+                            <table class="table table-zed bg-white">
+                              <thead>
+                                <tr><th>Day</th><th>Date</th><th>Punch-In</th><th>Punch-Out</th><th>No. of Hours</th><th>Punch-In Selfie</th><th>Punch-Out Selfie</th></tr>
+                              </thead>
+                              <tbody>
+                                @for (a of app.attendance; track $index) {
+                                  <tr>
+                                    <td>Day {{ $index + 1 }}</td>
+                                    <td>{{ a.date }}</td>
+                                    <td>{{ a.loginTime }}</td>
+                                    <td>{{ a.logoutTime }}</td>
+                                    <td>{{ a.hours ?? '' }} ({{ a.minutes ?? '' }} Minutes)</td>
+                                    <td>@if (a.loginPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.loginPhotoUrl)"><img [src]="a.loginPhotoUrl" alt="Login Selfie" width="50" height="50" /></button> }</td>
+                                    <td>@if (a.logoutPhotoUrl) { <button type="button" class="btn btn-link p-0" (click)="showImage(a.logoutPhotoUrl)"><img [src]="a.logoutPhotoUrl" alt="Logout Selfie" width="50" height="50" /></button> }</td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          </div>
+                        }
+
+                        @if (app.meeting; as m) {
+                          <!-- Site Interior/Exterior: the meeting photos other than the opening meeting's -->
+                          <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'site', title: 'Site Interior/Exterior' }" />
+                          @if (isOpen('site')) {
+                            <div class="m-t-1">
+                              <table class="table table-default table-zed bg-white m-t-1">
+                                <tbody>
+                                  <tr>
+                                    <td>
+                                      @for (p of sitePhotos(m); track p.id) {
+                                        <ng-container [ngTemplateOutlet]="meetingPhoto" [ngTemplateOutletContext]="{ $implicit: p }" />
+                                      }
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                          }
+
+                          <!-- Opening Meeting -->
+                          <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'meeting', title: 'Opening Meeting' }" />
+                          @if (isOpen('meeting')) {
+                            <div class="m-t-1">
+                              <table class="table table-default table-zed bg-white m-t-1">
+                                <tbody>
+                                  <tr>
+                                    <td>
+                                      <div class="col-sm-12">
+                                        <p class="sub-heading">REMARK</p>
+                                        <p>{{ m.comments }}</p>
+                                      </div>
+                                    </td>
+                                    <td>
+                                      @for (p of openingPhotos(m); track p.id) {
+                                        <ng-container [ngTemplateOutlet]="meetingPhoto" [ngTemplateOutletContext]="{ $implicit: p }" />
+                                      }
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+                            <div class="col-sm-12">
+                              <p class="sub-heading">PARTICIPANTS</p>
+                              @for (p of m.participants; track $index) {
+                                <div class="panel panel-default panel-white m-0 mb-4">
+                                  <div class="panel-body">
+                                    <p class="sub-heading">{{ $index + 1 }}. {{ p.name }}</p>
+                                    <h5>{{ p.designation }}</h5>
+                                  </div>
+                                </div>
+                              }
+                            </div>
+                          }
+                        }
+
+                        <!-- One section per purchased technology -->
+                        @for (t of app.technologies; track t.id) {
+                          <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'tech' + t.id, title: value(t.details, 'TechnologyName') }" />
+                          @if (isOpen('tech' + t.id)) {
+                            <table class="table table-default table-zed bg-white m-t-1">
+                              <tbody>
+                                @for (f of technologyFields; track f.key) {
+                                  <tr><td class="w-50">{{ f.label }}</td><td><div class="row-data"><b>{{ value(t.details, f.key) }}</b></div></td><td></td></tr>
+                                }
+                                <tr>
+                                  <td class="w-50">Amount Paid (Rs.) (Entered by MSME)</td>
+                                  <td><div class="row-data"><b>Rs. {{ value(t.details, 'MsmeAmountPaid') }}</b></div></td>
+                                  <td></td>
+                                </tr>
+                                <tr>
+                                  <td class="w-50">Amount Paid (Rs.) (Verified by Expert)</td>
+                                  <td>
+                                    <div class="row-data">
+                                      @if (amountEdit()?.id === t.id) {
+                                        <input class="form-control" style="min-width: 100%" aria-label="Verified amount" inputmode="decimal" [ngModel]="amountEdit()!.value"
+                                               (ngModelChange)="amountEdit.set({ id: t.id, value: $event })" />
+                                      } @else {
+                                        <b>Rs. {{ value(t.details, 'AmountPaid') }}</b>
+                                      }
+                                    </div>
+                                  </td>
+                                  @if (app.canEditAmounts) {
+                                    <td>
+                                      @if (amountEdit()?.id === t.id) {
+                                        <button type="button" class="btn btn-primary btn-sm me-1" (click)="amountEdit.set(null)">Cancel</button>
+                                        <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAmount(app)">Update</button>
+                                      } @else {
+                                        <button type="button" class="btn btn-primary btn-sm" (click)="editAmount(t)">Edit</button>
+                                      }
+                                    </td>
+                                  }
+                                </tr>
+                                <tr>
+                                  <td class="w-50">Mode of Payment</td>
+                                  <td><div class="row-data"><b>{{ value(t.details, 'ModeOfPayment') }}</b></div></td>
+                                  <td></td>
+                                </tr>
+                                @for (group of documentRows(app, t); track group.label) {
+                                  <ng-container [ngTemplateOutlet]="documentRow" [ngTemplateOutletContext]="{ app, group }" />
+                                }
+                              </tbody>
+                            </table>
+                          }
+                        }
+
+                        <!-- Account Details of Reimbursement -->
+                        <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'account', title: 'Account Details of Reimbursement' }" />
+                        @if (isOpen('account')) {
+                          <div class="text-end">
+                            <br />
+                            @if (app.canEditAccount) {
+                              @if (account()) {
+                                <button type="button" class="btn btn-primary btn-sm me-1" (click)="account.set(null)">Cancel</button>
+                                <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAccount(app)">Update Account Details</button>
+                              } @else {
+                                <button type="button" class="btn btn-primary btn-sm" (click)="editAccount(app)">Edit Account Details</button>
+                              }
+                            }
+                          </div>
+                          <table class="table table-default table-zed bg-white m-t-1">
+                            <tbody>
+                              @for (f of accountFields; track f.key) {
+                                <tr>
+                                  <td class="w-50">{{ f.label }}</td>
+                                  <td>
+                                    <div class="row-data">
+                                      @if (account(); as acc) {
+                                        <input class="form-control" style="min-width: 100%" [attr.aria-label]="f.label" [attr.maxlength]="f.max" [ngModel]="acc[f.key]" (ngModelChange)="patchAccount(f.key, $event)" />
+                                      } @else {
+                                        <b>{{ value(app.details, f.column) }}</b>
+                                      }
+                                    </div>
+                                  </td>
+                                  <td></td>
+                                </tr>
+                              }
+                              @for (group of accountDocumentRows(app); track group.label) {
+                                <ng-container [ngTemplateOutlet]="documentRow" [ngTemplateOutletContext]="{ app, group }" />
+                              }
+                            </tbody>
+                          </table>
+                        }
+
+                        <!-- Summary -->
+                        <ng-container [ngTemplateOutlet]="section" [ngTemplateOutletContext]="{ key: 'summary', title: 'Summary' }" />
+                        @if (isOpen('summary')) {
+                          <table class="table table-default table-zed table-bordered bg-white m-t-1">
+                            <thead>
+                              <tr><th>Name of Technology</th><th>Amount (Rs.)</th></tr>
+                            </thead>
+                            <tbody>
+                              @for (t of eligible(app); track t.id) {
+                                <tr><td class="w-50">{{ value(t.details, 'TechnologyName') }}</td><td><div class="row-data"><b>{{ value(t.details, 'AmountPaid') }}</b></div></td></tr>
+                              }
+                              <tr><td class="w-50">Total Amount</td><td><div class="row-data"><b>{{ totalAmount(app) }}</b></div></td></tr>
+                              <tr><td class="w-50">Technology Support Eligible Amount</td><td><div class="row-data"><b>{{ value(app.details, 'EligibleAmount') }}</b></div></td></tr>
+                            </tbody>
+                          </table>
+                        }
+                      </div>
+
+                      @if (statusAlert(app); as s) {
+                        <div class="alert mt-3" [class.alert-success]="s === 'ACCEPTED'" [class.alert-danger]="s === 'REJECTED'">{{ s }}</div>
+                      }
+                      @if (app.canDecide) {
+                        <div class="row text-center my-3">
+                          <div>
+                            <button type="button" class="btn btn-primary me-1" (click)="openDecision('reject')">REJECT</button>
+                            @if (app.canApprove) {
+                              <button type="button" class="btn btn-primary" (click)="openDecision('approve')">ACCEPT</button>
+                            }
+                          </div>
+                        </div>
+                      } @else if (app.canValidate) {
+                        <p class="text-center text-muted mt-3">ACCEPT / REJECT become available once every document is validated and the opening meeting is submitted.</p>
+                      }
+                    </div>
+                  }
+
+                  @if (validation(); as v) {
+                    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuValidateTitle">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header justify-content-between">
+                            <h3 class="registration-title" id="tuValidateTitle">Validate Evidence</h3>
+                            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                          </div>
+                          <div class="modal-body">
+                            <p><strong>{{ v.doc.photoType }}</strong></p>
+                            @if (dialogError()) {
+                              <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
+                            }
+                            <div class="form-group mb-3">
+                              Verified:
+                              <label class="ms-2"><input type="radio" name="tuIsVerified" value="Yes" [checked]="v.isVerified === 'Yes'" (change)="patchValidation({ isVerified: 'Yes' })" /> Yes</label>
+                              <label class="ms-2"><input type="radio" name="tuIsVerified" value="No" [checked]="v.isVerified === 'No'" (change)="patchValidation({ isVerified: 'No' })" /> No</label>
+                            </div>
+                            <div class="form-group mb-3">
+                              <label for="tuSource">Source of Validation</label>
+                              <input id="tuSource" class="form-control" maxlength="200" [ngModel]="v.sourceOfValidation" (ngModelChange)="patchValidation({ sourceOfValidation: $event })" />
+                            </div>
+                            <div class="form-group mb-3">
+                              <label for="tuShot">Upload Screenshot @if (v.doc.needsScreenshot) {<span style="color: red">*</span>}</label>
+                              <input id="tuShot" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" (change)="pickFile($event)" />
+                              <small style="color: red">(Valid file types: PDF/JPG/PNG, file size &lt; 2MB)</small>
+                              @if (v.doc.screenshots.length) { <small class="d-block">A screenshot is already attached; choose a file only to replace it.</small> }
+                            </div>
+                            <div class="form-group mb-3">
+                              <label for="tuRemarks">Remarks</label>
+                              <textarea id="tuRemarks" class="form-control" style="height: 100px" maxlength="1000" [ngModel]="v.remarks" (ngModelChange)="patchValidation({ remarks: $event })"></textarea>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-primary w-100" [disabled]="saving()" (click)="saveValidation(app)">Submit</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal-backdrop show"></div>
+                  }
+
+                  @if (decision(); as d) {
+                    <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDecisionTitle">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header justify-content-between">
+                            <h3 class="registration-title" id="tuDecisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
+                            <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
+                          </div>
+                          <div class="modal-body">
+                            @if (dialogError()) {
+                              <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
+                            }
+                            <label for="tuComments"><strong>Comments@if (d.decision === 'reject') {<span style="color: red">*</span>}</strong></label>
+                            <textarea id="tuComments" class="form-control mb-2" style="height: 100px" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
+                            <div class="form-check">
+                              <input id="tuConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />
+                              <label class="form-check-label" for="tuConfirm">I am confirming that the above data is correct</label>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-default" (click)="closeDialogs()">CANCEL</button>
+                            <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">SUBMIT</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal-backdrop show"></div>
                   }
                 }
-              </td>
-            </tr>
-            @for (doc of docsOf(app, t); track doc.id) {
-              <tr>
-                <td class="w-50">{{ doc.photoType }}</td>
-                <td>
-                  <div class="doc-row">
-                    <span>@if (doc.timeStamp) { <small>captured at {{ doc.timeStamp }}</small> }</span>
-                    @if (doc.isPdf) {
-                      <a class="btn btn-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
-                    } @else {
-                      <button type="button" class="btn btn-primary btn-sm" (click)="showImage(doc.url, doc)">VIEW</button>
-                    }
-                  </div>
-                </td>
-                <td>
-                  <div class="doc-row">
-                    <span>
-                      @if (doc.isVerified) {
-                        <small><strong>Verified:</strong> {{ doc.isVerified }}</small>
-                        @if (doc.sourceOfValidation) { <small><br /><strong>Source of Validation:</strong> {{ doc.sourceOfValidation }}</small> }
-                        @if (doc.assessorRemarks) { <small><br /><strong>Remarks:</strong> {{ doc.assessorRemarks }}</small> }
-                        @for (s of doc.screenshots; track s.id) {
-                          <br /><a [href]="s.url" target="_blank" rel="noopener">Screenshot</a>
-                        }
-                      }
-                    </span>
-                    @if (app.canValidate && opened(doc)) {
-                      <button type="button" class="btn btn-primary btn-sm" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
-                    }
-                  </div>
-                </td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      }
-
-      <div class="d-flex justify-content-between align-items-center">
-        <h3>Account Details of Reimbursement</h3>
-        @if (app.canEditAccount) {
-          @if (account()) {
-            <div>
-              <button type="button" class="btn btn-primary btn-sm me-1" (click)="account.set(null)">Cancel</button>
-              <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="saveAccount(app)">Update Account Details</button>
+              </div>
             </div>
-          } @else {
-            <button type="button" class="btn btn-primary btn-sm" (click)="editAccount(app)">Edit Account Details</button>
-          }
+          </div>
+        } @else if (!loading() && !error()) {
+          <div class="no-data">No Data</div>
         }
       </div>
-      <table class="table table-default table-zed">
-        <tbody>
-          @for (f of accountFields; track f.key) {
-            <tr>
-              <td class="w-50">{{ f.label }}</td>
-              <td>
-                @if (account(); as acc) {
-                  <input class="form-control" [attr.aria-label]="f.label" [attr.maxlength]="f.max" [ngModel]="acc[f.key]" (ngModelChange)="patchAccount(f.key, $event)" />
-                } @else {
-                  <b>{{ value(app.details, f.column) }}</b>
-                }
-              </td>
-            </tr>
-          }
-          @for (doc of otherDocs(app); track doc.id) {
-            <tr>
-              <td class="w-50">{{ doc.photoType }}</td>
-              <td>
-                <div class="doc-row">
-                  @if (doc.isPdf) {
-                    <a class="btn btn-primary btn-sm" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
-                  } @else {
-                    <button type="button" class="btn btn-primary btn-sm" (click)="showImage(doc.url, doc)">VIEW</button>
-                  }
-                  @if (doc.isVerified) { <small><strong>Verified:</strong> {{ doc.isVerified }}</small> }
-                  @if (app.canValidate && opened(doc)) {
-                    <button type="button" class="btn btn-primary btn-sm" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
-                  }
-                </div>
-              </td>
-            </tr>
-          }
-        </tbody>
-      </table>
-
-      @if (app.canDecide) {
-        <div class="d-flex justify-content-center my-3">
-          @if (app.canApprove) {
-            <button type="button" class="btn btn-primary me-2" (click)="openDecision('approve')">ACCEPT</button>
-          }
-          <button type="button" class="btn btn-default" (click)="openDecision('reject')">REJECT</button>
-        </div>
-      } @else if (app.canValidate) {
-        <p class="text-center text-muted">ACCEPT / REJECT become available once every document is validated and the opening meeting is submitted.</p>
-      }
-
-      @if (validation(); as v) {
-        <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuValidateTitle">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <div class="modal-header justify-content-between">
-                <h3 class="registration-title" id="tuValidateTitle">Validate Evidence</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
-              <div class="modal-body">
-                <p><strong>{{ v.doc.photoType }}</strong></p>
-                @if (dialogError()) {
-                  <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
-                }
-                <div class="form-group mb-3">
-                  Verified:
-                  <label class="ms-2"><input type="radio" name="tuIsVerified" value="Yes" [checked]="v.isVerified === 'Yes'" (change)="patchValidation({ isVerified: 'Yes' })" /> Yes</label>
-                  <label class="ms-2"><input type="radio" name="tuIsVerified" value="No" [checked]="v.isVerified === 'No'" (change)="patchValidation({ isVerified: 'No' })" /> No</label>
-                </div>
-                <div class="form-group mb-3">
-                  <label for="tuSource">Source of Validation</label>
-                  <input id="tuSource" class="form-control" maxlength="200" [ngModel]="v.sourceOfValidation" (ngModelChange)="patchValidation({ sourceOfValidation: $event })" />
-                </div>
-                <div class="form-group mb-3">
-                  <label for="tuShot">Upload Screenshot @if (v.doc.needsScreenshot) {<span style="color: red">*</span>}</label>
-                  <input id="tuShot" type="file" class="form-control" accept="application/pdf,image/jpeg,image/png" (change)="pickFile($event)" />
-                  <small style="color: red">(Valid file types: PDF/JPG/PNG, file size &lt; 2MB)</small>
-                  @if (v.doc.screenshots.length) { <small class="d-block">A screenshot is already attached; choose a file only to replace it.</small> }
-                </div>
-                <div class="form-group mb-3">
-                  <label for="tuRemarks">Remarks</label>
-                  <textarea id="tuRemarks" class="form-control" style="height: 100px" maxlength="1000" [ngModel]="v.remarks" (ngModelChange)="patchValidation({ remarks: $event })"></textarea>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-primary w-100" [disabled]="saving()" (click)="saveValidation(app)">Submit</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-backdrop show"></div>
-      }
-
-      @if (decision(); as d) {
-        <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDecisionTitle">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <div class="modal-header justify-content-between">
-                <h3 class="registration-title" id="tuDecisionTitle">Confirm Final Submit ({{ d.decision === 'approve' ? 'Accept' : 'Reject' }})</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeDialogs()"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
-              <div class="modal-body">
-                @if (dialogError()) {
-                  <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
-                }
-                <label for="tuComments"><strong>Comments@if (d.decision === 'reject') {<span style="color: red">*</span>}</strong></label>
-                <textarea id="tuComments" class="form-control mb-2" style="height: 100px" maxlength="2000" [ngModel]="d.comments" (ngModelChange)="patchDecision({ comments: $event })"></textarea>
-                <div class="form-check">
-                  <input id="tuConfirm" class="form-check-input" type="checkbox" [checked]="d.confirmed" (change)="patchDecision({ confirmed: $any($event.target).checked })" />
-                  <label class="form-check-label" for="tuConfirm">I am confirming that the above data is correct</label>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="closeDialogs()">CANCEL</button>
-                <button type="button" class="btn btn-primary" [disabled]="!d.confirmed || saving()" (click)="saveDecision(app)">SUBMIT</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-backdrop show"></div>
-      }
-    } @else if (!loading() && !error()) {
-      <div class="no-data">No Data</div>
-    }
+    </div>
   </div>
 </div>
+
+<!-- ================================================= templates -->
+<!-- A black accordion heading (the old page's "panel-black" with the plus / minus icon). -->
+<ng-template #section let-key="key" let-title="title">
+  <div class="row">
+    <div class="col-sm-12 mt-4">
+      <div class="panel panel-default panel-black mb-0">
+        <div class="panel-body section-toggle" role="button" tabindex="0" [attr.aria-expanded]="isOpen(key)" (click)="toggle(key)" (keydown.enter)="toggle(key)"
+             (keydown.space)="$event.preventDefault(); toggle(key)">
+          <h3 class="registration-title"><i class="fa" [class.fa-plus]="!isOpen(key)" [class.fa-minus]="isOpen(key)" aria-hidden="true"></i> {{ title }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
+<ng-template #meetingPhoto let-p>
+  <div class="row-data doc-row">
+    <div>
+      <img class="thumb" [src]="p.url" alt="" />
+      <span><strong>{{ p.name }}</strong> captured at {{ p.timeStamp }}</span>
+    </div>
+    <button type="button" class="btn btn-primary pull-right" (click)="showImage(p.url)">VIEW</button>
+  </div>
+</ng-template>
+
+<!-- A document row: the files (VIEW) and the DFO's validation of each. -->
+<ng-template #documentRow let-app="app" let-group="group">
+  <tr>
+    <td class="w-50">{{ group.label }}</td>
+    <td>
+      @for (doc of $any(group).docs; track doc.id) {
+        <div class="row-data doc-row">
+          <div>
+            @if (doc.isPdf) {
+              <img class="thumb" src="Images/svgicons/pdf-icon.svg" alt="PDF" />
+            } @else if (!$any(app).canValidate) {
+              <img class="thumb" [src]="doc.url" alt="" />
+            } @else {
+              <img class="thumb" src="Images/svgicons/document.svg" alt="Document" />
+            }
+            <span>captured at {{ doc.timeStamp }}</span>
+          </div>
+          @if (doc.isPdf) {
+            <a class="btn btn-primary pull-right" [href]="doc.url" target="_blank" rel="noopener" (click)="viewed(doc)">VIEW</a>
+          } @else {
+            <button type="button" class="btn btn-primary pull-right" (click)="showImage(doc.url, doc)">VIEW</button>
+          }
+        </div>
+      }
+    </td>
+    <td>
+      @for (doc of $any(group).docs; track doc.id) {
+        <div class="row-data doc-row">
+          <span>
+            @if (doc.isVerified) {
+              <small><strong>Verified:</strong> {{ doc.isVerified }}</small>
+              @if (doc.sourceOfValidation) { <small><br /><strong>Source of Validation:</strong> {{ doc.sourceOfValidation }}</small> }
+              @if (doc.assessorRemarks) { <small><br /><strong>Remarks:</strong> {{ doc.assessorRemarks }}</small> }
+              @for (s of doc.screenshots; track s.id) {
+                <a [href]="s.url" target="_blank" rel="noopener"><img src="Images/svgicons/pdf-icon.svg" height="25" alt="Screenshot" /></a>
+              }
+            }
+          </span>
+          @if ($any(app).canValidate && opened(doc)) {
+            <button type="button" class="btn btn-primary btn-sm" (click)="openValidation(doc)">{{ doc.isVerified ? 'Edit' : 'VALIDATE' }}</button>
+          }
+        </div>
+      }
+    </td>
+  </tr>
+</ng-template>
 
 @if (preview(); as url) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-label="Image preview" (click)="closeDialogs()">

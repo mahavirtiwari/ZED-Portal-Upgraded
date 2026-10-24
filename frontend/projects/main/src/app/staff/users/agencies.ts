@@ -4,7 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { AgencyRow, RESET_CONFIRM, UsersApi } from './users.api';
-import { PORTAL_LABELS } from '../../portal-labels';
+import { LABELS } from '../../portal-labels';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 type Mode = 'all' | 'bronze';
 
@@ -34,8 +35,11 @@ export class AgenciesPage {
   private readonly api = inject(UsersApi);
 
   protected readonly mode: Mode = inject(ActivatedRoute).snapshot.data['mode'] === 'bronze' ? 'bronze' : 'all';
-  protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : PORTAL_LABELS.agencies;
-  protected readonly labels = PORTAL_LABELS;
+  private readonly system = inject(STAFF_SYSTEM);
+  protected readonly labels = LABELS[this.system];
+  protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : this.labels.agencies;
+  /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
+  protected readonly consultancy = this.system === 'consultancy';
 
   protected readonly agencies = signal<AgencyRow[]>([]);
   protected readonly search = signal('');

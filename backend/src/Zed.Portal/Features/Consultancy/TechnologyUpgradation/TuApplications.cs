@@ -58,7 +58,10 @@ public sealed class TuApplication(
     IReadOnlyList<IDictionary<string, object?>> meetings,
     IReadOnlyList<IDictionary<string, object?>> participants,
     IReadOnlyList<IDictionary<string, object?>> meetingPhotos,
-    IReadOnlyList<IDictionary<string, object?>> recommended)
+    IReadOnlyList<IDictionary<string, object?>> recommended,
+    IReadOnlyList<IDictionary<string, object?>>? attendance = null,
+    IDictionary<string, object?>? overview = null,
+    IDictionary<string, object?>? location = null)
 {
     public FaApplication Fa { get; } = fa;
     public IReadOnlyList<IDictionary<string, object?>> Technologies { get; } = technologies;
@@ -66,6 +69,12 @@ public sealed class TuApplication(
     public IReadOnlyList<IDictionary<string, object?>> Participants { get; } = participants;
     public IReadOnlyList<IDictionary<string, object?>> MeetingPhotos { get; } = meetingPhotos;
     public IReadOnlyList<IDictionary<string, object?>> Recommended { get; } = recommended;
+    /// <summary>The DFO's daily attendance from the app (ConsultantDailyAttendance without a milestone) for this level.</summary>
+    public IReadOnlyList<IDictionary<string, object?>> Attendance { get; } = attendance ?? [];
+    /// <summary>The unit's overview (name, Udyam number, address, milestone completion dates) of the level the technologies were recommended for.</summary>
+    public IDictionary<string, object?>? Overview { get; } = overview;
+    /// <summary>The unit location: the consultants' milestone-3 opening meeting.</summary>
+    public IDictionary<string, object?>? Location { get; } = location;
 
     public string Certification => Fa.Certification;
     public IDictionary<string, object?> Row => Fa.Row;
@@ -170,7 +179,10 @@ public static class TuApplications
                 sets[12].Where(r => Own(r) && Level(r, "CertificationType")).ToList(),
                 sets[13].Where(r => Own(r) && Level(r, "CertificationType")).ToList(),
                 sets[14].Where(r => Own(r) && Level(r, "Certification")).ToList(),
-                sets[18].Where(r => Level(r, "Certification")).ToList());
+                sets[18].Where(r => Level(r, "Certification")).ToList(),
+                sets[15].Where(r => Level(r, "Certification")).ToList(),
+                sets[16].FirstOrDefault(),
+                sets[17].FirstOrDefault());
         }).ToList();
     }
 
@@ -234,6 +246,10 @@ public sealed class TuStorage(IWebHostEnvironment env, Microsoft.Extensions.Opti
     public static bool IsPlainName(string? value, int max) =>
         !string.IsNullOrWhiteSpace(value) && value.Length <= max && value.Trim() == value &&
         value.All(c => char.IsAsciiLetterOrDigit(c) || c is ' ' or '-' or '_');
+
+    /// <summary>The DFO's attendance selfies, saved by the consultant app (<c>consultancymobileapi/Attendance/{ZedId}/{Certification}/{PhotoId}.jpg</c>).</summary>
+    public static string? AttendanceFile(string zedId, string certification, string? photoId) =>
+        IsPlainName(photoId, 100) ? $"consultancymobileapi/Attendance/{zedId}/{certification}/{photoId}.jpg" : null;
 
     /// <summary><c>{Name}_{PhotoId}.jpg</c> of a meeting photo, or null when either part is not a plain name.</summary>
     public static string? MeetingFile(string? name, string? photoId) =>

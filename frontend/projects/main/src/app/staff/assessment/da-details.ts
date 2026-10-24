@@ -6,7 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ReviewActionsBar, ReviewRemarksDialog, RemarksTarget } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
-import { flag, num, text } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
@@ -21,6 +21,9 @@ export const TAB_TITLES: Record<number, string> = {
   8: 'Non-Conformance(s) 5',
   9: 'Esg Compliance',
 };
+
+/** Surveillance's DaDetails.cshtml numbers the tabs in their order: ESG 3, parameters 4, NC n at n + 4. */
+const SURVEILLANCE_TAB_NUMBERS: Record<number, number> = { 1: 1, 2: 2, 9: 3, 3: 4, 4: 5, 5: 6, 6: 7, 7: 8, 8: 9 };
 
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 const MAX_FILES = 5;
@@ -49,10 +52,13 @@ export class DaDetailsPage {
   readonly certification = input.required<string>();
 
   private readonly api = inject(AssessmentApi);
+  /** Surveillance build: the ESG tab as on that portal's page (S.No column, black panel headings, tab numbers). */
+  protected readonly surveillanceSystem = inject(ASSESSMENT_SYSTEM) === 'surveillance';
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;
   protected readonly tabTitles = TAB_TITLES;
+  protected readonly tabNumber = (id: number) => (this.surveillanceSystem ? SURVEILLANCE_TAB_NUMBERS[id] ?? id : id);
 
   protected readonly data = signal<DaDetails | null>(null);
   protected readonly loading = signal(false);

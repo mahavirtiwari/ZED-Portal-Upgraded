@@ -24,11 +24,19 @@
           <thead>
             <tr class="btn-default text-center" style="font-size: 16px">
               <th>Status</th>
-              <th>Agency Id</th>
-              <th>Agency Details</th>
-              <th>Spoc Details</th>
-              <th>Category</th>
-              <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of ' + labels.assessors }}</th>
+              @if (consultancy) {
+                <!-- ZEDCS_CONSULTANCY Frontend/User/AssessmentAgencies.cshtml -->
+                <th>User Id</th>
+                <th>Consultant Organisation Details</th>
+                <th>Spoc Details</th>
+                <th>No. of Consultant</th>
+              } @else {
+                <th>Agency Id</th>
+                <th>Agency Details</th>
+                <th>Spoc Details</th>
+                <th>Category</th>
+                <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of ' + labels.assessors }}</th>
+              }
               <th>Actions</th>
             </tr>
           </thead>
@@ -43,7 +51,9 @@
                   <p>{{ a.Pincode }}</p>
                 </td>
                 <td><strong>{{ a.SpocName }}</strong><br />{{ a.MobileNo }}<br />{{ a.Email }}</td>
-                <td>{{ a.DesktopVerfi }}<br />{{ a.SiteVerifi }}<br />{{ a.FinanceVerfi }}</td>
+                @if (!consultancy) {
+                  <td>{{ a.DesktopVerfi }}<br />{{ a.SiteVerifi }}<br />{{ a.FinanceVerfi }}</td>
+                }
                 <td>{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</td>
                 <td class="text-center">
                   @if (mode === 'all') {
@@ -54,7 +64,7 @@
                     }
                     <br />
                     <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
-                    <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px">Assessors</a><br />
+                    <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px">{{ consultancy ? 'Consultants' : 'Assessors' }}</a><br />
                     <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
                     @if (a.IsActive) {
                       <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(a)">Reset Link</button>
@@ -88,7 +98,7 @@
           <div class="modal-title w-100 d-flex justify-content-between align-items-center">
             <h3 class="registration-title m-0" id="agency-dialog-title">
               @switch (d.kind) {
-                @case ('block') { Reason for Block the Agency }
+                @case ('block') { Reason for Block the {{ consultancy ? 'Consultant Organisation' : 'Agency' }} }
                 @case ('disable-bronze') { Reason for Disabling Bronze Assessments }
                 @case ('mobile') { SPOC Mobile Number }
               }

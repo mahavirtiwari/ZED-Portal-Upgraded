@@ -3,10 +3,11 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { flag, num, text, useLegacyPortal } from '../assessment/assessment-shared';
+import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from '../assessment/assessment-shared';
 import { AssessmentApi, isZedId } from '../assessment/assessment.api';
 import { RemarksTarget, ReviewActionsBar, ReviewRemarksDialog } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
+import { SaSurveillanceTab, SurveillanceRemarks } from './sa-surveillance';
 import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
@@ -24,7 +25,6 @@ export const SA_TAB_TITLES: Record<number, string> = {
   11: 'NC 4',
   12: 'NC 5',
   13: 'Attendance',
-  14: 'Original Certification',
 };
 
 /**
@@ -33,10 +33,13 @@ export const SA_TAB_TITLES: Record<number, string> = {
  * final submit, send back, reject; master admin: withdraw an exemption, send back an automatic rejection)
  * where the server allows them. The site assessor's own actions (validate, conformance, final submit) are
  * still done on the current portal; the page links there for the assessor of the unit.
+ * <p>Surveillance build (that portal's SaDetails.cshtml): tabs 1-7 put the surveillance next to the original certification
+ * on main ({@link SaSurveillanceTab}, loaded with the page; MasterAdmin also sees the original's blocks), the NC tabs are
+ * the surveillance's, and there is no Attendance tab.</p>
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog],
+  imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab],
   templateUrl: './sa-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
@@ -46,6 +49,7 @@ export class SaDetailsPage {
 
   private readonly api = inject(SiteReviewApi);
   private readonly assessment = inject(AssessmentApi);
+  protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
   protected readonly legacy = useLegacyPortal();
   protected readonly t = text;
   protected readonly f = flag;
@@ -60,9 +64,8 @@ export class SaDetailsPage {
   protected readonly preview = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly remarksTarget = signal<RemarksTarget | null>(null);
-  /** Surveillance: the original certification from main, loaded when its tab is opened. */
+  /** Surveillance: the original certification from main, loaded with the page (not for QC, as before). */
   protected readonly original = signal<SaOriginal | null>(null);
-  protected readonly originalError = signal('');
 
   private request = 0;
 
@@ -71,6 +74,8 @@ export class SaDetailsPage {
   protected readonly perms = computed(() => this.data()?.permissions ?? { review: NO_REVIEW, canWithdrawExemption: false, assessorOnCurrentPortal: false });
   protected readonly review = computed(() => this.perms().review ?? NO_REVIEW);
   protected readonly isQc = computed(() => this.data()?.role === 'QC');
+  /** Surveillance: the original certification's blocks were shown to MasterAdmin only. */
+  protected readonly isAdmin = computed(() => this.data()?.role === 'MasterAdmin');
   /** NC tabs of the old page: NC n when NcCount > n - 1. */
   protected readonly ncTabs = computed(() => (this.data()?.ncRounds ?? []).map((r) => r.ncCount).filter((nc) => num(this.msme(), 'NcCount') > nc - 1));
 
@@ -134,25 +139,6 @@ export class SaDetailsPage {
     return lat && lng && Number.isFinite(a) && Number.isFinite(b) ? `https://www.google.com/maps?q=${a},${b}` : '';
   }
 
-  /** Surveillance: opens the original certification tab and loads it once. */
-  protected async openOriginal(): Promise<void> {
-    this.tab.set(14);
-    const d = this.data();
-    if (!d || this.original()) return;
-    this.originalError.set('');
-    try {
-      this.original.set(await firstValueFrom(this.api.original(d.zedId, d.certification)));
-    } catch (err) {
-      this.originalError.set(
-        err instanceof HttpErrorResponse && err.status === 404 ? 'The original certification is not available.' : apiErrorMessage(err),
-      );
-    }
-  }
-
-  protected originalRequirementsOf(section: Row): Row[] {
-    return (this.original()?.requirements ?? []).filter((r) => text(r, 'SectionCode') === text(section, 'SectionCode'));
-  }
-
   protected openImage(src: string | null | undefined): void {
     if (src) this.preview.set(src);
   }
@@ -162,6 +148,10 @@ export class SaDetailsPage {
   protected editRemarks(kind: RemarksKind | 'ofi', id: unknown, remarks: string | null | undefined): void {
     if (!this.review().editRemarks) return;
     this.remarksTarget.set({ kind, id, remarks: remarks ?? '' });
+  }
+
+  protected editSurveillanceRemarks(r: SurveillanceRemarks): void {
+    this.editRemarks(r.kind, r.id, r.remarks);
   }
 
   protected async reviewed(message: string): Promise<void> {
@@ -196,6 +186,21 @@ export class SaDetailsPage {
     return this.load(this.zedId(), this.level(), false);
   }
 
+  /**
+   * Surveillance: main's original certification (the page's skeleton and MasterAdmin's ONSITE blocks). Without it
+   * (not found on main, or main not reachable) the surveillance's own data is shown.
+   */
+  private async loadOriginal(d: SaDetails): Promise<void> {
+    // A later load of another unit wins; reloads of the same unit keep the original.
+    const same = () => this.data()?.zedId === d.zedId && this.data()?.certification === d.certification;
+    try {
+      const original = await firstValueFrom(this.api.original(d.zedId, d.certification));
+      if (same()) this.original.set(original);
+    } catch {
+      if (same()) this.original.set(null);
+    }
+  }
+
   private async load(zedId: string, level: string | null, first: boolean): Promise<void> {
     const request = ++this.request;
     this.error.set('');
@@ -212,6 +217,7 @@ export class SaDetailsPage {
       if (first) {
         this.tab.set(1);
         this.original.set(null);
+        if (this.surveillance && data.surveillance?.hasOriginal && data.role !== 'QC') void this.loadOriginal(data);
       }
     } catch (err) {
       if (request !== this.request) return;

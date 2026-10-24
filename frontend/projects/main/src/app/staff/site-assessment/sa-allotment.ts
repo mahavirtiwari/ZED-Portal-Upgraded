@@ -20,7 +20,7 @@ interface AllotForm {
  * The old page also had a Reject pop-up, but no button opened it; it is not ported.
  * Surveillance build: "Allot Surveillance" for Silver/Gold surveillance — surveillance date and round, the original
  * certification's assessors, and the meeting link of the external video meeting (mode stored as Onsite, shown as
- * Remote, as before). Consultancy build: the CO allotment page ({@link CoAllotmentPage}) instead.
+ * Remote, as before); one "Assessor" and no co-assessor (that page's Co Assessor select was commented out). Consultancy build: the CO allotment page ({@link CoAllotmentPage}) instead.
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
@@ -88,7 +88,10 @@ interface AllotForm {
                       <td>
                         {{ s['SiteAssessorId'] }}<br />
                         {{ s['SaAssessorName'] }}
-                        @if (s['CoAssessorName']) {
+                        @if (surveillance) {
+                          {{ s['CoAssessorId'] }}<br />
+                          {{ s['CoAssessorName'] }}
+                        } @else if (s['CoAssessorName']) {
                           <br />{{ s['CoAssessorName'] }}
                         }
                       </td>
@@ -138,7 +141,7 @@ interface AllotForm {
                 </div>
               }
               <div style="margin-bottom: 9px">
-                <label for="SiteAssessorId"><strong>Lead Assessor<span style="color: red">*</span></strong></label>
+                <label for="SiteAssessorId"><strong>{{ surveillance ? 'Assessor' : 'Lead Assessor' }}<span style="color: red">*</span></strong></label>
                 <select id="SiteAssessorId" name="SiteAssessorId" class="form-control" [(ngModel)]="f.siteAssessorId" (ngModelChange)="f.coAssessorId = ''">
                   <option value="">--Select--</option>
                   @for (a of assessors(); track a.userId) {
@@ -146,7 +149,8 @@ interface AllotForm {
                   }
                 </select>
               </div>
-              @if (f.modeOfAssessment === onsite) {
+              <!-- Surveillance: the old page had no co-assessor choice (its select was commented out); only one assessor is allotted. -->
+              @if (f.modeOfAssessment === onsite && !surveillance) {
                 <div style="margin-bottom: 9px">
                   <label for="CoAssessorId"><strong>Co Assessor</strong></label>
                   <select id="CoAssessorId" name="CoAssessorId" class="form-control" [(ngModel)]="f.coAssessorId">
@@ -254,7 +258,7 @@ export class SaAllotmentPage {
           zedId: String(f.unit['ZedId']),
           certification: String(f.unit['Certification']),
           siteAssessorId: f.siteAssessorId,
-          coAssessorId: f.modeOfAssessment === ONSITE && f.coAssessorId ? f.coAssessorId : null,
+          coAssessorId: f.modeOfAssessment === ONSITE && f.coAssessorId && !this.surveillance ? f.coAssessorId : null,
           assessmentDate: f.assessmentDate,
           modeOfAssessment: f.modeOfAssessment,
           ...(this.surveillance ? { meetingLink: f.meetingLink.trim() } : {}),

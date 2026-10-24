@@ -59,6 +59,7 @@ public sealed class MilestoneItem
     public string? ReqType { get; init; }
     public string? TrainingType { get; init; }
     public string? AssessorId { get; init; }
+    public string? MeetingType { get; init; }
 }
 
 /// <summary>What the signed-in user is for the unit's current milestone.</summary>
@@ -190,6 +191,12 @@ public static class MilestoneFields
     public const string DeleteBulletSql =
         "UPDATE MsmeRequirementBullets SET ZedId = CONCAT(ZedId, 'DELETED'), RequirementId = CONCAT(RequirementId, 'DELETED') " +
         "WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
+
+    /// <summary>Meetings.Comments is varchar(5000); the old remarks pop-up allowed 2000 characters.</summary>
+    public const int MeetingRemarksMaxLength = 2000;
+
+    public const string MeetingSql =
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount, MeetingType FROM Meetings WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
 
     public const string UpdateTrainingSql =
         "UPDATE TrainingInfo SET Remarks = @Value WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";

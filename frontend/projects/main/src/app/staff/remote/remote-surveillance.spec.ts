@@ -80,11 +80,25 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect(button('Start Assessment')).toBeUndefined();
     expect(el.textContent).not.toContain('Video calls are not configured');
 
-    await openTab('Site Tour');
+    await openTab('Assessment Evidence');
     expect(el.querySelector('.capture')).toBeNull();
     await openTab('Parameters');
     expect(el.querySelector('.capture')).toBeNull();
     expect(el.querySelector('.from-tour')).not.toBeNull();
+  });
+
+  it('opens on the Instructions tab of the surveillance page', async () => {
+    await create(details());
+    expect(el.querySelector('.numberCircle')!.textContent!.trim()).toBe('1');
+    expect(el.querySelector('.tab-title h4')!.textContent).toContain('Instructions');
+    expect(el.textContent).toContain('Instructions for Completing the Silver/Gold Surveillance Process');
+    const rows = [...el.querySelectorAll('.tab-content tbody tr')].map((r) => r.textContent!.trim());
+    expect(rows.length).toBe(13);
+    expect(rows[0]).toBe('1. Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.');
+    expect(rows[12]).toContain('13. A Weblink will be provided by the Assessment Agency');
+    expect([...el.querySelectorAll('.nav-link')].map((b) => b.textContent!.trim())).toEqual([
+      'Instructions', 'Assessment Overview', 'Opening Meeting', 'Basic Info', 'Assessment Evidence', 'Parameters', 'Closing Meeting',
+    ]);
   });
 
   it('warns when the agency gave no meeting link', async () => {

@@ -1,13 +1,15 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../../staff-menu';
-import { TuAccount, TuApi, TuApplication, TuDocument, TuTechnology } from './tu.api';
+import { TuAccount, TuApi, TuApplication, TuDocument, TuMeeting, TuTechnology, TuValues } from './tu.api';
 
 export const MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024;
 
+/** The purchase details of a technology; the amounts and the mode of payment follow them on the page. */
 export const TECHNOLOGY_FIELDS: { label: string; key: string }[] = [
   { label: 'Name of Manufacturer', key: 'NameOfTheManufaturer' },
   { label: 'Make / Model Name', key: 'MakeOrModelName' },
@@ -15,9 +17,36 @@ export const TECHNOLOGY_FIELDS: { label: string; key: string }[] = [
   { label: 'Name of Agency/Supplier', key: 'AgencyOrSupplier' },
   { label: 'Invoice/Bill No.', key: 'InvoiceNo' },
   { label: 'Invoice Bill Date', key: 'InvoiceBillDate' },
-  { label: 'Amount Paid (Rs.) (Entered by MSME)', key: 'MsmeAmountPaid' },
-  { label: 'Mode of Payment', key: 'ModeOfPayment' },
 ];
+
+/** The document rows of a technology and of the account, in the old page's order and captions (by PhotoType). */
+export const TECHNOLOGY_DOCUMENTS: { label: string; type: string }[] = [
+  { label: 'CA certificate of expenditure', type: 'CA certificate of expenditure' },
+  { label: 'Purchased Technology', type: 'Purchased Technology' },
+  { label: 'Invoice Copy', type: 'Copy of Invoice' },
+];
+export const ACCOUNT_DOCUMENTS: { label: string; type: string }[] = [{ label: 'Cancelled Cheque Copy', type: 'Copy of Cancelled Cheque' }];
+
+/** The opening meeting photo; the app's other meeting photos are the site's interior and exterior. */
+const OPENING_MEETING_PHOTO = 'Opening Meeting Photo';
+
+export interface DocumentGroup {
+  label: string;
+  docs: TuDocument[];
+}
+
+/** The listed rows (even when empty, as on the old page), then any other document type under its own name. */
+function groupDocuments(docs: TuDocument[], rows: { label: string; type: string }[]): DocumentGroup[] {
+  const known = new Set(rows.map((r) => r.type.toLowerCase()));
+  const groups = rows.map((r) => ({ label: r.label, docs: docs.filter((d) => (d.photoType ?? '').toLowerCase() === r.type.toLowerCase()) }));
+  const others = new Map<string, TuDocument[]>();
+  for (const d of docs) {
+    const type = d.photoType ?? '';
+    if (known.has(type.toLowerCase())) continue;
+    others.set(type, [...(others.get(type) ?? []), d]);
+  }
+  return [...groups, ...[...others].map(([label, list]) => ({ label, docs: list }))];
+}
 
 export const ACCOUNT_FIELDS: { label: string; key: keyof TuAccount; column: string; max: number }[] = [
   { label: 'Account No.', key: 'accountNo', column: 'AccountNo', max: 18 },
@@ -42,20 +71,24 @@ interface DecisionForm {
 
 /**
  * One unit's Technology Upgradation application for the master admin, the allotted CO, the assigned MSME-DFO officer
- * and the state coordinator (from the NEFT lists). Port of Frontend/FinancialAssistance/Verification.cshtml:
- * recommended and purchased technologies with their documents and the DFO's validation, the verified amounts and the
- * eligible subsidy, the opening meeting from the app, the decisions, the payout account and the TU report (PDF).
+ * and the state coordinator (from the NEFT lists). Port of Frontend/FinancialAssistance/Verification.cshtml: a tab per
+ * certification level with the old page's collapsible sections (the DFO's attendance, the site photos and the opening
+ * meeting from the app, each purchased technology with its documents and the DFO's validation, the payout account, the
+ * summary with the eligible amount), then the unit's Overview and the Technologies Recommended tabs; the decisions and
+ * the TU report (PDF).
  * Route: /staff/consultancy/technology/verification/:zedId/:level
  */
 @Component({
   selector: 'zed-staff-tu-verification',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, NgTemplateOutlet],
   templateUrl: './tu-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }
     .w-50 { width: 50%; }
     .doc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-    .photo { max-width: 160px; max-height: 160px; margin: 0 8px 8px 0; }
+    .thumb { max-width: 60px; max-height: 60px; margin-right: 6px; }
+    .section-toggle { cursor: pointer; }
+    .section-toggle .registration-title { color: #fff; margin: 0; font-size: 16px; }
     .preview img { max-width: 100%; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -77,6 +110,14 @@ export class TuVerificationPage {
     const apps = this.applications();
     return apps.find((a) => a.certification.toLowerCase() === this.selected().toLowerCase()) ?? apps[apps.length - 1] ?? null;
   });
+  /** The open tab: a certification level, 'overview' or 'recommended'; the application's level at first. */
+  private readonly tabChoice = signal<string | null>(null);
+  protected readonly tab = computed(() => this.tabChoice() ?? this.current()?.certification ?? 'overview');
+  /** Open sections of the level's accordion (all closed at first, as on the old page). */
+  private readonly openSections = signal<ReadonlySet<string>>(new Set());
+  protected readonly overview = computed(() => this.applications().find((a) => a.overview)?.overview ?? null);
+  protected readonly location = computed(() => this.applications().find((a) => a.location)?.location ?? null);
+  protected readonly recommended = computed(() => this.applications().flatMap((a) => a.recommended));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -109,9 +150,69 @@ export class TuVerificationPage {
     }
   }
 
-  protected value(values: Record<string, unknown>, key: string): string {
-    const v = values[key];
+  protected value(values: Record<string, unknown> | null, key: string): string {
+    const v = values?.[key];
     return v === null || v === undefined ? '' : String(v);
+  }
+
+  protected selectTab(tab: string): void {
+    this.tabChoice.set(tab);
+    if (this.applications().some((a) => a.certification === tab)) {
+      this.selected.set(tab);
+      this.openSections.set(new Set());
+    }
+  }
+
+  protected isOpen(key: string): boolean {
+    return this.openSections().has(key);
+  }
+
+  protected toggle(key: string): void {
+    const open = new Set(this.openSections());
+    if (open.has(key)) open.delete(key);
+    else open.add(key);
+    this.openSections.set(open);
+  }
+
+  protected mapUrl(location: TuValues | null): string {
+    const lat = this.value(location, 'Latitude');
+    const lng = this.value(location, 'Longitude');
+    return lat && lng && Number.isFinite(Number(lat)) && Number.isFinite(Number(lng)) ? `https://www.google.com/maps?q=${Number(lat)},${Number(lng)}` : '';
+  }
+
+  protected openingPhotos(m: TuMeeting): TuMeeting['photos'] {
+    return m.photos.filter((p) => p.name === OPENING_MEETING_PHOTO);
+  }
+
+  protected sitePhotos(m: TuMeeting): TuMeeting['photos'] {
+    return m.photos.filter((p) => p.name !== OPENING_MEETING_PHOTO);
+  }
+
+  protected documentRows(app: TuApplication, t: TuTechnology): DocumentGroup[] {
+    return groupDocuments(this.docsOf(app, t), TECHNOLOGY_DOCUMENTS);
+  }
+
+  protected accountDocumentRows(app: TuApplication): DocumentGroup[] {
+    return groupDocuments(this.otherDocs(app), ACCOUNT_DOCUMENTS);
+  }
+
+  protected eligible(app: TuApplication): TuTechnology[] {
+    return app.technologies.filter((t) => t.isEligible);
+  }
+
+  /** TotalPaidAfterQc once set, else the eligible technologies' verified amounts added up (the old page's calculateTotalExpenses). */
+  protected totalAmount(app: TuApplication): string {
+    const saved = this.value(app.details, 'TotalPaidAfterQc');
+    return saved || String(this.eligible(app).reduce((sum, t) => sum + (parseFloat(this.value(t.details, 'AmountPaid')) || 0), 0));
+  }
+
+  /** The outcome line of the old page: the DFO sees its own decision (IsApproved), the CO the final approval (status 4). */
+  protected statusAlert(app: TuApplication): 'ACCEPTED' | 'REJECTED' | null {
+    const role = this.user()?.roleId;
+    const approved = this.value(app.details, 'IsApproved');
+    if (role === StaffRole.DesktopAssessor) return approved === '2' ? 'REJECTED' : approved === '1' ? 'ACCEPTED' : null;
+    if (role === StaffRole.Agency) return this.value(app.details, 'VerificationStatus') === '4' ? 'ACCEPTED' : null;
+    return null;
   }
 
   protected docsOf(app: TuApplication, t: TuTechnology): TuDocument[] {

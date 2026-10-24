@@ -80,6 +80,17 @@ export interface TuMeeting {
   photos: { id: number; name: string | null; timeStamp: string | null; url: string }[];
 }
 
+/** A day of the MSME-DFO's attendance from the app; the selfies are served by the API. */
+export interface TuAttendance {
+  date: string | null;
+  loginTime: string | null;
+  logoutTime: string | null;
+  hours: number | null;
+  minutes: number | null;
+  loginPhotoUrl: string | null;
+  logoutPhotoUrl: string | null;
+}
+
 export interface TuApplication {
   certification: string;
   stage: string;
@@ -87,13 +98,17 @@ export interface TuApplication {
   technologies: TuTechnology[];
   documents: TuDocument[];
   meeting: TuMeeting | null;
-  recommended: { code: string | null; name: string | null }[];
+  recommended: { code: string | null; name: string | null; description: string | null }[];
   canValidate: boolean;
   canDecide: boolean;
   canApprove: boolean;
   canEditAmounts: boolean;
   canEditAccount: boolean;
   hasReport: boolean;
+  attendance: TuAttendance[];
+  /** The unit's overview and location (the "Overview" tab), the same on every application of the unit. */
+  overview: TuValues | null;
+  location: TuValues | null;
 }
 
 export interface TuValidation {

@@ -14,6 +14,9 @@ export interface NeftTransaction {
   CertificationType: string | null;
   /** Consultancy (Technology Upgradation reimbursements). */
   TechnologyName?: string | null;
+  NameOfTheManufacturer?: string | null;
+  MakeOrModelName?: string | null;
+  TotalPaidAfterQc?: string | number | null;
   CertId?: string | null;
   TechUpgradeStatus?: number | string | null;
   CategoryOfCertificate: string | null;

@@ -14,6 +14,8 @@ export interface MilestonePhoto {
   url: string | null;
   createdDate: string | null;
   ncCount: number | null;
+  /** The consultant who took it (handholding training photos). */
+  assessorId: string | null;
 }
 
 export interface MilestoneMeeting {
@@ -23,6 +25,8 @@ export interface MilestoneMeeting {
   photos: MilestonePhoto[];
   /** Name, Designation. */
   participants: Row[];
+  /** The user may change the remarks ("Edit Remarks"). */
+  editable: boolean;
 }
 
 export type BulletType = 'BaselineDiagnostic' | 'HandholdingActionPlan' | 'TechnologyIntervention';
@@ -79,6 +83,10 @@ export interface MilestoneDetails {
   selfies: MilestonePhoto[];
   attendance: Row[];
   attendanceConsultants: Row[];
+  /** The consultants' location per milestone (SaLatitude, SaLongitude). */
+  locations: Row[];
+  /** The unit's ZED certification location (ZedSaLatitude, ZedSaLongitude). */
+  zedLocation: Row | null;
   permissions: MilestonePermissions;
 }
 
@@ -120,6 +128,10 @@ export class MilestonesApi {
 
   trainingRemarks(zedId: string, level: string, id: unknown, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base(zedId, level)}/trainings/${Number(id)}/remarks`, { remarks });
+  }
+
+  meetingRemarks(zedId: string, level: string, id: number, remarks: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/meetings/${id}/remarks`, { remarks });
   }
 
   consultantCheck(zedId: string, level: string): Observable<{ allowed: boolean; message: string }> {
