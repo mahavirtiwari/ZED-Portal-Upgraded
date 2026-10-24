@@ -123,18 +123,6 @@ function Invoke-DeployScript([string]$Name, [hashtable]$Arguments, [switch]$Exit
     $global:LASTEXITCODE = 0
 }
 
-# A value of the settings file: the first of the sections that sets it, names as the app pools get them (Portal__X).
-function Get-SettingValue([string]$Name, [string[]]$Sections) {
-    $json = Get-Content $Settings -Raw | ConvertFrom-Json
-    foreach ($s in $Sections) {
-        $section = $json.PSObject.Properties[$s]
-        if (-not $section) { continue }
-        $p = $section.Value.PSObject.Properties[$Name]
-        if ($p -and -not [string]::IsNullOrWhiteSpace([string]$p.Value)) { return ([string]$p.Value).Trim() }
-    }
-    return $null
-}
-
 function Get-InstalledVersion {
     $file = Join-Path $InstallRoot 'main\VERSION.txt'
     if (Test-Path $file) { return (Get-Content $file -TotalCount 1) }
@@ -216,6 +204,14 @@ try {
     foreach ($p in @($InstallRoot, $ReleasesRoot)) { Assert-NotTemporaryDisk $p }
     if (-not (Test-Path $Settings)) { throw "Settings file $Settings is missing (deploy\settings.example.json lists the names)." }
     if (-not $SkipMigrations -and -not $SqlServer) { throw 'Give -SqlServer (the instance with the ZED databases), or -SkipMigrations.' }
+    # Decided 2026-10-24: no STAGING strip, title prefix or mail subject prefix. Portal__EnvironmentLabel shows all three.
+    $labelSections = @($Settings | ForEach-Object { (Get-Content $_ -Raw | ConvertFrom-Json).PSObject.Properties } |
+        Where-Object { $_.Value.PSObject.Properties['Portal__EnvironmentLabel'] -and -not [string]::IsNullOrWhiteSpace([string]$_.Value.Portal__EnvironmentLabel) } |
+        ForEach-Object { $_.Name })
+    if ($labelSections.Count) {
+        throw ("$Settings sets Portal__EnvironmentLabel (sections: $($labelSections -join ', ')), which shows the STAGING strip and " +
+            'title prefix. Remove it from those sections (docs/STAGING.md 4a, "Removing the STAGING label"), then run again.')
+    }
     if (-not $Package) {
         foreach ($tool in 'git', 'dotnet', 'node', 'npm') {
             if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not installed: install it, or build elsewhere and use -Package." }
@@ -333,11 +329,8 @@ try {
         $skip = @($catalog.Keys | ForEach-Object { $catalog[$_].Test } | Where-Object { $tested -notcontains $_ })
         $test = @{ BaseUrl = $BaseUrl }
         if ($skip.Count) { $test.Skip = $skip }
-        # The label the settings file gives the portals (the Main section wins over Portals and Common, as in
-        # Install-ZedIis.ps1): the test expects exactly that one; without one, a staging site is checked for noindex.
-        $label = Get-SettingValue 'Portal__EnvironmentLabel' @('Main', 'Portals', 'Common')
-        if ($label) { $test.ExpectEnvironmentLabel = $label; Write-Note "expecting the environment label '$label' (settings file)" }
-        elseif ($preset.NoIndex) { $test.ExpectNoIndex = $true }
+        # No visible label on staging (docs/STAGING.md section 4; the Checks refuse a settings file that sets one).
+        if ($preset.NoIndex) { $test.ExpectNoIndex = $true }
         Invoke-DeployScript 'Test-ZedDeployment.ps1' $test -ExitCode
         Write-Ok "$newVersion is installed and answers."
     }
