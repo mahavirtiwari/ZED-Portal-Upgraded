@@ -1,11 +1,7 @@
 import {
   BUILT_IN_FORM_VERSION,
-  customFieldsPayload,
-  hiddenStandardKeys,
-  isAnswered,
-  isFieldShown,
-  validateForm,
-  valueAtPath,
+  isBasicInfoFieldShown,
+  stampFormAnswers as sharedStampFormAnswers,
   type FormDefinition,
   type FormField,
 } from '@zed/shared';
@@ -77,45 +73,13 @@ export const BUILT_IN_BASIC_INFO: FormDefinition = {
 /** The standard keys (request properties of `basicInformation`) the form can show. */
 export const STANDARD_KEYS = BUILT_IN_BASIC_INFO.fields.map(f => f.key);
 
-/** The answer of a field in the draft: standard fields from their legacy property, custom ones from `customAnswers`. */
-export function basicInfoValue(info: BasicInformation, f: Pick<FormField, 'key' | 'custom'>): unknown {
-  if (f.custom) return info.customAnswers?.[f.key];
-  if (f.key === 'assessorSelfie') return info.assessorSelfie ? [info.assessorSelfie] : [];
-  return valueAtPath(info, f.key);
-}
-
-const valueOfKey = (def: FormDefinition, info: BasicInformation) => (key: string) => {
-  const f = def.fields.find(x => x.key === key);
-  return basicInfoValue(info, f ?? { key, custom: key.startsWith('cf_') });
-};
+export { basicInfoValue, LOCAL_FORM_PROPERTIES, rowErrors, validateBasicInformation } from '@zed/shared';
 
 export function isShown(def: FormDefinition, info: BasicInformation, f: FormField): boolean {
-  return isFieldShown(f, valueOfKey(def, info));
+  return isBasicInfoFieldShown(def, info, f);
 }
 
-/** BasicInformation.isValid, driven by the definition: errors by field key (empty when valid). */
-export function validateBasicInformation(def: FormDefinition, info: BasicInformation): Map<string, string> {
-  return validateForm(def, f => basicInfoValue(info, f));
-}
-
-/** A product or raw-material row against its (shown) columns, as RowInfoFragment checked it. */
-export function rowErrors(columns: readonly FormField[], row: Record<string, unknown>): Map<string, string> {
-  const errors = new Map<string, string>();
-  for (const c of columns) if (c.required && !isAnswered(row[c.key])) errors.set(c.key, 'Required');
-  return errors;
-}
-
-/**
- * Proceed: records what the submit must carry with the answers (kept in the draft, so a queued submit sends the
- * same): the definition's version, the shown custom fields' answers, and which standard fields the Admin left out
- * or made optional.
- */
+/** Proceed: what the submit must carry (version, custom answers, standard fields left out / optional). */
 export function stampFormAnswers(def: FormDefinition, info: BasicInformation): void {
-  info.formVersion = def.version;
-  info.customFields = customFieldsPayload(def, info.customAnswers ?? {}, valueOfKey(def, info));
-  info.omittedFields = hiddenStandardKeys(def, STANDARD_KEYS);
-  info.optionalFields = def.fields.filter(f => !f.custom && !f.required).map(f => f.key);
+  sharedStampFormAnswers(def, info, STANDARD_KEYS);
 }
-
-/** Properties of the draft that are the app's own and never go into `basicInformation`. */
-export const LOCAL_FORM_PROPERTIES = ['customAnswers', 'customFields', 'formVersion', 'omittedFields', 'optionalFields'] as const;

@@ -30,6 +30,7 @@ export * from './location/location';
 export * from './content/appTexts';
 export * from './content/AppTextsContext';
 export * from './forms/appForms';
+export * from './forms/basicInfoForm';
 
 // Forms, UI, navigation
 export * from './forms/validation';

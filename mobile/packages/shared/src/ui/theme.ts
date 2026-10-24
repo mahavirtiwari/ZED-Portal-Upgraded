@@ -2,7 +2,13 @@
  * Theme taken from the legacy res folders (ZED_MSME_Bronze res/values: colors.xml, dimens.xml, themes.xml
  * "Theme.ZEDMSME"). dp and sp map one to one to React Native's density-independent units.
  */
-export const colors = {
+/**
+ * An app with its own look (the site assessor and consultant apps) sets `globalThis.__ZED_PALETTE__` in a module it
+ * imports first in index.js (before anything else loads), overriding these tokens for every shared component.
+ */
+const override = ((globalThis as { __ZED_PALETTE__?: Record<string, string> }).__ZED_PALETTE__ ?? {}) as Record<string, string>;
+
+const baseColors = {
   appColor: '#45A5AD',
   appColor3: '#3345A5AD',
   appColor90: '#E645A5AD',
@@ -36,7 +42,11 @@ export const colors = {
   green: '#79C688',
   /** Material error red used by TextInputLayout errors. */
   error: '#B00020',
-} as const;
+};
+
+export type Palette = Partial<Record<keyof typeof baseColors, string>>;
+
+export const colors: Readonly<typeof baseColors> = { ...baseColors, ...(override as Palette) };
 
 export const dimens = {
   padding1: 5,

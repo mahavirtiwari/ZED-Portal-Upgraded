@@ -7,7 +7,7 @@ applicationId and signing key, so installed apps update in place). Requirements:
 |---|---|---|---|---|
 | `packages/shared` (`@zed/shared`) | Foundation shared by all apps | — | — | done |
 | `apps/msme` (`@zed/msme`) | **ZED Surveillance** (Bronze surveillance desktop assessor) | `ZED_MSME_Bronze` | `com.qci.zed.bronzesurveillance` | done, see [docs/MSME-PARITY.md](docs/MSME-PARITY.md) |
-| `apps/site-assessment` | Site assessment | `ZED_SA_Studio` | `com.qci.zed.siteassessment` | next session |
+| `apps/assessor` (`@zed/assessor`) | **ZED SA** (site assessment, lead and co-assessor) | `ZED_SA_Studio` | `com.qci.zed.siteassessment` | done, see [docs/SA-PARITY.md](docs/SA-PARITY.md); no source for a surveillance build |
 | `apps/desktop-assessment` | Desktop assessment | `ZED_DA/ZED_DA_App` | `com.zed.zeddaapplication` | later |
 | `apps/surveillance` | Surveillance | `ZEDSurveillance` | `com.prd.zedsa.surveillance` | later |
 | `apps/consultant` | Handholding (consultant) | `ZEDConsultant` | `com.qci.zed.consultancy` | later |
@@ -17,6 +17,14 @@ desktop assessor ("ZED Surveillance"; sign-in with assessor ID, the unit's ZED I
 from a copy of the MSME app's code base. The workspace keeps the name `msme` because the brief named it so; it ports
 that build exactly, with its applicationId. The store MSME app's own source was never delivered
 (docs/mobile/APPS-INVENTORY.md).
+
+**About `apps/assessor`:** the site assessment app as `ZED_SA_Studio` builds it (Main system, `mobileapi/SA/`). Its own
+look (orange toolbar, legacy colours) comes from `src/palette.ts`, loaded first by `index.js`, which overrides the shared
+theme tokens, and from `src/ui/kit.tsx`. Locally it runs against the Main MobileApi (launch profile `http`, port 5104,
+`-PzedEnvironment=local`) with `tools/dev-seed/seed-local-sa.ps1` (fake Silver unit at status 8, lead and co-assessor;
+credentials in `apps/assessor/.env.local`, ignored). Migrations 0016/0017 on the local `ZEDCS_V2_LIVE` and
+`tools/dev-seed/admin-changes-demo-sa.sql -v Mode=apply` play fake Admin changes to `assessor.basicInfo` and an
+`app.assessor.*` text (`Mode=remove` takes them out).
 
 ## Choices
 

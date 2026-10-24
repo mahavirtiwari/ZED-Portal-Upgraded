@@ -127,7 +127,8 @@ export function useNavigation(): Navigation {
 export function useRoute<P extends Record<string, unknown> = Record<string, unknown>>(): Route & { params: P } {
   const r = useContext(RouteContext);
   if (!r) throw new Error('useRoute outside a screen');
-  return r as Route & { params: P };
+  // A screen opened without params gets an empty object.
+  return (r.params ? r : { ...r, params: {} }) as Route & { params: P };
 }
 
 export function useIsFocused(): boolean {

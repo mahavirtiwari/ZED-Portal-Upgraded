@@ -65,6 +65,14 @@ export type NativeProcessedImage = {
   height: number;
 };
 
+export type NativeInlineImage = {
+  /** Base64.DEFAULT (line breaks every 76 characters) of the stamped bitmap as JPEG quality 75. */
+  base64: string;
+  timeStamp: string;
+  width: number;
+  height: number;
+};
+
 export interface Spec extends TurboModule {
   getDeviceInfo(): NativeDeviceInfo;
   getAppInfo(): NativeAppInfo;
@@ -77,12 +85,19 @@ export interface Spec extends TurboModule {
 
   /** MediaStore.ACTION_IMAGE_CAPTURE into a temp file; resolves null when the user cancels. */
   capturePhoto(): Promise<NativeCaptureResult | null>;
+  /** The same, asking for the front camera (site assessor selfie). */
+  capturePhotoFront(): Promise<NativeCaptureResult | null>;
   /** Intent.ACTION_PICK on MediaStore images; resolves null when cancelled. */
   pickImage(): Promise<NativePickResult | null>;
   /** Intent.ACTION_OPEN_DOCUMENT for application/pdf; resolves null when cancelled. */
   pickPdf(): Promise<NativePickResult | null>;
   /** The legacy getScaledBitmap + copyImage + getBitmapString pipeline. Stamps only when both coordinates are given. */
   processImage(uri: string, latitude: string | null, longitude: string | null): Promise<NativeProcessedImage>;
+  /**
+   * The older pipeline of the site assessor / consultant apps: at most 1280 px, EXIF rotation, the same stamp, base64
+   * (wrapped, Base64.DEFAULT) of JPEG 75. No file is written.
+   */
+  processImageInline(uri: string, latitude: string | null, longitude: string | null): Promise<NativeInlineImage>;
   /** Copies a picked PDF to filesDir/<UUID>.pdf and returns the path. */
   copyPdf(uri: string): Promise<string>;
   /** Reads a file as base64 (used for PDFs, which have no thumbnail). */
@@ -105,6 +120,8 @@ export interface Spec extends TurboModule {
   /** SharedPreferences of the legacy app (same file names and keys). */
   getPreference(file: string, key: string): string | null;
   setPreference(file: string, key: string, value: string): void;
+  /** SharedPreferences.putBoolean (legacy flags such as SiteTourStatus and the site tour instructions). */
+  setPreferenceBoolean(file: string, key: string, value: boolean): void;
   removePreference(file: string, key: string): void;
 }
 

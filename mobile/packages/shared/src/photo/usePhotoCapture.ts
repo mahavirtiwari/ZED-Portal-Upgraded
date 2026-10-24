@@ -20,6 +20,8 @@ export type PhotoCaptureOptions = {
   onTimeNotAutomatic?: () => void;
   /** Activities toasted "Finding your location...", dialog fragments showed a snackbar. */
   findingStyle?: 'toast' | 'snackbar';
+  /** The app's R.string.failed_to_get_location (the site assessor app's is shorter than the MSME app's). */
+  failedLocationMessage?: string;
 };
 
 export type Capturer = {
@@ -63,7 +65,7 @@ export function usePhotoCapture(options: PhotoCaptureOptions): Capturer {
         ui.showAlert('Location permission needed to access current location');
         return null;
       }
-      const message = outcome.message;
+      const message = outcome.kind === 'failed' && optionsRef.current.failedLocationMessage ? optionsRef.current.failedLocationMessage : outcome.message;
       const retry = await new Promise<boolean>(resolve =>
         ui.alert(null, message, [{ text: 'Try Again', onPress: () => resolve(true), style: 'cancel' }], true, () => resolve(false)),
       );

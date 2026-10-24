@@ -37,23 +37,27 @@ export type VerifyResult = { ok: boolean; /** Set when the stored value should b
  * Legacy rule (LauncherActivity.handleOfflineLogin): existingPassword.equals(password, ignoreCase = true).
  * The login screens upper-case the password before calling, as the legacy screens did.
  */
-export function verifyCredential(stored: string | null, password: string, hasher: Hasher = nativeHasher): VerifyResult {
+export function verifyCredential(stored: string | null, password: string, hasher: Hasher = nativeHasher, ignoreCase = true): VerifyResult {
   if (stored == null) return { ok: false };
+  const norm = (v: string) => (ignoreCase ? v.toUpperCase() : v);
   if (isHashedCredential(stored)) {
     const parts = stored.split('$');
     const iterations = Number(parts[2]);
     const salt = parts[3] ?? '';
     const expected = parts[4] ?? '';
-    const actual = hasher.hash(password.toUpperCase(), salt, iterations);
+    const actual = hasher.hash(norm(password), salt, iterations);
     return { ok: constantTimeEquals(actual, expected) };
   }
-  const ok = stored.toUpperCase() === password.toUpperCase();
-  return ok ? { ok, upgrade: hashCredential(password.toUpperCase(), hasher) } : { ok };
+  const ok = norm(stored) === norm(password);
+  return ok ? { ok, upgrade: hashCredential(norm(password), hasher) } : { ok };
 }
 
-/** The value to store after an online login (hash of the upper-cased password, as the legacy compare ignored case). */
-export function credentialToStore(password: string, hasher: Hasher = nativeHasher): string {
-  return hashCredential(password.toUpperCase(), hasher);
+/**
+ * The value to store after an online login: hash of the upper-cased password, as the MSME compare ignored case;
+ * `ignoreCase = false` (site assessor and consultant apps, whose compare was exact) hashes it as typed.
+ */
+export function credentialToStore(password: string, hasher: Hasher = nativeHasher, ignoreCase = true): string {
+  return hashCredential(ignoreCase ? password.toUpperCase() : password, hasher);
 }
 
 function constantTimeEquals(a: string, b: string): boolean {

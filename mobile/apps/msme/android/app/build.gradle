@@ -23,6 +23,11 @@ react {
     autolinkLibrariesWithApp()
 }
 
+// The JS bundle also depends on @zed/shared (outside the app folder the plugin watches).
+tasks.matching { it.name.startsWith("createBundle") && it.name.endsWith("JsAndAssets") }.configureEach {
+    inputs.dir(file("../../../../packages/shared/src"))
+}
+
 /** R8 shrinking/obfuscation in release (APPS-SECURITY "No shrinking/obfuscation"). */
 def enableProguardInReleaseBuilds = true
 

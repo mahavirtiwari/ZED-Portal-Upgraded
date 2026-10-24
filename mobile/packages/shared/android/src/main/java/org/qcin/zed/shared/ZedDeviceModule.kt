@@ -9,6 +9,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.LocationManager
 import android.net.Uri
 import android.os.Build
@@ -118,7 +119,12 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
     // ---- Camera, gallery, files ---------------------------------------------------------------------------
 
     /** BaseActivity.prepareCaptureImageIntent with Utils.createImageFile. */
-    override fun capturePhoto(promise: Promise) {
+    override fun capturePhoto(promise: Promise) = startCapture(promise, front = false)
+
+    /** SelfieCapturingActivity.startCamera: the same capture, asking for the front camera when the phone has one. */
+    override fun capturePhotoFront(promise: Promise) = startCapture(promise, front = true)
+
+    private fun startCapture(promise: Promise, front: Boolean) {
         val activity = reactApplicationContext.getCurrentActivity() ?: return promise.reject("NO_ACTIVITY", "No activity")
         if (!beginRequest(promise, REQUEST_CAPTURE)) return
         try {
@@ -128,6 +134,11 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
             val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
                 putExtra(MediaStore.EXTRA_OUTPUT, captureUri)
                 addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                if (front && context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)) {
+                    putExtra("android.intent.extras.CAMERA_FACING", 1)
+                    putExtra("android.intent.extras.LENS_FACING_FRONT", 1)
+                    putExtra("android.intent.extra.USE_FRONT_CAMERA", true)
+                }
             }
             activity.startActivityForResult(intent, REQUEST_CAPTURE)
         } catch (e: Exception) {
@@ -168,6 +179,26 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
                 } else {
                     promise.resolve(Arguments.createMap().apply {
                         putString("photoPath", result.photoPath)
+                        putString("base64", result.base64)
+                        putString("timeStamp", result.timeStamp)
+                        putInt("width", result.width)
+                        putInt("height", result.height)
+                    })
+                }
+            } catch (e: Throwable) {
+                promise.reject("PROCESS_FAILED", e.message, e)
+            }
+        }.start()
+    }
+
+    override fun processImageInline(uri: String, latitude: String?, longitude: String?, promise: Promise) {
+        Thread {
+            try {
+                val result = PhotoPipeline.processInline(context, Uri.parse(uri), latitude, longitude)
+                if (result == null) {
+                    promise.reject("PROCESS_FAILED", "Failed to process the captured photo, please try again")
+                } else {
+                    promise.resolve(Arguments.createMap().apply {
                         putString("base64", result.base64)
                         putString("timeStamp", result.timeStamp)
                         putInt("width", result.width)
@@ -283,8 +314,13 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         return bytesToHex(b)
     }
 
+    /** Any stored type as text (the legacy apps also kept booleans, e.g. SiteTourStatus). */
     override fun getPreference(file: String, key: String): String? =
-        context.getSharedPreferences(file, Context.MODE_PRIVATE).getString(key, null)
+        context.getSharedPreferences(file, Context.MODE_PRIVATE).all[key]?.toString()
+
+    override fun setPreferenceBoolean(file: String, key: String, value: Boolean) {
+        context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().putBoolean(key, value).apply()
+    }
 
     override fun setPreference(file: String, key: String, value: String) {
         context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().putString(key, value).apply()

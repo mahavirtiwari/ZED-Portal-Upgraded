@@ -1,0 +1,7 @@
+// npm workspaces hoist the React Native packages to mobile/node_modules.
+pluginManagement { includeBuild("../../../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex -> ex.autolinkLibrariesFromCommand() }
+rootProject.name = 'ZedSiteAssessment'
+include ':app'
+includeBuild('../../../node_modules/@react-native/gradle-plugin')

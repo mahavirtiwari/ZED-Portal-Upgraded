@@ -45,6 +45,11 @@ export type Ui = {
   pickOne(title: string, items: string[]): Promise<number | null>;
   /** MultiSelectionInputHelper dialog: resolves the checked indexes in click order, or null for Cancel. */
   pickMany(title: string, items: string[], checked: number[]): Promise<number[] | null>;
+  /**
+   * An AlertDialog with its own view (setView): `render` gets `close`; the back button closes it too and calls
+   * `onBack` (the dialog's negative button, usually).
+   */
+  custom(render: (close: () => void) => React.ReactNode, onBack?: () => void): void;
 };
 
 const UiContext = createContext<Ui | null>(null);
@@ -64,6 +69,7 @@ export function UiHost({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [snack, setSnack] = useState<string | null>(null);
   const [dialog, setDialog] = useState<ItemsDialog | null>(null);
+  const [customDialog, setCustomDialog] = useState<{ render: (close: () => void) => React.ReactNode; onBack?: () => void } | null>(null);
   const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
   const loadingRef = useRef(false);
@@ -110,6 +116,9 @@ export function UiHost({ children }: { children: React.ReactNode }) {
       pickMany(title, items, checked) {
         return new Promise(resolve => setDialog({ kind: 'many', title, items, checked: [...checked], resolve }));
       },
+      custom(render, onBack) {
+        setCustomDialog({ render, onBack });
+      },
     }),
     [],
   );
@@ -138,6 +147,18 @@ export function UiHost({ children }: { children: React.ReactNode }) {
         )}
       </View>
       {dialog && <ItemsDialogView dialog={dialog} close={() => setDialog(null)} />}
+      {customDialog && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible
+          onRequestClose={() => {
+            setCustomDialog(null);
+            customDialog.onBack?.();
+          }}>
+          <View style={styles.customScrim}>{customDialog.render(() => setCustomDialog(null))}</View>
+        </Modal>
+      )}
     </UiContext.Provider>
   );
 }
@@ -213,6 +234,7 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
 }
 
 const styles = StyleSheet.create({
+  customScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center' },
   fill: { flex: 1 },
   loading: {
     ...StyleSheet.absoluteFill,

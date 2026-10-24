@@ -2,6 +2,7 @@ package org.qcin.zed.shared
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
@@ -46,6 +47,16 @@ object PhotoPipeline {
 
     data class Result(val photoPath: String, val base64: String, val timeStamp: String, val width: Int, val height: Int)
 
+    /**
+     * The older pipeline of the site assessor and consultant apps (BaseActivity.displayImageWithUri + getBitmapString):
+     * decode (inSampleSize 1..9 on OutOfMemory), scale to at most BARCODE_IMAGE_MAX_DIMENSION (1280), EXIF rotation, the
+     * same stamp, then base64 (DEFAULT, i.e. wrapped every 76 characters) of JPEG quality 75. No file is kept: the photo
+     * lives in the app's JSON as base64.
+     */
+    const val INLINE_MAX_DIMENSION = 1280
+
+    data class InlineResult(val base64: String, val timeStamp: String, val width: Int, val height: Int)
+
     /** BaseActivity.getCurrentTimeStamp (the auto-time check is done in JS before capturing). */
     fun currentTimeStamp(): String = try {
         dateTimeFormat.format(Date(System.currentTimeMillis()))
@@ -73,6 +84,54 @@ object PhotoPipeline {
         val base64 = getBitmapString(bitmap)
         val path = copyImage(context, uri, bitmap) ?: return null
         return Result(path, base64 ?: "", stamp, bitmap.width, bitmap.height)
+    }
+
+    fun processInline(context: Context, uri: Uri, latitude: String?, longitude: String?): InlineResult? {
+        val stamp = currentTimeStamp()
+        for (i in 1..9) {
+            try {
+                val o = BitmapFactory.Options()
+                o.inSampleSize = i
+                o.inJustDecodeBounds = true
+                context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) }
+                o.inJustDecodeBounds = false
+                o.inMutable = true
+                val decoded = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, o) } ?: return null
+                val dim = getAspectRatio(o.outWidth, o.outHeight, INLINE_MAX_DIMENSION).split(",")
+                var scaledBitmap = Bitmap.createScaledBitmap(decoded, dim[0].toInt(), dim[1].toInt(), true)
+                scaledBitmap = imageOrientationValidator(scaledBitmap, uri, context)
+                drawStamp(scaledBitmap, latitude, longitude, stamp)
+                val stream = ByteArrayOutputStream()
+                scaledBitmap.compress(Bitmap.CompressFormat.JPEG, PREVIEW_JPEG_QUALITY, stream)
+                val base64 = Base64.encodeToString(stream.toByteArray(), Base64.DEFAULT)
+                stream.close()
+                return InlineResult(base64, stamp, scaledBitmap.width, scaledBitmap.height)
+            } catch (e: OutOfMemoryError) {
+                System.gc()
+            } catch (e: Exception) {
+                Log.e(TAG, e.message ?: "inline processing failed")
+                return null
+            }
+        }
+        return null
+    }
+
+    private fun drawStamp(bitmap: Bitmap, latitude: String?, longitude: String?, curTime: String) {
+        try {
+            val cs = Canvas(bitmap)
+            val tPaint = Paint()
+            tPaint.textSize = STAMP_TEXT_SIZE
+            tPaint.color = Color.BLUE
+            tPaint.style = Paint.Style.FILL
+            if (latitude != null && longitude != null) {
+                val height = tPaint.measureText("yY")
+                cs.drawText(curTime, STAMP_X, height + STAMP_Y_OFFSET, tPaint)
+                cs.drawText("Lat: $latitude,", STAMP_X, height + height + STAMP_Y_OFFSET, tPaint)
+                cs.drawText("Long: $longitude", STAMP_X, height + height + height + STAMP_Y_OFFSET, tPaint)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, e.message ?: "stamp failed")
+        }
     }
 
     @Suppress("DEPRECATION")
