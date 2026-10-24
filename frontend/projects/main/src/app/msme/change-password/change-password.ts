@@ -5,39 +5,49 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
-/** Change password while signed in (MSME and staff). Port of Views/User/ChangePassword.cshtml. */
+/** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml (the live design: eye toggles, full-width SUBMIT). */
 @Component({
   selector: 'zed-msme-change-password',
   imports: [FormsModule],
   template: `
     <div class="container form-page">
-      <div class="row justify-content-center mt-3">
-        <div class="col-sm-6">
-          <div class="panel panel-default panel-design">
+      <div class="row mt-3 justify-content-center">
+        <div class="col-sm-9">
+          @if (error()) {
+            <div class="alert alert-danger" role="alert">{{ error() }}</div>
+          }
+          <div class="panel panel-default panel-design reset-pwd">
             <div class="panel-body">
-              <h3 class="registration-title">Change Password</h3>
-              <form (ngSubmit)="submit()" novalidate>
-                <div class="mb-3">
-                  <label class="input-title" for="oldPassword">Old Password</label>
-                  <input id="oldPassword" name="oldPassword" type="password" class="form-control" autocomplete="current-password"
-                         [(ngModel)]="oldPassword" required maxlength="50" />
-                </div>
-                <div class="mb-3">
-                  <label class="input-title" for="newPassword">New Password</label>
-                  <input id="newPassword" name="newPassword" type="password" class="form-control" autocomplete="new-password"
-                         [(ngModel)]="newPassword" required maxlength="50" />
-                  <small class="text-muted">At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
-                </div>
-                <div class="mb-3">
-                  <label class="input-title" for="confirmPassword">Confirm Password</label>
-                  <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" autocomplete="new-password"
-                         [(ngModel)]="confirmPassword" required maxlength="50" />
-                </div>
-                @if (error()) {
-                  <div class="alert alert-danger" role="alert">{{ error() }}</div>
-                }
-                <div class="stepper-footer-sec initial-step">
-                  <button type="submit" class="btn btn-primary" [disabled]="busy()">CHANGE PASSWORD</button>
+              <form class="row mt-3 justify-content-center" (ngSubmit)="submit()" novalidate>
+                <div class="col-sm-6">
+                  <label for="oldPassword">Old Password</label>
+                  <div class="mb-3">
+                    <input id="oldPassword" name="oldPassword" class="form-control" autocomplete="current-password"
+                           [type]="show().old ? 'text' : 'password'" [(ngModel)]="oldPassword" required maxlength="50" />
+                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? 'Hide password' : 'Show password'" (click)="toggle('old')">
+                      <img [src]="show().old ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                    </button>
+                  </div>
+                  <label for="newPassword">New Password</label>
+                  <div class="mb-3">
+                    <input id="newPassword" name="newPassword" class="form-control" autocomplete="new-password"
+                           [type]="show().new ? 'text' : 'password'" [(ngModel)]="newPassword" required maxlength="50" />
+                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? 'Hide password' : 'Show password'" (click)="toggle('new')">
+                      <img [src]="show().new ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                    </button>
+                    <small class="text-muted d-block mt-1">At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character.</small>
+                  </div>
+                  <label for="confirmPassword">Confirm Password</label>
+                  <div class="mb-3">
+                    <input id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password"
+                           [type]="show().confirm ? 'text' : 'password'" [(ngModel)]="confirmPassword" required maxlength="50" />
+                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggle('confirm')">
+                      <img [src]="show().confirm ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                    </button>
+                  </div>
+                  <div class="d-grid gap-2 col-12 mx-auto mb-3">
+                    <button type="submit" class="btn btn-primary" style="height: 48px" [disabled]="busy()">SUBMIT</button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -45,6 +55,9 @@ import { firstValueFrom } from 'rxjs';
         </div>
       </div>
     </div>
+  `,
+  styles: `
+    .field-icon { border: 0; background: transparent; padding: 0; line-height: 0; }
   `,
 })
 export class ChangePasswordPage {
@@ -56,9 +69,14 @@ export class ChangePasswordPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  protected readonly show = signal({ old: false, new: false, confirm: false });
   protected oldPassword = '';
   protected newPassword = '';
   protected confirmPassword = '';
+
+  protected toggle(field: 'old' | 'new' | 'confirm'): void {
+    this.show.update((v) => ({ ...v, [field]: !v[field] }));
+  }
 
   protected async submit(): Promise<void> {
     this.error.set('');

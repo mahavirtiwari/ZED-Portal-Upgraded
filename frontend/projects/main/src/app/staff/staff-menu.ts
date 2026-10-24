@@ -72,7 +72,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Reports', legacyPath: '/DynamicReports/Index', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator] },
 
   // Master admin: agencies, assessors and allocation
-  // The old "Assessment" drop-down (Views/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
+  // The live "Assessment" drop-down (Frontend/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
   { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Bronze Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Assessment' },
@@ -134,9 +134,10 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin: allotment and consultancy monitoring
-  // As the old layout: "Allot Consultancy", then the "Consultancy Monitoring" drop-down (its labels and order), then the V4 addition.
+  // As the live layout (ZEDCS_CONSULTANCY Frontend/Shared/_Layout.cshtml): "Allot Consultancy", then the "Consultancy
+  // Monitoring" drop-down (its labels and order), then the V4 addition.
   { label: 'Allot Consultancy', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
-  { label: 'Consulting Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
+  { label: 'Consultant Organisations', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Consultants', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Consultancy Monitoring' },
@@ -180,14 +181,16 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Questionnaire', route: '/staff/masters/parameters/Bronze', roles: [R.Admin] },
 
   // MasterAdmin
-  { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Surveillance' },
-  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Surveillance' },
+  // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance
+  // Monitoring" drop-down; Assessors (commented out there) and Password Reset Link are V4's.
+  { label: 'Allot Surveillance', route: '/staff/assessment/allot', roles: [R.MasterAdmin] },
+  { label: 'Bronze Surveillance Agencies', route: '/staff/users/surveillance-agencies', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Assessors', route: '/staff/users/surveillance-assessors', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Surveillance Payment Received', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Surveillance Monitoring', route: '/staff/monitoring', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Surveillance Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Surveillance Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
+  { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Surveillance Monitoring' },
 
   // Agency
   { label: 'Monitoring', route: '/staff/monitoring', roles: [R.Agency], anySubRole: ['SiteVerification', 'DesktopVerification'] },

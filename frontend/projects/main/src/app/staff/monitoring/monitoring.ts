@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { ClientConfigService, apiErrorMessage } from '@zed/shared';
+import { AuthService, ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
@@ -64,7 +64,9 @@ export class MonitoringPage {
   protected readonly search = signal('');
   protected readonly all = signal<Row[]>([]);
   protected readonly counts = signal<MonitoringCounts>(NO_COUNTS);
-  protected readonly canManage = signal(false);
+  // The server says so with each list; until the first list (no certification level chosen yet), the role decides,
+  // as the old page's header did (MasterAdmin: "Assessment Dates / NC Closure Date").
+  protected readonly canManage = signal(inject(AuthService).currentUser()?.roleId === 7);
   protected readonly pageSize = signal(10);
   protected readonly pageNo = signal(1);
   protected readonly loading = signal(false);

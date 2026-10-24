@@ -39,7 +39,7 @@ describe('staff menu', () => {
 
     it('gives the master admin allotment, the CO and consultant lists and TU', () => {
       expect(c(StaffRole.MasterAdmin, [])).toEqual(expect.arrayContaining([
-        'Allot Consultancy', 'Consulting Organisations', 'Consultants', 'Payment Received', 'Monitoring', 'Consultancy Completed',
+        'Allot Consultancy', 'Consultant Organisations', 'Consultants', 'Payment Received', 'Monitoring', 'Consultancy Completed',
         'Technology Upgradation', 'Failed Transactions', 'Registered MSME',
       ]));
     });
@@ -99,7 +99,7 @@ describe('staff menu', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Assessment (10)', 'Financial Assistance', 'Upload API Incentives']);
       expect(bar(StaffRole.Admin, 'main')).toEqual(['Masters (4)', 'Payment Details', 'Home Page Settings', 'Documents', 'Incentives']);
       expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Failed Transactions', 'Registered MSME', 'Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation']);
-      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Failed Transactions', 'Registered MSME', 'Surveillance (8)']);
+      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Failed Transactions', 'Registered MSME', 'Allot Surveillance', 'Surveillance Monitoring (7)']);
     });
 
     it('leaves the other roles flat, as before', () => {
