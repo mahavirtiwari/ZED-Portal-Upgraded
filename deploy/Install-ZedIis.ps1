@@ -420,7 +420,9 @@ foreach ($name in $Apps) {
     if (-not $vars.Contains('DataProtection__KeysPath')) { $vars['DataProtection__KeysPath'] = $keys }
     if ($app.System) { $vars['Mobile__System'] = $app.System }
     $empty = @($vars.Keys | Where-Object { [string]::IsNullOrWhiteSpace($vars[$_]) })
-    if ($empty.Count -gt 0) { Write-Warning "$name settings with no value (the host stops at startup if it needs them): $($empty -join ', ')" }
+    if ($empty.Count -gt 0) { Write-Warning "$name settings with no value, left unset (the host stops at startup if it needs them): $($empty -join ', ')" }
+    # IIS refuses an environment variable with an empty value ("String must not be empty"); unset means the same to the hosts.
+    foreach ($k in $empty) { $vars.Remove($k) }
 
     # App pool.
     $poolExists = $iis -and (Test-Path "IIS:\AppPools\$($app.Pool)")
