@@ -269,6 +269,31 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    environment. Leave every `Jobs:Schedules` entry and `Jobs:FolderRename` disabled (the shipped settings have them
    off); only the mail worker runs, and it sends to dev.zed@qcin.org.
 
+### 4a. Later updates from Git
+
+Once V4 is installed, every later update runs with one script, `deploy\Update-ZedFromGit.ps1`, in an administrator
+PowerShell on the server (Git, the .NET 10 SDK and Node.js 24 installed; or build elsewhere and pass `-Package`):
+
+```powershell
+cd E:\Releases\_src                    # any checkout or package folder that has deploy\
+.\deploy\Update-ZedFromGit.ps1                     # dry run: installed version, commit of main, database plan
+.\deploy\Update-ZedFromGit.ps1 -Apply              # build main, back up, migrate, install the three portals, test
+.\deploy\Update-ZedFromGit.ps1 -Apply -IncludeMobile -IncludeJobs -IncludeMailOutbox   # everything, 0003 again
+.\deploy\Update-ZedFromGit.ps1 -Ref <tag or commit> -Apply
+.\deploy\Update-ZedFromGit.ps1 -Package E:\Releases\zed-<version>.zip -Apply         # built elsewhere
+.\deploy\Update-ZedFromGit.ps1 -Rollback E:\ZedV4\backups\<time> -Apply             # previous files back
+```
+
+It builds the commit into `E:\Releases` (tests included), copies the application folders it replaces to
+`E:\ZedV4\backups\<time>`, runs the migrations (`-SkipFixes`: the fixes stay a reviewed, separate step), installs with
+`Install-ZedIis.ps1` (settings from `E:\ZedV4\settings.json` as before) and runs `Test-ZedDeployment.ps1`. If the test
+fails, the previous files go back and the pools restart (`-NoAutoRollback` leaves them). Database changes stay: the
+migrations are additive and the previous version runs on them. The five newest packages and backups are kept. Log:
+`E:\ZedV4\logs\update-<time>.log`. The first update after the Email Templates (migration 0015) needs
+`-IncludeMailOutbox` once, so that 0003 tags the procedures' mail. Never point `-ReleasesRoot` or `-InstallRoot` at D:.
+`-Environment Production -SqlServer <instance>` uses the production site ("Default Web Site"), no database prefix and
+https://loginzed.msme.gov.in for the test (docs/CUTOVER.md).
+
 ## 5. Storage folders
 
 Create the folders `E:\ZedStaging\storage\…` of the settings file (empty: the databases of 3.0 hold no units, so
