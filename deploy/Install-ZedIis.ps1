@@ -177,7 +177,9 @@ function Get-CurrentApp([string]$Path) {
     $app = Get-WebConfiguration -PSPath $apphost -Filter $filter
     if (-not $app) { return $null }
     $vdir = Get-WebConfiguration -PSPath $apphost -Filter "$filter/virtualDirectory[@path='/']"
-    [pscustomobject]@{ Path = $Path; ApplicationPool = $app.applicationPool; PhysicalPath = $vdir.physicalPath }
+    # Plain strings: the IIS configuration objects behind these values make ConvertTo-Json (rollback file) fail in
+    # Windows PowerShell 5.1 with "Argument types do not match".
+    [pscustomobject]@{ Path = $Path; ApplicationPool = [string]$app.applicationPool; PhysicalPath = [string]$vdir.physicalPath }
 }
 
 function Set-App([string]$Path, [string]$PhysicalPath, [string]$Pool) {
@@ -365,7 +367,7 @@ if ($ipEntries.Count -gt 0) {
     if ($iis -and $siteExists) {
         $ipBefore = [pscustomobject]@{
             AllowUnlisted = [bool](Get-WebConfigurationProperty -PSPath $apphost -Location $SiteName -Filter $f -Name allowUnlisted).Value
-            Entries = @(Get-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "$f/add" | ForEach-Object { [pscustomobject]@{ ipAddress = $_.ipAddress; subnetMask = $_.subnetMask; allowed = $_.allowed } })
+            Entries = @(Get-WebConfiguration -PSPath $apphost -Location $SiteName -Filter "$f/add" | ForEach-Object { [pscustomobject]@{ ipAddress = [string]$_.ipAddress; subnetMask = [string]$_.subnetMask; allowed = [bool]$_.allowed } })
         }
     }
     else { $ipBefore = [pscustomobject]@{ AllowUnlisted = $true; Entries = @() } }
@@ -389,8 +391,9 @@ $before = foreach ($name in $Apps) {
 }
 Step "save the current applications to $rollbackFile" {
     New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-    @{ Site = $SiteName; Saved = (Get-Date).ToString('o'); Applications = @($before); CreatedSite = $createdSite
-       AddedBindings = @($addedBindings); AddedRedirectRule = $addedRule; IpSecurityChanged = $ipChanged; IpSecurityBefore = $ipBefore } |
+    @{ Site = $SiteName; Saved = (Get-Date).ToString('o'); Applications = @($before); CreatedSite = [bool]$createdSite
+       AddedBindings = @($addedBindings | ForEach-Object { [pscustomobject]@{ Protocol = [string]$_.Protocol; BindingInformation = [string]$_.BindingInformation } })
+       AddedRedirectRule = [bool]$addedRule; IpSecurityChanged = [bool]$ipChanged; IpSecurityBefore = $ipBefore } |
             ConvertTo-Json -Depth 5 | Set-Content $rollbackFile -Encoding UTF8
 }
 foreach ($b in $before) { Write-Host "    now: $($b.Path) -> $($b.PhysicalPath) [$($b.ApplicationPool)]" }
