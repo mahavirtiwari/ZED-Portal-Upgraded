@@ -12,6 +12,8 @@
     ReferenceData    reference tables from a read-only source (-SourceServer)
     ProcedureLinks   procedures re-created with https://zedv3.qci.org.in (-ExpectedServerName)
     Settings         creates E:\ZedV4\settings.json from the template, then checks it (names only, never values)
+    Keys             merges a keys file (deploy\Export-ZedLegacyKeys.ps1) into the settings file and, once the site
+                     is installed, into the app pools it concerns (-KeysFile); also later, without a reinstall
     Site             storage folders and the IIS site ZEDV4 (Install-ZedIis.ps1)
     Jobs             the Zed.Jobs Windows service (not started)
     Logins           Windows logins for the app pools and Zed.Jobs; then restarts the pools and starts Zed.Jobs
@@ -39,7 +41,7 @@
 param(
     [Parameter(Mandatory)]
     [ValidateSet('Check', 'Databases', 'Migrations', 'Fixes', 'ReferenceData', 'ProcedureLinks', 'Settings', 'Site', 'Jobs',
-        'Logins', 'Accounts', 'CutoverFix', 'Test', 'Rollback', 'TearDown')]
+        'Logins', 'Accounts', 'CutoverFix', 'Test', 'Rollback', 'TearDown', 'Keys')]
     [string]$Step,
     [switch]$Apply,
     # The folder holding database\ and deploy\ (and, for Site and Jobs, the built applications). Default: the parent
@@ -56,7 +58,9 @@ param(
     [string]$HostName = 'zedv3.qci.org.in',
     [string]$CertificateThumbprint = '787885A2C39981E31205F66DB5C91FB45315CE86',
     [string[]]$AllowedIpRanges = @(),
-    [string]$RollbackFile
+    [string]$RollbackFile,
+    # Keys step: a JSON file with settings sections, e.g. { "Main": { "Udyam__AccessKey": "..." } }.
+    [string]$KeysFile
 )
 
 # No Set-StrictMode here: it would carry into the scripts this one calls.
@@ -379,6 +383,74 @@ try {
             $empty = foreach ($s in $sections) { Get-Section $json $s | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.Value) } | ForEach-Object { "$s.$($_.Name)" } }
             if ($empty) { $empty | ForEach-Object { Write-Host "    --  $_" -ForegroundColor Yellow } } else { Write-Ok 'none' }
             if ($script:problems) { throw "$($script:problems) problem(s) in the settings file." }
+        }
+
+        'Keys' {
+            if (-not $KeysFile) { throw 'Give -KeysFile (made by deploy\Export-ZedLegacyKeys.ps1 and copied to this server).' }
+            Assert-Path $KeysFile 'Keys file'
+            try { $keys = Get-Content $KeysFile -Raw | ConvertFrom-Json } catch { throw "The keys file is not valid JSON: $($_.Exception.Message)" }
+            $json = Read-SettingsFile
+            # The sections each app pool reads, in the installer's order (later wins).
+            $poolSections = [ordered]@{
+                'ZedV4-Main' = 'Common', 'Portals', 'Main'; 'ZedV4-Consultancy' = 'Common', 'Portals', 'Consultancy'
+                'ZedV4-Surveillance' = 'Common', 'Portals', 'Surveillance'; 'ZedV4-Mobile-Main' = 'Common', 'Mobile', 'MobileMain'
+                'ZedV4-Mobile-Consultancy' = 'Common', 'Mobile', 'MobileConsultancy'; 'ZedV4-Mobile-Surveillance' = 'Common', 'Mobile', 'MobileSurveillance'
+            }
+            Write-Step "Keys from $KeysFile (names only; values are never shown)"
+            $changes = @()
+            foreach ($sec in $keys.PSObject.Properties) {
+                if ($sec.Name -like '_*') { continue }
+                $target = $json.PSObject.Properties[$sec.Name]
+                if (-not $target -or $target.Value -isnot [System.Management.Automation.PSCustomObject]) { throw "Section $($sec.Name) of the keys file is not a section of $Settings." }
+                foreach ($p in $sec.Value.PSObject.Properties) {
+                    $new = [string]$p.Value
+                    if ([string]::IsNullOrWhiteSpace($new)) { continue }
+                    if ($p.Name -match '^(ConnectionStrings__|Database__Prefix|Email__RedirectAllTo|ASPNETCORE_ENVIRONMENT|DOTNET_ENVIRONMENT)') { throw "$($sec.Name).$($p.Name) is not changed by a keys file." }
+                    $cur = $target.Value.PSObject.Properties[$p.Name]
+                    $state = if (-not $cur) { 'added' } elseif ([string]::IsNullOrWhiteSpace([string]$cur.Value)) { 'filled in' } elseif ([string]$cur.Value -ceq $new) { 'unchanged' } else { 'REPLACED (it had another value)' }
+                    Write-Host ("    {0,-45} {1}" -f "$($sec.Name).$($p.Name)", $state)
+                    if ($state -ne 'unchanged') { $changes += [pscustomobject]@{ Section = $sec.Name; Name = $p.Name; Value = $new } }
+                }
+            }
+            if (-not $changes) { Write-Ok 'nothing to change'; break }
+            if (-not $Apply) { Write-Host "    -Apply writes them to $Settings and to the app pools concerned, and restarts those pools."; break }
+
+            foreach ($c in $changes) {
+                $section = $json.PSObject.Properties[$c.Section].Value
+                if ($section.PSObject.Properties[$c.Name]) { $section.$($c.Name) = $c.Value } else { $section | Add-Member -NotePropertyName $c.Name -NotePropertyValue $c.Value }
+            }
+            # Overwriting the file keeps its administrators-only ACL; the backup gets the same.
+            $backup = "$Settings.bak"
+            Copy-Item $Settings $backup -Force
+            & icacls $backup /inheritance:r /grant:r 'BUILTIN\Administrators:(F)' 'NT AUTHORITY\SYSTEM:(F)' | Out-Null
+            [IO.File]::WriteAllText($Settings, ($json | ConvertTo-Json -Depth 6), (New-Object Text.UTF8Encoding $false))
+            Write-Ok "$Settings updated ($($changes.Count) value(s); previous version in $backup)"
+
+            Import-Module WebAdministration -ErrorAction SilentlyContinue
+            $apphost = 'MACHINE/WEBROOT/APPHOST'
+            foreach ($pool in $poolSections.Keys) {
+                $sections = $poolSections[$pool]
+                $names = @($changes | Where-Object { $sections -contains $_.Section } | ForEach-Object Name | Sort-Object -Unique)
+                if (-not $names) { continue }
+                if (-not (Get-Module WebAdministration) -or -not (Test-Path "IIS:\AppPools\$pool")) { Write-Host "    --  $pool not installed yet: the install (-Step Site) takes the values from the settings file" -ForegroundColor Yellow; continue }
+                $filter = "system.applicationHost/applicationPools/add[@name='$pool']/environmentVariables"
+                foreach ($n in $names) {
+                    $value = $null
+                    foreach ($s in $sections) { $p = (Get-Section $json $s) | Where-Object Name -eq $n; if ($p -and -not [string]::IsNullOrWhiteSpace([string]$p.Value)) { $value = [string]$p.Value } }
+                    if (-not $value) { continue }
+                    Remove-WebConfigurationProperty -PSPath $apphost -Filter $filter -Name '.' -AtElement @{ name = $n } -ErrorAction SilentlyContinue
+                    Add-WebConfigurationProperty -PSPath $apphost -Filter $filter -Name '.' -Value @{ name = $n; value = $value }
+                }
+                Restart-WebAppPool -Name $pool
+                Write-Ok "$pool`: $($names -join ', ') set; pool restarted"
+            }
+            if (($changes | Where-Object Section -eq 'ZedJobs') -and (Get-Service $JobsService -ErrorAction SilentlyContinue)) {
+                $vars = @(Get-Section $json 'ZedJobs' | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.Value) } | ForEach-Object { "$($_.Name)=$($_.Value)" })
+                New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$JobsService" -Name Environment -PropertyType MultiString -Value $vars -Force | Out-Null
+                if ((Get-Service $JobsService).Status -eq 'Running') { Restart-Service $JobsService }
+                Write-Ok "$JobsService environment updated"
+            }
+            Write-Host "    Delete the keys file now: Remove-Item '$KeysFile'" -ForegroundColor Yellow
         }
 
         'Site' {
