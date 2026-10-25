@@ -1,18 +1,19 @@
-# Building the staging test APKs (Windows)
+# Building the test APKs (Windows)
 
-How to build the three React Native apps as **release APKs that talk to staging** (`https://zedv3.qci.org.in`),
+How to build the three React Native apps as **release APKs that talk to the test server** (`https://zedv3.qci.org.in`),
 signed with the local Android debug key, for testing on phones. They are not for the Play Store (that needs the
 upload keystore, see `mobile/README.md`, "Release APK / AAB and signing"). The steps are the same on a developer PC
 and on a Windows build server; adjust the drive letters and folders to that machine.
 
-| App | Workspace | applicationId | Version | Staging addresses it uses |
+| App | Workspace | applicationId | Version | Test server addresses it uses |
 |---|---|---|---|---|
 | ZED Surveillance (Bronze, the "MSME" build) | `apps/msme` | `com.qci.zed.bronzesurveillance` | 1.9 (13) | `/surveillancemobileapi/surveillance/`, `/surveillancemobileapi/msme/`, `/mobileapi/RA/` |
 | ZED SA (site assessment) | `apps/assessor` | `com.qci.zed.siteassessment` | 1.3 (46) | `/mobileapi/SA/` |
 | ZED Consultancy (handholding) | `apps/consultant` | `com.qci.zed.consultancy` | 1.3 (75) | `/consultancymobileapi/SA/`, `/Consultancy/FinancialAssistance/`, `/mobileapi/photos/` |
 
-**Never run a build against production.** The server is fixed at build time by `-PzedEnvironment=staging`; a release
-build without it points at production (`https://loginzed.msme.gov.in`). Check every APK with `aapt2` (below) before
+**Never run a build against production.** The server is fixed at build time: `-PzedEnvironment=staging` is the
+internal name of the test server setting (testers never see it); a release build without it points at production
+(`https://loginzed.msme.gov.in`). Check every APK with `aapt2` (below) before
 it is opened on a phone or emulator with a network.
 
 ## Prerequisites
@@ -72,7 +73,7 @@ Set-Location 'D:\ZED Portal Code\ZEDCS_V4\mobile'
 npm ci
 ```
 
-Build the three staging APKs (each takes 6-12 minutes the first time):
+Build the three test APKs (each takes 6-12 minutes the first time):
 
 ```powershell
 Set-Location 'D:\ZED Portal Code\ZEDCS_V4\mobile\apps\msme\android'
@@ -105,9 +106,9 @@ The APKs are written to (the date is the build date):
 & "$env:ANDROID_HOME\build-tools\37.0.0\aapt2.exe" dump resources 'D:\path\to\the.apk' | Select-String -Context 0,1 'string/zed_environment'
 ```
 
-The line after `string/zed_environment` must read `() "staging"`. If it reads `"production"`, or if nothing is
-printed, the APK points at production: do not install it on a phone with a network; rebuild it with
-`-PzedEnvironment=staging`.
+The line after `string/zed_environment` must read `() "staging"` (the internal name of the test server setting).
+If it reads `"production"`, or if nothing is printed, the APK points at production: do not install it on a phone
+with a network; rebuild it with `-PzedEnvironment=staging`.
 
 To check an APK that is already installed on a connected phone or emulator, copy it back first, then run the
 command above on the copy:
@@ -121,16 +122,17 @@ command above on the copy:
 
 ## Copy, install, clean up
 
-Copy each APK under a name that says app, version, server and date, for example:
+Copy each APK under a name that says app, version, "test" and date (`ZED-MSME-1.9-test-<date>.apk`,
+`ZED-SA-1.3-test-<date>.apk`, `ZED-Consultant-1.3-test-<date>.apk`), for example:
 
 ```powershell
-Copy-Item 'D:\ZED Portal Code\ZEDCS_V4\mobile\apps\consultant\android\app\build\outputs\apk\release\*.apk' 'D:\ZED Portal Code\ZED-RN-APKs\ZED-Consultancy_1.3-75_staging_2026-10-25.apk'
+Copy-Item 'D:\ZED Portal Code\ZEDCS_V4\mobile\apps\consultant\android\app\build\outputs\apk\release\*.apk' 'D:\ZED Portal Code\ZED-RN-APKs\ZED-Consultant-1.3-test-2026-10-25.apk'
 ```
 
 Install on a phone or emulator connected with USB debugging:
 
 ```powershell
-& "$env:ANDROID_HOME\platform-tools\adb.exe" install -r 'D:\ZED Portal Code\ZED-RN-APKs\ZED-Consultancy_1.3-75_staging_2026-10-25.apk'
+& "$env:ANDROID_HOME\platform-tools\adb.exe" install -r 'D:\ZED Portal Code\ZED-RN-APKs\ZED-Consultant-1.3-test-2026-10-25.apk'
 ```
 
 Delete the build folders afterwards (they are recreated by the next build):
