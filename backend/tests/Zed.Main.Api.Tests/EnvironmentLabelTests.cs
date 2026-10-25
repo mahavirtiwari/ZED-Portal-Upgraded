@@ -7,7 +7,7 @@ using Zed.Core.Http;
 
 namespace Zed.Main.Api.Tests;
 
-/// <summary>Portal:EnvironmentLabel (staging): label in the client config, noindex header and robots.txt.</summary>
+/// <summary>Portal:EnvironmentLabel: never shown to users (decided 2026-10-24); it only keeps search engines out.</summary>
 public sealed class EnvironmentLabelTests : IDisposable
 {
     private readonly TestHost _host = new();
@@ -21,18 +21,21 @@ public sealed class EnvironmentLabelTests : IDisposable
         var r = await client.GetAsync("/api/config");
         Assert.False(r.Headers.Contains("X-Robots-Tag"));
         var json = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
-        Assert.Equal(JsonValueKind.Null, json.GetProperty("environmentLabel").ValueKind);
+        Assert.False(json.TryGetProperty("environmentLabel", out _));
     }
 
     [Fact]
-    public async Task A_label_reaches_the_app_and_keeps_search_engines_out()
+    public async Task A_label_is_not_shown_and_keeps_search_engines_out()
     {
         using var staging = _host.WithWebHostBuilder(b => b.UseSetting("Portal:EnvironmentLabel", "STAGING"));
         var client = staging.CreateClient();
 
         var config = await client.GetAsync("/api/config");
         Assert.Equal("noindex, nofollow", string.Join(",", config.Headers.GetValues("X-Robots-Tag")));
-        Assert.Equal("STAGING", JsonDocument.Parse(await config.Content.ReadAsStringAsync()).RootElement.GetProperty("environmentLabel").GetString());
+        // Nothing reaches the pages: no ribbon, no title prefix.
+        var body = await config.Content.ReadAsStringAsync();
+        Assert.False(JsonDocument.Parse(body).RootElement.TryGetProperty("environmentLabel", out _));
+        Assert.DoesNotContain("STAGING", body);
 
         var robots = await client.GetAsync("/robots.txt");
         Assert.Equal(HttpStatusCode.OK, robots.StatusCode);

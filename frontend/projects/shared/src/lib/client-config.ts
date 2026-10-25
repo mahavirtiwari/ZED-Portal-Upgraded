@@ -11,8 +11,6 @@ export interface ClientConfig {
   captchaSiteKey: string;
   /** Old MVC portal, for links to modules not migrated yet. */
   legacyPortalUrl: string;
-  /** Portal:EnvironmentLabel (e.g. "STAGING"); null in Production. */
-  environmentLabel?: string | null;
 }
 
 /** /api/config, loaded once (kept apart from the captcha component so the app shell does not load it). */

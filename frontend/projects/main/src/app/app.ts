@@ -1,21 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { ClientConfigService, EnvironmentBanner, EnvironmentLabelService } from '@zed/shared';
 
+/** The app shell. No environment ribbon or title prefix on any site (decided 2026-10-24). */
 @Component({
-  imports: [RouterOutlet, EnvironmentBanner],
+  imports: [RouterOutlet],
   selector: 'zed-root',
-  template: '<zed-environment-banner /><router-outlet />',
+  template: '<router-outlet />',
 })
-export class App implements OnInit {
-  private readonly config = inject(ClientConfigService);
-  private readonly environment = inject(EnvironmentLabelService);
-
-  ngOnInit(): void {
-    // A test environment (Portal:EnvironmentLabel) shows a ribbon and prefixes the title; nothing in Production.
-    this.config.get().then(
-      (c) => this.environment.set(c.environmentLabel),
-      () => undefined,
-    );
-  }
-}
+export class App {}

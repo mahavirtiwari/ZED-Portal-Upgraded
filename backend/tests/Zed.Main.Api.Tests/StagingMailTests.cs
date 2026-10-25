@@ -16,10 +16,10 @@ public sealed class StagingMailTests : IDisposable
         try { Directory.Delete(pickup, recursive: true); } catch (IOException) { }
     }
 
-    private SmtpEmailSender Sender(string? redirect = null, string? domains = null, string? label = null) =>
+    // The sender reads no Portal:EnvironmentLabel any more: subjects are never prefixed (decided 2026-10-24).
+    private SmtpEmailSender Sender(string? redirect = null, string? domains = null) =>
         new(Options.Create(new EmailOptions { PickupDirectory = pickup, RedirectAllTo = redirect, AllowedRecipientDomains = domains }),
-            NullLogger<SmtpEmailSender>.Instance,
-            new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["Portal:EnvironmentLabel"] = label }).Build());
+            NullLogger<SmtpEmailSender>.Instance);
 
     private MimeMessage[] Written() =>
         Directory.GetFiles(pickup, "*.eml").Select(f => MimeMessage.Load(f)).ToArray();
@@ -41,12 +41,12 @@ public sealed class StagingMailTests : IDisposable
     [Fact]
     public async Task RedirectAllTo_sends_everything_to_the_testers_and_names_the_original_recipients()
     {
-        await Sender(redirect: "testers@qcin.org; lead@qcin.org", label: "STAGING").SendAsync(Message());
+        await Sender(redirect: "testers@qcin.org; lead@qcin.org").SendAsync(Message());
         var m = Assert.Single(Written());
         Assert.Equal(["testers@qcin.org", "lead@qcin.org"], m.To.Mailboxes.Select(a => a.Address));
         Assert.Empty(m.Cc);
         Assert.Empty(m.Bcc);
-        Assert.Equal("[STAGING] Allotment details", m.Subject);
+        Assert.Equal("Allotment details", m.Subject); // no label in the subject (decided 2026-10-24)
         Assert.Equal("unit@acme.example, owner@acme.example", m.Headers["X-Zed-Original-To"]);
         Assert.Equal("agency@qcin.org", m.Headers["X-Zed-Original-Cc"]);
         Assert.Equal("office@zed.org.in", m.Headers["X-Zed-Original-Bcc"]);
@@ -88,10 +88,4 @@ public sealed class StagingMailTests : IDisposable
         Assert.Contains("redirected (no recipient in the allowed domains)", m.HtmlBody);
     }
 
-    [Fact]
-    public async Task The_subject_prefix_follows_the_label_and_is_not_doubled()
-    {
-        await Sender(redirect: "t@qcin.org", label: "UAT").SendAsync(new EmailMessage("u@acme.example", "[UAT] Again", "B"));
-        Assert.Equal("[UAT] Again", Assert.Single(Written()).Subject);
-    }
 }

@@ -204,14 +204,6 @@ try {
     foreach ($p in @($InstallRoot, $ReleasesRoot)) { Assert-NotTemporaryDisk $p }
     if (-not (Test-Path $Settings)) { throw "Settings file $Settings is missing (deploy\settings.example.json lists the names)." }
     if (-not $SkipMigrations -and -not $SqlServer) { throw 'Give -SqlServer (the instance with the ZED databases), or -SkipMigrations.' }
-    # Decided 2026-10-24: no STAGING strip, title prefix or mail subject prefix. Portal__EnvironmentLabel shows all three.
-    $labelSections = @($Settings | ForEach-Object { (Get-Content $_ -Raw | ConvertFrom-Json).PSObject.Properties } |
-        Where-Object { $_.Value.PSObject.Properties['Portal__EnvironmentLabel'] -and -not [string]::IsNullOrWhiteSpace([string]$_.Value.Portal__EnvironmentLabel) } |
-        ForEach-Object { $_.Name })
-    if ($labelSections.Count) {
-        throw ("$Settings sets Portal__EnvironmentLabel (sections: $($labelSections -join ', ')), which shows the STAGING strip and " +
-            'title prefix. Remove it from those sections (docs/STAGING.md 4a, "Removing the STAGING label"), then run again.')
-    }
     if (-not $Package) {
         foreach ($tool in 'git', 'dotnet', 'node', 'npm') {
             if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not installed: install it, or build elsewhere and use -Package." }

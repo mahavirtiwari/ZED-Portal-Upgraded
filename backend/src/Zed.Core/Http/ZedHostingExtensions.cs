@@ -137,7 +137,7 @@ public static class ZedHostingExtensions
     /// <summary>
     /// In the Staging environment, and wherever <c>Portal:EnvironmentLabel</c> is set: every response says
     /// <c>X-Robots-Tag: noindex, nofollow</c> and <c>/robots.txt</c> disallows everything, so search engines keep the
-    /// test site out of their index (MSMEs must not find it and register there). The label itself (banner, title and
+    /// test site out of their index (MSMEs must not find it and register there). The label is not shown anywhere (no banner, title or
     /// mail prefix) is optional: a staging site may run without one. Elsewhere nothing changes.
     /// </summary>
     public static IApplicationBuilder UseZedEnvironmentLabel(this IApplicationBuilder app)

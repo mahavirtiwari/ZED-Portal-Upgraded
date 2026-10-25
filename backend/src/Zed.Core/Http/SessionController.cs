@@ -26,7 +26,7 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     }
 
     /// <param name="CaptchaMode">"off", "text" (the portal's 6-character picture, GET api/captcha) or "google".</param>
-    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl, string? EnvironmentLabel);
+    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl);
 
     [HttpGet("config")]
     [AllowAnonymous]
@@ -34,8 +34,7 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     {
         var mode = await captcha.GetAsync(ct);
         return new(mode != Security.CaptchaMode.Off, mode.ToString().ToLowerInvariant(),
-            mode == Security.CaptchaMode.Google ? recaptcha.Value.SiteKey : "", portal.Value.LegacyBaseUrl.TrimEnd('/'),
-            string.IsNullOrWhiteSpace(portal.Value.EnvironmentLabel) ? null : portal.Value.EnvironmentLabel.Trim());
+            mode == Security.CaptchaMode.Google ? recaptcha.Value.SiteKey : "", portal.Value.LegacyBaseUrl.TrimEnd('/'));
     }
 
     /// <summary>A new 6-character captcha picture, when the captcha mode is "text" (404 otherwise).</summary>

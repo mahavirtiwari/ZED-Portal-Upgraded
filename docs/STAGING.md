@@ -291,10 +291,10 @@ fails, the previous files go back and the pools restart (`-NoAutoRollback` leave
 migrations are additive and the previous version runs on them. The five newest packages and backups are kept. Log:
 `E:\ZedV4\logs\update-<time>.log`. The first update after the Email Templates (migration 0015) needs
 `-IncludeMailOutbox` once, so that 0003 tags the procedures' mail. Never point `-ReleasesRoot` or `-InstallRoot` at D:.
-**Removing the STAGING label.** An older settings file may still set `Portal__EnvironmentLabel` (red strip,
-"[STAGING]" title and mail subject prefix); the update refuses it. `.\deploy\Remove-ZedStagingLabel.ps1 -Apply`
-removes it from the settings file and the Zed.Jobs service, and drops "STAGING " from the names of the first staff
-accounts (ZEDV4...) in the three ZEDV4_ databases; then install again with `-Package <installed package> -SkipMigrations`.
+**No label anywhere.** The portals show no environment ribbon, title prefix or mail subject prefix on any site, whatever
+`Portal__EnvironmentLabel` says (it only keeps search engines out, as the Staging environment does anyway).
+`.\deploy\Remove-ZedStagingLabel.ps1 -Apply` tidies an older server: it removes the setting from the settings file and
+Zed.Jobs, and drops "STAGING " from the names of the first staff accounts (ZEDV4...) in the three ZEDV4_ databases.
 `-Environment Production -SqlServer <instance>` uses the production site ("Default Web Site"), no database prefix and
 https://loginzed.msme.gov.in for the test (docs/CUTOVER.md).
 

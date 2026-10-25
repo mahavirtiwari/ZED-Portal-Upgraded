@@ -118,7 +118,7 @@ public interface IEmailSender
     Task SendAsync(EmailMessage message, CancellationToken ct = default);
 }
 
-public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<SmtpEmailSender> log, IConfiguration? config = null) : IEmailSender
+public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<SmtpEmailSender> log) : IEmailSender
 {
     public async Task SendAsync(EmailMessage message, CancellationToken ct = default)
     {
@@ -211,7 +211,7 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
             if (keptTo.Count + keptCc.Count + keptBcc.Count > 0)
             {
                 if (dropped.Count == 0 && redirect.Count == 0)
-                    return new(message with { Subject = Prefix(message.Subject) }, []);
+                    return new(message, []);
                 // Somebody allowed is left: they get it; the dropped addresses are named at the top.
                 newTo = keptTo.Count > 0 ? string.Join(";", keptTo) : string.Join(";", keptCc.Concat(keptBcc));
                 newCc = keptTo.Count > 0 ? keptCc : [];
@@ -249,17 +249,9 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
             To = newTo!,
             Cc = newCc ?? [],
             Bcc = newBcc ?? [],
-            Subject = Prefix(message.Subject),
+            Subject = message.Subject,
             HtmlBody = note + message.HtmlBody,
         }, headers);
     }
 
-    /// <summary>"[LABEL] " before the subject while the staging rule is active and Portal:EnvironmentLabel is set; without a label the subject is unchanged.</summary>
-    private string Prefix(string subject)
-    {
-        var label = config?[MailSafety.EnvironmentLabelSetting];
-        if (string.IsNullOrWhiteSpace(label)) return subject;
-        var prefix = "[" + label.Trim() + "] ";
-        return subject.StartsWith(prefix, StringComparison.Ordinal) ? subject : prefix + subject;
-    }
 }
