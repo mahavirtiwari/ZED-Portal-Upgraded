@@ -120,7 +120,14 @@ public sealed class FakeSql : ISqlExecutor
 public sealed class FakeEmail : IEmailSender
 {
     public ConcurrentQueue<EmailMessage> Sent { get; } = new();
-    public Task SendAsync(EmailMessage message, CancellationToken ct = default) { Sent.Enqueue(message); return Task.CompletedTask; }
+    /// <summary>When set, sending throws it (a mail server that refuses).</summary>
+    public Exception? Fail { get; set; }
+    public Task SendAsync(EmailMessage message, CancellationToken ct = default)
+    {
+        if (Fail is not null) throw Fail;
+        Sent.Enqueue(message);
+        return Task.CompletedTask;
+    }
 }
 
 public sealed class FakeUdyam : IUdyamClient

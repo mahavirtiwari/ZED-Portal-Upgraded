@@ -67,7 +67,7 @@ public sealed class ConsultancyPaymentCompletion(
                     [nameof(ConsultancyPaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
                 await email.SendAsync(new EmailMessage(to,
-                    $"ZED Handholding Support (Milestone {milestone}) Payment Confirmation Details - {zedId}", html, EmailProfiles.Default, cc), ct);
+                    $"ZED Handholding Support (Milestone {milestone}) Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);
             }
 
             // Result set 5: the Consultant Organisation of the previous milestone (milestones 2 and 3 only),
@@ -85,7 +85,7 @@ public sealed class ConsultancyPaymentCompletion(
                 });
                 await email.SendAsync(new EmailMessage(agency,
                     $"Allocation of MSME for Handholding Support (Milestone {milestone}) under “MSME Sustainable (ZED) Certification” Scheme - {zedId}",
-                    html, EmailProfiles.Default, cc), ct);
+                    html, EmailProfiles.Payment, cc), ct);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

@@ -5,6 +5,7 @@ import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { MastersApi, Parameter } from './masters.api';
+import { CollapseCard } from '../collapse-card';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
@@ -14,7 +15,7 @@ import { MastersApi, Parameter } from './masters.api';
  */
 @Component({
   selector: 'zed-staff-parameters',
-  imports: [FormsModule],
+  imports: [FormsModule, CollapseCard],
   template: `
     <div class="page-head">
       <div>
@@ -28,26 +29,27 @@ import { MastersApi, Parameter } from './masters.api';
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <form class="zed-card" (ngSubmit)="add()" novalidate>
-      <h4>Add Parameter</h4>
-      <div class="form-grid">
-        <label for="sectionCode">Parameter Code<span class="req">*</span></label>
-        <div>
-          <input id="sectionCode" name="sectionCode" class="form-control" maxlength="50" [(ngModel)]="code" />
-          @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
+    <zed-collapse-card title="Add Parameter" summary="Open to add a new parameter.">
+      <form class="add-form" (ngSubmit)="add()" novalidate>
+        <div class="form-grid">
+          <label for="sectionCode">Parameter Code<span class="req">*</span></label>
+          <div>
+            <input id="sectionCode" name="sectionCode" class="form-control" maxlength="50" [(ngModel)]="code" />
+            @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
+          </div>
+          <label for="sectionName">Parameter Name<span class="req">*</span></label>
+          <div>
+            <input id="sectionName" name="sectionName" class="form-control" maxlength="200" [(ngModel)]="name" />
+            @if (submitted() && !name.trim()) { <span class="help-block">Parameter Name required.</span> }
+          </div>
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="4" class="form-control" maxlength="1990" [(ngModel)]="description"></textarea>
         </div>
-        <label for="sectionName">Parameter Name<span class="req">*</span></label>
-        <div>
-          <input id="sectionName" name="sectionName" class="form-control" maxlength="200" [(ngModel)]="name" />
-          @if (submitted() && !name.trim()) { <span class="help-block">Parameter Name required.</span> }
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
         </div>
-        <label for="description">Description</label>
-        <textarea id="description" name="description" rows="4" class="form-control" maxlength="1990" [(ngModel)]="description"></textarea>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
-      </div>
-    </form>
+      </form>
+    </zed-collapse-card>
 
     <div class="table-responsive">
       <table class="table table-zed table-bordered">

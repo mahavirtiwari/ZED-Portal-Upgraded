@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { CollapseCard } from '../collapse-card';
 
 export interface AppFormItem {
   key: string;
@@ -95,7 +96,7 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
  */
 @Component({
   selector: 'zed-staff-app-forms',
-  imports: [DatePipe, FormsModule],
+  imports: [DatePipe, FormsModule, CollapseCard],
   template: `
     <div class="page-head">
       <div>
@@ -131,8 +132,8 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
     </div>
 
     @if (details(); as d) {
-      @for (s of d.sections; track s.key) {
-        <h5 class="section-title">{{ s.label }}</h5>
+      @for (s of d.sections; track s.key; let first = $first) {
+        <zed-collapse-card [title]="s.label" [summary]="sectionSummary(s.key)" [open]="first">
         <div class="table-responsive">
           <table class="table table-zed table-bordered">
             <thead>
@@ -201,6 +202,7 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
             </tbody>
           </table>
         </div>
+        </zed-collapse-card>
       }
     } @else if (!busy() && !forms().length) {
       <div class="no-data">No app forms on this portal</div>
@@ -281,7 +283,7 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
   `,
   styles: `
     tr.column td { background: #f8f9fa; }
-    .section-title { font-size: 16px; font-weight: 700; color: #1f5c61; margin: 8px 0 10px; }
+    zed-collapse-card .table-responsive { margin-bottom: 0; }
     .form-grid > .top { align-self: start; padding-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
@@ -310,6 +312,13 @@ export class AppFormsPage {
 
   protected inSection(section: string): AppFieldItem[] {
     return this.bySection().get(section) ?? [];
+  }
+
+  /** The header line of a section card: its fields, and how many are hidden from the app. */
+  protected sectionSummary(section: string): string {
+    const fields = this.inSection(section);
+    const off = fields.filter((f) => !f.enabled).length;
+    return `${fields.length} ${fields.length === 1 ? 'field' : 'fields'}` + (off ? ` · ${off} disabled` : '');
   }
 
   protected typeName(f: AppFieldItem): string {

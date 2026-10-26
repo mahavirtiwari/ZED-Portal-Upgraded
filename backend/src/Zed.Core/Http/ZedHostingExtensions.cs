@@ -68,6 +68,8 @@ public static class ZedHostingExtensions
         services.AddHttpClient<IAppCaptchaVerifier, RecaptchaAppVerifier>();
 
         services.Configure<EmailOptions>(config.GetSection(EmailOptions.Section));
+        // The Admin's mail servers per module (Email Settings); without one, Email:Profiles of the configuration.
+        services.AddSingleton<ISmtpServers, SqlSmtpServers>();
         services.AddSingleton<SmtpEmailSender>();
         // The Admin's Email Templates: switched-off mails are not sent, own subjects replace the standard ones.
         services.AddSingleton<IEmailSender>(sp => new TemplatedEmailSender(sp.GetRequiredService<SmtpEmailSender>(), sp.GetRequiredService<ILogger<TemplatedEmailSender>>()));

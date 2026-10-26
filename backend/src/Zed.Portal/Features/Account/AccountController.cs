@@ -69,7 +69,7 @@ public sealed class AccountController(
                 [nameof(PasswordChangedEmail.IsMsme)] = user.RoleId == (int)UserRole.Msme,
                 [nameof(PasswordChangedEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
-            try { await email.SendAsync(new EmailMessage(to, "New Login Details - " + row.Text("UserName"), html), ct); }
+            try { await email.SendAsync(new EmailMessage(to, "New Login Details - " + row.Text("UserName"), html, EmailProfiles.Login), ct); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 log.LogWarning(ex, "Password changed but confirmation mail to {UserId} failed", user.UserId);
@@ -100,7 +100,7 @@ public sealed class AccountController(
                 [nameof(PasswordChangedEmail.IsMsme)] = false,
                 [nameof(PasswordChangedEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
-            try { await email.SendAsync(new EmailMessage(to, "New Login Details - " + sub.UserName, html), ct); }
+            try { await email.SendAsync(new EmailMessage(to, "New Login Details - " + sub.UserName, html, EmailProfiles.Login), ct); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 log.LogWarning(ex, "Password changed but confirmation mail to sub-user {UserId} failed", sub.UserId);

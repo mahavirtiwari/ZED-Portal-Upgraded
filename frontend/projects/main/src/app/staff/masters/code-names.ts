@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { CodeName, CodeNameKind, MastersApi } from './masters.api';
+import { CollapseCard } from '../collapse-card';
 
 const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
   sectors: { title: 'Sectors', one: 'Sector', sub: 'NIC sectors used to classify the MSMEs and the technologies.' },
@@ -18,7 +19,7 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
  */
 @Component({
   selector: 'zed-staff-code-names',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, CollapseCard],
   template: `
     <div class="page-head">
       <div>
@@ -32,24 +33,25 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <form class="zed-card" (ngSubmit)="add()" novalidate>
-      <h4>Add {{ labels.one }}</h4>
-      <div class="form-grid">
-        <label for="code">{{ labels.one }} Code<span class="req">*</span></label>
-        <div>
-          <input id="code" name="code" class="form-control" maxlength="50" [(ngModel)]="code" />
-          @if (submitted() && !code.trim()) { <span class="help-block">{{ labels.one }} Code required.</span> }
+    <zed-collapse-card [title]="'Add ' + labels.one" [summary]="'Open to add a new ' + labels.one.toLowerCase() + '.'">
+      <form class="add-form" (ngSubmit)="add()" novalidate>
+        <div class="form-grid">
+          <label for="code">{{ labels.one }} Code<span class="req">*</span></label>
+          <div>
+            <input id="code" name="code" class="form-control" maxlength="50" [(ngModel)]="code" />
+            @if (submitted() && !code.trim()) { <span class="help-block">{{ labels.one }} Code required.</span> }
+          </div>
+          <label for="name">{{ labels.one }} Name<span class="req">*</span></label>
+          <div>
+            <input id="name" name="name" class="form-control" maxlength="200" [(ngModel)]="name" />
+            @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
+          </div>
         </div>
-        <label for="name">{{ labels.one }} Name<span class="req">*</span></label>
-        <div>
-          <input id="name" name="name" class="form-control" maxlength="200" [(ngModel)]="name" />
-          @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
         </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
-      </div>
-    </form>
+      </form>
+    </zed-collapse-card>
 
     <div class="filter-bar mb-3">
       <div class="filter wide">

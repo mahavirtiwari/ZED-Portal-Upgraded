@@ -232,7 +232,15 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    copy of registration/payment/allotment mails, the ZED team inbox for allotment rejections, the FA/TU rejection
    inbox, and for the database procedures' mail (sent by Zed.Jobs) a blind copy of every mail and the daily status
    report's recipients. An empty box uses the configuration (`Email__ContactInbox`, `Email__RegistrationCc`, ...). On
-   staging every mail still goes to `Email__RedirectAllTo`. The SMTP accounts and passwords stay in the settings files.
+   staging every mail still goes to `Email__RedirectAllTo`.
+   **Mail servers (SMTP) per module:** on the same page (migration 0018, per portal) the Admin sets the SMTP server of
+   each module: Default, Registration, OTP, Login details and password reset, Payment confirmation, Document upload
+   (app), Allotment, Certificates and rejections, Financial assistance / TU, Contact ZED queries and Database mails
+   (Zed.Jobs). A module without its own uses Default; without a Default on the page, the settings file
+   (`Email__Profiles__*`). Passwords are stored encrypted for the server machine (Windows DPAPI) and never shown; after
+   moving the databases to another server, enter them again. "Send test mail" sends through a module's server at once
+   and shows the mail server's own error. `deploy\Test-ZedEmail.ps1` (read-only) shows on the server what is in effect,
+   whether the mail servers answer, the database mail queue and the recent mail errors.
    **Logins:** the Admin creates Master Admin, Ministry, MSME DFO and dashboard logins under **User Management**; Master
    Admins add operation admins and agencies add sub-users under **Operation Admins / Sub-Users** (migration 0012;
    docs/USER-MANAGEMENT.md).

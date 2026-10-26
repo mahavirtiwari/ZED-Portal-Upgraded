@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { CatalogueItem, INCENTIVE_TYPES, IncentiveForm, IncentivesApi } from './incentives.api';
 import { PagedView, PagerComponent } from '../pager';
+import { CollapseCard } from '../collapse-card';
 
 export const MAX_INCENTIVE_DOC_BYTES = 2 * 1024 * 1024;
 
@@ -23,7 +24,7 @@ function emptyForm(type: string): IncentiveForm {
  */
 @Component({
   selector: 'zed-staff-incentive-master',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, CollapseCard],
   template: `
     <!-- As the live page: the type comes from the menu's Incentives drop-down (?type=). -->
     <div class="page-head">
@@ -39,29 +40,30 @@ function emptyForm(type: string): IncentiveForm {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
-    <form class="zed-card" (ngSubmit)="save()" novalidate>
-      <h4>Add Incentive</h4>
-      <div class="form-grid">
-        @for (f of fields; track f.key) {
-          <label [for]="'inc-' + f.key">{{ f.label }}@if (f.required) {<span class="req">*</span>}</label>
-          <div>
-            <input class="form-control" [id]="'inc-' + f.key" [name]="f.key" [attr.maxlength]="f.max" [ngModel]="form()[f.key]" (ngModelChange)="patch(f.key, $event)" />
-            @if (f.hint) { <small class="muted">{{ f.hint }}</small> }
+    <zed-collapse-card title="Add Incentive" summary="Open to add a new incentive.">
+      <form class="add-form" (ngSubmit)="save()" novalidate>
+        <div class="form-grid">
+          @for (f of fields; track f.key) {
+            <label [for]="'inc-' + f.key">{{ f.label }}@if (f.required) {<span class="req">*</span>}</label>
+            <div>
+              <input class="form-control" [id]="'inc-' + f.key" [name]="f.key" [attr.maxlength]="f.max" [ngModel]="form()[f.key]" (ngModelChange)="patch(f.key, $event)" />
+              @if (f.hint) { <small class="muted">{{ f.hint }}</small> }
+            </div>
+          }
+          <div class="label">Applicable for<span class="req">*</span></div>
+          <div class="check-row">
+            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="b" [ngModel]="form().applicableForBronze" (ngModelChange)="patchBool('applicableForBronze', $event)" /> Bronze</label>
+            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="s" [ngModel]="form().applicableForSilver" (ngModelChange)="patchBool('applicableForSilver', $event)" /> Silver</label>
+            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="g" [ngModel]="form().applicableForGold" (ngModelChange)="patchBool('applicableForGold', $event)" /> Gold</label>
           </div>
-        }
-        <div class="label">Applicable for<span class="req">*</span></div>
-        <div class="check-row">
-          <label class="form-check-label"><input type="checkbox" class="form-check-input" name="b" [ngModel]="form().applicableForBronze" (ngModelChange)="patchBool('applicableForBronze', $event)" /> Bronze</label>
-          <label class="form-check-label"><input type="checkbox" class="form-check-input" name="s" [ngModel]="form().applicableForSilver" (ngModelChange)="patchBool('applicableForSilver', $event)" /> Silver</label>
-          <label class="form-check-label"><input type="checkbox" class="form-check-input" name="g" [ngModel]="form().applicableForGold" (ngModelChange)="patchBool('applicableForGold', $event)" /> Gold</label>
+          <div class="label">Active<span class="req">*</span></div>
+          <div><input type="checkbox" class="form-check-input" name="active" aria-label="Active" [ngModel]="form().activeStatus" (ngModelChange)="patchBool('activeStatus', $event)" /></div>
         </div>
-        <div class="label">Active<span class="req">*</span></div>
-        <div><input type="checkbox" class="form-check-input" name="active" aria-label="Active" [ngModel]="form().activeStatus" (ngModelChange)="patchBool('activeStatus', $event)" /></div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="busy()">SAVE</button>
-      </div>
-    </form>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">SAVE</button>
+        </div>
+      </form>
+    </zed-collapse-card>
 
     <div class="table-responsive">
       <table class="table table-bordered table-zed">

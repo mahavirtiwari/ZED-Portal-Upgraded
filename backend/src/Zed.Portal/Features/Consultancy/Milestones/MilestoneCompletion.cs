@@ -104,7 +104,7 @@ public sealed class MilestoneCompletion(
             var html = await render(to, report is not null);
             var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             var attachments = report is null ? null : new[] { new EmailAttachment(attachmentName, report.Content) };
-            await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Default, cc, attachments), ct);
+            await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Certification, cc, attachments), ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

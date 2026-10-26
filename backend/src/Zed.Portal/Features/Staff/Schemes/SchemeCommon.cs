@@ -122,7 +122,7 @@ internal sealed class SchemeMailer(
             parameters["PublicBaseUrl"] = portal.Value.PublicBaseUrl;
             var html = await templates.RenderAsync<TComponent>(parameters);
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
-            await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Default, cc), ct);
+            await email.SendAsync(new EmailMessage(to.Trim(), subject, html, EmailProfiles.Schemes, cc), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

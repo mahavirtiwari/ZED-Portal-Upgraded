@@ -144,7 +144,7 @@ public sealed class StaffPasswordResets(
                     [nameof(PasswordChangedEmail.IsMsme)] = false,
                     [nameof(PasswordChangedEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
-                await email.SendAsync(new EmailMessage(to, "New Login Details - " + user.UserName, html), ct);
+                await email.SendAsync(new EmailMessage(to, "New Login Details - " + user.UserName, html, EmailProfiles.Login), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -220,7 +220,7 @@ public sealed class StaffPasswordResets(
             [nameof(StaffPasswordResetEmail.SentBy)] = sentBy,
             [nameof(StaffPasswordResetEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
         });
-        await email.SendAsync(new EmailMessage(to, "ZED Password Reset - " + account.UserId, html), ct);
+        await email.SendAsync(new EmailMessage(to, "ZED Password Reset - " + account.UserId, html, EmailProfiles.Login), ct);
     }
 
     /// <summary>Surveillance accounts whose password main holds (#111): a pointer to main's reset, at most every 15 minutes.</summary>
@@ -237,7 +237,7 @@ public sealed class StaffPasswordResets(
             [nameof(StaffPasswordResetMainPortalEmail.MainLoginUrl)] = MainPortalUrl().TrimEnd('/') + "/login",
             [nameof(StaffPasswordResetMainPortalEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
         });
-        await email.SendAsync(new EmailMessage(to, "ZED Password Reset - " + account.UserId, html), ct);
+        await email.SendAsync(new EmailMessage(to, "ZED Password Reset - " + account.UserId, html, EmailProfiles.Login), ct);
         Audit("main portal hint sent (password managed on main)", account.UserId, ip);
     }
 

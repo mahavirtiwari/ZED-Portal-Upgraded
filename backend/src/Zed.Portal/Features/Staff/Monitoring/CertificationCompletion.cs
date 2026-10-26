@@ -110,7 +110,7 @@ public sealed class CertificationCompletion(
                 [nameof(StaffMonitoringCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
             await email.SendAsync(new EmailMessage(to, CertificateSubject(zedId, certification), html,
-                EmailProfiles.Default, Attachments: attachments), ct);
+                EmailProfiles.Certification, Attachments: attachments), ct);
             return new Outcome(true, true);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -192,7 +192,7 @@ public sealed class CertificationCompletion(
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
             var attachments = report is null ? null : new[] { new EmailAttachment($"{zedId}_{certification}_Report.pdf", report.Content) };
             await email.SendAsync(new EmailMessage(to, $"Rejection of your application under {Scheme} - {zedId}", html,
-                EmailProfiles.Default, cc, attachments), ct);
+                EmailProfiles.Certification, cc, attachments), ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

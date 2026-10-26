@@ -60,7 +60,7 @@ public sealed partial class MsmeController
         {
             [nameof(MsmePasswordChangedEmail.UserName)] = user.Text("UserName"),
             [nameof(MsmePasswordChangedEmail.UserId)] = userId,
-        }, null, ct);
+        }, null, ct, profile: EmailProfiles.Login);
 
         // The old UpdatePassword returned the (empty) SQL error text as errorMessage.
         return LegacyJson(new ServiceResponse { status = "1", errorMessage = "" });
@@ -120,7 +120,7 @@ public sealed partial class MsmeController
             [nameof(MsmeResetPasswordEmail.ValidMinutes)] = Math.Clamp(o.ValidMinutes, 1, 1440),
             [nameof(MsmeResetPasswordEmail.PublicBaseUrl)] = portal.PublicBaseUrl,
         });
-        await sp.GetRequiredService<IEmailSender>().SendAsync(new EmailMessage(to, "MSME Reset Password Details - " + account.ZedId, html), ct);
+        await sp.GetRequiredService<IEmailSender>().SendAsync(new EmailMessage(to, "MSME Reset Password Details - " + account.ZedId, html, EmailProfiles.Login), ct);
         Audit("link sent");
     }
 

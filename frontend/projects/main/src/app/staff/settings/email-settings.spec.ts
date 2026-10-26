@@ -31,18 +31,31 @@ describe('EmailSettingsPage', () => {
     el = fixture.nativeElement;
     await settle();
     http.expectOne('/api/staff/settings/email').flush(items);
+    http.expectOne('/api/staff/settings/email/servers').flush({ modules: [], pickupDirectory: null, redirectAllTo: null, allowedRecipientDomains: null });
     await settle();
   });
 
   afterEach(() => http.verify());
 
   const input = (key: string) => el.querySelector(`[id="${key}"]`) as HTMLInputElement;
+  const addresses = () => el.querySelector('form.addresses') as HTMLFormElement;
 
-  it('shows the portal and database addresses with the configured defaults', () => {
-    expect([...el.querySelectorAll('h5')].map((h) => h.textContent)).toEqual(['Portal mails', 'Database mails']);
+  it('shows the mail servers, then the portal and database addresses with the configured defaults', () => {
+    expect([...el.querySelectorAll('.card-title')].map((h) => h.textContent)).toEqual(['Mail servers', 'Portal mails', 'Database mails']);
     expect(input('Email.ContactInbox').placeholder).toBe('Configured: zed.support@qcin.org');
     expect(input('Email.ZedTeamInbox').value).toBe('team@zed.test');
     expect(input('Email.DbMailBcc').placeholder).toBe('Not configured');
+  });
+
+  it('shows the address cards collapsed with how many are set, and opens them on their header', async () => {
+    const heads = [...el.querySelectorAll('form.addresses .collapse-head')] as HTMLButtonElement[];
+    expect(heads.map((h) => h.querySelector('small')!.textContent!.trim())).toEqual(['1 of 2 set here', '0 of 1 set here']);
+    const grid = () => el.querySelectorAll('form.addresses .collapse-body')[0] as HTMLElement;
+    expect(grid().hidden).toBe(true);
+    heads[0].click();
+    await settle();
+    expect(grid().hidden).toBe(false);
+    expect(heads[0].getAttribute('aria-expanded')).toBe('true');
   });
 
   it('saves every address and reloads them', async () => {
@@ -50,19 +63,19 @@ describe('EmailSettingsPage', () => {
     box.value = 'monitor@zed.test';
     box.dispatchEvent(new Event('input'));
     await settle();
-    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    addresses().dispatchEvent(new Event('submit'));
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/settings/email');
     expect(put.request.body).toEqual({ values: { 'Email.ContactInbox': '', 'Email.ZedTeamInbox': 'team@zed.test', 'Email.DbMailBcc': 'monitor@zed.test' } });
     put.flush({ message: 'Email settings saved.' });
     await settle();
-    http.expectOne((r) => r.method === 'GET').flush(items);
+    http.expectOne((r) => r.method === 'GET' && r.url === '/api/staff/settings/email').flush(items);
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Email settings saved.');
   });
 
   it('shows refusals', async () => {
-    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    addresses().dispatchEvent(new Event('submit'));
     await settle();
     http.expectOne((r) => r.method === 'PUT').flush({ title: "Contact ZED queries: 'x' is not a valid e-mail address." }, { status: 400, statusText: 'Bad Request' });
     await settle();

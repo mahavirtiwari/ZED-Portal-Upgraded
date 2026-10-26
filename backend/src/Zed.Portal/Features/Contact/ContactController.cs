@@ -55,7 +55,7 @@ public sealed partial class ContactController(
                 [nameof(ContactQueryEmail.Query)] = query,
                 [nameof(ContactQueryEmail.ZedId)] = ZedUser.FromPrincipal(User)?.UserId,
             });
-            try { await email.SendAsync(new EmailMessage(inbox, "ZED Query from " + name, html), ct); }
+            try { await email.SendAsync(new EmailMessage(inbox, "ZED Query from " + name, html, EmailProfiles.Contact), ct); }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // The query is stored; the mail is a notification only.

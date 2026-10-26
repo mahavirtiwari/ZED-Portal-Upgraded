@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Evidence, NewPoint, Point, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
+import { CollapseCard } from '../collapse-card';
 
 type EvidenceKind = 'mandatory' | 'optional';
 
@@ -27,7 +28,7 @@ interface EvidenceDialog {
  */
 @Component({
   selector: 'zed-staff-requirements',
-  imports: [FormsModule, RouterLink],
+  imports: [FormsModule, RouterLink, CollapseCard],
   template: `
     <div class="page-head">
       <div>
@@ -49,48 +50,50 @@ interface EvidenceDialog {
     }
 
     @if (data()) {
-      <form class="zed-card" (ngSubmit)="addPoint()" novalidate>
-        <div class="form-grid">
-          <label class="top" for="requirementName">Requirement</label>
-          <textarea id="requirementName" name="requirementName" class="form-control" maxlength="1990" rows="4" [(ngModel)]="pointText"></textarea>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-outline-primary">Add</button>
-        </div>
-        @if (draft().length) {
-          <div class="table-responsive mt-3">
-            <table class="table table-zed table-bordered draft-points">
-              <tbody>
-                @for (p of draft(); track $index; let i = $index) {
-                  <tr>
-                    <td class="text-center" style="width: 48px">{{ i + 1 }}.</td>
-                    <td>
-                      {{ p.name }}
-                      <ul>
-                        @for (b of p.bullets; track $index; let j = $index) {
-                          <li>
-                            <span>{{ b }}</span>
-                            <button type="button" class="btn btn-link text-danger p-0 ms-1" aria-label="Remove bullet" (click)="removeBullet(i, j)">&times;</button>
-                          </li>
-                        }
-                      </ul>
-                    </td>
-                    <td class="text-center" style="width: 200px">
-                      <div class="row-actions justify-content-center">
-                        <button type="button" class="btn btn-primary" (click)="openBullet(i)">Add Bullet</button>
-                        <button type="button" class="btn btn-outline-danger" (click)="removeDraftPoint(i)">Remove</button>
-                      </div>
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+      <zed-collapse-card title="Add Requirement" summary="Open to add a requirement point.">
+        <form class="add-form" (ngSubmit)="addPoint()" novalidate>
+          <div class="form-grid">
+            <label class="top" for="requirementName">Requirement</label>
+            <textarea id="requirementName" name="requirementName" class="form-control" maxlength="1990" rows="4" [(ngModel)]="pointText"></textarea>
           </div>
           <div class="form-actions">
-            <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Save</button>
+            <button type="submit" class="btn btn-outline-primary">Add</button>
           </div>
-        }
-      </form>
+          @if (draft().length) {
+            <div class="table-responsive mt-3">
+              <table class="table table-zed table-bordered draft-points">
+                <tbody>
+                  @for (p of draft(); track $index; let i = $index) {
+                    <tr>
+                      <td class="text-center" style="width: 48px">{{ i + 1 }}.</td>
+                      <td>
+                        {{ p.name }}
+                        <ul>
+                          @for (b of p.bullets; track $index; let j = $index) {
+                            <li>
+                              <span>{{ b }}</span>
+                              <button type="button" class="btn btn-link text-danger p-0 ms-1" aria-label="Remove bullet" (click)="removeBullet(i, j)">&times;</button>
+                            </li>
+                          }
+                        </ul>
+                      </td>
+                      <td class="text-center" style="width: 200px">
+                        <div class="row-actions justify-content-center">
+                          <button type="button" class="btn btn-primary" (click)="openBullet(i)">Add Bullet</button>
+                          <button type="button" class="btn btn-outline-danger" (click)="removeDraftPoint(i)">Remove</button>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Save</button>
+            </div>
+          }
+        </form>
+      </zed-collapse-card>
 
       <div class="table-responsive">
         <table class="table table-zed table-bordered requirements">

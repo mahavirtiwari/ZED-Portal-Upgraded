@@ -72,11 +72,13 @@ public sealed class MailOutboxTests
     {
         public List<OutboxMail> Pending { get; } = [];
         public List<EmailTemplateOverride> Templates { get; } = [];
+        public List<SmtpServerRow> Servers { get; } = [];
         public ConcurrentQueue<(string Sql, object? Args)> Executed { get; } = new();
 
         public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
         {
             if (sql == MailOutboxSender.TemplatesSql) return Task.FromResult<IReadOnlyList<T>>(Templates.Cast<T>().ToList());
+            if (sql.Contains("FROM dbo.V4SmtpServers")) return Task.FromResult<IReadOnlyList<T>>(Servers.Cast<T>().ToList());
             var batch = Pending.Cast<T>().ToList();
             Pending.Clear();
             return Task.FromResult<IReadOnlyList<T>>(batch);
@@ -133,6 +135,30 @@ public sealed class MailOutboxTests
         Assert.Equal(["d@x.test"], text.Cc!);
         Assert.Contains(main.Executed, e => e.Sql == MailOutboxSender.SentSql);
         Assert.Contains(surv.Executed, e => e.Sql == MailOutboxSender.SentSql);
+    }
+
+    [Fact]
+    public async Task Database_mails_use_the_mail_server_the_Admin_set_for_them_in_that_database()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(1, "ZedAdmin", "a@x.test", null, null, "Allotted", "<b>Hi</b>", "HTML", 1));
+        main.Servers.Add(new SmtpServerRow("Default", "smtp.default.test", 587, true, "zed@zed.test", null, null));
+        main.Servers.Add(new SmtpServerRow("Database", "smtp.db.test", 25, false, "db@zed.test", null, null));
+        var surv = new FakeDb();
+        surv.Pending.Add(new OutboxMail(2, "ZedAdmin", "b@x.test", null, null, "Reminder", "<b>Hi</b>", "HTML", 1));
+        var consultancy = new FakeDb();
+        consultancy.Pending.Add(new OutboxMail(3, "ZedAdmin", "c@x.test", null, null, "Milestone", "<b>Hi</b>", "HTML", 1));
+        consultancy.Servers.Add(new SmtpServerRow("Default", "smtp.consultancy.test", 587, true, "hh@zed.test", null, null));
+        var email = new FakeEmail();
+        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main, ["Surveillance"] = surv, ["Consultancy"] = consultancy }), email,
+            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+
+        Assert.Equal(3, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Equal(("smtp.db.test", "db@zed.test"), (email.Sent.Single(m => m.To == "a@x.test").Server!.Host, email.Sent.Single(m => m.To == "a@x.test").Server!.From));
+        // Nothing set in that database: the configured profiles (no server chosen here).
+        Assert.Null(email.Sent.Single(m => m.To == "b@x.test").Server);
+        // Only a Default in that database: the Default.
+        Assert.Equal("smtp.consultancy.test", email.Sent.Single(m => m.To == "c@x.test").Server!.Host);
     }
 
     [Fact]

@@ -65,7 +65,7 @@ public sealed class SurveillancePaymentCompletion(
                     [nameof(SurveillancePaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
                 var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
-                await email.SendAsync(new EmailMessage(to, $"ZED Surveillance Assessment fee Payment Confirmation Details - {zedId}", html, EmailProfiles.Default, cc), ct);
+                await email.SendAsync(new EmailMessage(to, $"ZED Surveillance Assessment fee Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

@@ -22,6 +22,7 @@ The pages keep the old screens' content and order; they are laid out with a few 
 | Row actions | `<div class="row-actions">` with `btn btn-outline-primary` (Edit, View), `btn btn-outline-danger` (Delete, Deactivate, Block, Reject), `btn btn-primary` (the one main action) | Buttons side by side, small, not stacked with `<br>`. |
 | Long text | `<div class="clamp-3" [title]="text">` + a `more`/`less` link | Descriptions, remarks in tables. |
 | Pager | `ClientPager` / `ServerPager` + `<zed-pager>` | Every list longer than a page; a search box (`filter wide`) when the old page had one or the list is long. |
+| Collapsible card | `<zed-collapse-card title="Add Parameter" summary="Open to add a new parameter." [(open)]="open">` (`staff/collapse-card.ts`) | Admin pages with several sections, and an "Add …" form above a list (closed at first, so the list comes first). The summary says what is inside while closed (counts, what is missing). The body is hidden, not removed, so typed values stay. |
 
 ## Rules
 - Colours mean something: teal = normal action, red outline = destructive, solid red only for a final destructive

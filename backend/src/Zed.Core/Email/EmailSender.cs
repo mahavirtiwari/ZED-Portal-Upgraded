@@ -10,7 +10,8 @@ namespace Zed.Core.Email;
 
 /// <summary>
 /// The legacy code picked one of four SMTP accounts by matching the mail subject. Here the caller
-/// names the profile explicitly. Profiles: Default, Registration, Otp, Allocation.
+/// names the profile explicitly. Each profile is a module of Admin → Settings → Email Settings (<see cref="MailModules"/>),
+/// which can have its own mail server; the server configuration's Email:Profiles has Default, Registration, Otp, Allocation.
 /// </summary>
 public static class EmailProfiles
 {
@@ -18,6 +19,14 @@ public static class EmailProfiles
     public const string Registration = "Registration";
     public const string Otp = "Otp";
     public const string Allocation = "Allocation";
+    public const string Login = "Login";
+    public const string Payment = "Payment";
+    public const string DocumentUpload = "DocumentUpload";
+    public const string Certification = "Certification";
+    public const string Schemes = "Schemes";
+    public const string Contact = "Contact";
+    /// <summary>Mails of the database procedures, sent by Zed.Jobs.</summary>
+    public const string Database = "Database";
 }
 
 public sealed class EmailOptions
@@ -111,14 +120,21 @@ public sealed record EmailMessage(
     string Profile = EmailProfiles.Default,
     IReadOnlyList<string>? Cc = null,
     IReadOnlyList<EmailAttachment>? Attachments = null,
-    IReadOnlyList<string>? Bcc = null);
+    IReadOnlyList<string>? Bcc = null,
+    // The mail server to use, already chosen by the caller (Zed.Jobs: the Admin's server of the mail's database).
+    SmtpProfile? Server = null);
 
 public interface IEmailSender
 {
     Task SendAsync(EmailMessage message, CancellationToken ct = default);
 }
 
-public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<SmtpEmailSender> log) : IEmailSender
+/// <summary>
+/// Sends through the mail server of the message's module: the one the Admin set on Email Settings (that module's, else
+/// Default's; <paramref name="servers"/>), else the server configuration (Email:Profiles, that profile's, else Default).
+/// The pickup folder and the test server rule (RedirectAllTo, AllowedRecipientDomains) stay with the configuration.
+/// </summary>
+public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<SmtpEmailSender> log, ISmtpServers? servers = null) : IEmailSender
 {
     public async Task SendAsync(EmailMessage message, CancellationToken ct = default)
     {
@@ -127,19 +143,25 @@ public sealed class SmtpEmailSender(IOptions<EmailOptions> options, ILogger<Smtp
         if (routed is null) return;
         message = routed.Message;
         var pickup = !string.IsNullOrEmpty(o.PickupDirectory);
-        if (!o.Profiles.TryGetValue(message.Profile, out var profile) &&
+        var profile = message.Server ?? (servers is null ? null : await servers.FindAsync(message.Profile, ct));
+        if (profile is null &&
+            !o.Profiles.TryGetValue(message.Profile, out profile) &&
             !o.Profiles.TryGetValue(EmailProfiles.Default, out profile))
         {
-            if (!pickup) throw new InvalidOperationException($"No SMTP profile '{message.Profile}' or 'Default' configured under Email:Profiles.");
+            if (!pickup)
+                throw new InvalidOperationException(
+                    $"No mail server for '{message.Profile}': set one on Admin → Settings → Email Settings, or Email:Profiles in the server configuration.");
             profile = new SmtpProfile();
         }
 
         var from = !string.IsNullOrWhiteSpace(profile.From) ? profile.From : profile.UserName;
         if (string.IsNullOrWhiteSpace(from))
         {
-            if (!pickup) throw new InvalidOperationException($"Email:Profiles:{message.Profile} has no From address.");
+            if (!pickup) throw new InvalidOperationException($"The mail server for '{message.Profile}' has no From address.");
             from = "no-reply@localhost";
         }
+        if (!pickup && string.IsNullOrWhiteSpace(profile.Host))
+            throw new InvalidOperationException($"The mail server for '{message.Profile}' has no host name.");
 
         var mime = new MimeMessage();
         mime.From.Add(MailboxAddress.Parse(from));

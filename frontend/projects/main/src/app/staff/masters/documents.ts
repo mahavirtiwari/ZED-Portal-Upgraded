@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DocumentRow, MastersApi } from './masters.api';
+import { CollapseCard } from '../collapse-card';
 
 /** Same list as the API (MasterUploads.DocumentTypes); the API checks type, content and size again. */
 export const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.txt', '.jpg', '.jpeg', '.png'];
@@ -15,7 +16,7 @@ export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
  */
 @Component({
   selector: 'zed-staff-documents',
-  imports: [FormsModule],
+  imports: [FormsModule, CollapseCard],
   template: `
     <div class="page-head">
       <div>
@@ -29,24 +30,25 @@ export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <form class="zed-card" (ngSubmit)="save()" novalidate>
-      <h4>Add Document</h4>
-      <div class="form-grid">
-        <label for="documentName">Document Name<span class="req">*</span></label>
-        <div>
-          <input id="documentName" name="documentName" class="form-control" maxlength="200" [(ngModel)]="documentName" />
-          @if (submitted() && !documentName.trim()) { <span class="help-block">Document Name required.</span> }
+    <zed-collapse-card title="Add Document" summary="Open to add a document to the list.">
+      <form class="add-form" (ngSubmit)="save()" novalidate>
+        <div class="form-grid">
+          <label for="documentName">Document Name<span class="req">*</span></label>
+          <div>
+            <input id="documentName" name="documentName" class="form-control" maxlength="200" [(ngModel)]="documentName" />
+            @if (submitted() && !documentName.trim()) { <span class="help-block">Document Name required.</span> }
+          </div>
+          <label for="fileControl">Document file<span class="req">*</span></label>
+          <div>
+            <input #fileInput type="file" id="fileControl" class="form-control" [accept]="accept" (change)="pick($event)" />
+            <small class="text-danger">Valid Document size &lt; <strong>5 MB</strong> ({{ accept }})</small>
+          </div>
         </div>
-        <label for="fileControl">Document file<span class="req">*</span></label>
-        <div>
-          <input #fileInput type="file" id="fileControl" class="form-control" [accept]="accept" (change)="pick($event)" />
-          <small class="text-danger">Valid Document size &lt; <strong>5 MB</strong> ({{ accept }})</small>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
         </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
-      </div>
-    </form>
+      </form>
+    </zed-collapse-card>
 
     <div class="table-responsive">
       <table class="table table-zed table-bordered">

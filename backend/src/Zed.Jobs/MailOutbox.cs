@@ -95,6 +95,8 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
             var settings = batch.Count > 0 ? await PortalSettings.ReadAsync(db, log, ct) : null;
             // The Admin's Email Templates for the procedures' mails ("db:<procedure>").
             var templates = batch.Count > 0 ? await ReadTemplatesAsync(db, ct) : null;
+            // The Admin's mail server for database mails (module Database, else Default); none: the configured profiles.
+            var servers = batch.Count > 0 ? await SqlSmtpServers.ReadAsync(db, log, ct) : [];
             foreach (var mail in batch)
             {
                 try
@@ -106,7 +108,7 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
                         log.LogInformation("Mail {Id} from {Database} ({Source}) not sent: switched off in Email Templates", mail.Id, name, mail.Source);
                         continue;
                     }
-                    await email.SendAsync(ToMessage(mail, o, settings, template), ct);
+                    await email.SendAsync(ToMessage(mail, o, settings, template) with { Server = SqlSmtpServers.Resolve(servers, EmailProfiles.Database) }, ct);
                     await db.ExecuteSqlAsync(SentSql, new { mail.Id }, ct);
                     sent++;
                 }

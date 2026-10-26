@@ -52,7 +52,7 @@ public sealed class PaymentCompletion(
                     [nameof(PaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
                 var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
-                await email.SendAsync(new EmailMessage(to, $"ZED {certOrReCert} Payment Confirmation Details - {zedId}", html, EmailProfiles.Default, cc), ct);
+                await email.SendAsync(new EmailMessage(to, $"ZED {certOrReCert} Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

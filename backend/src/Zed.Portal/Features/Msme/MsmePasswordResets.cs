@@ -98,7 +98,7 @@ public sealed class MsmePasswordResets(
                     [nameof(PasswordChangedEmail.IsMsme)] = true,
                     [nameof(PasswordChangedEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
                 });
-                await email.SendAsync(new EmailMessage(to, "New Login Details - " + account.EnterpriseName, html), ct);
+                await email.SendAsync(new EmailMessage(to, "New Login Details - " + account.EnterpriseName, html, EmailProfiles.Login), ct);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -118,7 +118,7 @@ public sealed class MsmePasswordResets(
             [nameof(ResetPasswordEmail.ValidMinutes)] = Math.Clamp(Options.ValidMinutes, 1, 1440),
             [nameof(ResetPasswordEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
         });
-        await email.SendAsync(new EmailMessage(to, subject, html), ct);
+        await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Login), ct);
     }
 
     private static string Clean(string? typed)

@@ -32,7 +32,7 @@ public sealed class StaffUserMail(
             parameters["PublicBaseUrl"] = PublicBaseUrl;
             var html = await templates.RenderAsync<TTemplate>(parameters);
             var cc = copyOffice ? await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct) : null;
-            await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Default, cc), ct);
+            await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Login, cc), ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

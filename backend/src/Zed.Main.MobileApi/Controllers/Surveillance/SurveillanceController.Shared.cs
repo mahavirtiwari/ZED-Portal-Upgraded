@@ -225,7 +225,7 @@ public sealed partial class SurveillanceController
 
     /// <summary>Renders and sends a mail; failures are logged and never change the app's answer.</summary>
     private async Task SendMailAsync<TComponent>(string? to, string subject, IDictionary<string, object?> parameters,
-        IReadOnlyList<string>? cc, CancellationToken ct, bool copyOffice = false) where TComponent : IComponent
+        IReadOnlyList<string>? cc, CancellationToken ct, bool copyOffice = false, string profile = EmailProfiles.DocumentUpload) where TComponent : IComponent
     {
         if (string.IsNullOrWhiteSpace(to))
         {
@@ -240,7 +240,7 @@ public sealed partial class SurveillanceController
             var html = await templates.RenderAsync<TComponent>(parameters);
             var copies = cc?.Where(a => !string.IsNullOrWhiteSpace(a)).ToList();
             var office = copyOffice ? await HttpContext.RequestServices.GetRequiredService<EmailAddresses>().GetAsync(EmailAddresses.RegistrationCc, ct) : null;
-            await email.SendAsync(new EmailMessage(to.Trim(), subject, html,
+            await email.SendAsync(new EmailMessage(to.Trim(), subject, html, profile,
                 Cc: copies is { Count: > 0 } ? copies : null,
                 Bcc: string.IsNullOrWhiteSpace(office) ? null : [office]), ct);
         }
