@@ -75,7 +75,10 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
     .dashbord-list .cert-inner-block .inner2 img { width: 64px; padding: 0 8px 0 0; }
     .dashbord-list .sub-inner-block { padding-top: 8px; padding-bottom: 8px; }
     /* Incentive cards in a grid of equal-height tiles. */
-    .panel-incen-box { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+    /* Three incentive cards a row as the live dashboard (two on tablets, one on phones). */
+    .panel-incen-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    @media (max-width: 991.98px) { .panel-incen-box { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 575.98px) { .panel-incen-box { grid-template-columns: minmax(0, 1fr); } }
     .panel-incen-box .item { width: auto; margin: 0; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); border-color: #dfe9ea; border-radius: 12px; }
     .panel-incen-box .panel-incen-block { height: 100%; border-radius: 12px; }
     .panel-incen-box .panel-incen-block .panel-heading { padding: 16px 16px 0; align-items: center; }
