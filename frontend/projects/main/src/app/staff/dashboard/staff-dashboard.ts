@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Counts, CountsFilter, DashboardApi, Row } from './dashboard.api';
@@ -7,6 +7,7 @@ import { SIZES, STATE_NAMES, text } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
+import { exportElement } from './export';
 
 interface Card {
   css: string;
@@ -22,19 +23,19 @@ interface Card {
 const MAIN_CARDS: Card[] = [
   {
     css: 'panel-bronze', title: 'BRONZE CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'DA Pending', field: 'BronzePending' },
+      { label: 'Total Application', field: 'BronzeTotal' }, { label: 'Assessment Pending', field: 'BronzePending' },
       { label: 'NC Raised', field: 'BronzeNcRaised' }, { label: 'Certified', field: 'BronzeCompleted' }, { label: 'Rejected', field: 'BronzeRejected' },
     ],
   },
   {
     css: 'panel-silver', title: 'SILVER CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'SilverTotal' }, { label: 'SA Pending', field: 'SaSilverPending' },
+      { label: 'Total Application', field: 'SilverTotal' }, { label: 'Assessment Pending', field: 'SaSilverPending' },
       { label: 'NC Raised', field: 'SilverNcRaised' }, { label: 'Certified', field: 'SaSilverCompleted' }, { label: 'Rejected', field: 'SilverRejected' },
     ],
   },
   {
     css: 'panel-gold', title: 'GOLD CERTIFICATION', lines: [
-      { label: 'Total Application', field: 'GoldTotal' }, { label: 'SA Pending', field: 'SaGoldPending' },
+      { label: 'Total Application', field: 'GoldTotal' }, { label: 'Assessment Pending', field: 'SaGoldPending' },
       { label: 'NC Raised', field: 'GoldNcRaised' }, { label: 'Certified', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
     ],
   },
@@ -118,19 +119,31 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
   selector: 'zed-staff-dashboard',
   imports: [StaffAnalytics, NgTemplateOutlet, DatePipe, DecimalPipe],
   template: `
+    <div class="dash-export" #exportArea>
     <div class="page-head">
       <div>
         <h3 class="registration-title">Dashboard</h3>
         @if (system !== 'main') { <p class="page-sub">Applications under your charge, and the registered and certified units across the portal.</p> }
       </div>
-      @if (analytics(); as an) {
-        <div class="page-actions dash-meta">
-          @if (an.filtered()) { <button type="button" class="btn btn-link p-0 dash-reset" (click)="an.reset()">Clear filters</button> }
+      <div class="page-actions dash-meta">
+        @if (analytics(); as an) {
+          @if (an.filtered()) { <button type="button" class="btn btn-link p-0 dash-reset no-export" (click)="an.reset()">Clear filters</button> }
           @if (an.data(); as d) { <span class="muted">Updated {{ d.generatedAt | date: 'dd-MM-yyyy HH:mm' }}</span> }
-          <button type="button" class="btn btn-outline-primary" [disabled]="an.loading()" (click)="an.load()">Refresh</button>
+          <button type="button" class="btn btn-outline-primary no-export" [disabled]="an.loading()" (click)="an.load()">Refresh</button>
+        }
+        <div class="dash-export-menu no-export">
+          <button type="button" class="btn btn-primary" [disabled]="exporting()" [attr.aria-expanded]="exportOpen()" aria-haspopup="menu"
+                  (click)="exportOpen.set(!exportOpen())">{{ exporting() ? 'Exporting…' : 'Export' }} <span aria-hidden="true">▾</span></button>
+          @if (exportOpen()) {
+            <ul class="dash-export-list" role="menu">
+              <li><button type="button" role="menuitem" (click)="export('jpeg')">Image (JPEG)</button></li>
+              <li><button type="button" role="menuitem" (click)="export('pdf')">PDF</button></li>
+            </ul>
+          }
         </div>
-      }
+      </div>
     </div>
+    @if (exportError()) { <div class="alert alert-danger no-export" role="alert">{{ exportError() }}</div> }
     @if (error()) {
       <div class="alert alert-danger" role="alert">
         {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try again</button>
@@ -241,6 +254,7 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
       </div>
     </div>
     }
+    </div>
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
     }
@@ -271,6 +285,13 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
     .is-nc .app-dot, .app-seg.is-nc { background: #e0672a; }
     .is-certified .app-dot, .app-seg.is-certified { background: #1e8a4c; }
     .is-rejected .app-dot, .app-seg.is-rejected { background: #cf3b3b; }
+    .dash-export { padding: 4px 2px 10px; }
+    .dash-export-menu { position: relative; }
+    .dash-export-list { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; min-width: 160px; list-style: none; margin: 0; padding: 6px;
+      background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; box-shadow: 0 8px 24px rgba(16, 61, 64, .15); }
+    .dash-export-list button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 8px 10px; border-radius: 6px;
+      font-size: 14px; color: #23474a; }
+    .dash-export-list button:hover, .dash-export-list button:focus-visible { background: #eef6f6; }
     .dash-meta { display: flex; align-items: center; gap: 14px; font-size: 13px; }
     .dash-reset { font-weight: 600; }
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 18px; }
@@ -309,6 +330,27 @@ export class StaffDashboardPage {
   protected readonly stripLabels = STRIP_LABELS[this.system];
   /** Main: the figures section, whose Clear filters, Updated time and Refresh sit in the page head. */
   protected readonly analytics = viewChild<StaffAnalytics>('figures');
+  private readonly exportArea = viewChild<ElementRef<HTMLElement>>('exportArea');
+  protected readonly exportOpen = signal(false);
+  protected readonly exporting = signal(false);
+  protected readonly exportError = signal('');
+
+  /** The whole dashboard as it is on screen (filters, cards, charts) as a JPEG or a one-page PDF. */
+  protected async export(format: 'jpeg' | 'pdf'): Promise<void> {
+    const el = this.exportArea()?.nativeElement;
+    this.exportOpen.set(false);
+    if (!el || this.exporting()) return;
+    this.exporting.set(true);
+    this.exportError.set('');
+    try {
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      await exportElement(el, format, `ZED-Dashboard-${stamp}`);
+    } catch {
+      this.exportError.set('The dashboard could not be exported. Please try again.');
+    } finally {
+      this.exporting.set(false);
+    }
+  }
   protected readonly consultantTiles = CONSULTANT_TILES;
 
   /** Consultancy MasterAdmin's tiles, shown when the API sent their columns (it does for MasterAdmin only). */

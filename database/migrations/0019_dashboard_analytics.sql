@@ -8,6 +8,8 @@
 --   @View 'certified': certifications completed between @From and @To (MsmeCertifications.CertificationStatusDate of
 --         the first completion; Bronze status 6, Silver and Gold 16, as SP_DASHBOARD_COUNTS_BY_FILTERS), one per unit
 --         and level; @Certification limits it to one level.
+-- Agencies (@RoleId 2) and assessors (3) see only their allocations: the units with a certification allotted to them
+-- (CertificationBodyUserId; DesktopAssessorId or SiteAssessorId), and only those certifications.
 -- The test Udyam numbers are left out, as in SP_DASHBOARD_GET_DETAILS. Re-certification and duplicate rows (ZedId with
 -- "_R_..." or "_D...") count for their unit, as there. Reads only; the V4 logins have EXECUTE on schema dbo (zed_v4_app).
 -- Result sets: 0 totals | 1 MSME size | 2 gender | 3 social category | 4 months (last 12 of the range: registrations and
@@ -74,6 +76,24 @@ BEGIN
     OPTION (RECOMPILE);
     CREATE CLUSTERED INDEX IX_U ON #U (ZedId);
 
+    -- Agencies and assessors: only the units allotted to them.
+    DECLARE @OwnOnly bit = CASE WHEN @RoleId IN ('2', '3') THEN 1 ELSE 0 END;
+    IF @OwnOnly = 1
+    BEGIN
+        SELECT DISTINCT
+               CASE
+                   WHEN CHARINDEX('_D', C.ZedId) > 0 AND (CHARINDEX('_R_', C.ZedId) = 0 OR CHARINDEX('_D', C.ZedId) < CHARINDEX('_R_', C.ZedId))
+                       THEN LEFT(C.ZedId, CHARINDEX('_D', C.ZedId) - 1)
+                   WHEN CHARINDEX('_R_', C.ZedId) > 0 THEN LEFT(C.ZedId, CHARINDEX('_R_', C.ZedId) - 1)
+                   ELSE C.ZedId
+               END AS ZedId
+        INTO #Mine
+        FROM dbo.MsmeCertifications C
+        WHERE C.ZedId IS NOT NULL
+          AND ((@RoleId = '2' AND C.CertificationBodyUserId = @UserId) OR (@RoleId = '3' AND (C.DesktopAssessorId = @UserId OR C.SiteAssessorId = @UserId)));
+        DELETE U FROM #U U WHERE NOT EXISTS (SELECT 1 FROM #Mine M WHERE M.ZedId = U.ZedId);
+    END
+
     -- Every certification row of the filtered units, with its unit's ZedId (re-certification "_R_...", duplicates "_D...").
     CREATE TABLE #A
     (
@@ -102,6 +122,11 @@ BEGIN
     ) X
     WHERE EXISTS (SELECT 1 FROM #U U WHERE U.ZedId = X.BaseZedId)
     OPTION (RECOMPILE);
+    -- Agencies and assessors: only the certifications allotted to them.
+    IF @OwnOnly = 1
+        DELETE FROM #A
+        WHERE NOT ((@RoleId = '2' AND CertificationBodyUserId = @UserId)
+                   OR (@RoleId = '3' AND (DesktopAssessorId = @UserId OR SiteAssessorId = @UserId)));
     CREATE CLUSTERED INDEX IX_A ON #A (ZedId);
 
     -- Completed certifications, one per unit and level (its first completion).

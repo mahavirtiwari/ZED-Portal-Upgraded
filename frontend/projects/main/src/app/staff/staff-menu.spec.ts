@@ -141,10 +141,16 @@ describe('staff menu', () => {
       expect(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main', null).map((i) => i.label)).toContain('Sub-Users');
     });
   });
-  it('gives the dashboard logins Customer History on every portal', () => {
-    for (const system of ['main', 'consultancy', 'surveillance'] as const)
-      for (const role of [StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC])
-        expect(menuFor(role, [], system).find((i) => i.label === 'Customer History')?.route).toBe('/staff/history');
-    expect(menuFor(StaffRole.Ministry, [], 'main').some((i) => i.label === 'Customer History')).toBe(false);
+  it('reaches Customer History from Registered MSMEs; only logins without that list keep the menu item', () => {
+    const has = (role: number, system: 'main' | 'consultancy' | 'surveillance', label: string) => menuFor(role, [], system).some((i) => i.label === label);
+    for (const role of [StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC]) {
+      expect(has(role, 'main', 'Customer History')).toBe(false);
+      expect(has(role, 'main', 'Registered MSMEs')).toBe(true);
+    }
+    expect([has(StaffRole.SuperAdmin, 'consultancy', 'Customer History'), has(StaffRole.CitizenFeedback, 'consultancy', 'Customer History'), has(StaffRole.QC, 'consultancy', 'Customer History')])
+      .toEqual([false, true, true]);
+    expect([has(StaffRole.SuperAdmin, 'surveillance', 'Customer History'), has(StaffRole.CitizenFeedback, 'surveillance', 'Customer History'), has(StaffRole.QC, 'surveillance', 'Customer History')])
+      .toEqual([false, false, true]);
+    expect(has(StaffRole.Ministry, 'main', 'Customer History')).toBe(false);
   });
 });

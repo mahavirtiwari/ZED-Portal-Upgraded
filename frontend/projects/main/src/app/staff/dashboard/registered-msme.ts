@@ -35,6 +35,12 @@ export class RegisteredMsmePage {
   private readonly user = inject(AuthService).currentUser;
 
   protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin);
+  /**
+   * The customer (ZED ID) history merged in (V4, 2026-10-27): each ZED ID links to its history, for the logins that see
+   * it (api/staff/history: SuperAdmin, Citizen Feedback, QC; MasterAdmin has no list here).
+   */
+  protected readonly seesHistory = computed(() =>
+    ([StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC] as number[]).includes(this.user()?.roleId ?? 0));
   /** Agency / Udyam column: SuperAdmin, and MasterAdmin on Consultancy and Surveillance (the API sends it to both). */
   protected readonly showsAgency = computed(() => this.isSuperAdmin() || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));
   protected readonly main = PORTAL_SYSTEM === 'main';

@@ -58,6 +58,19 @@ describe('RegisteredMsmePage', () => {
     expect([...el.querySelectorAll('select[aria-label="Page"] option')].length).toBe(4);
   });
 
+  it('opens the customer history from the ZED ID for the logins that see it', async () => {
+    await render(10);
+    const zed = [...el.querySelectorAll('td a')].find((a) => a.textContent!.trim() === 'ZEDMSME000001')!;
+    expect(zed.getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
+    expect(button('History')!.getAttribute('href')).toBe('/staff/history?zedId=ZEDMSME000001');
+  });
+
+  it('shows no history link to a Ministry login (it has no history access)', async () => {
+    await render(8);
+    expect([...el.querySelectorAll('td a')].some((a) => a.textContent!.trim() === 'ZEDMSME000001')).toBe(false);
+    expect(button('History')).toBeUndefined();
+  });
+
   it('lets SuperAdmin deactivate a unit with a reason', async () => {
     await render(10, { CertificationBodyUserId: 'AGENCY1', UserName: 'Agency One', UdyogAadharNo: 'UDYAM-UP-29-0003915' });
     expect(el.textContent).toContain('UDYAM-UP-29-0003915');

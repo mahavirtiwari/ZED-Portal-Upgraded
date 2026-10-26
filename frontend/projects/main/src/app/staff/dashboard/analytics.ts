@@ -1,4 +1,3 @@
-import { DatePipe } from '@angular/common';
 import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
@@ -21,7 +20,7 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
  */
 @Component({
   selector: 'zed-staff-analytics',
-  imports: [FormsModule, DatePipe, ColumnChart, DonutChart, GroupedColumnChart, RankList],
+  imports: [FormsModule, ColumnChart, DonutChart, GroupedColumnChart, RankList],
   template: `
     <section class="an" [class.is-busy]="loading()" aria-label="ZED figures">
 

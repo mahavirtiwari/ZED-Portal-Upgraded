@@ -34,7 +34,8 @@ describe('StaffHomePage', () => {
   it('shows the single screens of a role as tiles', async () => {
     const el = await render(10, 'SuperAdmin');
     const tiles = [...el.querySelectorAll('a.tile')].map((a) => a.textContent!.replace(/\s+/g, ' ').trim());
-    expect(tiles).toEqual(expect.arrayContaining([expect.stringContaining('Reports'), expect.stringContaining('Customer History')]));
+    expect(tiles).toEqual(expect.arrayContaining([expect.stringContaining('Reports'), expect.stringContaining('Registered MSMEs')]));
+    expect(tiles.some((t) => t.includes('Customer History'))).toBe(false);
   });
 
   it('opens the screen picked in a chooser', async () => {

@@ -89,7 +89,7 @@ describe('StaffDashboardPage', () => {
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
     // Each status with its share of the level's applications in brackets (3 of 12 pending = 25%).
     const pending = el.querySelector('.an-status .app-card .app-stats li')!;
-    expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['DA Pending', '3', '(25%)']);
+    expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['Assessment Pending', '3', '(25%)']);
     expect(el.querySelector('.an-status .app-card .app-seg.is-pending')!.getAttribute('style')).toContain('width: 25%');
     const after = (x: string, y: string) => !!(el.querySelector(x)!.compareDocumentPosition(el.querySelector(y)!) & Node.DOCUMENT_POSITION_FOLLOWING);
     expect([after('.an-filters', '.an-kpis'), after('.an-kpis', '.an-status'), after('.an-status', '.an-grid-top')]).toEqual([true, true, true]);
