@@ -42,6 +42,12 @@ export interface AnalyticsFilter {
   to?: string;
 }
 
+export interface TrendItem {
+  period: string;
+  registered: number;
+  certified: number;
+}
+
 export interface CountItem {
   label: string;
   total: number;
@@ -54,8 +60,10 @@ export interface Analytics {
   sizes: CountItem[];
   genders: CountItem[];
   socialCategories: CountItem[];
-  /** yyyy-MM, oldest first, the last 12 months of the range. */
-  months: CountItem[];
+  /** yyyy-MM, oldest first, the last 12 months of the range: registrations and certifications, each by its own date. */
+  months: TrendItem[];
+  /** Year by year, in the range. */
+  years: TrendItem[];
   states: CountItem[];
   districts: CountItem[];
   activities: CountItem[];
@@ -63,6 +71,8 @@ export interface Analytics {
   /** A state-bound Ministry user's state: the State filter is fixed to it. */
   boundState: string | null;
   generatedAt: string;
+  /** The status cards (BronzeTotal, SaSilverPending, ...) with the filters; dates are application dates. */
+  statusCards: Row;
 }
 
 export interface RegisteredMsmeQuery extends ListFilter {

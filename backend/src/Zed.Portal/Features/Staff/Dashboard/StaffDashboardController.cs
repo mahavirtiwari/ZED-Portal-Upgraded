@@ -93,22 +93,36 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
 
     public sealed record CountItem(string Label, int Total);
 
+    /// <summary>A month (yyyy-MM) or a year: registrations and certifications, each by its own date.</summary>
+    public sealed record TrendItem(string Period, int Registered, int Certified);
+
     public sealed record AnalyticsTotals(int Registered, int Certified, int Bronze, int Silver, int Gold);
 
     /// <summary>The figures of the "ZED Dashboard" (registered) or "ZED Certification" (certified) view.</summary>
     public sealed record AnalyticsResponse(
         string View, AnalyticsTotals Totals, IReadOnlyList<CountItem> Sizes, IReadOnlyList<CountItem> Genders,
-        IReadOnlyList<CountItem> SocialCategories, IReadOnlyList<CountItem> Months, IReadOnlyList<CountItem> States,
+        IReadOnlyList<CountItem> SocialCategories, IReadOnlyList<TrendItem> Months, IReadOnlyList<CountItem> States,
         IReadOnlyList<CountItem> Districts, IReadOnlyList<CountItem> Activities, IReadOnlyList<string> DistrictOptions,
-        string? BoundState, DateTimeOffset GeneratedAt);
+        string? BoundState, DateTimeOffset GeneratedAt, Dictionary<string, object?> StatusCards, IReadOnlyList<TrendItem> Years);
+
+    /// <summary>The status cards of the ZED Certification tab, with the filters (the main cards without Financial Assistance).</summary>
+    public static readonly string[] StatusCardColumns =
+    [
+        "BronzeTotal", "BronzePending", "BronzeNcRaised", "BronzeCompleted", "BronzeRejected",
+        "SilverTotal", "SaSilverPending", "SilverNcRaised", "SaSilverCompleted", "SilverRejected",
+        "GoldTotal", "SaGoldPending", "GoldNcRaised", "SaGoldCompleted", "GoldRejected",
+    ];
 
     /// <summary>How long one filter combination is kept: the procedure reads every unit (about 7 lakh rows).</summary>
     internal static readonly TimeSpan AnalyticsCacheTime = TimeSpan.FromMinutes(10);
 
     /// <summary>
     /// Main portal: the ministry's Power BI "ZED Dashboard" and "ZED Certification" pages as data (SP_V4_DASHBOARD_ANALYTICS,
-    /// migration 0019). <paramref name="view"/> registered (dates = registration) or certified (dates = certification);
-    /// dates as yyyy-MM-dd. A state-bound Ministry user sees only that state. Kept for ten minutes per filter combination.
+    /// migration 0019). <paramref name="view"/> is the date the range applies to: registered (registration) or certified
+    /// (certification);
+    /// dates as yyyy-MM-dd. A state-bound Ministry user sees only that state. The status cards are counted as the dashboard's
+    /// (agencies and assessors: their own allotments) for the filtered units and applications in the date range.
+    /// Kept for ten minutes per filter combination (and per user for agencies and assessors).
     /// </summary>
     [HttpGet("analytics")]
     public async Task<ActionResult<AnalyticsResponse>> Analytics(
@@ -120,7 +134,8 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
         var viewValue = DashboardFilters.Pick(view, ["registered", "certified"], ref invalid) ?? "registered";
         var stateName = DashboardFilters.Pick(state, DashboardFilters.StateNames, ref invalid);
         var cert = DashboardFilters.Pick(certification, DashboardFilters.Certifications, ref invalid);
-        var genderValue = DashboardFilters.Pick(gender, ["male", "female", "OTHERS", "NA"], ref invalid);
+        // Others includes the units without a gender (no separate "not given").
+        var genderValue = DashboardFilters.Pick(gender, ["male", "female", "OTHERS"], ref invalid);
         var sizeValue = DashboardFilters.Pick(size, DashboardFilters.Sizes, ref invalid);
         var social = DashboardFilters.Pick(socialCategory, DashboardFilters.SocialCategories, ref invalid);
         var districtName = string.IsNullOrWhiteSpace(district) ? null : district.Trim();
@@ -137,25 +152,30 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
             stateName = n;
         }
 
-        var key = string.Join('|', "dash-analytics", viewValue, stateName, districtName, cert, genderValue, sizeValue, social, fromDate, toDate);
+        var ownOnly = IsRole(UserRole.Agency) || IsRole(UserRole.DesktopAssessor);
+        var key = string.Join('|', "dash-analytics", viewValue, stateName, districtName, cert, genderValue, sizeValue, social, fromDate, toDate,
+            ownOnly ? RoleId + ":" + UserId : "all");
         if (cache.TryGetValue(key, out AnalyticsResponse? hit) && hit is not null) return hit;
 
         var sets = await db.QueryProcMultipleAsync("SP_V4_DASHBOARD_ANALYTICS", new
         {
-            View = viewValue, State = stateName, District = districtName, Certification = viewValue == "certified" ? cert : null,
+            View = viewValue, State = stateName, District = districtName, Certification = cert,
             Gender = genderValue, Size = sizeValue, SocialCategory = social,
             From = fromDate?.ToDateTime(TimeOnly.MinValue), To = toDate?.ToDateTime(TimeOnly.MinValue),
+            UserId, RoleId = RoleId.ToString(),
         }, ct);
         static List<CountItem> Items(IReadOnlyList<IDictionary<string, object?>> rows) =>
-            rows.Select(r => new CountItem(r.ContainsKey("Month") ? r.Text("Month") ?? "" : r.Text("Label") ?? "", DashboardFilters.Int(r, "Total"))).ToList();
+            rows.Select(r => new CountItem(r.Text("Label") ?? "", DashboardFilters.Int(r, "Total"))).ToList();
+        static List<TrendItem> Trend(IReadOnlyList<IDictionary<string, object?>> rows, string period) =>
+            rows.Select(r => new TrendItem(r.Text(period) ?? "", DashboardFilters.Int(r, "Registered"), DashboardFilters.Int(r, "Certified"))).ToList();
         var totals = sets[0].FirstOrDefault();
         var result = new AnalyticsResponse(
             viewValue,
             new AnalyticsTotals(DashboardFilters.Int(totals, "Registered"), DashboardFilters.Int(totals, "Certified"),
                 DashboardFilters.Int(totals, "Bronze"), DashboardFilters.Int(totals, "Silver"), DashboardFilters.Int(totals, "Gold")),
-            Items(sets[1]), Items(sets[2]), Items(sets[3]), Items(sets[4]), Items(sets[5]), Items(sets[6]), Items(sets[7]),
+            Items(sets[1]), Items(sets[2]), Items(sets[3]), Trend(sets[4], "Month"), Items(sets[5]), Items(sets[6]), Items(sets[7]),
             sets[8].Select(r => r.Text("Label") ?? "").Where(l => l.Length > 0).ToList(),
-            bound, DateTimeOffset.Now);
+            bound, DateTimeOffset.Now, DashboardFilters.Pick(sets[9].FirstOrDefault(), StatusCardColumns), Trend(sets[10], "Year"));
         cache.Set(key, result, AnalyticsCacheTime);
         return result;
     }
