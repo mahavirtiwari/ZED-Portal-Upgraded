@@ -25,10 +25,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
   selector: 'zed-surveillance-payment',
   imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
   templateUrl: './surveillance-payment.html',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .payment-summary .panel-body > div { display: flex; justify-content: space-between; gap: 12px; }
-  `,
+  styleUrl: './payment-form.scss',
 })
 export class SurveillancePaymentPage implements OnInit {
   private readonly api = inject(SurveillancePaymentApi);

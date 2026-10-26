@@ -25,7 +25,9 @@ describe('CoAllotmentPage', () => {
     fixture.detectChanges();
     const cell = (fixture.nativeElement as HTMLElement).querySelector('td.consultants')!;
     expect(cell.textContent).toMatch(/^\s*ZEDCC0015\s*Lead One\s*ZEDCC1019\s*Co One\s*ZEDTE01\s*Expert One\s*$/);
-    expect(cell.querySelectorAll('br').length).toBe(7);
+    // One block per role, the id over its names.
+    expect([...cell.querySelectorAll(':scope > div')].map((d) => d.lastChild!.textContent!.trim())).toEqual(['Lead One', 'Co One', 'Expert One']);
+    expect([...cell.querySelectorAll(':scope > div > .muted')].map((d) => d.textContent!.trim())).toEqual(['ZEDCC0015', 'ZEDCC1019', 'ZEDTE01']);
     expect(cell.textContent).not.toContain('Lead:');
     http.verify();
   });

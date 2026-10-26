@@ -18,54 +18,56 @@ interface EmailSettingItem {
 /**
  * Admin → Email Settings (new in V4): the office mailboxes this portal's mails and its database procedures' mails go to.
  * One address or several separated by commas or semicolons; an empty box goes back to the server configuration (shown).
+ * V4 layout: a card per group (portal / database mails).
  */
 @Component({
   selector: 'zed-staff-email-settings',
   imports: [FormsModule],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-3">
-        <div class="col-sm-10">
-          <h3 class="registration-title">Email Settings</h3>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          @if (items().length) {
-            <form class="jumbotron form-horizontal" (ngSubmit)="save()" novalidate>
-              <p class="mb-3">One address, or several separated by commas or semicolons. Leave a box empty to use the server's configured address.</p>
-              @for (group of groups(); track group.title) {
-                @if (group.items.length) {
-                  <h5 class="mt-2 mb-3">{{ group.title }}</h5>
-                  @for (item of group.items; track item.key) {
-                    <div class="row mb-3">
-                      <label class="col-sm-4" [for]="item.key"><strong>{{ item.label }}</strong></label>
-                      <div class="col-sm-8">
-                        <input type="text" class="form-control" maxlength="400" autocomplete="off" [id]="item.key" [name]="item.key"
-                               [placeholder]="item.default ? 'Configured: ' + item.default : 'Not configured'"
-                               [ngModel]="values()[item.key]" (ngModelChange)="patch(item.key, $event)" />
-                        <small class="text-muted d-block">{{ item.help }}</small>
-                      </div>
-                    </div>
-                  }
-                }
-              }
-              <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary" style="min-width: 200px" [disabled]="busy()">SAVE</button>
-              </div>
-            </form>
-          }
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Email Settings</h3>
+        <p class="page-sub">The office mailboxes this portal's mails and its database procedures' mails go to.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    @if (items().length) {
+      <form (ngSubmit)="save()" novalidate>
+        <p class="text-muted mb-3">One address, or several separated by commas or semicolons. Leave a box empty to use the server's configured address.</p>
+        @for (group of groups(); track group.title) {
+          @if (group.items.length) {
+            <div class="zed-card">
+              <h5 class="card-title">{{ group.title }}</h5>
+              <div class="form-grid">
+                @for (item of group.items; track item.key) {
+                  <label class="top" [for]="item.key">{{ item.label }}</label>
+                  <div>
+                    <input type="text" class="form-control" maxlength="400" autocomplete="off" [id]="item.key" [name]="item.key"
+                           [placeholder]="item.default ? 'Configured: ' + item.default : 'Not configured'"
+                           [ngModel]="values()[item.key]" (ngModelChange)="patch(item.key, $event)" />
+                    <small class="text-muted d-block">{{ item.help }}</small>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">SAVE</button>
+        </div>
+      </form>
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
   styles: `
-    .form-control { width: 100%; max-width: 100%; }
+    .form-grid > label.top { align-self: start; padding-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class EmailSettingsPage {

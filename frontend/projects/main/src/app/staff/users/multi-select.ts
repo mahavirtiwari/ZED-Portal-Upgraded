@@ -47,7 +47,7 @@ export interface MultiSelectOption {
     .zed-multi { border: 1px solid #ced4da; border-radius: 4px; padding: 6px; background: #fff; }
     .zed-multi.disabled { background: #e9ecef; }
     .chips { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
-    .chip { background: #e4f3f4; border: 1px solid #45a5ad; border-radius: 3px; padding: 0 6px; font-size: 13px; }
+    .chip { background: #e4f3f4; border: 1px solid #b9dfe2; border-radius: 12px; padding: 1px 8px; font-size: 13px; color: #1f5c61; }
     .chip-remove { border: 0; background: none; padding: 0 0 0 4px; line-height: 1; }
     .filter { margin-bottom: 4px; height: 32px; }
     .options { list-style: none; margin: 0; padding: 0; max-height: 170px; overflow-y: auto; }

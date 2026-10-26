@@ -21,113 +21,120 @@ import { PagedView, PagerComponent } from '../pager';
   selector: 'zed-staff-remote-assessments',
   imports: [RouterLink, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="zed-tabs mt-3">
-        <div class="d-flex align-items-center justify-content-between mb-1">
-          <h3 class="registration-title">{{ consultancy ? 'Milestone ' + milestone : 'Remote/Onsite Assessment' }}</h3>
-          <button type="button" class="refresh-link btn btn-link" (click)="load()">
-            <img src="Images/svgicons/refresh.svg" alt="" />
-            <span>REFRESH</span>
-          </button>
-        </div>
-
-        @if (error()) {
-          <div class="alert alert-danger" role="alert">{{ error() }}</div>
-        }
-
-        <div class="table-responsive">
-          @if (consultancy) {
-            <table class="table table-zed table-bordered">
-              <thead>
-                <tr>
-                  <th>Desired Certification</th>
-                  <th>Unit Details</th>
-                  <th>Unit SPOC Details</th>
-                  <th>Consultant Organisation</th>
-                  <th>Site Visit dates</th>
-                  <th>Action(s)</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
-                  <tr>
-                    <td>{{ s['Certification'] }}</td>
-                    <td>
-                      <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
-                      <strong>{{ s['EnterpriseName'] }}</strong><br />
-                      {{ s['UnitAddress'] }}
-                    </td>
-                    <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
-                    <td><strong>{{ s['AgencyName'] }}</strong><br />{{ s['CertificationBodyUserId'] }}</td>
-                    @if (milestone === 1) {
-                      <td>BDS: {{ s['BdsToDate'] }}<br />HAP: {{ s['HapToDate'] }}</td>
-                    } @else {
-                      <td>{{ s['BdsToDate'] }}</td>
-                    }
-                    <td>
-                      <a style="width: 150px" class="btn btn-primary mb-2 profile" [routerLink]="['/staff/msme-profile', s['ZedId']]">View Profile</a>
-                      <a class="btn btn-primary btn-xs details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <zed-pager [pager]="view" />
-          } @else {
-            <table class="table table-zed table-bordered">
-              <thead>
-                <tr>
-                  <th>Action(s)</th>
-                  <th>Certification Level</th>
-                  <th>Unit Details</th>
-                  <th>Unit SPOC Details</th>
-                  <th>Agency Details</th>
-                  <th>Mode of Assessment</th>
-                  <th>{{ surveillance ? 'Surveillance Date' : 'Assessment Date' }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
-                  <tr>
-                    <td>
-                      @if (surveillance) {
-                        <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
-                        @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                          <a class="btn btn-primary btn-xs assess" [routerLink]="remoteLink(s)">ASSESS</a>
-                        }
-                      } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
-                        <a class="btn btn-primary btn-xs" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
-                      } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
-                        <a class="btn btn-primary btn-xs assess" [routerLink]="remoteLink(s)">ASSESS</a>
-                      }
-                    </td>
-                    <td>{{ s['Certification'] }}</td>
-                    <td>
-                      <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
-                      <strong>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</strong><br />
-                      {{ s['UnitAddress'] }}
-                    </td>
-                    <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
-                    <td><strong>{{ s['AgencyName'] }}</strong><br />{{ s['CertificationBodyUserId'] }}</td>
-                    <td>{{ mode(s) }}</td>
-                    <td>{{ s['AssessmentDate'] }}</td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-            <zed-pager [pager]="view" />
-          }
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ consultancy ? 'Milestone ' + milestone : 'Remote/Onsite Assessment' }}</h3>
+        <p class="page-sub">{{ subtitle }}</p>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="refresh-link btn btn-default" (click)="load()">
+          <img src="Images/svgicons/refresh.svg" alt="" />
+          <span>REFRESH</span>
+        </button>
       </div>
     </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+
+    @if (consultancy) {
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered">
+          <thead>
+            <tr>
+              <th class="text-center">Desired Certification</th>
+              <th>Unit Details</th>
+              <th>Unit SPOC Details</th>
+              <th>Consultant Organisation</th>
+              <th class="text-center">Site Visit dates</th>
+              <th class="text-center" style="width: 220px">Action(s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
+              <tr>
+                <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
+                <td class="unit">
+                  <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
+                  <div><strong>{{ s['EnterpriseName'] }}</strong></div>
+                  <div class="muted">{{ s['UnitAddress'] }}</div>
+                </td>
+                <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
+                <td><strong>{{ s['AgencyName'] }}</strong><div class="muted">{{ s['CertificationBodyUserId'] }}</div></td>
+                @if (milestone === 1) {
+                  <td class="text-center"><div>BDS: {{ s['BdsToDate'] }}</div><div>HAP: {{ s['HapToDate'] }}</div></td>
+                } @else {
+                  <td class="text-center">{{ s['BdsToDate'] }}</td>
+                }
+                <td class="text-center">
+                  <div class="row-actions justify-content-center">
+                    <a class="btn btn-outline-primary profile" [routerLink]="['/staff/msme-profile', s['ZedId']]">View Profile</a>
+                    <a class="btn btn-outline-primary details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
+    } @else {
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 150px">Action(s)</th>
+              <th class="text-center">Certification Level</th>
+              <th>Unit Details</th>
+              <th>Unit SPOC Details</th>
+              <th>Agency Details</th>
+              <th class="text-center">Mode of Assessment</th>
+              <th class="text-center">{{ surveillance ? 'Surveillance Date' : 'Assessment Date' }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
+              <tr>
+                <td class="text-center">
+                  <div class="row-actions justify-content-center">
+                    @if (surveillance) {
+                      <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
+                      @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
+                      }
+                    } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
+                      <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
+                    } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
+                      <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
+                    }
+                  </div>
+                </td>
+                <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
+                <td class="unit">
+                  <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
+                  <div><strong>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</strong></div>
+                  <div class="muted">{{ s['UnitAddress'] }}</div>
+                </td>
+                <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
+                <td><strong>{{ s['AgencyName'] }}</strong><div class="muted">{{ s['CertificationBodyUserId'] }}</div></td>
+                <td class="text-center"><span class="zed-chip">{{ mode(s) }}</span></td>
+                <td class="text-center">{{ s['AssessmentDate'] }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
+    }
 
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite">
@@ -139,7 +146,7 @@ import { PagedView, PagerComponent } from '../pager';
     }
   `,
   styles: `
-    .refresh-link { cursor: pointer; text-decoration: none; }
+    .unit { min-width: 200px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -152,6 +159,10 @@ export class RemoteAssessmentsPage {
   protected readonly surveillance = this.system === 'surveillance';
   /** Consultancy: milestone of the list (1-3, route parameter; 1 when missing or invalid). */
   protected readonly milestone = RemoteAssessmentsPage.milestoneOf(inject(ActivatedRoute).snapshot.paramMap.get('milestone'));
+  protected readonly subtitle = this.consultancy
+    ? `Units allotted to you for milestone ${this.milestone}, with the site visit dates.`
+    : this.surveillance ? 'Surveillance assessments allotted to you; assess them on the meeting link.'
+    : 'Site assessments allotted to you: assess the remote ones here, open the onsite ones for their details.';
 
   protected readonly rows = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */

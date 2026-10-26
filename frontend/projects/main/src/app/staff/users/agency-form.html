@@ -1,143 +1,110 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="row mt-4">
-    <div class="col-sm-8 col-xs-12">
-      <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-        <h3 class="registration-title">{{ isEdit ? 'Update ' + labels.agency + ' Details' : 'Add ' + labels.agency }}</h3>
-      </div>
-      @if (error()) {
-        <div class="alert alert-danger" role="alert" style="margin-bottom: 0; margin-top: 15px"><strong>{{ error() }}</strong></div>
-      }
-      @if (success()) {
-        <div class="alert alert-success" role="status" style="margin-bottom: 0; margin-top: 15px"><strong>{{ success() }}</strong></div>
-      }
-
-      <form class="login-form mt-3" (ngSubmit)="submit()" novalidate>
-        <div class="row">
-          <div class="col-sm-12 field">
-            <label class="input-group1 d-block" for="userName">{{ consultancy ? 'Consultant Organisation Name' : 'Agency Name' }}</label>
-            <input id="userName" name="userName" class="form-control input-100" maxlength="100" [(ngModel)]="model.userName" required />
-            @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
-          </div>
-          <div class="col-sm-12 field">
-            <label class="input-group1 d-block" for="spocName">SPOC Name</label>
-            <input id="spocName" name="spocName" class="form-control input-100" maxlength="100" [(ngModel)]="model.spocName" required />
-            @if (missing(model.spocName)) { <span class="help-block">This is required.</span> }
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="emailId">SPOC Email ID</label>
-            <input id="emailId" name="emailId" type="email" class="form-control input-100" maxlength="100" [(ngModel)]="model.emailId" required />
-            @if (missing(model.emailId)) { <span class="help-block">Email required.</span> }
-          </div>
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="mobileNo">SPOC Mobile Number</label>
-            <input id="mobileNo" name="mobileNo" class="form-control input-100" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required />
-            @if (missing(model.mobileNo)) { <span class="help-block">Mobile No required.</span> }
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-12 field">
-            <label class="d-block" for="address">Registered Address</label>
-            <textarea id="address" name="address" class="form-control input-100" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="model.address" required></textarea>
-            @if (missing(model.address)) { <span class="help-block">This is required.</span> }
-          </div>
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="pinCode">PinCode</label>
-            <input id="pinCode" name="pinCode" class="form-control input-100" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required />
-            @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
-          </div>
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
-            <input id="gstNumber" name="gstNumber" class="form-control input-100" maxlength="20" [(ngModel)]="model.gstNumber" />
-          </div>
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="states">Applicable States</label>
-            <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [(value)]="model.states" />
-          </div>
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="nicSectors">NIC Sector (2 Digit)</label>
-            <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
-          </div>
-          @if (!consultancy) {
-          <div class="col-sm-6 field">
-            <label class="input-group1 d-block" for="orgPartnerId">Organising Partner</label>
-            <select id="orgPartnerId" name="orgPartnerId" class="form-control input-100" [(ngModel)]="model.orgPartnerId">
-              <option value="">-- Select Orgnising Partner --</option>
-              @for (p of sortedPartners(); track p.userId) {
-                <option [value]="p.userId">{{ partnerLabel(p) }}</option>
-              }
-            </select>
-          </div>
-          }
-
-          <div class="col-sm-12 mb-3 mt-2"><span>Category</span></div>
-          <!-- Consultancy: the old form had Desktop Verification commented out, and Handholding Support and Technology
-               Intervention exclude each other (ticking one unticks and disables the other). -->
-          @if (!consultancy) {
-            <div class="col-sm-6 mb-4">
-              <div class="form-control">
-                <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                  <input type="checkbox" class="checkbox" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
-                  Desktop Verification
-                </label>
-              </div>
-            </div>
-          }
-          <div class="col-sm-6 mb-4">
-            <div class="form-control">
-              <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                <input type="checkbox" class="checkbox" id="siteVerification" name="siteVerification" [disabled]="siteLocked()"
-                       [ngModel]="model.siteVerification" (ngModelChange)="setSiteVerification($event)" />
-                {{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}
-              </label>
-            </div>
-          </div>
-          <div class="col-sm-6 mb-4">
-            <div class="form-control">
-              <label class="checkbox-inline d-flex align-items-center gap-2 m-0">
-                <input type="checkbox" class="checkbox" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
-                       [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
-                {{ consultancy ? 'Technology Intervention' : 'Financial Assistance Verification' }}
-              </label>
-            </div>
-          </div>
-          @if (consultancy && model.financialVerification) {
-            <div class="col-sm-6 field">
-              <label class="input-group1 d-block" for="tuPreferredState">Applicable State</label>
-              <select id="tuPreferredState" name="tuPreferredState" class="form-control input-100" [ngModel]="model.tuPreferredState ?? ''"
-                      (ngModelChange)="stateChanged($event)">
-                <option value="">Select State</option>
-                @for (st of tuStates(); track st.code) {
-                  <option [value]="st.code">{{ st.name }}</option>
-                }
-              </select>
-            </div>
-            <div class="col-sm-6 field">
-              <label class="input-group1 d-block" for="tuDistricts">Applicable Districts</label>
-              <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
-            </div>
-          }
-          @if (isEdit) {
-            <div class="col-sm-12 field">
-              <label class="d-block" for="reasonForRejection">Reason for Block</label>
-              <textarea id="reasonForRejection" name="reasonForRejection" class="form-control input-100" maxlength="2000" style="max-width: 100%; height: 100px"
-                        [(ngModel)]="model.reasonForRejection"></textarea>
-            </div>
-          }
-        </div>
-        <div class="row">
-          <div class="col-sm-12 mb-1">
-            <div class="stepper-footer-sec initial-step1">
-              <a routerLink="/staff/users/agencies" class="btn btn-back pull-left">BACK</a>
-              <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? 'Update' : 'Submit' }}</button>
-            </div>
-          </div>
-        </div>
-      </form>
-    </div>
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">{{ isEdit ? 'Update ' + labels.agency + ' Details' : 'Add ' + labels.agency }}</h3>
+    <p class="page-sub">{{ isEdit ? 'Details, categories and applicable states of the ' + labels.agency.toLowerCase() + '.' : 'The generated password is e-mailed to the SPOC.' }}</p>
+  </div>
+  <div class="page-actions">
+    <a routerLink="/staff/users/agencies" class="btn btn-default">BACK</a>
   </div>
 </div>
+@if (error()) {
+  <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
+}
+@if (success()) {
+  <div class="alert alert-success" role="status"><strong>{{ success() }}</strong></div>
+}
+
+<form class="zed-card" (ngSubmit)="submit()" novalidate>
+  <div class="form-grid">
+    <label for="userName">{{ consultancy ? 'Consultant Organisation Name' : 'Agency Name' }}<span class="req">*</span></label>
+    <div>
+      <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
+      @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
+    </div>
+    <label for="spocName">SPOC Name<span class="req">*</span></label>
+    <div>
+      <input id="spocName" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
+      @if (missing(model.spocName)) { <span class="help-block">This is required.</span> }
+    </div>
+    <label for="emailId">SPOC Email ID<span class="req">*</span></label>
+    <div>
+      <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required />
+      @if (missing(model.emailId)) { <span class="help-block">Email required.</span> }
+    </div>
+    <label for="mobileNo">SPOC Mobile Number<span class="req">*</span></label>
+    <div>
+      <input id="mobileNo" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required />
+      @if (missing(model.mobileNo)) { <span class="help-block">Mobile No required.</span> }
+    </div>
+    <label class="top" for="address">Registered Address<span class="req">*</span></label>
+    <div>
+      <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address" required></textarea>
+      @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+    </div>
+    <label for="pinCode">PinCode<span class="req">*</span></label>
+    <div>
+      <input id="pinCode" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required />
+      @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
+    </div>
+    <label for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
+    <input id="gstNumber" name="gstNumber" class="form-control" maxlength="20" [(ngModel)]="model.gstNumber" />
+    <label class="top" for="states">Applicable States</label>
+    <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [(value)]="model.states" />
+    <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
+    <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
+    @if (!consultancy) {
+      <label for="orgPartnerId">Organising Partner</label>
+      <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
+        <option value="">-- Select Orgnising Partner --</option>
+        @for (p of sortedPartners(); track p.userId) {
+          <option [value]="p.userId">{{ partnerLabel(p) }}</option>
+        }
+      </select>
+    }
+
+    <span class="label top">Category</span>
+    <!-- Consultancy: the old form had Desktop Verification commented out, and Handholding Support and Technology
+         Intervention exclude each other (ticking one unticks and disables the other). -->
+    <div class="categories">
+      @if (!consultancy) {
+        <label class="category">
+          <input type="checkbox" class="form-check-input" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
+          Desktop Verification
+        </label>
+      }
+      <label class="category">
+        <input type="checkbox" class="form-check-input" id="siteVerification" name="siteVerification" [disabled]="siteLocked()"
+               [ngModel]="model.siteVerification" (ngModelChange)="setSiteVerification($event)" />
+        {{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}
+      </label>
+      <label class="category">
+        <input type="checkbox" class="form-check-input" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
+               [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
+        {{ consultancy ? 'Technology Intervention' : 'Financial Assistance Verification' }}
+      </label>
+    </div>
+    @if (consultancy && model.financialVerification) {
+      <label for="tuPreferredState">Applicable State</label>
+      <select id="tuPreferredState" name="tuPreferredState" class="form-select" [ngModel]="model.tuPreferredState ?? ''"
+              (ngModelChange)="stateChanged($event)">
+        <option value="">Select State</option>
+        @for (st of tuStates(); track st.code) {
+          <option [value]="st.code">{{ st.name }}</option>
+        }
+      </select>
+      <label class="top" for="tuDistricts">Applicable Districts</label>
+      <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
+    }
+    @if (isEdit) {
+      <label class="top" for="reasonForRejection">Reason for Block</label>
+      <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
+                [(ngModel)]="model.reasonForRejection"></textarea>
+    }
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? 'Update' : 'Submit' }}</button>
+  </div>
+</form>
 
 @if (loading() || saving()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>

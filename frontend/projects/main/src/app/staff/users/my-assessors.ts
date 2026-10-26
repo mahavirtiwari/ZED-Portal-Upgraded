@@ -17,105 +17,101 @@ interface Dialog {
 /**
  * The signed-in agency's assessors. Port of Views/User/Assessors.cshtml: block (with reason), unblock
  * (on main not offered while the certificate is attached to another active Bronze Assessor; on consultancy always),
- * edit, and the mobile number change the old ResetMobileNo action provided without a page.
+ * edit, and the mobile number change the old ResetMobileNo action provided without a page. V4 layout: + Add New in the
+ * page head, search in a filter bar, status badge, row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-my-assessors',
   imports: [FormsModule, RouterLink, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="Dashboard-msme mt-4">
-        <div class="row">
-          <div class="col-sm-12">
-            <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-              <h3 class="registration-title">{{ labels.assessors }}</h3>
-              <div class="search-input" style="margin-left: auto">
-                <input type="text" placeholder="Search.." aria-label="Search assessors" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-                <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
-              </div>
-              <a style="margin-left: 10px" routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add New</a>
-            </div>
-          </div>
-        </div>
-        @if (error()) {
-          <div class="alert alert-danger" role="alert">{{ error() }}</div>
-        }
-        @if (success()) {
-          <div class="alert alert-success" role="status">{{ success() }}</div>
-        }
-        <div class="row mb-2">
-          <div class="col-sm-12">
-            <div class="table-responsive">
-              <table class="table table-bordered table-zed bg-white">
-                <thead>
-                  <tr class="text-center" style="font-size: 16px">
-                    <th>Status</th>
-                    @if (consultancy) {
-                      <!-- ZEDCS_CONSULTANCY Frontend/User/Assessors.cshtml -->
-                      <th>User Type</th>
-                      <th>Consultant/Expert ID</th>
-                      <th>Consultant/Expert Details</th>
-                      <th>Consultant/Expert Contact Details</th>
-                      <th>No. Of Assignments Completed</th>
-                      <th>Reason for Block</th>
-                    } @else {
-                      <th>Selfie</th>
-                      <th>Assessor Type</th>
-                      <th>Assessor ID</th>
-                      <th>Assessor Details</th>
-                      <th>Assessor Conctact Details</th>
-                    }
-                    <th>Action(s)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (u of view.page(); track u.UserId) {
-                    <tr class="filterClass">
-                      <td><strong>{{ u.IdStatus }}</strong></td>
-                      @if (!consultancy) {
-                        <td>
-                          @if (u.PhotoPath) {
-                            <a [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" class="align-center img-responsive" style="max-height: 60px" /></a>
-                          }
-                        </td>
-                      }
-                      <td><strong>{{ consultancy ? u.UserType : u.AssessorType }}</strong></td>
-                      <td><strong>{{ u.UserId }}</strong></td>
-                      <td><strong>{{ u.UserName }}</strong><br />{{ u.Address }}<br /><strong>{{ u.IdProofNumber }}</strong></td>
-                      <td>{{ u.MobileNo }}<br />{{ u.Email }}</td>
-                      @if (consultancy) {
-                        <!-- Both cells are empty on the live page. -->
-                        <td></td>
-                        <td></td>
-                      }
-                      <td class="text-center">
-                        @if (u.IsActive) {
-                          <button type="button" class="btn btn-default" style="width: 100px" [disabled]="saving()" (click)="open('block', u)">Block</button><br />
-                        } @else if (consultancy || u.IsCertAttached === 0) {
-                          <!-- Consultancy: UnBlock for every blocked user, as on the old page (no Bronze certificate rule there). -->
-                          <button type="button" class="btn btn-primary" style="width: 100px" [disabled]="saving()" (click)="unblock(u)">UnBlock</button><br />
-                        }
-                        <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
-                        <!-- V4 addition (not on the old consultancy list): Mobile No and Reset Link. -->
-                        <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', u)">Mobile No</button>
-                        @if (u.IsActive) {
-                          <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(u)">Reset Link</button>
-                        }
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">No Data</div></td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <zed-pager [pager]="view" />
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ labels.assessors }}</h3>
+        <p class="page-sub">Your {{ labels.assessors.toLowerCase() }}: block or unblock, edit, change the mobile number or send a password reset link.</p>
+      </div>
+      <div class="page-actions">
+        <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add New</a>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" placeholder="Search ID, name, type, mobile, e-mail or status" aria-label="Search assessors"
+               [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-bordered table-zed">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 100px">Status</th>
+            @if (consultancy) {
+              <!-- ZEDCS_CONSULTANCY Frontend/User/Assessors.cshtml -->
+              <th class="text-center">User Type</th>
+              <th class="text-center">Consultant/Expert ID</th>
+              <th>Consultant/Expert Details</th>
+              <th>Consultant/Expert Contact Details</th>
+              <th class="text-center">No. Of Assignments Completed</th>
+              <th>Reason for Block</th>
+            } @else {
+              <th class="text-center" style="width: 80px">Selfie</th>
+              <th class="text-center">Assessor Type</th>
+              <th class="text-center">Assessor ID</th>
+              <th>Assessor Details</th>
+              <th>Assessor Conctact Details</th>
+            }
+            <th class="text-center" style="width: 230px">Action(s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of view.page(); track u.UserId) {
+            <tr class="filterClass">
+              <td class="text-center"><span class="status-badge" [class.is-active]="u.IsActive" [class.is-rejected]="!u.IsActive">{{ u.IdStatus }}</span></td>
+              @if (!consultancy) {
+                <td class="text-center">
+                  @if (u.PhotoPath) {
+                    <a [href]="u.PhotoPath" target="_blank" rel="noopener"><img alt="Selfie of {{ u.UserName }}" [src]="u.PhotoPath" class="selfie" /></a>
+                  }
+                </td>
+              }
+              <td class="text-center"><span class="zed-chip">{{ consultancy ? u.UserType : u.AssessorType }}</span></td>
+              <td class="text-center"><strong>{{ u.UserId }}</strong></td>
+              <td><strong>{{ u.UserName }}</strong><small class="d-block text-muted">{{ u.Address }}</small><small class="d-block"><strong>{{ u.IdProofNumber }}</strong></small></td>
+              <td>{{ u.MobileNo }}<small class="d-block text-muted">{{ u.Email }}</small></td>
+              @if (consultancy) {
+                <!-- Both cells are empty on the live page. -->
+                <td class="text-center"></td>
+                <td></td>
+              }
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-outline-primary">Edit</a>
+                  <!-- V4 addition (not on the old consultancy list): Mobile No and Reset Link. -->
+                  <button type="button" class="btn btn-default" [disabled]="saving()" (click)="open('mobile', u)">Mobile No</button>
+                  @if (u.IsActive) {
+                    <button type="button" class="btn btn-default" [disabled]="saving()" (click)="sendReset(u)">Reset Link</button>
+                    <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('block', u)">Block</button>
+                  } @else if (consultancy || u.IsCertAttached === 0) {
+                    <!-- Consultancy: UnBlock for every blocked user, as on the old page (no Bronze certificate rule there). -->
+                    <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="unblock(u)">UnBlock</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">{{ search() ? 'No ' + labels.assessor.toLowerCase() + ' matches the search' : 'No Data' }}</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
 
     @if (dialog(); as d) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="assessor-dialog-title">
@@ -131,11 +127,13 @@ interface Dialog {
               <div class="modal-body">
                 <p class="mb-2"><strong>{{ d.assessor.UserId }}</strong> – {{ d.assessor.UserName }}</p>
                 @if (d.kind === 'mobile') {
-                  <label class="visually-hidden" for="assessor-mobile">Mobile Number</label>
-                  <input id="assessor-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
+                  <div class="form-grid">
+                    <label for="assessor-mobile">Mobile Number<span class="req">*</span></label>
+                    <input id="assessor-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
+                  </div>
                 } @else {
                   <label class="visually-hidden" for="assessor-reason">Reason</label>
-                  <textarea id="assessor-reason" name="text" class="form-control" maxlength="2000" style="height: 100px" [(ngModel)]="d.text"></textarea>
+                  <textarea id="assessor-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"></textarea>
                 }
                 @if (dialogError()) {
                   <span class="help-block" role="alert">{{ dialogError() }}</span>
@@ -143,7 +141,7 @@ interface Dialog {
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" (click)="dialog.set(null)">Cancel</button>
-                <button type="submit" class="btn btn-primary" [disabled]="saving()">{{ d.kind === 'block' ? 'Block' : 'Update' }}</button>
+                <button type="submit" class="btn" [class.btn-danger]="d.kind === 'block'" [class.btn-primary]="d.kind !== 'block'" [disabled]="saving()">{{ d.kind === 'block' ? 'Block' : 'Update' }}</button>
               </div>
             </form>
           </div>
@@ -157,6 +155,7 @@ interface Dialog {
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
+    .selfie { max-height: 60px; border-radius: 6px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

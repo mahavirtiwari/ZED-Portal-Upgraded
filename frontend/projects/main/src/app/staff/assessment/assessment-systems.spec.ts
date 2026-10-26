@@ -131,7 +131,7 @@ describe('assessment pages per system', () => {
     expect(el.querySelector('input[placeholder="Enter ZED ID"]')).toBeNull();
   });
 
-  it('surveillance Allot: rejected rows in btn-danger, no duplicate-Udyam colour, RE-ALLOT 180px', async () => {
+  it('surveillance Allot: rejected rows in btn-danger, no duplicate-Udyam colour, RE-ALLOT among the row actions', async () => {
     await setup('surveillance');
     const fixture = await create(AllotPage);
     const el: HTMLElement = fixture.nativeElement;
@@ -144,10 +144,10 @@ describe('assessment pages per system', () => {
     expect(row.classList).not.toContain('table-danger');
     expect(row.querySelector('td')!.classList).toContain('btn-danger');
     expect(row.querySelector('.table-warning')).toBeNull();
-    expect((row.querySelector('.re-allot') as HTMLElement).style.width).toBe('180px');
+    expect(row.querySelector('.row-actions .re-allot')!.classList).toContain('btn-outline-primary');
   });
 
-  it('consultancy Allot: RE-ALLOT also once a consultant was allotted, 180px wide', async () => {
+  it('consultancy Allot: RE-ALLOT also once a consultant was allotted', async () => {
     await setup('consultancy');
     const fixture = await create(AllotPage);
     const el: HTMLElement = fixture.nativeElement;
@@ -159,9 +159,9 @@ describe('assessment pages per system', () => {
     });
     await settle(fixture);
     const rows = el.querySelectorAll('tbody tr');
-    const reAllot = rows[0].querySelector('.re-allot') as HTMLElement;
-    expect(reAllot.style.width).toBe('180px');
-    expect(reAllot.classList).toContain('mb-2');
+    const reAllot = rows[0].querySelector('.row-actions .re-allot') as HTMLElement;
+    expect(reAllot.textContent!.trim()).toBe('RE-ALLOT');
+    expect(reAllot.classList).toContain('btn-outline-primary');
     expect(rows[1].querySelector('.re-allot')).toBeNull();
   });
 

@@ -1,0 +1,91 @@
+// Payment pages (certification, surveillance, handholding): the disclaimer and instructions cards, then the payment
+// options on the left and the fee summary on the right (one column on phones).
+
+.step-page {
+  max-width: 960px;
+  margin: 24px auto 0;
+}
+
+.disclaimer-sec .form-actions {
+  border-top: 1px solid #e8eff0;
+  padding-top: 14px;
+}
+
+.level-badge {
+  width: 64px;
+  height: auto;
+}
+
+.pay-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 0 18px;
+  align-items: start;
+}
+
+.payment-option-block {
+  height: auto;
+  min-height: 56px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  border-color: #dfe9ea;
+  border-radius: 10px;
+
+  [role='radiogroup'] {
+    display: flex;
+    gap: 16px;
+  }
+
+  .help-block {
+    flex-basis: 100%;
+    margin: 0;
+  }
+}
+
+.payment-reward-block {
+  gap: 12px;
+  border-radius: 10px;
+}
+
+.reward-action {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
+.summary-rows {
+  > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 9px 0;
+    border-bottom: 1px solid #e8eff0;
+
+    > strong {
+      white-space: nowrap;
+    }
+  }
+
+  small {
+    color: #5f6f70;
+  }
+
+  > .net {
+    margin-top: 4px;
+    padding: 12px;
+    border-bottom: 0;
+    border-radius: 8px;
+    background: #eef6f6;
+    color: #23474a;
+  }
+}
+
+.loadingdiv {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}

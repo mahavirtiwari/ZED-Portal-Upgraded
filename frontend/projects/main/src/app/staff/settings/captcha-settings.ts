@@ -12,49 +12,49 @@ interface CaptchaSettings {
 /**
  * Admin → Captcha Settings (new in V4): the captcha of the login, registration, Contact ZED and "Forgot password?"
  * forms of this portal. Off, the portal's own 6-character captcha (letters and digits), or Google reCAPTCHA when its keys
- * are configured on the server. Takes effect within half a minute; the MSME mobile app is not affected.
+ * are configured on the server. Takes effect within half a minute; the MSME mobile app is not affected. V4 layout: page
+ * head and one card.
  */
 @Component({
   selector: 'zed-staff-captcha-settings',
   imports: [FormsModule],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-3">
-        <div class="col-sm-8">
-          <h3 class="registration-title">Captcha Settings</h3>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          @if (loaded()) {
-            <form class="jumbotron form-horizontal" (ngSubmit)="save()" novalidate>
-              <p>Captcha on the login, registration, Contact ZED and "Forgot password?" pages of this portal:</p>
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="radio" name="mode" id="captcha-text" value="text" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
-                <label class="form-check-label" for="captcha-text"><strong>Enable captcha</strong> (6 characters, letters and numbers)</label>
-              </div>
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="radio" name="mode" id="captcha-off" value="off" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
-                <label class="form-check-label" for="captcha-off"><strong>Disable captcha</strong></label>
-              </div>
-              @if (googleAvailable() || mode() === 'google') {
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="radio" name="mode" id="captcha-google" value="google" [disabled]="!googleAvailable()"
-                         [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
-                  <label class="form-check-label" for="captcha-google"><strong>Google reCAPTCHA</strong></label>
-                </div>
-              }
-              <small class="text-muted d-block mb-3">The change applies to new page loads within half a minute. The MSME mobile app keeps its own captcha.</small>
-              <div class="d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary" style="min-width: 200px" [disabled]="busy()">SAVE</button>
-              </div>
-            </form>
-          }
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Captcha Settings</h3>
+        <p class="page-sub">The captcha of the login, registration, Contact ZED and "Forgot password?" pages of this portal.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    @if (loaded()) {
+      <form class="zed-card" (ngSubmit)="save()" novalidate>
+        <p>Captcha on the login, registration, Contact ZED and "Forgot password?" pages of this portal:</p>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="mode" id="captcha-text" value="text" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
+          <label class="form-check-label" for="captcha-text"><strong>Enable captcha</strong> (6 characters, letters and numbers)</label>
+        </div>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="mode" id="captcha-off" value="off" [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
+          <label class="form-check-label" for="captcha-off"><strong>Disable captcha</strong></label>
+        </div>
+        @if (googleAvailable() || mode() === 'google') {
+          <div class="form-check mb-2">
+            <input class="form-check-input" type="radio" name="mode" id="captcha-google" value="google" [disabled]="!googleAvailable()"
+                   [ngModel]="mode()" (ngModelChange)="mode.set($event)" />
+            <label class="form-check-label" for="captcha-google"><strong>Google reCAPTCHA</strong></label>
+          </div>
+        }
+        <small class="text-muted d-block">The change applies to new page loads within half a minute. The MSME mobile app keeps its own captcha.</small>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">SAVE</button>
+        </div>
+      </form>
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }

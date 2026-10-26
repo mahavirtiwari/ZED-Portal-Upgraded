@@ -248,7 +248,7 @@ describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
     const actions = [...el.querySelectorAll('tbody tr td:last-child a')];
     expect(actions.map((a) => a.textContent!.trim())).toEqual(['View Profile', 'VIEW DETAILS']);
     expect(actions[0].getAttribute('href')).toBe('/staff/msme-profile/ZEDMSME000001');
-    expect((actions[0] as HTMLElement).style.width).toBe('150px');
+    expect(actions.every((a) => a.classList.contains('btn-outline-primary') && !!a.closest('.row-actions'))).toBe(true);
     expect(el.textContent).not.toContain('Lead Consultant');
   });
 

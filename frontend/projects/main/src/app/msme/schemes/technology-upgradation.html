@@ -1,13 +1,18 @@
 <div class="container form-page financial-assistance" id="zed_user_form">
-  <div class="mt-4">
+  <div class="scheme-page">
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
-        <div class="row">
-          <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-          <div class="col-sm-9">
+        <div class="page-head">
+          <div>
             <h3 class="registration-title">Technology Upgradation</h3>
+            <p class="page-sub">Support for moving towards Zero Effect Solutions with the technologies recommended for your unit.</p>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <zed-scheme-unit-panel [unit]="unit()" />
+          <div class="dash-main">
             <div class="alert alert-info" role="status" id="tuMessage">{{ p.message }}</div>
-            <div class="stepper-footer-sec initial-step1">
+            <div class="form-actions justify-content-start">
               <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
             </div>
           </div>
@@ -17,71 +22,79 @@
           @case (1) { <zed-scheme-intro [step]="1" (accept)="go(2)" /> }
           @case (2) { <zed-scheme-intro [step]="2" (accept)="go(3)" /> }
           @case (3) {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [full]="false" /></div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Provided Email ID</span></div></div></div>
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Technology Upgradation</h3>
+                <p class="page-sub">Check your enterprise, e-mail, unit and activity before you fill in the application.</p>
+              </div>
+            </div>
+            <div class="summary-cards">
+              <zed-scheme-unit-panel [unit]="unit()" [full]="false" />
+              <div class="zed-card">
+                <h4>Provided Email ID</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/email.svg" width="20" alt="" /><p>{{ unit()['PledgeEmailId'] }}</p></div>
               </div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Unit</span></div></div></div>
+              <div class="zed-card">
+                <h4>Selected Unit</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ unit()['PUnitName'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ unit()['PAddress'] }}, {{ unit()['PDistrictName'] }}, {{ unit()['PStateName'] }}, {{ unit()['PPin'] }}</p></div>
               </div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Activity</span></div></div></div>
+              <div class="zed-card">
+                <h4>Selected Activity</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ unit()['Activity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ unit()['TwoDigitActivity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ unit()['FourDigitActivity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ unit()['FiveDigitActivity'] }}</p></div>
               </div>
-              <div class="col-sm-12">
-                <div class="label-highlight2">
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="tuConfirm" class="option-input1 yes checkbox" [checked]="confirmed()" (change)="confirmed.set(!confirmed())" />
-                    <zed-text key="msme.tu.confirm.checkbox" [inline]="true" />
-                  </label>
-                </div>
-              </div>
-              <div class="col-sm-12">
-                <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go(2)">BACK</button>
-                  <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">PROCEED</button>
-                </div>
-              </div>
+            </div>
+            <div class="label-highlight2 confirm-box">
+              <label class="checkbox-inline">
+                <input type="checkbox" id="tuConfirm" class="option-input1 yes checkbox" [checked]="confirmed()" (change)="confirmed.set(!confirmed())" />
+                <zed-text key="msme.tu.confirm.checkbox" [inline]="true" />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-default" (click)="go(2)">BACK</button>
+              <button type="button" class="btn btn-primary" id="tuConfirmProceed" [disabled]="!confirmed()" (click)="go('list')">PROCEED</button>
             </div>
           }
           @case ('list') {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-              <div class="col-sm-9">
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">List of Technologies</div></div></div>
-                <div class="card card-default m-b-0">
-                  <div class="card-body">
-                    <label class="col-sm-12 p-l-0">Select one or more technologies</label>
-                    <div class="table-responsive">
-                      <table class="table table-default table-zed table-bordered" id="tuTechnologies">
-                        <thead><tr><th>Technology</th><th>Status</th><th>Action</th></tr></thead>
-                        <tbody>
-                          @for (t of technologies(); track t.code) {
-                            <tr>
-                              <td>{{ t.sNo }}. {{ t.name }}</td>
-                              <td>@if (t.submitted) { <small class="text-success">SUBMITTED</small> } @else { <small class="text-pending">--</small> }</td>
-                              <td>
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Technology Upgradation</h3>
+                <p class="page-sub">Apply for each technology you bought; proceed once at least one is submitted.</p>
+              </div>
+            </div>
+            <div class="dash-grid">
+              <zed-scheme-unit-panel [unit]="unit()" />
+              <div class="dash-main">
+                <div class="zed-card">
+                  <h4>List of Technologies</h4>
+                  <p class="muted">Select one or more technologies</p>
+                  <div class="table-responsive">
+                    <table class="table table-zed table-bordered" id="tuTechnologies">
+                      <thead><tr><th>Technology</th><th class="text-center" style="width: 130px">Status</th><th class="text-center" style="width: 110px">Action</th></tr></thead>
+                      <tbody>
+                        @for (t of technologies(); track t.code) {
+                          <tr>
+                            <td>{{ t.sNo }}. {{ t.name }}</td>
+                            <td class="text-center">@if (t.submitted) { <span class="status-badge is-success">SUBMITTED</span> } @else { <span class="muted">--</span> }</td>
+                            <td class="text-center">
+                              <div class="row-actions justify-content-center">
                                 @if (t.submitted) {
-                                  <button type="button" class="btn btn-success" (click)="open(t)">VIEW</button>
+                                  <button type="button" class="btn btn-outline-primary" (click)="open(t)">VIEW</button>
                                 } @else {
                                   <button type="button" class="btn btn-primary" (click)="open(t)">APPLY</button>
                                 }
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    </div>
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-                <div class="stepper-footer-sec initial-step1">
+                <div class="form-actions">
                   <button type="button" class="btn btn-default" (click)="go(3)">BACK</button>
                   <button type="button" class="btn btn-primary" id="tuProceed" [disabled]="!anySubmitted()" (click)="go('summary')">PROCEED</button>
                 </div>
@@ -90,63 +103,73 @@
           }
           @case ('technology') {
             @if (current(); as t) {
-              <div class="row">
-                <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-                <div class="col-sm-9">
+              <div class="page-head">
+                <div>
+                  <h3 class="registration-title">Technology Upgradation</h3>
+                  <p class="page-sub">The technology you bought, its invoice and the payment you made for it.</p>
+                </div>
+              </div>
+              <div class="dash-grid">
+                <zed-scheme-unit-panel [unit]="unit()" />
+                <div class="dash-main">
                   <form class="form-horizontal" id="tuTechnologyForm" #techForm="ngForm" (ngSubmit)="saveTechnology()">
-                    <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Technology Details</div></div></div>
-                    <div class="card card-default m-b-0"><div class="card-body"><b>{{ t.sNo }}. {{ t.name }}</b></div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuMaker">Name of Manufacturer <span style="color: red;">*</span></label>
-                      <input id="tuMaker" name="NameOfTheManufaturer" class="form-control" maxlength="500" required [(ngModel)]="tech.nameOfTheManufaturer" />
-                      @if (fieldError(techForm, 'NameOfTheManufaturer')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuModel">Make / Model Name <span style="color: red;">*</span></label>
-                      <input id="tuModel" name="MakeOrModelName" class="form-control" maxlength="500" required [(ngModel)]="tech.makeOrModelName" />
-                      @if (fieldError(techForm, 'MakeOrModelName')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuPurchase">Date of Purchase <span style="color: red;">*</span></label>
-                      <input id="tuPurchase" name="DateOfPurchase" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.dateOfPurchase" />
-                      @if (fieldError(techForm, 'DateOfPurchase')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuSupplier">Name of Agency/Supplier <span style="color: red;">*</span></label>
-                      <input id="tuSupplier" name="AgencyOrSupplier" class="form-control" maxlength="200" required [(ngModel)]="tech.agencyOrSupplier" />
-                      @if (fieldError(techForm, 'AgencyOrSupplier')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuInvoice">Invoice/Bill No. <span style="color: red;">*</span></label>
-                      <input id="tuInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="tech.invoiceNo" />
-                      @if (fieldError(techForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuInvoiceDate">Invoice/Bill Date <span style="color: red;">*</span></label>
-                      <input id="tuInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.invoiceBillDate" />
-                      @if (fieldError(techForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuAmount">Amount Paid (Rs.) <span style="color: red;">*</span></label>
-                      <input id="tuAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="tech.amountPaid" />
-                      @if (fieldError(techForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <div class="card card-default m-b-0"><div class="card-body">
-                      <label class="col-sm-12 p-l-0" for="tuMode">Mode of Payment <span style="color: red;">*</span></label>
-                      <select id="tuMode" name="ModeOfPayment" class="form-control" required [(ngModel)]="tech.modeOfPayment">
-                        <option value="">-Select-</option>
-                        <option value="Offline">Offline</option>
-                        <option value="Online">Online</option>
-                      </select>
-                      @if (fieldError(techForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
-                    </div></div>
-                    <zed-scheme-document label="Picture of Purchased Technology" inputId="tuDocPurchased" [required]="true" [busy]="busy()"
-                      [documents]="docs(techDocs(), docTypes.purchased)" (pick)="upload('tech', docTypes.purchased, $event)" (remove)="remove('tech', $event)" />
-                    <zed-scheme-document label="Upload Invoice Copy of Purchased Technology" inputId="tuDocInvoice" [required]="true" [busy]="busy()"
-                      [documents]="docs(techDocs(), docTypes.invoice)" (pick)="upload('tech', docTypes.invoice, $event)" (remove)="remove('tech', $event)" />
-                    <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="tuDocCa" [busy]="busy()"
-                      [documents]="docs(techDocs(), docTypes.ca)" (pick)="upload('tech', docTypes.ca, $event)" (remove)="remove('tech', $event)" />
-                    <div class="stepper-footer-sec initial-step1">
+                    <div class="zed-card">
+                      <h4>Technology Details</h4>
+                      <p class="tech-name"><b>{{ t.sNo }}. {{ t.name }}</b></p>
+                      <div class="form-grid">
+                        <label for="tuMaker">Name of Manufacturer<span class="req">*</span></label>
+                        <div>
+                          <input id="tuMaker" name="NameOfTheManufaturer" class="form-control" maxlength="500" required [(ngModel)]="tech.nameOfTheManufaturer" />
+                          @if (fieldError(techForm, 'NameOfTheManufaturer')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuModel">Make / Model Name<span class="req">*</span></label>
+                        <div>
+                          <input id="tuModel" name="MakeOrModelName" class="form-control" maxlength="500" required [(ngModel)]="tech.makeOrModelName" />
+                          @if (fieldError(techForm, 'MakeOrModelName')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuPurchase">Date of Purchase<span class="req">*</span></label>
+                        <div>
+                          <input id="tuPurchase" name="DateOfPurchase" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.dateOfPurchase" />
+                          @if (fieldError(techForm, 'DateOfPurchase')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuSupplier">Name of Agency/Supplier<span class="req">*</span></label>
+                        <div>
+                          <input id="tuSupplier" name="AgencyOrSupplier" class="form-control" maxlength="200" required [(ngModel)]="tech.agencyOrSupplier" />
+                          @if (fieldError(techForm, 'AgencyOrSupplier')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuInvoice">Invoice/Bill No.<span class="req">*</span></label>
+                        <div>
+                          <input id="tuInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="tech.invoiceNo" />
+                          @if (fieldError(techForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuInvoiceDate">Invoice/Bill Date<span class="req">*</span></label>
+                        <div>
+                          <input id="tuInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [min]="minDate()" [max]="today" required [(ngModel)]="tech.invoiceBillDate" />
+                          @if (fieldError(techForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuAmount">Amount Paid (Rs.)<span class="req">*</span></label>
+                        <div>
+                          <input id="tuAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="tech.amountPaid" />
+                          @if (fieldError(techForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <label for="tuMode">Mode of Payment<span class="req">*</span></label>
+                        <div>
+                          <select id="tuMode" name="ModeOfPayment" class="form-select" required [(ngModel)]="tech.modeOfPayment">
+                            <option value="">-Select-</option>
+                            <option value="Offline">Offline</option>
+                            <option value="Online">Online</option>
+                          </select>
+                          @if (fieldError(techForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
+                        </div>
+                        <zed-scheme-document label="Picture of Purchased Technology" inputId="tuDocPurchased" [required]="true" [busy]="busy()"
+                          [documents]="docs(techDocs(), docTypes.purchased)" (pick)="upload('tech', docTypes.purchased, $event)" (remove)="remove('tech', $event)" />
+                        <zed-scheme-document label="Upload Invoice Copy of Purchased Technology" inputId="tuDocInvoice" [required]="true" [busy]="busy()"
+                          [documents]="docs(techDocs(), docTypes.invoice)" (pick)="upload('tech', docTypes.invoice, $event)" (remove)="remove('tech', $event)" />
+                        <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="tuDocCa" [busy]="busy()"
+                          [documents]="docs(techDocs(), docTypes.ca)" (pick)="upload('tech', docTypes.ca, $event)" (remove)="remove('tech', $event)" />
+                      </div>
+                    </div>
+                    <div class="form-actions">
                       <button type="button" class="btn btn-default" (click)="go('list')">BACK</button>
                       <button type="submit" class="btn btn-primary" [disabled]="busy()">SUBMIT</button>
                     </div>
@@ -156,23 +179,30 @@
             }
           }
           @case ('summary') {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-              <div class="col-sm-9">
+            <div class="page-head">
+              <div>
                 <h3 class="registration-title">Summary</h3>
-                <table class="table table-bordered" id="tuSummary">
-                  <thead><tr><th class="text-center">S.No</th><th>Name of Technology</th><th class="text-center">Amount (Rs.)</th></tr></thead>
-                  <tbody>
-                    @for (t of technologies(); track t.code) {
-                      @if (t.submitted) {
-                        <tr><td class="text-center">{{ t.sNo }}</td><td>{{ t.name }}</td><td class="text-center">{{ inr(t.details?.['AmountPaid']) || 'NA' }}</td></tr>
+                <p class="page-sub">The technologies you submitted, what you paid and the support you are eligible for.</p>
+              </div>
+            </div>
+            <div class="dash-grid">
+              <zed-scheme-unit-panel [unit]="unit()" />
+              <div class="dash-main">
+                <div class="table-responsive">
+                  <table class="table table-zed table-bordered" id="tuSummary">
+                    <thead><tr><th class="text-center" style="width: 70px">S.No</th><th>Name of Technology</th><th class="text-center" style="width: 160px">Amount (Rs.)</th></tr></thead>
+                    <tbody>
+                      @for (t of technologies(); track t.code) {
+                        @if (t.submitted) {
+                          <tr><td class="text-center">{{ t.sNo }}</td><td>{{ t.name }}</td><td class="text-center">{{ inr(t.details?.['AmountPaid']) || 'NA' }}</td></tr>
+                        }
                       }
-                    }
-                    <tr><td style="background-color: #F3F3F3;"></td><td style="background-color: #F3F3F3;"><strong>Total Amount (Rs.)</strong></td><td style="background-color: #F3F3F3;" class="text-center"><strong>{{ inr(p.totalAmount) }}</strong></td></tr>
-                    <tr><td style="background-color: #F3F3F3;"></td><td style="background-color: #F3F3F3;"><strong>Technology Support Eligible Amount (Rs.)</strong></td><td style="background-color: #F3F3F3;" class="text-center"><strong>{{ inr(p.eligibleTotal) }}</strong></td></tr>
-                  </tbody>
-                </table>
-                <div class="stepper-footer-sec initial-step1">
+                      <tr class="total-row"><td></td><td><strong>Total Amount (Rs.)</strong></td><td class="text-center"><strong>{{ inr(p.totalAmount) }}</strong></td></tr>
+                      <tr class="total-row"><td></td><td><strong>Technology Support Eligible Amount (Rs.)</strong></td><td class="text-center"><strong>{{ inr(p.eligibleTotal) }}</strong></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="form-actions">
                   <button type="button" class="btn btn-default" (click)="go('list')">BACK</button>
                   <button type="button" class="btn btn-primary" (click)="go('account')">PROCEED</button>
                 </div>
@@ -180,50 +210,60 @@
             </div>
           }
           @case ('account') {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-              <div class="col-sm-9">
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Technology Upgradation</h3>
+                <p class="page-sub">The account the support is to be paid into.</p>
+              </div>
+            </div>
+            <div class="dash-grid">
+              <zed-scheme-unit-panel [unit]="unit()" />
+              <div class="dash-main">
                 <form class="form-horizontal" id="tuAccountForm" #accountForm="ngForm" (ngSubmit)="submit()">
-                  <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Account Details of Reimbursement</div></div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="tuAccount">Account No.<span style="color: red;">*</span></label>
-                    <input id="tuAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.accountNo" />
-                    @if (fieldError(accountForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="tuAccount2">Re-Enter Account No.<span style="color: red;">*</span></label>
-                    <input id="tuAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.confirmAccountNo" />
-                    @if (fieldError(accountForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
-                    @if (account.confirmAccountNo && account.accountNo !== account.confirmAccountNo) {
-                      <span class="help-block" style="color: red;">Account Numbers must match.</span>
-                    }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="tuIfsc">IFSC Code <span style="color: red;">*</span></label>
-                    <input id="tuIfsc" name="IfscCode" class="form-control" minlength="11" maxlength="11" style="text-transform: uppercase" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="account.ifscCode" />
-                    @if (fieldError(accountForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
-                    @if (fieldError(accountForm, 'IfscCode', 'pattern')) { <span class="help-block">Invalid IFSC code format.</span> }
-                    @if (fieldError(accountForm, 'IfscCode', 'minlength') || fieldError(accountForm, 'IfscCode', 'maxlength')) { <span class="help-block">The IFSC code must be 11 characters long.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="tuBranch">Branch Address <span style="color: red;">*</span></label>
-                    <input id="tuBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="account.branchAddress" />
-                    @if (fieldError(accountForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="tuBank">Name of the Bank <span style="color: red;">*</span></label>
-                    <input id="tuBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="account.bankName" />
-                    @if (fieldError(accountForm, 'BankName')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <zed-scheme-document label="Cancelled Cheque Copy" inputId="tuDocCheque" [required]="true" [busy]="busy()"
-                    [documents]="chequeDocs()" (pick)="upload('cheque', docTypes.cheque, $event)" (remove)="remove('cheque', $event)" />
-                  <div class="label-highlight2 mt-2">
+                  <div class="zed-card">
+                    <h4>Account Details of Reimbursement</h4>
+                    <div class="form-grid">
+                      <label for="tuAccount">Account No.<span class="req">*</span></label>
+                      <div>
+                        <input id="tuAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.accountNo" />
+                        @if (fieldError(accountForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="tuAccount2">Re-Enter Account No.<span class="req">*</span></label>
+                      <div>
+                        <input id="tuAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="account.confirmAccountNo" />
+                        @if (fieldError(accountForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
+                        @if (account.confirmAccountNo && account.accountNo !== account.confirmAccountNo) {
+                          <span class="help-block text-danger">Account Numbers must match.</span>
+                        }
+                      </div>
+                      <label for="tuIfsc">IFSC Code<span class="req">*</span></label>
+                      <div>
+                        <input id="tuIfsc" name="IfscCode" class="form-control text-uppercase" minlength="11" maxlength="11" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="account.ifscCode" />
+                        @if (fieldError(accountForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
+                        @if (fieldError(accountForm, 'IfscCode', 'pattern')) { <span class="help-block">Invalid IFSC code format.</span> }
+                        @if (fieldError(accountForm, 'IfscCode', 'minlength') || fieldError(accountForm, 'IfscCode', 'maxlength')) { <span class="help-block">The IFSC code must be 11 characters long.</span> }
+                      </div>
+                      <label for="tuBranch">Branch Address<span class="req">*</span></label>
+                      <div>
+                        <input id="tuBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="account.branchAddress" />
+                        @if (fieldError(accountForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="tuBank">Name of the Bank<span class="req">*</span></label>
+                      <div>
+                        <input id="tuBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="account.bankName" />
+                        @if (fieldError(accountForm, 'BankName')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <zed-scheme-document label="Cancelled Cheque Copy" inputId="tuDocCheque" [required]="true" [busy]="busy()"
+                        [documents]="chequeDocs()" (pick)="upload('cheque', docTypes.cheque, $event)" (remove)="remove('cheque', $event)" />
+                    </div>
+                  </div>
+                  <div class="label-highlight2 confirm-box">
                     <label class="checkbox-inline">
                       <input type="checkbox" name="Declaration" id="tuDeclaration" class="option-input1 yes checkbox" [(ngModel)]="declaration" />
                       <zed-text key="msme.schemes.declaration.checkbox" [inline]="true" />
                     </label>
                   </div>
-                  <div class="stepper-footer-sec initial-step1">
+                  <div class="form-actions">
                     <button type="button" class="btn btn-default" (click)="go('summary')">BACK</button>
                     <button type="submit" class="btn btn-primary" [class.btn-disabled]="!declaration" [disabled]="busy()">PROCEED</button>
                   </div>
@@ -232,15 +272,13 @@
             </div>
           }
           @case ('done') {
-            <div class="row justify-content-center">
-              <div class="col-sm-9">
-                <div class="jumbotron text-center p-4" id="tuDone">
-                  <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
-                  <h2>Application for Financial Support for Zero Effect Solution submitted successfully!</h2>
-                </div>
-                <div class="stepper-footer-sec initial-step text-center">
-                  <a class="btn btn-primary" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
-                </div>
+            <div class="done-page">
+              <div class="zed-card text-center done-card" id="tuDone">
+                <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
+                <h2>Application for Financial Support for Zero Effect Solution submitted successfully!</h2>
+              </div>
+              <div class="form-actions justify-content-center">
+                <a class="btn btn-primary" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
               </div>
             </div>
           }

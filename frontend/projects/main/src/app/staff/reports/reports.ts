@@ -29,44 +29,48 @@ async function blobError(err: unknown): Promise<string> {
 @Component({
   selector: 'zed-staff-reports',
   template: `
-    <div class="container">
-      <div class="row mt-3 justify-content-center">
-        <div class="col-sm-8">
-          <h3 class="registration-title">Reports</h3>
-          @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
-          <div class="table-responsive">
-            <table class="table table-default table-zed table-bordered">
-              <thead>
-                <tr class="btn-default text-center">
-                  <th>S.No</th>
-                  <th>Report Name</th>
-                  <th class="text-center">Download</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (r of reports(); track r.id) {
-                  <tr>
-                    <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ r.name }}</td>
-                    <td class="text-center">
-                      <button type="button" class="btn btn-primary btn-sm" style="width: 100px" [disabled]="downloading() !== null"
-                              (click)="download(r)">{{ downloading() === r.id ? 'PLEASE WAIT' : 'DOWNLOAD' }}</button>
-                    </td>
-                  </tr>
-                } @empty {
-                  @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">No reports</div></td></tr> }
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Reports</h3>
+        <p class="page-sub">The reports of your role, each downloaded as an Excel file.</p>
       </div>
+    </div>
+    @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+    <div class="table-responsive reports">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 70px">S.No</th>
+            <th>Report Name</th>
+            <th class="text-center" style="width: 150px">Download</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of reports(); track r.id) {
+            <tr>
+              <td class="text-center">{{ $index + 1 }}</td>
+              <td><strong>{{ r.name }}</strong></td>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <button type="button" class="btn btn-primary" [disabled]="downloading() !== null"
+                          (click)="download(r)">{{ downloading() === r.id ? 'PLEASE WAIT' : 'DOWNLOAD' }}</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">No reports</div></td></tr> }
+          }
+        </tbody>
+      </table>
     </div>
     @if (downloading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... large reports may take a few minutes.</small></div></div></div>
     }
   `,
-  styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
+  styles: `
+    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .reports { max-width: 900px; }
+  `,
 })
 export class ReportsPage {
   private readonly http = inject(HttpClient);

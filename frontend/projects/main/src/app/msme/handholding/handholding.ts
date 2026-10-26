@@ -49,10 +49,19 @@ interface MilestoneRow {
   selector: 'zed-msme-handholding',
   imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent],
   templateUrl: './handholding.html',
+  styleUrl: '../shared/msme-page.scss',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .refresh-link { text-decoration: none; }
-    .panel-cert-block, .panel-cert-block:hover { background: #fff; box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.15); }
+    .back-link { display: inline-flex; align-items: center; gap: 4px; color: #2f7c83; text-decoration: none; }
+    /* The two level cards side by side, equal height (one column on phones). */
+    .level-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .panel-cert-block, .panel-cert-block:hover { height: 100%; overflow: visible; background: #fff; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08) !important; }
+    .panel-cert-block > .panel-heading h5 { margin: 0; font-size: 14px; font-weight: 700; }
+    .panel-cert-block .cert-inner-block { padding: 10px 12px; gap: 10px; justify-content: space-between; }
+    .panel-cert-block .cert-inner-block .inner2 img { width: 64px; padding: 0 8px 0 0; }
+    /* One milestone per line: its title and VIEW / APPLY. */
+    .milestone-card { margin-bottom: 10px; border-radius: 10px; }
+    .milestone-card > .panel-body { padding: 12px 16px; }
     .milestone-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .clickable { cursor: pointer; }
     .checkbox-inline { margin-left: 30px; padding-left: 10px; }

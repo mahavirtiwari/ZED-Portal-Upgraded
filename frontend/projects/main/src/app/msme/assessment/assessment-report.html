@@ -11,70 +11,73 @@
     }
 
     @if (basic() || nc()) {
-      <div class="row">
-        <!-- Unit summary -->
-        <div class="col-sm-3">
-          <h3 class="registration-title dash-text-clr">Welcome</h3>
-          <div class="panel panel-default panel-grey">
-            <div class="panel-body">
-              <div class="entp-type-sec">
-                @switch (msme()['EnterpriseType']) {
-                  @case ('Micro') { <div class="entp-label micro">M</div> }
-                  @case ('Small') { <div class="entp-label small">S</div> }
-                  @case ('Medium') { <div class="entp-label medium">M</div> }
-                }
-                @if (unit()) {
-                  <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
-                }
-              </div>
-              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-              <div class="entp-details"><small>UDYAM Number</small><p>{{ udyam() }}</p></div>
-              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
-            </div>
-          </div>
-
-          <div class="panel panel-default panel-black mt-2" [class.panel-msme-black]="mode() === 'basic-info'"><div class="panel-body">Selected Unit</div></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-          <div class="unit-selection">
-            <img src="/Images/svgicons/mapicon.svg" alt="" />
-            @if (unit()) {
-              <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
-            }
-          </div>
-
-          <div class="panel panel-default panel-black" [class.panel-msme-black]="mode() === 'basic-info'"><div class="panel-body">Selected Activity</div></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-
-          <div class="panel panel-default panel-black" [class.panel-msme-black]="mode() === 'basic-info'">
-            <div class="panel-body">{{ mode() === 'basic-info' ? 'ZED Pledge' : 'ZED Pledge Certificate' }}</div>
-          </div>
-          <div class="unit-selection">
-            <div class="col-sm-12" style="padding: 0">
-              <p>{{ mode() === 'basic-info' ? 'Pledged on' : 'Pledge taken on' }} {{ msme()['PledgeOn'] }}</p>
-              <div class="btn-download">
-                <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">{{ mode() === 'basic-info' ? 'DOWNLOAD PLEDGE' : 'DOWNLOAD' }}</a>
-              </div>
-            </div>
-          </div>
+      <div class="page-head">
+        <div>
+          <h3 class="registration-title">{{ mode() === 'basic-info' ? 'Basic Information' : 'Non-Conformances' }}</h3>
+          <p class="page-sub">
+            {{ mode() === 'basic-info' ? 'What you submitted in the ZED MSME app for the desktop assessment.' : 'The non-conformances raised on your assessment, the assessor’s notes and your replies.' }}
+          </p>
         </div>
+        <div class="page-actions refresh-bar mb-0">
+          <a [routerLink]="backLink()">
+            <img src="/Images/svgicons/back.svg" alt="" />
+            <span>BACK</span>
+          </a>
+          <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
+            <img src="/Images/svgicons/refresh.svg" alt="" />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
 
-        <div class="col-sm-9" [class.zed-tabs]="mode() === 'basic-info'">
-          <div class="refresh-bar">
-            <div>
-              <a [routerLink]="backLink()">
-                <img src="/Images/svgicons/back.svg" alt="" />
-                <span>BACK</span>
-              </a>
+      <div class="dash-grid">
+        <!-- Unit summary -->
+        <aside class="dash-side">
+          <div class="zed-card unit-card">
+            <div class="entp-type-sec">
+              @switch (msme()['EnterpriseType']) {
+                @case ('Micro') { <div class="entp-label micro">M</div> }
+                @case ('Small') { <div class="entp-label small">S</div> }
+                @case ('Medium') { <div class="entp-label medium">M</div> }
+              }
+              @if (unit()) {
+                <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+              }
             </div>
-            <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
-              <img src="/Images/svgicons/refresh.svg" alt="" />
-              <span>Refresh</span>
-            </button>
+            <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+            <div class="entp-details"><small>UDYAM Number</small><p>{{ udyam() }}</p></div>
+            <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
           </div>
 
+          <div class="zed-card side-card">
+            <h4>Selected Unit</h4>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+            <div class="unit-selection">
+              <img src="/Images/svgicons/mapicon.svg" alt="" />
+              @if (unit()) {
+                <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+              }
+            </div>
+          </div>
+
+          <div class="zed-card side-card">
+            <h4>Selected Activity</h4>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+          </div>
+
+          <div class="zed-card side-card">
+            <h4>{{ mode() === 'basic-info' ? 'ZED Pledge' : 'ZED Pledge Certificate' }}</h4>
+            <p class="mb-0">{{ mode() === 'basic-info' ? 'Pledged on' : 'Pledge taken on' }} {{ msme()['PledgeOn'] }}</p>
+            <div class="btn-download">
+              <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">{{ mode() === 'basic-info' ? 'DOWNLOAD PLEDGE' : 'DOWNLOAD' }}</a>
+            </div>
+          </div>
+        </aside>
+
+        <div class="dash-main" [class.zed-tabs]="mode() === 'basic-info'">
           <div class="panel panel-steps panel-bg-default">
             <div class="panel-body">
               @if (basic(); as b) {
@@ -108,7 +111,7 @@
                         @switch (basicTab()) {
                           @case ('basicInfo') {
                             <div class="tab-pane fade show active p-t-0" role="tabpanel">
-                              <table class="table table-default table-zed bg-white">
+                              <table class="table table-default table-zed">
                                 <tbody>
                                   <tr>
                                     <td class="w-50">Unit Representative Selfie</td>
@@ -207,20 +210,20 @@
                           }
 
                           @case ('esg') {
-                            <div class="tab-pane fade show active" role="tabpanel" style="background-color: #f0f0f0">
+                            <div class="tab-pane fade show active ar-pane-grey" role="tabpanel">
                               <div class="row">
                                 <div class="col-sm-12">
                                   <strong>ESG Check List</strong>
-                                  <table class="table table-bordered table-zed bg-white">
+                                  <table class="table table-bordered table-zed">
                                     <thead>
                                       <tr>
-                                        <th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                        <th>Question</th><th class="text-center">Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       @for (p of esg(); track $index) {
                                         <tr>
-                                          <td>{{ p['Question'] }}</td><td>{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
+                                          <td>{{ p['Question'] }}</td><td class="text-center">{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
                                           <td>{{ p['IfYesAnswer'] }}</td><td>{{ p['IfNoQuestion'] }}</td><td>{{ p['IfNoAnswer'] }}</td>
                                         </tr>
                                       }
@@ -231,16 +234,16 @@
                               <div class="row">
                                 <div class="col-sm-12">
                                   <strong>Social/OHS Check List</strong>
-                                  <table class="table table-bordered table-zed bg-white">
+                                  <table class="table table-bordered table-zed">
                                     <thead>
                                       <tr>
-                                        <th>S.No</th><th>Question</th><th>Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
+                                        <th class="text-center">S.No</th><th>Question</th><th class="text-center">Answer</th><th>If Yes, Question</th><th>If Yes, Answer</th><th>If No, Question</th><th>If No, Answer</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       @for (p of social(); track $index) {
                                         <tr>
-                                          <td>{{ p['Code'] }}</td><td>{{ p['Question'] }}</td><td>{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
+                                          <td class="text-center">{{ p['Code'] }}</td><td>{{ p['Question'] }}</td><td class="text-center">{{ p['Answer'] }}</td><td>{{ p['IfYesQuestion'] }}</td>
                                           <td>{{ p['IfYesAnswer'] }}</td><td>{{ p['IfNoQuestion'] }}</td><td>{{ p['IfNoAnswer'] }}</td>
                                         </tr>
                                       }
@@ -252,7 +255,7 @@
                           }
 
                           @case ('elements') {
-                            <div class="tab-pane fade show active" role="tabpanel" style="background-color: #f0f0f0">
+                            <div class="tab-pane fade show active ar-pane-grey" role="tabpanel">
                               <div class="row">
                                 @for (s of sections(); track $index) {
                                   <div>
@@ -272,7 +275,7 @@
                                     <div class="col-sm-12">
                                       @for (r of s.requirements; track $index) {
                                         <div class="panel panel-default panel-info mb-4">
-                                          <div class="panel-body" style="position: relative">
+                                          <div class="panel-body position-relative">
                                             <div class="label-top">{{ s.section['SectionCode'] }}.{{ r.requirement['RequirementCode'] }}</div>
                                             <div class="label-highlight3 m-t-2">
                                               @for (o of r.options; track $index) {
@@ -293,7 +296,7 @@
                                                 <tbody>
                                                   @for (e of r.evidences; track $index) {
                                                     <tr>
-                                                      <td class="w-50" style="vertical-align: inherit">{{ e['EvidenceName'] }}</td>
+                                                      <td class="w-50 ar-va-inherit">{{ e['EvidenceName'] }}</td>
                                                       <td>
                                                         @if (!e['GeneratedTime']) {
                                                           <div class="label-highlight4">No Documents uploaded</div>
@@ -332,7 +335,7 @@
 
               @if (nc(); as report) {
                 <div class="row">
-                  <div class="alert alert-document alert-document-danger m-0" style="background-color: transparent">
+                  <div class="alert alert-document alert-document-danger m-0 ar-transparent">
                     <div>
                       <img class="icon-bg" src="/Images/svgicons/non-conformance.svg" alt="" />
                       <h3 class="registration-title m-0">&nbsp;Non-Conformance(s)</h3>
@@ -371,11 +374,11 @@
                                     <tr>
                                       <td colspan="2">
                                         <div class="d-flex flex-column">
-                                          <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                          <div class="label-highlight label-highlight-assesor ar-w80">
                                             <div><strong>ASSESSOR RESPONSE</strong><span class="pull-right">{{ se.assessor['UpdatedDate'] }}</span></div>
                                             <span>{{ se.assessor['AssessorRemarks'] }}</span>
                                           </div>
-                                          <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                          <div class="label-highlight label-highlight-msme ms-auto ar-w80">
                                             <div>
                                               <strong>MSME RESPONSE</strong>
                                               <span class="pull-right">{{ se.msme['CreatedDate'] }}</span>
@@ -395,7 +398,7 @@
                             }
 
                             @if (r.products.length > 0) {
-                              <div class="col-sm-12" style="padding-top: 20px">
+                              <div class="col-sm-12 ar-pt20">
                                 <div class="panel panel-default panel-black m-b-2">
                                   <div class="panel-body"><div class="info-block">Product manufactured</div></div>
                                 </div>
@@ -414,11 +417,11 @@
                                         <tr>
                                           <td colspan="2">
                                             <div class="d-flex flex-column">
-                                              <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                              <div class="label-highlight label-highlight-assesor ar-w80">
                                                 <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ prod.product['PreviousAssessorUpdatedDate'] }}</span></div>
                                                 <span>{{ prod.product['PreviousAssessorRemarks'] }}</span>
                                               </div>
-                                              <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                              <div class="label-highlight label-highlight-msme ms-auto ar-w80">
                                                 <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ prod.product['MsmeUpdatedDate'] }}</span></div>
                                                 <span>{{ prod.product['MsmeRemarks'] }}</span>
                                                 @if (!prod.hasResponse) { <div>No response yet</div> }
@@ -437,7 +440,7 @@
                             }
 
                             @for (s of r.sections; track $index) {
-                              <div class="col-sm-12" style="padding-top: 20px">
+                              <div class="col-sm-12 ar-pt20">
                                 <div class="panel panel-default panel-black m-b-2">
                                   <div class="panel-body">
                                     <div class="info-block">
@@ -452,7 +455,7 @@
 
                                 @for (req of s.requirements; track $index) {
                                   <div class="panel panel-default panel-info" [class.mb-4]="!siteVariant()">
-                                    <div class="panel-body border-left" style="position: relative">
+                                    <div class="panel-body border-left position-relative">
                                       <div class="label-top">{{ s.section['SectionCode'] }}.{{ req.requirement['RequirementCode'] }}</div>
                                       <div class="label-highlight3 m-t-2">
                                         @for (o of req.options; track $index) {
@@ -473,7 +476,7 @@
                                           <tbody>
                                             @for (e of req.previous; track $index) {
                                               <tr>
-                                                <td [class.w-50]="req.previousLabelWide" [class.w-25]="!req.previousLabelWide" style="vertical-align: inherit">{{ e.label }}</td>
+                                                <td [class.w-50]="req.previousLabelWide" [class.w-25]="!req.previousLabelWide" class="ar-va-inherit">{{ e.label }}</td>
                                                 <td>
                                                   <div class="row-data">
                                                     <div>
@@ -495,11 +498,11 @@
                                         </table>
                                       </div>
                                       <div class="d-flex flex-column">
-                                        <div class="label-highlight label-highlight-assesor" style="width: 80%">
+                                        <div class="label-highlight label-highlight-assesor ar-w80">
                                           <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ req.requirement['PreviousAssessorUpdatedDate'] }}</span></div>
                                           <span>{{ req.requirement['PreviousAssessorRemarks'] }}</span>
                                         </div>
-                                        <div class="label-highlight label-highlight-msme ms-auto" style="width: 80%">
+                                        <div class="label-highlight label-highlight-msme ms-auto ar-w80">
                                           <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ req.requirement['MsmeUpdatedDate'] }}</span></div>
                                           <span>{{ req.requirement['MsmeComments'] }}</span>
                                           @if (!req.responded) {
@@ -672,7 +675,7 @@
           </div>
         </div>
         <div class="modal-body">
-          <div style="margin-bottom: 9px" class="text-center img-responsive">
+          <div class="text-center img-responsive mb-2">
             <img [src]="src" alt="Preview" />
           </div>
         </div>

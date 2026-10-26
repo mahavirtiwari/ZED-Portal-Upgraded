@@ -25,7 +25,6 @@ interface Action {
   /** Opens in a new tab. Absent (and no route): the target page is not migrated yet ("Available soon"). */
   href?: string;
   download?: boolean;
-  wide?: boolean;
 }
 
 /** Folder of a stored surveillance certificate: {SurveCertPath}/DA|SA/{ZedId}/{Level}.pdf. */
@@ -44,7 +43,7 @@ const DOCUMENTS_API = '/api/msme/certification-documents';
   selector: 'zed-msme-certification-details',
   imports: [RouterLink, CertificationSteps],
   templateUrl: './certification-details.html',
-  styleUrl: './certification-details.scss',
+  styleUrls: ['../shared/msme-page.scss', './certification-details.scss'],
 })
 export class CertificationDetailsPage {
   /** Route parameter :certification. */
@@ -63,6 +62,17 @@ export class CertificationDetailsPage {
   protected readonly kind = computed(() => certificationKind(this.type() ?? 'Bronze'));
   protected readonly level = computed(() => certificationLevel(this.type() ?? 'Bronze'));
   protected readonly milestone = computed(() => milestoneNumber(this.type() ?? ''));
+  /** Page title (V4 page head). */
+  protected readonly heading = computed(() => {
+    switch (this.kind()) {
+      case 'surveillance':
+        return `${this.level()} Surveillance`;
+      case 'milestone':
+        return `Handholding Support: Milestone ${this.milestone()}`;
+      default:
+        return `${this.level()} Certification`;
+    }
+  });
 
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});
@@ -114,7 +124,7 @@ export class CertificationDetailsPage {
         break;
       case 'milestone':
         list.push({ icon: 'basicInfo', label: `View Milestone ${this.milestone()}`, enabled: has('CompletedOn'), route: siteRoute });
-        list.push({ icon: 'report', label: 'Download Report', enabled: has('CompletedOn'), href: this.reportUrl(), download: true, wide: true });
+        list.push({ icon: 'report', label: 'Download Report', enabled: has('CompletedOn'), href: this.reportUrl(), download: true });
         break;
     }
 

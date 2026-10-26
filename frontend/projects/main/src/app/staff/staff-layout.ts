@@ -1,13 +1,14 @@
 import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
-import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
+import { PORTAL_SYSTEM } from '../portal-system';
 import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-menu';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
  * Views/Shared/_Layout.cshtml (per system: staff-menu.ts). Menu entries not migrated yet open the old portal.
  * Images are relative so that they load from the build's baseHref (/Consultancy/, /surveillance/).
- * V4: the bar names the open page and the role; on wide screens the menu stays on one row: the entries that do not fit
+ * V4: the bar names the role and the portal (each page has its own heading); on wide screens the menu stays on one row: the entries that do not fit
  * (measured, again on every resize) are under "More". Phones list every entry. Every page has the bar's width.
  */
 @Component({
@@ -27,7 +28,7 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
         <div class="container nav-bar-sec">
-          <span class="navbar-brand" [title]="pageTitle()">{{ pageTitle() }}<span>{{ user()?.role }}</span></span>
+          <a class="navbar-brand" routerLink="/staff">{{ roleName() }}<span>{{ portalName }}</span></a>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -47,14 +48,17 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
                       {{ entry.group }}
                     </button>
                     <ul class="dropdown-menu" [class.show]="openGroup() === entry.group">
-                      @for (item of entry.items; track item.label + (item.route ?? item.legacyPath)) {
-                        <li>
-                          @if (item.route) {
-                            <a class="dropdown-item" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
-                          } @else {
-                            <a class="dropdown-item" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
-                          }
-                        </li>
+                      @for (section of entry.sections; track $index) {
+                        @if (section.heading) { <li><span class="dropdown-header">{{ section.heading }}</span></li> }
+                        @for (item of section.items; track item.label + (item.route ?? item.legacyPath)) {
+                          <li>
+                            @if (item.route) {
+                              <a class="dropdown-item" [class.ps-4]="section.heading" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
+                            } @else {
+                              <a class="dropdown-item" [class.ps-4]="section.heading" [href]="legacy(item)" title="Opens the current portal">{{ item.label }}</a>
+                            }
+                          </li>
+                        }
                       }
                     </ul>
                   </li>
@@ -78,7 +82,7 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
                       @if ($index >= fit()) {
                         @if ('group' in entry) {
                           <li><span class="dropdown-header">{{ entry.group }}</span></li>
-                          @for (item of entry.items; track item.label + (item.route ?? item.legacyPath)) {
+                          @for (item of entry.items; track item.label + (item.route ?? item.legacyPath) + item.group) {
                             <li>
                               @if (item.route) {
                                 <a class="dropdown-item ps-4" [routerLink]="item.route" [queryParams]="item.queryParams" routerLinkActive="active" [routerLinkActiveOptions]="activeOptions(item)">{{ item.label }}</a>
@@ -130,17 +134,18 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
   `,
   styles: `
     :host { padding-top: 100px; color: #333; }
-    .staff-content { min-height: calc(100vh - 260px); padding-bottom: 32px; }
+    /* The pages sit on a light tint, so their cards, tables and forms stand out. */
+    .staff-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f2f6f6; border-top: 1px solid #e3eced; }
     /* Every page has the menu bar's width: a page's own container (fixed, fluid or none) lines up with it. */
     .staff-page { padding-top: 8px; }
     :host ::ng-deep .staff-page .container, :host ::ng-deep .staff-page .container-fluid { max-width: none; padding-left: 0; padding-right: 0; }
     /* The bar: page name and role on the left, the menu on one row on the right. */
-    .zed-navbar .navbar-brand { max-width: 260px; white-space: normal; line-height: 1.15; font-size: 22px; }
+    .zed-navbar .navbar-brand { max-width: 260px; white-space: normal; line-height: 1.15; font-size: 22px; text-decoration: none; color: #fff; }
     .zed-navbar .navbar-brand span { margin-top: 4px; opacity: 0.9; }
     .zed-navbar .nav { align-items: center; }
     .zed-navbar .tag { padding: 0 12px; }
     .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link { white-space: nowrap; }
-    .more-menu .dropdown-header { font-weight: 700; color: #45a5ad; padding: 8px 16px 4px; }
+    .zed-navbar .dropdown-header { font-weight: 700; color: #2f7c83; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 16px 4px; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     /* The drop-downs are buttons; the old stylesheet styles only the links (.zed-navbar .nav > li > a). */
     .zed-navbar .nav > li > button.nav-link {
@@ -168,8 +173,10 @@ export class StaffLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
-  /** The open page's name (its route title without "ZED | "), shown in the bar. */
-  protected readonly pageTitle = signal('Home');
+  /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
+  protected readonly roleName = computed(() => (this.user()?.role ?? '').replace(/([a-z])([A-Z])/g, '$1 $2'));
+  protected readonly portalName =
+    PORTAL_SYSTEM === 'consultancy' ? 'ZED Handholding' : PORTAL_SYSTEM === 'surveillance' ? 'ZED Surveillance' : 'ZED Certification';
 
   /** How many menu entries are on the row (wide screens); the rest are under "More". */
   protected readonly fit = signal(Number.MAX_SAFE_INTEGER);
@@ -180,13 +187,11 @@ export class StaffLayout {
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
-    this.router.events.subscribe((e) => {
+    this.router.events.subscribe(() => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);
       this.openGroup.set(null);
-      if (e instanceof NavigationEnd) this.pageTitle.set(StaffLayout.titleOf(this.router.routerState.snapshot.root));
     });
-    this.pageTitle.set(StaffLayout.titleOf(this.router.routerState.snapshot.root));
 
     // The row: measure the entries (all shown), then keep as many as fit; again when the menu or the width changes.
     const injector = inject(Injector);
@@ -203,13 +208,6 @@ export class StaffLayout {
       if (bar?.parentElement) observer.observe(bar.parentElement.parentElement ?? bar.parentElement);
       this.destroyRef.onDestroy(() => observer.disconnect());
     }, { injector });
-  }
-
-  /** The deepest route title ("ZED | Sectors" -> "Sectors"). */
-  private static titleOf(route: ActivatedRouteSnapshot): string {
-    let title = '';
-    for (let r: ActivatedRouteSnapshot | null = route; r; r = r.firstChild) if (typeof r.title === 'string' && r.title) title = r.title;
-    return title.replace(/^.*\|\s*/, '').trim() || 'Home';
   }
 
   /** Widths of the entries while all are on the row (the home icon, "More" and the user menu are measured too). */

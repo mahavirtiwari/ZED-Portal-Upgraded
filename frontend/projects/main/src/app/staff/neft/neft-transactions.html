@@ -1,156 +1,163 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="mt-3">
-    <div class="row">
-      <div class="col-sm-12"><h3 class="registration-title">{{ title }}</h3></div>
-    </div>
-    @if (error()) {
-      <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
-    <div class="row">
-      <div class="col-sm-12">
-        <div class="table-responsive">
-          <table class="table table-zed table-bordered bg-white">
-            <thead>
-              @if (consultancy) {
-                <!-- ZEDCS_CONSULTANCY Frontend/Neft/NewTransactions.cshtml and ApprovedTransactions.cshtml -->
-                <tr>
-                  <th></th>
-                  <th>ZED ID</th>
-                  <th>Plant Name</th>
-                  <th>TechnologyName</th>
-                  <th>Name Of The Manufacturer<br /><br />Make Or Model Name<br /><br />Agency or Supplier</th>
-                  <th>Amount Paid<br /><br />Eligible Amount</th>
-                  <th>Account No.<br /><br />IFSC Code</th>
-                  <th>Branch Address</th>
-                  @if (list !== 'new') {
-                    <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
-                    <th>Comments</th>
-                  }
-                </tr>
-              } @else if (list === 'rejected') {
-                <!-- Frontend/Neft/RejectedTransactions.cshtml -->
-                <tr>
-                  <th>ZED ID</th>
-                  <th>EnterpriseName</th>
-                  <th>UAM/ Udyam Number</th>
-                  <th>TotalEmp</th>
-                  <th>Gender and Social category</th>
-                  <th>Coupon</th>
-                  <th>GSTIN/ TAN Number</th>
-                  <th>Amount Paid</th>
-                  <th>UTR Number</th>
-                  <th>Reason for Rejection</th>
-                </tr>
-              } @else {
-                <tr>
-                  @if (list === 'new') {
-                    <th></th>
-                  }
-                  <th>ZED ID</th>
-                  <th>Enterprise Name</th>
-                  <th>Category Of Certificate</th>
-                  <th>Name of the Certificate<br /><br />Certification Agency</th>
-                  <th>Certificate Number<br /><br />Date Of Issue<br /><br />Validity</th>
-                  <th>Expenditure Certificate<br /><br />Agency or Supplier</th>
-                  <th>Invoice No.<br /><br />Invoice Bill date<br /><br />Amount Paid</th>
-                  <th>Account No.<br /><br />IFSC Code</th>
-                  <th>Branch Address</th>
-                  @if (list === 'approved') {
-                    <th>Payment receipt Date<br /><br />Approver Ref No.<br /><br />Approver Amount</th>
-                  }
-                  @if (list !== 'new') {
-                    <th>Comments</th>
-                  }
-                </tr>
-              }
-            </thead>
-            <tbody>
-              @for (t of view.page(); track t.TransactionId) {
-                @if (consultancy) {
-                  <tr>
-                    <td>
-                      @if (list === 'new') {
-                        @if (t.VerificationStatus === 6) {
-                          <strong class="text-success">APPROVED</strong>
-                        }
-                        @if (t.VerificationStatus === 4) {
-                          <button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button><br /><br />
-                        }
-                      }
-                      <a style="width: 120px" [routerLink]="tuLink(t)" class="btn btn-primary mb-2">View Details</a>
-                      <a style="width: 180px" [href]="reportLink(t)" target="_blank" rel="noopener" class="btn btn-primary mb-2">Visit Report</a>
-                    </td>
-                    <td>{{ t.ZedId }}</td>
-                    <td>{{ t.PUnitName }}</td>
-                    <td>{{ t.TechnologyName }}</td>
-                    <td>{{ t.NameOfTheManufacturer }}<br />{{ t.MakeOrModelName }}<br />{{ t.AgencyOrSupplier }}</td>
-                    <td>{{ t.TotalPaidAfterQc }}<br /><br />{{ t.EligibleAmount }}<br /><br /></td>
-                    <td>{{ t.AccountNo }} {{ t.IfscCode }}</td>
-                    <td>{{ t.BranchAddress }}</td>
-                    @if (list !== 'new') {
-                      <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
-                      <td>{{ t.Comments }}</td>
-                    }
-                  </tr>
-                } @else if (list === 'rejected') {
-                  <tr>
-                    <td>{{ t.ZedId }}</td>
-                    <td>{{ t.EnterpriseName }}</td>
-                    <td>{{ t.UdyogAadharNo }}</td>
-                    <td>{{ t.TotalEmp }}</td>
-                    <td>{{ t.Gender }}<br />{{ t.SocialCategoryName }}</td>
-                    <td>{{ t.IsCouponUsed ? 'Yes' : '' }}</td>
-                    <td>{{ t.GstinNumber }} {{ t.TanNumber }}</td>
-                    <td>{{ t.AmountPaid }}</td>
-                    <td>{{ t.UtrNumber }}</td>
-                    <td>{{ t.Comments }}</td>
-                  </tr>
-                } @else {
-                  <tr>
-                    @if (list === 'new') {
-                      <td><button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="open(t)">Approve</button></td>
-                    }
-                    <td>{{ t.ZedId }}</td>
-                    <td>{{ t.PUnitName || t.EnterpriseName }}</td>
-                    <td>{{ t.CategoryOfCertificate }}</td>
-                    <td>{{ t.NameOfCertficate }}<br /><br />{{ t.CertificationAgency }}</td>
-                    <td>{{ t.CertficateNumber }}<br /><br />{{ t.DateOfIssue }}<br /><br />{{ t.ValidityOfCertificate }}</td>
-                    <td>{{ t.ExpenditureCertficate }}<br /><br />{{ t.AgencyOrSupplier }}</td>
-                    <td>{{ t.InvoiceNo }}<br /><br />{{ t.InvoiceBillDate }}<br /><br />{{ t.AmountPaid }}</td>
-                    <td>{{ t.AccountNo }}<br /><br />{{ t.IfscCode }}</td>
-                    <td>{{ t.BranchAddress }}</td>
-                    @if (list === 'approved') {
-                      <td>{{ t.ApproverDateOfReceiptOfPayment }}<br /><br />{{ t.ApproverReferenceNo }}<br /><br />{{ t.ApproverAmount }}</td>
-                    }
-                    @if (list !== 'new') {
-                      <td>{{ t.Comments }}</td>
-                    }
-                  </tr>
-                }
-              } @empty {
-                @if (!loading()) {
-                  <tr>
-                    <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
-                  </tr>
-                }
-              }
-            </tbody>
-          </table>
-        </div>
-        <zed-pager [pager]="view" />
-      </div>
-    </div>
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">{{ title }}</h3>
+    <p class="page-sub">{{ consultancy ? 'Technology upgradation' : 'Financial assistance' }} reimbursements of the units in your state, paid by NEFT.</p>
   </div>
 </div>
+@if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert alert-success" role="status">{{ success() }}</div>
+}
+<div class="table-responsive">
+  <table class="table table-zed table-bordered">
+    <thead>
+      @if (consultancy) {
+        <!-- ZEDCS_CONSULTANCY Frontend/Neft/NewTransactions.cshtml and ApprovedTransactions.cshtml -->
+        <tr>
+          <th class="text-center" style="width: 150px">Actions</th>
+          <th class="text-center">ZED ID</th>
+          <th>Plant Name</th>
+          <th>TechnologyName</th>
+          <th>Name Of The Manufacturer<br />Make Or Model Name<br />Agency or Supplier</th>
+          <th class="text-center">Amount Paid<br />Eligible Amount</th>
+          <th class="text-center">Account No.<br />IFSC Code</th>
+          <th>Branch Address</th>
+          @if (list !== 'new') {
+            <th class="text-center">Payment receipt Date<br />Approver Ref No.<br />Approver Amount</th>
+            <th>Comments</th>
+          }
+        </tr>
+      } @else if (list === 'rejected') {
+        <!-- Frontend/Neft/RejectedTransactions.cshtml -->
+        <tr>
+          <th class="text-center">ZED ID</th>
+          <th>EnterpriseName</th>
+          <th class="text-center">UAM/ Udyam Number</th>
+          <th class="text-center">TotalEmp</th>
+          <th class="text-center">Gender and Social category</th>
+          <th class="text-center">Coupon</th>
+          <th class="text-center">GSTIN/ TAN Number</th>
+          <th class="text-center">Amount Paid</th>
+          <th class="text-center">UTR Number</th>
+          <th>Reason for Rejection</th>
+        </tr>
+      } @else {
+        <tr>
+          @if (list === 'new') {
+            <th class="text-center" style="width: 110px">Actions</th>
+          }
+          <th class="text-center">ZED ID</th>
+          <th>Enterprise Name</th>
+          <th>Category Of Certificate</th>
+          <th>Name of the Certificate<br />Certification Agency</th>
+          <th class="text-center">Certificate Number<br />Date Of Issue<br />Validity</th>
+          <th>Expenditure Certificate<br />Agency or Supplier</th>
+          <th class="text-center">Invoice No.<br />Invoice Bill date<br />Amount Paid</th>
+          <th class="text-center">Account No.<br />IFSC Code</th>
+          <th>Branch Address</th>
+          @if (list === 'approved') {
+            <th class="text-center">Payment receipt Date<br />Approver Ref No.<br />Approver Amount</th>
+          }
+          @if (list !== 'new') {
+            <th>Comments</th>
+          }
+        </tr>
+      }
+    </thead>
+    <tbody>
+      @for (t of view.page(); track t.TransactionId) {
+        @if (consultancy) {
+          <tr>
+            <td class="text-center">
+              <div class="row-actions justify-content-center">
+                @if (list === 'new') {
+                  @if (t.VerificationStatus === 6) {
+                    <span class="status-badge is-success">APPROVED</span>
+                  }
+                  @if (t.VerificationStatus === 4) {
+                    <button type="button" class="btn btn-primary" (click)="open(t)">Approve</button>
+                  }
+                }
+                <a [routerLink]="tuLink(t)" class="btn btn-outline-primary">View Details</a>
+                <a [href]="reportLink(t)" target="_blank" rel="noopener" class="btn btn-outline-primary">Visit Report</a>
+              </div>
+            </td>
+            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td>{{ t.PUnitName }}</td>
+            <td>{{ t.TechnologyName }}</td>
+            <td class="cell-lines"><span>{{ t.NameOfTheManufacturer }}</span><span>{{ t.MakeOrModelName }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
+            <td class="cell-lines text-center"><strong>{{ t.TotalPaidAfterQc }}</strong><span>{{ t.EligibleAmount }}</span></td>
+            <td class="text-center">{{ t.AccountNo }} {{ t.IfscCode }}</td>
+            <td>{{ t.BranchAddress }}</td>
+            @if (list !== 'new') {
+              <td class="cell-lines text-center"><span>{{ t.ApproverDateOfReceiptOfPayment }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
+              <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
+            }
+          </tr>
+        } @else if (list === 'rejected') {
+          <tr>
+            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td>{{ t.EnterpriseName }}</td>
+            <td class="text-center">{{ t.UdyogAadharNo }}</td>
+            <td class="text-center">{{ t.TotalEmp }}</td>
+            <td class="cell-lines text-center"><span>{{ t.Gender }}</span><span>{{ t.SocialCategoryName }}</span></td>
+            <td class="text-center">@if (t.IsCouponUsed) { <span class="status-badge is-info">Yes</span> }</td>
+            <td class="text-center">{{ t.GstinNumber }} {{ t.TanNumber }}</td>
+            <td class="text-center">{{ t.AmountPaid }}</td>
+            <td class="text-center">{{ t.UtrNumber }}</td>
+            <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
+          </tr>
+        } @else {
+          <tr>
+            @if (list === 'new') {
+              <td class="text-center"><div class="row-actions justify-content-center"><button type="button" class="btn btn-primary" (click)="open(t)">Approve</button></div></td>
+            }
+            <td class="text-center"><strong>{{ t.ZedId }}</strong></td>
+            <td>{{ t.PUnitName || t.EnterpriseName }}</td>
+            <td>{{ t.CategoryOfCertificate }}</td>
+            <td class="cell-lines"><span>{{ t.NameOfCertficate }}</span><span>{{ t.CertificationAgency }}</span></td>
+            <td class="cell-lines text-center"><span>{{ t.CertficateNumber }}</span><span>{{ t.DateOfIssue }}</span><span>{{ t.ValidityOfCertificate }}</span></td>
+            <td class="cell-lines"><span>{{ t.ExpenditureCertficate }}</span><span>{{ t.AgencyOrSupplier }}</span></td>
+            <td class="cell-lines text-center"><span>{{ t.InvoiceNo }}</span><span>{{ t.InvoiceBillDate }}</span><strong>{{ t.AmountPaid }}</strong></td>
+            <td class="cell-lines text-center"><span>{{ t.AccountNo }}</span><span>{{ t.IfscCode }}</span></td>
+            <td>{{ t.BranchAddress }}</td>
+            @if (list === 'approved') {
+              <td class="cell-lines text-center"><span>{{ t.ApproverDateOfReceiptOfPayment }}</span><span>{{ t.ApproverReferenceNo }}</span><strong>{{ t.ApproverAmount }}</strong></td>
+            }
+            @if (list !== 'new') {
+              <td><ng-container *ngTemplateOutlet="longText; context: { $implicit: t.Comments, id: t.TransactionId }" /></td>
+            }
+          </tr>
+        }
+      } @empty {
+        @if (!loading()) {
+          <tr>
+            <td [attr.colspan]="consultancy ? (list === 'new' ? 10 : 11) : list === 'approved' ? 11 : 10" style="padding: 0"><div class="no-data">No Data</div></td>
+          </tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+<zed-pager [pager]="view" />
+
+<!-- Comments: three lines, with more / less when longer. -->
+<ng-template #longText let-text let-id="id">
+  @if (text) {
+    <div class="comments" [class.clamp-3]="!expanded().has(id)" [title]="text">{{ text }}</div>
+    @if (text.length > 160) {
+      <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id)">{{ expanded().has(id) ? 'less' : 'more' }}</button>
+    }
+  }
+</ng-template>
 
 @if (form(); as f) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="neftTitle">
     <div class="modal-dialog modal-popup">
       <div class="modal-content">
-        <form class="form-horizontal" (ngSubmit)="submit()" novalidate>
+        <form (ngSubmit)="submit()" novalidate>
           <div class="modal-header justify-content-between">
             <h3 class="registration-title" id="neftTitle">NEFT Transaction Details</h3>
             <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
@@ -160,11 +167,11 @@
               <div class="alert alert-danger" role="alert">{{ formError() }}</div>
             }
             <div class="form-group mb-3">
-              <label class="col-sm-12" for="neftZedId"><strong>ZED ID<span style="color: red">*</span></strong></label>
+              <label class="form-label" for="neftZedId">ZED ID<span class="req">*</span></label>
               <input id="neftZedId" type="text" readonly class="form-control" [value]="f.transaction.ZedId" />
             </div>
             <div class="form-group mb-3">
-              <label class="col-sm-12" for="neftDate"><strong>Date of receipt of payment<span style="color: red">*</span></strong></label>
+              <label class="form-label" for="neftDate">Date of receipt of payment<span class="req">*</span></label>
               <input id="neftDate" name="date" type="date" class="form-control" [max]="maxDate" required
                      [ngModel]="f.date" (ngModelChange)="update({ date: $event })" />
               @if (f.submitted && !f.date) {
@@ -172,7 +179,7 @@
               }
             </div>
             <div class="form-group mb-3">
-              <label class="col-sm-12" for="neftRef"><strong>Reference number<span style="color: red">*</span></strong></label>
+              <label class="form-label" for="neftRef">Reference number<span class="req">*</span></label>
               <input id="neftRef" name="referenceNo" type="text" class="form-control" maxlength="100" required
                      [ngModel]="f.referenceNo" (ngModelChange)="update({ referenceNo: $event })" />
               @if (f.submitted && !f.referenceNo.trim()) {
@@ -180,7 +187,7 @@
               }
             </div>
             <div class="form-group mb-3">
-              <label class="col-sm-12" for="neftAmount"><strong>Amount<span style="color: red">*</span></strong></label>
+              <label class="form-label" for="neftAmount">Amount<span class="req">*</span></label>
               <input id="neftAmount" name="amount" type="text" inputmode="decimal" class="form-control" maxlength="15" required
                      [ngModel]="f.amount" (ngModelChange)="update({ amount: $event })" />
               @if (f.submitted && !f.amount) {

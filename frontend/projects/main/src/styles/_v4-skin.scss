@@ -32,12 +32,19 @@ h4.registration-title, h5.registration-title { font-size: 18px; line-height: 26p
   border-spacing: 0;
   border: 1px solid $line;
   border-radius: $radius;
-  overflow: hidden;
+  // No overflow: hidden here: it cut off wide tables (their last columns, the action buttons) instead of letting
+  // .table-responsive scroll them. The corners are rounded on the corner cells instead.
   background: #fff;
   font-size: 14px;
   box-shadow: $shadow;
   margin-bottom: 16px;
 }
+.table > :first-child > tr:first-child > *:first-child { border-top-left-radius: $radius; }
+.table > :first-child > tr:first-child > *:last-child { border-top-right-radius: $radius; }
+.table > :last-child > tr:last-child > *:first-child { border-bottom-left-radius: $radius; }
+.table > :last-child > tr:last-child > *:last-child { border-bottom-right-radius: $radius; }
+// A wide table scrolls sideways inside its box rather than being cut.
+.table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .table > :not(caption) > * > * {
   padding: 10px 12px;
   vertical-align: middle;
@@ -77,8 +84,9 @@ table.table.table-zed thead tr th {
 }
 
 // ---- Boxes: filters, forms, panels -------------------------------------------------------------------------------
+// Only the plain boxes become white cards. Coloured panels (panel-black bars, panel-success, the level and dashboard
+// panels) keep their own colours: a white background there made their white titles unreadable.
 .jumbotron,
-.panel,
 .panel-default,
 .panel-grey {
   background: #fff;
@@ -87,8 +95,7 @@ table.table.table-zed thead tr th {
   box-shadow: $shadow;
 }
 .jumbotron { padding: 20px 22px; margin-bottom: 20px; }
-.panel { margin-bottom: 16px; overflow: hidden; }
-.panel > .panel-heading,
+.panel { margin-bottom: 16px; border-radius: 12px; overflow: hidden; }
 .panel-default > .panel-heading {
   background: $teal-tint;
   color: $teal-ink;
@@ -101,16 +108,25 @@ table.table.table-zed thead tr th {
 .card > .card-header { background: $teal-tint; color: $teal-ink; font-weight: 700; border-bottom-color: $line; }
 
 // ---- Inputs ----------------------------------------------------------------------------------------------------
+// The old MVC site capped every input, select and textarea at 280px and fixed inputs at one 42px line; a field now
+// takes its column's width, and a textarea grows.
 .form-control,
 .form-select {
+  max-width: 100%;
+  height: auto;
   min-height: 40px;
+  line-height: 1.5;
+  padding: 8px 12px;
   border: 1px solid $input-line;
   border-radius: 8px;
   font-size: 14px;
   color: $text;
   background-color: #fff;
 }
-textarea.form-control { min-height: 80px; }
+.form-select { padding-right: 36px; }
+textarea.form-control { min-height: 84px; }
+.input-group > .form-control, .input-group > .form-select { max-width: none; }
+input[type='file'].form-control { padding: 6px 8px; }
 .form-control:focus,
 .form-select:focus {
   border-color: $teal;
@@ -148,8 +164,26 @@ input.btn-default {
   border: 1px solid $input-line !important;
 }
 .btn.btn-default:hover, input.btn-default:hover { background-color: $teal-tint !important; border-color: $teal !important; color: $teal-ink !important; }
-.btn-danger { background-color: #d64550; border-color: #d64550; }
-.btn-danger:hover { background-color: #c13a45; border-color: #c13a45; }
+.btn.btn-danger { background-color: #d64550; border-color: #d64550; color: #fff; }
+.btn.btn-danger:hover { background-color: #c13a45; border-color: #c13a45; }
+.btn.btn-outline-danger { color: #c13a45; border: 1px solid #e8a3a9; background: #fff; }
+.btn.btn-outline-danger:hover { background: #fdecee; border-color: #d64550; color: #a8303a; }
+// Rows the old pages marked red (a reason for rejection, overdue): a soft red tint, not a solid red bar.
+.table > tbody > tr.btn-danger > *,
+.table > tbody > tr > td.btn-danger,
+.table > tbody > tr.table-danger > * {
+  --bs-table-bg: #fdeef0;
+  background-color: #fdeef0 !important;
+  color: #7d1f29 !important;
+  border-color: #f4d3d7 !important;
+}
+.table > tbody > tr.btn-warning > *,
+.table > tbody > tr > td.btn-warning {
+  --bs-table-bg: #fff6e0;
+  background-color: #fff6e0 !important;
+  color: #6b4a00 !important;
+}
+.table > tbody > tr.btn-danger a, .table > tbody > tr.btn-warning a { color: inherit; text-decoration: underline; }
 .btn-link { color: $teal-dark; font-weight: 600; }
 .btn-link:hover { color: $teal; }
 
@@ -182,6 +216,17 @@ input.btn-default {
 .modal-body { padding: 18px; }
 .modal-footer { border-top: 1px solid $line; padding: 12px 18px; gap: 8px; }
 .modal-backdrop.show { opacity: 0.45; }
+// Pop-ups with a form: wider, labels in normal case, a narrow label column, fields that grow. (The old styles fixed
+// every pop-up field at 50px, so a description box showed three lines, and made the labels grey capitals.)
+@media (min-width: 768px) {
+  .modal-dialog.modal-popup, .modal-dialog:has(.form-grid) { max-width: 760px; }
+}
+.modal-popup label, .modal .form-grid > label { color: #3b4b4c; text-transform: none; font-size: 14px; font-weight: 600; }
+.modal-popup .form-control, .modal-popup .form-select { height: auto; }
+.modal-popup textarea.form-control, .modal textarea.form-control { min-height: 160px; resize: vertical; }
+.modal .form-grid { grid-template-columns: minmax(110px, 170px) minmax(0, 1fr); }
+.modal-popup .modal-body { padding: 18px; }
+.modal-popup .modal-footer { border-top: 1px solid $line; }
 
 // ---- Notes and alerts ------------------------------------------------------------------------------------------
 .alert { border-radius: 10px; border-width: 1px; font-size: 14px; }
@@ -201,6 +246,47 @@ input.btn-default {
   border-top-color: $teal !important;
 }
 .loadingimage small { color: $teal-dark !important; font-weight: 600; }
+
+// ---- Page building blocks (V4; docs/UI-GUIDE.md) ----------------------------------------------------------------------
+// Title row with the page's actions on the right.
+.page-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.page-head .registration-title { margin: 0; }
+.page-head .page-sub { color: $muted; font-size: 14px; margin: 4px 0 0; }
+.page-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+// A white panel (forms, filters, summaries).
+.zed-card { background: #fff; border: 1px solid $line; border-radius: 14px; box-shadow: $shadow; padding: 18px 20px; margin-bottom: 18px; }
+.zed-card > .card-title, .zed-card > h4 { font-size: 16px; font-weight: 700; color: $teal-ink; margin-bottom: 12px; }
+// Filters in one wrapping row.
+.filter-bar { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: flex-end; }
+.filter-bar > .filter { flex: 1 1 180px; min-width: 160px; max-width: 280px; }
+.filter-bar > .filter.wide { max-width: 420px; flex-basis: 260px; }
+.filter-bar .form-label { margin-bottom: 4px; font-size: 13px; }
+// Label / field pairs in two columns (one on phones).
+.form-grid { display: grid; grid-template-columns: minmax(150px, 240px) minmax(0, 1fr); gap: 14px 20px; align-items: center; }
+.form-grid > label, .form-grid > .label { font-weight: 600; color: #3b4b4c; font-size: 14px; margin: 0; }
+.form-grid .req, .req { color: #d64550; margin-left: 2px; }
+// The label of a tall field (textarea, multi-select, checkbox list) sits at its top.
+.form-grid > .top { align-self: start; padding-top: 8px; }
+// Field validation messages under an input.
+.help-block { display: block; color: #c13a45; font-size: 13px; margin-top: 4px; }
+@media (max-width: 767.98px) { .form-grid { grid-template-columns: minmax(0, 1fr); gap: 6px; } .form-grid > label { margin-top: 8px; } }
+.form-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+// Small labels inside cells.
+.zed-chip { display: inline-block; background: $teal-tint; color: $teal-ink; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
+.status-badge { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.status-badge.is-active, .status-badge.is-success { background: #e6f6ec; color: #1e7a3c; }
+.status-badge.is-inactive { background: #eef1f2; color: #5f6f70; }
+.status-badge.is-pending { background: #fff4d6; color: #8a6100; }
+.status-badge.is-rejected, .status-badge.is-danger { background: #fdeef0; color: #a8303a; }
+.status-badge.is-info { background: $teal-tint; color: $teal-dark; }
+// Row buttons side by side, small.
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.row-actions .btn { padding: 4px 10px; font-size: 13px; border-radius: 6px; }
+.btn.btn-outline-primary { color: $teal-dark; border: 1px solid $teal; background: #fff; }
+.btn.btn-outline-primary:hover { background: $teal-tint; color: $teal-ink; border-color: $teal; }
+// Long text in a table cell: three lines, the rest on hover (title) or "more".
+.clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.muted { color: $muted; }
 
 // ---- Pager line ("Show 10 Entries ... FIRST PREV 1 NEXT LAST") ---------------------------------------------------
 .zed-pager { color: $muted; font-size: 14px; }

@@ -1,96 +1,101 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="row mt-4">
-    <div class="col-sm-12">
-      <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-        <h3 class="registration-title">{{ title }}</h3>
-        <div class="search-input" style="margin-left: auto">
-          <input type="text" placeholder="Search.." aria-label="Search agencies" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-          <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
-        </div>
-        @if (mode === 'all') {
-          <a style="margin-left: 10px" routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add New</a>
-        }
-      </div>
-
-      @if (error()) {
-        <div class="alert alert-danger" role="alert">{{ error() }}</div>
-      }
-      @if (success()) {
-        <div class="alert alert-success" role="status">{{ success() }}</div>
-      }
-
-      <div class="table-responsive">
-        <table class="table table-zed table-bordered bg-white">
-          <thead>
-            <tr class="btn-default text-center" style="font-size: 16px">
-              <th>Status</th>
-              @if (consultancy) {
-                <!-- ZEDCS_CONSULTANCY Frontend/User/AssessmentAgencies.cshtml -->
-                <th>User Id</th>
-                <th>Consultant Organisation Details</th>
-                <th>Spoc Details</th>
-                <th>No. of Consultant</th>
-              } @else {
-                <th>Agency Id</th>
-                <th>Agency Details</th>
-                <th>Spoc Details</th>
-                <th>Category</th>
-                <th>{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of ' + labels.assessors }}</th>
-              }
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (a of view.page(); track a.UserId) {
-              <tr class="filterClass">
-                <td><strong>{{ a.IdStatus }}</strong></td>
-                <td><strong>{{ a.UserId }}</strong></td>
-                <td>
-                  <p class="sub-heading">{{ a.UserName }}</p>
-                  <p>{{ a.Address }}</p>
-                  <p>{{ a.Pincode }}</p>
-                </td>
-                <td><strong>{{ a.SpocName }}</strong><br />{{ a.MobileNo }}<br />{{ a.Email }}</td>
-                @if (!consultancy) {
-                  <td>{{ a.DesktopVerfi }}<br />{{ a.SiteVerifi }}<br />{{ a.FinanceVerfi }}</td>
-                }
-                <td>{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</td>
-                <td class="text-center">
-                  @if (mode === 'all') {
-                    @if (a.IsActive) {
-                      <button type="button" class="btn btn-default" style="width: 100px" [disabled]="saving()" (click)="open('block', a)">Block</button>
-                    } @else {
-                      <button type="button" class="btn btn-primary" style="width: 100px" [disabled]="saving()" (click)="unblock(a)">UnBlock</button>
-                    }
-                    <br />
-                    <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">Edit</a><br />
-                    <!-- V4 addition (not on the old consultancy list): Consultants, Mobile No and Reset Link. -->
-                    <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px">{{ consultancy ? 'Consultants' : 'Assessors' }}</a><br />
-                    <button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
-                    @if (a.IsActive) {
-                      <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="saving()" (click)="sendReset(a)">Reset Link</button>
-                    }
-                  } @else {
-                    @if (a.AllowBronzeAssessments) {
-                      <button type="button" class="btn btn-default" style="width: 130px" [disabled]="saving()" (click)="open('disable-bronze', a)">Disable Bronze Assessments</button>
-                    } @else {
-                      <button type="button" class="btn btn-primary" style="width: 130px" [disabled]="saving()" (click)="enableBronze(a)">Enable Bronze Assessments</button>
-                    }
-                  }
-                </td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-      <zed-pager [pager]="view" />
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">{{ title }}</h3>
+    <p class="page-sub">{{ subtitle }}</p>
+  </div>
+  @if (mode === 'all') {
+    <div class="page-actions">
+      <a routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add New</a>
     </div>
+  }
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert alert-success" role="status">{{ success() }}</div>
+}
+
+<div class="filter-bar mb-3">
+  <div class="filter wide">
+    <input type="search" class="form-control" placeholder="Search ID, name, SPOC, mobile, e-mail or status" aria-label="Search agencies"
+           [ngModel]="search()" (ngModelChange)="search.set($event)" />
   </div>
 </div>
+
+<div class="table-responsive">
+  <table class="table table-zed table-bordered">
+    <thead>
+      <tr>
+        <th class="text-center" style="width: 100px">Status</th>
+        @if (consultancy) {
+          <!-- ZEDCS_CONSULTANCY Frontend/User/AssessmentAgencies.cshtml -->
+          <th class="text-center">User Id</th>
+          <th>Consultant Organisation Details</th>
+          <th>Spoc Details</th>
+          <th class="text-center">No. of Consultant</th>
+        } @else {
+          <th class="text-center">Agency Id</th>
+          <th>Agency Details</th>
+          <th>Spoc Details</th>
+          <th>Category</th>
+          <th class="text-center">{{ mode === 'bronze' ? 'No. of Bronze Assessors' : 'No. of ' + labels.assessors }}</th>
+        }
+        <th class="text-center" style="width: 230px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (a of view.page(); track a.UserId) {
+        <tr class="filterClass">
+          <td class="text-center"><span class="status-badge" [class.is-active]="a.IsActive" [class.is-rejected]="!a.IsActive">{{ a.IdStatus }}</span></td>
+          <td class="text-center"><strong>{{ a.UserId }}</strong></td>
+          <td>
+            <p class="sub-heading">{{ a.UserName }}</p>
+            <p class="muted">{{ a.Address }}</p>
+            <p class="muted">{{ a.Pincode }}</p>
+          </td>
+          <td><strong>{{ a.SpocName }}</strong><small class="d-block">{{ a.MobileNo }}</small><small class="d-block text-muted">{{ a.Email }}</small></td>
+          @if (!consultancy) {
+            <td>
+              @for (c of [a.DesktopVerfi, a.SiteVerifi, a.FinanceVerfi]; track $index) {
+                @if (c) { <span class="zed-chip">{{ c }}</span> }
+              }
+            </td>
+          }
+          <td class="text-center">{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</td>
+          <td class="text-center">
+            <div class="row-actions justify-content-center">
+              @if (mode === 'all') {
+                <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-outline-primary">Edit</a>
+                <!-- V4 addition (not on the old consultancy list): Consultants, Mobile No and Reset Link. -->
+                <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-outline-primary">{{ consultancy ? 'Consultants' : 'Assessors' }}</a>
+                <button type="button" class="btn btn-default" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
+                @if (a.IsActive) {
+                  <button type="button" class="btn btn-default" [disabled]="saving()" (click)="sendReset(a)">Reset Link</button>
+                  <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('block', a)">Block</button>
+                } @else {
+                  <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="unblock(a)">UnBlock</button>
+                }
+              } @else {
+                @if (a.AllowBronzeAssessments) {
+                  <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('disable-bronze', a)">Disable Bronze Assessments</button>
+                } @else {
+                  <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="enableBronze(a)">Enable Bronze Assessments</button>
+                }
+              }
+            </div>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="7" style="padding: 0"><div class="no-data">{{ search() ? 'No agency matches the search' : 'No Data' }}</div></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+<zed-pager [pager]="view" />
 
 @if (dialog(); as d) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="agency-dialog-title">
@@ -112,11 +117,13 @@
           <div class="modal-body">
             <p class="mb-2"><strong>{{ d.agency.UserId }}</strong> – {{ d.agency.UserName }}</p>
             @if (d.kind === 'mobile') {
-              <label class="visually-hidden" for="dialog-mobile">Mobile Number</label>
-              <input id="dialog-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
+              <div class="form-grid">
+                <label for="dialog-mobile">Mobile Number<span class="req">*</span></label>
+                <input id="dialog-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
+              </div>
             } @else {
               <label class="visually-hidden" for="dialog-reason">Reason</label>
-              <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" style="height: 100px" [(ngModel)]="d.text"></textarea>
+              <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"></textarea>
             }
             @if (dialogError()) {
               <span class="help-block" role="alert">{{ dialogError() }}</span>
@@ -124,7 +131,7 @@
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-            <button type="submit" class="btn btn-primary" [disabled]="saving()">
+            <button type="submit" class="btn" [class.btn-danger]="d.kind !== 'mobile'" [class.btn-primary]="d.kind === 'mobile'" [disabled]="saving()">
               @switch (d.kind) {
                 @case ('block') { Block }
                 @case ('disable-bronze') { Disable Bronze Assessments }

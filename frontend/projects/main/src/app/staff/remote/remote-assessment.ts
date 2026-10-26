@@ -5,7 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { withApiBase } from '../../api-base';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
-import { num, text } from '../assessment/assessment-shared';
+import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
@@ -78,6 +78,7 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
   selector: 'zed-staff-remote-assessment',
   imports: [FormsModule, RouterLink, ContentTextComponent],
   templateUrl: './remote-assessment.html',
+  styles: [DETAILS_STYLES],
   styleUrl: './remote-assessment.css',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })

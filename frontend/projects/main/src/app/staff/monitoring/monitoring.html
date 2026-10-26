@@ -1,231 +1,220 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="mt-3">
-    <div class="row mb-1">
-      <div class="col-sm-12">
-        <h3 class="registration-title">{{ title }}</h3>
-      </div>
-    </div>
-
-    <div class="row mb-3">
-      <div class="col-sm-12">
-        <div class="mb-2">
-          <label for="certification">Certification Level </label>
-          <select id="certification" class="form-control" style="width: 200px" [ngModel]="certification()" (ngModelChange)="setCertification($event)">
-            <!-- Consultancy (that portal's page): a disabled "Select" option is always first. -->
-            @if (consultancy) {
-              <option value="" disabled>Select</option>
-            } @else if (!certification()) {
-              <option value="" disabled>--Select--</option>
-            }
-            @for (l of levels; track l) {
-              <option [value]="l">{{ l }}</option>
-            }
-          </select>
-        </div>
-
-        <div>
-          @for (t of tabs; track t.status) {
-            <button type="button" class="btn btn-primary btn-md mb-2 me-2" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status"
-                    (click)="setStatus(t.status)">
-              {{ t.label }} <span class="badge bg-primary">{{ countOf(t.count) }}</span>
-            </button>
-          }
-        </div>
-
-        <div class="row">
-          @if (!consultancy && certification() && status() === 4) {
-            <div class="col-sm-6" style="margin-top: 24px">
-              <div class="search-input d-flex">
-                <input type="date" id="NcCloseDate" class="form-control" aria-label="NC closure date" [ngModel]="ncClosingDate()" (ngModelChange)="ncClosingDate.set($event)" />
-                <button type="button" class="btn btn-link" aria-label="Filter by NC closure date" (click)="load()"><i class="fa fa-search"></i> Search</button>
-              </div>
-            </div>
-          }
-          @if (certification()) {
-            <div class="col-sm-6 ms-auto" style="margin-top: 24px">
-              <div class="search-input">
-                <input type="text" class="form-control" placeholder="ZED ID" maxlength="50" aria-label="Search by ZED ID"
-                       [ngModel]="search()" (ngModelChange)="setSearch($event)" />
-              </div>
-            </div>
-          }
-        </div>
-      </div>
-    </div>
-
-    @if (error()) {
-      <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
-
-    <div class="row">
-      <div class="col-sm-12">
-        <div class="table-responsive">
-          <table class="table table-bordered table-zed">
-            <thead>
-              @if (consultancy) {
-                <tr>
-                  <th>S.No.</th>
-                  <th>Desired Certification</th>
-                  <th>Unit Details</th>
-                  <th>CO Details</th>
-                  <th>Milestone</th>
-                  <th>Consultants/Expert Details</th>
-                  <th>Site Visit Dates</th>
-                  <th>Action(s)</th>
-                </tr>
-              } @else {
-                <tr>
-                  <th>S.No.</th>
-                  @if (surveillance) {
-                    <th>Certification Level <br /><br />Surveillance No</th>
-                  } @else {
-                    <th>Certification Level</th>
-                  }
-                  <th>Unit Details</th>
-                  <th>Agency Details</th>
-                  <th>Mode of Assessment</th>
-                  <th>Assessors Details</th>
-                  @if (main) { <th>Duplicates</th> }
-                  @if (canManage()) {
-                    <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates <br />NC Closure Date</th>
-                  } @else {
-                    <th>{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates</th>
-                  }
-                  <th>Action(s)</th>
-                </tr>
-              }
-            </thead>
-            <tbody>
-              @for (s of page(); track s['ZedId'] + '|' + s['Certification']) {
-                <!-- An open NC: main table-danger; surveillance and consultancy btn-warning (as their old pages). -->
-                <tr [class.table-danger]="main && highlighted(s)" [class.btn-warning]="!main && highlighted(s)">
-                  <td>{{ s['RowNumber'] }}</td>
-                  <td>
-                    {{ s['Certification'] }}
-                    @if (surveillance) { <br /><br />{{ s['SurveillanceNo'] }} }
-                  </td>
-                  <td>
-                    <strong>{{ s['ZedId'] }}</strong><br />
-                    <strong>{{ s['PUnitName'] }}</strong><br />
-                    {{ s['UnitAddress'] }}
-                  </td>
-                  <td>
-                    <strong>{{ s['AgencyName'] }}</strong> <br />
-                    {{ s['CertificationBodyUserId'] }}
-                  </td>
-                  @if (consultancy) {
-                    <td>Milestone {{ s['NcCount'] }}</td>
-                    <td>
-                      <strong>{{ s['SiteAssessorName'] }}</strong><br />{{ s['SiteAssessorId'] }}<br /><br />
-                      <strong>{{ s['CoAssessorName'] }}</strong><br />{{ s['CoAssessorId'] }}<br /><br />
-                      <strong>{{ s['TechExpertName'] }}</strong><br />{{ s['TechExpert'] }}<br />
-                    </td>
-                    <td>
-                      @if (num(s, 'NcCount') > 1) {
-                        {{ s['DocVerifiAllot'] }}<br /><br />PR{{ num(s, 'NcCount') - 1 }}: {{ s['SaAssessmentDate'] }}
-                      } @else {
-                        BDS: {{ s['BdsFromDate'] }}<br /><br />HAP: {{ s['HapFromDate'] }}
-                      }
-                    </td>
-                  } @else {
-                    <td>
-                      @if (surveillance) {
-                        {{ s['ModeOfAssessment'] }}
-                      } @else {
-                        Desktop <br /><br />
-                        @if (s['ModeOfAssessment'] === 'Remote Assessment') { Remote }
-                        @if (s['ModeOfAssessment'] === 'Onsite Assessment') { Onsite }
-                      }
-                    </td>
-                    <td>
-                      <strong>{{ s['DesktopAssessorName'] }}</strong><br />{{ s['DesktopAssessorId'] }}<br /><br />
-                      <strong>{{ s['SiteAssessorName'] }}</strong><br />{{ s['SiteAssessorId'] }}<br /><br />
-                      <strong>{{ s['CoAssessorName'] }}</strong><br />{{ s['CoAssessorId'] }}<br />
-                    </td>
-                    @if (main) {
-                      <td [class.yellow-background]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</td>
-                    }
-                    <td>
-                      <!-- Surveillance: the master admin's column has no allotment date (that portal's page). -->
-                      @if (!surveillance || !canManage()) { {{ s['DocVerifiAllot'] }}<br /><br /> }{{ s['SaAssessmentDate'] }}
-                      @if (canManage()) {
-                        <br /><br /><strong>{{ s['NcFinalClosureDt'] }}</strong>
-                      }
-                    </td>
-                  }
-                  <td>
-                    <a class="btn btn-primary mb-2 action-btn" [href]="profileLink(s)">View Profile</a>
-                    <a class="btn btn-primary btn-xs action-btn" [routerLink]="detailsLink(s)">
-                      @if (consultancy) { View Details } @else { Assessment<br /> Details }
-                    </a>
-                    @if (canManage() && !consultancy) {
-                      @if (status() === 4 || (surveillance && status() === 7)) {
-                        <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'extend', unit: s, days: 0 })">Extend NC <br />Final Closure Date</button>
-                      }
-                      @if (status() === 4) {
-                        <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'stepBack', unit: s })">Step Back to NC{{ num(s, 'NcCount') - 1 }}</button>
-                      }
-                      @if (canSendBack(s)) {
-                        <button type="button" class="btn btn-primary btn-xs action-btn mt-2" (click)="open({ kind: 'sendBack', unit: s })">Send Back to Agency</button>
-                      }
-                    }
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td [attr.colspan]="consultancy ? 8 : main ? 9 : 8" style="padding: 0px"><div class="no-data">No Data</div></td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <zed-pager [pager]="pager" />
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">{{ title }}</h3>
+    <p class="page-sub">{{ subtitle }}</p>
   </div>
 </div>
 
+<div class="zed-card">
+  <div class="filter-bar">
+    <div class="filter">
+      <label class="form-label" for="certification">Certification Level</label>
+      <select id="certification" class="form-select" [ngModel]="certification()" (ngModelChange)="setCertification($event)">
+        <!-- Consultancy (that portal's page): a disabled "Select" option is always first. -->
+        @if (consultancy) {
+          <option value="" disabled>Select</option>
+        } @else if (!certification()) {
+          <option value="" disabled>--Select--</option>
+        }
+        @for (l of levels; track l) {
+          <option [value]="l">{{ l }}</option>
+        }
+      </select>
+    </div>
+    @if (!consultancy && certification() && status() === 4) {
+      <div class="filter">
+        <label class="form-label" for="NcCloseDate">NC Closure Date</label>
+        <div class="input-group">
+          <input type="date" id="NcCloseDate" class="form-control" [ngModel]="ncClosingDate()" (ngModelChange)="ncClosingDate.set($event)" />
+          <button type="button" class="btn btn-outline-primary" aria-label="Filter by NC closure date" (click)="load()"><i class="fa fa-search"></i> Search</button>
+        </div>
+      </div>
+    }
+    @if (certification()) {
+      <div class="filter wide ms-auto">
+        <label class="form-label" for="monitoringSearch">Search</label>
+        <input type="text" id="monitoringSearch" class="form-control" placeholder="ZED ID" maxlength="50" aria-label="Search by ZED ID"
+               [ngModel]="search()" (ngModelChange)="setSearch($event)" />
+      </div>
+    }
+  </div>
+
+  <div class="status-tabs" role="group" aria-label="Assessment status">
+    @for (t of tabs; track t.status) {
+      <button type="button" class="btn btn-outline-primary" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status"
+              (click)="setStatus(t.status)">
+        {{ t.label }} <span class="badge">{{ countOf(t.count) }}</span>
+      </button>
+    }
+  </div>
+</div>
+
+@if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert alert-success" role="status">{{ success() }}</div>
+}
+
+<div class="table-responsive">
+  <table class="table table-bordered table-zed">
+    <thead>
+      @if (consultancy) {
+        <tr>
+          <th class="text-center" style="width: 60px">S.No.</th>
+          <th class="text-center">Desired Certification</th>
+          <th>Unit Details</th>
+          <th>CO Details</th>
+          <th class="text-center">Milestone</th>
+          <th>Consultants/Expert Details</th>
+          <th class="text-center">Site Visit Dates</th>
+          <th class="text-center" style="width: 200px">Action(s)</th>
+        </tr>
+      } @else {
+        <tr>
+          <th class="text-center" style="width: 60px">S.No.</th>
+          @if (surveillance) {
+            <th class="text-center">Certification Level<br />Surveillance No</th>
+          } @else {
+            <th class="text-center">Certification Level</th>
+          }
+          <th>Unit Details</th>
+          <th>Agency Details</th>
+          <th class="text-center">Mode of Assessment</th>
+          <th>Assessors Details</th>
+          @if (main) { <th class="text-center">Duplicates</th> }
+          @if (canManage()) {
+            <th class="text-center">{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates<br />NC Closure Date</th>
+          } @else {
+            <th class="text-center">{{ surveillance ? 'Surveillance' : 'Assessment' }} Dates</th>
+          }
+          <th class="text-center" style="width: 200px">Action(s)</th>
+        </tr>
+      }
+    </thead>
+    <tbody>
+      @for (s of page(); track s['ZedId'] + '|' + s['Certification']) {
+        <!-- An open NC: main table-danger; surveillance and consultancy btn-warning (as their old pages). -->
+        <tr [class.table-danger]="main && highlighted(s)" [class.btn-warning]="!main && highlighted(s)">
+          <td class="text-center">{{ s['RowNumber'] }}</td>
+          <td class="text-center">
+            <strong>{{ s['Certification'] }}</strong>
+            @if (surveillance) { <div class="muted">{{ s['SurveillanceNo'] }}</div> }
+          </td>
+          <td class="unit">
+            <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
+            <div><strong>{{ s['PUnitName'] }}</strong></div>
+            <div class="muted">{{ s['UnitAddress'] }}</div>
+          </td>
+          <td>
+            <strong>{{ s['AgencyName'] }}</strong>
+            <div class="muted">{{ s['CertificationBodyUserId'] }}</div>
+          </td>
+          @if (consultancy) {
+            <td class="text-center"><span class="zed-chip">Milestone {{ s['NcCount'] }}</span></td>
+            <td class="stack">
+              <div><strong>{{ s['SiteAssessorName'] }}</strong><div class="muted">{{ s['SiteAssessorId'] }}</div></div>
+              <div><strong>{{ s['CoAssessorName'] }}</strong><div class="muted">{{ s['CoAssessorId'] }}</div></div>
+              <div><strong>{{ s['TechExpertName'] }}</strong><div class="muted">{{ s['TechExpert'] }}</div></div>
+            </td>
+            <td class="stack text-center">
+              @if (num(s, 'NcCount') > 1) {
+                <div>{{ s['DocVerifiAllot'] }}</div><div>PR{{ num(s, 'NcCount') - 1 }}: {{ s['SaAssessmentDate'] }}</div>
+              } @else {
+                <div>BDS: {{ s['BdsFromDate'] }}</div><div>HAP: {{ s['HapFromDate'] }}</div>
+              }
+            </td>
+          } @else {
+            <td class="text-center">
+              @if (surveillance) {
+                {{ s['ModeOfAssessment'] }}
+              } @else {
+                <span class="zed-chip">Desktop</span>
+                @if (s['ModeOfAssessment'] === 'Remote Assessment') { <span class="zed-chip">Remote</span> }
+                @if (s['ModeOfAssessment'] === 'Onsite Assessment') { <span class="zed-chip">Onsite</span> }
+              }
+            </td>
+            <td class="stack">
+              <div><strong>{{ s['DesktopAssessorName'] }}</strong><div class="muted">{{ s['DesktopAssessorId'] }}</div></div>
+              <div><strong>{{ s['SiteAssessorName'] }}</strong><div class="muted">{{ s['SiteAssessorId'] }}</div></div>
+              <div><strong>{{ s['CoAssessorName'] }}</strong><div class="muted">{{ s['CoAssessorId'] }}</div></div>
+            </td>
+            @if (main) {
+              <td class="text-center" [class.yellow-background]="num(s, 'SameUdyamAddress') > 0">{{ s['SameUdyamAddress'] }}</td>
+            }
+            <td class="stack text-center">
+              <!-- Surveillance: the master admin's column has no allotment date (that portal's page). -->
+              @if (!surveillance || !canManage()) { <div>{{ s['DocVerifiAllot'] }}</div> }
+              <div>{{ s['SaAssessmentDate'] }}</div>
+              @if (canManage()) {
+                <div><strong>{{ s['NcFinalClosureDt'] }}</strong></div>
+              }
+            </td>
+          }
+          <td class="text-center">
+            <div class="row-actions justify-content-center">
+              <a class="btn btn-outline-primary" [href]="profileLink(s)">View Profile</a>
+              <a class="btn btn-outline-primary" [routerLink]="detailsLink(s)">{{ consultancy ? 'View Details' : 'Assessment Details' }}</a>
+              @if (canManage() && !consultancy) {
+                @if (status() === 4 || (surveillance && status() === 7)) {
+                  <button type="button" class="btn btn-outline-primary" (click)="open({ kind: 'extend', unit: s, days: 0 })">Extend NC Final Closure Date</button>
+                }
+                @if (status() === 4) {
+                  <button type="button" class="btn btn-outline-danger" (click)="open({ kind: 'stepBack', unit: s })">Step Back to NC{{ num(s, 'NcCount') - 1 }}</button>
+                }
+                @if (canSendBack(s)) {
+                  <button type="button" class="btn btn-outline-danger" (click)="open({ kind: 'sendBack', unit: s })">Send Back to Agency</button>
+                }
+              }
+            </div>
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td [attr.colspan]="consultancy ? 8 : main ? 9 : 8" style="padding: 0px"><div class="no-data">No Data</div></td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<zed-pager [pager]="pager" />
+
 @if (action(); as a) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="monitoring-action-title" (click)="close()">
-    <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
       <div class="modal-content">
-        <div class="modal-header">
-          <div class="modal-title w-100 d-flex justify-content-between">
-            <strong id="monitoring-action-title">
-              @switch (a.kind) {
-                @case ('extend') { Extend Nc Closure Date }
-                @case ('stepBack') { NC Step back confirmation }
-                @case ('sendBack') { Send Back to agency confirmation }
-              }
-            </strong>
-            <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
-          </div>
+        <div class="modal-header justify-content-between">
+          <h5 class="modal-title" id="monitoring-action-title">
+            @switch (a.kind) {
+              @case ('extend') { Extend Nc Closure Date }
+              @case ('stepBack') { NC Step back confirmation }
+              @case ('sendBack') { Send Back to agency confirmation }
+            }
+          </h5>
+          <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
         </div>
         <div class="modal-body">
-          <p><strong>{{ a.unit['ZedId'] }}</strong> ({{ a.unit['Certification'] }})</p>
+          <p class="mb-2"><strong>{{ a.unit['ZedId'] }}</strong> ({{ a.unit['Certification'] }})</p>
           @switch (a.kind) {
             @case ('extend') {
               <div class="alert alert-warning">Nc Final Closure Date: <strong>{{ a.unit['NcFinalClosureDt'] }}</strong></div>
-              <label for="noOfDays"><strong>No. of Days to Extend:</strong></label>
-              <select id="noOfDays" class="form-control" [(ngModel)]="a.days">
+              <label class="form-label" for="noOfDays">No. of Days to Extend:</label>
+              <select id="noOfDays" class="form-select" [(ngModel)]="a.days">
                 @for (d of extendDays; track d) {
                   <option [ngValue]="d">{{ d }}</option>
                 }
               </select>
             }
             @case ('stepBack') {
-              <div class="alert alert-warning">Are you sure want to step back to <strong>NC{{ num(a.unit, 'NcCount') - 1 }}</strong></div>
+              <div class="alert alert-warning mb-0">Are you sure want to step back to <strong>NC{{ num(a.unit, 'NcCount') - 1 }}</strong></div>
             }
             @case ('sendBack') {
-              <div class="alert alert-warning">Are you sure want to send back to agency for Reallocation?</div>
+              <div class="alert alert-warning mb-0">Are you sure want to send back to agency for Reallocation?</div>
             }
           }
           @if (actionError()) {
-            <div class="alert alert-danger mt-2" role="alert">{{ actionError() }}</div>
+            <div class="alert alert-danger mt-2 mb-0" role="alert">{{ actionError() }}</div>
           }
         </div>
         <div class="modal-footer">

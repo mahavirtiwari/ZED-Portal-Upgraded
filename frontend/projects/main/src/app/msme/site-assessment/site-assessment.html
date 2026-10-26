@@ -1,5 +1,5 @@
-<div class="form-page" id="zed_user_form">
-  <div class="container">
+<div class="container form-page" id="zed_user_form">
+  <div class="Dashboard-msme">
     @if (error()) {
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
@@ -11,108 +11,105 @@
     }
 
     @if (data(); as d) {
-      <div class="row mt-3">
-        <!-- Unit summary -->
-        <div class="col-sm-3">
-          <h3 class="registration-title dash-text-clr">Welcome</h3>
-          <div class="panel panel-default panel-grey">
-            <div class="panel-body">
-              <div class="entp-type-sec">
-                @switch (msme()['EnterpriseType']) {
-                  @case ('Micro') { <div class="entp-label micro">M</div> }
-                  @case ('Small') { <div class="entp-label small">S</div> }
-                  @case ('Medium') { <div class="entp-label medium">M</div> }
-                }
-                @if (msme()['RegistrationType'] === 'UAM') {
-                  <p class="entp-type-title">{{ msme()['EnterpriseTypee'] }}</p>
-                } @else if (msme()['RegistrationType'] === 'UDYAM') {
-                  <p class="entp-type-title">{{ msme()['EnterpriseType'] }}</p>
-                }
-              </div>
-              <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-              <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
-              <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
-            </div>
-          </div>
-
-          <div class="panel panel-default panel-black panel-msme-black mt-2"><div class="panel-body">Selected Unit</div></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-          <div class="unit-selection">
-            <img src="/Images/svgicons/mapicon.svg" alt="" />
-            <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
-          </div>
-
-          <div class="panel panel-default panel-black panel-msme-black"><div class="panel-body">Selected Activity</div></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-          <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-
-          <div class="panel panel-default panel-black panel-msme-black"><div class="panel-body">ZED Pledge Certificate</div></div>
-          <div class="unit-selection">
-            <div class="col-sm-12" style="padding: 0">
-              <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
-              <div class="btn-download">
-                <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
-              </div>
-            </div>
-          </div>
+      <div class="page-head">
+        <div class="zed-info-panel">
+          <ul class="cert-steps mb-0">
+            <li>
+              @if (isMilestone()) {
+                <div class="step-details ms-0">
+                  <h3 class="registration-title">HANDHOLDING SUPPORT</h3>
+                  <p class="page-sub">What the consultant recorded at your unit, milestone by milestone.</p>
+                </div>
+              } @else {
+                <div class="step-num"><span>3</span></div>
+                <div class="step-details">
+                  <h3 class="registration-title">Site Assessment Information</h3>
+                  <p class="page-sub">What the assessor recorded at your unit: basic information, site tour and parameters.</p>
+                </div>
+              }
+            </li>
+          </ul>
         </div>
+      </div>
 
-        <div class="col-sm-9">
+      <div class="dash-grid">
+        <!-- Unit summary -->
+        <aside class="dash-side">
+          <div class="zed-card unit-card">
+            <div class="entp-type-sec">
+              @switch (msme()['EnterpriseType']) {
+                @case ('Micro') { <div class="entp-label micro">M</div> }
+                @case ('Small') { <div class="entp-label small">S</div> }
+                @case ('Medium') { <div class="entp-label medium">M</div> }
+              }
+              @if (msme()['RegistrationType'] === 'UAM') {
+                <p class="entp-type-title">{{ msme()['EnterpriseTypee'] }}</p>
+              } @else if (msme()['RegistrationType'] === 'UDYAM') {
+                <p class="entp-type-title">{{ msme()['EnterpriseType'] }}</p>
+              }
+            </div>
+            <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+            <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+            <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+          </div>
+
+          <div class="zed-card side-card">
+            <h4>Selected Unit</h4>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+            <div class="unit-selection">
+              <img src="/Images/svgicons/mapicon.svg" alt="" />
+              <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+            </div>
+          </div>
+
+          <div class="zed-card side-card">
+            <h4>Selected Activity</h4>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+            <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
+          </div>
+
+          <div class="zed-card side-card">
+            <h4>ZED Pledge Certificate</h4>
+            <p class="mb-0">Pledge taken on {{ msme()['PledgeOn'] }}</p>
+            <div class="btn-download">
+              <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
+            </div>
+          </div>
+        </aside>
+
+        <div class="dash-main">
           <div class="zed-tabs">
+            <ul class="nav nav-tabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === 'basic'" type="button" role="tab" [attr.aria-selected]="tab() === 'basic'" (click)="select('basic')">
+                  {{ isMilestone() ? 'Basic Information' : 'Basic Info' }}
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === 'tour'" type="button" role="tab" [attr.aria-selected]="tab() === 'tour'" (click)="select('tour')">Site Tour</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" [class.active]="tab() === 'parameters'" type="button" role="tab" [attr.aria-selected]="tab() === 'parameters'" (click)="select('parameters')">Parameters</button>
+              </li>
+            </ul>
+
             <div class="tab-content">
-              <div class="row">
-                <div class="col-sm-12">
-                  <div class="zed-info-panel">
-                    <ul class="cert-steps">
-                      <li>
-                        @if (isMilestone()) {
-                          <div class="step-details"><h3 class="registration-title">HANDHOLDING SUPPORT</h3></div>
-                        } @else {
-                          <div class="step-num"><span>3</span></div>
-                          <div class="step-details"><h3 class="registration-title">Site Assessment Information</h3></div>
-                        }
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              <div class="row">
-                <div class="col-sm-12">
-                  <ul class="nav nav-tabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" [class.active]="tab() === 'basic'" type="button" role="tab" [attr.aria-selected]="tab() === 'basic'" (click)="select('basic')">
-                        {{ isMilestone() ? 'Basic Information' : 'Basic Info' }}
-                      </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" [class.active]="tab() === 'tour'" type="button" role="tab" [attr.aria-selected]="tab() === 'tour'" (click)="select('tour')">Site Tour</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                      <button class="nav-link" [class.active]="tab() === 'parameters'" type="button" role="tab" [attr.aria-selected]="tab() === 'parameters'" (click)="select('parameters')">Parameters</button>
-                    </li>
-                  </ul>
-
-                  <div class="tab-content">
-                    <div class="tab-pane fade show active" role="tabpanel">
-                      @if (!isMilestone()) {
-                        @switch (tab()) {
-                          @case ('basic') { <ng-container *ngTemplateOutlet="basicInfoTab" /> }
-                          @case ('tour') { <ng-container *ngTemplateOutlet="siteTourTab" /> }
-                          @case ('parameters') { <ng-container *ngTemplateOutlet="parametersTab" /> }
-                        }
-                      } @else {
-                        @switch (tab()) {
-                          @case ('basic') { <ng-container *ngTemplateOutlet="milestoneBasicTab" /> }
-                          @case ('tour') { <ng-container *ngTemplateOutlet="milestoneTourTab" /> }
-                          @case ('parameters') { <ng-container *ngTemplateOutlet="milestoneParametersTab" /> }
-                        }
-                      }
-                    </div>
-                  </div>
-                </div>
+              <div class="tab-pane fade show active" role="tabpanel">
+                @if (!isMilestone()) {
+                  @switch (tab()) {
+                    @case ('basic') { <ng-container *ngTemplateOutlet="basicInfoTab" /> }
+                    @case ('tour') { <ng-container *ngTemplateOutlet="siteTourTab" /> }
+                    @case ('parameters') { <ng-container *ngTemplateOutlet="parametersTab" /> }
+                  }
+                } @else {
+                  @switch (tab()) {
+                    @case ('basic') { <ng-container *ngTemplateOutlet="milestoneBasicTab" /> }
+                    @case ('tour') { <ng-container *ngTemplateOutlet="milestoneTourTab" /> }
+                    @case ('parameters') { <ng-container *ngTemplateOutlet="milestoneParametersTab" /> }
+                  }
+                }
               </div>
             </div>
           </div>
@@ -127,16 +124,16 @@
             <hr class="row sa-rule" />
             <table class="table table-bordered">
               <thead>
-                <tr><th>S.No</th><th>Description</th><th>Responses</th></tr>
+                <tr><th class="text-center" style="width: 70px">S.No</th><th>Description</th><th>Responses</th></tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>1</td>
+                  <td class="text-center">1</td>
                   <td>Whether 3rd Party Financial Audits are conducted?</td>
                   <td>{{ assessment()['AuditsConducted'] }}</td>
                 </tr>
                 <tr>
-                  <td>2</td>
+                  <td class="text-center">2</td>
                   <td>Product manufactured</td>
                   <td>
                     <table class="table table-default table-zed">
@@ -154,7 +151,7 @@
                                     <img [src]="p.productPhoto" alt="" />
                                     <span>Product Photo</span>
                                   </div>
-                                  <button type="button" class="btn btn-primary pull-right" (click)="openPreview(p.productPhoto)">VIEW</button>
+                                  <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productPhoto)">VIEW</button>
                                 </div>
                               }
                               @if (p.productDescriptionPhoto) {
@@ -164,7 +161,7 @@
                                       <img class="sa-pdf-icon" [class.opened]="p.productDescriptionOpened" src="/Images/svgicons/pdf-icon.svg" alt="" />
                                       <span>Product Description Photo</span>
                                     </div>
-                                    <a class="btn btn-primary pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">VIEW</a>
+                                    <a class="btn btn-outline-primary btn-sm pull-right" [href]="p.productDescriptionPhoto" target="_blank" rel="noopener">VIEW</a>
                                   </div>
                                 } @else {
                                   <div class="row-data">
@@ -172,7 +169,7 @@
                                       <img [src]="p.productDescriptionPhoto" alt="" />
                                       <span>Product Description Photo</span>
                                     </div>
-                                    <button type="button" class="btn btn-primary pull-right" (click)="openPreview(p.productDescriptionPhoto)">VIEW</button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(p.productDescriptionPhoto)">VIEW</button>
                                   </div>
                                 }
                               }
@@ -202,11 +199,11 @@
                     <td>
                       <table class="table table-striped">
                         <thead>
-                          <tr><th>Raw Material Name</th><th>% of Raw Material Imported</th><th>Name of Country</th></tr>
+                          <tr><th>Raw Material Name</th><th class="text-center">% of Raw Material Imported</th><th>Name of Country</th></tr>
                         </thead>
                         <tbody>
                           @for (r of d.rawMaterials; track $index) {
-                            <tr><td>{{ r['RawMaterialName'] }}</td><td>{{ r['Percentage'] }}</td><td>{{ r['CountryName'] }}</td></tr>
+                            <tr><td>{{ r['RawMaterialName'] }}</td><td class="text-center">{{ r['Percentage'] }}</td><td>{{ r['CountryName'] }}</td></tr>
                           }
                         </tbody>
                       </table>
@@ -223,7 +220,7 @@
 
       <ng-template #daSaRow let-no="no" let-label="label" let-da="da" let-sa="sa">
         <tr>
-          <td>{{ no }}</td>
+          <td class="text-center">{{ no }}</td>
           <td>{{ label }}</td>
           <td>
             <table class="table table-bordered table-striped">
@@ -301,7 +298,7 @@
                                         <span>{{ e.evidenceName }}</span>
                                       </div>
                                       @if (e.url) {
-                                        <a class="btn btn-primary pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
+                                        <a class="btn btn-outline-primary btn-sm pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
                                       }
                                     </div>
                                   </td>
@@ -347,8 +344,7 @@
               }
             </div>
           }
-          <div class="col-sm-12">
-            <br />
+          <div class="col-sm-12 mt-3">
             @if (assessment()['AssessorRemarks']) {
               <div class="label-highlight3">{{ assessment()['AssessorRemarks'] }}</div>
             }
@@ -364,7 +360,7 @@
             <div class="panel panel-default panel-black mt-4"><div class="panel-body">Site Exterior Photos</div></div>
             <div class="sa-milestone-border">
               @for (m of d.siteExteriorPhotos; track $index) {
-                <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                <table class="table table-bordered table-zed sa-milestone-table">
                   <tr>
                     <td rowspan="3" [class]="'milestone-' + m.ncCount"><p>Milestone {{ m.ncCount }}</p></td>
                     <td class="p-0"></td>
@@ -383,7 +379,7 @@
                                 <span>Captured at {{ pp.createdDate }}</span>
                               </div>
                               @if (pp.src) {
-                                <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
                               }
                             </div>
                           </div>
@@ -399,7 +395,7 @@
               <div class="panel panel-default panel-black"><div class="panel-body">{{ section.title }}</div></div>
               <div class="sa-milestone-border">
                 @for (info of d.consultancyBasicInfo; track $index) {
-                  <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                  <table class="table table-bordered table-zed sa-milestone-table">
                     <tr>
                       <td rowspan="3" [class]="'milestone-' + text(info, 'NcCount')"><p>Milestone {{ info['NcCount'] }}</p></td>
                       <td class="p-0"></td>
@@ -478,7 +474,7 @@
                   </div>
                   <div class="sa-milestone-border">
                     <!-- Milestone 1 : Basic Diagnostic Study -->
-                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                    <table class="table table-bordered table-zed sa-milestone-table">
                       <tr>
                         <td rowspan="3" class="milestone-1"><p>Milestone 1 : Basic Diagnostic Study</p></td>
                         <td class="p-0">
@@ -505,7 +501,7 @@
                     </table>
 
                     <!-- Milestone 1 : Handholding Action Plan -->
-                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                    <table class="table table-bordered table-zed sa-milestone-table">
                       <tr>
                         <td rowspan="3" class="milestone-1"><p>Milestone 1 : Handholding Action Plan</p></td>
                       </tr>
@@ -521,7 +517,7 @@
                     </table>
 
                     <!-- Milestone 1 : Technology Intervention -->
-                    <table class="table table-bordered table-zed bg-white sa-milestone-table">
+                    <table class="table table-bordered table-zed sa-milestone-table">
                       <tr>
                         <td rowspan="3" class="milestone-1"><p>Milestone 1 : Technology Intervention</p></td>
                       </tr>
@@ -551,7 +547,7 @@
       </ng-template>
 
       <ng-template #progressReview let-title="title" let-css="css" let-photos="photos" let-s="section" let-completed="completed" let-remarks="remarks">
-        <table class="table table-bordered table-zed bg-white sa-milestone-table">
+        <table class="table table-bordered table-zed sa-milestone-table">
           <tr>
             <td rowspan="3" [class]="css"><p>{{ title }}</p></td>
             <td class="p-0">
@@ -593,7 +589,7 @@
                         <span>Generated at {{ pp.createdDate }}</span>
                       </div>
                       @if (pp.src) {
-                        <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+                        <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
                       }
                     </div>
                   </div>
@@ -650,7 +646,7 @@
             <span>{{ pp.name }}</span>
           </div>
           @if (pp.src) {
-            <button type="button" class="btn btn-primary pull-right" (click)="openPreview(pp.src)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
           }
         </div>
       </ng-template>

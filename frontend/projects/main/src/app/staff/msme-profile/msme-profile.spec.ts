@@ -53,7 +53,8 @@ describe('staff MSME profile', () => {
     await fixture.whenStable();
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
-    expect([...el.querySelectorAll('h3.registration-title')].map((h) => h.textContent?.trim()))
+    expect(el.querySelector('h3.registration-title')?.textContent?.trim()).toBe('MSME Profile');
+    expect([...el.querySelectorAll('.zed-card > h4')].map((h) => h.textContent?.trim()).slice(0, 3))
       .toEqual(['Basic Information', 'Selected Unit', 'Selected Unit Activity']);
     const labels = [...el.querySelector('table')!.querySelectorAll('td:first-child')].map((td) => td.textContent?.trim());
     expect(labels.slice(0, 4)).toEqual(['ZED ID:', 'Udyam Number:', 'Owner Name:', 'Enterprise Name:']);

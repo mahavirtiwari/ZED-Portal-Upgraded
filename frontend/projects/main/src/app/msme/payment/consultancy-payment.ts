@@ -25,10 +25,7 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
   selector: 'zed-consultancy-payment',
   imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
   templateUrl: './consultancy-payment.html',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .payment-summary .panel-body > div { display: flex; justify-content: space-between; gap: 12px; }
-  `,
+  styleUrl: './payment-form.scss',
 })
 export class ConsultancyPaymentPage implements OnInit {
   private readonly api = inject(ConsultancyPaymentApi);

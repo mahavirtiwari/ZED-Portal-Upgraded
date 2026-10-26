@@ -3,76 +3,87 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ClientPager, PagerComponent } from '../pager';
 import { CodeName, CodeNameKind, MastersApi } from './masters.api';
 
-const LABELS: Record<CodeNameKind, { title: string; one: string }> = {
-  sectors: { title: 'Sectors', one: 'Sector' },
-  categories: { title: 'Categories', one: 'Category' },
+const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
+  sectors: { title: 'Sectors', one: 'Sector', sub: 'NIC sectors used to classify the MSMEs and the technologies.' },
+  categories: { title: 'Categories', one: 'Category', sub: 'Categories the technologies are grouped under.' },
 };
 
 /**
  * NIC sectors and categories (Admin). Port of Views/Sector/List.cshtml and Views/Category/List.cshtml
- * (same page; the route's `data.kind` picks the list): add a code and name, rename in a pop-up.
+ * (same page; the route's `data.kind` picks the list): add a code and name, rename in a pop-up. V4: the add form in a
+ * card, search and pages on the list.
  */
 @Component({
   selector: 'zed-staff-code-names',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-4">
-        <div class="col-sm-10">
-          <h3 class="registration-title">{{ labels.title }}</h3>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <form class="jumbotron row" (ngSubmit)="add()" novalidate>
-            <div class="col-sm-4" style="margin-bottom: 9px">
-              <div class="input-group">
-                <label class="input-group-text" for="code">{{ labels.one }} Code<span style="color: red">*</span></label>
-                <input id="code" name="code" class="form-control" maxlength="50" [(ngModel)]="code" />
-              </div>
-              @if (submitted() && !code.trim()) { <span class="help-block">{{ labels.one }} Code required.</span> }
-            </div>
-            <div class="col-sm-8">
-              <div class="input-group">
-                <label class="input-group-text" for="name">{{ labels.one }} Name<span style="color: red">*</span></label>
-                <input id="name" name="name" class="form-control" maxlength="200" style="max-width: 100%" [(ngModel)]="name" />
-              </div>
-              @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
-            </div>
-            <div class="row align-items-end mb-3 mt-2">
-              <div class="col-sm-2"><button type="submit" class="btn btn-primary btn-block w-100" [disabled]="saving()">Save</button></div>
-            </div>
-          </form>
-
-          <div class="table-responsive">
-            <table class="table table-default table-zed table-bordered bg-white">
-              <thead>
-                <tr>
-                  <th>{{ labels.one }} Code</th>
-                  <th>{{ labels.one }} Name</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of rows(); track s.id) {
-                  <tr>
-                    <td>{{ s.code }}</td>
-                    <th>{{ s.name }}</th>
-                    <td class="text-end"><button type="button" class="btn btn-danger btn-sm" style="width: 100px" (click)="edit(s)">Edit</button></td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="3" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ labels.title }}</h3>
+        <p class="page-sub">{{ labels.sub }}</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form class="zed-card" (ngSubmit)="add()" novalidate>
+      <h4>Add {{ labels.one }}</h4>
+      <div class="form-grid">
+        <label for="code">{{ labels.one }} Code<span class="req">*</span></label>
+        <div>
+          <input id="code" name="code" class="form-control" maxlength="50" [(ngModel)]="code" />
+          @if (submitted() && !code.trim()) { <span class="help-block">{{ labels.one }} Code required.</span> }
+        </div>
+        <label for="name">{{ labels.one }} Name<span class="req">*</span></label>
+        <div>
+          <input id="name" name="name" class="form-control" maxlength="200" [(ngModel)]="name" />
+          @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+      </div>
+    </form>
+
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" placeholder="Search code or name" [attr.aria-label]="'Search ' + labels.title.toLowerCase()"
+               [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 160px">{{ labels.one }} Code</th>
+            <th>{{ labels.one }} Name</th>
+            <th style="width: 110px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of pager.page(); track s.id) {
+            <tr>
+              <td class="text-center">{{ s.code }}</td>
+              <td><strong>{{ s.name }}</strong></td>
+              <td>
+                <div class="row-actions">
+                  <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No ' + labels.one.toLowerCase() + ' matches the search' : 'No Data' }}</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="pager" />
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="edit-title">
@@ -86,8 +97,10 @@ const LABELS: Record<CodeNameKind, { title: string; one: string }> = {
             </div>
             <form (ngSubmit)="update()" novalidate>
               <div class="modal-body">
-                <label for="edit-name"><strong>{{ labels.one }} Name<span style="color: red">*</span></strong></label>
-                <input id="edit-name" name="editName" class="form-control" maxlength="200" style="max-width: 100%" [(ngModel)]="e.name" />
+                <div class="form-grid">
+                  <label for="edit-name">{{ labels.one }} Name<span class="req">*</span></label>
+                  <input id="edit-name" name="editName" class="form-control" maxlength="200" [(ngModel)]="e.name" />
+                </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
@@ -108,7 +121,7 @@ export class CodeNamesPage {
 
   protected readonly kind: CodeNameKind = inject(ActivatedRoute).snapshot.data['kind'] === 'categories' ? 'categories' : 'sectors';
   protected readonly labels = LABELS[this.kind];
-  protected readonly rows = signal<CodeName[]>([]);
+  protected readonly pager = new ClientPager<CodeName>(10);
   protected readonly editing = signal<CodeName | null>(null);
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
@@ -124,7 +137,7 @@ export class CodeNamesPage {
 
   private async load(): Promise<void> {
     try {
-      this.rows.set(await firstValueFrom(this.api.list(this.kind)));
+      this.pager.all.set(await firstValueFrom(this.api.list(this.kind)));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }

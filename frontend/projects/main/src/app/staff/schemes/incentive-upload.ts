@@ -22,86 +22,92 @@ const COLUMNS = [
   selector: 'zed-staff-incentive-upload',
   imports: [DatePipe],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-3">
-        <div class="col-sm-12">
-          <div class="card card-info mb-3">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <strong class="panel-title">Incentives Upload</strong>
-              <a class="btn btn-success btn-sm" href="/api/staff/schemes/incentives/template">Download Template</a>
-            </div>
-            <div class="card-body">
-              @if (error()) {
-                <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
-              }
-              @if (success()) {
-                <div class="alert" [class.alert-success]="rows().length" [class.alert-info]="!rows().length" role="status">
-                  <strong>{{ success() }}</strong>
-                </div>
-              }
-              @if (skipped().length) {
-                <div class="table-responsive mb-3" id="skippedRows">
-                  <p class="mb-1">These rows were uploaded before (same unit, application, approval, incentive, date and amount) and were not saved again:</p>
-                  <table class="table table-bordered table-sm">
-                    <thead><tr><th>Row</th><th>Udyam No</th><th>First uploaded</th></tr></thead>
-                    <tbody>
-                      @for (s of skipped(); track s.row) {
-                        <tr><td>{{ s.row }}</td><td>{{ s.udyamNo }}</td><td>{{ s.uploadedOn ? (s.uploadedOn | date: 'dd-MM-yyyy') : '' }}</td></tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-              @if (rowErrors().length) {
-                <div class="table-responsive mb-3">
-                  <table class="table table-bordered table-sm">
-                    <thead><tr><th>Row</th><th>Column</th><th>Problem</th></tr></thead>
-                    <tbody>
-                      @for (e of rowErrors(); track $index) {
-                        <tr><td>{{ e.row || '' }}</td><td>{{ e.column }}</td><td>{{ e.message }}</td></tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-              }
-              @if (!rows().length) {
-                <p class="text-muted">Excel workbook (.xlsx) with the columns: {{ columns.join(', ') }}. Dates as dd-mm-yyyy or Excel dates. Up to 5000 rows, 5 MB.</p>
-                <div class="d-sm-flex justify-content-between align-items-center gap-2">
-                  <label for="incFile" class="control-label">Incentives Excel File:<span style="color: red">*</span></label>
-                  <input id="incFile" type="file" class="form-control" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="pick($event)" />
-                  <button type="button" class="btn btn-primary btn-lg" [disabled]="busy()" (click)="upload()">Upload</button>
-                </div>
-              } @else {
-                <div class="table-responsive" style="font-size: smaller; min-height: 250px">
-                  <table class="table table-hover table-striped table-bordered">
-                    <thead>
-                      <tr style="color: white; background-color: #0091e0">
-                        <th class="text-center">S.No</th>
-                        @for (c of columns; track c) { <th class="text-center">{{ c }}</th> }
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of rows(); track $index) {
-                        <tr>
-                          <td class="text-center">{{ $index + 1 }}</td>
-                          @for (c of columns; track c) { <td>{{ show(c, r[c]) }}</td> }
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
-                <button type="button" class="btn btn-default" (click)="reset()">Upload another file</button>
-              }
-            </div>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Incentives Upload</h3>
+        <p class="page-sub">Upload the API incentives workbook; every row is checked before anything is saved.</p>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-outline-primary" href="/api/staff/schemes/incentives/template">Download Template</a>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
+    }
+    @if (success()) {
+      <div class="alert" [class.alert-success]="rows().length" [class.alert-info]="!rows().length" role="status">
+        <strong>{{ success() }}</strong>
+      </div>
+    }
+    @if (skipped().length) {
+      <div class="zed-card" id="skippedRows">
+        <p class="mb-2">These rows were uploaded before (same unit, application, approval, incentive, date and amount) and were not saved again:</p>
+        <div class="table-responsive mb-0">
+          <table class="table table-zed table-bordered table-sm">
+            <thead><tr><th class="text-center">Row</th><th class="text-center">Udyam No</th><th class="text-center">First uploaded</th></tr></thead>
+            <tbody>
+              @for (s of skipped(); track s.row) {
+                <tr><td class="text-center">{{ s.row }}</td><td class="text-center">{{ s.udyamNo }}</td><td class="text-center">{{ s.uploadedOn ? (s.uploadedOn | date: 'dd-MM-yyyy') : '' }}</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+    @if (rowErrors().length) {
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered table-sm">
+          <thead><tr><th class="text-center" style="width: 80px">Row</th><th class="text-center">Column</th><th>Problem</th></tr></thead>
+          <tbody>
+            @for (e of rowErrors(); track $index) {
+              <tr class="table-danger"><td class="text-center">{{ e.row || '' }}</td><td class="text-center">{{ e.column }}</td><td>{{ e.message }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+    @if (!rows().length) {
+      <div class="zed-card">
+        <p class="muted">Excel workbook (.xlsx) with the columns: {{ columns.join(', ') }}. Dates as dd-mm-yyyy or Excel dates. Up to 5000 rows, 5 MB.</p>
+        <div class="form-grid">
+          <label for="incFile">Incentives Excel File:<span class="req">*</span></label>
+          <input id="incFile" type="file" class="form-control" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="pick($event)" />
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="upload()">Upload</button>
+        </div>
+      </div>
+    } @else {
+      <div class="table-responsive uploaded">
+        <table class="table table-zed table-bordered table-hover">
+          <thead>
+            <tr>
+              <th class="text-center">S.No</th>
+              @for (c of columns; track c) { <th class="text-center">{{ c }}</th> }
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of rows(); track $index) {
+              <tr>
+                <td class="text-center">{{ $index + 1 }}</td>
+                @for (c of columns; track c) { <td>{{ show(c, r[c]) }}</td> }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-default" (click)="reset()">Upload another file</button>
+      </div>
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
-  styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
+  styles: `
+    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .uploaded td { font-size: 13px; white-space: nowrap; }
+  `,
 })
 export class IncentiveUploadPage {
   private readonly api = inject(IncentivesApi);

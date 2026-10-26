@@ -4,12 +4,12 @@
 <!-- ================================================= overview -->
 @if (tab() === 1) {
   <div class="tab-pane fade show active" role="tabpanel">
-    <div class="row">
-      <div class="col-sm-12">
-        <table class="table table-zed bg-white">
+    <div class="overview">
+      <div class="table-responsive">
+        <table class="table table-zed kv">
           <tbody>
-            <tr><th style="width: 40%">ZEDID</th><td>{{ t(main(), 'ZedId') }}</td></tr>
-            <tr><th style="width: 40%">Unit Name</th><td>{{ t(main(), 'PUnitName') }}</td></tr>
+            <tr><th>ZEDID</th><td>{{ t(main(), 'ZedId') }}</td></tr>
+            <tr><th>Unit Name</th><td>{{ t(main(), 'PUnitName') }}</td></tr>
             <tr><th>Udyam Registration Number</th><td>{{ t(main(), 'UdyogAadharNo') }}</td></tr>
             <tr><th>Unit Address</th><td>{{ t(main(), 'PlantAddress') }}</td></tr>
             <tr><th>Certification</th><td>{{ t(main(), 'Certification') }}</td></tr>
@@ -45,31 +45,26 @@
           </tbody>
         </table>
       </div>
-      <div class="col-sm-12"><p class="sub-heading">Location</p></div>
-      <div class="row">
+      <div class="locations">
+        <p class="sub-heading">Location</p>
         @for (loc of [{ title: 'Site Assessment', row: mainLocation(), lat: 'SaLatitude', lng: 'SaLongitude', always: true }, { title: 'Surveillance Assessment', row: d.location, lat: 'SurLatitude', lng: 'SurLongitude', always: false }]; track loc.title) {
           @if (loc.always || t(loc.row, loc.lat)) {
-            <div class="col-sm-6">
-              <div class="p-2 map-box"><p class="sub-heading">{{ loc.title }}</p></div>
-              <table class="table table-zed bg-white">
-                <tbody>
-                  <tr>
-                    <td class="text-center" colspan="2">
-                      @if (mapUrl(loc.row?.[loc.lat], loc.row?.[loc.lng]); as href) {
-                        <a class="btn btn-primary btn-sm" [href]="href" target="_blank" rel="noopener noreferrer">Click here to view map</a>
-                      }
-                    </td>
-                  </tr>
-                  <tr><td>Latitude</td><td>{{ t(loc.row, loc.lat) }}</td></tr>
-                  <tr><td>Longitude</td><td>{{ t(loc.row, loc.lng) }}</td></tr>
-                </tbody>
-              </table>
+            <div class="zed-card">
+              <div class="card-head">
+                <h4>{{ loc.title }}</h4>
+                @if (mapUrl(loc.row?.[loc.lat], loc.row?.[loc.lng]); as href) {
+                  <a class="btn btn-outline-primary btn-sm" [href]="href" target="_blank" rel="noopener noreferrer">Click here to view map</a>
+                }
+              </div>
+              <dl class="coords">
+                <dt>Latitude</dt><dd>{{ t(loc.row, loc.lat) }}</dd>
+                <dt>Longitude</dt><dd>{{ t(loc.row, loc.lng) }}</dd>
+              </dl>
             </div>
           }
         }
       </div>
     </div>
-    <div class="row"><hr /></div>
   </div>
 }
 
@@ -77,8 +72,8 @@
 @if (tab() === 2) {
   <div class="tab-pane fade show active" role="tabpanel">
     @for (b of planBlocks(); track b.key) {
-      <div class="row">
-        <div class="col-sm-12 mt-4">
+      <div class="block">
+        <div>
           <div class="panel panel-default panel-black">
             <div class="panel-body section-toggle" role="button" tabindex="0" [attr.aria-expanded]="!isClosed(b.key)"
                  (click)="togglePanel(b.key)" (keydown.enter)="togglePanel(b.key)" (keydown.space)="$event.preventDefault(); togglePanel(b.key)">{{ b.title }}</div>
@@ -107,8 +102,8 @@
   @if (tab() === m.id) {
     <div class="tab-pane fade show active" role="tabpanel">
       @for (b of m.blocks; track b.key) {
-        <div class="row">
-          <div class="col-sm-12 mt-4">
+        <div class="block">
+          <div>
             <div class="panel panel-default panel-black">
               <div class="panel-body section-toggle" role="button" tabindex="0" [attr.aria-expanded]="!isClosed(b.key)"
                    (click)="togglePanel(b.key)" (keydown.enter)="togglePanel(b.key)" (keydown.space)="$event.preventDefault(); togglePanel(b.key)">{{ b.title }}</div>
@@ -116,7 +111,7 @@
           </div>
           @if (!isClosed(b.key)) {
             <div class="col-sm-12">
-              <table class="table table-zed bg-white">
+              <table class="table table-zed">
                 <tbody>
                   <tr>
                     <td>
@@ -125,17 +120,17 @@
                         @for (l of d.surveillance?.recordingLinks ?? []; track l.url) {
                           <p><a [href]="l.url" target="_blank" rel="noopener noreferrer" class="recording-link">View Recording {{ $index + 1 }}</a></p>
                         }
-                        <br /><hr />
+                        <hr />
                       }
                       <p class="sub-heading">{{ m.label }}</p>
                       <p>{{ b.value?.comments }}</p>
                       @if (b.surveillance && review().editRemarks && b.value) {
-                        <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="edit('meeting', b.value.id, b.value.comments)" />
+                        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="edit('meeting', b.value.id, b.value.comments)" />
                       }
                     </td>
                     <td>
                       <div class="evidence-img bg-grey">
-                        <p class="sub-heading">{{ m.photo }}</p><br />
+                        <p class="sub-heading">{{ m.photo }}</p>
                         @for (pp of b.value?.photos ?? []; track $index) {
                           @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="Meeting" /></button> }
                         }
@@ -163,17 +158,17 @@
 <!-- ================================================= basic information -->
 @if (tab() === 4) {
   <div class="tab-pane fade show active" role="tabpanel">
-    <div class="row">
-      <div class="col-sm-12">
-        <table class="table table-bordered table-zed bg-white">
-          <thead><tr><th>S.No</th><th>Description</th><th>Responses</th></tr></thead>
+    <div class="table-responsive">
+      <div>
+        <table class="table table-bordered table-zed">
+          <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 24%">Description</th><th>Responses</th></tr></thead>
           <tbody>
             @for (q of [{ label: 'Selfies', onsite: o?.saSelfies ?? [], surveillance: d.saSelfies, fixedName: 'Assessor Selfie' }, { label: 'Site Exterior Photos', onsite: o?.saSiteExterior ?? [], surveillance: d.saSiteExterior, fixedName: '' }]; track q.label) {
               <tr>
-                <td>1</td>
+                <td class="text-center">1</td>
                 <td>{{ q.label }}</td>
                 <td>
-                  <table class="table table-zed bg-white">
+                  <table class="table table-zed inner">
                     <tbody>
                       @if (admin()) {
                         <tr class="site-assessment">
@@ -182,7 +177,7 @@
                             @for (pp of q.onsite; track $index) {
                               <div class="row-data">
                                 <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ q.fixedName || pp.name }}</span></div>
-                                <button type="button" class="btn btn-primary pull-right" (click)="view(pp.url)">VIEW</button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
                               </div>
                             }
                           </td>
@@ -194,7 +189,7 @@
                           @for (pp of q.surveillance; track $index) {
                             <div class="row-data">
                               <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>{{ pp.name }}</span></div>
-                              <button type="button" class="btn btn-primary pull-right" (click)="view(pp.url)">VIEW</button>
+                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
                             </div>
                           }
                         </td>
@@ -215,17 +210,17 @@
 @if (tab() === 5) {
   <div class="tab-pane fade show active" role="tabpanel">
     @for (b of tourBlocks(); track b.key) {
-      <div class="row">
-        <div class="col-sm-12 mt-4">
+      <div class="block">
+        <div>
           <div class="panel panel-default panel-black">
             <div class="panel-body section-toggle" role="button" tabindex="0" [attr.aria-expanded]="!isClosed(b.key)"
                  (click)="togglePanel(b.key)" (keydown.enter)="togglePanel(b.key)" (keydown.space)="$event.preventDefault(); togglePanel(b.key)">{{ b.title }}</div>
           </div>
         </div>
         @if (!isClosed(b.key)) {
-          <div class="col-sm-12 row m-0">
+          <div class="photo-grid tour">
             @for (pp of b.value; track $index) {
-              <div class="col-sm-6 evidence-img bg-white m-0 mb-2 mt-1">
+              <div class="evidence-img">
                 @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="view(pp.url)"><img [src]="pp.url" alt="Site tour" /></button> }
                 <p class="sub-heading">{{ pp.name }}</p>
               </div>
@@ -240,10 +235,10 @@
 <!-- ================================================= parameters -->
 @if (tab() === 6) {
   <div class="tab-pane fade show active" role="tabpanel">
-    <div class="row">
+    <div>
       @for (s of sections(); track $index) {
-        <div style="padding-top: 20px">
-          <div class="col-sm-12 mb-4">
+        <div class="section">
+          <div>
             <div class="panel panel-default panel-black">
               <div class="panel-body section-toggle" role="button" tabindex="0" [attr.aria-expanded]="isOpen(s)"
                    (click)="toggleSection(s)" (keydown.enter)="toggleSection(s)" (keydown.space)="$event.preventDefault(); toggleSection(s)">
@@ -272,10 +267,10 @@
                     </div>
                   </div>
                 </div>
-                <div style="border-left: 4px solid #ad1616">
+                <div class="req-results">
                   @if (admin() && o) {
                     <!-- MasterAdmin: the site assessment of the original certification. -->
-                    <table class="table table-bordered table-zed bg-white onsite-result" style="margin-top: 2px">
+                    <table class="table table-bordered table-zed onsite-result">
                       <tr>
                         <td rowspan="3" class="site-assessment"><p>Site Assessment</p></td>
                         <td class="p-0">
@@ -288,7 +283,7 @@
                                       <p>{{ pp.name }}</p>
                                       <div class="row-data" style="width: 60%">
                                         <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>Generated at {{ pp.createdDate }}</span></div>
-                                        <button type="button" class="btn btn-primary pull-right" (click)="view(pp.url)">VIEW</button>
+                                        <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
                                       </div>
                                     </div>
                                   </td>
@@ -322,7 +317,7 @@
                     </table>
                   }
                   @if (sv) {
-                    <table class="table table-bordered table-zed bg-white surveillance-result" style="margin-top: 2px">
+                    <table class="table table-bordered table-zed surveillance-result">
                       <tr>
                         <td rowspan="3" class="surveillance-assessment"><p>Surveillance Assessment</p></td>
                         <td class="p-0">
@@ -334,7 +329,7 @@
                                     <p>{{ pp.name }}</p>
                                     <div class="row-data" style="width: 60%">
                                       <div>@if (pp.url) { <img [src]="pp.url" alt="" /> }<span>Generated at {{ pp.createdDate }}</span></div>
-                                      <button type="button" class="btn btn-primary pull-right" (click)="view(pp.url)">VIEW</button>
+                                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="view(pp.url)">VIEW</button>
                                     </div>
                                   </div>
                                 </td>
@@ -359,7 +354,7 @@
                               <div><strong>ASSESSOR REMARKS</strong><span class="pull-right">{{ t(sv, 'SaUpdatedDate') }}</span></div>
                               <span style="white-space: pre-line">{{ t(sv, 'SaAssessorRemarks') }}</span>
                               @if (review().editRemarks) {
-                                <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm" (click)="edit('requirement', sv['Id'], t(sv, 'SaAssessorRemarks'))" />
+                                <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="edit('requirement', sv['Id'], t(sv, 'SaAssessorRemarks'))" />
                               }
                             </div>
                           </div>
@@ -389,13 +384,12 @@
         </div>
       }
     </div>
-    <div class="col-sm-12 text-center">
-      <br />
-      @if (t(sur(), 'SaAssessorRemarks')) {
-        <div class="label-highlight label-highlight-assesor-remark">{{ t(sur(), 'SaAssessorRemarks') }}</div>
-      }
+    @if (t(sur(), 'SaAssessorRemarks')) {
+      <div class="label-highlight label-highlight-assesor-remark mt-3">{{ t(sur(), 'SaAssessorRemarks') }}</div>
+    }
+    <div class="submit-bar">
       @if (review().editRemarks) {
-        <input type="button" value="Edit Remarks" class="btn btn-primary btn-sm me-2" (click)="edit('summary', 0, t(sur(), 'SaAssessorRemarks'))" />
+        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="edit('summary', 0, t(sur(), 'SaAssessorRemarks'))" />
       }
       <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="site" [actions]="review()" (done)="done.emit($event)" />
     </div>

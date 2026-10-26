@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -38,12 +39,16 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent],
   templateUrl: './neft-transactions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .help-block { color: #a94442; font-size: 13px; }
+    /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
+    .comments { white-space: pre-wrap; min-width: 180px; }
   `,
 })
 export class NeftTransactionsPage {
@@ -77,9 +82,19 @@ export class NeftTransactionsPage {
   protected readonly form = signal<ApprovalForm | null>(null);
   protected readonly formError = signal('');
   protected readonly saving = signal(false);
+  /** Transactions whose comments are unfolded (long comments show three lines). */
+  protected readonly expanded = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
     void this.load();
+  }
+
+  protected toggle(id: number): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   protected async load(): Promise<void> {

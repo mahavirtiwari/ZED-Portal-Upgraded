@@ -26,11 +26,12 @@ describe('TechnologiesPage', () => {
     await settle(fixture);
     http.expectOne('/api/staff/masters/technologies').flush([tech]);
     await settle(fixture);
-    expect([...el.querySelectorAll('tbody td:nth-child(3) p')].map((p) => p.textContent!.trim())).toEqual(['24-Basic metals', '99-Old sector']);
+    expect([...el.querySelectorAll('tbody td:nth-child(3) .zed-chip')].map((p) => p.textContent!.trim())).toEqual(['24-Basic metals', '99-Old sector']);
+    expect(el.querySelector('tbody .status-badge')!.textContent!.trim()).toBe('Active');
     expect(el.querySelector('tbody a')!.getAttribute('href')).toBe('/staff/masters/technologies/9');
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'DE-ACTIVE') as HTMLButtonElement).click();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Deactivate') as HTMLButtonElement).click();
     await settle(fixture);
     const req = http.expectOne('/api/staff/masters/technologies/9/active');
     expect(req.request.body).toEqual({ isActive: false });

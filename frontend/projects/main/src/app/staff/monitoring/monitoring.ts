@@ -28,9 +28,14 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
   imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './monitoring.html',
   styles: `
-    table tbody tr td { font-size: 14px; }
     .yellow-background { background-color: #fff3c4; }
-    .action-btn { width: 180px; }
+    .unit { min-width: 200px; }
+    .stack > div + div { margin-top: 6px; }
+    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #dfe9ea; }
+    .status-tabs .btn { font-size: 13px; font-weight: 600; }
+    .status-tabs .btn .badge { background: #eef6f6; color: #23474a; margin-left: 4px; }
+    .status-tabs .btn.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .status-tabs .btn.active .badge { background: #fff; color: #2f7c83; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -42,6 +47,9 @@ export class MonitoringPage {
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
   protected readonly title = this.consultancy ? 'Consultancy Monitoring' : this.surveillance ? 'Surveillance Monitoring' : 'Assessment Monitoring';
+  protected readonly subtitle = this.consultancy
+    ? 'Follow the handholding units by milestone stage; choose a level, then a stage.'
+    : `Follow the ${this.surveillance ? 'surveillance assessments' : 'assessments'} by stage; choose a certification level, then a stage.`;
 
   protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
   protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy

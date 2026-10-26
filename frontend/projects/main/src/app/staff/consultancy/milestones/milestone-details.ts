@@ -164,9 +164,57 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: `
-    .milestone-border { border-left: 4px solid #ad1616 !important; }
-    .section-toggle { cursor: pointer; }
+    .milestone-border { border-left: 4px solid #ad1616 !important; padding-left: 8px; margin-bottom: 12px; }
+    .details { margin-bottom: 0; }
+    .w-40 { width: 40%; }
+    /* Section bars (the old page's black "panel-black" headings). */
+    .block-title { margin: 18px 0 10px; padding: 9px 14px; background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; color: #23474a; font-size: 15px; font-weight: 700; }
+    .tab-pane > .block-title:first-child { margin-top: 0; }
+    .sub-heading { font-weight: 700; color: #3b4b4c; margin-bottom: 6px; }
+    .loc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0 18px; margin-top: 16px; }
+    .plan-card { border: 1px solid #dfe9ea; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
+    .plan-param { font-size: 16px; font-weight: 700; color: #23474a; margin-bottom: 6px; }
+    .ms-table { margin: 2px 0 0; }
+    .info-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+    .info-grid .info-heading { grid-column: 1 / -1; font-weight: 700; color: #23474a; padding: 6px 10px; background: #eef6f6; border-radius: 8px; }
+    .info-grid .info-field { grid-column: 1 / -1; }
+    .info-grid .info-field.half { grid-column: auto; }
+    .info-field .form-label { display: block; margin-bottom: 4px; }
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 12px; }
     .evidence-img img { max-width: 100%; }
+    .photo-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding: 6px 0; }
+    .photo-row + .photo-row { border-top: 1px solid #eef3f3; }
+    .photo-name { margin: 0; font-weight: 600; flex: 1 1 160px; }
+    .photo-file { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; }
+    .photo-file img { border-radius: 6px; }
+    .selfie { border-radius: 6px; object-fit: cover; }
+    /* Parameters accordion: a tinted bar with + / - (the old page's black panel with the plus / minus icon). */
+    .param-section { margin-top: 12px; }
+    .section-toggle {
+      display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer;
+      background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; color: #23474a; font-size: 15px; font-weight: 700;
+    }
+    .section-toggle:hover, .section-toggle:focus-visible { border-color: #45a5ad; }
+    .section-toggle::after { content: '+'; font-size: 20px; line-height: 1; color: #2f7c83; margin-left: auto; }
+    .section-toggle.open { border-radius: 10px 10px 0 0; }
+    .section-toggle.open::after { content: '−'; }
+    .section-body { border: 1px solid #dfe9ea; border-top: 0; border-radius: 0 0 10px 10px; padding: 12px; }
+    .requirement + .requirement { margin-top: 16px; }
+    .requirement-head .label-highlight3 { border-radius: 0 8px 8px 8px; }
+    .answer-grid { display: grid; grid-template-columns: minmax(0, 360px); }
+    .answer { margin-top: 4px; }
+    .add-more { list-style: none; margin-top: 6px; }
+    .value-box { padding: 10px; min-height: 70px; background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; white-space: pre-wrap; }
+    .meeting { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    .participants { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .participant { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #dfe9ea; border-radius: 10px; background: #fff; }
+    .training-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+    .fact { border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: #fff; }
+    .editor textarea { max-width: 100%; }
+    .preview-img { max-width: 100%; }
+    @media (max-width: 640px) {
+      .meeting, .info-grid { grid-template-columns: 1fr; }
+    }
   `,
 })
 export class MilestoneDetailsPage {

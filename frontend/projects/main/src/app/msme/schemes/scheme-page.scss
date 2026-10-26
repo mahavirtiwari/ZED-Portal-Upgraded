@@ -1,0 +1,86 @@
+// Financial Assistance and Technology Upgradation pages: unit summary on the left, the step on the right.
+
+.scheme-page {
+  margin-top: 24px;
+}
+
+// Step 3: enterprise, e-mail, unit and activity side by side.
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  align-items: start;
+
+  > .zed-card {
+    margin-bottom: 0;
+    height: 100%;
+  }
+}
+
+// A note across both columns of a form grid.
+.grid-note {
+  grid-column: 1 / -1;
+  color: #3b4b4c;
+  font-weight: 600;
+}
+
+// Declarations and confirmations above the step buttons.
+.confirm-box {
+  margin-top: 16px;
+  padding: 12px 14px;
+}
+
+// Label / value tables of a submitted application.
+.detail-table {
+  box-shadow: none;
+
+  td:first-child {
+    width: 45%;
+    color: #5f6f70;
+  }
+}
+
+.zed-card > h4:not(:first-child) {
+  margin-top: 18px;
+}
+
+.done-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.done-card {
+  padding: 32px 24px;
+
+  h2 {
+    margin: 12px 0 0;
+    font-size: 22px;
+    color: #23474a;
+  }
+}
+
+.loadingdiv {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.btn-disabled {
+  opacity: 0.5;
+}
+
+// The technology being applied for, above its fields.
+.tech-name {
+  margin-bottom: 14px;
+  font-size: 15px;
+  color: #23474a;
+}
+
+// Totals under the technology summary.
+.table > tbody > tr.total-row > td {
+  background-color: #f3f7f7;
+}

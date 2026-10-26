@@ -18,19 +18,23 @@ const LEVELS = ['Bronze', 'Silver', 'Gold'];
   imports: [RouterLink, CertificationSteps],
   template: `
     <div class="container form-page" id="zed_user_form">
-      <div class="msme-cer-details">
+      <div class="msme-cer-details status-page">
+        <div class="page-head">
+          <div>
+            <h3 class="registration-title">Status</h3>
+            <p class="page-sub">Where your certification application stands, step by step.</p>
+          </div>
+          <div class="page-actions"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
+        </div>
         @if (error()) {
-          <div class="alert alert-danger mt-3" role="alert">
+          <div class="alert alert-danger" role="alert">
             {{ error() }}
             <a class="btn btn-link" routerLink="/msme/dashboard">Back to dashboard</a>
           </div>
         }
         @if (data(); as d) {
-          <div class="row">
-            <div class="col-12">
-              <h3 class="registration-title">Status</h3>
-              <zed-certification-steps [certification]="d.certification" [status]="d.status" [incentiveUrl]="incentiveUrl()" />
-            </div>
+          <div class="zed-card">
+            <zed-certification-steps [certification]="d.certification" [status]="d.status" [incentiveUrl]="incentiveUrl()" />
           </div>
         }
       </div>
@@ -48,6 +52,7 @@ const LEVELS = ['Bronze', 'Silver', 'Gold'];
       </div>
     }
   `,
+  styles: `.status-page { max-width: 960px; margin: 24px auto 0; }`,
 })
 export class ViewStatusPage {
   /** Route parameter :certification (Bronze, Silver or Gold). */

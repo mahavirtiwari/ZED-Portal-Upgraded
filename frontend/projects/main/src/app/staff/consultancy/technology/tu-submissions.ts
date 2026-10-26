@@ -28,9 +28,17 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
   templateUrl: './tu-submissions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
-    /* The old page's btn-danger rows (a reason for rejection) and action cells (TimeDuration). */
-    tr.rejected td, td.late { background-color: #f2dede; }
-    .actions .btn { display: block; width: 180px; margin: 0 auto 6px; }
+    /* The old page's btn-danger rows (a reason for rejection, tinted by table-danger) and action cells (TimeDuration). */
+    td.late { background-color: #fdeef0; }
+    /* Status lists as a row of tabs with their counts. */
+    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .status-tabs .tab-count { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 7px; border-radius: 10px; background: rgba(69, 165, 173, 0.15); font-size: 12px; font-weight: 700; }
+    .status-tabs .btn-primary .tab-count { background: rgba(255, 255, 255, 0.25); }
+    .badges { display: flex; flex-wrap: wrap; gap: 4px; }
+    /* Several values in one cell, one per line. */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
+    .reason { white-space: pre-wrap; min-width: 200px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -61,9 +69,19 @@ export class TuSubmissionsPage {
   protected readonly dialog = signal<Dialog | null>(null);
   protected readonly dialogError = signal('');
   protected readonly saving = signal(false);
+  /** Rows whose reason for rejection is unfolded (long reasons show three lines). */
+  protected readonly expanded = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
     void this.load(this.status());
+  }
+
+  protected toggle(id: number): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   protected count(key: keyof TuCounts): number {

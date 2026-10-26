@@ -35,67 +35,70 @@ interface Editing {
 
 /**
  * Admin → Texts (new in V4): the disclaimers, instructions, undertakings and pledges of this portal's pages and of its
- * mobile apps. An Admin can hide a text, change its wording (HTML, with the {{Fields}} the page fills in), or reset it.
+ * mobile apps. An Admin can hide a text, change its wording (HTML, with the {{Fields}} the page fills in), or reset it. V4
+ * layout: page head, search in a filter bar, status badges and row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-texts',
   imports: [DatePipe, FormsModule, PagerComponent],
   template: `
-    <div class="container-fluid form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-3">
-        <div class="col-lg-11">
-          <h3 class="registration-title">Texts</h3>
-          <p class="text-muted">Disclaimers, instructions, undertakings and pledges. A change is shown on the website and in the apps within a few minutes.</p>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <ul class="nav nav-tabs mb-3" role="tablist">
-            @for (c of channels; track c) {
-              <li class="nav-item" role="presentation">
-                <button type="button" role="tab" class="nav-link" [class.active]="channel() === c" [attr.aria-selected]="channel() === c"
-                        (click)="channel.set(c)">{{ c }} ({{ count(c) }})</button>
-              </li>
-            }
-          </ul>
-          <div class="row mb-2 g-2">
-            <div class="col-sm-6 col-md-4 search-input">
-              <input type="text" class="form-control" placeholder="Search" aria-label="Search texts" [ngModel]="search()" (ngModelChange)="search.set($event)" />
-            </div>
-          </div>
-          <div class="table-responsive">
-            <table class="table table-zed table-bordered bg-white">
-              <thead>
-                <tr class="btn-default text-center"><th>S.No</th><th>Text</th><th>Where</th><th>Status</th><th>Last change</th><th>Action</th></tr>
-              </thead>
-              <tbody>
-                @for (t of view.page(); track t.key) {
-                  <tr>
-                    <td class="text-center">{{ view.serial($index) }}</td>
-                    <td>{{ t.name }}</td>
-                    <td>{{ t.group }}</td>
-                    <td>
-                      <span [class]="t.enabled ? 'text-success' : 'text-danger'">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
-                      @if (t.customised && t.enabled) { <br /><small class="text-muted">Changed by Admin</small> }
-                    </td>
-                    <td>@if (t.updatedOn) { {{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<br /><small class="text-muted">{{ t.updatedBy }}</small> }</td>
-                    <td class="text-nowrap">
-                      <button type="button" class="btn btn-primary btn-sm" (click)="edit(t)">Edit</button>
-                      @if (t.customised) { <button type="button" class="btn btn-default btn-sm ms-1" (click)="reset(t)">Reset</button> }
-                    </td>
-                  </tr>
-                } @empty {
-                  @if (!busy()) { <tr><td colspan="6" style="padding: 0"><div class="no-data">No texts found</div></td></tr> }
-                }
-              </tbody>
-            </table>
-          </div>
-          <zed-pager [pager]="view" />
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Texts</h3>
+        <p class="page-sub">Disclaimers, instructions, undertakings and pledges. A change is shown on the website and in the apps within a few minutes.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <ul class="nav nav-tabs mb-3" role="tablist">
+      @for (c of channels; track c) {
+        <li class="nav-item" role="presentation">
+          <button type="button" role="tab" class="nav-link" [class.active]="channel() === c" [attr.aria-selected]="channel() === c"
+                  (click)="channel.set(c)">{{ c }} ({{ count(c) }})</button>
+        </li>
+      }
+    </ul>
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" placeholder="Search text or page" aria-label="Search texts" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 60px">S.No</th><th>Text</th><th>Where</th><th class="text-center" style="width: 150px">Status</th><th class="text-center" style="width: 150px">Last change</th><th class="text-center" style="width: 150px">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of view.page(); track t.key) {
+            <tr>
+              <td class="text-center">{{ view.serial($index) }}</td>
+              <td><strong>{{ t.name }}</strong></td>
+              <td>{{ t.group }}</td>
+              <td class="text-center">
+                <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
+                @if (t.customised && t.enabled) { <small class="text-muted d-block mt-1">Changed by Admin</small> }
+              </td>
+              <td class="text-center">@if (t.updatedOn) { {{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<small class="text-muted d-block">{{ t.updatedBy }}</small> }</td>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
+                  @if (t.customised) { <button type="button" class="btn btn-default" (click)="reset(t)">Reset</button> }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            @if (!busy()) { <tr><td colspan="6" style="padding: 0"><div class="no-data">No texts found</div></td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="textTitle">
@@ -111,12 +114,14 @@ interface Editing {
                 <label class="form-check-label" for="textEnabled"><strong>{{ e.enabled ? 'This text is shown' : 'This text is hidden' }}</strong></label>
               </div>
               @if (e.item.placeholders.length) {
-                <div class="mb-2">
-                  <span class="me-1"><strong>Fields:</strong></span>
-                  @for (p of e.item.placeholders; track p) {
-                    <button type="button" class="btn btn-outline-secondary btn-sm me-1 mb-1 chip" (click)="insert(e, p)">{{ braces(p) }}</button>
-                  }
-                  <small class="text-muted d-block">A field is filled in where the text is shown.</small>
+                <div class="form-grid mb-3">
+                  <span class="label top">Fields:</span>
+                  <div>
+                    @for (p of e.item.placeholders; track p) {
+                      <button type="button" class="btn btn-outline-primary btn-sm me-1 mb-1 chip" (click)="insert(e, p)">{{ braces(p) }}</button>
+                    }
+                    <small class="text-muted d-block">A field is filled in where the text is shown.</small>
+                  </div>
                 </div>
               }
               <div class="row g-3">
@@ -152,6 +157,7 @@ interface Editing {
     .body { min-height: 360px; font-size: 12px; }
     .preview { min-height: 360px; border: 1px solid #ced4da; border-radius: 4px; background: #fff; padding: 12px; overflow: auto; }
     .chip { font-family: monospace; font-size: 12px; }
+    .form-grid > .top { align-self: start; padding-top: 6px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class TextsPage {

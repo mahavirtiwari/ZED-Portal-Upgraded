@@ -17,131 +17,114 @@ interface LevelInput {
  * Certification Payments (assessment fee master, Admin). Port of Views/Assessment/PaymentDetails.cshtml:
  * per enterprise type, the assessment fee and coupon of each level. The old page computed GST, subsidy,
  * TDS and net payable amounts in the browser and posted every column; now the server computes them
- * (shown here through the preview call) and only the fee and coupon are sent.
+ * (shown here through the preview call) and only the fee and coupon are sent. V4 layout: the fees and coupons in one card
+ * (each coupon under its level's fee), SAVE under the table.
  */
 @Component({
   selector: 'zed-staff-assessment-fees',
   imports: [FormsModule, DecimalPipe],
   template: `
-    <div class="form-page" id="zed_user_form">
-      <div class="container-fluid">
-        <div class="row mt-4">
-          <div class="col-sm-12"><h3 class="registration-title">{{ consultancy ? 'Handholding Payments' : 'Certification Payments' }}</h3></div>
-          <div class="col-sm-12">
-            @if (error()) {
-              <div class="alert alert-danger" role="alert">{{ error() }}</div>
-            }
-            @if (success()) {
-              <div class="alert alert-success" role="status">{{ success() }}</div>
-            }
-            <form (ngSubmit)="save()" novalidate>
-              <div class="card mb-3">
-                <div class="card-body">
-                  <div class="row">
-                    <div class="col-sm-3">
-                      <div class="input-group">
-                        <label class="input-group-text" for="msmeType">Enterprise Type</label>
-                        <select id="msmeType" name="msmeType" class="form-select" [ngModel]="type()" (ngModelChange)="changeType($event)">
-                          @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
-                        </select>
-                      </div>
-                    </div>
-                    @for (l of levels(); track l.certification) {
-                      <div class="col-sm-3">
-                        <div class="input-group">
-                          <label class="input-group-text" [for]="'fee-' + l.certification">{{ l.certification }}</label>
-                          <input type="number" class="form-control" min="0" step="0.01" [id]="'fee-' + l.certification" [name]="'fee-' + l.certification"
-                                 [(ngModel)]="l.fee" (change)="recalculate()" />
-                        </div>
-                      </div>
-                    }
-                  </div>
-                  @if (type() !== 'Rejected' && !byMilestone()) {
-                    <div class="row mt-2">
-                      <div class="col-sm-3"></div>
-                      @for (l of levels(); track l.certification) {
-                        <div class="col-sm-3">
-                          @if (l.hasCouponRows) {
-                            <div class="input-group">
-                              <label class="input-group-text" [for]="'coupon-' + l.certification">Coupon</label>
-                              <input type="number" class="form-control" min="0" step="0.01" [id]="'coupon-' + l.certification" [name]="'coupon-' + l.certification"
-                                     [(ngModel)]="l.coupon" (change)="recalculate()" />
-                            </div>
-                          }
-                        </div>
-                      }
-                    </div>
-                  }
-                </div>
-              </div>
-
-              @if (dirty()) {
-                <div class="alert alert-warning" role="status">The amounts below are not saved yet. Press SAVE to apply them.</div>
-              }
-
-              <div class="table-responsive">
-                <table class="table table-default table-zed table-bordered fees">
-                  <thead>
-                    <tr>
-                      <th class="text-center">Certification</th>
-                      <th class="text-center">Amount</th>
-                      <th class="text-center">GST (18%)</th>
-                      <th class="text-center hl-yellow">Total</th>
-                      <th class="text-center">Coupon</th>
-                      <th class="text-center">Assessment Fee After Coupon</th>
-                      <th class="text-center">GST&#64;18%</th>
-                      <th class="text-center">Total</th>
-                      <th class="text-center hl-yellow">Subsidy (%)</th>
-                      <th class="text-center hl-yellow">Assessment Fee after Subsidy</th>
-                      <th class="text-center hl-yellow">GST&#64;18%</th>
-                      <th class="text-center hl-blue">Applicant Contribution after subsidy</th>
-                      <th class="text-center">TDS &#64;2%</th>
-                      <th class="text-center">TDS &#64;10%</th>
-                      <th class="text-center hl-blue">Net Payable after &#64;2%</th>
-                      <th class="text-center hl-blue">Net Payable after &#64;10%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (a of rows(); track a.id) {
-                      <tr>
-                        <td class="text-end">
-                          {{ a.certification }}
-                          @if (a.mileStone) { <br /><strong>{{ a.mileStone }}</strong> }
-                          @if (a.isCouponRow || a.specialCategory) {
-                            <br /><small class="text-muted">{{ a.isCouponRow ? 'with coupon' : '' }}{{ a.isCouponRow && a.specialCategory ? ', ' : '' }}{{ a.specialCategory ? 'special category ' + a.specialCategory : '' }}</small>
-                          }
-                        </td>
-                        <td class="text-end">{{ a.assessmentFee | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.gst | number: '1.2-2' }}</td>
-                        <td class="text-end hl-yellow">{{ a.total | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.coupon | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.assessmentFeeAfterCoupon | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.gstAfterCoupon | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.totalAfterCoupon | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.subsidyPercentage }}</td>
-                        <td class="text-end hl-yellow">{{ a.subsidyPer | number: '1.2-2' }}</td>
-                        <td class="text-end hl-yellow">{{ a.gstAfterSubsidy | number: '1.2-2' }}</td>
-                        <td class="text-end hl-blue">{{ a.applicantContributionAfterSubsidy | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.tds15 | number: '1.2-2' }}</td>
-                        <td class="text-end">{{ a.tds75 | number: '1.2-2' }}</td>
-                        <td class="text-end hl-blue">{{ a.netPaybleTds15 | number: '1.2-2' }}</td>
-                        <td class="text-end hl-blue">{{ a.netPaybleTds75 | number: '1.2-2' }}</td>
-                      </tr>
-                    } @empty {
-                      <tr><td colspan="16" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-              <div class="text-end">
-                <hr />
-                <button type="submit" class="btn btn-primary btn-md" [disabled]="saving() || !levels().length">SAVE</button>
-              </div>
-            </form>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ consultancy ? 'Handholding Payments' : 'Certification Payments' }}</h3>
+        <p class="page-sub">
+          {{ consultancy ? 'The handholding fee of each milestone' : 'The assessment fee and coupon of each level' }} per enterprise type; GST, subsidy,
+          TDS and net payable amounts are worked out by the server.
+        </p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form (ngSubmit)="save()" novalidate>
+      <div class="zed-card">
+        <div class="filter-bar">
+          <div class="filter">
+            <label class="form-label" for="msmeType">Enterprise Type</label>
+            <select id="msmeType" name="msmeType" class="form-select" [ngModel]="type()" (ngModelChange)="changeType($event)">
+              @for (t of types; track t) { <option [value]="t">{{ t }}</option> }
+            </select>
+          </div>
+          @for (l of levels(); track l.certification) {
+            <div class="filter">
+              <label class="form-label" [for]="'fee-' + l.certification">{{ l.certification }}</label>
+              <input type="number" class="form-control" min="0" step="0.01" [id]="'fee-' + l.certification" [name]="'fee-' + l.certification"
+                     [(ngModel)]="l.fee" (change)="recalculate()" />
+              @if (type() !== 'Rejected' && !byMilestone() && l.hasCouponRows) {
+                <label class="form-label mt-2" [for]="'coupon-' + l.certification">Coupon</label>
+                <input type="number" class="form-control" min="0" step="0.01" [id]="'coupon-' + l.certification" [name]="'coupon-' + l.certification"
+                       [(ngModel)]="l.coupon" (change)="recalculate()" />
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      @if (dirty()) {
+        <div class="alert alert-warning" role="status">The amounts below are not saved yet. Press SAVE to apply them.</div>
+      }
+
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered fees">
+          <thead>
+            <tr>
+              <th class="text-center">Certification</th>
+              <th class="text-center">Amount</th>
+              <th class="text-center">GST (18%)</th>
+              <th class="text-center hl-yellow">Total</th>
+              <th class="text-center">Coupon</th>
+              <th class="text-center">Assessment Fee After Coupon</th>
+              <th class="text-center">GST&#64;18%</th>
+              <th class="text-center">Total</th>
+              <th class="text-center hl-yellow">Subsidy (%)</th>
+              <th class="text-center hl-yellow">Assessment Fee after Subsidy</th>
+              <th class="text-center hl-yellow">GST&#64;18%</th>
+              <th class="text-center hl-blue">Applicant Contribution after subsidy</th>
+              <th class="text-center">TDS &#64;2%</th>
+              <th class="text-center">TDS &#64;10%</th>
+              <th class="text-center hl-blue">Net Payable after &#64;2%</th>
+              <th class="text-center hl-blue">Net Payable after &#64;10%</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of rows(); track a.id) {
+              <tr>
+                <td class="text-center">
+                  {{ a.certification }}
+                  @if (a.mileStone) { <strong class="d-block">{{ a.mileStone }}</strong> }
+                  @if (a.isCouponRow || a.specialCategory) {
+                    <small class="d-block text-muted">{{ a.isCouponRow ? 'with coupon' : '' }}{{ a.isCouponRow && a.specialCategory ? ', ' : '' }}{{ a.specialCategory ? 'special category ' + a.specialCategory : '' }}</small>
+                  }
+                </td>
+                <td class="text-center">{{ a.assessmentFee | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.gst | number: '1.2-2' }}</td>
+                <td class="text-center hl-yellow">{{ a.total | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.coupon | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.assessmentFeeAfterCoupon | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.gstAfterCoupon | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.totalAfterCoupon | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.subsidyPercentage }}</td>
+                <td class="text-center hl-yellow">{{ a.subsidyPer | number: '1.2-2' }}</td>
+                <td class="text-center hl-yellow">{{ a.gstAfterSubsidy | number: '1.2-2' }}</td>
+                <td class="text-center hl-blue">{{ a.applicantContributionAfterSubsidy | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.tds15 | number: '1.2-2' }}</td>
+                <td class="text-center">{{ a.tds75 | number: '1.2-2' }}</td>
+                <td class="text-center hl-blue">{{ a.netPaybleTds15 | number: '1.2-2' }}</td>
+                <td class="text-center hl-blue">{{ a.netPaybleTds75 | number: '1.2-2' }}</td>
+              </tr>
+            } @empty {
+              <tr><td colspan="16" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving() || !levels().length">SAVE</button>
+      </div>
+    </form>
 
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite">

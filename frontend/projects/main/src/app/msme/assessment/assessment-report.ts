@@ -24,7 +24,7 @@ type BasicTab = 'basicInfo' | 'esg' | 'elements';
   selector: 'zed-msme-assessment-report',
   imports: [RouterLink, NgTemplateOutlet],
   templateUrl: './assessment-report.html',
-  styleUrl: './assessment-report.scss',
+  styleUrls: ['../shared/msme-page.scss', './assessment-report.scss'],
 })
 export class AssessmentReportView {
   readonly mode = input.required<AssessmentMode>();

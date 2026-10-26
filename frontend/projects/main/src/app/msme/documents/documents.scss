@@ -1,11 +1,60 @@
-// .panel/.panel-body were Bootstrap 3 classes the old layout still had.
-.panel {
-  background: #fff;
-  margin: 0 0 20px;
+.documents-page {
+  max-width: 960px;
+  margin: 24px auto 0;
 }
 
-.panel-body {
-  padding: 15px;
+// One document per line: icon and name on the left, the download button on the right.
+.alert-document {
+  height: auto;
+  min-height: 56px;
+  margin-bottom: 8px;
+  padding: 8px 10px 8px 12px;
+  background: #f7fafa;
+  border: 1px solid #e8eff0;
+  border-radius: 10px;
+  gap: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  p {
+    color: #232527;
+    font-weight: 500;
+  }
+}
+
+.icon-bg {
+  padding: 6px;
+  background: #eef6f6;
+  border-radius: 8px;
+}
+
+.doc-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #cbd9da;
+  border-radius: 8px;
+  background: #fff;
+
+  &:hover:not(.not-available) {
+    background: #eef6f6;
+    border-color: #45a5ad;
+  }
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
 }
 
 .not-available {

@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
-import { ASSESSMENT_SYSTEM, STATES, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, Expanded, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
 
 /**
@@ -18,184 +18,182 @@ import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
   selector: 'zed-staff-allot',
   imports: [FormsModule, RouterLink, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12"><h3 class="registration-title">{{ title }}</h3></div>
-
-        @if (notice(); as n) {
-          <div class="col-sm-12">
-            <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
-              {{ n.text }}
-              <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
-            </div>
-          </div>
-        }
-
-        <div class="col-sm-12 mb-4">
-          <div class="d-flex flex-wrap gap-2">
-            <div>
-              <label for="allotState"><strong>State</strong></label>
-              <select class="form-control" style="width: 200px" id="allotState" [(ngModel)]="filter.state" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
-              </select>
-            </div>
-            <div>
-              <label for="allotLevel"><strong>{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</strong></label>
-              <select class="form-control" style="width: 200px" id="allotLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
-              </select>
-            </div>
-            <div>
-              <label for="allotSize"><strong>MSME Size</strong></label>
-              <select class="form-control" style="width: 200px" id="allotSize" [(ngModel)]="filter.size" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="Micro">Micro</option>
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-              </select>
-            </div>
-            <div>
-              <label for="allotGender"><strong>Gender</strong></label>
-              <select class="form-control" style="width: 200px" id="allotGender" [(ngModel)]="filter.gender" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="Others">Others</option>
-              </select>
-            </div>
-            <div>
-              <label for="allotType"><strong>ALLOT/RE-ALLOT</strong></label>
-              <select class="form-control" style="width: 200px" id="allotType" [(ngModel)]="filter.allotmentType" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="ALLOT">ALLOT</option>
-                <option value="REALLOT">RE-ALLOT</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="row justify-content-end mb-2">
-          <div class="col-sm-3">
-            <div class="search-input pull-right">
-              <input type="text" class="form-control" maxlength="50" aria-label="Search" [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
-            </div>
-          </div>
-        </div>
-
-        <div class="col-sm-12">
-          <div class="table-responsive">
-            <table class="table table-zed table-bordered">
-              <thead>
-                <tr>
-                  <th>Action(s)</th>
-                  <th>Status</th>
-                  @if (consultancy) {
-                    <th>Desired Certification</th>
-                    <th>Milestone</th>
-                  } @else if (surveillance) {
-                    <th>Certification Level <br /><br />Surveillance No</th>
-                  } @else {
-                    <th>Certification Level</th>
-                  }
-                  <th>Unit Details</th>
-                  <th>{{ consultancy ? 'Unit SPOC Details' : 'SPOC Details' }}</th>
-                  <th>{{ consultancy ? 'CO Details' : 'Agency Details' }}</th>
-                  <th>Reason For Rejection</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of pager.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-                  <!-- Row colours of the old pages: main table-danger; surveillance and consultancy btn-danger. -->
-                  <tr [class.table-danger]="main && !!t(s, 'ReasonForRejection')" [class.btn-danger]="!main && !!t(s, 'ReasonForRejection')">
-                    <td [class.table-danger]="main && !!t(s, 'TimeDuration')" [class.btn-danger]="!main && !!t(s, 'TimeDuration')">
-                      @if (legacy.profile(t(s, 'ZedId')); as href) {
-                        <a style="width: 180px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
-                      }
-                      @if (main) {
-                        @if (n(s, 'CertificationStatus') > 7) {
-                          <a style="width: 180px" [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
-                        } @else {
-                          <a style="width: 180px" [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs mb-2">Assessment<br />Details</a>
-                        }
-                      }
-                      @if (!t(s, 'CertificationBodyUserId')) {
-                        <button type="button" style="width: 180px" class="btn btn-primary btn-xs mb-2" (click)="openAllot(s)">ALLOT</button>
-                      }
-                      @if (consultancy) {
-                        <!-- That portal's Allot.cshtml: also once a consultant was allotted (DesktopAssessorId). -->
-                        @if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId') || t(s, 'DesktopAssessorId')) {
-                          <button type="button" style="width: 180px" class="btn btn-default mb-2 re-allot" (click)="openAllot(s)">RE-ALLOT</button>
-                        }
-                      } @else if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId')) {
-                        <button type="button" [style.width]="surveillance ? '180px' : null" class="btn btn-default btn-xs re-allot" (click)="openAllot(s)">RE-ALLOT</button>
-                      }
-                    </td>
-                    <td>
-                      <strong>
-                        @if (!t(s, 'CertificationBodyUserId')) {
-                          <small>Allotment Pending</small>
-                        } @else if (t(s, 'DesktopAssessorId')) {
-                          <small class="text-success">{{ party }} Accepted</small>
-                        } @else if (t(s, 'ReasonForRejection')) {
-                          <small>{{ party }} Rejected</small>
-                        } @else {
-                          <small class="text-success">Allocated to {{ party }}</small>
-                        }
-                      </strong>
-                    </td>
-                    @if (consultancy) {
-                      <td><strong>{{ t(s, 'Certification') }}</strong></td>
-                      <td><strong>Milestone {{ t(s, 'NcCount') }}</strong></td>
-                    } @else if (surveillance) {
-                      <td><strong>{{ t(s, 'Certification') }}<br /><br />{{ t(s, 'SurveillanceNo') }}</strong></td>
-                    } @else {
-                      <td><strong>{{ t(s, 'Certification') }}</strong></td>
-                    }
-                    <!-- Only main's old page marked a duplicate Udyam number. -->
-                    <td [class.table-warning]="main && t(s, 'UdyamStatus') === 'Duplicate'">
-                      <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
-                      <strong>{{ t(s, 'PUnitName') }}</strong><br />
-                      {{ t(s, 'UnitAddress') }}
-                    </td>
-                    <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                    <td>
-                      <strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}
-                      @if (surveillance && t(s, 'CertificationBodyUserId') && t(s, 'AutoAllocationDate')) {
-                        <br /><br /><small><strong>Auto Alloted on:</strong><br />{{ t(s, 'AutoAllocationDate') }}</small>
-                      }
-                    </td>
-                    <td>{{ t(s, 'ReasonForRejection') }}</td>
-                  </tr>
-                } @empty {
-                  <tr><td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <zed-pager [pager]="pager" />
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ title }}</h3>
+        <p class="page-sub">{{ subtitle }}</p>
       </div>
     </div>
 
+    @if (notice(); as n) {
+      <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
+        {{ n.text }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+      </div>
+    }
+
+    <div class="zed-card">
+      <div class="filter-bar">
+        <div class="filter">
+          <label class="form-label" for="allotState">State</label>
+          <select class="form-select" id="allotState" [(ngModel)]="filter.state" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="allotLevel">{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</label>
+          <select class="form-select" id="allotLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="allotSize">MSME Size</label>
+          <select class="form-select" id="allotSize" [(ngModel)]="filter.size" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="Micro">Micro</option>
+            <option value="Small">Small</option>
+            <option value="Medium">Medium</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="allotGender">Gender</label>
+          <select class="form-select" id="allotGender" [(ngModel)]="filter.gender" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="allotType">ALLOT/RE-ALLOT</label>
+          <select class="form-select" id="allotType" [(ngModel)]="filter.allotmentType" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="ALLOT">ALLOT</option>
+            <option value="REALLOT">RE-ALLOT</option>
+          </select>
+        </div>
+        <div class="filter wide">
+          <label class="form-label" for="allotSearch">Search</label>
+          <input type="search" id="allotSearch" class="form-control" maxlength="50" [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 200px">Action(s)</th>
+            <th class="text-center" style="width: 140px">Status</th>
+            @if (consultancy) {
+              <th class="text-center">Desired Certification</th>
+              <th class="text-center">Milestone</th>
+            } @else if (surveillance) {
+              <th class="text-center">Certification Level<br />Surveillance No</th>
+            } @else {
+              <th class="text-center">Certification Level</th>
+            }
+            <th>Unit Details</th>
+            <th>{{ consultancy ? 'Unit SPOC Details' : 'SPOC Details' }}</th>
+            <th>{{ consultancy ? 'CO Details' : 'Agency Details' }}</th>
+            <th>Reason For Rejection</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of pager.page(); track key(s)) {
+            <!-- Row colours of the old pages: main table-danger; surveillance and consultancy btn-danger. -->
+            <tr [class.table-danger]="main && !!t(s, 'ReasonForRejection')" [class.btn-danger]="!main && !!t(s, 'ReasonForRejection')">
+              <td class="text-center" [class.table-danger]="main && !!t(s, 'TimeDuration')" [class.btn-danger]="!main && !!t(s, 'TimeDuration')">
+                <div class="row-actions justify-content-center">
+                  @if (legacy.profile(t(s, 'ZedId')); as href) {
+                    <a [href]="href" class="btn btn-outline-primary">View Profile</a>
+                  }
+                  @if (main) {
+                    @if (n(s, 'CertificationStatus') > 7) {
+                      <a [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-outline-primary">Assessment Details</a>
+                    } @else {
+                      <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-outline-primary">Assessment Details</a>
+                    }
+                  }
+                  @if (!t(s, 'CertificationBodyUserId')) {
+                    <button type="button" class="btn btn-primary" (click)="openAllot(s)">ALLOT</button>
+                  }
+                  @if (consultancy) {
+                    <!-- That portal's Allot.cshtml: also once a consultant was allotted (DesktopAssessorId). -->
+                    @if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId') || t(s, 'DesktopAssessorId')) {
+                      <button type="button" class="btn btn-outline-primary re-allot" (click)="openAllot(s)">RE-ALLOT</button>
+                    }
+                  } @else if (t(s, 'ReasonForRejection') || t(s, 'TimeDuration') || t(s, 'CertificationBodyUserId')) {
+                    <button type="button" class="btn btn-outline-primary re-allot" (click)="openAllot(s)">RE-ALLOT</button>
+                  }
+                </div>
+              </td>
+              <td class="text-center">
+                @if (!t(s, 'CertificationBodyUserId')) {
+                  <span class="status-badge is-pending">Allotment Pending</span>
+                } @else if (t(s, 'DesktopAssessorId')) {
+                  <span class="status-badge is-success">{{ party }} Accepted</span>
+                } @else if (t(s, 'ReasonForRejection')) {
+                  <span class="status-badge is-rejected">{{ party }} Rejected</span>
+                } @else {
+                  <span class="status-badge is-info">Allocated to {{ party }}</span>
+                }
+              </td>
+              @if (consultancy) {
+                <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
+                <td class="text-center"><span class="zed-chip">Milestone {{ t(s, 'NcCount') }}</span></td>
+              } @else if (surveillance) {
+                <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong><div class="muted">{{ t(s, 'SurveillanceNo') }}</div></td>
+              } @else {
+                <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
+              }
+              <!-- Only main's old page marked a duplicate Udyam number. -->
+              <td class="unit" [class.table-warning]="main && t(s, 'UdyamStatus') === 'Duplicate'">
+                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
+                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
+                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
+              </td>
+              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
+              <td>
+                <strong>{{ t(s, 'AgencyName') }}</strong><div class="muted">{{ t(s, 'CertificationBodyUserId') }}</div>
+                @if (surveillance && t(s, 'CertificationBodyUserId') && t(s, 'AutoAllocationDate')) {
+                  <div class="mt-2"><small><strong>Auto Alloted on:</strong> {{ t(s, 'AutoAllocationDate') }}</small></div>
+                }
+              </td>
+              <td class="reason">
+                @if (t(s, 'ReasonForRejection'); as reason) {
+                  <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
+                  @if (reason.length > 120) {
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
+                  }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="consultancy ? 8 : 7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="pager" />
+
     @if (current(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allotTitle">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header justify-content-between">
               <div class="modal-title" id="allotTitle"><strong>{{ consultancy ? 'Consultant Organisation' : 'Certification Body' }}</strong></div>
-              <button type="button" class="close btn btn-link" aria-label="Close" (click)="current.set(null)"><strong>x&nbsp;</strong></button>
+              <button type="button" class="btn-close" aria-label="Close" (click)="current.set(null)"></button>
             </div>
             <div class="modal-body">
-              <p class="mb-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
-              <div class="text-center" style="margin-bottom: 9px">
-                <select class="form-control" [attr.aria-label]="consultancy ? 'Consultant organisation' : 'Certification body'" [(ngModel)]="agencyId">
-                  <option value="">{{ consultancy ? '--Select Consultant Organisation--' : '--Select Certification Body--' }}</option>
-                  @for (a of agencies(); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
-                </select>
-              </div>
-              @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+              <p class="muted mb-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
+              <select class="form-select mb-2" [attr.aria-label]="consultancy ? 'Consultant organisation' : 'Certification body'" [(ngModel)]="agencyId">
+                <option value="">{{ consultancy ? '--Select Consultant Organisation--' : '--Select Certification Body--' }}</option>
+                @for (a of agencies(); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
+              </select>
+              @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="current.set(null)" />
@@ -213,6 +211,7 @@ import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
       </div>
     }
   `,
+  styles: `.unit { min-width: 200px; } .reason { min-width: 180px; white-space: pre-wrap; }`,
 })
 export class AllotPage {
   private readonly api = inject(AssessmentApi);
@@ -225,6 +224,10 @@ export class AllotPage {
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
   protected readonly title = this.consultancy ? 'Allot Consultancy' : this.surveillance ? 'Allot Surveillance' : 'Allot Assessment';
+  protected readonly subtitle = this.consultancy
+    ? 'Allot the paid milestones of the MSMEs to Consultant Organisations, or re-allot them.'
+    : this.surveillance ? 'Allot the surveillance assessments to Certification Bodies, or re-allot the rejected and overdue ones.'
+    : 'Allot the MSMEs to Certification Bodies, or re-allot the rejected and overdue ones.';
   /** Who the record is allotted to, in the status column. */
   protected readonly party = this.consultancy ? 'CO' : 'Agency';
   /** Handholding is for Silver and Gold only. */
@@ -239,6 +242,8 @@ export class AllotPage {
   protected readonly agencies = signal<Person[]>([]);
   protected readonly modalError = signal('');
   protected agencyId = '';
+  protected readonly more = new Expanded();
+  protected readonly key = (s: Row) => text(s, 'ZedId') + text(s, 'Certification');
   private request = 0;
 
   constructor() {

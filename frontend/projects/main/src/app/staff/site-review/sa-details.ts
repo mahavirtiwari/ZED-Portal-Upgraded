@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from '../assessment/assessment-shared';
+import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text, useLegacyPortal } from '../assessment/assessment-shared';
 import { AssessmentApi, isZedId } from '../assessment/assessment.api';
 import { RemarksTarget, ReviewActionsBar, ReviewRemarksDialog } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
@@ -41,6 +41,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
   selector: 'zed-staff-sa-details',
   imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab],
   templateUrl: './sa-details.html',
+  styles: [DETAILS_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class SaDetailsPage {

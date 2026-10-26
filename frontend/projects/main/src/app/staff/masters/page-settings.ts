@@ -7,54 +7,55 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
 
 /**
  * Home (login) page banner (Admin). Port of Views/Home/PageSettings.cshtml. The old page uploaded any
- * file and then saved whatever path the browser sent; now one request uploads a PNG and the API names it.
+ * file and then saved whatever path the browser sent; now one request uploads a PNG and the API names it. V4: the
+ * upload and the current banner in one card.
  */
 @Component({
   selector: 'zed-staff-page-settings',
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="mt-3">
-        <div class="row">
-          <h3 class="col-sm-12 text-center">Home Page</h3>
-          @if (error()) {
-            <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
-          }
-          @if (success()) {
-            <div class="col-sm-12"><div class="alert alert-success" role="status">{{ success() }}</div></div>
-          }
-          <form class="jumbotron" (submit)="$event.preventDefault(); save()" novalidate>
-            <div class="row mb-3">
-              <div class="col-sm-12" style="margin-bottom: 9px"><label for="fileControl">Home page Image <span style="color: red">*</span></label></div>
-              <div class="col-sm-6">
-                <input #fileInput type="file" id="fileControl" class="btn btn-primary btn-sm" style="margin-top: 5px; min-width: 100%"
-                       accept=".png,image/png" (change)="pick($event)" />
-                <small class="text-danger">Valid Image Type <strong>(.png)</strong>, up to 3 MB</small>
-              </div>
-            </div>
-            <div class="row align-items-end mb-3">
-              <div class="col"><button type="submit" class="btn btn-primary btn-block" [disabled]="saving()">Save</button></div>
-            </div>
-            <div class="row">
-              @if (preview(); as url) {
-                <span><img [src]="url" height="300" alt="Selected banner (not saved yet)" /></span>
-              } @else if (settings()?.imageUrl; as url) {
-                <span>
-                  <a target="_blank" rel="noopener" [href]="url"><img [src]="url" height="300" alt="Current home page banner" /></a>
-                  @if (settings()?.updatedOn) { <br /><small class="text-muted">Saved on {{ settings()?.updatedOn }}</small> }
-                </span>
-              } @else {
-                <span class="text-muted">No banner saved.</span>
-              }
-            </div>
-          </form>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Home Page</h3>
+        <p class="page-sub">The banner image shown on the portal's home (login) page.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form class="zed-card" (submit)="$event.preventDefault(); save()" novalidate>
+      <div class="form-grid">
+        <label for="fileControl">Home page Image<span class="req">*</span></label>
+        <div>
+          <input #fileInput type="file" id="fileControl" class="form-control" accept=".png,image/png" (change)="pick($event)" />
+          <small class="text-danger">Valid Image Type <strong>(.png)</strong>, up to 3 MB</small>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+      </div>
+      <div class="banner">
+        @if (preview(); as url) {
+          <img [src]="url" height="300" alt="Selected banner (not saved yet)" />
+        } @else if (settings()?.imageUrl; as url) {
+          <a target="_blank" rel="noopener" [href]="url"><img [src]="url" height="300" alt="Current home page banner" /></a>
+          @if (settings()?.updatedOn) { <small class="d-block text-muted mt-1">Saved on {{ settings()?.updatedOn }}</small> }
+        } @else {
+          <span class="text-muted">No banner saved.</span>
+        }
+      </div>
+    </form>
     @if (saving()) {
       <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Saving…</span></div>
     }
   `,
-  styles: `.loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
+  styles: `
+    .banner { border-top: 1px solid #e8eff0; margin-top: 16px; padding-top: 16px; }
+    .banner img { max-width: 100%; height: auto; max-height: 300px; border-radius: 8px; }
+    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  `,
 })
 export class PageSettingsPage {
   private readonly api = inject(MastersApi);

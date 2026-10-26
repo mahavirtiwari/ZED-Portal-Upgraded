@@ -298,10 +298,9 @@ describe('MonitoringPage per system', () => {
     const row = el.querySelector('tbody tr')!;
     expect(row.classList).toContain('btn-warning');
     expect(row.classList).not.toContain('table-danger');
-    // The two dates are separated by line breaks (no text between them).
+    // The two dates are one line each, the allotment date first.
     const cell = row.querySelectorAll('td')[6];
-    expect(cell.querySelectorAll('br').length).toBe(2);
-    expect(cell.textContent!.replace(/\s+/g, ' ').trim()).toBe('May 20, 2026June 2, 2026');
+    expect([...cell.querySelectorAll('div')].map((d) => d.textContent!.trim())).toEqual(['May 20, 2026', 'June 2, 2026']);
   });
 
   it('surveillance: the master admin sees the assessment and NC closure dates only', async () => {
@@ -315,8 +314,8 @@ describe('MonitoringPage per system', () => {
       canManage: true,
     });
     await settle();
-    const dates = el.querySelectorAll('tbody tr td')[6].textContent!.replace(/\s+/g, ' ').trim();
-    expect(dates).toBe('June 2, 2026 July 1, 2026');
+    const dates = [...el.querySelectorAll('tbody tr td')[6].querySelectorAll('div')].map((d) => d.textContent!.trim());
+    expect(dates).toEqual(['June 2, 2026', 'July 1, 2026']);
   });
 
   it('consultancy: "Certification Level" with "Select" first, open NC rows in btn-warning', async () => {

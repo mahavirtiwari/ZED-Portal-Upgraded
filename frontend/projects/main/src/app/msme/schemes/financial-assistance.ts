@@ -32,10 +32,7 @@ const STATUS: Record<number, string> = {
   selector: 'zed-msme-financial-assistance',
   imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent],
   templateUrl: './financial-assistance.html',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .btn-disabled { opacity: .5; }
-  `,
+  styleUrls: ['../shared/msme-page.scss', './scheme-page.scss'],
 })
 export class FinancialAssistancePage {
   private readonly api = inject(SchemesApi);

@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -15,10 +16,14 @@ import { RecommendationPage, TuApi } from './tu.api';
  */
 @Component({
   selector: 'zed-staff-technology-recommendation',
-  imports: [FormsModule, ContentTextComponent],
+  imports: [FormsModule, NgTemplateOutlet, ContentTextComponent],
   templateUrl: './technology-recommendation.html',
   styles: `
     table tbody tr td { font-size: 14px; }
+    .section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+    .section-head h4 { font-size: 16px; font-weight: 700; color: #23474a; margin: 0; }
+    .section-head .filter-bar { flex: 1 1 260px; justify-content: flex-end; }
+    .description { white-space: pre-wrap; min-width: 220px; }
     .counter-block { position: fixed; top: 48%; right: 0; background-color: #b3e079; padding: 4px; border-top-left-radius: 4px; border-bottom-left-radius: 4px; z-index: 10; }
     .counter-block p { text-align: center; margin: 0; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -40,6 +45,8 @@ export class TechnologyRecommendationPage {
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Technologies whose description is unfolded (long descriptions show three lines). */
+  protected readonly expanded = signal<ReadonlySet<string>>(new Set());
 
   protected readonly visible = computed(() => {
     const q = this.search().trim().toLowerCase();
@@ -64,6 +71,14 @@ export class TechnologyRecommendationPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  protected toggleText(code: string): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(code)) next.add(code);
+      return next;
+    });
   }
 
   protected toggle(code: string, on: boolean): void {

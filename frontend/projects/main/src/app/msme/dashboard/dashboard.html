@@ -10,90 +10,89 @@
     @if (data(); as d) {
       @switch (step()) {
         @case ('home') {
-          <div class="row">
-            <div class="col-sm-8"><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-            <div class="col-sm-4">
+          <div class="page-head">
+            <div>
+              <h3 class="registration-title dash-text-clr">Welcome</h3>
+              <p class="page-sub">Your unit, your ZED certifications and the incentives you can apply for.</p>
+            </div>
+            <div class="page-actions">
               @if (ubpReturnUrl) {
                 <a class="btn btn-primary" [href]="ubpReturnUrl">Back to UBP</a>
               }
-              <button type="button" class="refresh-link float-sm-end btn btn-link p-0" (click)="load()">
+              <button type="button" class="refresh-link btn btn-link p-0" (click)="load()">
                 <img src="/Images/svgicons/refresh.svg" alt="" />
                 <span>Refresh on {{ refreshedAt() | date: 'dd/MM/yyyy hh:mm a' }}</span>
               </button>
             </div>
           </div>
 
-          <div class="row">
+          <div class="dash-grid">
             <!-- Unit summary -->
-            <div class="col-sm-3">
-              <div class="panel panel-default panel-grey">
-                <div class="panel-body">
-                  <div class="entp-type-sec">
-                    <div class="entp-label" [class.micro]="msme()['EnterpriseType'] === 'Micro'" [class.small]="msme()['EnterpriseType'] === 'Small'"
-                         [class.medium]="msme()['EnterpriseType'] === 'Medium'">
-                      {{ msme()['EnterpriseType'] === 'Small' ? 'S' : 'M' }}
-                    </div>
-                    <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
-                    @if (msme()['OldEnterpriseType']) {
-                      <span style="margin-left: 20px; color: gray; font-size: 0.8em">(Old Type: {{ msme()['OldEnterpriseType'] }})</span>
-                    }
+            <aside class="dash-side">
+              <div class="zed-card unit-card">
+                <div class="entp-type-sec">
+                  <div class="entp-label" [class.micro]="msme()['EnterpriseType'] === 'Micro'" [class.small]="msme()['EnterpriseType'] === 'Small'"
+                       [class.medium]="msme()['EnterpriseType'] === 'Medium'">
+                    {{ msme()['EnterpriseType'] === 'Small' ? 'S' : 'M' }}
                   </div>
-                  <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-                  <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
-                  <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+                  <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
+                  @if (msme()['OldEnterpriseType']) {
+                    <span class="old-type">(Old Type: {{ msme()['OldEnterpriseType'] }})</span>
+                  }
+                </div>
+                <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
+                <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
+                <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
+              </div>
+
+              <div class="zed-card side-card">
+                <h4>Selected Unit</h4>
+                <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
+                <div class="unit-selection">
+                  <img src="/Images/svgicons/mapicon.svg" alt="" />
+                  <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
                 </div>
               </div>
 
-              <div class="panel panel-default panel-black"><div class="panel-body">Selected Unit</div></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-              <div class="unit-selection">
-                <img src="/Images/svgicons/mapicon.svg" alt="" />
-                <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
+              <div class="zed-card side-card">
+                <h4>Selected Activity</h4>
+                <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
+                <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
+                <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
+                <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
               </div>
 
-              <div class="panel panel-default panel-black"><div class="panel-body">Selected Activity</div></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-
-              <div class="panel panel-default panel-black"><div class="panel-body">ZED Pledge Certificate</div></div>
-              <div class="unit-selection">
-                <div class="col-sm-12" style="padding: 0">
-                  <p>Pledge taken on {{ msme()['PledgeOn'] }}</p>
-                  <div class="btn-download">
-                    <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
-                  </div>
+              <div class="zed-card side-card">
+                <h4>ZED Pledge Certificate</h4>
+                <p class="mb-0">Pledge taken on {{ msme()['PledgeOn'] }}</p>
+                <div class="btn-download">
+                  <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
                 </div>
               </div>
-            </div>
+            </aside>
 
-            <div class="col-sm-9">
+            <div class="dash-main">
               <div class="zed-payment-success">
-                <div class="label-highlight">
+                <div class="label-highlight app-hint">
                   <zed-text key="msme.dashboard.mobileAppHint" />
-                  <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
-                  <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
-                  <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+                  <div class="app-links">
+                    <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
+                    <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                    <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+                  </div>
                 </div>
               </div>
 
               <!-- My Certifications -->
               <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
-                <div class="panel-heading">
-                  <div class="row">
-                    <div class="col-sm-10">
-                      <div class="panel-titles-sec">
-                        <h4>My Certifications</h4>
-                        <p>Apply for Bronze, Silver or Gold Certifications.</p>
-                      </div>
-                    </div>
-                    <div class="col-sm-2">
-                      <button type="button" class="btn btn-link p-0 float-end" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
-                        <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                      </button>
-                    </div>
+                <div class="panel-heading dash-panel-head">
+                  <div class="panel-titles-sec">
+                    <h4>My Certifications</h4>
+                    <p>Apply for Bronze, Silver or Gold Certifications.</p>
                   </div>
+                  <button type="button" class="btn btn-link p-0" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
+                    <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                  </button>
                 </div>
                 <div class="panel-body">
                   <div class="dashbord-list">
@@ -184,24 +183,18 @@
 
               <!-- My Incentives -->
               <div class="panel panel-primary panel-dashboard panel-incentive panel-bg-default">
-                <div class="panel-heading">
-                  <div class="row">
-                    <div class="col-sm-10">
-                      <div class="panel-titles-sec">
-                        <h4>My Incentives</h4>
-                        <p>Apply to avail incentives.</p>
-                      </div>
-                    </div>
-                    <div class="col-sm-2">
-                      <button type="button" class="btn btn-link p-0 float-end" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
-                        <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                      </button>
-                    </div>
+                <div class="panel-heading dash-panel-head">
+                  <div class="panel-titles-sec">
+                    <h4>My Incentives</h4>
+                    <p>Apply to avail incentives.</p>
                   </div>
+                  <button type="button" class="btn btn-link p-0" aria-label="About incentives" (click)="open({ kind: 'info', topic: 'MyIncentives' })">
+                    <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                  </button>
                 </div>
                 <div class="panel-body">
-                  <div class="row">
-                    <div class="panel-incen-box g-0">
+                  <div>
+                    <div class="panel-incen-box">
                       <div class="item">
                         <div class="panel panel-default panel-incen-block">
                           <div class="panel-heading">
@@ -211,8 +204,7 @@
                           <div class="panel-body">
                             <h4>MSME KAWACH</h4>
                             <p>WASH Certification on Safety &amp; Hygiene</p>
-                            <br />
-                            <p><span class="clr-spot"><b>Free</b></span> <span class="strike">₹ 5,750 + Taxes</span>, 100% Subsidized</p>
+                            <p class="mt-3"><span class="clr-spot"><b>Free</b></span> <span class="strike">₹ 5,750 + Taxes</span>, 100% Subsidized</p>
                           </div>
                         </div>
                       </div>
@@ -326,50 +318,54 @@
         }
 
         @case ('disclaimer') {
-          <div class="row justify-content-center">
-            <div class="col-sm-9">
-              <div class="panel panel-default panel-design">
-                <div class="panel-body disclaimer-sec">
-                  <h3 class="registration-title">DISCLAIMER</h3>
-                  <!-- Points 5–6 are not shown for a re-certification: the last point is then number 5. -->
-                  <div class="disclaimer-points">
-                    <zed-text key="msme.certification.payment.disclaimer" />
-                    @if (!(num('ReCertification', basic()) > 0)) {
-                      <zed-text key="msme.certification.payment.disclaimer.firstCertification" />
-                      <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 7 }" />
-                    } @else {
-                      <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 5 }" />
-                    }
-                  </div>
-                  <div class="stepper-footer-sec initial-step1">
-                    <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                    <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
-                  </div>
-                </div>
+          <div class="step-page">
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">DISCLAIMER</h3>
+                <p class="page-sub">Applying for {{ applyLevel() }} Certification: read and accept the disclaimer to go on.</p>
+              </div>
+            </div>
+            <div class="zed-card disclaimer-sec">
+              <!-- Points 5–6 are not shown for a re-certification: the last point is then number 5. -->
+              <div class="disclaimer-points">
+                <zed-text key="msme.certification.payment.disclaimer" />
+                @if (!(num('ReCertification', basic()) > 0)) {
+                  <zed-text key="msme.certification.payment.disclaimer.firstCertification" />
+                  <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 7 }" />
+                } @else {
+                  <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 5 }" />
+                }
+              </div>
+              <div class="form-actions">
+                <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
+                <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
               </div>
             </div>
           </div>
         }
 
         @case ('instructions') {
-          <div class="row justify-content-center">
-            <div class="col-sm-9">
-              <div class="panel panel-default panel-design">
-                <div class="panel-body disclaimer-sec">
-                  <h3 class="registration-title">Instructions</h3>
-                  <zed-text key="msme.certification.payment.instructions" />
-                  <div class="stepper-footer-sec initial-step1">
-                    <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                    <button type="button" class="btn btn-primary" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
-                  </div>
-                </div>
+          <div class="step-page">
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Instructions</h3>
+                <p class="page-sub">Applying for {{ applyLevel() }} Certification: read the instructions before the payment.</p>
+              </div>
+            </div>
+            <div class="zed-card disclaimer-sec">
+              <zed-text key="msme.certification.payment.instructions" />
+              <div class="form-actions">
+                <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
+                <button type="button" class="btn btn-primary" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
               </div>
             </div>
           </div>
         }
 
         @case ('payment') {
-          <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
+          <div class="step-page">
+            <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
+          </div>
         }
       }
     }

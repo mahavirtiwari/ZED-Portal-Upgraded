@@ -22,156 +22,151 @@ interface EvidenceDialog {
  * Requirements of a questionnaire parameter (Admin). Port of Views/Questionaire/Requirements.cshtml
  * (Questionaire/Requirements?sid={code}&sectionType={level}): build a requirement from points and
  * bullets, add mandatory/optional evidences, remove the last requirement or the last extra point.
- * All texts are shown as text (the old pages rendered the parameter description as raw HTML).
+ * All texts are shown as text (the old pages rendered the parameter description as raw HTML). V4 layout: page head with
+ * BACK, the new requirement in a card, row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-requirements',
   imports: [FormsModule, RouterLink],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-10">
-          <h3 class="registration-title text-center">Requirements</h3>
-          @if (data(); as d) {
-            <p class="text-center"><strong>{{ d.sectionType }} – {{ d.sectionCode }}. {{ d.sectionName }}</strong></p>
-          }
-        </div>
-        <div class="col-sm-2">
-          <a class="btn btn-primary" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; BACK</a>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Requirements</h3>
+        @if (data(); as d) {
+          <p class="page-sub"><strong>{{ d.sectionType }} – {{ d.sectionCode }}. {{ d.sectionName }}</strong></p>
+        }
       </div>
-
-      @if (error()) {
-        <div class="alert alert-danger" role="alert">{{ error() }}</div>
-      }
-      @if (success()) {
-        <div class="alert alert-success" role="status">{{ success() }}</div>
-      }
-
-      @if (data()) {
-        <form class="jumbotron" (ngSubmit)="addPoint()" novalidate>
-          <div class="row">
-            <div class="col-sm-10" style="margin-bottom: 9px">
-              <div class="input-group mb-3">
-                <label class="input-group-text" for="requirementName">Requirement</label>
-                <textarea id="requirementName" name="requirementName" class="form-control" maxlength="1990" style="max-width: 100%; height: 100px"
-                          [(ngModel)]="pointText"></textarea>
-              </div>
-            </div>
-            <div class="col-sm-2">
-              <div class="d-grid"><button type="submit" class="btn btn-primary btn-block">Add</button></div>
-            </div>
-          </div>
-          @if (draft().length) {
-            <div class="table-responsive">
-              <table class="table table-striped table-bordered draft-points">
-                <tbody>
-                  @for (p of draft(); track $index; let i = $index) {
-                    <tr>
-                      <td>{{ i + 1 }}.</td>
-                      <td>
-                        {{ p.name }}
-                        <ul>
-                          @for (b of p.bullets; track $index; let j = $index) {
-                            <li>
-                              <span>{{ b }}</span>
-                              <button type="button" class="btn btn-link text-danger p-0 ms-1" aria-label="Remove bullet" (click)="removeBullet(i, j)">&times;</button>
-                            </li>
-                          }
-                        </ul>
-                      </td>
-                      <td style="width: 140px">
-                        <button type="button" class="btn btn-primary btn-sm" style="width: 100px" (click)="openBullet(i)">Add Bullet</button>
-                        <button type="button" class="btn btn-link btn-sm text-danger" (click)="removeDraftPoint(i)">Remove</button>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <div class="row justify-content-end">
-              <div class="col-sm-2">
-                <button type="button" class="btn btn-success btn-block w-100" [disabled]="saving()" (click)="save()">Save</button>
-              </div>
-            </div>
-          }
-        </form>
-
-        <div class="table-responsive">
-          <table class="table table-striped table-bordered bg-white requirements">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>Requirements</th>
-                <th>Evidences</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (q of requirements(); track q.id) {
-                <tr>
-                  <th class="text-center" style="vertical-align: middle">{{ data()!.sectionCode }}.{{ q.requirementCode }}</th>
-                  <td style="width: 50%">
-                    @for (o of q.points; track o.id; let i = $index; let last = $last) {
-                      <div>
-                        {{ o.name }}
-                        @if (i > 0 && last) {
-                          <button type="button" class="btn btn-link text-danger p-0 ms-1 remove-point" aria-label="Remove point" (click)="removePoint(q, o.id)">&times;</button>
-                        }
-                        <ul>
-                          @for (s of o.bullets; track s.id) {
-                            <li>{{ s.name }}</li>
-                          }
-                        </ul>
-                        @if (optionImage(o); as src) {
-                          <span><img class="option-image" [src]="src" alt="" /></span>
-                        }
-                      </div>
-                    }
-                  </td>
-                  <td>
-                    <h4 class="d-flex justify-content-between">
-                      Mandatory:
-                      <button type="button" class="btn btn-primary btn-sm" style="width: 110px" (click)="openEvidences(q, 'mandatory')">Add Evidences</button>
-                    </h4>
-                    <ol>
-                      @for (e of q.mandatoryEvidences; track $index) {
-                        <li>
-                          {{ e.evidenceName }}
-                          @if (e.validationRequired) { <small class="text-warning">(Validation Required)</small> }
-                          @if (e.helpText) { <br />({{ e.helpText }}) }
-                        </li>
-                      }
-                    </ol>
-                    <hr />
-                    <h4 class="d-flex justify-content-between">
-                      Optional:
-                      <button type="button" class="btn btn-primary btn-sm" style="width: 110px" (click)="openEvidences(q, 'optional')">Add Evidences</button>
-                    </h4>
-                    <ol>
-                      @for (e of q.optionalEvidences; track $index) {
-                        <li>
-                          {{ e.evidenceName }}
-                          @if (e.validationRequired) { <small class="text-warning">(Validation Required)</small> }
-                          @if (e.helpText) { <br />({{ e.helpText }}) }
-                        </li>
-                      }
-                    </ol>
-                  </td>
-                  <td style="vertical-align: middle; text-align: center">
-                    @if (q.canRemove) {
-                      <button type="button" class="btn btn-danger remove-requirement" (click)="removeRequirement(q)">Delete</button>
-                    }
-                  </td>
-                </tr>
-              } @empty {
-                <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
+      <div class="page-actions">
+        <a class="btn btn-default" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; BACK</a>
+      </div>
     </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+
+    @if (data()) {
+      <form class="zed-card" (ngSubmit)="addPoint()" novalidate>
+        <div class="form-grid">
+          <label class="top" for="requirementName">Requirement</label>
+          <textarea id="requirementName" name="requirementName" class="form-control" maxlength="1990" rows="4" [(ngModel)]="pointText"></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-outline-primary">Add</button>
+        </div>
+        @if (draft().length) {
+          <div class="table-responsive mt-3">
+            <table class="table table-zed table-bordered draft-points">
+              <tbody>
+                @for (p of draft(); track $index; let i = $index) {
+                  <tr>
+                    <td class="text-center" style="width: 48px">{{ i + 1 }}.</td>
+                    <td>
+                      {{ p.name }}
+                      <ul>
+                        @for (b of p.bullets; track $index; let j = $index) {
+                          <li>
+                            <span>{{ b }}</span>
+                            <button type="button" class="btn btn-link text-danger p-0 ms-1" aria-label="Remove bullet" (click)="removeBullet(i, j)">&times;</button>
+                          </li>
+                        }
+                      </ul>
+                    </td>
+                    <td class="text-center" style="width: 200px">
+                      <div class="row-actions justify-content-center">
+                        <button type="button" class="btn btn-primary" (click)="openBullet(i)">Add Bullet</button>
+                        <button type="button" class="btn btn-outline-danger" (click)="removeDraftPoint(i)">Remove</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Save</button>
+          </div>
+        }
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-zed table-bordered requirements">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 90px">Code</th>
+              <th>Requirements</th>
+              <th>Evidences</th>
+              <th class="text-center" style="width: 110px">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (q of requirements(); track q.id) {
+              <tr>
+                <td class="text-center"><strong>{{ data()!.sectionCode }}.{{ q.requirementCode }}</strong></td>
+                <td style="width: 50%">
+                  @for (o of q.points; track o.id; let i = $index; let last = $last) {
+                    <div>
+                      {{ o.name }}
+                      @if (i > 0 && last) {
+                        <button type="button" class="btn btn-link text-danger p-0 ms-1 remove-point" aria-label="Remove point" (click)="removePoint(q, o.id)">&times;</button>
+                      }
+                      <ul>
+                        @for (s of o.bullets; track s.id) {
+                          <li>{{ s.name }}</li>
+                        }
+                      </ul>
+                      @if (optionImage(o); as src) {
+                        <span><img class="option-image" [src]="src" alt="" /></span>
+                      }
+                    </div>
+                  }
+                </td>
+                <td>
+                  <div class="ev-head">
+                    <span>Mandatory:</span>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="openEvidences(q, 'mandatory')">Add Evidences</button>
+                  </div>
+                  <ol>
+                    @for (e of q.mandatoryEvidences; track $index) {
+                      <li>
+                        {{ e.evidenceName }}
+                        @if (e.validationRequired) { <span class="status-badge is-pending ms-1">(Validation Required)</span> }
+                        @if (e.helpText) { <small class="d-block text-muted">({{ e.helpText }})</small> }
+                      </li>
+                    }
+                  </ol>
+                  <div class="ev-head border-top pt-2">
+                    <span>Optional:</span>
+                    <button type="button" class="btn btn-outline-primary btn-sm" (click)="openEvidences(q, 'optional')">Add Evidences</button>
+                  </div>
+                  <ol>
+                    @for (e of q.optionalEvidences; track $index) {
+                      <li>
+                        {{ e.evidenceName }}
+                        @if (e.validationRequired) { <span class="status-badge is-pending ms-1">(Validation Required)</span> }
+                        @if (e.helpText) { <small class="d-block text-muted">({{ e.helpText }})</small> }
+                      </li>
+                    }
+                  </ol>
+                </td>
+                <td class="text-center">
+                  @if (q.canRemove) {
+                    <div class="row-actions justify-content-center">
+                      <button type="button" class="btn btn-outline-danger remove-requirement" (click)="removeRequirement(q)">Delete</button>
+                    </div>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
 
     @if (bulletFor() !== null) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="bullet-title">
@@ -185,7 +180,8 @@ interface EvidenceDialog {
             </div>
             <form (ngSubmit)="addBullet()" novalidate>
               <div class="modal-body">
-                <input id="bulletText" name="bulletText" class="form-control" maxlength="2000" style="max-width: 100%" [(ngModel)]="bulletText" />
+                <label class="visually-hidden" for="bulletText">Bullet Point</label>
+                <input id="bulletText" name="bulletText" class="form-control" maxlength="2000" [(ngModel)]="bulletText" />
               </div>
               <div class="modal-footer">
                 <button type="submit" class="btn btn-default">OK</button>
@@ -208,32 +204,29 @@ interface EvidenceDialog {
               </div>
             </div>
             <div class="modal-body">
-              <div class="row align-items-center">
-                <div class="col-sm-12">
-                  <input id="evidenceName" name="evidenceName" class="form-control" maxlength="2000" style="max-width: 100%" placeholder="Evidence" [(ngModel)]="ev.name" />
-                </div>
+              <div class="form-grid">
+                <label for="evidenceName">Evidence</label>
+                <input id="evidenceName" name="evidenceName" class="form-control" maxlength="2000" placeholder="Evidence" [(ngModel)]="ev.name" />
                 @if (ev.kind === 'mandatory') {
-                  <div class="col-sm-12 mt-1">
-                    <input id="evidenceHelp" name="evidenceHelp" class="form-control" maxlength="2000" style="max-width: 100%" placeholder="iButton" [(ngModel)]="ev.helpText" />
-                  </div>
+                  <label for="evidenceHelp">iButton</label>
+                  <input id="evidenceHelp" name="evidenceHelp" class="form-control" maxlength="2000" placeholder="iButton" [(ngModel)]="ev.helpText" />
                 }
-                <div class="col-sm-10">
-                  <div class="form-check">
+                <span class="label"></span>
+                <div class="d-flex justify-content-between align-items-center gap-2">
+                  <div class="form-check m-0">
                     <input class="form-check-input" type="checkbox" id="validationRequired" name="validationRequired" [(ngModel)]="ev.validationRequired" />
                     <label class="form-check-label" for="validationRequired">Validation Required</label>
                   </div>
-                </div>
-                <div class="col-sm-2" style="margin-top: 5px">
-                  <button type="button" class="btn btn-default add-evidence" (click)="addEvidence()">ADD</button>
+                  <button type="button" class="btn btn-outline-primary add-evidence" (click)="addEvidence()">ADD</button>
                 </div>
               </div>
               @if (dialogError()) { <span class="help-block" role="alert">{{ dialogError() }}</span> }
-              <table class="table table-striped table-bordered" style="margin-top: 10px">
+              <table class="table table-zed table-bordered mt-3 mb-0">
                 <thead>
                   <tr>
-                    <th></th>
+                    <th class="text-center"></th>
                     <th>Evidence</th>
-                    <th>Validation Required</th>
+                    <th class="text-center">Validation Required</th>
                     @if (ev.kind === 'mandatory') { <th>iButton</th> }
                     <th></th>
                   </tr>
@@ -241,20 +234,20 @@ interface EvidenceDialog {
                 <tbody>
                   @for (e of ev.saved; track $index; let i = $index) {
                     <tr>
-                      <td>{{ i + 1 }}</td>
+                      <td class="text-center">{{ i + 1 }}</td>
                       <td>{{ e.evidenceName }}</td>
-                      <td>{{ e.validationRequired ? 'Yes' : '' }}</td>
+                      <td class="text-center">{{ e.validationRequired ? 'Yes' : '' }}</td>
                       @if (ev.kind === 'mandatory') { <td>{{ e.helpText }}</td> }
                       <td></td>
                     </tr>
                   }
                   @for (e of ev.added; track $index; let i = $index) {
                     <tr class="added">
-                      <td>{{ ev.saved.length + i + 1 }}</td>
+                      <td class="text-center">{{ ev.saved.length + i + 1 }}</td>
                       <td>{{ e.evidenceName }}</td>
-                      <td>{{ e.validationRequired ? 'Yes' : '' }}</td>
+                      <td class="text-center">{{ e.validationRequired ? 'Yes' : '' }}</td>
                       @if (ev.kind === 'mandatory') { <td>{{ e.helpText }}</td> }
-                      <td><button type="button" class="btn btn-link text-danger p-0" aria-label="Remove evidence" (click)="removeAdded(i)">&times;</button></td>
+                      <td class="text-center"><button type="button" class="btn btn-link text-danger p-0" aria-label="Remove evidence" (click)="removeAdded(i)">&times;</button></td>
                     </tr>
                   }
                 </tbody>
@@ -262,7 +255,7 @@ interface EvidenceDialog {
             </div>
             <div class="modal-footer">
               @if (ev.added.length) {
-                <button type="button" class="btn btn-default save-evidences" [disabled]="saving()" (click)="saveEvidences()">SAVE</button>
+                <button type="button" class="btn btn-primary save-evidences" [disabled]="saving()" (click)="saveEvidences()">SAVE</button>
               }
             </div>
           </div>
@@ -274,6 +267,9 @@ interface EvidenceDialog {
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
     table tbody tr td { font-size: 14px; }
+    .form-grid > .top { align-self: start; padding-top: 8px; }
+    .ev-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 700; color: #1f5c61; margin-bottom: 6px; }
+    td ol, td ul { margin-bottom: 8px; padding-left: 20px; }
   `,
 })
 export class RequirementsPage {

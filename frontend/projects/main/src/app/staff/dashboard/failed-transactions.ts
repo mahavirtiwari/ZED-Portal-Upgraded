@@ -32,6 +32,9 @@ function today(): string {
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .help-block { color: #a94442; font-size: 13px; }
+    /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
   `,
 })
 export class FailedTransactionsPage {

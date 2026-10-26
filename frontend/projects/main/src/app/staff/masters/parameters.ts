@@ -9,77 +9,81 @@ import { MastersApi, Parameter } from './masters.api';
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
  * Views/Questionaire/Index.cshtml (Questionaire/Index?SectionType=Bronze). The description used to be
- * rendered as raw HTML; it is shown as text now. "Requirements" opens staff/questionnaire/{level}/{code}.
+ * rendered as raw HTML; it is shown as text now. "Requirements" opens staff/questionnaire/{level}/{code}. V4: the add
+ * form in a card, long descriptions folded to three lines.
  */
 @Component({
   selector: 'zed-staff-parameters',
   imports: [FormsModule],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4 justify-content-center">
-        <div class="col-sm-10">
-          <h3 class="registration-title">Parameters ({{ sectionType() }})</h3>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <form class="jumbotron row" (ngSubmit)="add()" novalidate>
-            <div class="col-sm-4" style="margin-bottom: 9px">
-              <div class="input-group mb-3">
-                <label class="input-group-text" for="sectionCode">Parameter Code<span style="color: red">*</span></label>
-                <input id="sectionCode" name="sectionCode" class="form-control" maxlength="50" [(ngModel)]="code" />
-              </div>
-              @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
-            </div>
-            <div class="col-sm-8">
-              <div class="input-group mb-3">
-                <label class="input-group-text" for="sectionName">Parameter Name<span style="color: red">*</span></label>
-                <input id="sectionName" name="sectionName" class="form-control" maxlength="200" style="max-width: 100%" [(ngModel)]="name" />
-              </div>
-              @if (submitted() && !name.trim()) { <span class="help-block">Parameter Name required.</span> }
-            </div>
-            <div class="col-sm-12" style="margin-bottom: 9px">
-              <div class="input-group mb-3">
-                <label class="input-group-text" for="description">Description</label>
-                <textarea id="description" name="description" class="form-control" maxlength="1990" style="max-width: 100%; height: 100px" [(ngModel)]="description"></textarea>
-              </div>
-            </div>
-            <div class="row justify-content-end">
-              <div class="col-sm-2"><button type="submit" class="btn btn-primary btn-block w-100" [disabled]="saving()">Save</button></div>
-            </div>
-          </form>
-
-          <div class="table-responsive">
-            <table class="table table-default table-zed table-bordered bg-white">
-              <thead>
-                <tr>
-                  <th>Parameter Code</th>
-                  <th>Parameter Name</th>
-                  <th>Description</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of parameters(); track s.id) {
-                  <tr>
-                    <td>{{ s.sectionCode }}</td>
-                    <th>{{ s.sectionName }}</th>
-                    <td class="text-justify"><pre>{{ s.description }}</pre></td>
-                    <td class="text-end">
-                      <button type="button" class="btn btn-danger btn-sm" (click)="edit(s)"><i class="fa fa-pencil-square-o" aria-hidden="true"></i> Edit</button><br /><br />
-                      <a class="btn btn-primary btn-sm" [href]="requirementsUrl(s)">Requirements</a>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Parameters ({{ sectionType() }})</h3>
+        <p class="page-sub">Parameters of the {{ sectionType() }} questionnaire; Requirements opens the questions of a parameter.</p>
       </div>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form class="zed-card" (ngSubmit)="add()" novalidate>
+      <h4>Add Parameter</h4>
+      <div class="form-grid">
+        <label for="sectionCode">Parameter Code<span class="req">*</span></label>
+        <div>
+          <input id="sectionCode" name="sectionCode" class="form-control" maxlength="50" [(ngModel)]="code" />
+          @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
+        </div>
+        <label for="sectionName">Parameter Name<span class="req">*</span></label>
+        <div>
+          <input id="sectionName" name="sectionName" class="form-control" maxlength="200" [(ngModel)]="name" />
+          @if (submitted() && !name.trim()) { <span class="help-block">Parameter Name required.</span> }
+        </div>
+        <label for="description">Description</label>
+        <textarea id="description" name="description" rows="4" class="form-control" maxlength="1990" [(ngModel)]="description"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 120px">Parameter Code</th>
+            <th class="text-center" style="width: 230px">Parameter Name</th>
+            <th>Description</th>
+            <th class="text-center" style="width: 260px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of parameters(); track s.id) {
+            <tr>
+              <td class="text-center">{{ s.sectionCode }}</td>
+              <td class="text-center"><strong>{{ s.sectionName }}</strong></td>
+              <td class="description">
+                @if (s.description) {
+                  <pre [class.clamp-3]="!expanded().has(s.id)" [title]="s.description">{{ s.description }}</pre>
+                  @if (isLong(s.description)) {
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(s.id)">{{ expanded().has(s.id) ? 'less' : 'more' }}</button>
+                  }
+                }
+              </td>
+              <td>
+                <div class="row-actions justify-content-center">
+                  <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
+                  <a class="btn btn-primary" [href]="requirementsUrl(s)">Requirements</a>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
     </div>
 
     @if (editing(); as e) {
@@ -94,13 +98,12 @@ import { MastersApi, Parameter } from './masters.api';
             </div>
             <form (ngSubmit)="update()" novalidate>
               <div class="modal-body">
-                <div style="margin-bottom: 9px">
-                  <label for="edit-name"><strong>Parameter Name<span style="color: red">*</span></strong></label>
-                  <input id="edit-name" name="editName" class="form-control" maxlength="200" style="max-width: 100%" [(ngModel)]="e.sectionName" />
+                <div class="form-grid">
+                  <label for="edit-name">Parameter Name<span class="req">*</span></label>
+                  <input id="edit-name" name="editName" class="form-control" maxlength="200" [(ngModel)]="e.sectionName" />
+                  <label for="edit-description">Description</label>
+                  <textarea id="edit-description" name="editDescription" rows="5" class="form-control" maxlength="1990" [(ngModel)]="e.description"></textarea>
                 </div>
-                <label for="edit-description"><strong>Description</strong></label>
-                <textarea id="edit-description" name="editDescription" rows="5" class="form-control" maxlength="1990" style="max-width: 100%; height: 100px"
-                          [(ngModel)]="e.description"></textarea>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
               <div class="modal-footer">
@@ -116,7 +119,8 @@ import { MastersApi, Parameter } from './masters.api';
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
-    pre { color: #333; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; background-color: #fff; font-family: inherit; }
+    .description { min-width: 220px; }
+    pre { color: #333; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; background-color: transparent; font-family: inherit; margin: 0; }
   `,
 })
 export class ParametersPage {
@@ -127,6 +131,7 @@ export class ParametersPage {
   protected readonly sectionType = signal('Bronze');
   protected readonly parameters = signal<Parameter[]>([]);
   protected readonly editing = signal<{ id: number; sectionName: string; description: string } | null>(null);
+  protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
   protected readonly error = signal('');
@@ -149,6 +154,19 @@ export class ParametersPage {
 
   protected requirementsUrl(p: Parameter): string {
     return `/staff/questionnaire/${encodeURIComponent(p.sectionType || this.sectionType())}/${encodeURIComponent(p.sectionCode)}`;
+  }
+
+  /** Descriptions over about three lines get the more / less link. */
+  protected isLong(text: string): boolean {
+    return text.length > 160 || text.split('\n').length > 3;
+  }
+
+  protected toggle(id: number): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   private async load(): Promise<void> {

@@ -31,10 +31,7 @@ type TechnologyForm = Omit<TuTechnologySubmission, 'documents'>;
   selector: 'zed-msme-technology-upgradation',
   imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent],
   templateUrl: './technology-upgradation.html',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .btn-disabled { opacity: .5; }
-  `,
+  styleUrls: ['../shared/msme-page.scss', './scheme-page.scss'],
 })
 export class TechnologyUpgradationPage {
   private readonly api = inject(SchemesApi);

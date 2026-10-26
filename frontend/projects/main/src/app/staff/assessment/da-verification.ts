@@ -19,90 +19,85 @@ import { PagedView, PagerComponent } from '../pager';
   selector: 'zed-staff-da-verification',
   imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row">
-        <div class="col-sm-12">
-          <div class="zed-tabs">
-            <div class="tab-content">
-              <div class="d-flex align-items-center justify-content-between mb-1">
-                <h3 class="registration-title">{{ surveillance ? 'Surveillance Assessments' : 'Desktop Verification' }}</h3>
-                <button type="button" class="refresh-link btn btn-link" (click)="load()">
-                  <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-                </button>
-              </div>
-
-              @if (notice(); as n) {
-                <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
-                  {{ n.text }}
-                  <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
-                </div>
-              }
-
-              <div class="table-responsive">
-                <table class="table table-zed table-bordered">
-                  <thead>
-                    <tr>
-                      <th>Action(s)</th>
-                      <th>Certification Level</th>
-                      <th>Unit Details</th>
-                      <th>Unit SPOC Details</th>
-                      <th>Agency Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-                      <tr>
-                        <td>
-                          @if (legacy.profile(t(s, 'ZedId')); as href) {
-                            <a [href]="href" class="btn btn-primary mb-2">View Profile</a>
-                          }
-                          @if (!f(s, 'DesktopAccepted') && !t(s, 'DesktopReasonForRejection')) {
-                            <button type="button" class="btn btn-primary btn-xs me-1" (click)="acceptFor.set(s); modalError.set('')">ACCEPT</button>
-                            <button type="button" class="btn btn-default btn-xs" (click)="openReject(s)">REJECT</button>
-                          }
-                          @if (f(s, 'DesktopAccepted')) {
-                            <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs">ASSESS</a>
-                            @if (surveillance && nm(s, 'CertificationStatus') < 2) {
-                              <br /><small class="text-danger">Pending in the Surveillance app</small>
-                            }
-                          }
-                        </td>
-                        <td>{{ t(s, 'Certification') }}</td>
-                        <td>
-                          <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
-                          <strong>{{ t(s, 'PUnitName') }}</strong><br />
-                          {{ t(s, 'UnitAddress') }}
-                        </td>
-                        <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                        <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
-                      </tr>
-                    } @empty {
-                      <tr><td colspan="5" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-              <zed-pager [pager]="view" />
-            </div>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ surveillance ? 'Surveillance Assessments' : 'Desktop Verification' }}</h3>
+        <p class="page-sub">{{ surveillance ? 'Surveillance assessments allotted to you; verify them here after the final submit in the Surveillance app.' : 'Units allotted to you for desktop verification: accept or reject them, then assess.' }}</p>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="refresh-link btn btn-default" (click)="load()">
+          <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
+        </button>
       </div>
     </div>
 
+    @if (notice(); as n) {
+      <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
+        {{ n.text }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+      </div>
+    }
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 200px">Action(s)</th>
+            <th class="text-center">Certification Level</th>
+            <th>Unit Details</th>
+            <th>Unit SPOC Details</th>
+            <th>Agency Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
+            <tr>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  @if (legacy.profile(t(s, 'ZedId')); as href) {
+                    <a [href]="href" class="btn btn-outline-primary">View Profile</a>
+                  }
+                  @if (!f(s, 'DesktopAccepted') && !t(s, 'DesktopReasonForRejection')) {
+                    <button type="button" class="btn btn-primary" (click)="acceptFor.set(s); modalError.set('')">ACCEPT</button>
+                    <button type="button" class="btn btn-outline-danger" (click)="openReject(s)">REJECT</button>
+                  }
+                  @if (f(s, 'DesktopAccepted')) {
+                    <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary">ASSESS</a>
+                  }
+                </div>
+                @if (f(s, 'DesktopAccepted') && surveillance && nm(s, 'CertificationStatus') < 2) {
+                  <span class="status-badge is-pending mt-2">Pending in the Surveillance app</span>
+                }
+              </td>
+              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
+              <td class="unit">
+                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
+                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
+                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
+              </td>
+              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
+              <td><strong>{{ t(s, 'AgencyName') }}</strong><div class="muted">{{ t(s, 'CertificationBodyUserId') }}</div></td>
+            </tr>
+          } @empty {
+            <tr><td colspan="5" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
+
     @if (acceptFor(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="dvAcceptTitle">
-        <div class="modal-dialog modal-popup">
+        <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="dvAcceptTitle">Accept Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="acceptFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <div class="modal-title" id="dvAcceptTitle"><strong>Accept Assessment</strong></div>
+              <button type="button" class="btn-close" aria-label="Close" (click)="acceptFor.set(null)"></button>
             </div>
             <div class="modal-body">
               <zed-text key="staff.desktopVerification.accept.confirm" [inline]="true" />
-              <p class="mt-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
-              @if (modalError()) { <div class="alert alert-danger" role="alert">{{ modalError() }}</div> }
+              <p class="muted mt-2 mb-0">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
+              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="acceptFor.set(null)" />
@@ -116,22 +111,20 @@ import { PagedView, PagerComponent } from '../pager';
 
     @if (rejectFor()) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="dvRejectTitle">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <strong id="dvRejectTitle">Reject Assessment</strong>
-                <button type="button" class="close btn btn-link" aria-label="Close" (click)="rejectFor.set(null)"><strong>x&nbsp;</strong></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <div class="modal-title" id="dvRejectTitle"><strong>Reject Assessment</strong></div>
+              <button type="button" class="btn-close" aria-label="Close" (click)="rejectFor.set(null)"></button>
             </div>
             <div class="modal-body">
-              <label for="dvRejectReason"><strong>Reason for Rejection<span style="color: red">*</span></strong></label>
-              <textarea id="dvRejectReason" class="form-control" maxlength="2000" style="max-width: 100%" [(ngModel)]="reason"></textarea>
-              @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
+              <label class="form-label" for="dvRejectReason">Reason for Rejection<span class="req">*</span></label>
+              <textarea id="dvRejectReason" class="form-control" maxlength="2000" rows="4" [(ngModel)]="reason"></textarea>
+              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="rejectFor.set(null)" />
-              <input type="button" class="btn btn-primary" value="REJECT" [disabled]="busy()" (click)="reject()" />
+              <input type="button" class="btn btn-danger" value="REJECT" [disabled]="busy()" (click)="reject()" />
             </div>
           </div>
         </div>
@@ -145,6 +138,7 @@ import { PagedView, PagerComponent } from '../pager';
       </div>
     }
   `,
+  styles: `.unit { min-width: 200px; }`,
 })
 export class DaVerificationPage {
   private readonly api = inject(AssessmentApi);

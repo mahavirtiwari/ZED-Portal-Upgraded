@@ -91,9 +91,17 @@ interface DecisionForm {
   imports: [FormsModule, RouterLink, NgTemplateOutlet, ContentTextComponent],
   templateUrl: './fa-verification.html',
   styles: `
-    table tbody tr td { font-size: 14px; }
-    .w-50 { width: 50%; }
-    .doc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .section-head h4 { font-size: 16px; font-weight: 700; color: #23474a; margin: 0; }
+    .table-responsive { margin-bottom: 0; }
+    .details { margin-bottom: 0; }
+    .details td { font-size: 14px; }
+    .w-50 { width: 50%; color: #3b4b4c; }
+    .w-30 { width: 30%; }
+    .doc-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 6px; }
+    .doc-status { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .doc-status .remarks { word-break: break-word; }
+    .doc-status .shots { display: flex; flex-wrap: wrap; gap: 4px; }
     .preview img { max-width: 100%; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     .help-block { color: #a94442; font-size: 13px; }
@@ -126,9 +134,19 @@ export class FaVerificationPage {
   protected readonly saving = signal(false);
   /** Documents the assessor opened in this visit (the API records it; the list is reloaded on the next action). */
   private readonly openedHere = signal<ReadonlySet<number>>(new Set());
+  /** Documents whose remarks are unfolded (long remarks show three lines). */
+  protected readonly expanded = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
     void this.load();
+  }
+
+  protected toggle(id: number): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   protected async load(): Promise<void> {

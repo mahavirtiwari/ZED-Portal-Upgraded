@@ -13,92 +13,95 @@ import { PagedView, PagerComponent } from '../pager';
   selector: 'zed-staff-incentive-submissions',
   imports: [FormsModule, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="incentive-page">
-        <div class="panel panel-default panel-grey mt-2">
-          <div class="panel-body p-3">
-            <form class="row g-3 align-items-end" (ngSubmit)="search()">
-              <div class="col-sm-3">
-                <label for="incState"><strong>State</strong></label>
-                <select id="incState" name="state" class="form-select" [(ngModel)]="filter.state">
-                  <option value="">Show All</option>
-                  @for (s of states; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
-                </select>
-              </div>
-              <div class="col-sm-3">
-                <label for="incCert"><strong>Certification Level</strong></label>
-                <select id="incCert" name="certification" class="form-select" [(ngModel)]="filter.certification">
-                  <option value="">Show All</option>
-                  <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
-                </select>
-              </div>
-              <div class="col-sm-3">
-                <label for="incSize"><strong>MSME Size</strong></label>
-                <select id="incSize" name="msmeSize" class="form-select" [(ngModel)]="filter.msmeSize">
-                  <option value="">Show All</option>
-                  <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
-                </select>
-              </div>
-              <div class="col-sm-3">
-                <label for="incGender"><strong>Gender</strong></label>
-                <select id="incGender" name="gender" class="form-select" [(ngModel)]="filter.gender">
-                  <option value="">Show All</option>
-                  <option value="male">Male</option><option value="female">Female</option><option value="Others">Others</option>
-                </select>
-              </div>
-              <div class="col-sm-3"><button type="submit" class="btn btn-primary">Search</button></div>
-            </form>
-          </div>
-        </div>
-
-        <h4 class="registration-title m-2">API Incentives Submitted</h4>
-        @if (error()) {
-          <div class="alert alert-danger" role="alert">{{ error() }}</div>
-        }
-        @if (rows().length) {
-          <div class="table-responsive">
-            <table class="table table-bordered table-zed" style="table-layout: fixed">
-              <thead>
-                <tr>
-                  <th style="width: 4%">S.No</th>
-                  <th>Unit Name<br />State Name</th>
-                  <th>Udyam No.<br />Application Id</th>
-                  <th style="width: 40%">Service Name<br />Incentive Name</th>
-                  <th>Certification<br />Enterprise Type<br />Gender</th>
-                  <th>Disbursed Date<br />Disbursed Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (r of view.page(); track $index) {
-                  <tr>
-                    <td>{{ view.serial($index) }}</td>
-                    <td>{{ r['PUnitName'] }}<br />{{ r['PStateName'] }}</td>
-                    <td>{{ r['UdyamNo'] }}<br />{{ r['ApplicationId'] }}</td>
-                    <td>{{ r['ServiceName'] }}<br />{{ r['IncentiveName'] }}</td>
-                    <td>{{ r['Certification'] }}<br />{{ r['EnterpriseTypee'] }}<br />{{ r['Gender'] }}</td>
-                    <td>{{ date(r['DisbursedDate'] ?? r['ApprovedDate']) }}<br />{{ r['DisbursedAmount'] }}</td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-          <zed-pager [pager]="view" />
-        } @else if (!loading()) {
-          <div class="label-highlight4">
-            <div class="no-incentive-block">
-              <img src="Images/svgicons/no-incentive.svg" alt="" />
-              <p>No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.</p>
-            </div>
-          </div>
-        }
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">API Incentives Submitted</h3>
+        <p class="page-sub">Incentives disbursed to the units, as reported by the ministries' APIs and technology upgradation reimbursements.</p>
       </div>
     </div>
+    <form class="zed-card" (ngSubmit)="search()">
+      <div class="filter-bar">
+        <div class="filter">
+          <label class="form-label" for="incState">State</label>
+          <select id="incState" name="state" class="form-select" [(ngModel)]="filter.state">
+            <option value="">Show All</option>
+            @for (s of states; track s.id) { <option [value]="s.id">{{ s.name }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="incCert">Certification Level</label>
+          <select id="incCert" name="certification" class="form-select" [(ngModel)]="filter.certification">
+            <option value="">Show All</option>
+            <option value="Bronze">Bronze</option><option value="Silver">Silver</option><option value="Gold">Gold</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="incSize">MSME Size</label>
+          <select id="incSize" name="msmeSize" class="form-select" [(ngModel)]="filter.msmeSize">
+            <option value="">Show All</option>
+            <option value="Micro">Micro</option><option value="Small">Small</option><option value="Medium">Medium</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="incGender">Gender</label>
+          <select id="incGender" name="gender" class="form-select" [(ngModel)]="filter.gender">
+            <option value="">Show All</option>
+            <option value="male">Male</option><option value="female">Female</option><option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="filter"><button type="submit" class="btn btn-primary">Search</button></div>
+      </div>
+    </form>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (rows().length) {
+      <div class="table-responsive">
+        <table class="table table-bordered table-zed">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 60px">S.No</th>
+              <th>Unit Name<br />State Name</th>
+              <th class="text-center">Udyam No.<br />Application Id</th>
+              <th>Service Name<br />Incentive Name</th>
+              <th class="text-center">Certification<br />Enterprise Type<br />Gender</th>
+              <th class="text-center">Disbursed Date<br />Disbursed Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (r of view.page(); track $index) {
+              <tr>
+                <td class="text-center">{{ view.serial($index) }}</td>
+                <td class="cell-lines"><strong>{{ r['PUnitName'] }}</strong><span>{{ r['PStateName'] }}</span></td>
+                <td class="cell-lines text-center"><span>{{ r['UdyamNo'] }}</span><span class="muted">{{ r['ApplicationId'] }}</span></td>
+                <td class="cell-lines service"><span>{{ r['ServiceName'] }}</span><span class="muted">{{ r['IncentiveName'] }}</span></td>
+                <td class="cell-lines text-center"><span>{{ r['Certification'] }}</span><span>{{ r['EnterpriseTypee'] }}</span><span>{{ r['Gender'] }}</span></td>
+                <td class="cell-lines text-center"><span>{{ date(r['DisbursedDate'] ?? r['ApprovedDate']) }}</span><strong>{{ r['DisbursedAmount'] }}</strong></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
+    } @else if (!loading()) {
+      <div class="label-highlight4">
+        <div class="no-incentive-block">
+          <img src="Images/svgicons/no-incentive.svg" alt="" />
+          <p>No Ministry of MSME Incentives available currently, please check again as Government may introduce incentives soon.</p>
+        </div>
+      </div>
+    }
     @if (loading()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
   styles: `
     table tbody tr td { font-size: 14px; }
+    /* Several values in one cell, one per line. */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
+    .service { min-width: 260px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

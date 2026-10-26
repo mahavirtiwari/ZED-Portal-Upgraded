@@ -9,62 +9,67 @@ import { firstValueFrom } from 'rxjs';
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{8,}$/;
 const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.';
 
-/** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml (the live design: eye toggles, full-width SUBMIT). */
+/** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml (the live design: eye toggles); V4: page head, label / field grid in a card. */
 @Component({
   selector: 'zed-msme-change-password',
   imports: [FormsModule],
   template: `
     <div class="container form-page">
-      <div class="row mt-3 justify-content-center">
-        <div class="col-sm-9">
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          <div class="panel panel-default panel-design reset-pwd">
-            <div class="panel-body">
-              <form class="row mt-3 justify-content-center" (ngSubmit)="submit()" novalidate>
-                <div class="col-sm-6">
-                  <label for="oldPassword">Old Password</label>
-                  <div class="mb-3">
-                    <input id="oldPassword" name="oldPassword" class="form-control" autocomplete="current-password"
-                           [type]="show().old ? 'text' : 'password'" [(ngModel)]="oldPassword" required maxlength="50" />
-                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? 'Hide password' : 'Show password'" (click)="toggle('old')">
-                      <img [src]="show().old ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
-                    </button>
-                    @if (problem(oldPassword, false); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
-                  </div>
-                  <label for="newPassword">New Password</label>
-                  <div class="mb-3">
-                    <input id="newPassword" name="newPassword" class="form-control" autocomplete="new-password"
-                           [type]="show().new ? 'text' : 'password'" [(ngModel)]="newPassword" required maxlength="50" />
-                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? 'Hide password' : 'Show password'" (click)="toggle('new')">
-                      <img [src]="show().new ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
-                    </button>
-                    @if (problem(newPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
-                  </div>
-                  <label for="confirmPassword">Confirm Password</label>
-                  <div class="mb-3">
-                    <input id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password"
-                           [type]="show().confirm ? 'text' : 'password'" [(ngModel)]="confirmPassword" required maxlength="50" />
-                    <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggle('confirm')">
-                      <img [src]="show().confirm ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
-                    </button>
-                    @if (problem(confirmPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
-                  </div>
-                  <div class="d-grid gap-2 col-12 mx-auto mb-3">
-                    <button type="submit" class="btn btn-primary" style="height: 48px" [disabled]="busy()">SUBMIT</button>
-                  </div>
-                </div>
-              </form>
-            </div>
+      <div class="narrow-page">
+        <div class="page-head">
+          <div>
+            <h3 class="registration-title">Change Password</h3>
+            <p class="page-sub">Set a new password for your account; you will be asked to log in again with it.</p>
           </div>
+        </div>
+        @if (error()) {
+          <div class="alert alert-danger" role="alert">{{ error() }}</div>
+        }
+        <div class="zed-card reset-pwd">
+          <form (ngSubmit)="submit()" novalidate>
+            <div class="form-grid">
+              <label for="oldPassword">Old Password</label>
+              <div class="pwd-field">
+                <input id="oldPassword" name="oldPassword" class="form-control" autocomplete="current-password"
+                       [type]="show().old ? 'text' : 'password'" [(ngModel)]="oldPassword" required maxlength="50" />
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().old ? 'Hide password' : 'Show password'" (click)="toggle('old')">
+                  <img [src]="show().old ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                </button>
+                @if (problem(oldPassword, false); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
+              </div>
+              <label for="newPassword">New Password</label>
+              <div class="pwd-field">
+                <input id="newPassword" name="newPassword" class="form-control" autocomplete="new-password"
+                       [type]="show().new ? 'text' : 'password'" [(ngModel)]="newPassword" required maxlength="50" />
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().new ? 'Hide password' : 'Show password'" (click)="toggle('new')">
+                  <img [src]="show().new ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                </button>
+                @if (problem(newPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
+              </div>
+              <label for="confirmPassword">Confirm Password</label>
+              <div class="pwd-field">
+                <input id="confirmPassword" name="confirmPassword" class="form-control" autocomplete="new-password"
+                       [type]="show().confirm ? 'text' : 'password'" [(ngModel)]="confirmPassword" required maxlength="50" />
+                <button type="button" class="field-icon toggle-password" [attr.aria-label]="show().confirm ? 'Hide password' : 'Show password'" (click)="toggle('confirm')">
+                  <img [src]="show().confirm ? 'Images/svgicons/eye-off.svg' : 'Images/svgicons/eye.svg'" alt="" />
+                </button>
+                @if (problem(confirmPassword); as p) { <span class="field-validation-error d-block">{{ p }}</span> }
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">SUBMIT</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
   `,
   styles: `
-    /* A 32px tap area around the eye icon; the margins keep the icon where the old page had it. */
-    .field-icon { border: 0; background: transparent; padding: 6px; margin-top: -36px; margin-right: 4px; line-height: 0; }
+    .narrow-page { max-width: 760px; margin: 24px auto 0; }
+    /* The eye icon inside the field on its right, with a 32px tap area. */
+    .pwd-field { position: relative; }
+    .pwd-field .form-control { padding-right: 44px; }
+    .field-icon { position: absolute; top: 4px; right: 4px; float: none; margin: 0; border: 0; background: transparent; padding: 6px; line-height: 0; }
   `,
 })
 export class ChangePasswordPage {

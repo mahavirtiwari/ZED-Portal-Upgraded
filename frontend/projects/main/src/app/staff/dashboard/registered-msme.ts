@@ -24,7 +24,10 @@ import { PagerComponent, ServerPager } from '../pager';
   templateUrl: './registered-msme.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .action-btn { width: 180px; }
+    /* Several values in one cell, one per line (the old pages separated them with <br /><br />). */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
+    .status-badge.wrap { white-space: normal; }
   `,
 })
 export class RegisteredMsmePage {

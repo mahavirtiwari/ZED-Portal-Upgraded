@@ -4,55 +4,52 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
-/** "Contact ZED". Port of Views/Home/Contact.cshtml. */
+/** "Contact ZED". Port of Views/Home/Contact.cshtml; V4: page head, label / field grid in a card. */
 @Component({
   selector: 'zed-msme-contact',
   imports: [FormsModule, Recaptcha],
   template: `
     <div class="container form-page">
-      <div class="row justify-content-center mt-3">
-        <div class="col-sm-9">
-          <div class="panel panel-default panel-design">
-            <div class="panel-body">
-              <h3 class="registration-title">Contact ZED</h3>
-              @if (success()) {
-                <div class="alert alert-success" role="status"><strong>{{ success() }}</strong></div>
-              } @else {
-                @if (error()) {
-                  <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
-                }
-                <form (ngSubmit)="submit()" novalidate>
-                  <div class="mb-3">
-                    <label class="contact-label" for="name">Your Name:</label>
-                    <input id="name" name="name" class="form-control" placeholder="Type here" maxlength="200" [(ngModel)]="name" required />
-                  </div>
-                  <div class="mb-3">
-                    <label class="contact-label" for="mobile">Your Mobile Number:</label>
-                    <input id="mobile" name="mobile" class="form-control" placeholder="Type here" maxlength="10" inputmode="numeric" [(ngModel)]="mobile" required />
-                  </div>
-                  <div class="mb-3">
-                    <label class="contact-label" for="email">Your Email:</label>
-                    <input id="email" name="email" type="email" class="form-control" placeholder="Type here" maxlength="200" [(ngModel)]="email" required />
-                  </div>
-                  <div class="mb-3">
-                    <label class="contact-label" for="query">Your Query:</label>
-                    <textarea id="query" name="query" class="form-control" placeholder="Type here" rows="4" maxlength="4000" [(ngModel)]="query" required></textarea>
-                  </div>
-                  <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-                  <div class="mb-3 text-center">
-                    <button type="submit" class="btn btn-primary btn-block" [disabled]="busy()">SUBMIT</button>
-                  </div>
-                </form>
-              }
-            </div>
+      <div class="narrow-page">
+        <div class="page-head">
+          <div>
+            <h3 class="registration-title">Contact ZED</h3>
+            <p class="page-sub">Send your query to the ZED team.</p>
           </div>
+        </div>
+        <div class="zed-card">
+          @if (success()) {
+            <div class="alert alert-success mb-0" role="status"><strong>{{ success() }}</strong></div>
+          } @else {
+            @if (error()) {
+              <div class="alert alert-danger" role="alert"><strong>{{ error() }}</strong></div>
+            }
+            <form (ngSubmit)="submit()" novalidate>
+              <div class="form-grid">
+                <label for="name">Your Name:</label>
+                <input id="name" name="name" class="form-control" placeholder="Type here" maxlength="200" [(ngModel)]="name" required />
+                <label for="mobile">Your Mobile Number:</label>
+                <input id="mobile" name="mobile" class="form-control" placeholder="Type here" maxlength="10" inputmode="numeric" [(ngModel)]="mobile" required />
+                <label for="email">Your Email:</label>
+                <input id="email" name="email" type="email" class="form-control" placeholder="Type here" maxlength="200" [(ngModel)]="email" required />
+                <label for="query" class="align-self-start">Your Query:</label>
+                <textarea id="query" name="query" class="form-control" placeholder="Type here" rows="4" maxlength="4000" [(ngModel)]="query" required></textarea>
+                <span></span>
+                <div><zed-recaptcha (token)="captchaToken = $event" /></div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">SUBMIT</button>
+              </div>
+            </form>
+          }
         </div>
       </div>
     </div>
   `,
   styles: `
-    .contact-label { color: #8d8f90; text-transform: uppercase; font-size: 14px; font-weight: 600; }
-    .form-control { max-width: 100%; }
+    .narrow-page { max-width: 760px; margin: 24px auto 0; }
+    .form-grid > .align-self-start { padding-top: 9px; }
+    @media (max-width: 767.98px) { .form-grid > span:empty { display: none; } }
   `,
 })
 export class ContactPage {

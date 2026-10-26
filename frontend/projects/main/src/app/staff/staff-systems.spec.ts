@@ -52,9 +52,9 @@ describe('staff pages per system', () => {
     http.expectOne('/api/staff/dashboard/counts').flush({ total: 40, bronze: 3, silver: 20, gold: 17 });
     await settle();
 
-    const tiles = [...el.querySelectorAll('.dashboard-consultant-block .panel-heading')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
+    const tiles = [...el.querySelectorAll('.dash-tile')].map((t) => `${t.querySelector('h5')!.textContent!.trim()}${t.querySelector('.dash-count')!.textContent!.trim()}`);
     expect(tiles).toEqual(['Empanelled Consultant Organisations12', 'Consultants340']);
-    expect(el.querySelectorAll('.dashboard-cert-block .item').length).toBe(3);
+    expect(el.querySelectorAll('.dash-card:not(.dash-tile)').length).toBe(3);
     expect(el.textContent).toContain('Technology Intervention');
     expect(el.querySelector('.registered p')!.textContent).toBe('Application');
     expect(el.querySelector('.bronzeVerified p')!.textContent).toBe('TI');
@@ -65,7 +65,7 @@ describe('staff pages per system', () => {
     http.expectOne('/api/staff/dashboard').flush({ SilverTotal: 5 });
     http.expectOne('/api/staff/dashboard/counts').flush({ total: 0, bronze: 0, silver: 0, gold: 0 });
     await settle();
-    expect(el.querySelector('.dashboard-consultant-block')).toBeNull();
+    expect(el.querySelector('.dash-tile')).toBeNull();
   });
 
   it('labels the Surveillance cards as the live dashboard', async () => {
@@ -73,9 +73,10 @@ describe('staff pages per system', () => {
     http.expectOne('/api/staff/dashboard').flush({ BronzeTotal: 4, BronzePending: 1, SaSilverNcRaised: 2 });
     http.expectOne('/api/staff/dashboard/counts').flush({ total: 0, bronze: 0, silver: 0, gold: 0 });
     await settle();
-    const bronze = [...el.querySelectorAll('.panel-bronze p')].map((p) => p.textContent!.replace(/\s+/g, ' ').trim());
+    const bronze = [...el.querySelectorAll('.panel-bronze li')].map((li) => `${li.querySelector('.dash-label')!.textContent!.trim()}: ${li.querySelector('.dash-value')!.textContent!.trim()}`);
     expect(bronze).toEqual(['Total Application: 4', 'Surveillance Pending: 1', 'Surveillance Completed: 0', 'NC Raised: 0', 'Rejected: 0']);
-    expect(el.querySelector('.panel-silver')!.textContent).toContain('NC Raised: 2');
+    const ncRaised = [...el.querySelectorAll('.panel-silver li')].find((li) => li.querySelector('.dash-label')!.textContent!.trim() === 'NC Raised')!;
+    expect(ncRaised.querySelector('.dash-value')!.textContent!.trim()).toBe('2');
   });
 
   it('lists Consultant Organisations with the live columns', async () => {
@@ -129,7 +130,7 @@ describe('staff pages per system', () => {
     });
     await settle();
     expect(headers()).toEqual([
-      '', 'ZED ID', 'Plant Name', 'TechnologyName', 'Name Of The ManufacturerMake Or Model NameAgency or Supplier', 'Amount PaidEligible Amount',
+      'Actions', 'ZED ID', 'Plant Name', 'TechnologyName', 'Name Of The ManufacturerMake Or Model NameAgency or Supplier', 'Amount PaidEligible Amount',
       'Account No.IFSC Code', 'Branch Address',
     ]);
     const links = [...el.querySelectorAll('tbody a')].map((a) => [a.textContent!.trim(), a.getAttribute('href')]);

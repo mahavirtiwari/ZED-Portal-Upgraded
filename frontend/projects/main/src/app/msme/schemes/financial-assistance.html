@@ -1,60 +1,65 @@
 <div class="container form-page financial-assistance" id="zed_user_form">
-  <div class="mt-4">
+  <div class="scheme-page">
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
         <!-- Already applied, not eligible or not certified: the MSME's own applications (old Details page). -->
-        <div class="row">
-          <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [pledge]="true" /></div>
-          <div class="col-sm-9">
-            <div class="refresh-bar d-flex justify-content-between mb-2">
-              <a routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
-              <button type="button" class="btn btn-link refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
-            </div>
+        <div class="page-head">
+          <div>
             <h3 class="registration-title">Financial Assistance</h3>
+            <p class="page-sub">Your applications for financial assistance on system / product certification or product testing.</p>
+          </div>
+          <div class="page-actions refresh-bar mb-0">
+            <a routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
+            <button type="button" class="btn btn-link refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <zed-scheme-unit-panel [unit]="unit()" [pledge]="true" />
+          <div class="dash-main">
             @if (p.message) {
               <div class="alert alert-info" role="status" id="faMessage">{{ p.message }}</div>
             }
             @for (app of applications(); track app.certification) {
-              <div class="fa-application mb-4">
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Certification Details ({{ app.certification }}) @if (status(app)) { – {{ status(app) }} }</div></div></div>
-                <table class="table table-default table-zed">
+              <div class="zed-card fa-application">
+                <h4>Certification Details ({{ app.certification }}) @if (status(app)) { – {{ status(app) }} }</h4>
+                <table class="table table-zed detail-table">
                   <tbody>
-                    <tr><td class="w-50">Category of Certificate</td><td><b>{{ app.details['CategoryOfCertificate'] }}</b></td></tr>
-                    <tr><td class="w-50">Name of Certificate</td><td><b>{{ app.details['NameOfCertficate'] }}</b></td></tr>
-                    <tr><td class="w-50">Name of Certification Agency</td><td><b>{{ app.details['CertificationAgency'] }}</b></td></tr>
-                    <tr><td class="w-50">Certificate Number</td><td><b>{{ app.details['CertficateNumber'] }}</b></td></tr>
-                    <tr><td class="w-50">Date of Issue of Certificate</td><td><b>{{ app.details['DateOfIssue'] }}</b></td></tr>
-                    <tr><td class="w-50">Period of validity of Certificate</td><td><b>{{ app.details['ValidityOfCertificate'] }}</b></td></tr>
-                    <tr><td class="w-50">Copy of Certificate</td><td>@for (d of appDocs(app, docTypes.certificate); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-primary btn-sm me-1">VIEW</a> }</td></tr>
+                    <tr><td>Category of Certificate</td><td><b>{{ app.details['CategoryOfCertificate'] }}</b></td></tr>
+                    <tr><td>Name of Certificate</td><td><b>{{ app.details['NameOfCertficate'] }}</b></td></tr>
+                    <tr><td>Name of Certification Agency</td><td><b>{{ app.details['CertificationAgency'] }}</b></td></tr>
+                    <tr><td>Certificate Number</td><td><b>{{ app.details['CertficateNumber'] }}</b></td></tr>
+                    <tr><td>Date of Issue of Certificate</td><td><b>{{ app.details['DateOfIssue'] }}</b></td></tr>
+                    <tr><td>Period of validity of Certificate</td><td><b>{{ app.details['ValidityOfCertificate'] }}</b></td></tr>
+                    <tr><td>Copy of Certificate</td><td><div class="row-actions">@for (d of appDocs(app, docTypes.certificate); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-outline-primary">VIEW</a> }</div></td></tr>
                   </tbody>
                 </table>
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Details of Expenditure</div></div></div>
-                <table class="table table-default table-zed">
+                <h4>Details of Expenditure</h4>
+                <table class="table table-zed detail-table">
                   <tbody>
-                    <tr><td class="w-50">Name of Certificate</td><td><b>{{ app.details['ExpenditureCertficate'] }}</b></td></tr>
-                    <tr><td class="w-50">Name of Agency/Supplier</td><td><b>{{ app.details['AgencyOrSupplier'] }}</b></td></tr>
-                    <tr><td class="w-50">Invoice/Bill No.</td><td><b>{{ app.details['InvoiceNo'] }}</b></td></tr>
-                    <tr><td class="w-50">Invoice Bill Date</td><td><b>{{ app.details['InvoiceBillDate'] }}</b></td></tr>
-                    <tr><td class="w-50">Amount Paid(Rs.)</td><td><b>Rs.{{ app.details['AmountPaid'] }}</b></td></tr>
-                    <tr><td class="w-50">Eligible Financial Assistance(Rs.)</td><td><b>Rs.{{ app.details['EligibleAmount'] }}</b></td></tr>
-                    <tr><td class="w-50">Mode of Payment</td><td><b>{{ app.details['ModeOfPayment'] }}</b></td></tr>
-                    <tr><td class="w-50">CA certificate of expenditure</td><td>@for (d of appDocs(app, docTypes.ca); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-primary btn-sm me-1">VIEW</a> }</td></tr>
-                    <tr><td class="w-50">Invoice Copy</td><td>@for (d of appDocs(app, docTypes.invoice); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-primary btn-sm me-1">VIEW</a> }</td></tr>
+                    <tr><td>Name of Certificate</td><td><b>{{ app.details['ExpenditureCertficate'] }}</b></td></tr>
+                    <tr><td>Name of Agency/Supplier</td><td><b>{{ app.details['AgencyOrSupplier'] }}</b></td></tr>
+                    <tr><td>Invoice/Bill No.</td><td><b>{{ app.details['InvoiceNo'] }}</b></td></tr>
+                    <tr><td>Invoice Bill Date</td><td><b>{{ app.details['InvoiceBillDate'] }}</b></td></tr>
+                    <tr><td>Amount Paid(Rs.)</td><td><b>Rs.{{ app.details['AmountPaid'] }}</b></td></tr>
+                    <tr><td>Eligible Financial Assistance(Rs.)</td><td><b>Rs.{{ app.details['EligibleAmount'] }}</b></td></tr>
+                    <tr><td>Mode of Payment</td><td><b>{{ app.details['ModeOfPayment'] }}</b></td></tr>
+                    <tr><td>CA certificate of expenditure</td><td><div class="row-actions">@for (d of appDocs(app, docTypes.ca); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-outline-primary">VIEW</a> }</div></td></tr>
+                    <tr><td>Invoice Copy</td><td><div class="row-actions">@for (d of appDocs(app, docTypes.invoice); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-outline-primary">VIEW</a> }</div></td></tr>
                   </tbody>
                 </table>
-                <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Account Details of Reimbursement</div></div></div>
-                <table class="table table-default table-zed">
+                <h4>Account Details of Reimbursement</h4>
+                <table class="table table-zed detail-table">
                   <tbody>
-                    <tr><td class="w-50">Account No.</td><td><b>{{ app.details['AccountNo'] }}</b></td></tr>
-                    <tr><td class="w-50">IFSC Code</td><td><b>{{ app.details['IfscCode'] }}</b></td></tr>
-                    <tr><td class="w-50">Branch Address</td><td><b>{{ app.details['BranchAddress'] }}</b></td></tr>
-                    <tr><td class="w-50">Name of the Bank</td><td><b>{{ app.details['BankName'] }}</b></td></tr>
-                    <tr><td class="w-50">Cancelled Cheque Copy</td><td>@for (d of appDocs(app, docTypes.cheque); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-primary btn-sm me-1">VIEW</a> }</td></tr>
+                    <tr><td>Account No.</td><td><b>{{ app.details['AccountNo'] }}</b></td></tr>
+                    <tr><td>IFSC Code</td><td><b>{{ app.details['IfscCode'] }}</b></td></tr>
+                    <tr><td>Branch Address</td><td><b>{{ app.details['BranchAddress'] }}</b></td></tr>
+                    <tr><td>Name of the Bank</td><td><b>{{ app.details['BankName'] }}</b></td></tr>
+                    <tr><td>Cancelled Cheque Copy</td><td><div class="row-actions">@for (d of appDocs(app, docTypes.cheque); track d.fileName) { <a [href]="d.url" target="_blank" rel="noopener" class="btn btn-outline-primary">VIEW</a> }</div></td></tr>
                   </tbody>
                 </table>
               </div>
             }
-            <div class="stepper-footer-sec initial-step1">
+            <div class="form-actions justify-content-start">
               <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
             </div>
           </div>
@@ -64,197 +69,214 @@
           @case (1) { <zed-scheme-intro [step]="1" (accept)="go(2)" /> }
           @case (2) { <zed-scheme-intro [step]="2" (accept)="go(3)" /> }
           @case (3) {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [full]="false" /></div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Provided Email ID</span></div></div></div>
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Financial Assistance</h3>
+                <p class="page-sub">Check your enterprise, e-mail, unit and activity before you fill in the application.</p>
+              </div>
+            </div>
+            <div class="summary-cards">
+              <zed-scheme-unit-panel [unit]="unit()" [full]="false" />
+              <div class="zed-card">
+                <h4>Provided Email ID</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/email.svg" width="20" alt="" /><p>{{ unit()['PledgeEmailId'] }}</p></div>
               </div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Unit</span></div></div></div>
+              <div class="zed-card">
+                <h4>Selected Unit</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ unit()['PUnitName'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ unit()['PAddress'] }}, {{ unit()['PDistrictName'] }}, {{ unit()['PStateName'] }}, {{ unit()['PPin'] }}</p></div>
               </div>
-              <div class="col-sm-3">
-                <div class="card card-default panel-black"><div class="card-body"><div class="summary-title"><span>Selected Activity</span></div></div></div>
+              <div class="zed-card">
+                <h4>Selected Activity</h4>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ unit()['Activity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ unit()['TwoDigitActivity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ unit()['FourDigitActivity'] }}</p></div>
                 <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ unit()['FiveDigitActivity'] }}</p></div>
               </div>
-              <div class="col-sm-12">
-                <div class="label-highlight2">
-                  <label class="checkbox-inline">
-                    <input type="checkbox" id="faConfirm" class="option-input1 yes checkbox" [checked]="confirmed()" (change)="confirmed.set(!confirmed())" />
-                    <zed-text key="msme.fa.confirm.checkbox" [inline]="true" />
-                  </label>
-                </div>
-              </div>
-              <div class="col-sm-12">
-                <div class="stepper-footer-sec initial-step1">
-                  <button type="button" class="btn btn-default" (click)="go(2)">BACK</button>
-                  <button type="button" class="btn btn-primary" id="faConfirmProceed" [disabled]="!confirmed()" (click)="go(4)">PROCEED</button>
-                </div>
-              </div>
+            </div>
+            <div class="label-highlight2 confirm-box">
+              <label class="checkbox-inline">
+                <input type="checkbox" id="faConfirm" class="option-input1 yes checkbox" [checked]="confirmed()" (change)="confirmed.set(!confirmed())" />
+                <zed-text key="msme.fa.confirm.checkbox" [inline]="true" />
+              </label>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn btn-default" (click)="go(2)">BACK</button>
+              <button type="button" class="btn btn-primary" id="faConfirmProceed" [disabled]="!confirmed()" (click)="go(4)">PROCEED</button>
             </div>
           }
           @case (4) {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-              <div class="col-sm-9">
+            <div class="page-head">
+              <div>
+                <h3 class="registration-title">Financial Assistance</h3>
+                <p class="page-sub">The certificate, what you paid for it and the account the assistance is to be paid into.</p>
+              </div>
+            </div>
+            <div class="dash-grid">
+              <zed-scheme-unit-panel [unit]="unit()" />
+              <div class="dash-main">
                 <form class="form-horizontal" id="faForm" #faForm="ngForm" (ngSubmit)="review()">
-                  <div class="card card-default panel-black m-b-2"><div class="card-body"><div class="info-block">Certification Details</div></div></div>
-                  <div class="card card-default m-b-0">
-                    <div class="card-body">
-                      <label class="col-sm-12 p-l-0">Category of Certificate?</label>
-                      <div class="d-flex gap-4" role="radiogroup" aria-label="Category of Certificate">
-                        @for (c of ['Quality', 'Product', 'Testing']; track c) {
-                          <label class="radio-inline-item">
-                            <input type="radio" class="option-input yes radio" name="CategoryOfCertificate" [value]="c" required [(ngModel)]="form.categoryOfCertificate" />
-                            <span>{{ c === 'Quality' ? 'System/Quality' : c }}</span>
-                          </label>
-                        }
+                  <div class="zed-card">
+                    <h4>Certification Details</h4>
+                    <div class="form-grid">
+                      <span class="label">Category of Certificate?</span>
+                      <div>
+                        <div class="d-flex flex-wrap gap-4" role="radiogroup" aria-label="Category of Certificate">
+                          @for (c of ['Quality', 'Product', 'Testing']; track c) {
+                            <label class="radio-inline-item">
+                              <input type="radio" class="option-input yes radio" name="CategoryOfCertificate" [value]="c" required [(ngModel)]="form.categoryOfCertificate" />
+                              <span>{{ c === 'Quality' ? 'System/Quality' : c }}</span>
+                            </label>
+                          }
+                        </div>
+                        @if (fieldError(faForm, 'CategoryOfCertificate')) { <span class="help-block">This is required.</span> }
                       </div>
-                      @if (fieldError(faForm, 'CategoryOfCertificate')) { <span class="help-block">This is required.</span> }
+                      <label for="faName">Name of Certificate</label>
+                      <div>
+                        <input id="faName" name="NameOfCertficate" class="form-control" maxlength="200" required [(ngModel)]="form.nameOfCertficate" />
+                        @if (fieldError(faForm, 'NameOfCertficate')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faAgency">Name of Certification Agency</label>
+                      <div>
+                        <input id="faAgency" name="CertificationAgency" class="form-control" maxlength="200" required [(ngModel)]="form.certificationAgency" />
+                        @if (fieldError(faForm, 'CertificationAgency')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faCertNo">Certificate Number</label>
+                      <div>
+                        <input id="faCertNo" name="CertficateNumber" class="form-control" maxlength="50" required [(ngModel)]="form.certficateNumber" />
+                        @if (fieldError(faForm, 'CertficateNumber')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faIssue">Date of Issue of Certificate</label>
+                      <div>
+                        <input id="faIssue" name="DateOfIssue" type="date" class="form-control" [max]="today" required [(ngModel)]="form.dateOfIssue" />
+                        @if (fieldError(faForm, 'DateOfIssue')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faValidity">Period of validity of Certificate (Years)</label>
+                      <div>
+                        <input id="faValidity" name="ValidityOfCertificate" type="number" min="1" max="100" class="form-control" required [(ngModel)]="form.validityOfCertificate" />
+                        @if (fieldError(faForm, 'ValidityOfCertificate')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faOther">Any other information related to this certificate</label>
+                      <div>
+                        <input id="faOther" name="AnyOtherInformation" class="form-control" maxlength="2000" [(ngModel)]="form.anyOtherInformation" />
+                      </div>
+                      <zed-scheme-document label="Upload Copy of Certificate" inputId="faDocCertificate" [required]="true" [busy]="busy()"
+                        [documents]="docs(docTypes.certificate)" (pick)="upload(docTypes.certificate, $event)" (remove)="removeDoc($event)" />
                     </div>
                   </div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faName">Name of Certificate</label>
-                    <input id="faName" name="NameOfCertficate" class="form-control" maxlength="200" required [(ngModel)]="form.nameOfCertficate" />
-                    @if (fieldError(faForm, 'NameOfCertficate')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faAgency">Name of Certification Agency</label>
-                    <input id="faAgency" name="CertificationAgency" class="form-control" maxlength="200" required [(ngModel)]="form.certificationAgency" />
-                    @if (fieldError(faForm, 'CertificationAgency')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faCertNo">Certificate Number</label>
-                    <input id="faCertNo" name="CertficateNumber" class="form-control" maxlength="50" required [(ngModel)]="form.certficateNumber" />
-                    @if (fieldError(faForm, 'CertficateNumber')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faIssue">Date of Issue of Certificate</label>
-                    <input id="faIssue" name="DateOfIssue" type="date" class="form-control" [max]="today" required [(ngModel)]="form.dateOfIssue" />
-                    @if (fieldError(faForm, 'DateOfIssue')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faValidity">Period of validity of Certificate (Years)</label>
-                    <input id="faValidity" name="ValidityOfCertificate" type="number" min="1" max="100" class="form-control" required [(ngModel)]="form.validityOfCertificate" />
-                    @if (fieldError(faForm, 'ValidityOfCertificate')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faOther">Any other information related to this certificate</label>
-                    <input id="faOther" name="AnyOtherInformation" class="form-control" maxlength="2000" [(ngModel)]="form.anyOtherInformation" />
-                  </div></div>
-                  <zed-scheme-document label="Upload Copy of Certificate" inputId="faDocCertificate" [required]="true" [busy]="busy()"
-                    [documents]="docs(docTypes.certificate)" (pick)="upload(docTypes.certificate, $event)" (remove)="removeDoc($event)" />
 
-                  <div class="card card-default panel-black m-b-2 mt-3"><div class="card-body"><div class="info-block">Details of Expenditure</div></div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faExpCert">Name of Certificate</label>
-                    <input id="faExpCert" class="form-control" disabled [value]="form.nameOfCertficate" />
-                    @if (faForm.submitted && !form.nameOfCertficate) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faSupplier">Name of Agency/Supplier</label>
-                    <input id="faSupplier" class="form-control" disabled [value]="form.certificationAgency" />
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faInvoice">Invoice/Bill No.</label>
-                    <input id="faInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="form.invoiceNo" />
-                    @if (fieldError(faForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faInvoiceDate">Invoice/Bill Date</label>
-                    <input id="faInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [max]="today" required [(ngModel)]="form.invoiceBillDate" />
-                    @if (fieldError(faForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0"><zed-text key="msme.fa.eligibleAmountNote" [inline]="true" /></label>
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faAmount">Amount Paid (Rs.)</label>
-                    <input id="faAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="form.amountPaid" />
-                    @if (fieldError(faForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faMode">Mode of Payment</label>
-                    <select id="faMode" name="ModeOfPayment" class="form-control" required [(ngModel)]="form.modeOfPayment">
-                      <option value="">-Select-</option>
-                      <option value="Offline">Offline</option>
-                      <option value="Online">Online</option>
-                    </select>
-                    @if (fieldError(faForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="faDocCa" [required]="false" [busy]="busy()"
-                    [documents]="docs(docTypes.ca)" (pick)="upload(docTypes.ca, $event)" (remove)="removeDoc($event)" />
-                  <zed-scheme-document label="Upload Invoice Copy" inputId="faDocInvoice" [required]="true" [busy]="busy()"
-                    [documents]="docs(docTypes.invoice)" (pick)="upload(docTypes.invoice, $event)" (remove)="removeDoc($event)" />
-
-                  <div class="card card-default panel-black m-b-2 mt-3"><div class="card-body"><div class="info-block">Account Details of Reimbursement</div></div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faAccount">Account No.</label>
-                    <input id="faAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="form.account.accountNo" />
-                    @if (fieldError(faForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faAccount2">Re-Enter Account No.</label>
-                    <input id="faAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="form.account.confirmAccountNo" />
-                    @if (fieldError(faForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
-                    @if (form.account.confirmAccountNo && form.account.accountNo !== form.account.confirmAccountNo) {
-                      <span class="help-block" style="color: red;">Account Numbers must match.</span>
-                    }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faIfsc">IFSC Code</label>
-                    <input id="faIfsc" name="IfscCode" class="form-control" maxlength="11" style="text-transform: uppercase" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="form.account.ifscCode" />
-                    @if (fieldError(faForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
-                    @if (fieldError(faForm, 'IfscCode', 'pattern', false)) { <span class="help-block" style="color: red;">Invalid IFSC Code format. (Example: ABCD0123456)</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faBranch">Branch Address</label>
-                    <input id="faBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="form.account.branchAddress" />
-                    @if (fieldError(faForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <div class="card card-default m-b-0"><div class="card-body">
-                    <label class="col-sm-12 p-l-0" for="faBank">Name of the Bank</label>
-                    <input id="faBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="form.account.bankName" />
-                    @if (fieldError(faForm, 'BankName')) { <span class="help-block">This is required.</span> }
-                  </div></div>
-                  <zed-scheme-document label="Cancelled Cheque Copy" inputId="faDocCheque" [required]="true" [busy]="busy()"
-                    [documents]="docs(docTypes.cheque)" (pick)="upload(docTypes.cheque, $event)" (remove)="removeDoc($event)" />
-
-                  <div class="row mt-2">
-                    <div class="col-sm-12">
-                      <div class="label-highlight2">
-                        <label class="checkbox-inline">
-                          <input type="checkbox" name="Declaration" id="faDeclaration" class="option-input1 yes checkbox" [(ngModel)]="form.declaration" />
-                          <zed-text key="msme.schemes.declaration.checkbox" [inline]="true" />
-                        </label>
+                  <div class="zed-card">
+                    <h4>Details of Expenditure</h4>
+                    <div class="form-grid">
+                      <label for="faExpCert">Name of Certificate</label>
+                      <div>
+                        <input id="faExpCert" class="form-control" disabled [value]="form.nameOfCertficate" />
+                        @if (faForm.submitted && !form.nameOfCertficate) { <span class="help-block">This is required.</span> }
                       </div>
-                    </div>
-                    <div class="col-sm-12">
-                      <div class="stepper-footer-sec initial-step1">
-                        <button type="button" class="btn btn-default" (click)="go(3)">BACK</button>
-                        <button type="submit" class="btn btn-primary" [class.btn-disabled]="!form.declaration" [disabled]="busy()">PROCEED</button>
+                      <label for="faSupplier">Name of Agency/Supplier</label>
+                      <div>
+                        <input id="faSupplier" class="form-control" disabled [value]="form.certificationAgency" />
                       </div>
+                      <label for="faInvoice">Invoice/Bill No.</label>
+                      <div>
+                        <input id="faInvoice" name="InvoiceNo" class="form-control" maxlength="50" required [(ngModel)]="form.invoiceNo" />
+                        @if (fieldError(faForm, 'InvoiceNo')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faInvoiceDate">Invoice/Bill Date</label>
+                      <div>
+                        <input id="faInvoiceDate" name="InvoiceBillDate" type="date" class="form-control" [max]="today" required [(ngModel)]="form.invoiceBillDate" />
+                        @if (fieldError(faForm, 'InvoiceBillDate')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <div class="grid-note"><zed-text key="msme.fa.eligibleAmountNote" [inline]="true" /></div>
+                      <label for="faAmount">Amount Paid (Rs.)</label>
+                      <div>
+                        <input id="faAmount" name="AmountPaid" type="number" min="1" class="form-control" required [(ngModel)]="form.amountPaid" />
+                        @if (fieldError(faForm, 'AmountPaid')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faMode">Mode of Payment</label>
+                      <div>
+                        <select id="faMode" name="ModeOfPayment" class="form-select" required [(ngModel)]="form.modeOfPayment">
+                          <option value="">-Select-</option>
+                          <option value="Offline">Offline</option>
+                          <option value="Online">Online</option>
+                        </select>
+                        @if (fieldError(faForm, 'ModeOfPayment')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <zed-scheme-document label="CA certificate of expenditure (Optional)" inputId="faDocCa" [required]="false" [busy]="busy()"
+                        [documents]="docs(docTypes.ca)" (pick)="upload(docTypes.ca, $event)" (remove)="removeDoc($event)" />
+                      <zed-scheme-document label="Upload Invoice Copy" inputId="faDocInvoice" [required]="true" [busy]="busy()"
+                        [documents]="docs(docTypes.invoice)" (pick)="upload(docTypes.invoice, $event)" (remove)="removeDoc($event)" />
                     </div>
+                  </div>
+
+                  <div class="zed-card">
+                    <h4>Account Details of Reimbursement</h4>
+                    <div class="form-grid">
+                      <label for="faAccount">Account No.</label>
+                      <div>
+                        <input id="faAccount" name="AccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="form.account.accountNo" />
+                        @if (fieldError(faForm, 'AccountNo')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faAccount2">Re-Enter Account No.</label>
+                      <div>
+                        <input id="faAccount2" name="ConfirmAccountNo" class="form-control" maxlength="18" inputmode="numeric" autocomplete="off" required [(ngModel)]="form.account.confirmAccountNo" />
+                        @if (fieldError(faForm, 'ConfirmAccountNo')) { <span class="help-block">Re-Enter Account Number is required.</span> }
+                        @if (form.account.confirmAccountNo && form.account.accountNo !== form.account.confirmAccountNo) {
+                          <span class="help-block text-danger">Account Numbers must match.</span>
+                        }
+                      </div>
+                      <label for="faIfsc">IFSC Code</label>
+                      <div>
+                        <input id="faIfsc" name="IfscCode" class="form-control text-uppercase" maxlength="11" required pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" [(ngModel)]="form.account.ifscCode" />
+                        @if (fieldError(faForm, 'IfscCode')) { <span class="help-block">This is required.</span> }
+                        @if (fieldError(faForm, 'IfscCode', 'pattern', false)) { <span class="help-block text-danger">Invalid IFSC Code format. (Example: ABCD0123456)</span> }
+                      </div>
+                      <label for="faBranch">Branch Address</label>
+                      <div>
+                        <input id="faBranch" name="BranchAddress" class="form-control" maxlength="500" required [(ngModel)]="form.account.branchAddress" />
+                        @if (fieldError(faForm, 'BranchAddress')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <label for="faBank">Name of the Bank</label>
+                      <div>
+                        <input id="faBank" name="BankName" class="form-control" maxlength="200" required [(ngModel)]="form.account.bankName" />
+                        @if (fieldError(faForm, 'BankName')) { <span class="help-block">This is required.</span> }
+                      </div>
+                      <zed-scheme-document label="Cancelled Cheque Copy" inputId="faDocCheque" [required]="true" [busy]="busy()"
+                        [documents]="docs(docTypes.cheque)" (pick)="upload(docTypes.cheque, $event)" (remove)="removeDoc($event)" />
+                    </div>
+                  </div>
+
+                  <div class="label-highlight2 confirm-box">
+                    <label class="checkbox-inline">
+                      <input type="checkbox" name="Declaration" id="faDeclaration" class="option-input1 yes checkbox" [(ngModel)]="form.declaration" />
+                      <zed-text key="msme.schemes.declaration.checkbox" [inline]="true" />
+                    </label>
+                  </div>
+                  <div class="form-actions">
+                    <button type="button" class="btn btn-default" (click)="go(3)">BACK</button>
+                    <button type="submit" class="btn btn-primary" [class.btn-disabled]="!form.declaration" [disabled]="busy()">PROCEED</button>
                   </div>
                 </form>
               </div>
             </div>
           }
           @case ('summary') {
-            <div class="row">
-              <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
-              <div class="col-sm-9">
+            <div class="page-head">
+              <div>
                 <h3 class="registration-title">Summary</h3>
-                <table class="table table-bordered" id="faSummary">
-                  <tr><td>Amount Paid (Rs.)</td><td>{{ inr(form.amountPaid) }}</td></tr>
-                  <tr><td>Financial Assistance Eligible Amount (Rs.)</td><td>{{ inr(eligible()) }}</td></tr>
-                </table>
-                <div class="stepper-footer-sec initial-step1">
+                <p class="page-sub">The amount you paid and the financial assistance you are eligible for.</p>
+              </div>
+            </div>
+            <div class="dash-grid">
+              <zed-scheme-unit-panel [unit]="unit()" />
+              <div class="dash-main">
+                <div class="zed-card">
+                  <table class="table table-bordered detail-table mb-0" id="faSummary">
+                    <tr><td>Amount Paid (Rs.)</td><td>{{ inr(form.amountPaid) }}</td></tr>
+                    <tr><td>Financial Assistance Eligible Amount (Rs.)</td><td>{{ inr(eligible()) }}</td></tr>
+                  </table>
+                </div>
+                <div class="form-actions">
                   <button type="button" class="btn btn-default" (click)="go(4)">BACK</button>
                   <button type="button" class="btn btn-primary" id="faSubmit" [disabled]="busy()" (click)="submit()">PROCEED</button>
                 </div>
@@ -262,15 +284,13 @@
             </div>
           }
           @case ('done') {
-            <div class="row justify-content-center">
-              <div class="col-sm-9">
-                <div class="jumbotron text-center p-4" id="faDone">
-                  <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
-                  <h2>Application for Financial Assistance submitted successfully!</h2>
-                </div>
-                <div class="stepper-footer-sec initial-step text-center">
-                  <a class="btn btn-primary" routerLink="/msme/dashboard">RETURN TO DASHBOARD</a>
-                </div>
+            <div class="done-page">
+              <div class="zed-card text-center done-card" id="faDone">
+                <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
+                <h2>Application for Financial Assistance submitted successfully!</h2>
+              </div>
+              <div class="form-actions justify-content-center">
+                <a class="btn btn-primary" routerLink="/msme/dashboard">RETURN TO DASHBOARD</a>
               </div>
             </div>
           }

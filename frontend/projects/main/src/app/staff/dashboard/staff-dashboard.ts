@@ -117,101 +117,78 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
 @Component({
   selector: 'zed-staff-dashboard',
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12"><h3 class="registration-title dash-text-clr">Welcome</h3></div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Welcome</h3>
+        <p class="page-sub">Applications under your charge, and the registered and certified units across the portal.</p>
       </div>
-      @if (error()) {
-        <div class="alert alert-danger" role="alert">
-          {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try again</button>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">
+        {{ error() }} <button type="button" class="btn btn-link" (click)="load()">Try again</button>
+      </div>
+    }
+    @if (showConsultantTiles()) {
+      <div class="dash-grid">
+        @for (tile of consultantTiles; track tile.field) {
+          <div class="dash-card dash-tile" [class]="tile.css">
+            <h5>{{ tile.title }}</h5>
+            <div class="dash-count" [attr.data-field]="tile.field">{{ value(tile.field) }}</div>
+          </div>
+        }
+      </div>
+    }
+    <div class="dash-grid">
+      @for (card of cards; track card.title) {
+        <div class="dash-card" [class]="card.css">
+          <h5>{{ card.title }}</h5>
+          <ul class="dash-lines">
+            @for (line of card.lines; track line.label) {
+              <li><span class="dash-label">{{ line.label }}</span><span class="dash-value" [attr.data-field]="line.field || null">{{ line.fixed ?? value(line.field) }}</span></li>
+            }
+          </ul>
         </div>
       }
-      <div class="Dashboard">
-        <div class="panel panel-default panel-dashboard panel-bg-default">
-          <div class="panel-body">
-            <div class="row mb-4">
-              @if (showConsultantTiles()) {
-                <div class="col-sm-12">
-                  <div class="dashboard-consultant-block">
-                    @for (tile of consultantTiles; track tile.field) {
-                      <div class="item">
-                        <div class="panel panel-default w-100" [class]="tile.css">
-                          <div class="panel-heading">
-                            <h5>{{ tile.title }}</h5>
-                            <h1 [attr.data-field]="tile.field">{{ value(tile.field) }}</h1>
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
-              <div class="col-sm-12">
-                <div class="dashboard-cert-block" [class.cert-items]="itemLayout" [class.cert-items-consultancy]="system === 'consultancy'">
-                  @for (card of cards; track card.title) {
-                    <div [class.item]="itemLayout">
-                      <div class="panel panel-default panel-cert-block" [class]="card.css">
-                        <div class="panel-heading"><h5>{{ card.title }}</h5></div>
-                        <div class="panel-body">
-                          <div class="inner">
-                            @for (line of card.lines; track line.label) {
-                              <p>{{ line.label }}: <span [attr.data-field]="line.field || null">{{ line.fixed ?? value(line.field) }}</span></p>
-                            }
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
+    </div>
 
-            <div class="row">
-              <div class="col-sm-12 mb-4">
-                <div class="d-flex flex-wrap gap-2">
-                  <div>
-                    <label for="d-state"><strong>Filter by State</strong></label>
-                    <select class="form-select" style="width: 200px" id="d-state" (change)="setFilter('state', $event)">
-                      <option value="">Show All</option>
-                      @for (s of stateNames; track s) { <option [value]="s">{{ s }}</option> }
-                    </select>
-                  </div>
-                  <div>
-                    <label for="d-size"><strong>MSME Size</strong></label>
-                    <select class="form-select" style="width: 200px" id="d-size" (change)="setFilter('size', $event)">
-                      <option value="">Show All</option>
-                      @for (s of sizes; track s) { <option [value]="s">{{ s }}</option> }
-                    </select>
-                  </div>
-                  <div>
-                    <label for="d-social"><strong>Social Category</strong></label>
-                    <select class="form-select" style="width: 200px" id="d-social" (change)="setFilter('socialCategory', $event)">
-                      <option value="">Show All</option>
-                      @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
-                    </select>
-                  </div>
-                  <div>
-                    <label for="d-gender"><strong>Gender</strong></label>
-                    <select class="form-select" style="width: 200px" id="d-gender" (change)="setFilter('gender', $event)">
-                      <option value="">Show All</option>
-                      <option value="male">Male</option>
-                      <option value="female">Female</option>
-                      <option value="OTHERS">Others</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="col-sm-12">
-                <div class="cert-section certDetail-block unitDetail-sec1">
-                  <div class="registered"><p>{{ stripLabels.total }}</p><h1 id="registered">{{ count('total') }}</h1></div>
-                  <div class="bronzeVerified"><p>{{ stripLabels.bronze }}</p><h1 id="bronze">{{ count('bronze') }}</h1></div>
-                  <div class="goldVerified"><p>Gold</p><h1 id="gold">{{ count('gold') }}</h1></div>
-                  <div class="silverVerified"><p>Silver</p><h1 id="silver">{{ count('silver') }}</h1></div>
-                </div>
-              </div>
-            </div>
-          </div>
+    <div class="zed-card">
+      <div class="filter-bar mb-3">
+        <div class="filter">
+          <label class="form-label" for="d-state">Filter by State</label>
+          <select class="form-select" id="d-state" (change)="setFilter('state', $event)">
+            <option value="">Show All</option>
+            @for (s of stateNames; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
         </div>
+        <div class="filter">
+          <label class="form-label" for="d-size">MSME Size</label>
+          <select class="form-select" id="d-size" (change)="setFilter('size', $event)">
+            <option value="">Show All</option>
+            @for (s of sizes; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="d-social">Social Category</label>
+          <select class="form-select" id="d-social" (change)="setFilter('socialCategory', $event)">
+            <option value="">Show All</option>
+            @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="d-gender">Gender</label>
+          <select class="form-select" id="d-gender" (change)="setFilter('gender', $event)">
+            <option value="">Show All</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="OTHERS">Others</option>
+          </select>
+        </div>
+      </div>
+      <div class="cert-section certDetail-block unitDetail-sec1">
+        <div class="registered"><p>{{ stripLabels.total }}</p><h1 id="registered">{{ count('total') }}</h1></div>
+        <div class="bronzeVerified"><p>{{ stripLabels.bronze }}</p><h1 id="bronze">{{ count('bronze') }}</h1></div>
+        <div class="goldVerified"><p>Gold</p><h1 id="gold">{{ count('gold') }}</h1></div>
+        <div class="silverVerified"><p>Silver</p><h1 id="silver">{{ count('silver') }}</h1></div>
       </div>
     </div>
     @if (loading()) {
@@ -219,25 +196,28 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
     }
   `,
   styles: `
-    .Dashboard .panel-cert-block, .Dashboard .panel-cert-block:hover { height: 200px; width: 250px; }
-    /* Consultancy and Surveillance: the cards share the row in ".item" wrappers (their Dashboard/Index.cshtml). */
-    .dashboard-cert-block.cert-items { gap: 10px; }
-    .cert-items .item { flex: 1 1 0; }
-    .Dashboard .cert-items .panel-cert-block, .Dashboard .cert-items .panel-cert-block:hover { width: 100%; }
-    .cert-items-consultancy { justify-content: flex-start; }
-    .cert-items-consultancy .item { flex: 1; background: rgba(179, 224, 121, 0.2); border-radius: 8px; }
-    .Dashboard .cert-items-consultancy .panel-cert-block, .Dashboard .cert-items-consultancy .panel-cert-block:hover { height: auto; overflow: visible; background: transparent; }
-    .cert-items-consultancy .inner p { margin-bottom: 5px; }
-    .dashboard-consultant-block { display: flex; flex-wrap: wrap; gap: 10px; border-radius: 10px; margin-bottom: 10px; }
-    .dashboard-consultant-block .item { flex: 1; border-radius: 8px; }
-    .dashboard-consultant-block .panel { margin-bottom: 0; border: none; border-radius: 8px; box-shadow: none; }
-    .dashboard-consultant-block .panel-empanel { background-color: #73d085; }
-    .dashboard-consultant-block .panel-consultant { background-color: #45a5ad; }
-    .dashboard-consultant-block .panel-heading { background-color: transparent; border: none; }
-    .dashboard-consultant-block .panel-heading h1 { color: #fff; font-weight: 700; }
-    @media only screen and (max-width: 480px) {
-      .dashboard-consultant-block .item, .cert-items .item { flex: auto; }
+    /* Counter cards: one grid of white cards, the level's colour as the top accent (the old panel-heading colours). */
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .dash-card {
+      --accent: #45a5ad;
+      background: #fff; border: 1px solid #dfe9ea; border-top: 4px solid var(--accent); border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); padding: 14px 16px;
     }
+    .dash-card h5 { font-size: 14px; font-weight: 700; color: #23474a; letter-spacing: 0.2px; margin: 0 0 10px; }
+    .dash-lines { list-style: none; margin: 0; padding: 0; }
+    .dash-lines li { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px dashed #e4ecec; font-size: 14px; }
+    .dash-lines li:last-child { border-bottom: 0; }
+    .dash-label { color: #5f6f70; }
+    .dash-value { font-weight: 700; color: #232527; font-variant-numeric: tabular-nums; }
+    .dash-count { font-size: 32px; font-weight: 700; line-height: 1.1; color: var(--accent); }
+    .panel-bronze { --accent: #d87b62; }
+    .panel-silver { --accent: #cdcfd1; }
+    .panel-gold { --accent: #ccb160; }
+    .panel-finance { --accent: #b3e079; }
+    .panel-empanel { --accent: #73d085; }
+    .panel-consultant { --accent: #45a5ad; }
+    /* The counts strip keeps its graph background; the card gives it the frame. */
+    .zed-card .cert-section { border: 0; padding: 0; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -246,7 +226,6 @@ export class StaffDashboardPage {
 
   protected readonly system = inject(STAFF_SYSTEM);
   protected readonly cards = DASHBOARD_CARDS[this.system];
-  protected readonly itemLayout = this.system !== 'main';
   protected readonly stripLabels = STRIP_LABELS[this.system];
   protected readonly consultantTiles = CONSULTANT_TILES;
 

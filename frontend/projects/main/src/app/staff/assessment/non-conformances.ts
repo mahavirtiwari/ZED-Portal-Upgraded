@@ -17,117 +17,114 @@ import { AssessmentApi, ListFilter, Row } from './assessment.api';
   selector: 'zed-staff-non-conformances',
   imports: [FormsModule, RouterLink, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12"><h3 class="registration-title">Non-Conformances</h3></div>
-
-        @if (error()) {
-          <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
-        }
-
-        <div class="col-sm-12 mb-4">
-          <div class="d-flex flex-wrap gap-2">
-            <div>
-              <label for="ncState"><strong>State</strong></label>
-              <select class="form-select" style="width: 200px" id="ncState" [(ngModel)]="filter.state" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
-              </select>
-            </div>
-            <div>
-              <label for="ncLevel"><strong>Certification Level</strong></label>
-              <select class="form-select" style="width: 200px" id="ncLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="Bronze">Bronze</option>
-                <option value="Silver">Silver</option>
-                <option value="Gold">Gold</option>
-              </select>
-            </div>
-            <div>
-              <label for="ncSize"><strong>MSME Size</strong></label>
-              <select class="form-select" style="width: 200px" id="ncSize" [(ngModel)]="filter.size" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="Micro">Micro</option>
-                <option value="Small">Small</option>
-                <option value="Medium">Medium</option>
-              </select>
-            </div>
-            <div>
-              <label for="ncGender"><strong>Gender</strong></label>
-              <select class="form-select" style="width: 200px" id="ncGender" [(ngModel)]="filter.gender" (ngModelChange)="load()">
-                <option value="">Show All</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="Others">Others</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="row justify-content-end mb-2">
-          <div class="col-sm-3">
-            <div class="search-input pull-right">
-              <input type="text" class="form-control" maxlength="50" aria-label="Search" [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
-            </div>
-          </div>
-        </div>
-
-        <div class="col-sm-12">
-          <div class="table-responsive">
-            <table class="table table-zed table-bordered">
-              <thead>
-                <tr>
-                  <th>S.No.</th>
-                  <th>Action(s)</th>
-                  <th>Certification Level</th>
-                  <th>Unit Details</th>
-                  <th>Unit SPOC Details</th>
-                  <th>Agency Details</th>
-                  <th>Mode of Assessment</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (s of pager.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-                  <tr [class.table-danger]="n(s, 'NcStatus') === 2 && (n(s, 'CertificationStatus') === 4 || n(s, 'CertificationStatus') === 14)">
-                    <td>{{ t(s, 'RowNumber') }}</td>
-                    <td>
-                      @if (legacy.profile(t(s, 'ZedId')); as href) {
-                        <a style="width: 120px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
-                      }
-                      @if (f(s, 'DesktopAccepted')) {
-                        @if (t(s, 'Certification') === 'Bronze') {
-                          <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs">ASSESS</a>
-                        } @else {
-                          <a [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary btn-xs">ASSESS</a>
-                        }
-                      }
-                    </td>
-                    <td>{{ t(s, 'Certification') }}</td>
-                    <td>
-                      <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
-                      <strong>{{ t(s, 'PUnitName') }}</strong><br />
-                      {{ t(s, 'UnitAddress') }}
-                    </td>
-                    <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                    <td><strong>{{ t(s, 'AgencyName') }}</strong><br />{{ t(s, 'CertificationBodyUserId') }}</td>
-                    <td>
-                      @switch (t(s, 'ModeOfAssessment')) {
-                        @case ('Remote Assessment') { Remote }
-                        @case ('Onsite Assessment') { Onsite }
-                        @case ('') { Desktop }
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <zed-pager [pager]="pager" />
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Non-Conformances</h3>
+        <p class="page-sub">Assessments with an open non-conformance round, waiting for the MSME's closure or your review.</p>
       </div>
     </div>
+
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+
+    <div class="zed-card">
+      <div class="filter-bar">
+        <div class="filter">
+          <label class="form-label" for="ncState">State</label>
+          <select class="form-select" id="ncState" [(ngModel)]="filter.state" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            @for (s of states; track s[0]) { <option [value]="s[0]">{{ s[1] }}</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="ncLevel">Certification Level</label>
+          <select class="form-select" id="ncLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="Bronze">Bronze</option>
+            <option value="Silver">Silver</option>
+            <option value="Gold">Gold</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="ncSize">MSME Size</label>
+          <select class="form-select" id="ncSize" [(ngModel)]="filter.size" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="Micro">Micro</option>
+            <option value="Small">Small</option>
+            <option value="Medium">Medium</option>
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="ncGender">Gender</label>
+          <select class="form-select" id="ncGender" [(ngModel)]="filter.gender" (ngModelChange)="load()">
+            <option value="">Show All</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="Others">Others</option>
+          </select>
+        </div>
+        <div class="filter wide">
+          <label class="form-label" for="ncSearch">Search</label>
+          <input type="search" id="ncSearch" class="form-control" maxlength="50" [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 60px">S.No.</th>
+            <th class="text-center" style="width: 200px">Action(s)</th>
+            <th class="text-center">Certification Level</th>
+            <th>Unit Details</th>
+            <th>Unit SPOC Details</th>
+            <th>Agency Details</th>
+            <th class="text-center">Mode of Assessment</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of pager.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
+            <tr [class.table-danger]="n(s, 'NcStatus') === 2 && (n(s, 'CertificationStatus') === 4 || n(s, 'CertificationStatus') === 14)">
+              <td class="text-center">{{ t(s, 'RowNumber') }}</td>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  @if (legacy.profile(t(s, 'ZedId')); as href) {
+                    <a [href]="href" class="btn btn-outline-primary">View Profile</a>
+                  }
+                  @if (f(s, 'DesktopAccepted')) {
+                    @if (t(s, 'Certification') === 'Bronze') {
+                      <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary">ASSESS</a>
+                    } @else {
+                      <a [routerLink]="['/staff/assessment/sa-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary">ASSESS</a>
+                    }
+                  }
+                </div>
+              </td>
+              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
+              <td class="unit">
+                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
+                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
+                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
+              </td>
+              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
+              <td><strong>{{ t(s, 'AgencyName') }}</strong><div class="muted">{{ t(s, 'CertificationBodyUserId') }}</div></td>
+              <td class="text-center">
+                @switch (t(s, 'ModeOfAssessment')) {
+                  @case ('Remote Assessment') { <span class="zed-chip">Remote</span> }
+                  @case ('Onsite Assessment') { <span class="zed-chip">Onsite</span> }
+                  @case ('') { <span class="zed-chip">Desktop</span> }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="pager" />
 
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
@@ -135,6 +132,7 @@ import { AssessmentApi, ListFilter, Row } from './assessment.api';
       </div>
     }
   `,
+  styles: `.unit { min-width: 200px; }`,
 })
 export class NonConformancesPage {
   private readonly api = inject(AssessmentApi);

@@ -35,17 +35,21 @@ function emptyAssessor(): AssessorModel {
 /**
  * Add / update an assessor (agency) or view one (MasterAdmin). Port of Views/User/Assessor.cshtml.
  * For a new assessor the agency looks up the certified professional by certificate number and
- * registered e-mail; name, e-mail and mobile come from that record (the API repeats the lookup).
+ * registered e-mail; name, e-mail and mobile come from that record (the API repeats the lookup). V4 layout: one card with
+ * label / field pairs, the lookup in a shaded row, BACK in the page head.
  */
 @Component({
   selector: 'zed-staff-assessor-form',
   imports: [FormsModule, RouterLink, MultiSelect],
   templateUrl: './assessor-form.html',
   styles: `
-    .field { margin-bottom: 12px; }
-    .readonly { background-color: lightgray !important; }
+    fieldset { min-width: 0; }
+    .form-grid > .top { align-self: start; padding-top: 8px; }
+    .lookup { background: #f5fafa; border: 1px solid #e1eded; border-radius: 10px; padding: 12px 14px; margin: 14px 0 16px; }
+    .summary { margin-bottom: 14px; }
+    .readonly { background-color: #eef1f2 !important; }
     .help-block { color: #a94442; font-size: 13px; }
-    #selfieimg { max-height: 90px; }
+    #selfieimg { max-height: 90px; border-radius: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -114,6 +118,15 @@ export class AssessorFormPage {
   protected get title(): string {
     if (!this.isAgency) return this.noun + ' Details';
     return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' Details';
+  }
+
+  protected get subtitle(): string {
+    const noun = this.noun.toLowerCase();
+    if (!this.isAgency) return `Details of the ${noun} (view only).`;
+    if (!this.isNew) return `Address, ID proof, states, sectors and areas of the ${noun}.`;
+    return this.typed
+      ? 'Enter the name, e-mail and mobile number of the technical expert.'
+      : 'Search the certified professional by certificate number and registered e-mail; the name, e-mail and mobile come from that record.';
   }
 
   protected get lookupDone(): boolean {

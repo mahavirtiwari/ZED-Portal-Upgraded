@@ -10,71 +10,73 @@ export const DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
 
 /**
  * Guideline documents shown to MSMEs on My Documents (Admin). Port of Views/MyDocuments/Index.cshtml.
- * Upload and save are one step now: the API stores the file under a name it chooses.
+ * Upload and save are one step now: the API stores the file under a name it chooses. V4: the form in a card with
+ * labelled fields.
  */
 @Component({
   selector: 'zed-staff-documents',
   imports: [FormsModule],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12"><h3 class="registration-title">My Documents</h3></div>
-        @if (error()) {
-          <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
-        }
-        @if (success()) {
-          <div class="col-sm-12"><div class="alert alert-success" role="status">{{ success() }}</div></div>
-        }
-        <div class="col-sm-12">
-          <form class="jumbotron" (ngSubmit)="save()" novalidate>
-            <div class="row">
-              <div class="col-sm-12" style="margin-bottom: 9px">
-                <div class="input-group">
-                  <label class="input-group-text" for="documentName">Document Name<span style="color: red">*</span></label>
-                  <input id="documentName" name="documentName" class="form-control" maxlength="200" style="max-width: 100%" [(ngModel)]="documentName" />
-                </div>
-                @if (submitted() && !documentName.trim()) { <span class="help-block">Document Name required.</span> }
-              </div>
-              <div class="col-sm-5">
-                <label class="visually-hidden" for="fileControl">Document file</label>
-                <input #fileInput type="file" id="fileControl" class="btn btn-primary btn-sm" style="margin-top: 5px; min-width: 100%"
-                       [accept]="accept" (change)="pick($event)" />
-                <small class="text-danger">Valid Document size &lt; <strong>5 MB</strong> ({{ accept }})</small>
-              </div>
-              <div class="col-sm-5"></div>
-              <div class="col-sm-2"><button type="submit" class="btn btn-primary btn-block w-100" [disabled]="saving()">Save</button></div>
-            </div>
-          </form>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">My Documents</h3>
+        <p class="page-sub">Guideline documents the MSMEs can download from their My Documents page.</p>
+      </div>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form class="zed-card" (ngSubmit)="save()" novalidate>
+      <h4>Add Document</h4>
+      <div class="form-grid">
+        <label for="documentName">Document Name<span class="req">*</span></label>
+        <div>
+          <input id="documentName" name="documentName" class="form-control" maxlength="200" [(ngModel)]="documentName" />
+          @if (submitted() && !documentName.trim()) { <span class="help-block">Document Name required.</span> }
         </div>
-        <div class="col-sm-12">
-          <div class="table-responsive">
-            <table class="table table-default table-zed table-bordered bg-white">
-              <thead>
-                <tr>
-                  <th>Document Name</th>
-                  <th>Document</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (d of documents(); track d.id) {
-                  <tr>
-                    <th>{{ d.documentName }}</th>
-                    <td>
-                      @if (d.downloadUrl) {
-                        <a [href]="d.downloadUrl" target="_blank" rel="noopener">Download</a>
-                      }
-                    </td>
-                    <td><button type="button" class="btn btn-primary" [disabled]="saving()" (click)="remove(d)">Delete</button></td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="3" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
+        <label for="fileControl">Document file<span class="req">*</span></label>
+        <div>
+          <input #fileInput type="file" id="fileControl" class="form-control" [accept]="accept" (change)="pick($event)" />
+          <small class="text-danger">Valid Document size &lt; <strong>5 MB</strong> ({{ accept }})</small>
         </div>
       </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
+      </div>
+    </form>
+
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th>Document Name</th>
+            <th class="text-center" style="width: 140px">Document</th>
+            <th class="text-center" style="width: 110px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of documents(); track d.id) {
+            <tr>
+              <td><strong>{{ d.documentName }}</strong></td>
+              <td class="text-center">
+                @if (d.downloadUrl) {
+                  <a [href]="d.downloadUrl" target="_blank" rel="noopener">Download</a>
+                }
+              </td>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="remove(d)">Delete</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="3" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
     </div>
     @if (saving()) {
       <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Saving…</span></div>

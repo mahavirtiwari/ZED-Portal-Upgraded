@@ -64,7 +64,7 @@ describe('AgenciesPage', () => {
     expect(el.querySelectorAll('tbody tr').length).toBe(2);
     expect(el.textContent).toContain('+ Add New');
 
-    const search = el.querySelector('.search-input input') as HTMLInputElement;
+    const search = el.querySelector('input[aria-label="Search agencies"]') as HTMLInputElement;
     search.value = 'aa0002';
     search.dispatchEvent(new Event('input'));
     await settle();

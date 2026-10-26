@@ -10,88 +10,91 @@ import { ClientPager, PagerComponent } from '../pager';
 
 /**
  * MasterAdmin list of all assessors (optionally of one agency, `?agencyId=`, and verification type,
- * `?type=DA|SA|FA`). Port of Views/User/AssessorList.cshtml: search, page size and paging in the page.
+ * `?type=DA|SA|FA`). Port of Views/User/AssessorList.cshtml: search, page size and paging in the page. V4 layout: search in
+ * a filter bar, status badge, row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-assessor-list',
   imports: [FormsModule, RouterLink, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="mt-4">
-        <div class="row">
-          <div class="col-sm-12">
-            <div class="d-flex d-sm-flex justify-content-between align-items-center mb-1">
-              <h3 class="registration-title">{{ consultancy ? 'Consultants' : labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
-              <div class="search-input" style="margin-left: auto">
-                <input type="text" class="form-control" style="display: inline; width: 100%" maxlength="50" aria-label="Search assessors"
-                       [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
-                <button type="button" aria-label="Search"><i class="fa fa-search"></i></button>
-              </div>
-            </div>
-            @if (error()) {
-              <div class="alert alert-danger" role="alert">{{ error() }}</div>
-            }
-            @if (success()) {
-              <div class="alert alert-success" role="status">{{ success() }}</div>
-            }
-            <div class="table-responsive">
-              <table class="table table-zed table-bordered bg-white">
-                <thead>
-                  <tr class="btn-default text-center" style="font-size: 16px">
-                    <th>S.No</th>
-                    <th>Status</th>
-                    @if (consultancy) {
-                      <!-- ZEDCS_CONSULTANCY Frontend/User/AssessorList.cshtml -->
-                      <th>Consultant ID</th>
-                      <th>Consultant Details</th>
-                      <th>Consultant Organisation Details</th>
-                      <th>No. Of Consulting Completed</th>
-                    } @else {
-                      <th>Assessor Type</th>
-                      <th>Assessor ID</th>
-                      <th>Assessor Details</th>
-                      <th>{{ labels.agency }} Details</th>
-                    }
-                    <th>Action(s)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (s of page(); track s.UserId) {
-                    <tr class="filterClass">
-                      <td><strong>{{ s.RowNumber }}</strong></td>
-                      <td><strong>{{ s.IdStatus }}</strong></td>
-                      @if (!consultancy) {
-                        <td><strong>{{ s.AssessorType }}</strong></td>
-                      }
-                      <td><strong>{{ s.UserId }}</strong></td>
-                      <td class="word-break"><strong>{{ s.UserName }}</strong><br />{{ s.MobileNo }}<br />{{ s.Email }}<br />{{ s.Address }}</td>
-                      <td><strong>{{ s.AgencyUserName }}</strong><br />{{ s.AgencyUserId }}</td>
-                      @if (consultancy) {
-                        <!-- The live page prints 0 for each milestone (no count is read). -->
-                        <td><strong>Milestone 1: 0</strong><br /><strong>Milestone 2: 0</strong><br /><strong>Milestone 3: 0</strong></td>
-                      }
-                      <td class="text-center">
-                        <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-primary btn-sm" style="width: 100px; margin-top: 5px">View</a>
-                        <!-- V4 addition (not on the old consultancy list): Reset Link. -->
-                        @if (s.IsActive) {
-                          <br /><button type="button" class="btn btn-default btn-sm" style="width: 100px; margin-top: 5px" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
-                        }
-                      </td>
-                    </tr>
-                  } @empty {
-                    <tr>
-                      <td colspan="7" style="padding: 0"><div class="no-data">No Data Entered</div></td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <zed-pager [pager]="pager" />
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ consultancy ? 'Consultants' : labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
+        <p class="page-sub">{{ consultancy ? 'Consultants' : labels.assessors }} of the {{ labels.agencies.toLowerCase() }}, with their details and status.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" maxlength="50" placeholder="Search ID, name, mobile, e-mail or agency" aria-label="Search assessors"
+               [ngModel]="search()" (ngModelChange)="pager.setSearch($event)" />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 60px">S.No</th>
+            <th class="text-center" style="width: 100px">Status</th>
+            @if (consultancy) {
+              <!-- ZEDCS_CONSULTANCY Frontend/User/AssessorList.cshtml -->
+              <th class="text-center">Consultant ID</th>
+              <th>Consultant Details</th>
+              <th>Consultant Organisation Details</th>
+              <th class="text-center">No. Of Consulting Completed</th>
+            } @else {
+              <th class="text-center">Assessor Type</th>
+              <th class="text-center">Assessor ID</th>
+              <th>Assessor Details</th>
+              <th>{{ labels.agency }} Details</th>
+            }
+            <th class="text-center" style="width: 180px">Action(s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of page(); track s.UserId) {
+            <tr class="filterClass">
+              <td class="text-center">{{ s.RowNumber }}</td>
+              <td class="text-center"><span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span></td>
+              @if (!consultancy) {
+                <td class="text-center"><span class="zed-chip">{{ s.AssessorType }}</span></td>
+              }
+              <td class="text-center"><strong>{{ s.UserId }}</strong></td>
+              <td class="word-break">
+                <strong>{{ s.UserName }}</strong>
+                <small class="d-block">{{ s.MobileNo }}</small>
+                <small class="d-block">{{ s.Email }}</small>
+                <small class="d-block text-muted">{{ s.Address }}</small>
+              </td>
+              <td><strong>{{ s.AgencyUserName }}</strong><small class="d-block text-muted">{{ s.AgencyUserId }}</small></td>
+              @if (consultancy) {
+                <!-- The live page prints 0 for each milestone (no count is read). -->
+                <td class="text-center"><div>Milestone 1: <strong>0</strong></div><div>Milestone 2: <strong>0</strong></div><div>Milestone 3: <strong>0</strong></div></td>
+              }
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
+                  <!-- V4 addition (not on the old consultancy list): Reset Link. -->
+                  @if (s.IsActive) {
+                    <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" style="padding: 0"><div class="no-data">No Data Entered</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="pager" />
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
     }

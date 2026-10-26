@@ -21,15 +21,17 @@ function emptyAgency(): AgencyRequest {
  * The role and the creating user are decided by the API; the generated password is e-mailed to the SPOC.
  * Consultancy build: a Consultant Organisation (Handholding Support or Technology Intervention, not both; no Desktop
  * Verification), no organising partner, and with Technology Intervention the applicable state and districts it is
- * auto-allotted TU applications from.
+ * auto-allotted TU applications from. V4 layout: one card with label / field pairs, BACK in the page head.
  */
 @Component({
   selector: 'zed-staff-agency-form',
   imports: [FormsModule, RouterLink, MultiSelect],
   templateUrl: './agency-form.html',
   styles: `
-    .input-group1 { margin-bottom: 4px; }
-    .field { margin-bottom: 12px; }
+    .form-grid > .top { align-self: start; padding-top: 8px; }
+    .categories { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    .category { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 12px; border: 1px solid #d5e3e4; border-radius: 8px; font-weight: 500; cursor: pointer; }
+    .category .form-check-input { margin: 0; }
     .help-block { color: #a94442; font-size: 13px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,

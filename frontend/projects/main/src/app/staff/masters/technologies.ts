@@ -1,72 +1,95 @@
 import { Component, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ClientPager, PagerComponent } from '../pager';
 import { MastersApi, Technology } from './masters.api';
 
-/** Technologies (Admin). Port of Views/Technology/List.cshtml: list, edit link, activate / deactivate. */
+/**
+ * Technologies (Admin). Port of Views/Technology/List.cshtml: list, edit link, activate / deactivate. V4: search, pages,
+ * a status column, and long descriptions folded to three lines.
+ */
 @Component({
   selector: 'zed-staff-technologies',
-  imports: [RouterLink],
+  imports: [FormsModule, PagerComponent, RouterLink],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-4">
-        <div class="col-sm-10">
-          <div class="row">
-            <div class="col-sm-9"><h3 class="registration-title">Technologies</h3></div>
-            <div class="col-sm-3 text-end"><a routerLink="/staff/masters/technologies/new" class="btn btn-primary">Add New Technology</a></div>
-          </div>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <div class="table-responsive">
-            <table class="table table-default table-zed table-bordered bg-white">
-              <thead>
-                <tr>
-                  <th>Technology Code</th>
-                  <th>Technology Name</th>
-                  <th>NIC Sectors</th>
-                  <th>Categories</th>
-                  <th>Description</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (t of technologies(); track t.id) {
-                  <tr>
-                    <td>{{ t.technologyCode }}</td>
-                    <td>{{ t.technologyName }}</td>
-                    <td>@for (s of t.sectors; track $index) { <p class="mb-1">{{ s }}</p> }</td>
-                    <td>@for (c of t.categories; track $index) { <p class="mb-1">{{ c }}</p> }</td>
-                    <td class="description">{{ t.description }}</td>
-                    <td class="text-center" style="width: 140px">
-                      <a class="btn btn-primary" [routerLink]="['/staff/masters/technologies', t.id]">Edit</a><br /><br />
-                      @if (t.isActive) {
-                        <button type="button" class="btn btn-danger" [disabled]="saving()" (click)="setActive(t, false)">DE-ACTIVE</button>
-                      } @else {
-                        <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="setActive(t, true)">ACTIVE</button>
-                      }
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr><td colspan="6" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Technologies</h3>
+        <p class="page-sub">Technologies the MSMEs can choose under Technology Upgradation, with their NIC sectors and categories.</p>
+      </div>
+      <div class="page-actions">
+        <a routerLink="/staff/masters/technologies/new" class="btn btn-primary">+ Add New Technology</a>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" placeholder="Search code, name, sector or category" aria-label="Search technologies"
+               [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 110px">Code</th>
+            <th>Technology</th>
+            <th>NIC Sectors</th>
+            <th>Categories</th>
+            <th>Description</th>
+            <th style="width: 100px">Status</th>
+            <th style="width: 190px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of pager.page(); track t.id) {
+            <tr>
+              <td class="text-center">{{ t.technologyCode }}</td>
+              <td><strong>{{ t.technologyName }}</strong></td>
+              <td>@for (s of t.sectors; track $index) { <span class="zed-chip">{{ s }}</span> }</td>
+              <td>@for (c of t.categories; track $index) { <span class="zed-chip">{{ c }}</span> }</td>
+              <td class="description">
+                @if (t.description) {
+                  <div [class.clamp-3]="!expanded().has(t.id)" [title]="t.description">{{ t.description }}</div>
+                  @if (t.description.length > 160) {
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(t.id)">{{ expanded().has(t.id) ? 'less' : 'more' }}</button>
+                  }
+                }
+              </td>
+              <td><span class="status-badge" [class.is-active]="t.isActive" [class.is-inactive]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span></td>
+              <td>
+                <div class="row-actions">
+                  <a class="btn btn-outline-primary" [routerLink]="['/staff/masters/technologies', t.id]">Edit</a>
+                  @if (t.isActive) {
+                    <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="setActive(t, false)">Deactivate</button>
+                  } @else {
+                    <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="setActive(t, true)">Activate</button>
+                  }
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No technology matches the search' : 'No Data' }}</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="pager" />
   `,
-  styles: `.description { white-space: pre-wrap; }`,
+  styles: `.description { white-space: pre-wrap; min-width: 220px; }`,
 })
 export class TechnologiesPage {
   private readonly api = inject(MastersApi);
 
-  protected readonly technologies = signal<Technology[]>([]);
+  protected readonly pager = new ClientPager<Technology>(10);
+  protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly saving = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -79,10 +102,18 @@ export class TechnologiesPage {
 
   private async load(): Promise<void> {
     try {
-      this.technologies.set(await firstValueFrom(this.api.technologies()));
+      this.pager.all.set(await firstValueFrom(this.api.technologies()));
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }
+  }
+
+  protected toggle(id: number): void {
+    this.expanded.update((set) => {
+      const next = new Set(set);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
   }
 
   protected async setActive(t: Technology, active: boolean): Promise<void> {

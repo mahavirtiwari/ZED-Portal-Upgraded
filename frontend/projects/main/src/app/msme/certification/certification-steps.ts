@@ -15,6 +15,8 @@ import { Row, certificationKind, milestoneNumber } from './certification.api';
   styles: `
     .list-tick:before { content: '✓ '; }
     .list-tick { list-style: none !important; }
+    .label-highlight { margin-bottom: 18px; }
+    .label-highlight ul { margin: 6px 0 0; }
   `,
 })
 export class CertificationSteps {

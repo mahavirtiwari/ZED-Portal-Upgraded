@@ -156,7 +156,7 @@ export const MILESTONE_INFO: readonly InfoSection[] = [
   selector: 'zed-msme-site-assessment',
   imports: [RouterLink, NgTemplateOutlet],
   templateUrl: './site-assessment.html',
-  styleUrl: './site-assessment.scss',
+  styleUrls: ['../shared/msme-page.scss', './site-assessment.scss'],
   host: { '(document:keydown.escape)': 'closePreview()' },
 })
 export class SiteAssessmentPage {

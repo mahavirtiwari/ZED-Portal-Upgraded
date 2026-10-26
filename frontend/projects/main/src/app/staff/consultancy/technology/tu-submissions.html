@@ -1,112 +1,119 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="mt-3">
-    <div class="row mb-2">
-      <div class="col-sm-12"><h3 class="registration-title">Technology Upgradation</h3></div>
-    </div>
-    <!-- No tab bar for the MSME-DFO officer, as on the old page. -->
-    @if (!isDfo()) {
-      <div class="row mb-2">
-        <div class="col-sm-12">
-          <div class="d-flex justify-content-end flex-wrap gap-1">
-            @for (t of tabs; track t.status) {
-              <button type="button" class="btn btn-primary btn-md" [class.active]="status() === t.status" [attr.aria-pressed]="status() === t.status" (click)="load(t.status)">
-                {{ t.label }} <span class="badge bg-primary">{{ count(t.count) }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      </div>
-    }
-    @if (error()) {
-      <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    @if (success()) {
-      <div class="alert alert-success" role="status">{{ success() }}</div>
-    }
-    <div class="table-responsive">
-      <table class="table table-bordered table-zed">
-        <thead>
-          <tr>
-            <th>Action(s)</th>
-            @if (showStatus()) {
-              <th>Status</th>
-            }
-            <th>Certification Level</th>
-            <th>Unit Details</th>
-            <th>CO Details</th>
-            @if (!isDfo()) {
-              <th>CC Details</th>
-            }
-            <th>Verification Date</th>
-            @if (showReason()) {
-              <th>Reason For Rejection</th>
-            }
-          </tr>
-        </thead>
-        <tbody>
-          @for (s of view.page(); track s.Id) {
-            <tr [class.rejected]="!!s.ReasonForRejection">
-              <td class="text-center actions" [class.late]="!!s.TimeDuration">
-                @if (canViewProfile()) {
-                  <a class="btn btn-primary mb-2" [routerLink]="['/staff/msme-profile', s.ZedId]">View Profile</a>
-                }
-                @if (canAllot(s)) {
-                  <button type="button" class="btn btn-primary btn-xs" (click)="openAllot(s)">ALLOT</button>
-                }
-                @if (canReAllot(s)) {
-                  <button type="button" class="btn btn-default btn-xs" (click)="openAllot(s)">RE-ALLOT</button>
-                }
-                @if (canRespond(s)) {
-                  <button type="button" class="btn btn-primary btn-xs" (click)="openAccept(s)">ACCEPT</button>
-                  <button type="button" class="btn btn-default btn-xs" (click)="openReject(s)">REJECT</button>
-                }
-                @if (canReAllotDfo(s)) {
-                  <button type="button" class="btn btn-primary btn-xs" (click)="openAccept(s)">RE-ALLOT</button>
-                }
-                @if (canOpen(s)) {
-                  <a class="btn btn-primary btn-xs" [routerLink]="['/staff/consultancy/technology/verification', s.ZedId, s.CertificationType]">
-                    {{ isDfo() ? 'VIEW' : 'View Details' }}
-                  </a>
-                }
-              </td>
-              @if (showStatus()) {
-                <!-- The old page's three independent conditions (master admin only). -->
-                <td>
-                  @if (isAdmin()) {
-                    @if (s.CertificationBodyUserId && !s.FinancialAssessorId && !s.ReasonForRejection) {
-                      <small class="text-success">Alloted to CO</small>
-                    }
-                    @if (s.FinancialAssessorId) {
-                      <small class="text-success">Alloted to Consultant</small>
-                    }
-                    @if (s.ReasonForRejection) {
-                      <strong>Rejected</strong>
-                    }
-                  }
-                </td>
-              }
-              <td>{{ s.LastestCertification || s.CertificationType }}</td>
-              <td><strong>{{ s.ZedId }}</strong><br /><strong>{{ s.PUnitName }}</strong><br />{{ s.UnitAddress }}</td>
-              <td><strong>{{ s.CertificationBodyName }}</strong><br />{{ s.CertificationBodyUserId }}</td>
-              @if (!isDfo()) {
-                <td><strong>{{ dfoName(s) }}</strong><br />{{ s.FinancialAssessorId }}</td>
-              }
-              <td>{{ s.VerificationDate }}</td>
-              @if (showReason()) {
-                <td>{{ reason(s) }}</td>
-              }
-            </tr>
-          } @empty {
-            @if (!loading()) {
-              <tr><td colspan="8" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-            }
-          }
-        </tbody>
-      </table>
-    </div>
-    <zed-pager [pager]="view" />
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">Technology Upgradation</h3>
+    <p class="page-sub">Technology upgradation applications: allotment to consultant organisations and consultants, and their verification.</p>
   </div>
 </div>
+<!-- No tab bar for the MSME-DFO officer, as on the old page. -->
+@if (!isDfo()) {
+  <div class="status-tabs" role="group" aria-label="Application status">
+    @for (t of tabs; track t.status) {
+      <button type="button" class="btn" [class.btn-primary]="status() === t.status" [class.btn-outline-primary]="status() !== t.status"
+              [attr.aria-pressed]="status() === t.status" (click)="load(t.status)">
+        {{ t.label }} <span class="tab-count">{{ count(t.count) }}</span>
+      </button>
+    }
+  </div>
+}
+@if (error()) {
+  <div class="alert alert-danger" role="alert">{{ error() }}</div>
+}
+@if (success()) {
+  <div class="alert alert-success" role="status">{{ success() }}</div>
+}
+<div class="table-responsive">
+  <table class="table table-bordered table-zed">
+    <thead>
+      <tr>
+        <th class="text-center" style="width: 170px">Action(s)</th>
+        @if (showStatus()) {
+          <th class="text-center" style="width: 150px">Status</th>
+        }
+        <th class="text-center">Certification Level</th>
+        <th>Unit Details</th>
+        <th>CO Details</th>
+        @if (!isDfo()) {
+          <th>CC Details</th>
+        }
+        <th class="text-center">Verification Date</th>
+        @if (showReason()) {
+          <th>Reason For Rejection</th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (s of view.page(); track s.Id) {
+        <tr [class.rejected]="!!s.ReasonForRejection" [class.table-danger]="!!s.ReasonForRejection">
+          <td class="actions text-center" [class.late]="!!s.TimeDuration">
+            <div class="row-actions justify-content-center">
+              @if (canViewProfile()) {
+                <a class="btn btn-outline-primary" [routerLink]="['/staff/msme-profile', s.ZedId]">View Profile</a>
+              }
+              @if (canAllot(s)) {
+                <button type="button" class="btn btn-primary" (click)="openAllot(s)">ALLOT</button>
+              }
+              @if (canReAllot(s)) {
+                <button type="button" class="btn btn-outline-primary" (click)="openAllot(s)">RE-ALLOT</button>
+              }
+              @if (canRespond(s)) {
+                <button type="button" class="btn btn-primary" (click)="openAccept(s)">ACCEPT</button>
+                <button type="button" class="btn btn-outline-danger" (click)="openReject(s)">REJECT</button>
+              }
+              @if (canReAllotDfo(s)) {
+                <button type="button" class="btn btn-outline-primary" (click)="openAccept(s)">RE-ALLOT</button>
+              }
+              @if (canOpen(s)) {
+                <a class="btn btn-outline-primary" [routerLink]="['/staff/consultancy/technology/verification', s.ZedId, s.CertificationType]">
+                  {{ isDfo() ? 'VIEW' : 'View Details' }}
+                </a>
+              }
+            </div>
+          </td>
+          @if (showStatus()) {
+            <!-- The old page's three independent conditions (master admin only). -->
+            <td class="text-center">
+              @if (isAdmin()) {
+                <div class="badges justify-content-center">
+                  @if (s.CertificationBodyUserId && !s.FinancialAssessorId && !s.ReasonForRejection) {
+                    <span class="status-badge is-info">Alloted to CO</span>
+                  }
+                  @if (s.FinancialAssessorId) {
+                    <span class="status-badge is-active">Alloted to Consultant</span>
+                  }
+                  @if (s.ReasonForRejection) {
+                    <span class="status-badge is-rejected">Rejected</span>
+                  }
+                </div>
+              }
+            </td>
+          }
+          <td class="text-center">{{ s.LastestCertification || s.CertificationType }}</td>
+          <td class="cell-lines"><strong>{{ s.ZedId }}</strong><strong>{{ s.PUnitName }}</strong><span>{{ s.UnitAddress }}</span></td>
+          <td class="cell-lines"><strong>{{ s.CertificationBodyName }}</strong><span>{{ s.CertificationBodyUserId }}</span></td>
+          @if (!isDfo()) {
+            <td class="cell-lines"><strong>{{ dfoName(s) }}</strong><span>{{ s.FinancialAssessorId }}</span></td>
+          }
+          <td class="text-center">{{ s.VerificationDate }}</td>
+          @if (showReason()) {
+            <td class="reason">
+              @if (reason(s); as r) {
+                <div [class.clamp-3]="!expanded().has(s.Id)" [title]="r">{{ r }}</div>
+                @if (r.length > 160) {
+                  <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(s.Id)">{{ expanded().has(s.Id) ? 'less' : 'more' }}</button>
+                }
+              }
+            </td>
+          }
+        </tr>
+      } @empty {
+        @if (!loading()) {
+          <tr><td colspan="8" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+        }
+      }
+    </tbody>
+  </table>
+</div>
+<zed-pager [pager]="view" />
 
 @if (dialog(); as d) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDialogTitle">
@@ -128,11 +135,11 @@
             <div class="alert alert-danger" role="alert">{{ dialogError() }}</div>
           }
           @if (d.kind === 'reject') {
-            <label for="tuReason"><strong>Reason for Rejection<span style="color: red">*</span></strong></label>
+            <label class="form-label" for="tuReason">Reason for Rejection<span class="req">*</span></label>
             <textarea id="tuReason" class="form-control" maxlength="2000" rows="4" [ngModel]="d.reason" (ngModelChange)="setReason($event)"></textarea>
           } @else {
-            <label for="tuChoice"><strong>{{ d.kind === 'allot' ? 'Consultant Organisation' : 'Consultant/Expert' }}<span style="color: red">*</span></strong></label>
-            <select id="tuChoice" class="form-control" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
+            <label class="form-label" for="tuChoice">{{ d.kind === 'allot' ? 'Consultant Organisation' : 'Consultant/Expert' }}<span class="req">*</span></label>
+            <select id="tuChoice" class="form-select" [ngModel]="d.choice" (ngModelChange)="setChoice($event)">
               <option value="">{{ d.kind === 'allot' ? '--Select Organisation--' : '--Select--' }}</option>
               @for (o of d.options; track o.userId) {
                 <option [value]="o.userId">{{ o.userName }}</option>

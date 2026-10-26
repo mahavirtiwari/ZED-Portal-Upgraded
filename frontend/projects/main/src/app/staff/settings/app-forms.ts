@@ -91,107 +91,120 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
  * Admin → App Forms (new in V4): the mobile apps' Basic Information forms of this system. An Admin can rename a standard
  * field, change its help text and position, make it required or optional, or disable it (its type stays); and add fields
  * of their own (text, numbers, date, yes/no, choices), edit and disable them. The apps load the form when they open it.
+ * V4 layout: Add field in the page head, the form choice in a card, status badges and row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-app-forms',
   imports: [DatePipe, FormsModule],
   template: `
-    <div class="container-fluid form-page" id="zed_user_form">
-      <div class="row justify-content-center mt-3">
-        <div class="col-lg-11">
-          <h3 class="registration-title">App Forms</h3>
-          <p class="text-muted">
-            Fields of the mobile apps' Basic Information forms. A change reaches the apps the next time they load the form; apps without a
-            connection keep the last form they loaded.
-          </p>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <div class="row mb-3 g-2 align-items-end">
-            <div class="col-sm-8 col-md-6">
-              <label class="form-label" for="appForm"><strong>Form</strong></label>
-              <select class="form-select" id="appForm" [ngModel]="formKey()" (ngModelChange)="choose($event)">
-                @for (f of forms(); track f.key) {
-                  <option [value]="f.key">{{ f.name }} · {{ f.app }}</option>
-                }
-              </select>
-            </div>
-            @if (details()) {
-              <div class="col-sm-4 col-md-6 text-sm-end">
-                <button type="button" class="btn btn-primary" (click)="add()">Add field</button>
-              </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">App Forms</h3>
+        <p class="page-sub">Fields of the mobile apps' Basic Information forms.</p>
+      </div>
+      @if (details()) {
+        <div class="page-actions">
+          <button type="button" class="btn btn-primary" (click)="add()">Add field</button>
+        </div>
+      }
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="zed-card">
+      <div class="filter-bar">
+        <div class="filter wide">
+          <label class="form-label" for="appForm">Form</label>
+          <select class="form-select" id="appForm" [ngModel]="formKey()" (ngModelChange)="choose($event)">
+            @for (f of forms(); track f.key) {
+              <option [value]="f.key">{{ f.name }} · {{ f.app }}</option>
             }
-          </div>
-
-          @if (details(); as d) {
-            @for (s of d.sections; track s.key) {
-              <h5 class="mt-3">{{ s.label }}</h5>
-              <div class="table-responsive">
-                <table class="table table-zed table-bordered bg-white">
-                  <thead>
-                    <tr class="btn-default text-center"><th>#</th><th>Field</th><th>Type</th><th>Required</th><th>Status</th><th>Last change</th><th>Action</th></tr>
-                  </thead>
-                  <tbody>
-                    @for (f of inSection(s.key); track f.key; let i = $index, last = $last) {
-                      <tr [class.text-muted]="!f.active" [attr.data-key]="f.key">
-                        <td class="text-center">{{ i + 1 }}</td>
-                        <td>
-                          @if (f.heading) { <small class="text-muted d-block">{{ f.heading }}</small> }
-                          {{ f.label }}
-                          @if (f.custom) { <span class="badge bg-info text-dark ms-1">Added</span> }
-                          @if (f.standardLabel && f.standardLabel !== f.label) { <small class="text-muted d-block">Standard: {{ f.standardLabel }}</small> }
-                          @if (f.help) { <small class="d-block">{{ f.help }}</small> }
-                          @if (f.shownWhen) { <small class="text-muted d-block">Asked when {{ f.shownWhen }}</small> }
-                          @if (f.options?.length) { <small class="text-muted d-block">Choices: {{ f.options!.join(', ') }}</small> }
-                        </td>
-                        <td>{{ typeName(f) }}</td>
-                        <td class="text-center">{{ f.required ? 'Yes' : 'No' }}</td>
-                        <td>
-                          <span [class]="f.enabled ? (f.active ? 'text-success' : 'text-warning') : 'text-danger'">{{ status(f) }}</span>
-                        </td>
-                        <td>@if (f.updatedOn) { {{ f.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<br /><small class="text-muted">{{ f.updatedBy }}</small> }</td>
-                        <td class="text-nowrap">
-                          <button type="button" class="btn btn-default btn-sm" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
-                          <button type="button" class="btn btn-default btn-sm ms-1" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
-                          <button type="button" class="btn btn-primary btn-sm ms-1" (click)="edit(f)">Edit</button>
-                          <button type="button" class="btn btn-default btn-sm ms-1" (click)="toggle(f)">{{ f.enabled ? 'Disable' : 'Enable' }}</button>
-                          @if (f.customised && !f.custom) { <button type="button" class="btn btn-default btn-sm ms-1" (click)="reset(f)">Reset</button> }
-                        </td>
-                      </tr>
-                      @for (c of f.columns ?? []; track c.key) {
-                        <tr class="column" [class.text-muted]="!c.active" [attr.data-key]="c.key">
-                          <td></td>
-                          <td class="ps-4">↳ {{ c.label }}
-                            @if (c.standardLabel && c.standardLabel !== c.label) { <small class="text-muted d-block">Standard: {{ c.standardLabel }}</small> }
-                            @if (c.help) { <small class="d-block">{{ c.help }}</small> }
-                          </td>
-                          <td>{{ typeName(c) }}</td>
-                          <td class="text-center">{{ c.required ? 'Yes' : 'No' }}</td>
-                          <td><span [class]="c.enabled ? 'text-success' : 'text-danger'">{{ c.enabled ? 'Shown' : 'Disabled' }}</span></td>
-                          <td>@if (c.updatedOn) { {{ c.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<br /><small class="text-muted">{{ c.updatedBy }}</small> }</td>
-                          <td class="text-nowrap">
-                            <button type="button" class="btn btn-primary btn-sm" (click)="edit(c)">Edit</button>
-                            <button type="button" class="btn btn-default btn-sm ms-1" (click)="toggle(c)">{{ c.enabled ? 'Disable' : 'Enable' }}</button>
-                            @if (c.customised) { <button type="button" class="btn btn-default btn-sm ms-1" (click)="reset(c)">Reset</button> }
-                          </td>
-                        </tr>
-                      }
-                    } @empty {
-                      <tr><td colspan="7" style="padding: 0"><div class="no-data">No fields</div></td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
-          } @else if (!busy() && !forms().length) {
-            <div class="no-data">No app forms on this portal</div>
-          }
+          </select>
         </div>
       </div>
+      <small class="text-muted d-block mt-2">
+        A change reaches the apps the next time they load the form; apps without a connection keep the last form they loaded.
+      </small>
     </div>
+
+    @if (details(); as d) {
+      @for (s of d.sections; track s.key) {
+        <h5 class="section-title">{{ s.label }}</h5>
+        <div class="table-responsive">
+          <table class="table table-zed table-bordered">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 48px">#</th>
+                <th>Field</th>
+                <th>Type</th>
+                <th class="text-center" style="width: 90px">Required</th>
+                <th class="text-center" style="width: 150px">Status</th>
+                <th class="text-center" style="width: 150px">Last change</th>
+                <th class="text-center" style="width: 260px">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of inSection(s.key); track f.key; let i = $index, last = $last) {
+                <tr [class.text-muted]="!f.active" [attr.data-key]="f.key">
+                  <td class="text-center">{{ i + 1 }}</td>
+                  <td>
+                    @if (f.heading) { <small class="text-muted d-block">{{ f.heading }}</small> }
+                    <strong>{{ f.label }}</strong>
+                    @if (f.custom) { <span class="status-badge is-info ms-1">Added</span> }
+                    @if (f.standardLabel && f.standardLabel !== f.label) { <small class="text-muted d-block">Standard: {{ f.standardLabel }}</small> }
+                    @if (f.help) { <small class="d-block">{{ f.help }}</small> }
+                    @if (f.shownWhen) { <small class="text-muted d-block">Asked when {{ f.shownWhen }}</small> }
+                    @if (f.options?.length) { <small class="text-muted d-block">Choices: {{ f.options!.join(', ') }}</small> }
+                  </td>
+                  <td>{{ typeName(f) }}</td>
+                  <td class="text-center"><span class="status-badge" [class.is-info]="f.required" [class.is-inactive]="!f.required">{{ f.required ? 'Yes' : 'No' }}</span></td>
+                  <td class="text-center">
+                    <span class="status-badge" [class.is-active]="f.enabled && f.active" [class.is-pending]="f.enabled && !f.active" [class.is-inactive]="!f.enabled">{{ status(f) }}</span>
+                  </td>
+                  <td class="text-center">@if (f.updatedOn) { {{ f.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<small class="text-muted d-block">{{ f.updatedBy }}</small> }</td>
+                  <td class="text-center">
+                    <div class="row-actions justify-content-center">
+                      <button type="button" class="btn btn-default" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
+                      <button type="button" class="btn btn-default" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
+                      <button type="button" class="btn btn-outline-primary" (click)="edit(f)">Edit</button>
+                      <button type="button" class="btn" [class.btn-outline-danger]="f.enabled" [class.btn-outline-primary]="!f.enabled" (click)="toggle(f)">{{ f.enabled ? 'Disable' : 'Enable' }}</button>
+                      @if (f.customised && !f.custom) { <button type="button" class="btn btn-default" (click)="reset(f)">Reset</button> }
+                    </div>
+                  </td>
+                </tr>
+                @for (c of f.columns ?? []; track c.key) {
+                  <tr class="column" [class.text-muted]="!c.active" [attr.data-key]="c.key">
+                    <td></td>
+                    <td class="ps-4">↳ {{ c.label }}
+                      @if (c.standardLabel && c.standardLabel !== c.label) { <small class="text-muted d-block">Standard: {{ c.standardLabel }}</small> }
+                      @if (c.help) { <small class="d-block">{{ c.help }}</small> }
+                    </td>
+                    <td>{{ typeName(c) }}</td>
+                    <td class="text-center"><span class="status-badge" [class.is-info]="c.required" [class.is-inactive]="!c.required">{{ c.required ? 'Yes' : 'No' }}</span></td>
+                    <td class="text-center"><span class="status-badge" [class.is-active]="c.enabled" [class.is-inactive]="!c.enabled">{{ c.enabled ? 'Shown' : 'Disabled' }}</span></td>
+                    <td class="text-center">@if (c.updatedOn) { {{ c.updatedOn | date: 'dd-MM-yyyy HH:mm' }}<small class="text-muted d-block">{{ c.updatedBy }}</small> }</td>
+                    <td class="text-center">
+                      <div class="row-actions justify-content-center">
+                        <button type="button" class="btn btn-outline-primary" (click)="edit(c)">Edit</button>
+                        <button type="button" class="btn" [class.btn-outline-danger]="c.enabled" [class.btn-outline-primary]="!c.enabled" (click)="toggle(c)">{{ c.enabled ? 'Disable' : 'Enable' }}</button>
+                        @if (c.customised) { <button type="button" class="btn btn-default" (click)="reset(c)">Reset</button> }
+                      </div>
+                    </td>
+                  </tr>
+                }
+              } @empty {
+                <tr><td colspan="7" style="padding: 0"><div class="no-data">No fields</div></td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    } @else if (!busy() && !forms().length) {
+      <div class="no-data">No app forms on this portal</div>
+    }
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="fieldTitle">
@@ -204,47 +217,42 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
               <button type="button" class="close btn btn-link" aria-label="Close" (click)="editing.set(null)"><strong>x&nbsp;</strong></button>
             </div>
             <div class="modal-body">
-              <div class="mb-3">
-                <label class="form-label" for="fieldLabel"><strong>Label</strong></label>
-                <input type="text" class="form-control" id="fieldLabel" maxlength="200" [(ngModel)]="e.label" />
-                @if (e.field?.standardLabel; as standard) { <small class="text-muted">Standard: {{ standard }}</small> }
-              </div>
-              <div class="mb-3">
-                <label class="form-label" for="fieldHelp"><strong>Help text</strong> <small class="text-muted">(optional, shown under the field)</small></label>
+              <div class="form-grid mb-3">
+                <label for="fieldLabel">Label</label>
+                <div>
+                  <input type="text" class="form-control" id="fieldLabel" maxlength="200" [(ngModel)]="e.label" />
+                  @if (e.field?.standardLabel; as standard) { <small class="text-muted">Standard: {{ standard }}</small> }
+                </div>
+                <label class="top" for="fieldHelp">Help text <small class="text-muted fw-normal d-block">(optional, shown under the field)</small></label>
                 <textarea class="form-control" id="fieldHelp" rows="2" maxlength="500" [(ngModel)]="e.help"></textarea>
-              </div>
-              @if (e.custom) {
-                <div class="row g-3 mb-3">
-                  <div class="col-sm-6">
-                    <label class="form-label" for="fieldType"><strong>Type</strong></label>
-                    <select class="form-select" id="fieldType" [(ngModel)]="e.type">
-                      @for (t of details()?.customTypes ?? []; track t) { <option [value]="t">{{ types[t] ?? t }}</option> }
-                    </select>
-                  </div>
+                @if (e.custom) {
+                  <label for="fieldType">Type</label>
+                  <select class="form-select" id="fieldType" [(ngModel)]="e.type">
+                    @for (t of details()?.customTypes ?? []; track t) { <option [value]="t">{{ types[t] ?? t }}</option> }
+                  </select>
                   @if ((details()?.sections?.length ?? 0) > 1) {
-                    <div class="col-sm-6">
-                      <label class="form-label" for="fieldSection"><strong>Section</strong></label>
-                      <select class="form-select" id="fieldSection" [(ngModel)]="e.section">
-                        @for (s of details()!.sections; track s.key) { <option [value]="s.key">{{ s.label }}</option> }
-                      </select>
+                    <label for="fieldSection">Section</label>
+                    <select class="form-select" id="fieldSection" [(ngModel)]="e.section">
+                      @for (s of details()!.sections; track s.key) { <option [value]="s.key">{{ s.label }}</option> }
+                    </select>
+                  }
+                  @if (isChoice(e.type)) {
+                    <span class="label top">Choices</span>
+                    <div class="choices">
+                      @for (o of e.options; track $index; let i = $index) {
+                        <div class="input-group input-group-sm mb-1">
+                          <input type="text" class="form-control" maxlength="100" [attr.aria-label]="'Choice ' + (i + 1)" [(ngModel)]="e.options[i]" />
+                          <button type="button" class="btn btn-outline-danger" [attr.aria-label]="'Remove choice ' + (i + 1)" (click)="removeOption(e, i)">Remove</button>
+                        </div>
+                      }
+                      <button type="button" class="btn btn-link btn-sm p-0" (click)="addOption(e)">Add choice</button>
                     </div>
                   }
-                </div>
-                @if (isChoice(e.type)) {
-                  <div class="mb-3 choices">
-                    <span class="form-label d-block"><strong>Choices</strong></span>
-                    @for (o of e.options; track $index; let i = $index) {
-                      <div class="input-group input-group-sm mb-1">
-                        <input type="text" class="form-control" maxlength="100" [attr.aria-label]="'Choice ' + (i + 1)" [(ngModel)]="e.options[i]" />
-                        <button type="button" class="btn btn-outline-secondary" [attr.aria-label]="'Remove choice ' + (i + 1)" (click)="removeOption(e, i)">Remove</button>
-                      </div>
-                    }
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="addOption(e)">Add choice</button>
-                  </div>
+                } @else {
+                  <span class="label">Type</span>
+                  <span>{{ typeName(e.field!) }} <small class="text-muted">(the type of a standard field cannot be changed)</small></span>
                 }
-              } @else {
-                <p class="mb-3"><strong>Type:</strong> {{ typeName(e.field!) }} <small class="text-muted">(the type of a standard field cannot be changed)</small></p>
-              }
+              </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="fieldRequired" [(ngModel)]="e.required" />
                 <label class="form-check-label" for="fieldRequired">Required
@@ -273,6 +281,8 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
   `,
   styles: `
     tr.column td { background: #f8f9fa; }
+    .section-title { font-size: 16px; font-weight: 700; color: #1f5c61; margin: 8px 0 10px; }
+    .form-grid > .top { align-self: start; padding-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class AppFormsPage {

@@ -63,30 +63,30 @@ export function submittedValues(data: string | null): string[] {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     <div class="table-responsive">
-      <table class="table table-zed table-bordered bg-white">
+      <table class="table table-zed table-bordered">
         <thead>
-          <tr class="btn-default text-center">
-            <th>S.No</th><th>Date &amp; Time</th><th>Change</th><th>Where</th><th>Result</th><th>Details</th>
+          <tr>
+            <th class="text-center" style="width: 70px">S.No</th><th class="text-center" style="width: 150px">Date &amp; Time</th><th>Change</th><th class="text-center" style="width: 120px">Where</th><th class="text-center" style="width: 160px">Result</th><th>Details</th>
           </tr>
         </thead>
         <tbody>
           @for (r of rows(); track r.id) {
             <tr>
-              <td>{{ (pager.pageNo() - 1) * pager.pageSize() + $index + 1 }}</td>
-              <td class="text-nowrap">{{ r.at | date: 'dd-MM-yyyy HH:mm' }}</td>
+              <td class="text-center">{{ (pager.pageNo() - 1) * pager.pageSize() + $index + 1 }}</td>
+              <td class="text-center text-nowrap">{{ r.at | date: 'dd-MM-yyyy HH:mm' }}</td>
               <td>{{ r.action }}</td>
-              <td>{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}@if (showOrigin() && r.ipAddress) {<br /><small class="text-muted">IP {{ r.ipAddress }}</small>}</td>
-              <td>
-                <span [class]="r.result === 'Success' ? 'text-success' : 'text-danger'">{{ r.result === 'Success' ? 'Saved' : 'Not saved' }}</span>
-                @if (r.message) { <br /><small>{{ r.message }}</small> }
+              <td class="text-center">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}@if (showOrigin() && r.ipAddress) {<br /><small class="text-muted">IP {{ r.ipAddress }}</small>}</td>
+              <td class="text-center">
+                <span class="status-badge" [class.is-success]="r.result === 'Success'" [class.is-rejected]="r.result !== 'Success'">{{ r.result === 'Success' ? 'Saved' : 'Not saved' }}</span>
+                @if (r.message) { <small class="d-block mt-1">{{ r.message }}</small> }
               </td>
               <td>
                 @if (r.data) {
-                  <button type="button" class="btn btn-link btn-sm" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
+                  <button type="button" class="btn btn-outline-primary btn-sm" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
                     {{ open() === r.id ? 'Hide' : 'View' }}
                   </button>
                   @if (open() === r.id) {
-                    <ul class="list-unstyled small mb-0 mt-1 values">
+                    <ul class="list-unstyled small mb-0 mt-2 values">
                       @for (v of values(r); track $index) { <li>{{ v }}</li> } @empty { <li class="text-muted">No values</li> }
                     </ul>
                   }
@@ -152,13 +152,13 @@ export class EditHistoryTable {
   imports: [EditHistoryTable],
   template: `
     <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12">
+      <div class="page-head mt-4">
+        <div>
           <h3 class="registration-title">Edit History</h3>
-          <p class="text-muted">Every change made in your ZED login, on this website and in the ZED MSME app.</p>
-          <zed-edit-history-table url="/api/msme/edit-history" />
+          <p class="page-sub">Every change made in your ZED login, on this website and in the ZED MSME app.</p>
         </div>
       </div>
+      <zed-edit-history-table url="/api/msme/edit-history" />
     </div>
   `,
 })

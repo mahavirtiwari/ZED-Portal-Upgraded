@@ -19,7 +19,8 @@ interface Dialog {
 /**
  * MasterAdmin list of assessment agencies. Port of Views/User/AssessmentAgencies.cshtml (block /
  * unblock, edit) and BronzeAssessmentAgencies.cshtml (enable / disable Bronze assessments); the
- * route's `data.mode` ('all' | 'bronze') picks the page. Actions are POSTs (the old page used GET links).
+ * route's `data.mode` ('all' | 'bronze') picks the page. Actions are POSTs (the old page used GET links). V4 layout: search
+ * in a filter bar, status badge, categories as chips, row buttons side by side.
  */
 @Component({
   selector: 'zed-staff-agencies',
@@ -28,6 +29,7 @@ interface Dialog {
   styles: `
     .sub-heading { font-weight: 600; margin-bottom: 0; }
     td p { margin-bottom: 0; }
+    td p.muted { font-size: 13px; }
     .help-block { color: #a94442; font-size: 13px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -39,6 +41,10 @@ export class AgenciesPage {
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly labels = LABELS[this.system];
   protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : this.labels.agencies;
+  protected readonly subtitle =
+    this.mode === 'bronze'
+      ? 'Agencies allowed to take up Bronze assessments; disabling asks for a reason.'
+      : `The ${this.labels.agencies.toLowerCase()} of the portal, with their SPOC and ${this.labels.assessors.toLowerCase()}.`;
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
 

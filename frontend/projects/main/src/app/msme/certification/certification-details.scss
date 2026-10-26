@@ -1,6 +1,57 @@
 // The old page's <style> block only had .list-tick in use (now in certification-steps.ts).
-.refresh-link {
-  text-decoration: none;
+
+// Status on the left, the actions on the right (one column on narrow screens).
+.status-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 18px;
+  align-items: start;
+
+  @media (max-width: 1199.98px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// One action per line: icon and label on the left, the arrow or download button on the right.
+.alert-document {
+  height: auto;
+  min-height: 56px;
+  margin-bottom: 8px;
+  padding: 8px 10px 8px 12px;
+  border: 1px solid #e8eff0;
+  border-radius: 10px;
+  gap: 12px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  > div {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.doc-go {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  border: 1px solid #cbd9da;
+  border-radius: 8px;
+  background: #fff;
+
+  img {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+a.doc-go:hover {
+  background: #eef6f6;
+  border-color: #45a5ad;
 }
 
 // "Available soon" in place of the arrow of a page that is not migrated yet.
@@ -11,9 +62,4 @@
   color: #8d8f90;
   font-size: 12px;
   font-weight: 600;
-}
-
-// Room for the note next to the label (the label block is 90% wide in site.css).
-.alert-document:has(.soon-note) > div {
-  flex: 1 1 auto;
 }

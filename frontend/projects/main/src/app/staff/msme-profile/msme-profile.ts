@@ -77,7 +77,12 @@ const BASIC_INFO: InfoRow[] = [
   imports: [FormsModule, EditHistoryTable],
   templateUrl: './msme-profile.html',
   styles: `
-    .title-with-action { display: flex; justify-content: space-between; align-items: center; }
+    .info-table { margin-bottom: 0; }
+    .info-table td { border-color: #eef3f3; padding: 8px 10px; }
+    .info-table .info-label { width: 35%; color: #5f6f70; font-weight: 600; }
+    .profile-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 18px; }
+    .unit-selection .form-control, .unit-selection .form-select { flex: 1 1 auto; margin-left: 12px; }
+    .unit-selection[data-field='PUnitName'] .form-control { margin-left: 0; }
   `,
 })
 export class StaffMsmeProfilePage {

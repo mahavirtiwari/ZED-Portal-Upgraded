@@ -42,62 +42,66 @@ const API = '/api/staff/sub-users';
 /**
  * MasterAdmin → Operation Admins, agency → Sub-Users (new in V4): logins for the owner's own staff. A sub-user signs in
  * with its own ID and works as the owner (same role and data) on the screens ticked here; the login ID is generated and
- * the password mailed to the sub-user.
+ * the password mailed to the sub-user. V4 layout: page head with Add, status badges, screens as chips.
  */
 @Component({
   selector: 'zed-staff-sub-users',
   imports: [FormsModule, DatePipe, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4">
-        <div class="col-sm-12">
-          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-1">
-            <h3 class="registration-title">{{ accountType() }}s</h3>
-            <button type="button" class="btn btn-primary ms-auto" [disabled]="!options().length" (click)="add()">+ Add {{ accountType() }}</button>
-          </div>
-          <p class="text-muted">
-            {{ accountType() }}s sign in with their own User ID and password and work as your login on the screens you give them.
-            Their work is recorded under your login.
-          </p>
-          @if (error()) {
-            <div class="alert alert-danger" role="alert">{{ error() }}</div>
-          }
-          @if (success()) {
-            <div class="alert alert-success" role="status">{{ success() }}</div>
-          }
-          <div class="table-responsive">
-            <table class="table table-zed table-bordered bg-white">
-              <thead>
-                <tr class="btn-default text-center">
-                  <th>Status</th><th>User ID</th><th>Name</th><th>Contact</th><th>Screens</th><th>Last Login</th><th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                @for (u of view.page(); track u.userId) {
-                  <tr>
-                    <td><strong>{{ u.isActive ? (u.locked ? 'Locked' : 'Active') : 'Blocked' }}</strong></td>
-                    <td><strong>{{ u.userId }}</strong></td>
-                    <td>{{ u.userName }}</td>
-                    <td>{{ u.mobileNo }}<br />{{ u.email }}</td>
-                    <td>
-                      @for (p of u.permissions; track p) { {{ label(p) }}<br /> }
-                    </td>
-                    <td>{{ u.lastLoginAt ? (u.lastLoginAt + 'Z' | date: 'dd-MM-yyyy HH:mm') : '-' }}</td>
-                    <td class="text-center">
-                      <button type="button" class="btn btn-primary btn-sm" style="width: 120px" (click)="edit(u)">Edit</button><br />
-                      <button type="button" class="btn btn-default btn-sm mt-1" style="width: 120px" [disabled]="busy()" (click)="resetPassword(u)">Reset Password</button>
-                    </td>
-                  </tr>
-                } @empty {
-                  @if (!busy()) { <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
-                }
-              </tbody>
-            </table>
-          </div>
-          <zed-pager [pager]="view" />
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ accountType() }}s</h3>
+        <p class="page-sub">
+          {{ accountType() }}s sign in with their own User ID and password and work as your login on the screens you give them.
+          Their work is recorded under your login.
+        </p>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="btn btn-primary" [disabled]="!options().length" (click)="add()">+ Add {{ accountType() }}</button>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <div class="table-responsive">
+      <table class="table table-zed table-bordered">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 100px">Status</th><th class="text-center">User ID</th><th>Name</th><th>Contact</th><th>Screens</th><th class="text-center">Last Login</th><th class="text-center" style="width: 200px">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (u of view.page(); track u.userId) {
+            <tr>
+              <td class="text-center">
+                <span class="status-badge" [class.is-active]="u.isActive && !u.locked" [class.is-pending]="u.isActive && u.locked" [class.is-rejected]="!u.isActive">
+                  {{ u.isActive ? (u.locked ? 'Locked' : 'Active') : 'Blocked' }}
+                </span>
+              </td>
+              <td class="text-center"><strong>{{ u.userId }}</strong></td>
+              <td>{{ u.userName }}</td>
+              <td>{{ u.mobileNo }}<small class="d-block text-muted">{{ u.email }}</small></td>
+              <td>
+                @for (p of u.permissions; track p) { <span class="zed-chip">{{ label(p) }}</span> }
+              </td>
+              <td class="text-center">{{ u.lastLoginAt ? (u.lastLoginAt + 'Z' | date: 'dd-MM-yyyy HH:mm') : '-' }}</td>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  <button type="button" class="btn btn-outline-primary" (click)="edit(u)">Edit</button>
+                  <button type="button" class="btn btn-default" [disabled]="busy()" (click)="resetPassword(u)">Reset Password</button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            @if (!busy()) { <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
 
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="sub-user-title">
@@ -109,35 +113,31 @@ const API = '/api/staff/sub-users';
             </div>
             <form (ngSubmit)="save()" novalidate>
               <div class="modal-body">
-                <div class="mb-2">
-                  <label for="sub-name"><strong>Name<span style="color: red">*</span></strong></label>
+                <div class="form-grid">
+                  <label for="sub-name">Name<span class="req">*</span></label>
                   <input class="form-control" id="sub-name" name="userName" maxlength="100" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
-                </div>
-                <div class="mb-2">
-                  <label for="sub-email"><strong>Email<span style="color: red">*</span></strong></label>
+                  <label for="sub-email">Email<span class="req">*</span></label>
                   <input class="form-control" id="sub-email" name="email" type="email" maxlength="100" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
-                </div>
-                <div class="mb-2">
-                  <label for="sub-mobile"><strong>Mobile Number</strong></label>
+                  <label for="sub-mobile">Mobile Number</label>
                   <input class="form-control" id="sub-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                  <span class="label top" id="sub-screens">Screens<span class="req">*</span></span>
+                  <div role="group" aria-labelledby="sub-screens">
+                    @for (p of options(); track p.key) {
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" [id]="'perm-' + p.key" [name]="'perm-' + p.key"
+                               [checked]="f.permissions.includes(p.key)" (change)="toggle(p.key)" />
+                        <label class="form-check-label" [for]="'perm-' + p.key">{{ p.label }}</label>
+                      </div>
+                    }
+                  </div>
                 </div>
-                <fieldset class="mb-2">
-                  <legend class="fs-6"><strong>Screens<span style="color: red">*</span></strong></legend>
-                  @for (p of options(); track p.key) {
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" [id]="'perm-' + p.key" [name]="'perm-' + p.key"
-                             [checked]="f.permissions.includes(p.key)" (change)="toggle(p.key)" />
-                      <label class="form-check-label" [for]="'perm-' + p.key">{{ p.label }}</label>
-                    </div>
-                  }
-                </fieldset>
                 @if (editing()) {
-                  <div class="form-check mb-2">
+                  <div class="form-check mt-3 mb-2">
                     <input class="form-check-input" type="checkbox" id="sub-active" name="isActive" [checked]="f.isActive" (change)="patch('isActive', !f.isActive)" />
                     <label class="form-check-label" for="sub-active"><strong>Active</strong> (untick to block this login)</label>
                   </div>
                 } @else {
-                  <p class="text-muted mb-0">The User ID is generated, and a password is e-mailed to the {{ accountType().toLowerCase() }}.</p>
+                  <p class="text-muted mt-3 mb-0">The User ID is generated, and a password is e-mailed to the {{ accountType().toLowerCase() }}.</p>
                 }
                 @if (formError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ formError() }}</div> }
               </div>
@@ -156,7 +156,7 @@ const API = '/api/staff/sub-users';
     }
   `,
   styles: `
-    .modal .form-control { width: 100%; max-width: 100%; }
+    .form-grid > .top { align-self: start; }
     .form-check-input { border: 1px solid #888; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,

@@ -1,5 +1,5 @@
 import { Component, computed, input, output, signal } from '@angular/core';
-import { text } from '../assessment/assessment-shared';
+import { DETAILS_STYLES, text } from '../assessment/assessment-shared';
 import { ReviewActionsBar } from '../monitoring/review-actions';
 import { RemarksKind, ReviewActions } from '../monitoring/review.api';
 import { Row, SaDetails, SaMeeting, SaOriginal, SaPhoto } from './site-review.api';
@@ -31,16 +31,17 @@ interface Block<T> {
   selector: 'zed-sa-surveillance-tab',
   imports: [ReviewActionsBar],
   templateUrl: './sa-surveillance.html',
-  styles: `
+  styles: [DETAILS_STYLES, `
     .surveillance-assessment { width: 200px; overflow: auto; vertical-align: middle !important; text-align: center; background-color: #f9cc53; }
     .surveillance-assessment p { font-weight: 600; font-size: 16px; }
     .section-toggle { cursor: pointer; }
-    .map-box { border: 1px solid #8d8f90; border-radius: 4px; }
+    .block + .block { margin-top: 18px; }
     .recording-link {
-      display: inline-block; background-color: #007bff; color: #fff; text-decoration: none; padding: 6px 12px;
-      border-radius: 4px; font-weight: bold; font-size: 13px; transition: 0.3s;
+      display: inline-block; background-color: #45a5ad; color: #fff; text-decoration: none; padding: 6px 12px;
+      border-radius: 6px; font-weight: 600; font-size: 13px; transition: 0.3s;
     }
-  `,
+    .recording-link:hover { background-color: #3b939a; }
+  `],
 })
 export class SaSurveillanceTab {
   readonly tab = input.required<number>();

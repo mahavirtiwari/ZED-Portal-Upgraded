@@ -25,8 +25,13 @@ const NO_COUNTS: FaCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
   imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './fa-submissions.html',
   styles: `
-    table tbody tr td { font-size: 14px; }
-    tr.rejected td { background-color: #f2dede; }
+    /* Status lists as a row of tabs with their counts. */
+    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .status-tabs .tab-count { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 7px; border-radius: 10px; background: rgba(69, 165, 173, 0.15); font-size: 12px; font-weight: 700; }
+    .status-tabs .btn-primary .tab-count { background: rgba(255, 255, 255, 0.25); }
+    /* Several values in one cell, one per line. */
+    .cell-lines > * { display: block; }
+    .cell-lines > * + * { margin-top: 4px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

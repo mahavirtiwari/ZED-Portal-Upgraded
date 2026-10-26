@@ -19,10 +19,7 @@ const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
   selector: 'zed-payment-step',
   imports: [FormsModule, DecimalPipe, AlertDialog, ContentTextComponent],
   templateUrl: './payment-step.html',
-  styles: `
-    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .payment-summary .panel-body > div { display: flex; justify-content: space-between; gap: 12px; }
-  `,
+  styleUrl: './payment-form.scss',
 })
 export class PaymentStep implements OnInit {
   private readonly api = inject(PaymentApi);

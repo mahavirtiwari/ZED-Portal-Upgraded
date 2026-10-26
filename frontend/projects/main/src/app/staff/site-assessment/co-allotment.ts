@@ -35,130 +35,124 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
   selector: 'zed-staff-co-allotment',
   imports: [FormsModule, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="Dashboard-msme">
-        <div class="row mt-3">
-          <div class="col-sm-10">
-            <h3 class="registration-title">Allot Consultancy</h3>
-          </div>
-          <div class="col-sm-2">
-            <button type="button" class="refresh-link btn btn-link" (click)="load()">
-              <img src="Images/svgicons/refresh.svg" alt="" />
-              <span>Refresh Data</span>
-            </button>
-          </div>
-        </div>
-
-        @if (error()) {
-          <div class="alert alert-danger" role="alert">{{ error() }}</div>
-        }
-        @if (success()) {
-          <div class="alert alert-success" role="status">{{ success() }}</div>
-        }
-
-        <div class="table-responsive">
-          <table class="table table-bordered table-zed">
-            <thead>
-              <tr>
-                <th>Action(s)</th>
-                <th>Desired Certification</th>
-                <th>Milestone</th>
-                <th>Unit Details</th>
-                <th>Unit SPOC Details</th>
-                <th>Consultant Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
-                <tr>
-                  <td>
-                    @if (s['SiteAssessorId']) {
-                      <button type="button" class="btn btn-primary btn-xs allot" (click)="open(s)">RE-ALLOT</button>
-                    } @else if (!s['ReasonForRejection']) {
-                      <button type="button" class="btn btn-primary btn-xs allot" (click)="open(s)">ACCEPT</button>
-                      <button type="button" class="btn btn-default btn-xs reject" (click)="openReject(s)">REJECT</button>
-                    } @else {
-                      <div class="alert alert-danger p-1 mb-0">REJECTED</div>
-                    }
-                  </td>
-                  <td>{{ s['Certification'] }}</td>
-                  <td><label>Milestone {{ s['NcCount'] }}</label></td>
-                  <td>
-                    <strong class="dash-text-clr">{{ s['ZedId'] }}</strong><br />
-                    <strong>{{ s['PUnitName'] }}</strong><br />
-                    {{ s['UnitAddress'] }}
-                  </td>
-                  <td><strong>{{ s['UnitSpocName'] }}</strong><br />{{ s['UnitSpocMobileNo'] }}<br />{{ s['UnitSpocEmailId'] }}</td>
-                  <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
-                  <td class="consultants">
-                    {{ s['SiteAssessorId'] }}<br />
-                    {{ s['SaAssessorName'] }}<br /><br />
-                    {{ s['CoAssessorId'] }}<br />
-                    {{ s['CoConsultantNames'] }}<br /><br />
-                    {{ s['TechExpert'] }}<br />
-                    {{ s['TechnicalExpertNames'] }}
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-        <zed-pager [pager]="view" />
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">Allot Consultancy</h3>
+        <p class="page-sub">Accept the milestones allotted to your organisation and choose the consultancy team and the visit dates, or reject them.</p>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="refresh-link btn btn-default" (click)="load()">
+          <img src="Images/svgicons/refresh.svg" alt="" />
+          <span>Refresh Data</span>
+        </button>
       </div>
     </div>
 
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-zed">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 190px">Action(s)</th>
+            <th class="text-center">Desired Certification</th>
+            <th class="text-center">Milestone</th>
+            <th>Unit Details</th>
+            <th>Unit SPOC Details</th>
+            <th>Consultant Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
+            <tr>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  @if (s['SiteAssessorId']) {
+                    <button type="button" class="btn btn-outline-primary allot" (click)="open(s)">RE-ALLOT</button>
+                  } @else if (!s['ReasonForRejection']) {
+                    <button type="button" class="btn btn-primary allot" (click)="open(s)">ACCEPT</button>
+                    <button type="button" class="btn btn-outline-danger reject" (click)="openReject(s)">REJECT</button>
+                  } @else {
+                    <span class="status-badge is-rejected">REJECTED</span>
+                  }
+                </div>
+              </td>
+              <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
+              <td class="text-center"><span class="zed-chip">Milestone {{ s['NcCount'] }}</span></td>
+              <td class="unit">
+                <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
+                <div><strong>{{ s['PUnitName'] }}</strong></div>
+                <div class="muted">{{ s['UnitAddress'] }}</div>
+              </td>
+              <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
+              <!-- As the old page: the lead, the co-consultants and the technical experts, each id over its names. -->
+              <td class="consultants">
+                <div><div class="muted">{{ s['SiteAssessorId'] }}</div>{{ s['SaAssessorName'] }}</div>
+                <div><div class="muted">{{ s['CoAssessorId'] }}</div>{{ s['CoConsultantNames'] }}</div>
+                <div><div class="muted">{{ s['TechExpert'] }}</div>{{ s['TechnicalExpertNames'] }}</div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
+
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="co-allot-title" (click)="close()">
-        <div class="modal-dialog modal-lg modal-popup" (click)="$event.stopPropagation()">
+        <div class="modal-dialog modal-lg modal-dialog-centered" (click)="$event.stopPropagation()">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between">
-                <h3 class="registration-title" id="co-allot-title">Allot Unit</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <h5 class="modal-title" id="co-allot-title">Allot Unit</h5>
+              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
             </div>
             <div class="modal-body">
-              <p class="mb-2"><strong class="dash-text-clr">{{ f.unit['ZedId'] }}</strong> ({{ f.unit['Certification'] }}, Milestone {{ f.milestone }})</p>
+              <p class="mb-3"><strong class="dash-text-clr">{{ f.unit['ZedId'] }}</strong> ({{ f.unit['Certification'] }}, Milestone {{ f.milestone }})</p>
               <div class="row mb-3">
-                <div class="col-sm-4"><div class="panel panel-info p-2">{{ stage(f.milestone) }}</div></div>
+                <div class="col-sm-4"><div class="stage">{{ stage(f.milestone) }}</div></div>
                 <div class="col-sm-4">
-                  <label for="BdsFromDate">From<span style="color: red">*</span></label>
+                  <label class="form-label" for="BdsFromDate">From<span class="req">*</span></label>
                   <input type="date" id="BdsFromDate" name="BdsFromDate" class="form-control" [min]="minDate" [(ngModel)]="f.bdsFromDate" />
                 </div>
                 <div class="col-sm-4">
-                  <label for="BdsToDate">To<span style="color: red">*</span></label>
+                  <label class="form-label" for="BdsToDate">To<span class="req">*</span></label>
                   <input type="date" id="BdsToDate" name="BdsToDate" class="form-control" [min]="f.bdsFromDate || minDate" [(ngModel)]="f.bdsToDate" />
                 </div>
               </div>
               @if (f.milestone === 1) {
                 <div class="row mb-3">
-                  <div class="col-sm-4"><div class="panel panel-info p-2">Handholding Action Plan</div></div>
+                  <div class="col-sm-4"><div class="stage">Handholding Action Plan</div></div>
                   <div class="col-sm-4">
-                    <label for="HapFromDate">From<span style="color: red">*</span></label>
+                    <label class="form-label" for="HapFromDate">From<span class="req">*</span></label>
                     <input type="date" id="HapFromDate" name="HapFromDate" class="form-control" [min]="minDate" [(ngModel)]="f.hapFromDate" />
                   </div>
                   <div class="col-sm-4">
-                    <label for="HapToDate">To<span style="color: red">*</span></label>
+                    <label class="form-label" for="HapToDate">To<span class="req">*</span></label>
                     <input type="date" id="HapToDate" name="HapToDate" class="form-control" [min]="f.hapFromDate || minDate" [(ngModel)]="f.hapToDate" />
                   </div>
                 </div>
               }
               <div class="row">
-                <div class="col-sm-4"><div class="panel panel-info p-2">Consultancy Team</div></div>
+                <div class="col-sm-4"><div class="stage">Consultancy Team</div></div>
                 <div class="col-sm-8">
-                  <label for="LeadConsultant">Lead Consultant<span style="color: red">*</span></label>
-                  <select id="LeadConsultant" name="LeadConsultant" class="form-control mb-2" [(ngModel)]="f.leadConsultantId" (ngModelChange)="leadChanged(f)">
+                  <label class="form-label" for="LeadConsultant">Lead Consultant<span class="req">*</span></label>
+                  <select id="LeadConsultant" name="LeadConsultant" class="form-select mb-3" [(ngModel)]="f.leadConsultantId" (ngModelChange)="leadChanged(f)">
                     <option value="">--Select--</option>
                     @for (a of consultants(); track a.userId) {
                       <option [value]="a.userId">{{ a.userName }}</option>
                     }
                   </select>
-                  <fieldset class="mb-2">
-                    <legend class="fs-6 mb-1">Co-consultant(s)</legend>
+                  <fieldset class="mb-3">
+                    <legend class="form-label fs-6 mb-1">Co-consultant(s)</legend>
                     @for (a of coCandidates(f.leadConsultantId); track a.userId) {
                       <div class="form-check">
                         <input type="checkbox" class="form-check-input co" [id]="'co-' + a.userId" [checked]="f.coConsultantIds.includes(a.userId)" (change)="toggle(f.coConsultantIds, a.userId)" />
@@ -169,7 +163,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                     }
                   </fieldset>
                   <fieldset>
-                    <legend class="fs-6 mb-1">Technical Expert(s)</legend>
+                    <legend class="form-label fs-6 mb-1">Technical Expert(s)</legend>
                     @for (a of experts(); track a.userId) {
                       <div class="form-check">
                         <input type="checkbox" class="form-check-input expert" [id]="'te-' + a.userId" [checked]="f.technicalExpertIds.includes(a.userId)" (change)="toggle(f.technicalExpertIds, a.userId)" />
@@ -182,10 +176,10 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
                 </div>
               </div>
               @if (formError()) {
-                <div class="alert alert-danger mt-2" role="alert">{{ formError() }}</div>
+                <div class="alert alert-danger mt-2 mb-0" role="alert">{{ formError() }}</div>
               }
             </div>
-            <div class="modal-footer" style="text-align: left">
+            <div class="modal-footer">
               <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
               <button type="button" class="btn btn-primary submit" [disabled]="busy()" (click)="allot(f)">ALLOT</button>
             </div>
@@ -197,24 +191,22 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
 
     @if (rejectForm(); as r) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="co-reject-title" (click)="rejectForm.set(null)">
-        <div class="modal-dialog" (click)="$event.stopPropagation()">
+        <div class="modal-dialog modal-dialog-centered" (click)="$event.stopPropagation()">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between">
-                <h3 class="registration-title" id="co-reject-title">Reject Unit</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="rejectForm.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <h5 class="modal-title" id="co-reject-title">Reject Unit</h5>
+              <button type="button" class="btn-close" aria-label="Close" (click)="rejectForm.set(null)"></button>
             </div>
             <div class="modal-body">
-              <label for="ReasonForRejection">Reason for Rejection<span style="color: red">*</span></label>
-              <textarea id="ReasonForRejection" name="ReasonForRejection" class="form-control" maxlength="100" style="max-width: 100%" [(ngModel)]="r.reason"></textarea>
+              <label class="form-label" for="ReasonForRejection">Reason for Rejection<span class="req">*</span></label>
+              <textarea id="ReasonForRejection" name="ReasonForRejection" class="form-control" maxlength="100" rows="3" [(ngModel)]="r.reason"></textarea>
               @if (formError()) {
-                <div class="alert alert-danger mt-2" role="alert">{{ formError() }}</div>
+                <div class="alert alert-danger mt-2 mb-0" role="alert">{{ formError() }}</div>
               }
             </div>
-            <div class="modal-footer" style="text-align: left">
+            <div class="modal-footer">
               <button type="button" class="btn btn-default" (click)="rejectForm.set(null)">CANCEL</button>
-              <button type="button" class="btn btn-primary submit-reject" [disabled]="busy()" (click)="reject(r)">REJECT</button>
+              <button type="button" class="btn btn-danger submit-reject" [disabled]="busy()" (click)="reject(r)">REJECT</button>
             </div>
           </div>
         </div>
@@ -232,7 +224,9 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
     }
   `,
   styles: `
-    .refresh-link { cursor: pointer; text-decoration: none; }
+    .unit { min-width: 200px; }
+    .consultants > div + div { margin-top: 6px; }
+    .stage { background: #eef6f6; color: #23474a; font-weight: 600; border-radius: 8px; padding: 8px 10px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

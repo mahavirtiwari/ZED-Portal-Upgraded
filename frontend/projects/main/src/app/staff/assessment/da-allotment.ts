@@ -2,7 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Person, Row } from './assessment.api';
 import { PagedView, PagerComponent } from '../pager';
 
@@ -16,114 +16,117 @@ import { PagedView, PagerComponent } from '../pager';
   selector: 'zed-staff-da-allotment',
   imports: [FormsModule, PagerComponent],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="Dashboard-msme">
-        <div class="row">
-          <div [class.col-sm-10]="!surveillance" [class.col-sm-4]="surveillance"><h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3></div>
-          @if (surveillance) {
-            <!-- That portal's DaAllotment.cshtml: an "Enter ZED ID" search box. -->
-            <div class="col-sm-6" style="margin-top: 10px; margin-bottom: 10px">
-              <div class="d-flex gap-1">
-                <input type="text" class="form-control" placeholder="Enter ZED ID" aria-label="Enter ZED ID" maxlength="50" [(ngModel)]="zedIdText" (keyup.enter)="searchZedId()" />
-                <button type="button" class="btn btn-primary search-zed" aria-label="Search" (click)="searchZedId()"><i class="fa fa-search"></i></button>
-              </div>
-            </div>
-          }
-          <div class="col-sm-2">
-            <button type="button" class="refresh-link btn btn-link" (click)="load()">
-              <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
-            </button>
-          </div>
-        </div>
-
-        @if (notice(); as n) {
-          <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
-            {{ n.text }}
-            <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
-          </div>
-        }
-
-        <div class="row">
-          <div class="col-sm-12">
-            <div class="table-responsive">
-              <table class="table table-bordered table-zed">
-                <thead>
-                  <tr>
-                    <th>Action(s)</th>
-                    <th>Status</th>
-                    <th>Certification Level</th>
-                    <th>Unit Details</th>
-                    <th>SPOC Details</th>
-                    <th>Assessor Details</th>
-                    <th>Reason For Rejection</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-                    <tr>
-                      <td>
-                        @if (legacy.profile(t(s, 'ZedId')); as href) {
-                          <a style="width: 180px" [href]="href" class="btn btn-primary mb-2">View Profile</a>
-                        }
-                        @if (!t(s, 'DesktopAssessorId') && !t(s, 'ReasonForRejection')) {
-                          <button type="button" class="btn btn-primary btn-xs me-1" (click)="openAllot(s)">ACCEPT</button>
-                        }
-                        @if (!t(s, 'DesktopAssessorId') || t(s, 'DesktopReasonForRejection')) {
-                          <button type="button" class="btn btn-default btn-xs me-1" (click)="openReject(s)">REJECT</button>
-                        }
-                        @if (canReallot(s)) {
-                          <button type="button" class="btn btn-primary btn-xs" (click)="openAllot(s)">RE-ALLOT</button>
-                        }
-                      </td>
-                      <td>
-                        @if (t(s, 'DesktopReasonForRejection')) { <small class="text-danger">ASSESSOR REJECTED</small> }
-                        @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
-                          <small class="text-danger">ALLOTED TO ASSESSOR</small>
-                        }
-                        @if (!t(s, 'DesktopAssessorId')) { <small>Allotment Pending</small> }
-                      </td>
-                      <td><strong>{{ t(s, 'Certification') }}</strong></td>
-                      <td>
-                        <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong><br />
-                        <strong>{{ t(s, 'PUnitName') }}</strong><br />
-                        {{ t(s, 'UnitAddress') }}
-                      </td>
-                      <td><strong>{{ t(s, 'UnitSpocName') }}</strong><br />{{ t(s, 'UnitSpocMobileNo') }}<br />{{ t(s, 'UnitSpocEmailId') }}</td>
-                      <td>
-                        <strong>{{ t(s, 'DaAssessorName') }}</strong><br />{{ t(s, 'DesktopAssessorId') }}
-                      </td>
-                      <td>{{ t(s, 'DesktopReasonForRejection') }}</td>
-                    </tr>
-                  } @empty {
-                    <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <zed-pager [pager]="view" />
-          </div>
-        </div>
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3>
+        <p class="page-sub">{{ surveillance ? 'Allot the surveillance assessments to your assessors, or re-allot them until the assessor starts.' : 'Accept the MSMEs allotted to your agency and allot them to a desktop assessor, or reject them.' }}</p>
+      </div>
+      <div class="page-actions">
+        <button type="button" class="refresh-link btn btn-default" (click)="load()">
+          <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
+        </button>
       </div>
     </div>
 
+    @if (surveillance) {
+      <!-- That portal's DaAllotment.cshtml: an "Enter ZED ID" search box. -->
+      <div class="filter-bar mb-3">
+        <div class="filter wide">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Enter ZED ID" aria-label="Enter ZED ID" maxlength="50" [(ngModel)]="zedIdText" (keyup.enter)="searchZedId()" />
+            <button type="button" class="btn btn-primary search-zed" aria-label="Search" (click)="searchZedId()"><i class="fa fa-search"></i></button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (notice(); as n) {
+      <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
+        {{ n.text }}
+        <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
+      </div>
+    }
+
+    <div class="table-responsive">
+      <table class="table table-bordered table-zed">
+        <thead>
+          <tr>
+            <th class="text-center" style="width: 200px">Action(s)</th>
+            <th class="text-center" style="width: 150px">Status</th>
+            <th class="text-center">Certification Level</th>
+            <th>Unit Details</th>
+            <th>SPOC Details</th>
+            <th>Assessor Details</th>
+            <th>Reason For Rejection</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of view.page(); track key(s)) {
+            <tr>
+              <td class="text-center">
+                <div class="row-actions justify-content-center">
+                  @if (legacy.profile(t(s, 'ZedId')); as href) {
+                    <a [href]="href" class="btn btn-outline-primary">View Profile</a>
+                  }
+                  @if (!t(s, 'DesktopAssessorId') && !t(s, 'ReasonForRejection')) {
+                    <button type="button" class="btn btn-primary" (click)="openAllot(s)">ACCEPT</button>
+                  }
+                  @if (!t(s, 'DesktopAssessorId') || t(s, 'DesktopReasonForRejection')) {
+                    <button type="button" class="btn btn-outline-danger" (click)="openReject(s)">REJECT</button>
+                  }
+                  @if (canReallot(s)) {
+                    <button type="button" class="btn btn-outline-primary" (click)="openAllot(s)">RE-ALLOT</button>
+                  }
+                </div>
+              </td>
+              <td class="text-center">
+                @if (t(s, 'DesktopReasonForRejection')) { <span class="status-badge is-rejected">ASSESSOR REJECTED</span> }
+                @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
+                  <span class="status-badge is-info">ALLOTED TO ASSESSOR</span>
+                }
+                @if (!t(s, 'DesktopAssessorId')) { <span class="status-badge is-pending">Allotment Pending</span> }
+              </td>
+              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
+              <td class="unit">
+                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
+                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
+                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
+              </td>
+              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
+              <td><strong>{{ t(s, 'DaAssessorName') }}</strong><div class="muted">{{ t(s, 'DesktopAssessorId') }}</div></td>
+              <td class="reason">
+                @if (t(s, 'DesktopReasonForRejection'); as reason) {
+                  <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
+                  @if (reason.length > 120) {
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
+                  }
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <zed-pager [pager]="view" />
+
     @if (allotFor(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daAllotTitle">
-        <div class="modal-dialog modal-popup">
+        <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="daAllotTitle">Accept Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="allotFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <div class="modal-title" id="daAllotTitle"><strong>Accept Assessment</strong></div>
+              <button type="button" class="btn-close" aria-label="Close" (click)="allotFor.set(null)"></button>
             </div>
             <div class="modal-body">
-              <p>{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
-              <label for="daAssessor"><strong>Assessor<span style="color: red">*</span></strong></label>
-              <select id="daAssessor" class="form-control" [(ngModel)]="assessorId">
+              <p class="muted mb-2">{{ t(c, 'ZedId') }} · {{ t(c, 'Certification') }}</p>
+              <label class="form-label" for="daAssessor">Assessor<span class="req">*</span></label>
+              <select id="daAssessor" class="form-select" [(ngModel)]="assessorId">
                 <option value="">--Select--</option>
                 @for (a of assessorsFor(c); track a.userId) { <option [value]="a.userId">{{ a.userName }}</option> }
               </select>
-              @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
+              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="allotFor.set(null)" />
@@ -135,24 +138,22 @@ import { PagedView, PagerComponent } from '../pager';
       <div class="modal-backdrop show"></div>
     }
 
-    @if (rejectFor(); as c) {
+    @if (rejectFor()) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daRejectTitle">
-        <div class="modal-dialog modal-popup">
+        <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="daRejectTitle">Reject Assessment</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="rejectFor.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <div class="modal-title" id="daRejectTitle"><strong>Reject Assessment</strong></div>
+              <button type="button" class="btn-close" aria-label="Close" (click)="rejectFor.set(null)"></button>
             </div>
             <div class="modal-body">
-              <label for="daRejectReason"><strong>Reason for Rejection<span style="color: red">*</span></strong></label>
-              <textarea id="daRejectReason" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px" [(ngModel)]="reason"></textarea>
-              @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
+              <label class="form-label" for="daRejectReason">Reason for Rejection<span class="req">*</span></label>
+              <textarea id="daRejectReason" class="form-control" maxlength="2000" rows="4" [(ngModel)]="reason"></textarea>
+              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="rejectFor.set(null)" />
-              <input type="button" class="btn btn-primary" value="REJECT" [disabled]="busy()" (click)="reject()" />
+              <input type="button" class="btn btn-danger" value="REJECT" [disabled]="busy()" (click)="reject()" />
             </div>
           </div>
         </div>
@@ -166,6 +167,7 @@ import { PagedView, PagerComponent } from '../pager';
       </div>
     }
   `,
+  styles: `.unit { min-width: 200px; } .reason { min-width: 180px; white-space: pre-wrap; }`,
 })
 export class DaAllotmentPage {
   private readonly api = inject(AssessmentApi);
@@ -194,6 +196,8 @@ export class DaAllotmentPage {
   protected readonly modalError = signal('');
   protected assessorId = '';
   protected reason = '';
+  protected readonly more = new Expanded();
+  protected readonly key = (s: Row) => text(s, 'ZedId') + text(s, 'Certification');
 
   constructor() {
     void this.load();

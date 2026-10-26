@@ -109,11 +109,36 @@ interface DecisionForm {
   templateUrl: './tu-verification.html',
   styles: `
     table tbody tr td { font-size: 14px; }
-    .w-50 { width: 50%; }
+    .details { margin-bottom: 0; }
+    .w-50 { width: 50%; color: #3b4b4c; }
+    .w-40 { width: 40%; }
+    .sub-title { font-size: 15px; font-weight: 700; color: #23474a; margin: 16px 0 10px; }
+    .tab-pane > .sub-title:first-child { margin-top: 0; }
+    .description { white-space: pre-wrap; min-width: 220px; }
     .doc-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
-    .thumb { max-width: 60px; max-height: 60px; margin-right: 6px; }
-    .section-toggle { cursor: pointer; }
-    .section-toggle .registration-title { color: #fff; margin: 0; font-size: 16px; }
+    .doc-file { display: flex; align-items: center; gap: 6px; }
+    .doc-status { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .doc-status .remarks { word-break: break-word; }
+    .doc-status .shots { display: flex; flex-wrap: wrap; gap: 4px; }
+    .thumb { max-width: 60px; max-height: 60px; border-radius: 6px; }
+    .selfie { border-radius: 6px; object-fit: cover; }
+    /* Collapsible sections: a tinted bar with + / - (the old page's black panel); the body follows it. */
+    .section-toggle {
+      display: flex; width: 100%; justify-content: space-between; align-items: center; margin-top: 12px; padding: 10px 14px;
+      background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; color: #23474a; font-size: 15px; font-weight: 700; text-align: left; cursor: pointer;
+    }
+    .section-toggle:hover { border-color: #45a5ad; }
+    .section-toggle::after { content: '+'; font-size: 20px; line-height: 1; color: #2f7c83; }
+    .section-toggle.open { border-radius: 10px 10px 0 0; }
+    .section-toggle.open::after { content: '−'; }
+    .section-body { border: 1px solid #dfe9ea; border-top: 0; border-radius: 0 0 10px 10px; padding: 12px; margin-bottom: 0; }
+    .section-body + .section-body, .section-body + .sub-title { margin-top: 0; }
+    .sub-heading { font-weight: 700; color: #3b4b4c; margin-bottom: 6px; }
+    .photo-grid { display: flex; flex-direction: column; gap: 4px; }
+    .meeting { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+    .participants { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .participant { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #dfe9ea; border-radius: 10px; background: #fff; }
+    @media (max-width: 640px) { .meeting { grid-template-columns: 1fr; } }
     .preview img { max-width: 100%; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,

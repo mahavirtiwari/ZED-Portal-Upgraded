@@ -33,7 +33,7 @@ export interface AppFormValues {
     @for (f of forms(); track f.form) {
       <div class="card mb-3 app-form-values">
         <div class="card-header"><strong>Additional information</strong> <small class="text-muted">· {{ f.app }}</small></div>
-        <table class="table table-bordered table-zed bg-white mb-0">
+        <table class="table table-bordered table-zed mb-0">
           <tbody>
             @for (v of f.values; track v.key) {
               <tr>

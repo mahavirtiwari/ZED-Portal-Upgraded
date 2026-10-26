@@ -17,18 +17,24 @@ describe('StaffHomePage', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows single screens as tiles and menu groups as cards', async () => {
+  it('shows each menu as a card with its headings', async () => {
     const el = await render(1, 'Admin');
     expect(el.querySelector('h3')!.textContent).toContain('Welcome, Test User');
-    const tiles = [...el.querySelectorAll('a.tile')].map((a) => a.textContent!.replace(/\s+/g, ' ').trim());
-    expect(tiles).toEqual(expect.arrayContaining([expect.stringContaining('Sectors'), expect.stringContaining('Payments')]));
     const cards = [...el.querySelectorAll('.group-card h4')].map((h) => h.textContent!.trim());
-    expect(cards).toEqual(expect.arrayContaining(['Questionnaire', 'Settings']));
-    // No row per state: the long incentives group is a chooser.
-    expect(el.textContent).not.toContain('OPEN');
+    expect(cards).toEqual(['Masters', 'Incentives', 'Administration']);
+    const masters = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Masters')!;
+    expect([...masters.querySelectorAll('h5')].map((h) => h.textContent!.trim())).toEqual(['Questionnaire', 'Technology Upgradation']);
+    expect(masters.textContent).toContain('Sectors');
+    // No row per state: the long incentives list is a chooser.
     const incentives = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Incentives')!;
     expect(incentives.querySelector('select')).not.toBeNull();
     expect(incentives.querySelectorAll('li').length).toBe(0);
+  });
+
+  it('shows the single screens of a role as tiles', async () => {
+    const el = await render(10, 'SuperAdmin');
+    const tiles = [...el.querySelectorAll('a.tile')].map((a) => a.textContent!.replace(/\s+/g, ' ').trim());
+    expect(tiles).toEqual(expect.arrayContaining([expect.stringContaining('Reports'), expect.stringContaining('Customer History')]));
   });
 
   it('opens the screen picked in a chooser', async () => {

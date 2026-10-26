@@ -7,33 +7,38 @@ import { RESET_CONFIRM } from './users.api';
 
 /**
  * MasterAdmin: e-mails any staff account of this portal a link to set a new password, including MasterAdmin and
- * SuperAdmin accounts, which cannot use "Forgot password?". The administrator never sees or sets the password.
+ * SuperAdmin accounts, which cannot use "Forgot password?". The administrator never sees or sets the password. V4 layout:
+ * page head and one card (messages above it).
  */
 @Component({
   selector: 'zed-staff-password-reset-link',
   imports: [FormsModule],
   template: `
-    <div class="container form-page" id="zed_user_form">
-      <div class="mt-4" style="max-width: 560px">
+    <div class="page-head">
+      <div>
         <h1 class="registration-title">Password Reset Link</h1>
-        <p class="text-muted">The link is sent to the e-mail address registered for the account and works once, for a short time.
-          Agencies and assessors can also be sent a link from their lists.</p>
-        <form (ngSubmit)="send()" novalidate>
-          <div class="mb-3">
-            <label for="resetUserId">User ID</label>
-            <input id="resetUserId" name="userId" class="form-control" [(ngModel)]="userId" required maxlength="50" />
-          </div>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Send Reset Link</button>
-        </form>
-        @if (error()) {
-          <div class="alert alert-danger mt-3" role="alert">{{ error() }}</div>
-        }
-        @if (success()) {
-          <div class="alert alert-success mt-3" role="status">{{ success() }}</div>
-        }
+        <p class="page-sub">E-mails any staff account of this portal a link to set a new password.</p>
       </div>
     </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    <form class="zed-card" (ngSubmit)="send()" novalidate>
+      <p class="text-muted">The link is sent to the e-mail address registered for the account and works once, for a short time.
+        Agencies and assessors can also be sent a link from their lists.</p>
+      <div class="form-grid">
+        <label for="resetUserId">User ID<span class="req">*</span></label>
+        <input id="resetUserId" name="userId" class="form-control" [(ngModel)]="userId" required maxlength="50" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" [disabled]="busy()">Send Reset Link</button>
+      </div>
+    </form>
   `,
+  styles: `.zed-card { max-width: 720px; }`,
 })
 export class PasswordResetLinkPage {
   private readonly http = inject(HttpClient);

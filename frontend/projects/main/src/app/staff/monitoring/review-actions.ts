@@ -18,30 +18,28 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
   imports: [FormsModule, ContentTextComponent],
   template: `
     @if (actions().finalSubmit) {
-      <input type="button" value="Final Submit" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="open('finalSubmit')" />
+      <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="open('finalSubmit')" />
     }
     @if (actions().sendBack) {
-      <input type="button" value="Send Back to Assessor" class="btn btn-primary btn-md me-2" [disabled]="busy()" (click)="open('sendBack')" />
+      <input type="button" value="Send Back to Assessor" class="btn btn-outline-primary btn-md" [disabled]="busy()" (click)="open('sendBack')" />
     }
     @if (actions().reject) {
-      <input type="button" value="Reject" class="btn btn-danger btn-md" [disabled]="busy()" (click)="open('reject')" />
+      <input type="button" value="Reject" class="btn btn-outline-danger btn-md" [disabled]="busy()" (click)="open('reject')" />
     }
 
     @if (dialog(); as d) {
       <div class="modal d-block text-start" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reviewDialogTitle">
         <div class="modal-dialog modal-popup" [class.modal-lg]="d === 'sendBack'">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="reviewDialogTitle">
-                  {{ d === 'finalSubmit' ? 'Confirm Final Submit' : d === 'reject' ? 'Confirm Reject Certification' : 'Send Back to Assessor' }}
-                </h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <h5 class="modal-title" id="reviewDialogTitle">
+                {{ d === 'finalSubmit' ? 'Confirm Final Submit' : d === 'reject' ? 'Confirm Reject Certification' : 'Send Back to Assessor' }}
+              </h5>
+              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
             </div>
             <div class="modal-body">
               @if (d === 'finalSubmit') {
-                <div style="padding-left: 20px">
+                <div class="ps-3">
                   @if (stage() === 'desktop') {
                     <div class="form-check">
                       <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewExemptions" name="exemptionsReviewed"
@@ -50,7 +48,7 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                     </div>
                   }
                   @if (stage() === 'site' || exemptionsReviewed()) {
-                    <div class="form-check" style="margin-top: 10px">
+                    <div class="form-check mt-2">
                       <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewQuality" name="qualityChecked"
                         [ngModel]="qualityChecked()" (ngModelChange)="qualityChecked.set($event)" />
                       <label class="form-check-label" for="reviewQuality" style="display: inline"><zed-text key="staff.monitoring.review.qualityChecked.checkbox" [inline]="true" /></label>
@@ -58,15 +56,15 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
                   }
                 </div>
               } @else if (d === 'reject') {
-                <div class="form-check" style="padding-left: 20px">
+                <div class="form-check ms-3">
                   <input class="form-check-input option-input1 yes checkbox" type="checkbox" id="reviewReject" name="rejectConfirmed"
                     [ngModel]="rejectConfirmed()" (ngModelChange)="rejectConfirmed.set($event)" />
                   <label class="form-check-label" for="reviewReject" style="display: inline"><zed-text key="staff.monitoring.review.reject.checkbox" [inline]="true" /></label>
                 </div>
               } @else {
-                <div style="margin-bottom: 9px">
-                  <label for="reviewSendBack"><strong>Agency Send Back Remarks<span style="color: red">*</span></strong></label>
-                  <textarea id="reviewSendBack" name="sendBackRemarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px"
+                <div class="mb-2">
+                  <label class="form-label" for="reviewSendBack">Agency Send Back Remarks<span class="req">*</span></label>
+                  <textarea id="reviewSendBack" name="sendBackRemarks" class="form-control" maxlength="2000" rows="4"
                     [ngModel]="remarks()" (ngModelChange)="remarks.set($event)"></textarea>
                 </div>
               }
@@ -74,7 +72,8 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
             </div>
             <div class="modal-footer">
               <input type="button" class="btn btn-default" value="CANCEL" (click)="close()" />
-              <input type="button" class="btn" [class.btn-primary]="canSubmit()" [class.btn-default]="!canSubmit()"
+              <!-- REJECT is the final destructive confirmation: solid red once it can be sent. -->
+              <input type="button" class="btn" [class.btn-primary]="canSubmit() && d !== 'reject'" [class.btn-danger]="canSubmit() && d === 'reject'" [class.btn-default]="!canSubmit()"
                 [value]="d === 'reject' ? 'REJECT' : 'SUBMIT'" [disabled]="!canSubmit() || busy()" (click)="submit()" />
             </div>
           </div>
@@ -83,6 +82,8 @@ type Dialog = 'finalSubmit' | 'sendBack' | 'reject' | null;
       <div class="modal-backdrop show"></div>
     }
   `,
+  // The buttons side by side in the page's submit bar.
+  styles: `:host { display: inline-flex; flex-wrap: wrap; justify-content: center; gap: 8px; }`,
 })
 export class ReviewActionsBar {
   readonly zedId = input.required<string>();
@@ -174,15 +175,13 @@ export interface RemarksTarget {
       <div class="modal d-block text-start" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="reviewRemarksTitle">
         <div class="modal-dialog modal-popup">
           <div class="modal-content">
-            <div class="modal-header">
-              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Agency Remarks' }}</h3>
-                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closed.emit()"><img src="Images/svgicons/close.svg" alt="" /></button>
-              </div>
+            <div class="modal-header justify-content-between">
+              <h5 class="modal-title" id="reviewRemarksTitle">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Agency Remarks' }}</h5>
+              <button type="button" class="btn-close" aria-label="Close" (click)="closed.emit()"></button>
             </div>
             <div class="modal-body">
-              <label for="reviewRemarksText"><strong>{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Assessment Agency Final Remarks' }}<span style="color: red">*</span></strong></label>
-              <textarea id="reviewRemarksText" name="reviewRemarks" class="form-control" maxlength="2000" style="max-width: 100%; height: 100px"
+              <label class="form-label" for="reviewRemarksText">{{ tg.kind === 'ofi' ? 'OFI Comments' : stage() === 'site' ? 'Remarks' : 'Assessment Agency Final Remarks' }}<span class="req">*</span></label>
+              <textarea id="reviewRemarksText" name="reviewRemarks" class="form-control" maxlength="2000" rows="4"
                 [ngModel]="text()" (ngModelChange)="text.set($event)"></textarea>
               @if (error()) { <div class="alert alert-danger mt-2" role="alert">{{ error() }}</div> }
             </div>

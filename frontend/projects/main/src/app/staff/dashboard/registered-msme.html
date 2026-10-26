@@ -1,97 +1,105 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="row mt-3">
-    <div class="col-sm-12"><h3 class="registration-title">Registered MSME</h3></div>
-
-    <div class="col-sm-12 mb-4">
-      <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)" />
-    </div>
-
-    <form class="row mb-2 align-items-end" (ngSubmit)="doSearch()">
-      <div class="col-sm-3">
-        <label for="searchBy"><strong>Search By</strong></label>
-        <select class="form-select" style="width: 200px" id="searchBy" name="searchBy" [(ngModel)]="searchBy">
-          @for (f of searchFields; track f) { <option [value]="f">{{ f }}</option> }
-        </select>
-      </div>
-      <div class="col-sm-3">
-        <label for="search">{{ searchBy }}</label>
-        <input type="text" class="form-control" id="search" name="search" maxlength="50" [(ngModel)]="search" />
-      </div>
-      <div class="col-sm-3">
-        <button type="submit" class="btn btn-primary btn-sm">Search</button>
-      </div>
-    </form>
-
-    @if (error()) { <div class="col-sm-12"><div class="alert alert-danger" role="alert">{{ error() }}</div></div> }
-    @if (message()) { <div class="col-sm-12"><div class="alert alert-success" role="status">{{ message() }}</div></div> }
-
-    <div class="col-sm-12">
-      <div class="table-responsive">
-        <table class="table table-zed table-bordered">
-          <thead>
-            <tr>
-              <th>S.No.</th>
-              <th>Certification Level</th>
-              @if (main) { <th>Certification Phase</th> }
-              @if (consultancy) { <th>Milestone</th> }
-              @if (surveillance) { <th>Surveillance No.</th> }
-              <th>Unit Name<br />ZedId<br />Registered Date</th>
-              <th>Status</th>
-              @if (main) { <th>First Surveillance Due Date</th> }
-              <th>Unit Address</th>
-              <th>State</th>
-              @if (showsAgency()) { <th>{{ agencyLabel }}<br /><br />Udyam Number</th> }
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (s of rows(); track $index) {
-              <tr>
-                <td>{{ s['RowNumber'] }}</td>
-                <td>{{ s['Certification'] }}</td>
-                @if (main) { <td>{{ s['CertificationPhase'] }}</td> }
-                @if (consultancy) { <td>{{ s['MileStoneNo'] }}</td> }
-                @if (surveillance) { <td>{{ s['SurveillanceNo'] }}</td> }
-                <td>
-                  <strong>{{ s['PUnitName'] }}</strong><br /><br />
-                  {{ s['ZedId'] }}<br /><br />
-                  <strong>{{ $any(s['RegisteredDate']) | date: 'medium' }}</strong>
-                </td>
-                <td>{{ s['AssessmentStatus'] }}</td>
-                @if (main) { <td>{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}<br />{{ s['FirstSurveDueDate'] }}</td> }
-                <td>{{ s['UnitAddress'] }}</td>
-                <td>{{ s['PStateName'] }}</td>
-                @if (showsAgency()) {
-                  <td><strong>{{ s['CertificationBodyUserId'] }}<br /><br />{{ s['UserName'] }}</strong><br /><br />{{ s['UdyogAadharNo'] }}</td>
-                }
-                <td>
-                  @if (isDisabled(s)) {
-                    <span class="alert alert-warning d-inline-block">DISABLED</span>
-                  } @else {
-                    @if (isSuperAdmin() && main) {
-                      <button type="button" class="btn btn-primary btn-xs action-btn mb-2" (click)="resend(s)">Resend Details</button><br />
-                    }
-                    <a class="btn btn-primary btn-xs action-btn mb-2" [routerLink]="profileUrl(s)">View Profile</a><br />
-                    @if (assessmentLink(s); as link) {
-                      <a class="btn btn-primary btn-xs action-btn mb-2" [routerLink]="link">Assessment<br />Details</a><br />
-                    }
-                    @if (isSuperAdmin()) {
-                      <button type="button" class="btn btn-danger btn-xs action-btn" (click)="openDisable(s)">IN-ACTIVE MSME</button>
-                    }
-                  }
-                </td>
-              </tr>
-            } @empty {
-              @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
+<div class="page-head">
+  <div>
+    <h3 class="registration-title">Registered MSME</h3>
+    <p class="page-sub">Units registered on the portal with their certification level and status.</p>
   </div>
-
-  <zed-pager [pager]="pager" [sizes]="pageSizes" />
 </div>
+
+<form class="zed-card" (ngSubmit)="doSearch()">
+  <zed-list-filters [filter]="filter()" (filterChange)="onFilter($event)">
+    <div class="filter">
+      <label class="form-label" for="searchBy">Search By</label>
+      <select class="form-select" id="searchBy" name="searchBy" [(ngModel)]="searchBy">
+        @for (f of searchFields; track f) { <option [value]="f">{{ f }}</option> }
+      </select>
+    </div>
+    <div class="filter">
+      <label class="form-label" for="search">{{ searchBy }}</label>
+      <input type="text" class="form-control" id="search" name="search" maxlength="50" [(ngModel)]="search" />
+    </div>
+    <div class="filter">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+  </zed-list-filters>
+</form>
+
+@if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+@if (message()) { <div class="alert alert-success" role="status">{{ message() }}</div> }
+
+<div class="table-responsive">
+  <table class="table table-zed table-bordered">
+    <thead>
+      <tr>
+        <th class="text-center">S.No.</th>
+        <th class="text-center">Certification Level</th>
+        @if (main) { <th class="text-center">Certification Phase</th> }
+        @if (consultancy) { <th class="text-center">Milestone</th> }
+        @if (surveillance) { <th class="text-center">Surveillance No.</th> }
+        <th>Unit Name<br />ZedId<br />Registered Date</th>
+        <th class="text-center">Status</th>
+        @if (main) { <th class="text-center">First Surveillance Due Date</th> }
+        <th>Unit Address</th>
+        <th>State</th>
+        @if (showsAgency()) { <th>{{ agencyLabel }}<br />Udyam Number</th> }
+        <th class="text-center" style="width: 200px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (s of rows(); track $index) {
+        <tr>
+          <td class="text-center">{{ s['RowNumber'] }}</td>
+          <td class="text-center">{{ s['Certification'] }}</td>
+          @if (main) { <td class="text-center">{{ s['CertificationPhase'] }}</td> }
+          @if (consultancy) { <td class="text-center">{{ s['MileStoneNo'] }}</td> }
+          @if (surveillance) { <td class="text-center">{{ s['SurveillanceNo'] }}</td> }
+          <td class="cell-lines">
+            <strong>{{ s['PUnitName'] }}</strong>
+            <span>{{ s['ZedId'] }}</span>
+            <span class="muted">{{ $any(s['RegisteredDate']) | date: 'medium' }}</span>
+          </td>
+          <td class="text-center">@if (s['AssessmentStatus']) { <span class="status-badge is-info wrap">{{ s['AssessmentStatus'] }}</span> }</td>
+          @if (main) {
+            <td class="cell-lines text-center">
+              <span class="muted">{{ s['Certification'] === 'Bronze' ? 'Surveillance date:' : 'Surveillance 1 date:' }}</span>
+              <span>{{ s['FirstSurveDueDate'] }}</span>
+            </td>
+          }
+          <td>{{ s['UnitAddress'] }}</td>
+          <td>{{ s['PStateName'] }}</td>
+          @if (showsAgency()) {
+            <td class="cell-lines">
+              <strong>{{ s['CertificationBodyUserId'] }}</strong>
+              <strong>{{ s['UserName'] }}</strong>
+              <span>{{ s['UdyogAadharNo'] }}</span>
+            </td>
+          }
+          <td class="text-center">
+            @if (isDisabled(s)) {
+              <span class="status-badge is-inactive">DISABLED</span>
+            } @else {
+              <div class="row-actions justify-content-center">
+                @if (isSuperAdmin() && main) {
+                  <button type="button" class="btn btn-outline-primary" (click)="resend(s)">Resend Details</button>
+                }
+                <a class="btn btn-outline-primary" [routerLink]="profileUrl(s)">View Profile</a>
+                @if (assessmentLink(s); as link) {
+                  <a class="btn btn-outline-primary" [routerLink]="link">Assessment Details</a>
+                }
+                @if (isSuperAdmin()) {
+                  <button type="button" class="btn btn-outline-danger" (click)="openDisable(s)">IN-ACTIVE MSME</button>
+                }
+              </div>
+            }
+          </td>
+        </tr>
+      } @empty {
+        @if (!loading()) { <tr><td colspan="10" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
+      }
+    </tbody>
+  </table>
+</div>
+
+<zed-pager [pager]="pager" [sizes]="pageSizes" />
 
 @if (disabling(); as m) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="disable-title">
@@ -104,10 +112,11 @@
           </div>
         </div>
         <div class="modal-body">
-          <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
-          <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
-          <br />
-          <label for="disableRemarks"><strong>Reason for Deactivate<span style="color: red">*</span></strong></label>
+          <div class="label-highlight mb-3">
+            <div><strong>ZedId:</strong> {{ m['ZedId'] }}</div>
+            <div><strong>UnitName:</strong> {{ m['PUnitName'] }}</div>
+          </div>
+          <label class="form-label" for="disableRemarks">Reason for Deactivate<span class="req">*</span></label>
           <textarea id="disableRemarks" class="form-control" maxlength="2000" [(ngModel)]="disableRemarks"></textarea>
           @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }
         </div>

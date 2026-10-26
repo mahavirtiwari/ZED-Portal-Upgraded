@@ -9,44 +9,57 @@ import { RouterLink } from '@angular/router';
   selector: 'zed-payment-result',
   imports: [RouterLink],
   template: `
-    <div class="container">
-      <div class="row justify-content-center">
-        <div class="col-sm-9 Dashboard zed-payment-success" style="margin-top: 20px">
-          @if (succeeded()) {
-            <div class="jumbotron text-center">
-              <img src="/Images/svgicons/payment-success.svg" alt="" />
-              <h2>Payment Successful!</h2>
-              @if (surveillance()) {
-                <!-- Views/SurveillancePay/success.cshtml -->
-                <p>Your payment towards ZED Surveillance has been successful.</p>
-                <div class="w-50 m-auto"><div class="line-icon"></div></div>
-              } @else {
-                <p>Your payment towards ZED Certification has been successful.</p>
-                <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application to proceed to the next step, i.e. Basic Information and Document Upload</p>
-                <div class="w-50 m-auto"><div class="line-icon"></div></div>
-                <div class="label-highlight">
-                  <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application</p>
-                  <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
-                  <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
-                </div>
-              }
-            </div>
-          } @else {
-            <div class="jumbotron text-center">
-              <img src="/Images/payment/payment-error.png" alt="" width="150" />
-              <h2>Payment Failed</h2>
-              <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p>
-              @if (message()) {
-                <p><b>Error Message</b>: <span>{{ message() }}</span></p>
-              }
-            </div>
-          }
-          <div class="stepper-footer-sec initial-step">
-            <a class="btn btn-primary" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
+    <div class="container form-page">
+      <div class="result-page zed-payment-success">
+        <div class="page-head">
+          <div>
+            <h3 class="registration-title">Payment Status</h3>
+            <p class="page-sub">The result of your payment.</p>
           </div>
+        </div>
+        @if (succeeded()) {
+          <div class="zed-card result-card text-center">
+            <img src="/Images/svgicons/payment-success.svg" alt="" />
+            <h2>Payment Successful!</h2>
+            @if (surveillance()) {
+              <!-- Views/SurveillancePay/success.cshtml -->
+              <p>Your payment towards ZED Surveillance has been successful.</p>
+              <div class="w-50 m-auto"><div class="line-icon"></div></div>
+            } @else {
+              <p>Your payment towards ZED Certification has been successful.</p>
+              <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application to proceed to the next step, i.e. Basic Information and Document Upload</p>
+              <div class="w-50 m-auto"><div class="line-icon"></div></div>
+              <div class="label-highlight">
+                <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application</p>
+                <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+              </div>
+            }
+          </div>
+        } @else {
+          <div class="zed-card result-card text-center">
+            <img src="/Images/payment/payment-error.png" alt="" width="150" />
+            <h2>Payment Failed</h2>
+            <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p>
+            @if (message()) {
+              <p><b>Error Message</b>: <span>{{ message() }}</span></p>
+            }
+          </div>
+        }
+        <div class="form-actions justify-content-center">
+          <a class="btn btn-primary" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
         </div>
       </div>
     </div>
+  `,
+  styles: `
+    .result-page { max-width: 760px; margin: 24px auto 0; }
+    .result-card { padding: 32px 24px; }
+    .result-card h2 { margin: 12px 0 8px; color: #23474a; font-weight: 700; }
+    .result-card p { margin-bottom: 8px; }
+    .result-card .label-highlight { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; margin-top: 8px; }
+    .result-card .label-highlight p { margin: 0; flex: 1 1 260px; }
+    .result-card .label-highlight img { border-radius: 4px; background: #fff; }
   `,
 })
 export class PaymentResultPage {

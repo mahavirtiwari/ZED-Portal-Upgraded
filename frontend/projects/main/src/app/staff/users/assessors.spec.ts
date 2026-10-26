@@ -135,7 +135,7 @@ describe('AssessorFormPage', () => {
     expect((el.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBe(true);
     expect([...el.querySelectorAll('button')].some((b) => ['Create', 'Update'].includes(b.textContent!.trim()))).toBe(false);
     expect((el.querySelector('#idProofNumber') as HTMLInputElement).placeholder).toBe('XXXXXXXX9012');
-    expect(el.querySelector('a.btn-back')!.getAttribute('href')).toBe('/staff/users/assessors');
+    expect(el.querySelector('.page-actions a')!.getAttribute('href')).toBe('/staff/users/assessors');
   });
 });
 
