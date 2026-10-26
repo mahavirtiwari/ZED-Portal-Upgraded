@@ -1,7 +1,27 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { EmailTemplateItem, EmailTemplatesPage } from './email-templates';
+import { EmailTemplateItem, EmailTemplatesPage, fillSampleFields, insertAtCursor, portalBaseUrl } from './email-templates';
+
+describe('email template preview helpers', () => {
+  it("takes the portal's address with its base href, without the trailing slash", () => {
+    expect(portalBaseUrl({ baseURI: 'https://loginzed.msme.gov.in/Consultancy/' } as Document)).toBe('https://loginzed.msme.gov.in/Consultancy');
+    expect(portalBaseUrl({ baseURI: 'https://loginzed.msme.gov.in/' } as Document)).toBe('https://loginzed.msme.gov.in');
+  });
+
+  it('fills the fields with sample values', () => {
+    expect(fillSampleFields('<a href="{{ publicBaseUrl }}/msme/login">{{Name}}</a>{{StandardBody}}', 'https://zed.example/C', { StandardBody: '<i>standard</i>' }))
+      .toBe('<a href="https://zed.example/C/msme/login">[Name]</a><i>standard</i>');
+  });
+
+  it('puts a snippet in place of the selection, or at the end without a cursor', () => {
+    const box = document.createElement('textarea');
+    box.value = 'Dear X, hello';
+    box.setSelectionRange(5, 6);
+    expect(insertAtCursor('Dear X, hello', '{{Name}}', box)).toEqual({ value: 'Dear {{Name}}, hello', caret: 13 });
+    expect(insertAtCursor('Dear X, hello', '{{Name}}', null)).toEqual({ value: 'Dear X, hello{{Name}}', caret: 21 });
+  });
+});
 
 describe('EmailTemplatesPage', () => {
   let fixture: ComponentFixture<EmailTemplatesPage>;
@@ -98,6 +118,40 @@ describe('EmailTemplatesPage', () => {
     await settle();
     expect(el.querySelector('[role=dialog]')).toBeNull();
     expect(el.querySelector('.alert-success')!.textContent).toContain('E-mail template saved.');
+  });
+
+  it('puts a field at the cursor of the text and shows the preview with sample values', async () => {
+    button('Edit').click();
+    await settle();
+    const standard = '<img src="{{PublicBaseUrl}}/Images/header/zed-logo.png" alt="ZED Logo"><p>Dear , thank you.</p>';
+    http.expectOne(`${url}/ContactQueryEmail`).flush({ item: items[0], bodyHtml: standard, standardBody: true });
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    const frame = () => dialog.querySelector('iframe')!.getAttribute('srcdoc')!;
+    const base = document.baseURI.replace(/\/+$/, '');
+    expect(frame()).toContain(`<img src="${base}/Images/header/zed-logo.png" alt="ZED Logo">`);
+    expect(frame()).not.toContain('{{');
+
+    const body = dialog.querySelector('#templateBody') as HTMLTextAreaElement;
+    expect(body.value).toBe(standard);
+    body.dispatchEvent(new Event('focus'));
+    const at = body.value.indexOf(', thank');
+    body.setSelectionRange(at, at);
+    button('{{Name}}', dialog).click();
+    await settle();
+    expect(body.value).toContain('<p>Dear {{Name}}, thank you.</p>');
+    expect(body.selectionStart).toBe(at + '{{Name}}'.length);
+    expect(frame()).toContain('<p>Dear [Name], thank you.</p>');
+
+    button('SAVE', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/ContactQueryEmail`);
+    // What is saved keeps the fields; only the preview fills them.
+    expect(put.request.body.bodyHtml).toBe('<img src="{{PublicBaseUrl}}/Images/header/zed-logo.png" alt="ZED Logo"><p>Dear {{Name}}, thank you.</p>');
+    put.flush({ message: 'E-mail template saved.' });
+    await settle();
+    http.expectOne((r) => r.method === 'GET' && r.url === url).flush(items);
+    await settle();
   });
 
   it('keeps the dialog open with the refusal', async () => {

@@ -488,8 +488,8 @@ const SURVEILLANCE_LEGACY_REDIRECTS: Routes = [
 const SYSTEM_ROUTES: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'login' },
   { path: 'login', title: PORTAL_LABELS.loginTitle, loadComponent: () => import('./staff/staff-login').then((m) => m.StaffLoginPage) },
-  { path: 'forgot-password', title: 'ZED | Forgot Password', loadComponent: () => import('./staff/password-reset/staff-forgot-password').then((m) => m.StaffForgotPasswordPage) },
-  { path: 'reset-password', title: 'ZED | Set a New Password', loadComponent: () => import('./staff/password-reset/staff-reset-password').then((m) => m.StaffResetPasswordPage) },
+  { path: 'forgot-password', title: PORTAL_LABELS.loginTitle.replace('User Login', 'Forgot Password'), loadComponent: () => import('./staff/password-reset/staff-forgot-password').then((m) => m.StaffForgotPasswordPage) },
+  { path: 'reset-password', title: PORTAL_LABELS.loginTitle.replace('User Login', 'Set a New Password'), loadComponent: () => import('./staff/password-reset/staff-reset-password').then((m) => m.StaffResetPasswordPage) },
   {
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],

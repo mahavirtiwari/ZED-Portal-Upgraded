@@ -72,6 +72,37 @@ describe('TextsPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('Text saved. It is not shown.');
   });
 
+  it('puts a field at the cursor of the text and shows the preview with sample values', async () => {
+    button('Edit').click();
+    await settle();
+    const own = '<p>Fee: Rs. </p><img src="{{PublicBaseUrl}}/Images/header/zed-logo.png" alt="ZED Logo">';
+    http.expectOne(`${url}/msme.payment.disclaimer`).flush({ item: items[0], bodyHtml: own, standardHtml: '<p>Standard</p>' });
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    const base = document.baseURI.replace(/\/+$/, '');
+    expect(dialog.querySelector('.preview img')!.getAttribute('src')).toBe(`${base}/Images/header/zed-logo.png`);
+
+    const body = dialog.querySelector('#textBody') as HTMLTextAreaElement;
+    body.dispatchEvent(new Event('focus'));
+    const at = body.value.indexOf('</p>');
+    body.setSelectionRange(at, at);
+    button('{{Fee}}', dialog).click();
+    await settle();
+    expect(body.value).toBe('<p>Fee: Rs. {{Fee}}</p><img src="{{PublicBaseUrl}}/Images/header/zed-logo.png" alt="ZED Logo">');
+    expect(body.selectionStart).toBe(at + '{{Fee}}'.length);
+    expect(dialog.querySelector('.preview p')!.textContent).toBe('Fee: Rs. [Fee]');
+
+    button('SAVE', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/msme.payment.disclaimer`);
+    // What is saved keeps the fields; only the preview fills them.
+    expect(put.request.body).toEqual({ enabled: true, bodyHtml: '<p>Fee: Rs. {{Fee}}</p><img src="{{PublicBaseUrl}}/Images/header/zed-logo.png" alt="ZED Logo">' });
+    put.flush({ message: 'Text saved.' });
+    await settle();
+    http.expectOne((r) => r.method === 'GET' && r.url === url).flush(items);
+    await settle();
+  });
+
   it('resets a changed text after confirming', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     button('Reset').click();

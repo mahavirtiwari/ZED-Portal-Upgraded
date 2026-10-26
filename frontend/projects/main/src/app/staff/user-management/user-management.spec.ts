@@ -76,15 +76,51 @@ describe('User management', () => {
       expect(el.querySelector('.alert-success')!.textContent).toContain('DFOUP02 created');
     });
 
-    it('blocks a login and shows refusals', async () => {
+    it('blocks a login after asking and shows refusals', async () => {
       await create(AccountsPage);
       http.expectOne('/api/staff/accounts').flush(list);
       await settle();
+      const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
       button('Block').click();
       await settle();
+      http.expectNone('/api/staff/accounts/DFO9/block');
+      button('Block').click();
+      await settle();
+      expect(confirm).toHaveBeenLastCalledWith('Block the login DFO9 (DFO Lucknow)? The user can no longer sign in.');
       http.expectOne('/api/staff/accounts/DFO9/block').flush({ title: 'Not allowed.' }, { status: 400, statusText: 'Bad Request' });
       await settle();
       expect(el.querySelector('.alert-danger')!.textContent).toContain('Not allowed.');
+      confirm.mockRestore();
+    });
+
+    it('counts active and blocked logins, filters by status and shows the user with initials', async () => {
+      await create(AccountsPage);
+      http.expectOne('/api/staff/accounts').flush({
+        types: [{ roleId: 7, label: 'Master Admin', needsState: false }],
+        states: [],
+        accounts: [
+          { userId: 'ZEDV4MA01', userName: 'Master Admin', roleId: 7, email: 'ma@zed.test', mobileNo: '9000000001', stateCode: null, isActive: true },
+          { userId: 'ZEDV4MA02', userName: null, roleId: 7, email: null, mobileNo: null, stateCode: null, isActive: false },
+        ],
+      });
+      await settle();
+      const tiles = () => [...el.querySelectorAll('.acc-stat')].map((t) => `${t.querySelector('.acc-stat-count')!.textContent} ${t.querySelector('.acc-stat-label')!.textContent}`);
+      expect(tiles()).toEqual(['2 All logins', '1 Active', '1 Blocked']);
+      expect([...el.querySelectorAll('thead th')].map((th) => th.textContent!.trim())).toEqual(['User', 'Login Type', 'Contact', 'Status', 'Actions']);
+      expect([...el.querySelectorAll('.acc-avatar')].map((a) => a.textContent!.trim())).toEqual(['MA', 'ZE']);
+
+      (el.querySelectorAll('.acc-stat')[2] as HTMLButtonElement).click();
+      await settle();
+      expect(el.querySelectorAll('tbody tr').length).toBe(1);
+      expect(el.querySelector('tbody .acc-id')!.textContent).toBe('ZEDV4MA02');
+      expect(button('UnBlock')).toBeTruthy();
+
+      type('#acc-search', 'nobody');
+      await settle();
+      expect(el.querySelector('.acc-empty')!.textContent).toContain('No login matches the filters.');
+      button('Show all logins').click();
+      await settle();
+      expect(el.querySelectorAll('tbody tr').length).toBe(2);
     });
   });
 

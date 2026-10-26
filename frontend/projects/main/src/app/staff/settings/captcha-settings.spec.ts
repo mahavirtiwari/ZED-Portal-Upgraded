@@ -37,9 +37,14 @@ describe('CaptchaSettingsPage', () => {
     expect(radio('captcha-off').checked).toBe(true);
     // Google is offered only when its keys are configured.
     expect(radio('captcha-google')).toBeNull();
+    const saveButton = () => el.querySelector('button[type=submit]') as HTMLButtonElement;
+    expect(el.querySelector('.captcha-option.is-on .status-badge')!.textContent!.trim()).toBe('Current');
+    expect(saveButton().disabled).toBe(true);
 
     radio('captcha-text').click();
     await settle();
+    expect(saveButton().disabled).toBe(false);
+    expect(el.querySelector('.form-actions')!.textContent).toContain('Not saved yet.');
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/settings/captcha');

@@ -45,9 +45,11 @@ import { Component } from '@angular/core';
       background: #f3f5f8;
     }
     .logo-zed-brand { height: 450px; display: flex; align-items: center; justify-content: center; }
+    /* A fixed width (not only a minimum): a page with a long sentence (Forgot Password) wraps it instead of widening the
+       panel past the card. */
     .login-inner-block {
       position: relative; background-color: #fff; border-radius: 10px; padding: 25px; margin: 25px 0;
-      min-width: 400px; margin-right: -50px; z-index: 1;
+      flex: 0 0 420px; width: 420px; max-width: calc(100% - 32px); margin-right: -50px; z-index: 1;
     }
     .inner-gear { position: absolute; bottom: -48px; left: -30px; pointer-events: none; }
     .outer-gear { position: absolute; bottom: 0; left: 0; pointer-events: none; }
@@ -58,7 +60,7 @@ import { Component } from '@angular/core';
       .login-section-inner { flex-direction: column; }
       .logo-zed-brand { height: 150px; }
       .logo-zed-brand img { width: 100px; }
-      .login-inner-block { min-width: 0; width: calc(100% - 32px); margin: 0 16px 16px; }
+      .login-inner-block { flex: 0 0 auto; width: calc(100% - 32px); margin: 0 16px 16px; }
       .logo-zed { width: 180px; }
     }
   `,

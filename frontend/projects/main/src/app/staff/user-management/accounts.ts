@@ -40,8 +40,9 @@ const API = '/api/staff/accounts';
 
 /**
  * Admin → User Management (new in V4): the Master Admin, Ministry, MSME DFO and dashboard logins of this portal. The
- * password is generated and mailed to the user; Reset Password mails a new one. V4: a search box next to the login type;
- * status badges and row buttons side by side.
+ * password is generated and mailed to the user; Reset Password mails a new one. V4: tiles with the active and blocked
+ * logins (a click filters), filters for type and status and a search box, a user column with initials, contact with
+ * icons, the State column only where a login type has one, and a confirmation before Block and Reset Password.
  */
 @Component({
   selector: 'zed-staff-accounts',
@@ -62,53 +63,103 @@ const API = '/api/staff/accounts';
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <div class="filter-bar mb-3">
-      <div class="filter">
-        <select class="form-select" aria-label="Login type" [ngModel]="filter()" (ngModelChange)="filter.set(+$event)">
-          <option [ngValue]="0">All login types</option>
-          @for (t of types(); track t.roleId) { <option [ngValue]="t.roleId">{{ t.label }}</option> }
-        </select>
-      </div>
-      <div class="filter wide">
-        <input type="search" class="form-control" placeholder="Search user ID, name, e-mail or mobile" aria-label="Search logins"
-               [ngModel]="search()" (ngModelChange)="search.set($event)" />
-      </div>
+    <div class="acc-stats" role="group" aria-label="Logins by status">
+      @for (t of tiles(); track t.key) {
+        <button type="button" class="acc-stat" [class.is-on]="status() === t.key" [attr.aria-pressed]="status() === t.key" (click)="status.set(t.key)">
+          <span class="acc-stat-count">{{ t.count }}</span>
+          <span class="acc-stat-label">{{ t.label }}</span>
+        </button>
+      }
     </div>
-    <div class="table-responsive">
-      <table class="table table-zed table-bordered">
-        <thead>
-          <tr>
-            <th class="text-center" style="width: 100px">Status</th><th class="text-center">User ID</th><th class="text-center">Login Type</th><th>Name</th><th>Contact</th><th>State</th><th class="text-center" style="width: 260px">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (a of view.page(); track a.userId + a.roleId) {
+    <div class="zed-card acc-list">
+      <div class="filter-bar mb-3">
+        <div class="filter">
+          <label class="form-label" for="acc-filter-type">Login type</label>
+          <select id="acc-filter-type" class="form-select" [ngModel]="filter()" (ngModelChange)="filter.set(+$event)">
+            <option [ngValue]="0">All login types</option>
+            @for (t of types(); track t.roleId) { <option [ngValue]="t.roleId">{{ t.label }} ({{ countOf(t.roleId) }})</option> }
+          </select>
+        </div>
+        <div class="filter">
+          <label class="form-label" for="acc-filter-status">Status</label>
+          <select id="acc-filter-status" class="form-select" [ngModel]="status()" (ngModelChange)="status.set($event)">
+            <option value="all">All</option>
+            <option value="active">Active</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </div>
+        <div class="filter wide">
+          <label class="form-label" for="acc-search">Search</label>
+          <input id="acc-search" type="search" class="form-control" placeholder="User ID, name, e-mail or mobile"
+                 [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-zed acc-table">
+          <thead>
             <tr>
-              <td class="text-center"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span></td>
-              <td class="text-center"><strong>{{ a.userId }}</strong></td>
-              <td class="text-center">{{ typeLabel(a.roleId) }}</td>
-              <td>{{ a.userName }}</td>
-              <td>{{ a.mobileNo }}<small class="d-block text-muted">{{ a.email }}</small></td>
-              <td>{{ stateName(a.stateCode) }}</td>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
-                  <button type="button" class="btn btn-outline-primary" (click)="edit(a)">Edit</button>
-                  @if (a.isActive) {
-                    <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">Block</button>
-                    <button type="button" class="btn btn-default" [disabled]="busy()" (click)="act(a, 'reset-password')">Reset Password</button>
-                  } @else {
-                    <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">UnBlock</button>
-                  }
-                </div>
-              </td>
+              <th>User</th><th class="text-center">Login Type</th><th>Contact</th>
+              @if (showState()) { <th>State</th> }
+              <th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 300px">Actions</th>
             </tr>
-          } @empty {
-            @if (!busy()) { <tr><td colspan="7" style="padding: 0"><div class="no-data">{{ search() ? 'No login matches the search' : 'No Data' }}</div></td></tr> }
-          }
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            @for (a of view.page(); track a.userId + a.roleId) {
+              <tr [class.is-blocked]="!a.isActive">
+                <td>
+                  <div class="acc-user">
+                    <span class="acc-avatar" aria-hidden="true">{{ initials(a) }}</span>
+                    <span>
+                      <span class="acc-name">{{ a.userName || '—' }}</span>
+                      <span class="acc-id">{{ a.userId }}</span>
+                    </span>
+                  </div>
+                </td>
+                <td class="text-center"><span class="zed-chip">{{ typeLabel(a.roleId) }}</span></td>
+                <td class="acc-contact">
+                  @if (a.mobileNo) {
+                    <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ a.mobileNo }}</span>
+                  }
+                  @if (a.email) {
+                    <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ a.email }}</span>
+                  }
+                </td>
+                @if (showState()) { <td>{{ stateName(a.stateCode) || '—' }}</td> }
+                <td class="text-center"><span class="status-badge" [class.is-active]="a.isActive" [class.is-rejected]="!a.isActive">{{ a.isActive ? 'Active' : 'Blocked' }}</span></td>
+                <td class="text-center">
+                  <div class="row-actions justify-content-center">
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(a)">Edit</button>
+                    @if (a.isActive) {
+                      <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="act(a, 'reset-password')">Reset Password</button>
+                      <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="act(a, 'block')">Block</button>
+                    } @else {
+                      <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="act(a, 'unblock')">UnBlock</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              @if (!busy()) {
+                <tr>
+                  <td [attr.colspan]="showState() ? 6 : 5" style="padding: 0">
+                    <div class="no-data acc-empty">
+                      @if (search() || filter() || status() !== 'all') {
+                        No login matches the filters.
+                        <button type="button" class="btn btn-link p-0 ms-1" (click)="clearFilters()">Show all logins</button>
+                      } @else {
+                        No logins yet.
+                        <button type="button" class="btn btn-link p-0 ms-1" (click)="add()">Add the first login</button>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
     </div>
-    <zed-pager [pager]="view" />
 
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="account-title">
@@ -170,6 +221,25 @@ const API = '/api/staff/accounts';
     }
   `,
   styles: `
+    .acc-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .acc-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 18px; text-align: left;
+      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 1px 2px rgba(35,71,74,.05); cursor: pointer; }
+    .acc-stat:hover { border-color: #45a5ad; }
+    .acc-stat.is-on { border-color: #45a5ad; box-shadow: inset 0 0 0 1px #45a5ad; background: #eef6f6; }
+    .acc-stat-count { font-size: 26px; font-weight: 700; color: #23474a; line-height: 1.1; }
+    .acc-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
+    .acc-table td { vertical-align: middle; }
+    .acc-table tr.is-blocked td { background: #fbf7f7; }
+    .acc-user { display: flex; align-items: center; gap: 12px; }
+    .acc-avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      background: #eef6f6; color: #2f7c83; font-weight: 700; font-size: 14px; }
+    tr.is-blocked .acc-avatar { background: #f3e9e9; color: #9b4a4a; }
+    .acc-name { display: block; font-weight: 600; color: #232527; }
+    .acc-id { display: block; font-size: 12px; color: #6b7f80; letter-spacing: .3px; }
+    .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; word-break: break-all; }
+    .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: #2f7c83; stroke-width: 1.4; stroke-linejoin: round; }
+    .acc-empty .btn-link { font-weight: 600; }
+    @media (max-width: 575.98px) { .acc-stats { grid-template-columns: 1fr; } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -181,12 +251,28 @@ export class AccountsPage {
   protected readonly accounts = signal<Account[]>([]);
   protected readonly filter = signal(0);
   protected readonly search = signal('');
+  protected readonly status = signal<'all' | 'active' | 'blocked'>('all');
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
+    const status = this.status();
     return this.accounts().filter(
-      (a) => (!this.filter() || a.roleId === this.filter()) && (!q || [a.userId, a.userName, a.email, a.mobileNo].some((v) => v?.toLowerCase().includes(q))),
+      (a) => (!this.filter() || a.roleId === this.filter())
+        && (status === 'all' || (status === 'active') === !!a.isActive)
+        && (!q || [a.userId, a.userName, a.email, a.mobileNo].some((v) => v?.toLowerCase().includes(q))),
     );
   });
+  /** The tiles above the list: all, active and blocked logins of the chosen login type; a click filters by status. */
+  protected readonly tiles = computed(() => {
+    const ofType = this.accounts().filter((a) => !this.filter() || a.roleId === this.filter());
+    const active = ofType.filter((a) => a.isActive).length;
+    return [
+      { key: 'all' as const, label: 'All logins', count: ofType.length },
+      { key: 'active' as const, label: 'Active', count: active },
+      { key: 'blocked' as const, label: 'Blocked', count: ofType.length - active },
+    ];
+  });
+  /** The State column only where a login type has a state (MSME DFO) or a login has one. */
+  protected readonly showState = computed(() => this.types().some((t) => t.needsState) || this.accounts().some((a) => !!a.stateCode));
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() => this.shown());
   protected readonly form = signal<AccountForm | null>(null);
@@ -203,6 +289,23 @@ export class AccountsPage {
 
   protected typeLabel(roleId: number): string {
     return this.types().find((t) => t.roleId === roleId)?.label ?? String(roleId);
+  }
+
+  protected countOf(roleId: number): number {
+    return this.accounts().filter((a) => a.roleId === roleId).length;
+  }
+
+  /** Two letters of the name (or of the user ID) for the round badge. */
+  protected initials(a: Account): string {
+    const words = (a.userName ?? '').trim().split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w));
+    const letters = words.length > 1 ? words[0][0] + words[words.length - 1][0] : (words[0] ?? a.userId).slice(0, 2);
+    return letters.toUpperCase();
+  }
+
+  protected clearFilters(): void {
+    this.filter.set(0);
+    this.status.set('all');
+    this.search.set('');
   }
 
   protected stateName(code: string | null): string {
@@ -242,6 +345,10 @@ export class AccountsPage {
   }
 
   protected async act(a: Account, action: 'block' | 'unblock' | 'reset-password'): Promise<void> {
+    const who = `${a.userId}${a.userName ? ' (' + a.userName + ')' : ''}`;
+    const question = action === 'block' ? `Block the login ${who}? The user can no longer sign in.`
+      : action === 'reset-password' ? `Reset the password of ${who}? A new password is e-mailed to the user.` : null;
+    if (question && !window.confirm(question)) return;
     await this.run(() => this.http.post<MessageResponse>(`${API}/${encodeURIComponent(a.userId)}/${action}`, null), false);
   }
 
