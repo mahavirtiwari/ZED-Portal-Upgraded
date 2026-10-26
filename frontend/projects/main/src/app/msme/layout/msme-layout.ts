@@ -71,8 +71,17 @@ import { AuthService } from '@zed/shared';
   styles: `
     /* The MVC layout had body { padding-top: 100px } under its fixed 100px header (Content/swachh.css). */
     :host { padding-top: 100px; color: #333; }
-    .msme-content { min-height: calc(100vh - 260px); }
+    /* As the staff pages: a light tint behind the page, so its cards stand out. */
+    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f2f6f6; border-top: 1px solid #e3eced; }
     .dropdown-toggle.btn-link { text-decoration: none; }
+    /* The user menu is a button; the old stylesheet styles only the links (.zed-navbar .nav > li > a), so it was grey
+       and sat higher than the links. Same look as the links, as in the staff menu bar. */
+    .zed-navbar .nav { align-items: center; }
+    .zed-navbar .nav > li > button.nav-link {
+      margin-top: 10px; color: #fff; font-size: 14px; font-weight: 600; line-height: 24px; white-space: nowrap;
+      border: 0; border-radius: 0; background: transparent; box-shadow: none;
+    }
+    .zed-navbar .nav > li > button.nav-link:hover, .zed-navbar .nav > li > button.nav-link:focus { opacity: 0.9; color: #fff; }
   `,
 })
 export class MsmeLayout {
