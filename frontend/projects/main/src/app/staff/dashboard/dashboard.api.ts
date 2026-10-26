@@ -27,6 +27,44 @@ export interface Counts {
   gold: number;
 }
 
+export type AnalyticsView = 'registered' | 'certified';
+
+/** Filters of the "ZED Dashboard" / "ZED Certification" views; dates yyyy-MM-dd. */
+export interface AnalyticsFilter {
+  view: AnalyticsView;
+  state?: string;
+  district?: string;
+  certification?: string;
+  gender?: string;
+  size?: string;
+  socialCategory?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface CountItem {
+  label: string;
+  total: number;
+}
+
+/** api/staff/dashboard/analytics (main portal): the Power BI pages' figures. */
+export interface Analytics {
+  view: AnalyticsView;
+  totals: { registered: number; certified: number; bronze: number; silver: number; gold: number };
+  sizes: CountItem[];
+  genders: CountItem[];
+  socialCategories: CountItem[];
+  /** yyyy-MM, oldest first, the last 12 months of the range. */
+  months: CountItem[];
+  states: CountItem[];
+  districts: CountItem[];
+  activities: CountItem[];
+  districtOptions: string[];
+  /** A state-bound Ministry user's state: the State filter is fixed to it. */
+  boundState: string | null;
+  generatedAt: string;
+}
+
 export interface RegisteredMsmeQuery extends ListFilter {
   searchBy: string;
   search?: string;
@@ -73,6 +111,10 @@ export class DashboardApi {
 
   counts(filter: CountsFilter): Observable<Counts> {
     return this.http.get<Counts>(`${this.base}/counts`, { params: params(filter) });
+  }
+
+  analytics(filter: AnalyticsFilter): Observable<Analytics> {
+    return this.http.get<Analytics>(`${this.base}/analytics`, { params: params(filter) });
   }
 
   registeredMsme(query: RegisteredMsmeQuery): Observable<RegisteredMsmeList> {

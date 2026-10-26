@@ -5,6 +5,7 @@ import { Counts, CountsFilter, DashboardApi, Row } from './dashboard.api';
 import { SIZES, STATE_NAMES, text } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { StaffAnalytics } from './analytics';
 
 interface Card {
   css: string;
@@ -112,15 +113,17 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
 /**
  * Staff home dashboard. Port of Views/Dashboard/Index.cshtml: certification cards (scoped to the user by the
  * API) and registered/certified counts with filters. The counts strip showed placeholder numbers until the
- * request returned; here it shows "-" instead.
+ * request returned; here it shows "-" instead. Main portal (V4): instead of the counts strip, the Power BI pages'
+ * "ZED Dashboard" and "ZED Certification" figures (<zed-staff-analytics>).
  */
 @Component({
   selector: 'zed-staff-dashboard',
+  imports: [StaffAnalytics],
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Welcome</h3>
-        <p class="page-sub">Applications under your charge, and the registered and certified units across the portal.</p>
+        <h3 class="registration-title">Dashboard</h3>
+        <p class="page-sub">{{ system === 'main' ? 'Applications under your charge, then the registered and certified units with their splits.' : 'Applications under your charge, and the registered and certified units across the portal.' }}</p>
       </div>
     </div>
     @if (error()) {
@@ -151,6 +154,9 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
       }
     </div>
 
+    @if (system === 'main') {
+      <zed-staff-analytics />
+    } @else {
     <div class="zed-card">
       <div class="filter-bar mb-3">
         <div class="filter">
@@ -191,6 +197,7 @@ const STRIP_LABELS: Record<PortalSystem, { total: string; bronze: string }> = {
         <div class="silverVerified"><p>Silver</p><h1 id="silver">{{ count('silver') }}</h1></div>
       </div>
     </div>
+    }
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ...</small></div></div></div>
     }
@@ -252,7 +259,8 @@ export class StaffDashboardPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      const [summary] = await Promise.all([firstValueFrom(this.api.summary()), this.loadCounts()]);
+      // Main: the analytics section loads its own figures; the other portals keep the counts strip.
+      const [summary] = await Promise.all([firstValueFrom(this.api.summary()), this.system === 'main' ? Promise.resolve() : this.loadCounts()]);
       this.summary.set(summary);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
@@ -263,7 +271,10 @@ export class StaffDashboardPage {
 
   protected value(field: string): string {
     const s = this.summary();
-    return s ? text(s, field) || '0' : '';
+    if (!s) return '';
+    const v = text(s, field) || '0';
+    // Indian digit grouping, as the figures below (5,12,340).
+    return /^\d+$/.test(v) ? Number(v).toLocaleString('en-IN') : v;
   }
 
   protected count(key: keyof Counts): string {
