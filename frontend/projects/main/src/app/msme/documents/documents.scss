@@ -40,20 +40,18 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 38px;
-  height: 38px;
-  border: 1px solid #cbd9da;
+  width: 42px;
+  height: 42px;
   border-radius: 8px;
-  background: #fff;
 
   &:hover:not(.not-available) {
-    background: #eef6f6;
-    border-color: #45a5ad;
+    background: #e8f4f5;
   }
 
+  // As the live page: the teal download icon at its own size (the arrow is drawn inside a 42px frame), no box.
   img {
-    width: 18px;
-    height: 18px;
+    width: 42px;
+    height: 42px;
   }
 }
 
