@@ -309,6 +309,25 @@ public sealed class ConsultancyStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task Dashboard_figures_are_the_handholding_ones_with_silver_and_gold_only()
+    {
+        _host.Sql.Procs["SP_V4_DASHBOARD_ANALYTICS"] = _ => FakeSql.Sets(
+            [new { Registered = 30, Certified = 4, Bronze = 12, Silver = 9, Gold = 3 }], [], [], [], [], [], [], [], [],
+            [new { SilverTotal = 9, SilverM1PaymentDone = 7, SaGoldCompleted = 1, FaTotal = 2, BronzeTotal = 99, AssessmentAgencies = 4 }], []);
+        var co = await ConsultancyLogin.SignInAsync(_host, "CO1");
+        var r = await co.GetFromJsonAsync<Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.AnalyticsResponse>(
+            "/api/staff/dashboard/analytics?view=certified&certification=gold");
+        Assert.Equal(4, r!.Totals.Certified);
+        // The handholding cards (milestones, Technology Intervention): no Bronze, and the consultant tiles stay on the summary.
+        Assert.Equal(Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.ConsultancySummaryColumns, r.StatusCards.Keys);
+        Assert.Equal("7", r.StatusCards["SilverM1PaymentDone"]!.ToString());
+        var args = Call("SP_V4_DASHBOARD_ANALYTICS").Args;
+        Assert.Equal(("Gold", "CO1", "2"), (FakeSql.Arg(args, "Certification"), FakeSql.Arg(args, "UserId"), FakeSql.Arg(args, "RoleId")));
+        // Handholding has no Bronze.
+        Assert.Equal(HttpStatusCode.BadRequest, (await co.GetAsync("/api/staff/dashboard/analytics?certification=Bronze")).StatusCode);
+    }
+
+    [Fact]
     public async Task Registered_msme_passes_NoOfRecords_and_has_the_consultancy_roles_without_resend()
     {
         _host.Sql.Procs["SP_DASHBOARD_REGISTERED_MSME"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME1", MileStoneNo = 2, Password = "x" }], [new { TotalCounts = 1 }]);

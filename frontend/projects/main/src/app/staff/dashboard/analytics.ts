@@ -5,6 +5,8 @@ import { firstValueFrom } from 'rxjs';
 import { CHART_COLORS, ChartItem, ColumnChart, DonutChart, GroupedColumnChart, LEVEL_COLORS, RankList, TrendPoint, formatCount } from './charts';
 import { Analytics, AnalyticsFilter, AnalyticsView, CountItem, DashboardApi, Row } from './dashboard.api';
 import { CERTIFICATIONS, SIZES, STATE_NAMES } from './dashboard-filters';
+import { PortalSystem } from '../../portal-system';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 const GENDER_LABELS: Record<string, string> = { male: 'Male', female: 'Female', others: 'Others' };
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -12,7 +14,40 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
 
 /**
- * Main portal dashboard: the ministry's Power BI "ZED Dashboard" and "ZED Certification" pages in one view (the page
+ * What each portal's figures count (the procedure of its database: migrations 0019, 0020, 0021). "Completed" is a
+ * certification on the main portal, a handholding finished at milestone 3 on Consultancy and a surveillance on
+ * Surveillance; Consultancy's level figures are applications (there is no Bronze handholding).
+ */
+interface AnalyticsWords {
+  kpis: [string, string, string, string, string];
+  certifications: readonly string[];
+  /** The certification filter's caption and the "Date of" choice for the completion date. */
+  certLabel: string;
+  completedDate: string;
+  /** The trend's second series, and the ranking's value heading when the dates are completion dates. */
+  completed: string;
+  completedShort: string;
+}
+
+export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
+  main: {
+    kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified'],
+    certifications: CERTIFICATIONS, certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
+  },
+  consultancy: {
+    kpis: ['Registered units', 'Handholding completed', 'Applications', 'Silver applications', 'Gold applications'],
+    certifications: ['Silver', 'Gold'], certLabel: 'Level', completedDate: 'Handholding completion', completed: 'Handholding completed',
+    completedShort: 'Completed',
+  },
+  surveillance: {
+    kpis: ['Registered units', 'Surveillance completed', 'Bronze completed', 'Silver completed', 'Gold completed'],
+    certifications: CERTIFICATIONS, certLabel: 'Certification', completedDate: 'Surveillance completion', completed: 'Surveillance completed',
+    completedShort: 'Completed',
+  },
+};
+
+/**
+ * Staff dashboard figures (all three portals, worded by ANALYTICS_WORDS): the ministry's Power BI "ZED Dashboard" and "ZED Certification" pages in one view (the page
  * shows Clear filters, the Updated time and Refresh in its head through data(), filtered(), reset() and load()), from
  * api/staff/dashboard/analytics. Filters in one row, the date range on the registration or the certification date;
  * totals as tiles; the status cards of the user's applications (what the page puts inside), with the filters; the level
@@ -40,7 +75,7 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
           </select>
         </div>
         <div class="filter">
-          <label class="form-label" for="an-cert">Certification</label>
+          <label class="form-label" for="an-cert">{{ words.certLabel }}</label>
           <select id="an-cert" class="form-select" [ngModel]="filter().certification ?? ''" (ngModelChange)="set('certification', $event)">
             <option value="">All</option>
             @for (c of certifications; track c) { <option [value]="c">{{ c }}</option> }
@@ -73,7 +108,7 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
           <label class="form-label" for="an-dateby">Date of</label>
           <select id="an-dateby" class="form-select" [ngModel]="view()" (ngModelChange)="setView($event)">
             <option value="registered">Registration</option>
-            <option value="certified">Certification</option>
+            <option value="certified">{{ words.completedDate }}</option>
           </select>
         </div>
         <div class="filter an-date">
@@ -118,13 +153,13 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
           <div class="an-card">
             <h5>Monthly trend <small class="muted">last 12 months of the range</small></h5>
             @if (months().length) {
-              <zed-grouped-column-chart [items]="months()" [series]="trendSeries" [colors]="trendColors" ariaLabel="Registrations and certifications by month" />
+              <zed-grouped-column-chart [items]="months()" [series]="trendSeries" [colors]="trendColors" [ariaLabel]="'Registrations and ' + words.completed.toLowerCase() + ' by month'" />
             } @else { <div class="no-data">No data in this range</div> }
           </div>
           <div class="an-card">
             <h5>Year-wise trend</h5>
             @if (years().length) {
-              <zed-grouped-column-chart [items]="years()" [series]="trendSeries" [colors]="trendColors" ariaLabel="Registrations and certifications by year" />
+              <zed-grouped-column-chart [items]="years()" [series]="trendSeries" [colors]="trendColors" [ariaLabel]="'Registrations and ' + words.completed.toLowerCase() + ' by year'" />
             } @else { <div class="no-data">No data in this range</div> }
           </div>
         </div>
@@ -177,10 +212,11 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
 })
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
+  protected readonly words = ANALYTICS_WORDS[inject(STAFF_SYSTEM)];
 
   protected readonly states = STATE_NAMES;
   protected readonly sizes = SIZES;
-  protected readonly certifications = CERTIFICATIONS;
+  protected readonly certifications = this.words.certifications;
   protected readonly socialCategories = ['General', 'OBC', 'SC', 'ST'];
   protected readonly today = new Date().toISOString().slice(0, 10);
 
@@ -195,23 +231,24 @@ export class StaffAnalytics {
   private request = 0;
 
   readonly filtered = computed(() => this.view() !== 'registered' || Object.values(this.filter()).some((v) => !!v));
-  protected readonly unitWord = computed(() => (this.view() === 'certified' ? 'Certified' : 'Registered'));
+  protected readonly unitWord = computed(() => (this.view() === 'certified' ? this.words.completedShort : 'Registered'));
 
-  /** Registered and certified units, then each level. */
+  /** Registered and completed units, then each level (Consultancy: all applications, then Silver and Gold). */
   protected readonly kpis = computed(() => {
     const t = this.data()?.totals;
     if (!t) return [];
+    const k = this.words.kpis;
     return [
-      { label: 'Registered units', value: formatCount(t.registered), color: '#2f7c83' },
-      { label: 'Certified units', value: formatCount(t.certified), color: '#00909a' },
-      { label: 'Bronze certified', value: formatCount(t.bronze), color: LEVEL_COLORS['Bronze'] },
-      { label: 'Silver certified', value: formatCount(t.silver), color: LEVEL_COLORS['Silver'] },
-      { label: 'Gold certified', value: formatCount(t.gold), color: LEVEL_COLORS['Gold'] },
+      { label: k[0], value: formatCount(t.registered), color: '#2f7c83' },
+      { label: k[1], value: formatCount(t.certified), color: '#00909a' },
+      { label: k[2], value: formatCount(t.bronze), color: this.words.certifications.includes('Bronze') ? LEVEL_COLORS['Bronze'] : '#6250d6' },
+      { label: k[3], value: formatCount(t.silver), color: LEVEL_COLORS['Silver'] },
+      { label: k[4], value: formatCount(t.gold), color: LEVEL_COLORS['Gold'] },
     ];
   });
 
-  /** The trend's two series: registrations (teal) and certifications (orange), each counted by its own date. */
-  protected readonly trendSeries = ['Registered', 'Certified'];
+  /** The trend's two series: registrations (teal) and completions (orange), each counted by its own date. */
+  protected readonly trendSeries = ['Registered', this.words.completed];
   protected readonly trendColors = [CHART_COLORS[0], CHART_COLORS[1]];
 
   protected readonly months = computed<TrendPoint[]>(() =>

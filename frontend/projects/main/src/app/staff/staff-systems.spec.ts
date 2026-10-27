@@ -46,37 +46,41 @@ describe('staff pages per system', () => {
 
   afterEach(() => http.verify());
 
-  it('shows Consultancy MasterAdmin the organisation and consultant tiles and the TI counts', async () => {
+  // The figures (api/staff/dashboard/analytics) bring the status cards; their own tests are in staff-dashboard.spec.ts.
+  const figures = (statusCards: Record<string, unknown>) => ({
+    view: 'registered', totals: { registered: 0, certified: 0, bronze: 0, silver: 0, gold: 0 }, sizes: [], genders: [], socialCategories: [],
+    months: [], years: [], states: [], districts: [], activities: [], districtOptions: [], boundState: null, generatedAt: '2026-10-27T10:00:00+05:30', statusCards,
+  });
+
+  it('shows Consultancy MasterAdmin the organisation and consultant tiles and the TI card', async () => {
     await create(StaffDashboardPage, 'consultancy');
     http.expectOne('/api/staff/dashboard').flush({ AssessmentAgencies: 12, SiteAssessors: 340, SilverTotal: 5, FaTotal: 2 });
-    http.expectOne('/api/staff/dashboard/counts').flush({ total: 40, bronze: 3, silver: 20, gold: 17 });
+    http.expectOne((r) => r.url === '/api/staff/dashboard/analytics').flush(figures({ SilverTotal: 5, FaTotal: 2 }));
     await settle();
 
     const tiles = [...el.querySelectorAll('.dash-tile')].map((t) => `${t.querySelector('h5')!.textContent!.trim()}${t.querySelector('.dash-count')!.textContent!.trim()}`);
     expect(tiles).toEqual(['Empanelled Consultant Organisations12', 'Consultants340']);
-    expect(el.querySelectorAll('.dash-card:not(.dash-tile)').length).toBe(3);
+    expect(el.querySelectorAll('.app-card').length).toBe(3);
     expect(el.textContent).toContain('Technology Intervention');
-    expect(el.querySelector('.registered p')!.textContent).toBe('Application');
-    expect(el.querySelector('.bronzeVerified p')!.textContent).toBe('TI');
+    expect(el.querySelector('.registered')).toBeNull();
   });
 
   it('leaves the tiles out when the API sends no organisation counts (not the master admin)', async () => {
     await create(StaffDashboardPage, 'consultancy');
     http.expectOne('/api/staff/dashboard').flush({ SilverTotal: 5 });
-    http.expectOne('/api/staff/dashboard/counts').flush({ total: 0, bronze: 0, silver: 0, gold: 0 });
+    http.expectOne((r) => r.url === '/api/staff/dashboard/analytics').flush(figures({ SilverTotal: 5 }));
     await settle();
     expect(el.querySelector('.dash-tile')).toBeNull();
   });
 
-  it('labels the Surveillance cards as the live dashboard', async () => {
+  it('labels the Surveillance cards as the live dashboard (Bronze without NC Raised)', async () => {
     await create(StaffDashboardPage, 'surveillance');
-    http.expectOne('/api/staff/dashboard').flush({ BronzeTotal: 4, BronzePending: 1, SaSilverNcRaised: 2 });
-    http.expectOne('/api/staff/dashboard/counts').flush({ total: 0, bronze: 0, silver: 0, gold: 0 });
+    http.expectOne((r) => r.url === '/api/staff/dashboard/analytics').flush(figures({ BronzeTotal: 4, BronzePending: 1, SaSilverNcRaised: 2 }));
     await settle();
-    const bronze = [...el.querySelectorAll('.panel-bronze li')].map((li) => `${li.querySelector('.dash-label')!.textContent!.trim()}: ${li.querySelector('.dash-value')!.textContent!.trim()}`);
-    expect(bronze).toEqual(['Total Application: 4', 'Surveillance Pending: 1', 'Surveillance Completed: 0', 'NC Raised: 0', 'Rejected: 0']);
-    const ncRaised = [...el.querySelectorAll('.panel-silver li')].find((li) => li.querySelector('.dash-label')!.textContent!.trim() === 'NC Raised')!;
-    expect(ncRaised.querySelector('.dash-value')!.textContent!.trim()).toBe('2');
+    const bronze = [...el.querySelectorAll('.panel-bronze .app-stats li')].map((li) => `${li.querySelector('.app-label')!.textContent!.trim()}: ${li.querySelector('.app-value')!.textContent!.trim()}`);
+    expect(bronze).toEqual(['Surveillance Pending: 1', 'Surveillance Completed: 0', 'Rejected: 0']);
+    expect(el.querySelector('.panel-bronze .app-total-value')!.textContent).toBe('4');
+    expect(el.querySelector('.panel-silver [data-field="SaSilverNcRaised"]')!.textContent).toBe('2');
   });
 
   it('lists Consultant Organisations with the live columns', async () => {

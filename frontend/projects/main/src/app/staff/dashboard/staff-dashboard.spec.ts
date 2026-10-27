@@ -192,24 +192,60 @@ describe('StaffDashboardPage', () => {
     expect(state.value).toBe('UTTAR PRADESH');
   });
 
-  it('other portals keep the filtered counts strip', async () => {
+  it('surveillance: the same figures, worded for surveillance, with its cards', async () => {
     await create('surveillance');
-    http.expectOne('/api/staff/dashboard').flush({ BronzeTotal: 12 });
-    http.expectOne('/api/staff/dashboard/counts').flush({ total: 40000, bronze: 2000, silver: 1000, gold: 500 });
+    http.expectNone('/api/staff/dashboard');
+    analyticsCall().flush(analytics('registered', {
+      statusCards: { BronzeTotal: 10, BronzePending: 4, BronzeCompleted: 5, SilverTotal: 4, SaSilverNcRaised: 1 },
+    }));
     await settle();
-    expect(el.querySelector('#registered')!.textContent).toBe('40,000');
-    expect(el.querySelector('zed-staff-analytics')).toBeNull();
-    expect(el.querySelector('[data-field="BronzeTotal"]')!.textContent).toBe('12');
+    expect(el.querySelector('#registered')).toBeNull();
+    expect(el.querySelector('.page-sub')).toBeNull();
+    expect([...el.querySelectorAll('.an-kpi-label')].map(text))
+      .toEqual(['Registered units', 'Surveillance completed', 'Bronze completed', 'Silver completed', 'Gold completed']);
+    expect([...(el.querySelector('#an-dateby') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['Registration', 'Surveillance completion']);
+    expect([...el.querySelectorAll('.an-trend .an-card')[0].querySelectorAll('.gc-legend li')].map(text)).toEqual(['Registered', 'Surveillance completed']);
+    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
+    // Bronze surveillance has no NC Raised.
+    const bronze = el.querySelector('.an-status .app-card')!;
+    expect([...bronze.querySelectorAll('.app-label')].map(text)).toEqual(['Surveillance Pending', 'Surveillance Completed', 'Rejected']);
+    expect(text(bronze.querySelector('.app-stats li .app-share'))).toBe('(40%)');
+    expect(el.querySelector('[data-field="SaSilverNcRaised"]')!.textContent).toBe('1');
+  });
 
-    const gender = el.querySelector('#d-gender') as HTMLSelectElement;
-    gender.value = 'female';
-    gender.dispatchEvent(new Event('change'));
+  it('consultancy: handholding figures, Silver and Gold milestones and Technology Intervention', async () => {
+    await create('consultancy');
+    // The consultant tiles come from the summary (MasterAdmin only); the cards from the filtered figures.
+    http.expectOne('/api/staff/dashboard').flush({ AssessmentAgencies: 4, SiteAssessors: 9, SilverTotal: 99 });
+    analyticsCall().flush(analytics('registered', {
+      totals: { registered: 300, certified: 12, bronze: 80, silver: 60, gold: 20 },
+      statusCards: { SilverTotal: 60, SilverM1PaymentDone: 45, SilverCompleted: 30, SaSilverCompleted: 12, GoldTotal: 20, FaTotal: 8, FaCompleted: 2, FaPending: 6 },
+    }));
     await settle();
-    const req = http.expectOne((r) => r.url === '/api/staff/dashboard/counts');
-    expect(req.request.params.get('gender')).toBe('female');
-    req.flush({ total: 10, bronze: 1, silver: 0, gold: 0 });
+    expect(el.querySelector('[data-field="AssessmentAgencies"]')!.textContent).toBe('4');
+    expect([...el.querySelectorAll('.an-kpi')].map((k) => `${text(k.querySelector('.an-kpi-label'))}: ${text(k.querySelector('.an-kpi-value'))}`))
+      .toEqual(['Registered units: 300', 'Handholding completed: 12', 'Applications: 80', 'Silver applications: 60', 'Gold applications: 20']);
+    expect([...(el.querySelector('#an-cert') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Silver', 'Gold']);
+    expect([...(el.querySelector('#an-dateby') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['Registration', 'Handholding completion']);
+    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'Technology Intervention']);
+
+    // The milestones: payments received and completed, each as a share of the level's applications.
+    const silver = el.querySelector('.an-status .ms-card')!;
+    expect(silver.querySelector('[data-field="SilverTotal"]')!.textContent).toBe('60');
+    const m1 = silver.querySelector('.ms-list li')!;
+    expect(text(m1.querySelector('.ms-no'))).toBe('Milestone 1');
+    expect([...m1.querySelectorAll('.ms-figure')].map(text)).toEqual(['45(75%)', '30(50%)']);
+    expect(silver.querySelectorAll('.ms-list li').length).toBe(3);
+    expect(text(silver.querySelectorAll('.ms-list li')[2].querySelectorAll('.ms-figure')[1])).toBe('12(20%)');
+    const ti = el.querySelectorAll('.an-status .app-card')[2];
+    expect([...ti.querySelectorAll('.app-label')].map(text)).toEqual(['Approved', 'Pending']);
+    expect(text(ti.querySelector('.app-stats li .app-share'))).toBe('(25%)');
+
+    await choose('#an-cert', 'Gold');
+    const gold = analyticsCall();
+    expect(gold.request.params.get('certification')).toBe('Gold');
+    gold.flush(analytics());
     await settle();
-    expect(el.querySelector('#registered')!.textContent).toBe('10');
   });
 
   it('shows an error when the dashboard cannot be loaded', async () => {

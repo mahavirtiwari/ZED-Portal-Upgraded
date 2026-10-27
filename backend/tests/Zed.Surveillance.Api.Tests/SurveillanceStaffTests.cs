@@ -151,6 +151,21 @@ public sealed class SurveillanceStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task Dashboard_figures_use_the_surveillance_cards()
+    {
+        _host.Sql.Procs["SP_V4_DASHBOARD_ANALYTICS"] = _ => FakeSql.Sets(
+            [new { Registered = 20, Certified = 8, Bronze = 5, Silver = 2, Gold = 1 }], [], [], [], [], [], [], [], [],
+            [new { BronzeTotal = 6, SaSilverNcRaised = 2, FaTotal = 9, BronzeNcRaised = 3 }], []);
+        var master = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
+        var r = await master.GetFromJsonAsync<Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.AnalyticsResponse>(
+            "/api/staff/dashboard/analytics?certification=Bronze");
+        Assert.Equal(8, r!.Totals.Certified);
+        Assert.Equal(Zed.Portal.Features.Staff.Dashboard.StaffDashboardController.SurveillanceSummaryColumns, r.StatusCards.Keys);
+        Assert.Equal("2", r.StatusCards["SaSilverNcRaised"]!.ToString());
+        Assert.Equal("Bronze", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == "SP_V4_DASHBOARD_ANALYTICS").Args, "Certification"));
+    }
+
+    [Fact]
     public async Task Dashboard_lists_and_reports_use_the_surveillance_shape()
     {
         _host.Sql.Procs["SP_DASHBOARD_GET_DETAILS"] = _ => FakeSql.Sets([new { BronzeTotal = 5, SaSilverNcRaised = 2, FaTotal = 9 }]);
