@@ -247,4 +247,24 @@ describe('ParametersPage', () => {
     expect(el.querySelector('a.btn')!.getAttribute('href')).toBe('/staff/questionnaire/Bronze/P1');
     http.verify();
   });
+
+  it('pages the parameters ten at a time and searches them', async () => {
+    const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
+    http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush(Array.from({ length: 23 }, (_, i) => (
+      { id: i + 1, sectionType: 'Bronze', sectionCode: `P${i + 1}`, sectionName: i === 21 ? 'Waste management' : `Parameter ${i + 1}`, description: '' })));
+    await settle(fixture);
+    const codes = () => [...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim());
+    expect(codes()).toEqual(['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8', 'P9', 'P10']);
+    expect(el.querySelector('.zed-pager')!.textContent).toContain('(23 records)');
+    ([...el.querySelectorAll('.zed-pager button')].find((b) => b.textContent!.trim() === 'Last') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(codes()).toEqual(['P21', 'P22', 'P23']);
+    const search = el.querySelector('input[type=search]') as HTMLInputElement;
+    search.value = 'waste';
+    search.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(codes()).toEqual(['P22']);
+    http.verify();
+  });
 });

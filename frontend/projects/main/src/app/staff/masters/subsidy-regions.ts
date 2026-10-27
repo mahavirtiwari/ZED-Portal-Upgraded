@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ClientPager, PagerComponent } from '../pager';
 
 export interface RegionCategory {
   key: string;
@@ -43,7 +44,7 @@ export interface RegionsResponse {
  */
 @Component({
   selector: 'zed-staff-subsidy-regions',
-  imports: [FormsModule],
+  imports: [FormsModule, PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -89,11 +90,17 @@ export interface RegionsResponse {
           <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="add(c)">Add</button>
         </div>
 
+        <div class="filter-bar mb-3">
+          <div class="filter wide">
+            <input type="search" class="form-control" placeholder="Search state or district" [attr.aria-label]="'Search ' + c.name.toLowerCase()"
+                   [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+          </div>
+        </div>
         <div class="table-responsive">
           <table class="table table-zed sr-table">
             <thead><tr><th>State / UT</th><th>District</th><th>Source</th><th class="text-center">Status</th><th class="text-center">Action</th></tr></thead>
             <tbody>
-              @for (r of rows(); track r.stateCode + '-' + r.districtCode) {
+              @for (r of pager.page(); track r.stateCode + '-' + r.districtCode) {
                 <tr [class.sr-off]="!r.enabled">
                   <td>{{ r.stateName || 'State ' + r.stateCode }}</td>
                   <td>{{ r.districtCode ? (r.districtName || 'District ' + r.districtCode) : 'Whole state' }}</td>
@@ -107,11 +114,16 @@ export interface RegionsResponse {
                   <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" [disabled]="busy()" [attr.aria-label]="'Remove ' + label(r)" (click)="remove(r)">Remove</button></td>
                 </tr>
               } @empty {
-                <tr><td colspan="5" style="padding: 0"><div class="no-data">No {{ c.name.toLowerCase() }} yet. Add a {{ c.level === 'state' ? 'state or district' : 'district' }} above.</div></td></tr>
+                <tr><td colspan="5" style="padding: 0"><div class="no-data">
+                  @if (pager.search()) { Nothing in {{ c.name }} matches the search. } @else { No {{ c.name.toLowerCase() }} yet. Add a {{ c.level === 'state' ? 'state or district' : 'district' }} above. }
+                </div></td></tr>
               }
             </tbody>
           </table>
         </div>
+        @if (rows().length) {
+          <zed-pager [pager]="pager" />
+        }
       </section>
     }
     @if (busy()) {
@@ -145,6 +157,8 @@ export class SubsidyRegionsPage {
   protected readonly active = signal('ASPIRATIONAL');
   protected readonly category = computed(() => this.categories().find((c) => c.key === this.active()) ?? null);
   protected readonly rows = computed(() => this.regions().filter((r) => r.category === this.active()));
+  /** The rows of the category, ten at a time: another category starts at page 1, a switch or removal keeps the page. */
+  protected readonly pager = new ClientPager<RegionRow>(10);
   protected readonly addState = signal('');
   protected readonly addDistrict = signal('');
   protected readonly addEnabled = signal(true);
@@ -170,6 +184,8 @@ export class SubsidyRegionsPage {
 
   protected pick(key: string): void {
     this.active.set(key);
+    this.pager.search.set('');
+    this.pager.set(this.rows());
     this.success.set('');
     this.error.set('');
   }
@@ -233,6 +249,7 @@ export class SubsidyRegionsPage {
       const r = await firstValueFrom(this.http.get<RegionsResponse>(SubsidyRegionsPage.url));
       this.categories.set(r.categories);
       this.regions.set(r.regions);
+      this.pager.refresh(this.rows());
       this.states.set(r.states);
       this.subsidyDistricts.set(r.subsidyDistricts);
     } catch (err) {

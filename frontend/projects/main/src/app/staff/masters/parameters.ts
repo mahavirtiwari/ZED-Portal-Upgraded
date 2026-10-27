@@ -6,16 +6,17 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { MastersApi, Parameter } from './masters.api';
 import { CollapseCard } from '../collapse-card';
+import { ClientPager, PagerComponent } from '../pager';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
  * Views/Questionaire/Index.cshtml (Questionaire/Index?SectionType=Bronze). The description used to be
  * rendered as raw HTML; it is shown as text now. "Requirements" opens staff/questionnaire/{level}/{code}. V4: the add
- * form in a card, long descriptions folded to three lines.
+ * form in a card, long descriptions folded to three lines, a search box and the list paged (Show N Entries).
  */
 @Component({
   selector: 'zed-staff-parameters',
-  imports: [FormsModule, CollapseCard],
+  imports: [FormsModule, CollapseCard, PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -51,6 +52,12 @@ import { CollapseCard } from '../collapse-card';
       </form>
     </zed-collapse-card>
 
+    <div class="filter-bar mb-3">
+      <div class="filter wide">
+        <input type="search" class="form-control" placeholder="Search code, name or description" aria-label="Search parameters"
+               [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+      </div>
+    </div>
     <div class="table-responsive">
       <!-- Fixed columns so the table fits the screen: the description wraps in what is left. -->
       <table class="table table-zed table-bordered param-table">
@@ -69,7 +76,7 @@ import { CollapseCard } from '../collapse-card';
           </tr>
         </thead>
         <tbody>
-          @for (s of parameters(); track s.id) {
+          @for (s of pager.page(); track s.id) {
             <tr>
               <td class="text-center">{{ s.sectionCode }}</td>
               <td class="text-center"><strong>{{ s.sectionName }}</strong></td>
@@ -89,11 +96,12 @@ import { CollapseCard } from '../collapse-card';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            <tr><td colspan="4" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
           }
         </tbody>
       </table>
     </div>
+    <zed-pager [pager]="pager" />
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="edit-parameter-title">
@@ -139,7 +147,7 @@ export class ParametersPage {
 
   /** Bronze, Silver or Gold; the page reloads when the menu's Questionnaire drop-down switches level. */
   protected readonly sectionType = signal('Bronze');
-  protected readonly parameters = signal<Parameter[]>([]);
+  protected readonly pager = new ClientPager<Parameter>(10);
   protected readonly editing = signal<{ id: number; sectionName: string; description: string } | null>(null);
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly submitted = signal(false);
@@ -158,7 +166,8 @@ export class ParametersPage {
       this.editing.set(null);
       this.success.set('');
       this.error.set('');
-      void this.load();
+      this.pager.setSearch('');
+      void this.load(true);
     });
   }
 
@@ -179,9 +188,12 @@ export class ParametersPage {
     });
   }
 
-  private async load(): Promise<void> {
+  /** <paramref name="fresh"/>: another level, so page 1; otherwise (after a save) the same page. */
+  private async load(fresh = false): Promise<void> {
     try {
-      this.parameters.set(await firstValueFrom(this.api.parameters(this.sectionType())));
+      const rows = await firstValueFrom(this.api.parameters(this.sectionType()));
+      if (fresh) this.pager.set(rows);
+      else this.pager.refresh(rows);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }

@@ -70,6 +70,31 @@ describe('SubsidyRegionsPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('140 districts');
   });
 
+  it('pages a long list and stays on the page after a switch', async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ ...data.regions[0], districtCode: String(100 + i), districtName: `DISTRICT ${i + 1}` }));
+    button(el, 'North Eastern Region').click();
+    await settle(fixture);
+    http.expectNone(url);
+    (fixture.componentInstance as unknown as { load(b: boolean): Promise<void> }).load(false);
+    http.expectOne(url).flush({ ...data, regions: [...many, data.regions[1]] });
+    await settle(fixture);
+    button(el, 'Aspirational Districts').click();
+    await settle(fixture);
+    const names = () => [...el.querySelectorAll('tbody tr td:nth-child(2)')].map((c) => c.textContent!.trim());
+    expect(names().length).toBe(10);
+    expect(el.querySelector('.zed-pager')!.textContent).toContain('(25 records)');
+    button(el, 'Next').click();
+    await settle(fixture);
+    expect(names()[0]).toBe('DISTRICT 11');
+    (el.querySelector('[aria-label="Disable DISTRICT 11"]') as HTMLInputElement).click();
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'PUT').flush({ message: 'Disabled.' });
+    await settle(fixture);
+    http.expectOne(url).flush({ ...data, regions: [...many.map((r, i) => (i === 10 ? { ...r, enabled: false } : r)), data.regions[1]] });
+    await settle(fixture);
+    expect(names()[0]).toBe('DISTRICT 11');
+  });
+
   it('adds a district after choosing the state, and asks for the district first', async () => {
     button(el, 'Add').click();
     await settle(fixture);

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DocumentRole, DocumentRow, MastersApi } from './masters.api';
+import { PagedView, PagerComponent } from '../pager';
 
 /** Same list as the API (MasterUploads.DocumentTypes); the API checks type, content and size again. */
 export const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.txt', '.jpg', '.jpeg', '.png'];
@@ -27,7 +28,7 @@ interface DocumentEdit {
  */
 @Component({
   selector: 'zed-staff-documents',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -105,7 +106,7 @@ interface DocumentEdit {
 
     <section class="zed-card" aria-labelledby="doc-library-h">
       <h5 class="doc-h" id="doc-library-h">Document Library <span class="zed-chip">{{ shown().length }} document{{ shown().length === 1 ? '' : 's' }}</span></h5>
-      @for (d of shown(); track d.id) {
+      @for (d of library.page(); track d.id) {
         <div class="doc-item">
           <div class="doc-item-main">
             <strong>{{ d.documentName }}</strong>
@@ -128,6 +129,9 @@ interface DocumentEdit {
         </div>
       } @empty {
         <div class="no-data">{{ documents().length ? 'Nothing matches the search and role filter.' : 'No documents published yet. Upload the first one above.' }}</div>
+      }
+      @if (shown().length) {
+        <zed-pager [pager]="library" />
       }
     </section>
 
@@ -212,6 +216,8 @@ export class DocumentsAdminPage {
     return this.documents().filter((d) =>
       (!q || d.documentName.toLowerCase().includes(q) || (d.description ?? '').toLowerCase().includes(q)) && (!role || d.roles.includes(role)));
   });
+  /** The library, ten at a time (back to page 1 on a new search or role). */
+  protected readonly library = new PagedView(this.shown, 10);
   protected readonly kind = signal<'file' | 'video'>('file');
   protected readonly picked = signal<Set<string>>(new Set());
   protected readonly fileName = signal('');

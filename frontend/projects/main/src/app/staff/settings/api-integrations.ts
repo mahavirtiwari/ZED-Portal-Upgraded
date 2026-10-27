@@ -3,6 +3,7 @@ import { DatePipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ClientPager, PagerComponent } from '../pager';
 
 export interface ApiClientItem {
   id: number;
@@ -39,7 +40,7 @@ export interface OutboundItem {
  */
 @Component({
   selector: 'zed-staff-api-integrations',
-  imports: [DatePipe],
+  imports: [DatePipe, PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -55,15 +56,21 @@ export interface OutboundItem {
     }
 
     <section class="zed-card" aria-labelledby="ai-clients">
-      <h5 class="ai-h" id="ai-clients">Partners <span class="zed-chip">{{ clients().length }}</span></h5>
+      <h5 class="ai-h" id="ai-clients">Partners <span class="zed-chip">{{ partners.all().length }}</span></h5>
       <p class="muted">Each partner holds its own key. Disabled, its key and the tokens it already holds are refused.</p>
+      <div class="filter-bar mb-3">
+        <div class="filter wide">
+          <input type="search" class="form-control" placeholder="Search partner, client ID or access" aria-label="Search partners"
+                 [value]="partners.search()" (input)="partners.setSearch($any($event.target).value)" />
+        </div>
+      </div>
       <div class="table-responsive">
         <table class="table table-zed">
           <thead>
             <tr><th>Partner</th><th>May call</th><th>Registered</th><th>Last token</th><th class="text-center">Status</th></tr>
           </thead>
           <tbody>
-            @for (c of clients(); track c.id) {
+            @for (c of partners.page(); track c.id) {
               <tr [class.ai-off]="!c.enabled">
                 <td>
                   <strong>{{ c.name }}</strong>
@@ -81,11 +88,14 @@ export interface OutboundItem {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="5" style="padding: 0"><div class="no-data">No partners are registered.</div></td></tr>
+              <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ partners.search() ? 'No partner matches the search.' : 'No partners are registered.' }}</div></td></tr>
             }
           </tbody>
         </table>
       </div>
+      @if (partners.all().length) {
+        <zed-pager [pager]="partners" />
+      }
     </section>
 
     <section class="zed-card" aria-labelledby="ai-groups">
@@ -151,7 +161,8 @@ export class ApiIntegrationsPage {
   private readonly http = inject(HttpClient);
   private static readonly url = '/api/staff/settings/integrations';
 
-  protected readonly clients = signal<ApiClientItem[]>([]);
+  /** The partners, ten at a time; a switch keeps the page. */
+  protected readonly partners = new ClientPager<ApiClientItem>(10);
   protected readonly groups = signal<ApiGroupItem[]>([]);
   protected readonly outbound = signal<OutboundItem[]>([]);
   protected readonly busy = signal(false);
@@ -203,7 +214,7 @@ export class ApiIntegrationsPage {
         firstValueFrom(this.http.get<ApiGroupItem[]>(`${ApiIntegrationsPage.url}/groups`)),
         firstValueFrom(this.http.get<OutboundItem[]>(`${ApiIntegrationsPage.url}/outbound`)),
       ]);
-      this.clients.set(clients);
+      this.partners.refresh(clients);
       this.groups.set(groups);
       this.outbound.set(outbound);
     } catch (err) {

@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PagedView, PagerComponent } from '../pager';
 
 export type ChangeKind = 'addState' | 'renameState' | 'addDistrict' | 'renameDistrict' | 'deactivateDistrict';
 
@@ -35,6 +36,7 @@ const KIND_LABELS: Record<ChangeKind, string> = {
  */
 @Component({
   selector: 'zed-staff-lgd-directory',
+  imports: [PagerComponent],
   template: `
     <div class="page-head">
       <div>
@@ -76,7 +78,9 @@ const KIND_LABELS: Record<ChangeKind, string> = {
             <table class="table table-zed">
               <thead><tr><th style="width: 40px"></th><th>Change</th><th>State / UT</th><th>District</th><th>Now in ZED</th></tr></thead>
               <tbody>
-                @for (c of r.changes; track $index; let i = $index) {
+                @for (row of list.page(); track row.i) {
+                  @let c = row.c;
+                  @let i = row.i;
                   <tr>
                     <td><input type="checkbox" class="form-check-input" [attr.aria-label]="'Apply ' + labelOf(c)" [checked]="ticked().has(i)" (change)="tick(i)" /></td>
                     <td>{{ kindLabel(c.kind) }}</td>
@@ -88,6 +92,7 @@ const KIND_LABELS: Record<ChangeKind, string> = {
               </tbody>
             </table>
           </div>
+          <zed-pager [pager]="list" [sizes]="[20, 50, 100, 500]" />
           <div class="form-actions">
             <span class="muted me-auto">{{ ticked().size }} of {{ r.changes.length }} ticked</span>
             <button type="button" class="btn btn-primary" [disabled]="busy() || !ticked().size" (click)="apply()">Apply ticked changes</button>
@@ -107,7 +112,6 @@ const KIND_LABELS: Record<ChangeKind, string> = {
     .lgd-summary { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 12px; }
     .lgd-kind { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
     .lgd-kind .form-check-input, .lgd-list .form-check-input { float: none; margin: 0; }
-    .lgd-list { max-height: 520px; overflow: auto; }
     .form-actions { align-items: center; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -125,6 +129,9 @@ export class LgdDirectoryPage {
       .map((kind) => ({ kind, label: KIND_LABELS[kind], count: changes.filter((c) => c.kind === kind).length }))
       .filter((k) => k.count > 0);
   });
+  /** The changes with their place in the file's list (the ticks), paged; ticking keeps the page. */
+  private readonly indexed = computed(() => (this.result()?.changes ?? []).map((c, i) => ({ c, i })));
+  protected readonly list = new PagedView(this.indexed, 20);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
