@@ -134,26 +134,29 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'NEFT: Approved Transactions', legacyPath: '/Neft/ApprovedTransactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'NEFT: Rejected Transactions', legacyPath: '/Neft/RejectedTransactions', route: '/staff/neft/rejected', roles: [R.StateCoordinator] },
 
-  // Admin: as the live layout (Frontend/Shared/_Layout.cshtml, Admin), labels, order and drop-downs.
+  // Admin: as the live layout (Frontend/Shared/_Layout.cshtml, Admin), labels and order; Questionnaire and Technology
+  // Upgradation are drop-downs of their own rather than headings under Masters (V4, 2026-10-27).
   { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
   { label: 'My Documents', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
-    label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire', menu: 'Masters',
+    label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
   })),
-  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], group: 'Technology Upgradation', menu: 'Masters' },
-  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], group: 'Technology Upgradation', menu: 'Masters' },
+  // New in V4: the ESG checklist of the MSME app's assessment (before, a fixed file).
+  { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
+  { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], menu: 'Technology Upgradation' },
+  { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], menu: 'Technology Upgradation' },
   ...INCENTIVE_TYPES.map((t) => ({
     label: t.label, legacyPath: '/Incentive/Index', route: '/staff/incentives', queryParams: { type: t.value }, roles: [R.Admin as number], group: 'Incentives',
   })),
-  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
-  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin], menu: 'Administration' },
-  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
+  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
@@ -177,13 +180,13 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   // No Questionnaire: the live menu had it, but ZED_CONSULTANT has no section tables, so its pages failed.
-  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
-  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin], menu: 'Administration' },
-  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
+  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
 
   // MasterAdmin: allotment and consultancy monitoring
   // As the live layout (ZEDCS_CONSULTANCY Frontend/Shared/_Layout.cshtml): "Allot Consultancy", then the "Consultancy
@@ -237,15 +240,17 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
-    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire', menu: 'Masters',
+    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
   })),
-  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
-  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin], menu: 'Administration' },
-  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
-  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
+  // New in V4: the ESG checklist of the surveillance app's assessment (before, a fixed file).
+  { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
+  // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
+  { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
+  { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
+  { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
 
   // MasterAdmin
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance

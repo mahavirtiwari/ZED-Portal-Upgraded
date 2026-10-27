@@ -1,11 +1,11 @@
-namespace Zed.Main.MobileApi.Models;
+namespace Zed.Core.Forms;
 
 /// <summary>
-/// Copy of the old services site's App_Data/EnvironmentalChecklist.json, which GetEsgChecklist
-/// returns as is. A file at {Mobile:StorageRoot}/App_Data/EnvironmentalChecklist.json (the old
-/// site's copy, if it was edited there) takes precedence.
+/// The standard ESG checklist: a copy of the old services site's App_Data/EnvironmentalChecklist.json, which
+/// GetEsgChecklist returned as is. The Admin's version (Admin → ESG Checklist, <see cref="EsgChecklists"/>) takes
+/// precedence, then a file at {Mobile:StorageRoot}/App_Data/EnvironmentalChecklist.json (the old site's copy).
 /// </summary>
-internal static class EsgChecklistJson
+public static class EsgChecklistJson
 {
     public const string Text = """"
 {

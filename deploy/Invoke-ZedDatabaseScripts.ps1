@@ -11,7 +11,7 @@
            0001 all three | 0002 ZEDCS_V2_LIVE | 0004 ZEDCS_V2_LIVE | 0005 all three |
            0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
            0011 all three | 0012 all three | 0013 all three |
-           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE
+           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -125,6 +125,7 @@ $Migrations = @(
     @{ File = '0019_dashboard_analytics.sql';   Dbs = @($Main);  Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0020_dashboard_analytics_consultancy.sql'; Dbs = @($Cons); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0021_dashboard_analytics_surveillance.sql'; Dbs = @($Surv); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
+    @{ File = '0022_esg_checklist.sql';         Dbs = @($Main, $Surv); Markers = @('U:dbo.V4EsgChecklist') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

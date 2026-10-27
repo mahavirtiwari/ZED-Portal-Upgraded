@@ -80,6 +80,9 @@ public static class ZedHostingExtensions
         // The Admin's App Forms: fields of the apps' Basic Information forms (definition served to the apps, checked on submit).
         services.AddSingleton<Zed.Core.Forms.IAppFormStore, Zed.Core.Forms.SqlAppFormStore>();
         services.AddSingleton<Zed.Core.Forms.AppForms>();
+        // The Admin's ESG checklist (served to the apps by GetEsgChecklist).
+        services.AddSingleton<Zed.Core.Forms.IEsgChecklistStore, Zed.Core.Forms.SqlEsgChecklistStore>();
+        services.AddSingleton<Zed.Core.Forms.EsgChecklists>();
         services.AddSingleton<IHtmlTemplateRenderer, HtmlTemplateRenderer>();
 
         services.Configure<CcAvenueOptions>(config.GetSection(CcAvenueOptions.Section));

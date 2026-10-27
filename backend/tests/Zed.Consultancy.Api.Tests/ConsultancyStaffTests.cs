@@ -274,6 +274,8 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/masters/parameters/Silver")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/staff/masters/parameters/Silver", new { sectionCode = "P1", sectionName = "Lead" })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/questionnaire/Silver/P1/requirements")).StatusCode);
+        // Nor the ESG checklist: Consultancy's apps have none.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/settings/esg-checklist")).StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("SP_MASTER_GET_SECTIONS", StringComparison.Ordinal));
     }
 

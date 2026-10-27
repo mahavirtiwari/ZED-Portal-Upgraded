@@ -36,4 +36,10 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./app-forms').then((m) => m.AppFormsPage),
   },
+  {
+    path: 'esg-checklist',
+    title: 'ZED | ESG Checklist',
+    canActivate: [admin],
+    loadComponent: () => import('./esg-checklist').then((m) => m.EsgChecklistPage),
+  },
 ];

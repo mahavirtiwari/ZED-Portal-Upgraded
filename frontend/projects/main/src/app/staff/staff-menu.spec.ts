@@ -1,4 +1,4 @@
-import { StaffMenuEntry, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
 import { INCENTIVE_TYPES } from './schemes/incentives.api';
 
 describe('staff menu', () => {
@@ -103,18 +103,25 @@ describe('staff menu', () => {
 
     it('groups the long menus into a few drop-downs (V4)', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Operation Admins']);
-      expect(bar(StaffRole.Admin, 'main')).toEqual(['Masters (9)', `Incentives (${INCENTIVE_TYPES.length})`, 'Administration (6)']);
-      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'Administration (6)']);
-      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (5)', 'Administration (6)']);
+      expect(bar(StaffRole.Admin, 'main')).toEqual([
+        'Masters (4)', 'Questionnaire (4)', 'Technology Upgradation (2)', `Incentives (${INCENTIVE_TYPES.length})`, 'User Management', 'Administration (5)',
+      ]);
+      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'User Management', 'Administration (5)']);
+      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (2)', 'Questionnaire (4)', 'User Management', 'Administration (5)']);
       // Each incentive type is its own entry: the same page with ?type=.
       expect(menuFor(StaffRole.Admin, [], 'main').find((i) => i.label === 'ASSAM')?.queryParams).toEqual({ type: 'ASSAM' });
       expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Operation Admins']);
       expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)', 'Operation Admins']);
     });
 
-    it('puts the old drop-downs under headings inside a menu', () => {
-      const masters = menuEntries(menuFor(StaffRole.Admin, [], 'main')).find((e) => 'group' in e && e.group === 'Masters')!;
-      expect('sections' in masters && masters.sections.map((x) => `${x.heading ?? '-'} (${x.items.length})`)).toEqual(['- (4)', 'Questionnaire (3)', 'Technology Upgradation (2)']);
+    it('puts the headings of a menu inside its drop-down', () => {
+      const items: StaffMenuItem[] = [
+        { label: 'A', route: '/a', roles: [1], menu: 'M' },
+        { label: 'B', route: '/b', roles: [1], menu: 'M', group: 'H' },
+        { label: 'C', route: '/c', roles: [1], menu: 'M', group: 'H' },
+      ];
+      const [m] = menuEntries(items);
+      expect('sections' in m && m.sections.map((x) => `${x.heading ?? '-'} (${x.items.length})`)).toEqual(['- (1)', 'H (2)']);
     });
 
     it('groups the agencies\' lists; a drop-down with one screen is a plain link', () => {

@@ -148,12 +148,16 @@ public sealed partial class MsmeController
         return LegacyJson(new ServiceResponse { status = row.Text("Status"), errorMessage = row.Text("ErrorMessage") });
     }
 
-    /// <summary>The ESG checklist form the app renders (old App_Data/EnvironmentalChecklist.json), any verb as before.</summary>
+    /// <summary>
+    /// The ESG checklist form the app renders, any verb as before: the Admin's (Admin → ESG Checklist), else the old
+    /// App_Data/EnvironmentalChecklist.json, else the standard one.
+    /// </summary>
     [AcceptVerbs("GET", "POST")]
     public async Task<IActionResult> GetEsgChecklist(CancellationToken ct)
     {
+        var json = await HttpContext.RequestServices.GetRequiredService<EsgChecklists>().SavedAppJsonAsync(ct);
         var path = Path.Combine(Storage.Root, "App_Data", "EnvironmentalChecklist.json");
-        var json = System.IO.File.Exists(path) ? await System.IO.File.ReadAllTextAsync(path, ct) : EsgChecklistJson.Text;
+        json ??= System.IO.File.Exists(path) ? await System.IO.File.ReadAllTextAsync(path, ct) : EsgChecklistJson.Text;
         return LegacyContent(json, "application/json");
     }
 
