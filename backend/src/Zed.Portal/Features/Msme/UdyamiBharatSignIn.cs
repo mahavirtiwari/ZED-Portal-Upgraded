@@ -108,6 +108,7 @@ public sealed class UdyamiBharatVerifier(HttpClient http, IOptions<UdyamiBharatO
 }
 
 [ApiController]
+[Zed.Portal.Features.ExternalApi.PartnerApi(Zed.Portal.Features.ExternalApi.PartnerApiGroups.UdyamiSignIn)]
 [Route("api/msme/auth/udyami-bharat")]
 public sealed partial class UdyamiBharatSignInController(
     ISqlExecutor db,

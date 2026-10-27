@@ -12,11 +12,12 @@ namespace Zed.Portal.Features.ExternalApi;
 public sealed class TokenController(ISqlExecutor db, ILogger<TokenController> log) : ExternalApiController
 {
     /// <summary>POST Token/GenerateToken (clientId, clientSecret) → {"StatusCode":"1","Token":"…"}.</summary>
+    [PartnerApi(PartnerApiGroups.Tokens)]
     [HttpPost("/Token/GenerateToken")]
     [ExternalApiRateLimit(ExternalApiLimit.Token)]
     public async Task<IActionResult> GenerateToken(string? clientId, string? clientSecret, CancellationToken ct)
     {
-        var clients = new ApiClients(db, Options);
+        var clients = new ApiClients(db, Options, Settings);
         var client = await clients.ValidateClientAsync(clientId, clientSecret, ct);
         if (client is null)
         {

@@ -33,9 +33,10 @@ public sealed class UdyamiApiController(
     IWebHostEnvironment env,
     ILogger<UdyamiApiController> log) : ExternalApiController
 {
-    private ApiClients Clients => new(db, Options);
+    private ApiClients Clients => new(db, Options, Settings);
 
     /// <summary>Msme/RegisterPlant (POST): SP_API_MSME_INSERT_UDYAM_DETAILS, pledge certificate PDF, registration mail.</summary>
+    [PartnerApi(PartnerApiGroups.Udyami)]
     [HttpPost("/Msme/RegisterPlant")]
     public async Task<IActionResult> RegisterPlant(MsmeRegisterApiModel msme, CancellationToken ct)
     {
@@ -149,6 +150,7 @@ public sealed class UdyamiApiController(
     }
 
     /// <summary>Msme/GetCertificatesByUdyam (POST): the Udyam number's ZED units with their latest certificate id.</summary>
+    [PartnerApi(PartnerApiGroups.Udyami)]
     [HttpPost("/Msme/GetCertificatesByUdyam")]
     public async Task<IActionResult> GetCertificatesByUdyam(string? Udyamid, string? RequestId, string? Token, CancellationToken ct)
     {
@@ -179,6 +181,7 @@ public sealed class UdyamiApiController(
     }
 
     /// <summary>Msme/GetCertificateDetails (any verb): one certificate (pledge or latest level) as base64.</summary>
+    [PartnerApi(PartnerApiGroups.Udyami)]
     [Route("/Msme/GetCertificateDetails")]
     public async Task<IActionResult> GetCertificateDetails(string? Udyamid, string? ZEDID, string? FileID, string? RequestId, string? Token, CancellationToken ct)
     {

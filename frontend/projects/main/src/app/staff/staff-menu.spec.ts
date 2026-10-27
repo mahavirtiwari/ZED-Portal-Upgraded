@@ -104,7 +104,7 @@ describe('staff menu', () => {
     it('groups the long menus into a few drop-downs (V4)', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
-        'Masters (4)', 'Questionnaire (4)', 'Technology Upgradation (2)', 'Incentives (4)', 'User Management', 'Administration (5)',
+        'Masters (6)', 'Questionnaire (4)', 'Technology Upgradation (2)', 'Incentives (4)', 'User Management', 'Administration (6)',
       ]);
       expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'User Management', 'Administration (5)']);
       expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (2)', 'Questionnaire (4)', 'User Management', 'Administration (5)']);

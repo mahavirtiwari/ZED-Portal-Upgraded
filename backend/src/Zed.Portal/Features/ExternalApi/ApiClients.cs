@@ -47,9 +47,27 @@ public enum StaticTokenScope
 /// (the client table holds a handful of rows, so it is read whole), and nothing writes a token to a log
 /// table (SP_API_GET_TOKEN and SP_API_GET_DYNAMIC_TOKEN stored every token sent in ApiClientRequests /
 /// ApiClientDynamicRequests). Procedures that check the token themselves are still given it.
+/// <para>
+/// V4: the Admin can disable a client (Administration → API Integrations; dbo.V4Settings "ApiClient.{Id}.Enabled" =
+/// "false"). A disabled client's secret and tokens, also those already issued, are refused like unknown ones.
+/// </para>
 /// </summary>
-public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options)
+public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options, IPortalSettings? settings = null)
 {
+    public static string EnabledKey(long id) => $"ApiClient.{id}.Enabled";
+
+    public async Task<bool> IsEnabledAsync(long id, CancellationToken ct) =>
+        settings is null || !string.Equals(await settings.GetAsync(EnabledKey(id), ct), "false", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The clients the Admin has not disabled.</summary>
+    private async Task<IReadOnlyList<ApiClientRow>> EnabledAsync(CancellationToken ct)
+    {
+        var enabled = new List<ApiClientRow>();
+        foreach (var row in await AllAsync(ct))
+            if (await IsEnabledAsync(row.Id, ct)) enabled.Add(row);
+        return enabled;
+    }
+
     internal const string ClientsSql =
         "SELECT Id, Client, ClientId, Token, ReverseToken, AesKey, AesIV FROM dbo.ApiClientTokens";
 
@@ -67,7 +85,7 @@ public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options)
     public async Task<ApiClientRow?> ValidateClientAsync(string? clientId, string? clientSecret, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret) || clientId.Length > 50 || clientSecret.Length > 500) return null;
-        var rows = await AllAsync(ct);
+        var rows = await EnabledAsync(ct);
         return Match(rows.Where(r => r.ClientId is null || string.Equals(r.ClientId, clientId, StringComparison.OrdinalIgnoreCase)), clientSecret);
     }
 
@@ -75,13 +93,13 @@ public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options)
     public async Task<ApiClientRow?> BySecretAsync(string? clientSecret, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(clientSecret) || clientSecret.Length > 500) return null;
-        return Match(await AllAsync(ct), clientSecret);
+        return Match(await EnabledAsync(ct), clientSecret);
     }
 
     public async Task<ApiCaller?> StaticAsync(string? token, StaticTokenScope scope, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(token) || token.Length > 500) return null;
-        var rows = (await AllAsync(ct)).Where(r => scope switch
+        var rows = (await EnabledAsync(ct)).Where(r => scope switch
         {
             StaticTokenScope.WithoutClientId => r.ClientId is null,
             StaticTokenScope.ReverseToken => r.ReverseToken == true,
@@ -103,6 +121,8 @@ public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options)
         if (found?.DynamicToken is null || !FixedEquals(found.DynamicToken, token)) return null;
 
         var client = found.OriginalToken is null ? null : Match(await AllAsync(ct), found.OriginalToken);
+        // A token issued to a client the Admin has since disabled.
+        if (client is not null && !await IsEnabledAsync(client.Id, ct)) return null;
         return new ApiCaller(client?.Name ?? "unknown client", "dynamic", found.Id, client?.Token ?? found.OriginalToken);
     }
 

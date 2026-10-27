@@ -52,13 +52,20 @@ import { CollapseCard } from '../collapse-card';
     </zed-collapse-card>
 
     <div class="table-responsive">
-      <table class="table table-zed table-bordered">
+      <!-- Fixed columns so the table fits the screen: the description wraps in what is left. -->
+      <table class="table table-zed table-bordered param-table">
+        <colgroup>
+          <col style="width: 110px" />
+          <col style="width: 22%" />
+          <col />
+          <col style="width: 250px" />
+        </colgroup>
         <thead>
           <tr>
-            <th class="text-center" style="width: 120px">Parameter Code</th>
-            <th class="text-center" style="width: 230px">Parameter Name</th>
+            <th class="text-center">Parameter Code</th>
+            <th class="text-center">Parameter Name</th>
             <th>Description</th>
-            <th class="text-center" style="width: 260px">Actions</th>
+            <th class="text-center">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -121,8 +128,9 @@ import { CollapseCard } from '../collapse-card';
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
-    .description { min-width: 220px; }
-    pre { color: #333; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; background-color: transparent; font-family: inherit; margin: 0; }
+    .param-table { table-layout: fixed; width: 100%; min-width: 760px; }
+    .param-table td { vertical-align: middle; overflow-wrap: anywhere; }
+    pre { color: #333; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; background-color: transparent; font-family: inherit; margin: 0; }
   `,
 })
 export class ParametersPage {

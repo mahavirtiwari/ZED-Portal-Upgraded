@@ -1,0 +1,215 @@
+import { HttpClient } from '@angular/common/http';
+import { DatePipe } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { MessageResponse, apiErrorMessage } from '@zed/shared';
+import { firstValueFrom } from 'rxjs';
+
+export interface ApiClientItem {
+  id: number;
+  name: string;
+  clientId: string | null;
+  createdDate: string | null;
+  baseUrl: string | null;
+  access: string[];
+  lastTokenOn: string | null;
+  enabled: boolean;
+}
+
+export interface ApiGroupItem {
+  key: string;
+  name: string;
+  usedBy: string;
+  description: string;
+  endpoints: string[];
+  enabled: boolean;
+}
+
+export interface OutboundItem {
+  name: string;
+  purpose: string;
+  managedAt: string;
+  inV4: boolean;
+}
+
+/**
+ * Administration → API Integrations (new in V4): the organisations that call ZED's partner APIs (banks and financial
+ * institutions, state governments, Udyami Bharat, the RAMP dashboard, the QCI ERP), what each may call and an Enable /
+ * Disable switch per partner and per API group; and, for information, the services ZED itself calls. A switch takes
+ * effect within half a minute. Main only.
+ */
+@Component({
+  selector: 'zed-staff-api-integrations',
+  imports: [DatePipe],
+  template: `
+    <div class="page-head">
+      <div>
+        <h3 class="registration-title">API Integrations</h3>
+        <p class="page-sub">The partners that call ZED's APIs and the services ZED calls. Disable a partner or an API to stop its calls.</p>
+      </div>
+    </div>
+    @if (error()) {
+      <div class="alert alert-danger" role="alert">{{ error() }}</div>
+    }
+    @if (success()) {
+      <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+
+    <section class="zed-card" aria-labelledby="ai-clients">
+      <h5 class="ai-h" id="ai-clients">Partners <span class="zed-chip">{{ clients().length }}</span></h5>
+      <p class="muted">Each partner holds its own key. Disabled, its key and the tokens it already holds are refused.</p>
+      <div class="table-responsive">
+        <table class="table table-zed">
+          <thead>
+            <tr><th>Partner</th><th>May call</th><th>Registered</th><th>Last token</th><th class="text-center">Status</th></tr>
+          </thead>
+          <tbody>
+            @for (c of clients(); track c.id) {
+              <tr [class.ai-off]="!c.enabled">
+                <td>
+                  <strong>{{ c.name }}</strong>
+                  @if (c.clientId) { <small class="d-block muted">Client ID {{ c.clientId }}</small> }
+                  @if (c.baseUrl) { <small class="d-block muted ai-url">{{ c.baseUrl }}</small> }
+                </td>
+                <td>@for (a of c.access; track a) { <span class="ai-chip">{{ a }}</span> }</td>
+                <td>{{ c.createdDate ? (c.createdDate | date: 'dd-MM-yyyy') : '—' }}</td>
+                <td>{{ c.lastTokenOn ? (c.lastTokenOn | date: 'dd-MM-yyyy HH:mm') : '—' }}</td>
+                <td class="text-center">
+                  <label class="ai-switch form-switch">
+                    <input type="checkbox" class="form-check-input" role="switch" [checked]="c.enabled" [disabled]="busy()" [attr.aria-label]="(c.enabled ? 'Disable ' : 'Enable ') + c.name" (change)="setClient(c, $any($event.target))" />
+                    <span>{{ c.enabled ? 'Enabled' : 'Disabled' }}</span>
+                  </label>
+                </td>
+              </tr>
+            } @empty {
+              <tr><td colspan="5" style="padding: 0"><div class="no-data">No partners are registered.</div></td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="zed-card" aria-labelledby="ai-groups">
+      <h5 class="ai-h" id="ai-groups">Partner APIs</h5>
+      <p class="muted">Switch an API off for every partner at once. Its calls are then answered "switched off".</p>
+      <div class="ai-groups">
+        @for (g of groups(); track g.key) {
+          <div class="ai-group" [class.ai-off]="!g.enabled">
+            <div class="ai-group-head">
+              <strong>{{ g.name }}</strong>
+              <label class="ai-switch form-switch">
+                <input type="checkbox" class="form-check-input" role="switch" [checked]="g.enabled" [disabled]="busy()" [attr.aria-label]="(g.enabled ? 'Switch off ' : 'Switch on ') + g.name" (change)="setGroup(g, $any($event.target))" />
+                <span>{{ g.enabled ? 'On' : 'Off' }}</span>
+              </label>
+            </div>
+            <small class="muted d-block">Used by: {{ g.usedBy }}</small>
+            <p class="mb-1">{{ g.description }}</p>
+            <small class="ai-endpoints">{{ g.endpoints.join(' · ') }}</small>
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="zed-card" aria-labelledby="ai-outbound">
+      <h5 class="ai-h" id="ai-outbound">Services ZED calls</h5>
+      <p class="muted">For information: these are set up on the server; the captcha and the mail servers have their own settings pages.</p>
+      <div class="table-responsive">
+        <table class="table table-zed">
+          <thead><tr><th>Service</th><th>Used for</th><th>Managed at</th><th class="text-center">In V4</th></tr></thead>
+          <tbody>
+            @for (o of outbound(); track o.name) {
+              <tr [class.ai-off]="!o.inV4">
+                <td><strong>{{ o.name }}</strong></td>
+                <td>{{ o.purpose }}</td>
+                <td>{{ o.managedAt }}</td>
+                <td class="text-center"><span class="status-badge" [class.is-active]="o.inV4">{{ o.inV4 ? 'In use' : 'Not used' }}</span></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+    @if (busy()) {
+      <div class="loadingdiv"><div class="loader"></div></div>
+    }
+  `,
+  styles: `
+    .zed-card { margin-bottom: 16px; }
+    .ai-h { font-weight: 700; color: #23474a; display: flex; align-items: center; gap: 8px; }
+    .ai-chip { display: inline-block; font-size: 12px; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #eef6f6; color: #2f7c83; }
+    .ai-url { word-break: break-all; }
+    .ai-off td, .ai-off.ai-group { opacity: .6; }
+    .ai-switch { display: inline-flex; align-items: center; gap: 8px; margin: 0; cursor: pointer; white-space: nowrap; }
+    .ai-switch .form-check-input { float: none; margin: 0; width: 2.2em; height: 1.2em; }
+    .ai-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .ai-group { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; background: #fff; }
+    .ai-group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+    .ai-endpoints { color: #5f6f70; font-family: monospace; word-break: break-word; }
+    .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+  `,
+})
+export class ApiIntegrationsPage {
+  private readonly http = inject(HttpClient);
+  private static readonly url = '/api/staff/settings/integrations';
+
+  protected readonly clients = signal<ApiClientItem[]>([]);
+  protected readonly groups = signal<ApiGroupItem[]>([]);
+  protected readonly outbound = signal<OutboundItem[]>([]);
+  protected readonly busy = signal(false);
+  protected readonly error = signal('');
+  protected readonly success = signal('');
+
+  constructor() {
+    void this.load();
+  }
+
+  protected async setClient(c: ApiClientItem, input: HTMLInputElement): Promise<void> {
+    const enabled = input.checked;
+    if (!enabled && !confirm(`Disable ${c.name}? Its calls to ZED will be refused.`)) {
+      input.checked = true;
+      return;
+    }
+    await this.run(() => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/clients/${c.id}`, { enabled }), input, !enabled);
+  }
+
+  protected async setGroup(g: ApiGroupItem, input: HTMLInputElement): Promise<void> {
+    const enabled = input.checked;
+    if (!enabled && !confirm(`Switch off ${g.name} for every partner?`)) {
+      input.checked = true;
+      return;
+    }
+    await this.run(() => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/groups/${g.key}`, { enabled }), input, !enabled);
+  }
+
+  private async run(call: () => import('rxjs').Observable<MessageResponse>, input: HTMLInputElement, revertTo: boolean): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      this.success.set((await firstValueFrom(call())).message);
+      await this.load(false);
+    } catch (err) {
+      input.checked = revertTo;
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  private async load(showBusy = true): Promise<void> {
+    if (showBusy) this.busy.set(true);
+    try {
+      const [clients, groups, outbound] = await Promise.all([
+        firstValueFrom(this.http.get<ApiClientItem[]>(`${ApiIntegrationsPage.url}/clients`)),
+        firstValueFrom(this.http.get<ApiGroupItem[]>(`${ApiIntegrationsPage.url}/groups`)),
+        firstValueFrom(this.http.get<OutboundItem[]>(`${ApiIntegrationsPage.url}/outbound`)),
+      ]);
+      this.clients.set(clients);
+      this.groups.set(groups);
+      this.outbound.set(outbound);
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      if (showBusy) this.busy.set(false);
+    }
+  }
+}

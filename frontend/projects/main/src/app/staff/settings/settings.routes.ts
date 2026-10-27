@@ -42,4 +42,10 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./esg-checklist').then((m) => m.EsgChecklistPage),
   },
+  {
+    path: 'api-integrations',
+    title: 'ZED | API Integrations',
+    canActivate: [admin],
+    loadComponent: () => import('./api-integrations').then((m) => m.ApiIntegrationsPage),
+  },
 ];

@@ -32,8 +32,9 @@ public sealed class ApiSecureController(ISqlExecutor db, ILogger<ApiSecureContro
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    private ApiClients Clients => new(db, Options);
+    private ApiClients Clients => new(db, Options, Settings);
 
+    [PartnerApi(PartnerApiGroups.Secure)]
     [HttpPost("/ApiSecure/GenerateToken")]
     [ExternalApiRateLimit(ExternalApiLimit.Token)]
     public async Task<IActionResult> GenerateToken(EncryptedRequestDto encryptedRequestDto, CancellationToken ct)
@@ -63,6 +64,7 @@ public sealed class ApiSecureController(ISqlExecutor db, ILogger<ApiSecureContro
         }
     }
 
+    [PartnerApi(PartnerApiGroups.Secure)]
     [HttpPost("/ApiSecure/GetDetailsByCertification")]
     public async Task<IActionResult> GetDetailsByCertification(EncryptedRequestDto encryptedRequestDto, CancellationToken ct)
     {
@@ -84,6 +86,7 @@ public sealed class ApiSecureController(ISqlExecutor db, ILogger<ApiSecureContro
     }
 
     /// <summary>RAMP dashboard: ZED certification applications (SP_API_RAMP_REPORT_ZED over MsmeZedRampReport).</summary>
+    [PartnerApi(PartnerApiGroups.Secure)]
     [HttpPost("/ApiSecure/GetMsmeList")]
     public async Task<IActionResult> GetMsmeList(EncryptedRequestDto encryptedRequestDto, CancellationToken ct)
     {
@@ -114,6 +117,7 @@ public sealed class ApiSecureController(ISqlExecutor db, ILogger<ApiSecureContro
     }
 
     /// <summary>RAMP dashboard: handholding (ZED_CONSULTANT.dbo.ConsultancyRampReport via SP_API_RAMP_REPORT_CONSULTANCY).</summary>
+    [PartnerApi(PartnerApiGroups.Secure)]
     [HttpPost("/ApiSecure/GetMsmeHandholdingList")]
     public async Task<IActionResult> GetMsmeHandholdingList(EncryptedRequestDto encryptedRequestDto, CancellationToken ct)
     {

@@ -140,6 +140,9 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Documents/Videos', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
+  // New in V4: the regions of the additional subsidy, and the states and districts from the LG Directory.
+  { label: 'Subsidy Regions', route: '/staff/masters/regions', roles: [R.Admin], menu: 'Masters' },
+  { label: 'LG Directory', route: '/staff/masters/lgd', roles: [R.Admin], menu: 'Masters' },
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
   })),
@@ -156,6 +159,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the partners calling ZED's APIs, with a switch per partner and per API.
+  { label: 'API Integrations', route: '/staff/settings/api-integrations', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).

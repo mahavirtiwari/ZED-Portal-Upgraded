@@ -23,13 +23,14 @@ public sealed class CertificationLookupController(
     IOptions<PortalOptions> portal,
     ILogger<CertificationLookupController> log) : ExternalApiController
 {
-    private ApiClients Clients => new(db, Options);
+    private ApiClients Clients => new(db, Options, Settings);
 
     private static ContentResult InvalidToken => LegacyJson(ApiServiceResponse.Status("401", "Invalid Token."));
     private static ContentResult NotFoundBody => LegacyJson(ApiServiceResponse.Status("404", "Invalid Details."));
     private static ContentResult BadRequestBody => LegacyJson(ApiServiceResponse.Status("400", "Bad Request"));
 
     /// <summary>Msme/DownloadCertificate (any verb): the latest certificate PDF, or HTTP 401/404/500 as before.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [Route("/Msme/DownloadCertificate")]
     public async Task<IActionResult> DownloadCertificate(string? token, string? udyamNumber, string? certificationNumber, CancellationToken ct)
     {
@@ -47,6 +48,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetZedDetails (any verb): unit, plant, activity and levels by ZED ID and pledge e-mail.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [Route("/Msme/GetZedDetails")]
     public async Task<IActionResult> GetZedDetails(string? token, string? email, string? zedid, CancellationToken ct)
     {
@@ -77,6 +79,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetZedDetailsByUdyam (any verb): as GetZedDetails by Udyam + certificate number, with the certificate as base64.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [Route("/Msme/GetZedDetailsByUdyam")]
     public async Task<IActionResult> GetZedDetailsByUdyam(string? token, string? udyamNumber, string? certificationNumber, CancellationToken ct)
     {
@@ -112,6 +115,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetDetailsByUdyam (any verb, static token): plant and certification summary.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [Route("/Msme/GetDetailsByUdyam")]
     public async Task<IActionResult> GetDetailsByUdyam(string? token, string? udyamNumber, string? certificationNumber, CancellationToken ct)
     {
@@ -120,6 +124,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetDetailsByCertification (POST, token from Token/GenerateToken): as GetDetailsByUdyam.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [HttpPost("/Msme/GetDetailsByCertification")]
     public async Task<IActionResult> GetDetailsByCertification(string? token, string? udyamNumber, string? certificationNumber, CancellationToken ct)
     {
@@ -128,6 +133,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetDetailsByCertifications (POST): several Udyam + certificate pairs at once.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [HttpPost("/Msme/GetDetailsByCertifications")]
     public async Task<IActionResult> GetDetailsByCertifications(string? token, List<UdyamCertificationNumber>? udyamNumbers, CancellationToken ct)
     {
@@ -166,6 +172,7 @@ public sealed class CertificationLookupController(
     }
 
     /// <summary>Msme/GetCertifiedUnits (any verb, static token): public list of certified units, filtered and paged.</summary>
+    [PartnerApi(PartnerApiGroups.Lookups)]
     [Route("/Msme/GetCertifiedUnits")]
     public async Task<IActionResult> GetCertifiedUnits(string? token, string? state, string? msmeSize, string? sector, string? certification,
         string? pageNo, string? pageSize, CancellationToken ct)
@@ -213,6 +220,7 @@ public sealed class CertificationLookupController(
     /// Msme/GetStateCertificationsByPage (POST, token from GenerateToken): Andhra Pradesh's certification and
     /// handholding applications with fees and state subsidy (SP_API_GET_STATE_CERTIFIED_UNIT_DETAILS).
     /// </summary>
+    [PartnerApi(PartnerApiGroups.StateCertifications)]
     [HttpPost("/Msme/GetStateCertificationsByPage")]
     public async Task<IActionResult> GetStateCertificationsByPage(string? token, string? applicationType, int? pageNo, int? pageSize, CancellationToken ct)
     {

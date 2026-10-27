@@ -34,6 +34,8 @@ public sealed class ExternalApiTests : IDisposable
     private readonly byte[] _aesKey = RandomNumberGenerator.GetBytes(32);
     private readonly List<ClientRow> _clients;
     private readonly List<Dynamic> _dynamic = [];
+    /// <summary>dbo.V4Settings rows (the Admin's API Integrations switches).</summary>
+    private readonly Dictionary<string, string> _settings = [];
     private long _nextDynamicId = 100;
 
     private sealed class ClientRow
@@ -67,6 +69,8 @@ public sealed class ExternalApiTests : IDisposable
         {
             c.Id, Client = c.ClientName, c.ClientId, c.Token, ReverseToken = (bool?)c.ReverseToken, c.AesKey, c.AesIV,
         }).ToList();
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            _settings.Select(kv => (object)new Zed.Core.Data.PortalSettings.SettingRow(kv.Key, kv.Value)).ToList();
         _host.Sql.Queries[DynamicSql] = args =>
         {
             var token = FakeSql.Arg(args, "Token");
@@ -782,5 +786,51 @@ public sealed class ExternalApiTests : IDisposable
         Assert.Equal("{\"a\":\"ü\"}", AesEnvelope.TryDecrypt(expected, key, iv));
         Assert.Null(AesEnvelope.TryDecrypt("not base64!", key, iv));
         Assert.Null(AesEnvelope.TryDecrypt(Convert.ToBase64String(new byte[15]), key, iv));   // not a whole block
+    }
+    // ===== Administration → API Integrations: switches =====
+
+    [Fact]
+    public async Task A_disabled_client_gets_no_token_and_its_issued_tokens_are_refused()
+    {
+        var issued = IssueDynamic();
+        _settings[Zed.Portal.Features.ExternalApi.ApiClients.EnabledKey(1)] = "false";
+
+        var token = await Http().PostAsync("/Token/GenerateToken", Form(("clientId", SecureClientId), ("clientSecret", SecureSecret)));
+        Assert.Contains("Invalid Client ID or Client Secret.", await token.Content.ReadAsStringAsync());
+        var details = await Json(await Http().PostAsync("/Msme/GetDetailsByCertification",
+            Form(("token", issued), ("udyamNumber", Udyam), ("certificationNumber", Cert))));
+        Assert.Equal("401", details.GetProperty("StatusCode").GetString());
+
+        // The other clients are not affected.
+        var saathi = await Json(await Http().GetAsync($"/Msme/GetDetailsByUdyam?token={StaticToken}&udyamNumber={Udyam}&certificationNumber={Cert}"));
+        Assert.Equal("200", saathi.GetProperty("StatusCode").GetString());
+    }
+
+    [Fact]
+    public async Task A_switched_off_api_group_answers_503_and_the_others_still_work()
+    {
+        _settings[Zed.Portal.Features.ExternalApi.PartnerApiGroups.EnabledKey(Zed.Portal.Features.ExternalApi.PartnerApiGroups.Lookups)] = "false";
+
+        var off = await Http().GetAsync($"/Msme/GetDetailsByUdyam?token={StaticToken}&udyamNumber={Udyam}&certificationNumber={Cert}");
+        Assert.Equal((HttpStatusCode)503, off.StatusCode);
+        Assert.Contains("switched off", await off.Content.ReadAsStringAsync());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_API_GET_CERTIFIED_UNIT_DETAILS_BY_UDYAM");
+
+        var token = await Http().PostAsync("/Token/GenerateToken", Form(("clientId", SecureClientId), ("clientSecret", SecureSecret)));
+        Assert.Equal("1", (await Json(token)).GetProperty("StatusCode").GetString());
+    }
+
+    [Fact]
+    public async Task Every_partner_endpoint_belongs_to_a_switchable_group()
+    {
+        var actions = typeof(Zed.Portal.Features.ExternalApi.ExternalApiController).Assembly.GetTypes()
+            .Where(t => t.IsSubclassOf(typeof(Zed.Portal.Features.ExternalApi.ExternalApiController)))
+            .SelectMany(t => t.GetMethods(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.DeclaredOnly))
+            .Where(m => m.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.Routing.IRouteTemplateProvider), false).Length > 0)
+            .ToList();
+        Assert.NotEmpty(actions);
+        var missing = actions.Where(m => m.GetCustomAttributes(typeof(Zed.Portal.Features.ExternalApi.PartnerApiAttribute), false).Length == 0)
+            .Select(m => m.DeclaringType!.Name + "." + m.Name).ToList();
+        Assert.Empty(missing);
     }
 }

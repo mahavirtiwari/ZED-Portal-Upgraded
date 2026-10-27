@@ -19,17 +19,19 @@ namespace Zed.Portal.Features.ExternalApi;
 [ExternalApiErrors(ExternalApiErrorsAttribute.Plain500)]
 public sealed class IncentiveApiController(ISqlExecutor db, ILogger<IncentiveApiController> log) : ExternalApiController
 {
+    [PartnerApi(PartnerApiGroups.Incentives)]
     [HttpPost("/Msme/SubmitIncentive")]
     public Task<IActionResult> SubmitIncentive(SubmitIncentiveRequest request, string? token, CancellationToken ct) =>
         Submit("SP_API_SUBMIT_INCENTIVE_DETAILS", request, token, acceptsStaticToken: true, ct);
 
+    [PartnerApi(PartnerApiGroups.Incentives)]
     [HttpPost("/Msme/SubmitIncentiveV2")]
     public Task<IActionResult> SubmitIncentiveV2(SubmitIncentiveRequest request, string? token, CancellationToken ct) =>
         Submit("SP_API_SUBMIT_INCENTIVE_DETAILS_ALL_OPTIONAL", request, token, acceptsStaticToken: false, ct);
 
     private async Task<IActionResult> Submit(string procedure, SubmitIncentiveRequest r, string? token, bool acceptsStaticToken, CancellationToken ct)
     {
-        var clients = new ApiClients(db, Options);
+        var clients = new ApiClients(db, Options, Settings);
         // V1's procedure also accepts a static token with ReverseToken = 1; V2 only tokens from GenerateToken.
         var caller = acceptsStaticToken
             ? await clients.DynamicOrStaticAsync(token, StaticTokenScope.ReverseToken, ct)

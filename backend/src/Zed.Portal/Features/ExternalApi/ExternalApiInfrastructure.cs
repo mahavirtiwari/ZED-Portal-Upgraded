@@ -64,6 +64,9 @@ public abstract class ExternalApiController : ControllerBase
 
     protected string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
+    /// <summary>The Admin's settings (which API clients are disabled).</summary>
+    protected Zed.Core.Data.IPortalSettings? Settings => HttpContext.RequestServices.GetService<Zed.Core.Data.IPortalSettings>();
+
     protected static ContentResult LegacyJson(object? value) => LegacyResults.Json(value);
 }
 

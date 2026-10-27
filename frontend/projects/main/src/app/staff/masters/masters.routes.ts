@@ -48,15 +48,19 @@ const ALL_MASTERS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./parameters').then((m) => m.ParametersPage),
   },
+  // New in V4 (main only): the regions of the additional subsidy, and the states and districts from LGD.
+  { path: 'regions', title: 'ZED | Subsidy Regions', canActivate: [admin], loadComponent: () => import('./subsidy-regions').then((m) => m.SubsidyRegionsPage) },
+  { path: 'lgd', title: 'ZED | LG Directory', canActivate: [admin], loadComponent: () => import('./lgd-directory').then((m) => m.LgdDirectoryPage) },
 ];
 
 /**
  * Consultancy has no category or technology masters (their procedures are not in ZED_CONSULTANT). Surveillance has
  * sectors and the questionnaire only: it has no MSME pages or public home page that would show documents or banners.
+ * The subsidy regions and LGD masters are main's (its payment procedures read them).
  */
 export const MASTERS_ROUTES: Routes =
   PORTAL_SYSTEM === 'main'
     ? ALL_MASTERS_ROUTES
     : ALL_MASTERS_ROUTES.filter(
-        (r) => !(PORTAL_SYSTEM === 'surveillance' ? /^(categories|technologies|documents|page-settings)/ : /^(categories|technologies)/).test(r.path ?? ''),
+        (r) => !(PORTAL_SYSTEM === 'surveillance' ? /^(categories|technologies|documents|page-settings|regions|lgd)/ : /^(categories|technologies|regions|lgd)/).test(r.path ?? ''),
       );
