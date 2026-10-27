@@ -57,18 +57,17 @@ interface TextChallenge {
         <label>{{ label() }}</label>
       }
       @if (mode() === 'text') {
-        <div class="zed-text-captcha">
-          <div class="d-flex align-items-center gap-2">
-            @if (challenge(); as c) {
-              <img [src]="c.image" width="180" height="56" alt="Captcha: type the 6 letters and numbers shown" class="zed-captcha-image" />
-            }
-            <button type="button" class="btn btn-link p-1 zed-captcha-refresh" title="New captcha" aria-label="Show a new captcha" (click)="refresh()">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
-              </svg>
-            </button>
-          </div>
-          <input type="text" class="form-control mt-2 zed-captcha-input" maxlength="6" autocomplete="off" autocapitalize="characters"
+        <!-- Picture, refresh and answer on one line (they wrap only on a narrow screen). -->
+        <div class="zed-text-captcha d-flex flex-wrap align-items-center gap-2">
+          @if (challenge(); as c) {
+            <img [src]="c.image" width="160" height="50" alt="Captcha: type the 6 letters and numbers shown" class="zed-captcha-image" />
+          }
+          <button type="button" class="btn btn-link p-1 zed-captcha-refresh" title="New captcha" aria-label="Show a new captcha" (click)="refresh()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
+            </svg>
+          </button>
+          <input type="text" class="form-control zed-captcha-input" maxlength="6" autocomplete="off" autocapitalize="characters"
                  spellcheck="false" placeholder="Enter captcha" aria-label="Captcha" [value]="answer()" (input)="onAnswer($event)" />
         </div>
       } @else {
@@ -80,9 +79,9 @@ interface TextChallenge {
     }
   `,
   styles: `
-    .zed-captcha-image { border: 1px solid #ccc; border-radius: 4px; }
+    .zed-captcha-image { border: 1px solid #ccc; border-radius: 4px; height: 50px; width: auto; }
     .zed-captcha-refresh { color: #45a5ad; line-height: 1; }
-    .zed-captcha-input { max-width: 220px; letter-spacing: 3px; text-transform: uppercase; }
+    .zed-captcha-input { flex: 1 1 140px; min-width: 140px; max-width: 220px; height: 50px; letter-spacing: 3px; text-transform: uppercase; }
     .zed-captcha-input::placeholder { letter-spacing: normal; text-transform: none; }
   `,
 })

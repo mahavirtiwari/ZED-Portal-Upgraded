@@ -227,6 +227,16 @@ body {
     position: relative;
     z-index: 2;
 }
+/* V4: the eye is a button inside the field's wrapper, so centre it in the field instead of the float and negative margin. */
+.position-relative > .field-icon {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    float: none;
+    margin: 0;
+    line-height: 0;
+}
 .register-btn .btn {
     /*min-width: 120px;*/
     max-width: 100%;

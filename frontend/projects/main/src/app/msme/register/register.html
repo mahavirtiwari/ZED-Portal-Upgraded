@@ -2,9 +2,15 @@
 
 <main class="container register-page">
   @if (stepNumber() > 0) {
+    <!-- The old page's stepper: grey dots joined by a line, the current one ringed in orange, done ones ticked. -->
     <ol class="zed-stepper" aria-label="Registration progress">
       @for (n of [1, 2, 3, 4]; track n) {
-        <li [class.current]="n === stepNumber()" [class.done]="n < stepNumber()"><span class="visually-hidden">Step {{ n }}</span></li>
+        <li [class.current]="n === stepNumber()" [class.done]="n < stepNumber()">
+          <span class="round-tab">
+            @if (n < stepNumber()) { <img src="/Images/svgicons/stepper-completed.svg" alt="" /> }
+          </span>
+          <span class="visually-hidden">Step {{ n }}{{ n < stepNumber() ? ' (done)' : n === stepNumber() ? ' (current)' : '' }}</span>
+        </li>
       }
     </ol>
   }
@@ -102,6 +108,7 @@
                         <div class="unit-isselected">
                           <input type="radio" class="option-input yes radio" name="plant" [value]="$index" [attr.aria-label]="p['UnitName']"
                                  [checked]="plantIndex() === $index" (change)="plantIndex.set($index)" />
+                          <span>{{ plantIndex() === $index ? 'Selected' : 'Select this Unit' }}</span>
                         </div>
                         <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ p['UnitName'] }}</p></div>
                         <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ plantAddress(p) }}</p></div>
@@ -129,6 +136,7 @@
                           <input type="radio" class="option-input yes radio" name="activity" [value]="$index" [attr.aria-label]="a['Activity'] + ' ' + a['Five_DigitActivity']"
                                  [disabled]="plantIndex() === null"
                                  [checked]="activityIndex() === $index" (change)="activityIndex.set($index)" />
+                          <span>{{ activityIndex() === $index ? 'Selected' : 'Select this Activity' }}</span>
                         </div>
                         <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ a['Activity'] }}</p></div>
                         <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ a['Two_DigitActivity'] }}</p></div>
@@ -172,7 +180,7 @@
         </div>
         <div class="col-sm-3">
           <div class="panel panel-default panel-black">
-            <div class="panel-body"><div class="summary-title">Email ID
+            <div class="panel-body"><div class="summary-title"><span>Provided Email ID</span>
               <button type="button" class="btn btn-link p-0" aria-label="Change Email ID" (click)="openEmailModal()"><img src="/Images/svgicons/edit.svg" alt="" /></button>
             </div></div>
           </div>
@@ -181,7 +189,7 @@
         </div>
         <div class="col-sm-3">
           <div class="panel panel-default panel-black">
-            <div class="panel-body"><div class="summary-title">Plant
+            <div class="panel-body"><div class="summary-title"><span>Selected Unit</span>
               <button type="button" class="btn btn-link p-0" aria-label="Change plant" (click)="go('plant')"><img src="/Images/svgicons/edit.svg" alt="" /></button>
             </div></div>
           </div>
@@ -190,7 +198,7 @@
         </div>
         <div class="col-sm-3">
           <div class="panel panel-default panel-black">
-            <div class="panel-body"><div class="summary-title">Activity
+            <div class="panel-body"><div class="summary-title"><span>Selected Activity</span>
               <button type="button" class="btn btn-link p-0" aria-label="Change activity" (click)="go('plant')"><img src="/Images/svgicons/edit.svg" alt="" /></button>
             </div></div>
           </div>
@@ -259,27 +267,31 @@
   }
 </main>
 
-<!-- Pledge e-mail modal (#pledgeEmail) -->
+<!-- Pledge e-mail modal (#pledgeEmail), laid out as on the old page -->
 @if (modal() === 'email') {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="emailTitle">
-    <div class="modal-dialog modal-dialog-centered">
-      <form class="modal-content" (ngSubmit)="sendOtp()" novalidate>
+    <div class="modal-dialog modal-dialog-centered reg-dialog">
+      <form class="modal-content reg-modal" (ngSubmit)="sendOtp()" novalidate>
         <div class="modal-header">
           <h3 class="registration-title m-0" id="emailTitle">Enter Email ID</h3>
-          <button type="button" class="btn-close" aria-label="Close" (click)="modal.set(null)"></button>
+          <button type="button" class="reg-modal-close" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
-          <zed-text key="msme.registration.emailModalNote" />
-          <label class="input-title" for="email">Email ID</label>
-          <input id="email" name="email" type="email" class="form-control mb-3" maxlength="100" autocomplete="email" [(ngModel)]="email" required />
-          <label class="input-title" for="confirmEmail">Confirm Email ID</label>
-          <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
+          <zed-text key="msme.registration.emailModalNote" box="label-highlight" />
+          <div class="mb-3">
+            <label class="reg-modal-label" for="email">YOUR EMAIL ID</label>
+            <input id="email" name="email" type="email" class="form-control" maxlength="100" autocomplete="email" [(ngModel)]="email" required />
+          </div>
+          <div class="mb-1">
+            <label class="reg-modal-label" for="confirmEmail">CONFIRM EMAIL ID</label>
+            <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
+          </div>
           @if (modalError()) {
             <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div>
           }
         </div>
-        <div class="modal-footer">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">SEND OTP</button>
+        <div class="modal-footer justify-content-center">
+          <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">PROCEED</button>
         </div>
       </form>
     </div>
@@ -287,31 +299,38 @@
   <div class="modal-backdrop show"></div>
 }
 
-<!-- OTP modal (#verifyMobileNumber) -->
+<!-- OTP modal (#verifyMobileNumber), laid out as on the old page -->
 @if (modal() === 'otp') {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="otpTitle">
-    <div class="modal-dialog modal-dialog-centered">
-      <form class="modal-content" (ngSubmit)="verifyOtp()" novalidate>
+    <div class="modal-dialog modal-dialog-centered reg-dialog">
+      <form class="modal-content reg-modal" (ngSubmit)="verifyOtp()" novalidate>
         <div class="modal-header">
           <h3 class="registration-title m-0" id="otpTitle">Enter OTP</h3>
-          <button type="button" class="btn-close" aria-label="Close" (click)="modal.set(null)"></button>
+          <button type="button" class="reg-modal-close" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
-          <p class="small">An OTP has been sent to <strong>{{ email }}</strong>. It is valid for 10 minutes.</p>
-          <input name="otp" class="form-control text-center fs-4" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
-                 [(ngModel)]="otp" required />
-          @if (modalError()) {
-            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div>
-          }
-        </div>
-        <div class="modal-footer justify-content-between">
-          <div>
-            <button type="button" class="btn btn-link" [disabled]="resendIn() > 0 || busy()" (click)="resendOtp()">
-              Resend OTP @if (resendIn() > 0) { ({{ resendIn() }}s) }
-            </button>
-            <button type="button" class="btn btn-link" (click)="openEmailModal()">Change Email ID</button>
+          <div class="reg-otp-box">
+            <img src="/Images/svgicons/email.svg" width="48" alt="" />
+            <div class="label-highlight">
+              <p>OTP is successfully sent to <strong>{{ email }}</strong>, if not received, please check your junk/spam.</p>
+            </div>
+            <p class="mb-3">Please enter the OTP</p>
+            <input name="otp" class="form-control" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
+                   placeholder="OTP (One Time Password)" aria-label="OTP" [(ngModel)]="otp" required />
+            @if (resendIn() > 0) {
+              <span class="reg-otp-resend-off">Resend OTP</span>
+              <div class="label-highlight3 reg-otp-timer">Resend OTP will be activated after {{ resendIn() }} sec</div>
+            } @else {
+              <button type="button" class="btn btn-link reg-otp-resend" [disabled]="busy()" (click)="resendOtp()">Resend OTP</button>
+            }
+            @if (modalError()) {
+              <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div>
+            }
+            <div class="reg-modal-actions">
+              <button type="button" class="btn btn-default" (click)="modal.set(null)">Cancel</button>
+              <button type="submit" class="btn btn-primary" [disabled]="busy()">Submit</button>
+            </div>
           </div>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">VERIFY</button>
         </div>
       </form>
     </div>

@@ -204,7 +204,7 @@ public static partial class ContentCatalogue
             <p>Your ZED ID &amp; Password along with your ZED Pledge Certificate will be sent on this email ID.</p>
             """),
         Web("msme.registration.emailModalNote", "Registration: e-mail note (Enter Email ID)", Registration, Main, """
-            <p class="small">Your ZED ID, password and Pledge Certificate will be sent to this Email ID.</p>
+            <p><b>NOTE:</b> Your ZED ID &amp; Password along with your ZED Pledge Certificate will be sent on this email ID.</p>
             """),
         Web("msme.registration.confirm.checkbox", "Registration: confirm and proceed check box", Registration, Main, ConfirmProceed),
         // One paragraph per line: the page fades the lines in one after the other.

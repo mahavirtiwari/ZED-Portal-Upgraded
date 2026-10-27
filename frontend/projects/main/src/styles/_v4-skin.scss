@@ -94,6 +94,14 @@ table.table.table-zed thead tr th {
   border-radius: 12px;
   box-shadow: $shadow;
 }
+// The dark title bars are written "panel panel-default panel-black": the white card above must not cover them.
+.panel-black {
+  background: #232527;
+  color: #fff;
+  border: 0;
+  box-shadow: none;
+  border-radius: 4px;
+}
 .jumbotron { padding: 20px 22px; margin-bottom: 20px; }
 .panel { margin-bottom: 16px; border-radius: 12px; overflow: hidden; }
 .panel-default > .panel-heading {
