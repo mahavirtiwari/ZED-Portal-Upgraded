@@ -180,6 +180,9 @@ public sealed class EmailSettingsTests : IDisposable
         Assert.Equal("Registration: the port must be between 1 and 65535.", await Refusal(new { host = "smtp.zed.test", port = 0, from = "a@zed.test" }));
         Assert.Equal("Registration: please enter the From address.", await Refusal(new { host = "smtp.zed.test" }));
         Assert.StartsWith("Registration: 'nobody' is not a valid From address", await Refusal(new { host = "smtp.zed.test", from = "nobody" }));
+        // Microsoft 365 refuses a display name as the sign-in name; another server may accept any name.
+        Assert.Equal("Registration: smtp.office365.com only accepts the full mailbox address as the sign-in name (e.g. reg@zed.test).",
+            await Refusal(new { host = "smtp.office365.com", from = "ZED <reg@zed.test>", userName = "ZED Staging" }));
         Assert.Empty(ServerWrites());
 
         (await admin.PutAsJsonAsync("/api/staff/settings/email/servers/registration", new
@@ -208,6 +211,10 @@ public sealed class EmailSettingsTests : IDisposable
         r.EnsureSuccessStatusCode();
         Assert.Equal("Registration: mail server cleared; its mails use Default.", (await r.Content.ReadFromJsonAsync<MessageResponse>())!.Message);
         Assert.Equal("Registration", FakeSql.Arg(ServerWrites()[^1].Args, "Module"));
+
+        // Another mail server may take any sign-in name.
+        (await admin.PutAsJsonAsync("/api/staff/settings/email/servers/Payment", new { host = "smtp.zed.test", from = "pay@zed.test", userName = "zedsender" }))
+            .EnsureSuccessStatusCode();
     }
 
     [Fact]

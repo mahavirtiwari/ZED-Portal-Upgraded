@@ -208,7 +208,10 @@ databases only, then delete `E:\ZedStaging\SqlData`.
 
 1. Copy `deploy\settings.staging.example.json` to `E:\ZedV4\settings.json` (administrators only) and fill the empty
    values. **Every staging mail goes to `dev.zed@qcin.org`** (`Email__RedirectAllTo`, already set for the portals, the
-   mobile API and Zed.Jobs; do not add `Email__AllowedRecipientDomains`). The connection strings are filled in already:
+   mobile API and Zed.Jobs; do not add `Email__AllowedRecipientDomains`). For testing with the real recipients (only while
+   the test databases hold no real people's contact details), `deploy\Set-ZedTestMailDelivery.ps1 -Mode Recipients -Apply`
+   replaces it with `Email__DeliverToRecipients=true` in the settings file, the app pools and Zed.Jobs; `-Mode Redirect`
+   puts the redirect back. The connection strings are filled in already:
    `Server=.\SQLEXPRESS;Database=ZEDV4_…;Integrated Security=true;TrustServerCertificate=true` for every host and
    Zed.Jobs (the prefixed databases of section 3.0, the app pool's own Windows login, no passwords), with
    `Database__Prefix=ZEDV4_`; change them only if the databases get other names. Also: an SMTP account for `Email__Profiles__Default__*` (mail still only reaches dev.zed@qcin.org); a **separate

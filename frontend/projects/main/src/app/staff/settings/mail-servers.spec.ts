@@ -103,16 +103,58 @@ describe('MailServersCard', () => {
     expect(text(el.querySelector('.alert-success'))).toBe('Registration: mail server saved.');
   });
 
-  it('shows a refusal and keeps the form open', async () => {
+  const submitServer = async () => {
+    (el.querySelector('form.server-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+  };
+
+  it('checks the form before sending and marks the field', async () => {
     button(row('Payment'), 'Edit').click();
     await settle();
     await type('#smtpHost', '');
-    (el.querySelector('form.server-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await submitServer();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(text(el.querySelector('form.server-form .alert-danger'))).toBe('Please enter the mail server (host name).');
+    expect(el.querySelector('#smtpHost')!.classList).toContain('is-invalid');
+
+    await type('#smtpHost', 'smtp.pay.test');
+    await type('#smtpFrom', 'not an address');
+    await submitServer();
+    expect(text(el.querySelector('form.server-form .alert-danger'))).toContain("'not an address' is not a valid From address");
+
+    await type('#smtpFrom', 'Pay <pay@zed.test>');
+    await submitServer();
+    // A sign-in name with no saved password needs one.
+    expect(text(el.querySelector('form.server-form .alert-danger'))).toContain('Please enter the password');
+    http.expectNone((r) => r.method === 'PUT');
+  });
+
+  it('shows a refusal of the server inside the form and keeps it open', async () => {
+    button(row('Payment'), 'Edit').click();
     await settle();
-    http.expectOne((r) => r.method === 'PUT').flush({ title: 'Payment confirmation: please enter the mail server (host name).' }, { status: 400, statusText: 'Bad Request' });
+    await type('#smtpPassword', 'secret');
+    await submitServer();
+    http.expectOne((r) => r.method === 'PUT').flush({ title: 'The mail server could not be saved.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
-    expect(text(el.querySelector('.alert-danger'))).toBe('Payment confirmation: please enter the mail server (host name).');
+    expect(text(el.querySelector('form.server-form .alert-danger'))).toBe('The mail server could not be saved.');
     expect(el.querySelector('form.server-form')).not.toBeNull();
+  });
+
+  it('asks for the mailbox address as sign-in name on Microsoft 365, and flags a module that has another name', async () => {
+    button(row('Default'), 'Edit').click();
+    await settle();
+    await type('#smtpUser', 'ZED Staging');
+    expect(text(el.querySelector('form.server-form .help-block'))).toBe(
+      'This mail service only accepts the full mailbox address as the sign-in name, e.g. zed@zed.test.');
+    await submitServer();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(el.querySelector('#smtpUser')!.classList).toContain('is-invalid');
+
+    const flagged: MailServerInfo = { ...info, modules: info.modules.map((m) => m.key === 'Default' ? { ...m, saved: { ...m.saved!, userName: 'ZED Staging' } } : m) };
+    (fixture.componentInstance as unknown as { info: { set(v: MailServerInfo): void } }).info.set(flagged);
+    await settle();
+    expect([...row('Default').querySelectorAll('.uses .status-badge')].map(text)).toEqual(['Own server', 'check sign-in name']);
+    expect(text(row('Registration').querySelector('.uses'))).toContain('check sign-in name');
   });
 
   it('puts a module back on Default after asking', async () => {
@@ -125,6 +167,16 @@ describe('MailServersCard', () => {
     http.expectOne('/api/staff/settings/email/servers').flush(info);
     await settle();
     confirm.mockRestore();
+  });
+
+  it('refuses a test mail to something that is not one address', async () => {
+    await type('#testTo', 'me@zed.test; you@zed.test');
+    const send = button(el.querySelector('form.test-mail')!, 'Send test mail');
+    expect(send.disabled).toBe(true);
+    expect(text(el.querySelector('.help-block'))).toBe('Please enter one valid e-mail address.');
+    (el.querySelector('form.test-mail') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    http.expectNone((r) => r.method === 'POST');
   });
 
   it('sends a test mail of a module and shows the mail server error', async () => {

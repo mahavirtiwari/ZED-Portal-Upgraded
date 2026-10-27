@@ -55,6 +55,13 @@ public sealed class EmailOptions
     /// skipped.
     /// </summary>
     public string? AllowedRecipientDomains { get; set; }
+
+    /// <summary>
+    /// Not for Production (where mail always reaches its recipients): a test environment whose database holds no real
+    /// people's contact details may send to the real recipients, as Production does. Its hosts then start without
+    /// <see cref="RedirectAllTo"/> or <see cref="AllowedRecipientDomains"/>; either of them, when set, still applies.
+    /// </summary>
+    public bool DeliverToRecipients { get; set; }
 }
 
 /// <summary>The staging mail rule (<see cref="EmailOptions.RedirectAllTo"/>, <see cref="EmailOptions.AllowedRecipientDomains"/>), checked at startup.</summary>
@@ -62,12 +69,14 @@ public static class MailSafety
 {
     public const string RedirectSetting = "Email:RedirectAllTo";
     public const string DomainsSetting = "Email:AllowedRecipientDomains";
+    public const string DeliverSetting = "Email:DeliverToRecipients";
     public const string EnvironmentLabelSetting = "Portal:EnvironmentLabel";
 
     /// <summary>
     /// Development: no rule. Production: neither setting may be set (nor an environment label), so a staging setting never
-    /// reaches the live site. Any other environment (Staging, …) runs on copies of production data, so it must not mail
-    /// real people: one of the two settings, or a mail pickup folder, is required.
+    /// reaches the live site. Any other environment (Staging, …) may run on copies of production data, so it must not mail
+    /// real people: one of the two settings, or a mail pickup folder, is required, unless Email:DeliverToRecipients=true
+    /// says on purpose that its mails go to their real recipients.
     /// </summary>
     public static IReadOnlyList<string> Problems(IConfiguration config, IHostEnvironment env)
     {
@@ -81,10 +90,12 @@ public static class MailSafety
             if (!string.IsNullOrWhiteSpace(domains)) problems.Add($"{DomainsSetting} is set: in Production mail must reach its recipients");
             if (!string.IsNullOrWhiteSpace(config[EnvironmentLabelSetting])) problems.Add($"{EnvironmentLabelSetting} is set: the live site must not be labelled as a test environment");
         }
-        else if (string.IsNullOrWhiteSpace(redirect) && string.IsNullOrWhiteSpace(domains) && string.IsNullOrWhiteSpace(config["Email:PickupDirectory"]))
+        else if (string.IsNullOrWhiteSpace(redirect) && string.IsNullOrWhiteSpace(domains) && string.IsNullOrWhiteSpace(config["Email:PickupDirectory"])
+                 && !string.Equals(config[DeliverSetting], "true", StringComparison.OrdinalIgnoreCase))
         {
             problems.Add($"{RedirectSetting} or {DomainsSetting} (or Email:PickupDirectory) must be set in {env.EnvironmentName}: " +
-                "this environment runs on copies of production data and must not mail real people");
+                $"this environment may run on copies of production data and must not mail real people (or set {DeliverSetting}=true " +
+                "when its database holds no real people's contact details)");
         }
         foreach (var addr in Addresses(redirect))
             if (!MailboxAddress.TryParse(addr, out _)) problems.Add($"{RedirectSetting}: '{addr}' is not an e-mail address");

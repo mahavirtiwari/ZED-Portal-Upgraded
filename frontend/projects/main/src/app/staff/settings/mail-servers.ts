@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -34,6 +34,18 @@ export interface MailServerInfo {
   pickupDirectory: string | null;
   redirectAllTo: string | null;
   allowedRecipientDomains: string | null;
+}
+
+/** One e-mail address (the rule of the server's EmailAddresses). */
+export const EMAIL_PATTERN = /^[^@\s<>()]+@[^@\s<>()]+\.[A-Za-z]{2,}$/;
+
+/** Mail services that only accept the full mailbox address as the sign-in name. */
+const ADDRESS_SIGN_IN_HOSTS = /(^|\.)(office365\.com|outlook\.com|office\.com|gmail\.com|googlemail\.com|zoho\.com|zoho\.in)$/i;
+
+/** True when this host needs the mailbox address as sign-in name and the name given is not one. */
+export function signInNeedsAddress(host: string | null | undefined, userName: string | null | undefined): boolean {
+  const name = (userName ?? '').trim();
+  return !!name && ADDRESS_SIGN_IN_HOSTS.test((host ?? '').trim()) && !EMAIL_PATTERN.test(name);
 }
 
 interface ServerForm {
@@ -77,23 +89,25 @@ interface ServerForm {
         } @else if (s.allowedRecipientDomains) {
           <div class="alert alert-info mb-2" role="note">On this server mails reach only addresses in {{ s.allowedRecipientDomains }}.</div>
         }
-        @if (message(); as m) {
-          <div class="alert mb-2" [class.alert-success]="m.ok" [class.alert-danger]="!m.ok" role="status">{{ m.text }}</div>
-        }
+        <div #messageBox>
+          @if (message(); as m) {
+            <div class="alert mb-2" [class.alert-success]="m.ok" [class.alert-danger]="!m.ok" role="status">{{ m.text }}</div>
+          }
+        </div>
 
         <div class="table-responsive">
           <table class="table mb-2">
             <thead>
-              <tr><th>Module</th><th>Mail server used</th><th>Set</th><th class="text-center">Actions</th></tr>
+              <tr><th>Module</th><th>Mail server used</th><th>Uses</th><th class="text-center">Actions</th></tr>
             </thead>
             <tbody>
               @for (m of s.modules; track m.key) {
                 <tr [attr.data-module]="m.key">
-                  <td>
+                  <td data-label="Module">
                     <div class="fw-semibold">{{ m.label }}</div>
                     <small class="muted">{{ m.help }}</small>
                   </td>
-                  <td class="server">
+                  <td class="server" data-label="Mail server used">
                     @if (used(m); as u) {
                       <div>{{ u.host }}:{{ u.port }}</div>
                       <small class="muted">From {{ u.from || '(none)' }}@if (u.userName) { · sign-in {{ u.userName }} }</small>
@@ -101,7 +115,7 @@ interface ServerForm {
                       <span class="status-badge is-rejected">No mail server</span>
                     }
                   </td>
-                  <td class="uses">
+                  <td class="uses" data-label="Uses">
                     @switch (m.uses) {
                       @case ('Module') { <span class="status-badge is-active">Own server</span> }
                       @case ('Default') { <span class="status-badge is-info">Default</span> }
@@ -112,8 +126,13 @@ interface ServerForm {
                     @if (m.saved; as v) {
                       @if (v.userName && !v.passwordSet) { <div><span class="status-badge is-rejected">no password</span></div> }
                     }
+                    @if (used(m); as u) {
+                      @if (signInNeeds(u)) {
+                        <div><span class="status-badge is-rejected" title="This mail service only accepts the full mailbox address as the sign-in name">check sign-in name</span></div>
+                      }
+                    }
                   </td>
-                  <td>
+                  <td class="actions">
                     <div class="row-actions justify-content-center">
                       <button type="button" class="btn btn-sm btn-outline-primary" (click)="edit(m)">{{ m.saved ? 'Edit' : 'Set' }}</button>
                       @if (m.saved) {
@@ -130,11 +149,11 @@ interface ServerForm {
                       <form class="server-form" (ngSubmit)="save(m)" novalidate autocomplete="off">
                         <h6>{{ m.label }}: mail server</h6>
                         <div class="form-grid">
-                          <label for="smtpHost" class="req">Server (host)</label>
+                          <label for="smtpHost">Server (host)<span class="req">*</span></label>
                           <div class="host-port">
-                            <input id="smtpHost" name="smtpHost" class="form-control" maxlength="255" placeholder="e.g. smtp.office365.com"
+                            <input id="smtpHost" name="smtpHost" class="form-control" [class.is-invalid]="formError()?.field === 'host'" maxlength="255" placeholder="e.g. smtp.office365.com"
                                    [ngModel]="form().host" (ngModelChange)="set('host', $event)" />
-                            <input id="smtpPort" name="smtpPort" class="form-control port" type="number" min="1" max="65535" aria-label="Port"
+                            <input id="smtpPort" name="smtpPort" class="form-control port" [class.is-invalid]="formError()?.field === 'port'" type="number" min="1" max="65535" aria-label="Port"
                                    [ngModel]="form().port" (ngModelChange)="set('port', +$event)" />
                           </div>
                           <label for="smtpTls">Secure connection</label>
@@ -143,15 +162,21 @@ interface ServerForm {
                                    [ngModel]="form().startTls" (ngModelChange)="set('startTls', $event)" />
                             <label class="form-check-label" for="smtpTls">STARTTLS (usual on port 587). Off: SSL on port 465, or as the server offers.</label>
                           </div>
-                          <label for="smtpFrom" class="req">From</label>
-                          <input id="smtpFrom" name="smtpFrom" class="form-control" maxlength="320" placeholder="ZED <noreply@example.org>"
+                          <label for="smtpFrom">From<span class="req">*</span></label>
+                          <input id="smtpFrom" name="smtpFrom" class="form-control" [class.is-invalid]="formError()?.field === 'from'" maxlength="320" placeholder="ZED <noreply@example.org>"
                                  [ngModel]="form().from" (ngModelChange)="set('from', $event)" />
                           <label for="smtpUser">Sign-in name</label>
-                          <input id="smtpUser" name="smtpUser" class="form-control" maxlength="320" autocomplete="off" placeholder="Usually the mailbox address; empty: no sign-in"
-                                 [ngModel]="form().userName" (ngModelChange)="set('userName', $event)" />
+                          <div>
+                            <input id="smtpUser" name="smtpUser" class="form-control" [class.is-invalid]="formError()?.field === 'userName'" maxlength="320" autocomplete="off"
+                                   placeholder="Usually the mailbox address; empty: no sign-in"
+                                   [ngModel]="form().userName" (ngModelChange)="set('userName', $event)" />
+                            @if (signInNeeds(form())) {
+                              <small class="help-block">This mail service only accepts the full mailbox address as the sign-in name, e.g. {{ addressHint() }}.</small>
+                            }
+                          </div>
                           <label for="smtpPassword">Password</label>
                           <div>
-                            <input id="smtpPassword" name="smtpPassword" class="form-control" type="password" maxlength="256" autocomplete="new-password"
+                            <input id="smtpPassword" name="smtpPassword" class="form-control" [class.is-invalid]="formError()?.field === 'password'" type="password" maxlength="256" autocomplete="new-password"
                                    [placeholder]="m.saved?.passwordSet ? 'Saved. Leave empty to keep it' : ''"
                                    [disabled]="form().clearPassword" [ngModel]="form().password" (ngModelChange)="set('password', $event)" />
                             @if (m.saved?.passwordSet) {
@@ -164,8 +189,11 @@ interface ServerForm {
                             <small class="muted d-block mt-1">Stored encrypted for this server; never shown again.</small>
                           </div>
                         </div>
+                        @if (formError(); as e) {
+                          <div class="alert alert-danger mt-3 mb-0" role="alert">{{ e.text }}</div>
+                        }
                         <div class="form-actions">
-                          <button type="button" class="btn btn-default" (click)="editing.set(null)">Cancel</button>
+                          <button type="button" class="btn btn-default" (click)="cancel()">Cancel</button>
                           <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
                         </div>
                       </form>
@@ -183,12 +211,15 @@ interface ServerForm {
             @for (m of s.modules; track m.key) { <option [value]="m.key">{{ m.label }}</option> }
           </select>
           <label for="testTo">to</label>
-          <input id="testTo" name="testTo" type="email" class="form-control" maxlength="254" autocomplete="off" placeholder="name@example.com"
+          <input id="testTo" name="testTo" type="email" class="form-control" [class.is-invalid]="testInvalid()" maxlength="254" autocomplete="off" placeholder="name@example.com"
                  [ngModel]="testTo()" (ngModelChange)="testTo.set($event)" />
-          <button type="submit" class="btn btn-primary" [disabled]="testing() || !testTo().trim()">
+          <button type="submit" class="btn btn-primary" [disabled]="testing() || !testTo().trim() || testInvalid()">
             {{ testing() ? 'Sending…' : 'Send test mail' }}
           </button>
         </form>
+        @if (testInvalid()) {
+          <small class="help-block">Please enter one valid e-mail address.</small>
+        }
         @if (testResult(); as t) {
           <div class="alert mt-2 mb-0" [class.alert-success]="t.ok" [class.alert-danger]="!t.ok" role="status">{{ t.text }}</div>
         }
@@ -208,7 +239,22 @@ interface ServerForm {
     .test-mail { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
     .test-mail label { margin: 0; font-weight: 600; }
     .test-mail .form-select { flex: 0 1 260px; }
-    .test-mail .form-control { flex: 1 1 220px; max-width: 320px; }`,
+    .test-mail .form-control { flex: 1 1 220px; max-width: 320px; }
+    .mail-servers .uses div { margin-top: 4px; }
+    /* Phones: each module as a block of label / value lines instead of a table that scrolls sideways. */
+    @media (max-width: 767.98px) {
+      .mail-servers .table thead { display: none; }
+      .mail-servers .table, .mail-servers .table tbody, .mail-servers .table tr, .mail-servers .table td { display: block; width: 100%; }
+      .mail-servers .table tr { border-bottom: 1px solid #d5e1e2; }
+      .mail-servers .table tr:last-child { border-bottom: 0; }
+      .mail-servers .table td { border: 0 !important; padding: 6px 12px; }
+      .mail-servers .table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; }
+      .mail-servers .table td:first-child::before { display: none; }
+      .mail-servers .table td.actions { padding-bottom: 12px; }
+      .mail-servers .table td.actions .row-actions { justify-content: flex-start !important; }
+      .test-mail .form-select, .test-mail .form-control { flex: 1 1 100%; max-width: none; }
+      .test-mail .btn { width: 100%; }
+    }`,
 })
 export class MailServersCard {
   private readonly http = inject(HttpClient);
@@ -223,6 +269,13 @@ export class MailServersCard {
   protected readonly testTo = signal('');
   protected readonly testing = signal(false);
   protected readonly testResult = signal<{ ok: boolean; text: string } | null>(null);
+  /** A problem with the edited server, shown inside its form (field: the input to mark). */
+  protected readonly formError = signal<{ field: keyof ServerForm | null; text: string } | null>(null);
+  protected readonly testInvalid = computed(() => {
+    const to = this.testTo().trim();
+    return !!to && !EMAIL_PATTERN.test(to);
+  });
+  private readonly messageBox = viewChild<ElementRef<HTMLElement>>('messageBox');
   private readonly defaultModule = computed(() => this.info()?.modules.find((m) => m.key === 'Default') ?? null);
   /** Collapsed at first: the header says enough (how many modules have their own server, anything missing). */
   protected readonly open = signal(false);
@@ -251,6 +304,45 @@ export class MailServersCard {
     }
   }
 
+  protected signInNeeds(s: { host: string; userName: string | null }): boolean {
+    return signInNeedsAddress(s.host, s.userName);
+  }
+
+  /** The From address as an example sign-in name. */
+  protected addressHint(): string {
+    const from = this.form().from.trim();
+    const inner = (/<([^>]+)>/.exec(from)?.[1] ?? from).trim();
+    return EMAIL_PATTERN.test(inner) ? inner : 'name@example.org';
+  }
+
+  protected cancel(): void {
+    this.formError.set(null);
+    this.editing.set(null);
+  }
+
+  /** The server's checks, made before sending: the first problem, or null. */
+  private check(f: ServerForm, m: MailModuleView): { field: keyof ServerForm | null; text: string } | null {
+    const host = f.host.trim();
+    const from = f.from.trim();
+    if (!host) return { field: 'host', text: 'Please enter the mail server (host name).' };
+    if (/\s|\//.test(host)) return { field: 'host', text: 'Enter the host name only, e.g. smtp.office365.com.' };
+    if (!Number.isInteger(f.port) || f.port < 1 || f.port > 65535) return { field: 'port', text: 'The port must be a whole number between 1 and 65535.' };
+    if (!from) return { field: 'from', text: 'Please enter the From address.' };
+    const inner = /^[^<>]*<\s*([^<>\s]+)\s*>$/.exec(from)?.[1] ?? from;
+    if (!EMAIL_PATTERN.test(inner)) return { field: 'from', text: `'${from}' is not a valid From address (e.g. ZED <noreply@example.org> or noreply@example.org).` };
+    if (signInNeedsAddress(host, f.userName)) return { field: 'userName', text: `This mail service only accepts the full mailbox address as the sign-in name, e.g. ${this.addressHint()}.` };
+    const keepsPassword = !!m.saved?.passwordSet && !f.clearPassword;
+    if (f.userName.trim() && !f.password && !keepsPassword)
+      return { field: 'password', text: 'Please enter the password of this sign-in name (or leave the sign-in name empty for a server without sign-in).' };
+    return null;
+  }
+
+  private showMessage(message: { ok: boolean; text: string }): void {
+    this.message.set(message);
+    // The note sits above the table: bring it into view after a save or a clear further down.
+    setTimeout(() => this.messageBox()?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' }));
+  }
+
   protected edit(m: MailModuleView): void {
     // A module's own server, else what its mails use now (without a password: it is never sent to the page).
     const from = m.saved ?? this.used(m);
@@ -258,6 +350,7 @@ export class MailServersCard {
       ? { host: from.host, port: from.port, startTls: from.startTls, from: from.from ?? '', userName: from.userName ?? '', password: '', clearPassword: false }
       : MailServersCard.blank());
     this.message.set(null);
+    this.formError.set(null);
     this.editing.set(m.key);
   }
 
@@ -267,6 +360,9 @@ export class MailServersCard {
 
   protected async save(m: MailModuleView): Promise<void> {
     const f = this.form();
+    const problem = this.check(f, m);
+    this.formError.set(problem);
+    if (problem) return;
     this.busy.set(true);
     this.message.set(null);
     try {
@@ -274,11 +370,11 @@ export class MailServersCard {
         host: f.host.trim(), port: f.port || 587, startTls: f.startTls, from: f.from.trim(), userName: f.userName.trim(),
         password: f.clearPassword ? '' : f.password, clearPassword: f.clearPassword,
       }));
-      this.message.set({ ok: true, text: r.message });
       this.editing.set(null);
       await this.load();
+      this.showMessage({ ok: true, text: r.message });
     } catch (err) {
-      this.message.set({ ok: false, text: apiErrorMessage(err) });
+      this.formError.set({ field: null, text: apiErrorMessage(err) });
     } finally {
       this.busy.set(false);
     }
@@ -291,18 +387,18 @@ export class MailServersCard {
     this.message.set(null);
     try {
       const r = await firstValueFrom(this.http.delete<MessageResponse>(`${MailServersCard.url}/servers/${m.key}`));
-      this.message.set({ ok: true, text: r.message });
       if (this.editing() === m.key) this.editing.set(null);
       await this.load();
+      this.showMessage({ ok: true, text: r.message });
     } catch (err) {
-      this.message.set({ ok: false, text: apiErrorMessage(err) });
+      this.showMessage({ ok: false, text: apiErrorMessage(err) });
     } finally {
       this.busy.set(false);
     }
   }
 
   protected async sendTest(): Promise<void> {
-    if (this.testing() || !this.testTo().trim()) return;
+    if (this.testing() || !this.testTo().trim() || this.testInvalid()) return;
     this.testing.set(true);
     this.testResult.set(null);
     try {

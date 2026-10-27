@@ -72,6 +72,7 @@ try {
         if ($vars['Email__Profiles__Default__UserName'] -and -not $vars['Email__Profiles__Default__Password']) { Write-Bad "$pool has a sign-in name but no password" }
         if ($vars['Email__PickupDirectory']) { Write-Bad "$pool writes mails to files ($($vars['Email__PickupDirectory'])) instead of sending them" }
         if ($vars['Email__RedirectAllTo']) { Write-Note "$pool sends every mail to $($vars['Email__RedirectAllTo']) instead of its recipients" }
+        elseif ($vars['Email__DeliverToRecipients'] -eq 'true') { Write-Note "$pool sends mails to their real recipients (Email__DeliverToRecipients)" }
         Add-MailServer $vars $pool
     }
 }

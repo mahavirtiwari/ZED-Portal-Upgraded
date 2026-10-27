@@ -36,5 +36,9 @@ public sealed class StagingMailRuleTests
         Assert.Empty(MailSafety.Problems(staging, new Env("Staging")));
         Assert.Contains(MailSafety.Problems(staging, new Env("Production")), p => p.StartsWith("Email:RedirectAllTo is set"));
         Assert.Empty(MailSafety.Problems(Shipped(new() { ["Email:AllowedRecipientDomains"] = "qcin.org" }), new Env("Staging")));
+        // A test server whose mails go to their real recipients says so on purpose.
+        Assert.Empty(MailSafety.Problems(Shipped(new() { ["Email:DeliverToRecipients"] = "true" }), new Env("Staging")));
+        Assert.Contains(MailSafety.Problems(Shipped(new() { ["Email:DeliverToRecipients"] = "false" }), new Env("Staging")),
+            p => p.StartsWith("Email:RedirectAllTo or Email:AllowedRecipientDomains"));
     }
 }

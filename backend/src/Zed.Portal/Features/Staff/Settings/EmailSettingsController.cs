@@ -142,6 +142,8 @@ public sealed class EmailSettingsController(
         if (from.Length > 320 || !MailboxAddress.TryParse(from, out var parsed) || !parsed.Address.Contains('@'))
             return this.Problem400($"{m.Label}: '{from}' is not a valid From address (e.g. ZED <noreply@example.org> or noreply@example.org).");
         if (userName is { Length: > 320 }) return this.Problem400($"{m.Label}: the sign-in name is too long.");
+        if (userName is not null && NeedsAddressSignIn(hostName) && !(MailboxAddress.TryParse(userName, out var signIn) && signIn.Name.Length == 0 && signIn.Address == userName && userName.Contains('@')))
+            return this.Problem400($"{m.Label}: {hostName} only accepts the full mailbox address as the sign-in name (e.g. {parsed.Address}).");
         if (req.Password is { Length: > 256 }) return this.Problem400($"{m.Label}: the password is too long.");
 
         var newPassword = req.ClearPassword ? "" : string.IsNullOrEmpty(req.Password) ? null : req.Password;
@@ -222,4 +224,11 @@ public sealed class EmailSettingsController(
     }
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    /// <summary>Mail services that refuse any sign-in name but the mailbox address ("535 5.7.3 Authentication unsuccessful").</summary>
+    private static readonly string[] AddressSignInDomains =
+        ["office365.com", "outlook.com", "office.com", "gmail.com", "googlemail.com", "zoho.com", "zoho.in"];
+
+    internal static bool NeedsAddressSignIn(string hostName) =>
+        AddressSignInDomains.Any(d => hostName.Equals(d, StringComparison.OrdinalIgnoreCase) || hostName.EndsWith("." + d, StringComparison.OrdinalIgnoreCase));
 }

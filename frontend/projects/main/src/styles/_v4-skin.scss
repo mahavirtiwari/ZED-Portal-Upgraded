@@ -45,15 +45,23 @@ h4.registration-title, h5.registration-title { font-size: 18px; line-height: 26p
 .table > :last-child > tr:last-child > *:last-child { border-bottom-right-radius: $radius; }
 // A wide table scrolls sideways inside its box rather than being cut.
 .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+// Lines between the rows and between the columns, as in the old tables (the outer frame is the table's border).
 .table > :not(caption) > * > * {
   padding: 10px 12px;
   vertical-align: middle;
-  border-color: #e8eff0;
+  border-color: #d5e1e2;
+  border-style: solid;
+  border-width: 0 0 1px 0;
 }
-.table.table-bordered > :not(caption) > * > * { border-width: 0 0 1px 0; }
-.table.table-bordered > :not(caption) > * > *:not(:last-child) { border-right-width: 1px; }
+.table > :not(caption) > * > *:not(:last-child) { border-right-width: 1px; }
 .table > tbody > tr:last-child > * { border-bottom-width: 0; }
 .table > tbody > tr:hover > * { --bs-table-bg-state: #f3f9f9; }
+// Bootstrap paints a cell's background with an inset shadow; the old site's ".zed-legacy :hover { box-shadow: none }"
+// took it off the cell under the mouse, which then stayed white in a highlighted row.
+.table > :not(caption) > * > *,
+.table > :not(caption) > * > *:hover {
+  box-shadow: inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)));
+}
 // Header rows: the teal of the old tables, also for the rows the old pages marked with "btn-default".
 .table > thead > tr > th,
 .table > thead > tr > td,
@@ -82,6 +90,10 @@ table.table.table-zed thead tr th {
   padding: 28px 16px;
   text-align: center;
 }
+
+// ---- Notes ------------------------------------------------------------------------------------------------------
+// The old site.css drew .alert-success dark grey with white text; a success note is green.
+.alert-success { background-color: #e6f6ec; border-color: #bfe5cc; color: #1e5e33; }
 
 // ---- Boxes: filters, forms, panels -------------------------------------------------------------------------------
 // Only the plain boxes become white cards. Coloured panels (panel-black bars, panel-success, the level and dashboard

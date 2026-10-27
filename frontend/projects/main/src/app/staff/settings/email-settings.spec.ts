@@ -74,11 +74,40 @@ describe('EmailSettingsPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('Email settings saved.');
   });
 
-  it('shows refusals', async () => {
+  it('shows refusals next to the Save button', async () => {
+    const box = input('Email.ContactInbox');
+    box.value = 'office@zed.test';
+    box.dispatchEvent(new Event('input'));
+    await settle();
     addresses().dispatchEvent(new Event('submit'));
     await settle();
     http.expectOne((r) => r.method === 'PUT').flush({ title: "Contact ZED queries: 'x' is not a valid e-mail address." }, { status: 400, statusText: 'Bad Request' });
     await settle();
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('is not a valid e-mail address');
+    expect(addresses().querySelector('.alert-danger')!.textContent).toContain('is not a valid e-mail address');
+  });
+
+  it('offers Save only after a change', async () => {
+    const save = () => addresses().querySelector('button[type=submit]') as HTMLButtonElement;
+    expect(save().disabled).toBe(true);
+    const box = input('Email.ContactInbox');
+    box.value = 'office@zed.test';
+    box.dispatchEvent(new Event('input'));
+    await settle();
+    expect(save().disabled).toBe(false);
+    expect(addresses().textContent).toContain('Unsaved changes');
+  });
+
+  it('checks the addresses before saving, marks the box and opens its card', async () => {
+    const box = input('Email.DbMailBcc');
+    box.value = 'ok@zed.test; not-an-address';
+    box.dispatchEvent(new Event('input'));
+    await settle();
+    addresses().dispatchEvent(new Event('submit'));
+    await settle();
+    http.expectNone((r) => r.method === 'PUT');
+    expect(box.classList).toContain('is-invalid');
+    expect(addresses().textContent).toContain("'not-an-address' is not a valid e-mail address.");
+    expect(addresses().querySelector('.alert-danger')!.textContent).toContain('Please correct Copy of every database mail.');
+    expect((el.querySelectorAll('form.addresses .collapse-body')[1] as HTMLElement).hidden).toBe(false);
   });
 });

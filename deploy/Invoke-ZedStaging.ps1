@@ -345,11 +345,18 @@ try {
             $value = { param($section, $name) $p = (Get-Section $json $section) | Where-Object Name -eq $name; if ($p) { [string]$p.Value } else { $null } }
             foreach ($check in @(
                     @('Common', 'ASPNETCORE_ENVIRONMENT', 'Staging'), @('Common', 'Database__Prefix', $Prefix),
-                    @('Common', 'Email__RedirectAllTo', 'dev.zed@qcin.org'), @('ZedJobs', 'Email__RedirectAllTo', 'dev.zed@qcin.org'),
                     @('ZedJobs', 'Database__Prefix', $Prefix), @('ZedJobs', 'DOTNET_ENVIRONMENT', 'Staging'), @('ZedJobs', 'Jobs__FolderRename__Enabled', 'false'),
                     @('Mobile', 'Portal__PublicBaseUrl', $BaseUrl))) {
                 $v = & $value $check[0] $check[1]
                 if ($v -eq $check[2]) { Write-Ok "$($check[0]).$($check[1])" } else { Write-Bad "$($check[0]).$($check[1]) must be '$($check[2])'" }
+            }
+            # Mail: every mail to dev.zed@qcin.org, or (deploy\Set-ZedTestMailDelivery.ps1 -Mode Recipients) to the real recipients.
+            foreach ($s in 'Common', 'ZedJobs') {
+                $redirect = & $value $s 'Email__RedirectAllTo'
+                $deliver = & $value $s 'Email__DeliverToRecipients'
+                if ($redirect -eq 'dev.zed@qcin.org') { Write-Ok "$s.Email__RedirectAllTo (mails go to dev.zed@qcin.org)" }
+                elseif ($deliver -eq 'true' -and -not $redirect) { Write-Ok "$s.Email__DeliverToRecipients (mails go to their real recipients)" }
+                else { Write-Bad "$s.Email__RedirectAllTo must be 'dev.zed@qcin.org', or Email__DeliverToRecipients 'true' (deploy\Set-ZedTestMailDelivery.ps1)" }
             }
             foreach ($s in $sections) {
                 foreach ($p in (Get-Section $json $s)) {
@@ -405,7 +412,7 @@ try {
                 foreach ($p in $sec.Value.PSObject.Properties) {
                     $new = [string]$p.Value
                     if ([string]::IsNullOrWhiteSpace($new)) { continue }
-                    if ($p.Name -match '^(ConnectionStrings__|Database__Prefix|Email__RedirectAllTo|ASPNETCORE_ENVIRONMENT|DOTNET_ENVIRONMENT)') { throw "$($sec.Name).$($p.Name) is not changed by a keys file." }
+                    if ($p.Name -match '^(ConnectionStrings__|Database__Prefix|Email__RedirectAllTo|Email__DeliverToRecipients|ASPNETCORE_ENVIRONMENT|DOTNET_ENVIRONMENT)') { throw "$($sec.Name).$($p.Name) is not changed by a keys file." }
                     $cur = $target.Value.PSObject.Properties[$p.Name]
                     $state = if (-not $cur) { 'added' } elseif ([string]::IsNullOrWhiteSpace([string]$cur.Value)) { 'filled in' } elseif ([string]$cur.Value -ceq $new) { 'unchanged' } else { 'REPLACED (it had another value)' }
                     Write-Host ("    {0,-45} {1}" -f "$($sec.Name).$($p.Name)", $state)
