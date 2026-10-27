@@ -267,6 +267,16 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("CATEGOR", StringComparison.Ordinal) || c.Name.Contains("TECHNOLOG", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task The_questionnaire_is_not_served_here_as_ZED_CONSULTANT_has_no_section_tables()
+    {
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/masters/parameters/Silver")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync("/api/staff/masters/parameters/Silver", new { sectionCode = "P1", sectionName = "Lead" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/questionnaire/Silver/P1/requirements")).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("SP_MASTER_GET_SECTIONS", StringComparison.Ordinal));
+    }
+
     private static Dictionary<string, object?> FeeRow(int id, string cert, string milestone, decimal? coupon) => new()
     {
         ["Id"] = id, ["EnterpriseTypee"] = "Micro", ["Certification"] = cert, ["MileStone"] = milestone, ["SubsidyPercentage"] = 80m,
@@ -306,6 +316,11 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.False(m.TryGetProperty("BronzeTotal", out _));
         var super = await ConsultancyLogin.SignInAsync(_host, "SUPER1");
         Assert.False((await super.GetFromJsonAsync<JsonElement>("/api/staff/dashboard")).TryGetProperty("AssessmentAgencies", out _));
+
+        // The Admin gets MasterAdmin's dashboard: the procedure is asked as MasterAdmin (it has no Admin branch).
+        var admin = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(4, (await admin.GetFromJsonAsync<JsonElement>("/api/staff/dashboard")).GetProperty("AssessmentAgencies").GetInt32());
+        Assert.Equal("7", FakeSql.Arg(Call("SP_DASHBOARD_GET_DETAILS").Args, "RoleId"));
     }
 
     [Fact]

@@ -123,7 +123,8 @@ produced in the session scratchpad.
   class filter (C3). Dead: Details/GetDetails/UpdateMeetingComments (procs missing; button still on the page).
 - **Msme (web)**: dead except staff `Profile/{zedId}`, `GetProfileDetails`, `GetDetails` ("View Profile") and `DisablePlant`.
 - **MyDocuments** (Admin) same (lacks main's extension allow-list, C14). **Neft** same code, TU reimbursement rows.
-  **Questionaire**, **Sector** same.
+  **Sector** same. **Questionaire** is dead (ZED_CONSULTANT has no `Sections`/`Requirements` tables): not served in
+  V4; the Admin lands on the dashboard (MasterAdmin's) instead.
 - **Remote** (variant): the milestone page calls UpdateConfirmance, ValidateEvidence, ValidateProduct,
   ValidateSiteExterior, SaveCapturedPhoto, UpdateComments, UpdateRemarks, ConfirmFinalSubmit, FinalSubmit.
   `ConfirmFinalSubmit` and `FinalSubmit` pass `@UserId`; the procedures branch lead vs co-consultant on it and run the

@@ -65,7 +65,7 @@ public sealed class DashboardTests : IDisposable
     }
 
     [Theory]
-    [InlineData("ADMIN1", "/api/staff/dashboard")]
+    [InlineData("STATE1", "/api/staff/dashboard")]
     [InlineData("STATE1", "/api/staff/dashboard/counts")]
     [InlineData("AGENCY1", "/api/staff/dashboard/registered-msme")]
     [InlineData("MASTER1", "/api/staff/dashboard/registered-msme")]

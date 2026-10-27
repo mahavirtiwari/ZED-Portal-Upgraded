@@ -165,10 +165,14 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
 
     public static readonly string[] SectionTypes = ["Bronze", "Silver", "Gold"];
 
+    // ZED_CONSULTANT has no questionnaire tables (Sections, Requirements, ...: database/README.md), so the parameters are
+    // not served on Consultancy; its live Questionaire pages failed the same way.
+
     public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description);
 
     /// <summary>Parameters of a certification level (first set of SP_MASTER_GET_SECTIONS).</summary>
     [HttpGet("parameters/{sectionType}")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<IReadOnlyList<Parameter>>> Parameters(string sectionType, CancellationToken ct)
     {
         var type = SectionType(sectionType);
@@ -179,6 +183,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description);
 
     [HttpPost("parameters/{sectionType}")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> AddParameter(string sectionType, ParameterRequest req, CancellationToken ct)
     {
         var type = SectionType(sectionType);
@@ -197,6 +202,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     public sealed record ParameterUpdateRequest(string? SectionName, string? Description);
 
     [HttpPut("parameters/{sectionType}/{id:int}")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> UpdateParameter(string sectionType, int id, ParameterUpdateRequest req, CancellationToken ct)
     {
         var type = SectionType(sectionType);

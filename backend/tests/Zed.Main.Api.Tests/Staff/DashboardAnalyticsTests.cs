@@ -36,9 +36,18 @@ public sealed class DashboardAnalyticsTests : IDisposable
     {
         var anonymous = await _host.CreateBrowserAsync();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/staff/dashboard/analytics")).StatusCode);
-        var admin = await _host.SignInAsync("ADMIN1");
-        Assert.Equal(HttpStatusCode.Forbidden, (await admin.GetAsync("/api/staff/dashboard/analytics")).StatusCode);
+        var coordinator = await _host.SignInAsync("STATE1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await coordinator.GetAsync("/api/staff/dashboard/analytics")).StatusCode);
         Assert.Equal(0, Calls());
+    }
+
+    [Fact]
+    public async Task The_admin_sees_the_whole_portal_as_the_master_admin_does()
+    {
+        var admin = await _host.SignInAsync("ADMIN1");
+        var r = await admin.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics");
+        Assert.Equal(724287, r!.Totals.Registered);
+        Assert.Equal("1", FakeSql.Arg(_host.LastCall(Proc).Args, "RoleId"));
     }
 
     [Fact]

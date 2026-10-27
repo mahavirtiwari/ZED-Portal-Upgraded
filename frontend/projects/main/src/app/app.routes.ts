@@ -353,8 +353,11 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
 /** Consultancy (handholding) staff screens. */
 const CONSULTANCY_STAFF_CHILDREN: Routes = [
   ...SYSTEM_COMMON_STAFF_CHILDREN,
+  // No questionnaire here: ZED_CONSULTANT has no section tables (its live Questionaire pages failed too). The Admin's
+  // old landing page and bookmarks open the dashboard instead.
+  { path: 'masters/parameters', redirectTo: '/staff/dashboard' },
+  { path: 'masters/parameters/:sectionType', redirectTo: '/staff/dashboard' },
   { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
-  { path: 'questionnaire', loadChildren: () => import('./staff/questionnaire/questionnaire.routes').then((m) => m.QUESTIONNAIRE_ROUTES) },
   {
     path: 'neft/new',
     title: 'ZED | NEFT New Transactions',

@@ -10,10 +10,10 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 /// Staff home dashboard. Port of DashboardController.Index (SP_DASHBOARD_GET_DETAILS through
 /// DashboardHelper.GetDashboardDetails) and GetCountsByFilter (SP_DASHBOARD_COUNTS_BY_FILTERS).
 /// The procedure scopes the certification cards by the signed-in user: agencies and assessors see only
-/// their own allotments, a state-bound Ministry user only that state.
+/// their own allotments, a state-bound Ministry user only that state. New in V4: the Admin sees MasterAdmin's dashboard.
 /// </summary>
 [Route("api/staff/dashboard")]
-[StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Ministry, UserRole.Agency, UserRole.DesktopAssessor,
+[StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Admin, UserRole.Ministry, UserRole.Agency, UserRole.DesktopAssessor,
     UserRole.CitizenFeedback, UserRole.QC)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) : StaffApiController
@@ -52,10 +52,13 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
     [HttpGet]
     public async Task<Dictionary<string, object?>> Summary(CancellationToken ct)
     {
-        var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_GET_DETAILS", new { UserId, RoleId = RoleId.ToString() }, ct);
+        // The procedures have no Admin branch: the Admin is counted as MasterAdmin (the whole portal).
+        var asMasterAdmin = IsRole(UserRole.MasterAdmin) || IsRole(UserRole.Admin);
+        var role = IsRole(UserRole.Admin) ? (int)UserRole.MasterAdmin : RoleId;
+        var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_GET_DETAILS", new { UserId, RoleId = role.ToString() }, ct);
         string[] columns = host.System switch
         {
-            PortalSystem.Consultancy when IsRole(UserRole.MasterAdmin) => [.. ConsultancyMasterAdminColumns, .. ConsultancySummaryColumns],
+            PortalSystem.Consultancy when asMasterAdmin => [.. ConsultancyMasterAdminColumns, .. ConsultancySummaryColumns],
             PortalSystem.Consultancy => ConsultancySummaryColumns,
             PortalSystem.Surveillance => SurveillanceSummaryColumns,
             _ => SummaryColumns,

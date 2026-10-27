@@ -176,9 +176,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'My Documents', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
-  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
-    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], group: 'Questionnaire', menu: 'Masters',
-  })),
+  // No Questionnaire: the live menu had it, but ZED_CONSULTANT has no section tables, so its pages failed.
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard) and settings.
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin], menu: 'Administration' },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], group: 'Settings', menu: 'Administration' },
@@ -290,14 +288,20 @@ export const STAFF_SYSTEM = new InjectionToken<PortalSystem>('STAFF_SYSTEM', { p
 /** The menu of this build. */
 export const STAFF_MENU: StaffMenuItem[] = MENUS[PORTAL_SYSTEM];
 
-/** Roles whose legacy home page was Dashboard/Index; the others keep the card home. */
-export const DASHBOARD_ROLE_IDS: number[] = [R.SuperAdmin, R.MasterAdmin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback, R.QC];
+/**
+ * Roles whose legacy home page was Dashboard/Index, and (new in V4) the Admin, who gets MasterAdmin's dashboard on
+ * every system; the others keep the card home.
+ */
+export const DASHBOARD_ROLE_IDS: number[] = [R.SuperAdmin, R.MasterAdmin, R.Admin, R.Ministry, R.Agency, R.DesktopAssessor, R.CitizenFeedback, R.QC];
 
-/** Where the old login sent a role on each system (UserController.Login), when not to the dashboard. */
+/**
+ * Where the old login sent a role on each system (UserController.Login), when not to the dashboard. The Admin's old
+ * landing pages (Consultancy's Bronze questionnaire, Surveillance's fee master) give way to the dashboard.
+ */
 export const HOME_ROUTES: Record<PortalSystem, Partial<Record<number, string>>> = {
   main: {},
-  consultancy: { [R.Admin]: '/staff/masters/parameters/Bronze', [R.StateCoordinator]: '/staff/neft/new' },
-  surveillance: { [R.Admin]: '/staff/fees' },
+  consultancy: { [R.StateCoordinator]: '/staff/neft/new' },
+  surveillance: {},
 };
 
 /** The landing page of a role after sign-in, or null for the card home. */

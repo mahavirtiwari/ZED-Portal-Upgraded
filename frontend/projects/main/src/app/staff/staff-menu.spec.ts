@@ -61,12 +61,13 @@ describe('staff menu', () => {
 
     it('has no categories, technologies masters or legacy links', () => {
       const admin = c(StaffRole.Admin, []);
-      expect(admin).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'Bronze', 'Silver', 'Gold', 'User Management', 'Captcha Settings', 'Email Settings', 'Email Templates', 'Texts', 'App Forms']);
+      expect(admin).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'User Management', 'Captcha Settings', 'Email Settings', 'Email Templates', 'Texts', 'App Forms']);
       expect(menuFor(StaffRole.MasterAdmin, [], 'consultancy').every((i) => i.route && !i.legacyPath)).toBe(true);
     });
 
-    it('lands admins on the questionnaire and coordinators on NEFT', () => {
-      expect(homeFor(StaffRole.Admin, 'consultancy')).toBe('/staff/masters/parameters/Bronze');
+    it('lands admins on the dashboard (no questionnaire here) and coordinators on NEFT', () => {
+      expect(homeFor(StaffRole.Admin, 'consultancy')).toBe('/staff/dashboard');
+      expect(homeFor(StaffRole.Admin, 'main')).toBe('/staff/dashboard');
       expect(homeFor(StaffRole.StateCoordinator, 'consultancy')).toBe('/staff/neft/new');
       expect(homeFor(StaffRole.Ministry, 'consultancy')).toBe('/staff/dashboard');
     });
@@ -91,7 +92,7 @@ describe('staff menu', () => {
       expect(s(StaffRole.Agency, ['DesktopVerification'])).toContain('Allot Surveillance');
       expect(s(StaffRole.Agency, ['DesktopVerification'])).not.toContain('Allot Surveillance (Site)');
       expect(s(StaffRole.StateCoordinator, [])).toEqual([]);
-      expect(homeFor(StaffRole.Admin, 'surveillance')).toBe('/staff/fees');
+      expect(homeFor(StaffRole.Admin, 'surveillance')).toBe('/staff/dashboard');
       expect(homeFor(StaffRole.StateCoordinator, 'surveillance')).toBeNull();
     });
   });
@@ -103,7 +104,7 @@ describe('staff menu', () => {
     it('groups the long menus into a few drop-downs (V4)', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual(['Masters (9)', `Incentives (${INCENTIVE_TYPES.length})`, 'Administration (6)']);
-      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (7)', 'Administration (6)']);
+      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'Administration (6)']);
       expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (5)', 'Administration (6)']);
       // Each incentive type is its own entry: the same page with ?type=.
       expect(menuFor(StaffRole.Admin, [], 'main').find((i) => i.label === 'ASSAM')?.queryParams).toEqual({ type: 'ASSAM' });
