@@ -55,6 +55,11 @@ export interface IncentiveForm {
   activeStatus: boolean;
 }
 
+/** The new incentive's Id (null when the server could not find it again). */
+export interface IncentiveSaved extends MessageResponse {
+  id: number | null;
+}
+
 /** Client for api/staff/schemes/incentives and api/staff/schemes/incentive-master (Zed.Main.Api). */
 @Injectable({ providedIn: 'root' })
 export class IncentivesApi {
@@ -76,8 +81,8 @@ export class IncentivesApi {
     return this.http.get<CatalogueItem[]>('/api/staff/schemes/incentive-master', { params: new HttpParams().set('type', type) });
   }
 
-  create(form: IncentiveForm): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>('/api/staff/schemes/incentive-master', form);
+  create(form: IncentiveForm): Observable<IncentiveSaved> {
+    return this.http.post<IncentiveSaved>('/api/staff/schemes/incentive-master', form);
   }
 
   update(id: number, form: IncentiveForm): Observable<MessageResponse> {
@@ -101,10 +106,48 @@ export const STATES: { id: string; name: string }[] = [
   ['38', 'THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU'], ['16', 'TRIPURA'], ['9', 'UTTAR PRADESH'], ['5', 'UTTARAKHAND'], ['19', 'WEST BENGAL'],
 ].map(([id, name]) => ({ id, name }));
 
-/** Incentive types of the legacy Admin menu. */
-export const INCENTIVE_TYPES: { value: string; label: string }[] = [
-  { value: 'Common', label: 'Ministry of MSME' },
-  { value: 'Other', label: 'Other Incentives' },
-  { value: 'Financial', label: 'Financial Institution' },
-  ...STATES.map((s) => ({ value: s.name, label: s.name })).sort((a, b) => a.label.localeCompare(b.label)),
+/**
+ * The four groups of the Admin's Incentives menu (V4, as the LEAN portal's stakeholders). An incentive's IncentiveType
+ * is the group's type, or the state's name for State Government.
+ */
+export type IncentiveGroupKey = 'ministry' | 'state' | 'financial' | 'others';
+
+export interface IncentiveGroup {
+  key: IncentiveGroupKey;
+  label: string;
+  /** IncentiveType of the group; null for State Government (the state's name). */
+  type: string | null;
+  title: string;
+  subtitle: string;
+  createSubtitle: string;
+  /** Label of MinistryOrDepartment in this group. */
+  department: string;
+  departmentHint: string;
+}
+
+export const INCENTIVE_GROUPS: IncentiveGroup[] = [
+  {
+    key: 'ministry', label: 'Ministry of MSME', type: 'Common', title: 'Ministry of MSME Incentives',
+    subtitle: 'Central schemes administered by the Ministry of MSME and the Office of DC (MSME)',
+    createSubtitle: 'Add a central scheme administered by the Ministry of MSME or the Office of DC (MSME)',
+    department: 'Administering Department', departmentHint: 'e.g. Office of DC (MSME)',
+  },
+  {
+    key: 'state', label: 'State Government', type: null, title: 'State Government Incentives',
+    subtitle: 'Benefits notified by State Governments and Union Territory administrations',
+    createSubtitle: 'Add a benefit notified by a State Government or Union Territory',
+    department: 'State Department', departmentHint: 'e.g. Department of Industries',
+  },
+  {
+    key: 'financial', label: 'Financial Institution', type: 'Financial', title: 'Financial Institution Incentives',
+    subtitle: 'Credit and fee benefits offered by banks and financial institutions',
+    createSubtitle: 'Add a credit or fee benefit offered by a bank or financial institution',
+    department: 'Financial Institution', departmentHint: 'e.g. SIDBI',
+  },
+  {
+    key: 'others', label: 'Others', type: 'Other', title: 'Other Incentives',
+    subtitle: 'Support offered by agencies outside the categories above',
+    createSubtitle: 'Add support offered by an agency outside the categories above',
+    department: 'Issuing Agency', departmentHint: 'e.g. National Small Industries Corporation',
+  },
 ];

@@ -39,6 +39,37 @@ export interface DocumentRow {
   documentName: string;
   fileName: string | null;
   downloadUrl: string | null;
+  /** V4 (Documents/Videos): description, a video's address (no file then) and the role keys that may open it. */
+  description: string | null;
+  videoUrl: string | null;
+  roles: string[];
+  createdDate: string | null;
+}
+
+export interface DocumentRole {
+  key: string;
+  label: string;
+}
+
+export interface DocumentsResponse {
+  documents: DocumentRow[];
+  roles: DocumentRole[];
+}
+
+/** A new document: a file or a video link, given to the roles ticked. */
+export interface NewDocument {
+  documentName: string;
+  description: string;
+  roles: string[];
+  file: File | null;
+  videoUrl: string | null;
+}
+
+export interface DocumentUpdate {
+  documentName: string;
+  description: string;
+  videoUrl: string | null;
+  roles: string[];
 }
 
 export interface PageSettings {
@@ -94,15 +125,22 @@ export class MastersApi {
     return this.http.post<MessageResponse>(`${this.base}/technologies/${id}/active`, { isActive });
   }
 
-  documents(): Observable<DocumentRow[]> {
-    return this.http.get<DocumentRow[]>(`${this.base}/documents`);
+  documents(): Observable<DocumentsResponse> {
+    return this.http.get<DocumentsResponse>(`${this.base}/documents`);
   }
 
-  addDocument(documentName: string, file: File): Observable<MessageResponse> {
+  addDocument(d: NewDocument): Observable<MessageResponse> {
     const form = new FormData();
-    form.append('documentName', documentName);
-    form.append('file', file, file.name);
+    form.append('documentName', d.documentName);
+    form.append('description', d.description);
+    form.append('roles', d.roles.join(','));
+    if (d.videoUrl) form.append('videoUrl', d.videoUrl);
+    else if (d.file) form.append('file', d.file, d.file.name);
     return this.http.post<MessageResponse>(`${this.base}/documents`, form);
+  }
+
+  updateDocument(id: number, d: DocumentUpdate): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/documents/${id}`, d);
   }
 
   deleteDocument(id: number): Observable<MessageResponse> {

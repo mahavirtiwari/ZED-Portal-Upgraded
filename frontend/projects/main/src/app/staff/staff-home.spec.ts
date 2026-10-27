@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { StaffHomePage } from './staff-home';
 
@@ -25,10 +25,9 @@ describe('StaffHomePage', () => {
     const questionnaire = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Questionnaire')!;
     expect([...questionnaire.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ESG Checklist']);
     expect(el.querySelector('.group-card')!.textContent).toContain('Sectors');
-    // No row per state: the long incentives list is a chooser.
+    // The incentives in their four groups.
     const incentives = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Incentives')!;
-    expect(incentives.querySelector('select')).not.toBeNull();
-    expect(incentives.querySelectorAll('li').length).toBe(0);
+    expect([...incentives.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Ministry of MSME', 'State Government', 'Financial Institution', 'Others']);
   });
 
   it('shows the single screens of a role as tiles', async () => {
@@ -36,14 +35,5 @@ describe('StaffHomePage', () => {
     const tiles = [...el.querySelectorAll('a.tile')].map((a) => a.textContent!.replace(/\s+/g, ' ').trim());
     expect(tiles).toEqual(expect.arrayContaining([expect.stringContaining('Reports'), expect.stringContaining('Registered MSMEs')]));
     expect(tiles.some((t) => t.includes('Customer History'))).toBe(false);
-  });
-
-  it('opens the screen picked in a chooser', async () => {
-    const el = await render(1, 'Admin');
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
-    const select = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Incentives')!.querySelector('select')!;
-    select.value = '0';
-    select.dispatchEvent(new Event('change'));
-    expect(navigate).toHaveBeenCalledWith(['/staff/incentives'], expect.objectContaining({ queryParams: expect.any(Object) }));
   });
 });

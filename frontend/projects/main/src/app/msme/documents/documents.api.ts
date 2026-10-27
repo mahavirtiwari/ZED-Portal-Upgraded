@@ -9,6 +9,9 @@ import { Observable } from 'rxjs';
 export interface Guideline {
   DocumentName: string;
   DocumentPath: string | null;
+  /** V4 (Admin → Documents/Videos): its description, and a video's address (no file then). */
+  Description?: string | null;
+  VideoUrl?: string | null;
 }
 
 export interface CertificateLinks {

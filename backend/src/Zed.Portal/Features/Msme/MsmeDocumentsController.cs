@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Mvc;
+using Zed.Core.Content;
 using Zed.Core.Data;
 
 namespace Zed.Portal.Features.Msme;
 
 /// <summary>My Documents. Port of MsmeController.MyDocuments / GetMyDocuments.</summary>
 [Route("api/msme/documents")]
-public sealed class MsmeDocumentsController(ISqlExecutor db) : MsmeApiController
+public sealed class MsmeDocumentsController(ISqlExecutor db, IDocumentAccessStore access) : MsmeApiController
 {
     /// <summary>
     /// SP_MSME_GET_MY_DOCUMENTS for the signed-in ZED ID: <c>{ Guidelines, Certificates,
@@ -14,7 +15,7 @@ public sealed class MsmeDocumentsController(ISqlExecutor db) : MsmeApiController
     /// </summary>
     [HttpGet]
     public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct) =>
-        MsmeMyDocuments.ToClient(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), ZedId);
+        MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct)), ZedId);
 }
 
 /// <summary>Reads SP_MSME_GET_MY_DOCUMENTS and knows which of its columns name files.</summary>
@@ -47,7 +48,7 @@ public static class MsmeMyDocuments
     public static Task<ResultSets> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         db.QueryProcMultipleAsync(Procedure, new { ZedId = zedId }, ct);
 
-    /// <summary>The files the procedure lists for this ZED ID that pass the path checks.</summary>
+    /// <summary>The files the procedure lists for this ZED ID that pass the path checks (pass sets already through <see cref="MsmeGuidelines.ForMsme"/>).</summary>
     public static IEnumerable<MsmeFileEntry> Files(ResultSets sets, string zedId)
     {
         foreach (var (set, column, scope) in FileColumns)

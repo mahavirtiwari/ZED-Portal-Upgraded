@@ -301,9 +301,18 @@ public sealed class SchemesIncentiveTests : IDisposable
     {
         var admin = await SignIn("ADMIN1");
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master", Incentive("---"))).StatusCode);
-        var insert = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MASTER_INSERT_INCENTIVE");
+        var insert = _host.Sql.Calls.First(c => c.Name == "SP_MASTER_INSERT_INCENTIVE");
         Assert.Equal("Common", FakeSql.Arg(insert.Args, "IncentiveType"));
         Assert.Equal("---", FakeSql.Arg(insert.Args, "WebLink"));
+
+        // The new incentive's Id comes back (the newest of its type with that title), so its documents can be attached next.
+        _host.Sql.Procs["SP_MASTER_GET_INCENTIVES"] = _ => FakeSql.Sets(
+            [new { Id = 41L, Incentive = "Scheme A" }, new { Id = 57L, Incentive = "Scheme B" }, new { Id = 12L, Incentive = "Scheme B" }]);
+        var created = await (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master", Incentive())).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(("Incentive saved.", 57L), (created.GetProperty("message").GetString(), created.GetProperty("id").GetInt64()));
+        _host.Sql.Procs["SP_MASTER_GET_INCENTIVES"] = args => FakeSql.Arg(args, "IncentiveType") == "Common"
+            ? FakeSql.Sets([new { Id = 41L, IncentiveType = "Common", Incentive = "Scheme A", WebLink = "https://msme.gov.in", OrderNo = 1 }])
+            : FakeSql.Sets([]);
 
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/99", Incentive())).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/41", Incentive())).StatusCode);

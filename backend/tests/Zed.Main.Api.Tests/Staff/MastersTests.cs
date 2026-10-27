@@ -24,6 +24,12 @@ public sealed class MastersTests : IDisposable
         }]);
         _host.Sql.Procs["SP_MASTER_ACTIVE__DEACTIVE_TECHNOLOGIES"] = _ => FakeSql.Sets([new { StatusCode = 200, Message = "OK" }]);
         _host.Sql.Procs["SP_MASTER_GET_MY_DOCUMENTS"] = _ => FakeSql.Sets(_documents.Cast<object>());
+        // As the procedure: the new row is listed (with the next Id).
+        _host.Sql.Procs["SP_MASTER_INSERT_MY_DOCUMENT"] = args =>
+        {
+            _documents.Add(new() { ["Id"] = 4 + _documents.Count, ["DocumentName"] = FakeSql.Arg(args, "DocumentName"), ["DocumentPath"] = FakeSql.Arg(args, "DocumentPath") });
+            return FakeSql.Sets();
+        };
         _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([new { Id = 3, SectionType = "Bronze", SectionCode = "P1", SectionName = "Leadership", iButton = "<b>x</b>" }]);
     }
 
@@ -34,7 +40,11 @@ public sealed class MastersTests : IDisposable
     private static MultipartFormDataContent Upload(byte[] content, string fileName, string contentType, string? documentName = "Guidelines")
     {
         var form = new MultipartFormDataContent();
-        if (documentName is not null) form.Add(new StringContent(documentName), "documentName");
+        if (documentName is not null)
+        {
+            form.Add(new StringContent(documentName), "documentName");
+            form.Add(new StringContent("msme"), "roles");
+        }
         var file = new ByteArrayContent(content);
         file.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         form.Add(file, "file", fileName);
@@ -132,8 +142,7 @@ public sealed class MastersTests : IDisposable
         Assert.Equal(PdfBytes, await File.ReadAllBytesAsync(file));
 
         // The row as SP_MASTER_GET_MY_DOCUMENTS returns it can be downloaded by the admin.
-        _documents.Add(new() { ["Id"] = 4, ["DocumentName"] = "Guidelines", ["DocumentPath"] = stored });
-        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/documents");
+        var list = (await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/documents")).GetProperty("documents");
         Assert.Equal("/api/staff/masters/documents/4/file", list[0].GetProperty("downloadUrl").GetString());
         var download = await client.GetAsync("/api/staff/masters/documents/4/file");
         Assert.Equal(HttpStatusCode.OK, download.StatusCode);

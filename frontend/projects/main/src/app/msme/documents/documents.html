@@ -17,9 +17,14 @@
           <div class="alert alert-document">
             <div>
               <img class="icon-bg" src="/Images/svgicons/document.svg" alt="document" />
-              <p>{{ d.DocumentName }}</p>
+              <p>
+                {{ d.DocumentName }}
+                @if (d.Description) { <small class="d-block text-muted">{{ d.Description }}</small> }
+              </p>
             </div>
-            @if (d.DocumentPath) {
+            @if (d.VideoUrl) {
+              <a class="doc-download" [href]="d.VideoUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Watch ' + d.DocumentName">Watch</a>
+            } @else if (d.DocumentPath) {
               <a class="doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
                 <img src="/Images/svgicons/download.svg" alt="download" />
               </a>

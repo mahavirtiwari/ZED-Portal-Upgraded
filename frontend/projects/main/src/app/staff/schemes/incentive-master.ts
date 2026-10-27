@@ -1,37 +1,34 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { firstValueFrom } from 'rxjs';
-import { CatalogueItem, INCENTIVE_TYPES, IncentiveForm, IncentivesApi } from './incentives.api';
+import { combineLatest, firstValueFrom } from 'rxjs';
+import { CatalogueItem, INCENTIVE_GROUPS, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
 import { PagedView, PagerComponent } from '../pager';
-import { CollapseCard } from '../collapse-card';
 
 export const MAX_INCENTIVE_DOC_BYTES = 2 * 1024 * 1024;
 
-function emptyForm(type: string): IncentiveForm {
-  return {
-    incentiveType: type, incentive: '', details: '', ministryOrDepartment: '', contactPerson: '', webLink: '', email: '',
-    mobileNo: '', videoLink: '', applicableForBronze: false, applicableForSilver: false, applicableForGold: false, activeStatus: true,
-  };
-}
+type StatusFilter = 'all' | 'active' | 'inactive';
 
 /**
- * Incentive catalogue for the Admin role (shown on the public incentive pages). Port of
- * Views/Incentive/Index.cshtml: add, edit and the two PDF documents of each incentive. The type comes
- * from the `type` query parameter, as the legacy menu's `IncentiveType`.
+ * Incentive catalogue for the Admin role (shown on the public incentive pages), one page per group of the Incentives
+ * menu: Ministry of MSME, State Government (a state is chosen on the page), Financial Institution and Others (V4, as the
+ * LEAN portal's incentive pages; the old Views/Incentive/Index.cshtml had one page per type). Create New Incentive and
+ * Edit open the incentive's own page (incentive-form.ts); the two PDF documents can also be attached in the list.
  */
 @Component({
   selector: 'zed-staff-incentive-master',
-  imports: [FormsModule, PagerComponent, CollapseCard],
+  imports: [FormsModule, PagerComponent, RouterLink],
   template: `
-    <!-- As the live page: the type comes from the menu's Incentives drop-down (?type=). -->
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Incentives ({{ typeLabel() }})</h3>
-        <p class="page-sub">Incentives shown on the public incentive pages: add one here, then edit it or attach its documents in the list.</p>
+        <h3 class="registration-title">{{ group().title }}</h3>
+        <p class="page-sub">{{ group().subtitle }}</p>
       </div>
+      @if (group().key !== 'state' || state()) {
+        <a class="btn btn-primary" [routerLink]="['/staff/incentives', group().key, 'new']" [queryParams]="stateParams()">+ Create New Incentive</a>
+      }
     </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -40,118 +37,99 @@ function emptyForm(type: string): IncentiveForm {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
-    <zed-collapse-card title="Add Incentive" summary="Open to add a new incentive.">
-      <form class="add-form" (ngSubmit)="save()" novalidate>
-        <div class="form-grid">
-          @for (f of fields; track f.key) {
-            <label [for]="'inc-' + f.key">{{ f.label }}@if (f.required) {<span class="req">*</span>}</label>
-            <div>
-              <input class="form-control" [id]="'inc-' + f.key" [name]="f.key" [attr.maxlength]="f.max" [ngModel]="form()[f.key]" (ngModelChange)="patch(f.key, $event)" />
-              @if (f.hint) { <small class="muted">{{ f.hint }}</small> }
-            </div>
-          }
-          <div class="label">Applicable for<span class="req">*</span></div>
-          <div class="check-row">
-            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="b" [ngModel]="form().applicableForBronze" (ngModelChange)="patchBool('applicableForBronze', $event)" /> Bronze</label>
-            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="s" [ngModel]="form().applicableForSilver" (ngModelChange)="patchBool('applicableForSilver', $event)" /> Silver</label>
-            <label class="form-check-label"><input type="checkbox" class="form-check-input" name="g" [ngModel]="form().applicableForGold" (ngModelChange)="patchBool('applicableForGold', $event)" /> Gold</label>
-          </div>
-          <div class="label">Active<span class="req">*</span></div>
-          <div><input type="checkbox" class="form-check-input" name="active" aria-label="Active" [ngModel]="form().activeStatus" (ngModelChange)="patchBool('activeStatus', $event)" /></div>
-        </div>
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">SAVE</button>
-        </div>
-      </form>
-    </zed-collapse-card>
-
-    <div class="table-responsive">
-      <table class="table table-bordered table-zed">
-        <thead>
-          <tr>
-            <th class="text-center" style="width: 60px">S.No</th><th>Incentive</th><th>Details</th><th>Ministry/Department Associated</th><th>Contact Person</th>
-            <th class="text-center">Web Link</th><th class="text-center">Applicable for</th><th class="text-center" style="width: 90px">Action</th><th class="text-center" style="width: 170px">Upload Documents</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (item of view.page(); track item.incentive['Id']) {
-            <tr>
-              <td class="text-center">{{ view.serial($index) }}</td>
-              <td><strong>{{ item.incentive['Incentive'] }}</strong></td>
-              <td class="description">
-                @if (details(item); as d) {
-                  <div [class.clamp-3]="!expanded().has(id(item))" [title]="d">{{ d }}</div>
-                  @if (d.length > 160) {
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id(item))">{{ expanded().has(id(item)) ? 'less' : 'more' }}</button>
-                  }
-                }
-              </td>
-              <td>{{ item.incentive['MinistryOrDepartment'] }}</td>
-              <td>{{ item.incentive['ContactPerson'] }}</td>
-              <td class="text-center">
-                @if (httpLink(item.incentive['WebLink']); as link) {
-                  <a [href]="link" target="_blank" rel="noopener noreferrer">Web Link</a>
-                } @else { {{ item.incentive['WebLink'] }} }
-              </td>
-              <td class="text-center">
-                @if (item.incentive['ApplicableForBronze']) { <span class="zed-chip">Bronze</span> }
-                @if (item.incentive['ApplicableForSilver']) { <span class="zed-chip">Silver</span> }
-                @if (item.incentive['ApplicableForGold']) { <span class="zed-chip">Gold</span> }
-              </td>
-              <td class="text-center"><div class="row-actions justify-content-center"><button type="button" class="btn btn-outline-primary" (click)="edit(item)">Edit</button></div></td>
-              <td class="text-center">
-                @for (n of [1, 2]; track n) {
-                  <div class="doc-line">
-                    <label class="btn btn-sm btn-outline-primary mb-0">
-                      Doc {{ n }}
-                      <input type="file" class="d-none" accept="application/pdf" (change)="uploadDoc(item, n === 1 ? 1 : 2, $event)" />
-                    </label>
-                    @if (n === 1 ? item.hasDocument1 : item.hasDocument2) {
-                      <a [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document ' + n"><img src="Images/svgicons/pdf-icon.svg" alt="" height="26" /></a>
-                    }
-                  </div>
-                }
-              </td>
-            </tr>
-          } @empty {
-            @if (!busy()) { <tr><td colspan="9" style="padding: 0"><div class="no-data">No Data</div></td></tr> }
-          }
-        </tbody>
-      </table>
-    </div>
-    <zed-pager [pager]="view" />
-    @if (editingId() && editForm(); as e) {
-      <!-- As the live page: Edit opens the "Edit Incentive" pop-up. -->
-      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="edit-incentive-title">
-        <div class="modal-dialog modal-popup modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 class="registration-title m-0" id="edit-incentive-title">Edit Incentive</h3>
-              <button type="button" class="btn-close" aria-label="Close" (click)="cancelEdit()"></button>
-            </div>
-            <form (ngSubmit)="saveEdit()" novalidate>
-              <div class="modal-body">
-                @for (f of fields; track f.key) {
-                  <div class="mb-2">
-                    <label class="form-label" [for]="'edit-' + f.key">{{ f.label }}@if (f.required) {<span class="req">*</span>}</label>
-                    <input class="form-control" [id]="'edit-' + f.key" [name]="'edit-' + f.key" [attr.maxlength]="f.max" [ngModel]="e[f.key]" (ngModelChange)="patchEdit(f.key, $event)" />
-                  </div>
-                }
-                <div class="mb-2">
-                  <span class="form-label">Active<span class="req">*</span></span>
-                  <input type="checkbox" class="form-check-input ms-2" name="edit-active" aria-label="Active" [ngModel]="e.activeStatus" (ngModelChange)="patchEdit('activeStatus', $event)" />
-                </div>
-                @if (editError()) { <div class="alert alert-danger mb-0" role="alert">{{ editError() }}</div> }
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="cancelEdit()">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">UPDATE</button>
-              </div>
-            </form>
-          </div>
-        </div>
+    @if (group().key === 'state') {
+      <div class="zed-card state-pick">
+        <label class="form-label" for="inc-state">State / UT</label>
+        <select class="form-select" id="inc-state" [ngModel]="state() ?? ''" (ngModelChange)="pickState($event)">
+          <option value="">Select state</option>
+          @for (s of states; track s.id) { <option [value]="s.name">{{ s.name }}</option> }
+        </select>
       </div>
-      <div class="modal-backdrop show"></div>
+    }
+
+    @if (group().key !== 'state' || state()) {
+      <div class="inc-tiles">
+        @for (t of tiles(); track t.label) {
+          <div class="inc-tile"><span class="inc-tile-label">{{ t.label }}</span><strong>{{ t.value }}</strong></div>
+        }
+      </div>
+
+      <section class="zed-card inc-list" [attr.aria-label]="listTitle()">
+        <div class="inc-list-head">
+          <h5 class="m-0">{{ listTitle() }} <span class="zed-chip">{{ items().length }} incentive{{ items().length === 1 ? '' : 's' }}</span></h5>
+          <div class="btn-group" role="group" aria-label="Status">
+            @for (f of filters; track f.value) {
+              <button type="button" class="btn btn-sm" [class.btn-primary]="status() === f.value" [class.btn-outline-primary]="status() !== f.value"
+                      [attr.aria-pressed]="status() === f.value" (click)="status.set(f.value)">{{ f.label }}</button>
+            }
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-zed">
+            <thead>
+              <tr>
+                <th class="text-center" style="width: 60px">S.No</th><th>Incentive</th><th>Details</th><th>{{ group().department }}</th><th>Contact Person</th>
+                <th class="text-center">Web Link</th><th class="text-center">Applicable for</th><th class="text-center">Status</th>
+                <th class="text-center" style="width: 90px">Action</th><th class="text-center" style="width: 170px">Documents</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of view.page(); track item.incentive['Id']) {
+                <tr>
+                  <td class="text-center">{{ view.serial($index) }}</td>
+                  <td><strong>{{ item.incentive['Incentive'] }}</strong></td>
+                  <td class="description">
+                    @if (details(item); as d) {
+                      <div [class.clamp-3]="!expanded().has(id(item))" [title]="d">{{ d }}</div>
+                      @if (d.length > 160) {
+                        <button type="button" class="btn btn-link btn-sm p-0" (click)="toggle(id(item))">{{ expanded().has(id(item)) ? 'less' : 'more' }}</button>
+                      }
+                    }
+                  </td>
+                  <td>{{ item.incentive['MinistryOrDepartment'] }}</td>
+                  <td>{{ item.incentive['ContactPerson'] }}</td>
+                  <td class="text-center">
+                    @if (httpLink(item.incentive['WebLink']); as link) {
+                      <a [href]="link" target="_blank" rel="noopener noreferrer">Web Link</a>
+                    } @else { {{ item.incentive['WebLink'] }} }
+                  </td>
+                  <td class="text-center">
+                    @if (item.incentive['ApplicableForBronze']) { <span class="zed-chip">Bronze</span> }
+                    @if (item.incentive['ApplicableForSilver']) { <span class="zed-chip">Silver</span> }
+                    @if (item.incentive['ApplicableForGold']) { <span class="zed-chip">Gold</span> }
+                  </td>
+                  <td class="text-center">
+                    <span class="status-badge" [class.is-active]="!!item.incentive['ActiveStatus']">{{ item.incentive['ActiveStatus'] ? 'Active' : 'Inactive' }}</span>
+                  </td>
+                  <td class="text-center">
+                    <a class="btn btn-outline-primary btn-sm" [routerLink]="['/staff/incentives', group().key, id(item), 'edit']" [queryParams]="stateParams()">Edit</a>
+                  </td>
+                  <td class="text-center">
+                    @for (n of [1, 2]; track n) {
+                      <div class="doc-line">
+                        <label class="btn btn-sm btn-outline-primary mb-0">
+                          Doc {{ n }}
+                          <input type="file" class="d-none" accept="application/pdf" (change)="uploadDoc(item, n === 1 ? 1 : 2, $event)" />
+                        </label>
+                        @if (n === 1 ? item.hasDocument1 : item.hasDocument2) {
+                          <a [href]="docUrl(item, n)" target="_blank" rel="noopener" [attr.aria-label]="'Document ' + n"><img src="Images/svgicons/pdf-icon.svg" alt="" height="26" /></a>
+                        }
+                      </div>
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                @if (!busy()) {
+                  <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ items().length ? 'No incentive matches this filter.' : 'Nothing here yet. Create the first incentive.' }}</div></td></tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+        <zed-pager [pager]="view" />
+      </section>
+    } @else {
+      <div class="no-data">Choose a state to see its incentives.</div>
     }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
@@ -159,8 +137,13 @@ function emptyForm(type: string): IncentiveForm {
   `,
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .check-row { display: flex; flex-wrap: wrap; gap: 8px 20px; }
-    .check-row .form-check-input { margin-right: 6px; }
+    .page-head { align-items: center; }
+    .state-pick { max-width: 420px; margin-bottom: 16px; }
+    .inc-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .inc-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+    .inc-tile-label { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #5f6f70; }
+    .inc-tile strong { font-size: 24px; color: #23474a; }
+    .inc-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
     .description { white-space: pre-wrap; min-width: 220px; }
     .doc-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; }
     .doc-line:last-child { margin-bottom: 0; }
@@ -168,28 +151,33 @@ function emptyForm(type: string): IncentiveForm {
 })
 export class IncentiveMasterPage {
   private readonly api = inject(IncentivesApi);
+  private readonly router = inject(Router);
 
-  protected readonly types = INCENTIVE_TYPES;
-  protected readonly fields: { key: keyof IncentiveForm; label: string; max: number; required: boolean; hint?: string }[] = [
-    { key: 'incentive', label: 'Incentive', max: 4000, required: true },
-    { key: 'details', label: 'Details', max: 4000, required: true },
-    { key: 'ministryOrDepartment', label: 'Ministry/Department Associated', max: 4000, required: true },
-    { key: 'contactPerson', label: 'Contact Person with Designation', max: 2000, required: true },
-    { key: 'email', label: 'Email', max: 200, required: true },
-    { key: 'mobileNo', label: 'Mobile/ Phone Number', max: 15, required: true },
-    { key: 'webLink', label: 'Web Link', max: 1000, required: true, hint: 'Full address starting with https:// (or --- for none).' },
-    { key: 'videoLink', label: 'Video Link', max: 2000, required: false, hint: 'Full address starting with https://.' },
+  protected readonly states = STATES;
+  protected readonly filters: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: 'All' }, { value: 'active', label: 'Active' }, { value: 'inactive', label: 'Inactive' },
   ];
 
-  protected readonly type = signal(inject(ActivatedRoute).snapshot.queryParamMap.get('type') || 'Common');
+  protected readonly group = signal<IncentiveGroup>(INCENTIVE_GROUPS[0]);
+  /** State Government: the state chosen (?state=). */
+  protected readonly state = signal<string | null>(null);
+  protected readonly status = signal<StatusFilter>('all');
   protected readonly items = signal<CatalogueItem[]>([]);
+  private readonly shown = computed(() => {
+    const s = this.status();
+    return s === 'all' ? this.items() : this.items().filter((i) => !!i.incentive['ActiveStatus'] === (s === 'active'));
+  });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.items());
-  protected readonly form = signal<IncentiveForm>(emptyForm(this.type()));
-  protected readonly editingId = signal<number | null>(null);
-  /** The incentive in the Edit pop-up (the form above the list only adds). */
-  protected readonly editForm = signal<IncentiveForm | null>(null);
-  protected readonly editError = signal('');
+  protected readonly view = new PagedView(() => this.shown());
+  protected readonly tiles = computed(() => {
+    const active = this.items().filter((i) => !!i.incentive['ActiveStatus']).length;
+    return [
+      { label: 'Incentives', value: this.items().length },
+      { label: 'Active', value: active },
+      { label: 'Inactive', value: this.items().length - active },
+    ];
+  });
+  protected readonly listTitle = computed(() => `${this.group().key === 'state' ? this.titleCase(this.state() ?? '') : this.group().label} Incentive Schemes`);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -197,16 +185,38 @@ export class IncentiveMasterPage {
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
 
   constructor() {
-    // The type follows ?type= (the menu's Incentives drop-down).
-    inject(ActivatedRoute).queryParamMap.pipe(takeUntilDestroyed()).subscribe((q) => {
-      const type = q.get('type') || 'Common';
-      if (type !== this.type() || this.items().length === 0) {
-        this.type.set(type);
-        this.cancelEdit();
-        this.form.set(emptyForm(type));
-        void this.load();
+    // A message of the incentive's page (saved) shows here after it returned.
+    const message = (history.state as { message?: unknown } | null)?.message;
+    if (typeof message === 'string') this.success.set(message);
+    const route = inject(ActivatedRoute);
+    combineLatest([route.paramMap, route.queryParamMap]).pipe(takeUntilDestroyed()).subscribe(([p, q]) => {
+      const group = INCENTIVE_GROUPS.find((g) => g.key === p.get('group'));
+      if (!group) {
+        void this.router.navigate(['/staff/incentives', INCENTIVE_GROUPS[0].key], { replaceUrl: true });
+        return;
       }
+      const state = group.key === 'state' ? (STATES.find((s) => s.name === q.get('state'))?.name ?? null) : null;
+      if (group === this.group() && state === this.state() && this.items().length) return;
+      this.group.set(group);
+      this.state.set(state);
+      this.status.set('all');
+      this.items.set([]);
+      if (this.type()) void this.load();
     });
+  }
+
+  /** IncentiveType of the list shown: the group's, or the chosen state's. */
+  private type(): string | null {
+    return this.group().type ?? this.state();
+  }
+
+  protected stateParams(): Record<string, string> | null {
+    return this.group().key === 'state' && this.state() ? { state: this.state()! } : null;
+  }
+
+  protected pickState(state: string): void {
+    this.success.set('');
+    void this.router.navigate([], { queryParams: { state: state || null }, replaceUrl: true });
   }
 
   protected id(item: CatalogueItem): number {
@@ -226,76 +236,28 @@ export class IncentiveMasterPage {
     });
   }
 
-  protected typeLabel(): string {
-    return this.types.find((t) => t.value === this.type())?.label ?? this.type();
-  }
-
-  protected patch(key: keyof IncentiveForm, value: string): void {
-    this.form.update((f) => ({ ...f, [key]: value }));
-  }
-
-  protected patchBool(key: keyof IncentiveForm, value: boolean): void {
-    this.form.update((f) => ({ ...f, [key]: !!value }));
-  }
-
-  protected patchEdit(key: keyof IncentiveForm, value: string | boolean): void {
-    this.editForm.update((f) => (f ? { ...f, [key]: key === 'activeStatus' ? !!value : value } : f));
-  }
-
-  protected edit(item: CatalogueItem): void {
-    const r = item.incentive;
-    const s = (k: string) => (r[k] === null || r[k] === undefined ? '' : String(r[k]));
-    this.success.set('');
-    this.editError.set('');
-    this.editingId.set(Number(r['Id']));
-    this.editForm.set({
-      incentiveType: this.type(), incentive: s('Incentive'), details: s('Details'), ministryOrDepartment: s('MinistryOrDepartment'),
-      contactPerson: s('ContactPerson'), webLink: s('WebLink'), email: s('Email'), mobileNo: s('MobileNo'), videoLink: s('VideoLink'),
-      applicableForBronze: !!r['ApplicableForBronze'], applicableForSilver: !!r['ApplicableForSilver'], applicableForGold: !!r['ApplicableForGold'],
-      activeStatus: !!r['ActiveStatus'],
-    });
-  }
-
-  protected cancelEdit(): void {
-    this.editingId.set(null);
-    this.editForm.set(null);
-  }
-
-  /** Adds an incentive of the current type (the form above the list). */
-  protected async save(): Promise<void> {
-    const f = { ...this.form(), incentiveType: this.type() };
-    const missing = this.fields.find((x) => x.required && !String(f[x.key] ?? '').trim());
-    if (missing) {
-      this.error.set(`${missing.label} required.`);
-      return;
-    }
-    await this.run(() => this.api.create(f), () => this.form.set(emptyForm(this.type())));
-  }
-
-  /** Saves the Edit pop-up. */
-  protected async saveEdit(): Promise<void> {
-    const id = this.editingId();
-    const e = this.editForm();
-    if (!id || !e) return;
-    const f = { ...e, incentiveType: this.type() };
-    const missing = this.fields.find((x) => x.required && !String(f[x.key] ?? '').trim());
-    if (missing) {
-      this.editError.set(`${missing.label} required.`);
-      return;
-    }
-    await this.run(() => this.api.update(id, f), () => this.cancelEdit());
-  }
-
   protected async uploadDoc(item: CatalogueItem, n: 1 | 2, event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
     input.value = '';
-    if (!file) return;
+    const type = this.type();
+    if (!file || !type) return;
     if (file.size > MAX_INCENTIVE_DOC_BYTES || !/\.pdf$/i.test(file.name)) {
       this.error.set('Please upload a valid PDF document (less than 2 MB).');
       return;
     }
-    await this.run(() => this.api.uploadDocument(Number(item.incentive['Id']), n, this.type(), file), () => undefined);
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      const r = await firstValueFrom(this.api.uploadDocument(this.id(item), n, type, file));
+      this.success.set(r.message);
+      this.items.set(await firstValueFrom(this.api.catalogue(type)));
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected docUrl(item: CatalogueItem, n: number): string {
@@ -308,29 +270,19 @@ export class IncentiveMasterPage {
     return /^https?:\/\/[^\s]+$/i.test(s) ? s : null;
   }
 
-  private async load(): Promise<void> {
-    this.busy.set(true);
-    this.error.set('');
-    try {
-      this.items.set(await firstValueFrom(this.api.catalogue(this.type())));
-    } catch (err) {
-      this.items.set([]);
-      this.error.set(apiErrorMessage(err));
-    } finally {
-      this.busy.set(false);
-    }
+  private titleCase(value: string): string {
+    return value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  private async run(action: () => ReturnType<IncentivesApi['create']>, done: () => void): Promise<void> {
+  private async load(): Promise<void> {
+    const type = this.type();
+    if (!type) return;
     this.busy.set(true);
     this.error.set('');
-    this.success.set('');
     try {
-      const r = await firstValueFrom(action());
-      done();
-      this.success.set(r.message);
-      this.items.set(await firstValueFrom(this.api.catalogue(this.type())));
+      this.items.set(await firstValueFrom(this.api.catalogue(type)));
     } catch (err) {
+      this.items.set([]);
       this.error.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);

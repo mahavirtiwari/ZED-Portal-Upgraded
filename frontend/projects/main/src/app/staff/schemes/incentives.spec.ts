@@ -2,8 +2,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { IncentiveFormPage } from './incentive-form';
 import { IncentiveMasterPage } from './incentive-master';
 import { IncentiveSubmissionsPage } from './incentive-submissions';
 import { IncentiveUploadPage } from './incentive-upload';
@@ -20,12 +21,12 @@ describe('incentive pages', () => {
     fixture.detectChanges();
   }
 
-  async function create<T>(component: Type<T>, query: Record<string, string> = {}) {
+  async function create<T>(component: Type<T>, query: Record<string, string> = {}, params: Record<string, string> = {}) {
     await TestBed.configureTestingModule({
       imports: [component],
       providers: [
         provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap({}) }, queryParamMap: of(convertToParamMap(query)), paramMap: of(convertToParamMap({})) } },
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap(params) }, queryParamMap: of(convertToParamMap(query)), paramMap: of(convertToParamMap(params)) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(component);
@@ -123,78 +124,56 @@ describe('incentive pages', () => {
     expect(el.querySelector('#incFile')).toBeTruthy();
   });
 
-  it('adds incentives of the chosen type and uploads PDF documents', async () => {
-    await create(IncentiveMasterPage, { type: 'Financial' });
+  const typeIn = (id: string, value: string) => {
+    const input = el.querySelector(`#${id}`) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  };
+  const link = (text: string) => [...el.querySelectorAll('a.btn')].find((a) => a.textContent!.includes(text));
+
+  it('lists the incentives of a group with their counts, a status filter and Edit pages', async () => {
+    await create(IncentiveMasterPage, {}, { group: 'financial' });
     http.expectOne((r) => r.url === '/api/staff/schemes/incentive-master' && r.params.get('type') === 'Financial').flush([
-      { incentive: { Id: 41, Incentive: 'Scheme A', WebLink: 'javascript:alert(1)', ApplicableForBronze: true }, hasDocument1: true, hasDocument2: false },
+      { incentive: { Id: 41, Incentive: 'Scheme A', WebLink: 'javascript:alert(1)', ApplicableForBronze: true, ActiveStatus: true }, hasDocument1: true, hasDocument2: false },
+      { incentive: { Id: 42, Incentive: 'Scheme B', WebLink: 'https://x.in', ActiveStatus: false }, hasDocument1: false, hasDocument2: false },
     ]);
     await settle();
-    expect(el.textContent).toContain('Incentives (Financial Institution)');
+    expect(el.querySelector('h3')!.textContent).toContain('Financial Institution Incentives');
+    expect([...el.querySelectorAll('.inc-tile')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Incentives2', 'Active1', 'Inactive1']);
+    expect(el.querySelector('thead')!.textContent).toContain('Financial Institution');
     // Non-http links are not rendered as links.
     expect(el.querySelector('tbody a[target="_blank"][href^="javascript"]')).toBeNull();
     expect(el.querySelector('a[aria-label="Document 1"]')!.getAttribute('href')).toBe('/api/staff/schemes/incentive-master/41/documents/1');
+    expect(el.querySelector('tbody a.btn')!.getAttribute('href')).toBe('/staff/incentives/financial/41/edit');
+    expect(link('Create New Incentive')!.getAttribute('href')).toBe('/staff/incentives/financial/new');
 
-    button('SAVE').click();
+    button('Inactive').click();
     await settle();
+    expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('strong')!.textContent)).toEqual(['Scheme B']);
+  });
+
+  it('asks for the state on the State Government page', async () => {
+    await create(IncentiveMasterPage, {}, { group: 'state' });
     http.expectNone('/api/staff/schemes/incentive-master');
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('Incentive required.');
-
-    const values: Record<string, string> = {
-      incentive: 'Scheme B', details: 'd', ministryOrDepartment: 'm', contactPerson: 'c', email: 'a@b.in', mobileNo: '011', webLink: 'https://x.in',
-    };
-    for (const [k, v] of Object.entries(values)) {
-      const input = el.querySelector(`#inc-${k}`) as HTMLInputElement;
-      input.value = v;
-      input.dispatchEvent(new Event('input'));
-    }
-    await settle();
-    button('SAVE').click();
-    await settle();
-    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master');
-    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'Financial', incentive: 'Scheme B', webLink: 'https://x.in' }));
-    post.flush({ message: 'Incentive saved.' });
-    await settle();
-    http.expectOne((r) => r.method === 'GET').flush([]);
-    await settle();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Incentive saved.');
+    expect(el.textContent).toContain('Choose a state to see its incentives.');
+    expect(link('Create New Incentive')).toBeUndefined();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const select = el.querySelector('#inc-state') as HTMLSelectElement;
+    select.value = 'ASSAM';
+    select.dispatchEvent(new Event('change'));
+    expect(navigate).toHaveBeenCalledWith([], expect.objectContaining({ queryParams: { state: 'ASSAM' } }));
   });
 
-  it('edits an incentive in the Edit Incentive pop-up, as the live page', async () => {
-    await create(IncentiveMasterPage, { type: 'Common' });
-    http.expectOne((r) => r.params.get('type') === 'Common').flush([
-      { incentive: { Id: 41, Incentive: 'Scheme A', Details: 'd', MinistryOrDepartment: 'm', ContactPerson: 'c', Email: 'a@b.in', MobileNo: '011',
-        WebLink: 'https://x.in', ActiveStatus: true }, hasDocument1: false, hasDocument2: false },
-    ]);
+  it('lists the incentives of the chosen state and creates one there', async () => {
+    await create(IncentiveMasterPage, { state: 'ASSAM' }, { group: 'state' });
+    http.expectOne((r) => r.params.get('type') === 'ASSAM').flush([]);
     await settle();
-    // No type select: the menu's Incentives drop-down chooses the type.
-    expect(el.querySelector('select[aria-label="Incentive type"]')).toBeNull();
-    expect(el.querySelector('.modal')).toBeNull();
-
-    button('Edit').click();
-    await settle();
-    expect(el.querySelector('#edit-incentive-title')!.textContent).toBe('Edit Incentive');
-    expect((el.querySelector('#edit-incentive') as HTMLInputElement).value).toBe('Scheme A');
-    // The add form above stays empty.
-    expect((el.querySelector('#inc-incentive') as HTMLInputElement).value).toBe('');
-
-    const input = el.querySelector('#edit-incentive') as HTMLInputElement;
-    input.value = 'Scheme A2';
-    input.dispatchEvent(new Event('input'));
-    await settle();
-    button('UPDATE').click();
-    await settle();
-    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master/41');
-    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'Common', incentive: 'Scheme A2', activeStatus: true }));
-    post.flush({ message: 'Incentive updated.' });
-    await settle();
-    http.expectOne((r) => r.method === 'GET').flush([]);
-    await settle();
-    expect(el.querySelector('.modal')).toBeNull();
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Incentive updated.');
+    expect(el.querySelector('section.inc-list h5')!.textContent).toContain('Assam Incentive Schemes');
+    expect(link('Create New Incentive')!.getAttribute('href')).toBe('/staff/incentives/state/new?state=ASSAM');
   });
 
-  it('refuses non-PDF documents before uploading', async () => {
-    await create(IncentiveMasterPage);
+  it('refuses non-PDF documents in the list and uploads PDFs', async () => {
+    await create(IncentiveMasterPage, {}, { group: 'ministry' });
     http.expectOne((r) => r.params.get('type') === 'Common').flush([
       { incentive: { Id: 41, Incentive: 'Scheme A' }, hasDocument1: false, hasDocument2: false },
     ]);
@@ -212,5 +191,69 @@ describe('incentive pages', () => {
     await settle();
     http.expectOne((r) => r.method === 'GET').flush([]);
     await settle();
+  });
+
+  it('creates a state incentive with the wording of its group and attaches its documents', async () => {
+    await create(IncentiveFormPage, { state: 'ASSAM' }, { group: 'state' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    expect(el.querySelector('h3')!.textContent).toContain('Create New Incentive');
+    expect(el.querySelector('label[for="inc-ministryOrDepartment"]')!.textContent).toContain('State Department');
+    expect((el.querySelector('#inc-state') as HTMLSelectElement).value).toBe('ASSAM');
+
+    button('Save Incentive').click();
+    await settle();
+    http.expectNone('/api/staff/schemes/incentive-master');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Incentive title required.');
+
+    const values: Record<string, string> = {
+      'inc-incentive': 'Scheme B', 'inc-details': 'd', 'inc-ministryOrDepartment': 'Industries', 'inc-contactPerson': 'c', 'inc-email': 'a@b.in',
+      'inc-mobileNo': '011', 'inc-webLink': 'https://x.in',
+    };
+    for (const [k, v] of Object.entries(values)) typeIn(k, v);
+    await settle();
+    button('Save Incentive').click();
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('levels');
+    (el.querySelector('#inc-applicableForSilver') as HTMLInputElement).click();
+    choose(el.querySelector('#inc-doc1') as HTMLInputElement, new File(['%PDF'], 'guide.pdf'));
+    await settle();
+
+    button('Save Incentive').click();
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master');
+    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'ASSAM', incentive: 'Scheme B', ministryOrDepartment: 'Industries', applicableForSilver: true }));
+    post.flush({ message: 'Incentive saved.', id: 77 });
+    await settle();
+    const doc = http.expectOne((r) => r.url === '/api/staff/schemes/incentive-master/77/documents/1');
+    expect(doc.request.params.get('type')).toBe('ASSAM');
+    doc.flush({ message: 'Document Uploaded Successfully.' });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/staff/incentives', 'state'], { queryParams: { state: 'ASSAM' }, state: { message: 'Incentive saved. Documents attached.' } });
+  });
+
+  it('edits an incentive on its page, keeping its group and levels', async () => {
+    await create(IncentiveFormPage, {}, { group: 'ministry', id: '41' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    http.expectOne((r) => r.params.get('type') === 'Common').flush([
+      { incentive: { Id: 41, Incentive: 'Scheme A', Details: 'd', MinistryOrDepartment: 'm', ContactPerson: 'c', Email: 'a@b.in', MobileNo: '011',
+        WebLink: 'https://x.in', ApplicableForGold: true, ActiveStatus: true }, hasDocument1: true, hasDocument2: false },
+    ]);
+    await settle();
+    expect(el.querySelector('h3')!.textContent).toContain('Edit Incentive');
+    expect((el.querySelector('#inc-incentive') as HTMLInputElement).value).toBe('Scheme A');
+    expect((el.querySelector('#inc-group') as HTMLSelectElement).disabled).toBe(true);
+    expect((el.querySelector('#inc-applicableForGold') as HTMLInputElement).checked).toBe(true);
+    expect(el.querySelector('a[aria-label="Current document 1"]')!.getAttribute('href')).toBe('/api/staff/schemes/incentive-master/41/documents/1');
+
+    typeIn('inc-incentive', 'Scheme A2');
+    (el.querySelector('#inc-active') as HTMLInputElement).click();
+    await settle();
+    button('Save Incentive').click();
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master/41');
+    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'Common', incentive: 'Scheme A2', activeStatus: false }));
+    post.flush({ message: 'Incentive updated.' });
+    await settle();
+    expect(navigate).toHaveBeenCalledWith(['/staff/incentives', 'ministry'], { queryParams: null, state: { message: 'Incentive updated.' } });
   });
 });

@@ -21,7 +21,17 @@ const STAFF_MSME_PROFILE: Route = {
 };
 
 /** Main's staff screens (children of `staff`). */
+/** The incentives page of a type of the old menu (?type= / ?incentiveType=): its group, a state's list for a state name. */
+function incentivesOfType(type: unknown): string {
+  const t = typeof type === 'string' ? type.trim() : '';
+  const fixed: Record<string, string> = { '': 'ministry', COMMON: 'ministry', OTHER: 'others', FINANCIAL: 'financial' };
+  const group = fixed[t.toUpperCase()];
+  return group ? `/staff/incentives/${group}` : `/staff/incentives/state?state=${encodeURIComponent(t.toUpperCase())}`;
+}
+
 const MAIN_STAFF_CHILDREN: Routes = [
+  // New in V4: the documents and videos the Admin gave to this account type (Admin → Documents/Videos).
+  { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
   {
     path: '',
     pathMatch: 'full',
@@ -96,7 +106,19 @@ const MAIN_STAFF_CHILDREN: Routes = [
     title: 'ZED | Upload API Incentives',
     loadComponent: () => import('./staff/schemes/incentive-upload').then((m) => m.IncentiveUploadPage),
   },
-  { path: 'incentives', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
+  // One page per group of the Incentives menu; the old ?type= (the type of the legacy menu) opens its group.
+  { path: 'incentives', pathMatch: 'full', redirectTo: ({ queryParams }) => incentivesOfType(queryParams['type']) },
+  { path: 'incentives/:group', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
+  {
+    path: 'incentives/:group/new',
+    title: 'ZED | Create New Incentive',
+    loadComponent: () => import('./staff/schemes/incentive-form').then((m) => m.IncentiveFormPage),
+  },
+  {
+    path: 'incentives/:group/:id/edit',
+    title: 'ZED | Edit Incentive',
+    loadComponent: () => import('./staff/schemes/incentive-form').then((m) => m.IncentiveFormPage),
+  },
   {
     path: 'change-password',
     title: 'ZED | Change Password',
@@ -281,7 +303,7 @@ const MAIN_ROUTES: Routes = [
   },
   { path: 'Incentive/Submissions', redirectTo: 'staff/incentives/submissions' },
   { path: 'Incentive/UploadIncentives', redirectTo: 'staff/incentives/upload' },
-  { path: 'Incentive/Index', redirectTo: ({ queryParams }) => `/staff/incentives?type=${encodeURIComponent(queryParams['incentiveType'] ?? 'Common')}` },
+  { path: 'Incentive/Index', redirectTo: ({ queryParams }) => incentivesOfType(queryParams['incentiveType']) },
   ...ASSESSMENT_LEGACY_REDIRECTS,
   ...SITE_REVIEW_LEGACY_REDIRECTS,
   ...SCHEME_LEGACY_REDIRECTS,
@@ -353,6 +375,8 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
 /** Consultancy (handholding) staff screens. */
 const CONSULTANCY_STAFF_CHILDREN: Routes = [
   ...SYSTEM_COMMON_STAFF_CHILDREN,
+  // New in V4: the documents and videos the Admin gave to this account type (Admin → Documents/Videos).
+  { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
   // No questionnaire here: ZED_CONSULTANT has no section tables (its live Questionaire pages failed too). The Admin's
   // old landing page and bookmarks open the dashboard instead.
   { path: 'masters/parameters', redirectTo: '/staff/dashboard' },

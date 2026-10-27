@@ -169,4 +169,65 @@ public sealed class FeesTests : IDisposable
         Assert.Equal("No changes to save.", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
         Assert.Empty(Updates());
     }
+    // ----- subsidy shares (V4) -----
+
+    private List<(string Name, object? Args)> ShareUpdates() =>
+        _host.Sql.Calls.Where(c => c.Name.StartsWith("UPDATE AssessmentFee SET SubsidyPercentage", StringComparison.Ordinal)).ToList();
+
+    private static string Share(object? args) => decimal.Parse(FakeSql.Arg(args, "SubsidyPercentage")!, System.Globalization.CultureInfo.CurrentCulture).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    [Fact]
+    public async Task The_base_share_moves_every_category_and_keeps_their_additional_share()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 0, baseShare = 75m });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        // Rows 1 and 3 (general, with and without the joining reward) go to 75%; row 4 (category 1, +20%) to 95%; Silver is untouched.
+        Assert.Equal(["1:75", "3:75", "4:95"], ShareUpdates().Select(u => $"{FakeSql.Arg(u.Args, "Id")}:{Share(u.Args)}"));
+        var row1 = Updates().Single(u => FakeSql.Arg(u.Args, "Id") == "1");
+        Assert.Equal(2500m, Dec(row1.Args, "SubsidyPer"));
+        Assert.Equal(2950m, Dec(row1.Args, "ApplicantContributionAfterSubsidy"));
+        // The joining reward row keeps its reward.
+        Assert.Equal(1000m, Dec(Updates().Single(u => FakeSql.Arg(u.Args, "Id") == "3").Args, "Coupon"));
+    }
+
+    [Fact]
+    public async Task An_additional_share_is_set_on_top_of_the_base_for_one_category_or_every_level()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 1, additionalShare = 10m })).StatusCode);
+        Assert.Equal(["4:90"], ShareUpdates().Select(u => $"{FakeSql.Arg(u.Args, "Id")}:{Share(u.Args)}"));
+
+        // All levels: Silver has no category 1 row, so only Bronze changes; the base share would move Silver too.
+        _host.Sql.Calls.Clear();
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { category = 0, baseShare = 70m, allLevels = true })).StatusCode);
+        Assert.Equal(["1:70", "2:70", "3:70", "4:90"], ShareUpdates().Select(u => $"{FakeSql.Arg(u.Args, "Id")}:{Share(u.Args)}").Order());
+    }
+
+    [Theory]
+    [InlineData("""{"certification":"Bronze","category":3,"additionalShare":5}""", "category")]
+    [InlineData("""{"certification":"Bronze","category":1}""", "additional share")]
+    [InlineData("""{"certification":"Bronze","category":0,"baseShare":101}""", "between 0 and 100")]
+    [InlineData("""{"certification":"Bronze","category":0,"baseShare":90}""", "would be 110%")]
+    [InlineData("""{"certification":"Platinum","category":0,"baseShare":50}""", "certification level")]
+    [InlineData("""{"certification":"Bronze","category":2,"additionalShare":5.555}""", "2 decimals")]
+    public async Task Refuses_shares_that_cannot_be_charged(string body, string message)
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.PutAsync("/api/staff/fees/Micro/subsidy", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Contains(message, await r.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(ShareUpdates());
+        Assert.Empty(Updates());
+    }
+
+    [Fact]
+    public async Task Rejected_units_have_no_subsidy_to_edit_and_other_roles_cannot()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/fees/Rejected/subsidy", new { certification = "Bronze", category = 0, baseShare = 10m })).StatusCode);
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 0, baseShare = 10m })).StatusCode);
+        Assert.Empty(ShareUpdates());
+    }
 }

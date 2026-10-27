@@ -56,6 +56,9 @@ public sealed partial class SurveillanceController
         var (_, refused) = await UnitAsync(nameof(GetMyDocuments), zedId, null, Need.Read, ct);
         if (refused is not null) return refused;
         var sets = await db.QueryProcMultipleAsync("SP_MSME_GET_MY_DOCUMENTS", new { ZedId = zedId }, ct);
+        // Only the guidelines given to the MSMEs (Admin → Documents/Videos); a video opens from DocumentPath.
+        var access = await HttpContext.RequestServices.GetRequiredService<Zed.Core.Content.IDocumentAccessStore>().AllAsync(ct);
+        sets = Zed.Core.Content.MsmeGuidelines.ForMsme(sets, access, videoAsPath: true);
         return LegacyContent(LegacyResults.DataSetJson(sets, ["Guidelines", "Certificates", "PaymentReceipts"]));
     }
 

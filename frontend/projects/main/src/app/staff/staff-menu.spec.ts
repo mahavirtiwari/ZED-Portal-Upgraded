@@ -1,5 +1,4 @@
 import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
-import { INCENTIVE_TYPES } from './schemes/incentives.api';
 
 describe('staff menu', () => {
   const labels = (roleId: number, subRoles: string[]) => menuFor(roleId, subRoles).map((i) => i.label);
@@ -28,6 +27,7 @@ describe('staff menu', () => {
       'NEFT: New Transactions',
       'NEFT: Approved Transactions',
       'NEFT: Rejected Transactions',
+      'Documents',
     ]);
   });
 
@@ -49,7 +49,7 @@ describe('staff menu', () => {
       const site = c(StaffRole.Agency, ['SiteVerification']);
       expect(site).toEqual(expect.arrayContaining(['Allot Consultancy', 'Consultancy Monitoring', 'Consultants/Experts', 'Reports']));
       expect(site).not.toContain('Technology Upgradation');
-      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Technology Upgradation', 'Sub-Users']);
+      expect(c(StaffRole.Agency, ['FinancialVerification'])).toEqual(['Consultants/Experts', 'Reports', 'Technology Upgradation', 'Documents', 'Sub-Users']);
     });
 
     it('gives consultants the milestone lists, pointing at the site-assessment routes', () => {
@@ -61,7 +61,7 @@ describe('staff menu', () => {
 
     it('has no categories, technologies masters or legacy links', () => {
       const admin = c(StaffRole.Admin, []);
-      expect(admin).toEqual(['Upload Image', 'My Documents', 'Sectors', 'Payments', 'User Management', 'Captcha Settings', 'Email Settings', 'Email Templates', 'Texts', 'App Forms']);
+      expect(admin).toEqual(['Upload Image', 'Documents/Videos', 'Sectors', 'Payments', 'User Management', 'Captcha Settings', 'Email Settings', 'Email Templates', 'Texts', 'App Forms']);
       expect(menuFor(StaffRole.MasterAdmin, [], 'consultancy').every((i) => i.route && !i.legacyPath)).toBe(true);
     });
 
@@ -102,15 +102,18 @@ describe('staff menu', () => {
       menuEntries(menuFor(roleId, [], system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
 
     it('groups the long menus into a few drop-downs (V4)', () => {
-      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
-        'Masters (4)', 'Questionnaire (4)', 'Technology Upgradation (2)', `Incentives (${INCENTIVE_TYPES.length})`, 'User Management', 'Administration (5)',
+        'Masters (4)', 'Questionnaire (4)', 'Technology Upgradation (2)', 'Incentives (4)', 'User Management', 'Administration (5)',
       ]);
       expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'User Management', 'Administration (5)']);
       expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (2)', 'Questionnaire (4)', 'User Management', 'Administration (5)']);
-      // Each incentive type is its own entry: the same page with ?type=.
-      expect(menuFor(StaffRole.Admin, [], 'main').find((i) => i.label === 'ASSAM')?.queryParams).toEqual({ type: 'ASSAM' });
-      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Operation Admins']);
+      // The incentives in four groups, a page each (the state is chosen on the State Government page).
+      expect(menuFor(StaffRole.Admin, [], 'main').filter((i) => i.group === 'Incentives').map((i) => `${i.label} ${i.route}`)).toEqual([
+        'Ministry of MSME /staff/incentives/ministry', 'State Government /staff/incentives/state',
+        'Financial Institution /staff/incentives/financial', 'Others /staff/incentives/others',
+      ]);
+      expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Documents', 'Operation Admins']);
       expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)', 'Operation Admins']);
     });
 
@@ -128,9 +131,9 @@ describe('staff menu', () => {
       const agency = (system: 'main' | 'consultancy' | 'surveillance') =>
         menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification'], system)).map((e: StaffMenuEntry) =>
           'group' in e ? `${e.group} (${e.items.length})` : e.item.label);
-      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Sub-Users']);
+      expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Documents', 'Sub-Users']);
       expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Sub-Users']);
-      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Sub-Users']);
+      expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Documents', 'Sub-Users']);
       // An agency with only desktop verification has one allotment screen: a link, not a drop-down.
       expect(menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main')).some((e) => 'item' in e && e.item.label === 'DA Allotment')).toBe(true);
       expect(menuEntries(menuFor(StaffRole.DesktopAssessor, ['DesktopVerification', 'SiteVerification'], 'main')).every((e) => 'item' in e)).toBe(true);

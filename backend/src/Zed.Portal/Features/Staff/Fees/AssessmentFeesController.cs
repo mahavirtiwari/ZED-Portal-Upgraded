@@ -82,13 +82,61 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var current = await LoadAsync(type, ct);
         var (updated, error) = ByMilestone ? ApplyMilestones(current, req) : Apply(type, current, req);
         if (error is not null) return this.Problem400(error);
+        var changed = await WriteAsync(current, updated!, ct);
+        loggers.CreateLogger(AuditCategory).LogInformation("Assessment fees of {EnterpriseType} saved by {Actor}: {Changed} row(s) changed", type, UserId, changed);
+        return new MessageResponse(changed == 0 ? "No changes to save." : "Data updated.");
+    }
 
+    /// <summary>
+    /// The subsidy categories of the payment procedures (main's SP_MSME_GET_PAYMENT_DETAILS: AssessmentFee.SpecialCategory = 2
+    /// for a woman-owned unit, 1 for an SC / ST-owned unit or one in an aspirational district, else 0; Surveillance's put
+    /// woman-owned units in 1 too; no value is the general row).
+    /// </summary>
+    public static readonly int[] Categories = [0, 1, 2];
+
+    public static int CategoryOf(FeeRow r) => r.SpecialCategory ?? 0;
+
+    /// <param name="Category">0 general (the base share), 1 SC / ST / aspirational district, 2 woman-owned.</param>
+    /// <param name="BaseShare">General: the subsidy every unit of the type gets (%); the other categories keep their additional share on top.</param>
+    /// <param name="AdditionalShare">Categories 1 and 2: the share on top of the base (%).</param>
+    /// <param name="AllLevels">The same shares for Bronze, Silver and Gold.</param>
+    public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels);
+
+    /// <summary>
+    /// V4: the subsidy share of a category (AssessmentFee.SubsidyPercentage, which the MSME's payment page shows and charges),
+    /// with every amount of the changed rows worked out again (joining reward rows keep their reward).
+    /// </summary>
+    [HttpPut("{enterpriseType}/subsidy")]
+    public async Task<ActionResult<MessageResponse>> UpdateSubsidy(string enterpriseType, SubsidyRequest req, CancellationToken ct)
+    {
+        if (ByMilestone) return NotFound();
+        var type = Type(enterpriseType);
+        if (type is null) return NotFound();
+        if (type == "Rejected") return this.Problem400("Rejected units get no subsidy.");
+        var current = await LoadAsync(type, ct);
+        var (updated, error) = ApplySubsidy(current, req);
+        if (error is not null) return this.Problem400(error);
+        var changed = await WriteAsync(current, updated!, ct);
+        loggers.CreateLogger(AuditCategory).LogInformation(
+            "Subsidy share of {EnterpriseType} {Certification} category {Category} saved by {Actor} (all levels {AllLevels}): {Changed} row(s) changed",
+            type, req.AllLevels ? "all" : req.Certification, req.Category, UserId, req.AllLevels, changed);
+        return new MessageResponse(changed == 0 ? "No changes to save." : "Subsidy share updated.");
+    }
+
+    /// <summary>Writes the rows whose subsidy share or amounts changed, each with an audit line; the number written.</summary>
+    private async Task<int> WriteAsync(IReadOnlyList<FeeRow> current, IReadOnlyList<FeeRow> updated, CancellationToken ct)
+    {
         var audit = loggers.CreateLogger(AuditCategory);
         var changed = 0;
-        foreach (var row in updated!)
+        foreach (var row in updated)
         {
             var before = current.First(r => r.Id == row.Id);
-            if (row.SameAmounts(before)) continue;
+            var shareChanged = row.SubsidyPercentage != before.SubsidyPercentage;
+            if (row.SameAmounts(before) && !shareChanged) continue;
+            // SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.
+            if (shareChanged)
+                await db.ExecuteSqlAsync("UPDATE AssessmentFee SET SubsidyPercentage = @SubsidyPercentage WHERE Id = @Id AND EnterpriseTypee = @EnterpriseTypee;",
+                    new { row.SubsidyPercentage, row.Id, row.EnterpriseTypee }, ct);
             await db.ExecuteProcAsync("SP_MASTER_UPDATE_ASSESSMENT_FEE", new
             {
                 row.Id,
@@ -114,15 +162,14 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             changed++;
             audit.LogWarning(
                 "Assessment fee row {Id} ({EnterpriseType} {Certification} {MileStone}, system {System}, special category {SpecialCategory}, coupon row {CouponRow}) changed by {Actor}: " +
-                "fee {OldFee} -> {NewFee}, coupon {OldCoupon} -> {NewCoupon}, applicant contribution {OldContribution} -> {NewContribution}, " +
+                "fee {OldFee} -> {NewFee}, coupon {OldCoupon} -> {NewCoupon}, subsidy {OldShare}% -> {NewShare}%, applicant contribution {OldContribution} -> {NewContribution}, " +
                 "net payable (TDS 2%) {OldNet2} -> {NewNet2}, net payable (TDS 10%) {OldNet10} -> {NewNet10}",
                 row.Id, row.EnterpriseTypee, row.Certification, row.MileStone, host.System, row.SpecialCategory, row.IsCouponRow, UserId,
-                before.AssessmentFee, row.AssessmentFee, before.Coupon, row.Coupon,
+                before.AssessmentFee, row.AssessmentFee, before.Coupon, row.Coupon, before.SubsidyPercentage, row.SubsidyPercentage,
                 before.ApplicantContributionAfterSubsidy, row.ApplicantContributionAfterSubsidy,
                 before.NetPaybleTds15, row.NetPaybleTds15, before.NetPaybleTds75, row.NetPaybleTds75);
         }
-        audit.LogInformation("Assessment fees of {EnterpriseType} saved by {Actor}: {Changed} row(s) changed", type, UserId, changed);
-        return new MessageResponse(changed == 0 ? "No changes to save." : "Data updated.");
+        return changed;
     }
 
     // ---- helpers ------------------------------------------------------------------------------
@@ -190,6 +237,56 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     }
 
     private static bool Same(string? a, string b) => string.Equals(a?.Trim(), b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The new subsidy shares: General sets the base (the other categories move with it, keeping their additional share);
+    /// a category sets its additional share on top of the level's base. Every changed row is recalculated.
+    /// </summary>
+    public static (List<FeeRow>? Rows, string? Error) ApplySubsidy(IReadOnlyList<FeeRow> current, SubsidyRequest req)
+    {
+        if (current.Count == 0) return (null, "No fee rows exist for this enterprise type.");
+        if (req.Category is not { } category || !Categories.Contains(category)) return (null, "Please choose the subsidy category.");
+        var share = category == 0 ? req.BaseShare : req.AdditionalShare;
+        var label = category == 0 ? "base share" : "additional share";
+        if (ShareError(share, label) is { } shareError) return (null, shareError);
+        string[] levels;
+        if (req.AllLevels) levels = Levels.Where(l => current.Any(r => Same(r.Certification, l))).ToArray();
+        else if (Canonical(req.Certification, Levels) is { } one && current.Any(r => Same(r.Certification, one))) levels = [one];
+        else return (null, "Please select a valid certification level.");
+
+        var result = current.ToList();
+        foreach (var level in levels)
+        {
+            var general = current.FirstOrDefault(r => Same(r.Certification, level) && CategoryOf(r) == 0 && !r.IsCouponRow)
+                          ?? current.FirstOrDefault(r => Same(r.Certification, level) && CategoryOf(r) == 0);
+            if (general?.SubsidyPercentage is not { } oldBase) return (null, $"The {level} fees have no general row with a subsidy; please correct the master data first.");
+            for (var i = 0; i < result.Count; i++)
+            {
+                var row = result[i];
+                if (!Same(row.Certification, level)) continue;
+                decimal pct;
+                if (category == 0) pct = CategoryOf(row) == 0 ? share!.Value : share!.Value + ((row.SubsidyPercentage ?? oldBase) - oldBase);
+                else if (CategoryOf(row) == category) pct = oldBase + share!.Value;
+                else continue;
+                if (pct is < 0 or > 100) return (null, $"The {level} subsidy of category {CategoryOf(row)} would be {pct:0.##}%: it must be between 0 and 100.");
+                if (pct == row.SubsidyPercentage) continue;
+                if (row.AssessmentFee is not { } fee) return (null, $"Fee row {row.Id} ({level}) has no fee; please save the fee first.");
+                var (recalculated, error) = FeeCalculator.Recalculate(row with { SubsidyPercentage = pct }, fee, null, rejected: false);
+                if (error is not null) return (null, error);
+                result[i] = recalculated!;
+            }
+        }
+        return (result, null);
+    }
+
+
+    private static string? ShareError(decimal? value, string label)
+    {
+        if (value is null) return $"Please enter the {label}.";
+        if (value is < 0 or > 100) return $"The {label} must be between 0 and 100%.";
+        if (value != FeeCalculator.Round(value.Value)) return $"The {label} can have at most 2 decimals.";
+        return null;
+    }
 
     /// <summary>Validates the request and returns every row of the type with the new amounts.</summary>
     public static (List<FeeRow>? Rows, string? Error) Apply(string type, IReadOnlyList<FeeRow> current, FeesRequest req)

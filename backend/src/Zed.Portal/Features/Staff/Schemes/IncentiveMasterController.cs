@@ -71,14 +71,27 @@ public sealed class IncentiveMasterController(
         string? WebLink, string? Email, string? MobileNo, string? VideoLink,
         bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ActiveStatus);
 
-    /// <summary>POST api/staff/schemes/incentive-master — SP_MASTER_INSERT_INCENTIVE.</summary>
+    /// <summary>The new incentive's Id (V4: the page attaches its documents next), when it could be found again.</summary>
+    public sealed record IncentiveSaved(string Message, long? Id);
+
+    /// <summary>
+    /// POST api/staff/schemes/incentive-master — SP_MASTER_INSERT_INCENTIVE. The procedure returns no Id, so the newest
+    /// incentive of the type with this title is taken as the new one.
+    /// </summary>
     [HttpPost]
-    public async Task<ActionResult<MessageResponse>> Create(IncentiveRequest req, CancellationToken ct)
+    public async Task<ActionResult<IncentiveSaved>> Create(IncentiveRequest req, CancellationToken ct)
     {
         if (Check(req) is { } error) return this.Problem400(error);
         if (!req.ApplicableForBronze && !req.ApplicableForSilver && !req.ApplicableForGold)
             return this.Problem400("Please select the certification levels the incentive applies to.");
-        return await Save("SP_MASTER_INSERT_INCENTIVE", Args(req, id: null), "Incentive saved.", ct);
+        var saved = await Save("SP_MASTER_INSERT_INCENTIVE", Args(req, id: null), "Incentive saved.", ct);
+        if (saved.Result is { } refused) return refused;
+        var title = req.Incentive!.Trim();
+        var id = (await Load(CanonicalType(req.IncentiveType)!, ct))
+            .Where(r => r.Text("Incentive") == title)
+            .Select(r => long.TryParse(r.Text("Id"), NumberStyles.None, CultureInfo.InvariantCulture, out var i) ? i : 0)
+            .DefaultIfEmpty(0).Max();
+        return new IncentiveSaved(saved.Value!.Message, id > 0 ? id : null);
     }
 
     /// <summary>POST api/staff/schemes/incentive-master/{id} — SP_MASTER_UPDATE_INCENTIVE (the procedure keeps type and levels).</summary>

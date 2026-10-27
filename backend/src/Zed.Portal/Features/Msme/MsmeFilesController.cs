@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using Zed.Core.Content;
 using Zed.Core.Data;
 using Zed.Core.Http;
 
@@ -28,6 +29,7 @@ public sealed class MsmeFilesController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    IDocumentAccessStore access,
     ILogger<MsmeFilesController> log) : MsmeApiController
 {
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -53,7 +55,8 @@ public sealed class MsmeFilesController(
         var requested = MsmeFilePaths.Normalise(path);
         if (requested is null) return NotFound();
 
-        var sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
+        // Guidelines the Admin gave to other account types only are not served to an MSME.
+        var sets = MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct));
         var entry = MsmeMyDocuments.Files(sets, ZedId)
             .FirstOrDefault(f => string.Equals(f.RelativePath, requested, StringComparison.OrdinalIgnoreCase));
         if (entry is null) return NotFound();

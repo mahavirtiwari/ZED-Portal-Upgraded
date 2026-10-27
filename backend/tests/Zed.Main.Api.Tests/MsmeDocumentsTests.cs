@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Zed.Core.Content;
 using Zed.Portal.Features.Msme;
 
 namespace Zed.Main.Api.Tests;
@@ -97,6 +98,35 @@ public sealed class MsmeDocumentsTests : IDisposable
         var invoices = json.GetProperty("Invoices").EnumerateArray().Select(r => r.GetProperty("InvoicePath").GetString()).ToList();
         Assert.Equal([$"/api/msme/files/ReceiptInvoice/INV1_{Me}_Invoice.pdf", null], invoices);
         Assert.DoesNotContain(Site, json.GetRawText());
+    }
+
+    [Fact]
+    public async Task Only_the_guidelines_given_to_the_msmes_are_listed_and_served_with_their_description_and_video()
+    {
+        // Admin → Documents/Videos: the checklist (OrderNo 2) is for the assessors only; a video (OrderNo 5, no file).
+        _host.Sql.Queries["SELECT a.DocumentId, d.OrderNo"] = _ =>
+        [
+            new DocumentAccessRow(11, 1, "Read first", null, "msme,assessor", "ADMIN1", null),
+            new DocumentAccessRow(12, 2, null, null, "assessor", "ADMIN1", null),
+            new DocumentAccessRow(15, 5, "How to apply", "https://www.youtube.com/watch?v=abc", "msme", "ADMIN1", null),
+        ];
+        var inner = _host.Sql.Procs[MsmeMyDocuments.Procedure];
+        _host.Sql.Procs[MsmeMyDocuments.Procedure] = args =>
+        {
+            var sets = inner(args);
+            var rows = sets[0].ToList();
+            rows.Add(new Dictionary<string, object?> { ["ZedId"] = Me, ["DocumentName"] = "Video", ["DocumentPath"] = null, ["OrderNo"] = 5 });
+            return new Zed.Core.Data.ResultSets([rows, sets[1], sets[2], sets[3]]);
+        };
+        WriteFile("Uploads/Documents/Checklist.docx");
+        var client = await SignInAsync();
+
+        var guidelines = (await client.GetFromJsonAsync<JsonElement>("/api/msme/documents")).GetProperty("Guidelines").EnumerateArray().ToList();
+        Assert.Equal(["ZED Guidelines", "Bad row", "Not a guideline", "Video"], guidelines.Select(g => g.GetProperty("DocumentName").GetString()));
+        Assert.Equal("Read first", guidelines[0].GetProperty("Description").GetString());
+        Assert.Equal("https://www.youtube.com/watch?v=abc", guidelines[3].GetProperty("VideoUrl").GetString());
+        Assert.Equal(JsonValueKind.Null, guidelines[3].GetProperty("DocumentPath").ValueKind);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/files/Uploads/Documents/Checklist.docx")).StatusCode);
     }
 
     [Fact]

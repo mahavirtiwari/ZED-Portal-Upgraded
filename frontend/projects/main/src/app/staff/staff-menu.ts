@@ -1,6 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
-import { INCENTIVE_TYPES } from './schemes/incentives.api';
+import { INCENTIVE_GROUPS } from './schemes/incentives.api';
 
 /** Users.RoleId values of the staff roles (legacy UserRoleEnum). */
 export const StaffRole = {
@@ -137,7 +137,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // Admin: as the live layout (Frontend/Shared/_Layout.cshtml, Admin), labels and order; Questionnaire and Technology
   // Upgradation are drop-downs of their own rather than headings under Masters (V4, 2026-10-27).
   { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
-  { label: 'My Documents', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Documents/Videos', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
@@ -147,9 +147,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
   { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], menu: 'Technology Upgradation' },
   { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], menu: 'Technology Upgradation' },
-  ...INCENTIVE_TYPES.map((t) => ({
-    label: t.label, legacyPath: '/Incentive/Index', route: '/staff/incentives', queryParams: { type: t.value }, roles: [R.Admin as number], group: 'Incentives',
-  })),
+  // The four groups of incentives (V4, as the LEAN portal; the old menu listed every type and each state).
+  ...INCENTIVE_GROUPS.map((g) => ({ label: g.label, legacyPath: '/Incentive/Index', route: `/staff/incentives/${g.key}`, roles: [R.Admin as number], group: 'Incentives' })),
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
@@ -157,6 +156,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the documents and videos the Admin gave to the account type.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
@@ -176,7 +177,7 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
 
   // Admin: as the live layout; its Incentives drop-down is not ported (ZED_CONSULTANT incentives are not served here).
   { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
-  { label: 'My Documents', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Documents/Videos', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   // No Questionnaire: the live menu had it, but ZED_CONSULTANT has no section tables, so its pages failed.
@@ -219,6 +220,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'New Transactions', route: '/staff/neft/new', roles: [R.StateCoordinator] },
   { label: 'Approved Transactions', route: '/staff/neft/approved', roles: [R.StateCoordinator] },
   { label: 'Reports', route: '/staff/reports', roles: [R.StateCoordinator] },
+  // New in V4: the documents and videos the Admin gave to the account type.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },

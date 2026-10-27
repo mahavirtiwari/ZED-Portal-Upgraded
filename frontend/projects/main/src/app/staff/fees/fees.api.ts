@@ -53,6 +53,15 @@ export interface LevelRequest {
   coupon: number | null;
 }
 
+/** V4: the subsidy share of a category (0 general: the base share; 1 / 2: the additional share on top of it). */
+export interface SubsidyRequest {
+  certification: string;
+  category: number;
+  baseShare: number | null;
+  additionalShare: number | null;
+  allLevels: boolean;
+}
+
 /** Client for api/staff/fees (Zed.Main.Api AssessmentFeesController). Admin only; amounts are computed on the server. */
 @Injectable({ providedIn: 'root' })
 export class FeesApi {
@@ -68,5 +77,9 @@ export class FeesApi {
 
   save(type: string, levels: LevelRequest[]): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}`, { levels });
+  }
+
+  saveSubsidy(type: string, req: SubsidyRequest): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/subsidy`, req);
   }
 }

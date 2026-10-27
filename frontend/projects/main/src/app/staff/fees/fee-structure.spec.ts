@@ -1,0 +1,160 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FeeStructurePage } from './fee-structure';
+import { FeeRow, FeesResponse } from './fees.api';
+
+function row(id: number, certification: string, category: number, pct: number, fee: number, coupon: number | null = null): FeeRow {
+  const base = coupon === null ? fee : (fee * 1.18 - coupon) / 1.18;
+  const taxable = (base * (100 - pct)) / 100;
+  return {
+    id, enterpriseTypee: 'Micro', certification, specialCategory: category, isActive: true, subsidyPercentage: pct,
+    assessmentFee: fee, gst: fee * 0.18, total: fee * 1.18, coupon, assessmentFeeAfterCoupon: coupon === null ? null : base, gstAfterCoupon: null,
+    totalAfterCoupon: null, subsidyPer: taxable, gstAfterSubsidy: taxable * 0.18, applicantContributionAfterSubsidy: taxable * 1.18,
+    tds15: taxable * 0.02, tds75: taxable * 0.1, netPaybleTds15: taxable * 1.16, netPaybleTds75: taxable * 1.08, isCouponRow: coupon !== null,
+  };
+}
+
+const micro: FeesResponse = {
+  enterpriseType: 'Micro',
+  levels: [
+    { certification: 'Bronze', assessmentFee: 10000, coupon: 1000, hasCouponRows: true },
+    { certification: 'Silver', assessmentFee: 20000, coupon: null, hasCouponRows: false },
+  ],
+  rows: [
+    row(1, 'Bronze', 0, 80, 10000), row(2, 'Bronze', 2, 90, 10000), row(3, 'Bronze', 1, 90, 10000), row(4, 'Bronze', 0, 80, 10000, 1000),
+    row(5, 'Silver', 0, 80, 20000),
+  ],
+};
+
+describe('FeeStructurePage', () => {
+  let fixture: ComponentFixture<FeeStructurePage>;
+  let http: HttpTestingController;
+  let el: HTMLElement;
+
+  async function settle() {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  const button = (text: string, root: ParentNode = el) =>
+    [...root.querySelectorAll('button')].find((b) => b.textContent!.trim() === text) as HTMLButtonElement;
+  const structure = () =>
+    [...el.querySelectorAll('section[aria-labelledby="fs-structure"] tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' ').trim());
+  const typeIn = async (selector: string, value: string) => {
+    const input = el.querySelector(selector) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    await settle();
+  };
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [FeeStructurePage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    fixture = TestBed.createComponent(FeeStructurePage);
+    http = TestBed.inject(HttpTestingController);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+  });
+
+  afterEach(() => http.verify());
+
+  it('shows the fee, joining reward and payment structure of each category, then the TDS', () => {
+    expect(el.querySelector('h3')!.textContent).toContain('Fee Structure — Bronze');
+    expect((el.querySelector('#fs-fee') as HTMLInputElement).value).toBe('10000');
+    expect((el.querySelector('#fs-reward') as HTMLInputElement).value).toBe('1000');
+    const rows = structure();
+    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SC/ST', 'WOM']);
+    expect(rows[0]).toContain('80%');
+    expect(rows[0]).toContain('₹ 8,000.00'); // the Government's share of 10,000 at 80%
+    expect(rows[0]).toContain('₹ 2,360.00'); // the MSME's share with GST
+    expect(rows[1]).toContain('with joining reward ₹ 1,000');
+    expect(rows[3]).toContain('80% base + 10% additional');
+    const tds = [...el.querySelectorAll('section[aria-labelledby="fs-tds"] tbody tr')][0].textContent!.replace(/\s+/g, ' ');
+    expect(tds).toContain('₹ 40.00'); // 194C on 2,000
+    expect(tds).toContain('₹ 2,160.00');
+    // The joining reward row takes the subsidy of its category: no Edit of its own.
+    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] tbody tr')].map((r) => !!r.querySelector('button'))).toEqual([true, false, true, true]);
+  });
+
+  it('saves the fee and joining reward of the level shown', async () => {
+    expect(button('Save Fee').disabled).toBe(true);
+    await typeIn('#fs-fee', '12000');
+    expect(el.textContent).toContain('Not saved yet.');
+    button('Save Fee').click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/fees/Micro');
+    expect(put.request.body).toEqual({ levels: [{ certification: 'Bronze', assessmentFee: 12000, coupon: 1000 }] });
+    put.flush({ message: 'Data updated.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Data updated.');
+  });
+
+  it('switches level: the same structure with its own fee and no joining reward when it has none', async () => {
+    button('Silver').click();
+    await settle();
+    expect(el.querySelector('h3')!.textContent).toContain('Fee Structure — Silver');
+    expect((el.querySelector('#fs-fee') as HTMLInputElement).value).toBe('20000');
+    expect(el.querySelector('#fs-reward')).toBeNull();
+    expect(structure().length).toBe(1);
+  });
+
+  it('edits the additional share of a category for every level', async () => {
+    (el.querySelector('[aria-label="Edit the subsidy of Woman-owned MSME"]') as HTMLButtonElement).click();
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    expect(dialog.textContent).toContain('WOM · subsidy share');
+    expect((dialog.querySelector('#fs-base') as HTMLInputElement).disabled).toBe(true);
+    expect((dialog.querySelector('#fs-base') as HTMLInputElement).value).toBe('80');
+    await typeIn('#fs-additional', '15');
+    expect((dialog.querySelector('#fs-total') as HTMLInputElement).value).toBe('95%');
+    expect(dialog.textContent).toContain('The MSME pays the remaining 5%');
+    button('Save Share', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.url === '/api/staff/fees/Micro/subsidy');
+    expect(put.request.body).toEqual({ certification: 'Bronze', category: 2, allLevels: true, baseShare: null, additionalShare: 15 });
+    put.flush({ message: 'Subsidy share updated.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+    expect(el.querySelector('[role=dialog]')).toBeNull();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Subsidy share updated.');
+  });
+
+  it('edits the base share on General for this level only and shows a refusal', async () => {
+    (el.querySelector('[aria-label="Edit the subsidy of General"]') as HTMLButtonElement).click();
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    expect((dialog.querySelector('#fs-additional') as HTMLInputElement).disabled).toBe(true);
+    await typeIn('#fs-base', '95');
+    (dialog.querySelector('#fs-all') as HTMLInputElement).click();
+    await settle();
+    button('Save Share', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.url === '/api/staff/fees/Micro/subsidy');
+    expect(put.request.body).toEqual({ certification: 'Bronze', category: 0, allLevels: false, baseShare: 95, additionalShare: null });
+    put.flush({ title: 'The Bronze subsidy of category 2 would be 105%: it must be between 0 and 100.' }, { status: 400, statusText: 'Bad Request' });
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('would be 105%');
+    expect(el.querySelector('[role=dialog]')).not.toBeNull();
+  });
+
+  it('shows Rejected units without subsidy edits', async () => {
+    const select = el.querySelector('select[aria-label="Enterprise type"]') as HTMLSelectElement;
+    select.value = 'Rejected';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    http.expectOne('/api/staff/fees/Rejected').flush({
+      enterpriseType: 'Rejected', levels: [{ certification: 'Bronze', assessmentFee: 10000, coupon: null, hasCouponRows: false }],
+      rows: [{ ...row(9, 'Bronze', 0, 0, 10000), enterpriseTypee: 'Rejected' }],
+    });
+    await settle();
+    expect(el.textContent).toContain('no subsidy and no joining reward');
+    expect(el.querySelector('section[aria-labelledby="fs-structure"] tbody button')).toBeNull();
+  });
+});
