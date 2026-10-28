@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
@@ -11,8 +13,9 @@ namespace Zed.Portal.Features.Staff.Settings;
 /// institutions, state governments, the Udyami and RAMP dashboards, ...: the rows of dbo.ApiClientTokens, registered by
 /// SP_API_KEY_MAKER in the old system), what each may call, when it last took a token, Edit (name, address, incentive
 /// submission) and Enable / Disable (dbo.ApiClientTokens.IsEnabled, migration 0027; <see cref="ApiClients"/> refuses a
-/// disabled client at once).
-/// Secrets (tokens, AES keys) are never sent to the page. Main only: the partner APIs and their clients live there.
+/// disabled client at once), and Add partner (V4: a new key, shown once). Secrets (tokens, AES keys) are never sent to
+/// the page otherwise; a key the old SP_API_KEY_MAKER put into BaseUrl (?token=...) is masked. Main only: the partner
+/// APIs and their clients live there.
 /// </summary>
 [Route("api/staff/settings/integrations")]
 [StaffRoles(UserRole.Admin)]
@@ -36,9 +39,14 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
     public async Task<IReadOnlyList<ApiClientItem>> Clients(CancellationToken ct)
     {
         var rows = await db.QuerySqlAsync<ClientRow>(ClientsSql, null, ct);
-        return rows.Select(r => new ApiClientItem(r.Id, NameOf(r), r.ClientId, r.CreatedDate, r.BaseUrl, AccessOf(r), r.LastTokenOn,
+        return rows.Select(r => new ApiClientItem(r.Id, NameOf(r), r.ClientId, r.CreatedDate, MaskUrl(r.BaseUrl), AccessOf(r), r.LastTokenOn,
             r.IsEnabled != false, r.ReverseToken == true, r.UpdatedBy, r.UpdatedOn)).ToList();
     }
+
+    private static readonly Regex SecretParam = new(@"([?&](?:token|key|secret|apikey|clientsecret)=)[^&#]*", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+    /// <summary>The address without keys in its query (SP_API_KEY_MAKER stored a sample URL with the partner's key in it).</summary>
+    public static string? MaskUrl(string? url) => url is null ? null : SecretParam.Replace(url, "$1***");
 
     /// <summary>The partner APIs a client's token type lets it call (the checks of <see cref="ApiClients"/>).</summary>
     public static IReadOnlyList<string> AccessOf(ClientRow r)
@@ -139,15 +147,68 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
         if (name.Length == 0) return this.Problem400("Please enter the partner's name.");
         if (name.Length > 200) return this.Problem400("The name can be up to 200 characters.");
         if (name.Any(char.IsControl) || baseUrl.Any(char.IsControl)) return this.Problem400("The name or address contains invalid characters.");
-        if (baseUrl.Length > 500) return this.Problem400("The address can be up to 500 characters.");
-        if (baseUrl.Length > 0 && !(Uri.TryCreate(baseUrl, UriKind.Absolute, out var u) && (u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeHttp)))
-            return this.Problem400("The address must be a full http(s):// address, or empty.");
+        // The page shows the stored address masked; sent back unchanged, it keeps the stored one.
+        if (baseUrl == MaskUrl(row.BaseUrl)) baseUrl = row.BaseUrl ?? "";
+        else if (CheckAddress(baseUrl) is { } addressProblem) return this.Problem400(addressProblem);
         await db.ExecuteSqlAsync(EditSql, new
         {
             Id = id, Name = name, BaseUrl = baseUrl.Length == 0 ? null : baseUrl, ReverseToken = req.MaySubmitIncentives, UpdatedBy = Actor(),
         }, ct);
         log.LogWarning("API client {Id} edited by {Actor}: incentive submission {Submit}", id, UserId, req.MaySubmitIncentives);
         return new MessageResponse($"{name} saved.");
+    }
+
+    private static string? CheckAddress(string baseUrl)
+    {
+        if (baseUrl.Length > 500) return "The address can be up to 500 characters.";
+        if (baseUrl.Length > 0 && !(Uri.TryCreate(baseUrl, UriKind.Absolute, out var u) && (u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeHttp)))
+            return "The address must be a full http(s):// address, or empty.";
+        return null;
+    }
+
+    /// <param name="Kind">"token": a client ID and a key, with which it takes tokens (the usual partner); "static": a key
+    /// alone, sent with each certificate lookup (as the oldest partners).</param>
+    /// <param name="Encrypted">Its lists are answered encrypted (AES key and IV, as for the RAMP dashboard).</param>
+    public sealed record ClientCreateRequest(string? Name, string? BaseUrl, string? Kind, bool MaySubmitIncentives, bool Encrypted);
+
+    /// <summary>The new partner and its secrets, shown to the Admin once (they are not sent to the page again).</summary>
+    public sealed record ClientCreated(string Message, long Id, string? ClientId, string Secret, string? AesKey, string? AesIv);
+
+    public sealed record NewClient(long Id, string? ClientId);
+
+    // The next client ID follows the old numbering (SP_API_KEY_MAKER: MAX(ClientId) + 1), in the same statement.
+    internal const string CreateSql =
+        "INSERT INTO dbo.ApiClientTokens (Client, Token, CreatedDate, BaseUrl, ReverseToken, ClientId, AesKey, AesIV, IsEnabled, UpdatedBy, UpdatedOn) " +
+        "OUTPUT INSERTED.Id, INSERTED.ClientId " +
+        "SELECT @Name, @Token, GETDATE(), @BaseUrl, @ReverseToken, " +
+        "CASE WHEN @WithClientId = 1 THEN CAST(ISNULL(MAX(TRY_CAST(ClientId AS bigint)), 1000000) + 1 AS varchar(50)) END, " +
+        "@AesKey, @AesIV, 1, @UpdatedBy, SYSUTCDATETIME() FROM dbo.ApiClientTokens WITH (UPDLOCK, HOLDLOCK);";
+
+    /// <summary>Adds a partner with a new random key (and AES key and IV when its lists are encrypted).</summary>
+    [HttpPost("clients")]
+    public async Task<ActionResult<ClientCreated>> AddClient(ClientCreateRequest req, CancellationToken ct)
+    {
+        var name = req.Name?.Trim() ?? "";
+        var baseUrl = req.BaseUrl?.Trim() ?? "";
+        if (name.Length == 0) return this.Problem400("Please enter the partner's name.");
+        if (name.Length > 200) return this.Problem400("The name can be up to 200 characters.");
+        if (name.Any(char.IsControl) || baseUrl.Any(char.IsControl)) return this.Problem400("The name or address contains invalid characters.");
+        if (CheckAddress(baseUrl) is { } addressProblem) return this.Problem400(addressProblem);
+        if (req.Kind is not ("token" or "static")) return this.Problem400("Please choose how the partner calls ZED.");
+        if ((await db.QuerySqlAsync<ClientRow>(ClientsSql, null, ct)).Any(r => string.Equals(r.Client?.Trim(), name, StringComparison.OrdinalIgnoreCase)))
+            return this.Problem400($"A partner named {name} is already registered.");
+
+        var secret = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
+        var aesKey = req.Encrypted ? Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)) : null;
+        var aesIv = req.Encrypted ? Convert.ToBase64String(RandomNumberGenerator.GetBytes(16)) : null;
+        var created = (await db.QuerySqlAsync<NewClient>(CreateSql, new
+        {
+            Name = name, Token = secret, BaseUrl = baseUrl.Length == 0 ? null : baseUrl, ReverseToken = req.MaySubmitIncentives,
+            WithClientId = req.Kind == "token", AesKey = aesKey, AesIV = aesIv, UpdatedBy = Actor(),
+        }, ct)).Single();
+        // Never the key: only who added which partner.
+        log.LogWarning("API client {Id} ({Client}) added by {Actor}", created.Id, name, UserId);
+        return new ClientCreated($"{name} added. Give the partner its key now: it is not shown again.", created.Id, created.ClientId, secret, aesKey, aesIv);
     }
 
     private string Actor() => UserId.Length <= 50 ? UserId : UserId[..50];

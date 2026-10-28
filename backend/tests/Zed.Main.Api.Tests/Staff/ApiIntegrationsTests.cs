@@ -17,7 +17,7 @@ public sealed class ApiIntegrationsTests : IDisposable
         UsersMastersLogin.Setup(_host);
         _host.Sql.Queries["SELECT c.Id, c.Client, c.ClientId"] = _ =>
         [
-            new ApiIntegrationsController.ClientRow(1, "RAMP", "4947838", new DateTime(2024, 1, 5), null, false, true, new DateTime(2026, 10, 20)),
+            new ApiIntegrationsController.ClientRow(1, "RAMP", "4947838", new DateTime(2024, 1, 5), "https://loginzed.msme.gov.in/Msme/GetStateCertificationsByPage?token=ABCSECRET123&udyamNumber=U", false, true, new DateTime(2026, 10, 20)),
             new ApiIntegrationsController.ClientRow(2, "Saathi", null, null, "https://saathi.example", null, false, null, IsEnabled: false, UpdatedBy: "ADMIN1"),
             new ApiIntegrationsController.ClientRow(3, " ", "STATE01", null, null, true, false, null),
         ];
@@ -50,6 +50,9 @@ public sealed class ApiIntegrationsTests : IDisposable
         var raw = await r.Content.ReadAsStringAsync();
         Assert.DoesNotContain("\"token\"", raw, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("aesKey", raw, StringComparison.OrdinalIgnoreCase);
+        // The old key maker put the key into BaseUrl: masked.
+        Assert.DoesNotContain("ABCSECRET123", raw);
+        Assert.Contains("token=***&udyamNumber=U", raw);
         var items = JsonDocument.Parse(raw).RootElement.EnumerateArray().ToList();
         Assert.Equal(["RAMP", "Saathi", "Client #3"], items.Select(i => i.GetProperty("name").GetString()));
         Assert.Contains("Encrypted lists (RAMP dashboard)", items[0].GetProperty("access").EnumerateArray().Select(a => a.GetString()));
@@ -106,5 +109,51 @@ public sealed class ApiIntegrationsTests : IDisposable
             (FakeSql.Arg(edit.Args, "Id"), FakeSql.Arg(edit.Args, "Name"), FakeSql.Arg(edit.Args, "BaseUrl"), FakeSql.Arg(edit.Args, "ReverseToken")));
         Assert.DoesNotContain("ClientId", ApiIntegrationsController.EditSql);
         Assert.DoesNotContain(" Token =", ApiIntegrationsController.EditSql);
+    }
+
+    [Fact]
+    public async Task A_masked_address_sent_back_unchanged_keeps_the_stored_one()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var masked = ApiIntegrationsController.MaskUrl("https://loginzed.msme.gov.in/Msme/GetStateCertificationsByPage?token=ABCSECRET123&udyamNumber=U");
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/clients/1/details", new { name = "RAMP", baseUrl = masked, maySubmitIncentives = false })).StatusCode);
+        var edit = Assert.Single(_host.Sql.Calls, c => c.Name == ApiIntegrationsController.EditSql);
+        Assert.Contains("token=ABCSECRET123", FakeSql.Arg(edit.Args, "BaseUrl"));
+    }
+
+    [Fact]
+    public async Task The_admin_adds_a_partner_and_sees_its_new_key_once()
+    {
+        _host.Sql.Queries[ApiIntegrationsController.CreateSql] = _ => [new ApiIntegrationsController.NewClient(9, "4947839")];
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await UsersMastersLogin.SignInAsync(_host, "MASTER1"))
+            .PostAsJsonAsync($"{Url}/clients", new { name = "SIDBI", kind = "token" })).StatusCode);
+        foreach (var bad in new object[]
+        {
+            new { name = "", kind = "token" },
+            new { name = "SIDBI", kind = "other" },
+            new { name = "SIDBI", kind = "token", baseUrl = "ftp://sidbi.in" },
+            new { name = " ramp ", kind = "token" },
+        })
+            Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync($"{Url}/clients", bad)).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == ApiIntegrationsController.CreateSql);
+
+        var r = await admin.PostAsJsonAsync($"{Url}/clients", new { name = " SIDBI ", baseUrl = "https://sidbi.in", kind = "token", maySubmitIncentives = true, encrypted = true });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var created = (await r.Content.ReadFromJsonAsync<ApiIntegrationsController.ClientCreated>())!;
+        Assert.Equal((9L, "4947839"), (created.Id, created.ClientId));
+        Assert.Equal(64, created.Secret.Length);
+        Assert.Equal(32, Convert.FromBase64String(created.AesKey!).Length);
+        Assert.Equal(16, Convert.FromBase64String(created.AesIv!).Length);
+        var insert = Assert.Single(_host.Sql.Calls, c => c.Name == ApiIntegrationsController.CreateSql);
+        Assert.Equal(("SIDBI", created.Secret, "True", "True", "True"),
+            (FakeSql.Arg(insert.Args, "Name"), FakeSql.Arg(insert.Args, "Token"), FakeSql.Arg(insert.Args, "ReverseToken"),
+             FakeSql.Arg(insert.Args, "WithClientId"), (FakeSql.Arg(insert.Args, "AesKey") is not null).ToString()));
+
+        // A static-key partner has no client ID and no AES keys; another key each time.
+        var plain = (await (await admin.PostAsJsonAsync($"{Url}/clients", new { name = "Bank", kind = "static" })).Content.ReadFromJsonAsync<ApiIntegrationsController.ClientCreated>())!;
+        Assert.NotEqual(created.Secret, plain.Secret);
+        Assert.Null(plain.AesKey);
+        Assert.Equal("False", FakeSql.Arg(_host.Sql.Calls.Last(c => c.Name == ApiIntegrationsController.CreateSql).Args, "WithClientId"));
     }
 }

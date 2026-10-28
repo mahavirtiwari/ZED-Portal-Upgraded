@@ -21,6 +21,25 @@ export interface ApiClientItem {
   updatedOn: string | null;
 }
 
+interface NewPartnerForm {
+  name: string;
+  baseUrl: string;
+  /** "token": client ID and key, takes tokens (the usual partner); "static": a key sent with each lookup. */
+  kind: 'token' | 'static';
+  maySubmitIncentives: boolean;
+  encrypted: boolean;
+}
+
+/** The new partner's secrets, shown once. */
+interface PartnerCreated {
+  message: string;
+  id: number;
+  clientId: string | null;
+  secret: string;
+  aesKey: string | null;
+  aesIv: string | null;
+}
+
 interface PartnerForm {
   id: number;
   clientId: string | null;
@@ -69,7 +88,10 @@ export interface OutboundItem {
     }
 
     <section class="zed-card" aria-labelledby="ai-clients">
-      <h5 class="ai-h" id="ai-clients">Partners <span class="zed-chip">{{ partners.all().length }}</span></h5>
+      <div class="ai-head">
+        <h5 class="ai-h m-0" id="ai-clients">Partners <span class="zed-chip">{{ partners.all().length }}</span></h5>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="startAdd()">+ Add partner</button>
+      </div>
       <p class="muted">Each partner holds its own key. Disabled, its key and the tokens it already holds are refused.</p>
       <div class="filter-bar mb-3">
         <div class="filter wide">
@@ -104,7 +126,7 @@ export interface OutboundItem {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ partners.search() ? 'No partner matches the search.' : 'No partners are registered.' }}</div></td></tr>
+              <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ partners.search() ? 'No partner matches the search.' : 'No partners are registered. Use "+ Add partner" to register one.' }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -188,6 +210,73 @@ export interface OutboundItem {
       </div>
       <div class="modal-backdrop show"></div>
     }
+    @if (adding(); as a) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="ai-add-title">
+        <div class="modal-dialog modal-popup">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+                <h3 class="registration-title m-0" id="ai-add-title">Add partner</h3>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="adding.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
+              </div>
+            </div>
+            <form (ngSubmit)="saveAdd()" novalidate>
+              <div class="modal-body">
+                <div class="form-grid">
+                  <label for="ai-add-name">Partner name<span class="req">*</span></label>
+                  <input id="ai-add-name" name="name" class="form-control" maxlength="200" placeholder="e.g. SIDBI" [(ngModel)]="a.name" />
+                  <label for="ai-add-url">Its address</label>
+                  <input id="ai-add-url" name="baseUrl" type="url" class="form-control" maxlength="500" placeholder="https://" [(ngModel)]="a.baseUrl" />
+                  <span class="label-like top" id="ai-add-kind">How it calls ZED<span class="req">*</span></span>
+                  <div class="ai-kinds" role="radiogroup" aria-labelledby="ai-add-kind">
+                    <label class="ai-check"><input type="radio" class="form-check-input" name="kind" value="token" [(ngModel)]="a.kind" />
+                      <span>Client ID and key: takes a token, then calls the APIs <small class="muted d-block">Banks, states, dashboards (the usual partner)</small></span></label>
+                    <label class="ai-check"><input type="radio" class="form-check-input" name="kind" value="static" [(ngModel)]="a.kind" />
+                      <span>Key alone, sent with each call <small class="muted d-block">Certificate lookups, as the oldest partners</small></span></label>
+                  </div>
+                  <span class="label-like">Also</span>
+                  <div class="ai-kinds">
+                    <label class="ai-check"><input type="checkbox" class="form-check-input" name="maySubmitIncentives" [(ngModel)]="a.maySubmitIncentives" /> May submit incentive disbursements to ZED</label>
+                    <label class="ai-check"><input type="checkbox" class="form-check-input" name="encrypted" [(ngModel)]="a.encrypted" /> Lists answered encrypted (AES key, as the RAMP dashboard)</label>
+                  </div>
+                </div>
+                @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-default" (click)="adding.set(null)">CANCEL</button>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">ADD PARTNER</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
+    @if (created(); as c) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="ai-created-title">
+        <div class="modal-dialog modal-popup">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="registration-title m-0" id="ai-created-title">Partner added</h3>
+            </div>
+            <div class="modal-body">
+              <div class="alert alert-warning" role="alert">Copy these now and give them to the partner securely. The key is not shown again.</div>
+              <dl class="ai-secrets">
+                @if (c.clientId) { <dt>Client ID</dt><dd><code>{{ c.clientId }}</code></dd> }
+                <dt>Key (client secret)</dt><dd><code class="ai-secret">{{ c.secret }}</code></dd>
+                @if (c.aesKey) { <dt>AES key</dt><dd><code class="ai-secret">{{ c.aesKey }}</code></dd> }
+                @if (c.aesIv) { <dt>AES IV</dt><dd><code class="ai-secret">{{ c.aesIv }}</code></dd> }
+              </dl>
+              <button type="button" class="btn btn-outline-primary btn-sm" (click)="copy(c)">{{ copied() ? 'Copied' : 'Copy all' }}</button>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-primary" (click)="created.set(null)">DONE</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
@@ -204,6 +293,14 @@ export interface OutboundItem {
     .ai-group { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; background: #fff; }
     .ai-group-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
     .ai-endpoints { color: #5f6f70; font-family: monospace; word-break: break-word; }
+    .ai-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+    .ai-kinds { display: flex; flex-direction: column; gap: 8px; }
+    .ai-kinds .ai-check { align-items: flex-start; }
+    .ai-kinds .form-check-input { margin-top: 3px; flex: none; }
+    .ai-secrets { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 12px; margin-bottom: 12px; }
+    .ai-secrets dt { font-weight: 600; color: #3b4b4c; }
+    .ai-secrets dd { margin: 0; }
+    .ai-secret { word-break: break-all; user-select: all; }
     .ai-actions { white-space: nowrap; }
     .ai-actions .btn + .btn { margin-left: 6px; }
     .ai-actions-h { width: 170px; }
@@ -223,6 +320,11 @@ export class ApiIntegrationsPage {
   protected readonly outbound = signal<OutboundItem[]>([]);
   protected readonly busy = signal(false);
   protected readonly editing = signal<PartnerForm | null>(null);
+  protected readonly adding = signal<NewPartnerForm | null>(null);
+  protected readonly addError = signal('');
+  /** The new partner's secrets until the Admin closes them (never loaded again). */
+  protected readonly created = signal<PartnerCreated | null>(null);
+  protected readonly copied = signal(false);
   protected readonly editError = signal('');
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -234,6 +336,45 @@ export class ApiIntegrationsPage {
   protected async setClient(c: ApiClientItem, enabled: boolean): Promise<void> {
     if (!enabled && !confirm(`Disable ${c.name}? Its calls to ZED will be refused.`)) return;
     await this.run(() => this.http.put<MessageResponse>(`${ApiIntegrationsPage.url}/clients/${c.id}`, { enabled }));
+  }
+
+  protected startAdd(): void {
+    this.addError.set('');
+    this.adding.set({ name: '', baseUrl: '', kind: 'token', maySubmitIncentives: false, encrypted: false });
+  }
+
+  protected async saveAdd(): Promise<void> {
+    const a = this.adding();
+    if (!a) return;
+    const url = a.baseUrl.trim();
+    if (!a.name.trim()) return this.addError.set("Please enter the partner's name.");
+    if (url && !/^https?:\/\/[^\s]+$/i.test(url)) return this.addError.set('The address must be a full http(s):// address, or empty.');
+    this.addError.set('');
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      const r = await firstValueFrom(this.http.post<PartnerCreated>(`${ApiIntegrationsPage.url}/clients`, { ...a, name: a.name.trim(), baseUrl: url }));
+      this.adding.set(null);
+      this.copied.set(false);
+      this.created.set(r);
+      this.success.set(r.message);
+      await this.load(false);
+    } catch (err) {
+      this.addError.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async copy(c: PartnerCreated): Promise<void> {
+    const lines = [c.clientId && `Client ID: ${c.clientId}`, `Key: ${c.secret}`, c.aesKey && `AES key: ${c.aesKey}`, c.aesIv && `AES IV: ${c.aesIv}`];
+    try {
+      await navigator.clipboard.writeText(lines.filter(Boolean).join('\n'));
+      this.copied.set(true);
+    } catch {
+      // The values can still be selected and copied by hand.
+    }
   }
 
   protected edit(c: ApiClientItem): void {

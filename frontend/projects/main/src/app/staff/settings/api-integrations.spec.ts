@@ -119,4 +119,37 @@ describe('ApiIntegrationsPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
     expect(el.querySelector('.alert-success')!.textContent).toContain('saved.');
   });
+
+  it('adds a partner and shows its new key once', async () => {
+    const add = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === '+ Add partner') as HTMLButtonElement;
+    add.click();
+    await settle();
+    const form = () => el.querySelector('.modal form') as HTMLFormElement;
+    form().dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain("partner's name");
+    http.expectNone((r) => r.method === 'POST');
+
+    const name = el.querySelector('#ai-add-name') as HTMLInputElement;
+    name.value = 'SIDBI';
+    name.dispatchEvent(new Event('input'));
+    (el.querySelector('input[name="encrypted"]') as HTMLInputElement).click();
+    await settle();
+    form().dispatchEvent(new Event('submit'));
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === `${url}/clients`);
+    expect(post.request.body).toEqual({ name: 'SIDBI', baseUrl: '', kind: 'token', maySubmitIncentives: false, encrypted: true });
+    post.flush({ message: 'SIDBI added.', id: 9, clientId: '4947839', secret: 'ABCDEF0123', aesKey: 'a2V5', aesIv: 'aXY=' });
+    await settle();
+    flushAll();
+    await settle();
+    const shown = el.querySelector('.ai-secrets')!.textContent!;
+    expect(shown).toContain('4947839');
+    expect(shown).toContain('ABCDEF0123');
+    expect(shown).toContain('a2V5');
+    expect(el.querySelector('.modal .alert-warning')!.textContent).toContain('not shown again');
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'DONE') as HTMLButtonElement).click();
+    await settle();
+    expect(el.textContent).not.toContain('ABCDEF0123');
+  });
 });
