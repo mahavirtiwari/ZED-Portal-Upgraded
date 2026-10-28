@@ -17,7 +17,7 @@ public sealed class TokenController(ISqlExecutor db, ILogger<TokenController> lo
     [ExternalApiRateLimit(ExternalApiLimit.Token)]
     public async Task<IActionResult> GenerateToken(string? clientId, string? clientSecret, CancellationToken ct)
     {
-        var clients = new ApiClients(db, Options, Settings);
+        var clients = new ApiClients(db, Options);
         var client = await clients.ValidateClientAsync(clientId, clientSecret, ct);
         if (client is null)
         {

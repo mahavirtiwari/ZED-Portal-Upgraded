@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { PortalLinksService } from '@zed/shared';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password), as Views/User/Login.cshtml drew it:
@@ -13,9 +14,11 @@ import { Component } from '@angular/core';
       <img class="outer-gear" src="Images/svgicons/login-gear-outer.svg" alt="" aria-hidden="true" />
       <main class="login-user-block">
         <header>
-          <a href="https://msme.gov.in/" target="_blank" rel="noopener">
+          @if (links.url('ministry'); as u) {
+            <a [href]="u" target="_blank" rel="noopener"><img src="Images/header/ministry-white.png" alt="Ministry of MSME" class="logo-zed" /></a>
+          } @else {
             <img src="Images/header/ministry-white.png" alt="Ministry of MSME" class="logo-zed" />
-          </a>
+          }
         </header>
         <section class="login-section">
           <div class="login-section-inner">
@@ -66,5 +69,7 @@ import { Component } from '@angular/core';
   `,
 })
 export class StaffLoginShell {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   protected readonly year = new Date().getFullYear();
 }

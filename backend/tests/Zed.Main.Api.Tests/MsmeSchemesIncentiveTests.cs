@@ -42,6 +42,18 @@ public sealed class MsmeSchemesIncentiveTests : IDisposable
     public void Dispose() => _host.Dispose();
 
     [Fact]
+    public async Task Incentives_on_the_msme_dashboard_are_left_out_of_the_stakeholder_lists()
+    {
+        var onDashboard = Row(13, "Ministry of MSME", "On the dashboard", "https://msme.gov.in/d");
+        onDashboard["DisplayOn"] = "Dashboard";
+        var inCard = Row(14, "Ministry of MSME", "In the card", "https://msme.gov.in/c");
+        inCard["DisplayOn"] = "Card";
+        _host.Sql.Procs["SP_GET_INCENTIVES"] = _ => FakeSql.Sets([onDashboard, inCard], [], [], [], []);
+        var j = JsonDocument.Parse(await (await _host.CreateBrowserAsync()).GetStringAsync("/api/public/incentives?ct=Gold")).RootElement;
+        Assert.Equal([14L], j.GetProperty("common").EnumerateArray().Select(e => e.GetProperty("id").GetInt64()));
+    }
+
+    [Fact]
     public async Task Details_are_public_with_safe_links_and_documents_of_listed_incentives()
     {
         MsmeSchemesTestSupport.WriteFile(_host, "Uploads/Incentives/11File1.pdf", MsmeSchemesTestSupport.Pdf);

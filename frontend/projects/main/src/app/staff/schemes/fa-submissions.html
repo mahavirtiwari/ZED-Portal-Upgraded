@@ -20,6 +20,7 @@
 @if (success()) {
   <div class="alert alert-success" role="status">{{ success() }}</div>
 }
+<zed-list-search [(value)]="search" placeholder="Search applications" inputId="fa-sub-search" [found]="view.total()" />
 <div class="table-responsive">
   <table class="table table-bordered table-zed">
     <thead>

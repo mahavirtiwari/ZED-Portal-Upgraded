@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService, ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shared';
+import { AuthService, PortalLinksService } from '@zed/shared';
 
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
@@ -15,7 +15,7 @@ import { AuthService, ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shar
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
             <a routerLink="/msme/dashboard"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></a>
           </div>
         </div>
@@ -37,8 +37,10 @@ import { AuthService, ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shar
                 </a>
               </li>
               <li class="nav-item tag"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">My Documents</a></li>
-              <!-- The ZED website's contact page (Admin → Links). -->
-              <li class="nav-item tag"><a class="nav-link" [href]="contactUrl()" target="_blank" rel="noopener">Contact ZED</a></li>
+              <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
+              @if (links.url('contact'); as u) {
+                <li class="nav-item tag"><a class="nav-link" [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
+              }
               <li class="nav-item dropdown tag">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()"
                         (click)="toggleUserMenu($event)">
@@ -88,6 +90,8 @@ import { AuthService, ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shar
   `,
 })
 export class MsmeLayout {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -95,10 +99,8 @@ export class MsmeLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
-  protected readonly contactUrl = signal(DEFAULT_CONTACT_URL);
 
   constructor() {
-    inject(ClientConfigService).get().then((c) => c.contactUrl && this.contactUrl.set(c.contactUrl)).catch(() => undefined);
     this.router.events.subscribe((e) => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);

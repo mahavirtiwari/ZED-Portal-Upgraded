@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { apiErrorMessage } from '@zed/shared';
+import { PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
 /** GET /api/verify/{type}/{code}. */
@@ -26,7 +26,7 @@ interface Line {
   host: { class: 'd-block' },
   template: `
     <header class="verify-header">
-      <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
+      @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" />}
       <img src="/Images/header/zed-logo.png" alt="ZED" width="100" />
     </header>
     <div class="container form-page">
@@ -67,6 +67,8 @@ interface Line {
   `,
 })
 export class VerifyPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   /** Route parameters. */
   readonly type = input<string>('');
   readonly code = input<string>('');

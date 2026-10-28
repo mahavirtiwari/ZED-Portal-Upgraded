@@ -152,6 +152,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Technologies', legacyPath: '/Technology/list', route: '/staff/masters/technologies', roles: [R.Admin], menu: 'Technology Upgradation' },
   // The four groups of incentives (V4, as the LEAN portal; the old menu listed every type and each state).
   ...INCENTIVE_GROUPS.map((g) => ({ label: g.label, legacyPath: '/Incentive/Index', route: `/staff/incentives/${g.key}`, roles: [R.Admin as number], group: 'Incentives' })),
+  // New in V4: "My Incentives" of the MSME dashboard (the built-in cards and the incentives put there).
+  { label: 'Main Dashboard Cards', route: '/staff/incentives/dashboard-cards', roles: [R.Admin], group: 'Incentives' },
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },

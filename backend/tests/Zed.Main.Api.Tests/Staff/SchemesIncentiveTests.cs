@@ -331,4 +331,50 @@ public sealed class SchemesIncentiveTests : IDisposable
         Assert.True(list[0].GetProperty("hasDocument2").GetBoolean());
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync("/api/staff/schemes/incentive-master?type=../x")).StatusCode);
     }
+
+    [Fact]
+    public async Task Where_an_incentive_appears_is_saved_with_it()
+    {
+        var admin = await SignIn("ADMIN1");
+        _host.Sql.Procs["SP_MASTER_GET_INCENTIVES"] = _ => FakeSql.Sets([new { Id = 57L, IncentiveType = "Common", Incentive = "Scheme B" }]);
+        var onDashboard = new Dictionary<string, object?>(System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(
+            System.Text.Json.JsonSerializer.Serialize(Incentive()))!) { ["displayOn"] = "Dashboard", ["cardHighlight"] = " Rs. 5,000/- " };
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master", onDashboard)).StatusCode);
+        var placed = Assert.Single(_host.Sql.Calls, c => c.Name == IncentiveMasterController.PlacementSql);
+        Assert.Equal(("57", "Dashboard", "Rs. 5,000/-"), (FakeSql.Arg(placed.Args, "Id"), FakeSql.Arg(placed.Args, "DisplayOn"), FakeSql.Arg(placed.Args, "CardHighlight")));
+
+        // Without the choice (older pages): inside its stakeholder card, as before.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/57", Incentive())).StatusCode);
+        var updated = _host.Sql.Calls.Last(c => c.Name == IncentiveMasterController.PlacementSql);
+        Assert.Equal(("57", "Card"), (FakeSql.Arg(updated.Args, "Id"), FakeSql.Arg(updated.Args, "DisplayOn")));
+
+        onDashboard["displayOn"] = "Somewhere";
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PostAsJsonAsync("/api/staff/schemes/incentive-master/57", onDashboard)).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_admin_edits_and_hides_the_built_in_dashboard_cards()
+    {
+        _host.Sql.Queries[IncentiveMasterController.BuiltInSql] = _ =>
+            [new { Id = 2L, Card = "JOINING_REWARD", Title = "Joining Reward", Highlight = "Rs. 10,000/-", Details = "Limited purpose reward", Active = true }];
+        _host.Sql.Queries[IncentiveMasterController.DashboardIncentivesSql] = _ =>
+            [new { Id = 57L, IncentiveType = "Common", Title = "Scheme B", Highlight = (string?)null, Active = true, ApplicableForBronze = true, ApplicableForSilver = false, ApplicableForGold = false }];
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await SignIn("SUPER1")).GetAsync("/api/staff/schemes/incentive-master/dashboard")).StatusCode);
+
+        var admin = await SignIn("ADMIN1");
+        var cards = await admin.GetFromJsonAsync<IncentiveMasterController.DashboardCards>("/api/staff/schemes/incentive-master/dashboard");
+        Assert.Equal("JOINING_REWARD", Assert.Single(cards!.BuiltIn).Card);
+        Assert.Equal(57L, Assert.Single(cards.Incentives).Id);
+
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/NOPE", new { title = "x", details = "y", active = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/KAWACH", new { title = " ", details = "y", active = true })).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == IncentiveMasterController.BuiltInUpdateSql);
+
+        var r = await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/kawach", new { title = " MSME KAWACH ", highlight = "", details = "WASH", active = false });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Contains("hidden from the MSME dashboard", await r.Content.ReadAsStringAsync());
+        var update = Assert.Single(_host.Sql.Calls, c => c.Name == IncentiveMasterController.BuiltInUpdateSql);
+        Assert.Equal(("KAWACH", "MSME KAWACH", null, "False"),
+            (FakeSql.Arg(update.Args, "Card"), FakeSql.Arg(update.Args, "Title"), FakeSql.Arg(update.Args, "Highlight"), FakeSql.Arg(update.Args, "Active")));
+    }
 }

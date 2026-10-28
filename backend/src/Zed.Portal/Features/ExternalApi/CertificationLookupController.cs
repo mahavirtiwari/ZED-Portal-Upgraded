@@ -23,7 +23,7 @@ public sealed class CertificationLookupController(
     IOptions<PortalOptions> portal,
     ILogger<CertificationLookupController> log) : ExternalApiController
 {
-    private ApiClients Clients => new(db, Options, Settings);
+    private ApiClients Clients => new(db, Options);
 
     private static ContentResult InvalidToken => LegacyJson(ApiServiceResponse.Status("401", "Invalid Token."));
     private static ContentResult NotFoundBody => LegacyJson(ApiServiceResponse.Status("404", "Invalid Details."));

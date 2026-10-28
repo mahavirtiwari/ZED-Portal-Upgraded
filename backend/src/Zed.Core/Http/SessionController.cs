@@ -28,17 +28,20 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     }
 
     /// <param name="CaptchaMode">"off", "text" (the portal's 6-character picture, GET api/captcha) or "google".</param>
-    /// <param name="ContactUrl">Where "Contact ZED" goes (<see cref="PortalLinks"/>).</param>
-    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl, string ContactUrl);
+    /// <param name="ContactUrl">Where "Contact ZED" goes ("" when the Admin switched it off; kept for pages loaded before "links").</param>
+    /// <param name="Links">The links to pages outside the portal (<see cref="PortalLinks"/>): key → address, null when switched off.</param>
+    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl, string ContactUrl,
+        IReadOnlyDictionary<string, string?>? Links = null);
 
     [HttpGet("config")]
     [AllowAnonymous]
     public async Task<ClientConfig> Config(CancellationToken ct)
     {
         var mode = await captcha.GetAsync(ct);
+        var links = await PortalLinks.ForPagesAsync(settings, portal.Value, ct);
         return new(mode != Security.CaptchaMode.Off, mode.ToString().ToLowerInvariant(),
             mode == Security.CaptchaMode.Google ? recaptcha.Value.SiteKey : "", portal.Value.LegacyBaseUrl.TrimEnd('/'),
-            await PortalLinks.ContactUrlAsync(settings, portal.Value, ct));
+            links["contact"] ?? "", links);
     }
 
     /// <summary>A new 6-character captcha picture, when the captcha mode is "text" (404 otherwise).</summary>

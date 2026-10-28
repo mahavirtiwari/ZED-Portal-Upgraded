@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, Row, SiteAssessmentApi, todayIso } from './site-assessment.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 interface CoForm {
   unit: Row;
@@ -33,7 +33,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
  */
 @Component({
   selector: 'zed-staff-co-allotment',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -55,6 +55,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="co-allot-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-bordered table-zed">
         <thead>
@@ -235,7 +236,9 @@ export class CoAllotmentPage {
 
   protected readonly units = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.units());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.units(), this.search()));
   protected readonly consultants = signal<Assessor[]>([]);
   protected readonly experts = signal<Assessor[]>([]);
   protected readonly busy = signal(false);

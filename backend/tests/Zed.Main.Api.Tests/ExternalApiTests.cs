@@ -15,7 +15,7 @@ namespace Zed.Main.Api.Tests;
 /// </summary>
 public sealed class ExternalApiTests : IDisposable
 {
-    private const string ClientsSql = "SELECT Id, Client, ClientId, Token, ReverseToken, AesKey, AesIV FROM dbo.ApiClientTokens";
+    private const string ClientsSql = "SELECT * FROM dbo.ApiClientTokens";
     private const string DynamicSql = "SELECT TOP 1 Id, DynamicToken, OriginalToken FROM dbo.ApiClientDynamicTokens";
 
     private const string SecureSecret = "6189ABF58B6A4C5F925CB0C50F3AFB2A83459102F81D439CBCD995D8393183EE";
@@ -47,6 +47,7 @@ public sealed class ExternalApiTests : IDisposable
         public bool ReverseToken { get; set; }
         public string? AesKey { get; set; }
         public string? AesIV { get; set; }
+        public bool? IsEnabled { get; set; }
     }
 
     private sealed record Dynamic(long Id, string Token, string Original, int AgeMinutes)
@@ -67,7 +68,7 @@ public sealed class ExternalApiTests : IDisposable
 
         _host.Sql.Queries[ClientsSql] = _ => _clients.Select(c => (object)new
         {
-            c.Id, Client = c.ClientName, c.ClientId, c.Token, ReverseToken = (bool?)c.ReverseToken, c.AesKey, c.AesIV,
+            c.Id, Client = c.ClientName, c.ClientId, c.Token, ReverseToken = (bool?)c.ReverseToken, c.AesKey, c.AesIV, c.IsEnabled,
         }).ToList();
         _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
             _settings.Select(kv => (object)new Zed.Core.Data.PortalSettings.SettingRow(kv.Key, kv.Value)).ToList();
@@ -803,7 +804,7 @@ public sealed class ExternalApiTests : IDisposable
     public async Task A_disabled_client_gets_no_token_and_its_issued_tokens_are_refused()
     {
         var issued = IssueDynamic();
-        _settings[Zed.Portal.Features.ExternalApi.ApiClients.EnabledKey(1)] = "false";
+        _clients[0].IsEnabled = false;
 
         var token = await Http().PostAsync("/Token/GenerateToken", Form(("clientId", SecureClientId), ("clientSecret", SecureSecret)));
         Assert.Contains("Invalid Client ID or Client Secret.", await token.Content.ReadAsStringAsync());

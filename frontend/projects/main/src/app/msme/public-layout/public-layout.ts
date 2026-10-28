@@ -1,6 +1,6 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shared';
+import { PortalLinksService } from '@zed/shared';
 import { ContactPage } from '../contact/contact';
 
 /**
@@ -16,7 +16,7 @@ import { ContactPage } from '../contact/contact';
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
             <a routerLink="/msme/login"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></a>
           </div>
         </div>
@@ -32,8 +32,10 @@ import { ContactPage } from '../contact/contact';
           <div class="collapse navbar-collapse" id="public-menu" [class.show]="menuOpen()">
             <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0">
               <li class="nav-item tag"><a class="nav-link" routerLink="/msme/login">Back to Login</a></li>
-              <!-- The ZED website's contact page (Admin → Links). -->
-              <li class="nav-item tag"><a class="nav-link" [href]="contactUrl()" target="_blank" rel="noopener">Contact ZED</a></li>
+              <!-- The ZED website's contact page (Admin → Links; the Admin can switch it off). -->
+              @if (links.url('contact'); as u) {
+                <li class="nav-item tag"><a class="nav-link" [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
+              }
             </ul>
           </div>
         </div>
@@ -57,13 +59,13 @@ import { ContactPage } from '../contact/contact';
   `,
 })
 export class PublicLayout {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   /** The page name shown in the green bar (old ViewBag title: "Registration", "Contact ZED"). */
   readonly title = input('Home');
   protected readonly menuOpen = signal(false);
-  protected readonly contactUrl = signal(DEFAULT_CONTACT_URL);
 
   constructor() {
-    inject(ClientConfigService).get().then((c) => c.contactUrl && this.contactUrl.set(c.contactUrl)).catch(() => undefined);
   }
   protected readonly year = new Date().getFullYear();
 }

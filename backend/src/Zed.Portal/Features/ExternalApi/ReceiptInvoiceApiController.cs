@@ -36,7 +36,7 @@ public sealed partial class ReceiptInvoiceApiController(
     public async Task<IActionResult> UploadReceiptInvoice(UploadReceiptInvoiceRequest uploadReceiptInvoiceRequest, CancellationToken ct)
     {
         var r = uploadReceiptInvoiceRequest;
-        if (await new ApiClients(db, Options, Settings).DynamicAsync(r.token, ct) is not { } caller)
+        if (await new ApiClients(db, Options).DynamicAsync(r.token, ct) is not { } caller)
         {
             log.LogWarning("Msme/UploadReceiptInvoice refused from {Ip}: invalid or expired token", ClientIp);
             return LegacyJson(ApiServiceResponse.Status("401", "Invalid Token."));

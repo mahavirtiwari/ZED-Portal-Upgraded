@@ -4,7 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Assessor, ONSITE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 interface AllotForm {
   unit: Row;
@@ -25,7 +25,7 @@ interface AllotForm {
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, CoAllotmentPage, PagerComponent],
+  imports: [FormsModule, CoAllotmentPage, PagerComponent, ListSearchComponent],
   template: `
     @if (system === 'consultancy') {
       <zed-staff-co-allotment />
@@ -50,6 +50,7 @@ interface AllotForm {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="sa-allot-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-bordered table-zed">
         <thead>
@@ -199,7 +200,9 @@ export class SaAllotmentPage {
 
   protected readonly units = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.units());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.units(), this.search()));
   protected readonly assessors = signal<Assessor[]>([]);
   protected readonly busy = signal(false);
   protected readonly error = signal('');

@@ -57,11 +57,15 @@ type StatusFilter = 'all' | 'active' | 'inactive';
       <section class="zed-card inc-list" [attr.aria-label]="listTitle()">
         <div class="inc-list-head">
           <h5 class="m-0">{{ listTitle() }} <span class="zed-chip">{{ items().length }} incentive{{ items().length === 1 ? '' : 's' }}</span></h5>
-          <div class="btn-group" role="group" aria-label="Status">
-            @for (f of filters; track f.value) {
-              <button type="button" class="btn btn-sm" [class.btn-primary]="status() === f.value" [class.btn-outline-primary]="status() !== f.value"
-                      [attr.aria-pressed]="status() === f.value" (click)="status.set(f.value)">{{ f.label }}</button>
-            }
+          <div class="inc-list-tools">
+            <input type="search" id="inc-search" class="form-control form-control-sm" maxlength="50" placeholder="Search incentives"
+                   aria-label="Search incentives" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+            <div class="btn-group" role="group" aria-label="Status">
+              @for (f of filters; track f.value) {
+                <button type="button" class="btn btn-sm" [class.btn-primary]="status() === f.value" [class.btn-outline-primary]="status() !== f.value"
+                        [attr.aria-pressed]="status() === f.value" (click)="status.set(f.value)">{{ f.label }}</button>
+              }
+            </div>
           </div>
         </div>
         <div class="table-responsive">
@@ -77,7 +81,10 @@ type StatusFilter = 'all' | 'active' | 'inactive';
               @for (item of view.page(); track item.incentive['Id']) {
                 <tr>
                   <td class="text-center">{{ view.serial($index) }}</td>
-                  <td><strong>{{ item.incentive['Incentive'] }}</strong></td>
+                  <td>
+                    <strong>{{ item.incentive['Incentive'] }}</strong>
+                    @if (item.incentive['DisplayOn'] === 'Dashboard') { <div class="mt-1"><span class="status-badge is-info">Main dashboard</span></div> }
+                  </td>
                   <td class="description">
                     @if (details(item); as d) {
                       <div [class.clamp-3]="!expanded().has(id(item))" [title]="d">{{ d }}</div>
@@ -120,7 +127,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
                 </tr>
               } @empty {
                 @if (!busy()) {
-                  <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ items().length ? 'No incentive matches this filter.' : 'Nothing here yet. Create the first incentive.' }}</div></td></tr>
+                  <tr><td colspan="10" style="padding: 0"><div class="no-data">{{ items().length ? (search().trim() ? 'No incentive matches "' + search().trim() + '".' : 'No incentive matches this filter.') : 'Nothing here yet. Create the first incentive.' }}</div></td></tr>
                 }
               }
             </tbody>
@@ -144,6 +151,9 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .inc-tile-label { font-size: 12px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase; color: #5f6f70; }
     .inc-tile strong { font-size: 24px; color: #23474a; }
     .inc-list-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+    .inc-list-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .inc-list-tools .form-control { width: 240px; max-width: 100%; height: 32px; padding-top: 4px; padding-bottom: 4px; }
+    @media (max-width: 575.98px) { .inc-list-tools, .inc-list-tools .form-control { width: 100%; } }
     .description { white-space: pre-wrap; min-width: 220px; }
     .doc-line { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 6px; }
     .doc-line:last-child { margin-bottom: 0; }
@@ -162,10 +172,19 @@ export class IncentiveMasterPage {
   /** State Government: the state chosen (?state=). */
   protected readonly state = signal<string | null>(null);
   protected readonly status = signal<StatusFilter>('all');
+  /** Searches the name, details, department, contact person and web link (as you type). */
+  protected readonly search = signal('');
   protected readonly items = signal<CatalogueItem[]>([]);
   private readonly shown = computed(() => {
     const s = this.status();
-    return s === 'all' ? this.items() : this.items().filter((i) => !!i.incentive['ActiveStatus'] === (s === 'active'));
+    const words = this.search().trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return this.items().filter((i) => {
+      if (s !== 'all' && !!i.incentive['ActiveStatus'] !== (s === 'active')) return false;
+      if (!words.length) return true;
+      const text = ['Incentive', 'Details', 'MinistryOrDepartment', 'ContactPerson', 'WebLink']
+        .map((k) => String(i.incentive[k] ?? '')).join(' ').toLowerCase();
+      return words.every((w) => text.includes(w));
+    });
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   protected readonly view = new PagedView(() => this.shown());
@@ -200,6 +219,7 @@ export class IncentiveMasterPage {
       this.group.set(group);
       this.state.set(state);
       this.status.set('all');
+      this.search.set('');
       this.items.set([]);
       if (this.type()) void this.load();
     });

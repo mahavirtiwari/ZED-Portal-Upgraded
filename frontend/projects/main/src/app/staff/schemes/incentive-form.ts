@@ -3,16 +3,17 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { INCENTIVE_GROUPS, IncentiveForm, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
+import { INCENTIVE_GROUPS, IncentiveDisplay, IncentiveForm, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
 import { MAX_INCENTIVE_DOC_BYTES } from './incentive-master';
 
-type TextKey = 'incentive' | 'details' | 'ministryOrDepartment' | 'contactPerson' | 'mobileNo' | 'email' | 'videoLink' | 'webLink';
+type TextKey = 'incentive' | 'details' | 'ministryOrDepartment' | 'contactPerson' | 'mobileNo' | 'email' | 'videoLink' | 'webLink' | 'cardHighlight';
 type LevelKey = 'applicableForBronze' | 'applicableForSilver' | 'applicableForGold';
 
 function emptyForm(): IncentiveForm {
   return {
     incentiveType: '', incentive: '', details: '', ministryOrDepartment: '', contactPerson: '', webLink: '', email: '',
     mobileNo: '', videoLink: '', applicableForBronze: false, applicableForSilver: false, applicableForGold: false, activeStatus: true,
+    displayOn: 'Card', cardHighlight: '',
   };
 }
 
@@ -20,7 +21,8 @@ function emptyForm(): IncentiveForm {
  * Create New Incentive / Edit Incentive (V4, as the LEAN portal's incentive form): the incentive's details, its
  * nodal contact and its resources (links and the two PDF documents, uploaded once the incentive is saved), with the
  * wording of its group. A saved incentive keeps its group, state and levels (SP_MASTER_UPDATE_INCENTIVE does not
- * change them), so they are shown but not editable.
+ * change them), so they are shown but not editable. "Where it appears" (V4): its own card in "My Incentives" of the MSME
+ * dashboard, or listed inside its stakeholder card (Ministry of MSME, States/UTs, ...), as before.
  */
 @Component({
   selector: 'zed-staff-incentive-form',
@@ -103,6 +105,26 @@ function emptyForm(): IncentiveForm {
               </div>
             }
 
+            <h5 class="inc-h mt-4" id="inc-where-h">Where it appears</h5>
+            <div class="where-options" role="radiogroup" aria-labelledby="inc-where-h">
+              @for (o of places; track o.value) {
+                <label class="where-option" [class.is-on]="form().displayOn === o.value" [for]="'inc-where-' + o.value">
+                  <input class="form-check-input" type="radio" name="displayOn" [id]="'inc-where-' + o.value" [value]="o.value"
+                         [ngModel]="form().displayOn" (ngModelChange)="patchDisplay($event)" />
+                  <span class="where-body">
+                    <span class="where-title">{{ o.title }}</span>
+                    <span class="where-help">{{ o.value === 'Card' ? o.help.replace('{group}', groupCard()) : o.help }}</span>
+                  </span>
+                </label>
+              }
+            </div>
+            @if (form().displayOn === 'Dashboard') {
+              <label class="form-label" for="inc-cardHighlight">Card highlight</label>
+              <input class="form-control" id="inc-cardHighlight" name="cardHighlight" maxlength="300" placeholder="e.g. Up to Rs. 5,00,000/-"
+                     [ngModel]="form().cardHighlight" (ngModelChange)="patch('cardHighlight', $event)" />
+              <small class="muted">Shown in colour on the card, before the first lines of the description. The card's Avail button shows the full details.</small>
+            }
+
             <h5 class="inc-h mt-4">Status</h5>
             <div class="form-check form-switch inc-switch">
               <input class="form-check-input" type="checkbox" role="switch" id="inc-active" name="activeStatus" [ngModel]="form().activeStatus" (ngModelChange)="patchActive($event)" />
@@ -133,7 +155,17 @@ function emptyForm(): IncentiveForm {
     .inc-switch { display: flex; align-items: center; gap: 10px; padding-left: 0; margin-top: 8px; }
     .inc-switch .form-check-input { float: none; margin: 0; flex: none; }
     .form-actions { align-items: center; margin-top: 16px; }
+    .where-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
+    .where-option { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border: 1px solid #dfe9ea; border-radius: 10px;
+      background: #fff; cursor: pointer; transition: border-color .15s, background .15s; }
+    .where-option:hover { border-color: #45a5ad; }
+    .where-option.is-on { border-color: #45a5ad; background: #eef6f6; box-shadow: inset 0 0 0 1px #45a5ad; }
+    .where-option .form-check-input { flex: 0 0 auto; margin: 3px 0 0; }
+    .where-body { display: flex; flex-direction: column; gap: 2px; }
+    .where-title { font-weight: 700; color: #23474a; }
+    .where-help { font-size: 13px; color: #5f6f70; }
     @media (max-width: 900px) { .inc-form, .inc-pair { grid-template-columns: 1fr; } }
+    @media (max-width: 480px) { .where-options { grid-template-columns: 1fr; } }
   `,
 })
 export class IncentiveFormPage {
@@ -144,6 +176,11 @@ export class IncentiveFormPage {
   protected readonly states = STATES;
   protected readonly levels: { key: LevelKey; label: string }[] = [
     { key: 'applicableForBronze', label: 'Bronze' }, { key: 'applicableForSilver', label: 'Silver' }, { key: 'applicableForGold', label: 'Gold' },
+  ];
+
+  protected readonly places: { value: IncentiveDisplay; title: string; help: string }[] = [
+    { value: 'Dashboard', title: 'Main dashboard', help: 'Its own card in "My Incentives" on every MSME\'s dashboard.' },
+    { value: 'Card', title: 'Stakeholder card', help: 'Listed inside the {group} card of the dashboard.' },
   ];
 
   protected readonly group = signal<IncentiveGroup>(INCENTIVE_GROUPS[0]);
@@ -175,6 +212,15 @@ export class IncentiveFormPage {
 
   protected patchLevel(key: LevelKey, value: boolean): void {
     this.form.update((f) => ({ ...f, [key]: !!value }));
+  }
+
+  protected patchDisplay(value: IncentiveDisplay): void {
+    this.form.update((f) => ({ ...f, displayOn: value === 'Dashboard' ? 'Dashboard' : 'Card' }));
+  }
+
+  /** The dashboard card that lists the group's incentives. */
+  protected groupCard(): string {
+    return { ministry: 'Ministry of MSME', state: 'States/UTs', financial: 'Financial Institutions', others: 'Other Incentives' }[this.group().key];
   }
 
   protected patchActive(value: boolean): void {
@@ -276,6 +322,7 @@ export class IncentiveFormPage {
         contactPerson: s('ContactPerson'), webLink: s('WebLink'), email: s('Email'), mobileNo: s('MobileNo'), videoLink: s('VideoLink'),
         applicableForBronze: !!r['ApplicableForBronze'], applicableForSilver: !!r['ApplicableForSilver'], applicableForGold: !!r['ApplicableForGold'],
         activeStatus: !!r['ActiveStatus'],
+        displayOn: s('DisplayOn') === 'Dashboard' ? 'Dashboard' : 'Card', cardHighlight: s('CardHighlight'),
       });
       this.hasDocument.set([item.hasDocument1, item.hasDocument2]);
       this.loaded.set(true);

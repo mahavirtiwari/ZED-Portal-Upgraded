@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
  * "API Incentives Submitted" for the super admin. Port of Views/Incentive/Submissions.cshtml
@@ -11,7 +11,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-incentive-submissions',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -57,6 +57,7 @@ import { PagedView, PagerComponent } from '../pager';
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
     @if (rows().length) {
+      <zed-list-search [(value)]="searchText" placeholder="Search submissions" inputId="inc-sub-search" [found]="view.total()" />
       <div class="table-responsive">
         <table class="table table-bordered table-zed">
           <thead>
@@ -111,7 +112,9 @@ export class IncentiveSubmissionsPage {
   protected readonly filter: IncentiveFilter = { state: '', certification: '', msmeSize: '', gender: '' };
   protected readonly rows = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.rows());
+  /** The search box above the list (any column). */
+  protected readonly searchText = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.rows(), this.searchText()));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

@@ -4,7 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Person, Row } from './assessment.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
  * Agency (desktop verification): allot its MSMEs to its desktop assessors, or reject them. Port of
@@ -14,7 +14,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-da-allotment',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -47,6 +47,7 @@ import { PagedView, PagerComponent } from '../pager';
       </div>
     }
 
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-allot-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-bordered table-zed">
         <thead>
@@ -185,7 +186,9 @@ export class DaAllotmentPage {
     return q ? this.rows().filter((s) => text(s, 'ZedId').toLowerCase().includes(q)) : this.rows();
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.filtered());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.filtered(), this.search()));
   private readonly assessors = signal<Person[]>([]);
   private readonly bronzeAssessors = signal<Person[]>([]);
   protected readonly loading = signal(false);

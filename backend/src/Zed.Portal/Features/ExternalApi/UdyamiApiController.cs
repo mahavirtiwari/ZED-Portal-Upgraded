@@ -33,7 +33,7 @@ public sealed class UdyamiApiController(
     IWebHostEnvironment env,
     ILogger<UdyamiApiController> log) : ExternalApiController
 {
-    private ApiClients Clients => new(db, Options, Settings);
+    private ApiClients Clients => new(db, Options);
 
     /// <summary>Msme/RegisterPlant (POST): SP_API_MSME_INSERT_UDYAM_DETAILS, pledge certificate PDF, registration mail.</summary>
     [PartnerApi(PartnerApiGroups.Udyami)]

@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ClientConfigService, apiErrorMessage } from '@zed/shared';
+import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
@@ -18,7 +18,45 @@ interface DashboardData {
 
 type Level = 'Bronze' | 'Silver' | 'Gold';
 type InfoTopic = Level | 'My' | 'MyIncentives';
-type Modal = { kind: 'apply-info'; level: Level } | { kind: 'info'; topic: InfoTopic } | { kind: 'joining' } | { kind: 'fa' } | { kind: 'tu' };
+type Modal = { kind: 'apply-info'; level: Level } | { kind: 'info'; topic: InfoTopic } | { kind: 'joining' } | { kind: 'fa' } | { kind: 'tu' }
+  | { kind: 'incentive'; card: IncentiveCard };
+
+/** A built-in card of "My Incentives" as the Admin set it (Admin → Incentives → Main Dashboard Cards). */
+interface BuiltInCard {
+  card: string;
+  title: string | null;
+  highlight: string | null;
+  details: string | null;
+  active: boolean;
+}
+
+/** An incentive the Admin put on the dashboard ("Where it appears": Main dashboard). */
+export interface IncentiveCard {
+  id: number;
+  title: string | null;
+  highlight: string | null;
+  details: string | null;
+  department: string | null;
+  contactPerson: string | null;
+  email: string | null;
+  mobileNo: string | null;
+  webLink: string | null;
+  videoLink: string | null;
+  applicableForBronze: boolean;
+  applicableForSilver: boolean;
+  applicableForGold: boolean;
+}
+
+/** The built-in cards' wording before V4 (until the server answers, or before migration 0026). */
+const BUILT_IN_DEFAULTS: Record<string, BuiltInCard> = Object.fromEntries(
+  ([
+    ['KAWACH', 'MSME KAWACH', 'Free (₹ 5,750 + Taxes, 100% Subsidized)', 'WASH Certification on Safety & Hygiene'],
+    ['JOINING_REWARD', 'Joining Reward', 'Rs. 10,000/-', 'Limited purpose reward, linked with ZED Certification Levels'],
+    ['FINANCIAL_ASSISTANCE', 'Financial Assistance', '75% of Subsidy (Max. Rs. 50,000/-)', 'For System Certification or Product Certification or Product Testing'],
+    ['HANDHOLDING', 'Handholding Support', 'Cost: Rs. 2,00,000/- (Subsidy as per MSME size)', 'for improving systems and processes'],
+    ['TECHNOLOGY_UPGRADATION', 'Technology Upgradation', 'Support of upto Rs. 3,00,000/-', 'for moving towards Zero Effect Solutions'],
+  ] as const).map(([card, title, highlight, details]) => [card, { card, title, highlight, details, active: true }]),
+);
 
 /** Stepper on each certification card: [completed when status >, current when status in (from, to]]. */
 interface StepRule {
@@ -88,10 +126,14 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
     /* The three parts of the disclaimer read as one list. */
     .disclaimer-points > zed-text:not(:last-child) ::ng-deep ol { margin-bottom: 0; padding-bottom: 0; }
     .apply-btn, .clickable { cursor: pointer; }
+    .card-text-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    .incentive-details { white-space: pre-line; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
 export class DashboardPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   private readonly http = inject(HttpClient);
 
   protected readonly data = signal<DashboardData | null>(null);
@@ -119,6 +161,10 @@ export class DashboardPage {
     { type: 'Other', title: 'Other Incentives', text: 'Incentives by Central Ministries/Other Organisations for ZED Certified MSMEs', image: '/Images/Dashboard/incentive.png', imageStyle: null },
   ] as const;
 
+  /** "My Incentives" as the Admin set it: the built-in cards' wording (or hidden) and the incentives put on the dashboard. */
+  protected readonly builtInCards = signal<BuiltInCard[]>([]);
+  protected readonly incentiveCards = signal<IncentiveCard[]>([]);
+
   /** The keys of the steps' texts (Admin → Texts). */
   protected readonly certificationSteps = [1, 2, 3, 4, 5].map((n) => `msme.dashboard.certificationSteps.${n}`);
 
@@ -130,6 +176,35 @@ export class DashboardPage {
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
     void this.load();
+    void this.loadIncentiveCards();
+  }
+
+  /** The cards of "My Incentives"; on an error the built-in cards keep their wording before V4. */
+  private async loadIncentiveCards(): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.http.get<{ builtIn: BuiltInCard[]; incentives: IncentiveCard[] }>('/api/msme/dashboard/incentives'));
+      this.builtInCards.set(r.builtIn ?? []);
+      this.incentiveCards.set(r.incentives ?? []);
+    } catch {
+      // The rest of the dashboard does not depend on it.
+    }
+  }
+
+  /** A built-in card as the Admin set it, or null when the Admin hid it. */
+  protected card(key: string): BuiltInCard | null {
+    const c = this.builtInCards().find((b) => b.card === key) ?? BUILT_IN_DEFAULTS[key];
+    return c?.active ? c : null;
+  }
+
+  /** True when the unit is certified at a level the incentive applies to. */
+  protected eligibleFor(c: IncentiveCard): boolean {
+    return (c.applicableForBronze && this.num('BronzeStatus') === 6)
+      || (c.applicableForSilver && this.num('SilverStatus') === 16)
+      || (c.applicableForGold && this.num('GoldStatus') === 16);
+  }
+
+  protected levelsOf(c: IncentiveCard, separator = ', '): string {
+    return [c.applicableForBronze && 'Bronze', c.applicableForSilver && 'Silver', c.applicableForGold && 'Gold'].filter(Boolean).join(separator);
   }
 
   protected async load(): Promise<void> {

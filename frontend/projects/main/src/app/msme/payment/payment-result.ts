@@ -1,5 +1,6 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { PortalLinksService } from '@zed/shared';
 
 /**
  * Where the browser lands after the payment gateway (or a zero-amount payment).
@@ -28,7 +29,7 @@ import { RouterLink } from '@angular/router';
                 <div class="label-highlight">
                   <div>
                     <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application</p>
-                    <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                    @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
                     <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
                   </div>
                 </div>
@@ -59,6 +60,8 @@ import { RouterLink } from '@angular/router';
   `,
 })
 export class PaymentResultPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   // Query parameters, bound by the router.
   readonly status = input<string>('');
   readonly certification = input<string>('');

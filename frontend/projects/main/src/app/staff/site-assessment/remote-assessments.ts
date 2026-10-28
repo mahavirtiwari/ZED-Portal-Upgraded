@@ -3,7 +3,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -19,7 +19,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
-  imports: [RouterLink, PagerComponent],
+  imports: [RouterLink, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -38,6 +38,7 @@ import { PagedView, PagerComponent } from '../pager';
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="remote-search" [found]="view.total()" />
     @if (consultancy) {
       <div class="table-responsive">
         <table class="table table-zed table-bordered">
@@ -166,7 +167,9 @@ export class RemoteAssessmentsPage {
 
   protected readonly rows = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.rows());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

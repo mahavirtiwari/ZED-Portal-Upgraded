@@ -4,7 +4,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 interface PermissionOption {
   key: string;
@@ -46,7 +46,7 @@ const API = '/api/staff/sub-users';
  */
 @Component({
   selector: 'zed-staff-sub-users',
-  imports: [FormsModule, DatePipe, PagerComponent],
+  imports: [FormsModule, DatePipe, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -66,6 +66,7 @@ const API = '/api/staff/sub-users';
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
+    <zed-list-search [(value)]="search" placeholder="Search users" inputId="sub-users-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-zed table-bordered">
         <thead>
@@ -168,7 +169,9 @@ export class SubUsersPage {
   protected readonly options = signal<PermissionOption[]>([]);
   protected readonly users = signal<SubUser[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.users());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.users(), this.search()));
   protected readonly form = signal<SubUserForm | null>(null);
   protected readonly editing = signal<string | null>(null);
   protected readonly busy = signal(false);

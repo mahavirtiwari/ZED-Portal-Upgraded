@@ -35,8 +35,8 @@
                 <div class="label-highlight">
                   <div class="app-banner">
                     <div class="app-banner-text"><zed-text key="msme.dashboard.mobileAppHint" /></div>
-                    <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
-                    <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                    @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>}
+                    @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
                     <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
                   </div>
                 </div>
@@ -154,88 +154,117 @@
                 <div class="panel-body">
                   <div>
                     <div class="panel-incen-box">
-                      <div class="item">
-                        <div class="panel panel-default panel-incen-block">
-                          <div class="panel-heading">
-                            <img src="/Images/Dashboard/wash.png" alt="MSME KAWACH" />
-                            <a href="https://msmekawach.org.in/Msme/login" target="_blank" rel="noopener" class="btn btn-sm btn-primary">Avail</a>
+                      <!-- MSME KAWACH: the Admin can switch it off (Admin → Links). -->
+                      @if (links.url('kawach'); as u) {
+                        @if (card('KAWACH'); as b) {
+                          <div class="item">
+                            <div class="panel panel-default panel-incen-block">
+                              <div class="panel-heading">
+                                <img src="/Images/Dashboard/wash.png" [alt]="b.title" />
+                                <a [href]="u" target="_blank" rel="noopener" class="btn btn-sm btn-primary">Avail</a>
+                              </div>
+                              <div class="panel-body">
+                                <h4>{{ b.title }}</h4>
+                                <p>{{ b.details }}</p>
+                                @if (b.highlight) { <p class="mt-3"><span class="clr-spot"><b>{{ b.highlight }}</b></span></p> }
+                              </div>
+                            </div>
                           </div>
-                          <div class="panel-body">
-                            <h4>MSME KAWACH</h4>
-                            <p>WASH Certification on Safety &amp; Hygiene</p>
-                            <p class="mt-3"><span class="clr-spot"><b>Free</b></span> <span class="strike">₹ 5,750 + Taxes</span>, 100% Subsidized</p>
+                        }
+                      }
+
+                      @if (card('JOINING_REWARD'); as b) {
+                        <div class="item">
+                          <div class="panel panel-default panel-incen-block">
+                            <div class="panel-heading">
+                              <img src="/Images/Dashboard/reward.png" [alt]="b.title" />
+                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'joining' })">
+                                {{ is(msme(), 'IsCouponUsed', 1) ? 'View' : 'Avail' }}
+                              </button>
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ b.title }}</h4>
+                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      }
 
-                      <div class="item">
-                        <div class="panel panel-default panel-incen-block">
-                          <div class="panel-heading">
-                            <img src="/Images/Dashboard/reward.png" alt="Joining Reward" />
-                            <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'joining' })">
-                              {{ is(msme(), 'IsCouponUsed', 1) ? 'View' : 'Avail' }}
-                            </button>
-                          </div>
-                          <div class="panel-body">
-                            <h4>Joining Reward</h4>
-                            <p><span class="clr-spot">Rs. 10,000/-</span> Limited purpose reward, linked with ZED Certification Levels</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="item">
-                        <!-- Not eligible (yet): the card faded with its AVAIL button, as the other cards. -->
-                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!is(basic(), 'IsEligibleForFinancial', 1)">
-                          <div class="panel-heading">
-                            <img src="/Images/Dashboard/financial.png" alt="Financial Assistance" />
-                            @if (is(cert(), 'FinancialAssistanceStatus', 0) && is(basic(), 'IsEligibleForFinancial', 1)) {
-                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'fa' })">View</button>
-                            } @else {
-                              <a routerLink="/msme/financial-assistance" class="btn btn-sm btn-primary">Avail</a>
-                            }
-                          </div>
-                          <div class="panel-body">
-                            <h4>Financial Assistance</h4>
-                            <p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="item">
-                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!(anyCertified() && is(basic(), 'IsEligibleForBenefits', 1))">
-                          <div class="panel-heading">
-                            <img src="/Images/Dashboard/handholding.png" alt="Handholding Support" />
-                            <a routerLink="/msme/handholding" class="btn btn-sm btn-primary">
-                              {{ num('ConsultancyStatus') > 0 ? 'View' : 'Avail' }}
-                            </a>
-                          </div>
-                          <div class="panel-body">
-                            <h4>Handholding Support</h4>
-                            <p><span class="clr-spot">Cost: Rs. 2,00,000/- (Subsidy as per MSME size)</span> for improving systems and processes</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div class="item">
-                        <div class="panel panel-default panel-incen-block"
-                             [class.plant-activity-disabled]="!((is(cert(), 'TechnologyUpgradationStatus', 0) || is(cert(), 'TechnologyUpgradationStatus', 1)) && is(basic(), 'IsEligibleForBenefits', 1))">
-                          <div class="panel-heading">
-                            <img src="/Images/Dashboard/technology.png" alt="Technology Upgradation" />
-                            @if (is(basic(), 'IsEligibleForBenefits', 1)) {
-                              @if (num('TechnologyUpgradationStatus') > 0) {
-                                <a routerLink="/msme/technology-upgradation" class="btn btn-sm btn-primary">Avail</a>
+                      @if (card('FINANCIAL_ASSISTANCE'); as b) {
+                        <div class="item">
+                          <!-- Not eligible (yet): the card faded with its AVAIL button, as the other cards. -->
+                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!is(basic(), 'IsEligibleForFinancial', 1)">
+                            <div class="panel-heading">
+                              <img src="/Images/Dashboard/financial.png" [alt]="b.title" />
+                              @if (is(cert(), 'FinancialAssistanceStatus', 0) && is(basic(), 'IsEligibleForFinancial', 1)) {
+                                <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'fa' })">View</button>
+                              } @else {
+                                <a routerLink="/msme/financial-assistance" class="btn btn-sm btn-primary">Avail</a>
                               }
-                              @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
-                                <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'tu' })">View</button>
-                              }
-                            }
-                          </div>
-                          <div class="panel-body">
-                            <h4>Technology Upgradation</h4>
-                            <p><span class="clr-spot">Support of upto Rs. 3,00,000/-</span> for moving towards Zero Effect Solutions</p>
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ b.title }}</h4>
+                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      }
+
+                      @if (card('HANDHOLDING'); as b) {
+                        <div class="item">
+                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!(anyCertified() && is(basic(), 'IsEligibleForBenefits', 1))">
+                            <div class="panel-heading">
+                              <img src="/Images/Dashboard/handholding.png" [alt]="b.title" />
+                              <a routerLink="/msme/handholding" class="btn btn-sm btn-primary">
+                                {{ num('ConsultancyStatus') > 0 ? 'View' : 'Avail' }}
+                              </a>
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ b.title }}</h4>
+                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      }
+
+                      @if (card('TECHNOLOGY_UPGRADATION'); as b) {
+                        <div class="item">
+                          <div class="panel panel-default panel-incen-block"
+                               [class.plant-activity-disabled]="!((is(cert(), 'TechnologyUpgradationStatus', 0) || is(cert(), 'TechnologyUpgradationStatus', 1)) && is(basic(), 'IsEligibleForBenefits', 1))">
+                            <div class="panel-heading">
+                              <img src="/Images/Dashboard/technology.png" [alt]="b.title" />
+                              @if (is(basic(), 'IsEligibleForBenefits', 1)) {
+                                @if (num('TechnologyUpgradationStatus') > 0) {
+                                  <a routerLink="/msme/technology-upgradation" class="btn btn-sm btn-primary">Avail</a>
+                                }
+                                @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
+                                  <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'tu' })">View</button>
+                                }
+                              }
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ b.title }}</h4>
+                              <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      }
+
+                      <!-- Incentives the Admin put on the dashboard (Admin → Incentives: "Where it appears" = Main dashboard). -->
+                      @for (c of incentiveCards(); track c.id) {
+                        <div class="item">
+                          <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!eligibleFor(c)">
+                            <div class="panel-heading">
+                              <img src="/Images/Dashboard/incentive.png" [alt]="c.title" />
+                              <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'incentive', card: c })">Avail</button>
+                            </div>
+                            <div class="panel-body">
+                              <h4>{{ c.title }}</h4>
+                              <p class="card-text-clamp">@if (c.highlight) { <span class="clr-spot">{{ c.highlight }}</span> } {{ c.details }}</p>
+                            </div>
+                          </div>
+                        </div>
+                      }
 
                       @for (inc of incentives; track inc.type) {
                         <div class="item">
@@ -341,12 +370,30 @@
               @case ('joining') { Joining Reward }
               @case ('fa') { Financial Assistance }
               @case ('tu') { Technology Upgradation }
+              @case ('incentive') { {{ m.card.title }} }
             }
           </h3>
           <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
         </div>
         <div class="modal-body">
           @switch (m.kind) {
+            @case ('incentive') {
+              @let c = m.card;
+              @if (c.highlight) { <p><span class="clr-spot">{{ c.highlight }}</span></p> }
+              <p class="incentive-details">{{ c.details }}</p>
+              <table class="table">
+                @if (c.department) { <tr><th>Department:</th><td>{{ c.department }}</td></tr> }
+                <tr><th>Applicable for:</th><td>{{ levelsOf(c) }} certified MSMEs</td></tr>
+                @if (c.contactPerson) { <tr><th>Contact person:</th><td>{{ c.contactPerson }}</td></tr> }
+                @if (c.email) { <tr><th>E-mail:</th><td><a [href]="'mailto:' + c.email">{{ c.email }}</a></td></tr> }
+                @if (c.mobileNo) { <tr><th>Phone:</th><td>{{ c.mobileNo }}</td></tr> }
+              </table>
+              @if (!eligibleFor(c)) { <p class="text-muted">Available once your unit is certified at {{ levelsOf(c, ' or ') }} level.</p> }
+              <div class="d-flex flex-wrap gap-2 justify-content-center">
+                @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">APPLY ON THE SCHEME PORTAL</a> }
+                @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">WATCH VIDEO</a> }
+              </div>
+            }
             @case ('apply-info') {
               <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
               <div class="text-center mt-4"><img [src]="'/Images/Dashboard/' + m.level.toLowerCase() + '.png'" alt="" /></div>

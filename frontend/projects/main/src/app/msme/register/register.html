@@ -262,16 +262,21 @@
           <h4 id="reg-app-h">Get the ZED MSME mobile app</h4>
           <p class="muted">Scan with your phone's camera to install the app, then sign in with your ZED ID.</p>
           <div class="reg-app-codes">
-            <a class="reg-app-code" href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener">
-              <img class="reg-qr" src="/Images/qr-zed-msme-android.svg" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
-              <img src="/Images/google-play.png" width="130" alt="Get it on Google Play" />
-              <span>Android</span>
-            </a>
-            <a class="reg-app-code" href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener">
-              <img class="reg-qr" src="/Images/qr-zed-msme-ios.svg" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
-              <img src="/Images/app-store.png" width="130" alt="Download on the App Store" />
-              <span>iPhone</span>
-            </a>
+            <!-- Admin → Links: each store can be switched off. -->
+            @if (links.url('playStore'); as u) {
+              <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
+                <img class="reg-qr" src="/Images/qr-zed-msme-android.svg" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
+                <img src="/Images/google-play.png" width="130" alt="Get it on Google Play" />
+                <span>Android</span>
+              </a>
+            }
+            @if (links.url('appStore'); as u) {
+              <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
+                <img class="reg-qr" src="/Images/qr-zed-msme-ios.svg" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
+                <img src="/Images/app-store.png" width="130" alt="Download on the App Store" />
+                <span>iPhone</span>
+              </a>
+            }
           </div>
         </section>
 

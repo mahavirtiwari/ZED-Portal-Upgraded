@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Evidence, NewPoint, Point, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
 import { CollapseCard } from '../collapse-card';
+import { ListSearchComponent, searchRows } from '../pager';
 
 type EvidenceKind = 'mandatory' | 'optional';
 
@@ -28,7 +29,7 @@ interface EvidenceDialog {
  */
 @Component({
   selector: 'zed-staff-requirements',
-  imports: [FormsModule, RouterLink, CollapseCard],
+  imports: [FormsModule, RouterLink, CollapseCard, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -95,6 +96,7 @@ interface EvidenceDialog {
         </form>
       </zed-collapse-card>
 
+      <zed-list-search [(value)]="search" placeholder="Search requirements" inputId="req-search" [found]="shown().length" />
       <div class="table-responsive">
         <table class="table table-zed table-bordered requirements">
           <thead>
@@ -106,7 +108,7 @@ interface EvidenceDialog {
             </tr>
           </thead>
           <tbody>
-            @for (q of requirements(); track q.id) {
+            @for (q of shown(); track q.id) {
               <tr>
                 <td class="text-center"><strong>{{ data()!.sectionCode }}.{{ q.requirementCode }}</strong></td>
                 <td style="width: 50%">
@@ -164,7 +166,7 @@ interface EvidenceDialog {
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="4" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+              <tr><td colspan="4" style="padding: 0"><div class="no-data">{{ requirements().length ? 'No requirement matches the search.' : 'No Data' }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -284,6 +286,9 @@ export class RequirementsPage {
 
   protected readonly data = signal<RequirementsResponse | null>(null);
   protected readonly requirements = computed(() => this.data()?.requirements ?? []);
+  /** The search box above the list (requirement, points and evidences). */
+  protected readonly search = signal('');
+  protected readonly shown = computed(() => searchRows(this.requirements(), this.search()));
   protected readonly draft = signal<NewPoint[]>([]);
   protected readonly bulletFor = signal<number | null>(null);
   protected readonly evidenceDialog = signal<EvidenceDialog | null>(null);

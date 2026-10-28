@@ -1,8 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { MessageResponse, apiErrorMessage } from '@zed/shared';
+import { MessageResponse, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 export type ChangeKind = 'addState' | 'renameState' | 'addDistrict' | 'renameDistrict' | 'deactivateDistrict';
 
@@ -36,7 +36,7 @@ const KIND_LABELS: Record<ChangeKind, string> = {
  */
 @Component({
   selector: 'zed-staff-lgd-directory',
-  imports: [PagerComponent],
+  imports: [PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -53,7 +53,7 @@ const KIND_LABELS: Record<ChangeKind, string> = {
 
     <section class="zed-card">
       <ol class="lgd-steps">
-        <li>On <a href="https://lgdirectory.gov.in/downloadDirectory.do" target="_blank" rel="noopener noreferrer">lgdirectory.gov.in → Download Directory</a>, download the list of <strong>all districts</strong> (CSV or Excel).</li>
+        <li>On @if (links.url('lgd'); as u) {<a [href]="u" target="_blank" rel="noopener noreferrer">lgdirectory.gov.in → Download Directory</a>} @else {lgdirectory.gov.in → Download Directory}, download the list of <strong>all districts</strong> (CSV or Excel).</li>
         <li>Upload it here and check the changes.</li>
         <li>Tick the changes to make and apply them. Codes are LGD codes; names are stored in capitals.</li>
       </ol>
@@ -74,6 +74,7 @@ const KIND_LABELS: Record<ChangeKind, string> = {
               <label class="lgd-kind"><input type="checkbox" class="form-check-input" [checked]="allTicked(k.kind)" (change)="tickKind(k.kind, $any($event.target).checked)" /> {{ k.label }} ({{ k.count }})</label>
             }
           </div>
+          <zed-list-search [(value)]="search" placeholder="Search changes" inputId="lgd-search" [found]="list.total()" />
           <div class="table-responsive lgd-list">
             <table class="table table-zed">
               <thead><tr><th style="width: 40px"></th><th>Change</th><th>State / UT</th><th>District</th><th>Now in ZED</th></tr></thead>
@@ -117,6 +118,8 @@ const KIND_LABELS: Record<ChangeKind, string> = {
   `,
 })
 export class LgdDirectoryPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   private readonly http = inject(HttpClient);
   private static readonly url = '/api/staff/masters/lgd';
 
@@ -131,7 +134,9 @@ export class LgdDirectoryPage {
   });
   /** The changes with their place in the file's list (the ticks), paged; ticking keeps the page. */
   private readonly indexed = computed(() => (this.result()?.changes ?? []).map((c, i) => ({ c, i })));
-  protected readonly list = new PagedView(this.indexed, 20);
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly list = new PagedView(() => searchRows(this.indexed(), this.search()), 20);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');

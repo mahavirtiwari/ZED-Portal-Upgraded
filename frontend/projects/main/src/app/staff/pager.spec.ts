@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ClientPager, PagedView, PagerComponent, ServerPager } from './pager';
+import { ClientPager, ListSearchComponent, PagedView, PagerComponent, ServerPager, searchRows } from './pager';
 
 const rows = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, name: i % 2 ? 'odd' : 'even' }));
 
@@ -87,5 +87,39 @@ describe('pager', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.view.pageNo()).toBe(1);
     expect(fixture.componentInstance.view.lastPage()).toBe(2);
+  });
+
+  it('searchRows finds every word in any column, nested values too', () => {
+    const list = [
+      { id: 1, unit: 'Shree Ganesh Industries', state: 'UTTAR PRADESH', contact: { email: 'ganesh@example.org' } },
+      { id: 2, unit: 'Kaveri Foods', state: 'KARNATAKA', contact: { email: 'kaveri@example.org' }, tags: ['Gold'] },
+    ];
+    expect(searchRows(list, '')).toBe(list);
+    expect(searchRows(list, '  ganesh  pradesh ').map((r) => r.id)).toEqual([1]);
+    expect(searchRows(list, 'KAVERI@EXAMPLE').map((r) => r.id)).toEqual([2]);
+    expect(searchRows(list, 'gold').map((r) => r.id)).toEqual([2]);
+    expect(searchRows(list, 'ganesh karnataka')).toEqual([]);
+  });
+
+  it('the search box filters a paged list as you type and says how many were found', async () => {
+    @Component({
+      imports: [ListSearchComponent],
+      template: `<zed-list-search [(value)]="search" placeholder="Search units" [found]="view.total()" />`,
+    })
+    class Host {
+      readonly search = signal('');
+      readonly view = new PagedView(() => searchRows(rows(25), this.search()));
+    }
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const box = el.querySelector('input[type=search]') as HTMLInputElement;
+    expect(box.placeholder).toBe('Search units');
+    expect(el.querySelector('.list-search-found')).toBeNull();
+    box.value = 'odd';
+    box.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.view.total()).toBe(12);
+    expect(el.querySelector('.list-search-found')!.textContent).toBe('12 found');
   });
 });

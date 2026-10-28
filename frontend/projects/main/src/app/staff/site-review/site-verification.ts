@@ -4,7 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { text } from '../assessment/assessment-shared';
 import { Row, SiteReviewApi } from './site-review.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
  * "SA Verification": the site assessor's units in NC or quality check, each opening the site assessment
@@ -13,7 +13,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-site-verification',
-  imports: [RouterLink, PagerComponent],
+  imports: [RouterLink, PagerComponent, ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -23,6 +23,7 @@ import { PagedView, PagerComponent } from '../pager';
       <div class="page-actions"><button type="button" class="btn btn-default" (click)="load()">Refresh Data</button></div>
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="sv-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-zed table-bordered">
         <thead>
@@ -58,7 +59,9 @@ export class SiteVerificationPage {
   protected readonly t = text;
   protected readonly rows = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.rows());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
 

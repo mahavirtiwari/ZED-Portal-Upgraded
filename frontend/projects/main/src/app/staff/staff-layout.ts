@@ -1,6 +1,6 @@
 import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRender, computed, effect, inject, signal, untracked, viewChild } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService, ClientConfigService } from '@zed/shared';
+import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-menu';
 
@@ -20,7 +20,7 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="Images/header/ministry.png" alt="Ministry of MSME" />}
             <a routerLink="/staff"><img class="zedv2-logo" src="Images/header/zed-logo.png" alt="ZED" /></a>
           </div>
         </div>
@@ -157,6 +157,8 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
   `,
 })
 export class StaffLayout {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly legacyUrl = signal('');

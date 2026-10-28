@@ -2,7 +2,7 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { AuthService, apiErrorMessage } from '@zed/shared';
+import { AuthService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom, map } from 'rxjs';
 import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
 
@@ -16,7 +16,7 @@ import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
       <header class="zed-header zed-smooth">
         <div class="container g-0">
           <div class="header-top d-flex justify-content-between align-items-center">
-            <a href="https://msme.gov.in/" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
             <img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" />
             @if (msmeSignedIn()) {
               <a routerLink="/msme/dashboard" class="btn btn-sm btn-primary">Dashboard</a>
@@ -34,6 +34,8 @@ import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
   `,
 })
 export class PublicFrame {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   readonly bare = signal(false);
   protected readonly year = new Date().getFullYear();
   private readonly auth = inject(AuthService);

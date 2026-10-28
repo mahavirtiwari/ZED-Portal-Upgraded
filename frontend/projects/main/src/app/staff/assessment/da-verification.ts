@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
  * Desktop assessor: units allotted for desktop verification — accept/reject, then assess. Port of
@@ -17,7 +17,7 @@ import { PagedView, PagerComponent } from '../pager';
  */
 @Component({
   selector: 'zed-staff-da-verification',
-  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent, ContentTextComponent],
   template: `
     <div class="page-head">
       <div>
@@ -38,6 +38,7 @@ import { PagedView, PagerComponent } from '../pager';
       </div>
     }
 
+    <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-ver-search" [found]="view.total()" />
     <div class="table-responsive">
       <table class="table table-zed table-bordered">
         <thead>
@@ -150,7 +151,9 @@ export class DaVerificationPage {
 
   protected readonly rows = signal<Row[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.rows());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
   protected readonly loading = signal(false);
   protected readonly busy = signal(false);
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);

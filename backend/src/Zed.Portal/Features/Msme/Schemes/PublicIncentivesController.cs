@@ -52,7 +52,10 @@ public sealed class PublicIncentivesController(
         // State 0 was offered as "Common incentives" once; the procedure treats it as no state match, as before.
         var sets = await db.QueryProcMultipleAsync("SP_GET_INCENTIVES",
             new { State = id?.ToString(CultureInfo.InvariantCulture), CertificationType = level }, cancel);
-        IReadOnlyList<IncentiveDto> Map(int i) => sets[i].Select(r => ToDto(r, level)).Where(d => d.Id > 0).ToList();
+        // An incentive the Admin put on the MSME dashboard has its own card there, not in the stakeholder lists (migration 0026).
+        IReadOnlyList<IncentiveDto> Map(int i) => sets[i]
+            .Where(r => !string.Equals(r.Text("DisplayOn"), IncentiveMasterController.OnDashboard, StringComparison.OrdinalIgnoreCase))
+            .Select(r => ToDto(r, level)).Where(d => d.Id > 0).ToList();
         return new DetailsResponse(level, id, Map(0), Map(1), Map(2), Map(3),
             sets[4].Select(r => r.Text("MinistryOrDepartment")).Where(s => s.Length > 0).ToList());
     }

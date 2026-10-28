@@ -31,7 +31,7 @@ public sealed class IncentiveApiController(ISqlExecutor db, ILogger<IncentiveApi
 
     private async Task<IActionResult> Submit(string procedure, SubmitIncentiveRequest r, string? token, bool acceptsStaticToken, CancellationToken ct)
     {
-        var clients = new ApiClients(db, Options, Settings);
+        var clients = new ApiClients(db, Options);
         // V1's procedure also accepts a static token with ReverseToken = 1; V2 only tokens from GenerateToken.
         var caller = acceptsStaticToken
             ? await clients.DynamicOrStaticAsync(token, StaticTokenScope.ReverseToken, ct)

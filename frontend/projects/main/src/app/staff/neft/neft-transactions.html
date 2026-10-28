@@ -10,6 +10,7 @@
 @if (success()) {
   <div class="alert alert-success" role="status">{{ success() }}</div>
 }
+<zed-list-search [(value)]="search" placeholder="Search transactions" inputId="neft-search" [found]="view.total()" />
 <div class="table-responsive">
   <table class="table table-zed table-bordered">
     <thead>

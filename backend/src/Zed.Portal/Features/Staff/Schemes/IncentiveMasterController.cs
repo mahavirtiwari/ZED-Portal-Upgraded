@@ -50,7 +50,12 @@ public sealed class IncentiveMasterController(
     [
         "Id", "IncentiveType", "Incentive", "Details", "MinistryOrDepartment", "ContactPerson", "WebLink", "Email", "MobileNo",
         "VideoLink", "ApplicableForBronze", "ApplicableForSilver", "ApplicableForGold", "ActiveStatus", "OrderNo",
+        "DisplayOn", "CardHighlight",
     ];
+
+    /// <summary>Where an incentive appears (Incentives.DisplayOn, migration 0026): its own card on the MSME dashboard, or inside its stakeholder card.</summary>
+    public const string OnDashboard = "Dashboard";
+    public const string InStakeholderCard = "Card";
 
     public sealed record IncentiveDto(Dictionary<string, object?> Incentive, bool HasDocument1, bool HasDocument2);
 
@@ -69,7 +74,8 @@ public sealed class IncentiveMasterController(
     public sealed record IncentiveRequest(
         string? IncentiveType, string? Incentive, string? Details, string? MinistryOrDepartment, string? ContactPerson,
         string? WebLink, string? Email, string? MobileNo, string? VideoLink,
-        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ActiveStatus);
+        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold, bool ActiveStatus,
+        string? DisplayOn = null, string? CardHighlight = null);
 
     /// <summary>The new incentive's Id (V4: the page attaches its documents next), when it could be found again.</summary>
     public sealed record IncentiveSaved(string Message, long? Id);
@@ -91,6 +97,7 @@ public sealed class IncentiveMasterController(
             .Where(r => r.Text("Incentive") == title)
             .Select(r => long.TryParse(r.Text("Id"), NumberStyles.None, CultureInfo.InvariantCulture, out var i) ? i : 0)
             .DefaultIfEmpty(0).Max();
+        if (id > 0 && await SavePlacement(id, req, ct) is { } placementError) return placementError;
         return new IncentiveSaved(saved.Value!.Message, id > 0 ? id : null);
     }
 
@@ -101,7 +108,110 @@ public sealed class IncentiveMasterController(
         if (Check(req) is { } error) return this.Problem400(error);
         var type = CanonicalType(req.IncentiveType)!;
         if (!(await Load(type, ct)).Any(r => r.Text("Id") == id.ToString(CultureInfo.InvariantCulture))) return NotFound();
-        return await Save("SP_MASTER_UPDATE_INCENTIVE", Args(req, id), "Incentive updated.", ct);
+        var saved = await Save("SP_MASTER_UPDATE_INCENTIVE", Args(req, id), "Incentive updated.", ct);
+        if (saved.Result is not null) return saved;
+        return await SavePlacement(id, req, ct) is { } placementError ? placementError : saved;
+    }
+
+    internal const string PlacementSql =
+        "UPDATE dbo.Incentives SET DisplayOn = @DisplayOn, CardHighlight = @CardHighlight WHERE Id = @Id AND DashboardCard IS NULL;";
+
+    /// <summary>Where it appears and the dashboard card's coloured line (columns of migration 0026; the legacy procedures do not know them).</summary>
+    private async Task<ActionResult?> SavePlacement(long id, IncentiveRequest req, CancellationToken ct)
+    {
+        var onDashboard = string.Equals(req.DisplayOn, OnDashboard, StringComparison.OrdinalIgnoreCase);
+        try
+        {
+            await db.ExecuteSqlAsync(PlacementSql, new
+            {
+                Id = id,
+                DisplayOn = onDashboard ? OnDashboard : InStakeholderCard,
+                CardHighlight = string.IsNullOrWhiteSpace(req.CardHighlight) ? null : req.CardHighlight.Trim(),
+            }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogError(ex, "Could not save where incentive {Id} appears (is migration 0026 applied?)", id);
+            return this.Problem400("The incentive was saved, but not where it appears. Please ask the administrator to apply database migration 0026.");
+        }
+        return null;
+    }
+
+    // ----- The built-in cards of "My Incentives" on the MSME dashboard (Incentives.DashboardCard, migration 0026) -----
+
+    /// <summary>The built-in cards, in the dashboard's order (their buttons are the portal's own).</summary>
+    public static readonly string[] BuiltInCards = ["KAWACH", "JOINING_REWARD", "FINANCIAL_ASSISTANCE", "HANDHOLDING", "TECHNOLOGY_UPGRADATION"];
+
+    public sealed record BuiltInCard(long Id, string Card, string? Title, string? Highlight, string? Details, bool Active);
+
+    /// <summary>An incentive of a stakeholder group that has its own card on the dashboard.</summary>
+    public sealed record DashboardIncentive(long Id, string IncentiveType, string? Title, string? Highlight, bool Active,
+        bool ApplicableForBronze, bool ApplicableForSilver, bool ApplicableForGold);
+
+    public sealed record DashboardCards(IReadOnlyList<BuiltInCard> BuiltIn, IReadOnlyList<DashboardIncentive> Incentives);
+
+    internal const string BuiltInSql =
+        "SELECT Id, DashboardCard AS Card, Incentive AS Title, CardHighlight AS Highlight, Details, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active " +
+        "FROM dbo.Incentives WHERE DashboardCard IS NOT NULL ORDER BY OrderNo, Id;";
+
+    internal const string DashboardIncentivesSql =
+        "SELECT Id, IncentiveType, Incentive AS Title, CardHighlight AS Highlight, CAST(ISNULL(ActiveStatus, 0) AS bit) AS Active, " +
+        "CAST(ISNULL(ApplicableForBronze, 0) AS bit) AS ApplicableForBronze, CAST(ISNULL(ApplicableForSilver, 0) AS bit) AS ApplicableForSilver, " +
+        "CAST(ISNULL(ApplicableForGold, 0) AS bit) AS ApplicableForGold " +
+        "FROM dbo.Incentives WHERE DisplayOn = 'Dashboard' AND DashboardCard IS NULL ORDER BY IncentiveType, OrderNo, Id;";
+
+    /// <summary>GET api/staff/schemes/incentive-master/dashboard — what "My Incentives" of the MSME dashboard shows.</summary>
+    [HttpGet("dashboard")]
+    public async Task<ActionResult<DashboardCards>> Dashboard(CancellationToken ct)
+    {
+        try
+        {
+            return new DashboardCards(
+                (await db.QuerySqlAsync<BuiltInCard>(BuiltInSql, null, ct)).ToList(),
+                (await db.QuerySqlAsync<DashboardIncentive>(DashboardIncentivesSql, null, ct)).ToList());
+        }
+        catch (DbException ex)
+        {
+            log.LogError(ex, "Could not read the dashboard cards (is migration 0026 applied?)");
+            return this.Problem400("The dashboard cards could not be read. Please ask the administrator to apply database migration 0026.");
+        }
+    }
+
+    public sealed record BuiltInCardRequest(string? Title, string? Highlight, string? Details, bool Active);
+
+    internal const string BuiltInUpdateSql =
+        "UPDATE dbo.Incentives SET Incentive = @Title, CardHighlight = @Highlight, Details = @Details, ActiveStatus = @Active " +
+        "WHERE DashboardCard = @Card;";
+
+    /// <summary>PUT api/staff/schemes/incentive-master/dashboard/{card} — a built-in card's title, coloured line, text, and whether it is shown.</summary>
+    [HttpPut("dashboard/{card}")]
+    public async Task<ActionResult<MessageResponse>> SaveBuiltIn(string card, BuiltInCardRequest req, CancellationToken ct)
+    {
+        if (BuiltInCards.FirstOrDefault(c => string.Equals(c, card, StringComparison.OrdinalIgnoreCase)) is not { } key) return NotFound();
+        (string? Value, string Label, int Max, bool Required)[] fields =
+            [(req.Title, "Card title", 200, true), (req.Highlight, "Highlight", 300, false), (req.Details, "Description", 1000, true)];
+        foreach (var (value, label, max, required) in fields)
+        {
+            var v = value?.Trim() ?? "";
+            if (required && v.Length == 0) return this.Problem400($"{label} required.");
+            if (v.Length > max) return this.Problem400($"{label} can be up to {max} characters.");
+            if (v.Any(char.IsControl)) return this.Problem400($"{label} contains invalid characters.");
+        }
+        try
+        {
+            await db.ExecuteSqlAsync(BuiltInUpdateSql, new
+            {
+                Card = key, Title = req.Title!.Trim(), Highlight = string.IsNullOrWhiteSpace(req.Highlight) ? null : req.Highlight.Trim(),
+                Details = req.Details!.Trim(), req.Active,
+            }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogError(ex, "Could not save the dashboard card {Card}", key);
+            return this.Problem400("The card could not be saved. Please ask the administrator to apply database migration 0026.");
+        }
+        log.LogInformation("Dashboard card {Card} saved ({State}) by {UserId}", key, req.Active ? "shown" : "hidden", UserId);
+        return new MessageResponse(req.Active ? "Card saved. MSMEs see it on their dashboard." : "Card saved. It is hidden from the MSME dashboard.");
     }
 
     /// <summary>POST api/staff/schemes/incentive-master/{id}/documents/{n} (multipart "file", PDF up to 2 MB), n = 1 or 2.</summary>
@@ -162,6 +272,11 @@ public sealed class IncentiveMasterController(
         if (!r.MobileNo!.Trim().All(c => char.IsAsciiDigit(c) || c is '+' or '-' or ' ')) return "Please enter a valid mobile/phone number.";
         if (r.WebLink!.Trim() != "---" && !IsHttpUrl(r.WebLink)) return "Web Link must be a full http(s):// address (or --- for none).";
         if (!string.IsNullOrWhiteSpace(r.VideoLink) && !IsHttpUrl(r.VideoLink)) return "Video Link must be a full http(s):// address.";
+        if (r.DisplayOn is { Length: > 0 } d && !string.Equals(d, OnDashboard, StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(d, InStakeholderCard, StringComparison.OrdinalIgnoreCase)) return "Please choose where the incentive appears.";
+        var highlight = r.CardHighlight?.Trim() ?? "";
+        if (highlight.Length > 300) return "Card highlight can be up to 300 characters.";
+        if (highlight.Any(char.IsControl)) return "Card highlight contains invalid characters.";
         return null;
     }
 

@@ -32,7 +32,7 @@ public sealed class ApiSecureController(ISqlExecutor db, ILogger<ApiSecureContro
         Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
-    private ApiClients Clients => new(db, Options, Settings);
+    private ApiClients Clients => new(db, Options);
 
     [PartnerApi(PartnerApiGroups.Secure)]
     [HttpPost("/ApiSecure/GenerateToken")]

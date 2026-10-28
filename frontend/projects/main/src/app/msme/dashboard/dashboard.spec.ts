@@ -16,7 +16,8 @@ describe('DashboardPage', () => {
     fixture.detectChanges();
   }
 
-  async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0) {
+  async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
+                        incentives: object = { builtIn: [], incentives: [] }) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -27,6 +28,7 @@ describe('DashboardPage', () => {
       basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: reCertification },
       certStatus: { BronzeStatus: 0, SilverStatus: 0, GoldStatus: 0, ...certStatus },
     });
+    for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
     await settle();
   }
 
@@ -72,6 +74,35 @@ describe('DashboardPage', () => {
     expect(steps).toEqual(['completed', 'current', '']);
     // Paid levels link to the certification details page instead of APPLY.
     expect(card('bronze').querySelector('a[href="/msme/certification/Bronze"]')).toBeTruthy();
+  });
+
+  it('shows the built-in incentive cards as the Admin set them and the incentives put on the dashboard', async () => {
+    const titles = () => [...el.querySelectorAll('.panel-incen-block h4')].map((h) => h.textContent!.trim());
+    await render({ BronzeStatus: 6 }, {}, 0, {
+      builtIn: [
+        { card: 'KAWACH', title: 'MSME KAWACH', highlight: 'Free', details: 'WASH', active: false },
+        { card: 'JOINING_REWARD', title: 'Welcome Reward', highlight: 'Rs. 12,000/-', details: 'For new units', active: true },
+      ],
+      incentives: [
+        { id: 57, title: 'Export Booster', highlight: 'Up to Rs. 5,00,000/-', details: 'Line one. Line two.', department: 'MoMSME', contactPerson: 'Officer',
+          email: 'o@msme.gov.in', mobileNo: '011', webLink: 'https://scheme.example.org', videoLink: null,
+          applicableForBronze: false, applicableForSilver: true, applicableForGold: false },
+      ],
+    });
+    // KAWACH hidden; Joining Reward with the Admin's wording; the others as before V4; the incentive before the stakeholder cards.
+    expect(titles()).toEqual(['Welcome Reward', 'Financial Assistance', 'Handholding Support', 'Technology Upgradation', 'Export Booster',
+      'Ministry of MSME', 'States/UTs', 'Financial Institutions', 'Other Incentives']);
+    expect(el.textContent).toContain('Rs. 12,000/-');
+    // Bronze certified only: a Silver incentive is faded, its details open from Avail.
+    const exportCard = [...el.querySelectorAll('.panel-incen-block')].find((p) => p.textContent!.includes('Export Booster')) as HTMLElement;
+    expect(exportCard.classList).toContain('plant-activity-disabled');
+    (exportCard.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    const dialog = el.querySelector('.modal-content') as HTMLElement;
+    expect(dialog.textContent).toContain('Export Booster');
+    expect(dialog.textContent).toContain('Silver certified MSMEs');
+    expect(dialog.textContent).toContain('Available once your unit is certified at Silver level.');
+    expect(dialog.querySelector('a[href="https://scheme.example.org"]')).not.toBeNull();
   });
 
   it('marks a certified level as completed and unlocks the incentives', async () => {

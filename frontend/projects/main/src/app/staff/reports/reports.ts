@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { ListSearchComponent, searchRows } from '../pager';
 
 export interface ReportItem {
   id: string;
@@ -28,6 +29,7 @@ async function blobError(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-staff-reports',
+  imports: [ListSearchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -36,6 +38,7 @@ async function blobError(err: unknown): Promise<string> {
       </div>
     </div>
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
+    <zed-list-search [(value)]="search" placeholder="Search reports" inputId="reports-search" [found]="shown().length" />
     <div class="table-responsive reports">
       <table class="table table-zed table-bordered">
         <thead>
@@ -46,7 +49,7 @@ async function blobError(err: unknown): Promise<string> {
           </tr>
         </thead>
         <tbody>
-          @for (r of reports(); track r.id) {
+          @for (r of shown(); track r.id) {
             <tr>
               <td class="text-center">{{ $index + 1 }}</td>
               <td><strong>{{ r.name }}</strong></td>
@@ -58,7 +61,7 @@ async function blobError(err: unknown): Promise<string> {
               </td>
             </tr>
           } @empty {
-            @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">No reports</div></td></tr> }
+            @if (loaded()) { <tr><td colspan="3" style="padding: 0"><div class="no-data">{{ reports().length ? 'No report matches the search.' : 'No reports' }}</div></td></tr> }
           }
         </tbody>
       </table>
@@ -76,6 +79,9 @@ export class ReportsPage {
   private readonly http = inject(HttpClient);
 
   protected readonly reports = signal<ReportItem[]>([]);
+  /** The search box above the list. */
+  protected readonly search = signal('');
+  protected readonly shown = computed(() => searchRows(this.reports(), this.search()));
   protected readonly loaded = signal(false);
   protected readonly error = signal('');
   protected readonly downloading = signal<string | null>(null);

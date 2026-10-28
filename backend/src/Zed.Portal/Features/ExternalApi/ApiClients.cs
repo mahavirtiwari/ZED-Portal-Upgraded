@@ -16,6 +16,8 @@ public sealed class ApiClientRow
     public bool? ReverseToken { get; set; }
     public string? AesKey { get; set; }
     public string? AesIV { get; set; }
+    /// <summary>V4 (migration 0027): false when the Admin disabled the client; null (no column yet) or true = enabled.</summary>
+    public bool? IsEnabled { get; set; }
 
     public string Name => string.IsNullOrWhiteSpace(Client) ? "client #" + Id : Client!;
 }
@@ -48,28 +50,19 @@ public enum StaticTokenScope
 /// table (SP_API_GET_TOKEN and SP_API_GET_DYNAMIC_TOKEN stored every token sent in ApiClientRequests /
 /// ApiClientDynamicRequests). Procedures that check the token themselves are still given it.
 /// <para>
-/// V4: the Admin can disable a client (Administration → API Integrations; dbo.V4Settings "ApiClient.{Id}.Enabled" =
-/// "false"). A disabled client's secret and tokens, also those already issued, are refused like unknown ones.
+/// V4: the Admin can disable a client (Administration → API Integrations; dbo.ApiClientTokens.IsEnabled = 0, migration
+/// 0027). A disabled client's secret and tokens, also those already issued, are refused like unknown ones, at once.
 /// </para>
 /// </summary>
-public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options, IPortalSettings? settings = null)
+public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options)
 {
-    public static string EnabledKey(long id) => $"ApiClient.{id}.Enabled";
-
-    public async Task<bool> IsEnabledAsync(long id, CancellationToken ct) =>
-        settings is null || !string.Equals(await settings.GetAsync(EnabledKey(id), ct), "false", StringComparison.OrdinalIgnoreCase);
+    public static bool IsEnabled(ApiClientRow row) => row.IsEnabled != false;
 
     /// <summary>The clients the Admin has not disabled.</summary>
-    private async Task<IReadOnlyList<ApiClientRow>> EnabledAsync(CancellationToken ct)
-    {
-        var enabled = new List<ApiClientRow>();
-        foreach (var row in await AllAsync(ct))
-            if (await IsEnabledAsync(row.Id, ct)) enabled.Add(row);
-        return enabled;
-    }
+    private async Task<IReadOnlyList<ApiClientRow>> EnabledAsync(CancellationToken ct) => (await AllAsync(ct)).Where(IsEnabled).ToList();
 
-    internal const string ClientsSql =
-        "SELECT Id, Client, ClientId, Token, ReverseToken, AesKey, AesIV FROM dbo.ApiClientTokens";
+    // SELECT *: IsEnabled is read once migration 0027 added the column; before it every client is enabled, as before V4.
+    internal const string ClientsSql = "SELECT * FROM dbo.ApiClientTokens";
 
     // SP_API_GET_DYNAMIC_TOKEN's rule (IsValid, issued in the last 24 hours) with the configured lifetime.
     internal const string DynamicTokenSql =
@@ -122,7 +115,7 @@ public sealed class ApiClients(ISqlExecutor db, ExternalApiOptions options, IPor
 
         var client = found.OriginalToken is null ? null : Match(await AllAsync(ct), found.OriginalToken);
         // A token issued to a client the Admin has since disabled.
-        if (client is not null && !await IsEnabledAsync(client.Id, ct)) return null;
+        if (client is not null && !IsEnabled(client)) return null;
         return new ApiCaller(client?.Name ?? "unknown client", "dynamic", found.Id, client?.Token ?? found.OriginalToken);
     }
 

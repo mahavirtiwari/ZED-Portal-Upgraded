@@ -150,6 +150,18 @@ describe('incentive pages', () => {
     button('Inactive').click();
     await settle();
     expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('strong')!.textContent)).toEqual(['Scheme B']);
+
+    // The search box: any column, together with the status filter.
+    button('All').click();
+    const search = el.querySelector('#inc-search') as HTMLInputElement;
+    search.value = 'x.in';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('strong')!.textContent)).toEqual(['Scheme B']);
+    search.value = 'nothing like it';
+    search.dispatchEvent(new Event('input'));
+    await settle();
+    expect(el.querySelector('tbody .no-data')!.textContent).toContain('No incentive matches "nothing like it".');
   });
 
   it('asks for the state on the State Government page', async () => {
@@ -217,11 +229,22 @@ describe('incentive pages', () => {
     (el.querySelector('#inc-applicableForSilver') as HTMLInputElement).click();
     choose(el.querySelector('#inc-doc1') as HTMLInputElement, new File(['%PDF'], 'guide.pdf'));
     await settle();
+    // Where it appears: inside the stakeholder card by default; Main dashboard asks for the card's highlight.
+    expect((el.querySelector('#inc-where-Card') as HTMLInputElement).checked).toBe(true);
+    expect(el.querySelector('.where-option.is-on')!.textContent).toContain('States/UTs card');
+    expect(el.querySelector('#inc-cardHighlight')).toBeNull();
+    (el.querySelector('#inc-where-Dashboard') as HTMLInputElement).click();
+    await settle();
+    typeIn('inc-cardHighlight', 'Up to Rs. 5,00,000/-');
+    await settle();
 
     button('Save Incentive').click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master');
-    expect(post.request.body).toEqual(expect.objectContaining({ incentiveType: 'ASSAM', incentive: 'Scheme B', ministryOrDepartment: 'Industries', applicableForSilver: true }));
+    expect(post.request.body).toEqual(expect.objectContaining({
+      incentiveType: 'ASSAM', incentive: 'Scheme B', ministryOrDepartment: 'Industries', applicableForSilver: true,
+      displayOn: 'Dashboard', cardHighlight: 'Up to Rs. 5,00,000/-',
+    }));
     post.flush({ message: 'Incentive saved.', id: 77 });
     await settle();
     const doc = http.expectOne((r) => r.url === '/api/staff/schemes/incentive-master/77/documents/1');

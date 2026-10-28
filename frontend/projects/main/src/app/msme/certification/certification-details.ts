@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ClientConfigService, apiErrorMessage } from '@zed/shared';
+import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CertificationSteps } from './certification-steps';
 import {
@@ -47,6 +47,8 @@ const DOCUMENTS_API = '/api/msme/certification-documents';
   styleUrls: ['../shared/msme-page.scss', './certification-details.scss'],
 })
 export class CertificationDetailsPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   /** Route parameter :certification. */
   readonly certification = input.required<string>();
 

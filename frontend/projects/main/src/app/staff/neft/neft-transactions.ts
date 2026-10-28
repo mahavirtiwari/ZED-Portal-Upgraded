@@ -6,7 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
 import { TuApi } from '../consultancy/technology/tu.api';
-import { PagedView, PagerComponent } from '../pager';
+import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
 
 interface ApprovalForm {
@@ -39,7 +39,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, ListSearchComponent],
   templateUrl: './neft-transactions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -75,7 +75,9 @@ export class NeftTransactionsPage {
 
   protected readonly transactions = signal<NeftTransaction[]>([]);
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
-  protected readonly view = new PagedView(() => this.transactions());
+  /** The search box above the list (any column). */
+  protected readonly search = signal('');
+  protected readonly view = new PagedView(() => searchRows(this.transactions(), this.search()));
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');

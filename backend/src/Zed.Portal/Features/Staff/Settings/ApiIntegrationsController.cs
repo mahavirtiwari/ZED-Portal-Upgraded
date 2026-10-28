@@ -9,8 +9,9 @@ namespace Zed.Portal.Features.Staff.Settings;
 /// <summary>
 /// Administration → API Integrations (new in V4): the organisations that call ZED's partner APIs (banks and financial
 /// institutions, state governments, the Udyami and RAMP dashboards, ...: the rows of dbo.ApiClientTokens, registered by
-/// SP_API_KEY_MAKER in the old system), what each may call, when it last took a token, and an Enable / Disable switch
-/// (dbo.V4Settings "ApiClient.{Id}.Enabled"; <see cref="ApiClients"/> refuses a disabled client within half a minute).
+/// SP_API_KEY_MAKER in the old system), what each may call, when it last took a token, Edit (name, address, incentive
+/// submission) and Enable / Disable (dbo.ApiClientTokens.IsEnabled, migration 0027; <see cref="ApiClients"/> refuses a
+/// disabled client at once).
 /// Secrets (tokens, AES keys) are never sent to the page. Main only: the partner APIs and their clients live there.
 /// </summary>
 [Route("api/staff/settings/integrations")]
@@ -20,26 +21,23 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
 {
     internal const string ClientsSql =
         "SELECT c.Id, c.Client, c.ClientId, c.CreatedDate, c.BaseUrl, c.ReverseToken, CAST(CASE WHEN c.AesKey IS NULL OR c.AesKey = '' THEN 0 ELSE 1 END AS bit) AS HasAes, " +
-        "(SELECT MAX(d.CreatedDate) FROM dbo.ApiClientDynamicTokens d WHERE d.OriginalToken = c.Token) AS LastTokenOn FROM dbo.ApiClientTokens c ORDER BY c.Id;";
+        "(SELECT MAX(d.CreatedDate) FROM dbo.ApiClientDynamicTokens d WHERE d.OriginalToken = c.Token) AS LastTokenOn, " +
+        "c.IsEnabled, c.UpdatedBy, c.UpdatedOn FROM dbo.ApiClientTokens c ORDER BY c.Id;";
 
-    public sealed record ClientRow(long Id, string? Client, string? ClientId, DateTime? CreatedDate, string? BaseUrl, bool? ReverseToken, bool HasAes, DateTime? LastTokenOn);
+    public sealed record ClientRow(long Id, string? Client, string? ClientId, DateTime? CreatedDate, string? BaseUrl, bool? ReverseToken, bool HasAes,
+        DateTime? LastTokenOn, bool? IsEnabled = null, string? UpdatedBy = null, DateTime? UpdatedOn = null);
 
     /// <param name="Access">What the client may call, from its token type (<see cref="AccessOf"/>).</param>
+    /// <param name="MaySubmitIncentives">Whether its key may submit incentive disbursements (ApiClientTokens.ReverseToken).</param>
     public sealed record ApiClientItem(long Id, string Name, string? ClientId, DateTime? CreatedDate, string? BaseUrl, IReadOnlyList<string> Access,
-        DateTime? LastTokenOn, bool Enabled);
+        DateTime? LastTokenOn, bool Enabled, bool MaySubmitIncentives = false, string? UpdatedBy = null, DateTime? UpdatedOn = null);
 
     [HttpGet("clients")]
     public async Task<IReadOnlyList<ApiClientItem>> Clients(CancellationToken ct)
     {
         var rows = await db.QuerySqlAsync<ClientRow>(ClientsSql, null, ct);
-        var items = new List<ApiClientItem>();
-        foreach (var r in rows)
-        {
-            var enabled = !string.Equals(await settings.GetAsync(ApiClients.EnabledKey(r.Id), ct), "false", StringComparison.OrdinalIgnoreCase);
-            items.Add(new ApiClientItem(r.Id, string.IsNullOrWhiteSpace(r.Client) ? $"Client #{r.Id}" : r.Client.Trim(), r.ClientId, r.CreatedDate, r.BaseUrl,
-                AccessOf(r), r.LastTokenOn, enabled));
-        }
-        return items;
+        return rows.Select(r => new ApiClientItem(r.Id, NameOf(r), r.ClientId, r.CreatedDate, r.BaseUrl, AccessOf(r), r.LastTokenOn,
+            r.IsEnabled != false, r.ReverseToken == true, r.UpdatedBy, r.UpdatedOn)).ToList();
     }
 
     /// <summary>The partner APIs a client's token type lets it call (the checks of <see cref="ApiClients"/>).</summary>
@@ -104,18 +102,53 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
 
     public sealed record SwitchRequest(bool Enabled);
 
-    /// <summary>Enables or disables a client: disabled, its secret and the tokens it holds are refused.</summary>
+    private static string NameOf(ClientRow r) => string.IsNullOrWhiteSpace(r.Client) ? $"Client #{r.Id}" : r.Client.Trim();
+
+    internal const string SwitchSql =
+        "UPDATE dbo.ApiClientTokens SET IsEnabled = @Enabled, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() WHERE Id = @Id;";
+
+    /// <summary>Enables or disables a client: disabled, its secret and the tokens it holds are refused at once.</summary>
     [HttpPut("clients/{id:long}")]
     public async Task<ActionResult<MessageResponse>> SetClient(long id, SwitchRequest req, CancellationToken ct)
     {
         var row = (await db.QuerySqlAsync<ClientRow>(ClientsSql, null, ct)).FirstOrDefault(r => r.Id == id);
         if (row is null) return NotFound();
-        // Enabled is the default: no row.
-        await settings.SetAsync(ApiClients.EnabledKey(id), req.Enabled ? null : "false", UserId, ct);
+        await db.ExecuteSqlAsync(SwitchSql, new { Id = id, req.Enabled, UpdatedBy = Actor() }, ct);
         log.LogWarning("API client {Id} ({Client}) {State} by {Actor}", id, row.Client, req.Enabled ? "enabled" : "disabled", UserId);
-        var name = string.IsNullOrWhiteSpace(row.Client) ? $"Client #{id}" : row.Client.Trim();
         return new MessageResponse(req.Enabled
-            ? $"{name} is enabled: its calls are accepted again within half a minute."
-            : $"{name} is disabled: its calls are refused within half a minute.");
+            ? $"{NameOf(row)} is enabled: its calls are accepted again."
+            : $"{NameOf(row)} is disabled: its calls are refused.");
     }
+
+    /// <param name="BaseUrl">Its own address (for information; ZED does not call it). Empty for none.</param>
+    /// <param name="MaySubmitIncentives">Its key may submit incentive disbursements.</param>
+    public sealed record ClientEditRequest(string? Name, string? BaseUrl, bool MaySubmitIncentives);
+
+    internal const string EditSql =
+        "UPDATE dbo.ApiClientTokens SET Client = @Name, BaseUrl = @BaseUrl, ReverseToken = @ReverseToken, UpdatedBy = @UpdatedBy, " +
+        "UpdatedOn = SYSUTCDATETIME() WHERE Id = @Id;";
+
+    /// <summary>Edits a partner: its name, address and whether it may submit incentives. Its client ID and key stay as they are.</summary>
+    [HttpPut("clients/{id:long}/details")]
+    public async Task<ActionResult<MessageResponse>> EditClient(long id, ClientEditRequest req, CancellationToken ct)
+    {
+        var row = (await db.QuerySqlAsync<ClientRow>(ClientsSql, null, ct)).FirstOrDefault(r => r.Id == id);
+        if (row is null) return NotFound();
+        var name = req.Name?.Trim() ?? "";
+        var baseUrl = req.BaseUrl?.Trim() ?? "";
+        if (name.Length == 0) return this.Problem400("Please enter the partner's name.");
+        if (name.Length > 200) return this.Problem400("The name can be up to 200 characters.");
+        if (name.Any(char.IsControl) || baseUrl.Any(char.IsControl)) return this.Problem400("The name or address contains invalid characters.");
+        if (baseUrl.Length > 500) return this.Problem400("The address can be up to 500 characters.");
+        if (baseUrl.Length > 0 && !(Uri.TryCreate(baseUrl, UriKind.Absolute, out var u) && (u.Scheme == Uri.UriSchemeHttps || u.Scheme == Uri.UriSchemeHttp)))
+            return this.Problem400("The address must be a full http(s):// address, or empty.");
+        await db.ExecuteSqlAsync(EditSql, new
+        {
+            Id = id, Name = name, BaseUrl = baseUrl.Length == 0 ? null : baseUrl, ReverseToken = req.MaySubmitIncentives, UpdatedBy = Actor(),
+        }, ct);
+        log.LogWarning("API client {Id} edited by {Actor}: incentive submission {Submit}", id, UserId, req.MaySubmitIncentives);
+        return new MessageResponse($"{name} saved.");
+    }
+
+    private string Actor() => UserId.Length <= 50 ? UserId : UserId[..50];
 }

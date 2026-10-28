@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { AuthService, Recaptcha, apiErrorMessage } from '@zed/shared';
+import { AuthService, PortalLinksService, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { LookupResponse, RegistrationApi, SubmitResponse, UdyamRow } from './registration.api';
@@ -26,6 +26,8 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
   styleUrl: './register.scss',
 })
 export class RegisterPage {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   private readonly api = inject(RegistrationApi);
   private readonly auth = inject(AuthService);
   private readonly captcha = viewChild(Recaptcha);

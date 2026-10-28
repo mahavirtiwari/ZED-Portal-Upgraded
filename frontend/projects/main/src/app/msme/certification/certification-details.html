@@ -40,8 +40,8 @@
               <div class="label-highlight">
                 <div>
                   <p>Please download the <strong>ZED MSME Mobile Application</strong> to proceed to the next step, i.e. Basic Information and Document Upload</p>
-                  <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
-                  <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
+                  @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>}
+                  @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
                   <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
                 </div>
               </div>

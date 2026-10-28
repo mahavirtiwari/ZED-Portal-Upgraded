@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
+import { PortalLinksService } from '@zed/shared';
 
 /** The live portal's banner (Banner_20220428033601.png, resized), shown until an Admin uploads one in Home Page Settings. */
 export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
@@ -17,9 +18,11 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
           <section class="login-block1 container-sec">
             <header>
               <div class="header-block">
-                <a href="https://msme.gov.in/" target="_blank" rel="noopener">
+                @if (links.url('ministry'); as u) {
+                  <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" /></a>
+                } @else {
                   <img src="/Images/header/ministry.png" alt="Ministry of MSME" width="200" />
-                </a>
+                }
                 <img class="zed-logo zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" width="100" />
               </div>
             </header>
@@ -64,6 +67,8 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
   `,
 })
 export class LoginShell {
+  /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
+  protected readonly links = inject(PortalLinksService);
   protected readonly year = new Date().getFullYear();
   protected readonly banner = toSignal(
     inject(HttpClient)

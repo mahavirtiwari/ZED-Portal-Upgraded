@@ -110,6 +110,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
   },
   // One page per group of the Incentives menu; the old ?type= (the type of the legacy menu) opens its group.
   { path: 'incentives', pathMatch: 'full', redirectTo: ({ queryParams }) => incentivesOfType(queryParams['type']) },
+  // New in V4: the cards of "My Incentives" on the MSME dashboard (before :group, which would take the name).
+  { path: 'incentives/dashboard-cards', title: 'ZED | Main Dashboard Cards', loadComponent: () => import('./staff/schemes/dashboard-cards').then((m) => m.DashboardCardsPage) },
   { path: 'incentives/:group', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
   {
     path: 'incentives/:group/new',

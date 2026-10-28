@@ -53,6 +53,46 @@ export interface IncentiveForm {
   applicableForSilver: boolean;
   applicableForGold: boolean;
   activeStatus: boolean;
+  /** Where it appears: its own card on the MSME dashboard, or inside its stakeholder card (the default). */
+  displayOn: IncentiveDisplay;
+  /** The coloured line of its dashboard card (e.g. "Rs. 5,000/-"). */
+  cardHighlight: string;
+}
+
+export type IncentiveDisplay = 'Dashboard' | 'Card';
+
+/** A built-in card of "My Incentives" on the MSME dashboard (its buttons are the portal's own). */
+export interface BuiltInCard {
+  id: number;
+  card: string;
+  title: string | null;
+  highlight: string | null;
+  details: string | null;
+  active: boolean;
+}
+
+/** An incentive of a stakeholder group that has its own card on the MSME dashboard. */
+export interface DashboardIncentive {
+  id: number;
+  incentiveType: string;
+  title: string | null;
+  highlight: string | null;
+  active: boolean;
+  applicableForBronze: boolean;
+  applicableForSilver: boolean;
+  applicableForGold: boolean;
+}
+
+export interface DashboardCards {
+  builtIn: BuiltInCard[];
+  incentives: DashboardIncentive[];
+}
+
+export interface BuiltInCardForm {
+  title: string;
+  highlight: string;
+  details: string;
+  active: boolean;
 }
 
 /** The new incentive's Id (null when the server could not find it again). */
@@ -87,6 +127,14 @@ export class IncentivesApi {
 
   update(id: number, form: IncentiveForm): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`/api/staff/schemes/incentive-master/${id}`, form);
+  }
+
+  dashboardCards(): Observable<DashboardCards> {
+    return this.http.get<DashboardCards>('/api/staff/schemes/incentive-master/dashboard');
+  }
+
+  saveBuiltInCard(card: string, form: BuiltInCardForm): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`/api/staff/schemes/incentive-master/dashboard/${encodeURIComponent(card)}`, form);
   }
 
   uploadDocument(id: number, n: 1 | 2, type: string, file: File): Observable<MessageResponse> {
@@ -151,3 +199,8 @@ export const INCENTIVE_GROUPS: IncentiveGroup[] = [
     department: 'Issuing Agency', departmentHint: 'e.g. National Small Industries Corporation',
   },
 ];
+
+/** The group of an IncentiveType (a state's name: State Government). */
+export function groupOfType(type: string): IncentiveGroup {
+  return INCENTIVE_GROUPS.find((g) => g.type === type) ?? INCENTIVE_GROUPS.find((g) => g.key === 'state')!;
+}

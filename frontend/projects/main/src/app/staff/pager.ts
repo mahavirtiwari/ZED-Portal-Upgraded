@@ -1,4 +1,4 @@
-import { Component, Signal, WritableSignal, computed, input, linkedSignal, signal } from '@angular/core';
+import { Component, Signal, WritableSignal, computed, input, linkedSignal, model, signal } from '@angular/core';
 
 /** "Show N Entries" choices of the old list pages. */
 export const PAGE_SIZES: readonly number[] = [10, 20, 50, 100];
@@ -218,4 +218,57 @@ export class PagerComponent {
   readonly pager = input.required<Pager>();
   readonly sizes = input<readonly number[]>(PAGE_SIZES);
   readonly showCount = input(true);
+}
+
+/** All the text of a row: its values, nested objects and lists included. */
+function rowText(value: unknown, depth = 0): string {
+  if (value === null || value === undefined || depth > 4) return '';
+  if (Array.isArray(value)) return value.map((v) => rowText(v, depth + 1)).join(' ');
+  if (typeof value === 'object') return Object.values(value).map((v) => rowText(v, depth + 1)).join(' ');
+  return String(value);
+}
+
+/** The rows that contain every word of the search box (any column, any case); all rows for an empty box. */
+export function searchRows<T>(rows: readonly T[], query: string): readonly T[] {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return words.length ? rows.filter((r) => {
+    const text = rowText(r).toLowerCase();
+    return words.every((w) => text.includes(w));
+  }) : rows;
+}
+
+/**
+ * The search box above a list (V4: on every staff list, as User Management): searches as you type, with the number of
+ * rows found. The screen filters its rows with searchRows() before paging them.
+ */
+@Component({
+  selector: 'zed-list-search',
+  host: { class: 'zed-list-search' },
+  template: `
+    <div class="list-search-box">
+      <svg class="list-search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+      </svg>
+      <input type="search" class="form-control" maxlength="100" autocomplete="off" [id]="inputId()" [placeholder]="placeholder()"
+             [attr.aria-label]="placeholder()" [value]="value()" (input)="value.set($any($event.target).value)" />
+    </div>
+    @if (value().trim() && found() !== null) {
+      <span class="list-search-found" role="status">{{ found() }} found</span>
+    }
+  `,
+  styles: `
+    :host { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin: 0 0 12px; }
+    .list-search-box { position: relative; width: 300px; max-width: 100%; }
+    .list-search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: #7d8c8d; pointer-events: none; }
+    .list-search-box .form-control { max-width: none; width: 100%; padding-left: 34px; }
+    .list-search-found { font-size: 13px; color: #5f6f70; }
+    @media (max-width: 575.98px) { .list-search-box { width: 100%; } }
+  `,
+})
+export class ListSearchComponent {
+  readonly value = model('');
+  readonly placeholder = input('Search');
+  readonly inputId = input('list-search');
+  /** Rows matching (shown next to the box while it has text); null hides it. */
+  readonly found = input<number | null>(null);
 }
