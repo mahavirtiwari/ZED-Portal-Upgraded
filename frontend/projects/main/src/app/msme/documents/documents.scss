@@ -1,58 +1,21 @@
-.documents-page {
-  max-width: 960px;
-  margin: 24px auto 0;
-}
+// The rows are the live page's .alert-document (site.css); only what the old markup had no class for is here.
 
-// One document per line: icon and name on the left, the download button on the right.
-.alert-document {
-  height: auto;
-  min-height: 56px;
-  margin-bottom: 8px;
-  padding: 8px 10px 8px 12px;
-  background: #f7fafa;
-  border: 1px solid #e8eff0;
-  border-radius: 10px;
-  gap: 12px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  > div {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-
-  p {
-    color: #232527;
-    font-weight: 500;
-  }
-}
-
-.icon-bg {
-  padding: 6px;
-  background: #eef6f6;
-  border-radius: 8px;
+// The description the Admin gave a guideline (Admin → Documents/Videos), under its name.
+.alert-document small {
+  font-size: 12px;
 }
 
 .doc-download {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   flex: 0 0 auto;
-  width: 42px;
-  height: 42px;
-  border-radius: 8px;
+  text-decoration: none;
+}
 
-  &:hover:not(.not-available) {
-    background: #e8f4f5;
-  }
-
-  // As the live page: the teal download icon at its own size (the arrow is drawn inside a 42px frame), no box.
-  img {
-    width: 42px;
-    height: 42px;
-  }
+// "Watch" for a video guideline.
+a.doc-download:not(:has(img)) {
+  color: #45a5ad;
+  font-weight: 600;
 }
 
 .not-available {

@@ -13,7 +13,6 @@
           <div class="page-head">
             <div>
               <h3 class="registration-title dash-text-clr">Welcome</h3>
-              <p class="page-sub">Your unit, your ZED certifications and the incentives you can apply for.</p>
             </div>
             <div class="page-actions">
               @if (ubpReturnUrl) {
@@ -26,56 +25,16 @@
             </div>
           </div>
 
-          <div class="dash-grid">
-            <!-- Unit summary -->
-            <aside class="dash-side">
-              <div class="zed-card unit-card">
-                <div class="entp-type-sec">
-                  <div class="entp-label" [class.micro]="msme()['EnterpriseType'] === 'Micro'" [class.small]="msme()['EnterpriseType'] === 'Small'"
-                       [class.medium]="msme()['EnterpriseType'] === 'Medium'">
-                    {{ msme()['EnterpriseType'] === 'Small' ? 'S' : 'M' }}
-                  </div>
-                  <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
-                  @if (msme()['OldEnterpriseType']) {
-                    <span class="old-type">(Old Type: {{ msme()['OldEnterpriseType'] }})</span>
-                  }
-                </div>
-                <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-                <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
-                <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
-              </div>
+          <div class="row">
+            <!-- Unit summary, as on the live portal -->
+            <div class="col-sm-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" /></div>
 
-              <div class="zed-card side-card">
-                <h4>Selected Unit</h4>
-                <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-                <div class="unit-selection">
-                  <img src="/Images/svgicons/mapicon.svg" alt="" />
-                  <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
-                </div>
-              </div>
-
-              <div class="zed-card side-card">
-                <h4>Selected Activity</h4>
-                <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-                <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-                <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-                <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-              </div>
-
-              <div class="zed-card side-card">
-                <h4>ZED Pledge Certificate</h4>
-                <p class="mb-0">Pledge taken on {{ msme()['PledgeOn'] }}</p>
-                <div class="btn-download">
-                  <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
-                </div>
-              </div>
-            </aside>
-
-            <div class="dash-main">
+            <div class="col-sm-9 dash-main">
+              <!-- As on the live dashboard: the text on the left half, then the store badges and the QR code. -->
               <div class="zed-payment-success">
-                <div class="label-highlight app-hint">
-                  <zed-text key="msme.dashboard.mobileAppHint" />
-                  <div class="app-links">
+                <div class="label-highlight">
+                  <div class="app-banner">
+                    <zed-text key="msme.dashboard.mobileAppHint" />
                     <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
                     <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
                     <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
@@ -322,7 +281,6 @@
             <div class="page-head">
               <div>
                 <h3 class="registration-title">DISCLAIMER</h3>
-                <p class="page-sub">Applying for {{ applyLevel() }} Certification: read and accept the disclaimer to go on.</p>
               </div>
             </div>
             <div class="zed-card disclaimer-sec">
@@ -349,7 +307,6 @@
             <div class="page-head">
               <div>
                 <h3 class="registration-title">Instructions</h3>
-                <p class="page-sub">Applying for {{ applyLevel() }} Certification: read the instructions before the payment.</p>
               </div>
             </div>
             <div class="zed-card disclaimer-sec">

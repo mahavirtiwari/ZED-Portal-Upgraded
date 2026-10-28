@@ -67,7 +67,7 @@ describe('HandholdingPage', () => {
     expect(el.textContent).toContain('Get started');
     const gold = [...el.querySelectorAll('.panel-cert-block')].find((p) => p.textContent!.includes('GOLD'))!;
     expect(gold.classList).toContain('plant-activity-disabled');
-    expect(el.querySelector('a[href="/api/msme/files/pledge-certificate"]')).not.toBeNull();
+    expect(el.querySelector('a[href="/msme/pledge-certificate"]')).not.toBeNull();
   });
 
   it('opens the milestones of a level and sends APPLY to the payment of the milestone due', async () => {

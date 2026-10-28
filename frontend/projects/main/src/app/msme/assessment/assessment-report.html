@@ -14,9 +14,6 @@
       <div class="page-head">
         <div>
           <h3 class="registration-title">{{ mode() === 'basic-info' ? 'Basic Information' : 'Non-Conformances' }}</h3>
-          <p class="page-sub">
-            {{ mode() === 'basic-info' ? 'What you submitted in the ZED MSME app for the desktop assessment.' : 'The non-conformances raised on your assessment, the assessor’s notes and your replies.' }}
-          </p>
         </div>
         <div class="page-actions refresh-bar mb-0">
           <a [routerLink]="backLink()">
@@ -30,54 +27,11 @@
         </div>
       </div>
 
-      <div class="dash-grid">
-        <!-- Unit summary -->
-        <aside class="dash-side">
-          <div class="zed-card unit-card">
-            <div class="entp-type-sec">
-              @switch (msme()['EnterpriseType']) {
-                @case ('Micro') { <div class="entp-label micro">M</div> }
-                @case ('Small') { <div class="entp-label small">S</div> }
-                @case ('Medium') { <div class="entp-label medium">M</div> }
-              }
-              @if (unit()) {
-                <p class="entp-type-title">{{ msme()['RegistrationType'] === 'UAM' ? msme()['EnterpriseTypee'] : msme()['EnterpriseType'] }}</p>
-              }
-            </div>
-            <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-            <div class="entp-details"><small>UDYAM Number</small><p>{{ udyam() }}</p></div>
-            <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
-          </div>
+      <div class="row">
+        <!-- Unit summary, as on the live portal -->
+        <div class="col-sm-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="udyam()" [showType]="!!unit()" [showAddress]="!!unit()" [basicInfo]="mode() === 'basic-info'" /></div>
 
-          <div class="zed-card side-card">
-            <h4>Selected Unit</h4>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-            <div class="unit-selection">
-              <img src="/Images/svgicons/mapicon.svg" alt="" />
-              @if (unit()) {
-                <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
-              }
-            </div>
-          </div>
-
-          <div class="zed-card side-card">
-            <h4>Selected Activity</h4>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-          </div>
-
-          <div class="zed-card side-card">
-            <h4>{{ mode() === 'basic-info' ? 'ZED Pledge' : 'ZED Pledge Certificate' }}</h4>
-            <p class="mb-0">{{ mode() === 'basic-info' ? 'Pledged on' : 'Pledge taken on' }} {{ msme()['PledgeOn'] }}</p>
-            <div class="btn-download">
-              <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">{{ mode() === 'basic-info' ? 'DOWNLOAD PLEDGE' : 'DOWNLOAD' }}</a>
-            </div>
-          </div>
-        </aside>
-
-        <div class="dash-main" [class.zed-tabs]="mode() === 'basic-info'">
+        <div class="col-sm-9 dash-main" [class.zed-tabs]="mode() === 'basic-info'">
           <div class="panel panel-steps panel-bg-default">
             <div class="panel-body">
               @if (basic(); as b) {

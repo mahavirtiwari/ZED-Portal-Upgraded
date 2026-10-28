@@ -12,7 +12,14 @@ body {
 // Here they apply only inside elements with .zed-legacy (MSME layout, registration).
 .zed-legacy {
   @include meta.load-css('styles/legacy-site');
-  // V4 look of the common blocks (tables, boxes, inputs, buttons, tabs, pop-ups), after the old styles.
+  // The live layout's own <style> block (panel heading, white level cards).
+  @include meta.load-css('styles/legacy-layout-inline');
+  // V4 building blocks (page head, cards, form grids, badges, pager) on every inner page.
+  @include meta.load-css('styles/v4-blocks');
+}
+// V4 look of the common blocks (tables, boxes, inputs, buttons, tabs, pop-ups) on the staff pages only (zed-v4, the staff
+// layout); the MSME and public pages keep the live portal's look.
+.zed-legacy.zed-v4 {
   @include meta.load-css('styles/v4-skin');
 }
 

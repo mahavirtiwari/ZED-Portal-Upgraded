@@ -27,7 +27,8 @@ export class DocumentsPage {
   /** Pledge always; only the highest of Bronze/Silver/Gold; WASH and webinar when issued (as before). */
   protected readonly certificates = computed<CertificateItem[]>(() => {
     const c = this.docs()?.Certificates?.[0];
-    const items: CertificateItem[] = [{ label: 'Pledge Certificate', url: c?.Pledge ?? null }];
+    // V4: the pledge certificate is drawn when asked for, so it is always there (its page has DOWNLOAD PDF).
+    const items: CertificateItem[] = [{ label: 'Pledge Certificate', url: '/msme/pledge-certificate' }];
     if (!c) return items;
     if (c.Gold) items.push({ label: 'Gold Certificate', url: c.Gold });
     else if (c.Silver) items.push({ label: 'Silver Certificate', url: c.Silver });

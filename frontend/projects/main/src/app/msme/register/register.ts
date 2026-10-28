@@ -10,7 +10,8 @@ import { PublicLayout } from '../public-layout/public-layout';
 
 type Step = 'welcome' | 'udyam' | 'plant' | 'summary' | 'pledge' | 'success';
 
-const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summary: 3, pledge: 4, success: 4 };
+// Success is past the last dot, so all four show their tick.
+const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summary: 3, pledge: 4, success: 5 };
 
 /**
  * New MSME registration. Port of the Udyam path of Views/Msme/Register.cshtml

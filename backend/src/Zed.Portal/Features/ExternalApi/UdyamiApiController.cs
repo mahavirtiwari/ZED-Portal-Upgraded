@@ -116,8 +116,8 @@ public sealed class UdyamiApiController(
         byte[] pdf;
         try
         {
+            // Drawn for the reply and the mail only: V4 keeps no pledge certificate file (it is drawn when asked for).
             pdf = certificates.Render(pledge);
-            await certificates.SaveAsync(pledge, pdf, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -212,6 +212,15 @@ public sealed class UdyamiApiController(
                     Filename = row.Text("FileName"),
                 };
                 var column = cert.Filetype switch { "Bronze" => "BronzePath", "Silver" => "SilverPath", "Gold" => "GoldPath", _ => "PledgePath" };
+                if (column == "PledgePath" && CertificationLookups.IsZedId(res.ZED))
+                {
+                    // V4: the pledge certificate is not stored; it is drawn from the unit's registration now.
+                    if (await certificates.LoadAsync(db, res.ZED, ct) is not { } pledgeData)
+                        return LegacyJson(new ApiRegisterServiceResponse { StatusCode = "500", StatusMessage = "Certificate file not found." });
+                    cert.File = Convert.ToBase64String(certificates.Render(pledgeData));
+                    res.file = [cert];
+                    continue;
+                }
                 var path = row.Text(column);
                 // The procedure builds the path from the ZED ID it was given; only that unit's own file is read.
                 var file = CertificationLookups.IsZedId(res.ZED) && MsmeFilePaths.FromLegacy(path) is { } relative && MsmeFilePaths.BelongsTo(relative, res.ZED)

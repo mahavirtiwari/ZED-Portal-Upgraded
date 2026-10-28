@@ -6,6 +6,8 @@ const admin = authGuard('/staff', [StaffRole.Admin]);
 
 /** Admin settings (children of `staff`, mounted at `staff/settings`). The API checks the role again. */
 export const SETTINGS_ROUTES: Routes = [
+  // New in V4: where "Contact ZED" goes.
+  { path: 'links', title: 'ZED | Links', canActivate: [admin], loadComponent: () => import('./links').then((m) => m.LinksPage) },
   {
     path: 'captcha',
     title: 'ZED | Captcha Settings',

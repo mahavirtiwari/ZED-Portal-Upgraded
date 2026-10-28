@@ -108,7 +108,8 @@ public sealed class StaffCertificationDocumentsController(
     ISqlExecutor db,
     IAssessmentDocuments documents,
     IWebHostEnvironment env,
-    IOptions<PortalOptions> portal) : StaffApiController
+    IOptions<PortalOptions> portal,
+    PledgeCertificateService pledges) : StaffApiController
 {
     [HttpGet("{certification}/certificate")]
     public async Task<IActionResult> Certificate(string zedId, string certification, CancellationToken ct)
@@ -129,21 +130,37 @@ public sealed class StaffCertificationDocumentsController(
         return await CertificationDownloads.ReportAsync(this, documents, record, zedId, level, ct);
     }
 
-    /// <summary>The MSME's pledge certificate, for users who may see at least one of its certification records.</summary>
+    /// <summary>
+    /// The MSME's pledge certificate PDF, for users who may see at least one of its certification records. V4: drawn now
+    /// from the registration (not stored); <paramref name="inline"/> opens it in the browser instead of downloading it.
+    /// </summary>
     [HttpGet("pledge-certificate")]
-    public async Task<IActionResult> Pledge(string zedId, CancellationToken ct)
+    public async Task<IActionResult> Pledge(string zedId, bool inline, CancellationToken ct)
     {
-        if (!AssessmentInput.IsId(zedId) || zedId.Contains('_')) return this.Problem400("Invalid request.");
+        if (!PledgeId(zedId)) return this.Problem400("Invalid request.");
+        return await VisiblePledgeAsync(zedId, ct) is { } d ? PledgePdf.Result(this, pledges, d, inline) : NotFound();
+    }
+
+    /// <summary>The same certificate as page data, for /staff/pledge-certificate/{zedId}.</summary>
+    [HttpGet("pledge-certificate/view")]
+    public async Task<ActionResult<PledgeCertificateView>> PledgeView(string zedId, CancellationToken ct)
+    {
+        if (!PledgeId(zedId)) return this.Problem400("Invalid request.");
+        return await VisiblePledgeAsync(zedId, ct) is { } d ? pledges.View(d) : NotFound();
+    }
+
+    /// <summary>A plain ZED ID (not a rejected copy, ZEDMSME000123_D_45).</summary>
+    private static bool PledgeId(string zedId) => AssessmentInput.IsId(zedId) && !zedId.Contains('_');
+
+    private async Task<PledgeCertificateData?> VisiblePledgeAsync(string zedId, CancellationToken ct)
+    {
         var user = CurrentUser;
         var visible = false;
         foreach (var level in AssessmentInput.Levels)
         {
             if (await AssessmentRecords.CertificationAsync(db, zedId, level, ct) is { } r && r.CanView(user)) { visible = true; break; }
         }
-        if (!visible) return NotFound();
-        return new DocumentStorage(env, portal).Find(DocumentLevels.PledgePath(zedId)) is { } path
-            ? DocumentResults.PhysicalFile(this, path)
-            : NotFound();
+        return visible ? await pledges.LoadAsync(db, zedId, ct) : null;
     }
 }
 

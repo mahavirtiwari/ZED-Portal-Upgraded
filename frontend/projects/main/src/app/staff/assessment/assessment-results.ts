@@ -9,9 +9,6 @@ import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
 
-/** Folders a stored pledge certificate is in (SP_MONITORING_GET_LIST_PAGINATION PledgePath). */
-const CERT_FOLDERS = ['Certificates', 'Certifications'];
-
 /** Certificates and reports for staff (authorised downloads, same visibility as the DA review page). */
 const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
 
@@ -258,7 +255,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                         <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-outline-primary">Assessment Details</a>
                       }
                       @if (!surveillance && pledgeUrl(s); as href) {
-                        <a [href]="href" class="btn btn-outline-primary" target="_blank" rel="noopener">Download Pledge Certificate</a>
+                        <a [href]="href" class="btn btn-outline-primary" target="_blank" rel="noopener">Pledge Certificate</a>
                       }
                       @if (certificateUrl(s); as href) {
                         <a [href]="href" class="btn btn-outline-primary" target="_blank" rel="noopener">Download Certificate</a>
@@ -407,9 +404,10 @@ export class AssessmentResultsPage {
     return tu === 1 ? 'View Recommended Technologies' : '';
   }
 
-  /** Shown when the procedure names the folder of a stored pledge certificate, as before. */
+  /** V4: every MSME has its pledge certificate (drawn when opened): the page of the unit's ZED ID (not a rejected copy's). */
   protected pledgeUrl(s: Row): string {
-    return CERT_FOLDERS.includes(text(s, 'PledgePath')) ? `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/pledge-certificate` : '';
+    const zedId = text(s, 'ZedId').split('_')[0];
+    return zedId ? `/staff/pledge-certificate/${encodeURIComponent(zedId)}` : '';
   }
 
   /** The server serves the stored certificate, or draws it when a certified record has none. */

@@ -16,7 +16,16 @@ public sealed class CertificateField
     public string Color { get; set; } = "#000000";
     public float? Width { get; set; }
     public float? Height { get; set; }
+    /// <summary>V4, boxed texts: at most this many lines; the font gets smaller (to <see cref="MinFont"/>) until it fits.</summary>
+    public int? MaxLines { get; set; }
+    /// <summary>V4: the smallest font size (points) <see cref="MaxLines"/> may shrink to.</summary>
+    public float? MinFont { get; set; }
+    /// <summary>V4, QR fields: pixels per QR module (3 when not given).</summary>
+    public float? Module { get; set; }
 }
+
+/// <summary>A boxed text as drawn: its lines and the font size used (points).</summary>
+public sealed record CertificateTextLayout(IReadOnlyList<string> Lines, float FontPoints);
 
 public enum TextAnchor
 {
@@ -82,7 +91,7 @@ public static class CertificateComposer
 
             if (request.QrField is not null && !string.IsNullOrEmpty(request.QrContent) &&
                 request.Layout.TryGetValue(request.QrField, out var qr))
-                DrawQr(canvas, request.QrContent, qr.X, qr.Y);
+                DrawQr(canvas, request.QrContent, qr.X, qr.Y, qr.Module ?? 3);
 
             doc.EndPage();
             doc.Close();
@@ -99,19 +108,46 @@ public static class CertificateComposer
         return small;
     }
 
+    /// <summary>
+    /// The lines of a boxed text and its font size: wrapped to the box width; with <see cref="CertificateField.MaxLines"/>,
+    /// the font shrinks by half points (not below <see cref="CertificateField.MinFont"/>) until the text fits in that many
+    /// lines. The portal pages use it to break a text where the PDF does.
+    /// </summary>
+    public static CertificateTextLayout Fit(string value, CertificateField field, bool bold)
+    {
+        using var typeface = SKTypeface.FromFamilyName(FontFamily, bold ? SKFontStyle.Bold : SKFontStyle.Normal);
+        var (lines, points) = Fit(value, field, typeface);
+        return new CertificateTextLayout(lines, points);
+    }
+
+    private static (List<string> Lines, float Points) Fit(string value, CertificateField field, SKTypeface typeface)
+    {
+        var points = field.Font;
+        if (field.Width is not > 0) return ([value], points);
+        while (true)
+        {
+            using var font = new SKFont(typeface, points * TemplateDpi / 72f);
+            var lines = Wrap(value, font, field.Width.Value);
+            if (field.MaxLines is not { } max || lines.Count <= max || points - 0.5f < (field.MinFont ?? field.Font)) return (lines, points);
+            points -= 0.5f;
+        }
+    }
+
     private static void DrawText(SKCanvas canvas, CertificateText text, CertificateField field, SKTypeface typeface)
     {
-        using var font = new SKFont(typeface, field.Font * TemplateDpi / 72f);
+        var boxed = text.Anchor is TextAnchor.BoxBottomCenter or TextAnchor.BoxTopCenter && field.Width is > 0;
+        var (fitted, points) = boxed ? Fit(text.Value!, field, typeface) : ([text.Value!], field.Font);
+        using var font = new SKFont(typeface, points * TemplateDpi / 72f);
         using var paint = new SKPaint { Color = SKColor.Parse(field.Color), IsAntialias = true };
         var ascent = -font.Metrics.Ascent;
         var lineHeight = font.Spacing;
 
-        if (text.Anchor is TextAnchor.BoxBottomCenter or TextAnchor.BoxTopCenter && field.Width is > 0)
+        if (boxed)
         {
-            var lines = Wrap(text.Value!, font, field.Width.Value);
+            var lines = fitted;
             var boxBottom = field.Y + (field.Height ?? lineHeight * lines.Count);
             var top = text.Anchor == TextAnchor.BoxTopCenter ? field.Y : boxBottom - lineHeight * lines.Count;
-            var centre = field.X + field.Width.Value / 2;
+            var centre = field.X + field.Width!.Value / 2;
             for (var i = 0; i < lines.Count; i++)
                 canvas.DrawText(lines[i], centre, top + ascent + i * lineHeight, SKTextAlign.Center, font, paint);
             return;
@@ -139,10 +175,10 @@ public static class CertificateComposer
         return lines;
     }
 
-    /// <summary>Version 4, error correction M, 3 px per module: the same settings as the legacy encoder.</summary>
-    private static void DrawQr(SKCanvas canvas, string content, float x, float y)
+    /// <summary>Version 4, error correction M, <paramref name="moduleSize"/> px per module (3 unless the layout says otherwise).</summary>
+    private static void DrawQr(SKCanvas canvas, string content, float x, float y, float moduleSize)
     {
-        const int moduleSize = 3, quietZone = 4;
+        const int quietZone = 4;
         using var generator = new QRCodeGenerator();
         using var data = generator.CreateQrCode(content, QRCodeGenerator.ECCLevel.M, requestedVersion: 4);
         using var paint = new SKPaint { Color = SKColors.Black, IsAntialias = false };

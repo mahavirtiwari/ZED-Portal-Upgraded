@@ -1,0 +1,28 @@
+// The <style> block of the live portal's layout (Views/Shared/_Layout.cshtml), read from loginzed.msme.gov.in: the
+// Bootstrap 3 panel heading the old pages were drawn with, the white level cards with their shadow and the three level
+// cards a row. Loaded after the old site styles inside .zed-legacy (the staff pages' V4 skin still wins over it).
+
+.dashbord-list { display: flex; flex-wrap: wrap; gap: 15px; justify-content: space-evenly; }
+.dashbord-list .panel-cert-block { height: initial; }
+.dashbord-list .list-item { width: 32%; }
+.cert-inner-block.sub-inner-block { justify-content: space-around; }
+.cert-inner-block.sub-inner-block p { margin: 2px 0 4px 10px; }
+.cert-inner-block.sub-inner-block .inner1 a { color: #45a5ad; }
+.cert-inner-block.sub-inner-block .inner1 a:hover { text-decoration: underline; }
+.panel-heading { padding: 10px 15px; border-bottom: 1px solid transparent; border-top-right-radius: 3px; border-top-left-radius: 3px; }
+.panel-cert-block, .panel-cert-block:hover { background: #fff; box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.15); }
+// Bootstrap 3's panel body (the old pages' .panel-body padding; Bootstrap 5 has no panels).
+.panel-body { padding: 15px; }
+
+@media (max-width: 767.98px) {
+  .dashbord-list .list-item { width: 100%; }
+}
+
+// The pop-ups' close icon in its light grey square (live: .modal-popup .modal-title div img); V4 puts the close button
+// next to the title instead of inside it.
+.modal-popup .modal-header > .btn-link img,
+.modal-popup .modal-header > button > img {
+  background: #f0f0f0;
+  padding: 10px;
+  border-radius: 4px;
+}

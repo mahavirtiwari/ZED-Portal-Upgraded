@@ -13,6 +13,7 @@ import {
   incentiveUrl,
   milestoneNumber,
 } from './certification.api';
+import { MsmeUnitSummary } from '../shared/unit-summary';
 
 /** One box in the "Actions" column. */
 interface Action {
@@ -41,7 +42,7 @@ const DOCUMENTS_API = '/api/msme/certification-documents';
  */
 @Component({
   selector: 'zed-msme-certification-details',
-  imports: [RouterLink, CertificationSteps],
+  imports: [RouterLink, CertificationSteps, MsmeUnitSummary],
   templateUrl: './certification-details.html',
   styleUrls: ['../shared/msme-page.scss', './certification-details.scss'],
 })
@@ -84,7 +85,6 @@ export class CertificationDetailsPage {
     ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
   );
 
-  protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
 

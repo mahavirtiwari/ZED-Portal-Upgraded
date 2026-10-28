@@ -161,6 +161,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the partners calling ZED's APIs, with a switch per partner and per API.
   { label: 'API Integrations', route: '/staff/settings/api-integrations', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: where "Contact ZED" goes (the ZED website's contact page).
+  { label: 'Links', route: '/staff/settings/links', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).

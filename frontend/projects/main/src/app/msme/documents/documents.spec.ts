@@ -64,7 +64,8 @@ describe('DocumentsPage', () => {
     expect(rows()).toEqual([
       { text: 'ZED Guidelines', href: '/api/msme/files/Uploads/Documents/Guide.pdf', target: '_blank' },
       { text: 'Checklist', href: '/api/msme/files/Uploads/Documents/Checklist.docx', target: null },
-      { text: 'Pledge Certificate', href: '/api/msme/files/Certificates/ZEDMSME000001/Pledge.pdf', target: '_blank' },
+      // The pledge certificate page (drawn when opened, never stored).
+      { text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' },
       { text: 'Silver Certificate', href: '/api/msme/files/Certificates/SA/ZEDMSME000001/Silver.pdf', target: '_blank' },
       { text: 'WASH Certificate', href: 'https://msmekawach.org.in/Certificates/DA/K1/Bronze.pdf', target: '_blank' },
       { text: 'HANDHOLDING - Silver milestone 2 Invoice', href: '/api/msme/files/ReceiptInvoice/I1_ZEDMSME000001_Invoice.pdf', target: '_blank' },
@@ -72,11 +73,11 @@ describe('DocumentsPage', () => {
     ]);
   });
 
-  it('still shows the pledge row, without a link, when nothing is available', async () => {
+  it('always offers the pledge certificate page, even with nothing else listed', async () => {
     http.expectOne('/api/msme/documents').flush({ Guidelines: [], Certificates: [], Invoices: [] });
     await settle();
 
-    expect(rows()).toEqual([{ text: 'Pledge Certificate', href: null, target: null }]);
+    expect(rows()).toEqual([{ text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' }]);
     expect(el.textContent).not.toContain('Guidelines');
     expect(el.textContent).not.toContain('Invoices and Receipts');
   });

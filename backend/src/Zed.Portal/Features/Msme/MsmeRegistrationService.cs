@@ -81,8 +81,8 @@ public sealed class MsmeRegistrationService(
 
     /// <summary>
     /// Creates the MSME (SP_MSME_INSERT_UDYAM_DETAILS) from the session's server-side Udyam data, plant, activity and
-    /// verified e-mail, sets the initial password (PasswordStore), and mails the pledge certificate. Null when the
-    /// procedure returned no row.
+    /// verified e-mail, sets the initial password (PasswordStore), and mails the pledge certificate (drawn for the mail, not
+    /// stored). Null when the procedure returned no row.
     /// </summary>
     public async Task<Registered?> CompleteAsync(RegistrationSession s, string registrationFrom, string? ip, CancellationToken ct)
     {
@@ -150,8 +150,8 @@ public sealed class MsmeRegistrationService(
     {
         try
         {
+            // Drawn for the mail only: V4 keeps no pledge certificate file (the portal draws it when it is opened or downloaded).
             var pdf = certificates.Render(cert);
-            await certificates.SaveAsync(cert, pdf, ct);
 
             var html = await templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
             {

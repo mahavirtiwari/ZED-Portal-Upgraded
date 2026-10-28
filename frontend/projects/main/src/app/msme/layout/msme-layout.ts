@@ -1,6 +1,6 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
-import { ActivatedRouteSnapshot, NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { AuthService } from '@zed/shared';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService, ClientConfigService, DEFAULT_CONTACT_URL } from '@zed/shared';
 
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
@@ -23,7 +23,8 @@ import { AuthService } from '@zed/shared';
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="MSME menu">
         <div class="container nav-bar-sec">
-          <span class="navbar-brand">{{ pageTitle() }}<br /><span>MSME</span></span>
+          <!-- As the live portal: the bar always reads "Dashboard / Home". -->
+          <span class="navbar-brand">Dashboard<br /><span>Home</span></span>
           <button class="navbar-toggler" type="button" aria-controls="msme-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -36,7 +37,8 @@ import { AuthService } from '@zed/shared';
                 </a>
               </li>
               <li class="nav-item tag"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">My Documents</a></li>
-              <li class="nav-item tag"><a class="nav-link" routerLink="/msme/contact" routerLinkActive="active">Contact ZED</a></li>
+              <!-- The ZED website's contact page (Admin → Links). -->
+              <li class="nav-item tag"><a class="nav-link" [href]="contactUrl()" target="_blank" rel="noopener">Contact ZED</a></li>
               <li class="nav-item dropdown tag">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()"
                         (click)="toggleUserMenu($event)">
@@ -46,7 +48,8 @@ import { AuthService } from '@zed/shared';
                   <li><a class="dropdown-item" routerLink="/msme/profile">View Profile</a></li>
                   <li><a class="dropdown-item" routerLink="/msme/edit-history">Edit History</a></li>
                   <li><a class="dropdown-item" routerLink="/msme/change-password">Change Password</a></li>
-                  <li><button type="button" class="dropdown-item" (click)="logout()">Logout</button></li>
+                  <!-- A link like the others, so the old menu style (bold, same padding) applies. -->
+                  <li><a class="dropdown-item" href="/msme/login" role="button" (click)="$event.preventDefault(); logout()">Logout</a></li>
                 </ul>
               </li>
             </ul>
@@ -72,7 +75,7 @@ import { AuthService } from '@zed/shared';
     /* The MVC layout had body { padding-top: 100px } under its fixed 100px header (Content/swachh.css). */
     :host { padding-top: 100px; color: #333; }
     /* As the staff pages: a light tint behind the page, so its cards stand out. */
-    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f2f6f6; border-top: 1px solid #e3eced; }
+    .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #fff; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     /* The user menu is a button; the old stylesheet styles only the links (.zed-navbar .nav > li > a), so it was grey
        and sat higher than the links. Same look as the links, as in the staff menu bar. */
@@ -92,23 +95,14 @@ export class MsmeLayout {
   protected readonly year = new Date().getFullYear();
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
-  /** The open page's name (its route title without "ZED | "), shown in the bar (V4; the old bar always said Dashboard). */
-  protected readonly pageTitle = signal('Dashboard');
+  protected readonly contactUrl = signal(DEFAULT_CONTACT_URL);
 
   constructor() {
+    inject(ClientConfigService).get().then((c) => c.contactUrl && this.contactUrl.set(c.contactUrl)).catch(() => undefined);
     this.router.events.subscribe((e) => {
       this.menuOpen.set(false);
       this.userMenuOpen.set(false);
-      if (e instanceof NavigationEnd) this.pageTitle.set(MsmeLayout.titleOf(this.router.routerState.snapshot.root));
     });
-    this.pageTitle.set(MsmeLayout.titleOf(this.router.routerState.snapshot.root));
-  }
-
-  /** The deepest route title ("ZED | Profile" -> "Profile"). */
-  private static titleOf(route: ActivatedRouteSnapshot): string {
-    let title = '';
-    for (let r: ActivatedRouteSnapshot | null = route; r; r = r.firstChild) if (typeof r.title === 'string' && r.title) title = r.title;
-    return title.replace(/^.*\|\s*/, '').trim() || 'Dashboard';
   }
 
   protected toggleUserMenu(event: Event): void {

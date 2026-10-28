@@ -130,10 +130,10 @@ public sealed class MsmeDocumentsTests : IDisposable
     }
 
     [Fact]
-    public async Task Own_certificate_downloads_from_storage_root_in_either_certificates_folder()
+    public async Task Own_pledge_certificate_is_drawn_from_the_registration_not_read_from_storage()
     {
-        // The procedure says Certifications/ (older than today); the new pledge service writes Certificates/.
-        WriteFile($"Certificates/{Me}/Pledge.pdf", "%PDF-1.4 pledge");
+        // An old file in storage is not served any more: V4 draws the certificate from the registration record.
+        WriteFile($"Certificates/{Me}/Pledge.pdf", "%PDF-1.4 old pledge");
         var client = await SignInAsync();
 
         var r = await client.GetAsync($"/api/msme/files/Certifications/{Me}/Pledge.pdf");
@@ -141,8 +141,45 @@ public sealed class MsmeDocumentsTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal("application/pdf", r.Content.Headers.ContentType!.MediaType);
         Assert.Equal("inline", r.Content.Headers.ContentDisposition!.DispositionType);
-        Assert.Equal("Pledge.pdf", r.Content.Headers.ContentDisposition.FileNameStar);
-        Assert.Equal("%PDF-1.4 pledge", await r.Content.ReadAsStringAsync());
+        Assert.Equal($"Pledge_Certificate_{Me}.pdf", r.Content.Headers.ContentDisposition.FileNameStar);
+        var pdf = await r.Content.ReadAsStringAsync();
+        Assert.StartsWith("%PDF", pdf);
+        Assert.NotEqual("%PDF-1.4 old pledge", pdf);
+    }
+
+    [Fact]
+    public async Task Pledge_certificate_page_data_and_download()
+    {
+        var client = await SignInAsync();
+
+        var view = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/msme/pledge-certificate");
+        Assert.Equal(Me, view.GetProperty("zedId").GetString());
+        Assert.Equal("Acme Unit 1", view.GetProperty("name").GetString());
+        Assert.Equal("UDYAM-UP-29-0003915", view.GetProperty("udyamNo").GetString());
+        var name = view.GetProperty("fields").EnumerateArray().First(f => f.GetProperty("name").GetString() == "Name");
+        Assert.Equal(["Acme Unit 1"], name.GetProperty("lines").EnumerateArray().Select(l => l.GetString()));
+        Assert.Contains(view.GetProperty("fields").EnumerateArray(), f => f.GetProperty("align").GetString() == "image");
+
+        var pdf = await client.GetAsync("/api/msme/pledge-certificate/pdf");
+        Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+        Assert.Equal("attachment", pdf.Content.Headers.ContentDisposition!.DispositionType);
+        Assert.Equal($"Pledge_Certificate_{Me}.pdf", pdf.Content.Headers.ContentDisposition.FileNameStar);
+        Assert.StartsWith("%PDF", await pdf.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task A_long_unit_name_takes_two_lines_on_the_pledge_certificate()
+    {
+        const string longName = "Shree Ganesh Precision Engineering and Fabrication Works Private Limited Unit Two";
+        _host.Sql.Queries[FakeSql.PledgeQuery] = args => [FakeSql.PledgeRow(FakeSql.Arg(args, "ZedId")!, longName)];
+        var client = await SignInAsync();
+
+        var view = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/msme/pledge-certificate");
+        var name = view.GetProperty("fields").EnumerateArray().First(f => f.GetProperty("name").GetString() == "Name");
+        var lines = name.GetProperty("lines").EnumerateArray().Select(l => l.GetString()!).ToList();
+        Assert.Equal(2, lines.Count);
+        Assert.Equal(longName, string.Join(' ', lines));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/msme/pledge-certificate/pdf")).StatusCode);
     }
 
     [Fact]
@@ -218,14 +255,15 @@ public sealed class MsmeDocumentsTests : IDisposable
     }
 
     [Fact]
-    public async Task Pledge_certificate_shortcut_redirects_to_the_listed_file()
+    public async Task Pledge_certificate_shortcut_opens_the_drawn_certificate()
     {
         var client = await SignInAsync();
 
         var r = await client.GetAsync("/api/msme/files/pledge-certificate");
 
-        Assert.Equal(HttpStatusCode.Redirect, r.StatusCode);
-        Assert.Equal($"/api/msme/files/Certifications/{Me}/Pledge.pdf", r.Headers.Location!.OriginalString);
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("inline", r.Content.Headers.ContentDisposition!.DispositionType);
+        Assert.StartsWith("%PDF", await r.Content.ReadAsStringAsync());
     }
 }
 

@@ -11,7 +11,12 @@ export interface ClientConfig {
   captchaSiteKey: string;
   /** Old MVC portal, for links to modules not migrated yet. */
   legacyPortalUrl: string;
+  /** Where "Contact ZED" goes (Admin → Links; the ZED website's contact page by default). */
+  contactUrl?: string;
 }
+
+/** Until /api/config answers (and for a server without the setting). */
+export const DEFAULT_CONTACT_URL = 'https://zed-staging.qci.org.in/contact-us';
 
 /** /api/config, loaded once (kept apart from the captcha component so the app shell does not load it). */
 @Injectable({ providedIn: 'root' })

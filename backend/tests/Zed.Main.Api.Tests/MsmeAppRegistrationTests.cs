@@ -102,7 +102,7 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         var certMail = _host.Email.Sent.Last();
         Assert.Equal(EmailProfiles.Registration, certMail.Profile);
         Assert.Single(certMail.Attachments!);
-        Assert.True(File.Exists(Path.Combine(_host.StorageRoot, "Certificates", "ZEDMSME999002", "Pledge.pdf")));
+        Assert.False(File.Exists(Path.Combine(_host.StorageRoot, "Certificates", "ZEDMSME999002", "Pledge.pdf")));
 
         // The verification is single use.
         var again = await Answer(await Post(app, "FinalSubmit", RegistrationBody()));

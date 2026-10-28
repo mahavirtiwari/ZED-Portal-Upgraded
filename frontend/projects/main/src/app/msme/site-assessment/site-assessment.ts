@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SiteAssessmentApi, SiteAssessmentData, SitePhoto, SiteRequirement, SiteSection, canonicalSiteAssessment } from './site-assessment.api';
+import { MsmeUnitSummary } from '../shared/unit-summary';
 
 export type SiteTab = 'basic' | 'tour' | 'parameters';
 
@@ -154,7 +155,7 @@ export const MILESTONE_INFO: readonly InfoSection[] = [
  */
 @Component({
   selector: 'zed-msme-site-assessment',
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary],
   templateUrl: './site-assessment.html',
   styleUrls: ['../shared/msme-page.scss', './site-assessment.scss'],
   host: { '(document:keydown.escape)': 'closePreview()' },
@@ -174,7 +175,6 @@ export class SiteAssessmentPage {
   protected readonly preview = signal<string | null>(null);
 
   protected readonly milestoneInfo = MILESTONE_INFO;
-  protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
   protected readonly type = computed(() => canonicalSiteAssessment(this.certification()));
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});

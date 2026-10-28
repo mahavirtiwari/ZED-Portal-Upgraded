@@ -14,7 +14,6 @@ import { firstValueFrom } from 'rxjs';
         <div class="page-head">
           <div>
             <h3 class="registration-title">Contact ZED</h3>
-            <p class="page-sub">Send your query to the ZED team.</p>
           </div>
         </div>
         <div class="zed-card">

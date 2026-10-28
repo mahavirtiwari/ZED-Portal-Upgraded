@@ -30,22 +30,18 @@ public sealed class MsmeFilesController(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IDocumentAccessStore access,
+    PledgeCertificateService pledges,
     ILogger<MsmeFilesController> log) : MsmeApiController
 {
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     /// <summary>
-    /// The signed-in MSME's pledge certificate (dashboard link): redirects to the path
-    /// SP_MSME_GET_MY_DOCUMENTS lists for it, which then goes through the checks below.
+    /// The signed-in MSME's pledge certificate (the old dashboard link): V4 draws it now from the registration (it is not
+    /// stored); the pages open /msme/pledge-certificate instead.
     /// </summary>
     [HttpGet("pledge-certificate")]
-    public async Task<IActionResult> PledgeCertificate(CancellationToken ct)
-    {
-        var sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
-        var pledge = sets[1].Select(r => MsmeFilePaths.FromLegacy(r.Text("Pledge")))
-            .FirstOrDefault(p => p is not null && MsmeFilePaths.BelongsTo(p, ZedId));
-        return pledge is null ? NotFound() : Redirect(MsmeFilePaths.ToApiUrl(pledge));
-    }
+    public async Task<IActionResult> PledgeCertificate(CancellationToken ct) =>
+        await pledges.LoadAsync(db, ZedId, ct) is { } d ? PledgePdf.Result(this, pledges, d, inline: true) : NotFound();
 
     /// <summary>GET api/msme/files/Certificates/ZEDMSME000123/Pledge.pdf (paths as returned by api/msme/documents).</summary>
     [HttpGet("{**path}")]
@@ -54,6 +50,10 @@ public sealed class MsmeFilesController(
         // Unknown, foreign and malformed paths all answer 404 so file existence is not revealed.
         var requested = MsmeFilePaths.Normalise(path);
         if (requested is null) return NotFound();
+
+        // Certificates/{ZedId}/Pledge.pdf (My Documents, older links): drawn now, never read from storage (V4).
+        if (MsmeFilePaths.IsPledge(requested, ZedId))
+            return await pledges.LoadAsync(db, ZedId, ct) is { } d ? PledgePdf.Result(this, pledges, d, inline: true) : NotFound();
 
         // Guidelines the Admin gave to other account types only are not served to an MSME.
         var sets = MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct));
@@ -104,8 +104,8 @@ public sealed record MsmeFileEntry(string RelativePath, MsmeFileScope Scope);
 /// <item>Guidelines: <c>…/Uploads/Documents/{name}</c> or <c>…/Documents/{name}</c> → same relative path</item>
 /// </list>
 /// The procedures pick <c>Certificates</c> (generated today) or <c>Certifications</c> (older; the
-/// old server moved files there) from dates. Both folders are tried, so files written by the new
-/// PledgeCertificateService (<c>Certificates/{ZedId}/Pledge.pdf</c>) are still found the next day.
+/// old server moved files there) from dates; both folders are tried. The pledge certificate path is not read from
+/// storage: V4 draws it (<see cref="IsPledge"/>).
 /// </summary>
 public static class MsmeFilePaths
 {
@@ -179,6 +179,14 @@ public static class MsmeFilePaths
         PublicFolders.Any(f => relative.StartsWith(f, StringComparison.OrdinalIgnoreCase));
 
     public static bool IsInline(string fileName) => InlineExtensions.Contains(Path.GetExtension(fileName));
+
+    /// <summary>The pledge certificate path of this ZED ID: Certificates/{ZedId}/Pledge.pdf (or Certifications/...).</summary>
+    public static bool IsPledge(string relative, string zedId)
+    {
+        var s = relative.Split('/');
+        return s.Length == 3 && (s[0].Equals("Certificates", StringComparison.OrdinalIgnoreCase) || s[0].Equals("Certifications", StringComparison.OrdinalIgnoreCase))
+            && s[1].Equals(zedId, StringComparison.OrdinalIgnoreCase) && s[2].Equals("Pledge.pdf", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static string ToApiUrl(string relative) =>
         ApiPrefix + string.Join('/', relative.Split('/').Select(Uri.EscapeDataString));

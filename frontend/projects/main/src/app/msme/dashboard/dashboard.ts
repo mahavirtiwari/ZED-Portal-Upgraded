@@ -6,6 +6,7 @@ import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
+import { MsmeUnitSummary } from '../shared/unit-summary';
 
 type Row = Record<string, string | number | boolean | null>;
 
@@ -59,14 +60,13 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
  */
 @Component({
   selector: 'zed-msme-dashboard',
-  imports: [RouterLink, PaymentStep, DatePipe, ContentTextComponent],
+  imports: [RouterLink, PaymentStep, DatePipe, ContentTextComponent, MsmeUnitSummary],
   templateUrl: './dashboard.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
     .panel-incen-block > .panel-heading { background: #fff; border: 0; }
-    /* The three level cards side by side, equal height; the sub-rows (surveillance, re-certification) no longer scroll. */
-    .dashbord-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
-    .dashbord-list .panel-cert-block { height: 100%; min-height: 160px; overflow: visible; background: rgba(179, 224, 121, 0.2); border: 0; }
+    /* The level cards: the live layout's flex row of 32% cards (styles/_legacy-layout-inline.scss); no inner scroll. */
+    .dashbord-list .panel-cert-block { overflow: visible; }
     .dashbord-list .panel-cert-block > .panel-heading h5 { margin: 0; font-size: 14px; font-weight: 700; }
     .dashbord-list .cert-inner-block { padding: 10px 12px; gap: 10px; justify-content: space-between; }
     .dashbord-list .cert-inner-block .inner1 { flex: 1 1 auto; min-width: 0; }
@@ -79,8 +79,8 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
     .panel-incen-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
     @media (max-width: 991.98px) { .panel-incen-box { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 575.98px) { .panel-incen-box { grid-template-columns: minmax(0, 1fr); } }
-    .panel-incen-box .item { width: auto; margin: 0; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); border-color: #dfe9ea; border-radius: 12px; }
-    .panel-incen-box .panel-incen-block { height: 100%; border-radius: 12px; }
+    .panel-incen-box .item { width: auto; margin: 0; }
+    .panel-incen-box .panel-incen-block { height: 100%; }
     .panel-incen-box .panel-incen-block .panel-heading { padding: 16px 16px 0; align-items: center; }
     .panel-incen-box .panel-incen-block .panel-heading > img { width: 90px; height: 72px; object-fit: contain; }
     .panel-incen-box .panel-incen-block .panel-body { padding: 12px 16px 16px; }
@@ -111,8 +111,6 @@ export class DashboardPage {
   protected readonly cert = computed(() => this.data()?.certStatus ?? {});
   protected readonly levels: Level[] = ['Bronze', 'Silver', 'Gold'];
 
-  /** Served by the authorised files endpoint (the old page linked to a public, guessable URL). */
-  protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
   protected readonly incentives = [
     { type: 'Common', title: 'Ministry of MSME', text: 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs', image: '/Images/Dashboard/dash-msme.PNG', imageStyle: 'width: 140px; height: 90px; object-fit: contain;' },

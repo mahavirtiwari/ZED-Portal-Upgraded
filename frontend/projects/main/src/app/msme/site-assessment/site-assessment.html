@@ -18,13 +18,11 @@
               @if (isMilestone()) {
                 <div class="step-details ms-0">
                   <h3 class="registration-title">HANDHOLDING SUPPORT</h3>
-                  <p class="page-sub">What the consultant recorded at your unit, milestone by milestone.</p>
                 </div>
               } @else {
                 <div class="step-num"><span>3</span></div>
                 <div class="step-details">
                   <h3 class="registration-title">Site Assessment Information</h3>
-                  <p class="page-sub">What the assessor recorded at your unit: basic information, site tour and parameters.</p>
                 </div>
               }
             </li>
@@ -32,54 +30,11 @@
         </div>
       </div>
 
-      <div class="dash-grid">
-        <!-- Unit summary -->
-        <aside class="dash-side">
-          <div class="zed-card unit-card">
-            <div class="entp-type-sec">
-              @switch (msme()['EnterpriseType']) {
-                @case ('Micro') { <div class="entp-label micro">M</div> }
-                @case ('Small') { <div class="entp-label small">S</div> }
-                @case ('Medium') { <div class="entp-label medium">M</div> }
-              }
-              @if (msme()['RegistrationType'] === 'UAM') {
-                <p class="entp-type-title">{{ msme()['EnterpriseTypee'] }}</p>
-              } @else if (msme()['RegistrationType'] === 'UDYAM') {
-                <p class="entp-type-title">{{ msme()['EnterpriseType'] }}</p>
-              }
-            </div>
-            <div class="entrp-title"><h4>{{ msme()['EnterpriseName'] }}</h4></div>
-            <div class="entp-details"><small>UDYAM Number</small><p>{{ basic()['UdyogAadharNo'] }}</p></div>
-            <div class="entp-details"><small>ZED ID</small><p>{{ msme()['ZedId'] }}</p></div>
-          </div>
+      <div class="row">
+        <!-- Unit summary, as on the live portal -->
+        <div class="col-sm-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [showType]="msme()['RegistrationType'] === 'UAM' || msme()['RegistrationType'] === 'UDYAM'" /></div>
 
-          <div class="zed-card side-card">
-            <h4>Selected Unit</h4>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ msme()['PUnitName'] }}</p></div>
-            <div class="unit-selection">
-              <img src="/Images/svgicons/mapicon.svg" alt="" />
-              <p>{{ msme()['PAddress'] }}, {{ msme()['PDistrictName'] }}, {{ msme()['PStateName'] }}, {{ msme()['PPin'] }}</p>
-            </div>
-          </div>
-
-          <div class="zed-card side-card">
-            <h4>Selected Activity</h4>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ msme()['Activity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ msme()['TwoDigitActivity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ msme()['FourDigitActivity'] }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ msme()['FiveDigitActivity'] }}</p></div>
-          </div>
-
-          <div class="zed-card side-card">
-            <h4>ZED Pledge Certificate</h4>
-            <p class="mb-0">Pledge taken on {{ msme()['PledgeOn'] }}</p>
-            <div class="btn-download">
-              <a [href]="pledgeCertificateUrl" target="_blank" rel="noopener">DOWNLOAD</a>
-            </div>
-          </div>
-        </aside>
-
-        <div class="dash-main">
+        <div class="col-sm-9 dash-main">
           <div class="zed-tabs">
             <ul class="nav nav-tabs" role="tablist">
               <li class="nav-item" role="presentation">

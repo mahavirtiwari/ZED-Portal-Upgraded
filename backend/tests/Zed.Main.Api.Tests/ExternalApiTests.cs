@@ -627,7 +627,7 @@ public sealed class ExternalApiTests : IDisposable
         Assert.Equal("Pledge", json.GetProperty("FileType").GetString());
         var pdf = Convert.FromBase64String(json.GetProperty("Base64File").GetString()!);
         Assert.Equal("%PDF-"u8.ToArray(), pdf[..5]);
-        Assert.True(File.Exists(Path.Combine(_host.StorageRoot, "Certificates", "ZEDMSME999001", "Pledge.pdf")));
+        Assert.False(File.Exists(Path.Combine(_host.StorageRoot, "Certificates", "ZEDMSME999001", "Pledge.pdf")));
 
         var call = Assert.Single(CallsTo("SP_API_MSME_INSERT_UDYAM_DETAILS"));
         var password = FakeSql.Arg(call.Args, "Password")!;
@@ -687,22 +687,30 @@ public sealed class ExternalApiTests : IDisposable
     }
 
     [Fact]
-    public async Task GetCertificateDetails_reads_the_units_own_certificate_from_storage()
+    public async Task GetCertificateDetails_draws_the_pledge_and_reads_the_units_own_certificate_from_storage()
     {
-        var pdf = "%PDF-1.4 pledge"u8.ToArray();
-        WriteStored($"Certificates/{ZedId}/Pledge.pdf", pdf);
-        WriteStored("Certificates/ZEDMSME000999/Pledge.pdf", "%PDF-other"u8.ToArray());
-        var pledgePath = $"/Certificates/{ZedId}/Pledge.pdf";
+        // The pledge certificate is drawn from the unit's registration (V4 stores none).
+        var certification = "Pledge";
+        var path = $"/Certificates/{ZedId}/Pledge.pdf";
         _host.Sql.Procs["SP_API_MSME_GET_CERTIFICATIONS_BY_UDYAM_NO_AND_ZEDID"] = _ => FakeSql.Sets(
             [new { Status = 200, ErrorMessage = "Success." }],
-            [new { ZedId, UdyogAadharNo = Udyam, PlantId = "P1", Certification = "Pledge", FileExtension = ".pdf", FileName = "Pledge_Certification_5", PledgePath = pledgePath }]);
+            [new { ZedId, UdyogAadharNo = Udyam, PlantId = "P1", Certification = certification, FileExtension = ".pdf", FileName = "Certification_5", PledgePath = path, BronzePath = path }]);
 
         var json = await Json(await Http().GetAsync($"/Msme/GetCertificateDetails?Udyamid={Udyam}&ZEDID={ZedId}&FileID=ZED_5&RequestId=R1&Token={UdyamiToken}"));
         Assert.Equal("200", json.GetProperty("StatusCode").GetString());
-        Assert.Equal(Convert.ToBase64String(pdf), json.GetProperty("file")[0].GetProperty("File").GetString());
+        Assert.Equal("%PDF"u8.ToArray(), Convert.FromBase64String(json.GetProperty("file")[0].GetProperty("File").GetString()!)[..4]);
+
+        // A level certificate is read from storage, the unit's own only.
+        var pdf = "%PDF-1.4 bronze"u8.ToArray();
+        WriteStored($"Certificates/DA/{ZedId}/Bronze.pdf", pdf);
+        WriteStored("Certificates/DA/ZEDMSME000999/Bronze.pdf", "%PDF-other"u8.ToArray());
+        certification = "Bronze";
+        path = $"/Certificates/DA/{ZedId}/Bronze.pdf";
+        var bronze = await Json(await Http().GetAsync($"/Msme/GetCertificateDetails?Udyamid={Udyam}&ZEDID={ZedId}&FileID=ZED_5&RequestId=R1&Token={UdyamiToken}"));
+        Assert.Equal(Convert.ToBase64String(pdf), bronze.GetProperty("file")[0].GetProperty("File").GetString());
 
         // A path naming another unit (or leaving storage) is not read.
-        pledgePath = "/Certificates/ZEDMSME000999/Pledge.pdf";
+        path = "/Certificates/DA/ZEDMSME000999/Bronze.pdf";
         var other = await Json(await Http().GetAsync($"/Msme/GetCertificateDetails?Udyamid={Udyam}&ZEDID={ZedId}&FileID=ZED_5&RequestId=R1&Token={UdyamiToken}"));
         Assert.Equal("500", other.GetProperty("StatusCode").GetString());
         Assert.Equal("Certificate file not found.", other.GetProperty("StatusMessage").GetString());

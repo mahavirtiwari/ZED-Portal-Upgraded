@@ -246,11 +246,12 @@
     }
 
     @case ('success') {
-      <div class="col-sm-8 offset-sm-2">
-        <div class="jumbotron text-center">
+      <div class="reg-success col-lg-10 offset-lg-1">
+        <div class="jumbotron text-center reg-success-head">
           <img src="/Images/svgicons/Reg-Success-Icon.svg" alt="" />
           <h2>Registration Successful!</h2>
-          <p>Your ZED ID is <strong>{{ result()?.zedId }}</strong></p>
+          <p class="mb-0">Your ZED ID is <strong class="reg-zed-id">{{ result()?.zedId }}</strong></p>
+          @if (result()?.unitName) { <p class="muted mb-0">{{ result()?.unitName }}</p> }
         </div>
         @if (result() && !result()!.emailSent) {
           <div class="alert alert-warning">
@@ -258,8 +259,30 @@
             and use “Forgot Password” on the login page if you do not receive your password.
           </div>
         }
-        <zed-text key="msme.registration.success" />
-        <div class="stepper-footer-sec initial-step">
+        <div class="label-highlight reg-success-next">
+          <zed-text key="msme.registration.success" />
+        </div>
+
+        <!-- The ZED MSME app: scan a code with the phone's camera, or tap a badge. -->
+        <section class="reg-app" aria-labelledby="reg-app-h">
+          <h4 id="reg-app-h">Get the ZED MSME mobile app</h4>
+          <p class="muted">Scan with your phone's camera to install the app, then sign in with your ZED ID.</p>
+          <div class="reg-app-codes">
+            <a class="reg-app-code" href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener">
+              <img class="reg-qr" src="/Images/qr-zed-msme-android.svg" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
+              <img src="/Images/google-play.png" width="130" alt="Get it on Google Play" />
+              <span>Android</span>
+            </a>
+            <a class="reg-app-code" href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener">
+              <img class="reg-qr" src="/Images/qr-zed-msme-ios.svg" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
+              <img src="/Images/app-store.png" width="130" alt="Download on the App Store" />
+              <span>iPhone</span>
+            </a>
+          </div>
+        </section>
+
+        <div class="stepper-footer-sec initial-step reg-success-actions">
+          <a class="btn btn-default" routerLink="/msme/pledge-certificate">PLEDGE CERTIFICATE</a>
           <a class="btn btn-primary" routerLink="/msme/dashboard">GO TO DASHBOARD</a>
         </div>
       </div>

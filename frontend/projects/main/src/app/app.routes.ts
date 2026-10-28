@@ -32,6 +32,8 @@ function incentivesOfType(type: unknown): string {
 const MAIN_STAFF_CHILDREN: Routes = [
   // New in V4: the documents and videos the Admin gave to this account type (Admin → Documents/Videos).
   { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
+  // V4: an MSME's pledge certificate (the API checks that the user may see one of its records).
+  { path: 'pledge-certificate/:zedId', title: 'ZED | Pledge Certificate', loadComponent: () => import('./msme/pledge/pledge-certificate').then((m) => m.StaffPledgePage) },
   {
     path: '',
     pathMatch: 'full',
@@ -168,6 +170,8 @@ const MAIN_ROUTES: Routes = [
       { path: 'profile', title: 'ZED | Profile', loadComponent: () => import('./msme/profile/profile').then((m) => m.ProfilePage) },
       { path: 'edit-history', title: 'ZED | Edit History', loadComponent: () => import('./msme/edit-history/edit-history').then((m) => m.EditHistoryPage) },
       { path: 'documents', title: 'ZED | My Documents', loadComponent: () => import('./msme/documents/documents').then((m) => m.DocumentsPage) },
+      // V4: the pledge certificate as a page with DOWNLOAD PDF (drawn by the server when downloaded, never stored).
+      { path: 'pledge-certificate', title: 'ZED | Pledge Certificate', loadComponent: () => import('./msme/pledge/pledge-certificate').then((m) => m.MsmePledgePage) },
       {
         path: 'certification/:certification',
         title: 'ZED | Certification',

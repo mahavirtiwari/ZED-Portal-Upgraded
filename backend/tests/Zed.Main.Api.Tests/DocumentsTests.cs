@@ -329,14 +329,18 @@ public sealed class DocumentsTests : IDisposable
     [Fact]
     public async Task Master_admin_downloads_any_certificate_report_and_pledge()
     {
-        var pledge = Stored($"Certifications/{Other}/Pledge.pdf");
-        Directory.CreateDirectory(Path.GetDirectoryName(pledge)!);
-        await File.WriteAllTextAsync(pledge, "%PDF-1.4 pledge");
-
         var client = await SignIn("ADMIN1");
         await Pdf(await client.GetAsync($"/api/staff/certification-documents/{Other}/Bronze/certificate"));
         await Pdf(await client.GetAsync($"/api/staff/certification-documents/{Other}/Bronze/report"));
-        await Pdf(await client.GetAsync($"/api/staff/certification-documents/{Other}/pledge-certificate"));
+        // The pledge certificate is drawn from the registration (no stored file): a download, or opened inline.
+        var download = await client.GetAsync($"/api/staff/certification-documents/{Other}/pledge-certificate");
+        Assert.Equal("attachment", download.Content.Headers.ContentDisposition?.DispositionType);
+        Assert.Equal($"Pledge_Certificate_{Other}.pdf", download.Content.Headers.ContentDisposition?.FileNameStar);
+        await Pdf(await client.GetAsync($"/api/staff/certification-documents/{Other}/pledge-certificate?inline=true"));
+        var view = await client.GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/staff/certification-documents/{Other}/pledge-certificate/view");
+        Assert.Equal("Acme Unit 1", view.GetProperty("name").GetString());
+        Assert.StartsWith("data:image/png;base64,", view.GetProperty("qrImage").GetString());
+        Assert.False(File.Exists(Stored($"Certificates/{Other}/Pledge.pdf")));
         await Pdf(await client.GetAsync($"/api/staff/certification-documents/{DocumentsTestData.MyRejected}/Bronze/report"));
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/staff/certification-documents/{DocumentsTestData.MyRejected}/Bronze/certificate")).StatusCode);
     }

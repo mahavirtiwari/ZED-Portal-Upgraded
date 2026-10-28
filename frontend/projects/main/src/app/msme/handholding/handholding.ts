@@ -16,6 +16,7 @@ import {
   completionColumn,
   handholdingLevel,
 } from './handholding.api';
+import { MsmeUnitSummary } from '../shared/unit-summary';
 
 type InfoTopic = 'My' | HandholdingLevel;
 
@@ -47,7 +48,7 @@ interface MilestoneRow {
  */
 @Component({
   selector: 'zed-msme-handholding',
-  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent],
+  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, MsmeUnitSummary],
   templateUrl: './handholding.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
@@ -88,7 +89,6 @@ export class HandholdingPage {
   protected accepted = false;
   private preselected = false;
 
-  protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});

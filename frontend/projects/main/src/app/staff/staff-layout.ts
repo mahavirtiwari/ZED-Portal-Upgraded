@@ -14,7 +14,7 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
 @Component({
   selector: 'zed-staff-layout',
   imports: [RouterOutlet, RouterLink, RouterLinkActive],
-  host: { class: 'zed-legacy d-block' },
+  host: { class: 'zed-legacy zed-v4 d-block' },
   template: `
     <div class="main-container">
       <header class="zed-header zed-smooth" id="main_header">

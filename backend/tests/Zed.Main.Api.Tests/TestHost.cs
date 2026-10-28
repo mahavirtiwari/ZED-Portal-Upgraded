@@ -105,7 +105,19 @@ public sealed class FakeSql : ISqlExecutor
     public Task<int> ExecuteProcAsync(string procedure, object? parameters = null, CancellationToken ct = default) { Run(procedure, parameters); return Task.FromResult(1); }
     public Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default) { Run(sql, parameters); return Task.FromResult(1); }
     /// <summary>Rows for inline SQL, keyed by the start of the statement; converted to T through JSON.</summary>
-    public ConcurrentDictionary<string, Func<object?, IEnumerable<object>>> Queries { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public ConcurrentDictionary<string, Func<object?, IEnumerable<object>>> Queries { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Every ZED ID has a registration record to draw its pledge certificate from (PledgeCertificateService.LoadAsync).
+        [PledgeQuery] = args => [PledgeRow(Arg(args, "ZedId")!)],
+    };
+
+    public const string PledgeQuery = "SELECT TOP (1) M.ZedId,";
+
+    public static object PledgeRow(string zedId, string unitName = "Acme Unit 1") => new
+    {
+        ZedId = zedId, UnitName = unitName, CertificateNo = "ZED_01012026_123", DateOfPledge = "January 1, 2026",
+        Address = "Plot 4, Industrial Area, KANPUR, UTTAR PRADESH-208001", UdyogAadharNo = "UDYAM-UP-29-0003915", QrCodeNo = "P11ABCDEF",
+    };
 
     public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {

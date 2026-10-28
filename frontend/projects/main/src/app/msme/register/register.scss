@@ -76,6 +76,28 @@
 .panel-grey .panel-body {
   padding: 8px 15px;
 }
+// Plant and activity cards three to a row across the whole width (the old 250px cards left a gap on the right);
+// two on tablets, one on phones. Cards in a row share its height.
+.plant-activity .panel-units {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 10px 0 0;
+}
+.plant-activity .panel-units .panel-item {
+  display: block;
+  width: auto;
+  margin: 0;
+}
+.plant-activity .panel-units .panel-item > .panel {
+  height: 100%;
+}
+@media (max-width: 991.98px) {
+  .plant-activity .panel-units { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 575.98px) {
+  .plant-activity .panel-units { grid-template-columns: minmax(0, 1fr); }
+}
 .panel-units .panel-default {
   background: transparent;
   border: 1px solid transparent;
@@ -170,8 +192,8 @@ label.panel-item {
 }
 
 .reg-modal-proceed {
-  width: 60%;
-  min-width: 200px;
+  min-width: 160px;
+  padding: 8px 24px;
 }
 
 .reg-modal-close {
@@ -248,4 +270,89 @@ label.panel-item {
 // The old pop-ups were about 620px wide.
 .modal-dialog.reg-dialog {
   max-width: 620px;
+}
+
+// The small labels of the details box (Name of Entrepreneur, Gender, Udyam Number, …) were a light grey on the grey
+// box; darker and a little bolder so they read clearly.
+.entp-details small {
+  color: #4a5556;
+  font-size: 13px;
+  font-weight: 600;
+}
+.entp-type-title {
+  color: #4a5556;
+}
+
+// The confirm box on the summary: the tick box and its sentence on one line, centred on each other (the old checkbox
+// sat above the text line).
+.label-highlight2 {
+  padding: 12px 16px;
+  .checkbox-inline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+    cursor: pointer;
+  }
+  .option-input1 {
+    flex: 0 0 20px;
+    top: 0;
+    margin: 0;
+  }
+  ::ng-deep p {
+    margin: 0;
+  }
+}
+
+// Success: the result, what next, and the app to download (QR codes and store badges).
+.reg-success-head {
+  img { width: 120px; margin-bottom: 8px; }
+  h2 { font-weight: 600; color: #23474a; }
+}
+.reg-zed-id {
+  display: inline-block;
+  background: #eef6f6;
+  color: #23474a;
+  border-radius: 6px;
+  padding: 2px 10px;
+  letter-spacing: 0.5px;
+}
+.reg-success-next {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  ::ng-deep ul { margin-bottom: 8px; }
+  ::ng-deep li { font-size: 15px; }
+}
+.reg-app {
+  border: 1px solid #dfe9ea;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px 20px;
+  text-align: center;
+  margin-bottom: 16px;
+  h4 { font-size: 18px; font-weight: 700; color: #23474a; margin-bottom: 4px; }
+}
+.reg-app-codes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 28px;
+  margin-top: 12px;
+}
+.reg-app-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #eef2f2;
+  border-radius: 10px;
+  text-decoration: none;
+  color: #4a5556;
+  font-size: 13px;
+  font-weight: 600;
+  &:hover { border-color: #45a5ad; }
+}
+.reg-qr {
+  background: #fff;
 }

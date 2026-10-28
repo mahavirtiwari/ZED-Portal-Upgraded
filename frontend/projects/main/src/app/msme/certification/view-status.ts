@@ -22,7 +22,6 @@ const LEVELS = ['Bronze', 'Silver', 'Gold'];
         <div class="page-head">
           <div>
             <h3 class="registration-title">Status</h3>
-            <p class="page-sub">Where your certification application stands, step by step.</p>
           </div>
           <div class="page-actions"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
         </div>

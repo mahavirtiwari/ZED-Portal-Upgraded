@@ -155,7 +155,6 @@ export class EditHistoryTable {
       <div class="page-head mt-4">
         <div>
           <h3 class="registration-title">Edit History</h3>
-          <p class="page-sub">Every change made in your ZED login, on this website and in the ZED MSME app.</p>
         </div>
       </div>
       <zed-edit-history-table url="/api/msme/edit-history" />

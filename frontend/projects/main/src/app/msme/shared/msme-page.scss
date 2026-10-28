@@ -1,19 +1,20 @@
-// Shared layout of the MSME pages that show the unit summary on the left (dashboard, certification details,
-// basic information / non-conformances, site assessment, handholding): the two-column frame, the summary cards,
-// the BACK / Refresh line and the app banner. Page-specific rules stay in each page.
+// Shared layout of the MSME pages that show the unit summary on the left (dashboard, certification details, basic
+// information / non-conformances, site assessment, handholding, schemes). V4: these pages keep the live portal's look:
+// the old site styles (no V4 skin on the MSME pages), the live markup (row / col-sm-3 / col-sm-9, panel-grey, the black
+// panel-black bars; <zed-msme-unit-summary>). Only what the old markup had no class for is here.
 
 .Dashboard-msme {
   margin-top: 24px;
 }
 
-// Unit summary on the left, the page on the right (one column on tablets and phones).
+// The scheme pages' own two columns, as the live col-sm-3 / col-sm-9 (one column on tablets and phones).
 .dash-grid {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
+  gap: 24px;
   align-items: start;
 
-  @media (max-width: 991.98px) {
+  @media (max-width: 767.98px) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -22,80 +23,7 @@
   min-width: 0;
 }
 
-.dash-side .zed-card {
-  padding: 14px 16px;
-  margin-bottom: 14px;
-
-  > h4 {
-    font-size: 14px;
-    margin-bottom: 10px;
-  }
-}
-
-.unit-card {
-  background: #f7fafa;
-
-  .entp-type-sec {
-    align-items: center;
-    margin-bottom: 8px;
-  }
-
-  .entp-type-title {
-    margin: 0;
-  }
-
-  .entp-details {
-    margin-top: 8px;
-
-    p {
-      font-weight: 600;
-      word-break: break-word;
-    }
-  }
-}
-
-.old-type {
-  margin-left: 12px;
-  color: #5f6f70;
-  font-size: 0.8em;
-}
-
-.side-card {
-  .unit-selection {
-    align-items: center;
-    background: #f7fafa;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-
-    p {
-      word-break: break-word;
-    }
-  }
-
-  .btn-download {
-    margin: 10px 0 0;
-  }
-}
-
-// BACK on the left, Refresh on the right.
-.refresh-bar {
-  margin-bottom: 14px;
-
-  a {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: #2f7c83;
-    text-decoration: none;
-  }
-
-  span {
-    padding: 0;
-  }
-}
-
+// Welcome / Refresh line.
 .refresh-link {
   cursor: pointer;
   display: inline-flex;
@@ -104,26 +32,21 @@
   text-decoration: none;
 }
 
-// "Download the ZED MSME app": the text, then the store badges and the QR code.
-.app-hint {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px 16px;
-  margin-bottom: 18px;
+.refresh-bar {
+  margin-bottom: 14px;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    text-decoration: none;
+  }
 }
 
-.app-links {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-
-  img {
-    border-radius: 4px;
-    background: #fff;
-  }
+// The app banner: the text (from Admin → Texts) on the left half, as the live <p> (site.css .zed-payment-success).
+.app-banner > zed-text {
+  flex: 0 0 50%;
+  text-align: left;
 }
 
 // Disclaimer / instructions steps: one readable column.
@@ -132,97 +55,15 @@
   margin: 0 auto;
 }
 
-.disclaimer-sec .form-actions {
-  border-top: 1px solid #e8eff0;
-  padding-top: 14px;
-}
-
-// The certification steps box.
-.panel-steps {
-  border-radius: 14px;
-
-  > .panel-body {
-    padding: 16px 20px;
-  }
-
-  .step-title {
-    margin-bottom: 16px;
-  }
-}
-
-// The gradient boxes (My Certifications, My Incentives, Handholding Support): title and info button in the head.
-.panel-dashboard {
-  border-radius: 14px;
-  overflow: hidden;
-  margin-bottom: 18px;
-
-  > .panel-body {
-    padding: 16px;
-  }
-}
-
+// The gradient box heads (My Certifications, My Incentives): titles bottom left, the info button top right, as the live
+// row / col-sm-10 / col-sm-2.
 .dash-panel-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  padding: 16px 20px;
 
   .panel-titles-sec {
-    height: auto;
-    min-height: 64px;
+    flex: 1 1 auto;
   }
-}
-
-// The V4 skin gives every .panel-heading the light teal tint (and .panel a white background); these boxes keep
-// the dashboard's own colours.
-.panel-dashboard.panel-bg-default {
-  background: #f7f7f7;
-}
-
-.panel-certification > .panel-heading {
-  background: linear-gradient(137.03deg, #8de09d 5.05%, #60c473 86.85%);
-  border: 0;
-}
-
-.panel-incentive > .panel-heading {
-  background: linear-gradient(137.03deg, #6dc5c5 5.05%, #4c9a9b 86.85%);
-  border: 0;
-}
-
-.panel-bronze > .panel-heading {
-  background: #d87b62;
-}
-
-.panel-silver > .panel-heading {
-  background: #cdcfd1;
-}
-
-.panel-gold > .panel-heading {
-  background: #ccb160;
-}
-
-.panel-cert-block > .panel-heading {
-  border: 0;
-  padding: 8px 12px;
-  height: auto;
-  min-height: 42px;
-}
-
-// Section bars of the report pages (the old black "panel-black" bars). The V4 skin gives every .panel a white
-// background, which left their white text unreadable; they read as light teal section titles now.
-.panel-black,
-.panel-black.panel-msme-black {
-  background: #eef6f6;
-  color: #23474a;
-  border: 1px solid #dfe9ea;
-  border-radius: 10px;
-  box-shadow: none;
-  font-weight: 700;
-}
-
-// A page title inside the old step header (number in a circle, then the title).
-.page-head .step-details .page-sub {
-  font-size: 14px;
-  margin-top: 4px;
 }

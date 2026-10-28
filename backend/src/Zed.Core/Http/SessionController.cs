@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
+using Zed.Core.Data;
 using Zed.Core.Security;
 
 namespace Zed.Core.Http;
@@ -9,7 +10,8 @@ namespace Zed.Core.Http;
 /// <summary>Who is signed in, sign-out, and public client settings for the Angular app.</summary>
 [ApiController]
 [Route("api")]
-public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOptions<PortalOptions> portal, ICaptchaSettings captcha) : ControllerBase
+public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOptions<PortalOptions> portal, ICaptchaSettings captcha,
+    IPortalSettings settings) : ControllerBase
 {
     /// <summary>Returns the signed-in user, or 204 when nobody is signed in. Also issues the XSRF cookie.</summary>
     [HttpGet("auth/me")]
@@ -26,7 +28,8 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     }
 
     /// <param name="CaptchaMode">"off", "text" (the portal's 6-character picture, GET api/captcha) or "google".</param>
-    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl);
+    /// <param name="ContactUrl">Where "Contact ZED" goes (<see cref="PortalLinks"/>).</param>
+    public sealed record ClientConfig(bool CaptchaEnabled, string CaptchaMode, string CaptchaSiteKey, string LegacyPortalUrl, string ContactUrl);
 
     [HttpGet("config")]
     [AllowAnonymous]
@@ -34,7 +37,8 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     {
         var mode = await captcha.GetAsync(ct);
         return new(mode != Security.CaptchaMode.Off, mode.ToString().ToLowerInvariant(),
-            mode == Security.CaptchaMode.Google ? recaptcha.Value.SiteKey : "", portal.Value.LegacyBaseUrl.TrimEnd('/'));
+            mode == Security.CaptchaMode.Google ? recaptcha.Value.SiteKey : "", portal.Value.LegacyBaseUrl.TrimEnd('/'),
+            await PortalLinks.ContactUrlAsync(settings, portal.Value, ct));
     }
 
     /// <summary>A new 6-character captcha picture, when the captcha mode is "text" (404 otherwise).</summary>

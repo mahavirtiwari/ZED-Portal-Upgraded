@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { CertificationApi, CertificationData } from '../certification/certification.api';
 import { AssessmentApi, AssessmentReport, NonConformanceReport, Row, assessmentType } from './assessment.api';
 import { FileItem, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
+import { MsmeUnitSummary } from '../shared/unit-summary';
 
 export type AssessmentMode = 'basic-info' | 'non-conformances';
 
@@ -22,7 +23,7 @@ type BasicTab = 'basicInfo' | 'esg' | 'elements';
  */
 @Component({
   selector: 'zed-msme-assessment-report',
-  imports: [RouterLink, NgTemplateOutlet],
+  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary],
   templateUrl: './assessment-report.html',
   styleUrls: ['../shared/msme-page.scss', './assessment-report.scss'],
 })
@@ -65,7 +66,6 @@ export class AssessmentReportView {
   protected readonly siteVariant = computed(() => this.nc()?.variant === 'sa');
 
   protected readonly backLink = computed(() => ['/msme/certification', this.certification()]);
-  protected readonly pledgeCertificateUrl = '/api/msme/files/pledge-certificate';
 
   constructor() {
     effect(() => {

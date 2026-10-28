@@ -14,7 +14,6 @@ import { RouterLink } from '@angular/router';
         <div class="page-head">
           <div>
             <h3 class="registration-title">Payment Status</h3>
-            <p class="page-sub">The result of your payment.</p>
           </div>
         </div>
         @if (succeeded()) {

@@ -12,6 +12,12 @@ public sealed class PortalOptions
     public string PublicBaseUrl { get; set; } = "https://loginzed.msme.gov.in";
 
     /// <summary>
+    /// V4: where "Contact ZED" goes (the ZED website's contact page), unless the Admin set another address on
+    /// Administration → Links (<see cref="PortalLinks"/>).
+    /// </summary>
+    public string ContactUrl { get; set; } = "https://zed-staging.qci.org.in/contact-us";
+
+    /// <summary>
     /// Folder that holds generated files in the legacy layout (Certificates/{ZedId}/Pledge.pdf, ...).
     /// Point it at the old site's root to keep using existing files.
     /// </summary>
