@@ -85,13 +85,35 @@ public sealed class MastersTests : IDisposable
     public async Task Sector_codes_are_unique_and_unknown_ids_are_404()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
-        var dup = await client.PostAsJsonAsync("/api/staff/masters/sectors", new { code = "24", name = "Again" });
+        var dup = await client.PostAsJsonAsync("/api/staff/masters/sectors", new { code = "24", name = "Again", activity = "Manufacturing" });
         Assert.Equal("A sector with this code already exists.", await dup.ProblemTitle());
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/masters/sectors", new { code = "26", name = "Electronics" })).StatusCode);
+        // Manufacturing or Services is required (V4).
+        var noActivity = await client.PostAsJsonAsync("/api/staff/masters/sectors", new { code = "26", name = "Electronics" });
+        Assert.Equal("Please select whether the sector is Manufacturing or Services.", await noActivity.ProblemTitle());
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/masters/sectors", new { code = "26", name = "Electronics", activity = "manufacturing" })).StatusCode);
         Assert.Equal("26", FakeSql.Arg(Call("SP_MASTER_INSERT_SECTOR").Args, "SectorCode"));
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync("/api/staff/masters/sectors/77", new { name = "x" })).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/staff/masters/sectors/1", new { name = "Metals" })).StatusCode);
+        // Stored in the new column of the legacy table (dbo.Sectors.SectorType), not in a separate table.
+        var saved = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.Sectors SET SectorType", StringComparison.Ordinal));
+        Assert.Equal(("26", "Manufacturing"), (FakeSql.Arg(saved.Args, "SectorCode"), FakeSql.Arg(saved.Args, "SectorType")));
+
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync("/api/staff/masters/sectors/77", new { name = "x", activity = "Services" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync("/api/staff/masters/sectors/1", new { name = "Metals", activity = "Trading" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/staff/masters/sectors/1", new { name = "Metals", activity = "Services" })).StatusCode);
         Assert.Equal("24", FakeSql.Arg(Call("SP_MASTER_UPDATE_SECTOR").Args, "SectorCode"));
+        saved = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.Sectors SET SectorType", StringComparison.Ordinal));
+        Assert.Equal(("1", "Services"), (FakeSql.Arg(saved.Args, "Id"), FakeSql.Arg(saved.Args, "SectorType")));
+    }
+
+    [Fact]
+    public async Task Sectors_are_listed_with_manufacturing_or_services()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_SECTORS"] = _ => FakeSql.Sets(
+            [new { Id = 1, SectorCode = "24", SectorName = "Basic metals", OrderNo = 1, SectorType = "Manufacturing" },
+             new { Id = 2, SectorCode = "62", SectorName = "Computer programming", OrderNo = 2, SectorType = (string?)null }]);
+        var client = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/masters/sectors");
+        Assert.Equal("Manufacturing", list[0].GetProperty("activity").GetString());
+        Assert.Equal(JsonValueKind.Null, list[1].GetProperty("activity").ValueKind);
     }
 
     [Fact]

@@ -124,7 +124,7 @@ export const CONSULTANT_TILES = [
         @if (analytics(); as an) {
           @if (an.filtered()) { <button type="button" class="btn btn-link p-0 dash-reset no-export" (click)="an.reset()">Clear filters</button> }
           @if (an.data(); as d) { <span class="muted">Updated {{ d.generatedAt | date: 'dd-MM-yyyy HH:mm' }}</span> }
-          <button type="button" class="btn btn-outline-primary no-export" [disabled]="an.loading()" (click)="an.load()">Refresh</button>
+          <button type="button" class="btn btn-outline-primary no-export" [disabled]="an.loading()" (click)="an.load(true)">Refresh</button>
         }
         <div class="dash-export-menu no-export">
           <button type="button" class="btn btn-primary" [disabled]="exporting()" [attr.aria-expanded]="exportOpen()" aria-haspopup="menu"

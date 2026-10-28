@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -16,7 +17,8 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Admin, UserRole.Ministry, UserRole.Agency, UserRole.DesktopAssessor,
     UserRole.CitizenFeedback, UserRole.QC)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) : StaffApiController
+public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, IOptions<PortalOptions> portal, IHostEnvironment env)
+    : StaffApiController
 {
     /// <summary>Columns shown on the four cards of Views/Dashboard/Index.cshtml.</summary>
     public static readonly string[] SummaryColumns =
@@ -135,12 +137,14 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
     /// columns = applications), 0021 Surveillance). <paramref name="view"/> is the date the range applies to: registered
     /// (registration) or certified (certification, handholding or surveillance completed); dates as yyyy-MM-dd. A state-bound Ministry user sees only that state. The status cards are counted as the dashboard's
     /// (agencies and assessors: their own allotments) for the filtered units and applications in the date range.
-    /// Kept for ten minutes per filter combination (and per user for agencies and assessors).
+    /// Kept for ten minutes per filter combination (and per user for agencies and assessors); <paramref name="fresh"/> (Refresh)
+    /// reads them again. The four test Udyam numbers are left out as in Power BI, except where
+    /// <see cref="PortalOptions.DashboardCountsTestUnits"/> says to count them (by default: everywhere but Production).
     /// </summary>
     [HttpGet("analytics")]
     public async Task<ActionResult<AnalyticsResponse>> Analytics(
         string? view, string? state, string? district, string? certification, string? gender, string? size, string? socialCategory,
-        string? from, string? to, [FromServices] IMemoryCache cache, CancellationToken ct)
+        string? from, string? to, [FromServices] IMemoryCache cache, CancellationToken ct, bool fresh = false)
     {
         var invalid = false;
         var viewValue = DashboardFilters.Pick(view, ["registered", "certified"], ref invalid) ?? "registered";
@@ -168,7 +172,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
         var ownOnly = IsRole(UserRole.Agency) || IsRole(UserRole.DesktopAssessor);
         var key = string.Join('|', "dash-analytics", host.System, viewValue, stateName, districtName, cert, genderValue, sizeValue, social, fromDate, toDate,
             ownOnly ? RoleId + ":" + UserId : "all");
-        if (cache.TryGetValue(key, out AnalyticsResponse? hit) && hit is not null) return hit;
+        if (!fresh && cache.TryGetValue(key, out AnalyticsResponse? hit) && hit is not null) return hit;
 
         var sets = await db.QueryProcMultipleAsync("SP_V4_DASHBOARD_ANALYTICS", new
         {
@@ -176,6 +180,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host) :
             Gender = genderValue, Size = sizeValue, SocialCategory = social,
             From = fromDate?.ToDateTime(TimeOnly.MinValue), To = toDate?.ToDateTime(TimeOnly.MinValue),
             UserId, RoleId = RoleId.ToString(),
+            IncludeTestUnits = portal.Value.DashboardCountsTestUnits ?? !env.IsProduction(),
         }, ct);
         static List<CountItem> Items(IReadOnlyList<IDictionary<string, object?>> rows) =>
             rows.Select(r => new CountItem(r.Text("Label") ?? "", DashboardFilters.Int(r, "Total"))).ToList();

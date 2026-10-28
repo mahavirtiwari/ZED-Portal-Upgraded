@@ -7,6 +7,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { LookupResponse, RegistrationApi, SubmitResponse, UdyamRow } from './registration.api';
 import { PublicLayout } from '../public-layout/public-layout';
+import { AlertDialog, errorAlert } from '../shared/alert-dialog';
 
 type Step = 'welcome' | 'udyam' | 'plant' | 'summary' | 'pledge' | 'success';
 
@@ -20,7 +21,7 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
  */
 @Component({
   selector: 'zed-msme-register',
-  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent],
+  imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent, AlertDialog],
   templateUrl: './register.html',
   styleUrl: './register.scss',
 })
@@ -36,6 +37,11 @@ export class RegisterPage {
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly modalError = signal('');
+  /** Either message, in the error pop-up (over the e-mail / OTP box too). */
+  protected readonly errorMessage = computed(() => {
+    const text = this.modalError() || this.error();
+    return text ? errorAlert(text) : null;
+  });
 
   // Step 1
   protected registrationNo = '';
@@ -79,6 +85,11 @@ export class RegisterPage {
     this.error.set('');
     this.step.set(step);
     window.scrollTo(0, 0);
+  }
+
+  protected clearErrors(): void {
+    this.error.set('');
+    this.modalError.set('');
   }
 
   protected onCaptcha(token: string): void {
@@ -236,9 +247,7 @@ export class RegisterPage {
       } else if (inModal) {
         this.modalError.set(apiErrorMessage(err));
       } else {
-        // The message is shown above the step; bring it into view.
         this.error.set(apiErrorMessage(err));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
       return null;
     } finally {

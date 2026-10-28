@@ -22,7 +22,7 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// </para>
 /// <para>
 /// V4 (Documents/Videos, as the LEAN portal): a document has a description, can be a video link instead of a file, and
-/// is given to the account types that may open it (dbo.V4DocumentAccess, migration 0023; <see cref="DocumentRoles"/>).
+/// is given to the account types that may open it (columns of dbo.MyDocuments, migration 0023; <see cref="DocumentRoles"/>).
 /// A document from before, without a row, goes to the MSMEs only. Staff open theirs on api/staff/documents.
 /// </para>
 /// </summary>

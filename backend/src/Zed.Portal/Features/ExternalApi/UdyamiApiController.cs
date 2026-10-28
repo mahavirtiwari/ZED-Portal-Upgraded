@@ -116,7 +116,7 @@ public sealed class UdyamiApiController(
         byte[] pdf;
         try
         {
-            // Drawn for the reply and the mail only: V4 keeps no pledge certificate file (it is drawn when asked for).
+            // Drawn for the reply only (Base64File, the partner contract): V4 keeps no pledge certificate file and mails none.
             pdf = certificates.Render(pledge);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -140,7 +140,7 @@ public sealed class UdyamiApiController(
             var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             await email.SendAsync(new EmailMessage(msme.UserEmail!,
                 "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + zedId,
-                html, EmailProfiles.Registration, cc, [new EmailAttachment("Pledge.pdf", pdf)]), ct);
+                html, EmailProfiles.Registration, cc), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -76,6 +76,9 @@ public sealed class MsmeDocumentsTests : IDisposable
     [Fact]
     public async Task Documents_use_the_cookie_zed_id_and_link_to_the_files_api()
     {
+        foreach (var f in new[] { "Uploads/Documents/Guide 1.pdf", "Uploads/Documents/Checklist.docx", $"Certifications/DA/{Me}/Bronze.pdf",
+                     $"PDFs/SA/{Me}/Bronze_Payment_Receipt.pdf", $"ReceiptInvoice/INV1_{Me}_Invoice.pdf" })
+            WriteFile(f);
         var client = await SignInAsync();
 
         var json = await client.GetFromJsonAsync<JsonElement>("/api/msme/documents?zedId=" + Other);
@@ -101,10 +104,26 @@ public sealed class MsmeDocumentsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_listed_file_missing_from_storage_has_no_link()
+    {
+        // The test server had the guideline rows but not their files: the link opened a 404 page.
+        WriteFile("Uploads/Documents/Checklist.docx");
+        var client = await SignInAsync();
+
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/msme/documents");
+
+        var guidelines = json.GetProperty("Guidelines").EnumerateArray().Select(r => r.GetProperty("DocumentPath").GetString()).ToList();
+        Assert.Equal([null, "/api/msme/files/Uploads/Documents/Checklist.docx", null, null], guidelines);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("Certificates")[0].GetProperty("Bronze").ValueKind);
+        // The pledge certificate is drawn, so it keeps its link without a file.
+        Assert.Equal($"/api/msme/files/Certifications/{Me}/Pledge.pdf", json.GetProperty("Certificates")[0].GetProperty("Pledge").GetString());
+    }
+
+    [Fact]
     public async Task Only_the_guidelines_given_to_the_msmes_are_listed_and_served_with_their_description_and_video()
     {
         // Admin → Documents/Videos: the checklist (OrderNo 2) is for the assessors only; a video (OrderNo 5, no file).
-        _host.Sql.Queries["SELECT a.DocumentId, d.OrderNo"] = _ =>
+        _host.Sql.Queries["SELECT d.Id AS DocumentId, d.OrderNo"] = _ =>
         [
             new DocumentAccessRow(11, 1, "Read first", null, "msme,assessor", "ADMIN1", null),
             new DocumentAccessRow(12, 2, null, null, "assessor", "ADMIN1", null),

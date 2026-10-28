@@ -7,7 +7,12 @@ export interface CodeName {
   id: number;
   code: string;
   name: string;
+  /** Sectors only (V4): Manufacturing or Services; null when not set yet. */
+  activity?: SectorActivity | null;
 }
+
+export type SectorActivity = 'Manufacturing' | 'Services';
+export const SECTOR_ACTIVITIES: SectorActivity[] = ['Manufacturing', 'Services'];
 
 export type CodeNameKind = 'sectors' | 'categories';
 
@@ -97,12 +102,13 @@ export class MastersApi {
     return this.http.get<CodeName[]>(`${this.base}/${kind}`);
   }
 
-  add(kind: CodeNameKind, code: string, name: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/${kind}`, { code, name });
+  /** activity: sectors only (Manufacturing or Services). */
+  add(kind: CodeNameKind, code: string, name: string, activity?: SectorActivity | null): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}`, kind === 'sectors' ? { code, name, activity } : { code, name });
   }
 
-  rename(kind: CodeNameKind, id: number, name: string): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/${kind}/${id}`, { name });
+  rename(kind: CodeNameKind, id: number, name: string, activity?: SectorActivity | null): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/${kind}/${id}`, kind === 'sectors' ? { name, activity } : { name });
   }
 
   technologies(): Observable<Technology[]> {

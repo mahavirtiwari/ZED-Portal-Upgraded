@@ -24,6 +24,12 @@ public sealed class PortalOptions
     public string StorageRoot { get; set; } = "App_Data/storage";
 
     /// <summary>
+    /// V4: whether the staff dashboard figures count the four test Udyam numbers the ministry's Power BI leaves out. Not set:
+    /// counted everywhere but in Production, so units registered on the test server with them show up.
+    /// </summary>
+    public bool? DashboardCountsTestUnits { get; set; }
+
+    /// <summary>
     /// Address of the old MVC portal. Links to modules that are not migrated yet (payments,
     /// incentives, financial assistance, ...) open there until those modules move.
     /// </summary>

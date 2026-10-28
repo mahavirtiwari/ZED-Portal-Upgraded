@@ -26,3 +26,11 @@
   padding: 10px;
   border-radius: 4px;
 }
+
+// site.css sets field messages in proxima_nova_rgregular, a font the portal never loads, so browsers drew them in a serif
+// font. The page font instead.
+.has-error .help-block,
+span.help-block {
+  font-family: proxima_nova_rgregular, 'Work Sans', sans-serif;
+  font-size: 14px;
+}

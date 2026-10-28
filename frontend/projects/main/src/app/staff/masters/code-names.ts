@@ -4,7 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
-import { CodeName, CodeNameKind, MastersApi } from './masters.api';
+import { CodeName, CodeNameKind, MastersApi, SECTOR_ACTIVITIES, SectorActivity } from './masters.api';
 import { CollapseCard } from '../collapse-card';
 
 const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
@@ -15,7 +15,7 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
 /**
  * NIC sectors and categories (Admin). Port of Views/Sector/List.cshtml and Views/Category/List.cshtml
  * (same page; the route's `data.kind` picks the list): add a code and name, rename in a pop-up. V4: the add form in a
- * card, search and pages on the list.
+ * card, search and pages on the list. Sectors also say whether they are Manufacturing or Services (V4, required).
  */
 @Component({
   selector: 'zed-staff-code-names',
@@ -46,6 +46,17 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
             <input id="name" name="name" class="form-control" maxlength="200" [(ngModel)]="name" />
             @if (submitted() && !name.trim()) { <span class="help-block">{{ labels.one }} Name required.</span> }
           </div>
+          @if (isSectors) {
+            <span class="label-like" id="activity-label">Sector Type<span class="req">*</span></span>
+            <div>
+              <div class="activity-choice" role="radiogroup" aria-labelledby="activity-label">
+                @for (a of activities; track a) {
+                  <label><input type="radio" name="activity" [value]="a" [(ngModel)]="activity" /> {{ a }}</label>
+                }
+              </div>
+              @if (submitted() && !activity) { <span class="help-block">Please select Manufacturing or Services.</span> }
+            </div>
+          }
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
@@ -65,6 +76,7 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
           <tr>
             <th class="text-center" style="width: 160px">{{ labels.one }} Code</th>
             <th>{{ labels.one }} Name</th>
+            @if (isSectors) { <th style="width: 170px">Sector Type</th> }
             <th style="width: 110px">Actions</th>
           </tr>
         </thead>
@@ -73,6 +85,12 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
             <tr>
               <td class="text-center">{{ s.code }}</td>
               <td><strong>{{ s.name }}</strong></td>
+              @if (isSectors) {
+                <td>
+                  @if (s.activity) { <span class="activity-badge" [class.services]="s.activity === 'Services'">{{ s.activity }}</span> }
+                  @else { <span class="text-muted">Not set</span> }
+                </td>
+              }
               <td>
                 <div class="row-actions">
                   <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
@@ -80,7 +98,7 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="3" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No ' + labels.one.toLowerCase() + ' matches the search' : 'No Data' }}</div></td></tr>
+            <tr><td [attr.colspan]="isSectors ? 4 : 3" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No ' + labels.one.toLowerCase() + ' matches the search' : 'No Data' }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -102,6 +120,14 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
                 <div class="form-grid">
                   <label for="edit-name">{{ labels.one }} Name<span class="req">*</span></label>
                   <input id="edit-name" name="editName" class="form-control" maxlength="200" [(ngModel)]="e.name" />
+                  @if (isSectors) {
+                    <span class="label-like" id="edit-activity-label">Sector Type<span class="req">*</span></span>
+                    <div class="activity-choice" role="radiogroup" aria-labelledby="edit-activity-label">
+                      @for (a of activities; track a) {
+                        <label><input type="radio" name="editActivity" [value]="a" [(ngModel)]="e.activity" /> {{ a }}</label>
+                      }
+                    </div>
+                  }
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
@@ -116,13 +142,23 @@ const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> 
       <div class="modal-backdrop show"></div>
     }
   `,
-  styles: `.help-block { color: #a94442; font-size: 13px; }`,
+  styles: `
+    .help-block { color: #a94442; font-size: 13px; }
+    .label-like { font-weight: 600; align-self: center; }
+    .activity-choice { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; min-height: 38px; }
+    .activity-choice label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 500; cursor: pointer; }
+    .activity-choice input { width: 18px; height: 18px; margin: 0; }
+    .activity-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 13px; font-weight: 600; background: #e3f1f2; color: #23474a; }
+    .activity-badge.services { background: #fdf0dc; color: #7a4d0b; }
+  `,
 })
 export class CodeNamesPage {
   private readonly api = inject(MastersApi);
 
   protected readonly kind: CodeNameKind = inject(ActivatedRoute).snapshot.data['kind'] === 'categories' ? 'categories' : 'sectors';
   protected readonly labels = LABELS[this.kind];
+  protected readonly isSectors = this.kind === 'sectors';
+  protected readonly activities = SECTOR_ACTIVITIES;
   protected readonly pager = new ClientPager<CodeName>(10);
   protected readonly editing = signal<CodeName | null>(null);
   protected readonly submitted = signal(false);
@@ -132,6 +168,7 @@ export class CodeNamesPage {
   protected readonly success = signal('');
   protected code = '';
   protected name = '';
+  protected activity: SectorActivity | null = null;
 
   constructor() {
     void this.load();
@@ -149,14 +186,15 @@ export class CodeNamesPage {
     this.submitted.set(true);
     this.error.set('');
     this.success.set('');
-    if (!this.code.trim() || !this.name.trim()) {
+    if (!this.code.trim() || !this.name.trim() || (this.isSectors && !this.activity)) {
       this.error.set('Please enter valid data.');
       return;
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.add(this.kind, this.code.trim(), this.name.trim()))).message);
+      this.success.set((await firstValueFrom(this.api.add(this.kind, this.code.trim(), this.name.trim(), this.activity))).message);
       this.code = this.name = '';
+      this.activity = null;
       this.submitted.set(false);
       await this.load();
     } catch (err) {
@@ -179,9 +217,13 @@ export class CodeNamesPage {
       this.editError.set('Enter the valid data.');
       return;
     }
+    if (this.isSectors && !e.activity) {
+      this.editError.set('Please select Manufacturing or Services.');
+      return;
+    }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.rename(this.kind, e.id, e.name.trim()))).message);
+      this.success.set((await firstValueFrom(this.api.rename(this.kind, e.id, e.name.trim(), e.activity))).message);
       this.editing.set(null);
       await this.load();
     } catch (err) {

@@ -179,7 +179,8 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an.is-busy .an-kpis, .an.is-busy .an-grid { opacity: .55; transition: opacity .15s; }
     .an-status.is-hidden { display: none; }
     /* All filters on one line on a wide screen. */
-    .an-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    /* Nine filters on two lines: five, then four (fewer per line on smaller screens). */
+    .an-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 16px; margin-bottom: 16px; }
     .an-status { margin-bottom: 18px; }
     .an-status h5 { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 12px; }
     .an-status h5 small { font-weight: 500; font-size: 12px; margin-left: 6px; }
@@ -208,7 +209,9 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     @media (max-width: 1199.98px) { .an-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 1199.98px) { .an-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 991.98px) { .an-trend { grid-template-columns: 1fr; } .an-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 767.98px) { .an-grid-3 { grid-template-columns: 1fr; } }`,
+    @media (max-width: 1199.98px) { .an-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 767.98px) { .an-grid-3 { grid-template-columns: 1fr; } .an-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 479.98px) { .an-filters { grid-template-columns: 1fr; } }`,
 })
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
@@ -303,12 +306,13 @@ export class StaffAnalytics {
     void this.load();
   }
 
-  async load(): Promise<void> {
+  /** fresh (Refresh): the server reads the figures again instead of the ones it keeps for ten minutes. */
+  async load(fresh = false): Promise<void> {
     const id = ++this.request;
     this.loading.set(true);
     this.error.set('');
     try {
-      const d = await firstValueFrom(this.api.analytics({ view: this.view(), ...this.filter() }));
+      const d = await firstValueFrom(this.api.analytics({ view: this.view(), ...this.filter() }, fresh));
       if (id !== this.request) return;
       this.data.set(d);
       this.statusCards.emit(d.statusCards ?? {});

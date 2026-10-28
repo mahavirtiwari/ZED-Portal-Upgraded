@@ -127,4 +127,23 @@ public sealed class DashboardAnalyticsTests : IDisposable
         Assert.Equal(3, Calls());
         Assert.Equal(("AGENCY1", "2"), (FakeSql.Arg(_host.LastCall(Proc).Args, "UserId"), FakeSql.Arg(_host.LastCall(Proc).Args, "RoleId")));
     }
+
+    [Fact]
+    public async Task Refresh_reads_the_figures_again_and_stores_them()
+    {
+        var client = await _host.SignInAsync("SUPER1");
+        await client.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics");
+        await client.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics?fresh=true");
+        Assert.Equal(2, Calls());
+        await client.GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics");
+        Assert.Equal(2, Calls());
+    }
+
+    [Fact]
+    public async Task Test_units_are_counted_outside_production()
+    {
+        // The test server registers with the test Udyam numbers Power BI leaves out; there they must show up.
+        await (await _host.SignInAsync("SUPER1")).GetFromJsonAsync<StaffDashboardController.AnalyticsResponse>("/api/staff/dashboard/analytics");
+        Assert.Equal("True", FakeSql.Arg(_host.LastCall(Proc).Args, "IncludeTestUnits"));
+    }
 }

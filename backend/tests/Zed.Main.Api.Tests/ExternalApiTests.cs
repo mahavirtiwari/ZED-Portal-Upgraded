@@ -639,7 +639,9 @@ public sealed class ExternalApiTests : IDisposable
 
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("owner@acme.test", mail.To);
-        Assert.Equal("Pledge.pdf", Assert.Single(mail.Attachments!).FileName);
+        // The partner still gets the PDF in the reply (Base64File); the mail only links to the certificate page.
+        Assert.Empty(mail.Attachments ?? []);
+        Assert.Contains("/msme/pledge-certificate", mail.HtmlBody);
         Assert.False(Directory.Exists(Path.Combine(AppContext.BaseDirectory, "App_Data", "Json", "API")));
     }
 

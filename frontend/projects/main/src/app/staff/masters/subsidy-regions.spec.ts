@@ -24,8 +24,8 @@ describe('SubsidyRegionsPage', () => {
       { key: 'NER', name: 'North Eastern Region', description: 'Eight states', level: 'state' },
     ],
     regions: [
-      { category: 'ASPIRATIONAL', stateCode: '9', districtCode: '170', enabled: true, source: 'Before V4', updatedBy: null, updatedOn: null, stateName: 'UTTAR PRADESH', districtName: 'SONBHADRA' },
-      { category: 'NER', stateCode: '18', districtCode: '', enabled: false, source: 'North Eastern Region', updatedBy: null, updatedOn: null, stateName: 'ASSAM', districtName: null },
+      { category: 'ASPIRATIONAL', stateCode: '9', districtCode: '170', enabled: true, updatedBy: null, updatedOn: null, stateName: 'UTTAR PRADESH', districtName: 'SONBHADRA' },
+      { category: 'NER', stateCode: '18', districtCode: '', enabled: false, updatedBy: null, updatedOn: null, stateName: 'ASSAM', districtName: null },
     ],
     states: [{ code: '9', name: 'UTTAR PRADESH' }, { code: '18', name: 'ASSAM' }],
     subsidyDistricts: 112,

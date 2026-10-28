@@ -233,6 +233,61 @@ describe('CodeNamesPage', () => {
   });
 });
 
+// Angular's radio [value] is not written to the element, so the radio is found by its label.
+const radio = (el: HTMLElement, name: string, label: string) =>
+  [...el.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].find((i) => i.closest('label')!.textContent!.trim() === label)!;
+
+describe('CodeNamesPage (sectors)', () => {
+  it('requires Manufacturing or Services and saves it with the sector', async () => {
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    http.expectOne('/api/staff/masters/sectors').flush([
+      { id: 1, code: '10', name: 'Manufacture of food products', activity: 'Manufacturing' },
+      { id: 2, code: '62', name: 'Computer programming', activity: null },
+    ]);
+    await settle(fixture);
+    const cells = [...el.querySelectorAll('tbody tr')].map((r) => r.children[2].textContent!.trim());
+    expect(cells).toEqual(['Manufacturing', 'Not set']);
+
+    for (const [sel, v] of [['#code', '63'], ['#name', 'Information services']]) {
+      const i = el.querySelector(sel) as HTMLInputElement;
+      i.value = v;
+      i.dispatchEvent(new Event('input'));
+    }
+    await settle(fixture);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    http.expectNone('/api/staff/masters/sectors');
+    expect(el.textContent).toContain('Please select Manufacturing or Services.');
+
+    radio(el, 'activity', 'Services').click();
+    await settle(fixture);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const add = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors');
+    expect(add.request.body).toEqual({ code: '63', name: 'Information services', activity: 'Services' });
+    add.flush({ message: 'Sector saved.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/sectors').flush([{ id: 2, code: '62', name: 'Computer programming', activity: null }]);
+    await settle(fixture);
+
+    (el.querySelector('tbody button') as HTMLButtonElement).click();
+    await settle(fixture);
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('Please select Manufacturing or Services.');
+    radio(el, 'editActivity', 'Services').click();
+    await settle(fixture);
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const put = http.expectOne('/api/staff/masters/sectors/2');
+    expect(put.request.body).toEqual({ name: 'Computer programming', activity: 'Services' });
+    put.flush({ message: 'Sector data updated.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/sectors').flush([]);
+    http.verify();
+  });
+});
+
 describe('ParametersPage', () => {
   it('shows the description as text, not HTML', async () => {
     const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });

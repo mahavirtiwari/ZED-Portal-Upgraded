@@ -1,21 +1,29 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Zed.Core.Content;
 using Zed.Core.Data;
+using Zed.Core.Http;
 
 namespace Zed.Portal.Features.Msme;
 
 /// <summary>My Documents. Port of MsmeController.MyDocuments / GetMyDocuments.</summary>
 [Route("api/msme/documents")]
-public sealed class MsmeDocumentsController(ISqlExecutor db, IDocumentAccessStore access) : MsmeApiController
+public sealed class MsmeDocumentsController(
+    ISqlExecutor db, IDocumentAccessStore access, IWebHostEnvironment env, IOptions<PortalOptions> portal) : MsmeApiController
 {
     /// <summary>
     /// SP_MSME_GET_MY_DOCUMENTS for the signed-in ZED ID: <c>{ Guidelines, Certificates,
     /// PaymentReceipts, Invoices }</c> with the procedure's column names. File columns hold
-    /// api/msme/files URLs instead of the old public URLs, or null when there is no servable file.
+    /// api/msme/files URLs instead of the old public URLs, or null when there is no servable file — also when the file is
+    /// not in storage, so the page shows "not available" instead of a link that fails.
     /// </summary>
     [HttpGet]
-    public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct) =>
-        MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct)), ZedId);
+    public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct)
+    {
+        var root = MsmeFilePaths.Root(env, portal.Value);
+        return MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct)), ZedId,
+            path => MsmeFilePaths.Find(root, path) is not null);
+    }
 }
 
 /// <summary>Reads SP_MSME_GET_MY_DOCUMENTS and knows which of its columns name files.</summary>
@@ -57,13 +65,17 @@ public static class MsmeMyDocuments
                     yield return new MsmeFileEntry(path, scope);
     }
 
-    public static Dictionary<string, IReadOnlyList<IDictionary<string, object?>>> ToClient(ResultSets sets, string zedId)
+    /// <param name="stored">When given, a file it does not find is listed without a link (the pledge certificate is drawn, never read).</param>
+    public static Dictionary<string, IReadOnlyList<IDictionary<string, object?>>> ToClient(ResultSets sets, string zedId, Func<string, bool>? stored = null)
     {
         var result = sets.ToClient(SetNames);
         foreach (var (set, column, scope) in FileColumns)
             foreach (var row in result[SetNames[set]])
                 if (row.ContainsKey(column))
-                    row[column] = Servable(row.Text(column), scope, zedId) is { } path ? MsmeFilePaths.ToApiUrl(path) : null;
+                    row[column] = Servable(row.Text(column), scope, zedId) is { } path &&
+                                  (stored is null || MsmeFilePaths.IsPledge(path, zedId) || stored(path))
+                        ? MsmeFilePaths.ToApiUrl(path)
+                        : null;
 
         foreach (var row in result[SetNames[1]])
             foreach (var column in KawachColumns)

@@ -189,6 +189,10 @@ label.panel-item {
     border-top: 0;
     padding-top: 0;
   }
+  // The old site.css caps every input at 280px (.zed-legacy input); here the e-mail and OTP boxes span the pop-up.
+  .form-control {
+    max-width: none;
+  }
 }
 
 .reg-modal-proceed {

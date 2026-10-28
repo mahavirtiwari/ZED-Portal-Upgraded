@@ -34,7 +34,7 @@
               <div class="zed-payment-success">
                 <div class="label-highlight">
                   <div class="app-banner">
-                    <zed-text key="msme.dashboard.mobileAppHint" />
+                    <div class="app-banner-text"><zed-text key="msme.dashboard.mobileAppHint" /></div>
                     <a href="https://apps.apple.com/in/app/zed-msme/id1631537071" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>
                     <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>
                     <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
@@ -184,13 +184,13 @@
                       </div>
 
                       <div class="item">
-                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="is(basic(), 'IsEligibleForFinancial', 0)">
+                        <!-- Not eligible (yet): the card faded with its AVAIL button, as the other cards. -->
+                        <div class="panel panel-default panel-incen-block" [class.plant-activity-disabled]="!is(basic(), 'IsEligibleForFinancial', 1)">
                           <div class="panel-heading">
                             <img src="/Images/Dashboard/financial.png" alt="Financial Assistance" />
                             @if (is(cert(), 'FinancialAssistanceStatus', 0) && is(basic(), 'IsEligibleForFinancial', 1)) {
                               <button type="button" class="btn btn-sm btn-primary" (click)="open({ kind: 'fa' })">View</button>
-                            }
-                            @if (!(is(cert(), 'FinancialAssistanceStatus', 0) || is(basic(), 'IsEligibleForFinancial', 0))) {
+                            } @else {
                               <a routerLink="/msme/financial-assistance" class="btn btn-sm btn-primary">Avail</a>
                             }
                           </div>
@@ -320,9 +320,8 @@
         }
 
         @case ('payment') {
-          <div class="step-page">
-            <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
-          </div>
+          <!-- Full width, as the live step 4 (the step itself is a centred col-sm-10). -->
+          <zed-payment-step [certification]="applyLevel()" (back)="goStep('home')" />
         }
       }
     }

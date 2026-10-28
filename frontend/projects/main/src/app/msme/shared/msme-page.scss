@@ -43,10 +43,19 @@
   }
 }
 
-// The app banner: the text (from Admin → Texts) on the left half, as the live <p> (site.css .zed-payment-success).
-.app-banner > zed-text {
+// The app banner: the text (from Admin → Texts) on the left half, the store badges and the QR code beside it on one
+// line, as the live <p> (site.css .zed-payment-success). zed-text itself has no box, hence the wrapper.
+.app-banner > .app-banner-text {
   flex: 0 0 50%;
+  min-width: 0;
   text-align: left;
+}
+
+// Narrow screens: the text above, the badges and the QR code below it.
+@media (max-width: 767.98px) {
+  .app-banner > .app-banner-text {
+    flex-basis: 100%;
+  }
 }
 
 // Disclaimer / instructions steps: one readable column.

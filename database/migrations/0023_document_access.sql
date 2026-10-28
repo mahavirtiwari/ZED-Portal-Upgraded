@@ -1,21 +1,32 @@
--- New in V4 (not part of the legacy schema). Run on ZEDCS_V2_LIVE and ZED_CONSULTANT (the systems whose Admin manages
--- My Documents). Additive and safe to re-run: one new table.
--- Admin → Masters → Documents/Videos (Zed.Core/Content/DocumentAccess.cs): for a row of dbo.MyDocuments, its
--- description, the address of a video (the document is then a link; MyDocuments.DocumentPath stays empty) and the
--- account types that may open it (comma-separated keys: msme, masteradmin, agency, assessor, coordinator, ministry,
--- superadmin, citizenfeedback, qc). A document without a row goes to the MSMEs only, as before V4.
--- The V4 logins need SELECT, INSERT, UPDATE and DELETE on it (zed_v4_app has them; the mobile hosts read it).
+-- Run on ZEDCS_V2_LIVE and ZED_CONSULTANT (the systems whose Admin manages My Documents). Additive and safe to re-run.
+-- Admin → Masters → Documents/Videos (Zed.Core/Content/DocumentAccess.cs): new columns of the existing dbo.MyDocuments:
+--   Description      the line shown under the document's name;
+--   VideoUrl         the address of a video (the document is then a link; DocumentPath stays empty);
+--   AccessRoles      the account types that may open it (comma-separated keys: msme, masteradmin, agency, assessor,
+--                    coordinator, ministry, superadmin, citizenfeedback, qc); NULL = the MSMEs only, as before V4;
+--   AccessUpdatedBy / AccessUpdatedOn   who set them, when (UTC).
+-- The old sites are not affected: SP_MASTER_INSERT_DOCUMENT inserts with a column list and the procedures read the table
+-- by column name. The legacy procedures are not changed.
+-- Earlier V4 builds kept these values in a separate table, dbo.V4DocumentAccess. When that table is still there, its
+-- rows are copied into the new columns and the table is dropped (one transaction: all or nothing).
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
-IF OBJECT_ID('dbo.V4DocumentAccess', 'U') IS NULL
-CREATE TABLE dbo.V4DocumentAccess
-(
-    DocumentId   bigint          NOT NULL CONSTRAINT PK_V4DocumentAccess PRIMARY KEY,
-    Description  nvarchar(300)   NULL,
-    VideoUrl     nvarchar(1000)  NULL,
-    Roles        varchar(300)    NOT NULL,
-    UpdatedBy    varchar(50)     NULL,
-    UpdatedOn    datetime2(0)    NOT NULL CONSTRAINT DF_V4DocumentAccess_UpdatedOn DEFAULT SYSUTCDATETIME()
-);
+IF COL_LENGTH('dbo.MyDocuments', 'Description') IS NULL ALTER TABLE dbo.MyDocuments ADD Description nvarchar(300) NULL;
+IF COL_LENGTH('dbo.MyDocuments', 'VideoUrl') IS NULL ALTER TABLE dbo.MyDocuments ADD VideoUrl nvarchar(1000) NULL;
+IF COL_LENGTH('dbo.MyDocuments', 'AccessRoles') IS NULL ALTER TABLE dbo.MyDocuments ADD AccessRoles varchar(300) NULL;
+IF COL_LENGTH('dbo.MyDocuments', 'AccessUpdatedBy') IS NULL ALTER TABLE dbo.MyDocuments ADD AccessUpdatedBy varchar(50) NULL;
+IF COL_LENGTH('dbo.MyDocuments', 'AccessUpdatedOn') IS NULL ALTER TABLE dbo.MyDocuments ADD AccessUpdatedOn datetime2(0) NULL;
+GO
+IF OBJECT_ID('dbo.V4DocumentAccess', 'U') IS NOT NULL
+BEGIN
+    SET XACT_ABORT ON;
+    BEGIN TRANSACTION;
+    EXEC (N'UPDATE d SET Description = a.Description, VideoUrl = a.VideoUrl, AccessRoles = a.Roles,
+                 AccessUpdatedBy = a.UpdatedBy, AccessUpdatedOn = a.UpdatedOn
+          FROM dbo.MyDocuments d JOIN dbo.V4DocumentAccess a ON a.DocumentId = d.Id
+          WHERE d.AccessRoles IS NULL;');
+    DROP TABLE dbo.V4DocumentAccess;
+    COMMIT;
+END
 GO

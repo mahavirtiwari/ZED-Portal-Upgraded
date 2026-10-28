@@ -27,7 +27,9 @@ CREATE OR ALTER PROCEDURE dbo.SP_V4_DASHBOARD_ANALYTICS
     @From           date         = NULL,
     @To             date         = NULL,
     @UserId         varchar(100) = NULL,
-    @RoleId         varchar(10)  = NULL
+    @RoleId         varchar(10)  = NULL,
+    -- 1 on the test server: the four test Udyam numbers below are counted too (PortalOptions.DashboardCountsTestUnits).
+    @IncludeTestUnits bit        = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -58,7 +60,7 @@ BEGIN
     FROM dbo.Msme M
     INNER JOIN dbo.MsmeBasicInformation B ON B.ZedId = M.ZedId
     WHERE M.ZedId IS NOT NULL
-      AND ISNULL(B.UdyogAadharNo, '') NOT IN ('UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915', 'UDYAM-UP-16-0001476')
+      AND (@IncludeTestUnits = 1 OR ISNULL(B.UdyogAadharNo, '') NOT IN ('UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915', 'UDYAM-UP-16-0001476'))
       AND (@State IS NULL OR M.PStateName = @State)
       AND (@District IS NULL OR M.PDistrictName = @District)
       AND (@Size IS NULL OR M.EnterpriseTypee = @Size)

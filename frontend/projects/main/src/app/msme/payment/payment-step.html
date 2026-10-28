@@ -1,15 +1,17 @@
 @if (options(); as o) {
-  <div class="page-head">
-    <div>
-      <h3 class="registration-title">{{ certification() }} Certification: Payment</h3>
-    </div>
-    <div class="page-actions"><img class="level-badge" [src]="'/Images/Dashboard/' + certification().toLowerCase() + '.png'" [alt]="certification()" /></div>
-  </div>
+  <!-- As the live step 4: one panel, the level badge in its grey head, the options and the summary side by side. -->
+  <div class="row justify-content-center">
+  <div class="col-sm-10 Dashboard">
   <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
-    <div class="pay-grid">
+    <div class="panel panel-default panel-payment">
+      <div class="panel-heading">
+        <div class="text-center"><img [src]="'/Images/Dashboard/' + certification().toLowerCase() + '.png'" [alt]="certification() + ' Certification'" /></div>
+      </div>
+      <div class="panel-body">
+      <div class="row">
       <!-- Payment options -->
-      <div class="zed-card">
-        <h4>Payment Options</h4>
+      <div class="col-sm-6">
+        <h3 class="registration-title">Payment Options</h3>
 
         <div class="payment-option-block">
           <p id="gstinLabel">GSTIN Applicable?</p>
@@ -20,7 +22,7 @@
           @if (submitted() && !gstinApplicable) { <span class="help-block text-danger">This is required.</span> }
         </div>
         @if (gstinApplicable === 'Yes') {
-          <div class="payment-option-block">
+          <div class="payment-option-block payment-input-block">
             <input type="text" placeholder="Unit GSTIN" aria-label="Unit GSTIN" class="form-control border-less" name="gstin" maxlength="15" [(ngModel)]="gstin" />
             @if (submitted() && gstinInvalid()) { <span class="help-block text-danger">Please enter valid GSTIN.</span> }
           </div>
@@ -43,7 +45,7 @@
             </div>
             @if (submitted() && !tds) { <span class="help-block text-danger">This is required.</span> }
           </div>
-          <div class="payment-option-block">
+          <div class="payment-option-block payment-input-block">
             <input type="text" placeholder="TAN Number" aria-label="TAN Number" class="form-control border-less" name="tan" maxlength="10" [(ngModel)]="tan" />
             @if (submitted() && tanInvalid()) { <span class="help-block text-danger">Please enter valid TAN Number.</span> }
           </div>
@@ -69,9 +71,9 @@
       </div>
 
       <!-- Summary -->
-      <div class="zed-card payment-summary">
-        <h4>Summary</h4>
-        <div class="summary-rows">
+      <div class="col-sm-6 payment-summary">
+        <h3 class="registration-title">Summary</h3>
+        <div class="panel panel-info summary-rows">
           <div><span>Certification Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
           @if (useReward()) {
             <div><span>Joining Reward</span><strong>- ₹ {{ n('Coupon') | number: '1.2-2' }}</strong></div>
@@ -99,16 +101,22 @@
           <div class="net"><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
         </div>
       </div>
-    </div>
 
-    <div class="form-actions">
-      <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
-      <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
+      <div class="col-sm-12">
+        <div class="stepper-footer-sec initial-step1">
+          <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
+        </div>
+      </div>
+      </div>
+      </div>
     </div>
   </form>
+  </div>
+  </div>
 } @else if (!busy()) {
   <!-- As the legacy step 4 (always rendered): the way back stays when the fee summary could not load. -->
-  <div class="form-actions justify-content-start">
+  <div class="stepper-footer-sec">
     <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
   </div>
 }

@@ -64,9 +64,10 @@ public sealed partial class MsmeRegistrationTests : IDisposable
 
         var certMail = _host.Email.Sent.Last();
         Assert.Equal(EmailProfiles.Registration, certMail.Profile);
-        var pdf = Assert.Single(certMail.Attachments!);
-        Assert.StartsWith("%PDF", System.Text.Encoding.ASCII.GetString(pdf.Content, 0, 4));
-        // V4: the pledge certificate is drawn for the mail; no file is kept on the server.
+        // V4: no certificate attached and none kept on the server; the mail links to the page that draws it.
+        Assert.Empty(certMail.Attachments ?? []);
+        Assert.Contains("/msme/pledge-certificate", certMail.HtmlBody);
+        Assert.DoesNotContain("attached", certMail.HtmlBody);
         Assert.False(File.Exists(Path.Combine(_host.StorageRoot, "Certificates", "ZEDMSME999001", "Pledge.pdf")));
 
         var me = await client.GetFromJsonAsync<CurrentUserResponse>("/api/auth/me");

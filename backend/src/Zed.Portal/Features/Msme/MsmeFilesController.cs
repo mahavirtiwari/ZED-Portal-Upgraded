@@ -61,10 +61,7 @@ public sealed class MsmeFilesController(
             .FirstOrDefault(f => string.Equals(f.RelativePath, requested, StringComparison.OrdinalIgnoreCase));
         if (entry is null) return NotFound();
 
-        var root = Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
-        var fullPath = MsmeFilePaths.StorageCandidates(entry.RelativePath)
-            .Select(c => MsmeFilePaths.Resolve(root, c))
-            .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
+        var fullPath = MsmeFilePaths.Find(MsmeFilePaths.Root(env, portal.Value), entry.RelativePath);
         if (fullPath is null)
         {
             log.LogInformation("Listed document {Path} for {ZedId} is missing from storage", entry.RelativePath, ZedId);
@@ -207,6 +204,14 @@ public static class MsmeFilePaths
         segments[i] = other;
         yield return string.Join('/', segments);
     }
+
+    /// <summary>The storage root of the portal (<see cref="PortalOptions.StorageRoot"/>, relative to the content root).</summary>
+    public static string Root(IWebHostEnvironment env, PortalOptions portal) =>
+        Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.StorageRoot));
+
+    /// <summary>The stored file of a normalised relative path (either certificate folder), or null when it is not there.</summary>
+    public static string? Find(string storageRoot, string relative) =>
+        StorageCandidates(relative).Select(c => Resolve(storageRoot, c)).FirstOrDefault(p => p is not null && File.Exists(p));
 
     /// <summary>Full path of a normalised relative path, or null if it would leave the storage root.</summary>
     public static string? Resolve(string storageRoot, string relative)

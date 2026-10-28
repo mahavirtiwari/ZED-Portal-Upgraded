@@ -30,34 +30,54 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     public sealed record CodeNameRequest(string? Code, string? Name);
     public sealed record NameRequest(string? Name);
 
+    /// <summary>A sector with its type, Manufacturing or Services (dbo.Sectors.SectorType, migration 0025); null = not set.</summary>
+    public sealed record Sector(int Id, string Code, string Name, string? Activity);
+    public sealed record SectorRequest(string? Code, string? Name, string? Activity);
+    public sealed record SectorUpdateRequest(string? Name, string? Activity);
+
+    public static readonly string[] SectorActivities = ["Manufacturing", "Services"];
+
     // ---- Sectors ------------------------------------------------------------------------------
 
     /// <summary>NIC sectors (SP_MASTER_GET_SECTORS). Legacy GetSectors also allowed the SuperAdmin, for no page of its menu.</summary>
     [HttpGet("sectors")]
-    public async Task<IReadOnlyList<CodeName>> Sectors(CancellationToken ct) => await LoadSectorsAsync(ct);
+    public async Task<IReadOnlyList<Sector>> Sectors(CancellationToken ct) =>
+        (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct))[0]
+            .Select(r => new Sector(Id(r), r.Text("SectorCode"), r.Text("SectorName"), Activity(r.Text("SectorType"))))
+            .Where(s => s.Id > 0).ToList();
 
     [HttpPost("sectors")]
-    public async Task<ActionResult<MessageResponse>> AddSector(CodeNameRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> AddSector(SectorRequest req, CancellationToken ct)
     {
-        var (code, name, error) = ValidateCodeName(req, "Sector");
+        var (code, name, error) = ValidateCodeName(new CodeNameRequest(req.Code, req.Name), "Sector");
         if (error is not null) return this.Problem400(error);
+        if (Activity(req.Activity) is not { } activity) return this.Problem400("Please select whether the sector is Manufacturing or Services.");
         if ((await LoadSectorsAsync(ct)).Any(s => string.Equals(s.Code, code, StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A sector with this code already exists.");
         await db.ExecuteProcAsync("SP_MASTER_INSERT_SECTOR", new { SectorCode = code, SectorName = name }, ct);
-        log.LogInformation("Sector {Code} added by {Actor}", code, UserId);
+        // The legacy procedure is left as it is; the type goes into the new column of the row it added.
+        await db.ExecuteSqlAsync("UPDATE dbo.Sectors SET SectorType = @SectorType WHERE SectorCode = @SectorCode;",
+            new { SectorType = activity, SectorCode = code }, ct);
+        log.LogInformation("Sector {Code} ({Activity}) added by {Actor}", code, activity, UserId);
         return new MessageResponse("Sector saved.");
     }
 
     [HttpPut("sectors/{id:int}")]
-    public async Task<ActionResult<MessageResponse>> UpdateSector(int id, NameRequest req, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> UpdateSector(int id, SectorUpdateRequest req, CancellationToken ct)
     {
         var sector = (await LoadSectorsAsync(ct)).FirstOrDefault(s => s.Id == id);
         if (sector is null) return NotFound();
         if (!StaffUserRules.TryText(req.Name, 200, true, false, out var name)) return this.Problem400("Sector Name required (up to 200 characters).");
+        if (Activity(req.Activity) is not { } activity) return this.Problem400("Please select whether the sector is Manufacturing or Services.");
         await db.ExecuteProcAsync("SP_MASTER_UPDATE_SECTOR", new { Id = id.ToString(), SectorCode = sector.Code, SectorName = name }, ct);
-        log.LogInformation("Sector {Id} renamed by {Actor}", id, UserId);
+        await db.ExecuteSqlAsync("UPDATE dbo.Sectors SET SectorType = @SectorType WHERE Id = @Id;", new { SectorType = activity, Id = id }, ct);
+        log.LogInformation("Sector {Id} updated ({Activity}) by {Actor}", id, activity, UserId);
         return new MessageResponse("Sector data updated.");
     }
+
+    /// <summary>"Manufacturing" or "Services" (any case), as stored; null for anything else.</summary>
+    private static string? Activity(string? value) =>
+        SectorActivities.FirstOrDefault(a => string.Equals(a, value?.Trim(), StringComparison.OrdinalIgnoreCase));
 
     // ---- Categories ---------------------------------------------------------------------------
 

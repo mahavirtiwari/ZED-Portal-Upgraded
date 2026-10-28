@@ -64,7 +64,7 @@ describe('RegisterPage', () => {
     await settle();
 
     http.expectNone('/api/msme/registration/lookup');
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('valid Udyam Registration Number');
+    expect(el.querySelector('[role="dialog"] .swal-text')!.textContent).toContain('valid Udyam Registration Number');
   });
 
   it('upper-cases the Udyam number and shows the plants returned by the lookup', async () => {
@@ -103,7 +103,7 @@ describe('RegisterPage', () => {
     );
     await settle();
 
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('Plant Details are missing');
+    expect(el.querySelector('[role="dialog"] .swal-text')!.textContent).toContain('Plant Details are missing');
     expect(el.textContent).toContain('Udyam Registration Validation');
   });
 

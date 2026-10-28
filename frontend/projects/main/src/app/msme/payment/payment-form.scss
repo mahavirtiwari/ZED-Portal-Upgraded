@@ -42,6 +42,13 @@
   }
 }
 
+// The GSTIN / TAN box: the input across the block (the old site.css caps inputs at 280px), the message under it.
+.payment-input-block .form-control {
+  flex: 1 1 100%;
+  max-width: none;
+  padding-left: 0;
+}
+
 .payment-reward-block {
   gap: 12px;
   border-radius: 10px;
@@ -52,14 +59,17 @@
   text-align: right;
 }
 
+// The live summary: a bordered box, one row per amount (padding 8px 20px), a line between rows.
 .summary-rows {
+  border: 1px solid #ddd;
+
   > div {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
     gap: 12px;
-    padding: 9px 0;
-    border-bottom: 1px solid #e8eff0;
+    padding: 8px 20px;
+    border-bottom: 1px solid #ddd;
 
     > strong {
       white-space: nowrap;
@@ -71,12 +81,7 @@
   }
 
   > .net {
-    margin-top: 4px;
-    padding: 12px;
     border-bottom: 0;
-    border-radius: 8px;
-    background: #eef6f6;
-    color: #23474a;
   }
 }
 

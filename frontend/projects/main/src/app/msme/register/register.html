@@ -15,12 +15,6 @@
     </ol>
   }
 
-  @if (error()) {
-    <div class="alert alert-danger alert-dismissible col-sm-8 offset-sm-2" role="alert">
-      {{ error() }}
-      <button type="button" class="btn-close" aria-label="Close" (click)="error.set('')"></button>
-    </div>
-  }
 
   @switch (step()) {
     @case ('welcome') {
@@ -309,9 +303,6 @@
             <label class="reg-modal-label" for="confirmEmail">CONFIRM EMAIL ID</label>
             <input id="confirmEmail" name="confirmEmail" type="email" class="form-control" maxlength="100" autocomplete="off" [(ngModel)]="confirmEmail" required />
           </div>
-          @if (modalError()) {
-            <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div>
-          }
         </div>
         <div class="modal-footer justify-content-center">
           <button type="submit" class="btn btn-primary reg-modal-proceed" [disabled]="busy()">PROCEED</button>
@@ -346,9 +337,6 @@
             } @else {
               <button type="button" class="btn btn-link reg-otp-resend" [disabled]="busy()" (click)="resendOtp()">Resend OTP</button>
             }
-            @if (modalError()) {
-              <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div>
-            }
             <div class="reg-modal-actions">
               <button type="button" class="btn btn-default" (click)="modal.set(null)">Cancel</button>
               <button type="submit" class="btn btn-primary" [disabled]="busy()">Submit</button>
@@ -365,3 +353,6 @@
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
 }
 </zed-public-layout>
+
+<!-- Errors as the live page shows them: the swal("Error!", …) pop-up. -->
+<zed-alert-dialog [message]="errorMessage()" (closed)="clearErrors()" />

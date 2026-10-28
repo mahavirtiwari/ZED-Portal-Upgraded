@@ -22,12 +22,12 @@ public sealed class DocumentsVideosTests : IDisposable
             _documents.Add(new() { ["Id"] = 20 + _documents.Count, ["DocumentName"] = FakeSql.Arg(args, "DocumentName"), ["DocumentPath"] = FakeSql.Arg(args, "DocumentPath"), ["OrderNo"] = _documents.Count + 1 });
             return FakeSql.Sets();
         };
-        _host.Sql.Queries["SELECT a.DocumentId, d.OrderNo"] = _ => _access.Cast<object>();
+        _host.Sql.Queries["SELECT d.Id AS DocumentId, d.OrderNo"] = _ => _access.Cast<object>();
     }
 
     public void Dispose() => _host.Dispose();
 
-    private (string Name, object? Args) Merge() => _host.Sql.Calls.Last(c => c.Name.StartsWith("MERGE dbo.V4DocumentAccess", StringComparison.Ordinal));
+    private (string Name, object? Args) Merge() => _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.MyDocuments SET Description", StringComparison.Ordinal));
 
     private static MultipartFormDataContent Video(string name = "How to apply", string? roles = "assessor,msme", string? url = "https://www.youtube.com/watch?v=abc", string? description = "A short tour")
     {

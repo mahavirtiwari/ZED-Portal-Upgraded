@@ -26,6 +26,9 @@
               <a class="doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
                 <img src="/Images/svgicons/download.svg" alt="download" />
               </a>
+            } @else {
+              <!-- The file is not on the server (yet): no link that would fail. -->
+              <span class="doc-download not-available"><img src="/Images/svgicons/download.svg" alt="not available" title="Not available yet" /></span>
             }
           </div>
         }

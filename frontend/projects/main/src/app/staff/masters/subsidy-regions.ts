@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -18,7 +19,6 @@ export interface RegionRow {
   stateCode: string;
   districtCode: string;
   enabled: boolean;
-  source: string | null;
   updatedBy: string | null;
   updatedOn: string | null;
   stateName: string | null;
@@ -44,7 +44,7 @@ export interface RegionsResponse {
  */
 @Component({
   selector: 'zed-staff-subsidy-regions',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, DatePipe],
   template: `
     <div class="page-head">
       <div>
@@ -98,13 +98,13 @@ export interface RegionsResponse {
         </div>
         <div class="table-responsive">
           <table class="table table-zed sr-table">
-            <thead><tr><th>State / UT</th><th>District</th><th>Source</th><th class="text-center">Status</th><th class="text-center">Action</th></tr></thead>
+            <thead><tr><th>State / UT</th><th>District</th><th>Last changed</th><th class="text-center">Status</th><th class="text-center">Action</th></tr></thead>
             <tbody>
               @for (r of pager.page(); track r.stateCode + '-' + r.districtCode) {
                 <tr [class.sr-off]="!r.enabled">
                   <td>{{ r.stateName || 'State ' + r.stateCode }}</td>
                   <td>{{ r.districtCode ? (r.districtName || 'District ' + r.districtCode) : 'Whole state' }}</td>
-                  <td class="muted">{{ r.source }}</td>
+                  <td class="muted">@if (r.updatedOn) { {{ r.updatedBy }} · {{ r.updatedOn + 'Z' | date: 'dd-MM-yyyy' }} } @else { {{ r.updatedBy }} }</td>
                   <td class="text-center">
                     <label class="sr-switch form-switch">
                       <input type="checkbox" class="form-check-input" role="switch" [checked]="r.enabled" [disabled]="busy()" [attr.aria-label]="(r.enabled ? 'Disable ' : 'Enable ') + label(r)" (change)="set(r, $any($event.target))" />

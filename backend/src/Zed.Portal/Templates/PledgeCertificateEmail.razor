@@ -1,7 +1,7 @@
 @* Port of _PledgeCertificateTemplate.cshtml *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings of the day!</p>
-    <p style="font-size: 13px; margin-bottom: 0;">Thank you for registering your Enterprise and taking the ZED-Pledge for your Unit under the "MSME Sustainable (ZED) Certification" Scheme notified by Ministry of Micro, Small &amp; Medium Enterprises, Government of India. Please find attached the Pledge Certificate for your reference and records. The same may also be downloaded online from your ZED dashboard.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">Thank you for registering your Enterprise and taking the ZED-Pledge for your Unit under the "MSME Sustainable (ZED) Certification" Scheme notified by Ministry of Micro, Small &amp; Medium Enterprises, Government of India. Your Pledge Certificate is on your ZED dashboard: sign in to view it and download it as a PDF for your records.</p>
     <p style="font-size: 14px; margin-bottom: 0;">Your login details are as follows:</p>
     <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
         <tbody bgcolor="#ffffff">
@@ -25,6 +25,8 @@
     <span style="font-size: 13px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">The Ministry has instituted various other benefits and incentives which you can avail after completing any one ZED Certification Level (Bronze, Silver or Gold).</span>
     <div style="text-align: center; padding: 30px 0;">
         <a href="@(PublicBaseUrl.TrimEnd('/'))/msme/login" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
+        @* V4: no PDF attached; the certificate page draws it (sign-in first). *@
+        <a href="@(PublicBaseUrl.TrimEnd('/'))/msme/pledge-certificate" target="_blank" style="display: block; margin: 12px auto 0; width: 300px; line-height: 42px; color: #45A5AD; background-color: #ffffff; border: 1px solid #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">View / Download Pledge Certificate</a>
     </div>
     <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
     <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>

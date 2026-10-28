@@ -123,8 +123,9 @@ export class DashboardApi {
     return this.http.get<Counts>(`${this.base}/counts`, { params: params(filter) });
   }
 
-  analytics(filter: AnalyticsFilter): Observable<Analytics> {
-    return this.http.get<Analytics>(`${this.base}/analytics`, { params: params(filter) });
+  /** fresh: figures read again (Refresh), not the ones kept for ten minutes. */
+  analytics(filter: AnalyticsFilter, fresh = false): Observable<Analytics> {
+    return this.http.get<Analytics>(`${this.base}/analytics`, { params: params(fresh ? { ...filter, fresh: true } : filter) });
   }
 
   registeredMsme(query: RegisteredMsmeQuery): Observable<RegisteredMsmeList> {

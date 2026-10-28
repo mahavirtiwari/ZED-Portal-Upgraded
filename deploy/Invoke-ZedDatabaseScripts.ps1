@@ -11,7 +11,7 @@
            0001 all three | 0002 ZEDCS_V2_LIVE | 0004 ZEDCS_V2_LIVE | 0005 all three |
            0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
            0011 all three | 0012 all three | 0013 all three |
-           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE
+           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -126,8 +126,9 @@ $Migrations = @(
     @{ File = '0020_dashboard_analytics_consultancy.sql'; Dbs = @($Cons); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0021_dashboard_analytics_surveillance.sql'; Dbs = @($Surv); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0022_esg_checklist.sql';         Dbs = @($Main, $Surv); Markers = @('U:dbo.V4EsgChecklist') }
-    @{ File = '0023_document_access.sql';       Dbs = @($Main, $Cons); Markers = @('U:dbo.V4DocumentAccess') }
-    @{ File = '0024_special_regions.sql';       Dbs = @($Main);  Markers = @('U:dbo.V4SpecialRegions') }
+    @{ File = '0023_document_access.sql';       Dbs = @($Main, $Cons); Markers = @('COL:dbo.MyDocuments.AccessRoles', 'COL:dbo.MyDocuments.VideoUrl', 'COL:dbo.MyDocuments.Description') }
+    @{ File = '0024_special_regions.sql';       Dbs = @($Main);  Markers = @('COL:dbo.Districts.SubsidyAspirational', 'COL:dbo.States.SubsidyNer') }
+    @{ File = '0025_sector_activity.sql';       Dbs = $Zed;      Markers = @('COL:dbo.Sectors.SectorType', 'C:dbo.CK_Sectors_SectorType') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{
@@ -241,6 +242,8 @@ function Get-MarkerState([string]$db, [string[]]$markers) {
     $tests = foreach ($m in $markers) {
         $kind, $name = $m.Split(':', 2)
         if ($kind -eq 'I') { $parts = $name.Split('.'); "CASE WHEN EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'$($parts[2])' AND object_id = OBJECT_ID(N'$($parts[0]).$($parts[1])')) THEN 1 ELSE 0 END" }
+        # COL:schema.table.column - a column added to an existing (legacy) table.
+        elseif ($kind -eq 'COL') { $parts = $name.Split('.'); "CASE WHEN COL_LENGTH(N'$($parts[0]).$($parts[1])', N'$($parts[2])') IS NULL THEN 0 ELSE 1 END" }
         else { "CASE WHEN OBJECT_ID(N'$name', N'$kind') IS NULL THEN 0 ELSE 1 END" }
     }
     $found = [int](Get-Rows $db ("SELECT " + ($tests -join ' + ')))[0]

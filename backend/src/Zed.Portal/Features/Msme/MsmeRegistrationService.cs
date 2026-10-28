@@ -15,7 +15,6 @@ namespace Zed.Portal.Features.Msme;
 public sealed class MsmeRegistrationService(
     ISqlExecutor db,
     IServiceProvider services,
-    PledgeCertificateService certificates,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     EmailAddresses addresses,
@@ -137,39 +136,34 @@ public sealed class MsmeRegistrationService(
         await passwords.SetAsync(zedId, initialPassword, ct);
         var unitName = P("UnitName") ?? "";
 
-        var emailSent = await SendPledgeCertificateAsync(new PledgeCertificateData(
-            zedId, string.IsNullOrEmpty(unitName) ? B("EnterpriseName") ?? "" : unitName, row.Text("CertificateNo"),
-            row.Text("DateOfPledge"), row.Text("Address"), B("UdyogAadharNo") ?? "", row.Text("QrCodeNo")),
-            unitName, initialPassword, s.Email!, ct);
+        // No certificate attached: the mail links to the pledge certificate page, which draws it (V4).
+        var emailSent = await SendRegistrationMailAsync(zedId, unitName, initialPassword, s.Email!, ct);
 
         var user = new ZedUser(zedId, B("EnterpriseName") ?? "", (int)UserRole.Msme, B("EmailId"), s.MobileNo, B("State_Id"), B("District_Id"), unitName);
         return new Registered(zedId, unitName, emailSent, user);
     }
 
-    private async Task<bool> SendPledgeCertificateAsync(PledgeCertificateData cert, string unitName, string password, string to, CancellationToken ct)
+    private async Task<bool> SendRegistrationMailAsync(string zedId, string unitName, string password, string to, CancellationToken ct)
     {
         try
         {
-            // Drawn for the mail only: V4 keeps no pledge certificate file (the portal draws it when it is opened or downloaded).
-            var pdf = certificates.Render(cert);
-
             var html = await templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
             {
                 [nameof(PledgeCertificateEmail.UnitName)] = unitName,
-                [nameof(PledgeCertificateEmail.ZedId)] = cert.ZedId,
+                [nameof(PledgeCertificateEmail.ZedId)] = zedId,
                 [nameof(PledgeCertificateEmail.Password)] = password,
                 [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
             var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
             await email.SendAsync(new EmailMessage(to,
-                "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + cert.ZedId,
-                html, EmailProfiles.Registration, cc, [new EmailAttachment("Pledge.pdf", pdf)]), ct);
+                "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + zedId,
+                html, EmailProfiles.Registration, cc), ct);
             return true;
         }
         catch (Exception ex)
         {
-            // The MSME is registered at this point; a mail or PDF failure must not undo that.
-            log.LogError(ex, "Pledge certificate or registration mail failed for {ZedId}", cert.ZedId);
+            // The MSME is registered at this point; a mail failure must not undo that.
+            log.LogError(ex, "Registration mail failed for {ZedId}", zedId);
             return false;
         }
     }

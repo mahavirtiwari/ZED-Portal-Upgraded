@@ -17,7 +17,7 @@ public sealed class SpecialRegionsTests : IDisposable
     public SpecialRegionsTests()
     {
         UsersMastersLogin.Setup(_host);
-        _host.Sql.Queries["SELECT r.Category, r.StateCode"] = _ => _regions.Cast<object>();
+        _host.Sql.Queries["SELECT x.Category, x.StateCode"] = _ => _regions.Cast<object>();
         _host.Sql.Queries["SELECT LTRIM(RTRIM(StateCode)) AS Code, StateName AS Name FROM dbo.States"] = _ =>
             [new SpecialRegionsController.Option("9", "UTTAR PRADESH"), new SpecialRegionsController.Option("35", "ANDAMAN AND NICOBAR ISLANDS")];
         _host.Sql.Queries["SELECT LTRIM(RTRIM(DistrictCode)) AS Code, DistrictName AS Name FROM dbo.Districts"] = args =>
@@ -53,7 +53,7 @@ public sealed class SpecialRegionsTests : IDisposable
     [Fact]
     public async Task Lists_the_categories_entries_and_the_districts_that_get_the_subsidy()
     {
-        _regions.Add(new SpecialRegionsController.RegionRow("ASPIRATIONAL", "9", "170", true, "Districts.IsAspirationalDt before V4", null, null, "UTTAR PRADESH", "SONBHADRA"));
+        _regions.Add(new SpecialRegionsController.RegionRow("ASPIRATIONAL", "9", "170", true, "migration-0024", null, "UTTAR PRADESH", "SONBHADRA"));
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var body = await admin.GetFromJsonAsync<JsonElement>(Url);
         Assert.Equal(["ASPIRATIONAL", "LWE", "HIMALAYAN", "ISLAND", "NER"], body.GetProperty("categories").EnumerateArray().Select(c => c.GetProperty("key").GetString()));
@@ -66,17 +66,27 @@ public sealed class SpecialRegionsTests : IDisposable
     public async Task Enabling_adding_and_removing_recompute_the_subsidy_flags()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        // A whole state: the region's column of dbo.States.
         var put = await admin.PutAsJsonAsync(Url, new { category = "ISLAND", stateCode = "35", districtCode = "", enabled = true });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
         Assert.Contains("112 districts now get the additional subsidy", await put.Content.ReadAsStringAsync());
+        var state = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.States SET SubsidyIsland = @Value", StringComparison.Ordinal));
+        Assert.Contains("SubsidyIsland IS NOT NULL", state.Name);
+        Assert.Equal(("35", "True", "ADMIN1"), (FakeSql.Arg(state.Args, "StateCode"), FakeSql.Arg(state.Args, "Value"), FakeSql.Arg(state.Args, "UpdatedBy")));
         Assert.Single(Writes("UPDATE d SET IsAspirationalDt"));
 
+        // A district: the region's column of dbo.Districts, from NULL (not listed).
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync(Url, new { category = "LWE", stateCode = "9", districtCode = "170", enabled = true })).StatusCode);
-        var insert = _host.Sql.Calls.Last(c => c.Name.StartsWith("INSERT INTO dbo.V4SpecialRegions", StringComparison.Ordinal));
-        Assert.Equal(("LWE", "9", "170"), (FakeSql.Arg(insert.Args, "Category"), FakeSql.Arg(insert.Args, "StateCode"), FakeSql.Arg(insert.Args, "DistrictCode")));
+        var added = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.Districts SET SubsidyLwe = @Value", StringComparison.Ordinal));
+        Assert.Contains("SubsidyLwe IS NULL", added.Name);
+        Assert.Equal(("9", "170", "True"), (FakeSql.Arg(added.Args, "StateCode"), FakeSql.Arg(added.Args, "DistrictCode"), FakeSql.Arg(added.Args, "Value")));
 
+        // Removing sets it back to NULL; the district stays.
         Assert.Equal(HttpStatusCode.OK, (await admin.DeleteAsync($"{Url}?category=LWE&stateCode=9&districtCode=170")).StatusCode);
+        var removed = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.Districts SET SubsidyLwe = @Value", StringComparison.Ordinal));
+        Assert.Null(FakeSql.Arg(removed.Args, "Value"));
         Assert.Equal(3, Writes("UPDATE d SET IsAspirationalDt").Count);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("V4SpecialRegions", StringComparison.Ordinal));
     }
 
     [Theory]
@@ -90,7 +100,8 @@ public sealed class SpecialRegionsTests : IDisposable
         var r = await admin.PostAsJsonAsync(Url, new { category, stateCode = state, districtCode = district, enabled = true });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.Contains(message, await r.ProblemTitle(), StringComparison.OrdinalIgnoreCase);
-        Assert.Empty(Writes("INSERT INTO dbo.V4SpecialRegions"));
+        Assert.Empty(Writes("UPDATE dbo.Districts SET Subsidy"));
+        Assert.Empty(Writes("UPDATE dbo.States SET Subsidy"));
     }
 
     private static MultipartFormDataContent File(string name, string content)

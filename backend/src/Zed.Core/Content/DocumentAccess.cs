@@ -7,9 +7,10 @@ using Zed.Core.Security;
 namespace Zed.Core.Content;
 
 /// <summary>
-/// Who may open a document of Admin → Documents/Videos (dbo.V4DocumentAccess, migration 0023), its description and, for
-/// a video, its address. Keyed by MyDocuments.Id; <see cref="OrderNo"/> is MyDocuments.OrderNo, the only key
-/// SP_MSME_GET_MY_DOCUMENTS returns. A document without a row is shown to the MSMEs only, as before V4.
+/// Who may open a document of Admin → Documents/Videos, its description and, for a video, its address: the columns
+/// AccessRoles, Description and VideoUrl of dbo.MyDocuments (migration 0023). Keyed by MyDocuments.Id;
+/// <see cref="OrderNo"/> is MyDocuments.OrderNo, the only key SP_MSME_GET_MY_DOCUMENTS returns. A document whose
+/// AccessRoles is empty is shown to the MSMEs only, as before V4.
 /// </summary>
 public sealed record DocumentAccessRow(long DocumentId, int? OrderNo, string? Description, string? VideoUrl, string Roles, string? UpdatedBy, DateTime? UpdatedOn)
 {
@@ -59,7 +60,7 @@ public static class DocumentRoles
 
 public interface IDocumentAccessStore
 {
-    /// <summary>Every row (empty when migration 0023 is not applied: the documents then go to the MSMEs only).</summary>
+    /// <summary>Every document with its access set (empty when migration 0023 is not applied: the documents then go to the MSMEs only).</summary>
     Task<IReadOnlyList<DocumentAccessRow>> AllAsync(CancellationToken ct = default);
 
     Task SaveAsync(long documentId, string? description, string? videoUrl, IReadOnlyList<string> roles, string userId, CancellationToken ct = default);
@@ -70,7 +71,8 @@ public interface IDocumentAccessStore
 public sealed class SqlDocumentAccessStore(ISqlExecutor db, ILogger<SqlDocumentAccessStore> log) : IDocumentAccessStore
 {
     internal const string SelectSql =
-        "SELECT a.DocumentId, d.OrderNo, a.Description, a.VideoUrl, a.Roles, a.UpdatedBy, a.UpdatedOn FROM dbo.V4DocumentAccess a JOIN dbo.MyDocuments d ON d.Id = a.DocumentId;";
+        "SELECT d.Id AS DocumentId, d.OrderNo, d.Description, d.VideoUrl, d.AccessRoles AS Roles, d.AccessUpdatedBy AS UpdatedBy, d.AccessUpdatedOn AS UpdatedOn " +
+        "FROM dbo.MyDocuments d WHERE d.AccessRoles IS NOT NULL;";
     private static readonly TimeSpan Lifetime = TimeSpan.FromSeconds(30);
     private sealed record Cached(IReadOnlyList<DocumentAccessRow> Rows, DateTime Until);
     private volatile Cached? cached;
@@ -85,7 +87,7 @@ public sealed class SqlDocumentAccessStore(ISqlExecutor db, ILogger<SqlDocumentA
         }
         catch (SqlException ex)
         {
-            log.LogWarning(ex, "Could not read dbo.V4DocumentAccess (is migration 0023 applied?); the documents go to the MSMEs only.");
+            log.LogWarning(ex, "Could not read the access columns of dbo.MyDocuments (is migration 0023 applied?); the documents go to the MSMEs only.");
             rows = [];
         }
         cached = new Cached(rows, DateTime.UtcNow + Lifetime);
@@ -95,9 +97,8 @@ public sealed class SqlDocumentAccessStore(ISqlExecutor db, ILogger<SqlDocumentA
     public async Task SaveAsync(long documentId, string? description, string? videoUrl, IReadOnlyList<string> roles, string userId, CancellationToken ct = default)
     {
         await db.ExecuteSqlAsync(
-            "MERGE dbo.V4DocumentAccess AS t USING (SELECT @DocumentId AS DocumentId) AS s ON t.DocumentId = s.DocumentId " +
-            "WHEN MATCHED THEN UPDATE SET Description = @Description, VideoUrl = @VideoUrl, Roles = @Roles, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
-            "WHEN NOT MATCHED THEN INSERT (DocumentId, Description, VideoUrl, Roles, UpdatedBy) VALUES (@DocumentId, @Description, @VideoUrl, @Roles, @UpdatedBy);",
+            "UPDATE dbo.MyDocuments SET Description = @Description, VideoUrl = @VideoUrl, AccessRoles = @Roles, AccessUpdatedBy = @UpdatedBy, " +
+            "AccessUpdatedOn = SYSUTCDATETIME() WHERE Id = @DocumentId;",
             new
             {
                 DocumentId = documentId, Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
@@ -109,7 +110,9 @@ public sealed class SqlDocumentAccessStore(ISqlExecutor db, ILogger<SqlDocumentA
 
     public async Task DeleteAsync(long documentId, CancellationToken ct = default)
     {
-        await db.ExecuteSqlAsync("DELETE FROM dbo.V4DocumentAccess WHERE DocumentId = @DocumentId;", new { DocumentId = documentId }, ct);
+        await db.ExecuteSqlAsync(
+            "UPDATE dbo.MyDocuments SET Description = NULL, VideoUrl = NULL, AccessRoles = NULL, AccessUpdatedBy = NULL, AccessUpdatedOn = NULL WHERE Id = @DocumentId;",
+            new { DocumentId = documentId }, ct);
         cached = null;
     }
 }
