@@ -48,7 +48,8 @@ describe('MailServersCard', () => {
 
   afterEach(() => http.verify());
 
-  const row = (key: string) => el.querySelector(`tr[data-module="${key}"]`) as HTMLTableRowElement;
+  /** A module's row, or Default's panel. */
+  const row = (key: string) => el.querySelector(`[data-module="${key}"]`) as HTMLElement;
   const text = (e: Element | null) => e!.textContent!.replace(/\s+/g, ' ').trim();
   const button = (scope: Element, label: string) => [...scope.querySelectorAll('button')].find((b) => text(b) === label) as HTMLButtonElement;
   const type = async (selector: string, value: string) => {
@@ -79,6 +80,12 @@ describe('MailServersCard', () => {
     expect(button(row('Registration'), 'Set')).toBeTruthy();
     expect(button(row('Payment'), 'Use Default')).toBeTruthy();
     expect(text(el.querySelector('.alert-info'))).toContain('every mail goes to testers@zed.test');
+    // Default in its own panel; a module on Default shows it as the same server, not its details again.
+    expect(row('Default').tagName).toBe('SECTION');
+    expect([...el.querySelectorAll('tbody tr[data-module]')].map((r) => r.getAttribute('data-module'))).toEqual(['Registration', 'Payment']);
+    expect(text(row('Registration').querySelector('.server small'))).toBe('same as Default');
+    expect(text(row('Payment').querySelector('.server small'))).toBe('From pay@zed.test · sign-in pay@zed.test');
+    expect(text(el.querySelector('.mods-head small'))).toBe('1 with their own server · the others use Default');
   });
 
   it('sets a module server from what it uses now, without a password unless one is typed', async () => {
