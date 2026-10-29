@@ -122,6 +122,25 @@ describe('EsgChecklistPage', () => {
     expect(http.expectOne((r) => r.method === 'PUT').request.body.sections[0].questions.map((q: { id: number }) => q.id)).toEqual([2]);
   });
 
+  it('shows a section at a time with the counts and the options as chips', async () => {
+    await open();
+    // 2 sections, 3 questions, 1 follow-up.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '3', '1']);
+    const tabs = () => [...el.querySelectorAll('.esg-tab')];
+    expect(tabs().map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['ESG check list 2', 'Social / OHS check list 1']);
+    expect(sections().map((s) => (s as HTMLElement).hidden)).toEqual([false, true]);
+    (tabs()[1] as HTMLButtonElement).click();
+    await settle();
+    expect(sections().map((s) => (s as HTMLElement).hidden)).toEqual([true, false]);
+
+    await type(el.querySelector('#o-1-0') as HTMLInputElement, 'Yes, No, Partly');
+    expect([...sections()[1].querySelectorAll('.opt-chip')].map((c) => c.textContent!.trim())).toEqual(['Yes', 'No', 'Partly']);
+    button('+ Add question', sections()[1]).click();
+    await settle();
+    expect(tabs()[1].textContent).toContain('2');
+    expect(el.querySelector('.save-bar.is-dirty')!.textContent).toContain('Not saved yet.');
+  });
+
   it('shows a refusal of the server', async () => {
     await open();
     await type(el.querySelector('#o-0-0') as HTMLInputElement, 'Yes');
