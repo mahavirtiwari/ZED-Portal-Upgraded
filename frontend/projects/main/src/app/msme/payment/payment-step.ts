@@ -6,6 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
+import { levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, PaymentApi, PaymentOptions, postToGateway } from './payment.api';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
@@ -26,6 +27,9 @@ export class PaymentStep implements OnInit {
   private readonly router = inject(Router);
 
   readonly certification = input.required<string>();
+  /** The level's name and picture (ZEDX is ZED-X). */
+  protected readonly name = computed(() => levelName(this.certification()));
+  protected readonly logo = computed(() => levelLogo(this.certification()));
   readonly back = output<void>();
 
   protected readonly options = signal<PaymentOptions | null>(null);

@@ -43,6 +43,7 @@ public sealed partial class CertificationLevelsController(
     public static string? LogoUrl(CertificationLevel l) =>
         l.LogoPath is { Length: > 0 } ? $"/api/public/levels/{Uri.EscapeDataString(l.Code)}/logo?v={l.UpdatedOn?.Ticks ?? 0}"
         : l.Code is "Bronze" or "Silver" or "Gold" ? $"/Images/Dashboard/{l.Code.ToLowerInvariant()}.png"
+        : l.Code == "ZEDX" ? "/Images/Dashboard/zedx.svg"
         : null;
 
     /// <param name="Name">What pages show ("ZED-X").</param>

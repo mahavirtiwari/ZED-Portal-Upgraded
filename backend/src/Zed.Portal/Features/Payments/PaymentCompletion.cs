@@ -26,6 +26,7 @@ public sealed class PaymentCompletion(
     /// <param name="postToErp">The legacy zero-amount path did not post to the ERP; the gateway path did.</param>
     public async Task CompleteAsync(string zedId, string certification, bool postToErp, CancellationToken ct)
     {
+        await CertificationPaid.RunAsync(db, zedId, certification, log, ct);
         try
         {
             var sets = await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);
@@ -80,5 +81,27 @@ public sealed class PaymentCompletion(
         var pdf = SummaryPdf.Render("Payment Summary", [$"ZED ID: {zedId}", $"Date: {DateTime.Now:MMMM d, yyyy}"], lines,
             Path.Combine(AppContext.BaseDirectory, "Assets", "Images", "zed-logo.png"));
         await File.WriteAllBytesAsync(Path.Combine(dir, string.Concat(fileName.Where(c => char.IsLetterOrDigit(c) || c is '_' or '.' or '-'))), pdf, ct);
+    }
+}
+
+/// <summary>
+/// SP_V4_CERTIFICATION_PAID (migration 0029) after a recorded certification payment, whichever way it came (gateway,
+/// mobile, zero amount, staff "mark successful"): ZED-X's payment flag and the unit's NIC sector-wise questionnaire.
+/// A failure is logged and does not undo the payment (the procedure can be run again).
+/// </summary>
+public static class CertificationPaid
+{
+    public const string Procedure = "SP_V4_CERTIFICATION_PAID";
+
+    public static async Task RunAsync(ISqlExecutor db, string zedId, string certification, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            await db.ExecuteProcAsync(Procedure, new { ZedId = zedId, Certification = certification }, ct);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogError(ex, "{Procedure} failed for {ZedId}/{Certification} (is migration 0029 applied?)", Procedure, zedId, certification);
+        }
     }
 }

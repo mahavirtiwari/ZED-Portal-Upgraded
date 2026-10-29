@@ -1575,6 +1575,13 @@ p {
 .panel-gold > .panel-heading {
     background: #CCB160;
 }
+/* V4: ZED-X (Administration → Certification Levels). */
+.panel-zedx > .panel-heading {
+    background: #3F8F96;
+}
+.panel-zedx > .panel-heading h5 {
+    color: #fff;
+}
 .panel-finance > .panel-heading {
     background: #B3E079;
 }

@@ -15,14 +15,15 @@ export interface CertificationData {
   status: Row;
 }
 
-export type Level = 'Bronze' | 'Silver' | 'Gold';
+/** ZEDX is ZED-X (migrations 0028 / 0029): desktop and site assessment, as Silver and Gold. */
+export type Level = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
 
 /** Which branch of the old page applies: certification, surveillance or handholding milestone. */
 export type CertificationKind = 'bronze' | 'silverGold' | 'surveillance' | 'milestone';
 
 /** The values the API accepts (same list as MsmeCertificationController.CertificationTypes). */
 export const CERTIFICATION_TYPES = [
-  'Bronze', 'Silver', 'Gold',
+  'Bronze', 'Silver', 'Gold', 'ZEDX',
   'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance',
   'SilverMilestone1', 'SilverMilestone2', 'SilverMilestone3',
   'GoldMilestone1', 'GoldMilestone2', 'GoldMilestone3',
@@ -36,13 +37,14 @@ export function canonicalCertification(value: string | null | undefined): string
 
 export function certificationKind(certification: string): CertificationKind {
   if (certification === 'Bronze') return 'bronze';
-  if (certification === 'Silver' || certification === 'Gold') return 'silverGold';
+  if (certification === 'Silver' || certification === 'Gold' || certification === 'ZEDX') return 'silverGold';
   if (certification.endsWith('Surveillance')) return 'surveillance';
   return 'milestone';
 }
 
 /** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze". */
 export function certificationLevel(certification: string): Level {
+  if (certification === 'ZEDX') return 'ZEDX';
   return certification.startsWith('Gold') ? 'Gold' : certification.startsWith('Silver') ? 'Silver' : 'Bronze';
 }
 

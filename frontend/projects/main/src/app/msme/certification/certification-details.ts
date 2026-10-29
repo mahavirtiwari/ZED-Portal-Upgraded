@@ -14,6 +14,7 @@ import {
   milestoneNumber,
 } from './certification.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
+import { levelName } from '../shared/levels';
 
 /** One box in the "Actions" column. */
 interface Action {
@@ -73,7 +74,7 @@ export class CertificationDetailsPage {
       case 'milestone':
         return `Handholding Support: Milestone ${this.milestone()}`;
       default:
-        return `${this.level()} Certification`;
+        return `${levelName(this.level())} Certification`;
     }
   });
 
@@ -84,7 +85,7 @@ export class CertificationDetailsPage {
 
   /** The mobile app banner was shown for every type except Bronze surveillance and the milestones. */
   protected readonly showAppBanner = computed(() =>
-    ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
+    ['Bronze', 'Silver', 'Gold', 'ZEDX', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
   );
 
 

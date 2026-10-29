@@ -255,7 +255,7 @@ public sealed partial class MobilePaymentController(
     private async Task<IActionResult> FeesFor(MobileModule m, string? certification, string? zedId, CancellationToken ct)
     {
         zedId = zedId?.Trim();
-        if (string.IsNullOrEmpty(zedId) || Certifications.Canonical(certification) is not { } cert)
+        if (string.IsNullOrEmpty(zedId) || await LevelAsync(m, certification, ct) is not { } cert)
             return LegacyContent(LegacyResults.DataSetJson(NoFees, FeeSetNames));
         var sets = await db.QueryProcMultipleAsync(m.FeeProc, new { ZedId = zedId, Certification = cert }, ct);
         return LegacyContent(LegacyResults.DataSetJson(sets, FeeSetNames));
@@ -271,7 +271,7 @@ public sealed partial class MobilePaymentController(
     {
         var zedId = model.ZedId?.Trim();
         if (string.IsNullOrEmpty(zedId) || zedId.Length > 50) return (null, InvalidDetails);
-        if (Certifications.Canonical(model.Certification?.Trim()) is not { } cert) return (null, InvalidDetails);
+        if (await LevelAsync(m, model.Certification?.Trim(), ct) is not { } cert) return (null, InvalidDetails);
 
         var (gstinApplicable, gstin, gstinError) = ReadGstin(model.UnitGstin, model.Gst);
         if (gstinError is not null) return (null, gstinError);
@@ -356,6 +356,10 @@ public sealed partial class MobilePaymentController(
 
     [GeneratedRegex("^[A-Za-z0-9-]{1,50}$")]
     private static partial Regex OrderIdPattern();
+
+    /// <summary>Certification: the levels open for applying (ZED-X once enabled); surveillance: Bronze, Silver, Gold.</summary>
+    private Task<string?> LevelAsync(MobileModule m, string? value, CancellationToken ct) =>
+        m.Surveillance ? Task.FromResult(Certifications.Canonical(value)) : Certifications.OpenForApplyingAsync(db, value, log, ct);
 
     private sealed record MobileModule(string Name, string FeeProc, string BasicProc, string ZeroProc, string Orders, bool Surveillance);
 

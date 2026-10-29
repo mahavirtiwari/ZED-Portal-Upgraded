@@ -6,6 +6,7 @@ import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/s
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
+import { levelLogo, levelName } from '../shared/levels';
 import { MsmeUnitSummary } from '../shared/unit-summary';
 
 type Row = Record<string, string | number | boolean | null>;
@@ -16,7 +17,21 @@ interface DashboardData {
   certStatus: Row;
 }
 
-type Level = 'Bronze' | 'Silver' | 'Gold';
+/** ZEDX is ZED-X (Administration → Certification Levels), shown once the Admin enables it. */
+type Level = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+const KNOWN_LEVELS: readonly Level[] = ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+
+/** A level as the Admin set it (api/public/levels: enabled ones only). */
+interface PublicLevel {
+  code: string;
+  name: string;
+  description: string | null;
+  comment: string | null;
+  logoUrl: string | null;
+  assessmentMode: 'Desktop' | 'Site';
+  validityMonths: number;
+  fee: number | null;
+}
 type InfoTopic = Level | 'My' | 'MyIncentives';
 type Modal = { kind: 'apply-info'; level: Level } | { kind: 'info'; topic: InfoTopic } | { kind: 'joining' } | { kind: 'fa' } | { kind: 'tu' }
   | { kind: 'incentive'; card: IncentiveCard };
@@ -83,10 +98,17 @@ const STEPS: Record<Level, StepRule[]> = {
     { doneAbove: 14, currentFrom: 6, currentTo: 14 },
     { doneAbove: 15, currentFrom: 14, currentTo: 15 },
   ],
+  // ZED-X: desktop and site assessment, the statuses of the site levels.
+  ZEDX: [
+    { doneAbove: 1, currentFrom: 0, currentTo: 1 },
+    { doneAbove: 5, currentFrom: 1, currentTo: 5 },
+    { doneAbove: 14, currentFrom: 6, currentTo: 14 },
+    { doneAbove: 15, currentFrom: 14, currentTo: 15 },
+  ],
 };
 
 /** Status code meaning "certified" per level (MsmeCertifications.CertificationStatus). */
-const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16 };
+const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16, ZEDX: 16 };
 
 /** The old page showed Bronze re-certification to this one pilot unit only; kept as is. */
 const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
@@ -126,6 +148,8 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
     /* The three parts of the disclaimer read as one list. */
     .disclaimer-points > zed-text:not(:last-child) ::ng-deep ol { margin-bottom: 0; padding-bottom: 0; }
     .apply-btn, .clickable { cursor: pointer; }
+    .level-comment { white-space: pre-line; }
+    .apply-logo { max-height: 180px; max-width: 100%; object-fit: contain; }
     .card-text-clamp { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     .incentive-details { white-space: pre-line; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
@@ -151,7 +175,17 @@ export class DashboardPage {
   protected readonly msme = computed(() => this.data()?.msme ?? {});
   protected readonly basic = computed(() => this.data()?.basicInfo ?? {});
   protected readonly cert = computed(() => this.data()?.certStatus ?? {});
-  protected readonly levels: Level[] = ['Bronze', 'Silver', 'Gold'];
+  /** The levels the Admin has enabled (Administration → Certification Levels); the three until the server answers. */
+  protected readonly publicLevels = signal<PublicLevel[]>([]);
+  protected readonly levels = computed<Level[]>(() => {
+    const enabled = this.publicLevels().map((l) => l.code).filter((c): c is Level => (KNOWN_LEVELS as readonly string[]).includes(c));
+    return enabled.length ? enabled : ['Bronze', 'Silver', 'Gold'];
+  });
+  /** "Bronze, Silver, Gold or ZED-X" for the panel's line. */
+  protected readonly levelsText = computed(() => {
+    const names = this.levels().map((l) => this.levelName(l));
+    return names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}` : names[0];
+  });
 
 
   protected readonly incentives = [
@@ -177,6 +211,23 @@ export class DashboardPage {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
     void this.load();
     void this.loadIncentiveCards();
+    firstValueFrom(this.http.get<PublicLevel[]>('/api/public/levels')).then((l) => this.publicLevels.set(l)).catch(() => undefined);
+  }
+
+  /** What pages show for a level ("ZED-X" for ZEDX). */
+  protected levelName(level: string): string {
+    return this.publicLevels().find((l) => l.code === level)?.name ?? levelName(level);
+  }
+
+  /** The level's logo: the Admin's, or the built-in picture. */
+  protected levelLogo(level: string): string {
+    return this.publicLevels().find((l) => l.code === level)?.logoUrl ?? levelLogo(level);
+  }
+
+  /** The information text the Admin wrote for a level without a built-in one (ZED-X). */
+  protected levelComment(level: string): string {
+    const l = this.publicLevels().find((p) => p.code === level);
+    return l?.comment || l?.description || '';
   }
 
   /** The cards of "My Incentives"; on an error the built-in cards keep their wording before V4. */
@@ -266,6 +317,9 @@ export class DashboardPage {
   protected levelDisabled(level: Level): boolean {
     const b = this.status('Bronze'), s = this.status('Silver'), g = this.status('Gold');
     switch (level) {
+      // ZED-X is a separate track: any registered MSME applies, whatever its other levels.
+      case 'ZEDX':
+        return false;
       case 'Bronze':
         return (b < 1 && s > 0 && (s <= 16 || s === 17)) || (b < 1 && g > 0 && g <= 16) || g === 16 || s === 16 || g === 17;
       case 'Silver':
@@ -276,6 +330,8 @@ export class DashboardPage {
   }
 
   protected surveillanceVisible(level: Level): boolean {
+    // ZED-X surveillance comes with its certificate (not yet in the surveillance system).
+    if (level === 'ZEDX') return false;
     return !this.is(this.msme(), `${level}DashboardSurStatus`, 0);
   }
 
@@ -324,7 +380,7 @@ export class DashboardPage {
   }
 
   protected infoTitle(topic: InfoTopic): string {
-    return topic === 'MyIncentives' ? 'My Incentives' : `${topic} Certification`;
+    return topic === 'MyIncentives' ? 'My Incentives' : topic === 'My' ? 'My Certification' : `${this.levelName(topic)} Certification`;
   }
 }
 

@@ -34,7 +34,8 @@ public static partial class DashboardFilters
         "LAKSHADWEEP", "THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU",
     };
 
-    public static readonly string[] Certifications = ["Bronze", "Silver", "Gold"];
+    /// <summary>The levels of the filters (ZEDX = ZED-X, migrations 0028 / 0029).</summary>
+    public static readonly string[] Certifications = ["Bronze", "Silver", "Gold", "ZEDX"];
     public static readonly string[] Sizes = ["Micro", "Small", "Medium"];
     public static readonly string[] Genders = ["male", "female", "Others"];
     public static readonly string[] SocialCategories = ["General", "SC", "ST", "OBC"];

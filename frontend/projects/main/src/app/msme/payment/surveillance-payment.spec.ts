@@ -256,6 +256,7 @@ describe('Surveillance payment entry points', () => {
       certStatus: { BronzeStatus: 6, SilverStatus: 0, GoldStatus: 0 },
     });
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush({ builtIn: [], incentives: [] });
+    for (const r of http.match('/api/public/levels')) r.flush([]);
     await settle(fixture);
 
     const el = fixture.nativeElement as HTMLElement;

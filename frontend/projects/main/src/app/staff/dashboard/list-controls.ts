@@ -1,5 +1,5 @@
 import { Component, input, output } from '@angular/core';
-import { CERTIFICATIONS, GENDERS, SIZES, STATES } from './dashboard-filters';
+import { GENDERS, LIST_CERTIFICATIONS, SIZES, STATES } from './dashboard-filters';
 import { ListFilter } from './dashboard.api';
 
 /**
@@ -21,7 +21,7 @@ import { ListFilter } from './dashboard.api';
         <label class="form-label" for="f-cert">Certification Level</label>
         <select class="form-select" id="f-cert" (change)="set('certification', $event)">
           <option value="">Show All</option>
-          @for (c of certifications; track c) { <option [value]="c" [selected]="filter().certification === c">{{ c }}</option> }
+          @for (c of certifications; track c.value) { <option [value]="c.value" [selected]="filter().certification === c.value">{{ c.label }}</option> }
         </select>
       </div>
       <div class="filter">
@@ -47,7 +47,7 @@ export class ListFiltersBar {
   readonly filterChange = output<ListFilter>();
 
   protected readonly states = STATES;
-  protected readonly certifications = CERTIFICATIONS;
+  protected readonly certifications = LIST_CERTIFICATIONS;
   protected readonly sizes = SIZES;
   protected readonly genders = GENDERS;
 

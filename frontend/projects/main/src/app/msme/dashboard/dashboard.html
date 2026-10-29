@@ -47,7 +47,7 @@
                 <div class="panel-heading dash-panel-head">
                   <div class="panel-titles-sec">
                     <h4>My Certifications</h4>
-                    <p>Apply for Bronze, Silver or Gold Certifications.</p>
+                    <p>Apply for {{ levelsText() }} Certifications.</p>
                   </div>
                   <button type="button" class="btn btn-link p-0" aria-label="About certifications" (click)="open({ kind: 'info', topic: 'My' })">
                     <img src="/Images/svgicons/infoIcon.svg" alt="" />
@@ -55,12 +55,12 @@
                 </div>
                 <div class="panel-body">
                   <div class="dashbord-list">
-                    @for (level of levels; track level) {
+                    @for (level of levels(); track level) {
                       <div class="list-item">
                         <div class="panel panel-default panel-cert-block panel-{{ level.toLowerCase() }}" [class.plant-activity-disabled]="levelDisabled(level)">
                           <div class="panel-heading">
-                            <h5>{{ level.toUpperCase() }} CERTIFICATION</h5>
-                            <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + level" (click)="open({ kind: 'info', topic: level })">
+                            <h5>{{ levelName(level).toUpperCase() }} CERTIFICATION</h5>
+                            <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + levelName(level)" (click)="open({ kind: 'info', topic: level })">
                               <img src="/Images/svgicons/infoIcon.svg" alt="" />
                             </button>
                           </div>
@@ -87,7 +87,7 @@
                                   <h5 class="clickable" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</h5>
                                 }
                               </div>
-                              <div class="inner2"><img [src]="'/Images/Dashboard/' + level.toLowerCase() + '.png'" alt="" /></div>
+                              <div class="inner2"><img [src]="levelLogo(level)" alt="" /></div>
                               <div class="inner3">
                                 @if (paid(level)) {
                                   <p class="dash-text-clr">
@@ -365,7 +365,7 @@
         <div class="modal-header justify-content-between">
           <h3 class="registration-title m-0">
             @switch (m.kind) {
-              @case ('apply-info') { {{ m.level }} Certification }
+              @case ('apply-info') { {{ levelName(m.level) }} Certification }
               @case ('info') { {{ infoTitle(m.topic) }} }
               @case ('joining') { Joining Reward }
               @case ('fa') { Financial Assistance }
@@ -396,13 +396,14 @@
             }
             @case ('apply-info') {
               <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
-              <div class="text-center mt-4"><img [src]="'/Images/Dashboard/' + m.level.toLowerCase() + '.png'" alt="" /></div>
+              <div class="text-center mt-4"><img [src]="levelLogo(m.level)" alt="" class="apply-logo" /></div>
             }
             @case ('info') {
               @switch (m.topic) {
                 @case ('Bronze') { <zed-text key="msme.dashboard.levelInfo.bronze" /> }
                 @case ('Silver') { <zed-text key="msme.dashboard.levelInfo.silver" /> }
                 @case ('Gold') { <zed-text key="msme.dashboard.levelInfo.gold" /> }
+                @case ('ZEDX') { <p class="level-comment">{{ levelComment('ZEDX') }}</p> }
                 @case ('My') { <zed-text key="msme.dashboard.info.myCertifications" /> }
                 @case ('MyIncentives') { <zed-text key="msme.dashboard.info.myIncentives" /> }
               }

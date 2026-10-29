@@ -22,7 +22,7 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
     internal static readonly IReadOnlyDictionary<string, string> CertificationTypes =
         new[]
         {
-            "Bronze", "Silver", "Gold",
+            "Bronze", "Silver", "Gold", "ZEDX",
             "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance",
             "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
             "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",

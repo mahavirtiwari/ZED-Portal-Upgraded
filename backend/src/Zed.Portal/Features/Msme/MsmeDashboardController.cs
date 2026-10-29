@@ -48,10 +48,36 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
         if (sets[0].FirstOrDefault() is not { } msme)
             return NotFound();
 
-        return new DashboardResponse(
+        var response = new DashboardResponse(
             Pick(msme, MsmeFields),
             Pick(sets[1].FirstOrDefault(), BasicInfoFields),
             Pick(sets[2].FirstOrDefault(), StatusFields));
+        // ZED-X (migrations 0028 / 0029): SP_MSME_GET_DETAILS knows the three levels only. Its status as the procedure
+        // gives the others: the certification row's status once there is one, else the payment flag (0 / 1).
+        var zedx = await ZedXAsync(ct);
+        response.Msme["IsZEDXPaymentDone"] = zedx.PaymentDone;
+        response.CertStatus["ZEDXStatus"] = zedx.Status ?? zedx.PaymentDone;
+        return response;
+    }
+
+    public sealed record ZedXRow(int PaymentDone, int? Status);
+
+    internal const string ZedXSql =
+        "SELECT CAST(ISNULL(m.IsZEDXPaymentDone, 0) AS int) AS PaymentDone, " +
+        "(SELECT TOP 1 c.CertificationStatus FROM dbo.MsmeCertifications c WHERE c.ZedId = m.ZedId AND c.Certification = 'ZEDX' ORDER BY c.Id DESC) AS Status " +
+        "FROM dbo.Msme m WHERE m.ZedId = @ZedId;";
+
+    private async Task<ZedXRow> ZedXAsync(CancellationToken ct)
+    {
+        try
+        {
+            return (await db.QuerySqlAsync<ZedXRow>(ZedXSql, new { ZedId }, ct)).FirstOrDefault() ?? new ZedXRow(0, null);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "ZED-X status not read (is migration 0029 applied?)");
+            return new ZedXRow(0, null);
+        }
     }
 
     /// <summary>A built-in card of "My Incentives" as the Admin set it (Admin → Incentives → Main Dashboard Cards).</summary>

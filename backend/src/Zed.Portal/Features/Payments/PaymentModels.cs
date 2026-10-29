@@ -13,6 +13,19 @@ public static partial class Certifications
     public static string? Canonical(string? value) =>
         Paid.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>
+    /// The levels an MSME applies and pays for: the three and ZED-X (code ZEDX; migrations 0028 / 0029). Surveillance
+    /// payments keep <see cref="Paid"/> (the surveillance system has no ZED-X yet).
+    /// </summary>
+    public static readonly string[] Applicable = [.. Paid, "ZEDX"];
+
+    public static string? CanonicalApplicable(string? value) =>
+        Applicable.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>A level the MSME may apply for now: known and enabled by the Admin (Administration → Certification Levels).</summary>
+    public static async Task<string?> OpenForApplyingAsync(ISqlExecutor db, string? value, ILogger log, CancellationToken ct) =>
+        CanonicalApplicable(value) is { } code && (await CertLevels.CertificationLevels.FindAsync(db, code, log, ct))?.IsEnabled == true ? code : null;
+
     [GeneratedRegex(@"^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")]
     public static partial Regex Gstin();
 

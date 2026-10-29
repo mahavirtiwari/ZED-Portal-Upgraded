@@ -59,7 +59,7 @@ public sealed class MsmePaymentController(
     [HttpGet("{certification}/options")]
     public async Task<ActionResult<OptionsResponse>> Options(string certification, CancellationToken ct)
     {
-        if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (await Certifications.OpenForApplyingAsync(db, certification, log, ct) is not { } cert) return this.Problem400("Invalid certification.");
         await RefreshEnterpriseType(ct);
 
         var (withReward, withoutReward, rewardAvailable, udyamPan) = await LoadOptions(cert, ct);
@@ -79,7 +79,7 @@ public sealed class MsmePaymentController(
     [MsmeEditAudit("Certification payment: GSTIN entered")]
     public async Task<ActionResult<GstinResponse>> VerifyGstin(GstinRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalApplicable(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
         var gstin = (req.Gstin ?? "").Trim().ToUpperInvariant();
         if (!Certifications.Gstin().IsMatch(gstin)) return this.Problem400("Please enter valid GSTIN.");
 
@@ -108,7 +108,7 @@ public sealed class MsmePaymentController(
     [MsmeEditAudit("Certification payment: PAN corrected")]
     public async Task<ActionResult<MessageResponse>> CorrectPan(PanRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalApplicable(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
         var gstin = (req.Gstin ?? "").Trim().ToUpperInvariant();
         var pan = (req.Pan ?? "").Trim().ToUpperInvariant();
         if (!Certifications.Pan().IsMatch(pan)) return this.Problem400("Please enter a valid 10-character PAN.");
@@ -141,7 +141,7 @@ public sealed class MsmePaymentController(
     [MsmeEditAudit("Certification payment: payment started")]
     public async Task<ActionResult<CheckoutResponse>> Checkout(string certification, CheckoutRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (await Certifications.OpenForApplyingAsync(db, certification, log, ct) is not { } cert) return this.Problem400("Invalid certification.");
 
         // Choices
         string? gstin = null;

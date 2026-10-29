@@ -27,6 +27,11 @@ export const STATE_NAMES: string[] = [
 ];
 
 export const CERTIFICATIONS = ['Bronze', 'Silver', 'Gold'];
+/** The list pages' filter also offers ZED-X (code ZEDX); the analytics charts keep the three. */
+export const LIST_CERTIFICATIONS: { value: string; label: string }[] = [
+  ...CERTIFICATIONS.map((c) => ({ value: c, label: c })),
+  { value: 'ZEDX', label: 'ZED-X' },
+];
 export const SIZES = ['Micro', 'Small', 'Medium'];
 export const GENDERS: Option[] = [
   { value: 'male', label: 'Male' },

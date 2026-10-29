@@ -1,6 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
+import { levelName } from '../shared/levels';
 
 /**
  * Where the browser lands after the payment gateway (or a zero-amount payment).
@@ -72,6 +73,6 @@ export class PaymentResultPage {
   protected readonly succeeded = computed(() => this.status() === 'success');
   protected readonly surveillance = computed(() => this.kind() === 'surveillance');
   protected readonly certificationLabel = computed(() =>
-    this.certification() ? `${this.certification()} Certification` : 'certification',
+    this.certification() ? `${levelName(this.certification())} Certification` : 'certification',
   );
 }

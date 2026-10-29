@@ -11,7 +11,7 @@
            0001 all three | 0002 ZEDCS_V2_LIVE | 0004 ZEDCS_V2_LIVE | 0005 all three |
            0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
            0011 all three | 0012 all three | 0013 all three |
-           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE
+           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -132,6 +132,7 @@ $Migrations = @(
     @{ File = '0026_incentive_dashboard.sql';   Dbs = @($Main);  Markers = @('COL:dbo.Incentives.DisplayOn', 'COL:dbo.Incentives.CardHighlight', 'COL:dbo.Incentives.DashboardCard', 'C:dbo.CK_Incentives_DisplayOn') }
     @{ File = '0027_api_client_enabled.sql';    Dbs = @($Main);  Markers = @('COL:dbo.ApiClientTokens.IsEnabled', 'COL:dbo.ApiClientTokens.UpdatedOn') }
     @{ File = '0028_certification_levels.sql';  Dbs = @($Main, $Surv); Markers = @('COL:dbo.SectionTypes.CertNoFormat', 'COL:dbo.Sections.NicSectors', 'C:dbo.CK_SectionTypes_AssessmentMode') }
+    @{ File = '0029_zedx_payment.sql';          Dbs = @($Main);  Markers = @('COL:dbo.Msme.IsZEDXPaymentDone', 'P:dbo.SP_V4_CERTIFICATION_PAID') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

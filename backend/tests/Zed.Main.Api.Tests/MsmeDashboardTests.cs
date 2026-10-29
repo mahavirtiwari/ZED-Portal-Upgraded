@@ -75,6 +75,22 @@ public sealed class MsmeDashboardTests : IDisposable
     }
 
     [Fact]
+    public async Task Dashboard_gives_the_zedx_flag_and_status()
+    {
+        var client = await SignedInAsync();
+        var none = await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard");
+        Assert.Equal(0, none.GetProperty("certStatus").GetProperty("ZEDXStatus").GetInt32());
+
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ZedXSql] = _ => [new { PaymentDone = 1, Status = (int?)null }];
+        var paid = await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard");
+        Assert.Equal(1, paid.GetProperty("msme").GetProperty("IsZEDXPaymentDone").GetInt32());
+        Assert.Equal(1, paid.GetProperty("certStatus").GetProperty("ZEDXStatus").GetInt32());
+
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ZedXSql] = _ => [new { PaymentDone = 1, Status = (int?)16 }];
+        Assert.Equal(16, (await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard")).GetProperty("certStatus").GetProperty("ZEDXStatus").GetInt32());
+    }
+
+    [Fact]
     public async Task Dashboard_is_forbidden_for_staff_roles()
     {
         // Staff cannot sign in through the MSME login, so sign in directly with the cookie helper route.

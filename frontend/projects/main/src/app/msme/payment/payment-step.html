@@ -5,7 +5,7 @@
   <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
     <div class="panel panel-default panel-payment">
       <div class="panel-heading">
-        <div class="text-center"><img [src]="'/Images/Dashboard/' + certification().toLowerCase() + '.png'" [alt]="certification() + ' Certification'" /></div>
+        <div class="text-center"><img [src]="logo()" [alt]="name() + ' Certification'" class="level-logo" /></div>
       </div>
       <div class="panel-body">
       <div class="row">

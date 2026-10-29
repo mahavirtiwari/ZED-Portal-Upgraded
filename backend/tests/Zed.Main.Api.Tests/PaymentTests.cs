@@ -165,6 +165,31 @@ public sealed class PaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task Zedx_is_paid_only_once_the_admin_enables_it_and_then_its_flag_and_sector_questionnaire_are_set()
+    {
+        var client = await SignedInAsync();
+        // Before migration 0028 / with ZED-X disabled: not offered.
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/msme/payments/ZEDX/options")).StatusCode);
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+        [
+            new Zed.Portal.Features.CertLevels.CertificationLevel("Bronze", "Bronze", 10, null, null, null, true, "Desktop", 36, true, 15, "{DDMMYYYY}_{ZEDNO}", null, null, null),
+            new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, false, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000),
+        ];
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/payments/ZEDX/checkout", Choices(reward: true))).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_GET_PAYMENT_DETAILS");
+
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+            [new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000)];
+        Assert.Equal("ZEDX", (await client.GetFromJsonAsync<JsonElement>("/api/msme/payments/zedx/options")).GetProperty("certification").GetString());
+        var r = await client.PostAsJsonAsync("/api/msme/payments/zedx/checkout", Choices(reward: true));
+        Assert.Equal("paid", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        Assert.Equal("ZEDX", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_ZERO_PAYMENT_DETAILS").Args, "Certification"));
+        // After the payment: ZED-X's flag and the unit's NIC sector-wise questionnaire (migration 0029).
+        var paid = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.CertificationPaid.Procedure);
+        Assert.Equal((Me, "ZEDX"), (FakeSql.Arg(paid.Args, "ZedId"), FakeSql.Arg(paid.Args, "Certification")));
+    }
+
+    [Fact]
     public async Task Used_reward_cannot_be_applied_again()
     {
         SetFees(payable: "2360.00", rewardUsed: true);

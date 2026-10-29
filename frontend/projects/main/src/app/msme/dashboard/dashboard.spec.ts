@@ -17,7 +17,7 @@ describe('DashboardPage', () => {
   }
 
   async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
-                        incentives: object = { builtIn: [], incentives: [] }) {
+                        incentives: object = { builtIn: [], incentives: [] }, levels: object[] = []) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -29,6 +29,7 @@ describe('DashboardPage', () => {
       certStatus: { BronzeStatus: 0, SilverStatus: 0, GoldStatus: 0, ...certStatus },
     });
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
+    for (const r of http.match('/api/public/levels')) r.flush(levels);
     await settle();
   }
 
@@ -103,6 +104,25 @@ describe('DashboardPage', () => {
     expect(dialog.textContent).toContain('Silver certified MSMEs');
     expect(dialog.textContent).toContain('Available once your unit is certified at Silver level.');
     expect(dialog.querySelector('a[href="https://scheme.example.org"]')).not.toBeNull();
+  });
+
+  it('shows ZED-X once the Admin enables it, as a separate track with its own name, logo and text', async () => {
+    const zedx = { code: 'ZEDX', name: 'ZED-X', description: 'Open to every MSME', comment: 'ZED-X: the sector-wise certification.', logoUrl: null,
+      assessmentMode: 'Site', validityMonths: 36, fee: 75000 };
+    const three = ['Bronze', 'Silver', 'Gold'].map((code) => ({ code, name: code, description: null, comment: null, logoUrl: `/Images/Dashboard/${code.toLowerCase()}.png`,
+      assessmentMode: 'Site', validityMonths: 36, fee: null }));
+    // Bronze in progress greys out Silver and Gold, not ZED-X.
+    await render({ BronzeStatus: 3, ZEDXStatus: 0 }, { IsZEDXPaymentDone: 0 }, 0, undefined, [...three, zedx]);
+    const zcard = card('zedx');
+    expect(zcard.querySelector('h5')!.textContent).toContain('ZED-X CERTIFICATION');
+    expect(zcard.classList).not.toContain('plant-activity-disabled');
+    expect(card('gold').classList).toContain('plant-activity-disabled');
+    expect(zcard.querySelector('.inner2 img')!.getAttribute('src')).toBe('/Images/Dashboard/zedx.svg');
+    expect(el.textContent).toContain('Apply for Bronze, Silver, Gold or ZED-X Certifications.');
+    (zcard.querySelector('.panel-heading button') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.modal-content')!.textContent).toContain('ZED-X Certification');
+    expect(el.querySelector('.modal-content')!.textContent).toContain('the sector-wise certification');
   });
 
   it('marks a certified level as completed and unlocks the incentives', async () => {

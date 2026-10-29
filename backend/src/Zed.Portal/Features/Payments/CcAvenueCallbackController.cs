@@ -179,7 +179,7 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
 
         var orderId = r.GetValueOrDefault("order_id") ?? "";
         var zedId = r.GetValueOrDefault("merchant_param1") ?? "";
-        var certification = Certifications.Canonical(r.GetValueOrDefault("merchant_param2")) ?? "";
+        var certification = Certifications.CanonicalApplicable(r.GetValueOrDefault("merchant_param2")) ?? "";
         var status = r.GetValueOrDefault("order_status") ?? "";
 
         // The order must be one this portal created, for the same unit and level.
