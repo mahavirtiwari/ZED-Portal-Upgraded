@@ -6,7 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { MastersApi, TechnologyRequest } from './masters.api';
 
-/** Add / edit a technology (Admin). Port of Views/Technology/Create.cshtml. V4: one card, Back in the page head. */
+/**
+ * Add / edit a technology (Admin). Port of Views/Technology/Create.cshtml. V4: one card, Back in the page head. V4 layout:
+ * the fields in three sections (the technology, where it applies, description with a character count) and, beside
+ * them, a live preview of the technology as the list shows it.
+ */
 @Component({
   selector: 'zed-staff-technology-form',
   imports: [FormsModule, RouterLink, MultiSelect],
@@ -26,33 +30,95 @@ import { MastersApi, TechnologyRequest } from './masters.api';
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <form class="zed-card" (ngSubmit)="save()" novalidate>
-      <div class="form-grid">
-        <label for="technologyCode">Code<span class="req">*</span></label>
-        <div>
-          <input id="technologyCode" name="technologyCode" class="form-control" maxlength="200" [(ngModel)]="model.technologyCode" />
-          @if (submitted() && !model.technologyCode.trim()) { <span class="help-block">Technology Code required.</span> }
-        </div>
-        <label for="technologyName">Technology<span class="req">*</span></label>
-        <div>
-          <input id="technologyName" name="technologyName" class="form-control" maxlength="200" [(ngModel)]="model.technologyName" />
-          @if (submitted() && !model.technologyName.trim()) { <span class="help-block">Technology Name required.</span> }
-        </div>
-        <label class="top" for="sectors">NIC Sector</label>
-        <zed-multi-select inputId="sectors" label="NIC Sector" [options]="sectors()" [(value)]="model.sectors" />
-        <label class="top" for="categories">Category</label>
-        <zed-multi-select inputId="categories" label="Category" [options]="categories()" [(value)]="model.categories" />
-        <label class="top" for="description">Description</label>
-        <textarea id="description" name="description" rows="4" class="form-control" maxlength="2000" [(ngModel)]="model.description"></textarea>
+    <form class="tf-layout" (ngSubmit)="save()" novalidate>
+      <div class="tf-main">
+        <section class="zed-card tf-section" aria-labelledby="tf-h-tech">
+          <h4 id="tf-h-tech"><span class="tf-no" aria-hidden="true">1</span>Technology</h4>
+          <div class="form-grid">
+            <label for="technologyCode">Code<span class="req">*</span></label>
+            <div>
+              <input id="technologyCode" name="technologyCode" class="form-control" maxlength="200" [(ngModel)]="model.technologyCode" />
+              @if (submitted() && !model.technologyCode.trim()) { <span class="help-block">Technology Code required.</span> }
+            </div>
+            <label for="technologyName">Technology<span class="req">*</span></label>
+            <div>
+              <input id="technologyName" name="technologyName" class="form-control" maxlength="200" [(ngModel)]="model.technologyName" />
+              @if (submitted() && !model.technologyName.trim()) { <span class="help-block">Technology Name required.</span> }
+            </div>
+          </div>
+        </section>
+
+        <section class="zed-card tf-section" aria-labelledby="tf-h-where">
+          <h4 id="tf-h-where"><span class="tf-no" aria-hidden="true">2</span>Where it applies</h4>
+          <div class="form-grid">
+            <label class="top" for="sectors">NIC Sector</label>
+            <div>
+              <zed-multi-select inputId="sectors" label="NIC Sector" [options]="sectors()" [(value)]="model.sectors" />
+              <small class="muted d-block mt-1">{{ model.sectors.length }} of {{ sectors().length }} chosen</small>
+            </div>
+            <label class="top" for="categories">Category</label>
+            <div>
+              <zed-multi-select inputId="categories" label="Category" [options]="categories()" [(value)]="model.categories" />
+              <small class="muted d-block mt-1">{{ model.categories.length }} of {{ categories().length }} chosen</small>
+            </div>
+          </div>
+        </section>
+
+        <section class="zed-card tf-section" aria-labelledby="tf-h-desc">
+          <h4 id="tf-h-desc"><span class="tf-no" aria-hidden="true">3</span>Description</h4>
+          <label class="visually-hidden" for="description">Description</label>
+          <textarea id="description" name="description" rows="5" class="form-control" maxlength="2000" [(ngModel)]="model.description"
+                    placeholder="What the technology is and which units it suits"></textarea>
+          <small class="muted d-block mt-1 text-end tf-count">{{ model.description.length }} / 2000</small>
+        </section>
       </div>
-      <div class="form-actions">
-        <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">Save</button>
-      </div>
+
+      <aside class="tf-side">
+        <div class="zed-card tf-preview" aria-label="Preview">
+          <span class="tf-preview-h">Preview in the list</span>
+          <div class="tf-row"><span class="code-badge">{{ model.technologyCode.trim() || 'Code' }}</span></div>
+          <div class="tf-name" [class.muted]="!model.technologyName.trim()">{{ model.technologyName.trim() || 'Technology name' }}</div>
+          @if (model.description.trim()) { <div class="tf-desc clamp-3">{{ model.description }}</div> }
+          <div class="tf-label">NIC Sectors</div>
+          <div>@for (s of model.sectors; track s) { <span class="zed-chip">{{ s }}</span> } @empty { <span class="muted">—</span> }</div>
+          <div class="tf-label">Categories</div>
+          <div>@for (c of model.categories; track c) { <span class="zed-chip cat">{{ c }}</span> } @empty { <span class="muted">—</span> }</div>
+        </div>
+        <div class="form-actions tf-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">Save</button>
+        </div>
+      </aside>
     </form>
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
     .form-grid > label.top { align-self: start; padding-top: 8px; }
+    @media (min-width: 768px) { .form-grid { grid-template-columns: minmax(120px, 160px) minmax(0, 1fr); } }
+
+    .tf-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+    .tf-section { margin-bottom: 16px; }
+    .tf-section h4 { display: flex; align-items: center; gap: 10px; }
+    .tf-no { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 13px; display: inline-grid; place-items: center; font-size: 13px; font-weight: 800;
+      background: #eef6f6; color: #2f7c83; }
+    .tf-count { font-size: 12px; }
+
+    .tf-side { position: sticky; top: 16px; }
+    .tf-preview { margin-bottom: 12px; border-top: 4px solid #45a5ad; }
+    .tf-preview-h { display: block; font-size: 12px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px; }
+    .tf-row { margin-bottom: 8px; }
+    .code-badge { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 10px; border-radius: 14px; background: #eef6f6; color: #23474a;
+      font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+    .tf-name { font-weight: 700; color: #232527; font-size: 15px; overflow-wrap: anywhere; }
+    .tf-desc { white-space: pre-wrap; color: #5f6f70; font-size: 13px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+    .tf-label { font-size: 12px; font-weight: 600; color: #5f6f70; margin: 10px 0 2px; }
+    .zed-chip { overflow-wrap: anywhere; }
+    .zed-chip.cat { background: #f1f0fb; color: #3f3a7a; }
+    .tf-actions { margin-top: 0; }
+
+    @media (max-width: 991.98px) {
+      .tf-layout { grid-template-columns: minmax(0, 1fr); }
+      .tf-side { position: static; }
+    }
   `,
 })
 export class TechnologyFormPage {

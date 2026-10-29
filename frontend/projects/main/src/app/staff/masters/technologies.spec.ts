@@ -15,6 +15,9 @@ async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
 }
 
+/** Each stat tile as "value label". */
+const stats = (el: HTMLElement) => [...el.querySelectorAll('.stat')].map((s) => `${s.querySelector('.stat-value')!.textContent!.trim()} ${s.querySelector('.stat-label')!.textContent!.trim()}`);
+
 const tech = { id: 9, technologyCode: 'T1', technologyName: 'Solar', description: 'Roof top', sectors: ['24-Basic metals', '99-Old sector'], categories: ['C1 -Energy'], isActive: true };
 
 describe('TechnologiesPage', () => {
@@ -42,6 +45,47 @@ describe('TechnologiesPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('deactivated');
     http.verify();
     vi.restoreAllMocks();
+  });
+
+  it('shows the counts and filters by status and by category', async () => {
+    await TestBed.configureTestingModule({ imports: [TechnologiesPage], providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([])] }).compileComponents();
+    const fixture = TestBed.createComponent(TechnologiesPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/technologies').flush([
+      tech,
+      { ...tech, id: 10, technologyCode: 'T2', technologyName: 'Wind', categories: ['C2 -Water', 'C1 -Energy'], isActive: false },
+      { ...tech, id: 11, technologyCode: 'T3', technologyName: 'Rain water', categories: ['C2 -Water'] },
+    ]);
+    await settle(fixture);
+    const text = (sel: string) => [...el.querySelectorAll(sel)].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
+    const names = () => text('tbody .tech-name');
+    const click = (sel: string, label: string) => ([...el.querySelectorAll(sel)].find((b) => b.textContent!.trim().startsWith(label)) as HTMLButtonElement).click();
+    expect(stats(el)).toEqual(['3 Technologies', '2 Active (MSMEs can choose them)', '1 Inactive', '2 Categories in use']);
+    expect(text('.cat-chip')).toEqual(['All', 'C1 -Energy 2', 'C2 -Water 2']);
+
+    click('.seg button', 'Inactive');
+    await settle(fixture);
+    expect(names()).toEqual(['Wind']);
+    click('.seg button', 'All');
+    await settle(fixture);
+    click('.cat-chip', 'C2 -Water');
+    await settle(fixture);
+    expect(names()).toEqual(['Wind', 'Rain water']);
+    click('.seg button', 'Active');
+    await settle(fixture);
+    expect(names()).toEqual(['Rain water']);
+    click('.seg button', 'Inactive');
+    click('.cat-chip', 'C1 -Energy');
+    await settle(fixture);
+    expect(names()).toEqual(['Wind']);
+    click('.cat-chip', 'All');
+    click('.seg button', 'Active');
+    await settle(fixture);
+    expect(names()).toEqual(['Solar', 'Rain water']);
+    expect(el.querySelector('.cat-chip.is-on')!.textContent!.trim()).toBe('All');
+    http.verify();
   });
 });
 
@@ -103,6 +147,10 @@ describe('TechnologyFormPage', () => {
       input.dispatchEvent(new Event('input'));
     }
     await settle(fixture);
+    // The preview beside the form shows the technology as the list will.
+    expect(el.querySelector('.tf-preview .code-badge')!.textContent!.trim()).toBe('T2');
+    expect(el.querySelector('.tf-preview .tf-name')!.textContent!.trim()).toBe('Wind');
+    expect([...el.querySelectorAll('.tf-section h4')].map((h) => h.textContent!.trim())).toEqual(['1Technology', '2Where it applies', '3Description']);
 
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));

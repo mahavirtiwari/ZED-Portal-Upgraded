@@ -48,10 +48,45 @@ describe('DashboardCardsPage', () => {
   it('lists the built-in cards and the incentives on the main dashboard', () => {
     expect(el.querySelector('#dc-builtin-h')!.textContent).toContain('2 of 2 shown');
     expect(builtIn('MSME KAWACH').querySelector('.status-badge')!.textContent!.trim()).toBe('Shown');
-    const row = el.querySelector('tbody tr') as HTMLElement;
-    expect(row.textContent).toContain('Export Booster');
-    expect(row.textContent).toContain('State Government: ASSAM');
-    expect(row.querySelector('a')!.getAttribute('href')).toBe('/staff/incentives/state/57/edit?state=ASSAM');
+    const card = el.querySelector('.dc-inc') as HTMLElement;
+    expect(card.querySelector('h6')!.textContent).toContain('Export Booster');
+    expect(card.textContent).toContain('State Government: ASSAM');
+    expect(card.querySelector('.lv-chip')!.textContent).toBe('Silver');
+    expect(card.querySelector('a')!.getAttribute('href')).toBe('/staff/incentives/state/57/edit?state=ASSAM');
+    // The four stakeholder cards close the list and open their incentive pages.
+    expect([...el.querySelectorAll('.dc-stake-card')].map((a) => a.getAttribute('href'))).toEqual(
+      ['/staff/incentives/ministry', '/staff/incentives/state', '/staff/incentives/financial', '/staff/incentives/others']);
+  });
+
+  it('counts the cards MSMEs see and filters the incentive cards by level', () => {
+    const stats = [...el.querySelectorAll('.dc-stats .stat-value')].map((v) => v.textContent!.replace(/\s+/g, ''));
+    expect(stats).toEqual(['7', '2/2', '1/1', '0']);
+    (el.querySelector('[data-level="bronze"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('.dc-inc')).toBeNull();
+    expect(el.querySelector('[aria-labelledby="dc-inc-h"] .no-data')!.textContent).toContain('No incentive card applies to this level.');
+    (el.querySelector('[data-level="silver"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.dc-inc').length).toBe(1);
+  });
+
+  it('previews the card beside the fields of the Edit pop-up', async () => {
+    button(builtIn('Joining Reward'), 'Edit').click();
+    await settle();
+    const preview = el.querySelector('.modal .dc-preview') as HTMLElement;
+    expect(preview.querySelector('h6')!.textContent).toBe('Joining Reward');
+    expect(preview.querySelector('.clr-spot')!.textContent).toBe('Rs. 10,000/-');
+    const title = el.querySelector('#dc-title') as HTMLInputElement;
+    title.value = 'Welcome Reward';
+    title.dispatchEvent(new Event('input'));
+    (el.querySelector('#dc-active') as HTMLInputElement).click();
+    await settle();
+    expect(preview.querySelector('h6')!.textContent).toBe('Welcome Reward');
+    expect(preview.querySelector('.pv-card')!.classList).toContain('is-faded');
+    expect(preview.textContent).toContain('MSMEs do not see this card.');
+    button(el.querySelector('.modal')!, 'CANCEL').click();
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
   });
 
   it('hides a built-in card and edits another', async () => {

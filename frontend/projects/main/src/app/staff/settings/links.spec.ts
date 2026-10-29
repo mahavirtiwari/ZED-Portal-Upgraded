@@ -40,13 +40,17 @@ describe('LinksPage', () => {
   const address = (key: string) => el.querySelector(`#${key}-url`) as HTMLInputElement;
   const saveButton = (key: string) => card(key).querySelector('button[type=submit]') as HTMLButtonElement;
   const badge = (key: string) => card(key).querySelector('.link-title .status-badge')!.textContent!.trim();
+  const chip = (key: string) => card(key).querySelector('.addr-chip')!.textContent!.trim();
+  const stats = () => [...el.querySelectorAll('.links-stats .stat')].map((t) => `${t.querySelector('.stat-value')!.textContent} ${t.querySelector('.stat-label')!.textContent}`);
 
   afterEach(() => http.verify());
 
   it('lists every link with its switch and switches one off, keeping the address', async () => {
     await create([contact, kawach]);
     expect(el.querySelectorAll('.link-card').length).toBe(2);
-    expect(el.querySelector('.links-summary')!.textContent).toContain('1 of 2 links enabled.');
+    expect(stats()).toEqual(['2 Links', '1/2 Enabled', '1 Own address', '1 Switched off']);
+    expect(chip('contact')).toBe('Default address');
+    expect(chip('kawach')).toBe('Own address');
     expect(badge('contact')).toBe('Enabled');
     expect(badge('kawach')).toBe('Disabled');
     expect(toggle('kawach').checked).toBe(false);
@@ -59,6 +63,8 @@ describe('LinksPage', () => {
     expect(card('contact').classList).toContain('is-off');
     expect(card('contact').querySelector('.link-off-note')).not.toBeNull();
     expect(card('contact').querySelector('.form-actions')!.textContent).toContain('Not saved yet.');
+    expect(card('contact').classList).toContain('is-dirty');
+    expect(stats()[1]).toBe('1/2 Enabled');
     expect(saveButton('kawach').disabled).toBe(true);
 
     card('contact').dispatchEvent(new Event('submit'));
@@ -72,7 +78,32 @@ describe('LinksPage', () => {
     expect(badge('contact')).toBe('Disabled');
     expect(card('contact').querySelector('.alert-success')!.textContent).toContain('Contact ZED saved.');
     expect(saveButton('contact').disabled).toBe(true);
-    expect(el.querySelector('.links-summary')!.textContent).toContain('0 of 2 links enabled.');
+    expect(stats()).toEqual(['2 Links', '0/2 Enabled', '1 Own address', '2 Switched off']);
+    expect(card('contact').classList).not.toContain('is-dirty');
+  });
+
+  it('counts own addresses after a save', async () => {
+    await create([contact]);
+    address('contact').value = 'https://zed.example.org/help';
+    address('contact').dispatchEvent(new Event('input'));
+    await settle();
+    expect(chip('contact')).toBe('Default address');
+    card('contact').dispatchEvent(new Event('submit'));
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${api}/contact`);
+    expect(put.request.body).toEqual({ url: 'https://zed.example.org/help', enabled: true });
+    put.flush({ message: 'Contact ZED saved.' });
+    await settle();
+    http.expectOne(api).flush({ links: [{ ...contact, url: 'https://zed.example.org/help' }] });
+    await settle();
+    expect(chip('contact')).toBe('Own address');
+    expect(stats()).toEqual(['1 Links', '1/1 Enabled', '1 Own address', '0 Switched off']);
+  });
+
+  it('says when there is no link to set up', async () => {
+    await create([]);
+    expect(el.querySelector('.no-data')!.textContent).toContain('No links to set up.');
+    expect(stats()[0]).toBe('0 Links');
   });
 
   it('checks the address and undoes changes', async () => {

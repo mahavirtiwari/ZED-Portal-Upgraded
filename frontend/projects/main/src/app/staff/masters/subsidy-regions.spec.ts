@@ -11,6 +11,9 @@ async function settle(fixture: ComponentFixture<unknown>) {
   fixture.detectChanges();
 }
 
+/** Each stat tile as "value label". */
+const stats = (el: HTMLElement) => [...el.querySelectorAll('.stat')].map((s) => `${s.querySelector('.stat-value')!.textContent!.trim()} ${s.querySelector('.stat-label')!.textContent!.trim()}`);
+
 const button = (el: HTMLElement, text: string) => [...el.querySelectorAll('button')].find((b) => b.textContent!.trim().startsWith(text)) as HTMLButtonElement;
 
 describe('SubsidyRegionsPage', () => {
@@ -46,9 +49,9 @@ describe('SubsidyRegionsPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the categories with their counts and the entries of the one picked', async () => {
-    expect(el.textContent).toContain('112 districts get the additional subsidy');
-    expect([...el.querySelectorAll('[role=tab]')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Aspirational Districts 1/1', 'North Eastern Region 0/1']);
+  it('shows the counts, the categories with their level and counts, and the entries of the one picked', async () => {
+    expect(stats(el)).toEqual(['112 Districts get the additional subsidy', '1/2 Entries enabled', '1 States / UTs with an enabled entry', '2 Region lists']);
+    expect([...el.querySelectorAll('[role=tab]')].map((t) => [...t.children].map((c) => c.textContent!.trim()).join(' | '))).toEqual(['Aspirational Districts | By district | 1/1 enabled', 'North Eastern Region | By state | 0/1 enabled']);
     expect(el.querySelector('tbody')!.textContent).toContain('SONBHADRA');
     button(el, 'North Eastern Region').click();
     await settle(fixture);
@@ -113,10 +116,48 @@ describe('SubsidyRegionsPage', () => {
     await settle(fixture);
     expect(http.expectOne((r) => r.method === 'POST').request.body).toEqual({ category: 'ASPIRATIONAL', stateCode: '9', districtCode: '164', enabled: true });
   });
+
+  it('filters the entries by status and searches a state from its chip', async () => {
+    const rows = [
+      data.regions[0],
+      { ...data.regions[0], districtCode: '171', districtName: 'MIRZAPUR', enabled: false },
+      { ...data.regions[0], stateCode: '10', stateName: 'BIHAR', districtCode: '210', districtName: 'ARARIA' },
+      data.regions[1],
+    ];
+    (fixture.componentInstance as unknown as { load(b: boolean): Promise<void> }).load(false);
+    http.expectOne(url).flush({ ...data, regions: rows });
+    await settle(fixture);
+    const names = () => [...el.querySelectorAll('tbody tr td:nth-child(2)')].map((c) => c.textContent!.trim());
+    const chips = () => [...el.querySelectorAll('.sr-chip')].map((c) => c.textContent!.replace(/\s+/g, ' ').trim());
+    expect(names()).toEqual(['SONBHADRA', 'MIRZAPUR', 'ARARIA']);
+    expect(chips()).toEqual(['BIHAR 1/1', 'UTTAR PRADESH 1/2']);
+    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All 3', 'Enabled 2', 'Disabled 1']);
+
+    button(el, 'Disabled').click();
+    await settle(fixture);
+    expect(names()).toEqual(['MIRZAPUR']);
+    button(el, 'All').click();
+    await settle(fixture);
+    button(el, 'BIHAR').click();
+    await settle(fixture);
+    expect(names()).toEqual(['ARARIA']);
+    expect(button(el, 'BIHAR').getAttribute('aria-pressed')).toBe('true');
+    button(el, 'BIHAR').click();
+    await settle(fixture);
+    expect(names().length).toBe(3);
+
+    button(el, 'Disabled').click();
+    await settle(fixture);
+    button(el, 'North Eastern Region').click();
+    await settle(fixture);
+    // Another category shows all its entries again.
+    expect(el.querySelector('.seg button.active')!.textContent).toContain('All');
+    expect(el.querySelector('tbody')!.textContent).toContain('ASSAM');
+  });
 });
 
 describe('LgdDirectoryPage', () => {
-  it('checks the uploaded LGD list, ticks the new and renamed entries and applies the ticked ones', async () => {
+  it('checks the uploaded LGD list, shows its counts, ticks the new and renamed entries and applies the ticked ones', async () => {
     await TestBed.configureTestingModule({ imports: [LgdDirectoryPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
     const fixture = TestBed.createComponent(LgdDirectoryPage);
     const http = TestBed.inject(HttpTestingController);
@@ -124,9 +165,11 @@ describe('LgdDirectoryPage', () => {
     await settle(fixture);
 
     const input = el.querySelector('#lgd-file') as HTMLInputElement;
+    expect(el.querySelector('.lgd-drop')!.textContent).toContain('Choose the LGD district list');
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'districts.csv')], configurable: true });
     input.dispatchEvent(new Event('change'));
     await settle(fixture);
+    expect(el.querySelector('.lgd-drop')!.textContent).toContain('districts.csv (under 1 KB)');
     button(el, 'Check changes').click();
     await settle(fixture);
     http.expectOne('/api/staff/masters/lgd/preview').flush({
@@ -138,8 +181,12 @@ describe('LgdDirectoryPage', () => {
       ],
     });
     await settle(fixture);
-    expect(el.textContent).toContain('2 of 3 ticked');
-    expect(el.textContent).toContain('No longer in LGD (deactivate) (1)');
+    const text = (sel: string) => [...el.querySelectorAll(sel)].map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
+    expect(stats(el)).toEqual(['1 States / UTs in the file', '3 Districts in the file', '3 Changes found']);
+    expect([...el.querySelectorAll('.lgd-kind')].map((k) => `${k.querySelector('.lgd-kind-name')!.textContent} (${k.querySelector('.lgd-kind-count')!.textContent})`)).toEqual(['New district (1)', 'District renamed (1)', 'No longer in LGD (deactivate) (1)']);
+    expect(text('tbody .lgd-badge.is-drop')).toEqual(['No longer in LGD (deactivate)']);
+    expect(el.querySelector('.lgd-count')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('2 of 3 ticked');
+    expect(el.querySelectorAll('.lgd-step.is-now .lgd-no')[0].textContent).toBe('3');
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     button(el, 'Apply ticked changes').click();

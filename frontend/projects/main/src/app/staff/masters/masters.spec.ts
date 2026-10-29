@@ -45,8 +45,12 @@ describe('DocumentsAdminPage', () => {
     roles: ['msme'], createdDate: '2026-10-01T10:00:00', ...more,
   });
   const button = (el: HTMLElement, text: string) => [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === text) as HTMLButtonElement;
-  // The form's Upload (the one in the page head moves to the form).
-  const upload = (el: HTMLElement) => el.querySelector('section[aria-labelledby="doc-upload-h"] .form-actions button') as HTMLButtonElement;
+  // The Upload of the add pop-up.
+  const upload = (el: HTMLElement) => el.querySelector('[aria-labelledby="doc-add-title"] .modal-footer .btn-primary') as HTMLButtonElement;
+  const openAdd = async (fixture: ComponentFixture<unknown>, el: HTMLElement) => {
+    button(el, '+ Add document').click();
+    await settle(fixture);
+  };
   const tick = (el: HTMLElement, label: string) =>
     ([...el.querySelectorAll('label.doc-role')].find((l) => l.textContent!.trim() === label)!.querySelector('input') as HTMLInputElement).click();
   const type = (el: HTMLElement, selector: string, value: string) => {
@@ -54,6 +58,8 @@ describe('DocumentsAdminPage', () => {
     input.value = value;
     input.dispatchEvent(new Event('input'));
   };
+  const names = (el: HTMLElement) => [...el.querySelectorAll('.doc-item strong')].map((s) => s.textContent);
+  const pill = (el: HTMLElement, role: string) => el.querySelector(`.role-pill[data-role="${role}"]`) as HTMLButtonElement;
 
   it('uploads a file with its description and the roles ticked, and refuses other file types', async () => {
     const { fixture, http, el } = await setup(DocumentsAdminPage);
@@ -61,11 +67,14 @@ describe('DocumentsAdminPage', () => {
     await settle(fixture);
     expect([...el.querySelectorAll('.doc-item a')].map((a) => a.getAttribute('href'))).toEqual(['/api/staff/masters/documents/4/file']);
     expect(el.querySelector('.doc-chip')!.textContent).toBe('MSME Enterprises');
+    expect(el.querySelector('.doc-item .doc-icon')!.textContent!.trim()).toBe('PDF');
 
+    expect(el.querySelector('[role=dialog]')).toBeNull();
+    await openAdd(fixture, el);
     const fileInput = el.querySelector('#fileControl') as HTMLInputElement;
     chooseFile(fileInput, new File(['MZ'], 'tool.exe', { type: 'application/octet-stream' }));
     await settle(fixture);
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('valid document');
+    expect(el.querySelector('[role=dialog] .alert-danger')!.textContent).toContain('valid document');
 
     type(el, '#documentName', 'Checklist');
     type(el, '#documentDescription', 'What to keep ready');
@@ -74,13 +83,14 @@ describe('DocumentsAdminPage', () => {
     expect(el.textContent).toContain('checklist.pdf');
     upload(el).click();
     await settle(fixture);
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('at least one role');
+    expect(el.querySelector('[role=dialog] .alert-danger')!.textContent).toContain('at least one role');
     http.expectNone((r) => r.method === 'POST');
 
     tick(el, 'Assessors');
     tick(el, 'MSME Enterprises');
     await settle(fixture);
     expect(el.textContent).toContain('2 of 3 selected');
+    expect([...el.querySelectorAll('label.doc-role.on')].map((l) => l.textContent!.trim())).toEqual(['MSME Enterprises', 'Assessors']);
     upload(el).click();
     await settle(fixture);
     const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/documents');
@@ -95,6 +105,7 @@ describe('DocumentsAdminPage', () => {
     await settle(fixture);
     http.expectOne('/api/staff/masters/documents').flush({ documents: [], roles });
     await settle(fixture);
+    expect(el.querySelector('[role=dialog]')).toBeNull();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Document saved.');
     http.verify();
   });
@@ -103,7 +114,9 @@ describe('DocumentsAdminPage', () => {
     const { fixture, http, el } = await setup(DocumentsAdminPage);
     http.expectOne('/api/staff/masters/documents').flush({ documents: [], roles });
     await settle(fixture);
-    button(el, 'Video link').click();
+    expect(el.querySelector('.no-data')!.textContent).toContain('No documents published yet');
+    await openAdd(fixture, el);
+    ([...el.querySelectorAll('.kind-card')].find((b) => b.textContent!.includes('Video link')) as HTMLButtonElement).click();
     await settle(fixture);
     expect(el.querySelector('#fileControl')).toBeNull();
     type(el, '#documentName', 'How to apply');
@@ -119,6 +132,46 @@ describe('DocumentsAdminPage', () => {
     expect(body.get('roles')).toBe('msme,assessor,ministry');
   });
 
+  it('shows the counts and filters by file or video and by role', async () => {
+    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    http.expectOne('/api/staff/masters/documents').flush({
+      documents: [
+        doc(4, 'Guidelines', { roles: ['msme', 'assessor'] }),
+        doc(5, 'Tour', { videoUrl: 'https://www.youtube.com/watch?v=t', downloadUrl: null, fileName: null, roles: ['assessor'] }),
+        doc(6, 'Sheet', { fileName: 'Document_2.xlsx', roles: [] }),
+      ],
+      roles,
+    });
+    await settle(fixture);
+    // Documents, files, videos and the roles given at least one document.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['3', '2', '1', '2/3']);
+    expect([...el.querySelectorAll('.doc-icon')].map((i) => i.className.match(/tone-(\w+)/)![1])).toEqual(['pdf', 'video', 'sheet']);
+    // A document from before roles were set goes to the MSMEs.
+    expect(el.querySelectorAll('.doc-item')[2].textContent).toContain('MSMEs only (no roles set)');
+    expect(pill(el, 'assessor').textContent!.replace(/\s+/g, ' ').trim()).toBe('Assessors 2');
+    expect(pill(el, 'ministry').classList).toContain('none');
+
+    button(el, 'Videos').click();
+    await settle(fixture);
+    expect(names(el)).toEqual(['Tour']);
+    button(el, 'Files').click();
+    await settle(fixture);
+    expect(names(el)).toEqual(['Guidelines', 'Sheet']);
+    pill(el, 'assessor').click();
+    await settle(fixture);
+    expect(names(el)).toEqual(['Guidelines']);
+    expect(pill(el, 'assessor').getAttribute('aria-pressed')).toBe('true');
+    pill(el, 'ministry').click();
+    await settle(fixture);
+    expect(names(el)).toEqual([]);
+    expect(el.querySelector('.no-data')!.textContent).toContain('Nothing matches');
+    (el.querySelector('.role-pill') as HTMLButtonElement).click();
+    button(el, 'All').click();
+    await settle(fixture);
+    expect(names(el)).toEqual(['Guidelines', 'Tour', 'Sheet']);
+    http.verify();
+  });
+
   it('searches and filters by role, edits the roles and deletes after confirmation', async () => {
     const { fixture, http, el } = await setup(DocumentsAdminPage);
     http.expectOne('/api/staff/masters/documents').flush({
@@ -126,18 +179,14 @@ describe('DocumentsAdminPage', () => {
       roles,
     });
     await settle(fixture);
-    const names = () => [...el.querySelectorAll('.doc-item strong')].map((s) => s.textContent);
-    const roleSelect = el.querySelector('select[aria-label="Role"]') as HTMLSelectElement;
-    roleSelect.value = 'assessor';
-    roleSelect.dispatchEvent(new Event('change'));
+    pill(el, 'assessor').click();
     await settle(fixture);
-    expect(names()).toEqual(['Tour']);
+    expect(names(el)).toEqual(['Tour']);
     expect(el.querySelector('.doc-item a')!.textContent!.trim()).toBe('Watch');
-    roleSelect.value = '';
-    roleSelect.dispatchEvent(new Event('change'));
+    (el.querySelector('.role-pill') as HTMLButtonElement).click();
     type(el, 'input[aria-label="Search documents"]', 'site');
     await settle(fixture);
-    expect(names()).toEqual(['Tour']);
+    expect(names(el)).toEqual(['Tour']);
 
     (el.querySelector('[aria-label="Edit Tour"]') as HTMLButtonElement).click();
     await settle(fixture);
@@ -166,6 +215,23 @@ describe('DocumentsAdminPage', () => {
     http.verify();
     vi.restoreAllMocks();
   });
+
+  it('shows a failed edit inside the pop-up', async () => {
+    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    http.expectOne('/api/staff/masters/documents').flush({ documents: [doc(4, 'Old')], roles });
+    await settle(fixture);
+    (el.querySelector('[aria-label="Edit Old"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    const dialog = el.querySelector('[role=dialog]') as HTMLElement;
+    expect(dialog.querySelector('#editVideo')).toBeNull();
+    expect(dialog.querySelector('.file-note')!.textContent).toContain('Document_1.pdf');
+    button(dialog, 'Save').click();
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'PUT').flush({ title: 'Document name required.' }, { status: 400, statusText: 'Bad Request' });
+    await settle(fixture);
+    expect(el.querySelector('[role=dialog] .alert-danger')!.textContent).toContain('Document name required.');
+    http.verify();
+  });
 });
 
 describe('PageSettingsPage', () => {
@@ -174,6 +240,11 @@ describe('PageSettingsPage', () => {
     http.expectOne('/api/staff/masters/page-settings').flush({ hasBanner: true, fileName: 'Banner_1.png', updatedOn: '01-10-2026 09:30', imageUrl: '/api/staff/masters/page-settings/banner?v=1' });
     await settle(fixture);
     expect(el.querySelector('img')!.getAttribute('src')).toBe('/api/staff/masters/page-settings/banner?v=1');
+    const meta = el.querySelector('.img-meta')!.textContent!.replace(/\s+/g, ' ');
+    expect(meta).toContain('Home (login) page');
+    expect(meta).toContain('Banner_1.png');
+    expect(meta).toContain('01-10-2026 09:30');
+    expect(el.querySelector('#ps-upload-h')!.textContent).toBe('Replace the banner');
 
     const input = el.querySelector('#fileControl') as HTMLInputElement;
     chooseFile(input, new File(['x'], 'banner.jpg', { type: 'image/jpeg' }));
@@ -191,7 +262,41 @@ describe('PageSettingsPage', () => {
     http.expectOne('/api/staff/masters/page-settings').flush({ hasBanner: true, fileName: 'Banner_2.png', updatedOn: null, imageUrl: '/api/staff/masters/page-settings/banner?v=2' });
     http.verify();
   });
+
+  it('previews the chosen image beside the current one and Cancel drops it', async () => {
+    const original = { create: URL.createObjectURL, revoke: URL.revokeObjectURL };
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:preview'), revokeObjectURL: vi.fn() });
+    try {
+      const { fixture, http, el } = await setup(PageSettingsPage);
+      http.expectOne('/api/staff/masters/page-settings').flush({ hasBanner: false, fileName: null, updatedOn: null, imageUrl: null });
+      await settle(fixture);
+      expect(el.querySelector('.img-empty')!.textContent).toContain('No banner saved');
+      expect(el.querySelector('#ps-upload-h')!.textContent).toBe('Add a banner');
+
+      chooseFile(el.querySelector('#fileControl') as HTMLInputElement, new File(['png'], 'new.png', { type: 'image/png' }));
+      await settle(fixture);
+      expect(el.querySelector('img[alt="Selected banner (not saved yet)"]')!.getAttribute('src')).toBe('blob:preview');
+      expect(el.querySelector('.picked-name')!.textContent).toContain('new.png');
+      expect(el.textContent).toContain('Not saved yet');
+
+      ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Cancel') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(el.querySelector('img')).toBeNull();
+      (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter valid data.');
+      http.verify();
+    } finally {
+      Object.assign(URL, { createObjectURL: original.create, revokeObjectURL: original.revoke });
+    }
+  });
 });
+
+/** Opens the add pop-up of the sectors / categories page. */
+async function openCodeNameAdd(fixture: ComponentFixture<unknown>, el: HTMLElement) {
+  ([...el.querySelectorAll('.page-head button')].find((b) => b.textContent!.includes('+ ADD')) as HTMLButtonElement).click();
+  await settle(fixture);
+}
 
 describe('CodeNamesPage', () => {
   it('adds and renames categories', async () => {
@@ -199,24 +304,32 @@ describe('CodeNamesPage', () => {
     http.expectOne('/api/staff/masters/categories').flush([{ id: 5, code: 'C1', name: 'Energy' }]);
     await settle(fixture);
     expect(el.querySelector('h3')!.textContent).toContain('Categories');
+    expect(el.querySelector('.code-badge')!.textContent).toBe('C1');
+    // No sector counts or type filter on categories.
+    expect(el.querySelector('.stat')).toBeNull();
+    expect(el.querySelector('.seg')).toBeNull();
 
+    expect(el.querySelector('form.add-form')).toBeNull();
+    await openCodeNameAdd(fixture, el);
     for (const [sel, v] of [['#code', 'C2'], ['#name', 'Water']]) {
       const i = el.querySelector(sel) as HTMLInputElement;
       i.value = v;
       i.dispatchEvent(new Event('input'));
     }
     await settle(fixture);
-    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const add = http.expectOne('/api/staff/masters/categories');
     expect(add.request.body).toEqual({ code: 'C2', name: 'Water' });
     add.flush({ message: 'Category saved.' });
     await settle(fixture);
+    expect(el.querySelector('form.add-form')).toBeNull();
     http.expectOne('/api/staff/masters/categories').flush([{ id: 5, code: 'C1', name: 'Energy' }]);
     await settle(fixture);
 
     (el.querySelector('tbody button') as HTMLButtonElement).click();
     await settle(fixture);
+    expect(el.querySelector('.modal .code-badge')!.textContent).toBe('C1');
     const edit = el.querySelector('#edit-name') as HTMLInputElement;
     edit.value = 'Energy efficiency';
     edit.dispatchEvent(new Event('input'));
@@ -231,11 +344,31 @@ describe('CodeNamesPage', () => {
     expect(el.querySelector('.modal .help-block')!.textContent).toContain('Category Name required');
     http.verify();
   });
+
+  it('shows a failed add inside the pop-up', async () => {
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'categories' } } });
+    http.expectOne('/api/staff/masters/categories').flush([]);
+    await settle(fixture);
+    expect(el.querySelector('.no-data')!.textContent).toContain('No categories yet');
+    await openCodeNameAdd(fixture, el);
+    for (const [sel, v] of [['#code', 'C1'], ['#name', 'Energy']]) {
+      const i = el.querySelector(sel) as HTMLInputElement;
+      i.value = v;
+      i.dispatchEvent(new Event('input'));
+    }
+    await settle(fixture);
+    (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    http.expectOne((r) => r.method === 'POST').flush({ title: 'Category Code already exists.' }, { status: 400, statusText: 'Bad Request' });
+    await settle(fixture);
+    expect(el.querySelector('.modal [role=alert]')!.textContent).toContain('Category Code already exists.');
+    http.verify();
+  });
 });
 
-// Angular's radio [value] is not written to the element, so the radio is found by its label.
+// Angular's radio [value] is not written to the element, so the radio is found by its choice card (name and a note).
 const radio = (el: HTMLElement, name: string, label: string) =>
-  [...el.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].find((i) => i.closest('label')!.textContent!.trim() === label)!;
+  [...el.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].find((i) => i.closest('label')!.querySelector('strong')!.textContent!.trim() === label)!;
 
 describe('CodeNamesPage (sectors)', () => {
   it('requires Manufacturing or Services and saves it with the sector', async () => {
@@ -248,20 +381,22 @@ describe('CodeNamesPage (sectors)', () => {
     const cells = [...el.querySelectorAll('tbody tr')].map((r) => r.children[2].textContent!.trim());
     expect(cells).toEqual(['Manufacturing', 'Not set']);
 
+    await openCodeNameAdd(fixture, el);
     for (const [sel, v] of [['#code', '63'], ['#name', 'Information services']]) {
       const i = el.querySelector(sel) as HTMLInputElement;
       i.value = v;
       i.dispatchEvent(new Event('input'));
     }
     await settle(fixture);
-    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     http.expectNone('/api/staff/masters/sectors');
     expect(el.textContent).toContain('Please select Manufacturing or Services.');
 
     radio(el, 'activity', 'Services').click();
     await settle(fixture);
-    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    expect(radio(el, 'activity', 'Services').closest('label')!.classList).toContain('active');
+    (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const add = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors');
     expect(add.request.body).toEqual({ code: '63', name: 'Information services', activity: 'Services' });
@@ -284,6 +419,41 @@ describe('CodeNamesPage (sectors)', () => {
     put.flush({ message: 'Sector data updated.' });
     await settle(fixture);
     http.expectOne('/api/staff/masters/sectors').flush([]);
+    http.verify();
+  });
+
+  it('counts the sectors by type and filters by type', async () => {
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    http.expectOne('/api/staff/masters/sectors').flush([
+      { id: 1, code: '10', name: 'Manufacture of food products', activity: 'Manufacturing' },
+      { id: 2, code: '13', name: 'Manufacture of textiles', activity: 'Manufacturing' },
+      { id: 3, code: '62', name: 'Computer programming', activity: 'Services' },
+      { id: 4, code: '22', name: 'Rubber products', activity: null },
+    ]);
+    await settle(fixture);
+    // All, Manufacturing, Services, type not set.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['4', '2', '1', '1']);
+    expect(el.querySelector('.stat-warn .stat-label')!.textContent).toBe('Type not set');
+    const codes = () => [...el.querySelectorAll('tbody .code-badge')].map((c) => c.textContent);
+    const seg = (label: string) => [...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
+    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.trim())).toEqual(['All', 'Manufacturing', 'Services', 'Not set']);
+
+    seg('Manufacturing').click();
+    await settle(fixture);
+    expect(codes()).toEqual(['10', '13']);
+    seg('Not set').click();
+    await settle(fixture);
+    expect(codes()).toEqual(['22']);
+    seg('Services').click();
+    const search = el.querySelector('input[aria-label="Search sectors"]') as HTMLInputElement;
+    search.value = 'food';
+    search.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    expect(codes()).toEqual([]);
+    expect(el.querySelector('.no-data')!.textContent).toContain('No sector matches the search');
+    seg('All').click();
+    await settle(fixture);
+    expect(codes()).toEqual(['10']);
     http.verify();
   });
 });

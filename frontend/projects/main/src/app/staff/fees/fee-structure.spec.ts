@@ -80,6 +80,20 @@ describe('FeeStructurePage', () => {
     expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] tbody tr')].map((r) => !!r.querySelector('button'))).toEqual([true, false, true, true]);
   });
 
+  it('shows a card per level with its fee, General subsidy and what the MSME pays', () => {
+    const card = (code: string) => (el.querySelector(`button[data-level="${code}"]`) as HTMLButtonElement).textContent!.replace(/\s+/g, ' ');
+    expect(el.querySelectorAll('nav[aria-label="Certification level"] button').length).toBe(4);
+    expect(el.querySelector('button[data-level="Bronze"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(card('Bronze')).toContain('₹ 10,000');
+    expect(card('Bronze')).toContain('80%');
+    expect(card('Bronze')).toContain('₹ 2,360.00');
+    expect(card('Bronze')).toContain('Joining reward ₹ 1,000');
+    expect(card('Silver')).toContain('₹ 4,720.00');
+    expect(card('Silver')).not.toContain('Joining reward');
+    expect(card('ZEDX')).toContain('ZED-X');
+    expect(card('ZEDX')).toContain('No fee set for Micro');
+  });
+
   it('saves the fee and joining reward of the level shown', async () => {
     expect(button('Save Fee').disabled).toBe(true);
     await typeIn('#fs-fee', '12000');
@@ -96,12 +110,13 @@ describe('FeeStructurePage', () => {
   });
 
   it('switches level: the same structure with its own fee and no joining reward when it has none', async () => {
-    button('Silver').click();
+    (el.querySelector('button[data-level="Silver"]') as HTMLButtonElement).click();
     await settle();
     expect(el.querySelector('h3')!.textContent).toContain('Fee Structure — Silver');
     expect((el.querySelector('#fs-fee') as HTMLInputElement).value).toBe('20000');
     expect(el.querySelector('#fs-reward')).toBeNull();
     expect(structure().length).toBe(1);
+    expect(el.querySelector('button[data-level="Silver"]')!.getAttribute('aria-pressed')).toBe('true');
   });
 
   it('edits the additional share of a category for every level', async () => {
@@ -114,6 +129,12 @@ describe('FeeStructurePage', () => {
     await typeIn('#fs-additional', '15');
     expect((dialog.querySelector('#fs-total') as HTMLInputElement).value).toBe('95%');
     expect(dialog.textContent).toContain('The MSME pays the remaining 5%');
+    // The preview on the Bronze fee of 10,000 at 95%.
+    const preview = [...dialog.querySelectorAll('aside[aria-label="Preview"] dt')].map((dt) => `${dt.textContent!.trim()}: ${dt.nextElementSibling!.textContent!.trim()}`);
+    expect(preview).toContain('GoI share: ₹ 9,500.00');
+    expect(preview).toContain('MSME share: ₹ 590.00');
+    expect(preview).toContain('Net after 194C: ₹ 580.00');
+    expect(preview).toContain('Net after 194J: ₹ 540.00');
     button('Save Share', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.url === '/api/staff/fees/Micro/subsidy');
@@ -144,10 +165,17 @@ describe('FeeStructurePage', () => {
     expect(el.querySelector('[role=dialog]')).not.toBeNull();
   });
 
+  it('warns in the preview when the total share is over 100%', async () => {
+    (el.querySelector('[aria-label="Edit the subsidy of Woman-owned MSME"]') as HTMLButtonElement).click();
+    await settle();
+    await typeIn('#fs-additional', '25');
+    const preview = el.querySelector('aside[aria-label="Preview"]')!;
+    expect(preview.textContent).toContain('must be between 0 and 100%');
+    expect(preview.querySelector('dl')).toBeNull();
+  });
+
   it('shows Rejected units without subsidy edits', async () => {
-    const select = el.querySelector('select[aria-label="Enterprise type"]') as HTMLSelectElement;
-    select.value = 'Rejected';
-    select.dispatchEvent(new Event('change'));
+    button('Rejected', el.querySelector('[role=group][aria-label="Enterprise type"]')!).click();
     await settle();
     http.expectOne('/api/staff/fees/Rejected').flush({
       enterpriseType: 'Rejected', levels: [{ certification: 'Bronze', assessmentFee: 10000, coupon: null, hasCouponRows: false }],
@@ -156,5 +184,7 @@ describe('FeeStructurePage', () => {
     await settle();
     expect(el.textContent).toContain('no subsidy and no joining reward');
     expect(el.querySelector('section[aria-labelledby="fs-structure"] tbody button')).toBeNull();
+    expect(button('Rejected').getAttribute('aria-pressed')).toBe('true');
+    expect(el.querySelector('button[data-level="Bronze"]')!.textContent).not.toContain('Joining reward');
   });
 });

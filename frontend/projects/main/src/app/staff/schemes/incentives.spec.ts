@@ -131,37 +131,71 @@ describe('incentive pages', () => {
   };
   const link = (text: string) => [...el.querySelectorAll('a.btn')].find((a) => a.textContent!.includes(text));
 
+  const names = () => [...el.querySelectorAll('.inc-card .inc-name')].map((n) => n.textContent!.trim());
+  const filter = (attr: string, value: string) => el.querySelector(`[data-${attr}="${value}"]`) as HTMLButtonElement;
+
   it('lists the incentives of a group with their counts, a status filter and Edit pages', async () => {
     await create(IncentiveMasterPage, {}, { group: 'financial' });
     http.expectOne((r) => r.url === '/api/staff/schemes/incentive-master' && r.params.get('type') === 'Financial').flush([
-      { incentive: { Id: 41, Incentive: 'Scheme A', WebLink: 'javascript:alert(1)', ApplicableForBronze: true, ActiveStatus: true }, hasDocument1: true, hasDocument2: false },
-      { incentive: { Id: 42, Incentive: 'Scheme B', WebLink: 'https://x.in', ActiveStatus: false }, hasDocument1: false, hasDocument2: false },
+      { incentive: { Id: 41, Incentive: 'Scheme A', MinistryOrDepartment: 'SIDBI', WebLink: 'javascript:alert(1)', ApplicableForBronze: true, ActiveStatus: true }, hasDocument1: true, hasDocument2: false },
+      { incentive: { Id: 42, Incentive: 'Scheme B', WebLink: 'https://x.in', ApplicableForGold: true, ActiveStatus: false, DisplayOn: 'Dashboard', CardHighlight: 'Rs. 1,000/-' }, hasDocument1: false, hasDocument2: false },
     ]);
     await settle();
     expect(el.querySelector('h3')!.textContent).toContain('Financial Institution Incentives');
-    expect([...el.querySelectorAll('.inc-tile')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['Incentives2', 'Active1', 'Inactive1']);
-    expect(el.querySelector('thead')!.textContent).toContain('Financial Institution');
+    expect([...el.querySelectorAll('.inc-tile')].map((t) => t.textContent!.replace(/\s+/g, ' ').trim()))
+      .toEqual(['2Incentives', '1Active', '1Inactive', '1On the main dashboard']);
+    expect(el.querySelector('.inc-group-tab.active')!.textContent).toContain('Financial Institution');
+    // Each incentive as a card: department (with the group's label), levels, where it appears, highlight.
+    const [a, b] = [...el.querySelectorAll('.inc-card')] as HTMLElement[];
+    expect(a.querySelector('small')!.textContent).toContain('Financial Institution: SIDBI');
+    expect(a.querySelector('.lv-chip')!.textContent).toBe('Bronze');
+    expect(a.querySelector('.inc-where')!.textContent).toContain('In the Financial Institutions card');
+    expect(b.querySelector('.inc-where')!.textContent).toContain('Main dashboard');
+    expect(b.querySelector('.inc-highlight')!.textContent).toContain('Rs. 1,000/-');
+    expect(b.classList).toContain('is-off');
     // Non-http links are not rendered as links.
-    expect(el.querySelector('tbody a[target="_blank"][href^="javascript"]')).toBeNull();
+    expect(el.querySelector('.inc-list a[target="_blank"][href^="javascript"]')).toBeNull();
     expect(el.querySelector('a[aria-label="Document 1"]')!.getAttribute('href')).toBe('/api/staff/schemes/incentive-master/41/documents/1');
-    expect(el.querySelector('tbody a.btn')!.getAttribute('href')).toBe('/staff/incentives/financial/41/edit');
+    expect(el.querySelector('.inc-card a.inc-edit')!.getAttribute('href')).toBe('/staff/incentives/financial/41/edit');
     expect(link('Create New Incentive')!.getAttribute('href')).toBe('/staff/incentives/financial/new');
 
-    button('Inactive').click();
+    expect(filter('status', 'inactive').querySelector('.seg-count')!.textContent).toBe('1');
+    filter('status', 'inactive').click();
     await settle();
-    expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('strong')!.textContent)).toEqual(['Scheme B']);
+    expect(names()).toEqual(['Scheme B']);
 
     // The search box: any column, together with the status filter.
-    button('All').click();
+    filter('status', 'all').click();
     const search = el.querySelector('#inc-search') as HTMLInputElement;
     search.value = 'x.in';
     search.dispatchEvent(new Event('input'));
     await settle();
-    expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('strong')!.textContent)).toEqual(['Scheme B']);
+    expect(names()).toEqual(['Scheme B']);
     search.value = 'nothing like it';
     search.dispatchEvent(new Event('input'));
     await settle();
-    expect(el.querySelector('tbody .no-data')!.textContent).toContain('No incentive matches "nothing like it".');
+    expect(el.querySelector('.inc-list .no-data')!.textContent).toContain('No incentive matches "nothing like it".');
+  });
+
+  it('filters the incentives of a group by level, with the count per level', async () => {
+    await create(IncentiveMasterPage, {}, { group: 'others' });
+    http.expectOne((r) => r.params.get('type') === 'Other').flush([
+      { incentive: { Id: 1, Incentive: 'Scheme A', ApplicableForBronze: true, ApplicableForSilver: true, ActiveStatus: true }, hasDocument1: false, hasDocument2: false },
+      { incentive: { Id: 2, Incentive: 'Scheme B', ApplicableForSilver: true, ApplicableForGold: true, ActiveStatus: true }, hasDocument1: false, hasDocument2: false },
+      { incentive: { Id: 3, Incentive: 'Scheme C', ApplicableForGold: true, ActiveStatus: false }, hasDocument1: false, hasDocument2: false },
+    ]);
+    await settle();
+    expect(['all', 'bronze', 'silver', 'gold'].map((l) => filter('level', l).querySelector('.seg-count')!.textContent)).toEqual(['3', '1', '2', '2']);
+    filter('level', 'gold').click();
+    await settle();
+    expect(names()).toEqual(['Scheme B', 'Scheme C']);
+    // Together with the status filter.
+    filter('status', 'active').click();
+    await settle();
+    expect(names()).toEqual(['Scheme B']);
+    filter('level', 'bronze').click();
+    await settle();
+    expect(names()).toEqual(['Scheme A']);
   });
 
   it('asks for the state on the State Government page', async () => {
@@ -211,6 +245,7 @@ describe('incentive pages', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Create New Incentive');
     expect(el.querySelector('label[for="inc-ministryOrDepartment"]')!.textContent).toContain('State Department');
     expect((el.querySelector('#inc-state') as HTMLSelectElement).value).toBe('ASSAM');
+    expect(el.querySelector('.save-bar')!.classList).not.toContain('is-dirty');
 
     button('Save Incentive').click();
     await settle();
@@ -223,6 +258,7 @@ describe('incentive pages', () => {
     };
     for (const [k, v] of Object.entries(values)) typeIn(k, v);
     await settle();
+    expect(el.querySelector('.save-bar.is-dirty')!.textContent).toContain('Not saved yet.');
     button('Save Incentive').click();
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('levels');
@@ -233,10 +269,17 @@ describe('incentive pages', () => {
     expect((el.querySelector('#inc-where-Card') as HTMLInputElement).checked).toBe(true);
     expect(el.querySelector('.where-option.is-on')!.textContent).toContain('States/UTs card');
     expect(el.querySelector('#inc-cardHighlight')).toBeNull();
+    // The preview: inside the States/UTs card, then its own card on the main dashboard.
+    const preview = () => el.querySelector('.inc-preview') as HTMLElement;
+    expect(preview().querySelector('.pv-where')!.textContent).toContain('States/UTs card');
+    expect(preview().querySelector('.pv-row')!.textContent).toContain('Scheme B');
+    expect(preview().querySelector('.lv-chip')!.textContent).toBe('Silver');
     (el.querySelector('#inc-where-Dashboard') as HTMLInputElement).click();
     await settle();
     typeIn('inc-cardHighlight', 'Up to Rs. 5,00,000/-');
     await settle();
+    expect(preview().querySelector('.pv-title')!.textContent).toContain('Scheme B');
+    expect(preview().querySelector('.pv-spot')!.textContent).toContain('Up to Rs. 5,00,000/-');
 
     button('Save Incentive').click();
     await settle();
@@ -267,10 +310,13 @@ describe('incentive pages', () => {
     expect((el.querySelector('#inc-group') as HTMLSelectElement).disabled).toBe(true);
     expect((el.querySelector('#inc-applicableForGold') as HTMLInputElement).checked).toBe(true);
     expect(el.querySelector('a[aria-label="Current document 1"]')!.getAttribute('href')).toBe('/api/staff/schemes/incentive-master/41/documents/1');
+    expect(el.querySelector('.save-bar')!.classList).not.toContain('is-dirty');
 
     typeIn('inc-incentive', 'Scheme A2');
     (el.querySelector('#inc-active') as HTMLInputElement).click();
     await settle();
+    expect(el.querySelector('.save-bar')!.classList).toContain('is-dirty');
+    expect(el.querySelector('.inc-preview .pv-card')!.classList).toContain('is-off');
     button('Save Incentive').click();
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/schemes/incentive-master/41');

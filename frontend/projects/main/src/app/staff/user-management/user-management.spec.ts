@@ -56,8 +56,11 @@ describe('User management', () => {
       button('+ Add Login').click();
       await settle();
       expect(el.querySelector('#acc-state')).toBeNull();
-      type('#acc-type', '2: 6');
+      expect([...el.querySelectorAll('.modal .choice-card')].map((c) => c.querySelector('strong')!.textContent)).toEqual(['Master Admin', 'MSME DFO']);
+      expect(el.querySelector('label[for="acc-type-6"]')!.textContent).toContain('One state: its NEFT transactions and reports.');
+      (el.querySelector('#acc-type-6') as HTMLInputElement).click();
       await settle();
+      expect(el.querySelector('label[for="acc-type-6"]')!.classList).toContain('active');
       type('#acc-id', 'DFOUP02');
       type('#acc-name', 'DFO Agra');
       type('#acc-email', 'agra@zed.test');
@@ -91,6 +94,49 @@ describe('User management', () => {
       await settle();
       expect(el.querySelector('.alert-danger')!.textContent).toContain('Not allowed.');
       confirm.mockRestore();
+    });
+
+    it('filters by login type with the tabs, starts Add with that type and keeps the type of a saved login', async () => {
+      await create(AccountsPage);
+      http.expectOne('/api/staff/accounts').flush({
+        ...list,
+        accounts: [
+          ...list.accounts,
+          { userId: 'ZEDV4MA01', userName: 'Master Admin', roleId: 7, email: 'ma@zed.test', mobileNo: null, stateCode: null, isActive: false },
+        ],
+      });
+      await settle();
+      const tabs = () => [...el.querySelectorAll('.acc-tab')] as HTMLButtonElement[];
+      expect(tabs().map((t) => t.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['All login types 2', 'Master Admin 1', 'MSME DFO 1']);
+      expect(tabs()[0].getAttribute('aria-selected')).toBe('true');
+
+      tabs()[2].click();
+      await settle();
+      expect(tabs()[2].classList).toContain('active');
+      expect(el.querySelectorAll('tbody tr').length).toBe(1);
+      expect(el.querySelector('tbody .acc-id')!.textContent).toBe('DFO9');
+      expect(el.querySelector('.acc-state')!.textContent).toBe('UTTAR PRADESH');
+      expect(el.querySelector('.acc-showing')!.textContent).toContain('1 of 2 logins');
+      expect([...el.querySelectorAll('.acc-stat-count')].map((c) => c.textContent)).toEqual(['1', '1', '0']);
+
+      button('+ Add Login').click();
+      await settle();
+      expect((el.querySelector('#acc-type-6') as HTMLInputElement).checked).toBe(true);
+      expect(el.querySelector('#acc-state')).not.toBeNull();
+      button('CANCEL').click();
+      await settle();
+
+      button('Edit').click();
+      await settle();
+      expect(el.querySelector('.modal .choice-card')).toBeNull();
+      expect(el.querySelector('.acc-type-fixed')!.textContent).toContain('MSME DFO');
+      expect((el.querySelector('#acc-state') as HTMLSelectElement).value).toBe('9');
+      button('CANCEL').click();
+      await settle();
+
+      tabs()[0].click();
+      await settle();
+      expect(el.querySelectorAll('tbody tr').length).toBe(2);
     });
 
     it('counts active and blocked logins, filters by status and shows the user with initials', async () => {

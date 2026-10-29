@@ -65,6 +65,16 @@ describe('AssessmentFeesPage', () => {
     expect(el.querySelector('#coupon-Silver')).toBeNull();
   });
 
+  it('shows a card per level, the type switch and the net payable columns highlighted', () => {
+    expect([...el.querySelectorAll('.af-level h5')].map((h) => h.textContent!.trim())).toEqual(['Bronze', 'Silver']);
+    const types = [...el.querySelectorAll('[role=group][aria-label="Enterprise type"] button')];
+    expect(types.map((b) => b.textContent!.trim())).toEqual(['Micro', 'Small', 'Medium', 'Rejected']);
+    expect(types[0].getAttribute('aria-pressed')).toBe('true');
+    const first = el.querySelector('table.fees tbody tr')!;
+    expect([...first.querySelectorAll('td.hl-pay')].map((td) => td.textContent!.trim())).toEqual(['2,360.00', '0.00', '0.00']);
+    expect(el.querySelector('.save-bar.is-dirty')).toBeNull();
+  });
+
   it('previews server-computed amounts and saves only fee and coupon', async () => {
     setInput('#fee-Bronze', '12000');
     await settle(fixture);
@@ -78,7 +88,7 @@ describe('AssessmentFeesPage', () => {
     preview.flush({ ...micro, rows: [row(1, 'Bronze', 12000, null, 2832), micro.rows[1], micro.rows[2]] });
     await settle(fixture);
     expect(el.textContent).toContain('2,832.00');
-    expect(el.querySelector('.alert-warning')).not.toBeNull();
+    expect(el.querySelector('.save-bar.is-dirty')!.textContent).toContain('not saved yet');
 
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
@@ -98,14 +108,14 @@ describe('AssessmentFeesPage', () => {
     await settle(fixture);
     expect(el.querySelector('.alert-danger')!.textContent).toContain('cannot be more than the total');
 
-    const select = el.querySelector('#msmeType') as HTMLSelectElement;
-    select.value = 'Rejected';
-    select.dispatchEvent(new Event('change'));
+    const rejected = [...el.querySelectorAll('[role=group][aria-label="Enterprise type"] button')].find((b) => b.textContent!.trim() === 'Rejected') as HTMLButtonElement;
+    rejected.click();
     await settle(fixture);
     http.expectOne('/api/staff/fees/Rejected').flush({
       enterpriseType: 'Rejected', levels: [{ certification: 'Bronze', assessmentFee: 5000, coupon: null, hasCouponRows: false }], rows: [row(9, 'Bronze', 5000, null, 5900)],
     });
     await settle(fixture);
     expect(el.querySelector('#coupon-Bronze')).toBeNull();
+    expect(rejected.getAttribute('aria-pressed')).toBe('true');
   });
 });
