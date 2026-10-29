@@ -67,6 +67,14 @@ public sealed class MsmeStatus : ServiceResponse
     public CertificationDetails? silver { get; set; }
     public CertificationDetails? gold { get; set; }
 
+    /// <summary>V4: ZED-X (level code ZEDX); left out of the JSON when not known.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ZEDXStatus { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ZEDXStatusOfNc { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CertificationDetails? zedx { get; set; }
+
     public string? latestCertification { get; set; }
     public string? dateOfAvail { get; set; }
     public string? joiningRewardAmount { get; set; }

@@ -384,4 +384,37 @@ public sealed class AppFormsTests : IDisposable
         Assert.Equal((AppFormCatalogue.ConsultantBasicInfo, "ZEDCC0001"), (saved.Form, saved.By));
         Assert.Equal("Yes", saved.Values["cf_plan"]);
     }
+
+    [Fact]
+    public async Task A_field_limited_to_levels_and_nic_sectors_is_asked_only_of_those_units()
+    {
+        Stage();
+        var on = new DateTime(2026, 10, 1, 10, 0, 0, DateTimeKind.Utc);
+        _store.Rows.Add(new AppFormFieldRow(Msme, "cf_zedx", true, "ZED-X question", null, AppFieldTypes.Text, true, true, 25, "basic", null, "ADMIN1", on, Levels: "ZEDX"));
+        _store.Rows.Add(new AppFormFieldRow(Msme, "cf_it", true, "IT question", null, AppFieldTypes.Text, true, true, 26, "basic", null, "ADMIN1", on, NicSectors: "62"));
+        _store.Rows.Add(new AppFormFieldRow(Msme, "cf_metals", true, "Metals question", null, AppFieldTypes.Text, false, true, 27, "basic", null, "ADMIN1", on,
+            Levels: "Bronze,ZEDX", NicSectors: "24,25"));
+        _host.Sql.Queries[AppFormUnit.SectorSql] = _ => ["24 - Manufacture of basic metals"];
+
+        // The form as a whole: every field, with where it applies.
+        var all = await Definition(Msme);
+        Assert.Contains("cf_zedx", Keys(all));
+        Assert.Equal(["ZEDX"], FieldOf(all, "cf_zedx").GetProperty("levels").EnumerateArray().Select(l => l.GetString()));
+        Assert.Equal(["62"], FieldOf(all, "cf_it").GetProperty("nicSectors").EnumerateArray().Select(l => l.GetString()));
+
+        // For this Bronze unit of NIC 24: the metals question only.
+        var r = await Client().GetAsync($"/Forms/Definition?form={Msme}&zedId={Zed}&certificationType=Bronze");
+        var mine = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        var keys = Keys(mine);
+        Assert.Contains("cf_metals", keys);
+        Assert.DoesNotContain("cf_zedx", keys);
+        Assert.DoesNotContain("cf_it", keys);
+
+        // Its submit does not require the ZED-X and IT questions, and their answers are not taken.
+        AssertOk(await Post("/Msme/SubmitBasicInformation", MsmeRequest(customFields: new { cf_zedx = "x", cf_metals = "Steel" },
+            formVersion: mine.GetProperty("version").GetString())));
+        var saved = Assert.Single(_store.Saved).Values;
+        Assert.Equal("Steel", saved["cf_metals"]);
+        Assert.False(saved.ContainsKey("cf_zedx"));
+    }
 }

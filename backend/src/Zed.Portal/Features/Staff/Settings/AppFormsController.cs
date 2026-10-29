@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using Zed.Core.Data;
 using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -17,7 +18,7 @@ namespace Zed.Portal.Features.Staff.Settings;
 [Route("api/staff/settings/app-forms")]
 [StaffRoles(UserRole.Admin)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<AppFormsController> log) : StaffApiController
+public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExecutor db, ILogger<AppFormsController> log) : StaffApiController
 {
     public const int MaxCustomFields = 50;
     public const int MaxLabel = 200;
@@ -29,14 +30,19 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
     public sealed record FieldItem(string Key, string Label, string? Help, string? Heading, string Type, bool Required, bool Enabled,
         bool Active, bool Custom, string Section, int Order, IReadOnlyList<string>? Options, string? OptionsSource, int? MaxItems,
         string? ShownWhen, string? StandardLabel, string? StandardHelp, bool? StandardRequired, bool Customised, string? UpdatedBy,
-        DateTime? UpdatedOn, IReadOnlyList<FieldItem>? Columns);
+        DateTime? UpdatedOn, IReadOnlyList<FieldItem>? Columns, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null);
 
+    public sealed record LevelOption(string Code, string Name);
+
+    /// <param name="Levels">The certification levels a field can be limited to (Administration → Certification Levels).</param>
     public sealed record FormDetails(FormItem Form, string Version, bool Numbered, IReadOnlyList<AppFormSection> Sections,
-        IReadOnlyList<string> CustomTypes, IReadOnlyList<FieldItem> Fields);
+        IReadOnlyList<string> CustomTypes, IReadOnlyList<FieldItem> Fields, IReadOnlyList<LevelOption>? Levels = null);
 
     /// <summary>Add (no key) or save a field. A standard field takes only the label, help, required and enabled.</summary>
+    /// <param name="Levels">V4: the level codes it is asked for; none = all levels.</param>
+    /// <param name="NicSectors">V4: the NIC 2-digit sectors of the units it is asked of; none = all sectors.</param>
     public sealed record FieldRequest(string? Key, string? Label, string? Help, string? Type, bool Required, bool Enabled = true,
-        string? Section = null, IReadOnlyList<string>? Options = null);
+        string? Section = null, IReadOnlyList<string>? Options = null, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null);
 
     public sealed record EnabledRequest(string? Key, bool Enabled);
 
@@ -60,7 +66,8 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
     public async Task<ActionResult<FormDetails>> Get(string form, CancellationToken ct)
     {
         if (await forms.GetAsync(host.System, form, ct) is not { } f) return NotFound();
-        return new FormDetails(Item(f), f.Version, f.Spec.Numbered, f.Spec.Sections, AppFieldTypes.Custom, f.Fields.Select(x => Field(f, x)).ToList());
+        var levels = (await CertLevels.CertificationLevels.AllAsync(db, log, ct)).Select(l => new LevelOption(l.Code, l.Name)).ToList();
+        return new FormDetails(Item(f), f.Version, f.Spec.Numbered, f.Spec.Sections, AppFieldTypes.Custom, f.Fields.Select(x => Field(f, x)).ToList(), levels);
     }
 
     [HttpPost("{form}/fields")]
@@ -69,11 +76,13 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
         if (await forms.GetAsync(host.System, form, ct) is not { } f) return NotFound();
         if (f.CustomFields.Count() >= MaxCustomFields) return this.Problem400($"A form can have at most {MaxCustomFields} fields of your own.");
         if (CustomError(f, req, out var section, out var options) is { } error) return this.Problem400(error);
+        var (levels, sectors, scopeError) = await ScopeAsync(req, ct);
+        if (scopeError is not null) return this.Problem400(scopeError);
 
         var key = NewKey(f, req.Label!);
         var order = f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10;
         var row = new AppFormFieldRow(f.Spec.Key, key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(), req.Required,
-            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null);
+            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors);
         if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "add a field to", f) is { } failed) return failed;
         log.LogInformation("App form {Form}: field {Key} ({Type}) added by {UserId}", f.Spec.Key, key, row.Type, UserId);
         return new AddedResponse("Field added. The apps show it the next time they load the form.", key);
@@ -84,13 +93,15 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
     {
         if (await forms.GetAsync(host.System, form, ct) is not { } f) return NotFound();
         if (f.Find(req.Key) is not { } field) return NotFound();
+        var (levels, sectors, scopeError) = await ScopeAsync(req, ct);
+        if (scopeError is not null) return this.Problem400(scopeError);
 
         if (field.Custom)
         {
             if (CustomError(f, req, out var section, out var options) is { } error) return this.Problem400(error);
             var row = new AppFormFieldRow(f.Spec.Key, field.Key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(),
                 req.Required, req.Enabled, section == field.Section ? field.Order : f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10,
-                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null);
+                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors);
             if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "save a field of", f) is { } failed) return failed;
         }
         else
@@ -98,7 +109,7 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
             if (req.Type is { Length: > 0 } type && !string.Equals(type.Trim(), field.Type, StringComparison.OrdinalIgnoreCase))
                 return this.Problem400("The type of a standard field cannot be changed.");
             if (LabelError(req.Label, req.Help) is { } error) return this.Problem400(error);
-            var row = StandardRow(f, f.KeyOf(req.Key)!, field, req.Label!.Trim(), Clean(req.Help), req.Required, req.Enabled);
+            var row = StandardRow(f, f.KeyOf(req.Key)!, field, req.Label!.Trim(), Clean(req.Help), req.Required, req.Enabled, levels, sectors);
             if (await WriteAsync(() => SaveStandardAsync(row, ct), "save a field of", f) is { } failed) return failed;
         }
         log.LogInformation("App form {Form}: field {Key} saved by {UserId} (required {Required}, enabled {Enabled})",
@@ -113,8 +124,9 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
         if (f.Find(req.Key) is not { } field) return NotFound();
         var row = field.Custom
             ? new AppFormFieldRow(f.Spec.Key, field.Key, true, field.Label, field.Help, field.Type, field.Required, req.Enabled, field.Order, field.Section,
-                field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null)
-            : StandardRow(f, f.KeyOf(req.Key)!, field, field.Label, field.Help, field.Required, req.Enabled);
+                field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null, AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors))
+            : StandardRow(f, f.KeyOf(req.Key)!, field, field.Label, field.Help, field.Required, req.Enabled,
+                AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors));
         if (await WriteAsync(() => field.Custom ? forms.Store.SaveFieldAsync(row, UserId, ct) : SaveStandardAsync(row, ct), "change", f) is { } failed)
             return failed;
         log.LogInformation("App form {Form}: field {Key} {State} by {UserId}", f.Spec.Key, field.Key, req.Enabled ? "enabled" : "disabled", UserId);
@@ -159,10 +171,11 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
         new(x.Key, x.Label, x.Help, x.Heading, x.Type, x.Required, x.Enabled, x.Active, x.Custom, x.Section, x.Order, x.Options, x.OptionsSource,
             x.MaxItems, x.When is { } w ? $"{(f.Find(w.Field)?.Label ?? w.Field)} is {w.EqualsValue}" : null,
             x.Standard?.Label, x.Standard?.Help, x.Standard?.Required, x.Customised, x.UpdatedBy, x.UpdatedOn,
-            x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList());
+            x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList(), x.Levels, x.NicSectors);
 
     /// <summary>The row of a standard field: only what differs from the catalogue is stored.</summary>
-    private static AppFormFieldRow StandardRow(EffectiveAppForm f, string key, AppField field, string label, string? help, bool required, bool enabled)
+    private static AppFormFieldRow StandardRow(EffectiveAppForm f, string key, AppField field, string label, string? help, bool required, bool enabled,
+        string? levels = null, string? sectors = null)
     {
         var s = field.Standard!;
         return new AppFormFieldRow(f.Spec.Key, key, false,
@@ -172,12 +185,35 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ILogger<
             required == s.Required ? null : required,
             enabled,
             field.Order == s.Order ? null : field.Order,
-            null, null, null, null);
+            null, null, null, null, levels, sectors);
+    }
+
+    /// <summary>The levels and NIC sectors chosen (stored comma-separated; none chosen = all), or what is wrong with them.</summary>
+    private async Task<(string? Levels, string? Sectors, string? Error)> ScopeAsync(FieldRequest req, CancellationToken ct)
+    {
+        var levels = AppFormUnit.Join(req.Levels);
+        if (levels is not null)
+        {
+            var known = (await CertLevels.CertificationLevels.AllAsync(db, log, ct)).Select(l => l.Code).ToList();
+            if (AppFormUnit.Split(levels).FirstOrDefault(l => !known.Contains(l, StringComparer.OrdinalIgnoreCase)) is { } unknown)
+                return (null, null, $"Unknown certification level {unknown}.");
+            // Stored in the levels' own spelling (ZEDX, Bronze), as the apps send them.
+            levels = AppFormUnit.Join(AppFormUnit.Split(levels).Select(l => known.First(k => string.Equals(k, l, StringComparison.OrdinalIgnoreCase))));
+            if (levels.Length > 300) return (null, null, "Too many levels chosen.");
+        }
+        var sectors = AppFormUnit.Join(req.NicSectors);
+        if (sectors is not null)
+        {
+            if (AppFormUnit.Split(sectors).FirstOrDefault(c => c.Length != 2 || !c.All(char.IsAsciiDigit)) is { } bad)
+                return (null, null, $"{bad} is not a NIC 2-digit sector.");
+            if (sectors.Length > 2000) return (null, null, "Too many NIC sectors chosen.");
+        }
+        return (levels, sectors, null);
     }
 
     /// <summary>A standard field with nothing changed has no row (the same as Reset).</summary>
     private Task SaveStandardAsync(AppFormFieldRow row, CancellationToken ct) =>
-        row is { Label: null, Help: null, Required: null, Enabled: true, SortOrder: null }
+        row is { Label: null, Help: null, Required: null, Enabled: true, SortOrder: null, Levels: null, NicSectors: null }
             ? forms.Store.ResetAsync(row.FormKey, row.FieldKey, ct)
             : forms.Store.SaveFieldAsync(row, UserId, ct);
 

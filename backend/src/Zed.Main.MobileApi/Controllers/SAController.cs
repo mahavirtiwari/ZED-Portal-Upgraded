@@ -476,7 +476,7 @@ public sealed class SAController(
         if (!st.OpenMeetingSubmitted) return Fail(OpenNotSubmitted + request.zedId);
         // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
         var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.AssessorBasicInfo, portal.System,
-            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct, request.zedId, request.certificationType);
         if (appForm.Error is { } formError) return Fail(formError);
         // The old code joined the list without a null check and failed here; it may be left out once the Admin made it optional or hid it.
         if (info.energySources is null)

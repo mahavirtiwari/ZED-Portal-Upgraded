@@ -15,7 +15,8 @@ public static partial class AssessmentInput
     public static bool IsId(string? value) => value is not null && IdPattern().IsMatch(value);
 
     /// <summary>Certification levels of a desktop assessment (MsmeCertifications.Certification).</summary>
-    public static readonly string[] Levels = ["Bronze", "Silver", "Gold"];
+    /// <remarks>ZEDX = ZED-X (migrations 0028 / 0029), a site level like Silver and Gold.</remarks>
+    public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
 
     /// <summary>"bronze" → "Bronze"; null when not a level.</summary>
     public static string? Level(string? value) =>

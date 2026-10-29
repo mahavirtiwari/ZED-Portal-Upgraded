@@ -65,7 +65,7 @@ public sealed class RemoteAssessmentController(
 
     /// <summary>Surveillance: the remote assessment runs on the agency's meeting link (no Twilio).</summary>
     private bool MeetingMode => host.System == PortalSystem.Surveillance;
-    public static readonly string[] Levels = ["Silver", "Gold"];
+    public static readonly string[] Levels = ["Silver", "Gold", "ZEDX"];
 
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 

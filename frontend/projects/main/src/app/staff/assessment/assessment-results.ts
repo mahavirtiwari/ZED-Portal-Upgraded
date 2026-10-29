@@ -8,6 +8,7 @@ import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, text, useLegacyPort
 import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
+import { levelName } from '../../msme/shared/levels';
 
 /** Certificates and reports for staff (authorised downloads, same visibility as the DA review page). */
 const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
@@ -45,7 +46,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
           <div class="filter">
             <label class="form-label" for="resLevel">Certification Level</label>
             <select class="form-select" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
-              @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+              @for (l of levels; track l) { <option [value]="l">{{ levelName(l) }}</option> }
             </select>
           </div>
         } @else {
@@ -60,7 +61,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
             <label class="form-label" for="resLevel">{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</label>
             <select class="form-select" id="resLevel" [(ngModel)]="level" (ngModelChange)="search()">
               <option value="">Show All</option>
-              @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+              @for (l of levels; track l) { <option [value]="l">{{ levelName(l) }}</option> }
             </select>
           </div>
           <div class="filter">
@@ -333,7 +334,8 @@ export class AssessmentResultsPage {
   private readonly system = inject(ASSESSMENT_SYSTEM);
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.system === 'main' ? ['Bronze', 'Silver', 'Gold', 'ZEDX'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levelName = levelName;
   /**
    * Consultancy "View Details": the milestone review page (the old SaDetails). The route of the consultancy milestone
    * page replaces this when it is wired (coordinator).

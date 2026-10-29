@@ -76,7 +76,8 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         "AgencyName", "CertificationBodyUserId", "ModeOfAssessment", "AssessmentDate", "CertificationStatus", "RowNumber",
     ];
 
-    public sealed record Assessor(string UserId, string UserName);
+    /// <param name="SectorActivity">V4: Manufacturing, Services or Both (null: not set, no limit).</param>
+    public sealed record Assessor(string UserId, string UserName, string? SectorActivity = null);
 
     public sealed record AllotmentsResponse(IReadOnlyList<Dictionary<string, object?>> Units, IReadOnlyList<Assessor> Assessors);
 
@@ -91,7 +92,16 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     public async Task<ActionResult<AllotmentsResponse>> Allotments(CancellationToken ct)
     {
         var sets = await AgencyListAsync(null, null, ct);
-        if (!Surveillance) return new AllotmentsResponse(Pick(sets[0], AllotmentFields), Assessors(sets));
+        if (!Surveillance)
+        {
+            // V4: each unit's kind (Manufacturing / Services) and each assessor's, so the page offers only those who match.
+            var types = await Users.UserSectorActivity.SectorTypesAsync(db, log, ct);
+            var rows = Pick(sets[0], AllotmentFields);
+            foreach (var (row, raw) in rows.Zip(sets[0]))
+                row["SectorCategory"] = Users.UserSectorActivity.UnitCategory(raw.Text("Activity"), raw.Text("TwoDigitActivity"), types);
+            var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
+            return new AllotmentsResponse(rows, Assessors(sets).Select(a => a with { SectorActivity = activities.GetValueOrDefault(a.UserId) }).ToList());
+        }
 
         var units = Pick(sets[0], SurveillanceAllotmentFields);
         var allotted = units.Where(u => u.Text("SiteAssessorId").Length > 0).ToList();
@@ -151,6 +161,14 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         if (!assessors.Any(a => string.Equals(a.UserId, lead, StringComparison.OrdinalIgnoreCase)) ||
             (co is not null && !assessors.Any(a => string.Equals(a.UserId, co, StringComparison.OrdinalIgnoreCase))))
             return this.Problem400("Please select an assessor of your agency.");
+        if (!Surveillance)
+        {
+            var category = Users.UserSectorActivity.UnitCategory(unit.Text("Activity"), unit.Text("TwoDigitActivity"),
+                await Users.UserSectorActivity.SectorTypesAsync(db, log, ct));
+            foreach (var id in new[] { lead, co }.OfType<string>())
+                if (await Users.UserSectorActivity.OfUserAsync(db, id!, log, ct) is var activity && !Users.UserSectorActivity.Serves(activity, category))
+                    return this.Problem400($"{id} assesses {activity} units only; the unit is {category}.");
+        }
 
         try
         {

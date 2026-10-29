@@ -1,3 +1,4 @@
+using Zed.Core.Data;
 using System.Data.Common;
 using System.Text.Json;
 using Zed.Core.Forms;
@@ -33,11 +34,16 @@ internal sealed class AppFormSubmission
     /// <summary>The refusal to answer with (status "0"), or null.</summary>
     public string? Error { get; }
 
+    /// <param name="zedId">With <paramref name="certificationType"/>: the unit and level the form is filled for. The Admin's
+    /// fields limited to other levels or NIC sectors are then not asked of it (V4, migration 0030).</param>
     public static async Task<AppFormSubmission> CheckAsync(HttpContext http, string formKey, PortalSystem system,
-        IReadOnlyDictionary<string, JsonElement>? customFields, string? formVersion, AppFormAnswers standard, CancellationToken ct)
+        IReadOnlyDictionary<string, JsonElement>? customFields, string? formVersion, AppFormAnswers standard, CancellationToken ct,
+        string? zedId = null, string? certificationType = null)
     {
         var forms = http.RequestServices.GetRequiredService<AppForms>();
-        var form = await forms.GetAsync(system, formKey, ct) ?? throw new InvalidOperationException($"{formKey} is not a form of {system}.");
+        var unit = string.IsNullOrWhiteSpace(zedId) || string.IsNullOrWhiteSpace(certificationType) ? null
+            : await AppFormUnit.ForAsync(http.RequestServices.GetRequiredService<ISqlExecutor>(), zedId.Trim(), certificationType, ct);
+        var form = await forms.GetAsync(system, formKey, ct, unit) ?? throw new InvalidOperationException($"{formKey} is not a form of {system}.");
         var strict = !string.IsNullOrWhiteSpace(formVersion);
         var check = AppFormRules.Check(form, customFields, standard, strict);
         var error = check.Error;

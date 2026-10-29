@@ -31,7 +31,7 @@ public sealed partial class MsmeController
     /// </summary>
     internal static readonly IReadOnlySet<string> PathCertifications = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
-        "Bronze", "Silver", "Gold",
+        "Bronze", "Silver", "Gold", "ZEDX",
         "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance",
         "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
         "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
@@ -64,7 +64,7 @@ public sealed partial class MsmeController
         public bool NcOpen => NcCount > 0 && (NcCount > 5 || CurrentNcStatus == 1);
     }
 
-    /// <summary>Null when the level is not Bronze/Silver/Gold or the ZED ID is unknown.</summary>
+    /// <summary>Null when the level is not Bronze/Silver/Gold/ZED-X or the ZED ID is unknown.</summary>
     private async Task<LevelStage?> StageAsync(string? zedId, string? certificationType, CancellationToken ct)
     {
         var level = certificationType?.Trim().ToLowerInvariant() switch
@@ -72,10 +72,13 @@ public sealed partial class MsmeController
             "bronze" => "Bronze",
             "silver" => "Silver",
             "gold" => "Gold",
+            "zedx" => ZedXAppStatus.Level,
             _ => null,
         };
         if (level is null || string.IsNullOrWhiteSpace(zedId)) return null;
         var row = (await db.QueryProcMultipleAsync("SP_APP_MSME_STATUS", new { ZedId = zedId }, ct)).FirstRow(0);
+        // ZED-X's columns are not in the procedure (V4, migrations 0028-0031).
+        if (level == ZedXAppStatus.Level && row.Count > 0) await ZedXAppStatus.MergeAsync(db, zedId, row, log, ct);
         // The status columns are NULL when there is no Msme row for the ZED ID.
         if (!row.TryGetValue(level + "Status", out var status) || status is null or DBNull) return null;
         var nc = row.Int(level + "StatusOfNc");

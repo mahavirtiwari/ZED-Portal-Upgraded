@@ -20,6 +20,7 @@ describe('AppFormsPage', () => {
     { key: 'assessor.basicInfo', name: 'Basic Information', app: 'Site assessment app', fields: 3, customFields: 0, disabled: 0, updatedOn: null },
   ];
   const details = (): AppFormDetails => ({
+    levels: [{ code: 'Bronze', name: 'Bronze' }, { code: 'ZEDX', name: 'ZED-X' }],
     form: forms[0],
     version: 'abc',
     numbered: false,
@@ -67,6 +68,7 @@ describe('AppFormsPage', () => {
     el = fixture.nativeElement;
     await settle();
     http.expectOne(url).flush(forms);
+    http.expectOne('/api/staff/masters/sectors').flush([{ id: 1, code: '24', name: 'Basic metals' }, { id: 2, code: '62', name: 'IT services' }]);
     await settle();
     http.expectOne(formUrl).flush(details());
     await settle();
@@ -104,13 +106,18 @@ describe('AppFormsPage', () => {
     expect(dialog.textContent).toContain('the type of a standard field cannot be changed');
     await type(dialog.querySelector('#fieldHelp') as HTMLTextAreaElement, 'Statutory audits do not count');
     (dialog.querySelector('#fieldRequired') as HTMLInputElement).click();
+    // V4: asked for ZED-X only, of units of NIC sector 62.
+    const pick = (id: string, label: string) =>
+      ([...dialog.querySelectorAll(`#${id} ~ ul label, zed-multi-select label`)].find((l) => l.textContent!.trim() === label)!.querySelector('input') as HTMLInputElement).click();
+    pick('fieldLevels', 'ZED-X');
+    pick('fieldSectors', '62 - IT services');
     await settle();
     button('SAVE', dialog).click();
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body).toEqual({
       key: 'auditsConducted', label: 'Audited by a third party?', help: 'Statutory audits do not count', type: null, required: false, enabled: true,
-      section: null, options: null,
+      section: null, options: null, levels: ['ZEDX'], nicSectors: ['62'],
     });
     put.flush({ message: 'Field saved.' });
     await reloaded('Field saved.');
@@ -138,6 +145,7 @@ describe('AppFormsPage', () => {
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
     expect(post.request.body).toEqual({
       key: null, label: 'Sector of the unit', help: null, type: 'dropdown', required: true, enabled: true, section: 'basic', options: ['Auto', 'Textile'],
+      levels: [], nicSectors: [],
     });
     post.flush({ title: 'Please add at least one choice.' }, { status: 400, statusText: 'Bad Request' });
     await settle();

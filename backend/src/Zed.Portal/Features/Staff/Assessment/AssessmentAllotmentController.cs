@@ -30,7 +30,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
 {
     public sealed record ListResponse(IReadOnlyList<Dictionary<string, object?>> Rows);
 
-    public sealed record Person(string UserId, string UserName);
+    /// <param name="SectorActivity">V4: Manufacturing, Services or Both (null: not set, no limit).</param>
+    public sealed record Person(string UserId, string UserName, string? SectorActivity = null);
 
     /// <summary>Allot screen (Assessment/Allot): records waiting for an agency or re-allotment.</summary>
     [HttpGet("allot")]
@@ -91,7 +92,12 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         // Bronze surveillance goes only to agencies allowed for it (the old Allot page filtered on AllowBronzeSurveillance).
         var column = level != "Bronze" ? "SiteVerification"
             : host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification";
-        return rows.Where(r => AllotmentLists.Flag(r, column)).Select(r => new Person(r.Text("UserId"), r.Text("UserName")));
+        // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
+        var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
+        var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
+        return rows.Where(r => AllotmentLists.Flag(r, column))
+            .Select(r => new Person(r.Text("UserId"), r.Text("UserName"), activities.GetValueOrDefault(r.Text("UserId"))))
+            .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category));
     }
 }
 

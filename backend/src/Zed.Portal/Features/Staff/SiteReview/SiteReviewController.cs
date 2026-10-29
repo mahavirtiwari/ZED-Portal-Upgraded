@@ -50,7 +50,7 @@ public sealed class SiteReviewController(
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     /// <summary>Levels with a site assessment.</summary>
-    private static readonly string[] SiteLevels = ["Silver", "Gold"];
+    private static readonly string[] SiteLevels = ["Silver", "Gold", "ZEDX"];
 
     private static readonly string[] MsmeFields =
     [

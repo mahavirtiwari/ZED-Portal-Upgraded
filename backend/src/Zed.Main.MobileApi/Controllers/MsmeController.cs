@@ -149,6 +149,10 @@ public sealed partial class MsmeController(
         bronze = Level(st, "Bronze"),
         silver = Level(st, "Silver"),
         gold = Level(st, "Gold"),
+        // V4: ZED-X, once its columns are in the row (GetMsmeStatus adds them; left out for the apps that do not know it).
+        ZEDXStatus = st.ContainsKey("ZEDXStatus") ? st.Int("ZEDXStatus") : null,
+        ZEDXStatusOfNc = st.ContainsKey("ZEDXStatus") ? st.Int("ZEDXStatusOfNc") : null,
+        zedx = st.ContainsKey("ZEDXStatus") ? Level(st, "ZEDX") : null,
         financialAssistanceStatus = st.Int("FinancialAssistanceStatus"),
         latestCertification = st.Text("latestCertification"),
         dateOfAvail = st.Text("dateOfAvail"),

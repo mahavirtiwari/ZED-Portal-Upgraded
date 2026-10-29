@@ -17,8 +17,57 @@ namespace Zed.Core.Forms;
 /// null columns keep the standard value, the type and section never change) or a field the Admin added (all columns set).
 /// A column of a row field is stored as <c>rows/column</c>.
 /// </summary>
+/// <param name="Levels">V4 (migration 0030): the certification levels the field is asked for, comma-separated codes; null = all.</param>
+/// <param name="NicSectors">V4 (migration 0030): the NIC 2-digit sectors of the units it is asked of, comma-separated; null = all.</param>
 public sealed record AppFormFieldRow(string FormKey, string FieldKey, bool Custom, string? Label, string? Help, string? Type, bool? Required,
-    bool Enabled, int? SortOrder, string? Section, string? OptionsJson, string? UpdatedBy, DateTime? UpdatedOn);
+    bool Enabled, int? SortOrder, string? Section, string? OptionsJson, string? UpdatedBy, DateTime? UpdatedOn,
+    string? Levels = null, string? NicSectors = null);
+
+/// <summary>
+/// The unit and level a form is filled for: a field limited to other levels or NIC sectors is not shown to it (V4). The
+/// level is the certification's (BronzeSurveillance and SilverMilestone2 count as Bronze and Silver); the sector is the
+/// unit's NIC 2-digit code (LEFT(Msme.TwoDigitActivity, 2)), null when not known (then the sector limits do not apply).
+/// </summary>
+public sealed record AppFormUnit(string Level, string? NicSector)
+{
+    public static string LevelOf(string certificationType)
+    {
+        var t = certificationType.Trim();
+        var cut = t.IndexOf("Surveillance", StringComparison.OrdinalIgnoreCase);
+        if (cut < 0) cut = t.IndexOf("Milestone", StringComparison.OrdinalIgnoreCase);
+        return cut > 0 ? t[..cut] : t;
+    }
+
+    public static string? SectorOf(string? twoDigitActivity)
+    {
+        var t = twoDigitActivity?.TrimStart() ?? "";
+        return t.Length >= 2 && char.IsAsciiDigit(t[0]) && char.IsAsciiDigit(t[1]) ? t[..2] : null;
+    }
+
+    public const string SectorSql = "SELECT TOP 1 TwoDigitActivity FROM dbo.Msme WHERE ZedId = @ZedId;";
+
+    /// <summary>The unit of a request, its sector read from the database (null when it cannot be read).</summary>
+    public static async Task<AppFormUnit> ForAsync(ISqlExecutor db, string zedId, string certificationType, CancellationToken ct)
+    {
+        string? sector = null;
+        try
+        {
+            sector = SectorOf((await db.QuerySqlAsync<string?>(SectorSql, new { ZedId = zedId }, ct)).FirstOrDefault());
+        }
+        catch (SqlException)
+        {
+            // This system's database has no Msme sector (consultancy): the level limits still apply.
+        }
+        return new AppFormUnit(LevelOf(certificationType), sector);
+    }
+
+    public static IReadOnlyList<string> Split(string? csv) =>
+        (csv ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+    public static string? Join(IEnumerable<string>? values) =>
+        values?.Select(v => v.Trim()).Where(v => v.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal).ToList()
+            is { Count: > 0 } list ? string.Join(",", list) : null;
+}
 
 /// <summary>An answer to an Admin's field (dbo.V4AppFormValues); several answers are a JSON array of strings.</summary>
 public sealed record AppFormValueRow(string FormKey, string ZedId, string CertificationType, string FieldKey, string? Value,
@@ -47,6 +96,11 @@ public interface IAppFormStore
 public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> log) : IAppFormStore
 {
     public const string FieldsSql =
+        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors " +
+        "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
+
+    /// <summary>Before migration 0030 (no Levels / NicSectors yet).</summary>
+    public const string FieldsSql0017 =
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
@@ -62,7 +116,15 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
     {
         try
         {
-            return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql, new { FormKey = Ansi(formKey, 50) }, ct);
+            try
+            {
+                return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql, new { FormKey = Ansi(formKey, 50) }, ct);
+            }
+            catch (SqlException ex) when (ex.Number == 207)
+            {
+                // Invalid column: migration 0030 not applied yet; the fields apply to every level and sector.
+                return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql0017, new { FormKey = Ansi(formKey, 50) }, ct);
+            }
         }
         catch (SqlException ex)
         {
@@ -75,13 +137,15 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
         "MERGE dbo.V4AppFormFields AS t USING (SELECT @FormKey AS FormKey, @FieldKey AS FieldKey) AS s " +
         "ON t.FormKey = s.FormKey AND t.FieldKey = s.FieldKey " +
         "WHEN MATCHED THEN UPDATE SET Custom = @Custom, Label = @Label, Help = @Help, Type = @Type, Required = @Required, Enabled = @Enabled, " +
-        "SortOrder = @SortOrder, Section = @Section, OptionsJson = @OptionsJson, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
-        "WHEN NOT MATCHED THEN INSERT (FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy) " +
-        "VALUES (@FormKey, @FieldKey, @Custom, @Label, @Help, @Type, @Required, @Enabled, @SortOrder, @Section, @OptionsJson, @UpdatedBy);",
+        "SortOrder = @SortOrder, Section = @Section, OptionsJson = @OptionsJson, Levels = @Levels, NicSectors = @NicSectors, " +
+        "UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
+        "WHEN NOT MATCHED THEN INSERT (FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, Levels, NicSectors, UpdatedBy) " +
+        "VALUES (@FormKey, @FieldKey, @Custom, @Label, @Help, @Type, @Required, @Enabled, @SortOrder, @Section, @OptionsJson, @Levels, @NicSectors, @UpdatedBy);",
         new
         {
             FormKey = Ansi(row.FormKey, 50), FieldKey = Ansi(row.FieldKey, 100), row.Custom, row.Label, row.Help, Type = Ansi(row.Type, 20),
-            row.Required, row.Enabled, row.SortOrder, Section = Ansi(row.Section, 50), row.OptionsJson, UpdatedBy = Ansi(User(userId), 50),
+            row.Required, row.Enabled, row.SortOrder, Section = Ansi(row.Section, 50), row.OptionsJson,
+            Levels = Ansi(row.Levels, 300), NicSectors = Ansi(row.NicSectors, 2000), UpdatedBy = Ansi(User(userId), 50),
         }, ct);
 
     public async Task SaveOrderAsync(string formKey, IReadOnlyList<(string FieldKey, int SortOrder)> order, string userId, CancellationToken ct = default)
@@ -167,6 +231,15 @@ public sealed record AppField
     public bool Customised { get; init; }
     public string? UpdatedBy { get; init; }
     public DateTime? UpdatedOn { get; init; }
+    /// <summary>V4: the levels it is asked for (empty = all) and the NIC sectors of the units it is asked of (empty = all).</summary>
+    public IReadOnlyList<string> Levels { get; init; } = [];
+    public IReadOnlyList<string> NicSectors { get; init; } = [];
+
+    /// <summary>Asked of this unit at this level (no unit: the form as a whole, every field applies).</summary>
+    public bool AppliesTo(AppFormUnit? unit) =>
+        unit is null
+        || ((Levels.Count == 0 || Levels.Contains(unit.Level, StringComparer.OrdinalIgnoreCase))
+            && (NicSectors.Count == 0 || unit.NicSector is null || NicSectors.Contains(unit.NicSector, StringComparer.Ordinal)));
 }
 
 /// <summary>A form as it stands on one system: the catalogue merged with the Admin's rows.</summary>
@@ -215,7 +288,8 @@ public sealed class EffectiveAppForm
     public bool NothingRequiredUnder(string prefix) =>
         !Fields.Any(f => f.Active && f.Required && f.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase));
 
-    public static EffectiveAppForm Build(AppFormSpec spec, PortalSystem system, IEnumerable<AppFormFieldRow> rows)
+    /// <param name="unit">The unit and level it is filled for: fields limited to other levels or sectors are not shown (V4).</param>
+    public static EffectiveAppForm Build(AppFormSpec spec, PortalSystem system, IEnumerable<AppFormFieldRow> rows, AppFormUnit? unit = null)
     {
         var saved = new Dictionary<string, AppFormFieldRow>(StringComparer.OrdinalIgnoreCase);
         foreach (var r in rows.Where(r => string.Equals(r.FormKey, spec.Key, StringComparison.OrdinalIgnoreCase))) saved[r.FieldKey] = r;
@@ -244,7 +318,7 @@ public sealed class EffectiveAppForm
 
         // A field shown only for another field's answer is not shown when that field is not shown.
         var byKey = fields.ToDictionary(f => f.Key, StringComparer.OrdinalIgnoreCase);
-        bool Shown(AppField f, int depth) => f.Enabled && (f.When is null || depth > 5 || Controls(f.When.Field, depth + 1));
+        bool Shown(AppField f, int depth) => f.Enabled && f.AppliesTo(unit) && (f.When is null || depth > 5 || Controls(f.When.Field, depth + 1));
         bool Controls(string key, int depth)
         {
             var parts = key.Split(AppFormCatalogue.ColumnSeparator, 2);
@@ -284,6 +358,8 @@ public sealed class EffectiveAppForm
         Customised = r is not null,
         UpdatedBy = r?.UpdatedBy,
         UpdatedOn = r?.UpdatedOn,
+        Levels = AppFormUnit.Split(r?.Levels),
+        NicSectors = AppFormUnit.Split(r?.NicSectors),
     };
 
     private static AppField FromCustom(AppFormFieldRow r, string section) => new()
@@ -301,6 +377,8 @@ public sealed class EffectiveAppForm
         Customised = true,
         UpdatedBy = r.UpdatedBy,
         UpdatedOn = r.UpdatedOn,
+        Levels = AppFormUnit.Split(r.Levels),
+        NicSectors = AppFormUnit.Split(r.NicSectors),
     };
 
     // ---------- The definition the apps get (docs/mobile/APP-FORMS.md) ----------
@@ -349,6 +427,9 @@ public sealed class EffectiveAppForm
         Add("max", f.Max);
         Add("when", f.When is { } w ? new JsonObject { ["field"] = w.Field, ["equals"] = w.EqualsValue } : null);
         Add("columns", f.Columns is { } columns ? new JsonArray([.. columns.Where(c => c.Active).Select(c => (JsonNode)FieldJson(c))]) : null);
+        // V4: where the field applies (for an app that filters itself; a definition asked for a unit is already filtered).
+        Add("levels", f.Levels.Count > 0 ? new JsonArray([.. f.Levels.Select(x => (JsonNode)x)]) : null);
+        Add("nicSectors", f.NicSectors.Count > 0 ? new JsonArray([.. f.NicSectors.Select(x => (JsonNode)x)]) : null);
         return o;
     }
 
@@ -362,8 +443,8 @@ public sealed class AppForms(IAppFormStore store)
     public IAppFormStore Store => store;
 
     /// <summary>Null when the form is not one of this system's.</summary>
-    public async Task<EffectiveAppForm?> GetAsync(PortalSystem system, string? formKey, CancellationToken ct = default) =>
-        AppFormCatalogue.Find(system, formKey) is { } spec ? EffectiveAppForm.Build(spec, system, await store.FieldsAsync(spec.Key, ct)) : null;
+    public async Task<EffectiveAppForm?> GetAsync(PortalSystem system, string? formKey, CancellationToken ct = default, AppFormUnit? unit = null) =>
+        AppFormCatalogue.Find(system, formKey) is { } spec ? EffectiveAppForm.Build(spec, system, await store.FieldsAsync(spec.Key, ct), unit) : null;
 }
 
 /// <summary>

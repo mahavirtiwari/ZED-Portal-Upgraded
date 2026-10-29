@@ -44,6 +44,7 @@ import { AssessmentApi, ListFilter, Row } from './assessment.api';
             <option value="Bronze">Bronze</option>
             <option value="Silver">Silver</option>
             <option value="Gold">Gold</option>
+            <option value="ZEDX">ZED-X</option>
           </select>
         </div>
         <div class="filter">

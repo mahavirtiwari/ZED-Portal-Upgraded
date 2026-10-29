@@ -138,7 +138,7 @@ interface AllotForm {
                 <label class="form-label" for="SiteAssessorId">{{ surveillance ? 'Assessor' : 'Lead Assessor' }}<span class="req">*</span></label>
                 <select id="SiteAssessorId" name="SiteAssessorId" class="form-select" [(ngModel)]="f.siteAssessorId" (ngModelChange)="f.coAssessorId = ''">
                   <option value="">--Select--</option>
-                  @for (a of assessors(); track a.userId) {
+                  @for (a of assessorsFor(f.unit); track a.userId) {
                     <option [value]="a.userId">{{ a.userName }}</option>
                   }
                 </select>
@@ -211,7 +211,15 @@ export class SaAllotmentPage {
   protected readonly form = signal<AllotForm | null>(null);
   protected readonly onsite = ONSITE;
   protected readonly minDate = todayIso();
-  protected readonly coAssessors = (leadId: string) => this.assessors().filter((a) => a.userId !== leadId);
+  /** V4: only assessors who assess the unit's kind (Manufacturing / Services; not set = no limit). */
+  protected assessorsFor(unit: Row): Assessor[] {
+    const category = unit['SectorCategory'];
+    return this.assessors().filter((a) => !category || !a.sectorActivity || a.sectorActivity === 'Both' || a.sectorActivity === category);
+  }
+  protected readonly coAssessors = (leadId: string) => {
+    const unit = this.form()?.unit;
+    return (unit ? this.assessorsFor(unit) : this.assessors()).filter((a) => a.userId !== leadId);
+  };
 
   constructor() {
     if (this.system !== 'consultancy') void this.load();

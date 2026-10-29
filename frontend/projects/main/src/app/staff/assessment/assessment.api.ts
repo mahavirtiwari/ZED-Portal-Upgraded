@@ -10,6 +10,14 @@ export type Row = Record<string, unknown>;
 export interface Person {
   userId: string;
   userName: string;
+  /** V4: Manufacturing, Services or Both; null when not set (no limit). */
+  sectorActivity?: string | null;
+}
+
+/** Whether a person with this sector type may assess a unit of this category (as the server checks). */
+export function serves(person: { sectorActivity?: string | null }, unitCategory: unknown): boolean {
+  const a = person.sectorActivity;
+  return !unitCategory || !a || a === 'Both' || a === unitCategory;
 }
 
 export interface ListResponse {
@@ -113,7 +121,7 @@ export interface FinalSubmitCheck {
 export type OpenedType = 'Evidence' | 'SiteExteriorPhoto' | 'ProductPhoto' | 'ProductDescriptionPhoto';
 
 /** Levels a desktop assessment is opened with (MsmeCertifications.Certification). */
-export const LEVELS = ['Bronze', 'Silver', 'Gold'] as const;
+export const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
 
 export function canonicalLevel(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();

@@ -45,7 +45,14 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
     {
         var sets = await List(db, UserId, RoleId, "DA", null, Filter.None, ct);
         string[] extra = Surveillance ? ["DaAssessorName", "LeadInCertification", "CoInCertification"] : ["DaAssessorName"];
-        return new DaAllotmentResponse(Pick(sets[0], [.. ListFields, .. extra]), People(sets[1]), People(sets[Surveillance ? 1 : 2]));
+        // V4: each unit's kind (Manufacturing / Services) and each assessor's, so the page offers only those who match.
+        var types = await Users.UserSectorActivity.SectorTypesAsync(db, log, ct);
+        var rows = Pick(sets[0], [.. ListFields, .. extra]);
+        foreach (var (row, raw) in rows.Zip(sets[0]))
+            row["SectorCategory"] = Users.UserSectorActivity.UnitCategory(raw.Text("Activity"), raw.Text("TwoDigitActivity"), types);
+        var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
+        List<Person> WithActivity(List<Person> people) => people.Select(p => p with { SectorActivity = activities.GetValueOrDefault(p.UserId) }).ToList();
+        return new DaAllotmentResponse(rows, WithActivity(People(sets[1])), WithActivity(People(sets[Surveillance ? 1 : 2])));
     }
 
     public sealed record AllotToAssessorRequest(string? ZedId, string? Certification, string? DesktopAssessorId);
@@ -68,6 +75,10 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         var assessors = People(Surveillance ? sets[1] : level == "Bronze" ? sets[2] : sets[1]);
         var assessor = assessors.FirstOrDefault(a => string.Equals(a.UserId, req.DesktopAssessorId, StringComparison.OrdinalIgnoreCase));
         if (assessor is null) return this.Problem400("Please select valid data.");
+        var category = Users.UserSectorActivity.UnitCategory(row.Text("Activity"), row.Text("TwoDigitActivity"), await Users.UserSectorActivity.SectorTypesAsync(db, log, ct));
+        var activity = await Users.UserSectorActivity.OfUserAsync(db, assessor.UserId, log, ct);
+        if (!Users.UserSectorActivity.Serves(activity, category))
+            return this.Problem400($"This assessor assesses {activity} units only; the unit is {category}.");
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_DA",
             new { ZedId = req.ZedId, Certification = level, DesktopAssessorId = assessor.UserId }, ct);

@@ -184,7 +184,7 @@ public sealed partial class ConsultancySAController
 
         // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
         var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.ConsultantBasicInfo, PortalSystem.Consultancy,
-            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct, request.zedId, request.certificationType);
         if (appForm.Error is { } formError) return Fail(formError);
         appForm.FillOptionalGroups(info);
 

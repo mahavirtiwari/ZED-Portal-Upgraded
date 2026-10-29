@@ -48,7 +48,7 @@ public sealed partial class MsmeController
         var cert = CertificationSegment(request.certificationType);
         // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
         var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.MsmeBasicInfo, PortalSystem.Main,
-            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct, request.userName, request.certificationType);
         if (appForm.Error is { } formError) return Fail(formError);
 
         var uploads = new Uploads(Storage);
@@ -354,6 +354,12 @@ public sealed partial class MsmeController
         var error = await TryExecuteAsync("SP_APP_MSME_FINAL_SUBMIT", args, ct);
         if (error is not null) return Fail(error);
         log.LogInformation("App final submit for {ZedId} {Certification}", request.userName, request.certificationType);
+        // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only: ZED-X's, by the unit's kind (migration 0031).
+        if (string.Equals(request.certificationType?.Trim(), ZedXAppStatus.Level, StringComparison.OrdinalIgnoreCase))
+        {
+            var allot = await TryExecuteAsync("SP_V4_AUTO_ALLOT_AGENCY", new { ZedId = request.userName, CertificationType = ZedXAppStatus.Level }, ct);
+            if (allot is not null) log.LogError("ZED-X auto-allotment of {ZedId} failed: {Error} (is migration 0031 applied?)", request.userName, allot);
+        }
 
         await SendSubmissionMailAsync(request.userName ?? "", request.certificationType ?? "", ct);
         return LegacyJson(new ServiceResponse { status = "1" });

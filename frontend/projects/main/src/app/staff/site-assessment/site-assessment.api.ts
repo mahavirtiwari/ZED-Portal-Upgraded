@@ -13,6 +13,8 @@ export type Row = Record<string, string | number | boolean | string[] | null>;
 export interface Assessor {
   userId: string;
   userName: string;
+  /** V4: Manufacturing, Services or Both; null when not set (no limit). */
+  sectorActivity?: string | null;
 }
 
 export interface AllotmentsResponse {

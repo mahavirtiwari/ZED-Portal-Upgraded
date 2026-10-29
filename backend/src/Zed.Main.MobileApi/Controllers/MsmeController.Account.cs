@@ -134,6 +134,7 @@ public sealed partial class MsmeController
         if (row.Count == 0 || !row.TryGetValue("BronzeStatus", out var bronze) || bronze is null or DBNull)
             return LegacyJson(new MsmeStatus { status = "0", errorMessage = "Invalid ZED ID." });
 
+        await ZedXAppStatus.MergeAsync(db, userName, row, log, ct);
         var status = StatusFrom(row);
         status.status = "1";
         foreach (var (level, details) in new[] { ("Bronze", status.bronze!), ("Silver", status.silver!), ("Gold", status.gold!) })

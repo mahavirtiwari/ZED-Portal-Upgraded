@@ -208,6 +208,33 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
     }
 
     [Fact]
+    public async Task Zedx_goes_only_to_agencies_that_assess_the_units_kind()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets([
+            new { UserId = "AGENCYM", UserName = "Manufacturing agency", SiteVerification = true },
+            new { UserId = "AGENCYS", UserName = "Services agency", SiteVerification = true },
+            new { UserId = "AGENCYB", UserName = "Both", SiteVerification = true },
+            new { UserId = "AGENCYN", UserName = "Not set yet", SiteVerification = true },
+        ]);
+        // The unit: NIC 62, a Services sector in Masters → Sectors.
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.UnitSql] = _ => [new { Activity = "Manufacturing", TwoDigitActivity = "62 - IT" }];
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.SectorTypesSql] = _ => [new { SectorCode = "62", SectorType = "Services" }];
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.ByRoleSql] = _ =>
+            [new { UserId = "AGENCYM", SectorActivity = "Manufacturing" }, new { UserId = "AGENCYS", SectorActivity = "Services" }, new { UserId = "AGENCYB", SectorActivity = "Both" }];
+        // The unit waits for an agency on the Allot list.
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000001", Certification = "ZEDX", CertificationStatus = 2 }]);
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+
+        var agencies = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot/agencies?zedId=ZEDMSME000001&certification=zedx");
+        Assert.Equal(["AGENCYS", "AGENCYB", "AGENCYN"], agencies.EnumerateArray().Select(a => a.GetProperty("userId").GetString()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot",
+            new { zedId = "ZEDMSME000001", certification = "ZEDX", agencyUserId = "AGENCYM" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/assessment/allot",
+            new { zedId = "ZEDMSME000001", certification = "ZEDX", agencyUserId = "AGENCYS" })).StatusCode);
+        Assert.Equal("ZEDX", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY").Single().Args, "Certification"));
+    }
+
+    [Fact]
     public async Task Master_admin_allots_only_to_an_agency_eligible_for_the_level()
     {
         var client = await DaTestUsers.SignInAsync(_host, "MADMIN");

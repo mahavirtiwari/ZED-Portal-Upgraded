@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { CollapseCard } from '../collapse-card';
+import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 
 export interface AppFormItem {
   key: string;
@@ -44,6 +45,9 @@ export interface AppFieldItem {
   updatedBy: string | null;
   updatedOn: string | null;
   columns: AppFieldItem[] | null;
+  /** V4: the level codes it is asked for, and the NIC 2-digit sectors of the units it is asked of; empty = all. */
+  levels?: string[] | null;
+  nicSectors?: string[] | null;
 }
 
 export interface AppFormSection {
@@ -58,6 +62,8 @@ export interface AppFormDetails {
   sections: AppFormSection[];
   customTypes: string[];
   fields: AppFieldItem[];
+  /** The certification levels a field can be limited to (Administration → Certification Levels). */
+  levels?: { code: string; name: string }[] | null;
 }
 
 interface Editing {
@@ -71,6 +77,9 @@ interface Editing {
   enabled: boolean;
   section: string;
   options: string[];
+  /** Empty: all levels / all sectors. */
+  levels: string[];
+  nicSectors: string[];
 }
 
 export const FIELD_TYPES: Record<string, string> = {
@@ -96,7 +105,7 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
  */
 @Component({
   selector: 'zed-staff-app-forms',
-  imports: [DatePipe, FormsModule, CollapseCard],
+  imports: [DatePipe, FormsModule, CollapseCard, MultiSelect],
   template: `
     <div class="page-head">
       <div>
@@ -159,6 +168,7 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
                     @if (f.help) { <small class="d-block">{{ f.help }}</small> }
                     @if (f.shownWhen) { <small class="text-muted d-block">Asked when {{ f.shownWhen }}</small> }
                     @if (f.options?.length) { <small class="text-muted d-block">Choices: {{ f.options!.join(', ') }}</small> }
+                    <small class="d-block scope" [class.text-muted]="!f.levels?.length && !f.nicSectors?.length">{{ scopeText(f) }}</small>
                   </td>
                   <td>{{ typeName(f) }}</td>
                   <td class="text-center"><span class="status-badge" [class.is-info]="f.required" [class.is-inactive]="!f.required">{{ f.required ? 'Yes' : 'No' }}</span></td>
@@ -254,6 +264,18 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
                   <span class="label">Type</span>
                   <span>{{ typeName(e.field!) }} <small class="text-muted">(the type of a standard field cannot be changed)</small></span>
                 }
+                @if (levelOptions().length) {
+                  <label class="label top" for="fieldLevels">Certification levels</label>
+                  <div>
+                    <zed-multi-select inputId="fieldLevels" label="Certification levels" [options]="levelOptions()" [(value)]="e.levels" />
+                    <small class="text-muted d-block">None chosen: asked for every level.</small>
+                  </div>
+                }
+                <label class="label top" for="fieldSectors">NIC sectors</label>
+                <div>
+                  <zed-multi-select inputId="fieldSectors" label="NIC sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" />
+                  <small class="text-muted d-block">None chosen: asked of units of every sector.</small>
+                </div>
               </div>
               <div class="form-check mb-2">
                 <input class="form-check-input" type="checkbox" id="fieldRequired" [(ngModel)]="e.required" />
@@ -306,8 +328,15 @@ export class AppFormsPage {
     return map;
   });
 
+  /** The levels and NIC sectors a field can be limited to. */
+  protected readonly levelOptions = computed<MultiSelectOption[]>(() => (this.details()?.levels ?? []).map((l) => ({ value: l.code, label: l.name })));
+  protected readonly sectorOptions = signal<MultiSelectOption[]>([]);
+
   constructor() {
     void this.loadForms();
+    firstValueFrom(this.http.get<{ code: string; name: string }[]>('/api/staff/masters/sectors'))
+      .then((list) => this.sectorOptions.set(list.map((x) => ({ value: x.code, label: `${x.code} - ${x.name}` }))))
+      .catch(() => undefined);
   }
 
   protected inSection(section: string): AppFieldItem[] {
@@ -319,6 +348,14 @@ export class AppFormsPage {
     const fields = this.inSection(section);
     const off = fields.filter((f) => !f.enabled).length;
     return `${fields.length} ${fields.length === 1 ? 'field' : 'fields'}` + (off ? ` · ${off} disabled` : '');
+  }
+
+  /** "All levels · All sectors", or the levels and sectors it is limited to. */
+  protected scopeText(f: AppFieldItem): string {
+    const names = new Map((this.details()?.levels ?? []).map((l) => [l.code, l.name]));
+    const levels = f.levels?.length ? f.levels.map((l) => names.get(l) ?? l).join(', ') : 'All levels';
+    const sectors = f.nicSectors?.length ? `NIC ${f.nicSectors.join(', ')}` : 'all sectors';
+    return `${levels} · ${sectors}`;
   }
 
   protected typeName(f: AppFieldItem): string {
@@ -345,7 +382,10 @@ export class AppFormsPage {
     const d = this.details();
     if (!d) return;
     this.modalError.set('');
-    this.editing.set({ field: null, custom: true, label: '', help: '', type: 'text', required: false, enabled: true, section: d.sections[0]?.key ?? '', options: [''] });
+    this.editing.set({
+      field: null, custom: true, label: '', help: '', type: 'text', required: false, enabled: true, section: d.sections[0]?.key ?? '', options: [''],
+      levels: [], nicSectors: [],
+    });
   }
 
   protected edit(f: AppFieldItem): void {
@@ -360,6 +400,8 @@ export class AppFormsPage {
       enabled: f.enabled,
       section: f.section,
       options: f.options?.length ? [...f.options] : [''],
+      levels: [...(f.levels ?? [])],
+      nicSectors: [...(f.nicSectors ?? [])],
     });
   }
 
@@ -382,6 +424,8 @@ export class AppFormsPage {
       enabled: e.enabled,
       section: e.custom ? e.section : null,
       options: e.custom && this.isChoice(e.type) ? e.options.map((o) => o.trim()).filter((o) => o) : null,
+      levels: e.levels,
+      nicSectors: e.nicSectors,
     };
     this.busy.set(true);
     this.modalError.set('');

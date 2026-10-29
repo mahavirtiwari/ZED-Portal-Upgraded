@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ASSESSMENT_SYSTEM, Expanded, STATES, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
+import { levelName } from '../../msme/shared/levels';
 
 /**
  * Master admin: allot MSMEs to assessment agencies. Port of Views/Assessment/Allot.cshtml
@@ -45,7 +46,7 @@ import { AssessmentApi, ListFilter, Person, Row } from './assessment.api';
           <label class="form-label" for="allotLevel">{{ consultancy ? 'Desired Certification' : 'Certification Level' }}</label>
           <select class="form-select" id="allotLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
             <option value="">Show All</option>
-            @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+            @for (l of levels; track l) { <option [value]="l">{{ levelName(l) }}</option> }
           </select>
         </div>
         <div class="filter">
@@ -231,7 +232,8 @@ export class AllotPage {
   /** Who the record is allotted to, in the status column. */
   protected readonly party = this.consultancy ? 'CO' : 'Agency';
   /** Handholding is for Silver and Gold only. */
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.main ? ['Bronze', 'Silver', 'Gold', 'ZEDX'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levelName = levelName;
 
   protected filter: Required<ListFilter> = { state: '', certification: '', size: '', gender: '', allotmentType: '' };
   protected readonly pager = new ClientPager();

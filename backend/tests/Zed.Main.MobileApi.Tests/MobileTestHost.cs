@@ -70,10 +70,17 @@ public sealed class FakeSql : ISqlExecutor
     public Task<ResultSets> QueryProcMultipleAsync(string procedure, object? parameters = null, CancellationToken ct = default) => Task.FromResult(Run(procedure, parameters));
     public Task<int> ExecuteProcAsync(string procedure, object? parameters = null, CancellationToken ct = default) { Run(procedure, parameters); return Task.FromResult(1); }
     public Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default) { Run(sql, parameters); return Task.FromResult(1); }
+    /// <summary>Rows of inline queries, by the start of their text (none by default).</summary>
+    public ConcurrentDictionary<string, Func<object?, IEnumerable<object?>>> Queries { get; } = new(StringComparer.OrdinalIgnoreCase);
+
     public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {
         Calls.Enqueue((sql, parameters));
-        return Task.FromResult<IReadOnlyList<T>>([]);
+        var match = Queries.FirstOrDefault(q => sql.StartsWith(q.Key, StringComparison.OrdinalIgnoreCase));
+        if (match.Value is null) return Task.FromResult<IReadOnlyList<T>>([]);
+        IReadOnlyList<T> rows = match.Value(parameters)
+            .Select(r => System.Text.Json.JsonSerializer.Deserialize<T>(System.Text.Json.JsonSerializer.Serialize(r))!).ToList();
+        return Task.FromResult(rows);
     }
 }
 

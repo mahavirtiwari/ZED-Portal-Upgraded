@@ -121,6 +121,34 @@ public sealed class AppFormsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_field_is_limited_to_certification_levels_and_nic_sectors()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+        [
+            new Zed.Portal.Features.CertLevels.CertificationLevel("Bronze", "Bronze", 10, null, null, null, true, "Desktop", 36, true, 15, "{DDMMYYYY}_{ZEDNO}", null, null, null),
+            new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, false, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000),
+        ];
+        var admin = await Admin();
+        var details = await admin.GetFromJsonAsync<System.Text.Json.JsonElement>($"{Url}/{Msme}");
+        Assert.Equal(["Bronze", "ZEDX"], details.GetProperty("levels").EnumerateArray().Select(l => l.GetProperty("code").GetString()));
+
+        await AssertProblem(await admin.PutAsJsonAsync($"{Url}/{Msme}/fields",
+            new { key = "auditsConducted", label = "Audited?", required = true, enabled = true, levels = new[] { "Platinum" } }), "Unknown certification level Platinum.");
+        await AssertProblem(await admin.PutAsJsonAsync($"{Url}/{Msme}/fields",
+            new { key = "auditsConducted", label = "Audited?", required = true, enabled = true, nicSectors = new[] { "6" } }), "6 is not a NIC 2-digit sector.");
+
+        // A standard field asked for ZED-X only, of units of NIC 62 and 24: stored even though nothing else differs.
+        (await admin.PutAsJsonAsync($"{Url}/{Msme}/fields", new
+        {
+            key = "productDetailsList/productName", label = "Name of Product manufactured", required = true, enabled = true,
+            levels = new[] { "zedx" }, nicSectors = new[] { "62", "24", "62" },
+        })).EnsureSuccessStatusCode();
+        var (sql, args) = LastWrite();
+        Assert.StartsWith("MERGE dbo.V4AppFormFields", sql);
+        Assert.Equal(("ZEDX", "24,62"), (Value(args, "Levels"), Value(args, "NicSectors")));
+    }
+
+    [Fact]
     public async Task Adds_a_field_of_the_admins_own_with_its_choices()
     {
         Stored("cf_sector_of_the_unit", custom: true, label: "Sector of the unit", type: "text", order: 500);

@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
-import { AssessmentApi, Person, Row } from './assessment.api';
+import { AssessmentApi, Person, Row, serves } from './assessment.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 /**
@@ -222,7 +222,9 @@ export class DaAllotmentPage {
 
   /** Bronze goes to the agency's Bronze assessors, other levels to its other desktop assessors. */
   protected assessorsFor(s: Row): Person[] {
-    return text(s, 'Certification') === 'Bronze' ? this.bronzeAssessors() : this.assessors();
+    const list = text(s, 'Certification') === 'Bronze' ? this.bronzeAssessors() : this.assessors();
+    // V4: only assessors who assess the unit's kind (Manufacturing / Services).
+    return list.filter((a) => serves(a, s['SectorCategory']));
   }
 
   /**

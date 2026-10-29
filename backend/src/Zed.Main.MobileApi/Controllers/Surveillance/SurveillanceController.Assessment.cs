@@ -46,7 +46,7 @@ public sealed partial class SurveillanceController
         var cert = CertificationSegment(request.certificationType);
         // Admin → App Forms: the Admin's fields (customFields) and, for builds that name the formVersion, the required fields.
         var appForm = await AppFormSubmission.CheckAsync(HttpContext, AppFormCatalogue.MsmeBasicInfo, PortalSystem.Surveillance,
-            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct);
+            request.customFields, request.formVersion, AppFormSubmission.Answers(info), ct, request.userName, request.certificationType);
         if (appForm.Error is { } formError) return Fail(formError);
 
         var uploads = new Uploads(Storage);
