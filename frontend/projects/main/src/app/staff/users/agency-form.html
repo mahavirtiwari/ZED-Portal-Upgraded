@@ -14,106 +14,197 @@
   <div class="alert alert-success" role="status"><strong>{{ success() }}</strong></div>
 }
 
-<form class="zed-card" (ngSubmit)="submit()" novalidate>
-  <div class="form-grid">
-    <label for="userName">{{ consultancy ? 'Consultant Organisation Name' : 'Agency Name' }}<span class="req">*</span></label>
-    <div>
-      <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
-      @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
-    </div>
-    <label for="spocName">SPOC Name<span class="req">*</span></label>
-    <div>
-      <input id="spocName" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
-      @if (missing(model.spocName)) { <span class="help-block">This is required.</span> }
-    </div>
-    <label for="emailId">SPOC Email ID<span class="req">*</span></label>
-    <div>
-      <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required />
-      @if (missing(model.emailId)) { <span class="help-block">Email required.</span> }
-    </div>
-    <label for="mobileNo">SPOC Mobile Number<span class="req">*</span></label>
-    <div>
-      <input id="mobileNo" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required />
-      @if (missing(model.mobileNo)) { <span class="help-block">Mobile No required.</span> }
-    </div>
-    <label class="top" for="address">Registered Address<span class="req">*</span></label>
-    <div>
-      <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address" required></textarea>
-      @if (missing(model.address)) { <span class="help-block">This is required.</span> }
-    </div>
-    <label for="pinCode">PinCode<span class="req">*</span></label>
-    <div>
-      <input id="pinCode" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required />
-      @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
-    </div>
-    <label for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
-    <input id="gstNumber" name="gstNumber" class="form-control" maxlength="20" [(ngModel)]="model.gstNumber" />
-    <label class="top" for="states">Applicable States</label>
-    <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [(value)]="model.states" />
-    <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
-    <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
-    @if (!consultancy) {
-      <span class="label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
-      <div>
-        <div class="activity-choice" role="radiogroup" aria-labelledby="sectorActivity-label">
-          @for (a of activities; track a.value) {
-            <label><input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
-          }
-        </div>
-        <small class="text-muted d-block">Which MSMEs the agency assesses. Its assessors cannot cover more.</small>
-        @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
-      </div>
-    }
-    @if (!consultancy) {
-      <label for="orgPartnerId">Organising Partner</label>
-      <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
-        <option value="">-- Select Orgnising Partner --</option>
-        @for (p of sortedPartners(); track p.userId) {
-          <option [value]="p.userId">{{ partnerLabel(p) }}</option>
-        }
-      </select>
-    }
+<form class="agency-form" (ngSubmit)="submit()" novalidate (input)="changed($event)" (change)="changed($event)">
+  <p class="req-note"><span class="req">*</span> Required</p>
 
-    <span class="label top">Category</span>
+  <section class="zed-card form-section" aria-labelledby="sec-org">
+    <div class="section-head">
+      <span class="step" aria-hidden="true">1</span>
+      <div>
+        <h4 id="sec-org">{{ consultancy ? 'Organisation' : 'Agency' }}</h4>
+        <p>Name, registered address and GST number of the {{ labels.agency.toLowerCase() }}.</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <label for="userName">{{ consultancy ? 'Consultant Organisation Name' : 'Agency Name' }}<span class="req">*</span></label>
+      <div>
+        <input id="userName" name="userName" class="form-control" maxlength="100" [(ngModel)]="model.userName" required />
+        @if (missing(model.userName)) { <span class="help-block">This is required.</span> }
+      </div>
+      <label class="top" for="address">Registered Address<span class="req">*</span></label>
+      <div>
+        <textarea id="address" name="address" class="form-control" maxlength="2000" rows="3" [(ngModel)]="model.address" required></textarea>
+        @if (missing(model.address)) { <span class="help-block">This is required.</span> }
+      </div>
+      <label for="pinCode">PinCode<span class="req">*</span></label>
+      <div class="short">
+        <input id="pinCode" name="pinCode" class="form-control" maxlength="6" inputmode="numeric" [(ngModel)]="model.pinCode" required />
+        @if (missing(model.pinCode)) { <span class="help-block">This is required.</span> }
+      </div>
+      <label for="gstNumber">{{ consultancy ? 'GST Number' : 'GSTIN' }}</label>
+      <div class="short">
+        <input id="gstNumber" name="gstNumber" class="form-control" maxlength="20" [(ngModel)]="model.gstNumber" />
+      </div>
+    </div>
+  </section>
+
+  <section class="zed-card form-section" aria-labelledby="sec-spoc">
+    <div class="section-head">
+      <span class="step" aria-hidden="true">2</span>
+      <div>
+        <h4 id="sec-spoc">SPOC contact</h4>
+        <p>The single point of contact. Login details and messages go to this e-mail address.</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <label for="spocName">SPOC Name<span class="req">*</span></label>
+      <div>
+        <input id="spocName" name="spocName" class="form-control" maxlength="100" [(ngModel)]="model.spocName" required />
+        @if (missing(model.spocName)) { <span class="help-block">This is required.</span> }
+      </div>
+      <label for="emailId">SPOC Email ID<span class="req">*</span></label>
+      <div>
+        <input id="emailId" name="emailId" type="email" class="form-control" maxlength="100" [(ngModel)]="model.emailId" required />
+        @if (missing(model.emailId)) { <span class="help-block">Email required.</span> }
+      </div>
+      <label for="mobileNo">SPOC Mobile Number<span class="req">*</span></label>
+      <div class="short">
+        <input id="mobileNo" name="mobileNo" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="model.mobileNo" required />
+        @if (missing(model.mobileNo)) { <span class="help-block">Mobile No required.</span> }
+      </div>
+    </div>
+  </section>
+
+  <section class="zed-card form-section" aria-labelledby="sec-cover">
+    <div class="section-head">
+      <span class="step" aria-hidden="true">3</span>
+      <div>
+        <h4 id="sec-cover">Coverage</h4>
+        <p>Where and in which sectors the {{ labels.agency.toLowerCase() }} works.</p>
+      </div>
+    </div>
+    <div class="form-grid">
+      <label class="top" for="states">Applicable States</label>
+      <zed-multi-select inputId="states" label="Applicable States" [options]="states()" [(value)]="model.states" />
+      <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
+      <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
+      @if (!consultancy) {
+        <span class="label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
+        <div>
+          <div class="choice-grid activity-choice" role="radiogroup" aria-labelledby="sectorActivity-label">
+            @for (a of activities; track a.value) {
+              <label class="choice-card" [class.active]="model.sectorActivity === a.value">
+                <input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value" [(ngModel)]="model.sectorActivity" />
+                <span><strong class="choice-name">{{ a.label }}</strong><small class="muted">{{ activityHelp[a.value] }}</small></span>
+              </label>
+            }
+          </div>
+          <small class="text-muted d-block mt-1">Which MSMEs the agency assesses. Its assessors cannot cover more.</small>
+          @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+        </div>
+      }
+      @if (!consultancy) {
+        <label for="orgPartnerId">Organising Partner</label>
+        <div>
+          <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
+            <option value="">-- Select Orgnising Partner --</option>
+            @for (p of sortedPartners(); track p.userId) {
+              <option [value]="p.userId">{{ partnerLabel(p) }}</option>
+            }
+          </select>
+          @if (isEdit) { <small class="text-muted d-block mt-1">An existing agency keeps its organising partner.</small> }
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="zed-card form-section" aria-labelledby="sec-cat">
+    <div class="section-head">
+      <span class="step" aria-hidden="true">4</span>
+      <div>
+        <h4 id="sec-cat">Category<span class="req">*</span></h4>
+        <p>{{ consultancy ? 'Handholding Support or Technology Intervention (not both).' : 'The work it may take up; choose at least one.' }}</p>
+      </div>
+    </div>
     <!-- Consultancy: the old form had Desktop Verification commented out, and Handholding Support and Technology
          Intervention exclude each other (ticking one unticks and disables the other). -->
-    <div class="categories">
+    <div class="choice-grid categories">
       @if (!consultancy) {
-        <label class="category">
+        <label class="choice-card" [class.active]="model.desktopVerification">
           <input type="checkbox" class="form-check-input" name="desktopVerification" [(ngModel)]="model.desktopVerification" />
-          Desktop Verification
+          <span><strong class="choice-name">Desktop Verification</strong><small class="muted">Desktop assessment of the documents an MSME uploads.</small></span>
         </label>
       }
-      <label class="category">
+      <label class="choice-card" [class.active]="model.siteVerification" [class.locked]="siteLocked()">
         <input type="checkbox" class="form-check-input" id="siteVerification" name="siteVerification" [disabled]="siteLocked()"
                [ngModel]="model.siteVerification" (ngModelChange)="setSiteVerification($event)" />
-        {{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}
+        <span>
+          <strong class="choice-name">{{ consultancy ? 'Handholding Support' : 'Remote/Site Verification' }}</strong>
+          <small class="muted">{{ consultancy ? (siteLocked() ? 'Not with Technology Intervention.' : 'Guides MSMEs through the certification.') : 'Assessment of the unit, remotely or on site.' }}</small>
+        </span>
       </label>
-      <label class="category">
+      <label class="choice-card" [class.active]="model.financialVerification" [class.locked]="financialLocked()">
         <input type="checkbox" class="form-check-input" id="financialVerification" name="financialVerification" [disabled]="financialLocked()"
                [ngModel]="model.financialVerification" (ngModelChange)="setFinancialVerification($event)" />
-        {{ consultancy ? 'Technology Intervention' : 'Financial Assistance Verification' }}
+        <span>
+          <strong class="choice-name">{{ consultancy ? 'Technology Intervention' : 'Financial Assistance Verification' }}</strong>
+          <small class="muted">{{ consultancy ? (financialLocked() ? 'Not with Handholding Support.' : 'Technology Upgradation applications of one state.') : 'Verification for financial assistance claims.' }}</small>
+        </span>
       </label>
     </div>
     @if (consultancy && model.financialVerification) {
-      <label for="tuPreferredState">Applicable State</label>
-      <select id="tuPreferredState" name="tuPreferredState" class="form-select" [ngModel]="model.tuPreferredState ?? ''"
-              (ngModelChange)="stateChanged($event)">
-        <option value="">Select State</option>
-        @for (st of tuStates(); track st.code) {
-          <option [value]="st.code">{{ st.name }}</option>
-        }
-      </select>
-      <label class="top" for="tuDistricts">Applicable Districts</label>
-      <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
+      <div class="form-grid mt-3">
+        <label for="tuPreferredState">Applicable State</label>
+        <select id="tuPreferredState" name="tuPreferredState" class="form-select" [ngModel]="model.tuPreferredState ?? ''"
+                (ngModelChange)="stateChanged($event)">
+          <option value="">Select State</option>
+          @for (st of tuStates(); track st.code) {
+            <option [value]="st.code">{{ st.name }}</option>
+          }
+        </select>
+        <label class="top" for="tuDistricts">Applicable Districts</label>
+        <zed-multi-select inputId="tuDistricts" label="Applicable Districts" [options]="districts()" [value]="model.tuPreferredDistricts ?? []" (valueChange)="model.tuPreferredDistricts = $event" />
+      </div>
     }
+  </section>
+
+  <section class="zed-card form-section" aria-labelledby="sec-login">
+    <div class="section-head">
+      <span class="step" aria-hidden="true">5</span>
+      <div>
+        <h4 id="sec-login">Login</h4>
+        <p>{{ isEdit ? 'The account of the ' + labels.agency.toLowerCase() + '.' : 'Created when you submit.' }}</p>
+      </div>
+    </div>
     @if (isEdit) {
-      <label class="top" for="reasonForRejection">Reason for Block</label>
-      <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
-                [(ngModel)]="model.reasonForRejection"></textarea>
+      <div class="form-grid">
+        <span class="label">User ID</span>
+        <div class="login-id">
+          <strong class="user-id">{{ userId }}</strong>
+          @if (isActive() !== null) {
+            <span class="status-badge" [class.is-active]="isActive()" [class.is-rejected]="!isActive()">{{ isActive() ? 'Active' : 'In-Active' }}</span>
+          }
+        </div>
+        <label class="top" for="reasonForRejection">Reason for Block</label>
+        <textarea id="reasonForRejection" name="reasonForRejection" class="form-control" maxlength="2000" rows="3"
+                  [(ngModel)]="model.reasonForRejection"></textarea>
+      </div>
+    } @else {
+      <div class="login-note">
+        The portal gives the User ID. A password is generated and e-mailed to the SPOC e-mail address above.
+      </div>
     }
-  </div>
-  <div class="form-actions">
+  </section>
+
+  <div class="save-bar" [class.is-dirty]="dirty()">
+    @if (error()) {
+      <span class="save-error me-auto">{{ error() }}</span>
+    } @else if (dirty()) {
+      <span class="unsaved me-auto">Not saved yet.</span>
+    } @else {
+      <span class="muted me-auto">{{ isEdit ? 'No changes.' : 'Fill in the sections, then submit.' }}</span>
+    }
+    <a routerLink="/staff/users/agencies" class="btn btn-default">Cancel</a>
     <button type="submit" class="btn btn-primary" [disabled]="saving() || loading()">{{ isEdit ? 'Update' : 'Submit' }}</button>
   </div>
 </form>

@@ -58,6 +58,8 @@ describe('AgencyFormPage', () => {
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter valid data.');
+    // The error is repeated in the save bar at the bottom of the window.
+    expect(el.querySelector('.save-bar .save-error')!.textContent).toContain('Please enter valid data.');
 
     await type('#userName', 'New Agency');
     await type('#spocName', 'Spoc');
@@ -79,7 +81,7 @@ describe('AgencyFormPage', () => {
     // V4: Manufacturing, Services or Both is required.
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Manufacturing, Services or Both');
     http.expectNone('/api/staff/users/agencies');
-    ([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.textContent!.trim() === 'Services') as HTMLInputElement).click();
+    ([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.querySelector('.choice-name')!.textContent!.trim() === 'Services') as HTMLInputElement).click();
     await settle();
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
@@ -101,7 +103,7 @@ describe('AgencyFormPage', () => {
     expect(el.textContent).not.toContain('Activity Involved');
     expect(el.querySelector('input[name=desktopVerification]')).toBeNull();
     expect(el.querySelector('label[for="gstNumber"]')!.textContent).toContain('GST Number');
-    const label = (name: string) => el.querySelector(`input[name=${name}]`)!.closest('label')!.textContent!.trim();
+    const label = (name: string) => el.querySelector(`input[name=${name}]`)!.closest('label')!.querySelector('.choice-name')!.textContent!.trim();
     expect(label('siteVerification')).toBe('Handholding Support');
     expect(label('financialVerification')).toBe('Technology Intervention');
 
@@ -136,6 +138,15 @@ describe('AgencyFormPage', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Update Assessment Agency Details');
     expect([...el.querySelectorAll('#orgPartnerId option')].map((o) => o.textContent!.trim())).toEqual(['-- Select Orgnising Partner --', 'Partner One']);
     expect((el.querySelector('#reasonForRejection') as HTMLTextAreaElement).value).toBe('Old reason');
+    expect(el.querySelector('.login-id')!.textContent).toContain('ZEDAA0001');
+    expect(el.querySelector('.login-id .status-badge')!.textContent).toContain('Active');
+    expect(el.querySelector('.save-bar')!.textContent).toContain('No changes.');
+    const spoc = el.querySelector('#spocName') as HTMLInputElement;
+    spoc.value = 'New Spoc';
+    spoc.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    expect(el.querySelector('.save-bar')!.classList).toContain('is-dirty');
+    expect(el.querySelector('.save-bar')!.textContent).toContain('Not saved yet.');
 
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
@@ -145,5 +156,6 @@ describe('AgencyFormPage', () => {
     req.flush({ message: 'User updated successfully.' });
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('User updated successfully.');
+    expect(el.querySelector('.save-bar')!.classList).not.toContain('is-dirty');
   });
 });

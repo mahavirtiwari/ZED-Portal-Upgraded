@@ -57,6 +57,28 @@ describe('PasswordResetLinkPage', () => {
     expect(el.querySelector('.alert-danger')!.textContent).toContain('User not found.');
   });
 
+  it('walks through the steps and lists each link sent with the masked address', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const steps = () => [...el.querySelectorAll('.prl-steps li')];
+    expect(steps().map((s) => s.textContent!.trim())).toEqual(['1Enter the User ID', '2Confirm', '3Link e-mailed']);
+    expect(steps()[0].classList).toContain('is-on');
+    expect(el.querySelector('.prl-none')!.textContent).toContain('Links you send are listed here');
+
+    send('MASTER2');
+    await settle();
+    expect(steps()[1].classList).toContain('is-on');
+    http.expectOne('/api/staff/password-reset/MASTER2').flush({ message: "A password reset link has been sent to the user's registered e-mail address (m******@zed.test)." });
+    await settle();
+    send('NOBODY');
+    http.expectOne('/api/staff/password-reset/NOBODY').flush(null, { status: 404, statusText: 'Not Found' });
+    await settle();
+    expect(el.querySelectorAll('.prl-sent-row').length).toBe(1);
+    expect(el.querySelector('.prl-sent-id')!.textContent).toBe('MASTER2');
+    expect(el.querySelector('.prl-sent-row')!.textContent).toContain('m******@zed.test');
+    expect(el.querySelector('.prl-count')!.textContent).toBe('1');
+    expect(el.querySelector('.prl-none')).toBeNull();
+  });
+
   it('is in the MasterAdmin menu of every portal only', () => {
     for (const system of ['main', 'consultancy', 'surveillance'] as const) {
       expect(menuFor(StaffRole.MasterAdmin, [], system).map((i) => i.route)).toContain('/staff/users/password-reset');

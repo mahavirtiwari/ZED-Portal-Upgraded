@@ -83,15 +83,18 @@ describe('staff pages per system', () => {
     expect(el.querySelector('.panel-silver [data-field="SaSilverNcRaised"]')!.textContent).toBe('2');
   });
 
-  it('lists Consultant Organisations with the live columns', async () => {
+  it('lists Consultant Organisations with their ID, SPOC and consultants', async () => {
     await create(AgenciesPage, 'consultancy', { mode: 'all' });
     http.expectOne('/api/staff/users/agencies').flush([
       { UserId: 'ZEDCO0001', UserName: 'CO One', IdStatus: 'Active', IsActive: true, NoOfUsers: 7, DesktopVerfi: 'DA', SpocName: 'Spoc' },
     ]);
     await settle();
     expect(el.querySelector('h3')!.textContent).toBe('Consultant Organisations');
-    expect(headers()).toEqual(['Status', 'User Id', 'Consultant Organisation Details', 'Spoc Details', 'No. of Consultant', 'Actions']);
-    expect(el.querySelector('tbody tr')!.querySelectorAll('td').length).toBe(6);
+    // V4 layout: the ID under the organisation's name, the SPOC with it.
+    expect(headers()).toEqual(['Consultant Organisation and SPOC', 'No. of Consultant', 'Status', 'Actions']);
+    const row = el.querySelector('tbody tr')!;
+    expect(row.querySelectorAll('td').length).toBe(4);
+    for (const value of ['ZEDCO0001', 'CO One', 'Spoc', '7', 'Active']) expect(row.textContent).toContain(value);
     expect(el.textContent).not.toContain('DA');
   });
 
@@ -100,19 +103,21 @@ describe('staff pages per system', () => {
     http.expectOne('/api/staff/users/assessors').flush([{ RowNumber: 1, IdStatus: 'Active', UserId: 'ZEDCC0001', UserName: 'Lead', AgencyUserName: 'CO One', AgencyUserId: 'ZEDCO0001', IsActive: true }]);
     await settle();
     expect(el.querySelector('h3')!.textContent).toBe('Consultants');
-    expect(headers()).toEqual(['S.No', 'Status', 'Consultant ID', 'Consultant Details', 'Consultant Organisation Details', 'No. Of Consulting Completed', 'Action(s)']);
-    expect(el.querySelector('tbody')!.textContent).toContain('Milestone 1: 0');
+    // V4 layout: the consultant's ID under the name, the status after the counts.
+    expect(headers()).toEqual(['S.No', 'Consultant Details', 'Consultant Organisation Details', 'No. Of Consulting Completed', 'Status', 'Action(s)']);
+    const body = el.querySelector('tbody')!.textContent!;
+    for (const value of ['ZEDCC0001', 'Lead', 'CO One', 'Milestone 1: 0', 'Active']) expect(body).toContain(value);
   });
 
-  it("lists the CO's Consultants/Experts with the live columns", async () => {
+  it("lists the CO's Consultants/Experts with their ID, type and contact", async () => {
     await create(MyAssessorsPage, 'consultancy');
     http.expectOne('/api/staff/users/assessors/mine').flush([{ UserId: 'ZEDCC0001', UserName: 'Lead', UserType: 'Consultant', IdStatus: 'Active', IsActive: true }]);
     await settle();
-    expect(headers()).toEqual([
-      'Status', 'User Type', 'Consultant/Expert ID', 'Consultant/Expert Details', 'Consultant/Expert Contact Details',
-      'No. Of Assignments Completed', 'Reason for Block', 'Action(s)',
-    ]);
-    expect(el.querySelector('tbody tr')!.querySelectorAll('td').length).toBe(8);
+    // V4 layout: the ID under the name; the old page's always-empty Assignments and Reason for Block columns are left out.
+    expect(headers()).toEqual(['Consultant/Expert Details', 'User Type', 'Contact Details', 'Status', 'Action(s)']);
+    const row = el.querySelector('tbody tr')!;
+    expect(row.querySelectorAll('td').length).toBe(5);
+    for (const value of ['ZEDCC0001', 'Lead', 'Consultant', 'Active']) expect(row.textContent).toContain(value);
   });
 
   it('shows the milestone of a Consultancy payment', async () => {

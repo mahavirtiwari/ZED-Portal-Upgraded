@@ -223,5 +223,67 @@ describe('User management', () => {
       await settle();
       expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please select at least one screen.');
     });
+
+    it('counts the logins by status, filters with the tiles and shows initials and screen chips', async () => {
+      await create(SubUsersPage);
+      const user = list.users[0];
+      const screens = ['a', 'b', 'c', 'd', 'e', 'f'].map((k) => ({ key: k, label: 'Screen ' + k.toUpperCase() }));
+      http.expectOne('/api/staff/sub-users').flush({
+        accountType: 'Operation Admin',
+        permissions: screens,
+        users: [
+          { ...user, userId: 'MA1S01', userName: 'Priya Nair', permissions: ['a', 'b', 'c', 'd', 'e'] },
+          { ...user, userId: 'MA1S02', userName: 'Rohan', permissions: ['a', 'b', 'c', 'd', 'e', 'f'], locked: true, lastLoginAt: '2026-10-29T09:42:00' },
+          { ...user, userId: 'MA1S03', userName: 'Arjun Singh', isActive: false },
+        ],
+      });
+      await settle();
+      expect(el.querySelector('h3')!.textContent).toBe('Operation Admins');
+      const tiles = () => [...el.querySelectorAll('.su-stat')].map((t) => `${t.querySelector('.su-stat-count')!.textContent} ${t.querySelector('.su-stat-label')!.textContent}`);
+      expect(tiles()).toEqual(['3 All logins', '1 Active', '1 Locked', '1 Blocked']);
+      expect([...el.querySelectorAll('.su-avatar')].map((a) => a.textContent!.trim())).toEqual(['PN', 'RO', 'AS']);
+      const rows = () => [...el.querySelectorAll('tbody tr')];
+      expect([...rows()[0].querySelectorAll('.zed-chip')].map((c) => c.textContent!.trim())).toEqual(['Screen A', 'Screen B', 'Screen C', 'Screen D', '+1 more']);
+      expect(rows()[0].querySelector('.su-chip-more')!.getAttribute('title')).toBe('Screen E');
+      expect(rows()[1].querySelector('.su-screens')!.textContent!.trim()).toBe('All 6 screens');
+      expect(rows()[0].querySelector('.su-never')!.textContent).toBe('Never signed in');
+
+      (el.querySelectorAll('.su-stat')[3] as HTMLButtonElement).click();
+      await settle();
+      expect(rows().length).toBe(1);
+      expect(el.querySelector('tbody .su-id')!.textContent).toBe('MA1S03');
+      expect(el.querySelector('tbody .su-status-cell')!.textContent!.trim()).toBe('Blocked');
+      expect(el.querySelector('.su-showing')!.textContent).toContain('1 of 3 logins · blocked only');
+
+      type('#sub-users-search', 'nobody');
+      await settle();
+      expect(el.querySelector('.su-empty')!.textContent).toContain('No login matches the filters.');
+      button('Show all logins').click();
+      await settle();
+      expect(rows().length).toBe(3);
+    });
+
+    it('gives every screen with Select all and none with Clear', async () => {
+      await create(SubUsersPage);
+      http.expectOne('/api/staff/sub-users').flush({ ...list, users: [] });
+      await settle();
+      expect(el.querySelector('.su-empty')!.textContent).toContain('No sub-users yet.');
+      button('Add the first sub-user').click();
+      await settle();
+      const given = () => el.querySelector('.su-given')!.textContent;
+      expect(given()).toBe('0 of 2 given');
+      button('Select all').click();
+      await settle();
+      expect(given()).toBe('2 of 2 given');
+      expect((el.querySelector('#perm-monitoring') as HTMLInputElement).checked).toBe(true);
+      expect(el.querySelector('label[for="perm-reports"]')!.classList).toContain('active');
+      button('Clear').click();
+      await settle();
+      expect(given()).toBe('0 of 2 given');
+      expect((el.querySelector('#perm-reports') as HTMLInputElement).checked).toBe(false);
+      expect(el.querySelector('#sub-active')).toBeNull();
+      button('CANCEL').click();
+      await settle();
+    });
   });
 });

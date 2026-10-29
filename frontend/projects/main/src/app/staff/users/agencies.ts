@@ -3,12 +3,16 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { AgencyRow, RESET_CONFIRM, UsersApi } from './users.api';
+import { AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { LABELS } from '../../portal-labels';
 import { PagedView, PagerComponent } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
 
 type Mode = 'all' | 'bronze';
+/** Which agencies the list shows: active / in-active (Bronze page: Bronze assessments enabled / disabled). */
+type StatusFilter = 'all' | 'on' | 'off';
+/** Main: the sector type filter ('none' = not set yet). */
+type SectorFilter = 'all' | SectorActivity | 'none';
 
 interface Dialog {
   kind: 'block' | 'disable-bronze' | 'mobile';
@@ -19,19 +23,79 @@ interface Dialog {
 /**
  * MasterAdmin list of assessment agencies. Port of Views/User/AssessmentAgencies.cshtml (block /
  * unblock, edit) and BronzeAssessmentAgencies.cshtml (enable / disable Bronze assessments); the
- * route's `data.mode` ('all' | 'bronze') picks the page. Actions are POSTs (the old page used GET links). V4 layout: search
- * in a filter bar, status badge, categories as chips, row buttons side by side.
+ * route's `data.mode` ('all' | 'bronze') picks the page. Actions are POSTs (the old page used GET links). V4 layout: the
+ * counts on top, search with a status filter (and on Main a sector type filter with its counts), each agency with its
+ * initials, ID and address, categories and sector type as chips, the status as a badge; a card per agency on phones.
  */
 @Component({
   selector: 'zed-staff-agencies',
   imports: [FormsModule, RouterLink, PagerComponent],
   templateUrl: './agencies.html',
   styles: `
-    .sub-heading { font-weight: 600; margin-bottom: 0; }
-    td p { margin-bottom: 0; }
-    td p.muted { font-size: 13px; }
-    .help-block { color: #a94442; font-size: 13px; }
+    .ag-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
+    .stat-value.is-on { color: #1e7a3c; }
+    .stat-value.is-off { color: #a8303a; }
+    .stat-label { font-size: 13px; color: #5f6f70; }
+
+    .list-card { padding: 16px; }
+    .list-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; }
+    .list-toolbar .search { flex: 1 1 260px; max-width: 380px; }
+    .seg-group { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+    .seg-label { font-size: 13px; font-weight: 600; color: #5f6f70; }
+    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
+    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+    .seg button + button { border-left: 1px solid #cbd9da; }
+    .seg button:hover { background: #eef6f6; }
+    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg .n { font-weight: 400; opacity: .85; }
+
+    .ag-table { min-width: 940px; margin-bottom: 8px; }
+    .ag-table td { vertical-align: middle; overflow-wrap: anywhere; }
+    .ag-table tbody tr:hover { background: #f7fbfb; }
+    .ag-table tr.is-off .ag-name { color: #5f6f70; }
+    .col-cat { width: 220px; }
+    .col-count { width: 96px; }
+    .col-status { width: 112px; }
+    .col-actions { width: 300px; }
+    .ag { display: flex; gap: 12px; align-items: flex-start; }
+    .initials { flex: 0 0 38px; height: 38px; border-radius: 10px; background: #eef6f6; color: #2f7c83; display: grid; place-items: center; font-size: 14px; font-weight: 700; }
+    tr.is-off .initials { background: #eef1f2; color: #8a9899; }
+    .ag-text { min-width: 0; }
+    .ag-name { display: block; font-weight: 700; color: #232527; }
+    .ag-id { display: inline-block; margin: 1px 0 2px; font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: #2f7c83; }
+    .ag-text small { display: block; font-size: 13px; }
+    .contact { margin-top: 4px; }
+    .contact strong { color: #23474a; font-weight: 600; white-space: nowrap; }
+    .contact > * + * { margin-left: 4px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+    .chips .zed-chip { margin: 0; }
+    .zed-chip.is-bronze { background: #f6ece0; color: #7a4a14; }
+    .zed-chip.is-sector { background: #f1f0fb; color: #3f3a7a; }
+    .zed-chip.is-unset { background: #fff4d6; color: #8a6100; }
+    .count { font-size: 18px; font-weight: 700; color: #23474a; }
+    .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .no-data .btn { margin-top: 8px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+
+    @media (max-width: 991.98px) { .ag-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    /* Phones: a card per agency. */
+    @media (max-width: 767.98px) {
+      .list-card { padding: 12px; }
+      .list-toolbar .search { max-width: none; }
+      .seg-group { flex-wrap: wrap; }
+      .ag-table { min-width: 0; }
+      .ag-table thead { display: none; }
+      .ag-table, .ag-table tbody, .ag-table tr, .ag-table td { display: block; width: 100%; box-sizing: border-box; }
+      .ag-table tr { border: 1px solid #dfe9ea; border-radius: 12px; margin-bottom: 12px; padding: 6px 12px; }
+      .ag-table tr.empty-row { border: 0; padding: 0; }
+      .ag-table td { border: 0 !important; padding: 6px 0; text-align: left !important; }
+      .ag-table td[data-label]::before { content: attr(data-label); display: block; font-size: 12px; font-weight: 600; color: #5f6f70; margin-bottom: 2px; }
+      .ag-table td.half { display: inline-block; width: 50%; vertical-align: top; }
+      .status-stack { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; }
+      .row-actions { justify-content: flex-start !important; }
+    }
   `,
 })
 export class AgenciesPage {
@@ -50,6 +114,8 @@ export class AgenciesPage {
 
   protected readonly agencies = signal<AgencyRow[]>([]);
   protected readonly search = signal('');
+  protected readonly status = signal<StatusFilter>('all');
+  protected readonly sector = signal<SectorFilter>('all');
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -57,11 +123,39 @@ export class AgenciesPage {
   protected readonly dialogError = signal('');
   protected readonly saving = signal(false);
 
+  /** Of the whole list (not the filtered one). */
+  protected readonly stats = computed(() => {
+    const list = this.agencies();
+    const on = list.filter((a) => this.active(a)).length;
+    const assessors = list.reduce((n, a) => n + ((this.mode === 'bronze' ? a.NoOfBronzeAssessors : a.NoOfUsers) ?? 0), 0);
+    return { total: list.length, on, off: list.length - on, assessors };
+  });
+  protected readonly statusFilters: { key: StatusFilter; label: string }[] =
+    this.mode === 'bronze'
+      ? [{ key: 'all', label: 'All' }, { key: 'on', label: 'Bronze enabled' }, { key: 'off', label: 'Bronze disabled' }]
+      : [{ key: 'all', label: 'All' }, { key: 'on', label: 'Active' }, { key: 'off', label: 'In-Active' }];
+  protected readonly sectorFilters: { key: SectorFilter; label: string }[] = [
+    { key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), { key: 'none', label: 'Not set' },
+  ];
+  protected readonly sectorCounts = computed(() => {
+    const counts: Record<SectorFilter, number> = { all: 0, Manufacturing: 0, Services: 0, Both: 0, none: 0 };
+    for (const a of this.agencies()) {
+      counts.all++;
+      counts[a.SectorActivity ?? 'none']++;
+    }
+    return counts;
+  });
+  protected readonly filtering = computed(() => !!this.search().trim() || this.status() !== 'all' || this.sector() !== 'all');
+
   protected readonly filtered = computed(() => {
     const s = this.search().trim().toLowerCase();
-    if (!s) return this.agencies();
-    return this.agencies().filter((a) =>
-      [a.UserId, a.UserName, a.SpocName, a.MobileNo, a.Email, a.Address, a.IdStatus].some((v) => (v ?? '').toLowerCase().includes(s)),
+    const status = this.status();
+    const sector = this.sector();
+    return this.agencies().filter(
+      (a) =>
+        (status === 'all' || this.active(a) === (status === 'on')) &&
+        (sector === 'all' || (a.SectorActivity ?? 'none') === sector) &&
+        (!s || [a.UserId, a.UserName, a.SpocName, a.MobileNo, a.Email, a.Address, a.IdStatus].some((v) => (v ?? '').toLowerCase().includes(s))),
     );
   });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
@@ -76,6 +170,22 @@ export class AgenciesPage {
 
   protected active(a: AgencyRow): boolean {
     return this.mode === 'bronze' ? a.AllowBronzeAssessments : a.IsActive;
+  }
+
+  /** Up to two letters of the name for the row's badge (without Pvt, Ltd and the like). */
+  protected initials(name: string): string {
+    const words = (name ?? '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w && !/^(pvt|ltd|llp|co|of|the|and)$/i.test(w));
+    return ((words[0]?.[0] ?? '') + (words[1]?.[0] ?? '')).toUpperCase() || '?';
+  }
+
+  protected categories(a: AgencyRow): string[] {
+    return [a.DesktopVerfi, a.SiteVerifi, a.FinanceVerfi].filter((c): c is string => !!c);
+  }
+
+  protected clearFilters(): void {
+    this.search.set('');
+    this.status.set('all');
+    this.sector.set('all');
   }
 
   protected async load(): Promise<void> {

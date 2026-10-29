@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { AgencyRequest, CodeName, District, OrgPartner, SECTOR_ACTIVITIES, UsersApi } from './users.api';
+import { AgencyRequest, CodeName, District, OrgPartner, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
 
@@ -21,19 +21,54 @@ function emptyAgency(): AgencyRequest {
  * The role and the creating user are decided by the API; the generated password is e-mailed to the SPOC.
  * Consultancy build: a Consultant Organisation (Handholding Support or Technology Intervention, not both; no Desktop
  * Verification), no organising partner, and with Technology Intervention the applicable state and districts it is
- * auto-allotted TU applications from. V4 layout: one card with label / field pairs, BACK in the page head.
+ * auto-allotted TU applications from. V4 layout: numbered section cards (organisation, SPOC contact, coverage, category,
+ * login), sector type and categories as choice cards with a one-line explanation, and a sticky save bar that shows
+ * unsaved changes and the last error.
  */
 @Component({
   selector: 'zed-staff-agency-form',
   imports: [FormsModule, RouterLink, MultiSelect],
   templateUrl: './agency-form.html',
   styles: `
-    .form-grid > .top { align-self: start; padding-top: 8px; }
-    .categories { display: flex; flex-wrap: wrap; gap: 8px 12px; }
-    .category { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 12px; border: 1px solid #d5e3e4; border-radius: 8px; font-weight: 500; cursor: pointer; }
-    .category .form-check-input { margin: 0; }
+    .req-note { font-size: 13px; color: #5f6f70; margin: -6px 0 10px; }
+    .form-section { padding: 0; overflow: hidden; }
+    .section-head { display: flex; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid #dfe9ea; background: #f7fbfb; }
+    .step { flex: 0 0 30px; height: 30px; border-radius: 50%; background: #45a5ad; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+    .section-head h4 { margin: 0; font-size: 16px; font-weight: 700; color: #23474a; }
+    .section-head p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
+    .form-section > .form-grid, .form-section > .choice-grid, .form-section > .login-note { margin: 18px 20px; }
+    .form-section > .form-grid.mt-3 { margin-top: 0 !important; }
+    .short { max-width: 280px; }
+    /* The old skin writes span.label in capitals; here it is a field label like the others. */
+    .form-grid > span.label { text-transform: none; letter-spacing: normal; padding: 0; font-size: 14px; font-weight: 600; color: #3b4b4c; }
+    .choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0;
+      cursor: pointer; font-weight: 400; color: #232527; background: #fff; text-transform: none; }
+    .choice-card:hover { border-color: #9ccdd1; }
+    .choice-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
+    .choice-card.locked { cursor: not-allowed; background: #f6f7f7; }
+    .choice-card.locked .choice-name { color: #8a9899; }
+    .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
+    .choice-name { display: block; font-weight: 700; color: #23474a; }
+    .choice-card small { display: block; font-size: 12.5px; line-height: 1.4; margin-top: 2px; }
+    .login-id { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: #2f7c83; }
+    .login-note { padding: 10px 14px; border-radius: 10px; background: #eef6f6; color: #23474a; font-size: 14px; }
     .help-block { color: #a94442; font-size: 13px; }
+
+    /* Save bar: stays at the bottom of the window. */
+    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 18px; padding: 12px 16px;
+      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
+    .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
+    .unsaved { font-weight: 600; color: #8a6100; }
+    .save-error { font-weight: 600; color: #a8303a; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 767.98px) {
+      .section-head { padding: 12px 14px; }
+      .form-section > .form-grid, .form-section > .choice-grid, .form-section > .login-note { margin: 14px; }
+      .short { max-width: none; }
+      .save-bar > span { flex-basis: 100%; }
+    }
   `,
 })
 export class AgencyFormPage {
@@ -49,6 +84,11 @@ export class AgencyFormPage {
 
   protected model: AgencyRequest = emptyAgency();
   protected readonly activities = SECTOR_ACTIVITIES;
+  protected readonly activityHelp: Record<SectorActivity, string> = {
+    Manufacturing: 'Manufacturing MSMEs only.',
+    Services: 'Service MSMEs only.',
+    Both: 'Manufacturing and service MSMEs.',
+  };
   protected readonly states = signal<MultiSelectOption[]>([]);
   protected readonly sectors = signal<MultiSelectOption[]>([]);
   protected readonly partners = signal<OrgPartner[]>([]);
@@ -57,6 +97,10 @@ export class AgencyFormPage {
   protected readonly submitted = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Something was changed since the page loaded or was last saved (shown in the save bar). */
+  protected readonly dirty = signal(false);
+  /** Edit: the account's status as loaded (null while loading or when adding). */
+  protected readonly isActive = signal<boolean | null>(null);
   protected readonly sortedPartners = computed(() => [...this.partners()].sort((a, b) => a.name.localeCompare(b.name)));
 
   constructor() {
@@ -80,6 +124,7 @@ export class AgencyFormPage {
           reasonForRejection: a.reasonForRejection ?? '',
           tuPreferredState: a.tuPreferredState ?? '', tuPreferredDistricts: a.tuPreferredDistricts ?? [], sectorActivity: a.sectorActivity ?? '',
         };
+        this.isActive.set(a.isActive);
         if (this.consultancy && this.model.tuPreferredState) await this.loadDistricts(this.model.tuPreferredState, false);
         // As before, an existing agency keeps its organising partner (or none); it cannot be moved to another one.
         this.partners.set(a.orgPartnerId ? [{ userId: a.orgPartnerId, name: a.orgPartnerName || a.orgPartnerId }] : []);
@@ -91,6 +136,11 @@ export class AgencyFormPage {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  /** A field was changed (not the filter box of a multiple choice list). */
+  protected changed(e: Event): void {
+    if ((e.target as HTMLInputElement | null)?.type !== 'search') this.dirty.set(true);
   }
 
   /** Consultancy: districts of the chosen Technology Upgradation state. */
@@ -171,6 +221,7 @@ export class AgencyFormPage {
     try {
       if (this.userId) {
         this.success.set((await firstValueFrom(this.api.updateAgency(this.userId, body))).message);
+        this.dirty.set(false);
       } else {
         const r = await firstValueFrom(this.api.createAgency(body));
         await this.router.navigate(['/staff/users/agencies'], { state: { message: r.message } });

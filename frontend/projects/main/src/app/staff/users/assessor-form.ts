@@ -5,6 +5,7 @@ import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { StaffRole } from '../staff-menu';
+import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 
@@ -37,8 +38,10 @@ function emptyAssessor(): AssessorModel {
 /**
  * Add / update an assessor (agency) or view one (MasterAdmin). Port of Views/User/Assessor.cshtml.
  * For a new assessor the agency looks up the certified professional by certificate number and
- * registered e-mail; name, e-mail and mobile come from that record (the API repeats the lookup). V4 layout: one card with
- * label / field pairs, the lookup in a shaded row, BACK in the page head.
+ * registered e-mail; name, e-mail and mobile come from that record (the API repeats the lookup). V4 layout: a profile card
+ * (initials, ID, certificate, type, sector type and status) above a saved assessor, numbered sections (type and
+ * certificate, contact, ID proof, what the assessor assesses, block reason), the type, ID proof and sector type as choice
+ * chips, the lookup in a shaded box that names the professional found, and a sticky save bar showing unsaved changes.
  */
 @Component({
   selector: 'zed-staff-assessor-form',
@@ -47,12 +50,58 @@ function emptyAssessor(): AssessorModel {
   styles: `
     fieldset { min-width: 0; }
     .form-grid > .top { align-self: start; padding-top: 8px; }
-    .lookup { background: #f5fafa; border: 1px solid #e1eded; border-radius: 10px; padding: 12px 14px; margin: 14px 0 16px; }
-    .summary { margin-bottom: 14px; }
     .readonly { background-color: #eef1f2 !important; }
     .help-block { color: #a94442; font-size: 13px; }
+    .af-label { font-weight: 600; color: #3b4b4c; font-size: 14px; }
+    .form-grid .form-control.af-short { max-width: 160px; }
+    .form-grid .form-control.af-mid { max-width: 320px; }
+
+    .af-profile { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 16px; padding: 16px 20px; }
+    .af-avatar { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); font-weight: 700; font-size: 16px; letter-spacing: .03em; }
+    .af-who { flex: 1 1 220px; min-width: 0; }
+    .af-name { display: block; font-size: 18px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
+    .af-id { display: block; font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+    .af-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .af-tags .zed-chip { margin: 0; }
+    .af-sector { background: #f1f0fb; color: #3f3a7a; }
+
+    .af-section { padding: 18px 20px 20px; }
+    .af-head { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 700; color: #23474a; margin: 0 0 16px; }
+    .af-no { flex: none; width: 28px; height: 28px; border-radius: 50%; background: #45a5ad; color: #fff; font-size: 14px; display: grid; place-items: center; }
+    .af-hint { font-size: 13px; color: #5f6f70; margin: 0 0 10px; }
+
+    /* Choice chips: one radio per pill (assessor type, ID proof, sector type). */
+    .af-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 38px; align-items: center; }
+    .af-chip { position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 16px; border-radius: 20px;
+      border: 1px solid #cbd9da; background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .af-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+    .af-chip::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #9fbfc1; background: #fff; box-sizing: border-box; }
+    .af-chip:hover { background: #eef6f6; border-color: #45a5ad; }
+    .af-chip.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .af-chip.active::before { border: 4px solid #fff; background: #45a5ad; }
+    .af-chip:has(input:focus-visible) { outline: 2px solid #2f7c83; outline-offset: 2px; }
+    .af-chip.is-off { opacity: .5; cursor: not-allowed; background: #f4f6f6; }
+    fieldset:disabled .af-chip { cursor: default; }
+    fieldset:disabled .af-chip:not(.active) { background: #f4f6f6; color: #7d8c8d; }
+
+    .lookup { background: #f5fafa; border: 1px solid #e1eded; border-radius: 10px; padding: 12px 14px; margin-top: 16px; }
+    .af-found { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: #e6f6ec; color: #1e7a3c; font-size: 14px; }
+    .af-found .af-avatar { flex-basis: 40px; width: 40px; height: 40px; font-size: 14px; }
     #selfieimg { max-height: 90px; border-radius: 8px; }
+
+    /* Save bar: stays at the bottom of the window while there are changes. */
+    .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px; padding: 12px 16px;
+      background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 -2px 12px rgba(16, 61, 64, 0.08); }
+    .save-bar.is-dirty { border-color: #e9c46a; background: #fffcf2; }
+    .save-bar > span { flex: 1 1 180px; min-width: 0; }
+    .unsaved { font-weight: 600; color: #8a6100; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 767.98px) {
+      .af-section { padding: 14px; }
+      .form-grid .form-control.af-short, .form-grid .form-control.af-mid { max-width: none; }
+      .lookup .filter-bar > .filter { max-width: none; flex-basis: 100%; }
+    }
   `,
 })
 export class AssessorFormPage {
@@ -87,9 +136,36 @@ export class AssessorFormPage {
   }
   protected readonly error = signal('');
   protected readonly success = signal('');
+  /** Status of a saved assessor (shown on the profile card); null for a new one. */
+  protected readonly isActive = signal<boolean | null>(null);
+  /** A field was changed since the page loaded or was last saved (the save bar says so). */
+  protected readonly dirty = signal(false);
+  protected readonly idProofs = ['Aadhaar Card', 'PAN Card'];
+  /** Number of the section before Contact details (the type and certificate section is shown for a new assessor only). */
+  protected readonly first = this.isNew ? 1 : 0;
+  protected readonly initials = initialsOf;
+  protected readonly typeLabel = assessorTypeLabel;
 
   constructor() {
     void this.load();
+  }
+
+  protected get typeChoices(): { value: string; label: string }[] {
+    if (!this.consultancy) return [{ value: 'BronzeAssessor', label: 'Bronze Assessor' }, { value: 'Assessor', label: 'Assessor' }];
+    const choices = [{ value: 'Consultant', label: 'Consultant/Expert' }];
+    if (this.offersTechnicalExpert) choices.push({ value: 'TechnicalExpert', label: 'Technical Expert' });
+    return choices;
+  }
+
+  /** Typing in a multi-select's filter box changes nothing. */
+  protected markDirty(event: Event): void {
+    if (!(event.target as HTMLElement | null)?.matches?.('input[type=search]')) this.dirty.set(true);
+  }
+
+  protected get saveNote(): string {
+    if (this.isNew && !this.typed && !this.lookupDone) return 'Search the certified professional to continue.';
+    if (this.dirty()) return 'Not saved yet.';
+    return this.isNew ? 'Fill in the details, then Create.' : 'No unsaved changes.';
   }
 
   protected get backLink(): string {
@@ -169,6 +245,7 @@ export class AssessorFormPage {
         this.agencyActivity.set(a.agencySectorActivity ?? null);
         this.maskedIdProof.set(a.idProofNumberMasked);
         this.storedIdProofType.set(a.idProofType);
+        this.isActive.set(a.isActive);
         this.canEdit.set(a.canEdit && this.isAgency);
       }
     } catch (err) {
@@ -258,6 +335,7 @@ export class AssessorFormPage {
           }),
         );
         this.success.set(r.message);
+        this.dirty.set(false);
       }
     } catch (err) {
       this.error.set(apiErrorMessage(err));

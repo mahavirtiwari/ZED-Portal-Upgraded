@@ -97,6 +97,41 @@ describe('AgenciesPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('User Blocked successful');
   });
 
+  it('shows the counts and filters by status and sector type', async () => {
+    await create('all');
+    http.expectOne('/api/staff/users/agencies').flush([
+      agency('ZEDAA0001', { SectorActivity: 'Manufacturing', NoOfUsers: 10 }),
+      agency('ZEDAA0002', { IsActive: false, IdStatus: 'In-Active', SectorActivity: 'Services', NoOfUsers: 3 }),
+      agency('ZEDAA0003', { SectorActivity: 'Both', NoOfUsers: 5 }),
+      agency('ZEDAA0004', { SectorActivity: null, NoOfUsers: null }),
+    ]);
+    await settle();
+    const stat = (k: string) => el.querySelector(`[data-stat="${k}"]`)!.textContent!.trim();
+    expect([stat('total'), stat('on'), stat('off'), stat('assessors')]).toEqual(['4', '3', '1', '18']);
+    const ids = () => [...el.querySelectorAll('tbody tr .ag-id')].map((s) => s.textContent!.trim());
+    const filterButton = (group: string, label: string) =>
+      [...el.querySelectorAll(`[data-filter="${group}"] button`)].find((b) => b.textContent!.trim().startsWith(label)) as HTMLButtonElement;
+
+    expect(filterButton('sector', 'Manufacturing').textContent).toContain('1');
+    filterButton('status', 'In-Active').click();
+    await settle();
+    expect(ids()).toEqual(['ZEDAA0002']);
+    filterButton('status', 'Active').click();
+    await settle();
+    expect(ids()).toEqual(['ZEDAA0001', 'ZEDAA0003', 'ZEDAA0004']);
+    filterButton('sector', 'Not set').click();
+    await settle();
+    expect(ids()).toEqual(['ZEDAA0004']);
+    expect(el.querySelector('tbody tr')!.textContent).toContain('Sector type not set');
+    filterButton('sector', 'Services').click();
+    await settle();
+    expect(ids()).toEqual([]);
+    expect(el.querySelector('.no-data')!.textContent).toContain('No agency matches the search or filter.');
+    button('Clear filters')!.click();
+    await settle();
+    expect(ids().length).toBe(4);
+  });
+
   it('unblocks after confirmation and shows API errors', async () => {
     await create('all');
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0002', { IsActive: false })]);
@@ -121,7 +156,9 @@ describe('AgenciesPage', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Bronze Assessment Agencies');
     expect(el.textContent).not.toContain('+ Add New');
     expect(el.textContent).not.toContain('Edit');
-    expect(el.querySelector('tbody td:nth-child(6)')!.textContent).toContain('2');
+    // The count column (agency, category, count) shows the Bronze assessors.
+    expect(el.querySelector('tbody td:nth-child(3)')!.textContent).toContain('2');
+    expect(el.querySelector('tbody tr')!.textContent).toContain('Bronze disabled');
 
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     button('Enable Bronze Assessments')!.click();

@@ -2,13 +2,15 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
+import { AuthService } from '@zed/shared';
 import { SurveillanceUsersPage } from './surveillance-users';
 
 describe('surveillance agencies and assessors', () => {
-  function create(kind: 'agencies' | 'assessors') {
+  function create(kind: 'agencies' | 'assessors', master = false) {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting(), { provide: ActivatedRoute, useValue: { snapshot: { data: { kind } } } }],
     });
+    if (master) TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
     const fixture = TestBed.createComponent(SurveillanceUsersPage);
     return { fixture, http: TestBed.inject(HttpTestingController) };
   }
@@ -121,5 +123,59 @@ describe('surveillance agencies and assessors', () => {
     expect(cells[4].querySelector('input[type=checkbox]')).not.toBeNull();
     expect(cells[4].textContent).toContain('UnBlock');
     expect(cells[4].textContent).not.toContain('Reset Link');
+    expect(table.querySelector('.sv-agency-line')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('#sv-agency')).toBeNull();
+  });
+
+  it('counts the assessors, filters with the tiles and by agency for the MasterAdmin, and shows initials', async () => {
+    const { fixture, http } = create('assessors', true);
+    const row = { email: null, mobileNo: null, reasonForRejection: null, desktopVerification: true, siteVerification: false };
+    http.expectOne('/api/staff/surveillance-users/assessors').flush([
+      { ...row, userId: 'ZEDAS0001', userName: 'Rahul Verma', isActive: true, allowBronzeSurveillance: true, agencyUserId: 'AG1', agencyUserName: 'Acme' },
+      { ...row, userId: 'ZEDAS0002', userName: 'Pooja', isActive: true, allowBronzeSurveillance: false, agencyUserId: 'AG2', agencyUserName: 'Beta' },
+      { ...row, userId: 'ZEDAS0003', userName: null, isActive: false, allowBronzeSurveillance: false, agencyUserId: 'AG1', agencyUserName: 'Acme' },
+    ]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const tiles = () => [...el.querySelectorAll('.sv-stat')].map((t) => `${t.querySelector('.sv-stat-count')!.textContent} ${t.querySelector('.sv-stat-label')!.textContent}`);
+    const ids = () => [...el.querySelectorAll('tbody .sv-id-cell')].map((c) => c.textContent!.trim());
+    expect(tiles()).toEqual(['3 All assessors', '2 Active', '1 Blocked', '1 Bronze allowed']);
+    expect([...el.querySelectorAll('.sv-avatar')].map((a) => a.textContent!.trim())).toEqual(['RV', 'PO', 'ZE']);
+    expect(el.querySelector('tbody .sv-agency-line')!.textContent!.trim()).toBe('Acme');
+
+    const select = el.querySelector('#sv-agency') as HTMLSelectElement;
+    expect([...select.options].map((o) => o.textContent!.trim())).toEqual(['All agencies', 'Acme (2)', 'Beta (1)']);
+    select.value = 'AG1';
+    select.dispatchEvent(new Event('change'));
+    fixture.detectChanges();
+    expect(ids()).toEqual(['ZEDAS0001', 'ZEDAS0003']);
+    expect(tiles()).toEqual(['2 All assessors', '1 Active', '1 Blocked', '1 Bronze allowed']);
+
+    (el.querySelectorAll('.sv-stat')[3] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(ids()).toEqual(['ZEDAS0001']);
+    expect(el.querySelector('.sv-showing')!.textContent).toContain('1 of 3 assessors · Bronze allowed only');
+
+    const search = el.querySelector('.sv-search') as HTMLInputElement;
+    search.value = 'nobody';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(el.querySelector('.sv-empty')!.textContent).toContain('No assessor matches the filters.');
+    (el.querySelector('.sv-empty button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(ids().length).toBe(3);
+    expect(tiles()[0]).toBe('3 All assessors');
+  });
+
+  it('says where agencies come from when there are none', async () => {
+    const { fixture, http } = create('agencies');
+    http.expectOne('/api/staff/surveillance-users/agencies').flush([]);
+    http.expectOne('/api/staff/surveillance-users/states').flush([]);
+    await fixture.whenStable();
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelector('.sv-empty')!.textContent).toContain('No agencies yet. They are added on the ZED portal (main).');
+    expect([...el.querySelectorAll('.sv-stat-count')].map((c) => c.textContent)).toEqual(['0', '0', '0', '0']);
   });
 });
