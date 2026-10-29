@@ -28,6 +28,26 @@ public static class DocumentLevels
 
     public static bool IsDesktop(string level) => level == "Bronze";
 
+    /// <summary>Bronze, Silver and Gold have their own artwork and texts; V4 levels (ZED-X) take theirs from the Admin.</summary>
+    public static bool IsBuiltIn(string level) => level is "Bronze" or "Silver" or "Gold";
+
+    /// <summary>Validity printed when the level's settings cannot be read (the Silver/Gold artwork's three years).</summary>
+    public const int DefaultValidityMonths = 36;
+
+    private static readonly string[] Numbers = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"];
+
+    /// <summary>"Three years from the date of issue" (36 months), "18 months from the date of issue", as the artwork words it.</summary>
+    public static string ValidityText(int months)
+    {
+        if (months > 0 && months % 12 == 0)
+        {
+            var years = months / 12;
+            var count = years < Numbers.Length ? Numbers[years] : years.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            return $"{count} year{(years == 1 ? "" : "s")} from the date of issue";
+        }
+        return $"{months} month{(months == 1 ? "" : "s")} from the date of issue";
+    }
+
     public static bool IsCertified(string level, int? status) =>
         status == (IsDesktop(level) ? BronzeCertified : SiteCertified);
 

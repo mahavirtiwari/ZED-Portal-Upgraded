@@ -21,7 +21,9 @@ public sealed class MsmeDocumentsController(
     public async Task<Dictionary<string, IReadOnlyList<IDictionary<string, object?>>>> Get(CancellationToken ct)
     {
         var root = MsmeFilePaths.Root(env, portal.Value);
-        return MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct)), ZedId,
+        var sets = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
+        await MsmeMyDocuments.AddV4LevelsAsync(db, sets, ZedId, ct);
+        return MsmeMyDocuments.ToClient(MsmeGuidelines.ForMsme(sets, await access.AllAsync(ct)), ZedId,
             path => MsmeFilePaths.Find(root, path) is not null);
     }
 }
@@ -40,6 +42,7 @@ public static class MsmeMyDocuments
         (1, "Bronze", MsmeFileScope.Own),
         (1, "Silver", MsmeFileScope.Own),
         (1, "Gold", MsmeFileScope.Own),
+        (1, "ZEDX", MsmeFileScope.Own),
         (2, "BronzeReceipt", MsmeFileScope.Own),
         (2, "SilverReceipt", MsmeFileScope.Own),
         (2, "GoldReceipt", MsmeFileScope.Own),
@@ -55,6 +58,28 @@ public static class MsmeMyDocuments
 
     public static Task<ResultSets> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         db.QueryProcMultipleAsync(Procedure, new { ZedId = zedId }, ct);
+
+    /// <summary>ZED-X's certificate (V4 level; the procedure lists Bronze, Silver and Gold only): Certificates/SA/{ZedId}/ZEDX.pdf once certified.</summary>
+    internal const string V4CertificatesSql =
+        "SELECT Certification FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = 'ZEDX' AND CertificationStatus = 16 AND SaCertificateNo IS NOT NULL;";
+
+    public sealed record V4Certificate(string Certification);
+
+    /// <summary>Adds the ZEDX column to the certificates row (null when not certified), as the procedure's Gold column.</summary>
+    public static async Task AddV4LevelsAsync(ISqlExecutor db, ResultSets sets, string zedId, CancellationToken ct)
+    {
+        if (sets[1].FirstOrDefault() is not { } row) return;
+        IReadOnlyList<V4Certificate> certified;
+        try
+        {
+            certified = await db.QuerySqlAsync<V4Certificate>(V4CertificatesSql, new { ZedId = zedId }, ct);
+        }
+        catch (System.Data.Common.DbException)
+        {
+            certified = [];
+        }
+        row["ZEDX"] = certified.Count > 0 ? $"Certificates/SA/{zedId}/ZEDX.pdf" : null;
+    }
 
     /// <summary>The files the procedure lists for this ZED ID that pass the path checks (pass sets already through <see cref="MsmeGuidelines.ForMsme"/>).</summary>
     public static IEnumerable<MsmeFileEntry> Files(ResultSets sets, string zedId)

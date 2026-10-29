@@ -19,6 +19,8 @@ export interface CertificateLinks {
   Bronze: string | null;
   Silver: string | null;
   Gold: string | null;
+  /** V4: ZED-X (a separate track, shown besides the highest of Bronze/Silver/Gold). */
+  ZEDX?: string | null;
   Wash: string | null;
   Webinar: string | null;
 }

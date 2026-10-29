@@ -20,6 +20,7 @@ public sealed class MsmeEntryTests : IDisposable
     private bool _paid = true;
     private int? _status;
     private int _ncCount;
+    private int _ncStatus = 1;
     private bool _basicSaved;
     private readonly HashSet<int> _synced = [];
 
@@ -27,7 +28,8 @@ public sealed class MsmeEntryTests : IDisposable
     {
         MsmeSchemesTestSupport.RegisterUsers(_host);
         _host.Sql.Queries[MsmeEntry.StageSql("ZEDX")] = args => FakeSql.Arg(args, "ZedId") != Me ? [] :
-            [new { Paid = _paid, CertificationStatus = _status, NcCount = _status is null ? (int?)null : _ncCount, CertificationId = _status is null ? (int?)null : 41 }];
+            [new { Paid = _paid, CertificationStatus = _status, NcCount = _status is null ? (int?)null : _ncCount, CertificationId = _status is null ? (int?)null : 41,
+                CurrentNcStatus = _ncCount > 0 ? _ncStatus : (int?)null }];
         _host.Sql.Queries[MsmeEntryController.AnswersSql] = _ => !_basicSaved ? [] :
             [new { AuditsConducted = "Yes", DomesticCustomers = "Tata", RawMaterialImported = "No", EnergySources = "Electricity,Solar",
                 ManufacturingCapacityUnits = "Number", ManufacturingCapacityValue = "100", MonthlyUtilizationUnits = "Number", MonthlyUtilizationValue = "80" }];
@@ -267,5 +269,93 @@ public sealed class MsmeEntryTests : IDisposable
             [("Valve", "No", "P1", "D1")], [], ["S1"]);
         Assert.Equal(["Valve"], a["productDetailsList" + AppFormCatalogue.ColumnSeparator + "productName"]);
         Assert.Equal(["S1"], a["siteExteriorPhotos"]);
+    }
+
+    // ---------- Non-conformances ----------
+
+    private void OpenNc()
+    {
+        _status = 14;
+        _ncCount = 1;
+        _host.Sql.Procs["SP_APP_MSME_GET_NC_DETAILS_BY_TYPE"] = _ => FakeSql.Sets(
+            [new { AssessorRemarks = "Photo is blurred", PhotoPath = "https://x/mobileapi/Photos/ZEDMSME000001/ZEDX/SiteExteriorPhotos/1.jpg" }],
+            [new { Id = 71, ProductName = "Valve", AssessorRemarks = "Label not readable" }],
+            [new { Id = 1, SectionCode = "1", SectionName = "Leadership" }],
+            [new { Id = 11, SectionCode = "1", RequirementCode = "1.1", RequirementName = "Policy", AssessorRemarks = "Policy not signed" }],
+            [], []);
+        _host.Sql.Queries[MsmeEntryController.NcEvidencesSql] = _ => [new { RequirementId = 11, EvidenceId = 601, Synced = false }];
+    }
+
+    [Fact]
+    public async Task An_open_nc_is_shown_and_answered_then_submitted_without_a_new_allotment()
+    {
+        OpenNc();
+        var client = await MsmeSchemesTestSupport.MsmeAsync(_host);
+
+        var state = await client.GetFromJsonAsync<JsonElement>(Url);
+        Assert.False(state.GetProperty("editable").GetBoolean());
+        var nc = state.GetProperty("nc");
+        Assert.Equal(1, nc.GetProperty("number").GetInt32());
+        Assert.Equal("Photo is blurred", nc.GetProperty("siteExterior").GetProperty("assessorRemarks").GetString());
+        Assert.Equal("Label not readable", nc.GetProperty("products")[0].GetProperty("assessorRemarks").GetString());
+        var requirement = nc.GetProperty("sections")[0].GetProperty("requirements")[0];
+        Assert.Equal("Policy not signed", requirement.GetProperty("assessorRemarks").GetString());
+        Assert.False(requirement.GetProperty("answered").GetBoolean());
+
+        // Basic information cannot be changed during an NC.
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"{Url}/basic-info", Form(Basic()))).StatusCode);
+
+        // Requirement: the document as the requirement's evidence of this NC.
+        var req = new MultipartFormDataContent { { new StringContent("Signed policy attached"), "remarks" }, { new ByteArrayContent(MsmeSchemesTestSupport.Pdf), "files", "policy.pdf" } };
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Url}/nc/requirements/11", req)).StatusCode);
+        var call = Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_INSERT_REQUIREMENT"));
+        Assert.Equal("11", FakeSql.Arg(call, "Id"));
+        Assert.Equal("1.1", FakeSql.Arg(call, "Code"));
+        Assert.Equal("Signed policy attached", FakeSql.Arg(call, "MsmeRemarks"));
+        Assert.Equal(MsmeSchemesTestSupport.Pdf, File.ReadAllBytes(Stored("Evidences", "601.pdf")));
+        var other = new MultipartFormDataContent { { new ByteArrayContent(MsmeSchemesTestSupport.Pdf), "files", "x.pdf" } };
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"{Url}/nc/requirements/12", other)).StatusCode);
+
+        // Product: both photos needed.
+        var onlyOne = new MultipartFormDataContent { { new ByteArrayContent(Image()), "productPhoto", "p.png" } };
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"{Url}/nc/products/71", onlyOne)).StatusCode);
+        var product = new MultipartFormDataContent
+        {
+            { new ByteArrayContent(Image()), "productPhoto", "p.png" }, { new ByteArrayContent(MsmeSchemesTestSupport.Pdf), "descriptionPhoto", "label.pdf" },
+            { new StringContent("New label"), "remarks" },
+        };
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Url}/nc/products/71", product)).StatusCode);
+        var productCall = Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_INSERT_PRODUCT_INFO"));
+        Assert.Equal("71", FakeSql.Arg(productCall, "ProductId"));
+        Assert.EndsWith(".pdf", FakeSql.Arg(productCall, "ProductDescriptionPhoto"));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"{Url}/nc/products/72", product)).StatusCode);
+
+        // Site exterior.
+        var site = new MultipartFormDataContent { { new ByteArrayContent(Image()), "files", "s.png" }, { new StringContent("Retaken"), "remarks" } };
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Url}/nc/site-exterior", site)).StatusCode);
+        Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_INSERT_SITE_EXTERIOR"));
+
+        // Submit the NC: the procedures' NC branch, no allotment, the NC mail.
+        _host.Sql.Procs["SP_ASSESSMENT_CHECK_NC_PHOTO_AVAILABILITY"] = _ => FakeSql.Sets([], [], []);
+        var submit = await client.PostAsync($"{Url}/final-submit", null);
+        Assert.Equal(HttpStatusCode.OK, submit.StatusCode);
+        Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_FINAL_SUBMIT"));
+        Assert.Empty(MsmeSchemesTestSupport.CallsTo(_host, "SP_V4_AUTO_ALLOT_AGENCY"));
+        Assert.Contains("Non-conformance", Assert.Single(_host.Email.Sent).Subject);
+
+        // Answered: nothing more is taken.
+        _ncStatus = 2;
+        Assert.Equal(MsmeEntryController.NcNotOpen, await (await client.PostAsync($"{Url}/nc/site-exterior", site)).ProblemTitle());
+    }
+
+    [Fact]
+    public async Task Nc_answers_need_an_open_nc()
+    {
+        _status = 2;
+        var client = await MsmeSchemesTestSupport.MsmeAsync(_host);
+        var req = new MultipartFormDataContent { { new ByteArrayContent(MsmeSchemesTestSupport.Pdf), "files", "policy.pdf" } };
+        Assert.Equal(MsmeEntryController.NcNotOpen, await (await client.PostAsync($"{Url}/nc/requirements/11", req)).ProblemTitle());
+        var state = await client.GetFromJsonAsync<JsonElement>(Url);
+        Assert.Equal(JsonValueKind.Null, state.GetProperty("nc").ValueKind);
     }
 }

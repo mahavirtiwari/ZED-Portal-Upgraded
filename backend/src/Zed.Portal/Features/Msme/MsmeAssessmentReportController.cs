@@ -165,7 +165,7 @@ public static class MsmeAssessment
     /// site assessment page instead and are not accepted here.
     /// </summary>
     private static readonly string[] Types =
-        ["Bronze", "Silver", "Gold", "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance"];
+        ["Bronze", "Silver", "Gold", "ZEDX", "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance"];
 
     public static bool TryCertification(string? value, out string type)
     {

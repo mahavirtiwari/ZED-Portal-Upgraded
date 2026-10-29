@@ -9,7 +9,7 @@ using Zed.Portal.Features.Staff.Assessment;
 namespace Zed.Portal.Features.Documents;
 
 /// <summary>
-/// Public certificate verification: the QR code on the pledge, Bronze, Silver and Gold certificates opens
+/// Public certificate verification: the QR code on the pledge, Bronze, Silver, Gold and ZED-X certificates opens
 /// <c>https://loginzed.msme.gov.in/Verify/{PC|BC|SC|GC}/{code}</c>. Port of VerifyController (Pc/Bc/Sc/Gc,
 /// SP_VERIFY_QR_CODE); the Angular page <c>/verify/{type}/{code}</c> (also matched as <c>/Verify/BC/...</c>)
 /// shows these fields. The procedure also returns the MSME's mobile number and e-mail address; they are not
@@ -24,7 +24,13 @@ public sealed partial class VerifyController(ISqlExecutor db) : ControllerBase
     private static readonly IReadOnlyDictionary<string, string> Types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
     {
         ["pc"] = "Pledge", ["bc"] = "Bronze", ["sc"] = "Silver", ["gc"] = "Gold",
+        // V4: ZED-X certificates (its QR is drawn by the portal, AssessmentDocuments).
+        ["xc"] = "ZEDX",
     };
+
+    /// <summary>The code of a level in the verification address (Gold: GC, ZEDX: XC).</summary>
+    public static string CodeOf(string level) =>
+        Types.FirstOrDefault(t => string.Equals(t.Value, level, StringComparison.OrdinalIgnoreCase)).Key?.ToUpperInvariant() ?? "GC";
 
     private static readonly string[] PledgeFields = ["EnterpriseName", "Address", "UdyogAadharNo", "DateOfPledge", "CertificateNo"];
 

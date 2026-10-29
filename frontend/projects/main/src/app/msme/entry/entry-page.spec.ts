@@ -215,4 +215,52 @@ describe('EntryPage', () => {
     expect(el.querySelector('#entrySubmitted')).not.toBeNull();
     expect(el.querySelector('#finalSubmit')).toBeNull();
   });
+
+  it('opens on the NC tab, saves an answer and submits the NC', async () => {
+    const withNc = (answered: boolean) => state({
+      basicInfoSaved: true, editable: false, submitted: true, certificationStatus: 14,
+      nc: {
+        number: 1,
+        siteExterior: null,
+        products: [],
+        sections: [{ code: '1', name: 'Leadership', requirements: [{ id: 11, code: '1.1', name: 'Policy', assessorRemarks: 'Policy not signed', answered, url: null }] }],
+      },
+    });
+    await open(withNc(false));
+    expect(el.querySelector('#ncIntro')).not.toBeNull();
+    expect(text()).toContain('Policy not signed');
+    expect(text()).toContain('(0/1 answered)');
+
+    const row = el.querySelector<HTMLElement>('[data-nc="requirement-11"]')!;
+    const input = row.querySelector<HTMLInputElement>('input[type=file]')!;
+    Object.defineProperty(input, 'files', { value: [new File(['%PDF-1.4'], 'policy.pdf', { type: 'application/pdf' })] });
+    input.dispatchEvent(new Event('change'));
+    const remarks = row.querySelector<HTMLInputElement>('input:not([type=file])')!;
+    remarks.value = 'Signed copy';
+    remarks.dispatchEvent(new Event('input'));
+    await settle();
+    row.querySelector<HTMLButtonElement>('button')!.click();
+    await settle();
+    const req = http.expectOne(`${URL}/nc/requirements/11`);
+    expect((req.request.body as FormData).get('remarks')).toBe('Signed copy');
+    req.flush({ message: 'Answer saved.' });
+    await settle();
+    http.expectOne(URL).flush(withNc(true));
+    await settle();
+    expect(text()).toContain('(1/1 answered)');
+
+    tab('Submit').click();
+    await settle();
+    el.querySelector<HTMLInputElement>('#confirmSubmit')!.click();
+    await settle();
+    const submit = el.querySelector<HTMLButtonElement>('#finalSubmit')!;
+    expect(submit.textContent).toContain('SUBMIT NC ANSWERS');
+    submit.click();
+    await settle();
+    http.expectOne(`${URL}/final-submit`).flush({ message: 'Your answers to NC 1 are submitted.' });
+    await settle();
+    http.expectOne(URL).flush(state({ basicInfoSaved: true, editable: false, submitted: true, certificationStatus: 14, nc: null }));
+    await settle();
+    expect(el.querySelector('#finalSubmit')).toBeNull();
+  });
 });

@@ -34,7 +34,7 @@ public sealed class RAController(
 
     /// <summary>Certifications a remote assessment can be for; used in upload paths.</summary>
     internal static readonly IReadOnlySet<string> Certifications =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold" };
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold", "ZEDX" };
 
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Remote assessment app")]

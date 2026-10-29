@@ -33,6 +33,7 @@ export class DocumentsPage {
     if (c.Gold) items.push({ label: 'Gold Certificate', url: c.Gold });
     else if (c.Silver) items.push({ label: 'Silver Certificate', url: c.Silver });
     else if (c.Bronze) items.push({ label: 'Bronze Certificate', url: c.Bronze });
+    if (c.ZEDX) items.push({ label: 'ZED-X (Export) Certificate', url: c.ZEDX });
     if (c.Wash) items.push({ label: 'WASH Certificate', url: c.Wash });
     if (c.Webinar) items.push({ label: 'Webinar Participation Certificate', url: c.Webinar });
     return items;

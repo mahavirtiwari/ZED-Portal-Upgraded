@@ -41,21 +41,30 @@ public static class MsmeEntry
     /// <c>CertificationStatus</c> is null before the first save of the basic information (the row does not exist yet) and
     /// 1 until the final submit (2).
     /// </summary>
-    public sealed record Stage(bool Paid, int? CertificationStatus, int NcCount, bool HasRow)
+    /// <param name="CurrentNcStatus">The current NC's status (Nc{NcCount}Status): 1 raised, 2 answered.</param>
+    public sealed record Stage(bool Paid, int? CertificationStatus, int NcCount, bool HasRow, int CurrentNcStatus = 0)
     {
         public bool Editable => Paid && NcCount == 0 && (CertificationStatus is null or <= 1);
         public bool Submitted => CertificationStatus is >= 2;
+
+        /// <summary>
+        /// An NC raised and not yet answered: status 4 (desktop NC) or 14 (site NC), as SP_APP_CHECK_DATA_SYNC_FINAL_SUBMIT
+        /// allows the NC submit, NC 1 to 5.
+        /// </summary>
+        public bool NcOpen => Paid && NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && CertificationStatus is 4 or 14;
     }
 
-    public sealed record StageRow(bool? Paid, int? CertificationStatus, int? NcCount, int? CertificationId);
+    public sealed record StageRow(bool? Paid, int? CertificationStatus, int? NcCount, int? CertificationId, int? CurrentNcStatus = null);
 
     /// <summary>The level comes from <see cref="Levels"/> only, so it can name the payment column.</summary>
     public static string StageSql(string level) =>
-        $"SELECT CAST(ISNULL(m.Is{level}PaymentDone, 0) AS bit) AS Paid, c.CertificationStatus, c.NcCount, c.Id AS CertificationId " +
+        $"SELECT CAST(ISNULL(m.Is{level}PaymentDone, 0) AS bit) AS Paid, c.CertificationStatus, c.NcCount, c.Id AS CertificationId, " +
+        "CASE c.NcCount WHEN 1 THEN c.Nc1Status WHEN 2 THEN c.Nc2Status WHEN 3 THEN c.Nc3Status WHEN 4 THEN c.Nc4Status WHEN 5 THEN c.Nc5Status END AS CurrentNcStatus " +
         "FROM dbo.Msme m LEFT JOIN dbo.MsmeCertifications c ON c.ZedId = m.ZedId AND c.Certification = @Level WHERE m.ZedId = @ZedId;";
 
     public static Stage ToStage(StageRow? r) =>
-        r is null ? new Stage(false, null, 0, false) : new Stage(r.Paid == true, r.CertificationStatus, r.NcCount ?? 0, r.CertificationId is not null);
+        r is null ? new Stage(false, null, 0, false)
+            : new Stage(r.Paid == true, r.CertificationStatus, r.NcCount ?? 0, r.CertificationId is not null, r.CurrentNcStatus ?? 0);
 
     /// <summary>The folder that holds the app's <c>mobileapi\Photos</c> (Portal:AssessmentStorageRoot, else Portal:StorageRoot).</summary>
     public static string StorageRoot(IWebHostEnvironment env, IOptions<PortalOptions> portal, IConfiguration config)
@@ -116,7 +125,8 @@ public sealed record EntryState(
     bool BasicInfoSaved,
     JsonObject Form,
     EntrySaved Saved,
-    IReadOnlyList<EntrySection> Sections);
+    IReadOnlyList<EntrySection> Sections,
+    EntryNc? Nc = null);
 
 // ---------- What the page sends ----------
 
@@ -139,3 +149,17 @@ public sealed record EntryBasicInfoRequest(
     string? Longitude);
 
 public sealed record EntryMessage(string Message);
+
+// ---------- Non-conformances ----------
+
+/// <param name="PreviousPhotos">The site exterior photos the assessor did not accept (the NC is on them).</param>
+public sealed record EntryNcSite(string? AssessorRemarks, IReadOnlyList<string> PreviousPhotos, bool Answered);
+
+public sealed record EntryNcProduct(int Id, string? ProductName, string? AssessorRemarks, bool Answered);
+
+public sealed record EntryNcRequirement(int Id, string Code, string Name, string? AssessorRemarks, bool Answered, string? Url);
+
+public sealed record EntryNcSection(string Code, string Name, IReadOnlyList<EntryNcRequirement> Requirements);
+
+/// <summary>The open NC: what the assessor raised and what is answered so far.</summary>
+public sealed record EntryNc(int Number, EntryNcSite? SiteExterior, IReadOnlyList<EntryNcProduct> Products, IReadOnlyList<EntryNcSection> Sections);

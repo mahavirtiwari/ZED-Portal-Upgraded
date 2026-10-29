@@ -1,14 +1,14 @@
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
 import { levelName } from '../shared/levels';
 import { EntryField } from './entry-field';
 import { CellValue, FormValues, emptyRow, initialValues, isShown, missing, sortedFields, toRequest } from './entry-form';
-import { EntryApi, EntryEvidence, EntryState, FormField, isWebEntryLevel } from './entry.api';
+import { EntryApi, EntryEvidence, EntryNc, EntryState, FormField, isWebEntryLevel } from './entry.api';
 
-type Tab = 'basic' | 'documents' | 'submit';
+type Tab = 'basic' | 'documents' | 'nc' | 'submit';
 
 /** Rows the page lets the unit add, as the app. */
 const MAX_ROWS = 20;
@@ -83,9 +83,26 @@ export class EntryPage implements OnInit {
   );
   protected readonly requiredCount = computed(() => this.evidences().filter((e) => e.required).length);
   protected readonly requiredDone = computed(() => this.evidences().filter((e) => e.required && e.uploaded).length);
-  protected readonly readyToSubmit = computed(
-    () => !!this.state()?.basicInfoSaved && this.requiredDone() === this.requiredCount() && this.editable(),
+  /** The open NC, when there is one: then only its answers can be given and submitted. */
+  protected readonly nc = computed<EntryNc | null>(() => this.state()?.nc ?? null);
+  protected readonly ncItems = computed(() => {
+    const nc = this.nc();
+    if (!nc) return { total: 0, answered: 0 };
+    const items = [
+      ...nc.sections.flatMap((s) => s.requirements.map((r) => r.answered)),
+      ...nc.products.map((p) => p.answered),
+      ...(nc.siteExterior ? [nc.siteExterior.answered] : []),
+    ];
+    return { total: items.length, answered: items.filter((a) => a).length };
+  });
+  protected readonly readyToSubmit = computed(() =>
+    this.nc()
+      ? this.ncItems().answered === this.ncItems().total
+      : !!this.state()?.basicInfoSaved && this.requiredDone() === this.requiredCount() && this.editable(),
   );
+  /** Files and remarks typed for the NC answers, by item (r-{id}, p-{id}-photo, p-{id}-label, site). */
+  protected readonly ncFiles = signal<Record<string, File[]>>({});
+  protected readonly ncRemarks = signal<Record<string, string>>({});
 
   ngOnInit(): void {
     void this.load();
@@ -99,10 +116,12 @@ export class EntryPage implements OnInit {
     }
     this.loading.set(true);
     try {
+      const first = !this.state();
       const s = await firstValueFrom(this.api.state(this.certification()));
       this.state.set(s);
       this.form.set(initialValues(s));
       this.loadError.set(null);
+      if (first && s.nc) this.tab.set('nc');
     } catch (e) {
       this.loadError.set(apiErrorMessage(e));
     } finally {
@@ -220,6 +239,61 @@ export class EntryPage implements OnInit {
   private async reloadKeepingForm(): Promise<void> {
     const s = await firstValueFrom(this.api.state(this.certification()));
     this.state.set(s);
+  }
+
+  // ---------- NC answers ----------
+
+  protected chooseNc(key: string, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    this.ncFiles.update((c) => ({ ...c, [key]: files }));
+  }
+
+  protected ncFilesFor(key: string): File[] {
+    return this.ncFiles()[key] ?? [];
+  }
+
+  protected remark(key: string): string {
+    return this.ncRemarks()[key] ?? '';
+  }
+
+  protected setRemark(key: string, value: string): void {
+    this.ncRemarks.update((r) => ({ ...r, [key]: value }));
+  }
+
+  protected answerRequirement(id: number): Promise<void> {
+    const key = `r-${id}`;
+    return this.answer([key], (level) => this.api.ncRequirement(level, id, this.ncFilesFor(key), this.remark(key)));
+  }
+
+  protected answerProduct(id: number): Promise<void> {
+    const photo = this.ncFilesFor(`p-${id}-photo`)[0];
+    const label = this.ncFilesFor(`p-${id}-label`)[0];
+    if (!photo || !label) {
+      this.alert.set(errorAlert('Please choose the product photo and the product label/description.'));
+      return Promise.resolve();
+    }
+    return this.answer([`p-${id}-photo`, `p-${id}-label`, `p-${id}`], (level) => this.api.ncProduct(level, id, photo, label, this.remark(`p-${id}`)));
+  }
+
+  protected async answerSite(): Promise<void> {
+    const position = await this.position();
+    return this.answer(['site'], (level) => this.api.ncSiteExterior(level, this.ncFilesFor('site'), this.remark('site'), position));
+  }
+
+  private async answer(keys: string[], call: (level: string) => Observable<{ message: string }>): Promise<void> {
+    const s = this.state();
+    if (!s || this.busy()) return;
+    this.busy.set(true);
+    try {
+      await firstValueFrom(call(s.certification));
+      this.ncFiles.update((c) => Object.fromEntries(Object.entries(c).filter(([k]) => !keys.includes(k))));
+      await this.reloadKeepingForm();
+    } catch (e) {
+      this.alert.set(errorAlert(apiErrorMessage(e)));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   protected async finalSubmit(): Promise<void> {

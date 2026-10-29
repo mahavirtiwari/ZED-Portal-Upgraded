@@ -72,7 +72,7 @@ describe('VerifyPage', () => {
   });
 
   it('refuses a malformed link without calling the API', async () => {
-    await open('xc', 'P12abcd');
+    await open('qc', 'P12abcd');
     await open('bc', "P1'--");
     expect(el.querySelector('.alert-danger')!.textContent).toContain('Invalid verification link.');
   });

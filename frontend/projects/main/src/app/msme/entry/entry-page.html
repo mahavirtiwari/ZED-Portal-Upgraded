@@ -15,12 +15,12 @@
     <div class="alert alert-warning" role="alert" id="entryError">{{ err }}</div>
     <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
   } @else if (state(); as s) {
-    @if (s.submitted) {
+    @if (s.submitted && !s.nc) {
       <div class="alert alert-success" role="status" id="entrySubmitted">
         Your basic information and documents have been submitted. The assessment agency will review them; you can follow the progress
         under <a [routerLink]="['/msme/certification', s.certification]">View Details</a>.
       </div>
-    } @else if (!s.editable) {
+    } @else if (!s.editable && !s.nc) {
       <div class="alert alert-info" role="status">These details cannot be changed now.</div>
     }
 
@@ -31,6 +31,11 @@
       <button type="button" role="tab" [class.active]="tab() === 'documents'" [attr.aria-selected]="tab() === 'documents'" (click)="tab.set('documents')">
         2. Documents <span class="count">({{ requiredDone() }}/{{ requiredCount() }} required)</span>
       </button>
+      @if (s.nc; as n) {
+        <button type="button" role="tab" [class.active]="tab() === 'nc'" [attr.aria-selected]="tab() === 'nc'" (click)="tab.set('nc')">
+          NC {{ n.number }} <span class="count">({{ ncItems().answered }}/{{ ncItems().total }} answered)</span>
+        </button>
+      }
       <button type="button" role="tab" [class.active]="tab() === 'submit'" [attr.aria-selected]="tab() === 'submit'" (click)="tab.set('submit')">
         3. Submit
       </button>
@@ -144,12 +149,95 @@
         }
       }
 
+      @case ('nc') {
+        @if (nc(); as n) {
+          <div class="alert alert-warning" role="status" id="ncIntro">
+            The assessor raised Non-Conformance {{ n.number }}. Answer each item below with a new document or photos and your remarks, then submit
+            the answers on the Submit tab.
+          </div>
+          @if (n.siteExterior; as site) {
+            <div class="doc-section" data-nc="site">
+              <h5>Site exterior photos</h5>
+              <div class="doc-row">
+                <div class="doc-name">
+                  @if (site.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ site.assessorRemarks }}</span> }
+                  @if (site.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
+                </div>
+                <input type="file" class="form-control form-control-sm w-auto" multiple accept="image/jpeg,image/png"
+                       aria-label="New site exterior photos (up to 2)" (change)="chooseNc('site', $event)" />
+                <input class="form-control form-control-sm w-auto" placeholder="Your remarks" aria-label="Remarks on the site exterior photos" maxlength="2000"
+                       [value]="remark('site')" (input)="setRemark('site', $any($event.target).value)" />
+                <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">SAVE</button>
+              </div>
+            </div>
+          }
+          @if (n.products.length) {
+            <div class="doc-section">
+              <h5>Products</h5>
+              @for (p of n.products; track p.id) {
+                <div class="doc-row" [attr.data-nc]="'product-' + p.id">
+                  <div class="doc-name">
+                    {{ p.productName }}
+                    @if (p.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ p.assessorRemarks }}</span> }
+                    @if (p.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
+                  </div>
+                  <label class="small mb-0">Product photo
+                    <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png" (change)="chooseNc('p-' + p.id + '-photo', $event)" />
+                  </label>
+                  <label class="small mb-0">Label / description
+                    <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png,application/pdf" (change)="chooseNc('p-' + p.id + '-label', $event)" />
+                  </label>
+                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + p.productName" maxlength="2000"
+                         [value]="remark('p-' + p.id)" (input)="setRemark('p-' + p.id, $any($event.target).value)" />
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">SAVE</button>
+                </div>
+              }
+            </div>
+          }
+          @for (sec of n.sections; track sec.code) {
+            <div class="doc-section">
+              <h5>{{ sec.code }}. {{ sec.name }}</h5>
+              @for (r of sec.requirements; track r.id) {
+                <div class="doc-row" [attr.data-nc]="'requirement-' + r.id">
+                  <div class="doc-name">
+                    {{ r.code }} {{ r.name }}
+                    @if (r.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ r.assessorRemarks }}</span> }
+                    @if (r.answered) {
+                      <span class="doc-badge badge-ok">Answered</span>
+                      @if (r.url) { <a [href]="r.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm ms-2">VIEW</a> }
+                    } @else {
+                      <span class="doc-badge badge-req">To answer</span>
+                    }
+                  </div>
+                  <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
+                         [attr.aria-label]="'Document for ' + r.code" (change)="chooseNc('r-' + r.id, $event)" />
+                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + r.code" maxlength="2000"
+                         [value]="remark('r-' + r.id)" (input)="setRemark('r-' + r.id, $any($event.target).value)" />
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('r-' + r.id).length === 0" (click)="answerRequirement(r.id)">
+                    {{ r.answered ? 'REPLACE' : 'SAVE' }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+          <div class="stepper-footer-sec">
+            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
+          </div>
+        }
+      }
+
       @case ('submit') {
-        <ul class="checklist list-unstyled" id="submitChecklist">
-          <li>{{ s.basicInfoSaved ? '✔' : '✘' }} Basic information saved</li>
-          <li>{{ requiredDone() === requiredCount() ? '✔' : '✘' }} Required documents uploaded: {{ requiredDone() }} of {{ requiredCount() }}</li>
-        </ul>
-        @if (editable()) {
+        @if (nc(); as n) {
+          <ul class="checklist list-unstyled" id="submitChecklist">
+            <li>{{ ncItems().answered === ncItems().total ? '✔' : '✘' }} NC {{ n.number }} items answered: {{ ncItems().answered }} of {{ ncItems().total }}</li>
+          </ul>
+        } @else {
+          <ul class="checklist list-unstyled" id="submitChecklist">
+            <li>{{ s.basicInfoSaved ? '✔' : '✘' }} Basic information saved</li>
+            <li>{{ requiredDone() === requiredCount() ? '✔' : '✘' }} Required documents uploaded: {{ requiredDone() }} of {{ requiredCount() }}</li>
+          </ul>
+        }
+        @if (editable() || nc()) {
           <div class="form-check mb-3">
             <input type="checkbox" class="form-check-input" id="confirmSubmit" [disabled]="!readyToSubmit()" [checked]="confirmed()"
                    (change)="confirmed.set($any($event.target).checked)" />
@@ -158,9 +246,9 @@
             </label>
           </div>
           <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-default" (click)="tab.set('documents')">BACK</button>
+            <button type="button" class="btn btn-default" (click)="tab.set(nc() ? 'nc' : 'documents')">BACK</button>
             <button type="button" class="btn btn-primary" id="finalSubmit" [disabled]="busy() || !readyToSubmit() || !confirmed()" (click)="finalSubmit()">
-              {{ busy() ? 'Submitting…' : 'FINAL SUBMIT' }}
+              {{ busy() ? 'Submitting…' : nc() ? 'SUBMIT NC ANSWERS' : 'FINAL SUBMIT' }}
             </button>
           </div>
         }

@@ -2,15 +2,16 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { levelName } from '../msme/shared/levels';
 
 /** GET /api/verify/{type}/{code}. */
 export interface VerifyResponse {
-  certification: 'Pledge' | 'Bronze' | 'Silver' | 'Gold';
+  certification: 'Pledge' | 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
   details: Record<string, string | null>;
 }
 
-/** Route types of the QR codes (Verify/PC|BC|SC|GC/{code}). */
-const TYPES = ['pc', 'bc', 'sc', 'gc'];
+/** Route types of the QR codes (Verify/PC|BC|SC|GC/{code}; V4: XC for ZED-X). */
+const TYPES = ['pc', 'bc', 'sc', 'gc', 'xc'];
 
 interface Line {
   label: string;
@@ -40,7 +41,7 @@ interface Line {
               <thead>
                 <tr>
                   <th class="text-center">
-                    <h3 style="color: #fff">{{ r.certification }} Certification Details</h3>
+                    <h3 style="color: #fff">{{ levelName(r.certification) }} Certification Details</h3>
                     <small>{{ r.certification === 'Pledge' ? r.details['DateOfPledge'] : r.details['DateOfCertification'] }}</small>
                   </th>
                 </tr>
@@ -67,6 +68,7 @@ interface Line {
   `,
 })
 export class VerifyPage {
+  protected readonly levelName = levelName;
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
   /** Route parameters. */

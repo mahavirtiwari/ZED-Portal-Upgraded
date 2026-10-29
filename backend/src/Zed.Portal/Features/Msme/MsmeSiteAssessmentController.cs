@@ -32,7 +32,7 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
     internal static readonly IReadOnlyDictionary<string, string> CertificationTypes =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["Silver"] = "Silver", ["Gold"] = "Gold",
+            ["Silver"] = "Silver", ["Gold"] = "Gold", ["ZEDX"] = "ZEDX",
             ["SilverSurveillance"] = "Silver", ["GoldSurveillance"] = "Gold",
             ["SilverMilestone1"] = "SilverMilestone1", ["SilverMilestone2"] = "SilverMilestone2", ["SilverMilestone3"] = "SilverMilestone3",
             ["GoldMilestone1"] = "GoldMilestone1", ["GoldMilestone2"] = "GoldMilestone2", ["GoldMilestone3"] = "GoldMilestone3",

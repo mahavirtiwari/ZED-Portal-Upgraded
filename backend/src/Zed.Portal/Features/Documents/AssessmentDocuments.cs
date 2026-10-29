@@ -3,6 +3,7 @@ using SkiaSharp;
 using Zed.Core.Certificates;
 using Zed.Core.Data;
 using Zed.Core.Http;
+using Zed.Portal.Features.CertLevels;
 using Zed.Portal.Features.Staff.Assessment;
 
 namespace Zed.Portal.Features.Documents;
@@ -103,9 +104,10 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var level = Validate(zedId, certification);
         var row = await CertificateRowAsync(db, zedId, level, ct);
         var relative = DocumentLevels.CertificatePath(zedId, level);
+        var settings = DocumentLevels.IsBuiltIn(level) ? null : await CertificationLevels.FindAsync(db, level, log, ct);
         try
         {
-            var pdf = RenderCertificate(level, row, surveillance: false);
+            var pdf = RenderCertificate(level, row, surveillance: false, settings);
             await _storage.WriteAsync(relative, pdf, ct);
             await RecordStatusAsync(db, zedId, level, "SUCCESS", "SUCCESS", ct);
             log.LogInformation("Certificate {Path} generated", relative);
@@ -150,7 +152,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         return row;
     }
 
-    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance)
+    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance, CertificationLevel? settings = null)
     {
         var desktop = DocumentLevels.IsDesktop(level);
         var folder = surveillance ? SurveillanceAssets : _storage.AssetsFolder;
@@ -180,14 +182,38 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
             texts.Add(new("DateOfSurveillance", row.Text("DateOfSurveillance"), Anchor: TextAnchor.TopLeft));
             texts.Add(new("SurveillanceNo", row.Text("SurveillanceNo")));
         }
+        // V4 levels (ZED-X): the Admin's validity under "Certificate Validity :" (the Silver/Gold artwork prints three
+        // years), and the logo uploaded in Administration → Certification Levels over the artwork's badge.
+        List<CertificateImage> images = [];
+        var v4 = !surveillance && !DocumentLevels.IsBuiltIn(level);
+        if (v4)
+        {
+            texts.Add(new("Validity", DocumentLevels.ValidityText(settings?.ValidityMonths ?? DocumentLevels.DefaultValidityMonths)));
+            if (settings?.LogoPath is { Length: > 0 } logo && _storage.Find(logo) is { } logoPath)
+                images.Add(new CertificateImage(File.ReadAllBytes(logoPath), BadgeCenterX, BadgeCenterY, BadgeSize, BadgeClearRadius));
+        }
         return CertificateComposer.RenderPdf(new CertificateRequest(
             TemplateImagePath: templatePath,
             Layout: layout,
             Texts: texts,
             QrField: "QrCode",
-            QrContent: row.Text("QrCodeSeqNo"),
-            SubsetFonts: true));
+            QrContent: v4 ? VerifyUrl(portal.Value.PublicBaseUrl, level, row.Text("QrCodeSeqNo")) : row.Text("QrCodeSeqNo"),
+            SubsetFonts: true,
+            Images: images));
     }
+
+    /// <summary>
+    /// The QR address of a V4 level's certificate: this portal's /Verify/XC/{code} (SP_RA_GET_CERTIFICATE_DETAILS writes the
+    /// live portal's /Verify/GC/ for every level but Silver). The code is the last part of the procedure's address.
+    /// </summary>
+    internal static string VerifyUrl(string publicBaseUrl, string level, string procedureUrl)
+    {
+        var code = procedureUrl.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
+        return code.Length == 0 ? "" : $"{publicBaseUrl.TrimEnd('/')}/Verify/{VerifyController.CodeOf(level)}/{code}";
+    }
+
+    /// <summary>The badge of the site artwork (Sa*.jpg, 2482 x 3508 px): its centre, the logo size and the white ring.</summary>
+    private const float BadgeCenterX = 1900, BadgeCenterY = 645, BadgeSize = 610, BadgeClearRadius = 336;
 
     private async Task RecordStatusAsync(ISqlExecutor db, string zedId, string level, string status, string message, CancellationToken ct)
     {
@@ -239,7 +265,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         using var cover = Image(assets, "ReportCover.jpg");
         using var header = Image(assets, "ReportHeader.jpg");
         using var about = Image(assets, "AboutZedAssessment.jpg");
-        using var badge = Image(assets, $"Level{level}.png");
+        using var badge = await BadgeAsync(db, level, ct);
         using var lastPage = Image(assets, "ReportLastPage.jpg");
         // The old page showed ~/GoogleMaps/{ZedId}_{Level}.jpg when a static map had been downloaded earlier.
         using var map = Map(surveillance ? "Surveillance/" : "", zedId, level);
@@ -292,6 +318,16 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
     {
         var path = _storage.Find($"{systemFolder}GoogleMaps/{zedId}_{level}.jpg") ?? _storage.Find($"GoogleMaps/{zedId}_{level}.jpg");
         return path is null ? null : ReportPhotos.Downscale(path, 1000);
+    }
+
+    /// <summary>The report's level badge: Level{Level}.png, or for a V4 level (ZED-X) the logo the Admin uploaded.</summary>
+    private async Task<SKImage> BadgeAsync(ISqlExecutor db, string level, CancellationToken ct)
+    {
+        if (!DocumentLevels.IsBuiltIn(level) &&
+            await CertificationLevels.FindAsync(db, level, log, ct) is { LogoPath: { Length: > 0 } logo } && _storage.Find(logo) is { } path &&
+            SKImage.FromEncodedData(path) is { } uploaded)
+            return uploaded;
+        return Image(_storage.AssetsFolder, $"Level{level}.png");
     }
 
     private static string Validate(string zedId, string certification)

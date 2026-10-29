@@ -48,7 +48,15 @@ public sealed record CertificateRequest(
     string? QrField = null,
     string? QrContent = null,
     // Embed only the glyphs the texts use (Zed.Core.Documents.FontSubsetter): a few KB instead of ~1 MB of Arial.
-    bool SubsetFonts = false);
+    bool SubsetFonts = false,
+    IReadOnlyList<CertificateImage>? Images = null);
+
+/// <summary>
+/// A picture drawn over the template (template pixels): fitted into the square of side <paramref name="Size"/> centred
+/// on (<paramref name="CenterX"/>, <paramref name="CenterY"/>), on a white disc of radius <paramref name="ClearRadius"/>
+/// when one is given (to cover the badge of the artwork). Used for a level's logo uploaded by the Admin.
+/// </summary>
+public sealed record CertificateImage(byte[] Data, float CenterX, float CenterY, float Size, float? ClearRadius = null);
 
 /// <summary>
 /// Cross-platform replacement for the System.Drawing + iTextSharp certificate code.
@@ -79,6 +87,7 @@ public static class CertificateComposer
             var scale = Math.Min(A4WidthPt / template.Width, A4HeightPt / template.Height);
             canvas.Scale(scale);
             canvas.DrawImage(template, 0, 0, new SKSamplingOptions(SKFilterMode.Linear));
+            foreach (var image in request.Images ?? []) DrawImage(canvas, image);
 
             var characters = request.Texts.SelectMany(t => t.Value ?? "").ToList();
             using var regular = Typeface(bold: false, request.SubsetFonts, characters);
@@ -97,6 +106,21 @@ public static class CertificateComposer
             doc.Close();
         }
         return output.ToArray();
+    }
+
+    private static void DrawImage(SKCanvas canvas, CertificateImage image)
+    {
+        using var picture = SKImage.FromEncodedData(image.Data);
+        if (picture is null) return;
+        if (image.ClearRadius is { } r)
+        {
+            using var white = new SKPaint { Color = SKColors.White, IsAntialias = true };
+            canvas.DrawCircle(image.CenterX, image.CenterY, r, white);
+        }
+        var scale = image.Size / Math.Max(picture.Width, picture.Height);
+        var w = picture.Width * scale;
+        var h = picture.Height * scale;
+        canvas.DrawImage(picture, SKRect.Create(image.CenterX - w / 2, image.CenterY - h / 2, w, h), new SKSamplingOptions(SKFilterMode.Linear));
     }
 
     private static SKTypeface Typeface(bool bold, bool subset, IEnumerable<char> characters)

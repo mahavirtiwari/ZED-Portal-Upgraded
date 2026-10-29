@@ -155,7 +155,8 @@ export interface SaOriginal {
   location?: Row | null;
 }
 
-export const SITE_LEVELS = ['Silver', 'Gold'] as const;
+/** V4: ZED-X is a site level (SiteReviewController.SiteLevels). */
+export const SITE_LEVELS = ['Silver', 'Gold', 'ZEDX'] as const;
 
 export function siteLevel(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();

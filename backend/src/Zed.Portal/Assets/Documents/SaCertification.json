@@ -7,6 +7,7 @@
   "Address": { "x": 334, "y": 2010, "height":153, "width":1834, "font": 10 },
   "RegistrationNumber": { "x": 1240, "y": 2482, "font": 10 },
   "NicCode": { "x": 1240, "y": 2294, "font": 10 },
-  "AgencyName": { "x": 1240, "y": 2665, "font": 10 }
+  "AgencyName": { "x": 1240, "y": 2665, "font": 10 },
+  "Validity": { "x": 398, "y": 3150, "font": 5.5 }
   
 }

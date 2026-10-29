@@ -85,6 +85,8 @@
                                   <h5><a [routerLink]="['/msme/certification', level]">VIEW DETAILS</a></h5>
                                   @if (webEntry(level) && status(level) <= 1) {
                                     <p class="mb-0"><a class="btn btn-primary btn-sm" [routerLink]="['/msme/entry', level]">ENTER DETAILS</a></p>
+                                  } @else if (webEntry(level) && (status(level) === 4 || status(level) === 14)) {
+                                    <p class="mb-0"><a class="btn btn-danger btn-sm" [routerLink]="['/msme/entry', level]">ANSWER NC</a></p>
                                   }
                                 } @else {
                                   <h5 class="clickable" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</h5>

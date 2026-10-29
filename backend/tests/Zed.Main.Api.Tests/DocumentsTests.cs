@@ -448,7 +448,7 @@ public sealed class DocumentsTests : IDisposable
         Assert.False(details.TryGetProperty("EmailId", out _));
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/verify/gc/P12abcd")).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/verify/xc/P12abcd")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/verify/qc/P12abcd")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/verify/bc/P12'--")).StatusCode);
         Assert.Equal(2, CallsTo("SP_VERIFY_QR_CODE").Count());
     }

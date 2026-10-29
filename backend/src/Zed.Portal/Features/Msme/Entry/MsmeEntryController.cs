@@ -32,7 +32,7 @@ namespace Zed.Portal.Features.Msme.Entry;
 /// Everything is open only while the level is paid and not final-submitted; the ZED ID comes from the sign-in cookie.
 /// </summary>
 [Route("api/msme/entry")]
-public sealed class MsmeEntryController(
+public sealed partial class MsmeEntryController(
     ISqlExecutor db,
     AppForms forms,
     IWebHostEnvironment env,
@@ -107,8 +107,9 @@ public sealed class MsmeEntryController(
 
         var synced = (await db.QuerySqlAsync<EvidenceIdRow>(SyncedSql, key, ct)).Select(r => r.EvidenceId).ToHashSet();
         var sections = await SectionsAsync(level, synced, ct);
+        var nc = stage.NcOpen ? await NcAsync(level, stage.NcCount, ct) : null;
         return new EntryState(level, stage.Paid, stage.Editable, stage.Submitted, stage.CertificationStatus, answers is not null,
-            form.ToAppJson(), saved, sections);
+            form.ToAppJson(), saved, sections, nc);
     }
 
     /// <summary>GET api/msme/entry/{certification}/files/{folder}/{name}: one of the unit's own files of this level.</summary>
@@ -400,14 +401,17 @@ public sealed class MsmeEntryController(
 
     // ---------- Final submit ----------
 
-    /// <summary>POST api/msme/entry/{certification}/final-submit: the app's final submit, then ZED-X's auto-allotment and the mail.</summary>
+    /// <summary>
+    /// POST api/msme/entry/{certification}/final-submit: the app's final submit, then ZED-X's auto-allotment and the mail.
+    /// While an NC is open: the submit of the NC answers (the procedures' NC branch), without allotment.
+    /// </summary>
     [HttpPost("{certification}/final-submit")]
     [MsmeEditAudit("Web: final submit")]
     public async Task<ActionResult<EntryMessage>> FinalSubmit(string certification, CancellationToken ct)
     {
         if (!MsmeEntry.TryLevel(certification, out var level)) return NotFound();
         var stage = await StageAsync(level, ct);
-        if (!stage.Editable) return this.Problem400(NotOpen);
+        if (!stage.Editable && !stage.NcOpen) return this.Problem400(NotOpen);
         if (!stage.HasRow) return this.Problem400(SaveBasicInfoFirst);
         var args = new { CertificationType = level, ZedId };
 
@@ -435,7 +439,12 @@ public sealed class MsmeEntryController(
             log.LogError(ex, "Web final submit of {ZedId} {Level} failed", ZedId, level);
             return this.Problem400(GenericError);
         }
-        log.LogInformation("Web final submit for {ZedId} {Level}", ZedId, level);
+        log.LogInformation("Web final submit for {ZedId} {Level} (NC {Nc})", ZedId, level, stage.NcCount);
+        if (stage.NcOpen)
+        {
+            await SendSubmissionMailAsync(level, stage.NcCount, ct);
+            return new EntryMessage($"Your answers to NC {stage.NcCount} are submitted. The assessor will review them.");
+        }
 
         // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only; ZED-X's by the unit's kind (migration 0031).
         try
@@ -447,7 +456,7 @@ public sealed class MsmeEntryController(
             log.LogError(ex, "Auto-allotment of {ZedId} {Level} failed (is migration 0031 applied?); left for manual allotment", ZedId, level);
         }
 
-        await SendSubmissionMailAsync(level, ct);
+        await SendSubmissionMailAsync(level, 0, ct);
         return new EntryMessage("Submitted. The assessment agency will review your details and documents.");
     }
 
@@ -577,10 +586,13 @@ public sealed class MsmeEntryController(
         if (at < 0) return false;
         var full = MsmeFilePaths.Normalise("mobileapi/" + normalized[at..]) is { } relative
             ? MsmeFilePaths.Resolve(MsmeEntry.StorageRoot(env, portal, config), relative) : null;
-        return full is not null && System.IO.File.Exists(full);
+        if (full is null) return false;
+        // The procedure names every file .jpg; a document sent as a PDF is {PhotoId}.pdf.
+        return System.IO.File.Exists(full) ||
+               (full.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) && System.IO.File.Exists(full[..^4] + ".pdf"));
     }
 
-    private async Task SendSubmissionMailAsync(string level, CancellationToken ct)
+    private async Task SendSubmissionMailAsync(string level, int ncCount, CancellationToken ct)
     {
         try
         {
@@ -593,11 +605,14 @@ public sealed class MsmeEntryController(
                 [nameof(MsmeWebSubmissionEmail.EnterpriseName)] = row.Text("EnterpriseName"),
                 [nameof(MsmeWebSubmissionEmail.ZedId)] = ZedId,
                 [nameof(MsmeWebSubmissionEmail.Certification)] = level == "ZEDX" ? "ZED-X" : level,
+                [nameof(MsmeWebSubmissionEmail.NcCount)] = ncCount,
                 [nameof(MsmeWebSubmissionEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
             var office = await services.GetRequiredService<EmailAddresses>().GetAsync(EmailAddresses.RegistrationCc, ct);
-            await services.GetRequiredService<IEmailSender>().SendAsync(new EmailMessage(row.Text("EmailId").Trim(),
-                "ZED Basic information and Document Upload Confirmation – " + ZedId, html, EmailProfiles.DocumentUpload,
+            var subject = ncCount > 0
+                ? "Submission of response to Non-conformance(s) raised under “MSME Sustainable (ZED) Certification” Scheme  - " + ZedId
+                : "ZED Basic information and Document Upload Confirmation – " + ZedId;
+            await services.GetRequiredService<IEmailSender>().SendAsync(new EmailMessage(row.Text("EmailId").Trim(), subject, html, EmailProfiles.DocumentUpload,
                 Bcc: string.IsNullOrWhiteSpace(office) ? null : [office]), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

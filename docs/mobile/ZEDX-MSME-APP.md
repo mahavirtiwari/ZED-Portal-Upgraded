@@ -6,7 +6,8 @@ has Bronze, Silver and Gold built in, so it needs a new release to show ZED-X. I
 repository (`docs/mobile/APPS-INVENTORY.md`), so the vendor who holds it has to make that change.
 
 Until then, units enter ZED-X on the web: **My Certifications → ZED-X → ENTER DETAILS** (`/msme/entry/ZEDX`). It covers
-basic information, documents and final submit, with the same procedures and folders as the app. The app must show what
+basic information, documents, final submit and the answers to non-conformances (**ANSWER NC**), with the same procedures
+and folders as the app. The app must show what
 was entered on the web and must not ask for it again: the server holds a single copy of the data.
 
 > The `mobile/apps/msme` workspace in this repository is the **Bronze surveillance** app for desktop assessors

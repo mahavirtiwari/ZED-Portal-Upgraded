@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
 import { ClientPager, PagerComponent } from '../pager';
+import { levelName } from '../../msme/shared/levels';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -51,7 +52,9 @@ export class MonitoringPage {
     ? 'Follow the handholding units by milestone stage; choose a level, then a stage.'
     : `Follow the ${this.surveillance ? 'surveillance assessments' : 'assessments'} by stage; choose a certification level, then a stage.`;
 
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold'];
+  // V4: ZED-X is assessed on the main portal only.
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.surveillance ? ['Bronze', 'Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+  protected readonly levelName = levelName;
   protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
     ? [
         { status: 2, label: 'SCHEDULED BUT NOT STARTED', count: 'NotStarted' },

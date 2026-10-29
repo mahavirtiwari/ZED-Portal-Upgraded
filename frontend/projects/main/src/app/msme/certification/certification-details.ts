@@ -107,7 +107,10 @@ export class CertificationDetailsPage {
     const baseLevel = type.replace('Surveillance', '');
     const basicInfoRoute = this.webEntry() ? `/msme/entry/${type}` : `/msme/assessment/basic-info/${baseLevel}`;
     const ncRoute = `/msme/assessment/non-conformances/${type === 'BronzeSurveillance' ? 'Bronze' : type}`;
-    const nc: Action = { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: ncRoute };
+    // V4: ZED-X answers its NCs on the web (the MSME app has no ZED-X).
+    const nc: Action = this.webEntry()
+      ? { icon: 'non-conformance', label: 'Non-Conformance(s): answer', enabled: true, danger: true, route: `/msme/entry/${type}` }
+      : { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: ncRoute };
     const siteRoute = `/msme/site-assessment/${this.kind() === 'surveillance' ? baseLevel : type}`;
 
     switch (this.kind()) {

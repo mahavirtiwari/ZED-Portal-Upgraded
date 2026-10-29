@@ -17,7 +17,7 @@
           <option value="" disabled>--Select--</option>
         }
         @for (l of levels; track l) {
-          <option [value]="l">{{ l }}</option>
+          <option [value]="l">{{ levelName(l) }}</option>
         }
       </select>
     </div>

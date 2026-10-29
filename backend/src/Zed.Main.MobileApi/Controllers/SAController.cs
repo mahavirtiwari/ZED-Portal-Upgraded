@@ -57,7 +57,7 @@ public sealed class SAController(
 
     /// <summary>Certifications that site assessments are done for; used in upload paths.</summary>
     internal static readonly IReadOnlySet<string> Certifications =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold" };
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold", "ZEDX" };
 
     private enum Role { LeadOrCo, Lead, Co }
 

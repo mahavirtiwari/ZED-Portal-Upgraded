@@ -94,6 +94,20 @@ export interface EntryState {
     custom: Record<string, string | null>;
   };
   sections: EntrySection[];
+  /** The open non-conformance (null when none is open). */
+  nc?: EntryNc | null;
+}
+
+export interface EntryNc {
+  number: number;
+  /** Present when the assessor raised the NC on the site exterior photos. */
+  siteExterior: { assessorRemarks: string | null; previousPhotos: string[]; answered: boolean } | null;
+  products: { id: number; productName: string | null; assessorRemarks: string | null; answered: boolean }[];
+  sections: {
+    code: string;
+    name: string;
+    requirements: { id: number; code: string; name: string; assessorRemarks: string | null; answered: boolean; url: string | null }[];
+  }[];
 }
 
 export interface EntryMessage {
@@ -122,6 +136,32 @@ export class EntryApi {
     const body = new FormData();
     for (const f of files) body.append('files', f, f.name);
     return this.http.post<EntryMessage>(this.url(level, `/evidences/${evidenceId}`), body);
+  }
+
+  ncRequirement(level: string, requirementId: number, files: File[], remarks: string): Observable<EntryMessage> {
+    const body = new FormData();
+    for (const f of files) body.append('files', f, f.name);
+    body.append('remarks', remarks);
+    return this.http.post<EntryMessage>(this.url(level, `/nc/requirements/${requirementId}`), body);
+  }
+
+  ncProduct(level: string, productId: number, productPhoto: File, descriptionPhoto: File, remarks: string): Observable<EntryMessage> {
+    const body = new FormData();
+    body.append('productPhoto', productPhoto, productPhoto.name);
+    body.append('descriptionPhoto', descriptionPhoto, descriptionPhoto.name);
+    body.append('remarks', remarks);
+    return this.http.post<EntryMessage>(this.url(level, `/nc/products/${productId}`), body);
+  }
+
+  ncSiteExterior(level: string, files: File[], remarks: string, position: { latitude: string; longitude: string } | null): Observable<EntryMessage> {
+    const body = new FormData();
+    for (const f of files) body.append('files', f, f.name);
+    body.append('remarks', remarks);
+    if (position) {
+      body.append('latitude', position.latitude);
+      body.append('longitude', position.longitude);
+    }
+    return this.http.post<EntryMessage>(this.url(level, '/nc/site-exterior'), body);
   }
 
   finalSubmit(level: string): Observable<EntryMessage> {
