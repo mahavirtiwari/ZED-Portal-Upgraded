@@ -1,6 +1,6 @@
 import { DecimalPipe, UpperCasePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -113,6 +113,11 @@ export function formatCertificateNo(format: string, date: Date, zedId: string, l
 }
 
 const SAMPLE_ZED_ID = 'ZEDMSME129350';
+
+/** The colour of a level's card and preview (the dashboard boxes' colours; teal for the others). */
+const ACCENTS: Record<string, string> = { BRONZE: '#d07b5c', SILVER: '#9aa5ab', GOLD: '#c9a227', ZEDX: '#3f8f96' };
+
+type EditTab = 'box' | 'certificate' | 'surveillance';
 const API = '/api/staff/settings/levels';
 
 /**
@@ -120,7 +125,9 @@ const API = '/api/staff/settings/levels';
  * Gold, ZED-X and the levels the Admin adds): name, logo, description and information text, shown or hidden, and the
  * certificate settings: desktop or desktop and site assessment, validity, surveillance, and the certificate number
  * format, in general and for Manufacturing / Services units. Levels other than Bronze / Silver / Gold also get their
- * surveillance schedule here (how many, when due, notice, reminders, suspension, withdrawal; migration 0032).
+ * surveillance schedule here (how many, when due, notice, reminders, suspension, withdrawal; migration 0032). V4 layout: a
+ * card per level in its colour; the pop-up in three tabs (box, certificate, surveillance) beside a preview of the
+ * dashboard box, the certificate numbers and the surveillance due dates.
  */
 @Component({
   selector: 'zed-staff-certification-levels',
@@ -142,11 +149,18 @@ const API = '/api/staff/settings/levels';
     @if (loaded() && !stored()) {
       <div class="alert alert-warning" role="alert">These are the built-in levels. They can be changed once the administrator has applied database migration 0028.</div>
     }
+    @if (levels().length) {
+      <p class="lv-summary">
+        <strong>{{ levels().length }}</strong> levels · <span class="dot on"></span>{{ enabledCount() }} shown to MSMEs
+        @if (levels().length - enabledCount()) { · <span class="dot"></span>{{ levels().length - enabledCount() }} hidden }
+      </p>
+    }
 
     <div class="lv-grid">
       @for (i of levels(); track i.level.code) {
         @let l = i.level;
-        <article class="lv-box" [class.is-off]="!l.isEnabled" [attr.aria-label]="l.name">
+        <article class="lv-box" [class.is-off]="!l.isEnabled" [attr.aria-label]="l.name" [style.--accent]="accent(l.code)">
+          <div class="lv-band"></div>
           <div class="lv-top">
             @if (i.logoUrl) {
               <img class="lv-logo" [src]="i.logoUrl" [alt]="l.name + ' logo'" />
@@ -155,30 +169,32 @@ const API = '/api/staff/settings/levels';
             }
             <span class="status-badge" [class.is-active]="l.isEnabled" [class.is-inactive]="!l.isEnabled">{{ l.isEnabled ? 'Enabled' : 'Disabled' }}</span>
           </div>
-          <h5>{{ l.name | uppercase }} CERTIFICATION</h5>
+          <div class="lv-title">
+            <h5>{{ l.name | uppercase }} CERTIFICATION</h5>
+            <code class="lv-code" title="Code">{{ l.code }}</code>
+          </div>
           @if (l.description) { <p class="lv-desc">{{ l.description }}</p> }
           <dl class="lv-facts">
-            <dt>Code</dt><dd><code>{{ l.code }}</code></dd>
-            <dt>Assessment</dt><dd>{{ l.assessmentMode === 'Desktop' ? 'Desktop' : 'Desktop + site' }}</dd>
-            <dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd>
-            <dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd>
-            <dt>Certificate no.</dt><dd><code>{{ i.sample }}</code></dd>
-            @if (l.fee !== null) { <dt>Fee</dt><dd>₹ {{ l.fee | number: '1.0-0' }}</dd> }
+            <div><dt>Assessment</dt><dd>{{ l.assessmentMode === 'Desktop' ? 'Desktop' : 'Desktop + site' }}</dd></div>
+            <div><dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd></div>
+            <div><dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd></div>
+            <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
+            @if (l.fee !== null) { <div><dt>Fee</dt><dd>₹ {{ l.fee | number: '1.0-0' }}</dd></div> }
           </dl>
           <div class="lv-actions">
             <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy() || !stored()" (click)="edit(i)">Edit</button>
-            <button type="button" class="btn btn-sm" [class.btn-outline-danger]="l.isEnabled" [class.btn-outline-success]="!l.isEnabled"
+            <button type="button" class="btn btn-sm" [class.btn-outline-danger]="l.isEnabled" [class.btn-outline-primary]="!l.isEnabled"
                     [disabled]="busy() || !stored()" [attr.aria-label]="(l.isEnabled ? 'Disable ' : 'Enable ') + l.name" (click)="toggle(l)">{{ l.isEnabled ? 'Disable' : 'Enable' }}</button>
-            <a class="btn btn-link btn-sm" [routerLink]="['/staff/masters/parameters', l.code]">Questionnaire</a>
+            <a class="btn btn-link btn-sm ms-auto" [routerLink]="['/staff/masters/parameters', l.code]">Questionnaire →</a>
           </div>
         </article>
       }
     </div>
-    <p class="lv-note mt-3">The fees charged are set in Masters → Payments; the questionnaire of each level in the Questionnaire menu.</p>
+    <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> The fees charged are set in Masters → Payments; the questionnaire of each level in the Questionnaire menu.</p>
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lv-edit-title">
-        <div class="modal-dialog modal-lg modal-popup">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable lv-dialog">
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
@@ -186,127 +202,191 @@ const API = '/api/staff/settings/levels';
                 <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="editing.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
-            <form (ngSubmit)="save()" novalidate>
+            <form class="d-contents" (ngSubmit)="save()" novalidate>
               <div class="modal-body">
-                <h6 class="lv-h">Box</h6>
-                <div class="form-grid">
-                  @if (e.isNew) {
-                    <label for="lv-code">Code<span class="req">*</span></label>
-                    <div>
-                      <input id="lv-code" name="code" class="form-control" maxlength="20" placeholder="e.g. ZEDX" [(ngModel)]="e.code" />
-                      <small class="muted d-block">Letters and digits; stored with the level's questionnaire, fees and certificates, so it cannot change later.</small>
-                    </div>
+                <div class="lv-tabs" role="tablist" aria-label="Settings">
+                  @for (t of tabs; track t.key) {
+                    <button type="button" role="tab" class="lv-tab" [class.active]="tab() === t.key" [attr.aria-selected]="tab() === t.key" (click)="tab.set(t.key)">{{ t.label }}</button>
                   }
-                  <label for="lv-name">Name<span class="req">*</span></label>
-                  <input id="lv-name" name="name" class="form-control" maxlength="100" [(ngModel)]="e.name" />
-                  <label for="lv-desc" class="top">Description</label>
-                  <textarea id="lv-desc" name="description" class="form-control" rows="2" maxlength="1000" [(ngModel)]="e.description"></textarea>
-                  <label for="lv-comment" class="top">Comment</label>
-                  <div>
-                    <textarea id="lv-comment" name="comment" class="form-control" rows="3" maxlength="2000" [(ngModel)]="e.comment"></textarea>
-                    <small class="muted d-block">The information text of the box (its "i").</small>
-                  </div>
-                  @if (!e.isNew) {
-                    <label for="lv-logo">Logo</label>
-                    <div class="lv-logo-row">
-                      @if (logoOf(e.code); as url) { <img [src]="url" alt="Current logo" class="lv-logo-small" /> }
-                      <input id="lv-logo" type="file" class="form-control" accept="image/png,image/jpeg" (change)="pickLogo($event)" />
-                      <small class="muted d-block w-100">PNG or JPG, up to 1 MB.</small>
-                    </div>
-                  }
-                  <label for="lv-fee">Fee shown (₹)</label>
-                  <div>
-                    <input id="lv-fee" name="fee" type="number" min="0" class="form-control lv-short" [(ngModel)]="e.fee" />
-                    <small class="muted d-block">For the box; the amounts charged are in Masters → Payments.</small>
-                  </div>
-                  <span class="label-like">Shown to MSMEs</span>
-                  <div class="form-check form-switch lv-switch">
-                    <input class="form-check-input" type="checkbox" role="switch" id="lv-enabled" name="isEnabled" [(ngModel)]="e.isEnabled" />
-                    <label class="form-check-label" for="lv-enabled">{{ e.isEnabled ? 'Enabled' : 'Disabled' }}</label>
-                  </div>
                 </div>
+                <div class="lv-edit">
+                  <div class="lv-fields">
+                    <div [hidden]="tab() !== 'box'">
+                      <div class="form-grid">
+                        @if (e.isNew) {
+                          <label for="lv-code">Code<span class="req">*</span></label>
+                          <div>
+                            <input id="lv-code" name="code" class="form-control" maxlength="20" placeholder="e.g. ZEDX" [(ngModel)]="e.code" />
+                            <small class="muted d-block">Letters and digits; stored with the level's questionnaire, fees and certificates, so it cannot change later.</small>
+                          </div>
+                        }
+                        <label for="lv-name">Name<span class="req">*</span></label>
+                        <input id="lv-name" name="name" class="form-control" maxlength="100" [(ngModel)]="e.name" />
+                        <label for="lv-desc" class="top">Description</label>
+                        <textarea id="lv-desc" name="description" class="form-control" rows="2" maxlength="1000" [(ngModel)]="e.description"></textarea>
+                        <label for="lv-comment" class="top">Comment</label>
+                        <div>
+                          <textarea id="lv-comment" name="comment" class="form-control" rows="3" maxlength="2000" [(ngModel)]="e.comment"></textarea>
+                          <small class="muted d-block">The information text of the box (its "i").</small>
+                        </div>
+                        @if (!e.isNew) {
+                          <label for="lv-logo">Logo</label>
+                          <div class="lv-logo-row">
+                            @if (logoOf(e.code); as url) { <img [src]="url" alt="Current logo" class="lv-logo-small" /> }
+                            <input id="lv-logo" type="file" class="form-control" accept="image/png,image/jpeg" (change)="pickLogo($event)" />
+                            <small class="muted d-block w-100">PNG or JPG, up to 1 MB.</small>
+                          </div>
+                        }
+                        <label for="lv-fee">Fee shown (₹)</label>
+                        <div>
+                          <input id="lv-fee" name="fee" type="number" min="0" class="form-control lv-short" [(ngModel)]="e.fee" />
+                          <small class="muted d-block">For the box; the amounts charged are in Masters → Payments.</small>
+                        </div>
+                        <span class="label-like">Shown to MSMEs</span>
+                        <div class="form-check form-switch lv-switch">
+                          <input class="form-check-input" type="checkbox" role="switch" id="lv-enabled" name="isEnabled" [(ngModel)]="e.isEnabled" />
+                          <label class="form-check-label" for="lv-enabled">{{ e.isEnabled ? 'Enabled' : 'Disabled' }}</label>
+                        </div>
+                      </div>
+                    </div>
 
-                <h6 class="lv-h mt-4">Certificate</h6>
-                <div class="form-grid">
-                  <span class="label-like">Assessment</span>
-                  <div class="lv-radios" role="radiogroup" aria-label="Assessment">
-                    <label><input type="radio" class="form-check-input" name="assessmentMode" value="Desktop" [(ngModel)]="e.assessmentMode" /> Desktop only</label>
-                    <label><input type="radio" class="form-check-input" name="assessmentMode" value="Site" [(ngModel)]="e.assessmentMode" /> Desktop and site</label>
-                  </div>
-                  <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
-                  <input id="lv-validity" name="validityMonths" type="number" min="1" max="120" class="form-control lv-short" [(ngModel)]="e.validityMonths" />
-                  <span class="label-like">Surveillance</span>
-                  <div class="lv-surv">
-                    <div class="form-check form-switch lv-switch">
-                      <input class="form-check-input" type="checkbox" role="switch" id="lv-surv" name="surveillanceEnabled" [(ngModel)]="e.surveillanceEnabled" />
-                      <label class="form-check-label" for="lv-surv">{{ e.surveillanceEnabled ? 'Yes, first one due after' : 'No surveillance' }}</label>
+                    <div [hidden]="tab() !== 'certificate'">
+                      <div class="form-grid">
+                        <span class="label-like">Assessment</span>
+                        <div class="lv-choice" role="radiogroup" aria-label="Assessment">
+                          <label class="choice-card" [class.active]="e.assessmentMode === 'Desktop'">
+                            <input type="radio" class="form-check-input" name="assessmentMode" value="Desktop" [(ngModel)]="e.assessmentMode" />
+                            <span><strong>Desktop only</strong><small>Documents checked remotely, as Bronze.</small></span>
+                          </label>
+                          <label class="choice-card" [class.active]="e.assessmentMode === 'Site'">
+                            <input type="radio" class="form-check-input" name="assessmentMode" value="Site" [(ngModel)]="e.assessmentMode" />
+                            <span><strong>Desktop and site</strong><small>Then an assessor visits the unit.</small></span>
+                          </label>
+                        </div>
+                        <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
+                        <div class="lv-surv">
+                          <input id="lv-validity" name="validityMonths" type="number" min="1" max="120" class="form-control lv-short" [(ngModel)]="e.validityMonths" />
+                          @if (e.validityMonths) { <span class="muted">{{ months(e.validityMonths) }}</span> }
+                        </div>
+                        <label for="lv-format">Certificate number<span class="req">*</span></label>
+                        <div>
+                          <input id="lv-format" name="certNoFormat" class="form-control lv-mono" maxlength="100" [(ngModel)]="e.certNoFormat" />
+                          <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormat, e.code, null) }}</code></small>
+                        </div>
+                        <label for="lv-format-m">Manufacturing units</label>
+                        <div>
+                          <input id="lv-format-m" name="certNoFormatManufacturing" class="form-control lv-mono" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatManufacturing" />
+                          @if (e.certNoFormatManufacturing.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatManufacturing, e.code, 'Manufacturing') }}</code></small> }
+                        </div>
+                        <label for="lv-format-s">Services units</label>
+                        <div>
+                          <input id="lv-format-s" name="certNoFormatService" class="form-control lv-mono" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatService" />
+                          @if (e.certNoFormatService.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatService, e.code, 'Services') }}</code></small> }
+                        </div>
+                        <span class="label-like top">Parts</span>
+                        <div class="lv-tokens">
+                          @for (t of tokens(); track t) { <code class="token">{{ t }}</code> }
+                          <small class="muted d-block w-100">A number must include {{ '{' }}ZEDID{{ '}' }} or {{ '{' }}ZEDNO{{ '}' }}. The Manufacturing / Services formats apply once filled in.</small>
+                        </div>
+                      </div>
                     </div>
-                    @if (e.surveillanceEnabled) {
-                      <input id="lv-first" name="firstSurveillanceMonths" type="number" min="1" max="120" class="form-control lv-short" aria-label="First surveillance due after (months)" [(ngModel)]="e.firstSurveillanceMonths" />
-                      <span>months</span>
+
+                    <div [hidden]="tab() !== 'surveillance'">
+                      <div class="form-grid">
+                        <span class="label-like">Surveillance</span>
+                        <div class="lv-surv">
+                          <div class="form-check form-switch lv-switch">
+                            <input class="form-check-input" type="checkbox" role="switch" id="lv-surv" name="surveillanceEnabled" [(ngModel)]="e.surveillanceEnabled" />
+                            <label class="form-check-label" for="lv-surv">{{ e.surveillanceEnabled ? 'Yes, first one due after' : 'No surveillance' }}</label>
+                          </div>
+                          @if (e.surveillanceEnabled) {
+                            <input id="lv-first" name="firstSurveillanceMonths" type="number" min="1" max="120" class="form-control lv-short" aria-label="First surveillance due after (months)" [(ngModel)]="e.firstSurveillanceMonths" />
+                            <span>months</span>
+                          }
+                        </div>
+                        @if (e.surveillanceEnabled && e.legacySurveillance) {
+                          <span></span>
+                          <small class="muted">The other dates of this level's surveillance (notice, reminders, suspension, withdrawal) are fixed in its surveillance jobs.</small>
+                        }
+                        @if (e.surveillanceEnabled && !e.legacySurveillance) {
+                          <label for="lv-count">Surveillances<span class="req">*</span></label>
+                          <div class="lv-surv">
+                            <input id="lv-count" name="surveillanceCount" type="number" min="1" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceCount" />
+                            @if ((e.surveillanceCount ?? 0) > 1) {
+                              <span>one every</span>
+                              <input id="lv-interval" name="surveillanceIntervalMonths" type="number" min="1" max="60" class="form-control lv-short" aria-label="Months between two surveillances" [(ngModel)]="e.surveillanceIntervalMonths" />
+                              <span>months</span>
+                            }
+                          </div>
+                          <label for="lv-notice">Notice mail<span class="req">*</span></label>
+                          <div class="lv-surv">
+                            <input id="lv-notice" name="surveillanceNoticeMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceNoticeMonths" />
+                            <span>months before the due date</span>
+                          </div>
+                          <label for="lv-reminders">Reminders<span class="req">*</span></label>
+                          <div class="lv-surv">
+                            <input id="lv-reminders" name="surveillanceReminders" type="number" min="0" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceReminders" />
+                            @if ((e.surveillanceReminders ?? 0) > 0) {
+                              <span>one every</span>
+                              <input id="lv-every" name="surveillanceReminderEveryMonths" type="number" min="1" max="12" class="form-control lv-short" aria-label="Months between reminders" [(ngModel)]="e.surveillanceReminderEveryMonths" />
+                              <span>months after the notice</span>
+                            }
+                          </div>
+                          <label for="lv-suspend">Suspension<span class="req">*</span></label>
+                          <div class="lv-surv">
+                            <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
+                            <span>months after the due date, if not applied for</span>
+                          </div>
+                          <label for="lv-withdraw">Withdrawal<span class="req">*</span></label>
+                          <div class="lv-surv">
+                            <input id="lv-withdraw" name="surveillanceWithdrawAfterDays" type="number" min="1" max="365" class="form-control lv-short" [(ngModel)]="e.surveillanceWithdrawAfterDays" />
+                            <span>days after the suspension</span>
+                          </div>
+                        }
+                      </div>
+                      @if (e.surveillanceEnabled && !e.legacySurveillance) {
+                        <p class="lv-note mt-3 mb-0">{{ scheduleSummary(e) }} Silver and Gold: due at 15 and 27 months, notice 4 months before, 2 monthly reminders, suspended 1 month after the due date, withdrawn 64 days later.</p>
+                      }
+                    </div>
+                  </div>
+
+                  <aside class="lv-preview" aria-label="Preview">
+                    <h4>Dashboard box</h4>
+                    <div class="pv-box" [style.--accent]="accent(e.code)" [class.is-off]="!e.isEnabled">
+                      <div class="pv-head">{{ (e.name || 'Name') | uppercase }} CERTIFICATION</div>
+                      <div class="pv-body">
+                        <div>
+                          <div class="pv-status">→ Get started</div>
+                          <div class="pv-steps"><i></i><i></i><i></i>@if (e.assessmentMode === 'Site') {<i></i>}</div>
+                        </div>
+                        @if (logoOf(e.code); as url) { <img class="pv-logo" [src]="url" alt="" /> } @else { <span class="pv-logo pv-logo-none">{{ e.name || '?' }}</span> }
+                      </div>
+                      @if (e.description) { <p class="pv-desc">{{ e.description }}</p> }
+                      @if (e.fee) { <div class="pv-fee">₹ {{ e.fee | number: '1.0-0' }}</div> }
+                    </div>
+                    <small class="muted d-block mt-1">{{ e.isEnabled ? 'Shown on the MSME dashboard.' : 'Hidden from MSMEs until enabled.' }}</small>
+
+                    <h4 class="mt-3">Certificate numbers</h4>
+                    <dl class="pv-numbers">
+                      <dt>General</dt><dd><code>{{ preview(e.certNoFormat, e.code, null) }}</code></dd>
+                      <dt>Manufacturing</dt><dd><code>{{ preview(e.certNoFormatManufacturing.trim() || e.certNoFormat, e.code, 'Manufacturing') }}</code></dd>
+                      <dt>Services</dt><dd><code>{{ preview(e.certNoFormatService.trim() || e.certNoFormat, e.code, 'Services') }}</code></dd>
+                    </dl>
+
+                    @if (timeline(e); as tl) {
+                      <h4 class="mt-3">Over {{ months(e.validityMonths ?? 0) }}</h4>
+                      <div class="pv-timeline" role="img" [attr.aria-label]="tl.label">
+                        <div class="tl-bar"></div>
+                        @for (d of tl.due; track $index) {
+                          <span class="tl-mark" [style.left.%]="d.at" [title]="'Surveillance ' + ($index + 1) + ': month ' + d.month"><b>S{{ $index + 1 }}</b><small>{{ d.month }}m</small></span>
+                        }
+                        <span class="tl-end"><small>{{ e.validityMonths }}m</small></span>
+                      </div>
+                      <small class="muted d-block">S = surveillance due, months after certification.</small>
                     }
-                  </div>
-                  @if (e.surveillanceEnabled && e.legacySurveillance) {
-                    <span></span>
-                    <small class="muted">The other dates of this level's surveillance (notice, reminders, suspension, withdrawal) are fixed in its surveillance jobs.</small>
-                  }
-                  <label for="lv-format">Certificate number<span class="req">*</span></label>
-                  <div>
-                    <input id="lv-format" name="certNoFormat" class="form-control" maxlength="100" [(ngModel)]="e.certNoFormat" />
-                    <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormat, e.code, null) }}</code></small>
-                  </div>
-                  <label for="lv-format-m">Manufacturing units</label>
-                  <div>
-                    <input id="lv-format-m" name="certNoFormatManufacturing" class="form-control" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatManufacturing" />
-                    @if (e.certNoFormatManufacturing.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatManufacturing, e.code, 'Manufacturing') }}</code></small> }
-                  </div>
-                  <label for="lv-format-s">Services units</label>
-                  <div>
-                    <input id="lv-format-s" name="certNoFormatService" class="form-control" maxlength="100" placeholder="Same as above" [(ngModel)]="e.certNoFormatService" />
-                    @if (e.certNoFormatService.trim()) { <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormatService, e.code, 'Services') }}</code></small> }
-                  </div>
+                  </aside>
                 </div>
-                @if (e.surveillanceEnabled && !e.legacySurveillance) {
-                  <h6 class="lv-h mt-4">Surveillance schedule</h6>
-                  <div class="form-grid">
-                    <label for="lv-count">Surveillances<span class="req">*</span></label>
-                    <div class="lv-surv">
-                      <input id="lv-count" name="surveillanceCount" type="number" min="1" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceCount" />
-                      @if ((e.surveillanceCount ?? 0) > 1) {
-                        <span>one every</span>
-                        <input id="lv-interval" name="surveillanceIntervalMonths" type="number" min="1" max="60" class="form-control lv-short" aria-label="Months between two surveillances" [(ngModel)]="e.surveillanceIntervalMonths" />
-                        <span>months</span>
-                      }
-                    </div>
-                    <label for="lv-notice">Notice mail<span class="req">*</span></label>
-                    <div class="lv-surv">
-                      <input id="lv-notice" name="surveillanceNoticeMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceNoticeMonths" />
-                      <span>months before the due date</span>
-                    </div>
-                    <label for="lv-reminders">Reminders<span class="req">*</span></label>
-                    <div class="lv-surv">
-                      <input id="lv-reminders" name="surveillanceReminders" type="number" min="0" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceReminders" />
-                      @if ((e.surveillanceReminders ?? 0) > 0) {
-                        <span>one every</span>
-                        <input id="lv-every" name="surveillanceReminderEveryMonths" type="number" min="1" max="12" class="form-control lv-short" aria-label="Months between reminders" [(ngModel)]="e.surveillanceReminderEveryMonths" />
-                        <span>months after the notice</span>
-                      }
-                    </div>
-                    <label for="lv-suspend">Suspension<span class="req">*</span></label>
-                    <div class="lv-surv">
-                      <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
-                      <span>months after the due date, if not applied for</span>
-                    </div>
-                    <label for="lv-withdraw">Withdrawal<span class="req">*</span></label>
-                    <div class="lv-surv">
-                      <input id="lv-withdraw" name="surveillanceWithdrawAfterDays" type="number" min="1" max="365" class="form-control lv-short" [(ngModel)]="e.surveillanceWithdrawAfterDays" />
-                      <span>days after the suspension</span>
-                    </div>
-                  </div>
-                  <p class="lv-note mt-2 mb-0">{{ scheduleSummary(e) }} Silver and Gold: due at 15 and 27 months, notice 4 months before, 2 monthly reminders, suspended 1 month after the due date, withdrawn 64 days later.</p>
-                }
-                <p class="lv-note mt-2 mb-0">Parts: @for (t of tokens(); track t) { <code class="me-2">{{ t }}</code> } — a number must include {{ '{' }}ZEDID{{ '}' }} or {{ '{' }}ZEDNO{{ '}' }}. The Manufacturing / Services formats apply once filled in.</p>
-                @if (editError()) { <span class="help-block d-block mt-2" role="alert">{{ editError() }}</span> }
+                @if (editError()) { <div class="alert alert-danger help-block mt-3 mb-0" role="alert">{{ editError() }}</div> }
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" (click)="editing.set(null)">CANCEL</button>
@@ -324,40 +404,111 @@ const API = '/api/staff/settings/levels';
   `,
   styles: `
     .page-head { align-items: center; }
-    .lv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
-    .lv-box { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; }
+    .lv-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #5f6f70; font-size: 14px; margin: -4px 0 14px; }
+    .lv-summary strong { color: #23474a; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #b7c3c4; }
+    .dot.on { background: #2e9e5b; }
+
+    /* A card per level, with the level's colour on top. */
+    .lv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .lv-box { --accent: #45a5ad; position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px 16px 14px; background: #fff;
+      border: 1px solid #dfe9ea; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); overflow: hidden; transition: box-shadow .15s; }
+    .lv-box:hover { box-shadow: 0 6px 18px rgba(16, 61, 64, 0.12); }
+    .lv-band { position: absolute; inset: 0 0 auto 0; height: 5px; background: var(--accent); }
     .lv-box.is-off { background: #f6f8f8; }
+    .lv-box.is-off .lv-band { opacity: .35; }
     .lv-box.is-off .lv-logo, .lv-box.is-off h5, .lv-box.is-off .lv-desc { opacity: .55; }
     .lv-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
     .lv-logo { height: 72px; max-width: 150px; object-fit: contain; }
     .lv-logo-none { display: inline-flex; align-items: center; justify-content: center; min-width: 72px; padding: 0 10px; border-radius: 50%;
       background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; font-weight: 800; letter-spacing: .5px; }
-    .lv-box h5 { margin: 4px 0 0; font-size: 15px; font-weight: 800; color: #23474a; letter-spacing: .3px; }
+    .lv-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+    .lv-box h5 { margin: 0; font-size: 15px; font-weight: 800; color: #23474a; letter-spacing: .3px; }
+    .lv-code { font-size: 11.5px; color: #23474a; background: #eef6f6; border-radius: 10px; padding: 1px 8px; }
     .lv-desc { margin: 0; font-size: 13px; color: #3b4b4c; }
-    .lv-facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 3px 10px; margin: 4px 0 0; font-size: 13px; }
+    .lv-facts { margin: 0; font-size: 13px; border-top: 1px solid #eef3f3; }
+    .lv-facts > div { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-bottom: 1px solid #eef3f3; }
     .lv-facts dt { font-weight: 600; color: #5f6f70; }
-    .lv-facts dd { margin: 0; overflow-wrap: anywhere; }
-    .lv-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 6px; }
-    .lv-h { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #2f7c83; border-left: 3px solid #45a5ad; padding-left: 8px; }
+    .lv-facts dd { margin: 0; overflow-wrap: anywhere; color: #232527; }
+    .lv-sample { font-size: 12px; color: #23474a; background: #f4f8f8; border-radius: 4px; padding: 1px 6px; }
+    .lv-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: auto; padding-top: 4px; }
+    .lv-note { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: #5f6f70; background: none; }
+    .info-dot { flex: 0 0 18px; height: 18px; border-radius: 9px; background: #45a5ad; color: #fff; font-size: 12px; font-weight: 700;
+      display: inline-flex; align-items: center; justify-content: center; font-style: italic; font-family: Georgia, serif; }
+
+    /* The pop-up: tabs, the fields, and a preview beside them. Wider than the skin's 760px form pop-ups. */
+    .modal > .modal-dialog.modal-xl.lv-dialog { max-width: 1080px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
+    .d-contents { display: contents; }
+    .modal .lv-dialog textarea.form-control { min-height: 0; height: auto; }
+    .modal .lv-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
+    .lv-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 16px; }
+    .lv-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .lv-tab:hover { color: #2f7c83; }
+    .lv-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
+    .lv-edit { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
     /* The portal's form styles stretch every field; the numbers stay short. */
-    .form-grid input.lv-short { width: 120px !important; max-width: 120px !important; flex: none; }
-    .lv-radios { display: flex; gap: 18px; flex-wrap: wrap; }
-    .lv-radios label { display: flex; align-items: center; gap: 6px; margin: 0; }
-    .lv-radios .form-check-input { margin: 0; }
+    .form-grid input.lv-short { width: 110px !important; max-width: 110px !important; flex: none; }
+    .lv-mono { font-family: Consolas, 'Courier New', monospace; }
+    .lv-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
+    .choice-card.active { border-color: #45a5ad; background: #f4fafa; }
+    .choice-card .form-check-input { flex: none; margin: 3px 0 0; }
+    .choice-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
     .lv-switch { display: flex; align-items: center; gap: 8px; padding-left: 0; margin: 0; }
     .lv-switch .form-check-input { float: none; margin: 0; }
     .lv-surv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .lv-logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .lv-logo-small { height: 40px; }
+    .lv-tokens { display: flex; flex-wrap: wrap; gap: 4px; }
+    .token { font-size: 12px; background: #eef6f6; color: #23474a; border-radius: 4px; padding: 1px 6px; }
     .label-like { font-weight: 600; color: #3b4b4c; font-size: 14px; }
-    .lv-note { font-size: 13px; color: #5f6f70; background: none; }
+    .label-like.top { align-self: start; padding-top: 2px; }
+
+    .lv-preview { position: sticky; top: 0; background: #f4f8f8; border-radius: 12px; padding: 14px; }
+    .lv-preview h4 { font-size: 13px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 8px; }
+    .pv-box { --accent: #45a5ad; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08); }
+    .pv-box.is-off { opacity: .5; }
+    .pv-head { background: var(--accent); color: #fff; font-weight: 800; font-size: 13px; padding: 10px 12px; letter-spacing: .3px; overflow-wrap: anywhere; }
+    .pv-body { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px; }
+    .pv-status { color: #e8a33d; font-weight: 700; font-size: 13px; }
+    .pv-steps { display: flex; gap: 14px; margin-top: 10px; }
+    .pv-steps i { width: 10px; height: 10px; border-radius: 5px; background: #dfe5e6; }
+    .pv-logo { height: 52px; max-width: 90px; object-fit: contain; }
+    .pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 10px; font-weight: 800;
+      background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; overflow: hidden; }
+    .pv-desc { font-size: 12px; color: #3b4b4c; margin: 0; padding: 0 12px 10px; }
+    .pv-fee { font-size: 12px; font-weight: 700; color: #23474a; padding: 0 12px 10px; }
+    .pv-numbers { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
+    .pv-numbers dt { color: #5f6f70; font-weight: 600; }
+    .pv-numbers dd { margin: 0; overflow-wrap: anywhere; }
+    .pv-timeline { position: relative; height: 46px; margin: 4px 12px 2px 4px; }
+    .tl-bar { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 3px; background: linear-gradient(90deg, #cfe5e6, #45a5ad); }
+    .tl-mark, .tl-end { position: absolute; top: 2px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+    .tl-mark b { width: 22px; height: 22px; border-radius: 11px; background: #fff; border: 2px solid #23474a; font-size: 10px; display: grid; place-items: center; color: #23474a; }
+    .tl-mark small, .tl-end small { font-size: 11px; color: #5f6f70; margin-top: 2px; }
+    .tl-end { left: 100%; top: 26px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    @media (max-width: 991.98px) {
+      .lv-edit { grid-template-columns: minmax(0, 1fr); }
+      .lv-preview { position: static; }
+    }
+    @media (max-width: 575.98px) {
+      .modal .lv-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
+      .lv-choice { grid-template-columns: minmax(0, 1fr); }
+    }
   `,
 })
 export class CertificationLevelsPage {
   private readonly http = inject(HttpClient);
 
   protected readonly levels = signal<LevelItem[]>([]);
+  protected readonly enabledCount = computed(() => this.levels().filter((i) => i.level.isEnabled).length);
+  protected readonly tabs: readonly { key: EditTab; label: string }[] = [
+    { key: 'box', label: 'Dashboard box' },
+    { key: 'certificate', label: 'Certificate' },
+    { key: 'surveillance', label: 'Surveillance' },
+  ];
+  protected readonly tab = signal<EditTab>('box');
   protected readonly tokens = signal<string[]>([]);
   protected readonly stored = signal(false);
   protected readonly loaded = signal(false);
@@ -394,6 +545,22 @@ export class CertificationLevelsPage {
     return `Due at ${list} months after certification.`;
   }
 
+  protected accent(code: string): string {
+    return ACCENTS[(code || '').toUpperCase()] ?? '#45a5ad';
+  }
+
+  /** The surveillance due dates along the validity, for the preview; null when there is nothing to draw. */
+  protected timeline(e: LevelForm): { due: { month: number; at: number }[]; label: string } | null {
+    const validity = e.validityMonths ?? 0, first = e.firstSurveillanceMonths ?? 0;
+    if (!e.surveillanceEnabled || validity < 1 || first < 1) return null;
+    const count = e.legacySurveillance ? 1 : Math.min(Math.max(e.surveillanceCount ?? 1, 1), 5);
+    const every = e.surveillanceIntervalMonths ?? 0;
+    const due = Array.from({ length: count }, (_, i) => first + i * (count > 1 ? every : 0))
+      .filter((m) => m > 0 && m < validity)
+      .map((month) => ({ month, at: (month / validity) * 100 }));
+    return due.length ? { due, label: `Surveillance due at ${due.map((d) => d.month).join(', ')} months of ${validity}` } : null;
+  }
+
   protected preview(format: string, code: string, category: 'Manufacturing' | 'Services' | null): string {
     return formatCertificateNo(format, new Date(), SAMPLE_ZED_ID, code || 'LEVEL', category);
   }
@@ -404,6 +571,7 @@ export class CertificationLevelsPage {
 
   protected startAdd(): void {
     this.logo = null;
+    this.tab.set('box');
     this.editError.set('');
     this.editing.set({
       code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site', validityMonths: 36,
@@ -415,6 +583,7 @@ export class CertificationLevelsPage {
   protected edit(i: LevelItem): void {
     const l = i.level;
     this.logo = null;
+    this.tab.set('box');
     this.editError.set('');
     this.editing.set({
       code: l.code, isNew: false, name: l.name, description: l.description ?? '', comment: l.comment ?? '', isEnabled: l.isEnabled,

@@ -146,6 +146,29 @@ describe('CertificationLevelsPage', () => {
     await settle();
   });
 
+  it('edits in tabs beside a preview of the box, the numbers and the surveillance due dates', async () => {
+    expect(el.querySelector('.lv-summary')!.textContent).toContain('1 shown to MSMEs');
+    button(box('ZED-X'), 'Edit').click();
+    await settle();
+    const panes = () => [...el.querySelectorAll('.lv-fields > div')].map((p) => (p as HTMLElement).hidden);
+    expect(panes()).toEqual([false, true, true]);
+    typeIn('#lv-name', 'ZED-X Export');
+    await settle();
+    expect(el.querySelector('.pv-head')!.textContent).toContain('ZED-X EXPORT CERTIFICATION');
+    expect(el.querySelector('.lv-preview')!.textContent).toContain('₹ 75,000');
+
+    button(el.querySelector('.lv-tabs')!, 'Surveillance').click();
+    await settle();
+    expect(panes()).toEqual([true, true, false]);
+    // 2 surveillances, at 12 and 24 months of 36.
+    expect([...el.querySelectorAll('.tl-mark small')].map((m) => m.textContent!.trim())).toEqual(['12m', '24m']);
+    typeIn('#lv-count', '1');
+    await settle();
+    expect(el.querySelectorAll('.tl-mark').length).toBe(1);
+    button(el.querySelector('.modal-footer')!, 'CANCEL').click();
+    await settle();
+  });
+
   it('adds a level with a code', async () => {
     button(el, '+ Add level').click();
     await settle();
