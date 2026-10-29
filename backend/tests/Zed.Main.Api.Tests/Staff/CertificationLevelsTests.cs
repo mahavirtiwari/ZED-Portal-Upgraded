@@ -168,5 +168,31 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/7", new { sectionName = "Digital", nicSectors = Array.Empty<string>() })).StatusCode);
         var byId = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.NicSectorsByIdSql);
         Assert.Equal(("7", null), (FakeSql.Arg(byId.Args, "Id"), FakeSql.Arg(byId.Args, "NicSectors")));
+        // Not sent: whether it is assessed in surveillance stays as it is.
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByIdSql || c.Name == StaffMastersController.SurveillanceByCodeSql);
+    }
+
+    [Fact]
+    public async Task The_admin_chooses_the_parameters_assessed_in_surveillance()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([
+            new { Id = 7, SectionType = "ZEDX", SectionCode = "X1", SectionName = "Digital", iButton = "", NicSectors = "", SurveMandatories = "Yes" },
+            new { Id = 8, SectionType = "ZEDX", SectionCode = "X2", SectionName = "Energy", iButton = "", NicSectors = "", SurveMandatories = (string?)null }]);
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var list = await admin.GetFromJsonAsync<JsonElement>("/api/staff/masters/parameters/ZEDX");
+        Assert.Equal([true, false], list.EnumerateArray().Select(p => p.GetProperty("inSurveillance").GetBoolean()));
+
+        // Legacy Sections.SurveMandatories: 'Yes' or NULL, as Gold's (the surveillance payment copies the 'Yes' ones).
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/ZEDX",
+            new { sectionCode = "X3", sectionName = "Water", inSurveillance = true })).StatusCode);
+        var add = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByCodeSql).Args;
+        Assert.Equal(("ZEDX", "X3", "Yes"), (FakeSql.Arg(add, "SectionType"), FakeSql.Arg(add, "SectionCode"), FakeSql.Arg(add, "SurveMandatories")));
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/7", new { sectionName = "Digital", inSurveillance = false })).StatusCode);
+        var off = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByIdSql).Args;
+        Assert.Equal(("7", null), (FakeSql.Arg(off, "Id"), FakeSql.Arg(off, "SurveMandatories")));
+        // Unchanged: nothing written.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/8", new { sectionName = "Energy", inSurveillance = false })).StatusCode);
+        Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByIdSql);
     }
 }

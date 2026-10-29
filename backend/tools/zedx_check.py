@@ -8,6 +8,7 @@ import io
 import json
 import os
 import subprocess
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -40,7 +41,8 @@ def rows(query, db=MAIN):
 class Client:
     """A browser: cookies, and the XSRF header as the Angular app sends it."""
 
-    def __init__(self):
+    def __init__(self, base=None):
+        self.base = base or BASE
         self.jar = http.cookiejar.CookieJar()
         self.opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
         self.get('/api/auth/me')
@@ -60,7 +62,7 @@ class Client:
             headers['Content-Type'] = content_type
         if method != 'GET' and self._xsrf():
             headers['X-XSRF-TOKEN'] = self._xsrf()
-        req = urllib.request.Request(BASE + path, data=body, method=method, headers=headers)
+        req = urllib.request.Request(self.base + path, data=body, method=method, headers=headers)
         try:
             with self.opener.open(req) as r:
                 data = r.read()
@@ -99,18 +101,31 @@ class Client:
         return self.request('POST', path, buf.getvalue(), f'multipart/form-data; boundary={boundary}')
 
 
-def staff(user):
-    c = Client()
-    s, r = c.post('/api/staff/auth/login', {'userId': user, 'password': PASSWORD})
-    assert s == 200, (user, s, r)
-    return c
+_sessions = {}
+
+
+def _login(path, user, base=None):
+    """A signed-in browser, reused: the login endpoints allow 10 attempts a minute per address (429 after), so a
+    rejected attempt is retried after a pause."""
+    key = (base or BASE, path, user)
+    if key not in _sessions:
+        for _ in range(8):
+            c = Client(base)
+            s, r = c.post(path, {'userId': user, 'password': PASSWORD})
+            if s != 429:
+                break
+            time.sleep(10)
+        assert s == 200, (user, s, r)
+        _sessions[key] = c
+    return _sessions[key]
+
+
+def staff(user, base=None):
+    return _login('/api/staff/auth/login', user, base)
 
 
 def msme(zed=ZED):
-    c = Client()
-    s, r = c.post('/api/msme/auth/login', {'userId': zed, 'password': PASSWORD})
-    assert s == 200, (zed, s, r)
-    return c
+    return _login('/api/msme/auth/login', zed)
 
 
 def png(color=(46, 202, 208), size=(400, 300)):

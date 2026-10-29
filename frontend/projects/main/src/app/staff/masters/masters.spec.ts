@@ -302,7 +302,7 @@ describe('ParametersPage', () => {
     http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
     flushLevels(http);
     http.expectOne('/api/staff/masters/parameters/ZEDX').flush([
-      { id: 7, sectionType: 'ZEDX', sectionCode: 'X1', sectionName: 'Digital', description: '', nicSectors: ['62'] },
+      { id: 7, sectionType: 'ZEDX', sectionCode: 'X1', sectionName: 'Digital', description: '', nicSectors: ['62'], inSurveillance: true },
       { id: 8, sectionType: 'ZEDX', sectionCode: 'X2', sectionName: 'Energy', description: '', nicSectors: [] },
     ]);
     await settle(fixture);
@@ -311,6 +311,8 @@ describe('ParametersPage', () => {
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
     expect(rows[0]).toContain('62');
     expect(rows[1]).toContain('All sectors');
+    expect(rows[0]).toContain('Yes');
+    expect(rows[1]).toContain('No');
 
     (el.querySelector('#sectionCode') as HTMLInputElement).value = 'X3';
     el.querySelector('#sectionCode')!.dispatchEvent(new Event('input'));
@@ -322,8 +324,27 @@ describe('ParametersPage', () => {
     (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/ZEDX');
-    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'] });
+    // A new parameter is assessed in surveillance unless unticked.
+    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true });
     post.flush({ message: 'Parameter saved.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/parameters/ZEDX').flush([
+      { id: 8, sectionType: 'ZEDX', sectionCode: 'X2', sectionName: 'Energy', description: '', nicSectors: [], inSurveillance: true },
+    ]);
+    await settle(fixture);
+
+    // Taken out of surveillance in the edit pop-up.
+    [...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Edit')!.dispatchEvent(new Event('click'));
+    await settle(fixture);
+    const tick = el.querySelector('#edit-inSurveillance') as HTMLInputElement;
+    expect(tick.checked).toBe(true);
+    tick.click();
+    await settle(fixture);
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/parameters/ZEDX/8');
+    expect(put.request.body).toEqual(expect.objectContaining({ sectionName: 'Energy', inSurveillance: false }));
+    put.flush({ message: 'Parameter data updated.' });
     await settle(fixture);
     http.expectOne('/api/staff/masters/parameters/ZEDX').flush([]);
     await settle(fixture);

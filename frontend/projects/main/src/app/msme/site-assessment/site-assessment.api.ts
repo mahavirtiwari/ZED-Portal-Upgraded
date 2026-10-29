@@ -86,7 +86,7 @@ export interface SiteAssessmentData {
 /** The values the API accepts (MsmeSiteAssessmentController.CertificationTypes). */
 export const SITE_ASSESSMENT_TYPES = [
   'Silver', 'Gold', 'ZEDX',
-  'SilverSurveillance', 'GoldSurveillance',
+  'SilverSurveillance', 'GoldSurveillance', 'ZEDXSurveillance',
   'SilverMilestone1', 'SilverMilestone2', 'SilverMilestone3',
   'GoldMilestone1', 'GoldMilestone2', 'GoldMilestone3',
 ] as const;

@@ -43,7 +43,7 @@ DELETE FROM dbo.Evidences WHERE SectionType = 'ZEDX';
 DELETE FROM dbo.Options WHERE SectionType = 'ZEDX';
 DELETE FROM dbo.Requirements WHERE SectionType = 'ZEDX';
 DELETE FROM dbo.Sections WHERE SectionType = 'ZEDX';
-INSERT dbo.Sections (SectionCode, SectionName, OrderNo, SectionType, NicSectors) VALUES ('1', 'Export Readiness', 1, 'ZEDX', '24'), ('2', 'IT Services', 2, 'ZEDX', '62');
+INSERT dbo.Sections (SectionCode, SectionName, OrderNo, SectionType, NicSectors, SurveMandatories) VALUES ('1', 'Export Readiness', 1, 'ZEDX', '24', 'Yes'), ('2', 'IT Services', 2, 'ZEDX', '62', 'Yes');
 INSERT dbo.Requirements (SectionCode, SectionName, RequirementCode, RequirementName, OrderNo, SectionType) VALUES
  ('1', 'Export Readiness', '1', 'Export quality policy', 1, 'ZEDX'),
  ('1', 'Export Readiness', '2', 'Export documentation', 2, 'ZEDX'),

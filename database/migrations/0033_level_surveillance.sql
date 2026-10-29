@@ -16,8 +16,8 @@
 --       procedures set the payment flags of Bronze / Silver / Gold only and copy the level's whole questionnaire; for a V4
 --       level this sets the flags (here and Msme.IsSur{Level}PaymentDone on main), removes from the unit's copy the
 --       parameters that do not apply to its NIC sector (Sections.NicSectors, as SP_V4_CERTIFICATION_PAID on main) while
---       the surveillance has not started, and sets the minimum parameters to assess as for Gold (13, at most the
---       parameters the unit has). Nothing happens without a recorded payment of the level.
+--       the surveillance has not started (status 1 or 8), and sets the minimum parameters to assess as for Gold (13, at
+--       most the parameters the unit has; the gateway procedure sets them for Silver / Gold only). Nothing happens without a recorded payment of the level.
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 GO
@@ -139,10 +139,12 @@ BEGIN
         EXEC sp_executesql @q, N'@z varchar(50)', @z = @ZedId;
     END
 
-    -- The current round: the newest record of the level, while its surveillance has not started.
+    -- The current round: the newest record of the level, while its surveillance has not started: status 1 (paid with
+    -- nothing to pay: the whole questionnaire copied) or 8 (paid through the gateway: the unit's own certification
+    -- answers copied, the sections marked for surveillance only, Sections.SurveMandatories).
     DECLARE @CertId int = (SELECT TOP 1 Id FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification ORDER BY Id DESC);
     DECLARE @Nic varchar(10) = (SELECT TOP 1 LEFT(LTRIM(TwoDigitActivity), 2) FROM dbo.Msme WHERE ZedId = @ZedId);
-    IF @CertId IS NOT NULL AND (SELECT ISNULL(CertificationStatus, 1) FROM dbo.MsmeCertifications WHERE Id = @CertId) <= 1
+    IF @CertId IS NOT NULL AND (SELECT ISNULL(CertificationStatus, 1) FROM dbo.MsmeCertifications WHERE Id = @CertId) IN (0, 1, 8)
     BEGIN
         IF @Nic IS NOT NULL AND LEN(@Nic) = 2
         BEGIN

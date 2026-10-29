@@ -50,6 +50,16 @@ IF COL_LENGTH('dbo.SectionTypes', 'IsCertificationLevel') IS NOT NULL
         FirstSurveillanceMonths = CASE WHEN FirstSurveillanceMonths IS NULL OR FirstSurveillanceMonths = 12 THEN 15 ELSE FirstSurveillanceMonths END
     WHERE SectionType = ''ZEDX'' AND SurveillanceCount IS NULL;');
 GO
+-- The parameters assessed in surveillance (Sections.SurveMandatories = 'Yes', as Gold's; the surveillance payment copies
+-- only those): a V4 level with none marked has all of them marked, so that its surveillance is never empty. The Admin
+-- then chooses them in the Questionnaire (Admin -> Questionnaire, "Assessed in surveillance").
+IF COL_LENGTH('dbo.SectionTypes', 'IsCertificationLevel') IS NOT NULL AND COL_LENGTH('dbo.Sections', 'SurveMandatories') IS NOT NULL
+    EXEC (N'
+    UPDATE S SET SurveMandatories = ''Yes''
+    FROM dbo.Sections S JOIN dbo.SectionTypes T ON T.SectionType = S.SectionType
+    WHERE T.IsCertificationLevel = 1 AND T.SectionType NOT IN (''Bronze'', ''Silver'', ''Gold'')
+      AND NOT EXISTS (SELECT 1 FROM dbo.Sections M WHERE M.SectionType = S.SectionType AND M.SurveMandatories = ''Yes'');');
+GO
 -- The surveillance fee flag of ZED-X on main exists since migration 0029 (Msme.IsSurZEDXPaymentDone).
 IF COL_LENGTH('dbo.Msme', 'IsSurZEDXPaymentDone') IS NULL ALTER TABLE dbo.Msme ADD IsSurZEDXPaymentDone bit NULL;
 GO

@@ -61,6 +61,11 @@ import { ClientPager, PagerComponent } from '../pager';
             <zed-multi-select inputId="nicSectors" label="NIC Sectors" [options]="sectorOptions()" [(value)]="nicSectors" />
             <small class="muted d-block mt-1">None chosen: the parameter applies to every sector.</small>
           </div>
+          <span class="label-like">Surveillance</span>
+          <div class="form-check">
+            <input id="inSurveillance" name="inSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="inSurveillance" />
+            <label for="inSurveillance" class="form-check-label">Assessed again in surveillance</label>
+          </div>
         </div>
         <div class="form-actions">
           <button type="submit" class="btn btn-primary" [disabled]="saving()">Save</button>
@@ -82,6 +87,7 @@ import { ClientPager, PagerComponent } from '../pager';
           <col style="width: 20%" />
           <col />
           <col style="width: 170px" />
+          <col style="width: 120px" />
           <col style="width: 250px" />
         </colgroup>
         <thead>
@@ -90,6 +96,7 @@ import { ClientPager, PagerComponent } from '../pager';
             <th class="text-center">Parameter Name</th>
             <th>Description</th>
             <th class="text-center">NIC Sectors</th>
+            <th class="text-center">Surveillance</th>
             <th class="text-center">Actions</th>
           </tr>
         </thead>
@@ -113,6 +120,7 @@ import { ClientPager, PagerComponent } from '../pager';
                   <span class="muted">All sectors</span>
                 }
               </td>
+              <td class="text-center">{{ s.inSurveillance ? 'Yes' : 'No' }}</td>
               <td>
                 <div class="row-actions justify-content-center">
                   <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
@@ -121,7 +129,7 @@ import { ClientPager, PagerComponent } from '../pager';
               </td>
             </tr>
           } @empty {
-            <tr><td colspan="5" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
+            <tr><td colspan="6" style="padding: 0"><div class="no-data">{{ pager.search() ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
           }
         </tbody>
       </table>
@@ -150,6 +158,11 @@ import { ClientPager, PagerComponent } from '../pager';
                     <zed-multi-select inputId="edit-nicSectors" label="NIC Sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" />
                     <small class="muted d-block mt-1">None chosen: every sector.</small>
                   </div>
+                  <span class="label-like">Surveillance</span>
+                  <div class="form-check">
+                    <input id="edit-inSurveillance" name="editInSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="e.inSurveillance" />
+                    <label for="edit-inSurveillance" class="form-check-label">Assessed again in surveillance</label>
+                  </div>
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
@@ -166,6 +179,7 @@ import { ClientPager, PagerComponent } from '../pager';
   `,
   styles: `
     .help-block { color: #a94442; font-size: 13px; }
+    .label-like { font-weight: 600; color: #3b4b4c; font-size: 14px; }
     .param-table { table-layout: fixed; width: 100%; min-width: 900px; }
     .page-head { align-items: flex-end; }
     .level-pick { display: flex; align-items: center; gap: 8px; }
@@ -187,7 +201,7 @@ export class ParametersPage {
   protected readonly sectorOptions = signal<MultiSelectOption[]>([]);
   protected nicSectors: string[] = [];
   protected readonly pager = new ClientPager<Parameter>(10);
-  protected readonly editing = signal<{ id: number; sectionName: string; description: string; nicSectors: string[] } | null>(null);
+  protected readonly editing = signal<{ id: number; sectionName: string; description: string; nicSectors: string[]; inSurveillance: boolean } | null>(null);
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
@@ -197,6 +211,8 @@ export class ParametersPage {
   protected code = '';
   protected name = '';
   protected description = '';
+  /** A new parameter is assessed in surveillance unless unticked (the surveillance copies only these). */
+  protected inSurveillance = true;
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
@@ -260,8 +276,9 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors))).message);
+      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors, this.inSurveillance))).message);
       this.code = this.name = this.description = '';
+      this.inSurveillance = true;
       this.nicSectors = [];
       this.submitted.set(false);
       await this.load();
@@ -275,7 +292,7 @@ export class ParametersPage {
   protected edit(p: Parameter): void {
     this.editError.set('');
     this.success.set('');
-    this.editing.set({ id: p.id, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])] });
+    this.editing.set({ id: p.id, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance });
   }
 
   protected async update(): Promise<void> {
@@ -287,7 +304,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors))).message);
+      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors, e.inSurveillance))).message);
       this.editing.set(null);
       await this.load();
     } catch (err) {

@@ -189,7 +189,10 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     // The levels are those of Administration → Certification Levels (Bronze, Silver, Gold, ZED-X, ...; migration 0028).
 
     /// <param name="NicSectors">The NIC 2-digit sectors the parameter applies to (V4, Sections.NicSectors); empty = all sectors.</param>
-    public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description, IReadOnlyList<string>? NicSectors = null);
+    /// <param name="InSurveillance">Assessed again in surveillance (legacy Sections.SurveMandatories = 'Yes'): the surveillance
+    /// payment copies only these parameters of the unit's certification (ZED_SURVEILLANCE SP_MSME_PAYMENT_GATEWAY_DETAILS).</param>
+    public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description, IReadOnlyList<string>? NicSectors = null,
+        bool InSurveillance = false);
 
     public sealed record LevelOption(string Code, string Name, bool IsEnabled);
 
@@ -209,7 +212,8 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
         return (await LoadParametersAsync(type, ct)).ToList();
     }
 
-    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description, List<string>? NicSectors = null);
+    /// <param name="InSurveillance">Null: unchanged (a new parameter is not assessed in surveillance).</param>
+    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null);
 
     [HttpPost("parameters/{sectionType}")]
     [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
@@ -227,11 +231,13 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
         await db.ExecuteProcAsync("SP_MASTER_INSERT_SECTION",
             new { SectionType = type, SectionCode = code, SectionName = name, SectionImage = (string?)null, iButton = description }, ct);
         var saved = await SaveNicSectorsAsync(NicSectorsByCodeSql, new { SectionType = type, SectionCode = code, NicSectors = sectors }, ct);
+        if (req.InSurveillance is { } surveillance)
+            await db.ExecuteSqlAsync(SurveillanceByCodeSql, new { SectionType = type, SectionCode = code, SurveMandatories = surveillance ? "Yes" : null }, ct);
         log.LogInformation("Parameter {Type}/{Code} added by {Actor}", type, code, UserId);
         return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved));
     }
 
-    public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null);
+    public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null, bool? InSurveillance = null);
 
     [HttpPut("parameters/{sectionType}/{id:int}")]
     [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
@@ -250,12 +256,19 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
             Id = id.ToString(), SectionType = type, current.SectionCode, SectionName = name, SectionImage = (string?)null, iButton = description,
         }, ct);
         var saved = await SaveNicSectorsAsync(NicSectorsByIdSql, new { Id = id, NicSectors = sectors }, ct);
+        if (req.InSurveillance is { } surveillance && surveillance != current.InSurveillance)
+        {
+            await db.ExecuteSqlAsync(SurveillanceByIdSql, new { Id = id, SurveMandatories = surveillance ? "Yes" : null }, ct);
+            log.LogWarning("Parameter {Id} ({Type}) {State} surveillance by {Actor}", id, type, surveillance ? "added to" : "removed from", UserId);
+        }
         log.LogInformation("Parameter {Id} updated by {Actor}", id, UserId);
         return new MessageResponse("Parameter data updated." + (saved ? "" : NicSectorsNotSaved));
     }
 
     internal const string NicSectorsByCodeSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string NicSectorsByIdSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE Id = @Id;";
+    internal const string SurveillanceByCodeSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
+    internal const string SurveillanceByIdSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE Id = @Id;";
     private const string NicSectorsNotSaved = " Its NIC sectors could not be saved: please ask the administrator to apply database migration 0028.";
 
     /// <summary>The chosen NIC sectors as stored (comma-separated codes, null = all sectors), or what is wrong with them.</summary>
@@ -315,7 +328,8 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     private async Task<IEnumerable<Parameter>> LoadParametersAsync(string type, CancellationToken ct) =>
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .Select(r => new Parameter(Id(r), r.Text("SectionType"), r.Text("SectionCode"), r.Text("SectionName"),
-                r.Text("iButton") is { Length: > 0 } d ? d : null, SplitList(r.Text("NicSectors"))))
+                r.Text("iButton") is { Length: > 0 } d ? d : null, SplitList(r.Text("NicSectors")),
+                string.Equals(r.Text("SurveMandatories").Trim(), "Yes", StringComparison.OrdinalIgnoreCase)))
             .Where(p => p.Id > 0);
 
     private static (string? Code, string? Name, string? Error) ValidateCodeName(CodeNameRequest req, string label)
