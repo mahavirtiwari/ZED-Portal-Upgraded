@@ -41,21 +41,35 @@ describe('EmailSettingsPage', () => {
   const addresses = () => el.querySelector('form.addresses') as HTMLFormElement;
 
   it('shows the mail servers, then the portal and database addresses with the configured defaults', () => {
-    expect([...el.querySelectorAll('.card-title')].map((h) => h.textContent)).toEqual(['Mail servers', 'Portal mails', 'Database mails']);
+    expect([...el.querySelectorAll('.card-title')].map((h) => h.textContent)).toEqual(['Mail servers']);
+    expect([...el.querySelectorAll('.group-title')].map((h) => h.firstChild!.textContent!.trim())).toEqual(['Portal mails', 'Database mails']);
     expect(input('Email.ContactInbox').placeholder).toBe('Configured: zed.support@qcin.org');
     expect(input('Email.ZedTeamInbox').value).toBe('team@zed.test');
     expect(input('Email.DbMailBcc').placeholder).toBe('Not configured');
   });
 
-  it('shows the address cards collapsed with how many are set, and opens them on their header', async () => {
-    const heads = [...el.querySelectorAll('form.addresses .collapse-head')] as HTMLButtonElement[];
-    expect(heads.map((h) => h.querySelector('small')!.textContent!.trim())).toEqual(['1 of 2 set here', '0 of 1 set here']);
-    const grid = () => el.querySelectorAll('form.addresses .collapse-body')[0] as HTMLElement;
-    expect(grid().hidden).toBe(true);
-    heads[0].click();
+  it('shows how many are set and where the mails of each mailbox go now', async () => {
+    expect([...el.querySelectorAll('.group-count')].map((c) => c.textContent!.trim())).toEqual(['1 of 2 set here', '0 of 1 set here']);
+    const count = () => el.querySelector('.mb-count')!.textContent!.replace(/\s+/g, ' ').trim();
+    expect(count()).toBe('1 of 3 set here 1 with no address');
+    const usesOf = (key: string) => input(key).closest('.mb-field')!.querySelector('.mb-uses')!.textContent!.replace(/\s+/g, ' ').trim();
+    expect(usesOf('Email.ContactInbox')).toBe('Uses the configured zed.support@qcin.org');
+    expect(usesOf('Email.ZedTeamInbox')).toBe('Set here: team@zed.test Use configured');
+    expect(usesOf('Email.DbMailBcc')).toBe('No address: nothing is sent to this mailbox');
+
+    // Back to the configured address in one click.
+    (input('Email.ZedTeamInbox').closest('.mb-field')!.querySelector('.use-configured') as HTMLButtonElement).click();
     await settle();
-    expect(grid().hidden).toBe(false);
-    expect(heads[0].getAttribute('aria-expanded')).toBe('true');
+    expect(input('Email.ZedTeamInbox').value).toBe('');
+    expect(usesOf('Email.ZedTeamInbox')).toBe('Uses the configured zed@qcin.org');
+    expect(addresses().textContent).toContain('Unsaved changes');
+
+    const box = input('Email.DbMailBcc');
+    box.value = 'a@zed.test; b@zed.test';
+    box.dispatchEvent(new Event('input'));
+    await settle();
+    expect(usesOf('Email.DbMailBcc')).toBe('Set here: a@zed.test, b@zed.test');
+    expect(count()).toBe('1 of 3 set here');
   });
 
   it('saves every address and reloads them', async () => {
@@ -108,6 +122,5 @@ describe('EmailSettingsPage', () => {
     expect(box.classList).toContain('is-invalid');
     expect(addresses().textContent).toContain("'not-an-address' is not a valid e-mail address.");
     expect(addresses().querySelector('.alert-danger')!.textContent).toContain('Please correct Copy of every database mail.');
-    expect((el.querySelectorAll('form.addresses .collapse-body')[1] as HTMLElement).hidden).toBe(false);
   });
 });
