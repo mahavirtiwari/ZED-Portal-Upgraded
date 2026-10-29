@@ -40,11 +40,17 @@ describe('CaptchaSettingsPage', () => {
     const saveButton = () => el.querySelector('button[type=submit]') as HTMLButtonElement;
     expect(el.querySelector('.captcha-option.is-on .status-badge')!.textContent!.trim()).toBe('Current');
     expect(saveButton().disabled).toBe(true);
+    // The protection now, where it applies, and a note on Google while it has no keys.
+    expect(el.querySelector('.cap-status')!.classList).toContain('off');
+    expect(el.querySelector('.cap-status')!.textContent).toContain('No captcha on the forms');
+    expect([...el.querySelectorAll('.where-chip')].map((c) => c.textContent!.trim()))
+      .toEqual(['Login', 'Registration', 'Contact ZED', 'Forgot password', 'Not the MSME mobile app']);
+    expect(el.textContent).toContain('offered here once its keys are set');
 
     radio('captcha-text').click();
     await settle();
     expect(saveButton().disabled).toBe(false);
-    expect(el.querySelector('.form-actions')!.textContent).toContain('Not saved yet.');
+    expect(el.querySelector('.form-actions')!.textContent).toContain('Not saved yet. Captcha off → Captcha on');
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/settings/captcha');
@@ -52,6 +58,7 @@ describe('CaptchaSettingsPage', () => {
     put.flush({ message: 'Captcha setting saved.' });
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Captcha setting saved.');
+    expect(el.querySelector('.cap-status')!.textContent).toContain("Forms protected by the portal's own captcha");
   });
 
   it('offers Google reCAPTCHA when the server has its keys and shows refusals', async () => {
