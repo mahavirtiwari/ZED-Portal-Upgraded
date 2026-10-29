@@ -8,6 +8,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
 import { levelLogo, levelName } from '../shared/levels';
 import { MsmeUnitSummary } from '../shared/unit-summary';
+import { isWebEntryLevel } from '../entry/entry.api';
 
 type Row = Record<string, string | number | boolean | null>;
 
@@ -286,6 +287,11 @@ export class DashboardPage {
 
   protected status(level: Level): number {
     return this.num(`${level}Status`);
+  }
+
+  /** ZED-X: basic information and documents are entered on the web (the MSME app has no ZED-X). */
+  protected webEntry(level: Level): boolean {
+    return isWebEntryLevel(level);
   }
 
   protected paid(level: Level): boolean {

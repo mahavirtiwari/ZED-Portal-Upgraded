@@ -15,6 +15,7 @@ import {
 } from './certification.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
 import { levelName } from '../shared/levels';
+import { isWebEntryLevel } from '../entry/entry.api';
 
 /** One box in the "Actions" column. */
 interface Action {
@@ -85,8 +86,10 @@ export class CertificationDetailsPage {
 
   /** The mobile app banner was shown for every type except Bronze surveillance and the milestones. */
   protected readonly showAppBanner = computed(() =>
-    ['Bronze', 'Silver', 'Gold', 'ZEDX', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
+    ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
   );
+  /** V4: ZED-X is entered on the web (the MSME app has no ZED-X). */
+  protected readonly webEntry = computed(() => isWebEntryLevel(this.type()));
 
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));
@@ -102,7 +105,7 @@ export class CertificationDetailsPage {
     // Assessment pages take the level without "Surveillance", except the Silver/Gold surveillance
     // non-conformances, which have their own rounds (as the old CertificationDetails page linked them).
     const baseLevel = type.replace('Surveillance', '');
-    const basicInfoRoute = `/msme/assessment/basic-info/${baseLevel}`;
+    const basicInfoRoute = this.webEntry() ? `/msme/entry/${type}` : `/msme/assessment/basic-info/${baseLevel}`;
     const ncRoute = `/msme/assessment/non-conformances/${type === 'BronzeSurveillance' ? 'Bronze' : type}`;
     const nc: Action = { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: ncRoute };
     const siteRoute = `/msme/site-assessment/${this.kind() === 'surveillance' ? baseLevel : type}`;
@@ -113,7 +116,9 @@ export class CertificationDetailsPage {
         if (ncRaised) list.push(nc);
         break;
       case 'silverGold':
-        list.push({ icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
+        list.push(this.webEntry()
+          ? { icon: 'basicInfo', label: 'Basic Information & Documents Upload', enabled: true, route: basicInfoRoute }
+          : { icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
         list.push({ icon: 'basicInfo', label: 'View Onsite/Remote Assessment Information', enabled: has('ScheduledOn'), route: siteRoute });
         if (ncRaised) list.push(nc);
         break;

@@ -6,7 +6,6 @@ using Dapper;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using SkiaSharp;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
@@ -261,47 +260,8 @@ public sealed partial class MsmeController
         return true;
     }
 
-    /// <summary>One A4 page per image, scaled to fit inside 10 pt margins, centred at the top.</summary>
-    internal static byte[]? ImagesToPdf(IReadOnlyList<byte[]> images)
-    {
-        const float pageW = 595f, pageH = 842f, margin = 10f;
-        var decoded = new List<SKImage>();
-        try
-        {
-            foreach (var bytes in images)
-            {
-                using var data = SKData.CreateCopy(bytes);
-                var image = SKImage.FromEncodedData(data);
-                if (image is null) return null;
-                decoded.Add(image);
-            }
-
-            using var output = new MemoryStream();
-            using (var doc = SKDocument.CreatePdf(output))
-            {
-                foreach (var image in decoded)
-                {
-                    var canvas = doc.BeginPage(pageW, pageH);
-                    var scale = Math.Min((pageW - 2 * margin) / image.Width, (pageH - 3 * margin) / image.Height);
-                    var w = image.Width * scale;
-                    var h = image.Height * scale;
-                    canvas.DrawImage(image, SKRect.Create((pageW - w) / 2, 2 * margin, w, h), new SKSamplingOptions(SKFilterMode.Linear));
-                    doc.EndPage();
-                }
-                if (decoded.Count == 0)
-                {
-                    doc.BeginPage(pageW, pageH);
-                    doc.EndPage();
-                }
-                doc.Close();
-            }
-            return output.ToArray();
-        }
-        finally
-        {
-            foreach (var i in decoded) i.Dispose();
-        }
-    }
+    /// <summary>One A4 page per image (shared with the portal's web data entry).</summary>
+    internal static byte[]? ImagesToPdf(IReadOnlyList<byte[]> images) => EvidenceImages.ImagesToPdf(images);
 
     // ---------- Mail ----------
 

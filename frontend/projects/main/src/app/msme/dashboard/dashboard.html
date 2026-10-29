@@ -83,6 +83,9 @@
                                 </div>
                                 @if (paid(level)) {
                                   <h5><a [routerLink]="['/msme/certification', level]">VIEW DETAILS</a></h5>
+                                  @if (webEntry(level) && status(level) <= 1) {
+                                    <p class="mb-0"><a class="btn btn-primary btn-sm" [routerLink]="['/msme/entry', level]">ENTER DETAILS</a></p>
+                                  }
                                 } @else {
                                   <h5 class="clickable" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</h5>
                                 }

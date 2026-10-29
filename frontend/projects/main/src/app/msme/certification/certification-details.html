@@ -35,7 +35,16 @@
             </button>
           </div>
 
-          @if (showAppBanner()) {
+          @if (webEntry()) {
+            <div class="zed-payment-success">
+              <div class="label-highlight">
+                <div>
+                  <p>Enter the <strong>Basic Information and Documents</strong> of your unit on this portal to proceed to the next step.</p>
+                  <a class="btn btn-primary" [routerLink]="['/msme/entry', d.certification]">ENTER DETAILS</a>
+                </div>
+              </div>
+            </div>
+          } @else if (showAppBanner()) {
             <div class="zed-payment-success">
               <div class="label-highlight">
                 <div>

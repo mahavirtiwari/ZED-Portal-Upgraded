@@ -210,6 +210,12 @@ const MAIN_ROUTES: Routes = [
         loadComponent: () => import('./msme/assessment/assessment-report').then((m) => m.NonConformancesPage),
       },
       {
+        // V4: ZED-X basic information, documents and final submit on the web (the MSME app has no ZED-X).
+        path: 'entry/:certification',
+        title: 'ZED | Basic Information & Documents',
+        loadComponent: () => import('./msme/entry/entry-page').then((m) => m.EntryPage),
+      },
+      {
         path: 'site-assessment/:certification',
         title: 'ZED | Site Assessment',
         loadComponent: () => import('./msme/site-assessment/site-assessment').then((m) => m.SiteAssessmentPage),

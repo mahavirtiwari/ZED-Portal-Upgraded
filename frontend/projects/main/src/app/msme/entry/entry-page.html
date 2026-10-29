@@ -1,0 +1,172 @@
+<div class="container form-page" id="zed_user_form">
+  <div class="page-head">
+    <div>
+      <h3 class="registration-title">{{ levelName(certification()) }} Certification: Basic Information &amp; Documents</h3>
+    </div>
+    <div class="page-actions refresh-bar mb-0">
+      <a [routerLink]="['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
+      <button type="button" class="btn btn-link refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </div>
+  </div>
+
+  @if (loading() && !state()) {
+    <p class="text-muted" role="status">Loading…</p>
+  } @else if (loadError(); as err) {
+    <div class="alert alert-warning" role="alert" id="entryError">{{ err }}</div>
+    <a routerLink="/msme/dashboard" class="btn btn-default">BACK TO DASHBOARD</a>
+  } @else if (state(); as s) {
+    @if (s.submitted) {
+      <div class="alert alert-success" role="status" id="entrySubmitted">
+        Your basic information and documents have been submitted. The assessment agency will review them; you can follow the progress
+        under <a [routerLink]="['/msme/certification', s.certification]">View Details</a>.
+      </div>
+    } @else if (!s.editable) {
+      <div class="alert alert-info" role="status">These details cannot be changed now.</div>
+    }
+
+    <div class="entry-tabs" role="tablist">
+      <button type="button" role="tab" [class.active]="tab() === 'basic'" [attr.aria-selected]="tab() === 'basic'" (click)="tab.set('basic')">
+        1. Basic Information @if (s.basicInfoSaved) { <span class="count">(saved)</span> }
+      </button>
+      <button type="button" role="tab" [class.active]="tab() === 'documents'" [attr.aria-selected]="tab() === 'documents'" (click)="tab.set('documents')">
+        2. Documents <span class="count">({{ requiredDone() }}/{{ requiredCount() }} required)</span>
+      </button>
+      <button type="button" role="tab" [class.active]="tab() === 'submit'" [attr.aria-selected]="tab() === 'submit'" (click)="tab.set('submit')">
+        3. Submit
+      </button>
+    </div>
+
+    @switch (tab()) {
+      @case ('basic') {
+        <div id="basicInfoForm">
+          @for (sec of sections(); track sec.key) {
+            @if (sections().length > 1) { <h4 class="mb-3">{{ sec.label }}</h4> }
+            @for (f of sec.fields; track f.key) {
+              @if (shown(f)) {
+                @if (f.heading) { <h5 class="mt-3">{{ f.heading }}</h5> }
+                <div class="field-row" [attr.data-field]="f.key">
+                  @if (f.type === 'rows') {
+                    <span class="field-label">{{ f.label }} @if (f.required) { <span class="req">*</span> }</span>
+                    <div class="table-responsive">
+                      <table class="table table-bordered rows-table">
+                        <thead>
+                          <tr>
+                            <th scope="col">#</th>
+                            @for (c of columns(f); track c.key) { <th scope="col">{{ c.label }} @if (c.required) { <span class="req">*</span> }</th> }
+                            @if (editable()) { <th scope="col"><span class="visually-hidden">Remove</span></th> }
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (r of rows(f.key); track $index; let i = $index) {
+                            <tr>
+                              <td>{{ i + 1 }}</td>
+                              @for (c of columns(f); track c.key) {
+                                <td>
+                                  <zed-entry-field [field]="c" [inRow]="true" [inputId]="f.key + '-' + i + '-' + c.key" [disabled]="!editable() || busy()"
+                                                   [value]="r[c.key] ?? null" (valueChange)="setCell(f.key, i, c.key, $event)" />
+                                </td>
+                              }
+                              @if (editable()) {
+                                <td><button type="button" class="btn btn-link btn-sm text-danger" [attr.aria-label]="'Remove entry ' + (i + 1)" (click)="removeRow(f.key, i)">Remove</button></td>
+                              }
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    @if (editable() && rows(f.key).length < maxRows) {
+                      <button type="button" class="btn btn-outline-primary btn-sm" (click)="addRow(f)">+ Add</button>
+                    }
+                  } @else {
+                    <label [attr.for]="f.key">{{ f.label }} @if (f.required) { <span class="req">*</span> }</label>
+                    <zed-entry-field [field]="f" [inputId]="f.key" [disabled]="!editable() || busy()" [value]="value(f.key)" (valueChange)="setValue(f.key, $event)" />
+                  }
+                  @if (f.help) { <span class="help">{{ f.help }}</span> }
+                </div>
+              }
+            }
+          }
+          @if (editable()) {
+            <p class="help">Photos: JPG or PNG, up to 5 MB each. Your browser may ask to share your location: it is recorded with the photos, as the ZED app does.</p>
+            <div class="stepper-footer-sec">
+              <button type="button" class="btn btn-primary" [disabled]="busy()" id="saveBasicInfo" (click)="saveBasicInfo()">{{ busy() ? 'Saving…' : 'SAVE AND CONTINUE' }}</button>
+            </div>
+          }
+        </div>
+      }
+
+      @case ('documents') {
+        @if (!s.basicInfoSaved) {
+          <div class="alert alert-info" role="status">Please save the basic information first; the documents can be uploaded after that.</div>
+        }
+        <p class="help">For each document, upload one PDF, or up to 10 photos (JPG / PNG), which are joined into one PDF. Uploading again replaces it.
+          Documents marked <span class="doc-badge badge-req">Required</span> are needed for the final submit.</p>
+        @for (sec of s.sections; track sec.code) {
+          <div class="doc-section">
+            <h5>{{ sec.code }}. {{ sec.name }}</h5>
+            @for (req of sec.requirements; track req.code) {
+              <div class="doc-req">
+                <div class="req-name">{{ req.code }} {{ req.name }}</div>
+                @for (e of req.evidences; track e.id) {
+                  <div class="doc-row" [attr.data-evidence]="e.id">
+                    <div class="doc-name">
+                      {{ e.name }}
+                      @if (e.help) { <span class="help">{{ e.help }}</span> }
+                    </div>
+                    @if (e.uploaded) {
+                      <span class="doc-badge badge-ok">Uploaded</span>
+                      @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">VIEW</a> }
+                    } @else if (e.required) {
+                      <span class="doc-badge badge-req">Required</span>
+                    } @else {
+                      <span class="doc-badge badge-opt">Optional</span>
+                    }
+                    @if (editable() && s.basicInfoSaved) {
+                      <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
+                             [attr.aria-label]="'Files for ' + e.name" (change)="choose(e, $event)" />
+                      <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || chosenFor(e).length === 0" (click)="upload(e)">
+                        {{ e.uploaded ? 'REPLACE' : 'UPLOAD' }}
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        } @empty {
+          <div class="alert alert-info" role="status">No documents are asked for this certification.</div>
+        }
+        @if (editable()) {
+          <div class="stepper-footer-sec">
+            <button type="button" class="btn btn-default" (click)="tab.set('basic')">BACK</button>
+            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
+          </div>
+        }
+      }
+
+      @case ('submit') {
+        <ul class="checklist list-unstyled" id="submitChecklist">
+          <li>{{ s.basicInfoSaved ? '✔' : '✘' }} Basic information saved</li>
+          <li>{{ requiredDone() === requiredCount() ? '✔' : '✘' }} Required documents uploaded: {{ requiredDone() }} of {{ requiredCount() }}</li>
+        </ul>
+        @if (editable()) {
+          <div class="form-check mb-3">
+            <input type="checkbox" class="form-check-input" id="confirmSubmit" [disabled]="!readyToSubmit()" [checked]="confirmed()"
+                   (change)="confirmed.set($any($event.target).checked)" />
+            <label class="form-check-label" for="confirmSubmit">
+              I confirm that the information and documents are correct. They cannot be changed after the final submit.
+            </label>
+          </div>
+          <div class="stepper-footer-sec">
+            <button type="button" class="btn btn-default" (click)="tab.set('documents')">BACK</button>
+            <button type="button" class="btn btn-primary" id="finalSubmit" [disabled]="busy() || !readyToSubmit() || !confirmed()" (click)="finalSubmit()">
+              {{ busy() ? 'Submitting…' : 'FINAL SUBMIT' }}
+            </button>
+          </div>
+        }
+      }
+    }
+  }
+</div>
+
+<zed-alert-dialog [message]="alert()" (closed)="alert.set(null)" />
