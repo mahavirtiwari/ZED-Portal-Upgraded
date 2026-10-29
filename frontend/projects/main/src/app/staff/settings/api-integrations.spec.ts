@@ -55,6 +55,44 @@ describe('ApiIntegrationsPage', () => {
     expect(el.querySelector('section[aria-labelledby="ai-outbound"]')!.textContent).toContain('In use');
   });
 
+  it('shows the counts, a tab per section and how each partner signs in', async () => {
+    // 1 of 2 partners enabled, 1 of 1 API on, no token yet, 1 service in use.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.replace(/\s+/g, ''))).toEqual(['1/2', '1/1', '—', '1']);
+    const section = (id: string) => el.querySelector(`section[aria-labelledby="${id}"]`) as HTMLElement;
+    expect([section('ai-clients').hidden, section('ai-groups').hidden, section('ai-outbound').hidden]).toEqual([false, true, true]);
+    ([...el.querySelectorAll('.ai-tab')].find((t) => t.textContent!.includes('Partner APIs')) as HTMLButtonElement).click();
+    await settle();
+    expect([section('ai-clients').hidden, section('ai-groups').hidden]).toEqual([true, false]);
+    expect([...el.querySelectorAll('.ai-group .ep')].map((e) => e.textContent)).toEqual(['Msme/GetZedDetails']);
+
+    const partner = (name: string) => [...el.querySelectorAll('.partner')].find((p) => p.textContent!.includes(name))!;
+    expect(partner('RAMP').querySelector('.avatar')!.textContent).toBe('RD');
+    expect(partner('RAMP').querySelector('.auth-chip')!.textContent).toBe('Client ID + key');
+    expect(partner('Andhra').textContent).toContain('Submits incentives');
+  });
+
+  it('copies one value of a new partner on its own', async () => {
+    const write = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText: write }, configurable: true });
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === '+ Add partner') as HTMLButtonElement).click();
+    await settle();
+    const name = el.querySelector('#ai-add-name') as HTMLInputElement;
+    name.value = 'SIDBI';
+    name.dispatchEvent(new Event('input'));
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    http.expectOne((r) => r.method === 'POST').flush({ message: 'SIDBI added.', id: 9, clientId: '4947839', secret: 'ABCDEF0123', aesKey: null, aesIv: null });
+    await settle();
+    flushAll();
+    await settle();
+    const copyKey = [...el.querySelectorAll('.ai-secrets dd')].find((d) => d.textContent!.includes('ABCDEF0123'))!.querySelector('.copy-one') as HTMLButtonElement;
+    copyKey.click();
+    await settle();
+    expect(write).toHaveBeenCalledWith('ABCDEF0123');
+    expect(copyKey.textContent!.trim()).toBe('Copied');
+  });
+
   it('disables a partner after a confirmation and does nothing when cancelled', async () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     const disable = () => el.querySelector('[aria-label="Disable RAMP Dashboard"]') as HTMLButtonElement;
