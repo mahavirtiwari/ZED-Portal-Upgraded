@@ -154,6 +154,36 @@ describe('EmailTemplatesPage', () => {
     await settle();
   });
 
+  it('shows the counts, filters by status and previews the subject at desktop or phone width', async () => {
+    // Portal mails: 2, 1 sent, 1 switched off, 1 changed.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '1', '1']);
+    button('Switched off').click();
+    await settle();
+    expect(rows().length).toBe(1);
+    expect(rows()[0]).toContain('Contact Query');
+    button('All').click();
+    await settle();
+    expect(rows().length).toBe(2);
+
+    button('Edit').click();
+    await settle();
+    http.expectOne(`${url}/ContactQueryEmail`).flush({ item: items[0], bodyHtml: '<p>Hello</p>', standardBody: true });
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    expect(dialog.querySelector('.meta-subject')!.textContent).toContain("The standard e-mail's subject");
+    const subject = dialog.querySelector('#templateSubject') as HTMLInputElement;
+    subject.value = 'Query from {{Name}}: {{StandardSubject}}';
+    subject.dispatchEvent(new Event('input'));
+    await settle();
+    expect(dialog.querySelector('.meta-subject')!.textContent).toBe('Query from [Name]: [the standard subject]');
+    expect(dialog.querySelector('.mail-frame')!.classList).not.toContain('phone');
+    button('Phone', dialog).click();
+    await settle();
+    expect(dialog.querySelector('.mail-frame')!.classList).toContain('phone');
+    button('CANCEL', dialog).click();
+    await settle();
+  });
+
   it('keeps the dialog open with the refusal', async () => {
     button('Edit').click();
     await settle();

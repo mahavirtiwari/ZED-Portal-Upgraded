@@ -84,6 +84,9 @@ export function insertAtCursor(text: string, snippet: string, box: HTMLInputElem
 }
 
 /** {{StandardBody}} in the preview: where the standard e-mail's text goes (it is not loaded with an own text). */
+/** Which e-mails the list shows (the buttons beside the search box). */
+type StatusFilter = 'all' | 'sent' | 'off' | 'changed';
+
 const standardBodySample =
   '<div style="margin:8px 0;padding:14px 16px;border:1px dashed #9ccdd1;border-radius:8px;background:#f7fbfb;color:#5f6f70;font:14px/1.5 sans-serif">' +
   "The standard e-mail's text is put here.</div>";
@@ -91,8 +94,9 @@ const standardBodySample =
 /**
  * Admin → Email Templates (new in V4): every e-mail of this portal and of its database procedures. An Admin can switch an
  * e-mail off, give it an own subject and HTML text with {{Placeholder}} fields, or reset it to the standard e-mail.
- * V4 layout: page head, search in a filter bar, status badges and row buttons side by side; the editor pop-up has the
- * HTML beside its preview (fields filled with sample values), and field chips that put a field at the cursor.
+ * V4 layout: the counts, the portal / database tabs, search and a status filter, each e-mail with its group and subject;
+ * the editor pop-up has the HTML beside its preview as a mail (the subject line on top, desktop or phone width, fields
+ * filled with sample values), and field chips that put a field at the cursor.
  */
 @Component({
   selector: 'zed-staff-email-templates',
@@ -110,66 +114,85 @@ const standardBodySample =
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <ul class="nav nav-tabs mb-3" role="tablist">
-      @for (t of tabs; track t.database) {
-        <li class="nav-item" role="presentation">
-          <button type="button" role="tab" class="nav-link" [class.active]="database() === t.database" [attr.aria-selected]="database() === t.database"
+
+    <div class="et-stats">
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">E-mails</span></div>
+      <div class="stat"><span class="stat-value is-sent">{{ stats().sent }}</span><span class="stat-label">Sent</span></div>
+      <div class="stat"><span class="stat-value is-off">{{ stats().off }}</span><span class="stat-label">Switched off</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">Changed by Admin</span></div>
+    </div>
+
+    <div class="zed-card list-card">
+      <div class="et-tabs" role="tablist">
+        @for (t of tabs; track t.database) {
+          <button type="button" role="tab" class="et-tab" [class.active]="database() === t.database" [attr.aria-selected]="database() === t.database"
                   (click)="database.set(t.database)">{{ t.label }} ({{ count(t.database) }})</button>
-        </li>
-      }
-    </ul>
-    <div class="filter-bar mb-3">
-      <div class="filter wide">
-        <input type="search" class="form-control" placeholder="Search e-mail, group or subject" aria-label="Search e-mails" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        }
       </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-zed table-bordered">
-        <thead>
-          <tr>
-            <th class="text-center col-sno">S.No</th>
-            <th>E-mail</th>
-            @if (!database()) {<th class="col-group">Group</th>}
-            <th class="text-center col-status">Status</th>
-            <th class="text-center col-change">Last change</th>
-            <th class="text-center col-action">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (t of view.page(); track t.key) {
-            <tr>
-              <td class="text-center">{{ view.serial($index) }}</td>
-              <td><strong>{{ t.name }}</strong>@if (t.subject) {<small class="muted d-block">Subject: {{ t.subject }}</small>}</td>
-              @if (!database()) {<td>{{ t.group }}</td>}
-              <td class="text-center">
-                <div class="status-stack">
-                  <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Sent' : 'Switched off' }}</span>
-                  @if (t.customised && t.enabled) {<span class="status-badge is-info">Changed by Admin</span>}
-                </div>
-              </td>
-              <td class="text-center">
-                @if (t.updatedOn) {
-                  <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
-                } @else {
-                  <span class="muted" title="Not changed">—</span>
-                }
-              </td>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
-                  <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
-                  @if (t.customised) {
-                    <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button>
-                  }
-                </div>
-              </td>
-            </tr>
-          } @empty {
-            @if (!busy()) { <tr><td colspan="6" style="padding: 0"><div class="no-data">No e-mails found</div></td></tr> }
+      <div class="list-toolbar">
+        <input type="search" class="form-control search" placeholder="Search e-mail, group or subject" aria-label="Search e-mails" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <div class="seg" role="group" aria-label="Show">
+          @for (f of filters; track f.key) {
+            <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="filter.set(f.key)">{{ f.label }}</button>
           }
-        </tbody>
-      </table>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-zed et-table">
+          <thead>
+            <tr>
+              <th class="text-center col-sno">S.No</th>
+              <th>E-mail</th>
+              <th class="text-center col-status">Status</th>
+              <th class="text-center col-change">Last change</th>
+              <th class="text-center col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of view.page(); track t.key) {
+              <tr [class.is-off]="!t.enabled">
+                <td class="text-center">{{ view.serial($index) }}</td>
+                <td>
+                  <div class="mail">
+                    <span class="mail-icon" [class.db]="t.database" aria-hidden="true">{{ t.database ? 'DB' : '✉' }}</span>
+                    <div class="mail-text">
+                      <strong>{{ t.name }}</strong>
+                      @if (!t.database) { <span class="group-chip">{{ t.group }}</span> }
+                      @if (t.subject) {<small class="muted d-block subject">Subject: {{ t.subject }}</small>}
+                      @else {<small class="muted d-block subject">Standard subject</small>}
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <div class="status-stack">
+                    <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Sent' : 'Switched off' }}</span>
+                    @if (t.customised && t.enabled) {<span class="status-badge is-info">Changed by Admin</span>}
+                  </div>
+                </td>
+                <td class="text-center">
+                  @if (t.updatedOn) {
+                    <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
+                  } @else {
+                    <span class="muted" title="Not changed">—</span>
+                  }
+                </td>
+                <td class="text-center">
+                  <div class="row-actions justify-content-center">
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
+                    @if (t.customised) {
+                      <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">No e-mails found</div></td></tr> }
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
     </div>
-    <zed-pager [pager]="view" />
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="templateTitle">
@@ -180,10 +203,13 @@ const standardBodySample =
                 <div class="modal-title" id="templateTitle">{{ e.item.name }}</div>
                 <small class="muted">{{ e.item.database ? 'Database mail' : 'Portal mail' }} · {{ e.item.group }}</small>
               </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+              <div class="head-right">
+                <span class="status-badge" [class.is-active]="e.enabled" [class.is-inactive]="!e.enabled">{{ e.enabled ? 'Sent' : 'Switched off' }}</span>
+                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+              </div>
             </div>
             <div class="modal-body editor-body">
-              <div class="switch-row">
+              <div class="switch-row" [class.off]="!e.enabled">
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" role="switch" id="templateEnabled" [(ngModel)]="e.enabled" />
                   <label class="form-check-label" for="templateEnabled">{{ e.enabled ? 'This e-mail is sent' : 'This e-mail is switched off (not sent)' }}</label>
@@ -215,9 +241,19 @@ const standardBodySample =
                 <div class="pane">
                   <div class="pane-head">
                     <span class="ed-label">Preview</span>
-                    <small class="muted">fields shown with sample values</small>
+                    <div class="seg seg-sm" role="group" aria-label="Preview width">
+                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
+                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
+                    </div>
                   </div>
-                  <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
+                  <div class="mail-frame" [class.phone]="phone()">
+                    <div class="mail-meta">
+                      <span class="meta-label">Subject</span>
+                      <span class="meta-subject">{{ subjectPreview(e) }}</span>
+                    </div>
+                    <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
+                  </div>
+                  <small class="muted d-block mt-1">Fields shown with sample values: [Name] stands for the unit's value.</small>
                 </div>
               </div>
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
@@ -237,22 +273,55 @@ const standardBodySample =
     }
   `,
   styles: `
+    .et-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
+    .stat-value.is-sent { color: #1e7a3c; }
+    .stat-value.is-off { color: #8a9899; }
+    .stat-label { font-size: 13px; color: #5f6f70; }
+
+    .list-card { padding: 16px; }
+    .et-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 14px; }
+    .et-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .et-tab:hover { color: #2f7c83; }
+    .et-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
+    .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
+    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
+    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button + button { border-left: 1px solid #cbd9da; }
+    .seg button:hover { background: #eef6f6; }
+    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg-sm button { padding: 3px 10px; font-size: 12px; }
+
+    .et-table { min-width: 760px; margin-bottom: 8px; }
+    .et-table td { vertical-align: middle; }
+    .et-table tbody tr:hover { background: #f7fbfb; }
+    .et-table tr.is-off .mail-text strong { color: #8a9899; }
     .col-sno { width: 70px; }
-    .col-group { width: 220px; }
     .col-status { width: 160px; }
     .col-change { width: 160px; }
     .col-action { width: 170px; }
+    .mail { display: flex; gap: 12px; align-items: flex-start; }
+    .mail-icon { flex: 0 0 34px; height: 34px; border-radius: 10px; background: #eef6f6; color: #2f7c83; display: grid; place-items: center; font-size: 16px; font-weight: 700; }
+    .mail-icon.db { background: #f1f0fb; color: #3f3a7a; font-size: 11px; }
+    .mail-text { min-width: 0; }
+    .mail-text strong { color: #232527; margin-right: 6px; }
+    .group-chip { display: inline-block; font-size: 11px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 10px; padding: 1px 8px; vertical-align: 1px; }
+    .subject { margin-top: 2px; overflow-wrap: anywhere; }
     .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 
     /* Editor pop-up: wide, the full height, the header and footer fixed and the body scrolling. */
-    @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1140px, calc(100vw - 32px)); } }
+    @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1180px, calc(100vw - 32px)); } }
     .editor-dialog .modal-content { height: 100%; }
     .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .title-block { min-width: 0; }
     .title-block .muted { display: block; margin-top: 2px; font-size: 13px; }
+    .head-right { display: flex; align-items: center; gap: 12px; }
     .editor-body { display: flex; flex-direction: column; gap: 16px; }
     .ed-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
     .switch-row { padding: 10px 14px; background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; }
+    .switch-row.off { background: #f6f7f7; border-color: #e3e7e8; }
     .switch-row .form-check { display: flex; align-items: center; gap: 10px; min-height: 0; margin: 0; padding: 0; }
     .switch-row .form-check-input { float: none; flex: 0 0 auto; width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
     .switch-row .form-check-label { margin: 0; font-weight: 600; color: #23474a; text-transform: none; cursor: pointer; }
@@ -264,12 +333,22 @@ const standardBodySample =
     .editor { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
     @media (min-width: 992px) { .editor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
     .pane { display: flex; flex-direction: column; min-width: 0; }
-    .pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+    .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 6px; }
+    .pane-head .ed-label { margin: 0; }
     .pane-head .muted { font-size: 12px; }
-    .editor textarea.form-control.code { flex: 1 1 auto; width: 100%; max-width: 100%; min-height: 440px; resize: vertical;
-      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #fbfdfd; }
-    .preview { flex: 1 1 auto; display: block; width: 100%; min-height: 440px; border: 1px solid #dfe9ea; border-radius: 8px; background: #fff; }
+    .editor textarea.form-control.code { flex: 1 1 auto; width: 100%; max-width: 100%; min-height: 470px; resize: vertical;
+      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #1f2a2b; color: #e6f1f1; border-color: #1f2a2b; border-radius: 8px; }
+    .editor textarea.form-control.code:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, .35); }
+    /* The preview as a mail: the subject line on top of the message. */
+    .mail-frame { flex: 1 1 auto; display: flex; flex-direction: column; border: 1px solid #dfe9ea; border-radius: 8px; overflow: hidden; background: #eef2f3;
+      margin: 0 auto; width: 100%; transition: max-width .2s; }
+    .mail-frame.phone { max-width: 390px; border-radius: 18px; border-width: 6px; border-color: #2a3435; }
+    .mail-meta { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; background: #fff; border-bottom: 1px solid #dfe9ea; font-size: 13px; }
+    .meta-label { color: #5f6f70; font-weight: 600; flex: none; }
+    .meta-subject { color: #232527; font-weight: 600; overflow-wrap: anywhere; }
+    .preview { flex: 1 1 auto; display: block; width: 100%; min-height: 430px; border: 0; background: #fff; }
     @media (max-width: 991.98px) { .editor textarea.form-control.code, .preview { min-height: 360px; } }
+    @media (max-width: 767.98px) { .et-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class EmailTemplatesPage {
@@ -288,10 +367,27 @@ export class EmailTemplatesPage {
   protected readonly items = signal<EmailTemplateItem[]>([]);
   protected readonly database = signal(false);
   protected readonly search = signal('');
+  protected readonly filters: readonly { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'sent', label: 'Sent' },
+    { key: 'off', label: 'Switched off' },
+    { key: 'changed', label: 'Changed' },
+  ];
+  protected readonly filter = signal<StatusFilter>('all');
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
-    return this.items().filter((t) => t.database === this.database() && (!q || `${t.name} ${t.group} ${t.subject ?? ''}`.toLowerCase().includes(q)));
+    const f = this.filter();
+    return this.items().filter((t) => t.database === this.database()
+      && (f === 'all' || (f === 'sent' && t.enabled) || (f === 'off' && !t.enabled) || (f === 'changed' && t.customised))
+      && (!q || `${t.name} ${t.group} ${t.subject ?? ''}`.toLowerCase().includes(q)));
   });
+  /** The counts of the tab shown. */
+  protected readonly stats = computed(() => {
+    const rows = this.items().filter((t) => t.database === this.database());
+    return { total: rows.length, sent: rows.filter((t) => t.enabled).length, off: rows.filter((t) => !t.enabled).length, changed: rows.filter((t) => t.customised).length };
+  });
+  /** The preview at a phone's width. */
+  protected readonly phone = signal(false);
   protected readonly view = new PagedView(this.shown);
   protected readonly editing = signal<Editing | null>(null);
   protected readonly preview = signal('');
@@ -327,6 +423,13 @@ export class EmailTemplatesPage {
     if (name === 'StandardBody') return "The standard e-mail's text";
     if (name === 'StandardSubject') return "The standard e-mail's subject";
     return `Filled in with ${name}`;
+  }
+
+  /** The subject line of the preview: the Admin's (fields with sample values) or the standard one. */
+  protected subjectPreview(e: Editing): string {
+    const subject = e.subject.trim();
+    if (!subject) return "The standard e-mail's subject";
+    return subject.replace(fieldPattern, (_m, name: string) => (name.toLowerCase() === 'standardsubject' ? '[the standard subject]' : `[${name}]`));
   }
 
   protected focused(target: 'subject' | 'body'): void {
