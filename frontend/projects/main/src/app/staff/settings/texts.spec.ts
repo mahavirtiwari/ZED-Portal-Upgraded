@@ -103,6 +103,38 @@ describe('TextsPage', () => {
     await settle();
   });
 
+  it('shows the counts, filters by status, and previews an app text at phone width with whether it is the standard', async () => {
+    // Website: 2 texts, 1 shown, 1 hidden, 1 changed.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '1', '1']);
+    button('Hidden').click();
+    await settle();
+    expect(rows()).toEqual([expect.stringContaining('Payment instructions')]);
+    button('All').click();
+    await settle();
+    expect(rows()[0]).toContain('fields: Fee');
+
+    (el.querySelectorAll('[role=tab]')[1] as HTMLElement).click();
+    await settle();
+    button('Edit').click();
+    await settle();
+    http.expectOne(`${url}/app.msme.undertaking`).flush({ item: items[2], bodyHtml: '<p>I agree.</p>', standardHtml: '<p>I agree.</p>' });
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    // An app's text opens at phone width; the badge says it is the standard text until it differs.
+    expect(dialog.querySelector('.page-frame')!.classList).toContain('phone');
+    expect(dialog.querySelector('.std-badge')!.textContent!.trim()).toBe('Standard text');
+    const body = dialog.querySelector('#textBody') as HTMLTextAreaElement;
+    body.value = '<p>I agree to the terms.</p>';
+    body.dispatchEvent(new Event('input'));
+    await settle();
+    expect(dialog.querySelector('.std-badge')!.textContent!.trim()).toBe('Differs from the standard');
+    button('Desktop', dialog).click();
+    await settle();
+    expect(dialog.querySelector('.page-frame')!.classList).not.toContain('phone');
+    button('CANCEL', dialog).click();
+    await settle();
+  });
+
   it('resets a changed text after confirming', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     button('Reset').click();

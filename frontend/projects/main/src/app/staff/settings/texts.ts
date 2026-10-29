@@ -34,11 +34,15 @@ interface Editing {
   standard: string;
 }
 
+/** Which texts the list shows (the buttons beside the search box). */
+type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
+
 /**
  * Admin → Texts (new in V4): the disclaimers, instructions, undertakings and pledges of this portal's pages and of its
  * mobile apps. An Admin can hide a text, change its wording (HTML, with the {{Fields}} the page fills in), or reset it. V4
- * layout: page head, search in a filter bar, status badges and row buttons side by side; the editor pop-up has the HTML
- * beside its preview (fields filled with sample values), and field chips that put a field at the cursor.
+ * layout: the counts, the website / app tabs, search and a status filter, each text with where it shows and its fields;
+ * the editor pop-up has the HTML beside its preview in a page frame (desktop or phone width; phone first for the apps),
+ * whether it is the standard text, and field chips that put a field at the cursor.
  */
 @Component({
   selector: 'zed-staff-texts',
@@ -56,64 +60,81 @@ interface Editing {
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
-    <ul class="nav nav-tabs mb-3" role="tablist">
-      @for (c of channels; track c) {
-        <li class="nav-item" role="presentation">
-          <button type="button" role="tab" class="nav-link" [class.active]="channel() === c" [attr.aria-selected]="channel() === c"
+
+    <div class="tx-stats">
+      <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Texts</span></div>
+      <div class="stat"><span class="stat-value is-shown">{{ stats().shown }}</span><span class="stat-label">Shown</span></div>
+      <div class="stat"><span class="stat-value is-off">{{ stats().hidden }}</span><span class="stat-label">Hidden</span></div>
+      <div class="stat"><span class="stat-value">{{ stats().changed }}</span><span class="stat-label">Changed by Admin</span></div>
+    </div>
+
+    <div class="zed-card list-card">
+      <div class="tx-tabs" role="tablist">
+        @for (c of channels; track c) {
+          <button type="button" role="tab" class="tx-tab" [class.active]="channel() === c" [attr.aria-selected]="channel() === c"
                   (click)="channel.set(c)">{{ c }} ({{ count(c) }})</button>
-        </li>
-      }
-    </ul>
-    <div class="filter-bar mb-3">
-      <div class="filter wide">
-        <input type="search" class="form-control" placeholder="Search text or page" aria-label="Search texts" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        }
       </div>
-    </div>
-    <div class="table-responsive">
-      <table class="table table-zed table-bordered">
-        <thead>
-          <tr>
-            <th class="text-center col-sno">S.No</th>
-            <th>Text</th>
-            <th class="col-group">Where</th>
-            <th class="text-center col-status">Status</th>
-            <th class="text-center col-change">Last change</th>
-            <th class="text-center col-action">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (t of view.page(); track t.key) {
-            <tr>
-              <td class="text-center">{{ view.serial($index) }}</td>
-              <td><strong>{{ t.name }}</strong></td>
-              <td>{{ t.group }}</td>
-              <td class="text-center">
-                <div class="status-stack">
-                  <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
-                  @if (t.customised && t.enabled) { <span class="status-badge is-info">Changed by Admin</span> }
-                </div>
-              </td>
-              <td class="text-center">
-                @if (t.updatedOn) {
-                  <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
-                } @else {
-                  <span class="muted" title="Not changed">—</span>
-                }
-              </td>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
-                  <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
-                  @if (t.customised) { <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button> }
-                </div>
-              </td>
-            </tr>
-          } @empty {
-            @if (!busy()) { <tr><td colspan="6" style="padding: 0"><div class="no-data">No texts found</div></td></tr> }
+      <div class="list-toolbar">
+        <input type="search" class="form-control search" placeholder="Search text or page" aria-label="Search texts" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        <div class="seg" role="group" aria-label="Show">
+          @for (f of filters; track f.key) {
+            <button type="button" [class.active]="filter() === f.key" [attr.aria-pressed]="filter() === f.key" (click)="filter.set(f.key)">{{ f.label }}</button>
           }
-        </tbody>
-      </table>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-zed tx-table">
+          <thead>
+            <tr>
+              <th class="text-center col-sno">S.No</th>
+              <th>Text</th>
+              <th class="text-center col-status">Status</th>
+              <th class="text-center col-change">Last change</th>
+              <th class="text-center col-action">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (t of view.page(); track t.key) {
+              <tr [class.is-off]="!t.enabled">
+                <td class="text-center">{{ view.serial($index) }}</td>
+                <td>
+                  <div class="tx">
+                    <span class="tx-icon" [class.app]="t.channel !== 'Website'" aria-hidden="true">{{ t.channel === 'Website' ? 'WWW' : 'APP' }}</span>
+                    <div class="tx-text">
+                      <strong>{{ t.name }}</strong>
+                      <small class="muted d-block">{{ t.group }}@if (t.placeholders.length) { · fields: {{ t.placeholders.join(', ') }} }</small>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center">
+                  <div class="status-stack">
+                    <span class="status-badge" [class.is-active]="t.enabled" [class.is-inactive]="!t.enabled">{{ t.enabled ? 'Shown' : 'Hidden' }}</span>
+                    @if (t.customised && t.enabled) { <span class="status-badge is-info">Changed by Admin</span> }
+                  </div>
+                </td>
+                <td class="text-center">
+                  @if (t.updatedOn) {
+                    <span class="text-nowrap">{{ t.updatedOn | date: 'dd-MM-yyyy HH:mm' }}</span><small class="muted d-block">{{ t.updatedBy }}</small>
+                  } @else {
+                    <span class="muted" title="Not changed">—</span>
+                  }
+                </td>
+                <td class="text-center">
+                  <div class="row-actions justify-content-center">
+                    <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
+                    @if (t.customised) { <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button> }
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              @if (!busy()) { <tr><td colspan="5" style="padding: 0"><div class="no-data">No texts found</div></td></tr> }
+            }
+          </tbody>
+        </table>
+      </div>
+      <zed-pager [pager]="view" />
     </div>
-    <zed-pager [pager]="view" />
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="textTitle">
@@ -124,10 +145,13 @@ interface Editing {
                 <div class="modal-title" id="textTitle">{{ e.item.name }}</div>
                 <small class="muted">{{ e.item.channel }} · {{ e.item.group }}</small>
               </div>
-              <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+              <div class="head-right">
+                <span class="status-badge" [class.is-active]="e.enabled" [class.is-inactive]="!e.enabled">{{ e.enabled ? 'Shown' : 'Hidden' }}</span>
+                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+              </div>
             </div>
             <div class="modal-body editor-body">
-              <div class="switch-row">
+              <div class="switch-row" [class.off]="!e.enabled">
                 <div class="form-check form-switch">
                   <input class="form-check-input" type="checkbox" role="switch" id="textEnabled" [(ngModel)]="e.enabled" />
                   <label class="form-check-label" for="textEnabled">{{ e.enabled ? 'This text is shown' : 'This text is hidden' }}</label>
@@ -148,7 +172,10 @@ interface Editing {
                 <div class="pane">
                   <div class="pane-head">
                     <label class="ed-label" for="textBody">Text (HTML)</label>
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="useStandard(e)">Use the standard text</button>
+                    <div class="pane-tools">
+                      <span class="std-badge" [class.differs]="!isStandard(e)">{{ isStandard(e) ? 'Standard text' : 'Differs from the standard' }}</span>
+                      <button type="button" class="btn btn-link btn-sm p-0" (click)="useStandard(e)">Use the standard text</button>
+                    </div>
                   </div>
                   <textarea #bodyBox class="form-control font-monospace code" id="textBody" spellcheck="false" autocomplete="off"
                             [(ngModel)]="e.body" (ngModelChange)="preview.set($event)" (focus)="placed = true"></textarea>
@@ -156,9 +183,16 @@ interface Editing {
                 <div class="pane">
                   <div class="pane-head">
                     <span class="ed-label">Preview</span>
-                    @if (e.item.placeholders.length) {<small class="muted">fields shown with sample values</small>}
+                    <div class="seg seg-sm" role="group" aria-label="Preview width">
+                      <button type="button" [class.active]="!phone()" [attr.aria-pressed]="!phone()" (click)="phone.set(false)">Desktop</button>
+                      <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
+                    </div>
                   </div>
-                  <div class="preview" [innerHTML]="previewHtml()"></div>
+                  <div class="page-frame" [class.phone]="phone()">
+                    <div class="frame-bar" aria-hidden="true"><i></i><i></i><i></i><span>{{ e.item.channel === 'Website' ? 'Website page' : 'App screen' }}</span></div>
+                    <div class="preview" [innerHTML]="previewHtml()"></div>
+                  </div>
+                  @if (e.item.placeholders.length) {<small class="muted d-block mt-1">Fields shown with sample values.</small>}
                 </div>
               </div>
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
@@ -178,22 +212,55 @@ interface Editing {
     }
   `,
   styles: `
+    .tx-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; }
+    .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
+    .stat-value.is-shown { color: #1e7a3c; }
+    .stat-value.is-off { color: #8a9899; }
+    .stat-label { font-size: 13px; color: #5f6f70; }
+
+    .list-card { padding: 16px; }
+    .tx-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 14px; }
+    .tx-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+    .tx-tab:hover { color: #2f7c83; }
+    .tx-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
+    .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
+    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
+    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button + button { border-left: 1px solid #cbd9da; }
+    .seg button:hover { background: #eef6f6; }
+    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg-sm button { padding: 3px 10px; font-size: 12px; }
+
+    .tx-table { min-width: 720px; margin-bottom: 8px; }
+    .tx-table td { vertical-align: middle; }
+    .tx-table tbody tr:hover { background: #f7fbfb; }
+    .tx-table tr.is-off .tx-text strong { color: #8a9899; }
     .col-sno { width: 70px; }
-    .col-group { width: 220px; }
     .col-status { width: 160px; }
     .col-change { width: 160px; }
     .col-action { width: 170px; }
+    .tx { display: flex; gap: 12px; align-items: center; }
+    .tx-icon { flex: 0 0 38px; height: 34px; border-radius: 10px; background: #eef6f6; color: #2f7c83; display: grid; place-items: center; font-size: 10px; font-weight: 800; letter-spacing: .04em; }
+    .tx-icon.app { background: #f1f0fb; color: #3f3a7a; }
+    .tx-text { min-width: 0; }
+    .tx-text strong { color: #232527; }
+    .tx-text small { margin-top: 2px; overflow-wrap: anywhere; }
     .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 
     /* Editor pop-up: wide, the full height, the header and footer fixed and the body scrolling. */
-    @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1140px, calc(100vw - 32px)); } }
+    @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1180px, calc(100vw - 32px)); } }
     .editor-dialog .modal-content { height: 100%; }
     .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .title-block { min-width: 0; }
     .title-block .muted { display: block; margin-top: 2px; font-size: 13px; }
+    .head-right { display: flex; align-items: center; gap: 12px; }
     .editor-body { display: flex; flex-direction: column; gap: 16px; }
-    .ed-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
+    .ed-label { display: block; margin: 0; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
+    .fields .ed-label { margin-bottom: 6px; }
     .switch-row { padding: 10px 14px; background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; }
+    .switch-row.off { background: #f6f7f7; border-color: #e3e7e8; }
     .switch-row .form-check { display: flex; align-items: center; gap: 10px; min-height: 0; margin: 0; padding: 0; }
     .switch-row .form-check-input { float: none; flex: 0 0 auto; width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
     .switch-row .form-check-label { margin: 0; font-weight: 600; color: #23474a; text-transform: none; cursor: pointer; }
@@ -205,13 +272,22 @@ interface Editing {
     .editor { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
     @media (min-width: 992px) { .editor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
     .pane { display: flex; flex-direction: column; min-width: 0; }
-    .pane-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-    .pane-head .muted { font-size: 12px; }
-    .pane-head .btn-link { margin-bottom: 6px; }
+    .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 6px; }
+    .pane-tools { display: flex; align-items: center; gap: 10px; }
+    .std-badge { font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #eef6f6; color: #2f7c83; }
+    .std-badge.differs { background: #fff4d6; color: #8a6100; }
     .editor textarea.form-control.code { flex: 1 1 auto; width: 100%; max-width: 100%; min-height: 440px; resize: vertical;
-      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #fbfdfd; }
-    .preview { flex: 1 1 auto; min-height: 440px; border: 1px solid #dfe9ea; border-radius: 8px; background: #fff; padding: 14px 16px; overflow: auto; }
-    @media (max-width: 991.98px) { .editor textarea.form-control.code, .preview { min-height: 360px; } }
+      padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #1f2a2b; color: #e6f1f1; border-color: #1f2a2b; border-radius: 8px; }
+    .editor textarea.form-control.code:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, .35); }
+    /* The preview inside a page (or phone) frame. */
+    .page-frame { flex: 1 1 auto; display: flex; flex-direction: column; margin: 0 auto; width: 100%; border: 1px solid #dfe9ea; border-radius: 8px; overflow: hidden; background: #fff; }
+    .page-frame.phone { max-width: 390px; border: 6px solid #2a3435; border-radius: 18px; }
+    .frame-bar { display: flex; align-items: center; gap: 5px; padding: 6px 10px; background: #f1f4f4; border-bottom: 1px solid #dfe9ea; font-size: 11px; color: #5f6f70; }
+    .frame-bar i { width: 8px; height: 8px; border-radius: 4px; background: #cfd8d9; }
+    .frame-bar span { margin-left: 6px; }
+    .preview { flex: 1 1 auto; min-height: 400px; background: #fff; padding: 14px 16px; overflow: auto; overflow-wrap: anywhere; }
+    @media (max-width: 991.98px) { .editor textarea.form-control.code, .preview { min-height: 340px; } }
+    @media (max-width: 767.98px) { .tx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
 export class TextsPage {
@@ -225,10 +301,27 @@ export class TextsPage {
   protected readonly items = signal<TextItem[]>([]);
   protected readonly channel = signal('Website');
   protected readonly search = signal('');
+  protected readonly filters: readonly { key: StatusFilter; label: string }[] = [
+    { key: 'all', label: 'All' },
+    { key: 'shown', label: 'Shown' },
+    { key: 'hidden', label: 'Hidden' },
+    { key: 'changed', label: 'Changed' },
+  ];
+  protected readonly filter = signal<StatusFilter>('all');
   protected readonly shown = computed(() => {
     const q = this.search().trim().toLowerCase();
-    return this.items().filter((t) => t.channel === this.channel() && (!q || `${t.name} ${t.group}`.toLowerCase().includes(q)));
+    const f = this.filter();
+    return this.items().filter((t) => t.channel === this.channel()
+      && (f === 'all' || (f === 'shown' && t.enabled) || (f === 'hidden' && !t.enabled) || (f === 'changed' && t.customised))
+      && (!q || `${t.name} ${t.group}`.toLowerCase().includes(q)));
   });
+  /** The counts of the tab shown. */
+  protected readonly stats = computed(() => {
+    const rows = this.items().filter((t) => t.channel === this.channel());
+    return { total: rows.length, shown: rows.filter((t) => t.enabled).length, hidden: rows.filter((t) => !t.enabled).length, changed: rows.filter((t) => t.customised).length };
+  });
+  /** The preview at a phone's width (first for the apps' texts). */
+  protected readonly phone = signal(false);
   protected readonly view = new PagedView(this.shown);
   protected readonly editing = signal<Editing | null>(null);
   protected readonly preview = signal('');
@@ -261,6 +354,7 @@ export class TextsPage {
     try {
       const d = await firstValueFrom(this.http.get<TextDetails>(`${TextsPage.url}/${encodeURIComponent(item.key)}`));
       this.editing.set({ item: d.item, enabled: d.item.enabled, body: d.bodyHtml, standard: d.standardHtml });
+      this.phone.set(d.item.channel !== 'Website');
       this.preview.set(d.bodyHtml);
       this.placed = false;
     } catch (err) {
@@ -281,6 +375,11 @@ export class TextsPage {
       box.focus();
       box.setSelectionRange(caret, caret);
     }
+  }
+
+  /** Whether the text is the standard one (spaces at the ends aside). */
+  protected isStandard(e: Editing): boolean {
+    return e.body.trim() === e.standard.trim();
   }
 
   protected useStandard(e: Editing): void {
