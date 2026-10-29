@@ -42,6 +42,8 @@ const ALL_MASTERS_ROUTES: Routes = [
     loadComponent: () => import('./page-settings').then((m) => m.PageSettingsPage),
   },
   { path: 'parameters', pathMatch: 'full', redirectTo: 'parameters/Bronze' },
+  // The menu's name for the parameters (Questionnaire), typed as an address.
+  { path: 'questionnaire', pathMatch: 'full', redirectTo: 'parameters/Bronze' },
   {
     path: 'parameters/:sectionType',
     title: 'ZED | Questionnaire',

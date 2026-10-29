@@ -75,10 +75,13 @@ describe('RequirementsPage', () => {
 
   it('lists requirements as text with only the allowed remove buttons', () => {
     expect(el.textContent).toContain('Bronze – P1. Leadership');
-    const rows = el.querySelectorAll('table.requirements tbody tr');
+    const rows = el.querySelectorAll('.requirements .req-card');
     expect(rows.length).toBe(2);
+    expect(rows[0].querySelector('.req-code')!.textContent).toBe('P1.1');
     expect(rows[0].textContent).toContain('<img src=x onerror=alert(1)>');
-    expect(el.querySelector('table.requirements img')).toBeNull();
+    expect(el.querySelector('.requirements img')).toBeNull();
+    // The parameter's counts: 2 requirements, 3 points, 1 mandatory and 1 optional evidence.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '3', '1', '1']);
     expect(rows[0].textContent).toContain('(Validation Required)');
     expect(rows[0].querySelector('.remove-requirement')).toBeNull();
     expect(rows[1].querySelector('.remove-requirement')).not.toBeNull();
@@ -102,7 +105,7 @@ describe('RequirementsPage', () => {
     await settle(page);
     http.expectOne(BASE).flush(withImages);
     await settle(page);
-    const images = [...(page.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('table.requirements img.option-image')];
+    const images = [...(page.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('.requirements img.option-image')];
     expect(images.map((i) => i.getAttribute('src'))).toEqual(['/Images/Questions/p1.png']);
   });
 
@@ -112,12 +115,18 @@ describe('RequirementsPage', () => {
     await settle(fixture);
     click(el, '.draft-points button.btn-primary');
     await settle(fixture);
+    // The bullet is typed under its point; the box stays for the next one until Done.
+    expect(el.querySelector('.modal')).toBeNull();
     type(el, '#bulletText', 'Bullet x');
+    await settle(fixture);
     (el.querySelector('#bulletText') as HTMLElement).closest('form')!.dispatchEvent(new Event('submit'));
     await settle(fixture);
-    click(el, '.modal [aria-label=Close]');
+    expect((el.querySelector('#bulletText') as HTMLInputElement).value).toBe('');
+    click(el, '.bullet-done');
     await settle(fixture);
+    expect(el.querySelector('#bulletText')).toBeNull();
     expect(el.querySelector('.draft-points')!.textContent).toContain('Bullet x');
+    expect(el.textContent).toContain('Points of the new requirement (P1.3)');
 
     buttonByText(el, 'Save').click();
     const req = http.expectOne((r) => r.method === 'POST' && r.url === BASE);
@@ -133,11 +142,14 @@ describe('RequirementsPage', () => {
   it('adds mandatory evidences and sends both lists', async () => {
     buttonByText(el, 'Add Evidences').click();
     await settle(fixture);
+    // Nothing new yet: SAVE waits for an evidence.
+    expect((el.querySelector('.save-evidences') as HTMLButtonElement).disabled).toBe(true);
     type(el, '#evidenceName', 'Certificate');
     type(el, '#evidenceHelp', 'Latest one');
     click(el, '.add-evidence');
     await settle(fixture);
-    expect(el.querySelectorAll('.modal tr.added').length).toBe(1);
+    expect(el.querySelectorAll('.modal li.added').length).toBe(1);
+    expect(el.querySelector('.modal li.added')!.textContent).toContain('New');
     click(el, '.save-evidences');
     const req = http.expectOne((r) => r.method === 'PUT' && r.url === BASE + '/11/evidences');
     expect(req.request.body).toEqual({
