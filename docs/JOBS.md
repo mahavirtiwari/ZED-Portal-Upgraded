@@ -131,6 +131,7 @@ entries are **off** in the repository: enable each on the server copy at the mom
 | ZED_Auto_Reject_Expired_NC | 02:30 | Main.SP_AUTO_FINAL_REJECT_EXPIRED_NC |
 | ZED_Daily_Maintenance_Job | every 12 h from 04:00 (04:00, 16:00) | Surveillance.SURVEILLANCE_REJECTION_UPGRADED_MAINSYSTEM > Surveillance.USP_REFRESH_ADMIN_DASHBOARD_STATS |
 | ZED_Surveillance_Auto_Reject_Expiring_Bronze | 03:30 | Surveillance.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY |
+| Level surveillance schedule (**V4**, enable on the server copy) | 01:45 | Main.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE: expiry, notices, reminders, suspension and withdrawal of the Admin-added levels (ZED-X) on the validity and schedule of Admin > Certification Levels (migration 0032). New, no Agent job to switch off: enable it once migrations 0032 / 0033 are applied; Bronze / Silver / Gold untouched. |
 | RenamingFolder (**disabled** on production, hourly) | → `Jobs:FolderRename`, every 60 min | SP_JOB_TO_CREATE_RENAMING_BATCH_FILES is replaced by the folder rename job (below). Because the Agent job is off, nothing has been renamed for a while: the first Report runs show the backlog. |
 
 New compared with the earlier analysis: AutoReject, Deactivating Joining Reward and ZED_Daily_Maintenance_Job (none

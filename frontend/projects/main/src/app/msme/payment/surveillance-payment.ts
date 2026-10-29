@@ -6,10 +6,11 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/alert-dialog';
+import { levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, postToGateway } from './payment.api';
 import { SurveillanceOptions, SurveillancePaymentApi } from './surveillance-payment.api';
 
-const LEVELS = ['Bronze', 'Silver', 'Gold'] as const;
+const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
 
@@ -31,10 +32,13 @@ export class SurveillancePaymentPage implements OnInit {
   private readonly api = inject(SurveillancePaymentApi);
   private readonly router = inject(Router);
 
-  /** Route parameter (Bronze, Silver or Gold; any case). */
+  /** Route parameter (Bronze, Silver, Gold or ZEDX; any case). */
   readonly certification = input<string>('');
 
   protected readonly level = computed(() => LEVELS.find((l) => l.toLowerCase() === this.certification().toLowerCase()) ?? null);
+  /** What the page shows for the level (ZEDX is ZED-X) and its picture. */
+  protected readonly name = computed(() => levelName(this.level()));
+  protected readonly logo = computed(() => levelLogo(this.level() ?? 'Bronze'));
   protected readonly step = signal<Step | null>(null);
   protected readonly options = signal<SurveillanceOptions | null>(null);
   protected readonly busy = signal(false);

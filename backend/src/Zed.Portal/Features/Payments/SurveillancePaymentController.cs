@@ -52,7 +52,7 @@ public sealed class SurveillancePaymentController(
     [HttpGet("{certification}/status")]
     public async Task<ActionResult<StatusResponse>> Status(string certification, CancellationToken ct)
     {
-        if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalSurveillance(certification) is not { } cert) return this.Problem400("Invalid certification.");
         var details = await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId, CertificationType = (string?)null }, ct);
         return new StatusResponse(cert, await EligibleAsync(details, cert, ct));
     }
@@ -83,7 +83,7 @@ public sealed class SurveillancePaymentController(
     [HttpGet("{certification}/options")]
     public async Task<ActionResult<OptionsResponse>> Options(string certification, CancellationToken ct)
     {
-        if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalSurveillance(certification) is not { } cert) return this.Problem400("Invalid certification.");
         var details = await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId, CertificationType = (string?)null }, ct);
         if (!await EligibleAsync(details, cert, ct)) return this.Problem400(NotEligible);
         await RefreshEnterpriseType(details, ct);
@@ -110,7 +110,7 @@ public sealed class SurveillancePaymentController(
     [MsmeEditAudit("Surveillance payment: GSTIN entered")]
     public async Task<ActionResult<MsmePaymentController.GstinResponse>> VerifyGstin(MsmePaymentController.GstinRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalSurveillance(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
         var gstin = (req.Gstin ?? "").Trim().ToUpperInvariant();
         if (!Certifications.Gstin().IsMatch(gstin)) return this.Problem400("Please enter valid GSTIN.");
 
@@ -138,7 +138,7 @@ public sealed class SurveillancePaymentController(
     [MsmeEditAudit("Surveillance payment: PAN corrected")]
     public async Task<ActionResult<MessageResponse>> CorrectPan(MsmePaymentController.PanRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalSurveillance(req.Certification) is not { } cert) return this.Problem400("Invalid certification.");
         var gstin = (req.Gstin ?? "").Trim().ToUpperInvariant();
         var pan = (req.Pan ?? "").Trim().ToUpperInvariant();
         if (!Certifications.Pan().IsMatch(pan)) return this.Problem400("Please enter a valid 10-character PAN.");
@@ -167,7 +167,7 @@ public sealed class SurveillancePaymentController(
     public async Task<ActionResult<MsmePaymentController.CheckoutResponse>> Checkout(
         string certification, MsmePaymentController.CheckoutRequest req, CancellationToken ct)
     {
-        if (Certifications.Canonical(certification) is not { } cert) return this.Problem400("Invalid certification.");
+        if (Certifications.CanonicalSurveillance(certification) is not { } cert) return this.Problem400("Invalid certification.");
 
         // Choices
         string? gstin = null;
@@ -278,7 +278,10 @@ public sealed class SurveillancePaymentController(
     private string GstinKey(string gstin) => $"surveillance-gstin-ok:{ZedId}:{gstin}";
 
     private async Task<bool> EligibleAsync(ResultSets zedDetails, string cert, CancellationToken ct) =>
-        zedDetails[0].FirstOrDefault()?.Text(cert + "DashboardSurStatus") == "1" && await PaymentOpenAsync(cert, ct);
+        LevelSurveillance.IsV4(cert)
+            // V4 levels (ZED-X): the legacy procedures know Bronze / Silver / Gold only (migrations 0032 / 0033).
+            ? LevelSurveillance.PaymentOpen(await LevelSurveillance.StatusAsync(db, ZedId, cert, log, ct))
+            : zedDetails[0].FirstOrDefault()?.Text(cert + "DashboardSurStatus") == "1" && await PaymentOpenAsync(cert, ct);
 
     /// <summary>SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS: 1 while the level is certified and its surveillance fee is unpaid.</summary>
     private async Task<bool> PaymentOpenAsync(string cert, CancellationToken ct) =>

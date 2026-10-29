@@ -40,6 +40,8 @@ public sealed class SurveillancePaymentCompletion(
     /// <param name="postToErp">The legacy zero-amount path did not post to the ERP; the gateway path did.</param>
     public async Task CompleteAsync(string zedId, string certification, bool postToErp, CancellationToken ct)
     {
+        // V4 levels (ZED-X): flags, NIC sector-wise questionnaire and minimum parameters of the surveillance (migration 0033).
+        await LevelSurveillance.PaidAsync(db, zedId, certification, log, ct);
         try
         {
             var sets = await db.QueryProcMultipleAsync("SP_SURVEILLANCE_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = certification }, ct);

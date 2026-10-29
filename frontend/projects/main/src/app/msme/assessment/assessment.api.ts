@@ -54,7 +54,7 @@ export interface NonConformanceReport {
 
 /** The values the API accepts (MsmeAssessment.Types in Zed.Main.Api). */
 export const ASSESSMENT_TYPES = [
-  'Bronze', 'Silver', 'Gold', 'ZEDX', 'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance',
+  'Bronze', 'Silver', 'Gold', 'ZEDX', 'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance', 'ZEDXSurveillance',
 ] as const;
 
 /** Canonical spelling of a certification type from the URL, or null when these pages do not exist for it. */

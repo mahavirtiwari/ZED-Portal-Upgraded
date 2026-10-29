@@ -7,5 +7,7 @@
   "RegistrationNumber": { "x": 1240, "y": 2482, "font": 10 },
   "NicCode": { "x": 1240, "y": 2294, "font": 10 },
   "AgencyName": { "x": 1240, "y": 2665, "font": 10 },
-  "DateOfSurveillance": { "x": 309, "y": 2830, "font": 7 }
+  "DateOfSurveillance": { "x": 309, "y": 2830, "font": 7 },
+  "Validity": { "x": 398, "y": 3150, "font": 5.5 },
+  "SurveillanceRound": { "x": 515, "y": 2781, "font": 9, "family": "Times New Roman" }
 }

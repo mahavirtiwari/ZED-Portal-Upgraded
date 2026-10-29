@@ -1,5 +1,5 @@
 -- database\fixes\main\14_zedx_levels.sql  (ZEDCS_V2_LIVE)
--- ZED-X (level code ZEDX, migrations 0028-0031): the legacy assessment procedures that name Bronze / Silver / Gold.
+-- ZED-X (level code ZEDX, migrations 0028-0033): the legacy assessment procedures that name Bronze / Silver / Gold.
 -- =====================================================================================================================
 -- REVIEW BEFORE RUNNING ON PRODUCTION. THE LIVE DEFINITION MAY DIFFER FROM THE LOCAL COPY THIS SCRIPT WAS BUILT AND
 -- TESTED AGAINST: DIFF FIRST. Run it as it is (PREVIEW: prints the change, changes nothing), compare with the live
@@ -16,6 +16,8 @@
 --   SP_MONITORING_REJECT_FINAL_SUBMIT    rejection after NC5 clears the level's payment flag: ZEDX's too.
 --   SP_MONITORING_RA_FINAL_SUBMIT        certification: ZEDX gets its own QR number (plant ID, "5", code) and does NOT
 --                                        mark the unit's Bronze / Silver certificate UPGRADED (Gold's branch did both).
+--   SP_MSME_GET_DETAILS                  the certification details page of a ZED-X surveillance (ZEDXSurveillance):
+--                                        read from ZED_SURVEILLANCE as GoldSurveillance is (else the page is empty).
 -- Bronze, Silver and Gold behave exactly as before. The portal then numbers the ZED-X certificate in the Admin's format
 -- (Administration -> Certification Levels; Zed.Portal LevelCertification).
 -- What breaks: nothing for Bronze / Silver / Gold.
@@ -328,7 +330,14 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
 		END
 		ELSE
 		BEGIN
-		Update MsmeCertifications set QrCodeSeqNo=concat(@PlantIdNo,''4'',@QrCodeSeqNo)', 1);
+		Update MsmeCertifications set QrCodeSeqNo=concat(@PlantIdNo,''4'',@QrCodeSeqNo)', 1),
+(N'dbo.SP_MSME_GET_DETAILS', N'ZED-X surveillance details from ZED_SURVEILLANCE, as Gold''s',
+ N'ELSE IF @CertificationType=''GoldSurveillance''',
+ N'ELSE IF @CertificationType=''ZEDXSurveillance''   -- V4: ZED-X surveillance (migrations 0032 / 0033)
+	BEGIN
+		exec ZED_SURVEILLANCE.[dbo].[SP_MSME_GET_DETAILS] null, @ZedId, ''ZEDX''
+	END
+	ELSE IF @CertificationType=''GoldSurveillance''', 1);
 GO
 
 DECLARE @Mode varchar(10) = 'PREVIEW';   -- PREVIEW: print only. APPLY: alter the procedures (all or none).

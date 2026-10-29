@@ -50,28 +50,36 @@ public sealed partial class CertificationLevelsController(
     public sealed record LevelRequest(
         string? Name, string? Description, string? Comment, bool IsEnabled, string? AssessmentMode, int? ValidityMonths,
         bool SurveillanceEnabled, int? FirstSurveillanceMonths, string? CertNoFormat, string? CertNoFormatManufacturing,
-        string? CertNoFormatService, decimal? Fee, string? Code = null);
+        string? CertNoFormatService, decimal? Fee, string? Code = null,
+        int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
+        int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null);
 
     internal const string UpdateSql =
         "UPDATE dbo.SectionTypes SET DisplayName = @Name, Description = @Description, Comment = @Comment, IsEnabled = @IsEnabled, " +
         "AssessmentMode = @AssessmentMode, ValidityMonths = @ValidityMonths, SurveillanceEnabled = @SurveillanceEnabled, " +
         "FirstSurveillanceMonths = @FirstSurveillanceMonths, CertNoFormat = @CertNoFormat, CertNoFormatManufacturing = @CertNoFormatManufacturing, " +
-        "CertNoFormatService = @CertNoFormatService, Fee = @Fee, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
+        "CertNoFormatService = @CertNoFormatService, Fee = @Fee, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME(), " +
+        "SurveillanceCount = @SurveillanceCount, SurveillanceIntervalMonths = @SurveillanceIntervalMonths, SurveillanceNoticeMonths = @SurveillanceNoticeMonths, " +
+        "SurveillanceReminders = @SurveillanceReminders, SurveillanceReminderEveryMonths = @SurveillanceReminderEveryMonths, " +
+        "SurveillanceSuspendAfterMonths = @SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays = @SurveillanceWithdrawAfterDays " +
         "WHERE SectionType = @Code AND IsCertificationLevel = 1;";
 
     internal const string InsertSql =
         "INSERT INTO dbo.SectionTypes (SectionType, OrderNo, DisplayName, Description, Comment, IsEnabled, IsCertificationLevel, AssessmentMode, " +
-        "ValidityMonths, SurveillanceEnabled, FirstSurveillanceMonths, CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn) " +
+        "ValidityMonths, SurveillanceEnabled, FirstSurveillanceMonths, CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn, " +
+        "SurveillanceCount, SurveillanceIntervalMonths, SurveillanceNoticeMonths, SurveillanceReminders, SurveillanceReminderEveryMonths, " +
+        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays) " +
         "SELECT @Code, ISNULL(MAX(CASE WHEN IsCertificationLevel = 1 THEN OrderNo END), 0) + 10, @Name, @Description, @Comment, @IsEnabled, 1, @AssessmentMode, " +
         "@ValidityMonths, @SurveillanceEnabled, @FirstSurveillanceMonths, @CertNoFormat, @CertNoFormatManufacturing, @CertNoFormatService, @Fee, " +
-        "@UpdatedBy, SYSUTCDATETIME() FROM dbo.SectionTypes;";
+        "@UpdatedBy, SYSUTCDATETIME(), @SurveillanceCount, @SurveillanceIntervalMonths, @SurveillanceNoticeMonths, @SurveillanceReminders, " +
+        "@SurveillanceReminderEveryMonths, @SurveillanceSuspendAfterMonths, @SurveillanceWithdrawAfterDays FROM dbo.SectionTypes;";
 
     [HttpPut("{code}")]
     public async Task<ActionResult<MessageResponse>> Update(string code, LevelRequest req, CancellationToken ct)
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
-        if (Validate(req) is { } problem) return this.Problem400(problem);
-        if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
+        if (Validate(req, level.LegacySurveillance) is { } problem) return this.Problem400(problem);
+        if (!await RunAsync(UpdateSql, Args(level.Code, req, level.LegacySurveillance), ct)) return Unavailable();
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
         return new MessageResponse($"{req.Name!.Trim()} saved.");
     }
@@ -103,12 +111,12 @@ public sealed partial class CertificationLevelsController(
     {
         var code = req.Code?.Trim() ?? "";
         if (!CodePattern().IsMatch(code)) return this.Problem400("The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).");
-        if (Validate(req) is { } problem) return this.Problem400(problem);
+        if (Validate(req, legacySurveillance: false) is { } problem) return this.Problem400(problem);
         var all = await CertificationLevels.AllAsync(db, log, ct);
         if (ReferenceEquals(all, CertificationLevels.BuiltIn)) return Unavailable();
         if (all.Any(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Name, req.Name!.Trim(), StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A level with this code or name already exists.");
-        if (!await RunAsync(InsertSql, Args(code, req), ct)) return Unavailable();
+        if (!await RunAsync(InsertSql, Args(code, req, legacySurveillance: false), ct)) return Unavailable();
         log.LogWarning("Certification level {Code} added by {Actor}", code, UserId);
         return new MessageResponse($"{req.Name!.Trim()} added. Add its questionnaire (Questionnaire menu) and its fees (Masters → Payments) before enabling it.");
     }
@@ -141,7 +149,8 @@ public sealed partial class CertificationLevelsController(
         return new MessageResponse("Logo saved.");
     }
 
-    private static string? Validate(LevelRequest r)
+    /// <param name="legacySurveillance">Bronze / Silver / Gold: their surveillance months are fixed in the legacy jobs.</param>
+    private static string? Validate(LevelRequest r, bool legacySurveillance)
     {
         var name = r.Name?.Trim() ?? "";
         if (name.Length == 0) return "Please enter the level's name.";
@@ -158,16 +167,32 @@ public sealed partial class CertificationLevelsController(
         if (CertificateNumbers.Problem(r.CertNoFormatManufacturing, required: false) is { } m) return "Manufacturing: " + m;
         if (CertificateNumbers.Problem(r.CertNoFormatService, required: false) is { } s) return "Services: " + s;
         if (r.Fee is < 0 or > 10_000_000) return "The fee must be between 0 and 1,00,00,000.";
+        if (r.SurveillanceEnabled && !legacySurveillance && Schedule(r).Problem(r.ValidityMonths!.Value) is { } schedule) return schedule;
         return null;
     }
 
-    private object Args(string code, LevelRequest r) => new
+    private static SurveillanceSchedule Schedule(LevelRequest r)
     {
+        var d = SurveillanceSchedule.Default;
+        return new(r.FirstSurveillanceMonths ?? d.FirstDueMonths, r.SurveillanceCount ?? d.Count, r.SurveillanceIntervalMonths ?? d.IntervalMonths,
+            r.SurveillanceNoticeMonths ?? d.NoticeMonths, r.SurveillanceReminders ?? d.Reminders, r.SurveillanceReminderEveryMonths ?? d.ReminderEveryMonths,
+            r.SurveillanceSuspendAfterMonths ?? d.SuspendAfterMonths, r.SurveillanceWithdrawAfterDays ?? d.WithdrawAfterDays);
+    }
+
+    private object Args(string code, LevelRequest r, bool legacySurveillance)
+    {
+        var schedule = r.SurveillanceEnabled && !legacySurveillance ? Schedule(r) : null;
+        return new
+        {
         Code = code, Name = r.Name!.Trim(), Description = Text(r.Description), Comment = Text(r.Comment), r.IsEnabled, r.AssessmentMode,
         r.ValidityMonths, r.SurveillanceEnabled, FirstSurveillanceMonths = r.SurveillanceEnabled ? r.FirstSurveillanceMonths : null,
         CertNoFormat = r.CertNoFormat!.Trim(), CertNoFormatManufacturing = Text(r.CertNoFormatManufacturing), CertNoFormatService = Text(r.CertNoFormatService),
         r.Fee, UpdatedBy = Actor(),
-    };
+        SurveillanceCount = schedule?.Count, SurveillanceIntervalMonths = schedule?.IntervalMonths, SurveillanceNoticeMonths = schedule?.NoticeMonths,
+        SurveillanceReminders = schedule?.Reminders, SurveillanceReminderEveryMonths = schedule?.ReminderEveryMonths,
+        SurveillanceSuspendAfterMonths = schedule?.SuspendAfterMonths, SurveillanceWithdrawAfterDays = schedule?.WithdrawAfterDays,
+        };
+    }
 
     private static string? Text(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 
@@ -194,7 +219,7 @@ public sealed partial class CertificationLevelsController(
     }
 
     private ActionResult Unavailable() =>
-        this.Problem400("The certification levels cannot be saved yet. Please ask the administrator to apply database migration 0028.");
+        this.Problem400("The certification levels cannot be saved yet. Please ask the administrator to apply the database migrations (0028, 0032).");
 
     private string Actor() => UserId.Length <= 50 ? UserId : UserId[..50];
 }

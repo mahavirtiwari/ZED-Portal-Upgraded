@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using SkiaSharp;
 using Zed.Core.Certificates;
@@ -127,9 +129,12 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var level = Validate(zedId, certification);
         var row = await CertificateRowAsync(surveillanceDb, zedId, level, ct);
         var relative = DocumentLevels.SurveillanceCertificatePath(zedId, level);
+        // V4 levels: the Admin's settings are main's (dbo.SectionTypes), read by name from ZED_SURVEILLANCE's connection.
+        var settings = DocumentLevels.IsBuiltIn(level) ? null : await CertificationLevels.FindAsync(surveillanceDb, level, log, ct, fromOtherDatabase: true);
+        var round = DocumentLevels.IsBuiltIn(level) ? null : await SurveillanceRoundAsync(surveillanceDb, zedId, level, ct);
         try
         {
-            var pdf = RenderCertificate(level, row, surveillance: true);
+            var pdf = RenderCertificate(level, row, surveillance: true, settings, round);
             await _storage.WriteAsync(relative, pdf, ct);
             log.LogInformation("Surveillance certificate {Path} generated", relative);
             return new DocumentFile(relative, pdf);
@@ -152,7 +157,27 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         return row;
     }
 
-    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance, CertificationLevel? settings = null)
+    /// <summary>
+    /// The surveillance round of a V4 level: main's EnableSurveillance1, which SP_V4_LEVEL_SURVEILLANCE_SCHEDULE sets when it
+    /// opens a round (ZED_SURVEILLANCE's SurveillanceNo stops at 2). Null when it cannot be read.
+    /// </summary>
+    internal const string SurveillanceRoundSql =
+        "SELECT TOP 1 EnableSurveillance1 FROM ZEDCS_V2_LIVE.dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Level ORDER BY Id DESC;";
+
+    private async Task<int?> SurveillanceRoundAsync(ISqlExecutor surveillanceDb, string zedId, string level, CancellationToken ct)
+    {
+        try
+        {
+            return (await surveillanceDb.QuerySqlAsync<int?>(SurveillanceRoundSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault() is >= 1 and var r ? r : null;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Surveillance round of {ZedId} {Level} not read; the certificate shows the surveillance's own number", zedId, level);
+            return null;
+        }
+    }
+
+    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance, CertificationLevel? settings = null, int? surveillanceRound = null)
     {
         var desktop = DocumentLevels.IsDesktop(level);
         var folder = surveillance ? SurveillanceAssets : _storage.AssetsFolder;
@@ -183,12 +208,13 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
             texts.Add(new("SurveillanceNo", row.Text("SurveillanceNo")));
         }
         // V4 levels (ZED-X): the Admin's validity under "Certificate Validity :" (the Silver/Gold artwork prints three
-        // years), and the logo uploaded in Administration → Certification Levels over the artwork's badge.
+        // years), and the logo uploaded in Administration → Certification Levels over the artwork's badge. Their
+        // surveillance artwork leaves out the "1" of "Surveillance 1 Completed on :": the round goes there.
         List<CertificateImage> images = [];
-        var v4 = !surveillance && !DocumentLevels.IsBuiltIn(level);
-        if (v4)
+        if (!DocumentLevels.IsBuiltIn(level))
         {
             texts.Add(new("Validity", DocumentLevels.ValidityText(settings?.ValidityMonths ?? DocumentLevels.DefaultValidityMonths)));
+            if (surveillance) texts.Add(new("SurveillanceRound", surveillanceRound?.ToString(CultureInfo.InvariantCulture) ?? SurveillanceRound(row.Text("SurveillanceNo"))));
             if (settings?.LogoPath is { Length: > 0 } logo && _storage.Find(logo) is { } logoPath)
                 images.Add(new CertificateImage(File.ReadAllBytes(logoPath), BadgeCenterX, BadgeCenterY, BadgeSize, BadgeClearRadius));
         }
@@ -214,6 +240,13 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         if (code.Length == 0) return "";
         var site = Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var uri) ? uri.GetLeftPart(UriPartial.Authority) : publicBaseUrl.TrimEnd('/');
         return $"{site}/Verify/{VerifyController.CodeOf(level)}/{code}";
+    }
+
+    /// <summary>"1" for the first surveillance: the procedures give SurveillanceNo as a number or as "Surveillance 2".</summary>
+    internal static string SurveillanceRound(string surveillanceNo)
+    {
+        var digits = new string(surveillanceNo.Where(char.IsAsciiDigit).ToArray());
+        return digits.Length is > 0 and <= 2 ? digits.TrimStart('0') is { Length: > 0 } n ? n : "1" : "1";
     }
 
     /// <summary>The badge of the site artwork (Sa*.jpg, 2482 x 3508 px): its centre, the logo size and the white ring.</summary>

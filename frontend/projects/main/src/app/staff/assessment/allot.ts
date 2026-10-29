@@ -232,7 +232,7 @@ export class AllotPage {
   /** Who the record is allotted to, in the status column. */
   protected readonly party = this.consultancy ? 'CO' : 'Agency';
   /** Handholding is for Silver and Gold only. */
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.main ? ['Bronze', 'Silver', 'Gold', 'ZEDX'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
   protected readonly levelName = levelName;
 
   protected filter: Required<ListFilter> = { state: '', certification: '', size: '', gender: '', allotmentType: '' };

@@ -23,7 +23,7 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
         new[]
         {
             "Bronze", "Silver", "Gold", "ZEDX",
-            "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance",
+            "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance", "ZEDXSurveillance",
             "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
             "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
         }.ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);

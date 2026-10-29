@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Portal.Features.Payments;
 using Zed.Portal.Features.Staff.Schemes;
 
 namespace Zed.Portal.Features.Msme;
@@ -57,6 +58,10 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
         var zedx = await ZedXAsync(ct);
         response.Msme["IsZEDXPaymentDone"] = zedx.PaymentDone;
         response.CertStatus["ZEDXStatus"] = zedx.Status ?? zedx.PaymentDone;
+        // Its surveillance (migration 0032): the SURVEILLANCE box once SP_V4_LEVEL_SURVEILLANCE_SCHEDULE opens a round.
+        var sur = await LevelSurveillance.StatusAsync(db, ZedId, "ZEDX", log, ct);
+        response.Msme["ZEDXDashboardSurStatus"] = LevelSurveillance.DashboardStatus(sur);
+        response.Msme["IsSurZEDXPaymentDone"] = sur is { Paid: true } ? 1 : 0;
         return response;
     }
 

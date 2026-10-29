@@ -22,6 +22,8 @@ public sealed class CertificateField
     public float? MinFont { get; set; }
     /// <summary>V4, QR fields: pixels per QR module (3 when not given).</summary>
     public float? Module { get; set; }
+    /// <summary>V4: the font family when not Arial (a word set into the artwork's own text, e.g. "Times New Roman").</summary>
+    public string? Family { get; set; }
 }
 
 /// <summary>A boxed text as drawn: its lines and the font size used (points).</summary>
@@ -90,12 +92,26 @@ public static class CertificateComposer
             foreach (var image in request.Images ?? []) DrawImage(canvas, image);
 
             var characters = request.Texts.SelectMany(t => t.Value ?? "").ToList();
-            using var regular = Typeface(bold: false, request.SubsetFonts, characters);
-            using var bold = Typeface(bold: true, request.SubsetFonts, characters);
-            foreach (var text in request.Texts)
+            using var regular = Typeface(FontFamily, bold: false, request.SubsetFonts, characters);
+            using var bold = Typeface(FontFamily, bold: true, request.SubsetFonts, characters);
+            var others = new Dictionary<(string, bool), SKTypeface>();
+            try
             {
-                if (string.IsNullOrEmpty(text.Value) || !request.Layout.TryGetValue(text.Field, out var field)) continue;
-                DrawText(canvas, text, field, text.Bold ? bold : regular);
+                foreach (var text in request.Texts)
+                {
+                    if (string.IsNullOrEmpty(text.Value) || !request.Layout.TryGetValue(text.Field, out var field)) continue;
+                    var typeface = text.Bold ? bold : regular;
+                    if (field.Family is { Length: > 0 } family && family != FontFamily)
+                    {
+                        if (!others.TryGetValue((family, text.Bold), out typeface!))
+                            others[(family, text.Bold)] = typeface = Typeface(family, text.Bold, request.SubsetFonts, characters);
+                    }
+                    DrawText(canvas, text, field, typeface);
+                }
+            }
+            finally
+            {
+                foreach (var t in others.Values) t.Dispose();
             }
 
             if (request.QrField is not null && !string.IsNullOrEmpty(request.QrContent) &&
@@ -123,9 +139,9 @@ public static class CertificateComposer
         canvas.DrawImage(picture, SKRect.Create(image.CenterX - w / 2, image.CenterY - h / 2, w, h), new SKSamplingOptions(SKFilterMode.Linear));
     }
 
-    private static SKTypeface Typeface(bool bold, bool subset, IEnumerable<char> characters)
+    private static SKTypeface Typeface(string family, bool bold, bool subset, IEnumerable<char> characters)
     {
-        var typeface = SKTypeface.FromFamilyName(FontFamily, bold ? SKFontStyle.Bold : SKFontStyle.Normal);
+        var typeface = SKTypeface.FromFamilyName(family, bold ? SKFontStyle.Bold : SKFontStyle.Normal);
         if (!subset) return typeface;
         var small = Documents.FontSubsetter.Subset(typeface, characters);
         if (!ReferenceEquals(small, typeface)) typeface.Dispose();

@@ -13,11 +13,55 @@ namespace Zed.Portal.Features.CertLevels;
 /// <param name="AssessmentMode">"Desktop" (desktop assessment only, as Bronze) or "Site" (desktop and site assessment).</param>
 /// <param name="CertNoFormat">The certificate number (<see cref="CertificateNumbers"/>); the Manufacturing / Services formats apply once set.</param>
 /// <param name="Fee">The fee shown on the level's box (the amounts charged are in Masters → Payments).</param>
+/// <param name="SurveillanceCount">V4 levels (migration 0032): the surveillance schedule run by SP_V4_LEVEL_SURVEILLANCE_SCHEDULE;
+/// null = the Silver / Gold value (<see cref="SurveillanceSchedule.Default"/>). Bronze, Silver and Gold keep their legacy jobs.</param>
 public sealed record CertificationLevel(
     string Code, string Name, int OrderNo, string? Description, string? Comment, string? LogoPath, bool IsEnabled,
     string AssessmentMode, int ValidityMonths, bool SurveillanceEnabled, int? FirstSurveillanceMonths,
     string CertNoFormat, string? CertNoFormatManufacturing, string? CertNoFormatService, decimal? Fee,
-    string? UpdatedBy = null, DateTime? UpdatedOn = null);
+    string? UpdatedBy = null, DateTime? UpdatedOn = null,
+    int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
+    int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null)
+{
+    /// <summary>Bronze, Silver and Gold: their surveillance runs on the legacy jobs, whose months are fixed in the procedures.</summary>
+    public bool LegacySurveillance => Code is "Bronze" or "Silver" or "Gold";
+
+    /// <summary>The schedule in force (the Admin's values, the Silver / Gold ones where not set).</summary>
+    public SurveillanceSchedule Schedule => new(
+        FirstSurveillanceMonths ?? SurveillanceSchedule.Default.FirstDueMonths, SurveillanceCount ?? SurveillanceSchedule.Default.Count,
+        SurveillanceIntervalMonths ?? SurveillanceSchedule.Default.IntervalMonths, SurveillanceNoticeMonths ?? SurveillanceSchedule.Default.NoticeMonths,
+        SurveillanceReminders ?? SurveillanceSchedule.Default.Reminders, SurveillanceReminderEveryMonths ?? SurveillanceSchedule.Default.ReminderEveryMonths,
+        SurveillanceSuspendAfterMonths ?? SurveillanceSchedule.Default.SuspendAfterMonths, SurveillanceWithdrawAfterDays ?? SurveillanceSchedule.Default.WithdrawAfterDays);
+}
+
+/// <summary>
+/// When surveillance happens and what follows when it is not applied for (migration 0032), counted from the certification
+/// date: round r is due <see cref="FirstDueMonths"/> + (r - 1) x <see cref="IntervalMonths"/> months after it.
+/// </summary>
+public sealed record SurveillanceSchedule(int FirstDueMonths, int Count, int IntervalMonths, int NoticeMonths, int Reminders,
+    int ReminderEveryMonths, int SuspendAfterMonths, int WithdrawAfterDays)
+{
+    /// <summary>What the Silver / Gold jobs do: due at 15 and 27 months, mailed 4 months before, two monthly reminders,
+    /// suspended a month after the due date, withdrawn about two months later.</summary>
+    public static readonly SurveillanceSchedule Default = new(15, 2, 12, 4, 2, 1, 1, 64);
+
+    public DateTime Due(DateTime certified, int round) => certified.AddMonths(FirstDueMonths + (round - 1) * IntervalMonths);
+
+    /// <summary>What is wrong with the schedule for a certificate valid <paramref name="validityMonths"/> months, or null.</summary>
+    public string? Problem(int validityMonths)
+    {
+        if (Count is < 1 or > 5) return "The number of surveillances must be 1 to 5.";
+        if (FirstDueMonths is < 1 or > 120) return "The first surveillance must be due 1 to 120 months after certification.";
+        if (Count > 1 && IntervalMonths is < 1 or > 60) return "The months between two surveillances must be 1 to 60.";
+        if (FirstDueMonths + (Count - 1) * IntervalMonths >= validityMonths) return "The last surveillance must be due before the certificate expires.";
+        if (NoticeMonths is < 0 or > 24) return "The notice must go 0 to 24 months before the due date.";
+        if (Reminders is < 0 or > 5) return "The reminders must be 0 to 5.";
+        if (Reminders > 0 && ReminderEveryMonths is < 1 or > 12) return "The months between reminders must be 1 to 12.";
+        if (SuspendAfterMonths is < 0 or > 24) return "The suspension must come 0 to 24 months after the due date.";
+        if (WithdrawAfterDays is < 1 or > 365) return "The withdrawal must come 1 to 365 days after the suspension.";
+        return null;
+    }
+}
 
 /// <summary>Reads the levels; before migration 0028 (or on an error) the three levels as the procedures hard-code them.</summary>
 public static class CertificationLevels
@@ -37,14 +81,37 @@ public static class CertificationLevels
         "SELECT SectionType AS Code, ISNULL(DisplayName, SectionType) AS Name, ISNULL(OrderNo, 0) AS OrderNo, Description, Comment, LogoPath, " +
         "CAST(ISNULL(IsEnabled, 0) AS bit) AS IsEnabled, ISNULL(AssessmentMode, 'Site') AS AssessmentMode, ISNULL(ValidityMonths, 36) AS ValidityMonths, " +
         "CAST(ISNULL(SurveillanceEnabled, 0) AS bit) AS SurveillanceEnabled, FirstSurveillanceMonths, " +
-        "ISNULL(CertNoFormat, '{DDMMYYYY}_{ZEDNO}') AS CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn " +
-        "FROM dbo.SectionTypes WHERE IsCertificationLevel = 1 ORDER BY ISNULL(OrderNo, 0), SectionType;";
+        "ISNULL(CertNoFormat, '{DDMMYYYY}_{ZEDNO}') AS CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn, " +
+        ScheduleColumns + "FROM dbo.SectionTypes WHERE IsCertificationLevel = 1 ORDER BY ISNULL(OrderNo, 0), SectionType;";
 
-    public static async Task<IReadOnlyList<CertificationLevel>> AllAsync(ISqlExecutor db, ILogger log, CancellationToken ct)
+    private const string ScheduleColumns =
+        "SurveillanceCount, SurveillanceIntervalMonths, SurveillanceNoticeMonths, SurveillanceReminders, SurveillanceReminderEveryMonths, " +
+        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays ";
+
+    /// <summary>The same before migration 0032 (no surveillance schedule columns yet).</summary>
+    internal static readonly string Sql0028 = Sql.Replace(ScheduleColumns,
+        "CAST(NULL AS int) AS SurveillanceCount, CAST(NULL AS int) AS SurveillanceIntervalMonths, CAST(NULL AS int) AS SurveillanceNoticeMonths, " +
+        "CAST(NULL AS int) AS SurveillanceReminders, CAST(NULL AS int) AS SurveillanceReminderEveryMonths, " +
+        "CAST(NULL AS int) AS SurveillanceSuspendAfterMonths, CAST(NULL AS int) AS SurveillanceWithdrawAfterDays ");
+
+    /// <summary>The same queries from another database's connection (surveillance, consultancy): main's table by name.</summary>
+    internal static string FromMain(string sql) => sql.Replace("FROM dbo.SectionTypes", "FROM ZEDCS_V2_LIVE.dbo.SectionTypes");
+
+    /// <param name="fromOtherDatabase">The connection is not main's (the surveillance host's): read main's table.</param>
+    public static async Task<IReadOnlyList<CertificationLevel>> AllAsync(ISqlExecutor db, ILogger log, CancellationToken ct, bool fromOtherDatabase = false)
     {
         try
         {
-            var rows = await db.QuerySqlAsync<CertificationLevel>(Sql, null, ct);
+            IReadOnlyList<CertificationLevel> rows;
+            try
+            {
+                rows = await db.QuerySqlAsync<CertificationLevel>(fromOtherDatabase ? FromMain(Sql) : Sql, null, ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 207)
+            {
+                // Invalid column: migration 0032 not applied yet.
+                rows = await db.QuerySqlAsync<CertificationLevel>(fromOtherDatabase ? FromMain(Sql0028) : Sql0028, null, ct);
+            }
             return rows.Count > 0 ? rows : BuiltIn;
         }
         catch (DbException ex)
@@ -55,8 +122,8 @@ public static class CertificationLevels
     }
 
     /// <summary>The level of a code (any case), enabled or not.</summary>
-    public static async Task<CertificationLevel?> FindAsync(ISqlExecutor db, string? code, ILogger log, CancellationToken ct) =>
-        (await AllAsync(db, log, ct)).FirstOrDefault(l => string.Equals(l.Code, code?.Trim(), StringComparison.OrdinalIgnoreCase));
+    public static async Task<CertificationLevel?> FindAsync(ISqlExecutor db, string? code, ILogger log, CancellationToken ct, bool fromOtherDatabase = false) =>
+        (await AllAsync(db, log, ct, fromOtherDatabase)).FirstOrDefault(l => string.Equals(l.Code, code?.Trim(), StringComparison.OrdinalIgnoreCase));
 }
 
 /// <summary>

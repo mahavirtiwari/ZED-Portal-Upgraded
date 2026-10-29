@@ -35,7 +35,7 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
         "Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status FROM MsmeCertifications " +
         "WHERE ZedId = @ZedId AND Certification = @Certification AND SiteAssessorId IS NOT NULL AND SaCertificateNo IS NULL";
 
-    private static readonly IReadOnlySet<string> SiteLevels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Silver", "Gold" };
+    private static readonly IReadOnlySet<string> SiteLevels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Silver", "Gold", "ZEDX" };
 
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]

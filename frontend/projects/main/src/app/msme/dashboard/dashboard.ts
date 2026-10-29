@@ -336,8 +336,7 @@ export class DashboardPage {
   }
 
   protected surveillanceVisible(level: Level): boolean {
-    // ZED-X surveillance comes with its certificate (not yet in the surveillance system).
-    if (level === 'ZEDX') return false;
+    // ZED-X: the API gives ZEDXDashboardSurStatus / IsSurZEDXPaymentDone (Admin's schedule, migration 0032).
     return !this.is(this.msme(), `${level}DashboardSurStatus`, 0);
   }
 

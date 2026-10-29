@@ -14,13 +14,19 @@ public static partial class Certifications
         Paid.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
-    /// The levels an MSME applies and pays for: the three and ZED-X (code ZEDX; migrations 0028 / 0029). Surveillance
-    /// payments keep <see cref="Paid"/> (the surveillance system has no ZED-X yet).
+    /// The levels an MSME applies and pays for: the three and ZED-X (code ZEDX; migrations 0028 / 0029); also their
+    /// surveillance (<see cref="CanonicalSurveillance"/>).
     /// </summary>
     public static readonly string[] Applicable = [.. Paid, "ZEDX"];
 
     public static string? CanonicalApplicable(string? value) =>
         Applicable.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The levels whose surveillance is paid on the dashboard: the three, and ZED-X (migrations 0032 / 0033; its schedule
+    /// and flags are V4's, <see cref="LevelSurveillance"/>).
+    /// </summary>
+    public static string? CanonicalSurveillance(string? value) => CanonicalApplicable(value);
 
     /// <summary>A level the MSME may apply for now: known and enabled by the Admin (Administration → Certification Levels).</summary>
     public static async Task<string?> OpenForApplyingAsync(ISqlExecutor db, string? value, ILogger log, CancellationToken ct) =>

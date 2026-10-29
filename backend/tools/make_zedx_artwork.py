@@ -2,14 +2,17 @@
 
     python -I backend/tools/make_zedx_artwork.py
 
-Reads  backend/src/Zed.Portal/Assets/Documents/SaGold.jpg and LevelGold.png
+Reads  backend/src/Zed.Portal/Assets/Documents/SaGold.jpg, Surveillance/SaGold.jpg and LevelGold.png
 Writes backend/src/Zed.Portal/Assets/Documents/SaZEDX.jpg  (certificate background, same layout as SaCertification.json)
+       backend/src/Zed.Portal/Assets/Documents/Surveillance/SaZEDX.jpg  (surveillance certificate background)
        backend/src/Zed.Portal/Assets/Documents/LevelZEDX.png (report badge)
 
 In the colours of the ZED Export badge (teal #2ECAD0 to blue #3A85C4): the gold of the coin, the title ornaments and
 the side bar takes the gradient, the coin reads "EXPORT" and the title "ZED-X (Export)". The validity line under
 "Certificate Validity :" is left empty: the portal writes the Admin's validity there, and draws the logo uploaded in
-Administration -> Certification Levels over the coin when there is one.
+Administration -> Certification Levels over the coin when there is one. The surveillance background also has the "1"
+of "Surveillance 1 Completed on :" erased: the portal writes the surveillance round there (layout field
+"SurveillanceRound" of Surveillance/SaCertification.json).
 """
 import colorsys
 import os
@@ -76,8 +79,18 @@ def shadowed(draw, cx, top, text, fnt, offset):
     draw.text((cx - w / 2, top), text, font=fnt, fill=(255, 255, 255))
 
 
-def certificate():
-    img = Image.open(os.path.join(DOCS, 'SaGold.jpg')).convert('RGB')
+def erase(img, box):
+    """Fills the box with the median of the light pixels on its border (the page background there)."""
+    px = img.load()
+    x0, y0, x1, y1 = box
+    edge = [px[x, y] for x in range(x0, x1) for y in (y0, y1 - 1)] + [px[x, y] for y in range(y0, y1) for x in (x0, x1 - 1)]
+    edge = sorted((p for p in edge if min(p) > 200), key=sum)
+    fill = edge[len(edge) // 2] if edge else BACKGROUND
+    ImageDraw.Draw(img).rectangle((x0, y0, x1 - 1, y1 - 1), fill=fill)
+
+
+def certificate(source, target, surveillance=False):
+    img = Image.open(source).convert('RGB')
     w, _ = img.size
     recolour(img, (0, 640, 160, 900), vertical=True)
     recolour(img, (680, 1080, 1810, 1400))
@@ -105,8 +118,12 @@ def certificate():
     shadowed(d, 2010, 704, 'EXPORT', font('arialbd.ttf', 58), 4)
 
     # Validity line (written by the portal): clear "Three years from the date of issue".
-    d.rectangle((150, 3150, 660, 3205), fill=BACKGROUND)
-    img.save(os.path.join(DOCS, 'SaZEDX.jpg'), quality=92, dpi=(300, 300))
+    d.rectangle((150, 3160, 660, 3205), fill=BACKGROUND)  # below the descender of "Validity"
+    if surveillance:
+        # "Surveillance 1 Completed on :": the "1" (x 512-518, Times 9 pt, baseline 2815) between "Surveillance" and
+        # "Completed"; the portal writes the round there.
+        erase(img, (503, 2783, 529, 2822))
+    img.save(target, quality=92, dpi=(300, 300))
 
 
 def badge():
@@ -120,6 +137,7 @@ def badge():
 
 
 if __name__ == '__main__':
-    certificate()
+    certificate(os.path.join(DOCS, 'SaGold.jpg'), os.path.join(DOCS, 'SaZEDX.jpg'))
+    certificate(os.path.join(DOCS, 'Surveillance', 'SaGold.jpg'), os.path.join(DOCS, 'Surveillance', 'SaZEDX.jpg'), surveillance=True)
     badge()
     print('written to', os.path.abspath(DOCS), file=sys.stderr)

@@ -53,7 +53,7 @@ export class MonitoringPage {
     : `Follow the ${this.surveillance ? 'surveillance assessments' : 'assessments'} by stage; choose a certification level, then a stage.`;
 
   // V4: ZED-X is assessed on the main portal only.
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.surveillance ? ['Bronze', 'Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
   protected readonly levelName = levelName;
   protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
     ? [

@@ -93,6 +93,44 @@ public sealed class CertificationLevelsTests : IDisposable
     }
 
     [Fact]
+    public async Task The_admin_sets_the_surveillance_schedule_of_a_new_level()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Dictionary<string, object?> Body(int validity = 36, int count = 2)
+        {
+            var b = JsonSerializer.Deserialize<Dictionary<string, object?>>(JsonSerializer.Serialize(Level()))!;
+            b["validityMonths"] = validity;
+            b["firstSurveillanceMonths"] = 15;
+            b["surveillanceCount"] = count;
+            b["surveillanceIntervalMonths"] = 12;
+            b["surveillanceNoticeMonths"] = 4;
+            b["surveillanceReminders"] = 2;
+            b["surveillanceReminderEveryMonths"] = 1;
+            b["surveillanceSuspendAfterMonths"] = 1;
+            b["surveillanceWithdrawAfterDays"] = 64;
+            return b;
+        }
+
+        // The second surveillance (15 + 12 = 27 months) must be due before a 24-month certificate expires.
+        Assert.Contains("expires", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(validity: 24))).ProblemTitle());
+        Assert.Contains("1 to 5", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(count: 6))).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql);
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body())).StatusCode);
+        var zedx = Assert.Single(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql).Args;
+        Assert.Equal(("2", "12", "4", "2", "1", "1", "64"),
+            (FakeSql.Arg(zedx, "SurveillanceCount"), FakeSql.Arg(zedx, "SurveillanceIntervalMonths"), FakeSql.Arg(zedx, "SurveillanceNoticeMonths"),
+             FakeSql.Arg(zedx, "SurveillanceReminders"), FakeSql.Arg(zedx, "SurveillanceReminderEveryMonths"),
+             FakeSql.Arg(zedx, "SurveillanceSuspendAfterMonths"), FakeSql.Arg(zedx, "SurveillanceWithdrawAfterDays")));
+
+        // Bronze / Silver / Gold keep their jobs' hard-coded schedule: nothing is stored for them.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/gold", Body())).StatusCode);
+        var gold = _host.Sql.Calls.Last(c => c.Name == CertificationLevelsController.UpdateSql).Args;
+        Assert.Null(FakeSql.Arg(gold, "SurveillanceCount"));
+        Assert.Null(FakeSql.Arg(gold, "SurveillanceWithdrawAfterDays"));
+    }
+
+    [Fact]
     public async Task A_logo_must_be_a_real_image_and_msmes_see_only_enabled_levels()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

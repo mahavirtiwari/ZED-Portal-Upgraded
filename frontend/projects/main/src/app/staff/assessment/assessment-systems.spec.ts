@@ -269,7 +269,7 @@ describe('assessment pages per system', () => {
     req.flush({ rows: [], totalCount: 0, pageNo: 1, pageSize: 10 });
   });
 
-  it('surveillance Rejected: only the Certification Level filter, Bronze/Silver/Gold', async () => {
+  it('surveillance Rejected: only the Certification Level filter, Bronze/Silver/Gold/ZED-X', async () => {
     await setup('surveillance');
     TestBed.inject(AuthService).setUser({ userId: 'MADMIN', userName: 'M', roleId: 7, role: 'MasterAdmin', subRoles: [] });
     const fixture = await create(AssessmentResultsPage, 'rejected');
@@ -278,7 +278,7 @@ describe('assessment pages per system', () => {
     await settle(fixture);
     expect(el.querySelector('h3')!.textContent).toContain('Rejected Surveillance');
     expect([...el.querySelectorAll('select[id]')].map((s) => s.id)).toEqual(['resLevel']);
-    expect([...el.querySelectorAll<HTMLOptionElement>('#resLevel option')].map((o) => o.text.trim())).toEqual(['Bronze', 'Silver', 'Gold']);
+    expect([...el.querySelectorAll<HTMLOptionElement>('#resLevel option')].map((o) => o.text.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
     expect(el.querySelector('#resState')).toBeNull();
     expect(el.querySelector('#resSearch')).toBeNull();
   });

@@ -18,7 +18,7 @@ describe('CertificationLevelsPage', () => {
   const response = (zedxEnabled: boolean) => ({
     stored: true, tokens,
     levels: [
-      { level: level('Bronze', 'Bronze', { assessmentMode: 'Desktop', firstSurveillanceMonths: 15 }), sample: '29102026_129350', logoUrl: '/Images/Dashboard/bronze.png' },
+      { level: level('Bronze', 'Bronze', { assessmentMode: 'Desktop', firstSurveillanceMonths: 15, legacySurveillance: true }), sample: '29102026_129350', logoUrl: '/Images/Dashboard/bronze.png' },
       { level: level('ZEDX', 'ZED-X', { isEnabled: zedxEnabled, fee: 75000, description: 'Open to every MSME' }), sample: '29102026_129350', logoUrl: null },
     ],
   });
@@ -107,6 +107,45 @@ describe('CertificationLevelsPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
   });
 
+  it('sets the surveillance schedule of ZED-X, not of the built-in levels', async () => {
+    expect(box('ZED-X').textContent).toContain('2, after 12 months, then every 12');
+    button(box('Bronze'), 'Edit').click();
+    await settle();
+    expect(el.querySelector('#lv-count')).toBeNull();
+    expect(el.querySelector('.modal-body')!.textContent).toContain('fixed in its surveillance jobs');
+    button(el.querySelector('.modal-footer')!, 'CANCEL').click();
+    await settle();
+
+    button(box('ZED-X'), 'Edit').click();
+    await settle();
+    expect(el.querySelector('.modal-body')!.textContent).toContain('Due at 12 and 24 months after certification.');
+    typeIn('#lv-count', '3');
+    typeIn('#lv-interval', '12');
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    // 12 + 2 x 12 = 36: not before a 3-year certificate expires.
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('last surveillance must be due before');
+    http.expectNone((r) => r.method === 'PUT');
+
+    typeIn('#lv-interval', '10');
+    typeIn('#lv-withdraw', '30');
+    typeIn('#lv-reminders', '0');
+    await settle();
+    expect(el.querySelector('#lv-every')).toBeNull();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const put = http.expectOne(`${api}/ZEDX`);
+    expect(put.request.body).toEqual(expect.objectContaining({
+      surveillanceCount: 3, surveillanceIntervalMonths: 10, surveillanceNoticeMonths: 4, surveillanceReminders: 0,
+      surveillanceSuspendAfterMonths: 1, surveillanceWithdrawAfterDays: 30,
+    }));
+    put.flush({ message: 'ZED-X saved.' });
+    await settle();
+    http.expectOne(api).flush(response(false));
+    await settle();
+  });
+
   it('adds a level with a code', async () => {
     button(el, '+ Add level').click();
     await settle();
@@ -121,7 +160,9 @@ describe('CertificationLevelsPage', () => {
     (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     const post = http.expectOne((r) => r.method === 'POST' && r.url === api);
-    expect(post.request.body).toEqual(expect.objectContaining({ code: 'Platinum', name: 'Platinum', isEnabled: false, assessmentMode: 'Site' }));
+    expect(post.request.body).toEqual(expect.objectContaining({
+      code: 'Platinum', name: 'Platinum', isEnabled: false, assessmentMode: 'Site', firstSurveillanceMonths: 15, surveillanceCount: 2, surveillanceWithdrawAfterDays: 64,
+    }));
     post.flush({ message: 'Platinum added.' });
     await settle();
     http.expectOne(api).flush(response(false));

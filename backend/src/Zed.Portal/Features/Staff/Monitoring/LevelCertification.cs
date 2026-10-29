@@ -42,7 +42,7 @@ public static partial class LevelCertification
         var date = row.CertificationStatusDate ?? DateTime.Now;
         var category = await UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var number = CertificateNumbers.Format(CertificateNumbers.FormatFor(settings, category), date, zedId, level, category);
-        DateTime? surveillance = settings.SurveillanceEnabled ? date.AddMonths(settings.FirstSurveillanceMonths ?? 12) : null;
+        DateTime? surveillance = settings.SurveillanceEnabled ? date.AddMonths(settings.Schedule.FirstDueMonths) : null;
         await db.ExecuteSqlAsync(UpdateSql, new
         {
             ZedId = zedId,

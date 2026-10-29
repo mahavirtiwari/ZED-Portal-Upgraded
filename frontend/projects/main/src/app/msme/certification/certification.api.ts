@@ -24,7 +24,7 @@ export type CertificationKind = 'bronze' | 'silverGold' | 'surveillance' | 'mile
 /** The values the API accepts (same list as MsmeCertificationController.CertificationTypes). */
 export const CERTIFICATION_TYPES = [
   'Bronze', 'Silver', 'Gold', 'ZEDX',
-  'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance',
+  'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance', 'ZEDXSurveillance',
   'SilverMilestone1', 'SilverMilestone2', 'SilverMilestone3',
   'GoldMilestone1', 'GoldMilestone2', 'GoldMilestone3',
 ] as const;
@@ -42,9 +42,9 @@ export function certificationKind(certification: string): CertificationKind {
   return 'milestone';
 }
 
-/** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze". */
+/** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze"; "ZEDXSurveillance" → "ZEDX". */
 export function certificationLevel(certification: string): Level {
-  if (certification === 'ZEDX') return 'ZEDX';
+  if (certification.startsWith('ZEDX')) return 'ZEDX';
   return certification.startsWith('Gold') ? 'Gold' : certification.startsWith('Silver') ? 'Silver' : 'Bronze';
 }
 

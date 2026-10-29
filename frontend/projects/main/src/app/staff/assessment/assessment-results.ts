@@ -334,7 +334,7 @@ export class AssessmentResultsPage {
   private readonly system = inject(ASSESSMENT_SYSTEM);
   protected readonly consultancy = this.system === 'consultancy';
   protected readonly surveillance = this.system === 'surveillance';
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : this.system === 'main' ? ['Bronze', 'Silver', 'Gold', 'ZEDX'] : ['Bronze', 'Silver', 'Gold'];
+  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
   protected readonly levelName = levelName;
   /**
    * Consultancy "View Details": the milestone review page (the old SaDetails). The route of the consultancy milestone
