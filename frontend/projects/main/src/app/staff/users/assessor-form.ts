@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { StaffRole } from '../staff-menu';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { Professional, UsersApi } from './users.api';
+import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 
 interface AssessorModel {
   assessorType: string;
@@ -23,12 +23,14 @@ interface AssessorModel {
   nicSectors: string[];
   areasOfKnowledge: string[];
   reasonForRejection: string;
+  /** Main (V4): Manufacturing, Services or Both, within the agency's. */
+  sectorActivity: SectorActivity | '';
 }
 
 function emptyAssessor(): AssessorModel {
   return {
     assessorType: '', certificateNo: '', professionalEmail: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '',
-    idProofType: '', idProofNumber: '', states: [], nicSectors: [], areasOfKnowledge: [], reasonForRejection: '',
+    idProofType: '', idProofNumber: '', states: [], nicSectors: [], areasOfKnowledge: [], reasonForRejection: '', sectorActivity: '',
   };
 }
 
@@ -76,6 +78,13 @@ export class AssessorFormPage {
   protected readonly searching = signal(false);
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
+  protected readonly activities = SECTOR_ACTIVITIES;
+  /** The agency's sector type (an assessor cannot cover more); null: not set, no limit. */
+  protected readonly agencyActivity = signal<SectorActivity | null>(null);
+  protected allowed(a: SectorActivity): boolean {
+    const agency = this.agencyActivity();
+    return !agency || agency === 'Both' || agency === a;
+  }
   protected readonly error = signal('');
   protected readonly success = signal('');
 
@@ -144,6 +153,10 @@ export class AssessorFormPage {
       this.states.set(options.states.map((s) => ({ value: s, label: s })));
       this.sectors.set(options.sectors.map((s) => ({ value: s.sectorCode, label: `${s.sectorCode}-${s.sectorName}` })));
       this.areas.set(options.areasOfKnowledge.map((a) => ({ value: a, label: a })));
+      if (this.isNew && !this.consultancy) {
+        const own = (await firstValueFrom(this.api.agencySectorActivity())).message;
+        this.agencyActivity.set(own === 'Manufacturing' || own === 'Services' || own === 'Both' ? own : null);
+      }
       if (this.userId) {
         const a = await firstValueFrom(this.api.assessor(this.userId));
         this.model = {
@@ -151,7 +164,9 @@ export class AssessorFormPage {
           assessorType: (this.consultancy ? a.userType : a.assessorType) ?? '', certificateNo: a.certificateNo ?? '', userName: a.userName, emailId: a.emailId ?? '',
           mobileNo: a.mobileNo ?? '', address: a.address ?? '', pinCode: a.pinCode ?? '', idProofType: a.idProofType ?? '',
           states: a.states, nicSectors: a.nicSectors, areasOfKnowledge: a.areasOfKnowledge, reasonForRejection: a.reasonForRejection ?? '',
+          sectorActivity: a.sectorActivity ?? '',
         };
+        this.agencyActivity.set(a.agencySectorActivity ?? null);
         this.maskedIdProof.set(a.idProofNumberMasked);
         this.storedIdProofType.set(a.idProofType);
         this.canEdit.set(a.canEdit && this.isAgency);
@@ -219,6 +234,10 @@ export class AssessorFormPage {
       this.error.set('Please enter valid data.');
       return;
     }
+    if (!this.consultancy && !m.sectorActivity) {
+      this.error.set('Please select whether the assessor assesses Manufacturing, Services or Both.');
+      return;
+    }
     this.saving.set(true);
     try {
       if (this.isNew) {
@@ -226,7 +245,7 @@ export class AssessorFormPage {
           this.api.createAssessor({
             assessorType: m.assessorType, certificateNo: m.certificateNo.trim(), professionalEmail: m.professionalEmail.trim(),
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber,
-            states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge,
+            states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, sectorActivity: m.sectorActivity,
             ...(this.typed ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
           }),
         );
@@ -235,7 +254,7 @@ export class AssessorFormPage {
         const r = await firstValueFrom(
           this.api.updateAssessor(this.userId!, {
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber, states: m.states,
-            nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, reasonForRejection: m.reasonForRejection,
+            nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, reasonForRejection: m.reasonForRejection, sectorActivity: m.sectorActivity,
           }),
         );
         this.success.set(r.message);

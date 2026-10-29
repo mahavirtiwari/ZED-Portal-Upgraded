@@ -60,10 +60,12 @@ public sealed class StaffAssessorsController(
         if (!string.IsNullOrEmpty(agencyId) && !StaffUserRules.IsUserId(agencyId)) return this.Problem400("Invalid agency.");
         if (!string.IsNullOrEmpty(type) && !VerificationTypes.Contains(type)) return this.Problem400("Invalid assessor type.");
         var sets = await db.QueryProcMultipleAsync("SP_GET_ASSESSORS", new { UserId, AssessorType = type ?? "", CertificationBodyUserId = agencyId ?? "" }, ct);
+        var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, AllColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
+            row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             return row;
         }).ToList();
     }
@@ -74,10 +76,12 @@ public sealed class StaffAssessorsController(
     public async Task<IReadOnlyList<Dictionary<string, object?>>> Mine(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = Assessor }, ct);
+        var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, OwnColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
+            row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             if (host.IsConsultancy())
             {
                 // SP_GET_USERS_BY_ROLE returns consultants and technical experts together (UserType column).
@@ -106,7 +110,7 @@ public sealed class StaffAssessorsController(
         string UserId, string UserName, string? EmailId, string? MobileNo, string? Address, string? PinCode, string? AssessorType,
         string? CertificateNo, string? IdProofType, string? IdProofNumberMasked, IReadOnlyList<string> States,
         IReadOnlyList<string> NicSectors, IReadOnlyList<string> AreasOfKnowledge, string? ReasonForRejection, bool IsActive,
-        string? AgencyUserId, bool CanEdit, string? UserType = null);
+        string? AgencyUserId, bool CanEdit, string? UserType = null, string? SectorActivity = null, string? AgencySectorActivity = null);
 
     /// <summary>One assessor (SP_GET_USER_DETAILS_BY_USER_ID). An agency only gets its own; the MasterAdmin any (read-only).</summary>
     [HttpGet("{userId}")]
@@ -117,11 +121,35 @@ public sealed class StaffAssessorsController(
         if (a is null) return NotFound();
         var r = a.Row;
         string? T(string c) => r.Text(c) is { Length: > 0 } v ? v : null;
-        return new AssessorDetails(a.UserId, r.Text("UserName"), T("Email"), T("MobileNo"), T("Address"), T("Pincode"),
+        var details = new AssessorDetails(a.UserId, r.Text("UserName"), T("Email"), T("MobileNo"), T("Address"), T("Pincode"),
             host.IsConsultancy() ? null : T("AssessorType"),
             T("CertificateNo"), T("IdProofType"), StaffUserRules.MaskIdProof(T("IdProofNumber")), a.States, a.NicSectors, a.AreasOfKnowledge,
             T("ReasonForRejection"), a.IsActive, T("CreatedBy"), CanEdit: IsRole(UserRole.Agency),
             UserType: host.IsConsultancy() ? (r.Text("RoleId") == "33" ? ConsultancyUsers.TechnicalExpert : ConsultancyUsers.Consultant) : null);
+        if (host.IsConsultancy()) return details;
+        return details with
+        {
+            SectorActivity = T("SectorActivity") ?? await UserSectorActivity.OfUserAsync(db, a.UserId, log, ct),
+            AgencySectorActivity = T("CreatedBy") is { } agency ? await UserSectorActivity.OfUserAsync(db, agency, log, ct) : null,
+        };
+    }
+
+    /// <summary>The signed-in agency's sector type, for the new-assessor form (which may not cover more).</summary>
+    [HttpGet("agency-sector-activity")]
+    [StaffRoles(UserRole.Agency)]
+    public async Task<ActionResult<MessageResponse>> AgencySectorActivity(CancellationToken ct) =>
+        new MessageResponse(host.IsConsultancy() ? "" : await UserSectorActivity.OfUserAsync(db, UserId, log, ct) ?? "");
+
+    /// <summary>Main: Manufacturing, Services or Both is required (V4) and may not cover more than the agency's.</summary>
+    private async Task<(string? Activity, string? Error)> ActivityAsync(string? value, CancellationToken ct)
+    {
+        if (host.IsConsultancy()) return (null, null);
+        if (UserSectorActivity.Canonical(value) is not { } activity)
+            return (null, "Please select whether the assessor assesses Manufacturing, Services or Both.");
+        var agency = await UserSectorActivity.OfUserAsync(db, UserId, log, ct);
+        return UserSectorActivity.Covers(agency, activity)
+            ? (activity, null)
+            : (null, $"Your agency assesses {agency} only, so its assessors cannot be set to {activity}.");
     }
 
     public sealed record LookupRequest(string? AssessorType, string? CertificateNo, string? Email);
@@ -144,7 +172,7 @@ public sealed class StaffAssessorsController(
     public sealed record CreateRequest(
         string? AssessorType, string? CertificateNo, string? ProfessionalEmail, string? Address, string? PinCode,
         string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors, List<string>? AreasOfKnowledge,
-        string? UserName = null, string? EmailId = null, string? MobileNo = null);
+        string? UserName = null, string? EmailId = null, string? MobileNo = null, string? SectorActivity = null);
 
     /// <summary>
     /// Creates an assessor under the signed-in agency (SP_INSERT_USER RoleId 3, CreatedBy = the agency; the
@@ -163,6 +191,8 @@ public sealed class StaffAssessorsController(
         var (values, valuesError) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, null,
             req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: null);
         if (valuesError is not null) return this.Problem400(valuesError);
+        var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
+        if (activityError is not null) return this.Problem400(activityError);
 
         var (professional, message) = await StaffUserRules.LookupProfessionalAsync(db, CurrentUser, LookupType(type!), cert!, mail!, ct);
         if (professional is null) return this.Problem400(message!);
@@ -173,7 +203,7 @@ public sealed class StaffAssessorsController(
             ? ConsultancyParameters(values!, null, ConsultancyUsers.ConsultantRole, professional.Name, professional.Email, professional.MobileNo, stored, cert, mail)
             : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, stored, type, cert, mail);
         return await InsertAsync(parameters, professional.Name, professional.Email, professional.MobileNo, password,
-            type == StaffUserRules.AssessorTypeBronze, type!, ct);
+            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity);
     }
 
     /// <summary>
@@ -202,7 +232,8 @@ public sealed class StaffAssessorsController(
 
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
-        object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct)
+        object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct,
+        string? activity = null)
     {
         var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", parameters, ct);
         var newId = result.Scalar(0);
@@ -220,6 +251,7 @@ public sealed class StaffAssessorsController(
         }
         log.LogInformation("Assessor {NewUserId} ({Type}) created by agency {Actor}", newId, type, UserId);
         await Passwords.SetAsync(newId!, password, ct);
+        var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
@@ -233,14 +265,15 @@ public sealed class StaffAssessorsController(
                 [nameof(StaffAssessorRegisteredEmail.LoginUrl)] = Mail.LoginUrl,
                 [nameof(StaffAssessorRegisteredEmail.Consultancy)] = host.IsConsultancy(),
             }, ct);
-        return new StaffAgenciesController.CreatedUserResponse(sent
+        return new StaffAgenciesController.CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {email}."
-            : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.", newId);
+            : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
+            + (activitySaved ? "" : UserSectorActivity.NotSaved), newId);
     }
 
     public sealed record UpdateRequest(
         string? Address, string? PinCode, string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors,
-        List<string>? AreasOfKnowledge, string? ReasonForRejection);
+        List<string>? AreasOfKnowledge, string? ReasonForRejection, string? SectorActivity = null);
 
     /// <summary>
     /// Updates one of the agency's assessors (SP_UPDATE_USER RoleId 3). Name, e-mail and mobile stay as they are
@@ -256,13 +289,16 @@ public sealed class StaffAssessorsController(
         var (values, error) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, req.ReasonForRejection,
             req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: a);
         if (error is not null) return this.Problem400(error);
+        var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
+        if (activityError is not null) return this.Problem400(activityError);
 
         var r = a.Row;
         await db.ExecuteProcAsync("SP_UPDATE_USER", host.IsConsultancy()
             ? ConsultancyParameters(values!, a.UserId, int.Parse(r.Text("RoleId")), r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"), null, null, null)
             : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"), null, null, null, null), ct);
+        var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, a.UserId, activity, log, ct);
         log.LogInformation("Assessor {UserId} updated by {Actor}", a.UserId, UserId);
-        return new MessageResponse("User updated successfully.");
+        return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
     }
 
     public sealed record ReasonRequest(string? Reason);

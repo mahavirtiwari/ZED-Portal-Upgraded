@@ -65,6 +65,11 @@ describe('AssessorFormPage', () => {
     await create(StaffRole.Agency, null);
     http.expectOne('/api/staff/users/assessors/options').flush(options);
     await settle(fixture);
+    // The agency assesses Manufacturing only: its assessors cannot be Services.
+    http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Manufacturing' });
+    await settle(fixture);
+    expect(([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.textContent!.trim() === 'Services') as HTMLInputElement).disabled).toBe(true);
+    expect(el.textContent).toContain('Your agency assesses Manufacturing only.');
     const createButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Create') as HTMLButtonElement;
     expect(createButton.disabled).toBe(true);
 
@@ -89,12 +94,18 @@ describe('AssessorFormPage', () => {
 
     await type('#idProofType', 'PAN Card');
     await type('#idProofNumber', 'ABCDE1234F');
+    ([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.textContent!.trim() === 'Manufacturing') as HTMLInputElement).click();
+    await settle(fixture);
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
+    expect(el.querySelector('.alert-danger')?.textContent ?? '').toBe('');
     const req = http.expectOne('/api/staff/users/assessors');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toMatchObject({ assessorType: 'BronzeAssessor', certificateNo: 'BA1234', professionalEmail: 'pro@zed.test', address: '12 Main Rd', idProofNumber: 'ABCDE1234F' });
+    expect(req.request.body).toMatchObject({
+      assessorType: 'BronzeAssessor', certificateNo: 'BA1234', professionalEmail: 'pro@zed.test', address: '12 Main Rd', idProofNumber: 'ABCDE1234F',
+      sectorActivity: 'Manufacturing',
+    });
     expect(Object.keys(req.request.body)).not.toEqual(expect.arrayContaining(['userName']));
     expect(Object.keys(req.request.body)).not.toContain('emailId');
     req.flush({ message: 'User created successfully.', userId: 'ZEDBA0001' });

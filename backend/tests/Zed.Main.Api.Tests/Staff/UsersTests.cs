@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Zed.Core.Data;
 
+using Zed.Portal.Features.Staff.Users;
+
 namespace Zed.Main.Api.Tests.Staff;
 
 /// <summary>Signs test clients in as staff users through the real staff login (SP_GET_USER_DETAILS faked).</summary>
@@ -101,7 +103,7 @@ public sealed class UsersTests : IDisposable
     {
         userName = "New Agency", spocName = "Spoc", emailId = "new@agency.test", mobileNo = "9876501234", address = "Addr",
         pinCode = "110002", gstNumber = "07ABCDE1234F1Z5", states = new[] { "DELHI", "goa" }, nicSectors = new[] { "24" },
-        orgPartnerId = "OP2", desktopVerification = true, siteVerification = true, financialVerification = false,
+        orgPartnerId = "OP2", desktopVerification = true, siteVerification = true, financialVerification = false, sectorActivity = "Both",
     };
 
     // ---- authorisation -------------------------------------------------------------------
@@ -414,10 +416,12 @@ public sealed class UsersTests : IDisposable
             roleId = 2, createdBy = "AGENCY2", userName = "Someone Else", email = "attacker@evil.test", mobileNo = "9999999999",
             assessorType = "BronzeAssessor", certificateNo = "BA1234", professionalEmail = "pro@zed.test",
             address = "12 Main Rd", pinCode = "411001", idProofType = "PAN Card", idProofNumber = "abcde1234f",
-            states = new[] { "MAHARASHTRA" }, nicSectors = new[] { "24", "25" }, areasOfKnowledge = new[] { "Quality" },
+            states = new[] { "MAHARASHTRA" }, nicSectors = new[] { "24", "25" }, areasOfKnowledge = new[] { "Quality" }, sectorActivity = "Services",
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var body = await r.Content.ReadAsStringAsync();
+        var activity = Assert.Single(_host.Sql.Calls, c => c.Name == UserSectorActivity.UpdateSql);
+        Assert.Equal("Services", UsersMastersLogin.Arg(activity.Args, "SectorActivity"));
 
         var insert = Call("SP_INSERT_USER");
         Assert.Equal("3", UsersMastersLogin.Arg(insert.Args, "RoleId"));
@@ -464,9 +468,10 @@ public sealed class UsersTests : IDisposable
         r = await client.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0001", new
         {
             userName = "Changed", address = "New address", pinCode = "560002", idProofType = "Aadhaar Card", idProofNumber = "",
-            states = new[] { "KERALA" },
+            states = new[] { "KERALA" }, sectorActivity = "Manufacturing",
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(("ZEDAS0001", "Manufacturing"), (UsersMastersLogin.Arg(Call(UserSectorActivity.UpdateSql).Args, "UserId"), UsersMastersLogin.Arg(Call(UserSectorActivity.UpdateSql).Args, "SectorActivity")));
         var update = Call("SP_UPDATE_USER");
         Assert.Equal("ZEDAS0001 name", UsersMastersLogin.Arg(update.Args, "UserName"));
         Assert.Equal("123456789012", UsersMastersLogin.Arg(update.Args, "IdProofNumber"));
@@ -486,5 +491,35 @@ public sealed class UsersTests : IDisposable
         var call = Call("SP_GET_ASSESSORS");
         Assert.Equal("ZEDAA0001", UsersMastersLogin.Arg(call.Args, "CertificationBodyUserId"));
         Assert.Equal("DA", UsersMastersLogin.Arg(call.Args, "AssessorType"));
+    }
+
+    // ---- Manufacturing / Services (V4, migration 0028) ------------------------------------
+
+    [Fact]
+    public async Task An_agency_needs_its_sector_type_and_its_assessors_stay_within_it()
+    {
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var missing = new Dictionary<string, object?>(System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(
+            System.Text.Json.JsonSerializer.Serialize(AgencyBody()))!) { ["sectorActivity"] = null };
+        Assert.Equal("Please select whether the agency assesses Manufacturing, Services or Both.",
+            await (await master.PostAsJsonAsync("/api/staff/users/agencies", missing)).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_INSERT_USER");
+
+        // AGENCY1 assesses Manufacturing only: no Services assessor.
+        _host.Sql.Queries[UserSectorActivity.OfUserSql] = args => UsersMastersLogin.Arg(args, "UserId") == "AGENCY1"
+            ? [new UserSectorActivity.Row("AGENCY1", "Manufacturing")] : [];
+        var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        var r = await agency.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0001", new
+        {
+            address = "New address", pinCode = "560002", idProofType = "Aadhaar Card", idProofNumber = "", states = new[] { "KERALA" }, sectorActivity = "Services",
+        });
+        Assert.Equal("Your agency assesses Manufacturing only, so its assessors cannot be set to Services.", await r.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_UPDATE_USER");
+
+        // The lists show it.
+        _host.Sql.Queries[UserSectorActivity.ByRoleSql] = _ => [new UserSectorActivity.Row("ZEDAS0001", "Manufacturing")];
+        _host.Sql.Procs["SP_GET_USERS_BY_ROLE"] = _ => FakeSql.Sets([_users["ZEDAS0001"]]);
+        var mine = await agency.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/staff/users/assessors/mine");
+        Assert.Contains(mine.EnumerateArray(), a => a.GetProperty("UserId").GetString() == "ZEDAS0001" && a.GetProperty("SectorActivity").GetString() == "Manufacturing");
     }
 }

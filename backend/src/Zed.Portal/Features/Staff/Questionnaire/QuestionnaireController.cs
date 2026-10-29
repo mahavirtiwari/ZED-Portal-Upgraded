@@ -146,7 +146,7 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
     /// <summary>The parameter, as stored (canonical level and code), or null when it does not exist.</summary>
     private async Task<Section?> SectionAsync(string sectionType, string sectionCode, CancellationToken ct)
     {
-        var type = StaffMastersController.SectionTypes.FirstOrDefault(t => string.Equals(t, sectionType, StringComparison.OrdinalIgnoreCase));
+        var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct))?.Code;
         if (type is null || string.IsNullOrWhiteSpace(sectionCode) || sectionCode.Length > 50) return null;
         var row = (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .FirstOrDefault(r => string.Equals(r.Text("SectionCode").Trim(), sectionCode.Trim(), StringComparison.OrdinalIgnoreCase));

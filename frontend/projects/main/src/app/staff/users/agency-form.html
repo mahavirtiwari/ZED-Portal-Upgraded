@@ -53,6 +53,18 @@
     <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
     <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [(value)]="model.nicSectors" />
     @if (!consultancy) {
+      <span class="label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
+      <div>
+        <div class="activity-choice" role="radiogroup" aria-labelledby="sectorActivity-label">
+          @for (a of activities; track a.value) {
+            <label><input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
+          }
+        </div>
+        <small class="text-muted d-block">Which MSMEs the agency assesses. Its assessors cannot cover more.</small>
+        @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+      </div>
+    }
+    @if (!consultancy) {
       <label for="orgPartnerId">Organising Partner</label>
       <select id="orgPartnerId" name="orgPartnerId" class="form-select" [(ngModel)]="model.orgPartnerId">
         <option value="">-- Select Orgnising Partner --</option>

@@ -21,6 +21,8 @@ export interface AgencyRow {
   NoOfUsers: number | null;
   NoOfBronzeAssessors: number | null;
   AllowBronzeAssessments: boolean;
+  /** Main (V4): Manufacturing, Services or Both; null when not set yet. */
+  SectorActivity?: SectorActivity | null;
 }
 
 export interface Sector {
@@ -51,6 +53,14 @@ export interface District {
   districtName: string;
 }
 
+/** Which MSMEs an agency / assessor may assess (V4, Main). */
+export type SectorActivity = 'Manufacturing' | 'Services' | 'Both';
+export const SECTOR_ACTIVITIES: { value: SectorActivity; label: string }[] = [
+  { value: 'Manufacturing', label: 'Manufacturing' },
+  { value: 'Services', label: 'Services' },
+  { value: 'Both', label: 'Both' },
+];
+
 export interface AgencyRequest {
   userName: string;
   spocName: string;
@@ -69,6 +79,8 @@ export interface AgencyRequest {
   /** Consultancy only (Technology Upgradation preference of a CO with financial verification). */
   tuPreferredState?: string;
   tuPreferredDistricts?: string[];
+  /** Main only (V4): required. */
+  sectorActivity?: SectorActivity | '';
 }
 
 export interface AgencyDetails {
@@ -91,6 +103,7 @@ export interface AgencyDetails {
   isActive: boolean;
   tuPreferredState?: string | null;
   tuPreferredDistricts?: string[] | null;
+  sectorActivity?: SectorActivity | null;
 }
 
 export interface CreatedUserResponse {
@@ -110,6 +123,7 @@ export interface AssessorRow {
   IdStatus: string | null;
   IsActive: boolean;
   AssessorType: string | null;
+  SectorActivity?: SectorActivity | null;
   AgencyUserId: string | null;
   AgencyUserName: string | null;
 }
@@ -125,6 +139,7 @@ export interface OwnAssessorRow {
   IdStatus: string | null;
   IsActive: boolean;
   AssessorType: string | null;
+  SectorActivity?: SectorActivity | null;
   IsCertAttached: number;
   IdProofNumber: string | null;
   PhotoPath: string | null;
@@ -158,6 +173,9 @@ export interface AssessorDetails {
   canEdit: boolean;
   /** Consultancy: Consultant | TechnicalExpert. */
   userType?: string | null;
+  sectorActivity?: SectorActivity | null;
+  /** The agency's own (an assessor cannot cover more). */
+  agencySectorActivity?: SectorActivity | null;
 }
 
 export interface Professional {
@@ -184,6 +202,7 @@ export interface AssessorCreateRequest {
   userName?: string;
   emailId?: string;
   mobileNo?: string;
+  sectorActivity?: SectorActivity | '';
 }
 
 export interface AssessorUpdateRequest {
@@ -195,6 +214,7 @@ export interface AssessorUpdateRequest {
   nicSectors: string[];
   areasOfKnowledge: string[];
   reasonForRejection: string;
+  sectorActivity?: SectorActivity | '';
 }
 
 export type ManagedKind = 'agencies' | 'assessors';
@@ -247,6 +267,11 @@ export class UsersApi {
 
   myAssessors(): Observable<OwnAssessorRow[]> {
     return this.http.get<OwnAssessorRow[]>(`${this.base}/assessors/mine`);
+  }
+
+  /** The signed-in agency's sector type (Main; message "" when not set). */
+  agencySectorActivity(): Observable<MessageResponse> {
+    return this.http.get<MessageResponse>(`${this.base}/assessors/agency-sector-activity`);
   }
 
   assessorOptions(): Observable<AssessorOptions> {

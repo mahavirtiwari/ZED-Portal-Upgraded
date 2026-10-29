@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.CertLevels;
 using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Masters;
@@ -183,65 +184,110 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
 
     // ---- Questionnaire parameters (Sections) ---------------------------------------------------
 
-    public static readonly string[] SectionTypes = ["Bronze", "Silver", "Gold"];
-
     // ZED_CONSULTANT has no questionnaire tables (Sections, Requirements, ...: database/README.md), so the parameters are
     // not served on Consultancy; its live Questionaire pages failed the same way.
+    // The levels are those of Administration → Certification Levels (Bronze, Silver, Gold, ZED-X, ...; migration 0028).
 
-    public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description);
+    /// <param name="NicSectors">The NIC 2-digit sectors the parameter applies to (V4, Sections.NicSectors); empty = all sectors.</param>
+    public sealed record Parameter(int Id, string SectionType, string SectionCode, string SectionName, string? Description, IReadOnlyList<string>? NicSectors = null);
+
+    public sealed record LevelOption(string Code, string Name, bool IsEnabled);
+
+    /// <summary>The certification levels whose questionnaires the Admin manages (disabled ones included: ZED-X is prepared before it opens).</summary>
+    [HttpGet("parameter-levels")]
+    [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
+    public async Task<IReadOnlyList<LevelOption>> ParameterLevels(CancellationToken ct) =>
+        (await CertificationLevels.AllAsync(db, log, ct)).Select(l => new LevelOption(l.Code, l.Name, l.IsEnabled)).ToList();
 
     /// <summary>Parameters of a certification level (first set of SP_MASTER_GET_SECTIONS).</summary>
     [HttpGet("parameters/{sectionType}")]
     [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<IReadOnlyList<Parameter>>> Parameters(string sectionType, CancellationToken ct)
     {
-        var type = SectionType(sectionType);
+        var type = await SectionTypeAsync(sectionType, ct);
         if (type is null) return NotFound();
         return (await LoadParametersAsync(type, ct)).ToList();
     }
 
-    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description);
+    public sealed record ParameterRequest(string? SectionCode, string? SectionName, string? Description, List<string>? NicSectors = null);
 
     [HttpPost("parameters/{sectionType}")]
     [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> AddParameter(string sectionType, ParameterRequest req, CancellationToken ct)
     {
-        var type = SectionType(sectionType);
+        var type = await SectionTypeAsync(sectionType, ct);
         if (type is null) return NotFound();
         if (!StaffUserRules.TryText(req.SectionCode, 50, true, false, out var code)) return this.Problem400("Parameter Code required (up to 50 characters).");
         if (!StaffUserRules.TryText(req.SectionName, 200, true, false, out var name)) return this.Problem400("Parameter Name required (up to 200 characters).");
         if (!StaffUserRules.TryText(req.Description, 1990, false, true, out var description)) return this.Problem400("The description can be up to 1990 characters.");
         if ((await LoadParametersAsync(type, ct)).Any(p => string.Equals(p.SectionCode, code, StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A parameter with this code already exists.");
+        var (sectors, sectorsError) = await NicSectorsAsync(req.NicSectors, ct);
+        if (sectorsError is not null) return this.Problem400(sectorsError);
         await db.ExecuteProcAsync("SP_MASTER_INSERT_SECTION",
             new { SectionType = type, SectionCode = code, SectionName = name, SectionImage = (string?)null, iButton = description }, ct);
+        var saved = await SaveNicSectorsAsync(NicSectorsByCodeSql, new { SectionType = type, SectionCode = code, NicSectors = sectors }, ct);
         log.LogInformation("Parameter {Type}/{Code} added by {Actor}", type, code, UserId);
-        return new MessageResponse("Parameter saved.");
+        return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved));
     }
 
-    public sealed record ParameterUpdateRequest(string? SectionName, string? Description);
+    public sealed record ParameterUpdateRequest(string? SectionName, string? Description, List<string>? NicSectors = null);
 
     [HttpPut("parameters/{sectionType}/{id:int}")]
     [SystemOnly(PortalSystem.Main, PortalSystem.Surveillance)]
     public async Task<ActionResult<MessageResponse>> UpdateParameter(string sectionType, int id, ParameterUpdateRequest req, CancellationToken ct)
     {
-        var type = SectionType(sectionType);
+        var type = await SectionTypeAsync(sectionType, ct);
         if (type is null) return NotFound();
         var current = (await LoadParametersAsync(type, ct)).FirstOrDefault(p => p.Id == id);
         if (current is null) return NotFound();
         if (!StaffUserRules.TryText(req.SectionName, 200, true, false, out var name)) return this.Problem400("Parameter Name required (up to 200 characters).");
         if (!StaffUserRules.TryText(req.Description, 1990, false, true, out var description)) return this.Problem400("The description can be up to 1990 characters.");
+        var (sectors, sectorsError) = await NicSectorsAsync(req.NicSectors, ct);
+        if (sectorsError is not null) return this.Problem400(sectorsError);
         await db.ExecuteProcAsync("SP_MASTER_UPDATE_SECTION", new
         {
             Id = id.ToString(), SectionType = type, current.SectionCode, SectionName = name, SectionImage = (string?)null, iButton = description,
         }, ct);
+        var saved = await SaveNicSectorsAsync(NicSectorsByIdSql, new { Id = id, NicSectors = sectors }, ct);
         log.LogInformation("Parameter {Id} updated by {Actor}", id, UserId);
-        return new MessageResponse("Parameter data updated.");
+        return new MessageResponse("Parameter data updated." + (saved ? "" : NicSectorsNotSaved));
+    }
+
+    internal const string NicSectorsByCodeSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
+    internal const string NicSectorsByIdSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE Id = @Id;";
+    private const string NicSectorsNotSaved = " Its NIC sectors could not be saved: please ask the administrator to apply database migration 0028.";
+
+    /// <summary>The chosen NIC sectors as stored (comma-separated codes, null = all sectors), or what is wrong with them.</summary>
+    private async Task<(string? Stored, string? Error)> NicSectorsAsync(List<string>? chosen, CancellationToken ct)
+    {
+        var codes = (chosen ?? []).Select(c => c?.Trim() ?? "").Where(c => c.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (codes.Count == 0) return (null, null);
+        var known = (await LoadSectorsAsync(ct)).Select(s => s.Code.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (codes.FirstOrDefault(c => !known.Contains(c)) is { } unknown) return (null, $"NIC sector {unknown} is not in the Sectors master.");
+        var stored = string.Join(",", codes.OrderBy(c => c, StringComparer.Ordinal));
+        return stored.Length > 2000 ? (null, "Too many NIC sectors chosen.") : (stored, null);
+    }
+
+    private async Task<bool> SaveNicSectorsAsync(string sql, object args, CancellationToken ct)
+    {
+        try
+        {
+            await db.ExecuteSqlAsync(sql, args, ct);
+            return true;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogError(ex, "NIC sectors of a parameter not saved (is migration 0028 applied?)");
+            return false;
+        }
     }
 
     // ---- helpers ------------------------------------------------------------------------------
 
-    private static string? SectionType(string value) => SectionTypes.FirstOrDefault(t => string.Equals(t, value, StringComparison.OrdinalIgnoreCase));
+    /// <summary>The stored code of a certification level (any case), or null.</summary>
+    internal async Task<string?> SectionTypeAsync(string value, CancellationToken ct) =>
+        (await CertificationLevels.FindAsync(db, value, log, ct))?.Code;
 
     private static string SectorLabel(CodeName s) => s.Code + "-" + s.Name;
     private static string CategoryLabel(CodeName c) => c.Code + " -" + c.Name;
@@ -269,7 +315,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     private async Task<IEnumerable<Parameter>> LoadParametersAsync(string type, CancellationToken ct) =>
         (await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTIONS", new { SectionType = type }, ct))[0]
             .Select(r => new Parameter(Id(r), r.Text("SectionType"), r.Text("SectionCode"), r.Text("SectionName"),
-                r.Text("iButton") is { Length: > 0 } d ? d : null))
+                r.Text("iButton") is { Length: > 0 } d ? d : null, SplitList(r.Text("NicSectors"))))
             .Where(p => p.Id > 0);
 
     private static (string? Code, string? Name, string? Error) ValidateCodeName(CodeNameRequest req, string label)

@@ -146,6 +146,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
   })),
+  // New in V4: the ZED-X level (Administration → Certification Levels); its parameters are NIC sector-wise.
+  { label: 'ZED-X', route: '/staff/masters/parameters/ZEDX', roles: [R.Admin], menu: 'Questionnaire' },
   // New in V4: the ESG checklist of the MSME app's assessment (before, a fixed file).
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
   { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], menu: 'Technology Upgradation' },
@@ -165,6 +167,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'API Integrations', route: '/staff/settings/api-integrations', roles: [R.Admin], menu: 'Administration' },
   // New in V4: where "Contact ZED" goes (the ZED website's contact page).
   { label: 'Links', route: '/staff/settings/links', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the certification levels' boxes (ZED-X included) and their certificate settings.
+  { label: 'Certification Levels', route: '/staff/settings/levels', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the documents and videos the Admin gave to the account type.
   { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.StateCoordinator, R.Ministry, R.SuperAdmin, R.CitizenFeedback, R.QC] },
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
@@ -254,6 +258,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
     label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
   })),
+  { label: 'ZED-X', route: '/staff/masters/parameters/ZEDX', roles: [R.Admin], menu: 'Questionnaire' },
   // New in V4: the ESG checklist of the surveillance app's assessment (before, a fixed file).
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
@@ -263,6 +268,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
+  { label: 'Certification Levels', route: '/staff/settings/levels', roles: [R.Admin], menu: 'Administration' },
 
   // MasterAdmin
   // As the live layout (ZEDCS_SURVEILLANCE Frontend/Shared/_Layout.cshtml): "Allot Surveillance", then the "Surveillance

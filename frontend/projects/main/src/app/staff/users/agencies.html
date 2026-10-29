@@ -61,6 +61,7 @@
               @for (c of [a.DesktopVerfi, a.SiteVerifi, a.FinanceVerfi]; track $index) {
                 @if (c) { <span class="zed-chip">{{ c }}</span> }
               }
+              <small class="d-block mt-1" [class.text-muted]="!a.SectorActivity">Sector type: {{ a.SectorActivity ?? 'not set' }}</small>
             </td>
           }
           <td class="text-center">{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</td>

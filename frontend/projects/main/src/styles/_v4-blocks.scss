@@ -69,3 +69,7 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 }
 .zed-pager .btn:hover:not(:disabled) { background-color: $teal-tint; border-color: $teal; color: $teal-ink; }
 .zed-pager .btn:disabled { opacity: 0.45; }
+/* A short radio choice in a form row (Sector Type: Manufacturing / Services / Both). */
+.activity-choice { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; min-height: 38px; }
+.activity-choice label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
+.activity-choice .form-check-input { margin: 0; }

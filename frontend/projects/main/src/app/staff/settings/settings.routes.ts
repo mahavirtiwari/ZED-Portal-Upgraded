@@ -8,6 +8,8 @@ const admin = authGuard('/staff', [StaffRole.Admin]);
 export const SETTINGS_ROUTES: Routes = [
   // New in V4: where "Contact ZED" goes.
   { path: 'links', title: 'ZED | Links', canActivate: [admin], loadComponent: () => import('./links').then((m) => m.LinksPage) },
+  // New in V4: the certification levels' boxes (ZED-X included) and their certificate settings.
+  { path: 'levels', title: 'ZED | Certification Levels', canActivate: [admin], loadComponent: () => import('./certification-levels').then((m) => m.CertificationLevelsPage) },
   {
     path: 'captcha',
     title: 'ZED | Captcha Settings',

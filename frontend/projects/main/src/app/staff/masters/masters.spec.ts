@@ -289,9 +289,51 @@ describe('CodeNamesPage (sectors)', () => {
 });
 
 describe('ParametersPage', () => {
+  /** The level box (Administration → Certification Levels) and the NIC sectors of the picker. */
+  function flushLevels(http: HttpTestingController) {
+    http.expectOne('/api/staff/masters/parameter-levels').flush([
+      { code: 'Bronze', name: 'Bronze', isEnabled: true }, { code: 'ZEDX', name: 'ZED-X', isEnabled: false },
+    ]);
+    http.expectOne('/api/staff/masters/sectors').flush([{ id: 1, code: '24', name: 'Basic metals' }, { id: 2, code: '62', name: 'IT services' }]);
+  }
+
+  it('limits a ZED-X parameter to NIC sectors and shows the sectors of each', async () => {
+    const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'ZEDX' }) } });
+    http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    flushLevels(http);
+    http.expectOne('/api/staff/masters/parameters/ZEDX').flush([
+      { id: 7, sectionType: 'ZEDX', sectionCode: 'X1', sectionName: 'Digital', description: '', nicSectors: ['62'] },
+      { id: 8, sectionType: 'ZEDX', sectionCode: 'X2', sectionName: 'Energy', description: '', nicSectors: [] },
+    ]);
+    await settle(fixture);
+    expect(el.querySelector('h3')!.textContent).toContain('Parameters (ZED-X)');
+    expect((el.querySelector('#param-level') as HTMLSelectElement).textContent).toContain('ZED-X (not open to MSMEs yet)');
+    const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
+    expect(rows[0]).toContain('62');
+    expect(rows[1]).toContain('All sectors');
+
+    (el.querySelector('#sectionCode') as HTMLInputElement).value = 'X3';
+    el.querySelector('#sectionCode')!.dispatchEvent(new Event('input'));
+    (el.querySelector('#sectionName') as HTMLInputElement).value = 'Water';
+    el.querySelector('#sectionName')!.dispatchEvent(new Event('input'));
+    const box = [...el.querySelectorAll('.zed-multi label')].find((l) => l.textContent!.includes('24 - Basic metals'))!.querySelector('input') as HTMLInputElement;
+    box.click();
+    await settle(fixture);
+    (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/ZEDX');
+    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'] });
+    post.flush({ message: 'Parameter saved.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/parameters/ZEDX').flush([]);
+    await settle(fixture);
+    http.verify();
+  });
+
   it('shows the description as text, not HTML', async () => {
     const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
     http.expectOne('/api/config').flush({ legacyPortalUrl: 'https://old.example' });
+    flushLevels(http);
     http.expectOne('/api/staff/masters/parameters/Bronze').flush([
       { id: 3, sectionType: 'Bronze', sectionCode: 'P1', sectionName: 'Leadership', description: '<img src=x onerror=alert(1)>' },
     ]);
@@ -306,6 +348,7 @@ describe('ParametersPage', () => {
   it('pages the parameters ten at a time and searches them', async () => {
     const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
     http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    flushLevels(http);
     http.expectOne('/api/staff/masters/parameters/Bronze').flush(Array.from({ length: 23 }, (_, i) => (
       { id: i + 1, sectionType: 'Bronze', sectionCode: `P${i + 1}`, sectionName: i === 21 ? 'Waste management' : `Parameter ${i + 1}`, description: '' })));
     await settle(fixture);
@@ -315,7 +358,7 @@ describe('ParametersPage', () => {
     ([...el.querySelectorAll('.zed-pager button')].find((b) => b.textContent!.trim() === 'Last') as HTMLButtonElement).click();
     await settle(fixture);
     expect(codes()).toEqual(['P21', 'P22', 'P23']);
-    const search = el.querySelector('input[type=search]') as HTMLInputElement;
+    const search = el.querySelector('input[aria-label="Search parameters"]') as HTMLInputElement;
     search.value = 'waste';
     search.dispatchEvent(new Event('input'));
     await settle(fixture);

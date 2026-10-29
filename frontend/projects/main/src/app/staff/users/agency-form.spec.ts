@@ -76,10 +76,17 @@ describe('AgencyFormPage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
+    // V4: Manufacturing, Services or Both is required.
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Manufacturing, Services or Both');
+    http.expectNone('/api/staff/users/agencies');
+    ([...el.querySelectorAll('input[name=sectorActivity]')].find((i) => i.closest('label')!.textContent!.trim() === 'Services') as HTMLInputElement).click();
+    await settle();
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
 
     const req = http.expectOne('/api/staff/users/agencies');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body).toMatchObject({ userName: 'New Agency', desktopVerification: true, states: ['GOA'], orgPartnerId: '' });
+    expect(req.request.body).toMatchObject({ userName: 'New Agency', desktopVerification: true, states: ['GOA'], orgPartnerId: '', sectorActivity: 'Services' });
     expect(JSON.stringify(req.request.body)).not.toContain('roleId');
     req.flush({ message: 'User created successfully.', userId: 'ZEDAA0099' });
     await settle();
@@ -123,7 +130,7 @@ describe('AgencyFormPage', () => {
     http.expectOne('/api/staff/users/agencies/ZEDAA0001').flush({
       userId: 'ZEDAA0001', userName: 'Acme', spocName: 'S', emailId: 'a@b.test', mobileNo: '9876543210', address: 'A', pinCode: '110001',
       gstNumber: null, states: ['DELHI'], nicSectors: ['24'], orgPartnerId: 'OP1', orgPartnerName: 'Partner One', desktopVerification: true,
-      siteVerification: false, financialVerification: false, reasonForRejection: 'Old reason', isActive: true,
+      siteVerification: false, financialVerification: false, reasonForRejection: 'Old reason', isActive: true, sectorActivity: 'Both',
     });
     await settle();
     expect(el.querySelector('h3')!.textContent).toContain('Update Assessment Agency Details');
@@ -134,7 +141,7 @@ describe('AgencyFormPage', () => {
     await settle();
     const req = http.expectOne('/api/staff/users/agencies/ZEDAA0001');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toMatchObject({ orgPartnerId: 'OP1', states: ['DELHI'], nicSectors: ['24'] });
+    expect(req.request.body).toMatchObject({ orgPartnerId: 'OP1', states: ['DELHI'], nicSectors: ['24'], sectorActivity: 'Both' });
     req.flush({ message: 'User updated successfully.' });
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('User updated successfully.');

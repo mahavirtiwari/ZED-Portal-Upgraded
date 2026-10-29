@@ -62,7 +62,10 @@ import { ClientPager, PagerComponent } from '../pager';
               <td class="text-center">{{ s.RowNumber }}</td>
               <td class="text-center"><span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span></td>
               @if (!consultancy) {
-                <td class="text-center"><span class="zed-chip">{{ s.AssessorType }}</span></td>
+                <td class="text-center">
+                  <span class="zed-chip">{{ s.AssessorType }}</span>
+                  <small class="d-block mt-1" [class.text-muted]="!s.SectorActivity">{{ s.SectorActivity ?? 'Sector type not set' }}</small>
+                </td>
               }
               <td class="text-center"><strong>{{ s.UserId }}</strong></td>
               <td class="word-break">

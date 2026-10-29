@@ -23,7 +23,7 @@ describe('StaffHomePage', () => {
     const cards = [...el.querySelectorAll('.group-card h4')].map((h) => h.textContent!.trim());
     expect(cards).toEqual(['Masters', 'Questionnaire', 'Technology Upgradation', 'Incentives', 'Administration']);
     const questionnaire = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Questionnaire')!;
-    expect([...questionnaire.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ESG Checklist']);
+    expect([...questionnaire.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X', 'ESG Checklist']);
     expect(el.querySelector('.group-card')!.textContent).toContain('Sectors');
     // The incentives in their four groups.
     const incentives = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Incentives')!;

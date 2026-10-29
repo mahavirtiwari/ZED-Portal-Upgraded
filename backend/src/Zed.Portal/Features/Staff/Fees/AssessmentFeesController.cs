@@ -34,7 +34,8 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     public const string AuditCategory = "Zed.Audit.AssessmentFee";
 
     public static readonly string[] EnterpriseTypes = ["Micro", "Small", "Medium", "Rejected"];
-    public static readonly string[] Levels = ["Bronze", "Silver", "Gold"];
+    /// <summary>The levels with fee rows (ZEDX = ZED-X, migration 0028; a level shows once it has rows).</summary>
+    public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
 
     public sealed record LevelFee(string Certification, decimal? AssessmentFee, decimal? Coupon, bool HasCouponRows);
     /// <param name="GroupBy">"Certification" (one fee per level), or "MileStone" on Consultancy (Levels[].Certification is then the milestone).</param>
@@ -99,7 +100,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// <param name="Category">0 general (the base share), 1 SC / ST / aspirational district, 2 woman-owned.</param>
     /// <param name="BaseShare">General: the subsidy every unit of the type gets (%); the other categories keep their additional share on top.</param>
     /// <param name="AdditionalShare">Categories 1 and 2: the share on top of the base (%).</param>
-    /// <param name="AllLevels">The same shares for Bronze, Silver and Gold.</param>
+    /// <param name="AllLevels">The same shares for every level (Bronze, Silver, Gold, ZED-X).</param>
     public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels);
 
     /// <summary>

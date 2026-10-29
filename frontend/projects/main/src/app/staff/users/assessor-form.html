@@ -104,6 +104,20 @@
       }
       <label class="top" for="nicSectors">NIC Sector (2 Digit)</label>
       <zed-multi-select inputId="nicSectors" label="NIC Sector" [options]="sectors()" [disabled]="!canEdit()" [(value)]="model.nicSectors" />
+      @if (!consultancy) {
+        <span class="label top" id="sectorActivity-label">Sector Type<span class="req">*</span></span>
+        <div>
+          <div class="activity-choice" role="radiogroup" aria-labelledby="sectorActivity-label">
+            <!-- attr.disabled per radio: [disabled] with ngModel would disable the whole group (one control per name). -->
+            @for (a of activities; track a.value) {
+              <label [class.text-muted]="!allowed(a.value)"><input type="radio" class="form-check-input" name="sectorActivity" [value]="a.value"
+                     [attr.disabled]="!canEdit() || !allowed(a.value) ? '' : null" [(ngModel)]="model.sectorActivity" /> {{ a.label }}</label>
+            }
+          </div>
+          @if (agencyActivity() && agencyActivity() !== 'Both') { <small class="text-muted d-block">Your agency assesses {{ agencyActivity() }} only.</small> }
+          @if (submitted() && !model.sectorActivity) { <span class="help-block">This is required.</span> }
+        </div>
+      }
       <label class="top" for="areas">Area of Knowledge and Expertise</label>
       <zed-multi-select inputId="areas" label="Area of Knowledge and Expertise" [options]="areas()" [disabled]="!canEdit()" [(value)]="model.areasOfKnowledge" />
       @if (!isNew) {

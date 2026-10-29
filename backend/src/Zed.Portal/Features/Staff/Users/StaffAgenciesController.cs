@@ -53,11 +53,13 @@ public sealed class StaffAgenciesController(
     public async Task<IReadOnlyList<Dictionary<string, object?>>> List(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = ((int)UserRole.Agency).ToString() }, ct);
+        var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["AllowBronzeAssessments"] = StaffUserRules.Bool(r, "AllowBronzeAssessments");
+            row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             return row;
         }).ToList();
     }
@@ -94,7 +96,7 @@ public sealed class StaffAgenciesController(
         string UserId, string UserName, string? SpocName, string? EmailId, string? MobileNo, string? Address, string? PinCode,
         string? GstNumber, IReadOnlyList<string> States, IReadOnlyList<string> NicSectors, string? OrgPartnerId, string? OrgPartnerName,
         bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection, bool IsActive,
-        string? TuPreferredState = null, IReadOnlyList<string>? TuPreferredDistricts = null);
+        string? TuPreferredState = null, IReadOnlyList<string>? TuPreferredDistricts = null, string? SectorActivity = null);
 
     /// <summary>One agency for the edit form (SP_GET_USER_DETAILS_BY_USER_ID; legacy CertificationBodies?id=).</summary>
     [HttpGet("{userId}")]
@@ -110,14 +112,14 @@ public sealed class StaffAgenciesController(
             T("ReasonForRejection"), agency.IsActive);
         return host.IsConsultancy()
             ? details with { TuPreferredState = T("TuPreferredState"), TuPreferredDistricts = await ConsultancyUsers.TuDistrictsAsync(db, agency.UserId, ct) }
-            : details;
+            : details with { SectorActivity = T("SectorActivity") ?? await UserSectorActivity.OfUserAsync(db, agency.UserId, log, ct) };
     }
 
     public sealed record AgencyRequest(
         string? UserName, string? SpocName, string? EmailId, string? MobileNo, string? Address, string? PinCode, string? GstNumber,
         List<string>? States, List<string>? NicSectors, string? OrgPartnerId,
         bool DesktopVerification, bool SiteVerification, bool FinancialVerification, string? ReasonForRejection,
-        string? TuPreferredState = null, List<string>? TuPreferredDistricts = null);
+        string? TuPreferredState = null, List<string>? TuPreferredDistricts = null, string? SectorActivity = null);
 
     public sealed record CreatedUserResponse(string Message, string? UserId);
 
@@ -131,6 +133,7 @@ public sealed class StaffAgenciesController(
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct);
         var (values, error) = Validate(req, Sectors(sets), host.IsConsultancy() ? [] : Partners(sets[1]).Select(p => p.UserId), existing: null);
         if (error is not null) return this.Problem400(error);
+        if (ActivityError(req, out var activity) is { } activityError) return this.Problem400(activityError);
         var (tuState, tuDistricts, tuError) = await TuPreferenceAsync(req, ct);
         if (tuError is not null) return this.Problem400(tuError);
 
@@ -152,6 +155,7 @@ public sealed class StaffAgenciesController(
         }
         log.LogInformation("Agency {NewUserId} created by {Actor}", newId, UserId);
         await passwords.SetAsync(newId!, password, ct);
+        var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
 
         var sent = await Mail.SendAsync<StaffAgencyRegisteredEmail>(values!.EmailId,
             (host.IsConsultancy() ? "Consultant Organisation" : "Assessment Agency") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId, new()
@@ -168,9 +172,10 @@ public sealed class StaffAgenciesController(
                 [nameof(StaffAgencyRegisteredEmail.LoginUrl)] = Mail.LoginUrl,
                 [nameof(StaffAgencyRegisteredEmail.Consultancy)] = host.IsConsultancy(),
             }, ct);
-        return new CreatedUserResponse(sent
+        return new CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {values.EmailId}."
-            : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.", newId);
+            : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
+            + (activitySaved ? "" : UserSectorActivity.NotSaved), newId);
     }
 
     /// <summary>Updates an agency (SP_UPDATE_USER, RoleId 2). The procedure also copies the verification types to its assessors.</summary>
@@ -189,10 +194,21 @@ public sealed class StaffAgenciesController(
         if (tuError is not null) return this.Problem400(tuError);
         if (host.IsConsultancy() && ConsultancyUsers.AgencyUpdateError(agency, values!.SiteVerification, values.FinancialVerification) is { } roleError)
             return this.Problem400(roleError);
+        if (ActivityError(req, out var activity) is { } activityError) return this.Problem400(activityError);
 
         await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null, tuState, tuDistricts), ct);
+        var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, agency.UserId, activity, log, ct);
         log.LogInformation("Agency {UserId} updated by {Actor}", agency.UserId, UserId);
-        return new MessageResponse("User updated successfully.");
+        return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
+    }
+
+    /// <summary>Main: Manufacturing, Services or Both is required (V4). Consultancy: not asked.</summary>
+    private string? ActivityError(AgencyRequest req, out string? activity)
+    {
+        activity = null;
+        if (host.IsConsultancy()) return null;
+        activity = UserSectorActivity.Canonical(req.SectorActivity);
+        return activity is null ? "Please select whether the agency assesses Manufacturing, Services or Both." : null;
     }
 
     public sealed record ReasonRequest(string? Reason);

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { AgencyRequest, CodeName, District, OrgPartner, UsersApi } from './users.api';
+import { AgencyRequest, CodeName, District, OrgPartner, SECTOR_ACTIVITIES, UsersApi } from './users.api';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
 
@@ -12,7 +12,7 @@ function emptyAgency(): AgencyRequest {
   return {
     userName: '', spocName: '', emailId: '', mobileNo: '', address: '', pinCode: '', gstNumber: '', states: [], nicSectors: [],
     orgPartnerId: '', desktopVerification: false, siteVerification: false, financialVerification: false, reasonForRejection: '',
-    tuPreferredState: '', tuPreferredDistricts: [],
+    tuPreferredState: '', tuPreferredDistricts: [], sectorActivity: '',
   };
 }
 
@@ -48,6 +48,7 @@ export class AgencyFormPage {
   protected readonly districts = signal<MultiSelectOption[]>([]);
 
   protected model: AgencyRequest = emptyAgency();
+  protected readonly activities = SECTOR_ACTIVITIES;
   protected readonly states = signal<MultiSelectOption[]>([]);
   protected readonly sectors = signal<MultiSelectOption[]>([]);
   protected readonly partners = signal<OrgPartner[]>([]);
@@ -77,7 +78,7 @@ export class AgencyFormPage {
           pinCode: a.pinCode ?? '', gstNumber: a.gstNumber ?? '', states: a.states, nicSectors: a.nicSectors, orgPartnerId: a.orgPartnerId ?? '',
           desktopVerification: a.desktopVerification, siteVerification: a.siteVerification, financialVerification: a.financialVerification,
           reasonForRejection: a.reasonForRejection ?? '',
-          tuPreferredState: a.tuPreferredState ?? '', tuPreferredDistricts: a.tuPreferredDistricts ?? [],
+          tuPreferredState: a.tuPreferredState ?? '', tuPreferredDistricts: a.tuPreferredDistricts ?? [], sectorActivity: a.sectorActivity ?? '',
         };
         if (this.consultancy && this.model.tuPreferredState) await this.loadDistricts(this.model.tuPreferredState, false);
         // As before, an existing agency keeps its organising partner (or none); it cannot be moved to another one.
@@ -157,6 +158,10 @@ export class AgencyFormPage {
     }
     if (!m.desktopVerification && !m.siteVerification && !m.financialVerification) {
       this.error.set('Please select atleast one verification.');
+      return;
+    }
+    if (!this.consultancy && !m.sectorActivity) {
+      this.error.set('Please select whether the agency assesses Manufacturing, Services or Both.');
       return;
     }
     const body: AgencyRequest = this.consultancy

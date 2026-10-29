@@ -6,7 +6,9 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee } from './fees.api';
 
-const LEVELS = ['Bronze', 'Silver', 'Gold'] as const;
+const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
+/** The name shown for a level's code (ZEDX is ZED-X, migration 0028). */
+export const LEVEL_NAMES: Record<string, string> = { ZEDX: 'ZED-X' };
 
 /** AssessmentFee.SpecialCategory of the payment procedures: what the code and name of each category are on this portal. */
 const CATEGORIES: Record<number, { code: string; name: string }> = PORTAL_SYSTEM === 'surveillance'
@@ -48,13 +50,13 @@ interface ShareEdit {
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Fee Structure — {{ level() }}</h3>
-        <p class="page-sub">Fee, subsidy split, GST and both TDS deductions for {{ level() }} certification of {{ type() }} enterprises.</p>
+        <h3 class="registration-title">Fee Structure — {{ levelName(level()) }}</h3>
+        <p class="page-sub">Fee, subsidy split, GST and both TDS deductions for {{ levelName(level()) }} certification of {{ type() }} enterprises.</p>
       </div>
       <div class="fs-pick">
         <div class="btn-group" role="group" aria-label="Certification level">
           @for (l of levels; track l) {
-            <button type="button" class="btn btn-sm" [class.btn-primary]="level() === l" [class.btn-outline-primary]="level() !== l" [attr.aria-pressed]="level() === l" (click)="pickLevel(l)">{{ l }}</button>
+            <button type="button" class="btn btn-sm" [class.btn-primary]="level() === l" [class.btn-outline-primary]="level() !== l" [attr.aria-pressed]="level() === l" (click)="pickLevel(l)">{{ levelName(l) }}</button>
           }
         </div>
         <select class="form-select form-select-sm" aria-label="Enterprise type" [ngModel]="type()" (ngModelChange)="pickType($event)">
@@ -71,7 +73,7 @@ interface ShareEdit {
 
     @if (fee(); as f) {
       <section class="zed-card" aria-labelledby="fs-rates">
-        <h5 class="fs-h" id="fs-rates">Certification Fee &amp; Rates <span class="zed-chip">{{ level() }}</span></h5>
+        <h5 class="fs-h" id="fs-rates">Certification Fee &amp; Rates <span class="zed-chip">{{ levelName(level()) }}</span></h5>
         <p class="muted">{{ rejected() ? 'Units whose certification was rejected pay the full fee again: no subsidy and no joining reward.' : 'The fee is before GST. It is split by subsidy category first; GST and TDS then apply to the MSME share only.' }}</p>
         <div class="fs-rates">
           <div>
@@ -130,7 +132,7 @@ interface ShareEdit {
                   </td>
                 </tr>
               } @empty {
-                <tr><td colspan="8" style="padding: 0"><div class="no-data">No fee rows for {{ type() }} {{ level() }}.</div></td></tr>
+                <tr><td colspan="8" style="padding: 0"><div class="no-data">No fee rows for {{ type() }} {{ levelName(level()) }}.</div></td></tr>
               }
             </tbody>
           </table>
@@ -164,7 +166,7 @@ interface ShareEdit {
         </div>
       </section>
     } @else if (loaded()) {
-      <div class="no-data">No fees are set for {{ type() }} {{ level() }}.</div>
+      <div class="no-data">No fees are set for {{ type() }} {{ levelName(level()) }}.</div>
     }
 
     @if (editing(); as e) {
@@ -276,6 +278,10 @@ export class FeeStructurePage {
 
   constructor() {
     void this.load();
+  }
+
+  protected levelName(code: string): string {
+    return LEVEL_NAMES[code] ?? code;
   }
 
   protected pickLevel(level: string): void {

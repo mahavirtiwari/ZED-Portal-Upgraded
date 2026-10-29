@@ -84,12 +84,20 @@ export interface PageSettings {
   imageUrl: string | null;
 }
 
+export interface ParameterLevel {
+  code: string;
+  name: string;
+  isEnabled: boolean;
+}
+
 export interface Parameter {
   id: number;
   sectionType: string;
   sectionCode: string;
   sectionName: string;
   description: string | null;
+  /** NIC 2-digit sectors it applies to (V4); empty = all sectors. */
+  nicSectors?: string[] | null;
 }
 
 /** Client for api/staff/masters (Zed.Main.Api StaffMastersController / StaffDocumentsController). Admin only. */
@@ -167,11 +175,16 @@ export class MastersApi {
     return this.http.get<Parameter[]>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`);
   }
 
-  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description });
+  /** The certification levels with a questionnaire (Administration → Certification Levels), disabled ones included. */
+  parameterLevels(): Observable<ParameterLevel[]> {
+    return this.http.get<ParameterLevel[]>(`${this.base}/parameter-levels`);
   }
 
-  updateParameter(sectionType: string, id: number, sectionName: string, description: string): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description });
+  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string, nicSectors: string[] = []): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description, nicSectors });
+  }
+
+  updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = []): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors });
   }
 }
