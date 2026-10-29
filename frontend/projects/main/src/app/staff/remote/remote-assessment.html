@@ -587,7 +587,11 @@
     @if (!meetingMode()) {
       <div class="col-lg-4">
         <div class="video-panel zed-card">
-          @if (canAssess()) {
+          @if (d.onsiteReview) {
+            <div class="alert alert-info" role="status" id="onsiteReview">
+              Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.
+            </div>
+          } @else if (canAssess()) {
             @if (!d.permissions.videoConfigured) {
               <div class="alert alert-warning" role="status">Video calls are not configured on this server.</div>
             } @else if (videoState() === 'idle' || videoState() === 'error') {

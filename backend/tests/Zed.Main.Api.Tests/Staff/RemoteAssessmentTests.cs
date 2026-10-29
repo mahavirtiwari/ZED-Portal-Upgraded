@@ -81,6 +81,8 @@ public sealed class RemoteAssessmentTests : IDisposable
     private static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01];
     private static string JpegDataUrl => "data:image/jpeg;base64," + Convert.ToBase64String(Jpeg);
 
+    private int _onsiteStatus = 9;
+
     public RemoteAssessmentTests()
     {
         RemoteTestUsers.Register(_host);
@@ -94,7 +96,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         _host.Sql.Queries[RemoteAssessmentController.RecordSql[..60]] = args => (FakeSql.Arg(args, "ZedId"), FakeSql.Arg(args, "Certification")) switch
         {
             (Zed, "Silver") => [new { Id = 5L, ZedId = Zed, Certification = "Silver", CertificationStatus = _status, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = "ASSESSOR2", ModeOfAssessment = "Remote Assessment" }],
-            ("ZEDMSME000002", "Silver") => [new { Id = 6L, ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = 9, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = (string?)null, ModeOfAssessment = "Onsite Assessment" }],
+            ("ZEDMSME000002", "Silver") => [new { Id = 6L, ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = _onsiteStatus, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = (string?)null, ModeOfAssessment = "Onsite Assessment" }],
             _ => [],
         };
         _host.Sql.Queries["SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmeRequirements"] = args =>
@@ -433,6 +435,23 @@ public sealed class RemoteAssessmentTests : IDisposable
         var args = Call("SP_ASSESSMENT_RA_DELETE_PHOTOS").Args;
         Assert.Equal(("61", Zed, "Silver"), (FakeSql.Arg(args, "Id"), FakeSql.Arg(args, "ZedId"), FakeSql.Arg(args, "CertificationType")));
         Assert.Equal(HttpStatusCode.Forbidden, (await (await As("ASSESSOR2")).DeleteAsync(Base + "/photos/61")).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_onsite_unit_is_reviewed_and_submitted_here_after_the_apps_closing_meeting()
+    {
+        var lead = await As("ASSESSOR1");
+        const string onsite = "/api/staff/remote/ZEDMSME000002/Silver";
+        // During the app's assessment (status 9) the unit is the app's.
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { comments = "Done" })).StatusCode);
+
+        // After the closing meeting (status 13): reviewed and submitted on the web, as on the old SaDetails page; no video room.
+        _onsiteStatus = 13;
+        Assert.Equal(HttpStatusCode.OK, (await lead.GetAsync(onsite)).StatusCode);
+        Assert.Equal("This unit was assessed onsite with the SA app; there is no video call.", await (await lead.PostAsync(onsite + "/join", null)).ProblemTitle());
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { comments = "Site assessment complete" })).StatusCode);
+        Assert.Equal("ZEDMSME000002", FakeSql.Arg(Call("SP_ASSESSMENT_RA_FINAL_SUBMIT").Args, "ZedId"));
+        Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
 
     [Fact]

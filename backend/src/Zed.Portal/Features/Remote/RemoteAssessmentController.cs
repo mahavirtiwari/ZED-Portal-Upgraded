@@ -139,6 +139,9 @@ public sealed class RemoteAssessmentController(
         /// <summary>Surveillance only: the remote assessment is held on <see cref="MeetingLink"/> (null on Main).</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? UsesMeetingLink { get; init; }
 
+        /// <summary>Main only: an onsite unit reviewed after the SA app's closing meeting (no video call).</summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public bool? OnsiteReview { get; init; }
+
         /// <summary>Surveillance only: the agency's meeting link, when it is an http/https address.</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? MeetingLink { get; init; }
 
@@ -228,6 +231,7 @@ public sealed class RemoteAssessmentController(
             new Permissions(IsLead(record!), canAssess, !MeetingMode && TwilioVideoOptions.From(config).IsConfigured))
         {
             UsesMeetingLink = MeetingMode ? true : null,
+            OnsiteReview = OnsiteReview(record!) ? true : null,
             MeetingLink = MeetingMode ? Staff.SiteAssessment.AssessmentInputs.WebLink(main.Text("MeetingLink"), 5000) : null,
             // Set 15 of the surveillance SP_ASSESSMENT_SA_DETAILS: MeetingRecordingLinks of the unit.
             RecordingLinks = MeetingMode
@@ -294,9 +298,10 @@ public sealed class RemoteAssessmentController(
     [HttpPost("join")]
     public async Task<ActionResult<JoinResponse>> Join(string zedId, string certification, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct);
         if (error is not null) return error;
         if (MeetingMode) return this.Problem400("This assessment is held on the meeting link given by the agency.");
+        if (OnsiteReview(record!)) return this.Problem400("This unit was assessed onsite with the SA app; there is no video call.");
         var twilio = TwilioVideoOptions.From(config);
         if (!twilio.IsConfigured) return this.Problem400("Video calls are not configured on this server. Please contact the ZED team.");
 
@@ -751,7 +756,7 @@ public sealed class RemoteAssessmentController(
         if (!AssessmentInput.IsId(zedId) || level is null) return (null, null, this.Problem400("Invalid request."));
         var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
-        if (record is null || !ModeAllowed(record.ModeOfAssessment) ||
+        if (record is null || !ModeAllowed(record) ||
             !(Is(record.SiteAssessorId, UserId) || Is(record.CoAssessorId, UserId)))
             return (level, null, NotFound());
         return (level, record, null);
@@ -767,15 +772,23 @@ public sealed class RemoteAssessmentController(
         return (level, record, null);
     }
 
-    private bool ModeAllowed(string? mode) => ModeAllowed(mode, host.System);
+    private bool ModeAllowed(RemoteRecord r) => ModeAllowed(r, host.System);
 
-    /// <summary>Main: units allotted in remote mode. Surveillance: also "Onsite Assessment" (what its allotment stores; shown as Remote).</summary>
-    private static bool ModeAllowed(string? mode, PortalSystem system)
+    /// <summary>
+    /// Main: units allotted in remote mode, and onsite units once the SA app's closing meeting is in (status 13): the lead
+    /// assessor then reviews and final-submits the site assessment here, as the old Assessment/SaDetails page did through
+    /// the same Remote actions. Surveillance: also "Onsite Assessment" (what its allotment stores; shown as Remote).
+    /// </summary>
+    private static bool ModeAllowed(RemoteRecord r, PortalSystem system)
     {
-        var m = mode?.Trim();
+        var m = r.ModeOfAssessment?.Trim();
         return string.Equals(m, RemoteMode, StringComparison.OrdinalIgnoreCase) ||
-               (system == PortalSystem.Surveillance && string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase));
+               (string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase) && (system == PortalSystem.Surveillance || r.CertificationStatus == 13));
     }
+
+    /// <summary>Main onsite unit after the app's closing meeting: reviewed here, without the video room.</summary>
+    private bool OnsiteReview(RemoteRecord r) =>
+        host.System != PortalSystem.Surveillance && string.Equals(r.ModeOfAssessment?.Trim(), OnsiteMode, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// The certification level when <paramref name="userId"/> is the lead assessor of the unit's open remote assessment
@@ -789,7 +802,7 @@ public sealed class RemoteAssessmentController(
         if (!AssessmentInput.IsId(zedId) || level is null) return null;
         var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
-        return record is not null && ModeAllowed(record.ModeOfAssessment, system) && Is(record.SiteAssessorId, userId) && IsOpen(record)
+        return record is not null && ModeAllowed(record, system) && Is(record.SiteAssessorId, userId) && IsOpen(record)
             ? level : null;
     }
 

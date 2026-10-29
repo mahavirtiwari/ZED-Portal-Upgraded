@@ -47,6 +47,8 @@ export interface RemoteDetails {
   permissions: { isLeadAssessor: boolean; canAssess: boolean; videoConfigured: boolean };
   /** Surveillance only: the assessment is held on the agency's meeting link (no video on this page). */
   usesMeetingLink?: boolean;
+  /** Main: an onsite unit reviewed after the SA app's closing meeting (no video call). */
+  onsiteReview?: boolean;
   /** Surveillance only: http/https address checked by the API. */
   meetingLink?: string | null;
   /** Surveillance only: recording links of the closing meeting (at most 6). */

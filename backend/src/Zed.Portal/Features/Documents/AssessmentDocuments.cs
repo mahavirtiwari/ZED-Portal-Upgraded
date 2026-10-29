@@ -75,8 +75,8 @@ public sealed class AssessmentDocuments(
 /// (MonitoringController.SaveDaCertificate).</item>
 /// <item>Silver/Gold: SP_RA_GET_CERTIFICATE_DETAILS, Sa{Level}.jpg + SaCertification.json → Certificates/SA/{ZedId}/{Level}.pdf
 /// (SaveSaCertificate).</item>
-/// <item>QR code: the procedure's QrCodeSeqNo column, which is already the verification URL
-/// (https://loginzed.msme.gov.in/Verify/BC|SC|GC/{code}); version 4, error correction M, as before.</item>
+/// <item>QR code: this site's /Verify/BC|SC|GC|XC/{code} (the procedure's QrCodeSeqNo column names the live portal whatever the
+/// server); version 4, error correction M, as before.</item>
 /// <item>Each main generation is recorded with SP_INSERT_CERTIFICATE_GENERATION_STATUS (SUCCESS/FAILED), as
 /// GenerateCertificate did; SP_GET_RE_GENERATE_CERTIFICATE_LIST relies on it. ZED_SURVEILLANCE has no such procedure.</item>
 /// <item>Report: SP_REPORT_GET_DETAILS → PDFs/SA/{ZedId}/{Level}_Report.pdf (GenerateSaRepory's file name).</item>
@@ -197,19 +197,23 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
             Layout: layout,
             Texts: texts,
             QrField: "QrCode",
-            QrContent: v4 ? VerifyUrl(portal.Value.PublicBaseUrl, level, row.Text("QrCodeSeqNo")) : row.Text("QrCodeSeqNo"),
+            QrContent: VerifyUrl(portal.Value.PublicBaseUrl, level, row.Text("QrCodeSeqNo")),
             SubsetFonts: true,
             Images: images));
     }
 
     /// <summary>
-    /// The QR address of a V4 level's certificate: this portal's /Verify/XC/{code} (SP_RA_GET_CERTIFICATE_DETAILS writes the
-    /// live portal's /Verify/GC/ for every level but Silver). The code is the last part of the procedure's address.
+    /// The QR address of a certificate: this site's /Verify/{BC|SC|GC|XC}/{code}. The procedures (SP_DA/RA_GET_CERTIFICATE_DETAILS,
+    /// main's and ZED_SURVEILLANCE's) write the live portal's address whatever server runs them, and /Verify/GC/ for ZED-X. The
+    /// Verify page is on the main portal at the root of the site, so a /surveillance or /Consultancy base is cut to the site.
+    /// The code is the last part of the procedure's address.
     /// </summary>
     internal static string VerifyUrl(string publicBaseUrl, string level, string procedureUrl)
     {
         var code = procedureUrl.Split('/', StringSplitOptions.RemoveEmptyEntries).LastOrDefault() ?? "";
-        return code.Length == 0 ? "" : $"{publicBaseUrl.TrimEnd('/')}/Verify/{VerifyController.CodeOf(level)}/{code}";
+        if (code.Length == 0) return "";
+        var site = Uri.TryCreate(publicBaseUrl, UriKind.Absolute, out var uri) ? uri.GetLeftPart(UriPartial.Authority) : publicBaseUrl.TrimEnd('/');
+        return $"{site}/Verify/{VerifyController.CodeOf(level)}/{code}";
     }
 
     /// <summary>The badge of the site artwork (Sa*.jpg, 2482 x 3508 px): its centre, the logo size and the white ring.</summary>

@@ -110,6 +110,10 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
                       }
                     } @else if (s['ModeOfAssessment'] === 'Onsite Assessment') {
                       <a class="btn btn-outline-primary" [routerLink]="['/staff/assessment/sa-details', s['ZedId'], s['Certification']]">VIEW DETAILS</a>
+                      <!-- V4: after the SA app's closing meeting the lead assessor reviews and final-submits here (old SaDetails page). -->
+                      @if (+(s['CertificationStatus'] ?? 0) === 13) {
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">REVIEW &amp; SUBMIT</a>
+                      }
                     } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
                       <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
                     }

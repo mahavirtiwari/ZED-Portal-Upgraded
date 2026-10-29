@@ -9,7 +9,7 @@ using Zed.Core.Http;
 namespace Zed.Portal.Features.Msme;
 
 /// <summary>
-/// Serves the signed-in MSME's documents (pledge / Bronze / Silver / Gold certificates, payment
+/// Serves the signed-in MSME's documents (pledge / Bronze / Silver / Gold / ZED-X certificates, payment
 /// receipts, invoices) and the guideline documents listed on My Documents.
 /// <para>
 /// On the old site these were public static files at guessable URLs
@@ -56,7 +56,10 @@ public sealed class MsmeFilesController(
             return await pledges.LoadAsync(db, ZedId, ct) is { } d ? PledgePdf.Result(this, pledges, d, inline: true) : NotFound();
 
         // Guidelines the Admin gave to other account types only are not served to an MSME.
-        var sets = MsmeGuidelines.ForMsme(await MsmeMyDocuments.LoadAsync(db, ZedId, ct), await access.AllAsync(ct));
+        var documents = await MsmeMyDocuments.LoadAsync(db, ZedId, ct);
+        // V4 levels (ZED-X) are listed as on My Documents (the procedure names Bronze, Silver and Gold only).
+        await MsmeMyDocuments.AddV4LevelsAsync(db, documents, ZedId, ct);
+        var sets = MsmeGuidelines.ForMsme(documents, await access.AllAsync(ct));
         var entry = MsmeMyDocuments.Files(sets, ZedId)
             .FirstOrDefault(f => string.Equals(f.RelativePath, requested, StringComparison.OrdinalIgnoreCase));
         if (entry is null) return NotFound();

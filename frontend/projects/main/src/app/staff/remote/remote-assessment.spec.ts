@@ -237,6 +237,12 @@ describe('RemoteAssessmentPage', () => {
     expect(el.querySelector('.alert-success')!.textContent).toContain('Assessment submitted.');
   });
 
+  it('reviews an onsite unit after the SA app without the video call', async () => {
+    await create({ ...details(), onsiteReview: true });
+    expect(el.querySelector('#onsiteReview')!.textContent).toContain('Assessed onsite with the SA app');
+    expect(button('Start Assessment')).toBeUndefined();
+  });
+
   it('keeps the side video panel and the refresh link on main', async () => {
     await create(details());
     expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-8');

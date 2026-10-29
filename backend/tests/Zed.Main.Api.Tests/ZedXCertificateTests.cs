@@ -89,6 +89,12 @@ public sealed class ZedXCertificateTests : IDisposable
         Assert.Equal("https://zedv3.qci.org.in/Verify/XC/P115AB12",
             DocumentRenderer.VerifyUrl("https://zedv3.qci.org.in/", "ZEDX", "https://loginzed.msme.gov.in/Verify/GC/P115AB12"));
         Assert.Equal("GC", VerifyController.CodeOf("Gold"));
+        // Every level points at this site's Verify page (the procedures name the live portal); surveillance at the site root.
+        Assert.Equal("https://zedv3.qci.org.in/Verify/SC/P13abcd",
+            DocumentRenderer.VerifyUrl("https://zedv3.qci.org.in", "Silver", "https://loginzed.msme.gov.in/Verify/SC/P13abcd"));
+        Assert.Equal("https://zedv3.qci.org.in/Verify/BC/P12abcd",
+            DocumentRenderer.VerifyUrl("https://zedv3.qci.org.in/surveillance", "Bronze", "https://loginzed.msme.gov.in/Verify/BC/P12abcd"));
+        Assert.Equal("", DocumentRenderer.VerifyUrl("https://zedv3.qci.org.in", "Gold", ""));
     }
 
     [Fact]
@@ -136,5 +142,25 @@ public sealed class ZedXCertificateTests : IDisposable
         _host.Sql.Queries[MsmeMyDocuments.V4CertificatesSql] = _ => [];
         await MsmeMyDocuments.AddV4LevelsAsync(_host.Sql, sets, Me, default);
         Assert.Null(MsmeMyDocuments.ToClient(sets, Me)["Certificates"][0]["ZEDX"]);
+    }
+
+    [Fact]
+    public async Task The_msme_downloads_its_zedx_certificate_from_my_documents()
+    {
+        _host.Sql.Procs["SP_MSME_GET_MY_DOCUMENTS"] = _ => FakeSql.Sets([],
+            [new Dictionary<string, object?> { ["ZedId"] = Me, ["Pledge"] = null, ["Bronze"] = null, ["Silver"] = null, ["Gold"] = null }], [], []);
+        _host.Sql.Queries[MsmeMyDocuments.V4CertificatesSql] = _ => [new { Certification = "ZEDX" }];
+        var file = Path.Combine(_host.StorageRoot, "Certificates", "SA", Me, "ZEDX.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await File.WriteAllBytesAsync(file, "%PDF-1.4 zedx"u8.ToArray());
+
+        var client = await DocumentsTestData.SignInAsync(_host, Me);
+        var r = await client.GetAsync($"/api/msme/files/Certificates/SA/{Me}/ZEDX.pdf");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("%PDF-1.4 zedx", await r.Content.ReadAsStringAsync());
+
+        // Not certified: not listed, not served.
+        _host.Sql.Queries[MsmeMyDocuments.V4CertificatesSql] = _ => [];
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/msme/files/Certificates/SA/{Me}/ZEDX.pdf")).StatusCode);
     }
 }
