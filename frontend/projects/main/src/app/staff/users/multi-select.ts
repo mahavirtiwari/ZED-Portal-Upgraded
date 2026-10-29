@@ -22,7 +22,7 @@ export interface MultiSelectOption {
             }
           </span>
         } @empty {
-          <span class="text-muted small">None selected</span>
+          <small class="text-muted">None selected</small>
         }
       </div>
       @if (!disabled()) {
@@ -37,7 +37,7 @@ export interface MultiSelectOption {
               </label>
             </li>
           } @empty {
-            <li class="text-muted small">No match</li>
+            <li class="text-muted no-match">No match</li>
           }
         </ul>
       }
@@ -52,6 +52,8 @@ export interface MultiSelectOption {
     .filter { margin-bottom: 4px; height: 32px; }
     .options { list-style: none; margin: 0; padding: 0; max-height: 170px; overflow-y: auto; }
     .options label { display: flex; gap: 6px; align-items: baseline; font-size: 14px; cursor: pointer; margin: 0; padding: 1px 2px; }
+    /* Not .small: the old site styles paint .small yellow (the Small enterprise badge). */
+    .no-match { font-size: .875em; padding: 1px 2px; }
   `,
 })
 export class MultiSelect {

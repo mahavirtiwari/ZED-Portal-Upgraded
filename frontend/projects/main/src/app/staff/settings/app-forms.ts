@@ -80,6 +80,9 @@ interface Editing {
   /** Empty: all levels / all sectors. */
   levels: string[];
   nicSectors: string[];
+  /** "Only these levels / sectors" chosen (the lists show); off empties the list. */
+  limitLevels: boolean;
+  limitSectors: boolean;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
@@ -97,12 +100,18 @@ export const FIELD_TYPES: Record<string, string> = {
 
 const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
 
+/** A small sign per type, on the type tiles of the pop-up. */
+const TYPE_GLYPHS: Record<string, string> = {
+  text: 'Aa', number: '123', decimal: '1.5', date: '31', yesno: 'Y/N', dropdown: '▾', multiselect: '☰', checkboxes: '☑', photo: '▣', rows: '⊞',
+};
+
 /**
  * Admin → App Forms (new in V4): the mobile apps' Basic Information forms of this system. An Admin can rename a standard
  * field, change its help text and position, make it required or optional, or disable it (its type stays); and add fields
  * of their own (text, numbers, date, yes/no, choices), edit and disable them. The apps load the form when they open it.
  * V4 layout: Add field in the page head, one tile per form with its counts, a card per section with the field's levels and
- * sectors as chips; the pop-up in three parts (field, who is asked, settings) beside a preview of the field in the app.
+ * sectors as chips; the pop-up has the field (its type as tiles) and who is asked ("every level / sector" or only the
+ * ones chosen) beside the preview of the field in the app and its settings (required, shown).
  */
 @Component({
   selector: 'zed-staff-app-forms',
@@ -268,20 +277,26 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
               <div class="dialog-grid">
                 <div class="dialog-main">
                   <section class="dialog-section">
-                    <h4>Field</h4>
+                    <h4><span class="sec-no">1</span> Field</h4>
                     <div class="form-grid">
                       <label for="fieldLabel">Label<span class="req">*</span></label>
                       <div>
-                        <input type="text" class="form-control" id="fieldLabel" maxlength="200" [(ngModel)]="e.label" />
+                        <input type="text" class="form-control" id="fieldLabel" maxlength="200" placeholder="The question the unit sees" [(ngModel)]="e.label" />
                         @if (e.field?.standardLabel; as standard) { <small class="text-muted">Standard: {{ standard }}</small> }
                       </div>
                       <label class="top" for="fieldHelp">Help text <small class="text-muted fw-normal d-block">(optional, shown under the field)</small></label>
-                      <textarea class="form-control" id="fieldHelp" rows="2" maxlength="500" [(ngModel)]="e.help"></textarea>
+                      <textarea class="form-control" id="fieldHelp" rows="2" maxlength="500" placeholder="A hint for the unit" [(ngModel)]="e.help"></textarea>
                       @if (e.custom) {
-                        <label for="fieldType">Type</label>
-                        <select class="form-select" id="fieldType" [(ngModel)]="e.type">
-                          @for (t of details()?.customTypes ?? []; track t) { <option [value]="t">{{ types[t] ?? t }}</option> }
-                        </select>
+                        <span class="label top">Type</span>
+                        <div class="type-grid" role="radiogroup" aria-label="Type">
+                          @for (t of details()?.customTypes ?? []; track t) {
+                            <label class="type-tile" [class.active]="e.type === t" [for]="'type-' + t">
+                              <input type="radio" class="visually-hidden" name="fieldType" [id]="'type-' + t" [value]="t" [(ngModel)]="e.type" />
+                              <span class="type-glyph" aria-hidden="true">{{ typeGlyph(t) }}</span>
+                              <span class="type-name">{{ types[t] ?? t }}</span>
+                            </label>
+                          }
+                        </div>
                         @if ((details()?.sections?.length ?? 0) > 1) {
                           <label for="fieldSection">Section</label>
                           <select class="form-select" id="fieldSection" [(ngModel)]="e.section">
@@ -303,77 +318,89 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
                         }
                       } @else {
                         <span class="label">Type</span>
-                        <span>{{ typeName(e.field!) }} <small class="text-muted">(the type of a standard field cannot be changed)</small></span>
+                        <span><span class="type-pill"><span aria-hidden="true">{{ typeGlyph(e.field!.type) }}</span> {{ typeName(e.field!) }}</span>
+                          <small class="text-muted d-block">The type of a standard field cannot be changed.</small></span>
                       }
                     </div>
                   </section>
 
                   <section class="dialog-section">
-                    <h4>Who is asked</h4>
+                    <h4><span class="sec-no">2</span> Who is asked</h4>
                     <div class="form-grid">
                       @if (levelOptions().length) {
-                        <label class="label top" for="fieldLevels">Certification levels</label>
+                        <span class="label top">Certification levels</span>
                         <div>
-                          <zed-multi-select inputId="fieldLevels" label="Certification levels" [options]="levelOptions()" [(value)]="e.levels" />
-                          <small class="text-muted d-block">None chosen: asked for every level.</small>
+                          <div class="seg" role="group" aria-label="Certification levels">
+                            <button type="button" [class.active]="!e.limitLevels" [attr.aria-pressed]="!e.limitLevels" (click)="limit('levels', false)">Every level</button>
+                            <button type="button" [class.active]="e.limitLevels" [attr.aria-pressed]="e.limitLevels" (click)="limit('levels', true)">Only these levels</button>
+                          </div>
+                          @if (e.limitLevels) {
+                            <div class="mt-2"><zed-multi-select inputId="fieldLevels" label="Certification levels" [options]="levelOptions()" [(value)]="e.levels" /></div>
+                          }
                         </div>
                       }
-                      <label class="label top" for="fieldSectors">NIC sectors</label>
+                      <span class="label top">NIC sectors</span>
                       <div>
-                        <zed-multi-select inputId="fieldSectors" label="NIC sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" />
-                        <small class="text-muted d-block">None chosen: asked of units of every sector.</small>
+                        <div class="seg" role="group" aria-label="NIC sectors">
+                          <button type="button" [class.active]="!e.limitSectors" [attr.aria-pressed]="!e.limitSectors" (click)="limit('sectors', false)">Every sector</button>
+                          <button type="button" [class.active]="e.limitSectors" [attr.aria-pressed]="e.limitSectors" (click)="limit('sectors', true)">Only these sectors</button>
+                        </div>
+                        @if (e.limitSectors) {
+                          <div class="mt-2"><zed-multi-select inputId="fieldSectors" label="NIC sectors" [options]="sectorOptions()" [(value)]="e.nicSectors" /></div>
+                        }
                       </div>
-                    </div>
-                  </section>
-
-                  <section class="dialog-section">
-                    <h4>Settings</h4>
-                    <div class="toggles">
-                      <label class="toggle-card" for="fieldRequired">
-                        <input class="form-check-input" type="checkbox" id="fieldRequired" [(ngModel)]="e.required" />
-                        <span>
-                          <strong>Required</strong>
-                          <small class="text-muted d-block">
-                            The unit must answer it.
-                            @if (e.field && !e.custom && e.field.standardRequired !== null) { (standard: {{ e.field.standardRequired ? 'required' : 'optional' }}) }
-                          </small>
-                        </span>
-                      </label>
-                      <label class="toggle-card form-switch" for="fieldEnabled">
-                        <input class="form-check-input" type="checkbox" role="switch" id="fieldEnabled" [(ngModel)]="e.enabled" />
-                        <span>
-                          <strong>{{ e.enabled ? 'Shown in the apps' : 'Disabled' }}</strong>
-                          <small class="text-muted d-block">{{ e.enabled ? 'Asked in the form.' : 'Not shown; answers already given are kept.' }}</small>
-                        </span>
-                      </label>
                     </div>
                   </section>
                 </div>
 
-                <aside class="dialog-preview" aria-label="Preview in the app">
-                  <h4>Preview in the app</h4>
-                  <div class="phone">
-                    <div class="phone-field" [class.is-off]="!e.enabled">
-                      <div class="pf-label">{{ e.label || 'Label' }}@if (e.required) {<span class="req">*</span>}</div>
-                      @switch (previewKind(e)) {
-                        @case ('yesno') { <div class="pf-radios"><span><i></i> Yes</span><span><i></i> No</span></div> }
-                        @case ('choice') {
-                          @if (e.type === 'dropdown') {
-                            <div class="pf-input pf-select">{{ firstChoice(e) || 'Select' }}</div>
-                          } @else {
-                            @for (o of previewChoices(e); track $index) { <div class="pf-check"><i></i> {{ o }}</div> }
+                <aside class="dialog-side">
+                  <div class="dialog-preview" aria-label="Preview in the app">
+                    <h4>Preview in the app</h4>
+                    <div class="phone">
+                      <div class="phone-notch" aria-hidden="true"></div>
+                      <div class="phone-field" [class.is-off]="!e.enabled">
+                        <div class="pf-label">{{ e.label || 'Label' }}@if (e.required) {<span class="req">*</span>}</div>
+                        @switch (previewKind(e)) {
+                          @case ('yesno') { <div class="pf-radios"><span><i></i> Yes</span><span><i></i> No</span></div> }
+                          @case ('choice') {
+                            @if (e.type === 'dropdown') {
+                              <div class="pf-input pf-select">{{ firstChoice(e) || 'Select' }}</div>
+                            } @else {
+                              @for (o of previewChoices(e); track $index) { <div class="pf-check"><i></i> {{ o }}</div> }
+                            }
                           }
+                          @case ('photo') { <div class="pf-photo">+ Add photo</div> }
+                          @case ('date') { <div class="pf-input">dd-mm-yyyy</div> }
+                          @case ('rows') { <div class="pf-input">+ Add entry</div> }
+                          @default { <div class="pf-input">{{ e.type === 'number' || e.type === 'decimal' ? '0' : '' }}</div> }
                         }
-                        @case ('photo') { <div class="pf-photo">+ Add photo</div> }
-                        @case ('date') { <div class="pf-input">dd-mm-yyyy</div> }
-                        @case ('rows') { <div class="pf-input">+ Add entry</div> }
-                        @default { <div class="pf-input">{{ e.type === 'number' || e.type === 'decimal' ? '0' : '' }}</div> }
-                      }
-                      @if (e.help) { <div class="pf-help">{{ e.help }}</div> }
+                        @if (e.help) { <div class="pf-help">{{ e.help }}</div> }
+                      </div>
+                      @if (!e.enabled) { <small class="text-muted d-block mt-2">Disabled: the apps do not show it.</small> }
                     </div>
-                    @if (!e.enabled) { <small class="text-muted d-block mt-2">Disabled: the apps do not show it.</small> }
+                    <small class="text-muted d-block mt-2">{{ scopeOf(e) }}</small>
                   </div>
-                  <small class="text-muted d-block mt-2">{{ scopeOf(e) }}</small>
+
+                  <div class="side-settings">
+                    <h4>Settings</h4>
+                    <label class="toggle-card form-switch" for="fieldRequired">
+                      <input class="form-check-input" type="checkbox" role="switch" id="fieldRequired" [(ngModel)]="e.required" />
+                      <span>
+                        <strong>Required</strong>
+                        <small class="text-muted d-block">
+                          {{ e.required ? 'The unit must answer it.' : 'The unit may leave it empty.' }}
+                          @if (e.field && !e.custom && e.field.standardRequired !== null) { (standard: {{ e.field.standardRequired ? 'required' : 'optional' }}) }
+                        </small>
+                      </span>
+                    </label>
+                    <label class="toggle-card form-switch" for="fieldEnabled">
+                      <input class="form-check-input" type="checkbox" role="switch" id="fieldEnabled" [(ngModel)]="e.enabled" />
+                      <span>
+                        <strong>{{ e.enabled ? 'Shown in the apps' : 'Disabled' }}</strong>
+                        <small class="text-muted d-block">{{ e.enabled ? 'Asked in the form.' : 'Not shown; answers already given are kept.' }}</small>
+                      </span>
+                    </label>
+                  </div>
                 </aside>
               </div>
               @if (modalError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ modalError() }}</div> }
@@ -446,7 +473,26 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
     .move .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
     .move .btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
 
-    /* The pop-up: the settings on the left, the preview on the right. */
+    /* The pop-up: the field and who is asked on the left; the preview and the settings on the right. */
+    .sec-no { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; background: #45a5ad; color: #fff; font-size: 11px; margin-right: 6px; vertical-align: 1px; }
+    .type-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+    .type-tile { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 1px solid #dfe9ea; border-radius: 10px;
+      background: #fff; cursor: pointer; text-align: center; margin: 0; transition: border-color .1s, background .1s; }
+    .type-tile:hover { border-color: #45a5ad; }
+    .type-tile.active { border: 2px solid #45a5ad; padding: 9px 5px; background: #f4fafa; }
+    .type-tile:focus-within { outline: 2px solid #45a5ad; outline-offset: 2px; }
+    .type-glyph { font: 700 15px/1 Consolas, 'Courier New', monospace; color: #2f7c83; height: 18px; }
+    .type-name { font-size: 12px; font-weight: 600; color: #3b4b4c; line-height: 1.25; }
+    .type-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 12px; padding: 2px 10px; }
+    .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
+    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+    .seg button + button { border-left: 1px solid #cbd9da; }
+    .seg button:hover { background: #eef6f6; }
+    .seg button.active { background: #45a5ad; color: #fff; }
+    .dialog-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 14px; }
+    .side-settings { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .side-settings h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
+    .phone-notch { width: 54px; height: 5px; border-radius: 3px; background: #dfe5e6; margin: -6px auto 12px; }
     /* Wider than the skin's 760px form pop-ups (.zed-legacy.zed-v4 .modal-dialog:has(.form-grid)). */
     .modal > .modal-dialog.modal-xl.field-dialog { max-width: 1040px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }
     .modal .field-dialog .form-grid { grid-template-columns: 150px minmax(0, 1fr); }
@@ -465,12 +511,11 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
       display: inline-flex; align-items: center; justify-content: center; }
     .choice-remove { color: #a8303a; text-decoration: none; padding: 2px 8px; }
     .add-choice { align-self: flex-start; }
-    .toggles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
     .toggle-card .form-check-input { flex: 0 0 auto; margin: 3px 0 0; }
     .toggle-card.form-switch { padding-left: 12px; }
     .toggle-card.form-switch .form-check-input { margin-left: 0; width: 2em; }
-    .dialog-preview { position: sticky; top: 0; background: #f4f8f8; border-radius: 12px; padding: 14px; }
+    .dialog-preview { background: #f4f8f8; border-radius: 12px; padding: 14px; }
     .phone { background: #fff; border: 1px solid #dfe9ea; border-radius: 18px; padding: 16px 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
     .phone-field.is-off { opacity: .45; }
     .pf-label { font-size: 13px; font-weight: 600; color: #232527; margin-bottom: 6px; overflow-wrap: anywhere; }
@@ -486,10 +531,9 @@ const CHOICE_TYPES = ['dropdown', 'multiselect', 'checkboxes'];
 
     @media (max-width: 991.98px) {
       .dialog-grid { grid-template-columns: minmax(0, 1fr); }
-      .dialog-preview { position: static; }
+      .dialog-side { position: static; }
     }
     @media (max-width: 575.98px) {
-      .toggles { grid-template-columns: minmax(0, 1fr); }
       .modal .field-dialog .form-grid { grid-template-columns: minmax(0, 1fr); }
     }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
@@ -595,7 +639,7 @@ export class AppFormsPage {
     this.modalError.set('');
     this.editing.set({
       field: null, custom: true, label: '', help: '', type: 'text', required: false, enabled: true, section: d.sections[0]?.key ?? '', options: [''],
-      levels: [], nicSectors: [],
+      levels: [], nicSectors: [], limitLevels: false, limitSectors: false,
     });
   }
 
@@ -613,7 +657,29 @@ export class AppFormsPage {
       options: f.options?.length ? [...f.options] : [''],
       levels: [...(f.levels ?? [])],
       nicSectors: [...(f.nicSectors ?? [])],
+      limitLevels: !!f.levels?.length,
+      limitSectors: !!f.nicSectors?.length,
     });
+  }
+
+  protected typeGlyph(type: string): string {
+    return TYPE_GLYPHS[type] ?? '•';
+  }
+
+  /** "Every level / sector" (the list emptied) or "Only these" (the list to choose from). */
+  protected limit(what: 'levels' | 'sectors', on: boolean): void {
+    // From the field as it is now, not as the button last saw it.
+    const now = this.editing();
+    if (!now) return;
+    const next = { ...now };
+    if (what === 'levels') {
+      next.limitLevels = on;
+      if (!on) next.levels = [];
+    } else {
+      next.limitSectors = on;
+      if (!on) next.nicSectors = [];
+    }
+    this.editing.set(next);
   }
 
   protected addOption(e: Editing): void {

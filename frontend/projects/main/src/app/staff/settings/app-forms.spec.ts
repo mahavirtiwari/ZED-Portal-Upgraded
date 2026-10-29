@@ -105,13 +105,18 @@ describe('AppFormsPage', () => {
     button('Edit', row('auditsConducted')).click();
     await settle();
     const dialog = el.querySelector('[role=dialog]')!;
-    expect(dialog.querySelector('#fieldType')).toBeNull();
-    expect(dialog.textContent).toContain('the type of a standard field cannot be changed');
+    expect(dialog.querySelector('.type-grid')).toBeNull();
+    expect(dialog.textContent).toContain('The type of a standard field cannot be changed');
+    // Every level and every sector until "Only these" opens the list.
+    expect(dialog.querySelector('zed-multi-select')).toBeNull();
     await type(dialog.querySelector('#fieldHelp') as HTMLTextAreaElement, 'Statutory audits do not count');
     (dialog.querySelector('#fieldRequired') as HTMLInputElement).click();
     // V4: asked for ZED-X only, of units of NIC sector 62.
     const pick = (id: string, label: string) =>
       ([...dialog.querySelectorAll(`#${id} ~ ul label, zed-multi-select label`)].find((l) => l.textContent!.trim() === label)!.querySelector('input') as HTMLInputElement).click();
+    button('Only these levels', dialog).click();
+    button('Only these sectors', dialog).click();
+    await settle();
     pick('fieldLevels', 'ZED-X');
     pick('fieldSectors', '62 - IT services');
     await settle();
@@ -131,10 +136,11 @@ describe('AppFormsPage', () => {
     await settle();
     const dialog = el.querySelector('[role=dialog]')!;
     await type(dialog.querySelector('#fieldLabel') as HTMLInputElement, 'Sector of the unit');
-    const select = dialog.querySelector('#fieldType') as HTMLSelectElement;
-    select.value = 'dropdown';
-    select.dispatchEvent(new Event('change'));
+    // The type as tiles, text first.
+    expect(dialog.querySelector('.type-tile.active')!.textContent).toContain('Text');
+    (dialog.querySelector('#type-dropdown') as HTMLInputElement).click();
     await settle();
+    expect(dialog.querySelector('.type-tile.active')!.textContent).toContain('Drop-down (one choice)');
     await type(dialog.querySelector('[aria-label="Choice 1"]') as HTMLInputElement, 'Auto');
     button('Add choice', dialog).click();
     await settle();
@@ -161,6 +167,26 @@ describe('AppFormsPage', () => {
     http.expectOne((r) => r.method === 'POST').flush({ message: 'Field added.', key: 'cf_sector_of_the_unit' });
     await reloaded('Field added.');
     expect(el.querySelector('[role=dialog]')).toBeNull();
+  });
+
+  it('empties the levels when switched back to every level', async () => {
+    button('Edit', row('cf_sector')).click();
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    button('Only these levels', dialog).click();
+    await settle();
+    ([...dialog.querySelectorAll('zed-multi-select label')].find((l) => l.textContent!.trim() === 'ZED-X')!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    expect(dialog.querySelector('.dialog-preview')!.textContent).toContain('Asked for ZED-X');
+    button('Every level', dialog).click();
+    await settle();
+    expect(dialog.querySelector('#fieldLevels')).toBeNull();
+    button('SAVE', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
+    expect(put.request.body.levels).toEqual([]);
+    put.flush({ message: 'Field saved.' });
+    await reloaded('Field saved.');
   });
 
   it('moves a field down, disables a column and resets a field', async () => {
