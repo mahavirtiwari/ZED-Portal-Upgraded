@@ -77,15 +77,18 @@ describe('AppFormsPage', () => {
   afterEach(() => http.verify());
 
   it('lists the fields of the first form with their columns, type, required and status', () => {
-    expect([...el.querySelectorAll('#appForm option')].map((o) => o.textContent!.trim())).toEqual([
-      'Basic Information · MSME app / Bronze surveillance app',
-      'Basic Information · Site assessment app',
-    ]);
+    // One tile per form, with its counts; the first chosen.
+    const tiles = [...el.querySelectorAll('.form-tile')].map((t) => [...t.querySelectorAll('.tile-name, .tile-app, .tile-counts span')].map((x) => x.textContent!.trim()));
+    expect(tiles[0]).toEqual(['Basic Information', 'MSME app / Bronze surveillance app', '4 fields', '1 added', '1 disabled']);
+    expect(tiles[1]).toEqual(['Basic Information', 'Site assessment app', '3 fields']);
+    expect(el.querySelector('.form-tile.active')!.getAttribute('data-key')).toBe('msme.basicInfo');
     const r = rows();
     expect(r.length).toBe(6);
     expect(r[0]).toContain('Audited by a third party?');
     expect(r[0]).toContain('Standard: Whether 3rd Party Financial Audits are conducted?');
     expect(r[0]).toContain('Yes / No');
+    expect(r[0]).toContain('All levels');
+    expect(r[0]).toContain('All sectors');
     expect(r[2]).toContain('↳ Name of Product manufactured');
     expect(r[3]).toContain('↳ Product Photo');
     expect(r[3]).toContain('Disabled');
@@ -136,6 +139,9 @@ describe('AppFormsPage', () => {
     button('Add choice', dialog).click();
     await settle();
     await type(dialog.querySelector('[aria-label="Choice 2"]') as HTMLInputElement, ' Textile ');
+    // The preview draws the drop-down with its first choice, and who is asked.
+    expect(dialog.querySelector('.dialog-preview .pf-select')!.textContent!.trim()).toBe('Auto');
+    expect(dialog.querySelector('.dialog-preview')!.textContent).toContain('Asked for every level, of units of every sector.');
     button('Add choice', dialog).click();
     await settle();
     (dialog.querySelector('#fieldRequired') as HTMLInputElement).click();
@@ -182,12 +188,11 @@ describe('AppFormsPage', () => {
   });
 
   it('switches to another form', async () => {
-    const select = el.querySelector('#appForm') as HTMLSelectElement;
-    select.value = 'assessor.basicInfo';
-    select.dispatchEvent(new Event('change'));
+    (el.querySelector('.form-tile[data-key="assessor.basicInfo"]') as HTMLButtonElement).click();
     await settle();
     http.expectOne(`${url}/assessor.basicInfo`).flush({ ...details(), form: forms[1], numbered: true, fields: [field('auditsConducted', 'Audits?')] });
     await settle();
     expect(rows()).toEqual([expect.stringContaining('Audits?')]);
+    expect(el.querySelector('.form-tile.active')!.getAttribute('data-key')).toBe('assessor.basicInfo');
   });
 });

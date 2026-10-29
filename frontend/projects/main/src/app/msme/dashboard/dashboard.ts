@@ -321,11 +321,14 @@ export class DashboardPage {
    * (same conditions as the old page).
    */
   protected levelDisabled(level: Level): boolean {
-    const b = this.status('Bronze'), s = this.status('Silver'), g = this.status('Gold');
+    const b = this.status('Bronze'), s = this.status('Silver'), g = this.status('Gold'), x = this.status('ZEDX');
+    // Two certifications never run at once: ZED-X and Bronze/Silver/Gold exclude each other while one of them is in
+    // progress. ZED-X is the highest level: once certified it closes the three, as Gold does Bronze and Silver. The server
+    // checks the same (Certifications.BlockedBy).
+    const inProgress = (l: Level, v: number) => v > 0 && (l === 'Bronze' ? v < 6 || v === 7 : v < 16 || v === 17);
+    if (level === 'ZEDX') return x < 1 && (inProgress('Bronze', b) || inProgress('Silver', s) || inProgress('Gold', g));
+    if (this.status(level) < 1 && x > 0) return true;
     switch (level) {
-      // ZED-X is a separate track: any registered MSME applies, whatever its other levels.
-      case 'ZEDX':
-        return false;
       case 'Bronze':
         return (b < 1 && s > 0 && (s <= 16 || s === 17)) || (b < 1 && g > 0 && g <= 16) || g === 16 || s === 16 || g === 17;
       case 'Silver':

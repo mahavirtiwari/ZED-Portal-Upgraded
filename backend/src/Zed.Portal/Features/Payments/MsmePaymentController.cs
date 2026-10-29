@@ -60,6 +60,7 @@ public sealed class MsmePaymentController(
     public async Task<ActionResult<OptionsResponse>> Options(string certification, CancellationToken ct)
     {
         if (await Certifications.OpenForApplyingAsync(db, certification, log, ct) is not { } cert) return this.Problem400("Invalid certification.");
+        if (await Certifications.OtherLevelInProgressAsync(db, ZedId, cert, log, ct) is { } blocked) return this.Problem400(blocked);
         await RefreshEnterpriseType(ct);
 
         var (withReward, withoutReward, rewardAvailable, udyamPan) = await LoadOptions(cert, ct);
@@ -142,6 +143,7 @@ public sealed class MsmePaymentController(
     public async Task<ActionResult<CheckoutResponse>> Checkout(string certification, CheckoutRequest req, CancellationToken ct)
     {
         if (await Certifications.OpenForApplyingAsync(db, certification, log, ct) is not { } cert) return this.Problem400("Invalid certification.");
+        if (await Certifications.OtherLevelInProgressAsync(db, ZedId, cert, log, ct) is { } blocked) return this.Problem400(blocked);
 
         // Choices
         string? gstin = null;

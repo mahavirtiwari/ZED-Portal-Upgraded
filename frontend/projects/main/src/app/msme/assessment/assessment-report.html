@@ -29,9 +29,9 @@
 
       <div class="row">
         <!-- Unit summary, as on the live portal -->
-        <div class="col-sm-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="udyam()" [showType]="!!unit()" [showAddress]="!!unit()" [basicInfo]="mode() === 'basic-info'" /></div>
+        <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="udyam()" [showType]="!!unit()" [showAddress]="!!unit()" [basicInfo]="mode() === 'basic-info'" /></div>
 
-        <div class="col-sm-9 dash-main" [class.zed-tabs]="mode() === 'basic-info'">
+        <div class="col-lg-9 dash-main" [class.zed-tabs]="mode() === 'basic-info'">
           <div class="panel panel-steps panel-bg-default">
             <div class="panel-body">
               @if (basic(); as b) {

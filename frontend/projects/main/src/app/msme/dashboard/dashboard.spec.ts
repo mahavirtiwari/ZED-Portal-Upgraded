@@ -106,16 +106,16 @@ describe('DashboardPage', () => {
     expect(dialog.querySelector('a[href="https://scheme.example.org"]')).not.toBeNull();
   });
 
-  it('shows ZED-X once the Admin enables it, as a separate track with its own name, logo and text', async () => {
+  it('shows ZED-X once the Admin enables it, with its own name, logo and text, greyed out while another level is in progress', async () => {
     const zedx = { code: 'ZEDX', name: 'ZED-X', description: 'Open to every MSME', comment: 'ZED-X: the sector-wise certification.', logoUrl: null,
       assessmentMode: 'Site', validityMonths: 36, fee: 75000 };
     const three = ['Bronze', 'Silver', 'Gold'].map((code) => ({ code, name: code, description: null, comment: null, logoUrl: `/Images/Dashboard/${code.toLowerCase()}.png`,
       assessmentMode: 'Site', validityMonths: 36, fee: null }));
-    // Bronze in progress greys out Silver and Gold, not ZED-X.
+    // Bronze in progress greys out Silver, Gold and ZED-X.
     await render({ BronzeStatus: 3, ZEDXStatus: 0 }, { IsZEDXPaymentDone: 0 }, 0, undefined, [...three, zedx]);
     const zcard = card('zedx');
     expect(zcard.querySelector('h5')!.textContent).toContain('ZED-X CERTIFICATION');
-    expect(zcard.classList).not.toContain('plant-activity-disabled');
+    expect(zcard.classList).toContain('plant-activity-disabled');
     expect(card('gold').classList).toContain('plant-activity-disabled');
     expect(zcard.querySelector('.inner2 img')!.getAttribute('src')).toBe('/Images/Dashboard/zedx.svg');
     expect(el.textContent).toContain('Apply for Bronze, Silver, Gold or ZED-X Certifications.');
@@ -123,6 +123,24 @@ describe('DashboardPage', () => {
     await settle();
     expect(el.querySelector('.modal-content')!.textContent).toContain('ZED-X Certification');
     expect(el.querySelector('.modal-content')!.textContent).toContain('the sector-wise certification');
+  });
+
+  it('greys out Bronze, Silver and Gold while ZED-X is in progress, and opens ZED-X once Bronze is certified', async () => {
+    const levels = ['Bronze', 'Silver', 'Gold', 'ZEDX'].map((code) => ({ code, name: code === 'ZEDX' ? 'ZED-X' : code, description: null, comment: null,
+      logoUrl: null, assessmentMode: 'Site', validityMonths: 36, fee: null }));
+    await render({ ZEDXStatus: 1 }, { IsZEDXPaymentDone: 1 }, 0, undefined, levels);
+    for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).toContain('plant-activity-disabled');
+    expect(card('zedx').classList).not.toContain('plant-activity-disabled');
+    fixture.destroy();
+
+    await render({ BronzeStatus: 6, ZEDXStatus: 0 }, { IsBronzePaymentDone: 1 }, 0, undefined, levels);
+    expect(card('zedx').classList).not.toContain('plant-activity-disabled');
+    expect(card('silver').classList).not.toContain('plant-activity-disabled');
+    fixture.destroy();
+
+    // ZED-X certified: the highest level, the three stay closed.
+    await render({ ZEDXStatus: 16 }, { IsZEDXPaymentDone: 1 }, 0, undefined, levels);
+    for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).toContain('plant-activity-disabled');
   });
 
   it('marks a certified level as completed and unlocks the incentives', async () => {

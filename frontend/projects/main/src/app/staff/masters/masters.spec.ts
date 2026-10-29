@@ -307,13 +307,27 @@ describe('ParametersPage', () => {
     ]);
     await settle(fixture);
     expect(el.querySelector('h3')!.textContent).toContain('Parameters (ZED-X)');
-    expect((el.querySelector('#param-level') as HTMLSelectElement).textContent).toContain('ZED-X (not open to MSMEs yet)');
+    expect(el.querySelector('.level-tab.active')!.textContent).toContain('ZED-X');
+    expect(el.querySelector('.level-tab.active .tab-note')!.textContent).toContain('Not open to MSMEs yet');
+    // The level's counts: 2 parameters, 1 in surveillance, 1 limited to NIC sectors.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '1']);
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
     expect(rows[0]).toContain('62');
     expect(rows[1]).toContain('All sectors');
     expect(rows[0]).toContain('Yes');
     expect(rows[1]).toContain('No');
 
+    // The filter beside the search box.
+    ([...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === 'In surveillance') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('tbody tr')].map((r) => r.querySelector('td')!.textContent!.trim())).toEqual(['X1']);
+    ([...el.querySelectorAll('.seg button')].find((b) => b.textContent!.trim() === 'All') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    // Add Parameter opens the pop-up.
+    expect(el.querySelector('form.add-form')).toBeNull();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('ADD PARAMETER')) as HTMLButtonElement).click();
+    await settle(fixture);
     (el.querySelector('#sectionCode') as HTMLInputElement).value = 'X3';
     el.querySelector('#sectionCode')!.dispatchEvent(new Event('input'));
     (el.querySelector('#sectionName') as HTMLInputElement).value = 'Water';
@@ -328,6 +342,7 @@ describe('ParametersPage', () => {
     expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true });
     post.flush({ message: 'Parameter saved.' });
     await settle(fixture);
+    expect(el.querySelector('form.add-form')).toBeNull();
     http.expectOne('/api/staff/masters/parameters/ZEDX').flush([
       { id: 8, sectionType: 'ZEDX', sectionCode: 'X2', sectionName: 'Energy', description: '', nicSectors: [], inSurveillance: true },
     ]);

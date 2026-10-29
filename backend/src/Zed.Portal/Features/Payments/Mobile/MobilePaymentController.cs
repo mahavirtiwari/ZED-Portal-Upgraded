@@ -292,6 +292,10 @@ public sealed partial class MobilePaymentController(
             if (details[0].FirstOrDefault()?.Text(cert + "DashboardSurStatus") != "1" || !await SurveillancePaymentOpenAsync(zedId, cert, ct))
                 return (null, NotEligible);
         }
+        else if (await Certifications.OtherLevelInProgressAsync(db, zedId, cert, log, ct) is { } blocked)
+        {
+            return (null, blocked);
+        }
 
         var sets = await db.QueryProcMultipleAsync(m.FeeProc, new { ZedId = zedId, Certification = cert }, ct);
         var withReward = sets[0].FirstOrDefault() is { } a ? new FeeOption(a) : null;

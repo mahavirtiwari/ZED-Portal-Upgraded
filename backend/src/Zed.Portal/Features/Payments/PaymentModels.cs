@@ -32,6 +32,57 @@ public static partial class Certifications
     public static async Task<string?> OpenForApplyingAsync(ISqlExecutor db, string? value, ILogger log, CancellationToken ct) =>
         CanonicalApplicable(value) is { } code && (await CertLevels.CertificationLevels.FindAsync(db, code, log, ct))?.IsEnabled == true ? code : null;
 
+    /// <summary>A level started and not yet certified (the old dashboard's conditions: Bronze 1–5 or 7, the others 1–15 or 17).</summary>
+    public static bool InProgress(string level, int status) =>
+        level == "Bronze" ? status > 0 && (status < 6 || status == 7) : status > 0 && (status < 16 || status == 17);
+
+    /// <summary>
+    /// The level that keeps <paramref name="cert"/> from being applied for. Two certifications never run at once: ZED-X and
+    /// Bronze/Silver/Gold exclude each other while one of them is in progress. ZED-X is the highest level, so once it is
+    /// certified (16, or 17 as Gold's) the three are closed, as Gold certified closes Bronze and Silver. The dashboard greys the
+    /// card out on the same conditions (dashboard.ts levelDisabled); Bronze/Silver/Gold among themselves keep the old page's
+    /// rules, checked in the browser only as before.
+    /// </summary>
+    public static string? BlockedBy(string cert, IReadOnlyDictionary<string, int> statuses)
+    {
+        int S(string l) => statuses.TryGetValue(l, out var s) ? s : 0;
+        if (S(cert) >= 1) return null;   // already applied: the payment procedures decide
+        return cert == "ZEDX"
+            ? Paid.FirstOrDefault(l => InProgress(l, S(l)))
+            : S("ZEDX") > 0 ? "ZEDX" : null;   // ZED-X in progress or certified
+    }
+
+    /// <summary>
+    /// <see cref="BlockedBy"/> for the unit, as a message to show; null when the level may be applied for. The statuses are
+    /// the dashboard's: SP_MSME_GET_DETAILS for the three, the certification row or payment flag for ZED-X.
+    /// </summary>
+    public static async Task<string?> OtherLevelInProgressAsync(ISqlExecutor db, string zedId, string cert, ILogger log, CancellationToken ct)
+    {
+        var sets = await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = (string?)null }, ct);
+        var row = sets[2].FirstOrDefault();
+        var statuses = Paid.ToDictionary(l => l, l => int.TryParse(row?.Text(l + "Status"), out var s) ? s : 0);
+        try
+        {
+            var zedx = (await db.QuerySqlAsync<Msme.MsmeDashboardController.ZedXRow>(Msme.MsmeDashboardController.ZedXSql, new { ZedId = zedId }, ct))
+                .FirstOrDefault();
+            statuses["ZEDX"] = zedx is null ? 0 : zedx.Status ?? zedx.PaymentDone;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "ZED-X status not read (is migration 0029 applied?)");
+            statuses["ZEDX"] = 0;
+        }
+        return BlockedBy(cert, statuses) switch
+        {
+            null => null,
+            var other when InProgress(other, statuses[other]) =>
+                $"{LevelName(cert)} certification cannot be applied for while your {LevelName(other)} certification is in progress.",
+            _ => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at ZED-X, the highest level.",
+        };
+    }
+
+    private static string LevelName(string level) => level == "ZEDX" ? "ZED-X" : level;
+
     [GeneratedRegex(@"^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")]
     public static partial Regex Gstin();
 

@@ -1,20 +1,21 @@
 // Shared layout of the MSME pages that show the unit summary on the left (dashboard, certification details, basic
 // information / non-conformances, site assessment, handholding, schemes). V4: these pages keep the live portal's look:
-// the old site styles (no V4 skin on the MSME pages), the live markup (row / col-sm-3 / col-sm-9, panel-grey, the black
+// the old site styles (no V4 skin on the MSME pages), the live markup (row / col-lg-3 / col-lg-9, panel-grey, the black
 // panel-black bars; <zed-msme-unit-summary>). Only what the old markup had no class for is here.
 
 .Dashboard-msme {
   margin-top: 24px;
 }
 
-// The scheme pages' own two columns, as the live col-sm-3 / col-sm-9 (one column on tablets and phones).
+// The scheme pages' own two columns, as col-lg-3 / col-lg-9: one column below 992px, where the unit summary would be
+// too narrow for the ZED ID and Udyam number.
 .dash-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 3fr);
   gap: 24px;
   align-items: start;
 
-  @media (max-width: 767.98px) {
+  @media (max-width: 991.98px) {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -190,6 +190,59 @@ public sealed class PaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task Zedx_and_the_other_levels_are_not_applied_for_while_one_of_them_is_in_progress()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+        [
+            new Zed.Portal.Features.CertLevels.CertificationLevel("Bronze", "Bronze", 10, null, null, null, true, "Desktop", 36, true, 15, "{DDMMYYYY}_{ZEDNO}", null, null, null),
+            new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000),
+        ];
+        var bronze = 3;
+        _host.Sql.Procs["SP_MSME_GET_DETAILS"] = _ => FakeSql.Sets(
+            [new { ZedId = Me, PledgeEmailId = "pledge@acme.test", EnterpriseName = "Acme" }],
+            [new { UdyogAadharNo = "UDYAM-UP-29-0003915", MobileNo = "9999999999", EnterpriseTypee = "Micro" }],
+            [new { BronzeStatus = bronze, SilverStatus = 0, GoldStatus = 0 }]);
+        var client = await SignedInAsync();
+
+        // Bronze in progress: ZED-X refused, at the fee step and at checkout.
+        var options = await client.GetAsync("/api/msme/payments/ZEDX/options");
+        Assert.Equal("ZED-X certification cannot be applied for while your Bronze certification is in progress.", await options.ProblemTitle());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/msme/payments/ZEDX/checkout", Choices(reward: true))).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_ZERO_PAYMENT_DETAILS");
+
+        // Bronze certified: ZED-X open.
+        bronze = 6;
+        Assert.Equal("ZEDX", (await client.GetFromJsonAsync<JsonElement>("/api/msme/payments/ZEDX/options")).GetProperty("certification").GetString());
+
+        // ZED-X paid (in progress): Bronze not started is refused.
+        bronze = 0;
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ZedXSql] = _ => [new { PaymentDone = 1, Status = (int?)null }];
+        var r = await client.PostAsJsonAsync("/api/msme/payments/Bronze/checkout", Choices(reward: true));
+        Assert.Equal("Bronze certification cannot be applied for while your ZED-X certification is in progress.", await r.ProblemTitle());
+
+        // ZED-X certified: the highest level, Bronze stays closed.
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.ZedXSql] = _ => [new { PaymentDone = 1, Status = (int?)16 }];
+        r = await client.PostAsJsonAsync("/api/msme/payments/Bronze/checkout", Choices(reward: true));
+        Assert.Equal("Bronze certification cannot be applied for: your unit is certified at ZED-X, the highest level.", await r.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_ZERO_PAYMENT_DETAILS");
+    }
+
+    [Theory]
+    [InlineData("ZEDX", 3, 0, 0, 0, "Bronze")]
+    [InlineData("ZEDX", 7, 0, 0, 0, "Bronze")]
+    [InlineData("ZEDX", 6, 5, 0, 0, "Silver")]
+    [InlineData("ZEDX", 6, 16, 17, 0, "Gold")]
+    [InlineData("ZEDX", 6, 16, 16, 0, null)]
+    [InlineData("ZEDX", 3, 0, 0, 1, null)]      // ZED-X already applied: the payment procedures decide
+    [InlineData("Silver", 6, 0, 0, 2, "ZEDX")]
+    [InlineData("Gold", 0, 0, 0, 16, "ZEDX")]   // ZED-X certified: the highest level
+    [InlineData("Bronze", 0, 0, 0, 17, "ZEDX")]
+    [InlineData("Bronze", 0, 0, 0, 0, null)]
+    public void A_level_is_blocked_by_another_in_progress(string cert, int bronze, int silver, int gold, int zedx, string? expected) =>
+        Assert.Equal(expected, Zed.Portal.Features.Payments.Certifications.BlockedBy(cert,
+            new Dictionary<string, int> { ["Bronze"] = bronze, ["Silver"] = silver, ["Gold"] = gold, ["ZEDX"] = zedx }));
+
+    [Fact]
     public async Task Used_reward_cannot_be_applied_again()
     {
         SetFees(payable: "2360.00", rewardUsed: true);

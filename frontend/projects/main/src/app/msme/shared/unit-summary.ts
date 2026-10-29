@@ -6,7 +6,7 @@ type Row = Record<string, unknown>;
  * The unit summary on the left of the MSME pages (dashboard, certification details, basic information / non-conformances,
  * site assessment, handholding), in the live portal's markup (Views/Msme/Dashboard.cshtml): the grey unit box, then the
  * black "Selected Unit", "Selected Activity" and "ZED Pledge Certificate" bars with their grey rows. Place it in a
- * col-sm-3 column next to the page's col-sm-9.
+ * col-lg-3 column next to the page's col-lg-9 (stacked above it below 992px, where a quarter of the width is too narrow).
  */
 @Component({
   selector: 'zed-msme-unit-summary',
@@ -58,7 +58,7 @@ type Row = Record<string, unknown>;
   `,
   styles: `
     .old-type { margin-left: 12px; color: #5f6f70; font-size: 0.8em; }
-    .unit-selection p { word-break: break-word; }
+    .unit-selection p, .entp-details p, .entrp-title h4 { overflow-wrap: anywhere; }
   `,
 })
 export class MsmeUnitSummary {
