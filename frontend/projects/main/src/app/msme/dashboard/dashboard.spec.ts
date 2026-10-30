@@ -55,12 +55,42 @@ describe('DashboardPage', () => {
       expect(card(level).textContent).toContain('Get started');
       expect(card(level).classList).not.toContain('plant-activity-disabled');
     }
-    // Bronze has three steps, Silver and Gold four (legacy w-33 / w-25).
-    expect([...card('bronze').querySelectorAll('.stepper li')].every((li) => li.classList.contains('w-33'))).toBe(true);
-    for (const level of ['silver', 'gold']) {
-      expect([...card(level).querySelectorAll('.stepper li')].every((li) => li.classList.contains('w-25'))).toBe(true);
-    }
+    // Bronze has three steps, Silver and Gold four.
+    expect(card('bronze').querySelectorAll('.stepper li').length).toBe(3);
+    for (const level of ['silver', 'gold']) expect(card(level).querySelectorAll('.stepper li').length).toBe(4);
+    // The unit is in the band at the top; the side bar is gone.
+    expect(el.querySelector('zed-msme-unit-summary')).toBeNull();
     expect(el.textContent).toMatch(/Refresh on \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (AM|PM)/);
+  });
+
+  it('shows the unit band, and on each card its validity, surveillance and fee and how far the bar is filled', async () => {
+    const level = (code: string, name: string, more: object = {}) => ({ code, name, description: null, comment: null, logoUrl: null,
+      assessmentMode: 'Site', validityMonths: 36, fee: null, surveillance: { firstDueMonths: 12, count: null, intervalMonths: null }, ...more });
+    await render({ BronzeStatus: 3 }, { IsBronzePaymentDone: 1, PledgeOn: 'October 28, 2026' }, 0, undefined, [
+      level('Bronze', 'Bronze', { assessmentMode: 'Desktop', surveillance: { firstDueMonths: 15, count: null, intervalMonths: null } }),
+      level('Silver', 'Silver'), level('Gold', 'Gold'),
+      level('ZEDX', 'ZED-X (Export)', { validityMonths: 60, fee: 75000, surveillance: { firstDueMonths: 15, count: 2, intervalMonths: 12 } }),
+    ]);
+    const band = el.querySelector('.unit-band') as HTMLElement;
+    expect(band.querySelector('h4')!.textContent).toBe('Acme Castings');
+    expect([...band.querySelectorAll('.id-tag')].map((t) => [t.querySelector('i')!.textContent, t.lastChild!.textContent]))
+      .toEqual([['UDYAM', 'UDYAM-UP-29-0003915'], ['ZED ID', 'ZEDMSME000001']]);
+    expect(band.querySelector('.ent')!.classList).toContain('ent-micro');
+    expect(band.querySelector('.pledge-box')!.textContent).toContain('October 28, 2026');
+    expect(band.querySelector('a[href="/msme/pledge-certificate"]')).toBeTruthy();
+
+    const facts = (code: string) => [...card(code).querySelectorAll('.lv-facts > div')].map((d) => `${d.querySelector('dt')!.textContent}: ${d.querySelector('dd')!.textContent}`);
+    expect(facts('bronze')).toEqual(['Valid for: 3 years', 'Surveillance: after 15 months']);
+    expect(facts('silver')).toEqual(['Valid for: 3 years', 'Surveillance: after 1 year']);
+    expect(facts('zedx')).toEqual(['Valid for: 5 years', 'Surveillance: 2, after 15 months, then every 12', 'Fee: ₹ 75,000']);
+
+    // Bronze at status 3: the first step done, the second in hand, so the bar is half filled.
+    const bar = (code: string) => (card(code).querySelector('.lv-steps') as HTMLElement).style.getPropertyValue('--fill');
+    expect(bar('bronze')).toBe('0.5');
+    expect(bar('silver')).toBe('0');
+    // An applied level: VIEW DETAILS and the arrow, both to its details; a level not applied for: VIEW DETAILS and APPLY.
+    expect([...card('bronze').querySelectorAll('.lv-actions a')].map((a) => a.getAttribute('href'))).toEqual(['/msme/certification/Bronze', '/msme/certification/Bronze']);
+    expect([...card('silver').querySelectorAll('.lv-actions button')].map((b) => b.textContent!.trim())).toEqual(['VIEW DETAILS', 'APPLY']);
   });
 
   it('greys out Silver and Gold while Bronze is in progress, and marks Bronze steps', async () => {

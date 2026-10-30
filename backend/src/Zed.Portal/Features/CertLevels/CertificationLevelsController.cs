@@ -231,13 +231,27 @@ public sealed partial class CertificationLevelsController(
 public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<PublicLevelsController> log) : ControllerBase
 {
     public sealed record PublicLevel(string Code, string Name, string? Description, string? Comment, string? LogoUrl, string AssessmentMode,
-        int ValidityMonths, decimal? Fee);
+        int ValidityMonths, decimal? Fee, PublicSurveillance? Surveillance = null);
+
+    /// <summary>
+    /// When surveillance falls due, for the level's dashboard card; null without surveillance. Bronze / Silver / Gold give
+    /// the first due date only (their other dates are fixed in the legacy jobs), as the Admin's card shows them.
+    /// </summary>
+    public sealed record PublicSurveillance(int FirstDueMonths, int? Count, int? IntervalMonths);
 
     [HttpGet]
     public async Task<IReadOnlyList<PublicLevel>> Enabled(CancellationToken ct) =>
         (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
-            .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, l.Fee))
+            .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, l.Fee,
+                SurveillanceOf(l)))
             .ToList();
+
+    internal static PublicSurveillance? SurveillanceOf(CertificationLevel l)
+    {
+        if (!l.SurveillanceEnabled) return null;
+        var s = l.Schedule;
+        return l.LegacySurveillance ? new PublicSurveillance(s.FirstDueMonths, null, null) : new PublicSurveillance(s.FirstDueMonths, s.Count, s.IntervalMonths);
+    }
 
     [HttpGet("{code}/logo")]
     public async Task<IActionResult> Logo(string code, CancellationToken ct)

@@ -147,6 +147,18 @@ public sealed class CertificationLevelsTests : IDisposable
     }
 
     [Fact]
+    public void The_dashboard_card_gets_the_surveillance_schedule()
+    {
+        var gold = new CertificationLevel("Gold", "Gold", 30, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, null);
+        // Gold: the first due date only (the legacy jobs fix the rest).
+        Assert.Equal(new PublicLevelsController.PublicSurveillance(12, null, null), PublicLevelsController.SurveillanceOf(gold));
+        // ZED-X: the Admin's schedule, the Silver / Gold values where not set.
+        var zedx = gold with { Code = "ZEDX", FirstSurveillanceMonths = null, SurveillanceCount = 3 };
+        Assert.Equal(new PublicLevelsController.PublicSurveillance(15, 3, 12), PublicLevelsController.SurveillanceOf(zedx));
+        Assert.Null(PublicLevelsController.SurveillanceOf(zedx with { SurveillanceEnabled = false }));
+    }
+
+    [Fact]
     public async Task Zedx_parameters_are_sector_wise()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");

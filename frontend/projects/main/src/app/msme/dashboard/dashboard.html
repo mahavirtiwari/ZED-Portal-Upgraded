@@ -25,11 +25,26 @@
             </div>
           </div>
 
-          <div class="row">
-            <!-- Unit summary, as on the live portal -->
-            <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" /></div>
+          <!-- The unit, in one band above the cards (V4; it was the side bar of the live page). -->
+          <section class="unit-band" aria-label="Your unit">
+            <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true"><b>{{ entType().charAt(0) || '?' }}</b><small>{{ entType().toUpperCase() }}</small></span>
+            <div class="unit-name">
+              <h4>{{ msme()['EnterpriseName'] }}</h4>
+              <div class="unit-ids">
+                @if (basic()['UdyogAadharNo']) { <span class="id-tag"><i>UDYAM</i>{{ basic()['UdyogAadharNo'] }}</span> }
+                <span class="id-tag"><i>ZED ID</i>{{ msme()['ZedId'] }}</span>
+              </div>
+            </div>
+            @if (msme()['PledgeOn']) {
+              <div class="pledge-box">
+                <span class="seal" aria-hidden="true">✓</span>
+                <div><small>ZED Pledge taken on</small><b>{{ msme()['PledgeOn'] }}</b></div>
+                <a class="btn btn-outline-primary btn-sm" routerLink="/msme/pledge-certificate">DOWNLOAD PLEDGE</a>
+              </div>
+            }
+          </section>
 
-            <div class="col-lg-9 dash-main">
+          <div class="dash-main">
               <!-- As on the live dashboard: the text on the left half, then the store badges and the QR code. -->
               <div class="zed-payment-success">
                 <div class="label-highlight">
@@ -42,7 +57,7 @@
                 </div>
               </div>
 
-              <!-- My Certifications -->
+              <!-- My Certifications: a card per level, all in one row on wide screens. -->
               <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
                 <div class="panel-heading dash-panel-head">
                   <div class="panel-titles-sec">
@@ -54,92 +69,67 @@
                   </button>
                 </div>
                 <div class="panel-body">
-                  <div class="dashbord-list">
+                  <div class="level-grid" [style.--levels]="levels().length">
                     @for (level of levels(); track level) {
-                      <div class="list-item">
-                        <div class="panel panel-default panel-cert-block panel-{{ level.toLowerCase() }}" [class.plant-activity-disabled]="levelDisabled(level)">
-                          <div class="panel-heading">
-                            <h5>{{ levelName(level).toUpperCase() }} CERTIFICATION</h5>
-                            <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + levelName(level)" (click)="open({ kind: 'info', topic: level })">
-                              <img src="/Images/svgicons/infoIcon.svg" alt="" />
-                            </button>
-                          </div>
-                          <div class="panel-body">
-                            <div class="cert-inner-block">
-                              <div class="inner1">
-                                <p><span><img src="/Images/svgicons/arrow-right.svg" alt="" /></span> <span>{{ statusLabel(level) }}</span></p>
-                                <div class="stepper">
-                                  <ul class="nav nav-tabs" role="list">
-                                    @for (rule of steps(level); track $index) {
-                                      <li [class]="(level === 'Bronze' ? 'w-33 ' : 'w-25 ') + stepClass(level, rule)">
-                                        <span class="round-tab">
-                                          @if (stepClass(level, rule) === 'completed') {
-                                            <img src="/Images/svgicons/stepper-completed.svg" alt="" />
-                                          }
-                                        </span>
-                                      </li>
-                                    }
-                                  </ul>
-                                </div>
-                                @if (paid(level)) {
-                                  <h5><a [routerLink]="['/msme/certification', level]">VIEW DETAILS</a></h5>
-                                  @if (webEntry(level) && status(level) <= 1) {
-                                    <p class="mb-0"><a class="btn btn-primary btn-sm" [routerLink]="['/msme/entry', level]">ENTER DETAILS</a></p>
-                                  } @else if (webEntry(level) && (status(level) === 4 || status(level) === 14)) {
-                                    <p class="mb-0"><a class="btn btn-danger btn-sm" [routerLink]="['/msme/entry', level]">ANSWER NC</a></p>
-                                  }
-                                } @else {
-                                  <h5 class="clickable" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</h5>
-                                }
-                              </div>
-                              <div class="inner2"><img [src]="levelLogo(level)" alt="" /></div>
-                              <div class="inner3">
-                                @if (paid(level)) {
-                                  <p class="dash-text-clr">
-                                    <a [routerLink]="['/msme/certification', level]" [attr.aria-label]="level + ' details'"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></a>
-                                  </p>
-                                } @else {
-                                  <p class="dash-text-clr apply-btn" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</p>
-                                }
-                              </div>
-                            </div>
-
-                            @if (surveillanceVisible(level)) {
-                              <div class="px-2"><hr class="m-0" /></div>
-                              <div class="cert-inner-block sub-inner-block">
-                                <div class="inner1">
-                                  <p class="dash-text-clr m-0">
-                                    @if (surveillancePaid(level)) {
-                                      <a [routerLink]="['/msme/certification', level + 'Surveillance']">SURVEILLANCE</a>
-                                    } @else {
-                                      <a [routerLink]="['/msme/surveillance-payment', level]">SURVEILLANCE</a>
-                                    }
-                                  </p>
-                                </div>
-                                <div class="inner2"></div>
-                                <div class="inner3">
-                                  @if (surveillancePaid(level)) {
-                                    <p class="dash-text-clr">
-                                      <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="level + ' surveillance details'"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></a>
-                                    </p>
-                                  } @else {
-                                    <p class="dash-text-clr apply-btn"><a [routerLink]="['/msme/surveillance-payment', level]" class="btn btn-primary">APPLY</a></p>
-                                  }
-                                </div>
-                              </div>
-                            }
-
-                            @if (reCertificationVisible(level)) {
-                              <div class="px-2"><hr class="m-0" /></div>
-                              <div class="cert-inner-block sub-inner-block">
-                                <div class="inner1"><p class="dash-text-clr m-0 text-nowrap clickable" (click)="apply(level)">RE-CERTIFICATION</p></div>
-                                <div class="inner2"></div>
-                                <div class="inner3"><p class="dash-text-clr apply-btn" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</p></div>
-                              </div>
-                            }
-                          </div>
+                      <article class="lv-card panel-{{ level.toLowerCase() }}" [class.plant-activity-disabled]="levelDisabled(level)">
+                        <div class="panel-heading lv-head">
+                          <h5>{{ levelName(level).toUpperCase() }} CERTIFICATION</h5>
+                          <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + levelName(level)" (click)="open({ kind: 'info', topic: level })">
+                            <img src="/Images/svgicons/infoIcon.svg" alt="" />
+                          </button>
                         </div>
-                      </div>
+                        <div class="lv-body">
+                          <div class="inner2 lv-logo"><img [src]="levelLogo(level)" alt="" /></div>
+                          @if (facts(level); as rows) {
+                            @if (rows.length) {
+                              <dl class="lv-facts">
+                                @for (f of rows; track f.label) { <div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div> }
+                              </dl>
+                            }
+                          }
+                          <p class="lv-status" [class.is-done]="status(level) === completed(level)"><img src="/Images/svgicons/arrow-right.svg" alt="" /> <span>{{ statusLabel(level) }}</span></p>
+                          <div class="stepper lv-steps" [style.--fill]="fill(level)" role="img" [attr.aria-label]="statusLabel(level)">
+                            <ol>
+                              @for (rule of steps(level); track $index) {
+                                <li [class]="stepClass(level, rule)"><span class="dot"></span></li>
+                              }
+                            </ol>
+                          </div>
+                          <div class="lv-actions">
+                            @if (paid(level)) {
+                              <a class="btn btn-outline-primary btn-sm" [routerLink]="['/msme/certification', level]">VIEW DETAILS</a>
+                              <a class="btn btn-primary btn-sm lv-go" [routerLink]="['/msme/certification', level]" [attr.aria-label]="level + ' details'">→</a>
+                            } @else {
+                              <button type="button" class="btn btn-outline-primary btn-sm" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</button>
+                              <button type="button" class="btn btn-primary btn-sm apply-btn" (click)="apply(level)">APPLY</button>
+                            }
+                          </div>
+                          @if (paid(level) && webEntry(level) && status(level) <= 1) {
+                            <a class="btn btn-primary btn-sm lv-wide" [routerLink]="['/msme/entry', level]">ENTER DETAILS</a>
+                          } @else if (paid(level) && webEntry(level) && (status(level) === 4 || status(level) === 14)) {
+                            <a class="btn btn-danger btn-sm lv-wide" [routerLink]="['/msme/entry', level]">ANSWER NC</a>
+                          }
+
+                          @if (surveillanceVisible(level)) {
+                            <div class="lv-extra">
+                              @if (surveillancePaid(level)) {
+                                <a [routerLink]="['/msme/certification', level + 'Surveillance']">SURVEILLANCE</a>
+                                <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="level + ' surveillance details'">→</a>
+                              } @else {
+                                <a [routerLink]="['/msme/surveillance-payment', level]">SURVEILLANCE</a>
+                                <a [routerLink]="['/msme/surveillance-payment', level]" class="btn btn-primary btn-sm">APPLY</a>
+                              }
+                            </div>
+                          }
+
+                          @if (reCertificationVisible(level)) {
+                            <div class="lv-extra">
+                              <span class="clickable" (click)="apply(level)">RE-CERTIFICATION</span>
+                              <span class="apply-btn btn btn-primary btn-sm" role="button" tabindex="0" (click)="apply(level)" (keydown.enter)="apply(level)">APPLY</span>
+                            </div>
+                          }
+                        </div>
+                      </article>
                     }
                   </div>
                 </div>
@@ -306,7 +296,6 @@
                   </ul>
                 </div>
               </div>
-            </div>
           </div>
         }
 

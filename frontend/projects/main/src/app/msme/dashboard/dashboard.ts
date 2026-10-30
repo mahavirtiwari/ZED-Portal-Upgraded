@@ -7,7 +7,6 @@ import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
 import { levelLogo, levelName } from '../shared/levels';
-import { MsmeUnitSummary } from '../shared/unit-summary';
 import { isWebEntryLevel } from '../entry/entry.api';
 
 type Row = Record<string, string | number | boolean | null>;
@@ -32,6 +31,8 @@ interface PublicLevel {
   assessmentMode: 'Desktop' | 'Site';
   validityMonths: number;
   fee: number | null;
+  /** When surveillance falls due (first only for Bronze / Silver / Gold); null without surveillance. */
+  surveillance?: { firstDueMonths: number; count: number | null; intervalMonths: number | null } | null;
 }
 type InfoTopic = Level | 'My' | 'MyIncentives';
 type Modal = { kind: 'apply-info'; level: Level } | { kind: 'info'; topic: InfoTopic } | { kind: 'joining' } | { kind: 'fa' } | { kind: 'tu' }
@@ -117,24 +118,79 @@ const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
 /**
  * MSME dashboard. Port of Views/Msme/Dashboard.cshtml: unit summary, certification cards,
  * incentives, certification steps, the information pop-ups and the first two steps of applying
- * (disclaimer, instructions, payment).
+ * (disclaimer, instructions, payment). V4 layout: the unit in one band at the top (no side bar), and a larger card per
+ * level, all in one row on wide screens, with its validity, surveillance and fee (Administration → Certification Levels),
+ * its status above a progress bar, and its two buttons side by side.
  */
 @Component({
   selector: 'zed-msme-dashboard',
-  imports: [RouterLink, PaymentStep, DatePipe, ContentTextComponent, MsmeUnitSummary],
+  imports: [RouterLink, PaymentStep, DatePipe, ContentTextComponent],
   templateUrl: './dashboard.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
     .panel-incen-block > .panel-heading { background: #fff; border: 0; }
-    /* The level cards: the live layout's flex row of 32% cards (styles/_legacy-layout-inline.scss); no inner scroll. */
-    .dashbord-list .panel-cert-block { overflow: visible; }
-    .dashbord-list .panel-cert-block > .panel-heading h5 { margin: 0; font-size: 14px; font-weight: 700; }
-    .dashbord-list .cert-inner-block { padding: 10px 12px; gap: 10px; justify-content: space-between; }
-    .dashbord-list .cert-inner-block .inner1 { flex: 1 1 auto; min-width: 0; }
-    .dashbord-list .cert-inner-block .inner1 h5 { margin-bottom: 0; }
-    .dashbord-list .cert-inner-block .inner1 h5 a { color: inherit; text-decoration: none; }
-    .dashbord-list .cert-inner-block .inner2 img { width: 64px; padding: 0 8px 0 0; }
-    .dashbord-list .sub-inner-block { padding-top: 8px; padding-bottom: 8px; }
+    /* The unit band (in place of the live page's side bar). */
+    .unit-band { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 16px; background: linear-gradient(90deg, #eef8f6, #f7fbfb 60%, #fff);
+      border: 1px solid #dfe9ea; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
+    .ent { flex: 0 0 64px; height: 64px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+      background: #eef6f6; color: #23474a; }
+    .ent b { font-size: 26px; }
+    .ent small { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; margin-top: 3px; }
+    /* The enterprise type's colours of the live page (Micro / Small / Medium). */
+    .ent-micro { background: #F6CB8B; color: #6b4d00; }
+    .ent-small { background: #E6E96E; color: #575a00; }
+    .ent-medium { background: #A9DBEB; color: #1d4f5e; }
+    .unit-name { flex: 1 1 auto; min-width: 0; }
+    .unit-name h4 { margin: 0 0 8px; font-size: 20px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
+    .unit-ids { display: flex; flex-wrap: wrap; gap: 8px; }
+    .id-tag { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; padding: 4px 10px;
+      font-size: 13.5px; font-weight: 600; color: #232527; letter-spacing: .02em; }
+    .id-tag i { font-style: normal; font-size: 10.5px; font-weight: 700; color: #2f7c83; background: #eef6f6; border-radius: 4px; padding: 1px 6px; letter-spacing: .05em; }
+    .pledge-box { flex: none; display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #cfe7d6; border-radius: 12px; padding: 10px 12px; }
+    .pledge-box .seal { width: 34px; height: 34px; border-radius: 17px; background: #2e9e5b; color: #fff; display: grid; place-items: center; font-weight: 800; }
+    .pledge-box small { display: block; font-size: 11.5px; color: #5f6f70; }
+    .pledge-box b { font-size: 14px; color: #232527; }
+    .pledge-box .btn { white-space: nowrap; }
+    @media (max-width: 767.98px) {
+      .unit-band { flex-wrap: wrap; }
+      .pledge-box { width: 100%; }
+      .pledge-box .btn { margin-left: auto; }
+    }
+
+    /* A card per level: all in one row on wide screens, two on tablets, one on phones. */
+    .level-grid { display: grid; grid-template-columns: repeat(var(--levels, 3), minmax(0, 1fr)); gap: 18px; }
+    @media (max-width: 1199.98px) { .level-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 575.98px) { .level-grid { grid-template-columns: minmax(0, 1fr); } }
+    .lv-card { display: flex; flex-direction: column; background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; overflow: hidden;
+      box-shadow: 0 4px 14px rgba(16, 61, 64, 0.08); margin: 0; }
+    .lv-card > .lv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; border: 0; }
+    .lv-card > .lv-head h5 { margin: 0; min-width: 0; font-size: 12.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lv-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; flex: 1 1 auto; }
+    .lv-logo { align-self: center; }
+    .lv-logo img { width: 96px; height: 96px; object-fit: contain; }
+    .lv-facts { margin: 0; font-size: 13px; border-top: 1px solid #eef3f3; }
+    .lv-facts > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px solid #eef3f3; }
+    .lv-facts dt { color: #5f6f70; font-weight: 600; }
+    .lv-facts dd { margin: 0; color: #232527; overflow-wrap: anywhere; }
+    .lv-status { margin: auto 0 0; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: #e8a33d; }
+    .lv-status.is-done { color: #1e7a3c; }
+    .lv-status img { width: 12px; }
+    /* The progress bar across the card, filled up to the step the level is at. */
+    .lv-steps ol { position: relative; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
+    .lv-steps ol::before, .lv-steps ol::after { content: ''; position: absolute; left: 9px; top: 50%; height: 4px; margin-top: -2px; border-radius: 2px; }
+    .lv-steps ol::before { right: 9px; background: #e3e9ea; }
+    .lv-steps ol::after { width: calc((100% - 18px) * var(--fill, 0)); background: #2e9e5b; }
+    .lv-steps li { position: relative; z-index: 1; }
+    .lv-steps .dot { display: block; width: 18px; height: 18px; border-radius: 9px; background: #fff; border: 2px solid #cfd8d9; }
+    .lv-steps li.completed .dot { background: #2e9e5b; border-color: #2e9e5b; }
+    .lv-steps li.current .dot { border: 4px solid #e8a33d; }
+    .lv-actions { display: flex; gap: 8px; }
+    .lv-actions .btn { flex: 1 1 0; white-space: nowrap; font-size: 12px; font-weight: 700; letter-spacing: .03em; padding: 6px 8px; }
+    .lv-actions .lv-go { font-size: 16px; line-height: 1; }
+    .lv-wide { width: 100%; font-size: 12px; font-weight: 700; }
+    .lv-extra { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed #dfe9ea; padding-top: 8px;
+      font-size: 12.5px; font-weight: 700; }
+    .lv-extra a:not(.btn), .lv-extra .clickable { color: #45a5ad; text-decoration: none; }
     /* Incentive cards in a grid of equal-height tiles. */
     /* Three incentive cards a row as the live dashboard (two on tablets, one on phones). */
     .panel-incen-box { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
@@ -283,6 +339,40 @@ export class DashboardPage {
   protected is(row: Row, field: string, value: number): boolean {
     const v = row[field];
     return v !== null && v !== undefined && Number(v) === value;
+  }
+
+  /** Micro, Small or Medium (the band's badge). */
+  protected readonly entType = computed(() => String(this.msme()['EnterpriseType'] ?? ''));
+
+  protected completed(level: Level): number {
+    return COMPLETED[level];
+  }
+
+  protected months(n: number): string {
+    return n % 12 === 0 ? `${n / 12} year${n === 12 ? '' : 's'}` : `${n} months`;
+  }
+
+  /** Valid for, Surveillance and Fee of a level's card, as Administration → Certification Levels sets them. */
+  protected facts(level: Level): { label: string; value: string }[] {
+    const l = this.publicLevels().find((p) => p.code === level);
+    if (!l) return [];
+    const rows = [{ label: 'Valid for', value: this.months(l.validityMonths) }];
+    const s = l.surveillance;
+    if (s) {
+      rows.push({
+        label: 'Surveillance',
+        value: s.count && s.count > 1 ? `${s.count}, after ${s.firstDueMonths} months, then every ${s.intervalMonths}` : `after ${this.months(s.firstDueMonths)}`,
+      });
+    }
+    if (l.fee) rows.push({ label: 'Fee', value: `₹ ${l.fee.toLocaleString('en-IN')}` });
+    return rows;
+  }
+
+  /** How much of the card's progress bar is filled (0–1): up to the last step completed or in hand. */
+  protected fill(level: Level): number {
+    const rules = this.steps(level);
+    const reached = rules.map((r) => this.stepClass(level, r)).reduce((last, c, i) => (c ? i : last), -1);
+    return rules.length > 1 && reached > 0 ? reached / (rules.length - 1) : 0;
   }
 
   protected status(level: Level): number {
