@@ -20,28 +20,28 @@ function type(el: HTMLElement, selector: string, value: string) {
   input.dispatchEvent(new Event('input'));
 }
 
-function click(el: HTMLElement, selector: string) {
-  (el.querySelector(selector) as HTMLElement).click();
-}
-
 function buttonByText(el: HTMLElement, text: string): HTMLButtonElement {
-  return [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === text) as HTMLButtonElement;
+  return [...el.querySelectorAll('button')].find((b) => b.textContent!.replace(/\s+/g, ' ').trim() === text) as HTMLButtonElement;
 }
 
 const response: RequirementsResponse = {
   sectionType: 'Bronze',
   sectionCode: 'P1',
   sectionName: 'Leadership',
+  checklistReady: true,
   requirements: [
     {
-      id: 11, requirementCode: '1', canRemove: false,
-      points: [{ id: 101, optionCode: '1', name: '<img src=x onerror=alert(1)>', bullets: [{ id: 501, subOptionCode: '1', name: 'Bullet A' }] }],
-      mandatoryEvidences: [{ evidenceCode: '1', evidenceName: 'Policy', helpText: 'Signed', validationRequired: true }],
-      optionalEvidences: [{ evidenceCode: '2', evidenceName: 'Photo', helpText: null, validationRequired: false }],
+      id: 11, requirementCode: '1', canRemove: false, purpose: 'Clear roles', benefits: 'Fewer gaps',
+      points: [{ id: 101, optionCode: '1', name: '<img src=x onerror=alert(1)>', bullets: [{ id: 501, subOptionCode: '1', name: 'Bullet A' }], actions: ['Prepare a chart'] }],
+      mandatoryEvidences: [
+        { evidenceCode: '1', evidenceName: 'Org chart', helpText: 'Signed', validationRequired: true, optionCode: '1', sampleFile: 'sample_20261030_abcd1234.pdf' },
+        { evidenceCode: '2', evidenceName: 'Old policy', helpText: null, validationRequired: false, optionCode: null, sampleFile: null },
+      ],
+      optionalEvidences: [{ evidenceCode: '3', evidenceName: 'Photo', helpText: null, validationRequired: false, optionCode: '1', sampleFile: null }],
     },
     {
-      id: 12, requirementCode: '2', canRemove: true,
-      points: [{ id: 201, optionCode: '1', name: 'First', bullets: [] }, { id: 202, optionCode: '2', name: 'Second', bullets: [] }],
+      id: 12, requirementCode: '2', canRemove: true, purpose: null, benefits: null,
+      points: [{ id: 201, optionCode: '1', name: 'First', bullets: [], actions: [] }, { id: 202, optionCode: '2', name: 'Second', bullets: [], actions: [] }],
       mandatoryEvidences: [], optionalEvidences: [],
     },
   ],
@@ -68,115 +68,128 @@ describe('RequirementsPage', () => {
     await settle(fixture);
   });
 
-  afterEach(() => {
-    http.verify();
-    vi.restoreAllMocks();
+  afterEach(() => vi.restoreAllMocks());
+
+  it('lists each requirement with purpose, benefits and a row per checkpoint, as text', () => {
+    const card = el.querySelector('.req-card')!;
+    expect(card.querySelector('.req-code')!.textContent).toBe('P1.1');
+    expect(card.querySelector('.req-meta')!.textContent!.replace(/\s+/g, ' ')).toContain('1 checkpoint · 3 evidences · 1 action');
+    expect(card.querySelector('.pb')!.textContent).toContain('Clear roles');
+    // Shown as text, never as HTML.
+    expect(card.querySelector('.point-text')!.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(card.querySelector('.point-text img')).toBeNull();
+    const row = card.querySelector('tbody tr')!;
+    expect(row.querySelector('.bullets')!.textContent).toContain('Bullet A');
+    expect(row.children[1].textContent).toContain('Org chart');
+    expect(row.children[1].textContent).toContain('MANDATORY');
+    expect(row.querySelector('.samp')!.getAttribute('href')).toBe(`${BASE}/samples/sample_20261030_abcd1234.pdf`);
+    expect(row.children[2].textContent).toContain('Prepare a chart');
+    // Added before checkpoints: listed as the whole requirement's.
+    expect(card.querySelector('.general-row')!.textContent).toContain('Old policy');
+    expect([...el.querySelectorAll('.stat-value')].map((s) => s.textContent)).toEqual(['2', '3', '3', '1']);
+    expect(el.querySelectorAll('.remove-requirement').length).toBe(1);
   });
 
-  it('lists requirements as text with only the allowed remove buttons', () => {
-    expect(el.textContent).toContain('Bronze – P1. Leadership');
-    const rows = el.querySelectorAll('.requirements .req-card');
-    expect(rows.length).toBe(2);
-    expect(rows[0].querySelector('.req-code')!.textContent).toBe('P1.1');
-    expect(rows[0].textContent).toContain('<img src=x onerror=alert(1)>');
-    expect(el.querySelector('.requirements img')).toBeNull();
-    // The parameter's counts: 2 requirements, 3 points, 1 mandatory and 1 optional evidence.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '3', '1', '1']);
-    expect(rows[0].textContent).toContain('(Validation Required)');
-    expect(rows[0].querySelector('.remove-requirement')).toBeNull();
-    expect(rows[1].querySelector('.remove-requirement')).not.toBeNull();
-    // Only the last point after the first has a remove button.
-    expect(rows[0].querySelectorAll('.remove-point').length).toBe(0);
-    expect(rows[1].querySelectorAll('.remove-point').length).toBe(1);
-    expect(el.querySelector('a.btn')!.getAttribute('href')).toBe('/staff/masters/parameters/Bronze');
-  });
+  it('adds a requirement with its checkpoints, evidence and actions', async () => {
+    (el.querySelector('zed-collapse-card button') as HTMLButtonElement).click();
+    await settle(fixture);
+    type(el, '#purpose', 'Why');
+    type(el, '#cp-0', 'Defined?');
+    type(el, 'input[aria-label="Evidence 1 of checkpoint 1"]', 'Chart');
+    type(el, 'input[aria-label="Action 1 of checkpoint 1"]', 'Prepare a chart');
+    await settle(fixture);
+    expect(el.querySelector('.field .count')!.textContent).toContain('3 / 500');
 
-  it("shows a point's existing option image below it, as the old page", async () => {
-    // Options.OptionImage as the API returns it with a point.
-    const points = [
-      { id: 201, optionCode: '1', name: 'First', bullets: [], optionImage: 'Images/Questions/p1.png' },
-      { id: 202, optionCode: '2', name: 'Second', bullets: [], optionImage: 'javascript:alert(1)' },
-      // Points saved by this page store no image: the API sends null.
-      { id: 203, optionCode: '3', name: 'Third', bullets: [], optionImage: null },
-    ];
-    const withImages: RequirementsResponse = { ...response, requirements: [{ ...response.requirements[1], points }] };
-    // A fresh page with the images in the response.
-    const page = TestBed.createComponent(RequirementsPage);
-    await settle(page);
-    http.expectOne(BASE).flush(withImages);
-    await settle(page);
-    const images = [...(page.nativeElement as HTMLElement).querySelectorAll<HTMLImageElement>('.requirements img.option-image')];
-    expect(images.map((i) => i.getAttribute('src'))).toEqual(['/Images/Questions/p1.png']);
-  });
-
-  it('builds a requirement from points and bullets and saves it', async () => {
-    type(el, '#requirementName', 'Point one');
-    click(el, 'form button[type=submit]');
+    buttonByText(el, '+ Add checkpoint').click();
     await settle(fixture);
-    click(el, '.draft-points button.btn-primary');
+    type(el, '#cp-1', 'Communicated?');
+    (el.querySelectorAll('.cp .tick input')[1] as HTMLInputElement).click();
     await settle(fixture);
-    // The bullet is typed under its point; the box stays for the next one until Done.
-    expect(el.querySelector('.modal')).toBeNull();
-    type(el, '#bulletText', 'Bullet x');
+    buttonByText(el, 'SAVE REQUIREMENT').click();
     await settle(fixture);
-    (el.querySelector('#bulletText') as HTMLElement).closest('form')!.dispatchEvent(new Event('submit'));
-    await settle(fixture);
-    expect((el.querySelector('#bulletText') as HTMLInputElement).value).toBe('');
-    click(el, '.bullet-done');
-    await settle(fixture);
-    expect(el.querySelector('#bulletText')).toBeNull();
-    expect(el.querySelector('.draft-points')!.textContent).toContain('Bullet x');
-    expect(el.textContent).toContain('Points of the new requirement (P1.3)');
-
-    buttonByText(el, 'Save').click();
-    const req = http.expectOne((r) => r.method === 'POST' && r.url === BASE);
-    expect(req.request.body).toEqual({ points: [{ name: 'Point one', bullets: ['Bullet x'] }] });
-    req.flush({ message: 'Requirement saved.' });
-    await settle(fixture);
-    http.expectOne(BASE).flush(response);
-    await settle(fixture);
-    expect(el.querySelector('.alert-success')!.textContent).toContain('Requirement saved.');
-    expect(el.querySelector('.draft-points')).toBeNull();
-  });
-
-  it('adds mandatory evidences and sends both lists', async () => {
-    buttonByText(el, 'Add Evidences').click();
-    await settle(fixture);
-    // Nothing new yet: SAVE waits for an evidence.
-    expect((el.querySelector('.save-evidences') as HTMLButtonElement).disabled).toBe(true);
-    type(el, '#evidenceName', 'Certificate');
-    type(el, '#evidenceHelp', 'Latest one');
-    click(el, '.add-evidence');
-    await settle(fixture);
-    expect(el.querySelectorAll('.modal li.added').length).toBe(1);
-    expect(el.querySelector('.modal li.added')!.textContent).toContain('New');
-    click(el, '.save-evidences');
-    const req = http.expectOne((r) => r.method === 'PUT' && r.url === BASE + '/11/evidences');
+    const req = http.expectOne(`${BASE}/checklist`);
+    expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
-      mandatoryEvidences: [
-        { evidenceName: 'Policy', helpText: 'Signed', validationRequired: true },
-        { evidenceName: 'Certificate', helpText: 'Latest one', validationRequired: false },
+      purpose: 'Why', benefits: '',
+      checkpoints: [
+        { optionCode: null, text: 'Defined?', evidences: [{ evidenceName: 'Chart', mandatory: true, sampleFile: null, helpText: null, validationRequired: false }], actions: ['Prepare a chart'] },
+        { optionCode: null, text: 'Communicated?', evidences: [], actions: [] },
       ],
-      optionalEvidences: [{ evidenceName: 'Photo', helpText: null, validationRequired: false }],
+      generalEvidences: [],
     });
-    req.flush({ message: 'Evidences saved.' });
+    req.flush({ message: 'Requirement P1.3 saved.' });
     await settle(fixture);
     http.expectOne(BASE).flush(response);
     await settle(fixture);
-    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('P1.3 saved');
+    expect(el.querySelector('.req-form')).toBeNull();
+    http.verify();
   });
 
-  it('removes the last requirement after confirmation and shows API errors', async () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
-    click(el, '.remove-requirement');
+  it('edits a requirement, keeping its checkpoint codes, sample copies and the whole requirement evidence', async () => {
+    (el.querySelector('.edit-requirement') as HTMLButtonElement).click();
     await settle(fixture);
-    http.expectNone((r) => r.method === 'DELETE');
+    expect((el.querySelector('#purpose') as HTMLTextAreaElement).value).toBe('Clear roles');
+    expect(el.querySelector('.file')!.textContent).toBe('sample_20261030_abcd1234.pdf');
+    type(el, '#cp-0', 'Are roles defined?');
+    await settle(fixture);
+    buttonByText(el, 'UPDATE REQUIREMENT').click();
+    await settle(fixture);
+    const req = http.expectOne(`${BASE}/11/checklist`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.checkpoints[0]).toEqual({
+      optionCode: '1', text: 'Are roles defined?', actions: ['Prepare a chart'],
+      evidences: [
+        { evidenceName: 'Org chart', mandatory: true, sampleFile: 'sample_20261030_abcd1234.pdf', helpText: 'Signed', validationRequired: true },
+        { evidenceName: 'Photo', mandatory: false, sampleFile: null, helpText: null, validationRequired: false },
+      ],
+    });
+    expect(req.request.body.generalEvidences).toEqual([{ evidenceName: 'Old policy', mandatory: true, sampleFile: null, helpText: null, validationRequired: false }]);
+    req.flush({ message: 'Requirement P1.1 updated.' });
+    await settle(fixture);
+    http.expectOne(BASE).flush(response);
+  });
 
-    confirm.mockReturnValue(true);
-    click(el, '.remove-point');
-    const del = http.expectOne((r) => r.method === 'DELETE' && r.url === BASE + '/12/points/202');
-    del.flush({ title: 'Only the last point after the first can be removed.' }, { status: 400, statusText: 'Bad Request' });
+  it('uploads a sample copy for an evidence', async () => {
+    (el.querySelector('zed-collapse-card button') as HTMLButtonElement).click();
     await settle(fixture);
-    expect(el.querySelector('.alert-danger')!.textContent).toContain('Only the last point');
+    const input = el.querySelector('.up input[type=file]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [new File(['%PDF'], 'chart.pdf', { type: 'application/pdf' })] });
+    input.dispatchEvent(new Event('change'));
+    await settle(fixture);
+    http.expectOne(`${BASE}/samples`).flush({ fileName: 'sample_20261030_00000001.pdf', message: 'ok' });
+    await settle(fixture);
+    expect(el.querySelector('.file')!.textContent).toBe('sample_20261030_00000001.pdf');
+  });
+
+  it('asks for the checkpoint text before saving', async () => {
+    (el.querySelector('zed-collapse-card button') as HTMLButtonElement).click();
+    await settle(fixture);
+    buttonByText(el, 'SAVE REQUIREMENT').click();
+    await settle(fixture);
+    expect(el.querySelector('.help-block')!.textContent).toContain('Please write checkpoint 1');
+    http.expectNone(`${BASE}/checklist`);
+  });
+
+  it('removes the last requirement after confirmation', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    (el.querySelector('.remove-requirement') as HTMLButtonElement).click();
+    await settle(fixture);
+    const req = http.expectOne(`${BASE}/12`);
+    expect(req.request.method).toBe('DELETE');
+    req.flush({ message: 'Requirement Removed.' });
+    await settle(fixture);
+    http.expectOne(BASE).flush(response);
+  });
+
+  it('says when the database is not ready for checkpoints', async () => {
+    fixture = TestBed.createComponent(RequirementsPage);
+    el = fixture.nativeElement;
+    await settle(fixture);
+    http.expectOne(BASE).flush({ ...response, checklistReady: false });
+    await settle(fixture);
+    expect(el.querySelector('.alert-warning')!.textContent).toContain('migration 0034');
+    expect((el.querySelector('.edit-requirement') as HTMLButtonElement).disabled).toBe(true);
+    expect(el.querySelector('zed-excel-tools')).toBeNull();
   });
 });

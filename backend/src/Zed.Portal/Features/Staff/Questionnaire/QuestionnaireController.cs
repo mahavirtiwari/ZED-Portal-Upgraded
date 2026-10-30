@@ -1,6 +1,7 @@
 using System.Data;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -27,7 +28,11 @@ namespace Zed.Portal.Features.Staff.Questionnaire;
 [Route("api/staff/questionnaire/{sectionType}/{sectionCode}/requirements")]
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.Admin)]
-public sealed class QuestionnaireController(ISqlExecutor db, ILogger<QuestionnaireController> log) : StaffApiController
+public sealed partial class QuestionnaireController(
+    ISqlExecutor db,
+    IWebHostEnvironment env,
+    IOptions<PortalOptions> portal,
+    ILogger<QuestionnaireController> log) : StaffApiController
 {
     public const int MaxPoints = 50;
     public const int MaxBullets = 50;
@@ -38,19 +43,31 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
     public const int HelpTextMax = 2000;   // MasterOption2.HelpText varchar(2000)
 
     public sealed record Bullet(long Id, string SubOptionCode, string Name);
-    /// <summary>OptionImage: Options.OptionImage (a path under the site root the old page showed below the point), null when empty.</summary>
-    public sealed record Point(long Id, string OptionCode, string Name, IReadOnlyList<Bullet> Bullets, string? OptionImage = null);
-    public sealed record Evidence(string EvidenceCode, string EvidenceName, string? HelpText, bool ValidationRequired);
+    /// <summary>
+    /// A point; in the V4 layout a Yes / No checkpoint. OptionImage: Options.OptionImage (a path under the site root the
+    /// old page showed below the point), null when empty. Actions: what to do when the answer is No or Partial (V4).
+    /// </summary>
+    public sealed record Point(long Id, string OptionCode, string Name, IReadOnlyList<Bullet> Bullets, string? OptionImage = null,
+        IReadOnlyList<string>? Actions = null);
+    /// <param name="OptionCode">V4: the checkpoint the evidence belongs to; null = the whole requirement (added before V4).</param>
+    /// <param name="SampleFile">V4: the sample copy the Admin uploaded (a file name), null = none.</param>
+    public sealed record Evidence(string EvidenceCode, string EvidenceName, string? HelpText, bool ValidationRequired,
+        string? OptionCode = null, string? SampleFile = null);
     public sealed record Requirement(long Id, string RequirementCode, IReadOnlyList<Point> Points,
-        IReadOnlyList<Evidence> MandatoryEvidences, IReadOnlyList<Evidence> OptionalEvidences, bool CanRemove);
-    public sealed record RequirementsResponse(string SectionType, string SectionCode, string SectionName, IReadOnlyList<Requirement> Requirements);
+        IReadOnlyList<Evidence> MandatoryEvidences, IReadOnlyList<Evidence> OptionalEvidences, bool CanRemove,
+        string? Purpose = null, string? Benefits = null);
+    /// <param name="ChecklistReady">False until migration 0034 is applied (purpose, benefits, checkpoints' evidence and actions).</param>
+    public sealed record RequirementsResponse(string SectionType, string SectionCode, string SectionName, IReadOnlyList<Requirement> Requirements,
+        bool ChecklistReady = true);
 
     [HttpGet]
     public async Task<ActionResult<RequirementsResponse>> Get(string sectionType, string sectionCode, CancellationToken ct)
     {
         var section = await SectionAsync(sectionType, sectionCode, ct);
         if (section is null) return NotFound();
-        return new RequirementsResponse(section.Type, section.Code, section.Name, await LoadAsync(section, ct));
+        var requirements = await LoadAsync(section, ct);
+        var extras = await ExtrasAsync(section, ct);
+        return new RequirementsResponse(section.Type, section.Code, section.Name, extras is null ? requirements : WithExtras(requirements, extras), extras is not null);
     }
 
     public sealed record PointRequest(string? Name, List<string?>? Bullets);
@@ -141,10 +158,10 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
 
     // ---- helpers ------------------------------------------------------------------------------
 
-    private sealed record Section(string Type, string Code, string Name);
+    internal sealed record Section(string Type, string Code, string Name);
 
     /// <summary>The parameter, as stored (canonical level and code), or null when it does not exist.</summary>
-    private async Task<Section?> SectionAsync(string sectionType, string sectionCode, CancellationToken ct)
+    internal async Task<Section?> SectionAsync(string sectionType, string sectionCode, CancellationToken ct)
     {
         var type = (await Zed.Portal.Features.CertLevels.CertificationLevels.FindAsync(db, sectionType, log, ct))?.Code;
         if (type is null || string.IsNullOrWhiteSpace(sectionCode) || sectionCode.Length > 50) return null;
@@ -159,7 +176,7 @@ public sealed class QuestionnaireController(ISqlExecutor db, ILogger<Questionnai
 
     private static bool Bit(IDictionary<string, object?> r, string column) => r.Text(column) is "1" or "True" or "true";
 
-    private async Task<List<Requirement>> LoadAsync(Section section, CancellationToken ct)
+    internal async Task<List<Requirement>> LoadAsync(Section section, CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_REQUIREMENTS_BY_QUESTION_ID",
             new { SectionType = section.Type, SectionCode = section.Code, QuestionCode = (string?)null }, ct);
