@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { EsgChecklistPage, EsgChecklistResponse } from './esg-checklist';
+import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 
 describe('EsgChecklistPage', () => {
   let fixture: ComponentFixture<EsgChecklistPage>;
@@ -45,7 +46,11 @@ describe('EsgChecklistPage', () => {
   };
 
   async function open(r = checklist()) {
-    await TestBed.configureTestingModule({ imports: [EsgChecklistPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    // Main's own checklist only (the surveillance portal's list has its own test).
+    await TestBed.configureTestingModule({
+      imports: [EsgChecklistPage],
+      providers: [provideHttpClient(), provideHttpClientTesting(), { provide: AdminPortalService, useValue: { enabled: false } }],
+    }).compileComponents();
     fixture = TestBed.createComponent(EsgChecklistPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -165,5 +170,65 @@ describe('EsgChecklistPage', () => {
     http.expectOne(url).flush(checklist());
     await settle();
     expect(el.textContent).toContain('Standard checklist');
+  });
+});
+
+describe('EsgChecklistPage (one Admin)', () => {
+  const url = '/api/staff/settings/esg-checklist';
+  const q = (id: number | null, question: string) => ({ id, question, options: ['Yes', 'No'], followUps: [] });
+  const response = (sections: { title: string; questions: ReturnType<typeof q>[] }[]): EsgChecklistResponse =>
+    ({ checklist: { sections }, customised: true, version: '1.7.2', updatedBy: 'ADMIN1', updatedOn: null });
+
+  it('ticks each question for ZED Certification and Surveillance and saves each portal its questions under the same codes', async () => {
+    await TestBed.configureTestingModule({ imports: [EsgChecklistPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    const fixture = TestBed.createComponent(EsgChecklistPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    const settle = async () => {
+      fixture.detectChanges();
+      await new Promise((r) => setTimeout(r));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    const main = (r: { url: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) => r.url === url && r.context.get(ADMIN_PORTAL) === null;
+    const surv = (r: { url: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) => r.url === url && r.context.get(ADMIN_PORTAL) === 'surveillance';
+    await settle();
+    http.expectOne(main).flush(response([{ title: 'ESG', questions: [q(1, 'Factories Act?'), q(2, 'COE?')] }, { title: 'OHS', questions: [q(16, 'Wages?')] }]));
+    await settle();
+    http.expectOne(surv).flush(response([{ title: 'ESG', questions: [q(1, 'Factories Act?'), q(30, 'Surveillance only?')] }, { title: 'OHS', questions: [] }]));
+    await settle();
+    // Each portal needs a question in every section: saving says so first.
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Save') as HTMLButtonElement).disabled = false;
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Save') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('needs at least one question for Surveillance');
+    const ohs = [...el.querySelectorAll('section.esg-section')][1].querySelectorAll('.used-in input');
+    (ohs[1] as HTMLInputElement).click(); // Wages? on surveillance too
+    await settle();
+    const ticks = () => [...el.querySelectorAll('section.esg-section')][0].querySelectorAll('.used-in input');
+    // 1: both; 2: main only; 30: surveillance only.
+    expect([...ticks()].map((t) => (t as HTMLInputElement).checked)).toEqual([true, true, true, false, false, true]);
+
+    (ticks()[3] as HTMLInputElement).click(); // question 2 on surveillance too
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Save') as HTMLButtonElement).click();
+    await settle();
+    const putMain = http.expectOne((r) => r.method === 'PUT' && main(r));
+    expect(putMain.request.body.sections[0].questions.map((x: { id: number }) => x.id)).toEqual([1, 2]);
+    putMain.flush({ message: 'ESG checklist saved. The apps get it the next time they open the checklist.' });
+    await settle();
+    http.expectOne((r) => r.method === 'GET' && main(r)).flush(response([{ title: 'ESG', questions: [q(1, 'Factories Act?'), q(2, 'COE?')] }, { title: 'OHS', questions: [q(16, 'Wages?')] }]));
+    await settle();
+    const putSurv = http.expectOne((r) => r.method === 'PUT' && surv(r));
+    expect(putSurv.request.body.sections[0].questions.map((x: { id: number }) => x.id)).toEqual([1, 2, 30]);
+    expect(putSurv.request.body.sections[1].questions.map((x: { id: number }) => x.id)).toEqual([16]);
+    putSurv.flush({ message: 'ok' });
+    await settle();
+    http.expectOne(main).flush(response([{ title: 'ESG', questions: [q(1, 'Factories Act?'), q(2, 'COE?')] }, { title: 'OHS', questions: [q(16, 'Wages?')] }]));
+    await settle();
+    http.expectOne(surv).flush(response([{ title: 'ESG', questions: [q(1, 'Factories Act?'), q(2, 'COE?'), q(30, 'Surveillance only?')] }, { title: 'OHS', questions: [q(16, 'Wages?')] }]));
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('for ZED Certification and Surveillance');
+    http.verify();
   });
 });

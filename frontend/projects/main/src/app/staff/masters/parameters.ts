@@ -8,9 +8,10 @@ import { MastersApi, Parameter, ParameterLevel } from './masters.api';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
+import { PORTAL_SYSTEM } from '../../portal-system';
 
 /** Which parameters the list shows (the buttons beside the search box). */
-type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
+type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors';
 
 /**
  * Questionnaire parameters of a certification level (Admin landing page). Port of
@@ -28,7 +29,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
     <div class="page-head">
       <div>
         <h3 class="registration-title">Parameters ({{ levelName() }})</h3>
-        <p class="page-sub">The {{ levelName() }} questionnaire: each parameter, the NIC sectors it applies to and whether surveillance assesses it again. Requirements opens its questions.</p>
+        <p class="page-sub">The {{ levelName() }} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again{{ onMain ? ' and whether consultancy uses it' : '' }}. Requirements opens its questions.</p>
       </div>
       <div class="page-actions">
         <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="levelName() + ' parameters'"
@@ -51,6 +52,9 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
     <div class="param-stats">
       <div class="stat"><span class="stat-value">{{ stats().total }}</span><span class="stat-label">Parameters</span></div>
       <div class="stat"><span class="stat-value">{{ stats().surveillance }}</span><span class="stat-label">Assessed again in surveillance</span></div>
+      @if (onMain) {
+        <div class="stat"><span class="stat-value">{{ stats().consultancy }}</span><span class="stat-label">Used in consultancy</span></div>
+      }
       <div class="stat"><span class="stat-value">{{ stats().sectorSpecific }}</span><span class="stat-label">Limited to NIC sectors</span></div>
     </div>
 
@@ -87,6 +91,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
               <th>Parameter</th>
               <th>NIC Sectors</th>
               <th class="text-center">Surveillance</th>
+              @if (onMain) { <th class="text-center">Consultancy</th> }
               <th class="text-center">Actions</th>
             </tr>
           </thead>
@@ -113,6 +118,11 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
                 <td class="text-center" data-label="Surveillance">
                   <span class="status-badge" [class.is-success]="s.inSurveillance" [class.is-inactive]="!s.inSurveillance">{{ s.inSurveillance ? 'Yes' : 'No' }}</span>
                 </td>
+                @if (onMain) {
+                  <td class="text-center" data-label="Consultancy">
+                    <span class="status-badge consultancy-badge" [class.is-success]="s.inConsultancy !== false" [class.is-inactive]="s.inConsultancy === false">{{ s.inConsultancy === false ? 'No' : 'Yes' }}</span>
+                  </td>
+                }
                 <td data-label="Actions">
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" (click)="edit(s)">Edit</button>
@@ -121,7 +131,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
                 </td>
               </tr>
             } @empty {
-              <tr class="empty-row"><td colspan="5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
+              <tr class="empty-row"><td [attr.colspan]="onMain ? 6 : 5" style="padding: 0"><div class="no-data">{{ pager.search() || filter() !== 'all' ? 'No parameter matches the search' : 'No Data' }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -164,6 +174,13 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
                     <input id="inSurveillance" name="inSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="inSurveillance" />
                     <label for="inSurveillance" class="form-check-label">Assessed again in surveillance</label>
                   </div>
+                  @if (onMain) {
+                    <span class="label-like">Consultancy</span>
+                    <div class="form-check">
+                      <input id="inConsultancy" name="inConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="inConsultancy" />
+                      <label for="inConsultancy" class="form-check-label">Used in consultancy (handholding)</label>
+                    </div>
+                  }
                 </div>
                 @if (addError()) { <span class="help-block" role="alert">{{ addError() }}</span> }
               </div>
@@ -205,6 +222,13 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
                     <input id="edit-inSurveillance" name="editInSurveillance" type="checkbox" class="form-check-input" [(ngModel)]="e.inSurveillance" />
                     <label for="edit-inSurveillance" class="form-check-label">Assessed again in surveillance</label>
                   </div>
+                  @if (onMain) {
+                    <span class="label-like">Consultancy</span>
+                    <div class="form-check">
+                      <input id="edit-inConsultancy" name="editInConsultancy" type="checkbox" class="form-check-input" [(ngModel)]="e.inConsultancy" />
+                      <label for="edit-inConsultancy" class="form-check-label">Used in consultancy (handholding)</label>
+                    </div>
+                  }
                 </div>
                 @if (editError()) { <span class="help-block" role="alert">{{ editError() }}</span> }
               </div>
@@ -234,7 +258,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
     .tab-note { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #fff4d6; color: #8a6100; }
 
     /* The level's counts. */
-    .param-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .param-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; }
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-label { font-size: 13px; color: #5f6f70; }
@@ -295,6 +319,7 @@ export class ParametersPage {
     { key: 'all', label: 'All' },
     { key: 'surveillance', label: 'In surveillance' },
     { key: 'notSurveillance', label: 'Not in surveillance' },
+    ...(PORTAL_SYSTEM === 'main' ? [{ key: 'notConsultancy' as const, label: 'Not in consultancy' }] : []),
     { key: 'sectors', label: 'Sector-specific' },
   ];
   protected readonly filter = signal<ParameterFilter>('all');
@@ -303,12 +328,17 @@ export class ParametersPage {
     return {
       total: rows.length,
       surveillance: rows.filter((r) => r.inSurveillance).length,
+      consultancy: rows.filter((r) => r.inConsultancy !== false).length,
       sectorSpecific: rows.filter((r) => r.nicSectors?.length).length,
     };
   });
   protected readonly pager = new ClientPager<Parameter>(10);
   protected readonly adding = signal(false);
-  protected readonly editing = signal<{ id: number; code: string; sectionName: string; description: string; nicSectors: string[]; inSurveillance: boolean } | null>(null);
+  protected readonly editing = signal<{
+    id: number; code: string; sectionName: string; description: string; nicSectors: string[]; inSurveillance: boolean; inConsultancy: boolean;
+  } | null>(null);
+  /** Main portal: whether a parameter is used in consultancy (the handholding questionnaire is copied from main's). */
+  protected readonly onMain = PORTAL_SYSTEM === 'main';
   protected readonly expanded = signal<ReadonlySet<number>>(new Set());
   protected readonly submitted = signal(false);
   protected readonly saving = signal(false);
@@ -321,6 +351,8 @@ export class ParametersPage {
   protected description = '';
   /** A new parameter is assessed in surveillance unless unticked (the surveillance copies only these). */
   protected inSurveillance = true;
+  /** A new parameter is used in consultancy unless unticked. */
+  protected inConsultancy = true;
 
   constructor() {
     inject(ClientConfigService).get().then((c) => this.legacyUrl.set(c.legacyPortalUrl)).catch(() => undefined);
@@ -358,6 +390,7 @@ export class ParametersPage {
     switch (this.filter()) {
       case 'surveillance': return rows.filter((r) => r.inSurveillance);
       case 'notSurveillance': return rows.filter((r) => !r.inSurveillance);
+      case 'notConsultancy': return rows.filter((r) => r.inConsultancy === false);
       case 'sectors': return rows.filter((r) => r.nicSectors?.length);
       default: return rows;
     }
@@ -398,6 +431,7 @@ export class ParametersPage {
   protected openAdd(): void {
     this.code = this.name = this.description = '';
     this.inSurveillance = true;
+    this.inConsultancy = true;
     this.nicSectors = [];
     this.submitted.set(false);
     this.addError.set('');
@@ -415,7 +449,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors, this.inSurveillance))).message);
+      this.success.set((await firstValueFrom(this.api.addParameter(this.sectionType(), this.code.trim(), this.name.trim(), this.description, this.nicSectors, this.inSurveillance, this.onMain ? this.inConsultancy : undefined))).message);
       this.adding.set(false);
       await this.load();
     } catch (err) {
@@ -428,7 +462,7 @@ export class ParametersPage {
   protected edit(p: Parameter): void {
     this.editError.set('');
     this.success.set('');
-    this.editing.set({ id: p.id, code: p.sectionCode, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance });
+    this.editing.set({ id: p.id, code: p.sectionCode, sectionName: p.sectionName, description: p.description ?? '', nicSectors: [...(p.nicSectors ?? [])], inSurveillance: !!p.inSurveillance, inConsultancy: p.inConsultancy !== false });
   }
 
   protected async update(): Promise<void> {
@@ -440,7 +474,7 @@ export class ParametersPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors, e.inSurveillance))).message);
+      this.success.set((await firstValueFrom(this.api.updateParameter(this.sectionType(), e.id, e.sectionName.trim(), e.description, e.nicSectors, e.inSurveillance, this.onMain ? e.inConsultancy : undefined))).message);
       this.editing.set(null);
       await this.load();
     } catch (err) {

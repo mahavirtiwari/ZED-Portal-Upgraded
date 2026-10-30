@@ -367,6 +367,9 @@ public sealed class ConsultancyPaymentTests : IDisposable
         Assert.StartsWith("Allocation of MSME for Handholding Support (Milestone 2)", agency.Subject);
         Assert.Contains("Implementation &amp; Progress Review 1", agency.HtmlBody);
         Assert.True(File.Exists(Path.Combine(_host.StorageRoot, "PDFs", "SA", Me, "Silver_Milestone2_Payment_Receipt.pdf")));
+        // One Admin: the parameters not used in consultancy come out of the milestone's copy, once.
+        var removed = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.ConsultancyParameters.RemoveSql);
+        Assert.Equal((Me, "Silver"), (FakeSql.Arg(removed.Args, "ZedId"), FakeSql.Arg(removed.Args, "Certification")));
     }
 
     [Theory]
@@ -406,6 +409,7 @@ public sealed class ConsultancyPaymentTests : IDisposable
         Assert.StartsWith("/msme/payment/consultancy-result?status=failure", r.Headers.Location!.OriginalString);
         Assert.False(Called(ConsultancyGateway.Procedure));
         Assert.Empty(_host.Email.Sent);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.ConsultancyParameters.RemoveSql);
     }
 
     [Fact]

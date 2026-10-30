@@ -123,6 +123,7 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         log.LogWarning("{UserId} manually marked payment {TransactionId} of {ZedId}/{Certification} as successful",
             UserId, transactionId, zedId, cert);
         if (host.System == PortalSystem.Main) await Payments.CertificationPaid.RunAsync(db, row.Text("ZedId"), cert, log, ct);
+        if (host.System == PortalSystem.Consultancy) await Payments.Consultancy.ConsultancyParameters.ApplyAsync(db, row.Text("ZedId"), cert, log, ct);
 
         if (host.System != PortalSystem.Main)
         {

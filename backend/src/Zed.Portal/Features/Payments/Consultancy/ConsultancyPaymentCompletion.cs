@@ -44,6 +44,8 @@ public sealed class ConsultancyPaymentCompletion(
     /// </param>
     public async Task CompleteAsync(string zedId, string certification, bool gateway, CancellationToken ct)
     {
+        // One Admin (V4): the parameters not used in consultancy come out of the milestone's copy first.
+        await ConsultancyParameters.ApplyAsync(db, zedId, certification, log, ct);
         string? milestone = null;
         try
         {

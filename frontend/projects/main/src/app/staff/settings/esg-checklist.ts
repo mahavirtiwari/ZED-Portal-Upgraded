@@ -1,9 +1,10 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 
 export type EsgFollowUpType = 'single_choice' | 'text_box';
 
@@ -47,6 +48,9 @@ interface QuestionDraft {
   id: number | null;
   question: string;
   optionsText: string;
+  /** One Admin (main portal): asked on the ZED Certification apps and / or on the surveillance apps. */
+  inMain: boolean;
+  inSurveillance: boolean;
   /** The follow-up on Yes and on No (the answers have one "if yes" and one "if no" column). */
   yes: FollowUpDraft | null;
   no: FollowUpDraft | null;
@@ -66,6 +70,10 @@ const SHOW_ON = ['Yes', 'No'] as const;
  * apps send them as two lists). A question keeps its code when edited; answers already given keep their texts. V4 layout:
  * the counts, a tab per section, a card per question with its options as chips and each follow-up as a branch under it,
  * and the save bar kept in view while there are changes.
+ * <p>One Admin (V4, main portal): one list for the ZED Certification and Surveillance checklists, each question with
+ * "Used in" ticks. Save writes main's checklist with the questions ticked for ZED Certification and the surveillance
+ * portal's (through its own API) with those ticked for Surveillance, under the same codes; a question only the surveillance
+ * portal has is listed with its tick. If the surveillance portal cannot be reached, only main's checklist is shown and saved.</p>
  */
 @Component({
   selector: 'zed-staff-esg-checklist',
@@ -87,6 +95,9 @@ const SHOW_ON = ['Yes', 'No'] as const;
     }
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
+    }
+    @if (survError()) {
+      <div class="alert alert-warning" role="status">Surveillance portal: {{ survError() }} Only the ZED Certification checklist is shown and saved.</div>
     }
     @if (loaded()) {
       <div class="esg-stats">
@@ -125,6 +136,14 @@ const SHOW_ON = ['Yes', 'No'] as const;
                   </div>
 
                   <div class="q-body">
+                    @if (withSurveillance()) {
+                      <div class="used-in" role="group" [attr.aria-label]="'Question ' + (qi + 1) + ' used in'">
+                        <span class="esg-sub m-0">Used in</span>
+                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inMain" /> ZED Certification</label>
+                        <label class="form-check-label used"><input type="checkbox" class="form-check-input" [(ngModel)]="q.inSurveillance" /> Surveillance</label>
+                        @if (!q.inMain && !q.inSurveillance) { <span class="unused">Not used: it is removed when saved.</span> }
+                      </div>
+                    }
                     <div class="opt-row">
                       <label class="esg-sub" [for]="'o-' + si + '-' + qi">Options <small>(comma-separated)</small></label>
                       <input class="form-control" [id]="'o-' + si + '-' + qi" placeholder="Yes, No, Not Applicable" [(ngModel)]="q.optionsText" />
@@ -224,6 +243,10 @@ const SHOW_ON = ['Yes', 'No'] as const;
     .follow-grid { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 8px; align-items: center; }
     .follow-grid .span-2 { grid-column: 1 / -1; }
     .add-q { margin-top: 2px; }
+    .used-in { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 8px; padding: 6px 10px; background: #f4fafa; border-radius: 8px; }
+    .used-in .used { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600; color: #23474a; }
+    .used-in .form-check-input { margin: 0; float: none; }
+    .unused { font-size: 12.5px; font-weight: 600; color: #a8303a; }
 
     /* Save bar: stays at the bottom of the window while there are changes. */
     .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 12px 16px;
@@ -244,7 +267,13 @@ const SHOW_ON = ['Yes', 'No'] as const;
 })
 export class EsgChecklistPage {
   private readonly http = inject(HttpClient);
+  private readonly portals = inject(AdminPortalService);
   private static readonly url = '/api/staff/settings/esg-checklist';
+  private static readonly onSurveillance = new HttpContext().set(ADMIN_PORTAL, 'surveillance');
+
+  /** The surveillance portal's checklist is edited here too (main portal, reached). */
+  protected readonly withSurveillance = signal(false);
+  protected readonly survError = signal('');
 
   protected readonly showOn = SHOW_ON;
   protected readonly sections = signal<SectionDraft[]>([]);
@@ -281,7 +310,7 @@ export class EsgChecklistPage {
   }
 
   protected add(s: SectionDraft): void {
-    s.questions.push({ id: null, question: '', optionsText: 'Yes, No, Not Applicable', yes: null, no: null });
+    s.questions.push({ id: null, question: '', optionsText: 'Yes, No, Not Applicable', yes: null, no: null, inMain: true, inSurveillance: this.withSurveillance() });
     this.changed();
   }
 
@@ -298,12 +327,52 @@ export class EsgChecklistPage {
   }
 
   protected async save(): Promise<void> {
-    await this.send(() => this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: this.sections().map(toSection) }));
+    if (!this.withSurveillance()) {
+      await this.send(() => this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: this.sections().map((x) => toSection(x)) }));
+      return;
+    }
+    // The checklist of each portal needs a question in every section (its two lists in the apps).
+    for (const [portal, keep] of [['ZED Certification', (q: QuestionDraft) => q.inMain], ['Surveillance', (q: QuestionDraft) => q.inSurveillance]] as const) {
+      const empty = this.sections().find((x) => !x.questions.some(keep));
+      if (empty) {
+        this.success.set('');
+        this.error.set(`The section "${empty.title}" needs at least one question for ${portal}.`);
+        return;
+      }
+    }
+    await this.send(async () => {
+      const drafts = this.sections();
+      const main = await firstValueFrom(this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: drafts.map((x) => toSection(x, (q) => q.inMain)) }));
+      // Main gave the new questions their codes: the surveillance portal gets the same ones.
+      const saved = (await firstValueFrom(this.http.get<EsgChecklistResponse>(EsgChecklistPage.url))).checklist.sections;
+      const sections = drafts.map((d, si) => {
+        const mainQuestions = saved[si]?.questions ?? [];
+        let k = 0;
+        const withIds = d.questions.map((q) => {
+          if (!q.inMain) return q;
+          const sq = mainQuestions[k++];
+          if (!sq) return q;
+          const fid = (on: 'Yes' | 'No', f: FollowUpDraft | null) => (f ? { ...f, id: sq.followUps.find((x) => x.showOn === on)?.id ?? f.id } : f);
+          return { ...q, id: sq.id, yes: fid('Yes', q.yes), no: fid('No', q.no) };
+        });
+        const mainIds = new Set(saved.flatMap((x) => x.questions).flatMap((q) => [q.id, ...q.followUps.map((f) => f.id)]));
+        // A question only the surveillance portal has keeps its codes unless main now uses them (then it gets new ones there).
+        const free = <T extends { id: number | null }>(x: T): T => (x.id !== null && mainIds.has(x.id) ? { ...x, id: null } : x);
+        return { ...d, questions: withIds.map((q) => (q.inMain ? q : { ...free(q), yes: q.yes && free(q.yes), no: q.no && free(q.no) })) };
+      });
+      await firstValueFrom(this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: sections.map((x) => toSection(x, (q) => q.inSurveillance)) },
+        { context: EsgChecklistPage.onSurveillance }));
+      return { message: main.message.replace('ESG checklist saved.', 'ESG checklist saved for ZED Certification and Surveillance.') };
+    });
   }
 
   protected async reset(): Promise<void> {
     if (!confirm('Use the standard ESG checklist again? Your questions are removed.')) return;
-    await this.send(() => this.http.delete<MessageResponse>(EsgChecklistPage.url));
+    await this.send(async () => {
+      const r = await firstValueFrom(this.http.delete<MessageResponse>(EsgChecklistPage.url));
+      if (this.withSurveillance()) await firstValueFrom(this.http.delete<MessageResponse>(EsgChecklistPage.url, { context: EsgChecklistPage.onSurveillance }));
+      return r;
+    });
   }
 
   private changed(): void {
@@ -311,12 +380,13 @@ export class EsgChecklistPage {
     this.dirty.set(true);
   }
 
-  private async send(call: () => Observable<MessageResponse>): Promise<void> {
+  private async send(call: () => Observable<MessageResponse> | Promise<MessageResponse>): Promise<void> {
     this.busy.set(true);
     this.error.set('');
     this.success.set('');
     try {
-      const r = await firstValueFrom(call());
+      const pending = call();
+      const r = pending instanceof Promise ? await pending : await firstValueFrom(pending);
       await this.load(false);
       this.success.set(r.message);
     } catch (err) {
@@ -330,7 +400,9 @@ export class EsgChecklistPage {
     if (showBusy) this.busy.set(true);
     try {
       const r = await firstValueFrom(this.http.get<EsgChecklistResponse>(EsgChecklistPage.url));
-      this.sections.set(r.checklist.sections.map(toDraft));
+      const surveillance = await this.loadSurveillance();
+      this.withSurveillance.set(surveillance !== null);
+      this.sections.set(merge(r.checklist.sections.map(toDraft), surveillance?.map(toDraft) ?? null));
       this.customised.set(r.customised);
       this.updatedBy.set(r.updatedBy);
       this.updatedOn.set(r.updatedOn);
@@ -342,6 +414,38 @@ export class EsgChecklistPage {
       if (showBusy) this.busy.set(false);
     }
   }
+
+  /** The surveillance portal's checklist (main portal only), or null when not edited here or not reached. */
+  private async loadSurveillance(): Promise<EsgSection[] | null> {
+    if (!this.portals.enabled) return null;
+    try {
+      const r = await firstValueFrom(this.http.get<EsgChecklistResponse>(EsgChecklistPage.url, { context: EsgChecklistPage.onSurveillance }));
+      this.survError.set('');
+      return r.checklist.sections;
+    } catch (err) {
+      this.survError.set(apiErrorMessage(err));
+      return null;
+    }
+  }
+}
+
+/**
+ * Main's questions with their Surveillance tick (the surveillance portal has a question with that code), then, per section,
+ * the questions only the surveillance portal has. Without the surveillance list every question is main's.
+ */
+function merge(main: SectionDraft[], surveillance: SectionDraft[] | null): SectionDraft[] {
+  if (!surveillance) return main.map((s) => ({ ...s, questions: s.questions.map((q) => ({ ...q, inMain: true, inSurveillance: false })) }));
+  return main.map((s, si) => {
+    const theirs = surveillance[si]?.questions ?? [];
+    const ids = new Set(s.questions.map((q) => q.id).filter((id) => id !== null));
+    return {
+      ...s,
+      questions: [
+        ...s.questions.map((q) => ({ ...q, inMain: true, inSurveillance: q.id !== null && theirs.some((t) => t.id === q.id) })),
+        ...theirs.filter((t) => t.id === null || !ids.has(t.id)).map((t) => ({ ...t, inMain: false, inSurveillance: true })),
+      ],
+    };
+  });
 }
 
 const splitOptions = (text: string): string[] => text.split(',').map((o) => o.trim()).filter((o) => o.length > 0);
@@ -353,14 +457,17 @@ function toDraft(s: EsgSection): SectionDraft {
   };
   return {
     title: s.title,
-    questions: s.questions.map((q) => ({ id: q.id, question: q.question, optionsText: q.options.join(', '), yes: follow(q, 'Yes'), no: follow(q, 'No') })),
+    questions: s.questions.map((q) => ({
+      id: q.id, question: q.question, optionsText: q.options.join(', '), yes: follow(q, 'Yes'), no: follow(q, 'No'), inMain: true, inSurveillance: false,
+    })),
   };
 }
 
-function toSection(s: SectionDraft): EsgSection {
+/** The section as the API takes it; <paramref name="keep"/> picks the questions of one portal. */
+function toSection(s: SectionDraft, keep: (q: QuestionDraft) => boolean = () => true): EsgSection {
   return {
     title: s.title,
-    questions: s.questions.map((q) => ({
+    questions: s.questions.filter(keep).map((q) => ({
       id: q.id,
       question: q.question,
       options: splitOptions(q.optionsText),

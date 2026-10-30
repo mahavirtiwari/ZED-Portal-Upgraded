@@ -39,6 +39,9 @@ async function setup<T>(component: Type<T>, route: object = { snapshot: { data: 
   return { fixture, http, el: fixture.nativeElement as HTMLElement };
 }
 
+/** Main's own list only (the other portals' lists have their own tests). */
+const mainOnly = [{ provide: AdminPortalService, useValue: { enabled: false } }];
+
 describe('DocumentsAdminPage', () => {
   const roles = [{ key: 'msme', label: 'MSME Enterprises' }, { key: 'assessor', label: 'Assessors' }, { key: 'ministry', label: 'Ministry of MSME' }];
   const doc = (id: number, name: string, more: Record<string, unknown> = {}) => ({
@@ -62,8 +65,55 @@ describe('DocumentsAdminPage', () => {
   const names = (el: HTMLElement) => [...el.querySelectorAll('.doc-item strong')].map((s) => s.textContent);
   const pill = (el: HTMLElement, role: string) => el.querySelector(`.role-pill[data-role="${role}"]`) as HTMLButtonElement;
 
-  it('uploads a file with its description and the roles ticked, and refuses other file types', async () => {
+  it('shows each document on the consultancy portal too, copies or removes it there, and lists the consultancy-only ones', async () => {
     const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const onCons = (r: { url: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }, url: string) =>
+      r.url === url && r.context.get(ADMIN_PORTAL) === 'consultancy';
+    const consRoles = [{ key: 'msme', label: 'MSME Enterprises' }, { key: 'consultant', label: 'Consultants' }];
+    const video = (id: number, name: string, roles: string[]) => ({ ...doc(id, name, { roles }), fileName: null, downloadUrl: null, videoUrl: 'https://youtu.be/x' });
+    http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null)
+      .flush({ documents: [doc(4, 'ZED Guidelines'), video(5, 'How to apply', ['msme', 'assessor'])], roles });
+    await settle(fixture);
+    http.expectOne((r) => onCons(r, '/api/staff/masters/documents'))
+      .flush({ documents: [doc(40, 'zed guidelines'), doc(41, 'Milestone checklist', { roles: ['consultant'] })], roles: consRoles });
+    await settle(fixture);
+    const tick = (name: string) => [...el.querySelectorAll('.doc-item')].find((i) => i.textContent!.includes(name))!.querySelector('.shown-on input') as HTMLInputElement;
+    expect(tick('ZED Guidelines').checked).toBe(true);
+    expect(tick('How to apply').checked).toBe(false);
+    expect(el.querySelector('#doc-cons-h')!.textContent).toContain('Only on the Consultancy portal');
+    expect(el.textContent).toContain('Milestone checklist');
+
+    // Ticked: the video is added there with the roles that portal has.
+    tick('How to apply').click();
+    await settle(fixture);
+    const add = http.expectOne((r) => r.method === 'POST' && onCons(r, '/api/staff/masters/documents'));
+    expect((add.request.body as FormData).get('videoUrl')).toBe('https://youtu.be/x');
+    expect((add.request.body as FormData).get('roles')).toBe('msme');
+    add.flush({ message: 'Document saved.' });
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null).flush({ documents: [doc(4, 'ZED Guidelines')], roles });
+    await settle(fixture);
+    http.expectOne((r) => onCons(r, '/api/staff/masters/documents')).flush({ documents: [doc(40, 'zed guidelines')], roles: consRoles });
+    await settle(fixture);
+    expect(el.querySelector('.alert-success')!.textContent).toContain('shown on the Consultancy portal too');
+
+    // Unticked: removed there after a confirmation.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    tick('ZED Guidelines').click();
+    await settle(fixture);
+    const del = http.expectOne((r) => r.method === 'DELETE' && onCons(r, '/api/staff/masters/documents/40'));
+    del.flush({ message: 'Removed.' });
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null).flush({ documents: [doc(4, 'ZED Guidelines')], roles });
+    await settle(fixture);
+    http.expectOne((r) => onCons(r, '/api/staff/masters/documents')).flush({ documents: [], roles: consRoles });
+    await settle(fixture);
+    http.verify();
+    vi.restoreAllMocks();
+  });
+
+  it('uploads a file with its description and the roles ticked, and refuses other file types', async () => {
+    const { fixture, http, el } = await setup(DocumentsAdminPage, undefined, mainOnly);
     http.expectOne('/api/staff/masters/documents').flush({ documents: [doc(4, 'ZED Guidelines')], roles });
     await settle(fixture);
     expect([...el.querySelectorAll('.doc-item a')].map((a) => a.getAttribute('href'))).toEqual(['/api/staff/masters/documents/4/file']);
@@ -112,7 +162,7 @@ describe('DocumentsAdminPage', () => {
   });
 
   it('adds a video link instead of a file', async () => {
-    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const { fixture, http, el } = await setup(DocumentsAdminPage, undefined, mainOnly);
     http.expectOne('/api/staff/masters/documents').flush({ documents: [], roles });
     await settle(fixture);
     expect(el.querySelector('.no-data')!.textContent).toContain('No documents published yet');
@@ -134,7 +184,7 @@ describe('DocumentsAdminPage', () => {
   });
 
   it('shows the counts and filters by file or video and by role', async () => {
-    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const { fixture, http, el } = await setup(DocumentsAdminPage, undefined, mainOnly);
     http.expectOne('/api/staff/masters/documents').flush({
       documents: [
         doc(4, 'Guidelines', { roles: ['msme', 'assessor'] }),
@@ -174,7 +224,7 @@ describe('DocumentsAdminPage', () => {
   });
 
   it('searches and filters by role, edits the roles and deletes after confirmation', async () => {
-    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const { fixture, http, el } = await setup(DocumentsAdminPage, undefined, mainOnly);
     http.expectOne('/api/staff/masters/documents').flush({
       documents: [doc(4, 'Old'), doc(5, 'Tour', { videoUrl: 'https://www.youtube.com/watch?v=t', downloadUrl: null, roles: ['assessor'], description: 'Site visit' })],
       roles,
@@ -218,7 +268,7 @@ describe('DocumentsAdminPage', () => {
   });
 
   it('shows a failed edit inside the pop-up', async () => {
-    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const { fixture, http, el } = await setup(DocumentsAdminPage, undefined, mainOnly);
     http.expectOne('/api/staff/masters/documents').flush({ documents: [doc(4, 'Old')], roles });
     await settle(fixture);
     (el.querySelector('[aria-label="Edit Old"]') as HTMLButtonElement).click();
@@ -372,9 +422,6 @@ const radio = (el: HTMLElement, name: string, label: string) =>
   [...el.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].find((i) => i.closest('label')!.querySelector('strong')!.textContent!.trim() === label)!;
 
 describe('CodeNamesPage (sectors)', () => {
-  /** These tests are about main's own list: the other portals' lists are off (they have their own test below). */
-  const mainOnly = [{ provide: AdminPortalService, useValue: { enabled: false } }];
-
   it('requires Manufacturing or Services and saves it with the sector', async () => {
     const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } }, mainOnly);
     http.expectOne('/api/staff/masters/sectors').flush([
@@ -523,8 +570,8 @@ describe('ParametersPage', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Parameters (ZED-X)');
     expect(el.querySelector('.level-tab.active')!.textContent).toContain('ZED-X');
     expect(el.querySelector('.level-tab.active .tab-note')!.textContent).toContain('Not open to MSMEs yet');
-    // The level's counts: 2 parameters, 1 in surveillance, 1 limited to NIC sectors.
-    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '1']);
+    // The level's counts: 2 parameters, 1 in surveillance, 2 used in consultancy (not set = used), 1 limited to NIC sectors.
+    expect([...el.querySelectorAll('.stat-value')].map((v) => v.textContent!.trim())).toEqual(['2', '1', '2', '1']);
     const rows = [...el.querySelectorAll('tbody tr')].map((r) => r.textContent!.replace(/\s+/g, ' '));
     expect(rows[0]).toContain('62');
     expect(rows[1]).toContain('All sectors');
@@ -552,8 +599,8 @@ describe('ParametersPage', () => {
     (el.querySelector('form.add-form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/ZEDX');
-    // A new parameter is assessed in surveillance unless unticked.
-    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true });
+    // A new parameter is assessed in surveillance and used in consultancy unless unticked.
+    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true, inConsultancy: true });
     post.flush({ message: 'Parameter saved.' });
     await settle(fixture);
     expect(el.querySelector('form.add-form')).toBeNull();
@@ -592,6 +639,36 @@ describe('ParametersPage', () => {
     expect(el.querySelector('pre')!.textContent).toBe('<img src=x onerror=alert(1)>');
     expect(el.querySelector('pre img')).toBeNull();
     expect(el.querySelector('a.btn')!.getAttribute('href')).toBe('/staff/questionnaire/Bronze/P1');
+    http.verify();
+  });
+
+  it('marks a parameter as not used in consultancy', async () => {
+    const { fixture, http, el } = await setup(ParametersPage, { snapshot: { paramMap: convertToParamMap({ sectionType: 'Bronze' }) } });
+    http.expectOne('/api/config').flush({ legacyPortalUrl: '' });
+    flushLevels(http);
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush([
+      { id: 3, sectionType: 'Bronze', sectionCode: 'P1', sectionName: 'Leadership', description: '', inSurveillance: true, inConsultancy: true },
+      { id: 4, sectionType: 'Bronze', sectionCode: 'P2', sectionName: 'Safety', description: '', inSurveillance: false, inConsultancy: false },
+    ]);
+    await settle(fixture);
+    expect([...el.querySelectorAll('.consultancy-badge')].map((b) => b.textContent!.trim())).toEqual(['Yes', 'No']);
+    ([...el.querySelectorAll('.seg button, .filter-btn, button')].find((b) => b.textContent!.trim() === 'Not in consultancy') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect([...el.querySelectorAll('tbody tr td:first-child')].map((c) => c.textContent!.trim())).toEqual(['P2']);
+
+    ([...el.querySelectorAll('tbody button')].find((b) => b.textContent!.trim() === 'Edit') as HTMLButtonElement).click();
+    await settle(fixture);
+    const box = el.querySelector('#edit-inConsultancy') as HTMLInputElement;
+    expect(box.checked).toBe(false);
+    box.click();
+    await settle(fixture);
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/parameters/Bronze/4');
+    expect(put.request.body.inConsultancy).toBe(true);
+    put.flush({ message: 'Parameter data updated.' });
+    await settle(fixture);
+    http.expectOne('/api/staff/masters/parameters/Bronze').flush([]);
     http.verify();
   });
 

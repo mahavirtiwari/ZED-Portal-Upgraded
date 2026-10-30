@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DocumentRole, DocumentRow, MastersApi } from './masters.api';
 import { PagedView, PagerComponent } from '../pager';
+import { AdminPortalService, PORTAL_API_BASE } from '../admin-portal';
 
 /** Same list as the API (MasterUploads.DocumentTypes); the API checks type, content and size again. */
 export const DOCUMENT_EXTENSIONS = ['.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.txt', '.jpg', '.jpeg', '.png'];
@@ -38,6 +39,10 @@ interface DocumentIcon {
  * files, videos, roles given documents), a search with a file / video filter and a chip per role with its count, each
  * document with a file-type icon, its description and its roles as chips; add and edit in a wide pop-up with the
  * details beside the roles, shown as toggle chips.
+ * <p>One Admin (V4, main portal): the Consultancy portal's documents are managed here too. A document is matched by its
+ * name and kind (file or video); its "Consultancy" tick copies it there (the file is downloaded here and uploaded there,
+ * with the roles the Consultancy portal has) or, unticked, removes it there. Adding can publish on both; editing updates
+ * both. Documents only the Consultancy portal has are listed below the library.</p>
  */
 @Component({
   selector: 'zed-staff-documents',
@@ -103,6 +108,16 @@ interface DocumentIcon {
               <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span>
             </div>
             @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
+            @if (cons()) {
+              <div class="shown-on" role="group" [attr.aria-label]="'Shown on, ' + d.documentName">
+                <span class="shown-label">Shown on</span>
+                <span class="portal-tick on" title="This list is the ZED Certification portal's">ZED Certification ✓</span>
+                <label class="portal-tick" [class.on]="!!twinOf(d)">
+                  <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show ' + d.documentName + ' on the Consultancy portal'" />
+                  Consultancy
+                </label>
+              </div>
+            }
             <div class="doc-chips">
               @for (k of d.roles; track k) { <span class="doc-chip">{{ roleLabel(k) }}</span> }
               @if (!d.roles.length) { <span class="doc-chip legacy">MSMEs only (no roles set)</span> }
@@ -126,6 +141,33 @@ interface DocumentIcon {
         <zed-pager [pager]="library" />
       }
     </section>
+
+    @if (consError()) {
+      <div class="alert alert-warning mt-3" role="status">Consultancy portal: {{ consError() }} Its documents are not shown here.</div>
+    }
+    @if (consOnly().length) {
+      <section class="zed-card mt-3" aria-labelledby="doc-cons-h">
+        <h5 class="doc-h" id="doc-cons-h">Only on the Consultancy portal <span class="zed-chip">{{ consOnly().length }}</span></h5>
+        @for (d of consOnly(); track d.id) {
+          <div class="doc-item">
+            <div class="doc-item-main">
+              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span></div>
+              @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
+              <div class="doc-chips">@for (k of d.roles; track k) { <span class="doc-chip">{{ consRoleLabel(k) }}</span> }</div>
+            </div>
+            <div class="row-actions">
+              @if (d.videoUrl) {
+                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">Watch</a>
+              } @else if (d.downloadUrl) {
+                <a class="btn btn-sm btn-outline-primary" [href]="consBase + d.downloadUrl" target="_blank" rel="noopener">Download</a>
+              }
+              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d)">Show on ZED Certification too</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFromConsultancy(d)">Remove</button>
+            </div>
+          </div>
+        }
+      </section>
+    }
 
     @if (adding()) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="doc-add-title">
@@ -190,6 +232,9 @@ interface DocumentIcon {
               }
             </div>
             <div class="modal-footer">
+              @if (cons()) {
+                <label class="also-cons me-auto"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> Also show on the Consultancy portal</label>
+              }
               <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
               <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Upload</button>
             </div>
@@ -304,6 +349,14 @@ interface DocumentIcon {
     .doc-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #eef6f6; color: #2f7c83; }
     .doc-chip.legacy { background: #fff4d6; color: #8a6100; }
     .doc-added { font-size: 12px; color: #5f6f70; margin-left: 4px; }
+    .shown-on { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 2px; }
+    .shown-label { font-size: 12px; font-weight: 700; color: #5f6f70; }
+    .portal-tick { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 1px 10px;
+      border: 1px solid #dfe9ea; color: #5f6f70; background: #fff; margin: 0; cursor: pointer; }
+    .portal-tick.on { background: #e6f6ec; border-color: #bfe3cb; color: #1e7a3c; }
+    .portal-tick input { margin: 0; }
+    .also-cons { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; color: #23474a; }
+    .also-cons .form-check-input { margin: 0; float: none; }
     .doc-item .row-actions { flex: none; flex-wrap: nowrap; }
 
     /* The add / edit pop-up: details beside the roles. */
@@ -409,6 +462,15 @@ export class DocumentsAdminPage {
   protected videoUrl = '';
   private file: File | null = null;
 
+  /** One Admin (main portal): the Consultancy portal's documents and roles; null when not managed here or not reached. */
+  protected readonly cons = signal<{ documents: DocumentRow[]; roles: DocumentRole[] } | null>(null);
+  protected readonly consError = signal('');
+  protected readonly consBase = PORTAL_API_BASE.consultancy;
+  /** The add pop-up's "Also show on the Consultancy portal". */
+  protected alsoConsultancy = false;
+  private readonly portals = inject(AdminPortalService);
+  protected readonly consOnly = computed(() => (this.cons()?.documents ?? []).filter((c) => !this.documents().some((d) => same(d, c))));
+
   constructor() {
     void this.load();
   }
@@ -421,6 +483,74 @@ export class DocumentsAdminPage {
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     }
+    if (!this.portals.enabled) return;
+    try {
+      this.cons.set(await firstValueFrom(this.api.documents('consultancy')));
+      this.consError.set('');
+    } catch (err) {
+      this.cons.set(null);
+      this.consError.set(apiErrorMessage(err));
+    }
+  }
+
+  /** The Consultancy portal's copy of a main document (same name and kind). */
+  protected twinOf(d: DocumentRow): DocumentRow | undefined {
+    return this.cons()?.documents.find((c) => same(d, c));
+  }
+
+  protected consRoleLabel(key: string): string {
+    return this.cons()?.roles.find((r) => r.key === key)?.label ?? key;
+  }
+
+  /** The roles of a document that the target portal has (in its order). */
+  private rolesFor(keys: string[], target: DocumentRole[], portalName: string): string[] {
+    const mapped = target.map((r) => r.key).filter((k) => keys.includes(k));
+    if (!mapped.length) throw new Error(`None of its roles exist on the ${portalName} portal. Add it there with its own roles.`);
+    return mapped;
+  }
+
+  /** Copies a document to the other portal: a video as its link, a file downloaded here and uploaded there. */
+  private async copy(d: DocumentRow, from: 'main' | 'consultancy', to: 'main' | 'consultancy', roles: string[]): Promise<void> {
+    let file: File | null = null;
+    if (!d.videoUrl) {
+      if (!d.downloadUrl) throw new Error('Its file is missing.');
+      const blob = await firstValueFrom(this.api.documentFile(d.downloadUrl, from === 'main' ? undefined : from));
+      file = new File([blob], d.fileName ?? d.documentName, { type: blob.type });
+    }
+    await firstValueFrom(this.api.addDocument({
+      documentName: d.documentName, description: d.description ?? '', roles, file, videoUrl: d.videoUrl,
+    }, to === 'main' ? undefined : to));
+  }
+
+  protected async toggleConsultancy(d: DocumentRow): Promise<void> {
+    const twin = this.twinOf(d);
+    if (twin) {
+      if (!window.confirm(`Remove "${d.documentName}" from the Consultancy portal? It stays on ZED Certification.`)) {
+        this.cons.set({ ...this.cons()! });
+        return;
+      }
+      await this.run(async () => {
+        await firstValueFrom(this.api.deleteDocument(twin.id, 'consultancy'));
+        return `"${d.documentName}" removed from the Consultancy portal.`;
+      });
+      return;
+    }
+    await this.run(async () => {
+      await this.copy(d, 'main', 'consultancy', this.rolesFor(d.roles, this.cons()!.roles, 'Consultancy'));
+      return `"${d.documentName}" is now shown on the Consultancy portal too.`;
+    });
+  }
+
+  protected async copyToMain(d: DocumentRow): Promise<void> {
+    await this.run(async () => {
+      await this.copy(d, 'consultancy', 'main', this.rolesFor(d.roles, this.roles(), 'ZED Certification'));
+      return `"${d.documentName}" is now shown on the ZED Certification portal too.`;
+    });
+  }
+
+  protected async removeFromConsultancy(d: DocumentRow): Promise<void> {
+    if (!window.confirm(`Remove "${d.documentName}" from the Consultancy portal? No one there will see it any more.`)) return;
+    await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id, 'consultancy'))).message);
   }
 
   protected roleLabel(key: string): string {
@@ -511,10 +641,20 @@ export class DocumentsAdminPage {
       return;
     }
     await this.run(async () => {
-      const r = await firstValueFrom(this.api.addDocument({
+      const doc = {
         documentName: this.documentName.trim(), description: this.description.trim(), roles: this.ordered(this.picked()),
         file: video ? null : this.file, videoUrl: video ? this.videoUrl.trim() : null,
-      }));
+      };
+      const r = await firstValueFrom(this.api.addDocument(doc));
+      if (this.alsoConsultancy && this.cons()) {
+        try {
+          await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.cons()!.roles, 'Consultancy') }, 'consultancy'));
+          r.message += ' Also shown on the Consultancy portal.';
+        } catch (err) {
+          r.message += ` Not added on the Consultancy portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+        }
+      }
+      this.alsoConsultancy = false;
       this.documentName = '';
       this.description = '';
       this.videoUrl = '';
@@ -533,12 +673,19 @@ export class DocumentsAdminPage {
   }
 
   protected async saveEdit(e: DocumentEdit): Promise<void> {
+    const before = this.documents().find((d) => d.id === e.id);
+    const twin = before ? this.twinOf(before) : undefined;
     await this.run(async () => {
-      const r = await firstValueFrom(this.api.updateDocument(e.id, {
-        documentName: e.documentName.trim(), description: e.description.trim(), videoUrl: e.videoUrl?.trim() ?? null, roles: this.ordered(e.roles),
-      }));
+      const update = { documentName: e.documentName.trim(), description: e.description.trim(), videoUrl: e.videoUrl?.trim() ?? null, roles: this.ordered(e.roles) };
+      const r = await firstValueFrom(this.api.updateDocument(e.id, update));
       this.editing.set(null);
-      return r.message;
+      if (!twin) return r.message;
+      try {
+        await firstValueFrom(this.api.updateDocument(twin.id, { ...update, roles: this.rolesFor(update.roles, this.cons()!.roles, 'Consultancy') }, 'consultancy'));
+        return r.message + ' Updated on the Consultancy portal too.';
+      } catch (err) {
+        return r.message + ` Not updated on the Consultancy portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+      }
     }, this.editError);
   }
 
@@ -558,9 +705,14 @@ export class DocumentsAdminPage {
       await this.load();
       this.success.set(message);
     } catch (err) {
-      failed.set(apiErrorMessage(err));
+      failed.set(err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err));
     } finally {
       this.saving.set(false);
     }
   }
+}
+
+/** The same document on two portals: same name (any case) and kind (file or video link). */
+function same(a: DocumentRow, b: DocumentRow): boolean {
+  return a.documentName.trim().toLowerCase() === b.documentName.trim().toLowerCase() && !!a.videoUrl === !!b.videoUrl;
 }

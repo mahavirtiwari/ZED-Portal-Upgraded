@@ -99,6 +99,8 @@ export interface Parameter {
   description: string | null;
   /** Assessed again in surveillance (legacy Sections.SurveMandatories): the surveillance copies only these. */
   inSurveillance?: boolean;
+  /** Main portal: used in consultancy / handholding (false = taken out of the handholding questionnaire). */
+  inConsultancy?: boolean;
   /** NIC 2-digit sectors it applies to (V4); empty = all sectors. */
   nicSectors?: string[] | null;
 }
@@ -149,26 +151,31 @@ export class MastersApi {
     return this.http.post<MessageResponse>(`${this.base}/technologies/${id}/active`, { isActive });
   }
 
-  documents(): Observable<DocumentsResponse> {
-    return this.http.get<DocumentsResponse>(`${this.base}/documents`);
+  documents(portal?: AdminPortal): Observable<DocumentsResponse> {
+    return this.http.get<DocumentsResponse>(`${this.base}/documents`, { context: on(portal) });
   }
 
-  addDocument(d: NewDocument): Observable<MessageResponse> {
+  /** A listed document's file (its downloadUrl), e.g. to copy it to another portal. */
+  documentFile(url: string, portal?: AdminPortal): Observable<Blob> {
+    return this.http.get(url, { responseType: 'blob', context: on(portal) });
+  }
+
+  addDocument(d: NewDocument, portal?: AdminPortal): Observable<MessageResponse> {
     const form = new FormData();
     form.append('documentName', d.documentName);
     form.append('description', d.description);
     form.append('roles', d.roles.join(','));
     if (d.videoUrl) form.append('videoUrl', d.videoUrl);
     else if (d.file) form.append('file', d.file, d.file.name);
-    return this.http.post<MessageResponse>(`${this.base}/documents`, form);
+    return this.http.post<MessageResponse>(`${this.base}/documents`, form, { context: on(portal) });
   }
 
-  updateDocument(id: number, d: DocumentUpdate): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/documents/${id}`, d);
+  updateDocument(id: number, d: DocumentUpdate, portal?: AdminPortal): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/documents/${id}`, d, { context: on(portal) });
   }
 
-  deleteDocument(id: number): Observable<MessageResponse> {
-    return this.http.delete<MessageResponse>(`${this.base}/documents/${id}`);
+  deleteDocument(id: number, portal?: AdminPortal): Observable<MessageResponse> {
+    return this.http.delete<MessageResponse>(`${this.base}/documents/${id}`, { context: on(portal) });
   }
 
   pageSettings(): Observable<PageSettings> {
@@ -190,11 +197,13 @@ export class MastersApi {
     return this.http.get<ParameterLevel[]>(`${this.base}/parameter-levels`);
   }
 
-  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description, nicSectors, inSurveillance });
+  addParameter(sectionType: string, sectionCode: string, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean,
+    inConsultancy?: boolean): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}`, { sectionCode, sectionName, description, nicSectors, inSurveillance, inConsultancy });
   }
 
-  updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors, inSurveillance });
+  updateParameter(sectionType: string, id: number, sectionName: string, description: string, nicSectors: string[] = [], inSurveillance?: boolean,
+    inConsultancy?: boolean): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/parameters/${encodeURIComponent(sectionType)}/${id}`, { sectionName, description, nicSectors, inSurveillance, inConsultancy });
   }
 }

@@ -222,10 +222,11 @@ public sealed class SurveillanceStaffTests : IDisposable
     {
         _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([new { Id = 7, SectionCode = "P01", SectionName = "Leadership", SectionType = "Bronze" }]);
         var admin = await SurveillanceLogin.SignInAsync(_host, "ADMIN1");
-        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/Bronze", new { sectionCode = "P02", sectionName = "Safety", inSurveillance = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/Bronze", new { sectionCode = "P02", sectionName = "Safety", inSurveillance = true, inConsultancy = false })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/Bronze/7", new { sectionName = "Leadership", inSurveillance = true })).StatusCode);
         Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MASTER_INSERT_SECTION");
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("SurveMandatories", StringComparison.Ordinal));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("InConsultancy", StringComparison.Ordinal));
     }
 
     [Fact]
