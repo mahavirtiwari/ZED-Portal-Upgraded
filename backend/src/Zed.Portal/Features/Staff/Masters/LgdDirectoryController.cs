@@ -36,6 +36,33 @@ public sealed class LgdDirectoryController(ISqlExecutor db, ILogger<LgdDirectory
     internal const string StatesSql = "SELECT LTRIM(RTRIM(StateCode)) AS StateCode, StateName FROM dbo.States;";
     internal const string DistrictsSql = "SELECT LTRIM(RTRIM(StateCode)) AS StateCode, LTRIM(RTRIM(DistrictCode)) AS DistrictCode, DistrictName, IsActive FROM dbo.Districts;";
 
+    /// <summary>The LGD district list's columns (V4 export and template): an exported file can be uploaded here again.</summary>
+    internal static readonly SheetSpec Sheet = new("Districts", "lgd-districts",
+    [
+        new("State Code", "The LGD code of the state. Required."),
+        new("State Name (In English)", "The state's name. Required."),
+        new("District Code", "The LGD code of the district. Required."),
+        new("District Name (In English)", "The district's name. Required."),
+    ], 3, "Rows are matched by District Code. Upload the file here to see the new and renamed states and districts and the districts " +
+        "no longer listed, then tick the changes to apply.");
+
+    internal const string ExportSql =
+        "SELECT LTRIM(RTRIM(d.DistrictCode)) AS DistrictCode, d.DistrictName, LTRIM(RTRIM(d.StateCode)) AS StateCode, " +
+        "ISNULL((SELECT TOP 1 s.StateName FROM dbo.States s WHERE LTRIM(RTRIM(s.StateCode)) = LTRIM(RTRIM(d.StateCode))), d.StateName) AS StateName " +
+        "FROM dbo.Districts d WHERE ISNULL(d.IsActive, 1) = 1;";
+
+    public sealed record ExportRow(string StateCode, string? StateName, string DistrictCode, string? DistrictName);
+
+    /// <summary>The active districts of the masters with their states, in the LGD file's columns (V4).</summary>
+    [HttpGet("excel")]
+    public async Task<FileContentResult> Excel(CancellationToken ct) =>
+        MasterSheet.Export(Sheet, (await db.QuerySqlAsync<ExportRow>(ExportSql, null, ct))
+            .OrderBy(r => r.StateName).ThenBy(r => r.DistrictName)
+            .Select(r => new[] { r.StateCode, r.StateName, r.DistrictCode, r.DistrictName }));
+
+    [HttpGet("excel/template")]
+    public FileContentResult Template() => MasterSheet.Template(Sheet);
+
     /// <summary>Reads the LGD file and lists what differs from the masters (nothing is changed).</summary>
     [HttpPost("preview")]
     [RequestSizeLimit(MaxFileBytes + 64 * 1024)]

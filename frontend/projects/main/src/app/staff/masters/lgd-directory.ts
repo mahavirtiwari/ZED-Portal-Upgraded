@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { MessageResponse, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 
 export type ChangeKind = 'addState' | 'renameState' | 'addDistrict' | 'renameDistrict' | 'deactivateDistrict';
 
@@ -47,12 +48,16 @@ const KIND_TONES: Record<ChangeKind, string> = {
  */
 @Component({
   selector: 'zed-staff-lgd-directory',
-  imports: [PagerComponent, ListSearchComponent],
+  imports: [PagerComponent, ListSearchComponent, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
         <h3 class="registration-title">LG Directory</h3>
         <p class="page-sub">Bring the states and districts up to date with the Local Government Directory (LGD).</p>
+      </div>
+      <!-- Export: the masters' active districts in the LGD file's columns (an exported file can be uploaded below). -->
+      <div class="page-actions">
+        <zed-excel-tools api="/api/staff/masters/lgd" title="Districts" fileName="lgd-districts" [uploadable]="false" />
       </div>
     </div>
     @if (error()) {

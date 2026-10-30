@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 import { CodeName, CodeNameKind, MastersApi, SECTOR_ACTIVITIES, SectorActivity } from './masters.api';
 
 const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
@@ -29,7 +30,7 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
  */
 @Component({
   selector: 'zed-staff-code-names',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
@@ -37,6 +38,7 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
         <p class="page-sub">{{ labels.sub }}</p>
       </div>
       <div class="page-actions">
+        <zed-excel-tools [api]="'/api/staff/masters/' + kind" [title]="labels.title" [fileName]="kind" (applied)="load(true)" />
         <button type="button" class="btn btn-primary" (click)="openAdd()">+ ADD {{ labels.one.toUpperCase() }}</button>
       </div>
     </div>
@@ -319,7 +321,7 @@ export class CodeNamesPage {
   }
 
   /** <paramref name="fresh"/>: page 1; otherwise (after a save) the same page. */
-  private async load(fresh = false): Promise<void> {
+  protected async load(fresh = false): Promise<void> {
     try {
       this.rows.set(await firstValueFrom(this.api.list(this.kind)));
       if (fresh) this.pager.set(this.filtered());

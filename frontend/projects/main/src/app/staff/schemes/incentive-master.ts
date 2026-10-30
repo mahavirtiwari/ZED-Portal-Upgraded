@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { combineLatest, firstValueFrom } from 'rxjs';
 import { CatalogueItem, INCENTIVE_GROUPS, IncentiveGroup, IncentivesApi, STATES } from './incentives.api';
 import { PagedView, PagerComponent } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 
 export const MAX_INCENTIVE_DOC_BYTES = 2 * 1024 * 1024;
 
@@ -31,16 +32,20 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
  */
 @Component({
   selector: 'zed-staff-incentive-master',
-  imports: [FormsModule, PagerComponent, RouterLink],
+  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ group().title }}</h3>
         <p class="page-sub">{{ group().subtitle }}</p>
       </div>
-      @if (group().key !== 'state' || state()) {
-        <a class="btn btn-primary" [routerLink]="['/staff/incentives', group().key, 'new']" [queryParams]="stateParams()">+ Create New Incentive</a>
-      }
+      <div class="page-actions">
+        <!-- Every group in one sheet (Type column). -->
+        <zed-excel-tools api="/api/staff/schemes/incentive-master" title="Incentives" fileName="incentives" (applied)="load()" />
+        @if (group().key !== 'state' || state()) {
+          <a class="btn btn-primary" [routerLink]="['/staff/incentives', group().key, 'new']" [queryParams]="stateParams()">+ Create New Incentive</a>
+        }
+      </div>
     </div>
 
     <nav class="inc-groups" aria-label="Incentive groups">
@@ -439,7 +444,7 @@ export class IncentiveMasterPage {
     return value.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
-  private async load(): Promise<void> {
+  protected async load(): Promise<void> {
     const type = this.type();
     if (!type) return;
     this.busy.set(true);

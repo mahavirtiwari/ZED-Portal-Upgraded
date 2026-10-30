@@ -17,7 +17,7 @@ namespace Zed.Portal.Features.Staff.Masters;
 [Route("api/staff/masters/regions")]
 [StaffRoles(UserRole.Admin)]
 [PortalSystems(PortalSystem.Main)]
-public sealed class SpecialRegionsController(ISqlExecutor db, ILogger<SpecialRegionsController> log) : StaffApiController
+public sealed partial class SpecialRegionsController(ISqlExecutor db, ILogger<SpecialRegionsController> log) : StaffApiController
 {
     /// <param name="Level">"district": entries are districts; "state": whole states (a district may be added too).</param>
     public sealed record Category(string Key, string Name, string Description, string Level);

@@ -218,6 +218,17 @@ public sealed class SurveillanceStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task A_parameter_is_saved_without_the_surveillance_flag_which_only_the_main_database_has()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([new { Id = 7, SectionCode = "P01", SectionName = "Leadership", SectionType = "Bronze" }]);
+        var admin = await SurveillanceLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/Bronze", new { sectionCode = "P02", sectionName = "Safety", inSurveillance = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/Bronze/7", new { sectionName = "Leadership", inSurveillance = true })).StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MASTER_INSERT_SECTION");
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("SurveMandatories", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task The_staff_profile_follows_the_allotment()
     {
         _host.Sql.Queries["SELECT Certification, CertificationBodyUserId"] = _ => [new { Certification = "Bronze", CertificationBodyUserId = "AGENCY1", DesktopAssessorId = "ASSESSOR1" }];

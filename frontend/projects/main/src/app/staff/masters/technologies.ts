@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 import { MastersApi, Technology } from './masters.api';
 
 /** Which technologies the list shows (the buttons beside the search box). */
@@ -17,7 +18,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
  */
 @Component({
   selector: 'zed-staff-technologies',
-  imports: [FormsModule, PagerComponent, RouterLink],
+  imports: [FormsModule, PagerComponent, RouterLink, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
@@ -25,6 +26,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
         <p class="page-sub">Technologies the MSMEs can choose under Technology Upgradation, with their NIC sectors and categories.</p>
       </div>
       <div class="page-actions">
+        <zed-excel-tools api="/api/staff/masters/technologies" title="Technologies" fileName="technologies" (applied)="load()" />
         <a routerLink="/staff/masters/technologies/new" class="btn btn-primary">+ Add New Technology</a>
       </div>
     </div>
@@ -215,7 +217,7 @@ export class TechnologiesPage {
     void this.load();
   }
 
-  private async load(): Promise<void> {
+  protected async load(): Promise<void> {
     try {
       this.rows.set(await firstValueFrom(this.api.technologies()));
       this.pager.refresh(this.filtered());

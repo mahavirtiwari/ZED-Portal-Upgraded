@@ -27,7 +27,7 @@ namespace Zed.Portal.Features.Staff.Schemes;
 /// </summary>
 [Route("api/staff/schemes/incentive-master")]
 [StaffRoles(UserRole.Admin)]
-public sealed class IncentiveMasterController(
+public sealed partial class IncentiveMasterController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,

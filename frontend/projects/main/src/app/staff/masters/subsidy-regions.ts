@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 
 export interface RegionCategory {
   key: string;
@@ -49,12 +50,15 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
  */
 @Component({
   selector: 'zed-staff-subsidy-regions',
-  imports: [FormsModule, PagerComponent, DatePipe],
+  imports: [FormsModule, PagerComponent, DatePipe, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
         <h3 class="registration-title">Subsidy Regions</h3>
         <p class="page-sub">The regions whose MSMEs get the additional subsidy. Only enabled states and districts count.</p>
+      </div>
+      <div class="page-actions">
+        <zed-excel-tools api="/api/staff/masters/regions" title="Subsidy Regions" fileName="subsidy-regions" (applied)="load()" />
       </div>
     </div>
 
@@ -397,7 +401,7 @@ export class SubsidyRegionsPage {
     }
   }
 
-  private async load(showBusy = true): Promise<void> {
+  protected async load(showBusy = true): Promise<void> {
     if (showBusy) this.busy.set(true);
     try {
       const r = await firstValueFrom(this.http.get<RegionsResponse>(SubsidyRegionsPage.url));

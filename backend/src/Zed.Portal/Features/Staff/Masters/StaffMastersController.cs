@@ -25,7 +25,7 @@ namespace Zed.Portal.Features.Staff.Masters;
 [Route("api/staff/masters")]
 [StaffRoles(UserRole.Admin)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMastersController> log) : StaffApiController
+public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<StaffMastersController> log) : StaffApiController
 {
     public sealed record CodeName(int Id, string Code, string Name);
     public sealed record CodeNameRequest(string? Code, string? Name);
@@ -231,7 +231,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
         await db.ExecuteProcAsync("SP_MASTER_INSERT_SECTION",
             new { SectionType = type, SectionCode = code, SectionName = name, SectionImage = (string?)null, iButton = description }, ct);
         var saved = await SaveNicSectorsAsync(NicSectorsByCodeSql, new { SectionType = type, SectionCode = code, NicSectors = sectors }, ct);
-        if (req.InSurveillance is { } surveillance)
+        if (req.InSurveillance is { } surveillance && KeepsSurveillanceFlag)
             await db.ExecuteSqlAsync(SurveillanceByCodeSql, new { SectionType = type, SectionCode = code, SurveMandatories = surveillance ? "Yes" : null }, ct);
         log.LogInformation("Parameter {Type}/{Code} added by {Actor}", type, code, UserId);
         return new MessageResponse("Parameter saved." + (saved ? "" : NicSectorsNotSaved));
@@ -256,7 +256,7 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
             Id = id.ToString(), SectionType = type, current.SectionCode, SectionName = name, SectionImage = (string?)null, iButton = description,
         }, ct);
         var saved = await SaveNicSectorsAsync(NicSectorsByIdSql, new { Id = id, NicSectors = sectors }, ct);
-        if (req.InSurveillance is { } surveillance && surveillance != current.InSurveillance)
+        if (req.InSurveillance is { } surveillance && surveillance != current.InSurveillance && KeepsSurveillanceFlag)
         {
             await db.ExecuteSqlAsync(SurveillanceByIdSql, new { Id = id, SurveMandatories = surveillance ? "Yes" : null }, ct);
             log.LogWarning("Parameter {Id} ({Type}) {State} surveillance by {Actor}", id, type, surveillance ? "added to" : "removed from", UserId);
@@ -269,6 +269,13 @@ public sealed class StaffMastersController(ISqlExecutor db, ILogger<StaffMasters
     internal const string NicSectorsByIdSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE Id = @Id;";
     internal const string SurveillanceByCodeSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string SurveillanceByIdSql = "UPDATE dbo.Sections SET SurveMandatories = @SurveMandatories WHERE Id = @Id;";
+    /// <summary>
+    /// Sections.SurveMandatories ("assessed again in surveillance") is a column of the Main database only: the surveillance
+    /// payment copies those parameters of the unit's Main certification. ZED_SURVEILLANCE.dbo.Sections has no such column,
+    /// so on the Surveillance host the flag is not saved (it failed with SQL error 207 before).
+    /// </summary>
+    private bool KeepsSurveillanceFlag => HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main;
+
     private const string NicSectorsNotSaved = " Its NIC sectors could not be saved: please ask the administrator to apply database migration 0028.";
 
     /// <summary>The chosen NIC sectors as stored (comma-separated codes, null = all sectors), or what is wrong with them.</summary>

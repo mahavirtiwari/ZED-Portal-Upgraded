@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { MastersApi, Parameter, ParameterLevel } from './masters.api';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ClientPager, PagerComponent } from '../pager';
+import { ExcelToolsComponent } from '../excel-tools';
 
 /** Which parameters the list shows (the buttons beside the search box). */
 type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
@@ -22,7 +23,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
  */
 @Component({
   selector: 'zed-staff-parameters',
-  imports: [FormsModule, PagerComponent, MultiSelect],
+  imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent],
   template: `
     <div class="page-head">
       <div>
@@ -30,6 +31,8 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'sectors';
         <p class="page-sub">The {{ levelName() }} questionnaire: each parameter, the NIC sectors it applies to and whether surveillance assesses it again. Requirements opens its questions.</p>
       </div>
       <div class="page-actions">
+        <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="levelName() + ' parameters'"
+                         [fileName]="'parameters-' + sectionType().toLowerCase()" (applied)="load(true)" />
         <button type="button" class="btn btn-primary" (click)="openAdd()">+ ADD PARAMETER</button>
       </div>
     </div>
@@ -382,7 +385,7 @@ export class ParametersPage {
   }
 
   /** <paramref name="fresh"/>: another level, so page 1; otherwise (after a save) the same page. */
-  private async load(fresh = false): Promise<void> {
+  protected async load(fresh = false): Promise<void> {
     try {
       this.rows.set(await firstValueFrom(this.api.parameters(this.sectionType())));
       if (fresh) this.pager.set(this.filtered());
