@@ -7,6 +7,7 @@ import { withApiBase } from '../../api-base';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
+import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
 
@@ -76,9 +77,9 @@ type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [FormsModule, RouterLink, ContentTextComponent],
+  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog],
   templateUrl: './remote-assessment.html',
-  styles: [DETAILS_STYLES],
+  styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
@@ -110,6 +111,7 @@ export class RemoteAssessmentPage {
 
   protected readonly capture = signal<Capture | null>(null);
   protected readonly choice = signal<Choice | null>(null);
+  protected readonly checkpointEdit = signal<{ id: number; checkpoints: Checkpoint[]; title: string } | null>(null);
   protected readonly textEdit = signal<TextEdit | null>(null);
   protected readonly fromTourFor = signal<number | null>(null);
   protected readonly finalSubmit = signal<FinalSubmitEdit | null>(null);
@@ -394,7 +396,25 @@ export class RemoteAssessmentPage {
 
   protected openConformance(r: Row): void {
     this.modalError.set('');
+    // A requirement with checkpoints (migration 0039) is answered checkpoint by checkpoint; its site conformance follows.
+    const checkpoints = checkpointsOf(this.data()?.checkpoints, r['Id']);
+    if (checkpoints.length) {
+      this.checkpointEdit.set({ id: this.id(r), checkpoints, title: `${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}` });
+      return;
+    }
     this.choice.set({ kind: 'conformance', id: this.id(r), title: 'Conformance', value: text(r, 'SaConformance'), remarks: text(r, 'SaAssessorRemarks'), max: 2000 });
+  }
+
+  protected async saveCheckpoints(body: CheckpointSaveRequest): Promise<void> {
+    const e = this.checkpointEdit();
+    if (!e) return;
+    await this.run(this.api.checkpoints(this.zedId, this.certification, e.id, body), () => this.checkpointEdit.set(null));
+  }
+
+  /** The answers of a checkpoint (an option row of a requirement row): the desktop assessor's and the site assessor's. */
+  protected answersOf(r: Row, o: Row): { desktop: CheckpointValue | null; site: CheckpointValue | null } {
+    const c = checkpointsOf(this.data()?.checkpoints, r['Id']).find((x) => x.optionCode === text(o, 'OptionCode').trim());
+    return { desktop: c?.desktop?.value ?? null, site: c?.site?.value ?? null };
   }
 
   protected openProduct(p: Row): void {

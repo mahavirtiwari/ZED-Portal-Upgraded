@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { ReviewActions } from '../monitoring/review.api';
+import type { Checkpoint, CheckpointSaveRequest } from './checkpoint-dialog';
 
 /** Rows keep the procedures' column names (ZedId, PUnitName, CertificationStatus, ...). */
 export type Row = Record<string, unknown>;
@@ -99,6 +100,8 @@ export interface DaDetails {
   esgCheckList: Row[];
   ncRounds: NcRound[];
   permissions: DaPermissions;
+  /** The checkpoints of every requirement row (initial and NC rounds), with their answers (migration 0039). */
+  checkpoints?: Checkpoint[];
   /** Surveillance host only: Bronze surveillance app answers and the original ZED assessment's location. */
   surveillance?: SurveillanceDetails | null;
 }
@@ -197,6 +200,10 @@ export class AssessmentApi {
   }
   conformance(zedId: string, certification: string, id: unknown, conformance: string, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/requirements/${encodeURIComponent(String(id))}/conformance`, { conformance, remarks });
+  }
+  /** Yes / Partial / No for each checkpoint of a requirement; its conformance follows. */
+  checkpoints(zedId: string, certification: string, id: unknown, body: CheckpointSaveRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/requirements/${encodeURIComponent(String(id))}/checkpoints`, body);
   }
   validateProduct(zedId: string, certification: string, id: unknown, isVerified: string, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.da(zedId, certification)}/products/${encodeURIComponent(String(id))}/validate`, { isVerified, remarks });

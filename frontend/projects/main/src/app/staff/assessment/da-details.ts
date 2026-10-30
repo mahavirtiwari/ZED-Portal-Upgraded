@@ -8,6 +8,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { ReviewActionsBar, ReviewRemarksDialog, RemarksTarget } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
 import { AppFormValuesPanel } from './app-form-values';
+import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from './checkpoint-dialog';
 import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
 
@@ -44,9 +45,9 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed:
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel],
+  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog],
   templateUrl: './da-details.html',
-  styles: [DETAILS_STYLES],
+  styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class DaDetailsPage {
@@ -73,6 +74,7 @@ export class DaDetailsPage {
   protected readonly modalError = signal('');
 
   protected readonly conformanceEdit = signal<ConformanceEdit | null>(null);
+  protected readonly checkpointEdit = signal<{ requirement: Row; checkpoints: Checkpoint[]; title: string } | null>(null);
   protected readonly productEdit = signal<ValidationEdit | null>(null);
   protected readonly siteExteriorEdit = signal<ValidationEdit | null>(null);
   protected readonly evidenceEdit = signal<EvidenceEdit | null>(null);
@@ -200,7 +202,25 @@ export class DaDetailsPage {
 
   protected editConformance(r: Row): void {
     this.modalError.set('');
+    // A requirement with checkpoints (migration 0039) is answered checkpoint by checkpoint; its conformance follows.
+    const checkpoints = checkpointsOf(this.data()?.checkpoints, r['Id']);
+    if (checkpoints.length) {
+      this.checkpointEdit.set({ requirement: r, checkpoints, title: `${text(r, 'SectionCode')}.${text(r, 'RequirementCode')}` });
+      return;
+    }
     this.conformanceEdit.set({ requirement: r, conformance: text(r, 'Conformance'), remarks: text(r, 'AssessorRemarks') });
+  }
+
+  protected async saveCheckpoints(body: CheckpointSaveRequest): Promise<void> {
+    const e = this.checkpointEdit();
+    const d = this.data();
+    if (!e || !d) return;
+    await this.save(this.api.checkpoints(d.zedId, d.certification, e.requirement['Id'], body), () => this.checkpointEdit.set(null));
+  }
+
+  /** The desktop assessor's answer of a checkpoint (an option row of a requirement row), when given. */
+  protected answerOf(r: Row, o: Row): CheckpointValue | null {
+    return checkpointsOf(this.data()?.checkpoints, r['Id']).find((c) => c.optionCode === text(o, 'OptionCode').trim())?.desktop?.value ?? null;
   }
 
   protected async saveConformance(): Promise<void> {

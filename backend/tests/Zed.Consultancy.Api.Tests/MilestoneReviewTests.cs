@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Zed.Core.Security;
 using Zed.Main.Api.Tests;
 using Zed.Portal.Features.Consultancy.Milestones;
+using Zed.Portal.Features.Staff.Assessment;
 
 namespace Zed.Consultancy.Api.Tests;
 
@@ -236,6 +237,70 @@ public sealed class MilestoneReviewTests : IDisposable
         _coSubmitted = 1;
         Assert.Equal(HttpStatusCode.Forbidden, (await co.PostAsJsonAsync(Base + "/requirements/12", new { field = "Intervention", value = "y" })).StatusCode);
         Assert.Equal(2, _host.Sql.Calls.Count(c => c.Name.StartsWith("UPDATE ", StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task The_baseline_checkpoints_add_their_actions_to_the_action_plan_once()
+    {
+        var q = _host.Sql.Queries;
+        q[CheckpointAnswers.CheckpointSql("ZEDCS_V2_LIVE.dbo")] = args => FakeSql.Arg(args, "ZedId") == Zed
+            ? [new { RequirementRowId = 11L, Id = 801L, OptionCode = "1", OptionName = "Written policy", ActionsNeeded = "Write the policy\nDisplay it" },
+               new { RequirementRowId = 11L, Id = 802L, OptionCode = "2", OptionName = "Staff know it", ActionsNeeded = "Train the staff" }]
+            : [];
+        q[CheckpointAnswers.EvidenceSql("ZEDCS_V2_LIVE.dbo")] = _ =>
+            [new { RequirementRowId = 11L, Id = 91L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = false, IsVerified = (string?)null }];
+        var photos = 0;
+        q[MilestoneReviewController.PhotoCountSql] = _ => [new { Total = photos }];
+        q[MilestoneReviewController.ActionPlanSql] = _ => [new { BulletPoints = "Display it" }];
+
+        var lead = await As(Lead);
+        var page = await lead.GetFromJsonAsync<JsonElement>(Base);
+        Assert.Equal("Baseline", page.GetProperty("checkpointStage").GetString());
+        Assert.Equal(2, page.GetProperty("checkpoints").GetArrayLength());
+
+        // A Yes on a checkpoint with mandatory evidence needs a photo on the parameter.
+        var yes = await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
+            new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } });
+        Assert.Contains("add a photo", await yes.ProblemTitle());
+        photos = 1;
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
+            new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } })).StatusCode);
+        Assert.Empty(CallsTo("SP_CONSULTANCY_INSERT_BULLETS"));
+
+        var r = await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints", new
+        {
+            answers = new object[]
+            {
+                new { id = 801, answer = "No", actions = new[] { "Write the policy", "Display it" } },
+                new { id = 802, answer = "Partial", actions = new[] { "Train the staff" } },
+            },
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Contains("2 actions added", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        // "Display it" is already in the plan.
+        Assert.Equal(["Write the policy", "Train the staff"], CallsTo("SP_CONSULTANCY_INSERT_BULLETS").Select(a => FakeSql.Arg(a, "BulletPoints")));
+        Assert.All(CallsTo("SP_CONSULTANCY_INSERT_BULLETS"), a => Assert.Equal("HandholdingActionPlan", FakeSql.Arg(a, "ReqType")));
+        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Baseline) && FakeSql.Arg(c.Args, "Id") == "802");
+        // Handholding sets no conformance.
+        Assert.Empty(CallsTo("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"));
+
+        // Milestone 2 records progress review 1; a co-consultant answers only its own sections.
+        _milestone = 2;
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
+            new { answers = new object[] { new { id = 801, answer = "Partial" }, new { id = 802, answer = "Yes" } } })).StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review1));
+        Assert.Equal(2, CallsTo("SP_CONSULTANCY_INSERT_BULLETS").Count());
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await As(CoConsultant)).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        _milestone = 3;
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
+            new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } })).StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review2));
+        // Later milestones answer no checkpoints.
+        _milestone = 4;
+        var calls = _host.Sql.Calls.Count;
+        Assert.NotEqual(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
+            new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } })).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls.Skip(calls), c => c.Name.StartsWith("UPDATE dbo.MsmeOptions", StringComparison.Ordinal));
     }
 
     [Fact]

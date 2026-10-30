@@ -144,6 +144,44 @@ describe('MilestoneDetailsPage', () => {
     expect(el.textContent).toContain('Updated.');
   });
 
+  it('answers the baseline checkpoints of an editable parameter', async () => {
+    const checkpoint = {
+      id: 801, requirementId: 11, optionCode: '1', text: 'Written quality policy', actions: ['Write the policy', 'Display it'],
+      evidences: [{ id: 91, name: 'Policy document', mandatory: true, uploaded: false, verified: null }],
+      desktop: null, site: null, baseline: null, review1: null, review2: null,
+    };
+    const options = [{ SectionCode: '1', RequirementCode: '1', OptionCode: '1', OptionName: 'Written quality policy' }];
+    await open(details({ options, checkpoints: [checkpoint], checkpointStage: 'Baseline' }));
+    await tab('Parameters');
+    await expand('Leadership');
+    button('ANSWER CHECKPOINTS')!.click();
+    await settle();
+    // Handholding has no per-evidence uploads: the evidence is listed to look at.
+    expect(el.querySelector('zed-checkpoint-dialog')!.textContent).toContain('Evidence to see');
+    el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=No]')!.click();
+    await settle();
+    el.querySelectorAll<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')[1].click();
+    await settle();
+    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value=SUBMIT]')!.click();
+    await settle();
+    const req = http.expectOne(API + '/requirements/11/checkpoints');
+    expect(req.request.body).toEqual({ answers: [{ id: 801, answer: 'No', actions: ['Display it'], remarks: null }], remarks: null });
+    req.flush({ message: 'Saved. 1 action added to the Handholding Action Plan.' });
+    await settle();
+    http.expectOne(API).flush(details({ options, checkpointStage: 'Baseline', checkpoints: [{ ...checkpoint, baseline: { value: 'No', actions: ['Display it'], remarks: null } }] }));
+    await settle();
+    expect(el.textContent).toContain('1 action added to the Handholding Action Plan');
+    expect(el.querySelector('.cp-chip')!.textContent!.trim()).toBe('Baseline: No');
+  });
+
+  it('shows no checkpoint button to a viewer', async () => {
+    const checkpoint = { id: 801, requirementId: 11, optionCode: '1', text: 'Policy', actions: [], evidences: [], desktop: null, site: null, baseline: null, review1: null, review2: null };
+    await open(details({ checkpoints: [checkpoint], checkpointStage: null }));
+    await tab('Parameters');
+    await expand('Leadership');
+    expect(button('ANSWER CHECKPOINTS')).toBeUndefined();
+  });
+
   it('adds and deletes bullets', async () => {
     await open(details());
     await tab('Parameters');

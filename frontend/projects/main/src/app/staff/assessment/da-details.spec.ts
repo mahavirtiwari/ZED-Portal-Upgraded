@@ -125,6 +125,53 @@ describe('DaDetailsPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
   });
 
+  it('answers a requirement checkpoint by checkpoint when it has checkpoints', async () => {
+    const checkpoints = [
+      { id: 501, requirementId: 11, optionCode: '1', text: 'Has a quality policy', actions: ['Write the policy', 'Display it'],
+        evidences: [{ id: 31, name: 'Policy', mandatory: true, uploaded: true, verified: 'Yes' }],
+        desktop: null, site: null, baseline: null, review1: null, review2: null },
+      { id: 502, requirementId: 11, optionCode: '2', text: 'Staff know the policy', actions: ['Train the staff'], evidences: [],
+        desktop: { value: 'Partial' as const, actions: ['Train the staff'], remarks: null }, site: null, baseline: null, review1: null, review2: null },
+    ];
+    await open(details({ checkpoints }));
+    tab('Parameters');
+    await settle();
+    const buttons = Array.from(el.querySelectorAll<HTMLInputElement>('td.text-center input[type=button]'));
+    buttons[buttons.length - 1].click();
+    await settle();
+    // The checkpoint pop-up, not the old Yes / No one.
+    expect(el.querySelector('#daConfRemarks')).toBeNull();
+    expect(el.querySelectorAll('zed-checkpoint-dialog section.cp').length).toBe(2);
+
+    el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=No]')!.click();
+    await settle();
+    button('SUBMIT')!.click();
+    await settle();
+    expect(el.querySelector('zed-checkpoint-dialog .alert-danger')!.textContent).toContain('Checkpoint 1: please tick the actions needed.');
+    http.expectNone(BASE + '/requirements/11/checkpoints');
+
+    el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')!.click();
+    await settle();
+    expect(el.querySelector('.cp-result')!.textContent).toContain('Not conforming');
+    button('SUBMIT')!.click();
+    await settle();
+    const req = http.expectOne(BASE + '/requirements/11/checkpoints');
+    expect(req.request.body).toEqual({
+      answers: [
+        { id: 501, answer: 'No', actions: ['Write the policy'], remarks: null },
+        { id: 502, answer: 'Partial', actions: ['Train the staff'], remarks: null },
+      ],
+      remarks: null,
+    });
+    req.flush({ message: 'Data Updated' });
+    await settle();
+    http.expectOne(BASE).flush(details({ checkpoints: [{ ...checkpoints[0], desktop: { value: 'No', actions: ['Write the policy'], remarks: null } }, checkpoints[1]] }));
+    await settle();
+    expect(el.querySelector('zed-checkpoint-dialog')).toBeNull();
+    // The page lists option 1 only: its answer is shown beside it.
+    expect(Array.from(el.querySelectorAll('.cp-chip')).map((c) => c.textContent!.trim())).toEqual(['No']);
+  });
+
   it('uploads evidence screenshots as a form', async () => {
     await open(details());
     tab('Parameters');

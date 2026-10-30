@@ -281,10 +281,14 @@
                           @for (o of optionsOf(r); track $index) {
                             <div>
                               {{ t(o, 'OptionName') }}
+                              @for (a of answersOf(r, o); track a.label) { <span class="cp-chip" [attr.data-v]="a.value">{{ a.label }}: {{ a.value }}</span> }
                               <ul>
                                 @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                               </ul>
                             </div>
+                          }
+                          @if (checkpointsToAnswer(r).length) {
+                            <button type="button" class="btn btn-primary btn-sm answer-checkpoints" [disabled]="busy()" (click)="openCheckpoints(s, r)">ANSWER CHECKPOINTS</button>
                           }
                         </div>
                       </div>
@@ -652,4 +656,9 @@
     <div class="modal-dialog modal-lg"><div class="modal-content p-2"><img class="preview-img" [src]="src" alt="Photo" /></div></div>
   </div>
   <div class="modal-backdrop show"></div>
+}
+
+@if (checkpointEdit(); as e) {
+  <zed-checkpoint-dialog [title]="e.title" [checkpoints]="e.checkpoints" [stage]="data()?.checkpointStage ?? 'Baseline'" [busy]="busy()" [error]="checkpointError()"
+    (saved)="saveCheckpoints($event)" (closed)="checkpointEdit.set(null)" />
 }

@@ -501,6 +501,9 @@
                       @for (o of optionsOf(r); track $index) {
                         <div>
                           {{ t(o, 'OptionName') }}
+                          @let a = answersOf(r, o);
+                          @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" title="Desktop assessment">DA: {{ a.desktop }}</span> }
+                          @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
                           <ul>
                             @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                           </ul>
@@ -635,6 +638,11 @@
     </div>
   </div>
   <div class="modal-backdrop show"></div>
+}
+
+@if (checkpointEdit(); as e) {
+  <zed-checkpoint-dialog [title]="e.title" [checkpoints]="e.checkpoints" stage="Site" [busy]="busy()" [error]="modalError()"
+    (saved)="saveCheckpoints($event)" (closed)="checkpointEdit.set(null)" />
 }
 
 @if (choice(); as c) {
@@ -782,6 +790,9 @@
                       @for (o of optionsOf(r); track $index) {
                         <div>
                           {{ t(o, 'OptionName') }}
+                          @let a = answersOf(r, o);
+                          @if (a.desktop) { <span class="cp-chip" [attr.data-v]="a.desktop" title="Desktop assessment">DA: {{ a.desktop }}</span> }
+                          @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
                           <ul>
                             @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                           </ul>

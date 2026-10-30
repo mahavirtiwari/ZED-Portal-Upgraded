@@ -367,6 +367,7 @@
                             @for (o of optionsOf(r, d.options); track $index) {
                               <div>
                                 {{ t(o, 'OptionName') }}
+                                @if (answerOf(r, o); as a) { <span class="cp-chip" [attr.data-v]="a">{{ a }}</span> }
                                 <ul>
                                   @for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                                 </ul>
@@ -618,6 +619,7 @@
                             @for (o of optionsOf(r, rd?.options); track $index) {
                               <div>
                                 {{ t(o, 'OptionName') }}
+                                @if (answerOf(r, o); as a) { <span class="cp-chip" [attr.data-v]="a">{{ a }}</span> }
                                 <ul>
                                   @for (so of subOptionsOf(o, rd?.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                                 </ul>
@@ -700,6 +702,11 @@
 <!-- ================================================= pop-ups -->
 @if (data(); as d) {
   <zed-review-remarks [zedId]="d.zedId" [certification]="d.certification" [target]="remarksTarget()" (saved)="reviewed($event)" (closed)="remarksTarget.set(null)" />
+}
+
+@if (checkpointEdit(); as e) {
+  <zed-checkpoint-dialog [title]="e.title" [checkpoints]="e.checkpoints" stage="Desktop" [busy]="busy()" [error]="modalError()"
+    (saved)="saveCheckpoints($event)" (closed)="checkpointEdit.set(null)" />
 }
 
 @if (conformanceEdit(); as e) {

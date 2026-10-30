@@ -4,6 +4,7 @@ import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { Row } from '../../assessment/assessment.api';
 import { withApiBase } from '../../../api-base';
+import type { Checkpoint, CheckpointSaveRequest, CheckpointStage } from '../../assessment/checkpoint-dialog';
 
 export type { Row };
 
@@ -90,6 +91,10 @@ export interface MilestoneDetails {
   /** The unit's ZED certification location (ZedSaLatitude, ZedSaLongitude). */
   zedLocation: Row | null;
   permissions: MilestonePermissions;
+  /** The checkpoints of the plan rows with the baseline and review answers (migration 0039). */
+  checkpoints?: Checkpoint[];
+  /** The answer the user gives in this milestone (Baseline, Review1, Review2), or null. */
+  checkpointStage?: Extract<CheckpointStage, 'Baseline' | 'Review1' | 'Review2'> | null;
 }
 
 export const MILESTONE_LEVELS = ['Silver', 'Gold'] as const;
@@ -110,6 +115,11 @@ export class MilestonesApi {
 
   details(zedId: string, level: string): Observable<MilestoneDetails> {
     return this.http.get<MilestoneDetails>(this.base(zedId, level));
+  }
+
+  /** Yes / Partial / No for each checkpoint of a requirement (baseline: its No / Partial actions join the action plan). */
+  checkpoints(zedId: string, level: string, id: unknown, body: CheckpointSaveRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, level)}/requirements/${Number(id)}/checkpoints`, body);
   }
 
   updateRequirement(zedId: string, level: string, id: unknown, field: string, value: string): Observable<MessageResponse> {

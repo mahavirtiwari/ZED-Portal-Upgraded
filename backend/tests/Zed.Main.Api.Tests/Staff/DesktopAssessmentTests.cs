@@ -211,6 +211,65 @@ public sealed class DesktopAssessmentTests : IDisposable
         Assert.Equal("Policy missing", FakeSql.Arg(call.Args, "AssessorRemark"));
     }
 
+    /// <summary>Requirement 11's checkpoints: 1 with a mandatory evidence (uploaded, verified), 2 without evidence.</summary>
+    private void Checkpoints()
+    {
+        _host.Sql.Queries[CheckpointAnswers.CheckpointSql("dbo")] = args => FakeSql.Arg(args, "ZedId") == Zed
+            ? [new { RequirementRowId = 11L, Id = 501L, OptionCode = "1", OptionName = "Has a quality policy", ActionsNeeded = "Write the policy\nDisplay it", DaAnswer = (string?)null },
+               new { RequirementRowId = 11L, Id = 502L, OptionCode = "2", OptionName = "Staff know it", ActionsNeeded = "Train the staff", DaAnswer = "Partial" }]
+            : [];
+        _host.Sql.Queries[CheckpointAnswers.EvidenceSql("dbo")] = _ =>
+            [new { RequirementRowId = 11L, Id = 31L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = true, IsVerified = "Yes" }];
+    }
+
+    [Fact]
+    public async Task The_page_gets_the_checkpoints_with_their_evidence_and_actions()
+    {
+        Checkpoints();
+        var json = await (await As("ASSESSOR1")).GetFromJsonAsync<JsonElement>(Base);
+        var list = json.GetProperty("checkpoints");
+        Assert.Equal(2, list.GetArrayLength());
+        Assert.Equal(11, list[0].GetProperty("requirementId").GetInt64());
+        Assert.Equal(["Write the policy", "Display it"], list[0].GetProperty("actions").EnumerateArray().Select(a => a.GetString()));
+        Assert.True(list[0].GetProperty("evidences")[0].GetProperty("mandatory").GetBoolean());
+        Assert.Equal("Partial", list[1].GetProperty("desktop").GetProperty("value").GetString());
+        Assert.Equal(JsonValueKind.Null, list[0].GetProperty("desktop").ValueKind);
+    }
+
+    [Fact]
+    public async Task Assessor_answers_the_checkpoints_and_the_conformance_follows()
+    {
+        Checkpoints();
+        var client = await As("ASSESSOR1");
+        var missing = await client.PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = new[] { new { id = 501, answer = "Yes" } } });
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+        Assert.Contains("Checkpoint 2", await missing.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT");
+
+        var r = await client.PostAsJsonAsync(Base + "/requirements/11/checkpoints", new
+        {
+            answers = new object[]
+            {
+                new { id = 501, answer = "Yes" },
+                new { id = 502, answer = "Partial", actions = new[] { "Train the staff" } },
+            },
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var updates = _host.Sql.Calls.Where(c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Desktop)).ToList();
+        Assert.Equal(["501:Yes", "502:Partial"], updates.Select(u => FakeSql.Arg(u.Args, "Id") + ":" + FakeSql.Arg(u.Args, "Answer")));
+        Assert.Equal("Train the staff", FakeSql.Arg(updates[1].Args, "Actions"));
+        Assert.Equal("ASSESSOR1", FakeSql.Arg(updates[1].Args, "AnsweredBy"));
+        var call = DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT").Single();
+        Assert.Equal(("11", "No", "2. Partial: Train the staff."),
+            (FakeSql.Arg(call.Args, "Id"), FakeSql.Arg(call.Args, "Conformance"), FakeSql.Arg(call.Args, "AssessorRemark")));
+
+        // Another assessor's record, and a requirement of another unit, are refused.
+        Assert.Equal(HttpStatusCode.NotFound, (await (await As("ASSESSOR2")).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync(Base + "/requirements/99/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await (await As("AGENCY1")).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        Assert.Single(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT"));
+    }
+
     [Theory]
     [InlineData(5, 0, 0)]  // submitted to the agency
     [InlineData(4, 1, 1)]  // NC 1 raised, not yet answered by the MSME

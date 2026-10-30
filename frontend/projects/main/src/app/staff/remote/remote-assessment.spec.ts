@@ -166,6 +166,32 @@ describe('RemoteAssessmentPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
   });
 
+  it('answers the checkpoints of a requirement that has them, beside the desktop answers', async () => {
+    const checkpoint = {
+      id: 701, requirementId: 51, optionCode: '1', text: 'Policy on display', actions: ['Display the policy'], evidences: [],
+      desktop: { value: 'Yes' as const, actions: [], remarks: null }, site: null, baseline: null, review1: null, review2: null,
+    };
+    await create({ ...details(), checkpoints: [checkpoint] });
+    await openTab('Parameters');
+    expect(el.querySelector('.cp-chip')!.textContent!.trim()).toBe('DA: Yes');
+    (el.querySelector('.validate-requirement') as HTMLButtonElement).click();
+    await settle(fixture);
+    expect(el.querySelector('#choiceRemarks')).toBeNull();
+    expect(el.querySelector('zed-checkpoint-dialog')!.textContent).toContain('Site assessment');
+    el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[value=Partial]')!.click();
+    await settle(fixture);
+    el.querySelector<HTMLInputElement>('section[data-checkpoint="1"] input[type=checkbox]')!.click();
+    await settle(fixture);
+    el.querySelector<HTMLInputElement>('zed-checkpoint-dialog input[value=SUBMIT]')!.click();
+    await settle(fixture);
+    const req = http.expectOne(BASE + '/requirements/51/checkpoints');
+    expect(req.request.body).toEqual({ answers: [{ id: 701, answer: 'Partial', actions: ['Display the policy'], remarks: null }], remarks: null });
+    req.flush({ message: 'Data Updated' });
+    await reload({ ...details(), checkpoints: [{ ...checkpoint, site: { value: 'Partial', actions: ['Display the policy'], remarks: null } }] });
+    expect(el.querySelector('zed-checkpoint-dialog')).toBeNull();
+    expect(Array.from(el.querySelectorAll('.cp-chip')).map((c) => c.textContent!.trim())).toEqual(['DA: Yes', 'SA: Partial']);
+  });
+
   it('asks for the MSME video before capturing and saves a captured frame', async () => {
     await create(details());
     await openTab('Site Tour');

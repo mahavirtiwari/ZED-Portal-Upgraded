@@ -147,6 +147,9 @@ public sealed class RemoteAssessmentController(
 
         /// <summary>Surveillance only: recording links of the closing meeting (http/https only).</summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public IReadOnlyList<RecordingLink>? RecordingLinks { get; init; }
+
+        /// <summary>The checkpoints of the requirements, by MsmeRequirements.Id, with the desktop and site answers (migration 0039).</summary>
+        public IReadOnlyList<CheckpointAnswers.Checkpoint> Checkpoints { get; init; } = [];
     }
 
     // ======================================================================== read
@@ -206,6 +209,7 @@ public sealed class RemoteAssessmentController(
             return d;
         }).ToList();
 
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, null, "dbo", log, ct);
         Meeting? MeetingOf(int meetingSet, int participantSet, int photoSet) =>
             sa[meetingSet].FirstOrDefault() is { } m && long.TryParse(m.Text("Id"), out var id)
                 ? new Meeting(id, NullIfEmpty(m.Text("Comments")), Pick(sa[participantSet], ["Name", "Designation"]), Photos(sa[photoSet]))
@@ -238,6 +242,7 @@ public sealed class RemoteAssessmentController(
                 ? sa[15].Select(r => (Id: long.TryParse(r.Text("Id"), out var rid) ? rid : 0, Url: Staff.SiteAssessment.AssessmentInputs.WebLink(r.Text("RecordingLink"), 5000)))
                     .Where(r => r.Url is not null).Select(r => new RecordingLink(r.Id, r.Url!)).ToList()
                 : null,
+            Checkpoints = checkpoints,
         };
     }
 
@@ -355,6 +360,30 @@ public sealed class RemoteAssessmentController(
         {
             Id = id.ToString(CultureInfo.InvariantCulture), ZedId = zedId, Conformance = conformance, CertificationType = level, AssessorRemark = remarks,
         }, ct);
+        return new MessageResponse("Data Updated");
+    }
+
+    /// <summary>
+    /// Yes / Partial / No for each checkpoint of a requirement (migration 0039); the site conformance follows (Yes only when
+    /// every checkpoint is Yes) through the same procedure as <see cref="Conformance"/>.
+    /// </summary>
+    [HttpPost("requirements/{id:long}/checkpoints")]
+    public async Task<ActionResult<MessageResponse>> Checkpoints(string zedId, string certification, long id, CheckpointAnswers.SaveRequest req, CancellationToken ct)
+    {
+        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        if (error is not null) return error;
+        if (await AssessmentRecords.ItemAsync(db, AssessmentRecords.RequirementSql, id, zedId, level!, ct) is null) return NotFound();
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct);
+        var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, CheckpointAnswers.Stage.Site);
+        if (decision is null) return this.Problem400(problem!);
+
+        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Site, decision, UserId, ct);
+        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT", new
+        {
+            Id = id.ToString(CultureInfo.InvariantCulture), ZedId = zedId, decision.Conformance, CertificationType = level, AssessorRemark = decision.Remarks,
+        }, ct);
+        log.LogInformation("Site assessor {UserId} answered the checkpoints of requirement {Id} of {ZedId} {Level}: {Conformance}",
+            UserId, id, zedId, level, decision.Conformance);
         return new MessageResponse("Data Updated");
     }
 

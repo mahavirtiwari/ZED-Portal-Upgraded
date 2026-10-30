@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Zed.Portal.Features.Remote;
+using Zed.Portal.Features.Staff.Assessment;
 
 namespace Zed.Main.Api.Tests.Staff;
 
@@ -323,6 +324,25 @@ public sealed class RemoteAssessmentTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
         Assert.False((await lead.GetFromJsonAsync<JsonElement>(Base)).GetProperty("permissions").GetProperty("videoConfigured").GetBoolean());
+    }
+
+    [Fact]
+    public async Task The_lead_assessor_answers_the_checkpoints_and_the_site_conformance_follows()
+    {
+        _host.Sql.Queries[CheckpointAnswers.CheckpointSql("dbo")] = args => FakeSql.Arg(args, "ZedId") == Zed
+            ? [new { RequirementRowId = 51L, Id = 701L, OptionCode = "1", OptionName = "Policy on display", ActionsNeeded = "Display the policy", DaAnswer = "Yes" }]
+            : [];
+        var lead = await As("ASSESSOR1");
+        var page = await lead.GetFromJsonAsync<JsonElement>(Base);
+        Assert.Equal("Yes", page.GetProperty("checkpoints")[0].GetProperty("desktop").GetProperty("value").GetString());
+
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Base + "/requirements/52/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        var r = await lead.PostAsJsonAsync(Base + "/requirements/51/checkpoints",
+            new { answers = new[] { new { id = 701, answer = "Partial", actions = new[] { "Display the policy" } } } });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("Partial", FakeSql.Arg(Call(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Site)).Args, "Answer"));
+        var args = Call("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT").Args;
+        Assert.Equal(("51", "No", "1. Partial: Display the policy."), (FakeSql.Arg(args, "Id"), FakeSql.Arg(args, "Conformance"), FakeSql.Arg(args, "AssessorRemark")));
     }
 
     [Fact]

@@ -134,7 +134,11 @@ public sealed class DesktopAssessmentController(
         IReadOnlyList<NcRound> NcRounds,
         Permissions Permissions,
         [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-        SurveillanceDetails? Surveillance = null);
+        SurveillanceDetails? Surveillance = null)
+    {
+        /// <summary>The checkpoints of every requirement row (initial and NC rounds), by MsmeRequirements.Id (migration 0039).</summary>
+        public IReadOnlyList<CheckpointAnswers.Checkpoint> Checkpoints { get; init; } = [];
+    }
 
     // ======================================================================== read
 
@@ -184,6 +188,7 @@ public sealed class DesktopAssessmentController(
             IsRole(UserRole.MasterAdmin) && !bronze && status is 5 or 6 or 8,
             Monitoring.ReviewRules.For(user, record, Monitoring.ReviewStage.Desktop));
 
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct);
         return new DaDetailsResponse(
             zedId, level, user.RoleName, msme,
             Products(da[1], zedId, level, moved, system),
@@ -203,7 +208,8 @@ public sealed class DesktopAssessmentController(
                     da[esg - 1].FirstOrDefault() is { } z ? Pick(z, ZedLocationFields) : null,
                     da[esg + 1].FirstOrDefault() is { } fs ? Pick(fs, FinancialSupportFields) : null,
                     da[esg + 2].FirstOrDefault() is { } aq ? Pick(aq, AdditionalSupportFields) : null)
-                : null);
+                : null)
+        { Checkpoints = checkpoints };
     }
 
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
@@ -280,6 +286,30 @@ public sealed class DesktopAssessmentController(
         // the certification status, which the old action never did.
         await db.ExecuteProcAsync("SP_ASSESSMENT_DA_UPDATE_REQUIREMENT",
             new { Id = id.ToString(CultureInfo.InvariantCulture), Conformance = conformance, AssessorRemark = remarks }, ct);
+        return new MessageResponse("Data Updated");
+    }
+
+    /// <summary>
+    /// Yes / Partial / No for each checkpoint of a requirement (migration 0039); the requirement's conformance follows (Yes only
+    /// when every checkpoint is Yes) through the same procedure as <see cref="Conformance"/>.
+    /// </summary>
+    [HttpPost("requirements/{id:long}/checkpoints")]
+    [StaffRoles(UserRole.DesktopAssessor)]
+    [SubRole(SubRoles.DesktopVerification)]
+    public async Task<ActionResult<MessageResponse>> Checkpoints(string zedId, string certification, long id, CheckpointAnswers.SaveRequest req, CancellationToken ct)
+    {
+        var (level, record, error) = await ForAssessor(zedId, certification, ct);
+        if (error is not null) return error;
+        if (!await InCurrentRound(AssessmentRecords.RequirementSql, id, zedId, level!, record!, ct)) return NotFound();
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct);
+        var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, CheckpointAnswers.Stage.Desktop);
+        if (decision is null) return this.Problem400(problem!);
+
+        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Desktop, decision, UserId, ct);
+        await db.ExecuteProcAsync("SP_ASSESSMENT_DA_UPDATE_REQUIREMENT",
+            new { Id = id.ToString(CultureInfo.InvariantCulture), decision.Conformance, AssessorRemark = decision.Remarks }, ct);
+        log.LogInformation("Desktop assessor {UserId} answered the checkpoints of requirement {Id} of {ZedId} {Level}: {Conformance}",
+            UserId, id, zedId, level, decision.Conformance);
         return new MessageResponse("Data Updated");
     }
 

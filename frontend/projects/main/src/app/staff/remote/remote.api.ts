@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { withApiBase } from '../../api-base';
+import type { Checkpoint, CheckpointSaveRequest } from '../assessment/checkpoint-dialog';
 
 export type Row = Record<string, unknown>;
 
@@ -53,6 +54,8 @@ export interface RemoteDetails {
   meetingLink?: string | null;
   /** Surveillance only: recording links of the closing meeting (at most 6). */
   recordingLinks?: { id: number; url: string }[];
+  /** The checkpoints of the requirements with the desktop and site answers (migration 0039). */
+  checkpoints?: Checkpoint[];
 }
 
 /** Surveillance: the old page allowed up to 6 recording links. */
@@ -105,6 +108,11 @@ export class RemoteApi {
 
   conformance(zedId: string, certification: string, id: number, conformance: string, remarks: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/requirements/${id}/conformance`, { conformance, remarks });
+  }
+
+  /** Yes / Partial / No for each checkpoint of a requirement; the site conformance follows. */
+  checkpoints(zedId: string, certification: string, id: number, body: CheckpointSaveRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base(zedId, certification)}/requirements/${id}/checkpoints`, body);
   }
 
   validateProduct(zedId: string, certification: string, id: number, isVerified: string, remarks: string): Observable<MessageResponse> {

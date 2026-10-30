@@ -8,6 +8,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../../content/content-text';
 import { num, text } from '../../assessment/assessment-shared';
 import { isZedId } from '../../assessment/assessment.api';
+import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../../assessment/checkpoint-dialog';
 import { BulletType, MilestoneBullet, MilestoneDetails, MilestoneMeeting, MilestonePhoto, MilestonesApi, Row, milestoneLevel } from './milestones.api';
 
 /** Tabs of the old consultancy SaDetails page. */
@@ -160,10 +161,10 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent],
+  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
-  styles: `
+  styles: [CHECKPOINT_CHIP_STYLES, `
     .milestone-border { border-left: 4px solid #ad1616 !important; padding-left: 8px; margin-bottom: 12px; }
     .details { margin-bottom: 0; }
     .w-40 { width: 40%; }
@@ -215,7 +216,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
     @media (max-width: 640px) {
       .meeting, .info-grid { grid-template-columns: 1fr; }
     }
-  `,
+  `],
 })
 export class MilestoneDetailsPage {
   readonly zedId = input.required<string>();
@@ -237,6 +238,8 @@ export class MilestoneDetailsPage {
   protected readonly tab = signal(1);
   protected readonly preview = signal<string | null>(null);
   protected readonly busy = signal(false);
+  protected readonly checkpointEdit = signal<{ id: unknown; checkpoints: Checkpoint[]; title: string } | null>(null);
+  protected readonly checkpointError = signal('');
   protected readonly editing = signal<Editing | null>(null);
   protected readonly draft = signal('');
   protected readonly dialog = signal<Dialog>(null);
@@ -500,6 +503,44 @@ export class MilestoneDetailsPage {
 
   protected refresh(): void {
     void this.reload();
+  }
+
+  /** The checkpoints of a plan row, when its answer can be given now (milestones 1 to 3, an editable parameter). */
+  protected checkpointsToAnswer(r: Row): Checkpoint[] {
+    const d = this.data();
+    return d?.checkpointStage && r['Editable'] ? checkpointsOf(d.checkpoints, r['Id']) : [];
+  }
+
+  /** A checkpoint's handholding answers: baseline, progress reviews 1 and 2. */
+  protected answersOf(r: Row, o: Row): { label: string; value: CheckpointValue }[] {
+    const c = checkpointsOf(this.data()?.checkpoints, r['Id']).find((x) => x.optionCode === text(o, 'OptionCode').trim());
+    const list: { label: string; value: CheckpointValue | null | undefined }[] =
+      [{ label: 'Baseline', value: c?.baseline?.value }, { label: 'PR 1', value: c?.review1 }, { label: 'PR 2', value: c?.review2 }];
+    return list.filter((x): x is { label: string; value: CheckpointValue } => !!x.value);
+  }
+
+  protected openCheckpoints(s: Row, r: Row): void {
+    this.checkpointError.set('');
+    this.checkpointEdit.set({ id: r['Id'], checkpoints: this.checkpointsToAnswer(r), title: `${text(s, 'SectionCode')}.${text(r, 'RequirementCode')}` });
+  }
+
+  protected async saveCheckpoints(body: CheckpointSaveRequest): Promise<void> {
+    const e = this.checkpointEdit();
+    const d = this.data();
+    if (!e || !d) return;
+    this.busy.set(true);
+    this.checkpointError.set('');
+    try {
+      const res = await firstValueFrom(this.api.checkpoints(d.zedId, d.certification, e.id, body));
+      this.checkpointEdit.set(null);
+      this.notice.set({ ok: true, text: res.message });
+    } catch (err) {
+      this.checkpointError.set(apiErrorMessage(err));
+      return;
+    } finally {
+      this.busy.set(false);
+    }
+    await this.reload();
   }
 
   // ------------------------------------------------------------------ plumbing
