@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
+import { AdminPortal, AdminPortalService } from '../admin-portal';
 import { CodeName, CodeNameKind, MastersApi, SECTOR_ACTIVITIES, SectorActivity } from './masters.api';
 
 const LABELS: Record<CodeNameKind, { title: string; one: string; sub: string }> = {
@@ -21,12 +22,31 @@ const ACTIVITY_NOTES: Record<SectorActivity, string> = {
 /** Which sectors the list shows (the buttons beside the search box). */
 type SectorFilter = 'all' | SectorActivity | 'unset';
 
+/** V4 one Admin: the portals whose sector list the main Admin keeps the same as main's. */
+type OtherPortal = Exclude<AdminPortal, 'main'>;
+const OTHER_PORTALS: readonly { key: OtherPortal; name: string }[] = [
+  { key: 'consultancy', name: 'Consultancy' },
+  { key: 'surveillance', name: 'Surveillance' },
+];
+
+/** A sector on another portal: the same as main's, different (name or type), missing, or not known (portal not reached). */
+type PortalState = 'same' | 'differs' | 'missing' | 'unknown';
+
+interface OtherList {
+  rows: CodeName[] | null;
+  error: string;
+}
+
 /**
  * NIC sectors and categories (Admin). Port of Views/Sector/List.cshtml and Views/Category/List.cshtml
  * (same page; the route's `data.kind` picks the list): add a code and name, rename in a pop-up. Sectors also say whether
  * they are Manufacturing or Services (V4, required). V4 layout: for sectors the counts (all, Manufacturing, Services,
  * type not set) and a filter by type beside the search; the code as a badge; add and edit in pop-ups, the sector type
  * as choice cards; a card per row on phones.
+ * <p>One Admin (V4, main portal): the sector list is kept the same on the three portals. The list says, per sector,
+ * whether the Consultancy and Surveillance portals have it (and with the same name and type); an add or edit here is
+ * saved on them too, through their own APIs; "Make all portals the same" adds or corrects what differs. Nothing is
+ * deleted on another portal; sectors only another portal has are named above the list.</p>
  */
 @Component({
   selector: 'zed-staff-code-names',
@@ -55,6 +75,22 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
+    @if (syncing()) {
+      @for (o of otherPortals; track o.key) {
+        @if (others()[o.key].error; as e) { <div class="alert alert-warning" role="status">{{ o.name }} portal: {{ e }}</div> }
+      }
+      @if (outOfStep() > 0) {
+        <div class="alert alert-info sync-bar" role="status">
+          <span><strong>{{ outOfStep() }}</strong> {{ outOfStep() === 1 ? 'sector is' : 'sectors are' }} missing or different on the other portals.</span>
+          <button type="button" class="btn btn-primary btn-sm" [disabled]="saving()" (click)="syncAll()">MAKE ALL PORTALS THE SAME</button>
+        </div>
+      }
+      @for (o of otherPortals; track o.key) {
+        @if (onlyOn(o.key); as only) {
+          @if (only.length) { <p class="only-on">Only on the {{ o.name }} portal (kept there): {{ only.join(', ') }}</p> }
+        }
+      }
+    }
     @if (success()) {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
@@ -80,6 +116,7 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
               <th class="text-center" style="width: 140px">{{ labels.one }} Code</th>
               <th>{{ labels.one }} Name</th>
               @if (isSectors) { <th style="width: 170px">Sector Type</th> }
+              @if (syncing()) { <th style="width: 210px">Other portals</th> }
               <th class="text-center" style="width: 110px">Actions</th>
             </tr>
           </thead>
@@ -94,6 +131,18 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
                     @else { <span class="activity-badge unset">Not set</span> }
                   </td>
                 }
+                @if (syncing()) {
+                  <td class="portals-cell">
+                    @for (o of otherPortals; track o.key) {
+                      @switch (stateOf(s, o.key)) {
+                        @case ('same') { <span class="pchip ok">{{ o.name }} ✓</span> }
+                        @case ('differs') { <span class="pchip warn" title="Different name or type there">{{ o.name }}: differs</span> }
+                        @case ('missing') { <span class="pchip miss">{{ o.name }}: missing</span> }
+                        @default { <span class="pchip">{{ o.name }}: ?</span> }
+                      }
+                    }
+                  </td>
+                }
                 <td class="actions-cell">
                   <div class="row-actions justify-content-center">
                     <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Edit ' + s.code" (click)="edit(s)">Edit</button>
@@ -101,7 +150,7 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
                 </td>
               </tr>
             } @empty {
-              <tr class="empty-row"><td [attr.colspan]="isSectors ? 4 : 3" style="padding: 0"><div class="no-data">{{ emptyText() }}</div></td></tr>
+              <tr class="empty-row"><td [attr.colspan]="(isSectors ? 4 : 3) + (syncing() ? 1 : 0)" style="padding: 0"><div class="no-data">{{ emptyText() }}</div></td></tr>
             }
           </tbody>
         </table>
@@ -211,6 +260,11 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
     .stat-value { font-size: 24px; font-weight: 700; color: #23474a; line-height: 1.2; }
     .stat-label { font-size: 13px; color: #5f6f70; }
     .stat.stat-warn { background: #fff4d6; border-color: #f3e1a6; }
+    .sync-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .only-on { font-size: 13px; color: #5f6f70; margin: -4px 0 12px; }
+    .portals-cell { white-space: normal; }
+    .pchip { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 8px; margin: 2px 4px 2px 0; background: #f2f4f4; color: #5f6f70; }
+    .pchip.ok { background: #e6f6ec; color: #1e7a3c; } .pchip.warn { background: #fff4d6; color: #8a6100; } .pchip.miss { background: #fdeef0; color: #a8303a; }
     .stat.stat-warn .stat-value, .stat.stat-warn .stat-label { color: #8a6100; }
 
     .list-card { padding: 16px; }
@@ -262,6 +316,7 @@ type SectorFilter = 'all' | SectorActivity | 'unset';
 })
 export class CodeNamesPage {
   private readonly api = inject(MastersApi);
+  private readonly portals = inject(AdminPortalService);
 
   protected readonly kind: CodeNameKind = inject(ActivatedRoute).snapshot.data['kind'] === 'categories' ? 'categories' : 'sectors';
   protected readonly labels = LABELS[this.kind];
@@ -299,6 +354,14 @@ export class CodeNamesPage {
   protected name = '';
   protected activity: SectorActivity | null = null;
 
+  /** One Admin: the sectors are kept the same on the other portals (main portal's sectors page only). */
+  protected readonly syncing = signal(this.isSectors && this.portals.enabled);
+  protected readonly otherPortals = OTHER_PORTALS;
+  protected readonly others = signal<Record<OtherPortal, OtherList>>({ consultancy: { rows: null, error: '' }, surveillance: { rows: null, error: '' } });
+  /** Main's sectors that some other portal lacks or has differently. */
+  protected readonly outOfStep = computed(() =>
+    this.rows().filter((r) => OTHER_PORTALS.some((o) => ['differs', 'missing'].includes(this.stateOf(r, o.key)))).length);
+
   constructor() {
     void this.load(true);
   }
@@ -322,12 +385,95 @@ export class CodeNamesPage {
 
   /** <paramref name="fresh"/>: page 1; otherwise (after a save) the same page. */
   protected async load(fresh = false): Promise<void> {
+    const others = this.loadOthers();
     try {
       this.rows.set(await firstValueFrom(this.api.list(this.kind)));
       if (fresh) this.pager.set(this.filtered());
       else this.pager.refresh(this.filtered());
     } catch (err) {
       this.error.set(apiErrorMessage(err));
+    }
+    await others;
+  }
+
+  /** The other portals' sector lists (a portal that cannot be reached is named, the rest still works). */
+  private async loadOthers(): Promise<void> {
+    if (!this.syncing()) return;
+    const loaded = await Promise.all(OTHER_PORTALS.map(async (o): Promise<[OtherPortal, OtherList]> => {
+      try {
+        return [o.key, { rows: await firstValueFrom(this.api.list('sectors', o.key)), error: '' }];
+      } catch (err) {
+        return [o.key, { rows: null, error: apiErrorMessage(err) }];
+      }
+    }));
+    this.others.set(Object.fromEntries(loaded) as Record<OtherPortal, OtherList>);
+  }
+
+  private find(portal: OtherPortal, code: string): CodeName | undefined {
+    return this.others()[portal].rows?.find((r) => r.code.trim().toLowerCase() === code.trim().toLowerCase());
+  }
+
+  protected stateOf(row: CodeName, portal: OtherPortal): PortalState {
+    if (!this.others()[portal].rows) return 'unknown';
+    const there = this.find(portal, row.code);
+    if (!there) return 'missing';
+    return there.name.trim() === row.name.trim() && (there.activity ?? null) === (row.activity ?? null) ? 'same' : 'differs';
+  }
+
+  /** Codes another portal has that main does not. */
+  protected onlyOn(portal: OtherPortal): string[] {
+    const mine = new Set(this.rows().map((r) => r.code.trim().toLowerCase()));
+    return (this.others()[portal].rows ?? []).filter((r) => !mine.has(r.code.trim().toLowerCase())).map((r) => r.code.trim());
+  }
+
+  /** Saves main's sector on the other portals that lack it or differ; returns what failed ("Consultancy: ..."). */
+  private async pushToOthers(code: string, name: string, activity: SectorActivity | null): Promise<string[]> {
+    if (!this.syncing() || !activity) return [];
+    const failed: string[] = [];
+    for (const o of OTHER_PORTALS) {
+      if (!this.others()[o.key].rows) {
+        failed.push(`${o.name}: not reached`);
+        continue;
+      }
+      const there = this.find(o.key, code);
+      if (there && there.name.trim() === name && there.activity === activity) continue;
+      try {
+        await firstValueFrom(there ? this.api.rename('sectors', there.id, name, activity, o.key) : this.api.add('sectors', code, name, activity, o.key));
+      } catch (err) {
+        failed.push(`${o.name}: ${apiErrorMessage(err)}`);
+      }
+    }
+    return failed;
+  }
+
+  private withOthers(message: string, failed: string[]): string {
+    if (!this.syncing()) return message;
+    return failed.length ? `${message} Not saved on every portal: ${failed.join('; ')}` : `${message} Saved on all three portals.`;
+  }
+
+  /** Adds or corrects, on the other portals, every sector of main's list that is missing or different there. */
+  protected async syncAll(): Promise<void> {
+    this.error.set('');
+    this.success.set('');
+    this.saving.set(true);
+    const failed: string[] = [];
+    let done = 0;
+    try {
+      for (const row of this.rows()) {
+        if (!OTHER_PORTALS.some((o) => ['differs', 'missing'].includes(this.stateOf(row, o.key)))) continue;
+        if (!row.activity) {
+          failed.push(`${row.code}: set its type here first`);
+          continue;
+        }
+        const f = await this.pushToOthers(row.code, row.name.trim(), row.activity);
+        if (f.length) failed.push(...f.map((x) => `${row.code} ${x}`));
+        else done++;
+      }
+      await this.loadOthers();
+      if (failed.length) this.error.set(`${done} sector(s) made the same; not done: ${failed.join('; ')}`);
+      else this.success.set(`${done} sector(s) made the same on all three portals.`);
+    } finally {
+      this.saving.set(false);
     }
   }
 
@@ -350,7 +496,8 @@ export class CodeNamesPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.add(this.kind, this.code.trim(), this.name.trim(), this.activity))).message);
+      const message = (await firstValueFrom(this.api.add(this.kind, this.code.trim(), this.name.trim(), this.activity))).message;
+      this.success.set(this.withOthers(message, await this.pushToOthers(this.code.trim(), this.name.trim(), this.activity)));
       this.code = this.name = '';
       this.activity = null;
       this.submitted.set(false);
@@ -382,7 +529,8 @@ export class CodeNamesPage {
     }
     this.saving.set(true);
     try {
-      this.success.set((await firstValueFrom(this.api.rename(this.kind, e.id, e.name.trim(), e.activity))).message);
+      const message = (await firstValueFrom(this.api.rename(this.kind, e.id, e.name.trim(), e.activity))).message;
+      this.success.set(this.withOthers(message, await this.pushToOthers(e.code, e.name.trim(), e.activity ?? null)));
       this.editing.set(null);
       await this.load();
     } catch (err) {

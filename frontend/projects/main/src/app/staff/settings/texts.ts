@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
+import { PortalSwitchComponent } from '../admin-portal';
 import { fillSampleFields, insertAtCursor, portalBaseUrl } from './email-templates';
 
 export interface TextItem {
@@ -46,7 +47,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
  */
 @Component({
   selector: 'zed-staff-texts',
-  imports: [DatePipe, FormsModule, PagerComponent],
+  imports: [DatePipe, FormsModule, PagerComponent, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -54,6 +55,8 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
         <p class="page-sub">Disclaimers, instructions, undertakings and pledges of the website and the apps. A change shows within a few minutes.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the texts of the portal chosen here (each portal keeps its own). -->
+    <zed-portal-switch (changed)="reload()" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -419,6 +422,14 @@ export class TextsPage {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected reload(): void {
+    this.editing.set(null);
+    this.error.set('');
+    this.success.set('');
+    this.items.set([]);
+    void this.load();
   }
 
   private async load(): Promise<void> {

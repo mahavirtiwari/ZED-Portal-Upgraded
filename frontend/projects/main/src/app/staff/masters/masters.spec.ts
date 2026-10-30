@@ -4,6 +4,7 @@ import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, ParamMap, convertToParamMap, provideRouter } from '@angular/router';
 import { of } from 'rxjs';
+import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 import { CodeNamesPage } from './code-names';
 import { DocumentsAdminPage } from './documents';
 import { PageSettingsPage } from './page-settings';
@@ -27,10 +28,10 @@ function withStreams(route: object): object {
   return { ...route, paramMap: of(snap.paramMap ?? convertToParamMap({})), queryParamMap: of(snap.queryParamMap ?? convertToParamMap({})) };
 }
 
-async function setup<T>(component: Type<T>, route: object = { snapshot: { data: {}, paramMap: convertToParamMap({}) } }) {
+async function setup<T>(component: Type<T>, route: object = { snapshot: { data: {}, paramMap: convertToParamMap({}) } }, extra: unknown[] = []) {
   await TestBed.configureTestingModule({
     imports: [component],
-    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: ActivatedRoute, useValue: withStreams(route) }],
+    providers: [provideHttpClient(), provideHttpClientTesting(), provideRouter([]), { provide: ActivatedRoute, useValue: withStreams(route) }, ...(extra as [])],
   }).compileComponents();
   const fixture = TestBed.createComponent(component);
   const http = TestBed.inject(HttpTestingController);
@@ -371,8 +372,11 @@ const radio = (el: HTMLElement, name: string, label: string) =>
   [...el.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)].find((i) => i.closest('label')!.querySelector('strong')!.textContent!.trim() === label)!;
 
 describe('CodeNamesPage (sectors)', () => {
+  /** These tests are about main's own list: the other portals' lists are off (they have their own test below). */
+  const mainOnly = [{ provide: AdminPortalService, useValue: { enabled: false } }];
+
   it('requires Manufacturing or Services and saves it with the sector', async () => {
-    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } }, mainOnly);
     http.expectOne('/api/staff/masters/sectors').flush([
       { id: 1, code: '10', name: 'Manufacture of food products', activity: 'Manufacturing' },
       { id: 2, code: '62', name: 'Computer programming', activity: null },
@@ -423,7 +427,7 @@ describe('CodeNamesPage (sectors)', () => {
   });
 
   it('counts the sectors by type and filters by type', async () => {
-    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } }, mainOnly);
     http.expectOne('/api/staff/masters/sectors').flush([
       { id: 1, code: '10', name: 'Manufacture of food products', activity: 'Manufacturing' },
       { id: 2, code: '13', name: 'Manufacture of textiles', activity: 'Manufacturing' },
@@ -454,6 +458,46 @@ describe('CodeNamesPage (sectors)', () => {
     seg('All').click();
     await settle(fixture);
     expect(codes()).toEqual(['10']);
+    http.verify();
+  });
+
+  it('keeps the sectors the same on the consultancy and surveillance portals', async () => {
+    const { fixture, http, el } = await setup(CodeNamesPage, { snapshot: { data: { kind: 'sectors' } } });
+    const on = (portal: string | null) => (r: { url: string; method: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) =>
+      r.method === 'GET' && r.url === '/api/staff/masters/sectors' && r.context.get(ADMIN_PORTAL) === portal;
+    const main = [
+      { id: 1, code: '10', name: 'Food products', activity: 'Manufacturing' },
+      { id: 3, code: '62', name: 'Computer programming', activity: 'Services' },
+    ];
+    http.expectOne(on(null)).flush(main);
+    http.expectOne(on('consultancy')).flush([{ id: 7, code: '10', name: 'Food', activity: 'Manufacturing' }, { id: 8, code: '99', name: 'Old', activity: 'Services' }]);
+    http.expectOne(on('surveillance')).flush({ title: 'Not reachable.' }, { status: 502, statusText: 'Bad Gateway' });
+    await settle(fixture);
+    const chips = (row: number) => [...el.querySelectorAll(`tbody tr:nth-child(${row}) .pchip`)].map((c) => c.textContent!.trim());
+    expect(chips(1)).toEqual(['Consultancy: differs', 'Surveillance: ?']);
+    expect(chips(2)).toEqual(['Consultancy: missing', 'Surveillance: ?']);
+    expect(el.querySelector('.alert-warning')!.textContent).toContain('Surveillance portal: Not reachable.');
+    expect(el.querySelector('.only-on')!.textContent).toContain('Only on the Consultancy portal (kept there): 99');
+    expect(el.querySelector('.sync-bar')!.textContent).toContain('2 sectors are missing or different');
+
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('MAKE ALL PORTALS THE SAME')) as HTMLButtonElement).click();
+    await settle(fixture);
+    const rename = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/masters/sectors/7');
+    expect(rename.request.context.get(ADMIN_PORTAL)).toBe('consultancy');
+    expect(rename.request.body).toEqual({ name: 'Food products', activity: 'Manufacturing' });
+    rename.flush({ message: 'ok' });
+    await settle(fixture);
+    const add = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/sectors');
+    expect(add.request.context.get(ADMIN_PORTAL)).toBe('consultancy');
+    expect(add.request.body).toEqual({ code: '62', name: 'Computer programming', activity: 'Services' });
+    add.flush({ message: 'ok' });
+    await settle(fixture);
+    http.expectOne(on('consultancy')).flush([...main.map((m) => ({ ...m, id: m.id + 10 })), { id: 8, code: '99', name: 'Old', activity: 'Services' }]);
+    http.expectOne(on('surveillance')).flush({ title: 'Not reachable.' }, { status: 502, statusText: 'Bad Gateway' });
+    await settle(fixture);
+    // Surveillance was not reached: said, not hidden.
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Surveillance: not reached');
+    expect(chips(1)).toEqual(['Consultancy ✓', 'Surveillance: ?']);
     http.verify();
   });
 });

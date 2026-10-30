@@ -1,7 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { ADMIN_PORTAL, AdminPortal } from '../admin-portal';
 
 export interface CodeName {
   id: number;
@@ -102,23 +103,30 @@ export interface Parameter {
   nicSectors?: string[] | null;
 }
 
+/** The request context that sends a call to the given portal's API (none: the switch decides). */
+function on(portal?: AdminPortal): HttpContext {
+  const context = new HttpContext();
+  return portal ? context.set(ADMIN_PORTAL, portal) : context;
+}
+
 /** Client for api/staff/masters (Zed.Main.Api StaffMastersController / StaffDocumentsController). Admin only. */
 @Injectable({ providedIn: 'root' })
 export class MastersApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/staff/masters';
 
-  list(kind: CodeNameKind): Observable<CodeName[]> {
-    return this.http.get<CodeName[]>(`${this.base}/${kind}`);
+  /** <paramref name="portal"/>: the main Admin reading or changing another portal's list (V4 one Admin). */
+  list(kind: CodeNameKind, portal?: AdminPortal): Observable<CodeName[]> {
+    return this.http.get<CodeName[]>(`${this.base}/${kind}`, { context: on(portal) });
   }
 
   /** activity: sectors only (Manufacturing or Services). */
-  add(kind: CodeNameKind, code: string, name: string, activity?: SectorActivity | null): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/${kind}`, kind === 'sectors' ? { code, name, activity } : { code, name });
+  add(kind: CodeNameKind, code: string, name: string, activity?: SectorActivity | null, portal?: AdminPortal): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}`, kind === 'sectors' ? { code, name, activity } : { code, name }, { context: on(portal) });
   }
 
-  rename(kind: CodeNameKind, id: number, name: string, activity?: SectorActivity | null): Observable<MessageResponse> {
-    return this.http.put<MessageResponse>(`${this.base}/${kind}/${id}`, kind === 'sectors' ? { name, activity } : { name });
+  rename(kind: CodeNameKind, id: number, name: string, activity?: SectorActivity | null, portal?: AdminPortal): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`${this.base}/${kind}/${id}`, kind === 'sectors' ? { name, activity } : { name }, { context: on(portal) });
   }
 
   technologies(): Observable<Technology[]> {

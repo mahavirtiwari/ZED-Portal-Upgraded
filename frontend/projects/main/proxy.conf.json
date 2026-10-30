@@ -1,1 +1,1 @@
-{ "/api": { "target": "http://localhost:5101", "secure": false } }
+{"/api": {"target": "http://localhost:5101", "secure": false}, "/Consultancy/api": {"target": "http://localhost:5102", "secure": false, "pathRewrite": {"^/Consultancy": ""}}, "/surveillance/api": {"target": "http://localhost:5103", "secure": false, "pathRewrite": {"^/surveillance": ""}}}
