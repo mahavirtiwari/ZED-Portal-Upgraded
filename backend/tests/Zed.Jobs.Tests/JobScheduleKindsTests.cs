@@ -296,6 +296,26 @@ public sealed class ProcedureChecksTests
         Assert.Equal(1, await checker.ReportAsync([Apply()], output, CancellationToken.None));
         Assert.Contains("1 enabled job(s) have problems", output.ToString());
     }
+
+    [Fact]
+    public async Task A_legacy_surveillance_job_is_refused_while_the_v4_schedule_runs()
+    {
+        var (checker, _) = Checker();
+        var legacy = new JobDefinition
+        {
+            Name = "AutoSuspendingSilverGold", Database = "Main", DailyAt = ["01:30"], Enabled = true,
+            Steps = [new JobStep { Procedure = "SP_JOB_X" }, new JobStep { Procedure = "SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION" }],
+        };
+        var v4 = new JobDefinition { Name = "Level surveillance schedule", Procedure = JobSchedule.LevelSchedule, DailyAt = ["01:45"], Enabled = false };
+        Assert.Null(JobSchedule.Conflict(legacy, [legacy, v4]));
+
+        v4.Enabled = true;
+        Assert.Contains("never run both", JobSchedule.Conflict(legacy, [legacy, v4]));
+        Assert.Null(JobSchedule.Conflict(v4, [legacy, v4]));
+        var output = new StringWriter();
+        Assert.Equal(1, await checker.ReportAsync([legacy, v4], output, CancellationToken.None));
+        Assert.Contains("replaced by 'Level surveillance schedule'", output.ToString());
+    }
 }
 
 /// <summary>Runs tools/jobs/Convert-AgentJobs.ps1 on its sample export and checks the result binds and validates.</summary>

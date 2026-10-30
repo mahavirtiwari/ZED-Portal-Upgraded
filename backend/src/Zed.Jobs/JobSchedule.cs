@@ -15,6 +15,32 @@ public static partial class JobSchedule
             s.Parameters, s.ContinueOnFailure, s.RetryAttempts, s.RetryIntervalMinutes)).ToList()
         : [new JobCall(job.Database, job.Procedure, job.Parameters, false, job.RetryAttempts, job.RetryIntervalMinutes)];
 
+    /// <summary>The V4 surveillance schedule (migrations 0032, 0037), which runs Bronze / Silver / Gold too.</summary>
+    public const string LevelSchedule = "SP_V4_LEVEL_SURVEILLANCE_SCHEDULE";
+
+    /// <summary>The legacy Bronze / Silver / Gold surveillance steps that <see cref="LevelSchedule"/> replaced (the Agent jobs
+    /// Bronze_Surveillance_Job, Silver_Gold_Surveillance_Data_job, Silver_Gold_Second_Surveillance_Data_job, AutoSuspendingSilverGold).</summary>
+    public static readonly IReadOnlySet<string> ReplacedByLevelSchedule = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "SP_JOB_FOR_INSERT_BRONZE_SURVEILLANCE_DATA", "SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL",
+        "SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL_REM1", "SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL_REM2",
+        "SP_JOB_FOR_INSERT_SURVEILLANCE_DATA", "SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL",
+        "SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM1", "SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL_REM2",
+        "SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL", "SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL_REM1",
+        "SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL_REM2", "SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION",
+        "SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW",
+    };
+
+    /// <summary>Why an enabled job must not run beside the other enabled jobs, or null: a legacy surveillance job while the
+    /// V4 schedule that replaced it is enabled (both would mail, suspend and withdraw the same units).</summary>
+    public static string? Conflict(JobDefinition job, IEnumerable<JobDefinition> all)
+    {
+        if (!job.Enabled || !Calls(job).Any(c => ReplacedByLevelSchedule.Contains(c.Procedure ?? ""))) return null;
+        var v4 = all.FirstOrDefault(j => j.Enabled && Calls(j).Any(c => string.Equals(c.Procedure, LevelSchedule, StringComparison.OrdinalIgnoreCase)));
+        return v4 is null ? null
+            : $"It is replaced by '{v4.Name}' ({LevelSchedule}, migration 0037), which is enabled: never run both. Disable this entry.";
+    }
+
     /// <summary>Configuration errors, empty when the job can run.</summary>
     public static IEnumerable<string> Validate(JobDefinition job)
     {

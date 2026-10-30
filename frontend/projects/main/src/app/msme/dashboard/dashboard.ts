@@ -31,7 +31,7 @@ interface PublicLevel {
   assessmentMode: 'Desktop' | 'Site';
   validityMonths: number;
   fee: number | null;
-  /** When surveillance falls due (first only for Bronze / Silver / Gold); null without surveillance. */
+  /** When surveillance falls due; null without surveillance. */
   surveillance?: { firstDueMonths: number; count: number | null; intervalMonths: number | null } | null;
 }
 type InfoTopic = Level | 'My' | 'MyIncentives';

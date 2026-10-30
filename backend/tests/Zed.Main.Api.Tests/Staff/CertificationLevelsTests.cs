@@ -96,7 +96,7 @@ public sealed class CertificationLevelsTests : IDisposable
     public async Task The_admin_sets_the_surveillance_schedule_of_a_new_level()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
-        Dictionary<string, object?> Body(int validity = 36, int count = 2)
+        Dictionary<string, object?> Body(int validity = 36, int count = 2, string mode = "Site", bool? autoApply = null, int? suspendRounds = null)
         {
             var b = JsonSerializer.Deserialize<Dictionary<string, object?>>(JsonSerializer.Serialize(Level()))!;
             b["validityMonths"] = validity;
@@ -108,6 +108,9 @@ public sealed class CertificationLevelsTests : IDisposable
             b["surveillanceReminderEveryMonths"] = 1;
             b["surveillanceSuspendAfterMonths"] = 1;
             b["surveillanceWithdrawAfterDays"] = 64;
+            b["assessmentMode"] = mode;
+            b["surveillanceAutoApply"] = autoApply;
+            b["surveillanceSuspendRounds"] = suspendRounds;
             return b;
         }
 
@@ -123,11 +126,23 @@ public sealed class CertificationLevelsTests : IDisposable
              FakeSql.Arg(zedx, "SurveillanceReminders"), FakeSql.Arg(zedx, "SurveillanceReminderEveryMonths"),
              FakeSql.Arg(zedx, "SurveillanceSuspendAfterMonths"), FakeSql.Arg(zedx, "SurveillanceWithdrawAfterDays")));
 
-        // Bronze / Silver / Gold keep their jobs' hard-coded schedule: nothing is stored for them.
-        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/gold", Body())).StatusCode);
+        Assert.Null(FakeSql.Arg(zedx, "SurveillanceSuspendRounds"));
+        Assert.Equal("False", FakeSql.Arg(zedx, "SurveillanceAutoApply"));
+
+        // Bronze / Silver / Gold (0037): run by the V4 schedule, so their schedule is stored as ZED-X's.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/gold", Body(count: 2, suspendRounds: 1))).StatusCode);
         var gold = _host.Sql.Calls.Last(c => c.Name == CertificationLevelsController.UpdateSql).Args;
-        Assert.Null(FakeSql.Arg(gold, "SurveillanceCount"));
-        Assert.Null(FakeSql.Arg(gold, "SurveillanceWithdrawAfterDays"));
+        Assert.Equal(("2", "64", "1"), (FakeSql.Arg(gold, "SurveillanceCount"), FakeSql.Arg(gold, "SurveillanceWithdrawAfterDays"), FakeSql.Arg(gold, "SurveillanceSuspendRounds")));
+
+        // Only a desktop level is applied for by the portal, and only on a reminder.
+        Assert.Contains("desktop", await (await admin.PutAsJsonAsync($"{Url}/gold", Body(autoApply: true))).ProblemTitle());
+        var noReminder = Body(count: 1, mode: "Desktop", autoApply: true, suspendRounds: 0);
+        noReminder["surveillanceReminders"] = 0;
+        Assert.Contains("reminder", await (await admin.PutAsJsonAsync($"{Url}/bronze", noReminder)).ProblemTitle());
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/bronze", Body(count: 1, mode: "Desktop", autoApply: true, suspendRounds: 0))).StatusCode);
+        var bronze = _host.Sql.Calls.Last(c => c.Name == CertificationLevelsController.UpdateSql).Args;
+        Assert.Equal(("1", "True", "0"), (FakeSql.Arg(bronze, "SurveillanceCount"), FakeSql.Arg(bronze, "SurveillanceAutoApply"), FakeSql.Arg(bronze, "SurveillanceSuspendRounds")));
+        Assert.Equal(3, _host.Sql.Calls.Count(c => c.Name == CertificationLevelsController.UpdateSql));
     }
 
     [Fact]
@@ -150,8 +165,8 @@ public sealed class CertificationLevelsTests : IDisposable
     public void The_dashboard_card_gets_the_surveillance_schedule()
     {
         var gold = new CertificationLevel("Gold", "Gold", 30, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, null);
-        // Gold: the first due date only (the legacy jobs fix the rest).
-        Assert.Equal(new PublicLevelsController.PublicSurveillance(12, null, null), PublicLevelsController.SurveillanceOf(gold));
+        // Gold: its schedule as any level's (the V4 schedule runs it since 0037).
+        Assert.Equal(new PublicLevelsController.PublicSurveillance(12, 2, 12), PublicLevelsController.SurveillanceOf(gold));
         // ZED-X: the Admin's schedule, the Silver / Gold values where not set.
         var zedx = gold with { Code = "ZEDX", FirstSurveillanceMonths = null, SurveillanceCount = 3 };
         Assert.Equal(new PublicLevelsController.PublicSurveillance(15, 3, 12), PublicLevelsController.SurveillanceOf(zedx));

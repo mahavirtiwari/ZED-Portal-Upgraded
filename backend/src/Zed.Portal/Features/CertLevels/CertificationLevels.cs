@@ -14,17 +14,23 @@ namespace Zed.Portal.Features.CertLevels;
 /// <param name="CertNoFormat">The certificate number (<see cref="CertificateNumbers"/>); the Manufacturing / Services formats apply once set.</param>
 /// <param name="Fee">The fee shown on the level's box (the amounts charged are in Masters → Payments).</param>
 /// <param name="SurveillanceCount">V4 levels (migration 0032): the surveillance schedule run by SP_V4_LEVEL_SURVEILLANCE_SCHEDULE;
-/// null = the Silver / Gold value (<see cref="SurveillanceSchedule.Default"/>). Bronze, Silver and Gold keep their legacy jobs.</param>
+/// null = the Silver / Gold value (<see cref="SurveillanceSchedule.Default"/>). Since migration 0037 the schedule runs Bronze, Silver
+/// and Gold too (their legacy jobs switched off).</param>
+/// <param name="SurveillanceAutoApply">0037: the last reminder applies the unit for its surveillance itself (desktop levels, as Bronze).</param>
+/// <param name="SurveillanceSuspendRounds">0037: how many rounds suspend a unit that did not apply: null every round, 0 none
+/// (Bronze), 1 the first only (Silver / Gold).</param>
+/// <param name="SurveillanceScheduleFrom">0037: the day the V4 schedule started for the level (9999-12-31 = not yet; null = no limit).</param>
 public sealed record CertificationLevel(
     string Code, string Name, int OrderNo, string? Description, string? Comment, string? LogoPath, bool IsEnabled,
     string AssessmentMode, int ValidityMonths, bool SurveillanceEnabled, int? FirstSurveillanceMonths,
     string CertNoFormat, string? CertNoFormatManufacturing, string? CertNoFormatService, decimal? Fee,
     string? UpdatedBy = null, DateTime? UpdatedOn = null,
     int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
-    int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null)
+    int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null,
+    bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null, DateTime? SurveillanceScheduleFrom = null)
 {
-    /// <summary>Bronze, Silver and Gold: their surveillance runs on the legacy jobs, whose months are fixed in the procedures.</summary>
-    public bool LegacySurveillance => Code is "Bronze" or "Silver" or "Gold";
+    /// <summary>The V4 schedule has not run for the level yet (Bronze / Silver / Gold before the switch-over).</summary>
+    public bool ScheduleNotStarted => SurveillanceScheduleFrom is { Year: 9999 };
 
     /// <summary>The schedule in force (the Admin's values, the Silver / Gold ones where not set).</summary>
     public SurveillanceSchedule Schedule => new(
@@ -86,13 +92,22 @@ public static class CertificationLevels
 
     private const string ScheduleColumns =
         "SurveillanceCount, SurveillanceIntervalMonths, SurveillanceNoticeMonths, SurveillanceReminders, SurveillanceReminderEveryMonths, " +
-        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays ";
+        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays, " + Columns0037;
+
+    private const string Columns0037 =
+        "SurveillanceAutoApply, SurveillanceSuspendRounds, CAST(SurveillanceScheduleFrom AS datetime2) AS SurveillanceScheduleFrom ";
+
+    private const string Null0037 =
+        "CAST(NULL AS bit) AS SurveillanceAutoApply, CAST(NULL AS int) AS SurveillanceSuspendRounds, CAST(NULL AS datetime2) AS SurveillanceScheduleFrom ";
+
+    /// <summary>The same before migration 0037 (no auto-apply, suspension rounds or start day yet).</summary>
+    internal static readonly string Sql0032 = Sql.Replace(Columns0037, Null0037);
 
     /// <summary>The same before migration 0032 (no surveillance schedule columns yet).</summary>
     internal static readonly string Sql0028 = Sql.Replace(ScheduleColumns,
         "CAST(NULL AS int) AS SurveillanceCount, CAST(NULL AS int) AS SurveillanceIntervalMonths, CAST(NULL AS int) AS SurveillanceNoticeMonths, " +
         "CAST(NULL AS int) AS SurveillanceReminders, CAST(NULL AS int) AS SurveillanceReminderEveryMonths, " +
-        "CAST(NULL AS int) AS SurveillanceSuspendAfterMonths, CAST(NULL AS int) AS SurveillanceWithdrawAfterDays ");
+        "CAST(NULL AS int) AS SurveillanceSuspendAfterMonths, CAST(NULL AS int) AS SurveillanceWithdrawAfterDays, " + Null0037);
 
     /// <summary>The same queries from another database's connection (surveillance, consultancy): main's table by name.</summary>
     internal static string FromMain(string sql) => sql.Replace("FROM dbo.SectionTypes", "FROM ZEDCS_V2_LIVE.dbo.SectionTypes");
@@ -109,8 +124,15 @@ public static class CertificationLevels
             }
             catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 207)
             {
-                // Invalid column: migration 0032 not applied yet.
-                rows = await db.QuerySqlAsync<CertificationLevel>(fromOtherDatabase ? FromMain(Sql0028) : Sql0028, null, ct);
+                // Invalid column: migration 0037 (or 0032) not applied yet.
+                try
+                {
+                    rows = await db.QuerySqlAsync<CertificationLevel>(fromOtherDatabase ? FromMain(Sql0032) : Sql0032, null, ct);
+                }
+                catch (Microsoft.Data.SqlClient.SqlException ex2) when (ex2.Number == 207)
+                {
+                    rows = await db.QuerySqlAsync<CertificationLevel>(fromOtherDatabase ? FromMain(Sql0028) : Sql0028, null, ct);
+                }
             }
             return rows.Count > 0 ? rows : BuiltIn;
         }

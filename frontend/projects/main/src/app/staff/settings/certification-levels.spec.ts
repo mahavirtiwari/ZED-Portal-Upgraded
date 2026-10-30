@@ -19,7 +19,11 @@ describe('CertificationLevelsPage', () => {
   const response = (zedxEnabled: boolean) => ({
     stored: true, tokens,
     levels: [
-      { level: level('Bronze', 'Bronze', { assessmentMode: 'Desktop', firstSurveillanceMonths: 15, legacySurveillance: true }), sample: '29102026_129350', logoUrl: '/Images/Dashboard/bronze.png' },
+      { level: level('Bronze', 'Bronze', {
+        assessmentMode: 'Desktop', firstSurveillanceMonths: 18, surveillanceCount: 1, surveillanceIntervalMonths: 12, surveillanceNoticeMonths: 4,
+        surveillanceReminders: 2, surveillanceReminderEveryMonths: 1, surveillanceSuspendAfterMonths: 1, surveillanceWithdrawAfterDays: 64,
+        surveillanceAutoApply: true, surveillanceSuspendRounds: 0, surveillanceScheduleFrom: '9999-12-31T00:00:00',
+      }), sample: '29102026_129350', logoUrl: '/Images/Dashboard/bronze.png' },
       { level: level('ZEDX', 'ZED-X', { isEnabled: zedxEnabled, fee: 75000, description: 'Open to every MSME' }), sample: '29102026_129350', logoUrl: null },
     ],
   });
@@ -68,7 +72,7 @@ describe('CertificationLevelsPage', () => {
     expect(zedx.textContent).toContain('75,000');
     expect(zedx.textContent).toContain('3 years');
     expect(box('Bronze').textContent).toContain('Desktop');
-    expect(box('Bronze').textContent).toContain('after 15 months');
+    expect(box('Bronze').textContent).toContain('1, after 18 months');
 
     button(zedx, 'Enable').click();
     await settle();
@@ -109,18 +113,36 @@ describe('CertificationLevelsPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
   });
 
-  it('sets the surveillance schedule of ZED-X, not of the built-in levels', async () => {
-    expect(box('ZED-X').textContent).toContain('2, after 12 months, then every 12');
+  it('sets the surveillance schedule of Bronze as of ZED-X: applied by the portal, never suspended', async () => {
     button(box('Bronze'), 'Edit').click();
     await settle();
-    expect(el.querySelector('#lv-count')).toBeNull();
-    expect(el.querySelector('.modal-body')!.textContent).toContain('fixed in its surveillance jobs');
-    button(el.querySelector('.modal-footer')!, 'CANCEL').click();
+    expect((el.querySelector('#lv-count') as HTMLInputElement).value).toBe('1');
+    expect((el.querySelector('#lv-autoapply') as HTMLInputElement).checked).toBe(true);
+    expect((el.querySelector('#lv-suspend-in') as HTMLSelectElement).selectedOptions[0].textContent!.trim()).toBe('Never');
+    expect(el.querySelector('#lv-withdraw')).toBeNull();
+    expect(el.querySelector('.modal-body')!.textContent).toContain('apply from the day the new surveillance schedule is switched on');
+    typeIn('#lv-first', '17');
     await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const bronze = http.expectOne(`${api}/Bronze`);
+    expect(bronze.request.body).toEqual(expect.objectContaining({
+      firstSurveillanceMonths: 17, surveillanceCount: 1, surveillanceReminders: 2, surveillanceAutoApply: true, surveillanceSuspendRounds: 0,
+    }));
+    bronze.flush({ message: 'Bronze saved.' });
+    await settle();
+    http.expectOne(api).flush(response(false));
+    await settle();
+  });
+
+  it('sets the surveillance schedule of ZED-X', async () => {
+    expect(box('ZED-X').textContent).toContain('2, after 12 months, then every 12');
 
     button(box('ZED-X'), 'Edit').click();
     await settle();
     expect(el.querySelector('.modal-body')!.textContent).toContain('Due at 12 and 24 months after certification.');
+    // A site level: the portal does not apply for it.
+    expect(el.querySelector('#lv-autoapply')).toBeNull();
     typeIn('#lv-count', '3');
     typeIn('#lv-interval', '12');
     await settle();
@@ -140,7 +162,7 @@ describe('CertificationLevelsPage', () => {
     const put = http.expectOne(`${api}/ZEDX`);
     expect(put.request.body).toEqual(expect.objectContaining({
       surveillanceCount: 3, surveillanceIntervalMonths: 10, surveillanceNoticeMonths: 4, surveillanceReminders: 0,
-      surveillanceSuspendAfterMonths: 1, surveillanceWithdrawAfterDays: 30,
+      surveillanceSuspendAfterMonths: 1, surveillanceWithdrawAfterDays: 30, surveillanceAutoApply: false, surveillanceSuspendRounds: null,
     }));
     put.flush({ message: 'ZED-X saved.' });
     await settle();

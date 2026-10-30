@@ -52,7 +52,8 @@ public sealed partial class CertificationLevelsController(
         bool SurveillanceEnabled, int? FirstSurveillanceMonths, string? CertNoFormat, string? CertNoFormatManufacturing,
         string? CertNoFormatService, decimal? Fee, string? Code = null,
         int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
-        int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null);
+        int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null,
+        bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null);
 
     internal const string UpdateSql =
         "UPDATE dbo.SectionTypes SET DisplayName = @Name, Description = @Description, Comment = @Comment, IsEnabled = @IsEnabled, " +
@@ -61,25 +62,27 @@ public sealed partial class CertificationLevelsController(
         "CertNoFormatService = @CertNoFormatService, Fee = @Fee, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME(), " +
         "SurveillanceCount = @SurveillanceCount, SurveillanceIntervalMonths = @SurveillanceIntervalMonths, SurveillanceNoticeMonths = @SurveillanceNoticeMonths, " +
         "SurveillanceReminders = @SurveillanceReminders, SurveillanceReminderEveryMonths = @SurveillanceReminderEveryMonths, " +
-        "SurveillanceSuspendAfterMonths = @SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays = @SurveillanceWithdrawAfterDays " +
+        "SurveillanceSuspendAfterMonths = @SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays = @SurveillanceWithdrawAfterDays, " +
+        "SurveillanceAutoApply = @SurveillanceAutoApply, SurveillanceSuspendRounds = @SurveillanceSuspendRounds " +
         "WHERE SectionType = @Code AND IsCertificationLevel = 1;";
 
     internal const string InsertSql =
         "INSERT INTO dbo.SectionTypes (SectionType, OrderNo, DisplayName, Description, Comment, IsEnabled, IsCertificationLevel, AssessmentMode, " +
         "ValidityMonths, SurveillanceEnabled, FirstSurveillanceMonths, CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn, " +
         "SurveillanceCount, SurveillanceIntervalMonths, SurveillanceNoticeMonths, SurveillanceReminders, SurveillanceReminderEveryMonths, " +
-        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays) " +
+        "SurveillanceSuspendAfterMonths, SurveillanceWithdrawAfterDays, SurveillanceAutoApply, SurveillanceSuspendRounds) " +
         "SELECT @Code, ISNULL(MAX(CASE WHEN IsCertificationLevel = 1 THEN OrderNo END), 0) + 10, @Name, @Description, @Comment, @IsEnabled, 1, @AssessmentMode, " +
         "@ValidityMonths, @SurveillanceEnabled, @FirstSurveillanceMonths, @CertNoFormat, @CertNoFormatManufacturing, @CertNoFormatService, @Fee, " +
         "@UpdatedBy, SYSUTCDATETIME(), @SurveillanceCount, @SurveillanceIntervalMonths, @SurveillanceNoticeMonths, @SurveillanceReminders, " +
-        "@SurveillanceReminderEveryMonths, @SurveillanceSuspendAfterMonths, @SurveillanceWithdrawAfterDays FROM dbo.SectionTypes;";
+        "@SurveillanceReminderEveryMonths, @SurveillanceSuspendAfterMonths, @SurveillanceWithdrawAfterDays, @SurveillanceAutoApply, @SurveillanceSuspendRounds " +
+        "FROM dbo.SectionTypes;";
 
     [HttpPut("{code}")]
     public async Task<ActionResult<MessageResponse>> Update(string code, LevelRequest req, CancellationToken ct)
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
-        if (Validate(req, level.LegacySurveillance) is { } problem) return this.Problem400(problem);
-        if (!await RunAsync(UpdateSql, Args(level.Code, req, level.LegacySurveillance), ct)) return Unavailable();
+        if (Validate(req) is { } problem) return this.Problem400(problem);
+        if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
         return new MessageResponse($"{req.Name!.Trim()} saved.");
     }
@@ -111,12 +114,12 @@ public sealed partial class CertificationLevelsController(
     {
         var code = req.Code?.Trim() ?? "";
         if (!CodePattern().IsMatch(code)) return this.Problem400("The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).");
-        if (Validate(req, legacySurveillance: false) is { } problem) return this.Problem400(problem);
+        if (Validate(req) is { } problem) return this.Problem400(problem);
         var all = await CertificationLevels.AllAsync(db, log, ct);
         if (ReferenceEquals(all, CertificationLevels.BuiltIn)) return Unavailable();
         if (all.Any(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Name, req.Name!.Trim(), StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A level with this code or name already exists.");
-        if (!await RunAsync(InsertSql, Args(code, req, legacySurveillance: false), ct)) return Unavailable();
+        if (!await RunAsync(InsertSql, Args(code, req), ct)) return Unavailable();
         log.LogWarning("Certification level {Code} added by {Actor}", code, UserId);
         return new MessageResponse($"{req.Name!.Trim()} added. Add its questionnaire (Questionnaire menu) and its fees (Masters → Payments) before enabling it.");
     }
@@ -149,8 +152,7 @@ public sealed partial class CertificationLevelsController(
         return new MessageResponse("Logo saved.");
     }
 
-    /// <param name="legacySurveillance">Bronze / Silver / Gold: their surveillance months are fixed in the legacy jobs.</param>
-    private static string? Validate(LevelRequest r, bool legacySurveillance)
+    private static string? Validate(LevelRequest r)
     {
         var name = r.Name?.Trim() ?? "";
         if (name.Length == 0) return "Please enter the level's name.";
@@ -167,7 +169,12 @@ public sealed partial class CertificationLevelsController(
         if (CertificateNumbers.Problem(r.CertNoFormatManufacturing, required: false) is { } m) return "Manufacturing: " + m;
         if (CertificateNumbers.Problem(r.CertNoFormatService, required: false) is { } s) return "Services: " + s;
         if (r.Fee is < 0 or > 10_000_000) return "The fee must be between 0 and 1,00,00,000.";
-        if (r.SurveillanceEnabled && !legacySurveillance && Schedule(r).Problem(r.ValidityMonths!.Value) is { } schedule) return schedule;
+        if (r.SurveillanceEnabled && Schedule(r).Problem(r.ValidityMonths!.Value) is { } schedule) return schedule;
+        if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && r.AssessmentMode != CertificationLevels.Desktop)
+            return "Only a desktop assessment level (as Bronze) can be applied for its surveillance by the portal.";
+        if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && (r.SurveillanceReminders ?? SurveillanceSchedule.Default.Reminders) < 1)
+            return "To apply for the surveillance on the last reminder, please keep at least one reminder.";
+        if (r.SurveillanceEnabled && r.SurveillanceSuspendRounds is < 0 or > 5) return "Please choose which surveillances suspend the certificate.";
         return null;
     }
 
@@ -179,9 +186,9 @@ public sealed partial class CertificationLevelsController(
             r.SurveillanceSuspendAfterMonths ?? d.SuspendAfterMonths, r.SurveillanceWithdrawAfterDays ?? d.WithdrawAfterDays);
     }
 
-    private object Args(string code, LevelRequest r, bool legacySurveillance)
+    private object Args(string code, LevelRequest r)
     {
-        var schedule = r.SurveillanceEnabled && !legacySurveillance ? Schedule(r) : null;
+        var schedule = r.SurveillanceEnabled ? Schedule(r) : null;
         return new
         {
         Code = code, Name = r.Name!.Trim(), Description = Text(r.Description), Comment = Text(r.Comment), r.IsEnabled, r.AssessmentMode,
@@ -191,6 +198,8 @@ public sealed partial class CertificationLevelsController(
         SurveillanceCount = schedule?.Count, SurveillanceIntervalMonths = schedule?.IntervalMonths, SurveillanceNoticeMonths = schedule?.NoticeMonths,
         SurveillanceReminders = schedule?.Reminders, SurveillanceReminderEveryMonths = schedule?.ReminderEveryMonths,
         SurveillanceSuspendAfterMonths = schedule?.SuspendAfterMonths, SurveillanceWithdrawAfterDays = schedule?.WithdrawAfterDays,
+        SurveillanceAutoApply = schedule is null ? (bool?)null : r.SurveillanceAutoApply == true && r.AssessmentMode == CertificationLevels.Desktop,
+        SurveillanceSuspendRounds = schedule is null ? null : r.SurveillanceSuspendRounds,
         };
     }
 
@@ -219,7 +228,7 @@ public sealed partial class CertificationLevelsController(
     }
 
     private ActionResult Unavailable() =>
-        this.Problem400("The certification levels cannot be saved yet. Please ask the administrator to apply the database migrations (0028, 0032).");
+        this.Problem400("The certification levels cannot be saved yet. Please ask the administrator to apply the database migrations (0028, 0032, 0037).");
 
     private string Actor() => UserId.Length <= 50 ? UserId : UserId[..50];
 }
@@ -234,8 +243,8 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
         int ValidityMonths, decimal? Fee, PublicSurveillance? Surveillance = null);
 
     /// <summary>
-    /// When surveillance falls due, for the level's dashboard card; null without surveillance. Bronze / Silver / Gold give
-    /// the first due date only (their other dates are fixed in the legacy jobs), as the Admin's card shows them.
+    /// When surveillance falls due, for the level's dashboard card; null without surveillance. Every level gives its whole
+    /// schedule (Bronze / Silver / Gold too, since the V4 schedule runs them: migration 0037), as the Admin's card shows it.
     /// </summary>
     public sealed record PublicSurveillance(int FirstDueMonths, int? Count, int? IntervalMonths);
 
@@ -250,7 +259,7 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     {
         if (!l.SurveillanceEnabled) return null;
         var s = l.Schedule;
-        return l.LegacySurveillance ? new PublicSurveillance(s.FirstDueMonths, null, null) : new PublicSurveillance(s.FirstDueMonths, s.Count, s.IntervalMonths);
+        return new PublicSurveillance(s.FirstDueMonths, s.Count, s.IntervalMonths);
     }
 
     [HttpGet("{code}/logo")]

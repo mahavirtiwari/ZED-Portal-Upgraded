@@ -8,7 +8,8 @@
 Certified ZED-X units are made directly in the tables (the assessment itself is zedx_e2e.py's), then
 SP_V4_LEVEL_SURVEILLANCE_SCHEDULE runs for chosen days (@Today): notice, reminders, suspension, withdrawal, a paid round
 (SP_V4_SURVEILLANCE_PAID: flags and the NIC sector-wise questionnaire), the second round, a third round (archived when it
-opens) and expiry. Stops at the first surprise. No API is needed.
+opens) and expiry. Stops at the first surprise. No API is needed. Bronze / Silver / Gold (migration 0037):
+level_surveillance_bsg_check.py.
 """
 import os
 import sys
@@ -86,6 +87,12 @@ def pay(zed):
     sql(f"EXEC dbo.SP_V4_SURVEILLANCE_PAID @ZedId = '{zed}', @Certification = 'ZEDX';", SURV)
 
 
+def certify_round(zed, day):
+    """The unit's current surveillance certified (its latest record): the next round opens 3 months after at the earliest."""
+    sql(f"UPDATE dbo.MsmeCertifications SET CertificationStatus = 16, CertificationStatusDate = '{day}' "
+        f"WHERE Id = (SELECT MAX(Id) FROM dbo.MsmeCertifications WHERE ZedId = '{zed}' AND Certification = 'ZEDX');", SURV)
+
+
 def case_a_not_applied():
     zed = certify('A', '2026-01-10')
     print(f'A {zed}: certified 2026-01-10, never applies (due 2027-04-10)')
@@ -134,6 +141,9 @@ def case_b_two_rounds():
     run('2027-12-09')
     check(cert(zed)['Round'] == '1', 'surveillance 2 not yet (its notice is at 23 months)')
     run('2027-12-10')
+    check(cert(zed)['Round'] == '1', 'surveillance 2 waits until surveillance 1 is certified (as the legacy second-surveillance job)')
+    certify_round(zed, '2027-06-01')
+    run('2027-12-10')
     c = cert(zed)
     check((c['Round'], c['Mail'], c['Due2']) == ('2', '11', '2028-04-10'), f'notice of surveillance 2: {c}')
     check(not main_paid(zed), "main's payment flag cleared for the new round")
@@ -156,10 +166,11 @@ def case_c_three_rounds():
     try:
         run('2026-12-10')
         pay(zed)
-        sql(f"UPDATE dbo.MsmeCertifications SET CertificationStatus = 16 WHERE ZedId = '{zed}' AND Certification = 'ZEDX';", SURV)
+        certify_round(zed, '2027-03-01')
         run('2027-10-10')
         check(cert(zed)['Round'] == '2', 'surveillance 2 opens at 25 - 4 = 21 months')
         pay(zed)   # the gateway procedure would also archive round 1 here (main EnableSurveillance1 = 2)
+        certify_round(zed, '2028-02-01')
         run('2028-08-10')
         c = cert(zed)
         check((c['Round'], c['Mail']) == ('3', '21'), f'surveillance 3 opens at 35 - 4 = 31 months: {c}')
@@ -182,18 +193,10 @@ def case_d_expiry():
     check(rows(f"SELECT COUNT(*) AS N FROM dbo.MsmeHistory WHERE ZedId = '{zed}' AND StatusType = 'Expired';")[0]['N'] == '1', 'history')
 
 
-def bronze_untouched():
-    before = rows("SELECT COUNT(*) AS N FROM dbo.MsmeCertifications WHERE Certification IN ('Bronze', 'Silver', 'Gold') AND (EnableSurveillance1 IS NOT NULL OR CertificationPhase IN ('SUSPENDED', 'WITHDRAWN', 'EXPIRED'));")[0]['N']
-    run('2029-01-01')
-    after = rows("SELECT COUNT(*) AS N FROM dbo.MsmeCertifications WHERE Certification IN ('Bronze', 'Silver', 'Gold') AND (EnableSurveillance1 IS NOT NULL OR CertificationPhase IN ('SUSPENDED', 'WITHDRAWN', 'EXPIRED'));")[0]['N']
-    check(before == after, 'Bronze / Silver / Gold untouched')
-
-
 if __name__ == '__main__':
     setup()
     case_a_not_applied()
     case_b_two_rounds()
     case_c_three_rounds()
     case_d_expiry()
-    bronze_untouched()
     print('all checks passed')

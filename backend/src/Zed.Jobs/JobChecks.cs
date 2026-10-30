@@ -274,9 +274,12 @@ public sealed class JobChecker(IProcedureCatalog catalog, IJobDatabases database
                 JobCheckState.Unreachable => "UNREACHABLE",
                 _ => "ERROR",
             };
+            var conflict = JobSchedule.Conflict(job, jobs);
+            if (conflict is not null) status = "ERROR";
             if (!job.Enabled && status != "OK") status = "(disabled) " + status;
-            if (job.Enabled && check.State != JobCheckState.Ok) problems++;
+            if (job.Enabled && (check.State != JobCheckState.Ok || conflict is not null)) problems++;
             output.WriteLine($"{status,-22} {job.Name}  [{calls}]  {(job.Enabled ? "enabled" : "disabled")}, {JobSchedule.Describe(job)}");
+            if (conflict is not null) output.WriteLine("    error: " + conflict);
             foreach (var e in check.Errors) output.WriteLine("    error: " + e);
             foreach (var w in check.Warnings) output.WriteLine("    warning: " + w);
         }

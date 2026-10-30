@@ -24,6 +24,11 @@ public sealed class ProcedureJobWorker(
         var jobs = new List<JobDefinition>();
         foreach (var job in o.Schedules.Where(j => j.Enabled))
         {
+            if (JobSchedule.Conflict(job, o.Schedules) is { } conflict)
+            {
+                log.LogError("Job {Job} is not scheduled: {Errors}", job.Name, conflict);
+                continue;
+            }
             var check = await checker.CheckAsync(job, stoppingToken);
             foreach (var w in check.Warnings) log.LogWarning("Job {Job}: {Warning}", job.Name, w);
             if (check.State == JobCheckState.Invalid)

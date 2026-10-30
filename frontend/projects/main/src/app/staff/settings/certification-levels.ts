@@ -29,9 +29,7 @@ export interface CertificationLevel {
   fee: number | null;
   updatedBy: string | null;
   updatedOn: string | null;
-  /** Bronze / Silver / Gold: surveillance on the legacy jobs, whose months are fixed. */
-  legacySurveillance?: boolean;
-  /** The surveillance schedule of the other levels (migration 0032); null = the Silver / Gold value. */
+  /** The surveillance schedule (migration 0032; Bronze / Silver / Gold too since 0037); null = the Silver / Gold value. */
   surveillanceCount?: number | null;
   surveillanceIntervalMonths?: number | null;
   surveillanceNoticeMonths?: number | null;
@@ -39,6 +37,12 @@ export interface CertificationLevel {
   surveillanceReminderEveryMonths?: number | null;
   surveillanceSuspendAfterMonths?: number | null;
   surveillanceWithdrawAfterDays?: number | null;
+  /** 0037: the last reminder applies the unit for its surveillance itself (desktop levels, as Bronze). */
+  surveillanceAutoApply?: boolean | null;
+  /** 0037: the rounds that suspend a unit that did not apply: null every round, 1 the first only, 0 none. */
+  surveillanceSuspendRounds?: number | null;
+  /** 0037: the day the V4 schedule started for the level (year 9999 = not yet; null = no limit). */
+  surveillanceScheduleFrom?: string | null;
 }
 
 /** The surveillance schedule fields of the form. */
@@ -86,7 +90,6 @@ interface LevelForm {
   certNoFormatManufacturing: string;
   certNoFormatService: string;
   fee: number | null;
-  legacySurveillance: boolean;
   surveillanceCount: number | null;
   surveillanceIntervalMonths: number | null;
   surveillanceNoticeMonths: number | null;
@@ -94,6 +97,10 @@ interface LevelForm {
   surveillanceReminderEveryMonths: number | null;
   surveillanceSuspendAfterMonths: number | null;
   surveillanceWithdrawAfterDays: number | null;
+  surveillanceAutoApply: boolean;
+  /** null every surveillance, 1 the first only, 0 never. */
+  surveillanceSuspendRounds: number | null;
+  surveillanceScheduleFrom: string | null;
 }
 
 /** As CertificateNumbers.Format on the server (the preview of the formats). */
@@ -125,8 +132,9 @@ const API = '/api/staff/settings/levels';
  * Administration → Certification Levels (new in V4): the certification boxes of the MSME dashboard (Bronze, Silver,
  * Gold, ZED-X and the levels the Admin adds): name, logo, description and information text, shown or hidden, and the
  * certificate settings: desktop or desktop and site assessment, validity, surveillance, and the certificate number
- * format, in general and for Manufacturing / Services units. Levels other than Bronze / Silver / Gold also get their
- * surveillance schedule here (how many, when due, notice, reminders, suspension, withdrawal; migration 0032). V4 layout: a
+ * format, in general and for Manufacturing / Services units, and the surveillance schedule (how many, when due, notice,
+ * reminders, the portal applying on the last one, suspension, withdrawal; migrations 0032, 0037: Bronze, Silver and Gold
+ * too, since the V4 schedule replaced their legacy jobs). V4 layout: a
  * card per level in its colour; the pop-up in three tabs (box, certificate, surveillance) beside a preview of the
  * dashboard box, the certificate numbers and the surveillance due dates.
  */
@@ -305,11 +313,7 @@ const API = '/api/staff/settings/levels';
                             <span>months</span>
                           }
                         </div>
-                        @if (e.surveillanceEnabled && e.legacySurveillance) {
-                          <span></span>
-                          <small class="muted">The other dates of this level's surveillance (notice, reminders, suspension, withdrawal) are fixed in its surveillance jobs.</small>
-                        }
-                        @if (e.surveillanceEnabled && !e.legacySurveillance) {
+                        @if (e.surveillanceEnabled) {
                           <label for="lv-count">Surveillances<span class="req">*</span></label>
                           <div class="lv-surv">
                             <input id="lv-count" name="surveillanceCount" type="number" min="1" max="5" class="form-control lv-short" [(ngModel)]="e.surveillanceCount" />
@@ -333,20 +337,36 @@ const API = '/api/staff/settings/levels';
                               <span>months after the notice</span>
                             }
                           </div>
-                          <label for="lv-suspend">Suspension<span class="req">*</span></label>
+                          @if (e.assessmentMode === 'Desktop' && (e.surveillanceReminders ?? 0) > 0) {
+                            <span></span>
+                            <div class="form-check lv-check">
+                              <input class="form-check-input" type="checkbox" id="lv-autoapply" name="surveillanceAutoApply" [(ngModel)]="e.surveillanceAutoApply" />
+                              <label class="form-check-label" for="lv-autoapply">On the last reminder, the portal applies for the surveillance on the unit's behalf (as Bronze)</label>
+                            </div>
+                          }
+                          <label for="lv-suspend-in">Suspension<span class="req">*</span></label>
                           <div class="lv-surv">
-                            <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
-                            <span>months after the due date, if not applied for</span>
+                            <select id="lv-suspend-in" name="surveillanceSuspendRounds" class="form-select lv-select" [(ngModel)]="e.surveillanceSuspendRounds">
+                              <option [ngValue]="null">In every surveillance</option>
+                              <option [ngValue]="1">In the first surveillance only</option>
+                              <option [ngValue]="0">Never</option>
+                            </select>
+                            @if (e.surveillanceSuspendRounds !== 0) {
+                              <input id="lv-suspend" name="surveillanceSuspendAfterMonths" type="number" min="0" max="24" class="form-control lv-short" aria-label="Suspended months after the due date" [(ngModel)]="e.surveillanceSuspendAfterMonths" />
+                              <span>months after the due date, if not applied for</span>
+                            }
                           </div>
-                          <label for="lv-withdraw">Withdrawal<span class="req">*</span></label>
-                          <div class="lv-surv">
-                            <input id="lv-withdraw" name="surveillanceWithdrawAfterDays" type="number" min="1" max="365" class="form-control lv-short" [(ngModel)]="e.surveillanceWithdrawAfterDays" />
-                            <span>days after the suspension</span>
-                          </div>
+                          @if (e.surveillanceSuspendRounds !== 0) {
+                            <label for="lv-withdraw">Withdrawal<span class="req">*</span></label>
+                            <div class="lv-surv">
+                              <input id="lv-withdraw" name="surveillanceWithdrawAfterDays" type="number" min="1" max="365" class="form-control lv-short" [(ngModel)]="e.surveillanceWithdrawAfterDays" />
+                              <span>days after the suspension</span>
+                            </div>
+                          }
                         }
                       </div>
-                      @if (e.surveillanceEnabled && !e.legacySurveillance) {
-                        <p class="lv-note mt-3 mb-0">{{ scheduleSummary(e) }} Silver and Gold: due at 15 and 27 months, notice 4 months before, 2 monthly reminders, suspended 1 month after the due date, withdrawn 64 days later.</p>
+                      @if (e.surveillanceEnabled) {
+                        <p class="lv-note mt-3 mb-0">{{ scheduleSummary(e) }} {{ scheduleStart(e) }}</p>
                       }
                     </div>
                   </div>
@@ -458,6 +478,10 @@ const API = '/api/staff/settings/levels';
     .lv-switch { display: flex; align-items: center; gap: 8px; padding-left: 0; margin: 0; }
     .lv-switch .form-check-input { float: none; margin: 0; }
     .lv-surv { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .form-grid select.lv-select { width: auto !important; max-width: 260px; flex: none; }
+    .lv-check { display: flex; align-items: flex-start; gap: 8px; padding-left: 0; margin: 0; }
+    .lv-check .form-check-input { float: none; flex: none; margin: 3px 0 0; }
+    .modal .lv-check .form-check-label { font-weight: 400; }
     .lv-logo-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .lv-logo-small { height: 40px; }
     .lv-tokens { display: flex; flex-wrap: wrap; gap: 4px; }
@@ -532,7 +556,6 @@ export class CertificationLevelsPage {
   protected surveillanceFact(l: CertificationLevel): string {
     if (!l.surveillanceEnabled) return 'none';
     const first = l.firstSurveillanceMonths ?? DEFAULT_SCHEDULE.firstSurveillanceMonths;
-    if (l.legacySurveillance) return `after ${this.months(first)}`;
     const count = l.surveillanceCount ?? DEFAULT_SCHEDULE.surveillanceCount;
     const every = l.surveillanceIntervalMonths ?? DEFAULT_SCHEDULE.surveillanceIntervalMonths;
     return count > 1 ? `${count}, after ${first} months, then every ${every}` : `1, after ${this.months(first)}`;
@@ -547,6 +570,15 @@ export class CertificationLevelsPage {
     return `Due at ${list} months after certification.`;
   }
 
+  /** When the V4 schedule took the level over (Bronze / Silver / Gold: the day their legacy jobs were switched off). */
+  protected scheduleStart(e: LevelForm): string {
+    const from = e.surveillanceScheduleFrom ? new Date(e.surveillanceScheduleFrom) : null;
+    if (!from || Number.isNaN(from.getTime())) return '';
+    if (from.getFullYear() === 9999) return 'These timings apply from the day the new surveillance schedule is switched on for this level.';
+    const day = from.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    return `Run by the new surveillance schedule since ${day}; a step that fell due before that day was not done.`;
+  }
+
   protected accent(code: string): string {
     return ACCENTS[(code || '').toUpperCase()] ?? '#45a5ad';
   }
@@ -555,7 +587,7 @@ export class CertificationLevelsPage {
   protected timeline(e: LevelForm): { due: { month: number; at: number }[]; label: string } | null {
     const validity = e.validityMonths ?? 0, first = e.firstSurveillanceMonths ?? 0;
     if (!e.surveillanceEnabled || validity < 1 || first < 1) return null;
-    const count = e.legacySurveillance ? 1 : Math.min(Math.max(e.surveillanceCount ?? 1, 1), 5);
+    const count = Math.min(Math.max(e.surveillanceCount ?? 1, 1), 5);
     const every = e.surveillanceIntervalMonths ?? 0;
     const due = Array.from({ length: count }, (_, i) => first + i * (count > 1 ? every : 0))
       .filter((m) => m > 0 && m < validity)
@@ -578,7 +610,7 @@ export class CertificationLevelsPage {
     this.editing.set({
       code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site', validityMonths: 36,
       surveillanceEnabled: true, certNoFormat: '{DDMMYYYY}_{ZEDNO}', certNoFormatManufacturing: '', certNoFormatService: '', fee: null,
-      legacySurveillance: false, ...DEFAULT_SCHEDULE,
+      ...DEFAULT_SCHEDULE, surveillanceAutoApply: false, surveillanceSuspendRounds: null, surveillanceScheduleFrom: null,
     });
   }
 
@@ -591,8 +623,10 @@ export class CertificationLevelsPage {
       code: l.code, isNew: false, name: l.name, description: l.description ?? '', comment: l.comment ?? '', isEnabled: l.isEnabled,
       assessmentMode: l.assessmentMode, validityMonths: l.validityMonths, surveillanceEnabled: l.surveillanceEnabled,
       firstSurveillanceMonths: l.firstSurveillanceMonths, certNoFormat: l.certNoFormat, certNoFormatManufacturing: l.certNoFormatManufacturing ?? '',
-      certNoFormatService: l.certNoFormatService ?? '', fee: l.fee, legacySurveillance: !!l.legacySurveillance,
+      certNoFormatService: l.certNoFormatService ?? '', fee: l.fee,
       ...(Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, l[k] ?? DEFAULT_SCHEDULE[k]])) as Record<ScheduleKey, number>),
+      surveillanceAutoApply: !!l.surveillanceAutoApply, surveillanceSuspendRounds: l.surveillanceSuspendRounds ?? null,
+      surveillanceScheduleFrom: l.surveillanceScheduleFrom ?? null,
     });
   }
 
@@ -623,8 +657,13 @@ export class CertificationLevelsPage {
       assessmentMode: e.assessmentMode, validityMonths: e.validityMonths, surveillanceEnabled: e.surveillanceEnabled,
       firstSurveillanceMonths: e.surveillanceEnabled ? e.firstSurveillanceMonths : null, certNoFormat: e.certNoFormat.trim(),
       certNoFormatManufacturing: e.certNoFormatManufacturing, certNoFormatService: e.certNoFormatService, fee: e.fee,
-      // Bronze / Silver / Gold: the server stores no schedule for them.
-      ...(e.surveillanceEnabled && !e.legacySurveillance ? Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, e[k]])) : {}),
+      ...(e.surveillanceEnabled
+        ? {
+            ...Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, e[k]])),
+            surveillanceAutoApply: e.assessmentMode === 'Desktop' && (e.surveillanceReminders ?? 0) > 0 && e.surveillanceAutoApply,
+            surveillanceSuspendRounds: e.surveillanceSuspendRounds,
+          }
+        : {}),
     };
     try {
       const level = (context?: HttpContext) => e.isNew
@@ -698,7 +737,7 @@ export class CertificationLevelsPage {
     if (!e.validityMonths || e.validityMonths < 1 || e.validityMonths > 120) return 'The validity must be 1 to 120 months.';
     if (e.surveillanceEnabled && (!e.firstSurveillanceMonths || e.firstSurveillanceMonths < 1 || e.firstSurveillanceMonths >= e.validityMonths))
       return 'The first surveillance must be due before the certificate expires.';
-    if (e.surveillanceEnabled && !e.legacySurveillance) {
+    if (e.surveillanceEnabled) {
       const problem = this.checkSchedule(e);
       if (problem) return problem;
     }

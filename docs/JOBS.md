@@ -120,18 +120,18 @@ entries are **off** in the repository: enable each on the server copy at the mom
 |---|---|---|
 | AutoMail_Recertification | 23:20 | Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_RECERTIFICATION |
 | AutoReject | 00:00 | Main.SP_ASSESSMENT_DA_AUTO_REJECT (2 retries, 30 min) > Surveillance.SP_ASSESSMENT_DA_AUTO_REJECT |
-| AutoSuspendingSilverGold | 01:30 | Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION > Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW |
-| Bronze_Surveillance_Job | 02:00 | Surveillance.SP_JOB_FOR_INSERT_BRONZE_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
+| AutoSuspendingSilverGold | 01:30 | Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION > Main.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW. **Replaced by the V4 "Level surveillance schedule" (0037): do not enable.** |
+| Bronze_Surveillance_Job | 02:00 | Surveillance.SP_JOB_FOR_INSERT_BRONZE_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL > \_REM1 > \_REM2. **Replaced by the V4 "Level surveillance schedule" (0037): do not enable.** |
 | Certificate_Expiry | 02:15 | Main.SP_JOB_TO_UPDATE_3YEARS_COMPLETED_TO_EXPIRED |
 | DailyRunWebSiteCounts | every 15 min, 06:00–22:00 | Main.SP_DAILY_RUN_WEB_SITE_COUNTS |
 | Deactivating Joining Reward | 00:00 | Main.SP_MSME_DEACTIVATE_JOINING_REWARD (2 retries, 30 min) |
 | LatestCertificationUpdate | 23:00 | Main.SP_JOB_FOR_UPDATE_LATEST_CERTIFICATION |
-| Silver_Gold_Second_Surveillance_Data_job | 03:30 | Main.SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
-| Silver_Gold_Surveillance_Data_job | 00:30 | Surveillance.SP_JOB_FOR_INSERT_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL > \_REM1 > \_REM2 |
+| Silver_Gold_Second_Surveillance_Data_job | 03:30 | Main.SP_JOB_TO_SEND_APPLY_FOR_SECOND_SURVEILLANCE_MAIL > \_REM1 > \_REM2. **Replaced by the V4 "Level surveillance schedule" (0037): do not enable.** |
+| Silver_Gold_Surveillance_Data_job | 00:30 | Surveillance.SP_JOB_FOR_INSERT_SURVEILLANCE_DATA > Main.SP_JOB_TO_SEND_APPLY_FOR_SURVEILLANCE_MAIL > \_REM1 > \_REM2. **Replaced by the V4 "Level surveillance schedule" (0037): do not enable.** |
 | ZED_Auto_Reject_Expired_NC | 02:30 | Main.SP_AUTO_FINAL_REJECT_EXPIRED_NC |
 | ZED_Daily_Maintenance_Job | every 12 h from 04:00 (04:00, 16:00) | Surveillance.SURVEILLANCE_REJECTION_UPGRADED_MAINSYSTEM > Surveillance.USP_REFRESH_ADMIN_DASHBOARD_STATS |
 | ZED_Surveillance_Auto_Reject_Expiring_Bronze | 03:30 | Surveillance.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY |
-| Level surveillance schedule (**V4**, enable on the server copy) | 01:45 | Main.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE: expiry, notices, reminders, suspension and withdrawal of the Admin-added levels (ZED-X) on the validity and schedule of Admin > Certification Levels (migration 0032). New, no Agent job to switch off: enable it once migrations 0032 / 0033 are applied; Bronze / Silver / Gold untouched. |
+| Level surveillance schedule (**V4**, enable on the server copy) | 01:45 | Main.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE: notices, reminders, suspension and withdrawal of **every** level on the schedule of Admin > Certification Levels (migrations 0032, 0037), and expiry of the Admin-added levels (ZED-X). Since 0037 it runs Bronze, Silver and Gold too, with the old jobs' timings to start (Bronze applied for by the portal on its last reminder and never suspended; Silver / Gold suspended in the first surveillance only), and **replaces the four jobs marked above**. Switch-over, on one day: dry run `EXEC dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE @DryRun = 1` (lists what the first run would do, including the steps it will not catch up on), switch the four Agent jobs off, then enable this entry. Its first run records that day per level; a step that fell due before it is not done (no backlog mail). Zed.Jobs refuses to run any of the four while this entry is enabled (`--check` shows it as an error). |
 | RenamingFolder (**disabled** on production, hourly) | → `Jobs:FolderRename`, every 60 min | SP_JOB_TO_CREATE_RENAMING_BATCH_FILES is replaced by the folder rename job (below). Because the Agent job is off, nothing has been renamed for a while: the first Report runs show the backlog. |
 
 New compared with the earlier analysis: AutoReject, Deactivating Joining Reward and ZED_Daily_Maintenance_Job (none
