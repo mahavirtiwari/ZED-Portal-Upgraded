@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -25,7 +26,7 @@ interface EmailSettingItem {
  */
 @Component({
   selector: 'zed-staff-email-settings',
-  imports: [FormsModule, MailServersCard],
+  imports: [FormsModule, MailServersCard, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -33,6 +34,8 @@ interface EmailSettingItem {
         <p class="page-sub">The mail servers this portal sends with, and the office mailboxes its mails go to.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

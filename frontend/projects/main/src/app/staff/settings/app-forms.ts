@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -115,7 +116,7 @@ const TYPE_GLYPHS: Record<string, string> = {
  */
 @Component({
   selector: 'zed-staff-app-forms',
-  imports: [DatePipe, FormsModule, CollapseCard, MultiSelect],
+  imports: [DatePipe, FormsModule, CollapseCard, MultiSelect, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -128,6 +129,8 @@ const TYPE_GLYPHS: Record<string, string> = {
         </div>
       }
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

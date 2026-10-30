@@ -1,4 +1,5 @@
 import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { PortalSwitchComponent, BANNER_PORTALS } from '../admin-portal';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { MastersApi, PageSettings } from './masters.api';
@@ -13,6 +14,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
  */
 @Component({
   selector: 'zed-staff-page-settings',
+  imports: [PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -20,6 +22,8 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
         <p class="page-sub">The banner image shown on the portal's home (login) page.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (its home page banner). -->
+    <zed-portal-switch [portals]="bannerPortals" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -128,6 +132,7 @@ export const BANNER_MAX_BYTES = 3 * 1024 * 1024;
   `,
 })
 export class PageSettingsPage {
+  protected readonly bannerPortals = BANNER_PORTALS;
   private readonly api = inject(MastersApi);
   private readonly fileInput = viewChild<ElementRef<HTMLInputElement>>('fileInput');
 

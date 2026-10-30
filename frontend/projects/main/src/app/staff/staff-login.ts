@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -40,6 +40,12 @@ import { PORTAL_LABELS } from '../portal-labels';
         @if (error()) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
         }
+        @if (adminMoved()) {
+          <!-- One Admin (V4): the Admin of this portal signs in on the main portal and chooses this portal there. -->
+          <div class="d-grid mt-2">
+            <a class="btn btn-primary" href="/login" (click)="toMainAdmin()">Go to the Admin on the main portal</a>
+          </div>
+        }
       </form>
     </zed-staff-login-shell>
   `,
@@ -56,6 +62,8 @@ export class StaffLoginPage {
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  /** The server said the Admin signs in on the main portal now (V4 one Admin). */
+  protected readonly adminMoved = signal(false);
   protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
   protected userId = '';
   protected password = '';
@@ -68,8 +76,18 @@ export class StaffLoginPage {
     });
   }
 
+  /** The main portal's Admin opens with this portal chosen in its switch (same site, so the same tab storage). */
+  protected toMainAdmin(): void {
+    try {
+      sessionStorage.setItem('zed.adminPortal', PORTAL_SYSTEM);
+    } catch {
+      /* private window: the Admin chooses the portal there */
+    }
+  }
+
   protected async login(): Promise<void> {
     this.error.set('');
+    this.adminMoved.set(false);
     if (!this.userId.trim() || !this.password) {
       this.error.set('Please enter your User ID and password.');
       return;
@@ -87,6 +105,7 @@ export class StaffLoginPage {
       await this.router.navigateByUrl('/staff');
     } catch (err) {
       this.error.set(apiErrorMessage(err));
+      this.adminMoved.set(err instanceof HttpErrorResponse && (err.error as { adminOnMainPortal?: boolean } | null)?.adminOnMainPortal === true);
       this.password = '';
       this.captcha()?.reset();
     } finally {

@@ -61,6 +61,8 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             return this.Problem400("Invalid credentials.");
         }
 
+        if (AdminOnMain(roleId) is { } moved) return moved;
+
         var userId = row.Text("UserId");
         var sub = (await db.QueryProcMultipleAsync("SP_GET_SUB_ROLE", new { UserId = userId, RoleId = roleId.ToString() }, ct))[0].FirstOrDefault();
         var subRoles = SubRoles.All.Where(s => sub?.Text(s) == "1").ToList();
@@ -72,6 +74,24 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             row.Text("StateCode"), row.Text("DistrictCode"), SubRoles: subRoles);
         await HttpContext.SignInZedUserAsync(user);
         return CurrentUserResponse.From(user);
+    }
+
+    /// <summary>
+    /// One Admin (V4): the Consultancy and Surveillance portals' Admin works from the main portal (its portal switch and
+    /// the sign-in hand-over, AdminPortalsController), so the Admin role (and its sub-users) no longer signs in here with a
+    /// password. The problem carries adminOnMainPortal for the sign-in page's link.
+    /// </summary>
+    private ObjectResult? AdminOnMain(int roleId)
+    {
+        if (roleId != (int)UserRole.Admin || HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main) return null;
+        log.LogInformation("Admin sign-in on the {System} portal sent to the main portal", HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "The Admin of every portal now signs in on the main portal and chooses this portal there.",
+        };
+        problem.Extensions["adminOnMainPortal"] = true;
+        return new ObjectResult(problem) { StatusCode = StatusCodes.Status400BadRequest };
     }
 
     /// <summary>
@@ -97,6 +117,8 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             log.LogWarning("Sub-user {UserId} refused: owner {Owner} is not active", sub.UserId, sub.OwnerUserId);
             return this.Problem400("The account you work for is not active. Please contact your administrator.");
         }
+
+        if (AdminOnMain(roleId) is { } moved) return moved;
 
         var ownerId = owner.Text("UserId");
         var subRow = (await db.QueryProcMultipleAsync("SP_GET_SUB_ROLE", new { UserId = ownerId, RoleId = roleId.ToString() }, ct))[0].FirstOrDefault();

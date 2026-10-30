@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -57,7 +58,7 @@ const typeHints: Readonly<Record<number, string>> = {
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule, PagerComponent],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -68,6 +69,8 @@ const typeHints: Readonly<Record<number, string>> = {
         <button type="button" class="btn btn-primary" (click)="add()">+ Add Login</button>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal has its own logins). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

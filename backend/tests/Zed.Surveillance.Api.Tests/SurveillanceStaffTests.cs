@@ -27,6 +27,10 @@ internal static class SurveillanceLogin
 
     public static async Task<HttpClient> SignInAsync(TestHost host, string userId)
     {
+        // One Admin: the Admin works here through the main portal's hand-over, which issues the same cookie as this test
+        // sign-in; a password sign-in of the Admin is refused here.
+        if (Users.TryGetValue(userId, out var role) && role == 1)
+            return await ReviewTestHost.SignInAsync(ReviewTestHost.With(host, new ReviewFakeDocuments(), null), userId.ToUpperInvariant(), Zed.Core.Security.UserRole.Admin);
         var client = await host.CreateBrowserAsync();
         (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId, password = "Right#Pass1" })).EnsureSuccessStatusCode();
         return client;
@@ -215,6 +219,20 @@ public sealed class SurveillanceStaffTests : IDisposable
 
         var master = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
         Assert.Equal(HttpStatusCode.Forbidden, (await master.GetAsync("/api/staff/masters/sectors")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_admin_signs_in_on_the_main_portal_not_here()
+    {
+        var client = await _host.CreateBrowserAsync();
+        var r = await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "ADMIN1", password = "Right#Pass1" });
+        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        var problem = await r.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(problem.GetProperty("adminOnMainPortal").GetBoolean());
+        Assert.Contains("main portal", problem.GetProperty("title").GetString());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_UPDATE_LOGIN");
+        // Other roles still sign in here.
+        Assert.Equal(HttpStatusCode.OK, (await (await _host.CreateBrowserAsync()).PostAsJsonAsync("/api/staff/auth/login", new { userId = "MASTER1", password = "Right#Pass1" })).StatusCode);
     }
 
     [Fact]

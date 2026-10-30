@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, DOCUMENT, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -100,7 +101,7 @@ const standardBodySample =
  */
 @Component({
   selector: 'zed-staff-email-templates',
-  imports: [DatePipe, FormsModule, PagerComponent],
+  imports: [DatePipe, FormsModule, PagerComponent, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -108,6 +109,8 @@ const standardBodySample =
         <p class="page-sub">The e-mails of this portal and of its database procedures: switch one off, change its subject and text, or reset it.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

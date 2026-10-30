@@ -30,6 +30,10 @@ internal static class ConsultancyLogin
 
     public static async Task<HttpClient> SignInAsync(TestHost host, string userId)
     {
+        // One Admin: the Admin works here through the main portal's hand-over, which issues the same cookie as this test
+        // sign-in; a password sign-in of the Admin is refused here (AdminSignIn test below).
+        if (Users.TryGetValue(userId, out var role) && role == 1)
+            return await StaffTestSignIn.BrowserAsync(host.WithTestSignIn(), userId.ToUpperInvariant(), role);
         var client = await host.CreateBrowserAsync();
         (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId, password = "Right#Pass1" })).EnsureSuccessStatusCode();
         return client;

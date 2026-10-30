@@ -3,6 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CertificationLevel, CertificationLevelsPage, formatCertificateNo } from './certification-levels';
+import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 
 describe('CertificationLevelsPage', () => {
   let fixture: ComponentFixture<CertificationLevelsPage>;
@@ -41,7 +42,8 @@ describe('CertificationLevelsPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CertificationLevelsPage],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+      // Main's levels only (saving on the surveillance portal too has its own test below).
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AdminPortalService, useValue: { enabled: false } }],
     }).compileComponents();
     fixture = TestBed.createComponent(CertificationLevelsPage);
     http = TestBed.inject(HttpTestingController);
@@ -190,5 +192,50 @@ describe('CertificationLevelsPage', () => {
     await settle();
     http.expectOne(api).flush(response(false));
     await settle();
+  });
+});
+
+describe('CertificationLevelsPage (one Admin)', () => {
+  it('saves a change on the surveillance portal too, and says when that portal refused it', async () => {
+    await TestBed.configureTestingModule({ imports: [CertificationLevelsPage], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    const fixture = TestBed.createComponent(CertificationLevelsPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    const settle = async () => {
+      fixture.detectChanges();
+      await new Promise((r) => setTimeout(r));
+      await fixture.whenStable();
+      fixture.detectChanges();
+    };
+    const api = '/api/staff/settings/levels';
+    const onSurv = (r: { context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) => r.context.get(ADMIN_PORTAL) === 'surveillance';
+    await settle();
+    const levels = (zedxOn: boolean) => ({
+      stored: true, tokens: ['{ZEDID}'],
+      levels: [{
+        level: {
+          code: 'ZEDX', name: 'ZED-X', orderNo: 40, description: null, comment: null, logoPath: null, isEnabled: zedxOn, assessmentMode: 'Site', validityMonths: 36,
+          surveillanceEnabled: true, firstSurveillanceMonths: 12, certNoFormat: '{ZEDID}', certNoFormatManufacturing: null, certNoFormatService: null, fee: 75000,
+          updatedBy: null, updatedOn: null,
+        } as CertificationLevel,
+        sample: 'ZEDMSME1', logoUrl: null,
+      }],
+    });
+    http.expectOne(api).flush(levels(false));
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Enable') as HTMLButtonElement).click();
+    await settle();
+    http.expectOne((r) => r.url === `${api}/ZEDX/enabled` && !onSurv(r)).flush({ message: 'ZED-X is enabled: MSMEs see it.' });
+    await settle();
+    const mirrored = http.expectOne((r) => r.url === `${api}/ZEDX/enabled` && onSurv(r));
+    expect(mirrored.request.body).toEqual({ enabled: true });
+    mirrored.flush({ title: 'The levels cannot be saved. Please ask the administrator to apply database migrations 0028, 0032.' }, { status: 400, statusText: 'Bad Request' });
+    await settle();
+    http.expectOne(api).flush(levels(true));
+    await settle();
+    const message = el.querySelector('.alert-success')!.textContent!;
+    expect(message).toContain('ZED-X is enabled');
+    expect(message).toContain('Not saved on the Surveillance portal: The levels cannot be saved');
+    http.verify();
   });
 });

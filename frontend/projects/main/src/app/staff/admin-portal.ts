@@ -1,5 +1,6 @@
 import { HttpBackend, HttpClient, HttpContextToken, HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { Component, Injectable, computed, inject, input, output, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { Observable, catchError, firstValueFrom, from, switchMap, throwError } from 'rxjs';
 import { PORTAL_SYSTEM } from '../portal-system';
 
@@ -14,11 +15,24 @@ export const ADMIN_PORTALS: readonly { key: AdminPortal; name: string }[] = [
 /** The API of each portal as the main pages reach it (their IIS applications; the dev proxy maps them too). */
 export const PORTAL_API_BASE: Record<AdminPortal, string> = { main: '', consultancy: '/Consultancy', surveillance: '/surveillance' };
 
+export const ALL_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
+/** The portals that have the home page banner (Upload Image). */
+export const BANNER_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
+
 /**
- * The APIs of the screens with the portal switch: while the Admin has chosen another portal, their calls go to that
- * portal's API (so they read and change that portal's data, with its rules).
+ * The APIs of the screens with the portal switch, and the portals that have them: while the Admin has chosen one of
+ * those portals, their calls go to its API (so they read and change that portal's data, with its rules); otherwise main's.
  */
-export const SWITCHED_APIS: readonly string[] = ['/api/staff/settings/texts'];
+export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPortal[] }[] = [
+  { prefix: '/api/staff/settings/texts', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/email', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/email-templates', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
+  { prefix: '/api/staff/accounts', portals: ALL_PORTALS },
+  { prefix: '/api/staff/fees', portals: ALL_PORTALS },
+  { prefix: '/api/staff/masters/page-settings', portals: BANNER_PORTALS },
+];
 
 /** Sends one request to a given portal's API, whatever the switch says (e.g. the Sectors list of every portal). */
 export const ADMIN_PORTAL = new HttpContextToken<AdminPortal | null>(() => null);
@@ -50,6 +64,15 @@ export class AdminPortalService {
   readonly enabled = PORTAL_SYSTEM === 'main';
   readonly current = signal<AdminPortal>(this.enabled ? stored() : 'main');
   readonly currentName = computed(() => ADMIN_PORTALS.find((p) => p.key === this.current())!.name);
+
+  /**
+   * The portal a screen works on: the chosen one if the screen has it there, else main's; on the Consultancy and
+   * Surveillance builds, their own.
+   */
+  effective(portals: readonly AdminPortal[] = ALL_PORTALS): AdminPortal {
+    if (!this.enabled) return PORTAL_SYSTEM as AdminPortal;
+    return portals.includes(this.current()) ? this.current() : 'main';
+  }
 
   select(portal: AdminPortal): void {
     this.current.set(portal);
@@ -93,7 +116,8 @@ function targetOf(req: HttpRequest<unknown>, service: AdminPortalService): Admin
   const explicit = req.context.get(ADMIN_PORTAL);
   if (explicit) return explicit;
   const path = req.url.split('?')[0];
-  return SWITCHED_APIS.some((p) => path === p || path.startsWith(p + '/')) ? service.current() : 'main';
+  const api = SWITCHED_APIS.find((a) => path === a.prefix || path.startsWith(a.prefix + '/'));
+  return api ? service.effective(api.portals) : 'main';
 }
 
 /**
@@ -130,7 +154,7 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
       <div class="portal-switch" role="group" aria-label="Portal">
         <span class="ps-label">Portal</span>
         @for (p of shown(); track p.key) {
-          <button type="button" class="ps-tab" [class.on]="p.key === service.current()" [attr.aria-pressed]="p.key === service.current()"
+          <button type="button" class="ps-tab" [class.on]="p.key === selected()" [attr.aria-pressed]="p.key === selected()"
                   (click)="choose(p.key)">{{ p.name }}</button>
         }
       </div>
@@ -145,15 +169,24 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
 })
 export class PortalSwitchComponent {
   protected readonly service = inject(AdminPortalService);
-  readonly portals = input<readonly AdminPortal[]>(['main', 'consultancy', 'surveillance']);
-  /** After the switch changed: the page reloads its data. */
+  private readonly router = inject(Router);
+  readonly portals = input<readonly AdminPortal[]>(ALL_PORTALS);
+  /** Recreate the page after a change (default); false: the page reloads its data itself on (changed). */
+  readonly reload = input(true);
+  /** After the switch changed. */
   readonly changed = output<AdminPortal>();
 
   protected readonly shown = computed(() => ADMIN_PORTALS.filter((p) => this.portals().includes(p.key)));
+  protected readonly selected = computed(() => this.service.effective(this.portals()));
 
-  protected choose(portal: AdminPortal): void {
-    if (portal === this.service.current()) return;
+  protected async choose(portal: AdminPortal): Promise<void> {
+    if (portal === this.selected()) return;
     this.service.select(portal);
     this.changed.emit(portal);
+    if (!this.reload()) return;
+    // The page starts again on the chosen portal (its state, forms and lists belong to the other one).
+    const url = this.router.url;
+    await this.router.navigateByUrl('/', { skipLocationChange: true });
+    await this.router.navigateByUrl(url);
   }
 }

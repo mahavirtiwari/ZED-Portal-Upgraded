@@ -1,6 +1,7 @@
 import { DecimalPipe, UpperCasePipe } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
+import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
@@ -499,6 +500,7 @@ const API = '/api/staff/settings/levels';
   `,
 })
 export class CertificationLevelsPage {
+  private readonly portals = inject(AdminPortalService);
   private readonly http = inject(HttpClient);
 
   protected readonly levels = signal<LevelItem[]>([]);
@@ -625,15 +627,29 @@ export class CertificationLevelsPage {
       ...(e.surveillanceEnabled && !e.legacySurveillance ? Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, e[k]])) : {}),
     };
     try {
-      let message = e.isNew
-        ? (await firstValueFrom(this.http.post<MessageResponse>(API, body))).message
-        : (await firstValueFrom(this.http.put<MessageResponse>(`${API}/${encodeURIComponent(e.code)}`, body))).message;
-      if (this.logo && !e.isNew) {
+      const level = (context?: HttpContext) => e.isNew
+        ? this.http.post<MessageResponse>(API, body, { context })
+        : this.http.put<MessageResponse>(`${API}/${encodeURIComponent(e.code)}`, body, { context });
+      let message = (await firstValueFrom(level())).message;
+      const logo = (context?: HttpContext) => {
         const form = new FormData();
-        form.append('file', this.logo, this.logo.name);
-        await firstValueFrom(this.http.post<MessageResponse>(`${API}/${encodeURIComponent(e.code)}/logo`, form));
+        form.append('file', this.logo!, this.logo!.name);
+        return this.http.post<MessageResponse>(`${API}/${encodeURIComponent(e.code)}/logo`, form, { context });
+      };
+      if (this.logo && !e.isNew) {
+        await firstValueFrom(logo());
         message += ' Logo saved.';
       }
+      message += await this.onSurveillance(async (context) => {
+        // A level the surveillance portal does not have yet is added there.
+        try {
+          await firstValueFrom(level(context));
+        } catch (err) {
+          if (e.isNew || !(err instanceof HttpErrorResponse) || err.status !== 404) throw err;
+          await firstValueFrom(this.http.post<MessageResponse>(API, { ...body, code: e.code }, { context }));
+        }
+        if (this.logo && !e.isNew) await firstValueFrom(logo(context));
+      });
       this.editing.set(null);
       this.success.set(message);
       await this.load();
@@ -650,12 +666,28 @@ export class CertificationLevelsPage {
     this.error.set('');
     this.success.set('');
     try {
-      this.success.set((await firstValueFrom(this.http.put<MessageResponse>(`${API}/${encodeURIComponent(l.code)}/enabled`, { enabled: !l.isEnabled }))).message);
+      const enabled = (context?: HttpContext) => this.http.put<MessageResponse>(`${API}/${encodeURIComponent(l.code)}/enabled`, { enabled: !l.isEnabled }, { context });
+      const message = (await firstValueFrom(enabled())).message;
+      this.success.set(message + (await this.onSurveillance(async (context) => { await firstValueFrom(enabled(context)); })));
       await this.load();
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
       this.busy.set(false);
+    }
+  }
+
+  /**
+   * One Admin (V4, main portal): the surveillance portal keeps a copy of the levels (its surveillance procedures read
+   * them), so a change saved here is saved there too, through its own API. Returns the note for the message.
+   */
+  private async onSurveillance(save: (context: HttpContext) => Promise<void>): Promise<string> {
+    if (!this.portals.enabled) return '';
+    try {
+      await save(new HttpContext().set(ADMIN_PORTAL, 'surveillance'));
+      return ' Saved on the Surveillance portal too.';
+    } catch (err) {
+      return ` Not saved on the Surveillance portal: ${apiErrorMessage(err)}`;
     }
   }
 

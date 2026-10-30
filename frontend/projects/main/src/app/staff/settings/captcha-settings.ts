@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { CaptchaMode, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -18,7 +19,7 @@ interface CaptchaSettings {
  */
 @Component({
   selector: 'zed-staff-captcha-settings',
-  imports: [FormsModule],
+  imports: [FormsModule, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -26,6 +27,8 @@ interface CaptchaSettings {
         <p class="page-sub">The captcha of the login, registration, Contact ZED and "Forgot password?" pages of this portal.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal keeps its own). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

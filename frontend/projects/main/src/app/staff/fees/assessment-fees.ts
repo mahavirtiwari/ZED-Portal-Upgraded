@@ -1,9 +1,9 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { AdminPortalService, PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { PORTAL_SYSTEM } from '../../portal-system';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, LevelRequest } from './fees.api';
 
 interface LevelInput {
@@ -24,7 +24,7 @@ interface LevelInput {
  */
 @Component({
   selector: 'zed-staff-assessment-fees',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -43,6 +43,8 @@ interface LevelInput {
         </div>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal has its own fees). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -186,7 +188,7 @@ export class AssessmentFeesPage {
   private readonly api = inject(FeesApi);
 
   /** Consultancy: handholding fees per milestone, Micro / Small / Medium only (old PaymentDetails page). */
-  protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
+  protected readonly consultancy = inject(AdminPortalService).effective() === 'consultancy';
   protected readonly types: readonly string[] = this.consultancy ? ENTERPRISE_TYPES.filter((t) => t !== 'Rejected') : ENTERPRISE_TYPES;
   protected readonly byMilestone = signal(false);
   protected readonly type = signal<string>('Micro');

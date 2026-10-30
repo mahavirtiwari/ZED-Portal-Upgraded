@@ -1,9 +1,9 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
+import { AdminPortal, AdminPortalService, PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { PORTAL_SYSTEM } from '../../portal-system';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee } from './fees.api';
 
 const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
@@ -11,7 +11,7 @@ const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
 export const LEVEL_NAMES: Record<string, string> = { ZEDX: 'ZED-X' };
 
 /** AssessmentFee.SpecialCategory of the payment procedures: what the code and name of each category are on this portal. */
-const CATEGORIES: Record<number, { code: string; name: string }> = PORTAL_SYSTEM === 'surveillance'
+const categoriesOf = (portal: AdminPortal): Record<number, { code: string; name: string }> => portal === 'surveillance'
   ? { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SPL', name: 'Woman / SC / ST-owned or aspirational district MSME' } }
   : { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SC/ST', name: 'SC / ST-owned or aspirational district MSME' }, 2: { code: 'WOM', name: 'Woman-owned MSME' } };
 
@@ -72,7 +72,7 @@ interface SharePreview {
  */
 @Component({
   selector: 'zed-staff-fee-structure',
-  imports: [FormsModule, DecimalPipe],
+  imports: [FormsModule, DecimalPipe, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -88,6 +88,8 @@ interface SharePreview {
         </div>
       </div>
     </div>
+    <!-- One Admin (V4): the portal whose settings these are (each portal has its own fees). -->
+    <zed-portal-switch />
 
     <nav class="lv-cards" aria-label="Certification level">
       @for (c of summary(); track c.code) {
@@ -401,6 +403,8 @@ interface SharePreview {
   `,
 })
 export class FeeStructurePage {
+  /** The categories of the portal whose fees these are (the switch on main; the build's own elsewhere). */
+  private readonly categories = categoriesOf(inject(AdminPortalService).effective());
   private readonly api = inject(FeesApi);
 
   protected readonly types = ENTERPRISE_TYPES;
@@ -434,7 +438,7 @@ export class FeeStructurePage {
     return of
       .map((row) => {
         const category = row.specialCategory ?? 0;
-        const c = CATEGORIES[category] ?? { code: `CAT ${category}`, name: `Special category ${category}` };
+        const c = this.categories[category] ?? { code: `CAT ${category}`, name: `Special category ${category}` };
         const share = row.subsidyPercentage ?? 0;
         const taxableBase = row.isCouponRow ? (row.assessmentFeeAfterCoupon ?? 0) : (row.assessmentFee ?? 0);
         return { row, category, code: c.code, name: c.name, share, additional: category === 0 ? 0 : share - base, goiShare: taxableBase - (row.subsidyPer ?? 0) };

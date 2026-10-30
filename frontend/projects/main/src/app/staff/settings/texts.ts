@@ -56,7 +56,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
       </div>
     </div>
     <!-- One Admin (V4): the texts of the portal chosen here (each portal keeps its own). -->
-    <zed-portal-switch (changed)="reload()" />
+    <zed-portal-switch [reload]="false" (changed)="reload()" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

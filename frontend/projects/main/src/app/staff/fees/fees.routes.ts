@@ -7,10 +7,11 @@ const admin = authGuard('/staff', [StaffRole.Admin]);
 
 /**
  * Assessment fee master (children of `staff`, mounted at `staff/fees`): the Fee Structure on Main and Surveillance,
- * Consultancy's handholding fee per milestone. The API checks the role again.
+ * Consultancy's handholding fee per milestone (on main, the Admin's portal switch picks which). The API checks the role again.
  */
 export const FEES_ROUTES: Routes = [
-  PORTAL_SYSTEM === 'consultancy'
-    ? { path: '', title: 'ZED | Handholding Payments', canActivate: [admin], loadComponent: () => import('./assessment-fees').then((m) => m.AssessmentFeesPage) }
-    : { path: '', title: 'ZED | Fee Structure', canActivate: [admin], loadComponent: () => import('./fee-structure').then((m) => m.FeeStructurePage) },
+  {
+    path: '', title: PORTAL_SYSTEM === 'consultancy' ? 'ZED | Handholding Payments' : PORTAL_SYSTEM === 'main' ? 'ZED | Payments' : 'ZED | Fee Structure',
+    canActivate: [admin], loadComponent: () => import('./fees-host').then((m) => m.FeesHostPage),
+  },
 ];
