@@ -43,7 +43,11 @@ public sealed partial class SpecialRegionsController(ISqlExecutor db, ILogger<Sp
 
     public sealed record Option(string Code, string Name);
 
-    public sealed record RegionsResponse(IReadOnlyList<Category> Categories, IReadOnlyList<RegionRow> Regions, IReadOnlyList<Option> States, int SubsidyDistricts);
+    /// <param name="OtherPortals">V4 one Admin: the Consultancy / Surveillance portals whose districts differ from main's (count).</param>
+    public sealed record RegionsResponse(IReadOnlyList<Category> Categories, IReadOnlyList<RegionRow> Regions, IReadOnlyList<Option> States, int SubsidyDistricts,
+        IReadOnlyList<PortalDifference>? OtherPortals = null);
+
+    public sealed record PortalDifference(string Portal, int Districts);
 
     /// <summary>Every listed entry: the region columns of States (whole states) and of Districts, one row per region set.</summary>
     internal const string RegionsSql =
@@ -85,7 +89,8 @@ public sealed partial class SpecialRegionsController(ISqlExecutor db, ILogger<Sp
         try
         {
             var regions = await db.QuerySqlAsync<RegionRow>(RegionsSql, null, ct);
-            return new RegionsResponse(Categories, regions, await db.QuerySqlAsync<Option>(StatesSql, null, ct), await CountAsync(ct));
+            var others = (await DistrictCopies.DifferencesAsync(db, log, ct)).Select(d => new PortalDifference(d.Name, d.Districts)).ToList();
+            return new RegionsResponse(Categories, regions, await db.QuerySqlAsync<Option>(StatesSql, null, ct), await CountAsync(ct), others);
         }
         catch (SqlException ex)
         {
@@ -181,7 +186,18 @@ public sealed partial class SpecialRegionsController(ISqlExecutor db, ILogger<Sp
         var flagged = await db.ExecuteSqlAsync(RecomputeSql, null, ct);
         log.LogWarning("Subsidy region {Category} {State}/{District} {Action} by {Actor}; {Flagged} district flag(s) changed",
             key.Category, key.State, key.District.Length == 0 ? "(state)" : key.District, action, UserId, flagged);
-        return new MessageResponse($"{message} {await CountAsync(ct)} districts now get the additional subsidy.");
+        // The handholding and surveillance payments read their own copy of the districts' subsidy flag.
+        var copied = await DistrictCopies.CopyAsync(db, log, ct);
+        return new MessageResponse($"{message} {await CountAsync(ct)} districts now get the additional subsidy.{copied}");
+    }
+
+    /// <summary>POST …/regions/copy (V4 one Admin): makes the Consultancy and Surveillance portals' districts the same as main's now.</summary>
+    [HttpPost("copy")]
+    public async Task<ActionResult<MessageResponse>> Copy(CancellationToken ct)
+    {
+        var copied = await DistrictCopies.CopyAsync(db, log, ct);
+        log.LogWarning("Main's districts copied to the other portals by {Actor}", UserId);
+        return new MessageResponse(copied.Trim());
     }
 
     private async Task<int> CountAsync(CancellationToken ct) => (await db.QuerySqlAsync<CountRow>(CountSql, null, ct)).FirstOrDefault()?.Total ?? 0;

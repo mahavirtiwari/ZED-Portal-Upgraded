@@ -74,6 +74,9 @@ public sealed class SpecialRegionsTests : IDisposable
         Assert.Contains("SubsidyIsland IS NOT NULL", state.Name);
         Assert.Equal(("35", "True", "ADMIN1"), (FakeSql.Arg(state.Args, "StateCode"), FakeSql.Arg(state.Args, "Value"), FakeSql.Arg(state.Args, "UpdatedBy")));
         Assert.Single(Writes("UPDATE d SET IsAspirationalDt"));
+        // One Admin: the handholding and surveillance payments read their own districts, which are made the same as main's.
+        Assert.Equal(DistrictCopies.Sync.Values.OrderBy(v => v), _host.Sql.Calls.Select(c => c.Name).Where(DistrictCopies.Sync.Values.Contains).OrderBy(v => v));
+        Assert.Contains("districts were updated too", await put.Content.ReadAsStringAsync());
 
         // A district: the region's column of dbo.Districts, from NULL (not listed).
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync(Url, new { category = "LWE", stateCode = "9", districtCode = "170", enabled = true })).StatusCode);
@@ -109,6 +112,23 @@ public sealed class SpecialRegionsTests : IDisposable
         var bytes = new ByteArrayContent(Encoding.UTF8.GetBytes(content));
         bytes.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
         return new MultipartFormDataContent { { bytes, "file", name } };
+    }
+
+    [Fact]
+    public async Task The_other_portals_districts_are_compared_and_can_be_copied_now()
+    {
+        _host.Sql.Queries[DistrictCopies.Diff["ZED_SURVEILLANCE"]] = _ => [new DistrictCopies.CountRow(3)];
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var body = await admin.GetFromJsonAsync<JsonElement>(Url);
+        var others = body.GetProperty("otherPortals");
+        Assert.Equal(1, others.GetArrayLength());
+        Assert.Equal(("Surveillance", 3), (others[0].GetProperty("portal").GetString(), others[0].GetProperty("districts").GetInt32()));
+
+        var copy = await admin.PostAsync(Url + "/copy", null);
+        Assert.Equal(HttpStatusCode.OK, copy.StatusCode);
+        Assert.Equal(2, _host.Sql.Calls.Count(c => DistrictCopies.Sync.Values.Contains(c.Name)));
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await master.PostAsync(Url + "/copy", null)).StatusCode);
     }
 
     [Fact]
@@ -150,7 +170,9 @@ public sealed class SpecialRegionsTests : IDisposable
             },
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Contains("3 change(s) applied", await r.Content.ReadAsStringAsync());
+        var applied = await r.Content.ReadAsStringAsync();
+        Assert.Contains("3 change(s) applied", applied);
+        Assert.Contains("Consultancy and Surveillance portals' districts were updated too", applied);
         var insert = _host.Sql.Calls.Single(c => c.Name.StartsWith("INSERT INTO dbo.Districts", StringComparison.Ordinal));
         Assert.Equal("NEW DISTRICT, EAST", FakeSql.Arg(insert.Args, "DistrictName"));
         Assert.Equal("UTTAR PRADESH", FakeSql.Arg(insert.Args, "StateName"));

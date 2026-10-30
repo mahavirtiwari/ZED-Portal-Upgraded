@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, input, output, signal, untracked } from '@angular/core';
+import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -192,7 +193,7 @@ export class LinkCard {
  */
 @Component({
   selector: 'zed-staff-links',
-  imports: [LinkCard],
+  imports: [LinkCard, PortalSwitchComponent],
   template: `
     <div class="page-head">
       <div>
@@ -200,6 +201,8 @@ export class LinkCard {
         <p class="page-sub">The portal's links to pages outside it: switch each on or off and change where it goes.</p>
       </div>
     </div>
+    <!-- One Admin (V4): the links of the portal chosen here (each portal keeps its own). -->
+    <zed-portal-switch />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

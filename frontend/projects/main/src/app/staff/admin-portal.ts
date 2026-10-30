@@ -29,6 +29,7 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/settings/email-templates', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/links', portals: ALL_PORTALS },
   { prefix: '/api/staff/accounts', portals: ALL_PORTALS },
   { prefix: '/api/staff/fees', portals: ALL_PORTALS },
   { prefix: '/api/staff/masters/page-settings', portals: BANNER_PORTALS },

@@ -59,6 +59,26 @@ describe('SubsidyRegionsPage', () => {
     expect(el.querySelector('tbody')!.textContent).toContain('Disabled');
   });
 
+  it('says which other portals have different districts and updates them', async () => {
+    expect(el.querySelector('.copy-bar')).toBeNull();
+    fixture = TestBed.createComponent(SubsidyRegionsPage);
+    el = fixture.nativeElement;
+    await settle(fixture);
+    http.expectOne(url).flush({ ...data, otherPortals: [{ portal: 'Surveillance', districts: 3 }] });
+    await settle(fixture);
+    expect(el.querySelector('.copy-bar')!.textContent!.replace(/\s+/g, ' ')).toContain('Surveillance: 3 districts differ.');
+    button(el, 'UPDATE THEM NOW').click();
+    await settle(fixture);
+    const copy = http.expectOne(`${url}/copy`);
+    expect(copy.request.method).toBe('POST');
+    copy.flush({ message: "The Consultancy and Surveillance portals' districts were updated too." });
+    await settle(fixture);
+    http.expectOne(url).flush({ ...data, otherPortals: [] });
+    await settle(fixture);
+    expect(el.querySelector('.copy-bar')).toBeNull();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('districts were updated');
+  });
+
   it('enables an entry and refreshes the count', async () => {
     button(el, 'North Eastern Region').click();
     await settle(fixture);

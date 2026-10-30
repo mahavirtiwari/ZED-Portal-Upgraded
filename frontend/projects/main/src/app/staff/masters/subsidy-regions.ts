@@ -36,6 +36,8 @@ export interface RegionsResponse {
   regions: RegionRow[];
   states: Option[];
   subsidyDistricts: number;
+  /** V4 one Admin: the other portals whose districts differ from these (their payments read their own copy). */
+  otherPortals?: { portal: string; districts: number }[] | null;
 }
 
 /** Which entries of the picked list the table shows (the buttons beside the search box). */
@@ -61,6 +63,14 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
         <zed-excel-tools api="/api/staff/masters/regions" title="Subsidy Regions" fileName="subsidy-regions" (applied)="load()" />
       </div>
     </div>
+
+    @if (otherPortals().length) {
+      <div class="alert alert-warning copy-bar" role="status">
+        <span>The handholding and surveillance payments read their own copy of the districts.
+          @for (o of otherPortals(); track o.portal) { <strong>{{ o.portal }}</strong>: {{ o.districts }} district{{ o.districts === 1 ? '' : 's' }} differ{{ o.districts === 1 ? 's' : '' }}. }</span>
+        <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="copyToOthers()">UPDATE THEM NOW</button>
+      </div>
+    }
 
     <div class="sr-stats">
       <div class="stat stat-main"><span class="stat-value">{{ subsidyDistricts() }}</span><span class="stat-label">Districts get the additional subsidy</span></div>
@@ -176,6 +186,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
     }
   `,
   styles: `
+    .copy-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
     .sr-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
     .stat { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 12px 16px; display: flex; flex-direction: column; min-width: 0; }
     .stat-main { border-color: #b9dfc8; background: #f3faf5; }
@@ -295,6 +306,7 @@ export class SubsidyRegionsPage {
   protected readonly addDistrict = signal('');
   protected readonly addEnabled = signal(true);
   protected readonly busy = signal(false);
+  protected readonly otherPortals = signal<{ portal: string; districts: number }[]>([]);
   protected readonly error = signal('');
   protected readonly success = signal('');
 
@@ -401,6 +413,21 @@ export class SubsidyRegionsPage {
     }
   }
 
+  /** Makes the Consultancy and Surveillance portals' districts (and their subsidy flag) the same as these. */
+  protected async copyToOthers(): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      this.success.set((await firstValueFrom(this.http.post<MessageResponse>(`${SubsidyRegionsPage.url}/copy`, null))).message);
+      await this.load(false);
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
   protected async load(showBusy = true): Promise<void> {
     if (showBusy) this.busy.set(true);
     try {
@@ -410,6 +437,7 @@ export class SubsidyRegionsPage {
       this.pager.refresh(this.filtered());
       this.states.set(r.states);
       this.subsidyDistricts.set(r.subsidyDistricts);
+      this.otherPortals.set(r.otherPortals ?? []);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
