@@ -1,4 +1,4 @@
-import { isNetworkError } from '@zed/shared';
+import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
 import { isFourthMilestone, normalizeDetails, type AssessmentDetails } from '../models';
 
@@ -33,26 +33,37 @@ export type LoginOutcome =
 export async function login(app: SaApp, input: LoginInput, online: boolean): Promise<LoginOutcome> {
   if (!online) {
     if (!app.compareCredentials(input.assessorId, input.password, input.zedId)) return { kind: 'toast', message: NETWORK_UNAVAILABLE };
-    return proceedWith(app, null, input);
+    return offlineSignIn(app, input);
   }
   let resp: AssessmentDetails | null = null;
   try {
     resp = await app.api.login({ assessorId: input.assessorId, password: input.password, zedId: input.zedId });
   } catch (e) {
     // The legacy then showed "Invalid Username or Password". New: no answer -> offline sign-in.
-    if (isNetworkError(e) && app.compareCredentials(input.assessorId, input.password, input.zedId)) return proceedWith(app, null, input);
+    if (isNetworkError(e) && app.compareCredentials(input.assessorId, input.password, input.zedId)) return offlineSignIn(app, input);
     resp = null;
   }
   const status = resp ? String(resp.status ?? '') : '';
   if (resp && status === '1') {
+    // New (audit C1): the token is kept apart from the stored assessment and sent with every later call.
+    const token = takeAppToken(resp);
     const out = await proceedWith(app, resp, input);
-    return out.kind === 'proceed' ? { ...out, toast: LOGIN_SUCCESSFUL } : out;
+    if (out.kind !== 'proceed') return out;
+    await app.session.signedIn(input.assessorId + input.zedId, token);
+    return { ...out, toast: LOGIN_SUCCESSFUL };
   }
   if (resp && status === '2') return { kind: 'update' };
   return { kind: 'toast', message: resp?.errorMessage ? resp.errorMessage : INVALID_USER };
 }
 
 const hasParams = (d: AssessmentDetails | null) => !!d?.allottedParameters?.length;
+
+/** Offline sign-in; new (audit C1): the token of this user's last online login is sent again. */
+async function offlineSignIn(app: SaApp, input: LoginInput): Promise<LoginOutcome> {
+  const out = await proceedWith(app, null, input);
+  if (out.kind === 'proceed') await app.session.resumed(input.assessorId + input.zedId);
+  return out;
+}
 
 async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, input: LoginInput): Promise<LoginOutcome> {
   if (loginResp) {

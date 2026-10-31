@@ -363,7 +363,7 @@ function DocumentRow({ app, document, technologyCode, onValidated, testID }: { a
     if (!url) return;
     ui.showLoading();
     try {
-      const path = await zedDevice().downloadFile(url, photoId);
+      const path = await zedDevice().downloadFile(url, photoId, app.session.appToken);
       setViewed(true);
       if (isPdf) zedDevice().openPdf(path, photoId);
       else zedDevice().openImage(path);

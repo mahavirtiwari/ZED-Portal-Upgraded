@@ -150,6 +150,8 @@ export interface Prefs {
   set(file: string, key: string, value: string): void;
   setBoolean(file: string, key: string, value: boolean): void;
   remove(file: string, key: string): void;
+  /** Encrypts the plain string values left in a file (new in V4; strings written by the app are always encrypted). */
+  protect(file: string): void;
 }
 
 export const nativePrefs: Prefs = {
@@ -157,6 +159,7 @@ export const nativePrefs: Prefs = {
   set: (f, k, v) => zedDevice().setPreference(f, k, v),
   setBoolean: (f, k, v) => zedDevice().setPreferenceBoolean(f, k, v),
   remove: (f, k) => zedDevice().removePreference(f, k),
+  protect: f => zedDevice().protectPreferences(f),
 };
 
 export function memoryPrefs(): Prefs & { data: Map<string, string> } {
@@ -168,6 +171,7 @@ export function memoryPrefs(): Prefs & { data: Map<string, string> } {
     set: (f, k, v) => void data.set(key(f, k), v),
     setBoolean: (f, k, v) => void data.set(key(f, k), String(v)),
     remove: (f, k) => void data.delete(key(f, k)),
+    protect: () => undefined,
   };
 }
 
@@ -193,3 +197,6 @@ export const PREFS = {
   /** SiteTourStatusHelper */
   siteTourStatus: 'SiteTourStatus',
 } as const;
+
+/** Preference files with sign-in values or assessment data, encrypted at start (flags elsewhere are not sensitive). */
+export const PROTECTED_PREFS = [PREFS.login, PREFS.assessment, PREFS.meetingDraft];

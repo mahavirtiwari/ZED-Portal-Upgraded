@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   colors,
@@ -36,7 +36,6 @@ import {
   requirementStatus,
   setNcDetails,
   Status,
-  updateMsmeSurveillanceStatus,
   type CertificationDetails,
   type CertificationType,
   type NcDetails,
@@ -49,14 +48,18 @@ import { submitNcProduct, submitNcRequirement, submitNcSitePhotos } from '../syn
 const FINAL_SUBMIT_DONE = 'Final Submit Done';
 const QUEUED = 'Saved on the phone. It will be sent when the connection returns.';
 
-type NcParams = { certificationType: CertificationType; isSurveillance: boolean };
+/**
+ * The desktop assessment's NCs. The legacy app also opened these screens for the NCs of a surveillance round
+ * (`isSurveillance`, `surveillancemobileapi/msme/`); V4 does not serve those calls and the flow was unreachable, so it
+ * was removed (api.ts).
+ */
+type NcParams = { certificationType: CertificationType };
 
 function useNcContext() {
   const app = useMsme();
-  const { certificationType: type, isSurveillance } = useRoute<NcParams & Record<string, unknown>>().params;
-  const status = isSurveillance ? app.user?.MsmeDetails?.msmeSurveillanceStatus : app.user?.MsmeDetails?.msmeStatus;
-  const details = certificationDetailsOf(status, type);
-  return { app, type, isSurveillance, details };
+  const { certificationType: type } = useRoute<NcParams & Record<string, unknown>>().params;
+  const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, type);
+  return { app, type, details };
 }
 
 /** The legacy fragments of this activity show "Bronze Surveillance" in the header and keep the activity's back bar. */
@@ -73,39 +76,13 @@ function NcFrame({ title, children, testID }: { title: string; children: React.R
 // ---------------------------------------------------------------------------------------------- NonConformancesActivity
 
 export function NonConformancesScreen() {
-  const { app, type, isSurveillance, details } = useNcContext();
+  const { app, type, details } = useNcContext();
   const nav = useNavigation();
   const ui = useUi();
-  const [ready, setReady] = useState(!isSurveillance);
   const whatIsNc = useAppText('app.msme.nc.whatIsNc');
 
-  // handleSurveillanceFlow: the surveillance statuses come from msme/GetMsmeStatus first.
-  useEffect(() => {
-    if (!isSurveillance || !app.loginId) return;
-    (async () => {
-      ui.showLoading();
-      try {
-        const s = await app.api.getMsmeStatus(app.loginId!, true);
-        if (isSuccess(s) && app.user?.MsmeDetails) {
-          updateMsmeSurveillanceStatus(app.user.MsmeDetails, s);
-          await app.persist();
-          setReady(true);
-        } else {
-          ui.toast(UNKNOWN_ERROR, { long: true });
-          nav.pop();
-        }
-      } catch {
-        ui.toast(UNKNOWN_ERROR, { long: true });
-        nav.pop();
-      } finally {
-        ui.hideLoading();
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const openNc = () => {
-    if (details?.activeNcDetails != null) nav.push('NcDetails', { certificationType: type, isSurveillance });
+    if (details?.activeNcDetails != null) nav.push('NcDetails', { certificationType: type });
   };
 
   const onNcClicked = async (ncStatus: number, ncCount: number, stored: NcDetails | null | undefined) => {
@@ -115,7 +92,7 @@ export function NonConformancesScreen() {
         ui.showLoading();
         let r: NcDetails;
         try {
-          r = await app.api.getNcDetails(app.loginId, type, ncCount, isSurveillance);
+          r = await app.api.getNcDetails(app.loginId, type, ncCount);
         } catch (e) {
           r = { status: '0', errorMessage: e instanceof Error ? e.message : null };
         } finally {
@@ -147,12 +124,11 @@ export function NonConformancesScreen() {
     : [];
 
   return (
-    <NcFrame title={isSurveillance ? 'Non-Conformances(Surveillance)' : 'Non-Conformances'} testID="non-conformances">
+    <NcFrame title="Non-Conformances" testID="non-conformances">
       <ScrollView>
         <View style={{ margin: dimens.padding2 }}>
           <View style={[shapes.greyOutlineRectangle, { margin: dimens.padding3 }]}>
-            {ready &&
-              rows.map((row, i) =>
+            {rows.map((row, i) =>
                 row.status > 0 ? (
                   <Pressable key={row.n} onPress={() => onNcClicked(row.status, row.n, row.stored)} testID={`nc-${row.n}`}>
                     <View style={styles.ncRow}>
@@ -192,7 +168,7 @@ function Legend({ icon, text }: { icon: typeof icons.nc_to_start; text: string }
 // ---------------------------------------------------------------------------------------------- NonConformanceFragment
 
 export function NcDetailsScreen() {
-  const { app, type, isSurveillance, details } = useNcContext();
+  const { app, type, details } = useNcContext();
   const nav = useNavigation();
   const ui = useUi();
   const nc = details?.activeNcDetails ?? null;
@@ -204,7 +180,7 @@ export function NcDetailsScreen() {
     if (!nc.sitePhotosSubmitted) anyUnsubmitted = true;
     sections.push(
       <NcRow key="site" title="Site Exterior Photos">
-        <NcOption label="Site Exterior Photos" submitted={!!nc.sitePhotosSubmitted} onPress={() => nav.push('NcSitePhotos', { certificationType: type, isSurveillance })} testID="nc-site" />
+        <NcOption label="Site Exterior Photos" submitted={!!nc.sitePhotosSubmitted} onPress={() => nav.push('NcSitePhotos', { certificationType: type })} testID="nc-site" />
       </NcRow>,
     );
   }
@@ -218,7 +194,7 @@ export function NcDetailsScreen() {
               key={i}
               label={p.productName ?? ''}
               submitted={p.status === Status.SUBMITTED}
-              onPress={() => nav.push('NcProduct', { certificationType: type, isSurveillance, index: i })}
+              onPress={() => nav.push('NcProduct', { certificationType: type, index: i })}
               testID={`nc-product-${i}`}
             />
           );
@@ -239,7 +215,7 @@ export function NcDetailsScreen() {
                 <NcOption
                   label="View NC"
                   submitted={requirementStatus(r) === Status.SUBMITTED}
-                  onPress={() => nav.push('NcRequirement', { certificationType: type, isSurveillance, requirementId: r.id, elementName: element.label ?? '', elementCode: major })}
+                  onPress={() => nav.push('NcRequirement', { certificationType: type, requirementId: r.id, elementName: element.label ?? '', elementCode: major })}
                   testID={`nc-requirement-${r.id}`}
                 />
               </View>
@@ -255,7 +231,7 @@ export function NcDetailsScreen() {
     ui.showLoading();
     let r: BaseServiceResponse;
     try {
-      r = await app.api.finalSubmitNc(app.loginId, type, isSurveillance);
+      r = await app.api.finalSubmitNc(app.loginId, type);
     } catch (e) {
       r = { status: '0', errorMessage: e instanceof Error ? e.message : null };
     } finally {
@@ -350,7 +326,7 @@ function NcFormFrame({ title, children, testID }: { title: string; children: Rea
 
 /** NcSitePhotosFragment */
 export function NcSitePhotosScreen() {
-  const { app, type, isSurveillance, details } = useNcContext();
+  const { app, type, details } = useNcContext();
   const nav = useNavigation();
   const ui = useUi();
   const capturer = useScreenCapture('toast');
@@ -366,7 +342,7 @@ export function NcSitePhotosScreen() {
     if (value == null) return setError(REQUIRED);
     if (!nc.siteExteriorPhotoData || nc.siteExteriorPhotoData.length === 0) return ui.snackbar('Please capture Site Exterior Photos');
     await app.persist();
-    const outcome = await sendOrQueue(ui, () => submitNcSitePhotos(app, type, isSurveillance), () => queueNcSitePhotos(app, type, isSurveillance));
+    const outcome = await sendOrQueue(ui, () => submitNcSitePhotos(app, type), () => queueNcSitePhotos(app, type));
     if (outcome === 'sent') ui.toast('Site photos submitted successfully', { long: true });
     if (outcome !== 'failed') nav.pop();
   };
@@ -395,7 +371,7 @@ export function NcSitePhotosScreen() {
 
 /** NcProductFragment */
 export function NcProductScreen() {
-  const { app, type, isSurveillance, details } = useNcContext();
+  const { app, type, details } = useNcContext();
   const nav = useNavigation();
   const ui = useUi();
   const capturer = useScreenCapture('toast');
@@ -415,8 +391,8 @@ export function NcProductScreen() {
     await app.persist();
     const outcome = await sendOrQueue(
       ui,
-      () => submitNcProduct(app, type, isSurveillance, product),
-      () => queueNcProduct(app, type, isSurveillance, index, product.productName ?? ''),
+      () => submitNcProduct(app, type, product),
+      () => queueNcProduct(app, type, index, product.productName ?? ''),
     );
     if (outcome === 'sent') ui.toast('Product submitted successfully', { long: true });
     if (outcome !== 'failed') nav.pop();
@@ -458,7 +434,7 @@ export function NcProductScreen() {
 
 /** NcRequirementFragment */
 export function NcRequirementScreen() {
-  const { app, type, isSurveillance, details } = useNcContext();
+  const { app, type, details } = useNcContext();
   const nav = useNavigation();
   const ui = useUi();
   const capturer = useScreenCapture('toast');
@@ -478,8 +454,8 @@ export function NcRequirementScreen() {
     await app.persist();
     const outcome = await sendOrQueue(
       ui,
-      () => submitNcRequirement(app, type, isSurveillance, requirement),
-      () => queueNcRequirement(app, type, isSurveillance, requirement.id, `${elementCode}. ${elementName}`),
+      () => submitNcRequirement(app, type, requirement),
+      () => queueNcRequirement(app, type, requirement.id, `${elementCode}. ${elementName}`),
     );
     // The legacy view model posted the requirement's answer to the product observer: same message.
     if (outcome === 'sent') ui.toast('Product submitted successfully', { long: true });

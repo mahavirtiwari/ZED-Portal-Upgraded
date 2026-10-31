@@ -22,7 +22,7 @@ export type QueueKind = 'basicInfo' | 'evidence' | 'ncSitePhotos' | 'ncProduct' 
 const result = (r: BaseServiceResponse | null): HandlerResult =>
   isSuccess(r) ? { ok: true } : { ok: false, error: r?.errorMessage ?? 'Unknown Error Occurred' };
 
-type Payload = { cert: CertificationType; surveillance?: boolean; evidenceId?: string; index?: number; requirementId?: string };
+type Payload = { cert: CertificationType; evidenceId?: string; index?: number; requirementId?: string };
 
 export function registerHandlers(app: MsmeApp): void {
   const q = app.queue;
@@ -47,26 +47,26 @@ export function registerHandlers(app: MsmeApp): void {
   q.register(
     'ncSitePhotos',
     wrap(async p => {
-      const nc = activeNc(app, p.cert, !!p.surveillance);
+      const nc = activeNc(app, p.cert);
       if (!nc || nc.sitePhotosSubmitted) return { status: '1' };
-      return submitNcSitePhotos(app, p.cert, !!p.surveillance);
+      return submitNcSitePhotos(app, p.cert);
     }),
   );
   q.register(
     'ncProduct',
     wrap(async p => {
-      const product = activeNc(app, p.cert, !!p.surveillance)?.products?.[p.index ?? -1];
+      const product = activeNc(app, p.cert)?.products?.[p.index ?? -1];
       if (!product || product.status === Status.SUBMITTED) return { status: '1' };
-      return submitNcProduct(app, p.cert, !!p.surveillance, product);
+      return submitNcProduct(app, p.cert, product);
     }),
   );
   q.register(
     'ncRequirement',
     wrap(async p => {
-      const nc = activeNc(app, p.cert, !!p.surveillance);
+      const nc = activeNc(app, p.cert);
       const req = nc?.parameters?.flatMap(e => e.requirements ?? []).find(r => r.id === p.requirementId);
       if (!req || req.status === Status.SUBMITTED) return { status: '1' };
-      return submitNcRequirement(app, p.cert, !!p.surveillance, req);
+      return submitNcRequirement(app, p.cert, req);
     }),
   );
   q.register('surveillance', wrap(p => submitSurveillance(app, p.cert)));
@@ -76,8 +76,8 @@ function enqueue(app: MsmeApp, kind: QueueKind, id: string, label: string, paylo
   const user = app.loginId!;
   return app.queue.enqueue({
     kind,
-    key: `${user}:${kind}:${payload.cert}:${payload.surveillance ? 'S:' : ''}${id}`,
-    group: `${user}:${payload.cert}:${payload.surveillance ? 'S' : 'M'}`,
+    key: `${user}:${kind}:${payload.cert}:${id}`,
+    group: `${user}:${payload.cert}:M`,
     userId: user,
     label,
     payload,
@@ -90,14 +90,14 @@ export const queueBasicInfo = (app: MsmeApp, cert: CertificationType) =>
 export const queueEvidence = (app: MsmeApp, cert: CertificationType, evidenceId: string, label: string) =>
   enqueue(app, 'evidence', evidenceId, `Evidence: ${label}`, { cert, evidenceId });
 
-export const queueNcSitePhotos = (app: MsmeApp, cert: CertificationType, surveillance: boolean) =>
-  enqueue(app, 'ncSitePhotos', 'site', 'Non-conformance: Site Exterior Photos', { cert, surveillance });
+export const queueNcSitePhotos = (app: MsmeApp, cert: CertificationType) =>
+  enqueue(app, 'ncSitePhotos', 'site', 'Non-conformance: Site Exterior Photos', { cert });
 
-export const queueNcProduct = (app: MsmeApp, cert: CertificationType, surveillance: boolean, index: number, name: string) =>
-  enqueue(app, 'ncProduct', `p${index}`, `Non-conformance product: ${name}`, { cert, surveillance, index });
+export const queueNcProduct = (app: MsmeApp, cert: CertificationType, index: number, name: string) =>
+  enqueue(app, 'ncProduct', `p${index}`, `Non-conformance product: ${name}`, { cert, index });
 
-export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, surveillance: boolean, requirementId: string, label: string) =>
-  enqueue(app, 'ncRequirement', requirementId, `Non-conformance: ${label}`, { cert, surveillance, requirementId });
+export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, requirementId: string, label: string) =>
+  enqueue(app, 'ncRequirement', requirementId, `Non-conformance: ${label}`, { cert, requirementId });
 
 export const queueSurveillance = (app: MsmeApp, cert: CertificationType) =>
   enqueue(app, 'surveillance', 'photos', 'Surveillance Assessment photos', { cert });
@@ -108,33 +108,30 @@ export const queueSurveillance = (app: MsmeApp, cert: CertificationType) =>
  */
 export async function queueOutstanding(app: MsmeApp): Promise<number> {
   let n = 0;
+  // The surveillance round's NCs (msmeSurveillanceStatus) are not looked at: V4 serves no replies to them (api.ts).
   for (const cert of ['Bronze', 'Silver', 'Gold'] as CertificationType[]) {
-    for (const surveillance of [false, true]) {
-      const details = certification(app, cert, surveillance);
-      if (!details) continue;
-      if (!surveillance) {
-        for (const e of details.parameters ?? [])
-          for (const r of e.requirements ?? [])
-            for (const ev of r.evidences ?? [])
-              if (ev.status === Status.COMPLETED) {
-                await queueEvidence(app, cert, ev.id, ev.label ?? ev.id);
-                n++;
-              }
-      }
-      const nc = details.activeNcDetails;
-      if (nc) {
-        for (const [i, p] of (nc.products ?? []).entries())
-          if (p.status === Status.COMPLETED) {
-            await queueNcProduct(app, cert, surveillance, i, p.productName ?? '');
+    const details = certification(app, cert);
+    if (!details) continue;
+    for (const e of details.parameters ?? [])
+      for (const r of e.requirements ?? [])
+        for (const ev of r.evidences ?? [])
+          if (ev.status === Status.COMPLETED) {
+            await queueEvidence(app, cert, ev.id, ev.label ?? ev.id);
             n++;
           }
-        for (const e of nc.parameters ?? [])
-          for (const r of e.requirements ?? [])
-            if (r.status === Status.COMPLETED) {
-              await queueNcRequirement(app, cert, surveillance, r.id, `${e.code}. ${e.label ?? ''}`);
-              n++;
-            }
-      }
+    const nc = details.activeNcDetails;
+    if (nc) {
+      for (const [i, p] of (nc.products ?? []).entries())
+        if (p.status === Status.COMPLETED) {
+          await queueNcProduct(app, cert, i, p.productName ?? '');
+          n++;
+        }
+      for (const e of nc.parameters ?? [])
+        for (const r of e.requirements ?? [])
+          if (r.status === Status.COMPLETED) {
+            await queueNcRequirement(app, cert, r.id, `${e.code}. ${e.label ?? ''}`);
+            n++;
+          }
     }
   }
   return n;

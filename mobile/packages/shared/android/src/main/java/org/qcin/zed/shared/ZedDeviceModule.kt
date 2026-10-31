@@ -352,14 +352,18 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         }
     }
 
-    /** MobileApiWebService.getPhoto: downloads to cacheDir/downloads/<fileName> and resolves the path. */
-    override fun downloadFile(url: String, fileName: String, promise: Promise) {
+    /**
+     * MobileApiWebService.getPhoto: downloads to cacheDir/downloads/<fileName> and resolves the path. New in V4: the
+     * app sign-in token travels in the X-Zed-App-Token header, as on the other calls.
+     */
+    override fun downloadFile(url: String, fileName: String, appToken: String?, promise: Promise) {
         Thread {
             var connection: HttpURLConnection? = null
             try {
                 connection = (URL(url).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 60_000
                     readTimeout = 60_000
+                    if (!appToken.isNullOrEmpty()) setRequestProperty(APP_TOKEN_HEADER, appToken)
                 }
                 if (connection.responseCode !in 200..299) {
                     promise.reject("DOWNLOAD_FAILED", "HTTP " + connection.responseCode)
@@ -395,21 +399,53 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
         return bytesToHex(b)
     }
 
-    /** Any stored type as text (the legacy apps also kept booleans, e.g. SiteTourStatus). */
+    /**
+     * Any stored type as text (the legacy apps also kept booleans, e.g. SiteTourStatus). New in V4: strings are kept
+     * encrypted (SecureStore); a plain legacy string is read as it is. A value that cannot be decrypted reads as unset.
+     */
     override fun getPreference(file: String, key: String): String? =
-        context.getSharedPreferences(file, Context.MODE_PRIVATE).all[key]?.toString()
+        when (val v = context.getSharedPreferences(file, Context.MODE_PRIVATE).all[key]) {
+            null -> null
+            is String -> SecureStore.reveal(v)
+            else -> v.toString()
+        }
 
     override fun setPreferenceBoolean(file: String, key: String, value: Boolean) {
         context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().putBoolean(key, value).apply()
     }
 
     override fun setPreference(file: String, key: String, value: String) {
-        context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().putString(key, value).apply()
+        context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().putString(key, SecureStore.encrypt(value)).apply()
     }
 
     override fun removePreference(file: String, key: String) {
         context.getSharedPreferences(file, Context.MODE_PRIVATE).edit().remove(key).apply()
     }
+
+    /** Encrypts the plain string values a legacy app (or an earlier build) left in this file. */
+    override fun protectPreferences(file: String) {
+        val prefs = context.getSharedPreferences(file, Context.MODE_PRIVATE)
+        val plain = prefs.all.filter { (_, v) -> v is String && !SecureStore.isEncrypted(v) }
+        if (plain.isEmpty()) return
+        val editor = prefs.edit()
+        for ((k, v) in plain) editor.putString(k, SecureStore.encrypt(v as String))
+        editor.commit()
+    }
+
+    // ---- Encrypted databases (src/db/encryptedDatabase.ts) -------------------------------------------------
+
+    override fun getDatabaseKey(): String = SecureStore.databaseKey(context)
+
+    override fun getDatabaseFileState(name: String): String = DatabaseFiles.state(context, name)
+
+    override fun getDatabasePath(name: String): String = DatabaseFiles.path(context, name).absolutePath
+
+    override fun deleteTempDatabase(name: String) = DatabaseFiles.deleteTemp(context, name)
+
+    override fun replaceDatabaseWithEncrypted(name: String, tempName: String) =
+        DatabaseFiles.replaceWithEncrypted(context, name, tempName)
+
+    override fun moveDatabaseAside(name: String, reason: String): String = DatabaseFiles.moveAside(context, name, reason)
 
     // ---- Activity results -----------------------------------------------------------------------------------
 
@@ -475,6 +511,7 @@ class ZedDeviceModule(private val context: ReactApplicationContext) :
 
     companion object {
         const val NAME = "ZedDevice"
+        const val APP_TOKEN_HEADER = "X-Zed-App-Token"
         private const val REQUEST_CAPTURE = 9100
         private const val REQUEST_PICK_IMAGE = 9101
         private const val REQUEST_PICK_PDF = 9102

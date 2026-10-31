@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { openDatabase, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
+import { openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
 import { SaAppProvider, useSa } from './src/app/context';
 import { SaApp } from './src/app/SaApp';
@@ -92,7 +92,7 @@ export default function App() {
       <UiHost>
         {app ? (
           <SaAppProvider app={app}>
-            <StackNavigator screens={SCREENS} initial={{ name: 'Login' }} />
+            <StackNavigator screens={SCREENS} initial={{ name: 'Login' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
           </SaAppProvider>
         ) : (
           <View style={styles.loading}>

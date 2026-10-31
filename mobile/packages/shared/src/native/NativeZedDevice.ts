@@ -119,20 +119,43 @@ export interface Spec extends TurboModule {
   pickDateInRange(initial: string | null, minMillis: number, maxMillis: number): Promise<string | null>;
   /** TimePickerDialog (12-hour) at hour:minute (negative: now); the time in the device's format, null when cancelled. */
   pickTime(hour: number, minute: number): Promise<NativePickedTime | null>;
-  /** Downloads to cacheDir/downloads/<fileName> and returns the path. */
-  downloadFile(url: string, fileName: string): Promise<string>;
+  /** Downloads to cacheDir/downloads/<fileName> and returns the path; sends the app sign-in token header when given. */
+  downloadFile(url: string, fileName: string, appToken: string | null): Promise<string>;
 
   setClipboard(text: string): void;
   /** PBKDF2-HMAC-SHA256, hex encoded. */
   hashPassword(password: string, saltHex: string, iterations: number): string;
   randomHex(bytes: number): string;
 
-  /** SharedPreferences of the legacy app (same file names and keys). */
+  /**
+   * SharedPreferences of the legacy app (same file names and keys). New in V4: string values are written encrypted
+   * with the Android Keystore key (`zedenc1:` + AES-GCM); plain legacy values are still read.
+   */
   getPreference(file: string, key: string): string | null;
   setPreference(file: string, key: string, value: string): void;
   /** SharedPreferences.putBoolean (legacy flags such as SiteTourStatus and the site tour instructions). */
   setPreferenceBoolean(file: string, key: string, value: boolean): void;
   removePreference(file: string, key: string): void;
+  /** Rewrites the plain string values of a preference file encrypted (legacy values; idempotent). */
+  protectPreferences(file: string): void;
+
+  // ---- Encrypted databases (db/encryptedDatabase.ts) ----
+
+  /** The install's database key (64 hex), random, kept wrapped by an Android Keystore key; made on first use. */
+  getDatabaseKey(): string;
+  /** databases/<name>: 'missing', 'plain' (SQLite header, or an empty file with a journal) or 'encrypted'. */
+  getDatabaseFileState(name: string): string;
+  /** context.getDatabasePath(name). */
+  getDatabasePath(name: string): string;
+  /** Deletes a temporary copy (`*.zedenc-tmp` only) with its journal files. */
+  deleteTempDatabase(name: string): void;
+  /**
+   * Replaces databases/<name> by the verified encrypted copy (atomic rename). Refuses (throws) while the plain file
+   * still has a non-empty -wal or -journal; removes its -shm and empty -wal first.
+   */
+  replaceDatabaseWithEncrypted(name: string, tempName: string): void;
+  /** Renames databases/<name> and its journal files to `<name>.<reason>-<millis>` (never deletes); returns the new name. */
+  moveDatabaseAside(name: string, reason: string): string;
 }
 
 export default TurboModuleRegistry.get<Spec>('ZedDevice');

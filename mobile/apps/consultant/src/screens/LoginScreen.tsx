@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Image, Linking, PermissionsAndroid, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { htmlToPlain, isNetworkAvailable, OutlinedInput, useAppText, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
+import { htmlToPlain, isNetworkAvailable, OutlinedInput, SESSION_EXPIRED_PARAM, useAppText, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSa } from '../app/context';
 import { images } from '../assets/images';
@@ -63,7 +63,7 @@ export function LoginScreen() {
   const app = useSa();
   const ui = useUi();
   const nav = useNavigation();
-  const { params } = useRoute<{ saDateDue?: boolean }>();
+  const { params } = useRoute<{ saDateDue?: boolean; [SESSION_EXPIRED_PARAM]?: string }>();
   const insets = useSafeAreaInsets();
   const windowNote = useAppText('app.consultant.login.windowNote');
   // The legacy layout pre-filled the ID prefixes.
@@ -74,6 +74,15 @@ export function LoginScreen() {
   const busy = useRef(false);
 
   useEffect(() => {
+    // New (audit C1): the login page no longer sends the sign-in token; opened by the server's end of the sign-in,
+    // it also closes the open assessment (its offline work stays stored) and shows the server's text.
+    const expired = params[SESSION_EXPIRED_PARAM];
+    if (expired) {
+      app.signOut();
+      ui.alert(null, expired, [{ text: 'OK' }], false);
+      return;
+    }
+    app.session.clear();
     startupChecks(ui);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

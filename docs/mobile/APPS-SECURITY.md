@@ -61,6 +61,8 @@ supported one, rotate the key. → #132.
 Anyone with a rooted phone, a lost unlocked phone, or a device backup gets the account's password, which is often reused.
 Fix: do not keep the password; keep a server-issued token (the planned v2 token API, MOBILE-API.md) in
 `EncryptedSharedPreferences` / Android Keystore, and for offline login keep a salted hash. → #133.
+React Native rewrite (`mobile/`): salted hash for the offline login, the app sign-in token in the SQLCipher-encrypted
+database (key per install, wrapped by an Android Keystore key), preference strings encrypted (mobile/README.md).
 
 ### Request bodies logged in release
 ZED_MSME_Bronze `network/RetrofitProvider.kt` line 20 sets `HttpLoggingInterceptor.Level.BODY` unconditionally, so every

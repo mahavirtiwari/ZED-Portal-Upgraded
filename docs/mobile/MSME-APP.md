@@ -49,7 +49,9 @@ the Silver/Gold surveillance and remote assessment entries, which need `surveill
 - Dates: the app parses `MM/dd/yyyy hh:mm:ss a` (Locale.ENGLISH) = .NET `en-US`, the default `Mobile:Culture`.
 - Sizes: PDFs refused above 2 MB in the app; photos JPEG quality 75–100, one evidence per request. The old service
   had no `maxRequestLength` (4 MB ASP.NET default); V4 allows 30 MB per request, 20 MB per file.
-- No authentication header or token on any call; downloads are anonymous `GET`s.
+- No authentication header or token on any call; downloads are anonymous `GET`s. (The React Native rewrite,
+  `mobile/apps/msme`, sends the app sign-in token `X-Zed-App-Token` after login: mobile/README.md, "Sign-in token and
+  encryption on the phone".)
 
 ## Endpoint comparison
 
@@ -81,7 +83,7 @@ Other bases:
 
 | App call | V4 | Result |
 |---|---|---|
-| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | not served (MOBILE-API "Not served on this deployment") | unreachable: needs `surveillanceStatus` 1/3, which the surveillance host never returns. The old service had these on its `MsmeController`. |
+| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | not served (MOBILE-API "Not served on this deployment") | unreachable: needs `surveillanceStatus` 1/3, which the surveillance host never returns. The old service had these on its `MsmeController`. The React Native rewrite no longer has these calls (2026-10-31). |
 | `surveillancemobileapi/msme/SubmitSurveillancePhoto` | `SurveillancePhotoController` | unreachable for the same reason |
 | `mobileapi/RA/SubmitSelfie`, `GetToken`, `CheckAssessment` | `RAController` (Main) | unreachable (needs `remoteStatus` "1"); fields match (the app's extra `siteExteriorPhoto` was ignored by the old service too) |
 | `Pay/GetToken`, `Pay/SubmitZeroPaymentDetails`, `Msme/GetPaymentDetailsByType` | portal `MobilePaymentController` | OK: same request (PaymentRefId, ZedId, Certification, Amount, UseCoupon, UnitGstin, Gst, TdsDeductible, Tds, Tan) and response (requestHash, orderId, merchantId, accessCode, amount) |

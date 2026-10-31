@@ -51,7 +51,7 @@ server, or needs hardware/services the emulator lacks). Every reachable row has 
 | 31 | Non-conformances list (NC 1–5 with status text, "Final Submit Done" snackbar, legend, "What is Non-Conformance?") | only when the server sets NC statuses; the surveillance login never does | `NonConformancesScreen` | U |
 | 32 | NC details: site exterior photos, products, parameters with requirement options and "View NC", "Close Non-Conformance" → FinalSubmit → "Closed successfully" | as 31 | `NcDetailsScreen`, `OptionsList` | U |
 | 33 | NC site photos / product / requirement forms (assessor remarks with VIEW, MSME remarks with 500 counter, photos), their messages (requirement shows "Product submitted successfully", a legacy bug kept) | as 31 | `NcSitePhotosScreen`, `NcProductScreen`, `NcRequirementScreen` | U |
-| 34 | Surveillance NC (`isSurveillance`): msme/GetMsmeStatus first, msme/ base | no (GetMsmeStatus fails on this host; flag never set) | same, `isSurveillance` | U (requests) |
+| 34 | Surveillance NC (`isSurveillance`, status "3"): msme/GetMsmeStatus first, msme/ base | no (GetMsmeStatus fails on this host; flag never set) | **removed** (audit 2026-10-31): V4 serves none of these `msme/` calls on the surveillance host; the Surveillance Assessment option opens the surveillance photos (status "1") only | — |
 | 35 | Surveillance Assessment: selfie, exterior (2), interior (2), site tour (up to 100, name dialog "Site Tour Photo Name", re-capture of sent photos), Sync → msme/SubmitSurveillancePhoto, "Data submitted successfully" | no (`surveillanceStatus` never set by this host) | `SurveillanceScreen` | U |
 | 36 | Remote assessment: CheckAssessment, assessment date, Proceed; representative, selfie, site photo, Submit Selfie, Start Assessment → Twilio token → Twilio video sample (`quickstart` VideoActivity) | no (`remoteStatus` never "1") | `RemoteAssessmentInitialScreen`, `RemoteAssessmentDetailsScreen`; the **video call is not ported** (Twilio sample module; see gaps) | R |
 | 37 | Payment: disclaimer, instructions, details (GSTIN, TDS 2%/10% with TAN, joining reward apply/remove, summary rows), summary dialog, zero payment → success page; non-zero → CCAvenue India SDK; result pages (Success/Failure, Start Certification / Retry / back to dashboard) | yes (APPLY when the unit has no active level) | `PaymentScreen` (all pages, zero payment); **CCAvenue checkout not available** (see gaps) | U (summary), R |
@@ -59,12 +59,13 @@ server, or needs hardware/services the emulator lacks). Every reachable row has 
 | 39 | Header date, back bar "BACK … ZED ID", loading overlay "Please Wait", toasts, snackbars, dialogs, status bar colour, fonts, colours | yes | shared `ScreenFrame`, `UiHost`, `theme.ts` | E |
 | 40 | **New in V4: Admin texts** (docs/mobile/APP-TEXTS.md): the texts this build shows (payment disclaimer, instructions, joining reward notes, payment success/failure, final submit confirmation, read-only message, "What is Non-Conformance?", offline banner, offline evidence note) come from `Content/Texts`, kept for offline use, legacy wording as fallback; a text switched off is not shown. Keys of hidden screens (registration, pledge, financial assistance, level info, steps, compliance, requirements check box) have their built-in wording but no screen in this build | — | `AppTexts`, `useAppText`, `HtmlText`, `content/builtInTexts.ts` | E (offline banner with an Admin text), U |
 | 41 | **New in V4: configurable Basic Information** (docs/mobile/APP-FORMS.md): the screen is built from `Forms/Definition?form=msme.basicInfo` (labels, help, order, required, disabled fields, the Admin's own fields), kept for offline use, the legacy form as fallback; `customFields` + `formVersion` sent with SubmitBasicInformation; "form was changed" refusal reloads the definition | — | `BasicInformationScreen`, `forms.ts`, `AppForms`, `CustomFormField` | E (Admin label/help, two custom fields, a disabled field; "Required" marker; answers stored in `V4AppFormValues`, disabled field NULL; offline cold start keeps form and answers), U |
+| 42 | **New in V4: app sign-in token** (audit C1): the login answer's `appToken` is kept apart (`ZedAppToken`) and sent as `X-Zed-App-Token` on every call; "Your sign-in has expired. Please sign in again." returns to the login (no splash) with that text, offline work kept and sent after the next sign-in (README "Sign-in token and encryption") | — | `AppSession`, `HttpClient.useSession`, `SessionExpiryGate`, `LauncherScreen` | U |
 
 ## Offline mode
 
 | Legacy behaviour | React Native | Tested |
 |---|---|---|
-| Whole sign-in response with offline work in `QCI_MSME_DB.LoginData` (JSON), photos in Room `ZED_MSME_Media_DB.photos_table`, files in `filesDir` | the same databases opened in place, same tables and JSON field names (`LegacyLoginStore`, `PhotoStore`, `models.ts`) | U (legacy-format data), E |
+| Whole sign-in response with offline work in `QCI_MSME_DB.LoginData` (JSON), photos in Room `ZED_MSME_Media_DB.photos_table`, files in `filesDir` | the same databases opened in place, same tables and JSON field names (`LegacyLoginStore`, `PhotoStore`, `models.ts`); **new: SQLCipher-encrypted**, the plain legacy files encrypted in place at the first start (verified copy, atomic swap, plain file kept on any failure; README) | U (legacy-format data, in-place encryption with a fake SQLCipher), E (before encryption) |
 | Password kept in clear (`EncCred`) for the offline login | salted PBKDF2 hash in the same column; legacy rows upgraded on first offline login | U |
 | Screens check `isNetworkAvailable` before calls; offline work stays as statuses (COMPLETED, not SUBMITTED) until the user syncs | same checks; **plus** a persistent queue (`ZedSyncQueue`) of what must be sent, sent on reconnect / foreground / every 30 s / "Sync All" / "Pending Uploads", in order, retried with back-off, de-duplicated, refusals kept as failed with the server message | U, E |
 | Basic information saved offline, sent later from the evidence sync | queued at once (`basicInfo`), and still sent first by the evidence sync | U, E |
@@ -72,7 +73,8 @@ server, or needs hardware/services the emulator lacks). Every reachable row has 
 | NC replies: no network check, the request fails with the error text | queued when offline or unanswered ("Saved on the phone. It will be sent when the connection returns.") | U |
 | Surveillance photos: Sync button only | queued when offline | U |
 | ESG checklist, pre-final submit, final submit, certification parameters, payment: online only | unchanged (online only) | E |
-| Update from the legacy app | the new app reads the legacy files in place; after sign-in, evidences and NC items left COMPLETED are queued | U |
+| Update from the legacy app | the new app encrypts the legacy files in place and reads them; after sign-in, evidences and NC items left COMPLETED are queued | U |
+| Sign-in ends on the server ("Your sign-in has expired…", new) | the refused send stays pending (no attempt counted), the login page shows the text, the queue goes out after the next sign-in | U |
 
 ## Photos
 
@@ -125,7 +127,7 @@ server, or needs hardware/services the emulator lacks). Every reachable row has 
 |---|---|---|
 | `surveillance/GetEsgChecklist` | served, but the built-in JSON (`EsgChecklistJson`) has **no `section_key`** | the legacy app crashes on ESG Proceed against V4 unless the old site's `App_Data/EnvironmentalChecklist.json` (with keys) is in `Mobile:StorageRoot`; the new app copes either way. Add `section_key` (`esgChecklist`, `socialOhsChecklist`) to the built-in JSON. |
 | `surveillance/GetMsmeStatus` | HTTP 500 by design (old failure kept) | only the surveillance NC flow calls it (unreachable) |
-| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | not served on the surveillance deployment | surveillance NC flow, unreachable (MOBILE-API.md "Not served on this deployment") |
+| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | not served on the surveillance deployment | surveillance NC flow, unreachable (MOBILE-API.md "Not served on this deployment"); **removed from the app** (audit 2026-10-31) |
 | `surveillance/SubmitFacilitatorDetails` | not served (404) | dead code in the legacy app too, not called |
 
 ## Verification log

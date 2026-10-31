@@ -31,6 +31,30 @@ export function successResponse(): BaseServiceResponse {
   return { status: '1' };
 }
 
+/**
+ * New in V4 (audit C1): the refusal of a call whose app sign-in token (X-Zed-App-Token) the server no longer accepts.
+ * The app then signs out and shows the login page with this text.
+ */
+export const SESSION_EXPIRED_MESSAGE = 'Your sign-in has expired. Please sign in again.';
+
+/** A body with `errorMessage` exactly {@link SESSION_EXPIRED_MESSAGE} (any HTTP status, any `status`). */
+export function isSessionExpiredResponse(body: unknown): boolean {
+  return body != null && typeof body === 'object' && (body as BaseServiceResponse).errorMessage === SESSION_EXPIRED_MESSAGE;
+}
+
+/**
+ * New in V4 (audit C1): takes the top-level `appToken` out of a successful login answer, so that it is kept apart
+ * from the stored sign-in data (which other requests copy from). Null when the server sent none (an older server):
+ * the app then carries on without the header.
+ */
+export function takeAppToken(loginResponse: object | null | undefined): string | null {
+  if (loginResponse == null) return null;
+  const r = loginResponse as { appToken?: unknown };
+  const token = typeof r.appToken === 'string' && r.appToken.trim() !== '' ? r.appToken : null;
+  delete r.appToken;
+  return token;
+}
+
 /** The DeviceInfo object of the legacy request models; V4 records it for every sign-in and change. */
 export type DeviceInfo = {
   deviceId: string;
@@ -60,7 +84,8 @@ export function baseRequest<T extends object>(ctx: RequestContext, userName: str
 
 /**
  * The device and version as multipart text fields (`deviceInfo.deviceId`, ...), which the V4 binder reads like the
- * old MVC model binder did. The legacy multipart calls carried none of them.
+ * old MVC model binder did. The legacy multipart calls carried none of them. (The app sign-in token travels as a
+ * header on multipart calls too, added by HttpClient.)
  */
 export function contextFields(ctx: RequestContext): MultipartField[] {
   const fields: MultipartField[] = [{ name: 'version', value: ctx.version }];

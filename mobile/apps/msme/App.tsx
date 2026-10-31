@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { colors, openDatabase, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
+import { colors, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
 import { AppDrawerHost, AppDrawerOverlay } from './src/app/AppDrawer';
 import { MsmeAppProvider } from './src/app/context';
@@ -90,7 +90,16 @@ export default function App() {
         {app ? (
           <MsmeAppProvider app={app}>
             <AppDrawerHost>
-              <StackNavigator screens={SCREENS} initial={{ name: 'Launcher' }} overlay={<AppDrawerOverlay />} />
+              <StackNavigator
+                screens={SCREENS}
+                initial={{ name: 'Launcher' }}
+                overlay={
+                  <>
+                    <AppDrawerOverlay />
+                    <SessionExpiryGate session={app.session} loginRoute="Launcher" />
+                  </>
+                }
+              />
             </AppDrawerHost>
           </MsmeAppProvider>
         ) : (

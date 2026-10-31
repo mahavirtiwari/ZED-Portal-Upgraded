@@ -5,9 +5,15 @@
  *
  * Bases (RetrofitProvider):
  *   surveillancemobileapi/surveillance/  everything of the assessment (webService and surveillanceBronzeWebService)
- *   surveillancemobileapi/msme/          surveillance NC replies, GetMsmeStatus, FinalSubmit, SubmitSurveillancePhoto
+ *   surveillancemobileapi/msme/          SubmitSurveillancePhoto only
  *   mobileapi/RA/                        remote assessment
  *   Msme/ and Pay/                       portal: payment details, token, zero payment
+ *
+ * Removed in V4 (audit Low "calls to endpoints that aren't served"): the replies to the NCs of a surveillance round
+ * (`surveillancemobileapi/msme/` GetMsmeStatus, GetNcDetailsByType, SubmitSiteExteriorInfo, SubmitNcProduct,
+ * SubmitNcRequirement, FinalSubmit). The surveillance deployment serves no `Msme/` action but SubmitSurveillancePhoto,
+ * and the flow needed `surveillanceStatus` "3", which its login never answers. The desktop assessment's NC replies go
+ * to `surveillance/` as before.
  */
 import {
   apiBase,
@@ -26,7 +32,7 @@ import {
   type PhotoData,
   type RequestContext,
 } from '@zed/shared';
-import type { BasicInformation, CertificationType, Element, LoginResponse, MsmeStatus, NcDetails, ProductDetailsNc } from './models';
+import type { BasicInformation, CertificationType, Element, LoginResponse, NcDetails, ProductDetailsNc } from './models';
 
 export type EsgField = {
   id: string;
@@ -138,7 +144,7 @@ const metadata = (p: PhotoData) => gsonJson({ ...p, photo: null });
 export class MsmeApi {
   readonly http: HttpClient;
   private readonly survey: string;
-  private readonly surveyNc: string;
+  private readonly surveyMsme: string;
   private readonly remote: string;
   private readonly portalMsme: string;
   private readonly pay: string;
@@ -147,7 +153,7 @@ export class MsmeApi {
   constructor(env: Environment, private readonly ctx: () => RequestContext, http?: HttpClient) {
     this.http = http ?? new HttpClient();
     this.survey = apiBase(env, 'surveillancemobileapi/surveillance/');
-    this.surveyNc = apiBase(env, 'surveillancemobileapi/msme/');
+    this.surveyMsme = apiBase(env, 'surveillancemobileapi/msme/');
     this.remote = apiBase(env, 'mobileapi/RA/');
     this.portalMsme = apiBase(env, 'Msme/');
     this.pay = apiBase(env, 'Pay/');
@@ -168,10 +174,6 @@ export class MsmeApi {
     return baseRequest(this.ctx(), userName, fields);
   }
 
-  private ncBase(isSurveillance: boolean) {
-    return isSurveillance ? this.surveyNc : this.survey;
-  }
-
   /** LoginRequest(username, password, assessorId, zedId = username) */
   login(username: string, password: string, assessorId: string) {
     return this.http.postJson<LoginResponse>(this.survey + 'login', this.req(username, { password, assessorId, zedId: username }));
@@ -184,10 +186,6 @@ export class MsmeApi {
   /** @GET("GetEsgChecklist") */
   getEsgChecklist() {
     return this.http.getJson<EsgResponse>(this.survey + 'GetEsgChecklist');
-  }
-
-  getMsmeStatus(username: string, isSurveillance: boolean) {
-    return this.http.postJson<MsmeStatus>(this.ncBase(isSurveillance) + 'GetMsmeStatus', this.req(username, {}));
   }
 
   submitEsgChecklist(request: EsgChecklistSubmitDataRequest) {
@@ -243,35 +241,29 @@ export class MsmeApi {
     );
   }
 
-  /** The NC close: BaseCertificationRequest to FinalSubmit (surveillance/ or msme/). */
-  finalSubmitNc(username: string, certificationType: string, isSurveillance: boolean) {
-    return this.http.postJson<BaseServiceResponse>(this.ncBase(isSurveillance) + 'FinalSubmit', this.req(username, { certificationType }));
+  /** The NC close: BaseCertificationRequest to FinalSubmit. */
+  finalSubmitNc(username: string, certificationType: string) {
+    return this.http.postJson<BaseServiceResponse>(this.survey + 'FinalSubmit', this.req(username, { certificationType }));
   }
 
-  getNcDetails(username: string, certificationType: string, ncCount: number, isSurveillance: boolean) {
-    return this.http.postJson<NcDetails>(
-      this.ncBase(isSurveillance) + 'GetNcDetailsByType',
-      this.req(username, { certificationType, ncCount }),
-    );
+  getNcDetails(username: string, certificationType: string, ncCount: number) {
+    return this.http.postJson<NcDetails>(this.survey + 'GetNcDetailsByType', this.req(username, { certificationType, ncCount }));
   }
 
   /** NcSitePhotosSubmitRequest: JSON with the photos (base64 filled in) and the MSME remarks. */
-  submitNcSitePhotos(username: string, certificationType: string, photos: PhotoData[], msmeRemarks: string, isSurveillance: boolean) {
-    return this.http.postJson<BaseServiceResponse>(
-      this.ncBase(isSurveillance) + 'SubmitSiteExteriorInfo',
-      this.req(username, { certificationType, photos, msmeRemarks }),
-    );
+  submitNcSitePhotos(username: string, certificationType: string, photos: PhotoData[], msmeRemarks: string) {
+    return this.http.postJson<BaseServiceResponse>(this.survey + 'SubmitSiteExteriorInfo', this.req(username, { certificationType, photos, msmeRemarks }));
   }
 
   /** SubmitNcProduct: productDetailsNc as JSON (photos without base64) and both photos in `files`. */
-  submitNcProduct(username: string, certificationType: string, product: ProductDetailsNc, isSurveillance: boolean) {
+  submitNcProduct(username: string, certificationType: string, product: ProductDetailsNc) {
     const photos = [product.productPhoto, product.productDescriptionPhoto].filter((p): p is PhotoData => p != null);
     const json = gsonJson({
       ...product,
       productPhoto: product.productPhoto ? { ...product.productPhoto, photo: null } : null,
       productDescriptionPhoto: product.productDescriptionPhoto ? { ...product.productDescriptionPhoto, photo: null } : null,
     });
-    return this.http.postMultipart<BaseServiceResponse>(this.ncBase(isSurveillance) + 'SubmitNcProduct', [
+    return this.http.postMultipart<BaseServiceResponse>(this.survey + 'SubmitNcProduct', [
       { name: 'userName', value: username },
       { name: 'certificationType', value: certificationType },
       { name: 'productDetailsNc', value: json },
@@ -290,7 +282,6 @@ export class MsmeApi {
     isFirst: boolean,
     isLast: boolean,
     msmeRemarks: string | null | undefined,
-    isSurveillance: boolean,
   ) {
     const fields: MultipartField[] = [
       { name: 'userName', value: username },
@@ -303,7 +294,7 @@ export class MsmeApi {
     ];
     if (msmeRemarks != null) fields.push({ name: 'msmeRemarks', value: msmeRemarks });
     fields.push(...contextFields(this.ctx()), filePart('file_data', photo, fileNameOf(photo.photoPath ?? '')));
-    return this.http.postMultipart<BaseServiceResponse>(this.ncBase(isSurveillance) + 'SubmitNcRequirement', fields);
+    return this.http.postMultipart<BaseServiceResponse>(this.survey + 'SubmitNcRequirement', fields);
   }
 
   changePassword(request: { userName: string; oldPassword: string; newPassword: string }) {
@@ -330,7 +321,7 @@ export class MsmeApi {
 
   /** SubmitSurveillancePhoto: the photo JSON under its key (selfie/interior/exterior/sitetour), file in `file_data`. */
   submitSurveillancePhoto(username: string, certificationType: string, fileKey: string, photo: PhotoData) {
-    return this.http.postMultipart<BaseServiceResponse>(this.surveyNc + 'SubmitSurveillancePhoto', [
+    return this.http.postMultipart<BaseServiceResponse>(this.surveyMsme + 'SubmitSurveillancePhoto', [
       { name: 'userName', value: username },
       { name: 'certificationType', value: certificationType },
       { name: fileKey, value: gsonJson(photo) },

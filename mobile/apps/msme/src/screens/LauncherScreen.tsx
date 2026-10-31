@@ -9,9 +9,11 @@ import {
   isSuccess,
   OutlinedInput,
   ScreenFrame,
+  SESSION_EXPIRED_PARAM,
   textStyles,
   UNKNOWN_ERROR,
   useNavigation,
+  useRoute,
   useUi,
   ZedButton,
   zedDevice,
@@ -41,10 +43,16 @@ export function LauncherScreen() {
   const app = useMsme();
   const ui = useUi();
   const nav = useNavigation();
-  const [showLogin, setShowLogin] = useState(false);
+  // New (audit C1): opened by the server's end of the sign-in, with its text; the login shows at once.
+  const expired = useRoute<{ [SESSION_EXPIRED_PARAM]?: string }>().params[SESSION_EXPIRED_PARAM];
+  const [showLogin, setShowLogin] = useState(!!expired);
 
   useEffect(() => {
     app.resetUser();
+    if (expired) {
+      ui.alert(null, expired, [{ text: 'OK' }], false);
+      return;
+    }
     const t = setTimeout(() => setShowLogin(true), SPLASH_MS);
     startupChecks(ui);
     return () => clearTimeout(t);

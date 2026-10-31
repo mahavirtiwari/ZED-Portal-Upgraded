@@ -22,6 +22,7 @@ export type SentRequest = {
   json?: Record<string, unknown>;
   fields?: Record<string, string>;
   files?: Array<{ name: string; uri: string; fileName: string; type: string }>;
+  headers?: Record<string, string>;
 };
 
 type Responder = (req: SentRequest) => unknown | Promise<unknown>;
@@ -34,7 +35,7 @@ export class FakeServer {
 
   fetch = async (url: string, init?: RequestInit): Promise<Response> => {
     if (!this.online) throw new TypeError('Network request failed');
-    const req: SentRequest = { url, method: init?.method ?? 'GET' };
+    const req: SentRequest = { url, method: init?.method ?? 'GET', headers: { ...((init?.headers as Record<string, string>) ?? {}) } };
     const body = init?.body as unknown;
     if (typeof body === 'string') req.json = JSON.parse(body);
     else if (body && typeof body === 'object') {

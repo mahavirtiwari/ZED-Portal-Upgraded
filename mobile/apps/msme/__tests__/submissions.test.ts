@@ -96,7 +96,7 @@ describe('non-conformance replies (NonConformanceViewModel)', () => {
     const server = new FakeServer();
     const app = await withNc(server);
     const req = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!.activeNcDetails!.parameters![0]!.requirements![0]!;
-    expect((await submitNcRequirement(app, 'Bronze', false, req)).status).toBe('1');
+    expect((await submitNcRequirement(app, 'Bronze', req)).status).toBe('1');
     const sent = server.last('SubmitNcRequirement')!;
     expect(sent.url).toBe('http://10.0.2.2:5106/surveillancemobileapi/surveillance/SubmitNcRequirement');
     expect(sent.fields).toMatchObject({ requirementId: '9201', requirementCode: '1', msmeRemarks: 'fixed', isFirst: 'true', isLast: 'true' });
@@ -104,11 +104,11 @@ describe('non-conformance replies (NonConformanceViewModel)', () => {
     expect(req.status).toBe(Status.SUBMITTED);
   });
 
-  it('queues product and requirement replies made offline and sends them when back online (msme/ base for surveillance NCs)', async () => {
+  it('queues product and requirement replies made offline and sends them when back online', async () => {
     const server = new FakeServer();
     const app = await withNc(server);
-    await queueNcProduct(app, 'Bronze', false, 0, 'P');
-    await queueNcRequirement(app, 'Bronze', false, '9201', '1. Test Parameter One');
+    await queueNcProduct(app, 'Bronze', 0, 'P');
+    await queueNcRequirement(app, 'Bronze', '9201', '1. Test Parameter One');
     server.online = false;
     expect((await app.queue.run({ userId: ZED_ID })).offline).toBe(true);
     server.online = true;

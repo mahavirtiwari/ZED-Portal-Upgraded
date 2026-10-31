@@ -1,11 +1,16 @@
 /**
  * HTTP client for the V4 mobile API, with the legacy apps' conventions (Retrofit + Gson + OkHttp):
- * JSON bodies, multipart uploads, 60 s timeouts, no authentication header.
+ * JSON bodies, multipart uploads, 60 s timeouts.
+ *
+ * New in V4 (audit C1): after sign-in every call, JSON and multipart alike, carries the app sign-in token in the
+ * `X-Zed-App-Token` header ({@link HttpClient.useSession}); none is sent while there is no token (before sign-in, or
+ * an older server that answered none). A refusal with the "sign-in has expired" text ends the session.
  *
  * Errors keep what the legacy screens showed: an HTTP error status becomes "HTTP <code> <message>"
  * (Retrofit's HttpException text), a failed connection is a {@link NetworkError} (the sync queue retries
  * those later instead of treating them as a refusal).
  */
+import { isSessionExpiredResponse, SESSION_EXPIRED_MESSAGE } from './legacy';
 
 export const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -27,7 +32,32 @@ export class NetworkError extends ApiError {
 }
 
 export function isNetworkError(e: unknown): e is NetworkError {
-  return e instanceof NetworkError || (e instanceof Error && e.name === 'NetworkError');
+  return e instanceof NetworkError || (e instanceof Error && (e.name === 'NetworkError' || e.name === 'SessionExpiredError'));
+}
+
+/**
+ * The server no longer accepts the app sign-in token (`errorMessage` {@link SESSION_EXPIRED_MESSAGE}). It is a
+ * {@link NetworkError} on purpose: the call did not go through, so every screen and the sync queue keep the work on
+ * the phone exactly as without a connection, and it is sent after the next sign-in.
+ */
+export class SessionExpiredError extends NetworkError {
+  constructor(message: string = SESSION_EXPIRED_MESSAGE) {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
+}
+
+export function isSessionExpired(e: unknown): e is SessionExpiredError {
+  return e instanceof SessionExpiredError || (e instanceof Error && e.name === 'SessionExpiredError');
+}
+
+/** HTTP header of the app sign-in token. */
+export const APP_TOKEN_HEADER = 'X-Zed-App-Token';
+
+/** Where the client reads the token and reports its refusal (the app's AppSession). */
+export interface AppTokenSource {
+  readonly appToken: string | null;
+  expire(message: string): void;
 }
 
 /** A file part: a local file (file:// or content://) sent like OkHttp's asRequestBody. */
@@ -62,11 +92,17 @@ export class HttpClient {
   private readonly timeoutMs: number;
   private readonly fetchImpl: FetchLike;
   private readonly onRequest?: (method: string, url: string) => void;
+  private session: AppTokenSource | null = null;
 
   constructor(options: HttpClientOptions = {}) {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
     this.onRequest = options.onRequest;
+  }
+
+  /** Sends the session's token with every call and reports the server's refusal of it to the session. */
+  useSession(session: AppTokenSource | null): void {
+    this.session = session;
   }
 
   async getJson<T>(url: string): Promise<T> {
@@ -102,9 +138,12 @@ export class HttpClient {
     this.onRequest?.(method, url);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const token = this.session?.appToken;
+    const all: Record<string, string> = { Accept: 'application/json', ...headers };
+    if (token) all[APP_TOKEN_HEADER] = token;
     let res: Response;
     try {
-      res = await this.fetchImpl(url, { method, body, headers: { Accept: 'application/json', ...headers }, signal: controller.signal });
+      res = await this.fetchImpl(url, { method, body, headers: all, signal: controller.signal });
     } catch (e) {
       const aborted = controller.signal.aborted;
       throw new NetworkError(aborted ? 'timeout' : e instanceof Error ? e.message : String(e));
@@ -112,6 +151,9 @@ export class HttpClient {
       clearTimeout(timer);
     }
     if (!res.ok) {
+      // The token refusal may come with an error status; its body decides.
+      const text = await res.text().catch(() => '');
+      this.checkSession(text.trim() === '' ? null : tryParse(text));
       // V4 answers unhandled errors with a legacy JSON body ({status:"0", errorMessage}); Retrofit still threw on
       // the status code, so the screens showed "HTTP 500 ...". Keep that.
       throw new ApiError(`HTTP ${res.status} ${res.statusText || STATUS_TEXT[res.status] || ''}`.trim(), res.status);
@@ -122,10 +164,28 @@ export class HttpClient {
   private async parse<T>(res: Response): Promise<T> {
     const text = await res.text();
     if (text.trim() === '') throw new ApiError('Empty response', res.status);
+    let body: unknown;
     try {
-      return JSON.parse(text) as T;
+      body = JSON.parse(text);
     } catch {
       throw new ApiError('Invalid response from server', res.status);
     }
+    this.checkSession(body);
+    return body as T;
+  }
+
+  /** The "sign-in has expired" refusal: the session ends (sign-out, login page) and the call fails as unsent. */
+  private checkSession(body: unknown) {
+    if (!isSessionExpiredResponse(body)) return;
+    this.session?.expire(SESSION_EXPIRED_MESSAGE);
+    throw new SessionExpiredError();
+  }
+}
+
+function tryParse(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
 }

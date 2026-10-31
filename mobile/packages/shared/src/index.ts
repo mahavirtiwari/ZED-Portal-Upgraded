@@ -14,11 +14,14 @@ export * from './db/legacyLoginStore';
 export * from './db/photoStore';
 export * from './db/keyValueStore';
 export { openDatabase } from './db/opSqlite';
+export * from './db/encryptedDatabase';
 export * from './sync/syncQueue';
 export * from './sync/connectivity';
 
 // Auth
 export * from './auth/passwords';
+export * from './auth/appSession';
+export * from './auth/SessionExpiryGate';
 
 // Photos and location
 export * from './photo/photoData';

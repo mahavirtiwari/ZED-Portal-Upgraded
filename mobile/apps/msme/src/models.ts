@@ -351,6 +351,8 @@ export type LoginResponse = BaseServiceResponse & {
   MsmeDetails?: MsmeDetails | null;
   parameters?: Element[] | null;
   remoteAssessmentData: RemoteAssessmentData;
+  /** New in V4 (audit C1): the app sign-in token of a successful login; taken out before the answer is stored. */
+  appToken?: string | null;
 };
 
 /** LoginResponse.getAssociatedId: msmeId + zedId (Kotlin string concatenation, "null" for a missing part). */
@@ -397,20 +399,14 @@ export function updateCertificationDetails(local: MsmeStatus, server: MsmeStatus
   local.isCouponUsed = server.isCouponUsed;
 }
 
-/** MsmeDetails.updateMsmeSurveillanceStatus */
-export function updateMsmeSurveillanceStatus(details: MsmeDetails, status: MsmeStatus) {
-  if (details.msmeSurveillanceStatus == null) details.msmeSurveillanceStatus = status;
-  else updateCertificationDetails(details.msmeSurveillanceStatus, status);
-}
-
 export const isAnyCertificationCompleted = (s: MsmeStatus) => s.bronze?.status === 3 || s.silver?.status === 4 || s.gold?.status === 4;
 
 export const anyActiveNc = (c: CertificationDetails) =>
   c.nc1Status !== 0 || c.nc2Status !== 0 || c.nc3Status !== 0 || c.nc4Status !== 0 || c.nc5Status !== 0;
 
 export const isCompletedAndDisabled = (c: CertificationDetails) => c.status === 5;
-export const isSurveillanceNcActive = (c: CertificationDetails) => c.surveillanceStatus === '3';
-export const isSurveillanceActive = (c: CertificationDetails) => c.surveillanceStatus === '1' || isSurveillanceNcActive(c);
+/** Status "1": the surveillance photos. (Status "3", the surveillance round's NC replies, is not served by V4.) */
+export const isSurveillanceActive = (c: CertificationDetails) => c.surveillanceStatus === '1';
 export const parsedSurveillanceDate = (c: CertificationDetails) => parseLegacyDate(c.surveillanceDate);
 
 /** getSurveillanceInfo: created on first use. */

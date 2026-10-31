@@ -143,3 +143,18 @@ Remove-Item -Recurse -Force 'D:\ZED Portal Code\ZEDCS_V4\mobile\apps\msme\androi
 ```powershell
 Remove-Item -Recurse -Force 'D:\ZED Portal Code\ZEDCS_V4\mobile\packages\shared\android\build' -ErrorAction SilentlyContinue
 ```
+
+## Checking the encryption of an existing install (test builds only)
+
+The first start of a build with encrypted storage encrypts the databases of the installed app in place
+(`mobile/README.md`, "Sign-in token and encryption on the phone"). The first build also downloads OpenSSL for SQLCipher
+from Maven Central (`io.github.ronickg:openssl`). Test it as an update, never as a fresh install only:
+
+1. Install the previous test APK (or the legacy store build), sign in, and leave work unsent: complete an evidence or an
+   opening meeting in airplane mode, take photos.
+2. Install the new APK over it with `adb install -r` (same signing key), start it, still in airplane mode.
+3. Sign in offline: the unsent work must be there and listed under "Pending Uploads" (MSME) or in the assessment.
+4. With a debug build (`run-as`) or an emulator image that allows `adb root`, the files must no longer be plain
+   SQLite: `adb exec-out run-as <applicationId> head -c 16 databases/QCI_MSME_DB` (or `com.zed.assessmentdb`,
+   `ZED_MSME_Media_DB`) must not print `SQLite format 3`; no `*.zedenc-tmp` file may be left in `databases/`.
+5. Turn the network on: the pending work goes out; restart the app: it opens without migrating again.

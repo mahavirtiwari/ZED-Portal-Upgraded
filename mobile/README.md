@@ -48,25 +48,26 @@ changes (`Mode=remove` takes them out). The technology upgradation also needs th
 - **npm workspaces** (no Yarn on the build PCs): `packages/*` and `apps/*`; React Native is hoisted to
   `mobile/node_modules`, the apps' Gradle and Metro configs point there.
 - **TypeScript strict** (`tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, ...).
-- Few native dependencies, all New Architecture: `@op-engineering/op-sqlite` (SQLite), `@react-native-community/netinfo`,
-  `react-native-svg` (the legacy vector icons), `react-native-safe-area-context`. Navigation is a small stack in the
-  shared package (no native navigation library to keep in step with React Native releases).
+- Few native dependencies, all New Architecture: `@op-engineering/op-sqlite` (SQLite, built with SQLCipher),
+  `@react-native-community/netinfo`, `react-native-svg` (the legacy vector icons), `react-native-safe-area-context`.
+  Navigation is a small stack in the shared package (no native navigation library to keep in step with React Native
+  releases).
 
 ## Shared package (`packages/shared`)
 
 | Area | Files | What |
 |---|---|---|
-| API client | `src/api/http.ts`, `src/api/legacy.ts`, `src/config/environments.ts` | fetch client with the legacy conventions (JSON as Gson writes it: nulls left out; multipart; 60 s timeouts; "HTTP 500 ..." texts; `NetworkError` vs. refusals); `baseRequest` adds `userName`, `version` and **`deviceInfo`** to every body and `deviceInfo.*` fields to multipart forms; environments (production `https://loginzed.msme.gov.in`, staging `https://zedv3.qci.org.in`, local `http://10.0.2.2:5106`) |
+| API client | `src/api/http.ts`, `src/api/legacy.ts`, `src/config/environments.ts` | fetch client with the legacy conventions (JSON as Gson writes it: nulls left out; multipart; 60 s timeouts; "HTTP 500 ..." texts; `NetworkError` vs. refusals); `baseRequest` adds `userName`, `version` and **`deviceInfo`** to every body and `deviceInfo.*` fields to multipart forms; after sign-in every call carries the **`X-Zed-App-Token`** header, and the "sign-in has expired" refusal ends the session (`SessionExpiredError`); environments (production `https://loginzed.msme.gov.in`, staging `https://zedv3.qci.org.in`, local `http://10.0.2.2:5106`) |
 | Device registration | `src/device/deviceInfo.ts` | `deviceInfo` as the GeoStat apps built it: ANDROID_ID, `os.version (incremental)`, SDK level, `Build.DEVICE`, `MODEL (PRODUCT)`, `MANUFACTURER`; V4 binds it at sign-in (`MobileDeviceBindings`) and records it with every change |
-| Auth / session | `src/auth/passwords.ts` | offline sign-in credential: a salted PBKDF2 hash in the legacy credential column (the legacy apps kept the password itself); legacy plain-text rows are accepted once and upgraded |
-| Local store | `src/db/*` | async SQLite interface (op-sqlite on the phone, sql.js in tests); `LegacyLoginStore` (the legacy `LoginData` table: user, credential, whole sign-in response as JSON); `PhotoStore` (the legacy Room `photos_table`, same DDL) |
+| Auth / session | `src/auth/passwords.ts`, `src/auth/appSession.ts`, `src/auth/SessionExpiryGate.tsx` | offline sign-in credential: a salted PBKDF2 hash in the legacy credential column (the legacy apps kept the password itself); legacy plain-text rows are accepted once and upgraded. App sign-in token (`AppSession`, table `ZedAppToken`) and the return to the login page when the server ends the sign-in (below) |
+| Local store | `src/db/*` | async SQLite interface (op-sqlite with **SQLCipher** on the phone, sql.js in tests; `encryptedDatabase.ts` encrypts the legacy files in place, below); `LegacyLoginStore` (the legacy `LoginData` table: user, credential, whole sign-in response as JSON); `PhotoStore` (the legacy Room `photos_table`, same DDL) |
 | Offline sync | `src/sync/syncQueue.ts`, `src/sync/connectivity.ts` | persistent queue (`ZedSyncQueue` table): ordered, retried with back-off, de-duplicated by key, groups (a failure blocks later jobs of its group), pending/failed list, retry/remove; connectivity watcher (`isConnectedOrConnecting` meaning) |
 | Camera pipeline | `android/.../PhotoPipeline.kt`, `src/photo/*` | legacy `PhotoCaptureHelper` call for call: camera intent into `cache/SharedDocs/Geostat_yyyyMMdd_HHmmss_*.jpg`, scale to 1080 px, EXIF rotation, time/Lat/Long stamp (Paint 20 px, BLUE, x 20, lines at h+15, 2h+15, 3h+15 with h = measureText("yY")), base64 JPEG 75 into `photos_table`, file `filesDir/<UUID>.jpg` JPEG 100, temp file deleted; PDFs ≤ 2 MB as `filesDir/<UUID>.pdf`; photo ids `<loginId><millis>` |
 | Location | `android/.../LocationFetcher.kt`, `src/location/location.ts` | legacy `LocationFetcher`: fused provider, high accuracy, accuracy ≤ 100 m, fix < 15 min old, 10 s timeout, last location as fallback, mocked locations refused with the legacy message; GPS-off and failure dialogs with "Try Again" |
 | Forms | `src/forms/validation.ts`, `src/ui/components/Form.tsx` | the legacy view helpers: text (multi-line with 500 counter, numeric max 20, percentage validator), yes/no, check boxes, selection and multi-selection pickers, static text with VIEW, multi-row lists, buttons, dialogs |
 | Theme / UI | `src/ui/theme.ts`, `src/ui/UiHost.tsx`, `src/ui/components/*` | colours, sizes and text styles of the legacy `res/values`; loading overlay ("Please Wait"), toasts, snackbars, native alert dialogs, item/multi-choice dialogs; header/back bar/offline note/drawer of `activity_base.xml`; `<Icon>` renders the legacy vector drawables (converted by `tools/convert-vector-drawables.mjs`) |
 | Navigation | `src/navigation/stack.tsx` | stack with per-screen back handling and focus effects |
-| Native module | `android/` (Kotlin TurboModule `ZedDevice`, spec `src/native/NativeZedDevice.ts`) | device/app info, memory check, auto-time check, GPS state, location, camera/gallery/PDF pickers, photo processing, file viewer through the legacy FileProvider (`${applicationId}.fileprovider`, `cache/SharedDocs`), clipboard, PBKDF2, SharedPreferences |
+| Native module | `android/` (Kotlin TurboModule `ZedDevice`, spec `src/native/NativeZedDevice.ts`) | device/app info, memory check, auto-time check, GPS state, location, camera/gallery/PDF pickers, photo processing, file viewer through the legacy FileProvider (`${applicationId}.fileprovider`, `cache/SharedDocs`), clipboard, PBKDF2, SharedPreferences (string values encrypted); `LocalEncryption.kt`: Android Keystore key, per-install database key, database file checks and swaps |
 
 ## Building and running
 
@@ -199,6 +200,37 @@ cd mobile/apps/msme/android
 - Locally: migrations `0016` and `0017` on the local `ZED_SURVEILLANCE`, then
   `tools/dev-seed/admin-changes-demo.sql -v Mode=apply` plays fake Admin changes (`Mode=remove` takes them out).
 
+## Sign-in token and encryption on the phone (new in V4, audit of 2026-10-31)
+
+- **App sign-in token (audit C1).** Every successful app login answers a top-level `appToken`. The app takes it out of
+  the answer (it is not stored with the sign-in data the requests are built from), keeps it per user in the table
+  `ZedAppToken` of the app's encrypted database, and sends it on every later call, JSON and multipart alike (and the
+  consultant app's technology upgradation downloads), as the header `X-Zed-App-Token`. An offline sign-in sends the
+  token of that user's last online login. A login answer without `appToken` (an older server) is fine: no header.
+  When a call is refused with `errorMessage` exactly `Your sign-in has expired. Please sign in again.` (any HTTP
+  status), the app forgets the token (memory and database), closes the signed-in user in memory and shows its login
+  page with that text (`SessionExpiryGate`, rendered as the navigator's overlay); the refused call counts as not sent,
+  so the screens keep the work on the phone as without a connection, and the sync queue keeps the job pending (no
+  attempt counted, no back-off) until the next sign-in. Offline work (the stored sign-in response or assessment, the
+  sync queue, photos) and the offline sign-in credential are kept. Logout only stops sending the token.
+- **Databases (SQLCipher).** Each app's `package.json` has `"op-sqlite": { "sqlcipher": true }` (op-sqlite then builds
+  SQLCipher with OpenSSL `io.github.ronickg:openssl`). The key is random per install (32 bytes), made by the native
+  module on first use and kept wrapped by an AES-GCM key in the Android Keystore (`zed_secure_store` preferences); it
+  is used as a raw key, so opening costs no key derivation. Nothing is hard-coded.
+- **In-place encryption of existing installs** (`src/db/encryptedDatabase.ts`). At the first start of this version every
+  plain database file (the legacy `QCI_MSME_DB`, `com.zed.assessmentdb`, Room `ZED_MSME_Media_DB`, or one written by
+  an earlier test build) is checkpointed (Room's WAL folded in), copied with `sqlcipher_export` into
+  `<name>.zedenc-tmp`, the copy is opened with the key and every table's row count compared, and only then the copy
+  replaces the file by an atomic rename under the same name. At any moment the file under the legacy name is either
+  the whole plain database or its verified encrypted copy. If any step fails, the plain file is kept as it was, the app
+  works on it this time and tries again at the next start (the half-made copy is removed then). An encrypted file the
+  key cannot open (only if Android lost the Keystore key) is renamed `<name>.unreadable-<time>`, never deleted.
+- **Preferences.** String values the app writes to SharedPreferences are AES-GCM encrypted with the Keystore key
+  (`zedenc1:` prefix); the site assessor and consultant apps encrypt the plain values the legacy app left in the
+  sign-in, assessment and meeting-draft files at start. Plain legacy values are still read.
+- Not encrypted: the photo and PDF files in the app's private `filesDir` (as in the legacy apps; their base64 copies in
+  `photos_table` are encrypted with the database).
+
 ## Offline mode
 
 As the legacy app, all work is kept on the phone in the legacy databases (`QCI_MSME_DB`: sign-in response with the
@@ -211,4 +243,4 @@ app) shows as done but not sent. Details per screen: [docs/MSME-PARITY.md](docs/
 **Update from the legacy app:** the new app opens the legacy database files by name in the same folder, with the same
 tables, and the legacy photo files stay where they are, so pending offline work of the legacy app is read after the
 update (verified with a database written in the legacy format, see the parity document). No blocking of the update is
-needed.
+needed. New: at that first start the files are encrypted in place (above) before anything reads them.

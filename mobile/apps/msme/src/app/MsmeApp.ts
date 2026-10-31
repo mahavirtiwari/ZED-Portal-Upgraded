@@ -1,6 +1,8 @@
 import {
   AppForms,
+  AppSession,
   AppTexts,
+  AppTokenStore,
   KeyValueStore,
   LegacyLoginStore,
   MSME_LOGIN_TABLE,
@@ -9,6 +11,7 @@ import {
   credentialToStore,
   getAppInfo,
   requestContext,
+  takeAppToken,
   verifyCredential,
   type Environment,
   type SqlDb,
@@ -45,6 +48,9 @@ export class MsmeApp {
   readonly texts: AppTexts;
   readonly forms: AppForms;
   readonly api: MsmeApi;
+  /** New in V4 (audit C1): the app sign-in token, sent with every call; kept per user in QCI_MSME_DB.ZedAppToken. */
+  readonly session: AppSession;
+  readonly tokens: AppTokenStore;
   readonly environment: Environment;
   readonly versionName: string;
 
@@ -65,6 +71,9 @@ export class MsmeApp {
     this.environment = deps.environment;
     this.versionName = deps.versionName;
     this.api = deps.api ?? new MsmeApi(deps.environment, () => requestContext());
+    this.tokens = new AppTokenStore(deps.loginDb);
+    this.session = new AppSession(this.tokens);
+    this.api.http.useSession(this.session);
   }
 
   static async open(openDatabase: (name: string) => SqlDb): Promise<MsmeApp> {
@@ -84,6 +93,7 @@ export class MsmeApp {
     await this.photos.ensureSchema();
     await this.queue.ensureSchema();
     await this.cache.ensureSchema();
+    await this.tokens.ensureSchema();
     await this.texts.load();
     await this.forms.load([MSME_BASIC_INFO]);
   }
@@ -141,10 +151,11 @@ export class MsmeApp {
     return p.then(() => undefined);
   }
 
-  /** resetUser */
+  /** resetUser; the sign-in token is no longer sent (the stored one stays for an offline sign-in). */
   resetUser(): void {
     this._user = null;
     this._loginId = null;
+    this.session.clear();
     this.touch();
   }
 
@@ -154,8 +165,10 @@ export class MsmeApp {
    * LoginFragment's success branch: the first sign-in on this phone stores the response; later sign-ins keep the
    * local data (offline work) and only take the server's certification statuses (updateCertificationDetails).
    * The offline credential is refreshed with the password that just worked (stored as a hash).
+   * New: the answer's `appToken` is kept apart (ZedAppToken), not in the stored sign-in response.
    */
   async onlineLoginSucceeded(username: string, password: string, response: LoginResponse, update: (local: LoginResponse, server: LoginResponse) => void) {
+    const token = takeAppToken(response);
     normalizeLoginResponse(response);
     const existing = await this.loginStore.load(username);
     if (existing == null) {
@@ -167,6 +180,7 @@ export class MsmeApp {
     this._user = local;
     this._loginId = username;
     update(local, response);
+    await this.session.signedIn(username, token);
     await this.persist();
   }
 
@@ -177,6 +191,8 @@ export class MsmeApp {
     const verdict = verifyCredential(stored, password);
     if (!verdict.ok || data == null) return false;
     if (verdict.upgrade) await this.loginStore.updateCredential(username, verdict.upgrade);
+    // New: the token of this user's last online login, so that work sent when the connection returns carries it.
+    await this.session.resumed(username);
     this._user = normalizeLoginResponse(data);
     this._loginId = username;
     this.touch();

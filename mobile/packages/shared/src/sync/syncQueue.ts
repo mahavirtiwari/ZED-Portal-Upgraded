@@ -1,4 +1,4 @@
-import { isNetworkError } from '../api/http';
+import { isNetworkError, isSessionExpired } from '../api/http';
 import { textOf, type SqlDb, type SqlRow } from '../db/types';
 
 /**
@@ -16,6 +16,8 @@ import { textOf, type SqlDb, type SqlRow } from '../db/types';
  *   certification), because they may depend on it (basic information before evidences).
  * - No answer from the server (no network, timeout): the job stays pending, the run stops, and it is retried with
  *   back-off and whenever the connection returns.
+ * - The server no longer accepts the app sign-in token (SessionExpiredError, audit C1): the job stays pending without
+ *   back-off and the run stops; it is sent after the user signs in again.
  * - A refusal from the server (status "0", HTTP error): the job is marked failed with the server's message and is
  *   not retried automatically; the user retries it (or fixes the data first).
  * - The table lives in the app's own database, so pending jobs survive restarts and app updates.
@@ -58,6 +60,8 @@ export type RunSummary = {
   failed: SyncJob[];
   /** Stopped because the server could not be reached. */
   offline: boolean;
+  /** Stopped because the server ended the sign-in (the jobs wait for the next one). */
+  signedOut: boolean;
   skipped: number;
 };
 
@@ -224,7 +228,7 @@ export class SyncQueue {
   }
 
   private async runOnce({ userId, force = false }: { userId?: string; force?: boolean }): Promise<RunSummary> {
-    const summary: RunSummary = { sent: [], failed: [], offline: false, skipped: 0 };
+    const summary: RunSummary = { sent: [], failed: [], offline: false, signedOut: false, skipped: 0 };
     const blockedGroups = new Set<string>();
     const jobs = await this.list(userId);
     for (const job of jobs) {
@@ -253,6 +257,16 @@ export class SyncQueue {
       try {
         result = await handler({ ...job, attempts: job.attempts + 1 });
       } catch (e) {
+        if (isSessionExpired(e)) {
+          // Not the job's fault: no attempt is counted and no back-off waits after the next sign-in.
+          await this.db.execute(
+            `UPDATE ${SYNC_TABLE} SET status = 'pending', attempts = ?, lastError = ?, nextAttemptAt = 0, updatedAt = ? WHERE id = ?`,
+            [job.attempts, e.message, this.now(), job.id],
+          );
+          summary.signedOut = true;
+          this.notify();
+          break;
+        }
         if (isNetworkError(e)) {
           const attempts = job.attempts + 1;
           await this.db.execute(

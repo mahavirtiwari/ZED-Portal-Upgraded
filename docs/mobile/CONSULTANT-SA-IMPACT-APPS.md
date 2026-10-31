@@ -129,7 +129,7 @@ vendor for the released surveillance site assessor app's source.
 ## What the app vendor should change (next release)
 
 1. Send a session token from Login with every call (the v2 API of MOBILE-API.md), including the TU calls; until then
-   V4 can only infer the caller.
+   V4 can only infer the caller. Done in the React Native rewrite (`appToken` / `X-Zed-App-Token`, mobile/README.md).
 2. Send `saId` with the four FinancialAssistance calls and move them to the mobile API.
 3. Stop disabling TLS certificate and hostname checks (`RestHelper.disableSSLVerification` on Android 13 and older,
    `RetrofitProvider`'s trust-all client). If it was added for an incomplete certificate chain, make the server send the

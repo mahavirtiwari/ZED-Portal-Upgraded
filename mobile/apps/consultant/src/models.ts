@@ -320,6 +320,8 @@ export type AttendanceData = { attendanceList: Attendance[] };
 
 /** AssessmentDetails (extends LoginServiceResponse): the sign-in answer, kept and changed on the phone. */
 export type AssessmentDetails = BaseServiceResponse & {
+  /** New in V4 (audit C1): the app sign-in token of a successful login; taken out before the answer is stored. */
+  appToken?: string | null;
   /** 1 Lead Consultant, 2 Consultant */
   userType: number;
   companyProfile?: MSMEProfile | null;

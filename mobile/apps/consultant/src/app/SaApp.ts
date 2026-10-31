@@ -1,6 +1,8 @@
 import {
   AppForms,
+  AppSession,
   AppTexts,
+  AppTokenStore,
   credentialToStore,
   getAppInfo,
   KeyValueStore,
@@ -13,7 +15,7 @@ import {
 } from '@zed/shared';
 import { SaApi } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
-import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, type Prefs } from '../db/stores';
+import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
 import { BUILT_IN_BASIC_INFO, CONSULTANT_BASIC_INFO } from '../forms';
 import { normalizeDetails, type AssessmentDetails } from '../models';
 import { base64Decode, base64EncodeDefault } from '../util/base64';
@@ -40,6 +42,9 @@ export class SaApp {
   readonly texts: AppTexts;
   readonly forms: AppForms;
   readonly api: SaApi;
+  /** New in V4 (audit C1): the app sign-in token, sent with every call; kept per user in ZedAppToken. */
+  readonly session: AppSession;
+  readonly tokens: AppTokenStore;
   readonly prefs: Prefs;
   readonly environment: Environment;
   readonly versionName: string;
@@ -60,6 +65,10 @@ export class SaApp {
     this.environment = deps.environment;
     this.versionName = deps.versionName;
     this.api = deps.api ?? new SaApi(this.environment, () => requestContext());
+    this.tokens = new AppTokenStore(deps.db);
+    this.session = new AppSession(this.tokens);
+    this.api.rest.useSession(this.session);
+    this.api.retrofit.useSession(this.session);
   }
 
   static async open(openDatabase: (name: string) => SqlDb): Promise<SaApp> {
@@ -74,6 +83,9 @@ export class SaApp {
     await this.photos.ensureSchema();
     await this.queue.ensureSchema();
     await this.cache.ensureSchema();
+    await this.tokens.ensureSchema();
+    // New in V4: the sign-in values and drafts the legacy app left in plain SharedPreferences are encrypted.
+    for (const file of PROTECTED_PREFS) this.prefs.protect(file);
     await this.texts.load();
     await this.forms.load([CONSULTANT_BASIC_INFO]);
   }
@@ -180,6 +192,16 @@ export class SaApp {
     this._details = null;
     this.touch();
     return true;
+  }
+
+  /**
+   * New (audit C1): the server ended the sign-in. The open assessment is closed in memory and the token forgotten;
+   * the stored assessment (offline work), its sync queue and the offline credential stay on the phone.
+   */
+  signOut(): void {
+    this._details = null;
+    this.session.clear();
+    this.touch();
   }
 
   // ----- offline sign-in (LoginActivity.saveCredentials / compareCredentials) -----

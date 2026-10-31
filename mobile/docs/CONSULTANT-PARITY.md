@@ -42,8 +42,9 @@ against the legacy code only.
 
 | Legacy | React Native | Tested |
 |---|---|---|
-| Consultancy in `com.zed.assessmentdb` AssessorData (Gson JSON with dates as DateFormat.FULL), meeting rows, evidences; photos in Room `ZED_MSME_Media_DB` | same files, tables and JSON names, opened in place; the full-style dates are read in their Android variants and written the same way | U, E |
-| Offline sign-in from `LoginActivity` preferences (Base64 of the password) | password kept as a salted hash (a legacy value is accepted once and replaced) | U, E |
+| Consultancy in `com.zed.assessmentdb` AssessorData (Gson JSON with dates as DateFormat.FULL), meeting rows, evidences; photos in Room `ZED_MSME_Media_DB` | same files, tables and JSON names, opened in place; the full-style dates are read in their Android variants and written the same way; **new: SQLCipher-encrypted**, plain files encrypted in place at the first start (verified copy, atomic swap, plain file kept on any failure; README "Sign-in token and encryption") | U, E (before encryption) |
+| Offline sign-in from `LoginActivity` preferences (Base64 of the password) | password kept as a salted hash (a legacy value is accepted once and replaced); new: the string values of the sign-in, assessment and meeting-draft preference files are encrypted with an Android Keystore key (legacy plain values encrypted at start) | U, E |
+| — (new, audit C1) | the login answer's `appToken` is kept apart (`ZedAppToken`) and sent as `X-Zed-App-Token` on every call, the consultancy web site's technology upgradation calls and photo downloads included; "Your sign-in has expired. Please sign in again." closes the consultancy in memory and shows the login with that text; stored work and queue kept and sent after the next sign-in | U |
 | Opening meeting saved offline, sent from "Sync Data" | same, **plus** sent by the sync queue when the connection returns | U |
 | Attendance saved offline: no way to send it (no "Sync Pending Data" in this app) | sent by the sync queue | U, E |
 | Training details saved offline: sent when the consultant opens the screen again online | sent by the sync queue (files first) | U, E |
@@ -67,6 +68,8 @@ against the legacy code only.
 6. Syncing a saved opening meeting no longer marks the site tour as submitted (the legacy did, which hid the site tour).
 7. A call without an answer shows "Network not available" instead of the exception text.
 8. New in V4: Admin texts and the configurable Basic Information form (`consultant.basicInfo`).
+9. New in V4 (audit 2026-10-31): the app sign-in token on every call, the return to the login when the server ends the
+   sign-in, and encryption of the databases and preferences on the phone (README).
 
 ## Verification log
 

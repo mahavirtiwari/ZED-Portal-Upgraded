@@ -49,8 +49,9 @@ legacy code only.
 
 | Legacy | React Native | Tested |
 |---|---|---|
-| Assessment in `com.zed.assessmentdb` AssessorData (Gson JSON) with the meeting and selfie requests saved offline; evidences in EvidenceData; photos in Room `ZED_MSME_Media_DB` | same database files, tables and JSON names, opened in place (`AssessorStore`, shared `PhotoStore`); meeting/selfie SQL now uses parameters (the legacy concatenated the JSON into the SQL) | U, E |
-| Offline sign-in from `LoginActivity` preferences (Base64 of the password) | password kept as a salted hash in the same key (a legacy value is accepted once and replaced) | U, E |
+| Assessment in `com.zed.assessmentdb` AssessorData (Gson JSON) with the meeting and selfie requests saved offline; evidences in EvidenceData; photos in Room `ZED_MSME_Media_DB` | same database files, tables and JSON names, opened in place (`AssessorStore`, shared `PhotoStore`); meeting/selfie SQL now uses parameters (the legacy concatenated the JSON into the SQL); **new: SQLCipher-encrypted**, plain files encrypted in place at the first start (verified copy, atomic swap, plain file kept on any failure; README "Sign-in token and encryption") | U, E (before encryption) |
+| Offline sign-in from `LoginActivity` preferences (Base64 of the password) | password kept as a salted hash in the same key (a legacy value is accepted once and replaced); new: the string values of the sign-in, assessment and meeting-draft preference files are encrypted with an Android Keystore key (legacy plain values encrypted at start) | U, E |
+| — (new, audit C1) | the login answer's `appToken` is kept apart (`ZedAppToken`) and sent as `X-Zed-App-Token` on every call; "Your sign-in has expired. Please sign in again." closes the assessment in memory and shows the login with that text; stored work and queue kept and sent after the next sign-in | U |
 | Opening meeting, selfie, attendance saved offline; sent from "Sync Assessment" | same, **plus** sent automatically by the sync queue when the connection returns (opening meeting before selfie) | U, E |
 | Parameters, site tour, closing meeting: from "Sync Assessment" only | unchanged (sending them on their own would end steps the assessor may still be working on) | U, E |
 
@@ -71,6 +72,8 @@ legacy code only.
 6. The attendance selfie metadata without the base64 (the file part carries it; the legacy sent both).
 7. Back on the assessment options asks "Are you sure you want to exit?" (the legacy closed the screen and then asked).
 8. New in V4: Admin texts and the configurable Basic Information form (`assessor.basicInfo`, numbered by position).
+9. New in V4 (audit 2026-10-31): the app sign-in token on every call, the return to the login when the server ends the
+   sign-in, and encryption of the databases and preferences on the phone (README).
 
 ## Verification log
 

@@ -13,7 +13,6 @@ import {
   certificationDetailsOf,
   isAnyCertificationCompleted,
   isSurveillanceActive,
-  isSurveillanceNcActive,
   parsedSurveillanceDate,
   Status,
   type CertificationType,
@@ -81,7 +80,7 @@ export function CertificationOptionsScreen() {
               right={icons.ic_forward_arrow}
               style={shapes.ncRectangle}
               overlay={ncActive !== true}
-              onPress={() => nav.push('NonConformances', { certificationType: type, isSurveillance: false })}
+              onPress={() => nav.push('NonConformances', { certificationType: type })}
               testID="option-nc"
             />
           ) : null}
@@ -122,9 +121,9 @@ export function CertificationOptionsScreen() {
               style={shapes.ncRectangle}
               testID="option-surveillance"
               onPress={() => {
+                // The legacy app opened the surveillance round's NCs here at status "3": not served by V4 (api.ts).
                 if (isToday(parsedSurveillanceDate(details!))) {
-                  if (isSurveillanceNcActive(details!)) nav.push('NonConformances', { certificationType: type, isSurveillance: true });
-                  else nav.push('Surveillance', { certificationType: type });
+                  nav.push('Surveillance', { certificationType: type });
                 } else {
                   alert('This module will be activated on the scheduled assessment date only');
                 }
