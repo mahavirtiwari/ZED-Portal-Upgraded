@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -31,12 +32,21 @@ public sealed class DeviceInfo
     public string? manufacturer { get; set; }
 }
 
-/// <summary>Which mobile app a call comes from; device records are kept per app.</summary>
+/// <summary>
+/// Which mobile app a call comes from; device records and app tokens are kept per app, and these are the names of the
+/// per-app settings (<c>Mobile:AppTokens:Apps:SA</c>). Each deployment has its own settings, so "SA" is the site
+/// assessor app on Main and Surveillance and the consultant app (its fork) on Consultancy.
+/// </summary>
 public static class MobileApps
 {
     public const string Msme = "MSME";
     public const string SiteAssessor = "SA";
     public const string RemoteAssessor = "RA";
+    /// <summary>The Bronze surveillance app (com.qci.zed.bronzesurveillance), signed in to by the unit's desktop assessor.</summary>
+    public const string Surveillance = "SURV";
+
+    /// <summary>Apps whose user is the unit itself: a call names the ZED ID, which is compared with the token's unit.</summary>
+    public static bool ActsAsUnit(string app) => app is Msme or RemoteAssessor;
 }
 
 public enum DeviceCheck { Known, Unknown, Missing, NoBinding }
@@ -49,6 +59,9 @@ public interface IDeviceBindings
     Task<DeviceCheck> CheckAsync(string app, string userKey, string? deviceId, CancellationToken ct = default);
 
     Task RecordAsync(string app, string userKey, string? deviceId, string path, string? ip, DeviceCheck outcome, bool refused, CancellationToken ct = default);
+
+    /// <summary>A call without a valid app token (<see cref="AppTokens"/>), with the device events (Outcome "Token…").</summary>
+    Task RecordTokenAsync(string app, string userKey, string path, string? ip, AppTokenCheck outcome, bool refused, CancellationToken ct = default);
 }
 
 /// <summary>Device records in ZEDCS_V2_LIVE (database/schema/05_mobile_devices.sql).</summary>
@@ -89,16 +102,35 @@ public sealed class SqlDeviceBindings(ISqlExecutor sql, ILogger<SqlDeviceBinding
         return known.Contains(id, StringComparer.Ordinal) ? DeviceCheck.Known : DeviceCheck.Unknown;
     }
 
-    public async Task RecordAsync(string app, string userKey, string? deviceId, string path, string? ip, DeviceCheck outcome, bool refused, CancellationToken ct = default)
+    public Task RecordAsync(string app, string userKey, string? deviceId, string path, string? ip, DeviceCheck outcome, bool refused, CancellationToken ct = default)
     {
-        var key = $"{app}|{userKey}|{deviceId}|{path}|{outcome}";
-        var now = DateTime.UtcNow;
-        if (recent.TryGetValue(key, out var last) && now - last < TimeSpan.FromMinutes(10) && !refused) return;
-        recent[key] = now;
-        if (recent.Count > 50_000) recent.Clear();
-
+        if (!Due($"{app}|{userKey}|{deviceId}|{path}|{outcome}", refused)) return Task.CompletedTask;
         logger.LogWarning("Mobile call {Path} for {App} user {User} from {Outcome} device {Device} ({Action})",
             path, app, userKey, outcome, deviceId ?? "(none)", refused ? "refused" : "allowed");
+        return InsertAsync(app, userKey, deviceId, path, ip, outcome.ToString(), refused, ct);
+    }
+
+    public Task RecordTokenAsync(string app, string userKey, string path, string? ip, AppTokenCheck outcome, bool refused, CancellationToken ct = default)
+    {
+        if (!Due($"{app}|{userKey}|token|{path}|{outcome}", refused)) return Task.CompletedTask;
+        logger.LogWarning("Mobile call {Path} for {App} user {User}: app token {Outcome} ({Action})",
+            path, app, userKey, outcome, refused ? "refused" : "allowed");
+        // Outcome is varchar(20): "TokenOtherUser" is the longest.
+        return InsertAsync(app, userKey, null, path, ip, "Token" + outcome, refused, ct);
+    }
+
+    /// <summary>Refusals always; other events once per key every 10 minutes.</summary>
+    private bool Due(string key, bool refused)
+    {
+        var now = DateTime.UtcNow;
+        if (recent.TryGetValue(key, out var last) && now - last < TimeSpan.FromMinutes(10) && !refused) return false;
+        recent[key] = now;
+        if (recent.Count > 50_000) recent.Clear();
+        return true;
+    }
+
+    private async Task InsertAsync(string app, string userKey, string? deviceId, string path, string? ip, string outcome, bool refused, CancellationToken ct)
+    {
         try
         {
             await sql.ExecuteSqlAsync("""
@@ -108,7 +140,7 @@ public sealed class SqlDeviceBindings(ISqlExecutor sql, ILogger<SqlDeviceBinding
                 new
                 {
                     App = app, User = Truncate(userKey, 100), Device = Truncate(Clean(deviceId), 200), Path = Truncate(path, 200),
-                    Ip = Truncate(ip, 50), Outcome = outcome.ToString(), Refused = refused,
+                    Ip = Truncate(ip, 50), Outcome = Truncate(outcome, 20), Refused = refused,
                 }, ct);
         }
         catch (Exception ex)
@@ -125,13 +157,21 @@ public sealed class SqlDeviceBindings(ISqlExecutor sql, ILogger<SqlDeviceBinding
 }
 
 /// <summary>
-/// Marks an action that acts for one user. The filter finds the user in the bound request
-/// (first non-empty of <see cref="UserFields"/>) and the device in <c>deviceInfo.deviceId</c>, and
-/// checks that this device has signed in as that user (see <see cref="DeviceBindingMode"/>).
+/// Marks an action that acts for one user. The filter finds the user in the bound request (first non-blank of
+/// <see cref="UserFields"/>) and the device in <c>deviceInfo.deviceId</c>, checks the app sign-in token
+/// (<see cref="AppTokens"/>: issued to that user, or for the MSME and RA apps to that unit) and that this device has
+/// signed in as that user (see <see cref="DeviceBindingMode"/>).
+/// <para>
+/// The user is read from the action's own arguments, the values the action acts on (finding H1): a complex parameter
+/// reads the nested <c>request</c> object when the body has one, so a user named at the top of the body must not
+/// decide the check. The raw request values are read only when no parameter has any of the fields.
+/// </para>
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class DeviceBoundAttribute(string app, params string[] userFields) : Attribute, IAsyncActionFilter
 {
+    public const string DeviceNotRegistered = "This device is not registered for your account. Please login again.";
+
     public string App { get; } = app;
 
     public IReadOnlyList<string> UserFields { get; } = userFields.Length > 0 ? userFields : ["zedId", "userName"];
@@ -140,22 +180,34 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
     {
         var http = context.HttpContext;
         var options = http.RequestServices.GetService(typeof(IOptions<MobileOptions>)) as IOptions<MobileOptions>;
+        var tokens = http.RequestServices.GetService(typeof(AppTokens)) as AppTokens;
         var mode = options?.Value.DeviceBinding ?? DeviceBindingMode.Off;
-        if (mode == DeviceBindingMode.Off)
+        if (mode == DeviceBindingMode.Off && (tokens is null || tokens.ModeFor(App) == AppTokenMode.Off))
         {
             await next();
             return;
         }
 
         var values = await LegacyRequestValues.GetAsync(http);
-        var user = FindUser(context.ActionArguments.Values, values);
-        if (string.IsNullOrWhiteSpace(user))
+        var user = FindUser(context, values);
+
+        if (tokens is not null)
+        {
+            var asUnit = MobileApps.ActsAsUnit(App);
+            if (await tokens.RefusalAsync(http, App, asUnit ? null : user, asUnit ? user : null, http.RequestAborted) is { } expired)
+            {
+                context.Result = expired;
+                return;
+            }
+        }
+
+        if (mode == DeviceBindingMode.Off || string.IsNullOrWhiteSpace(user))
         {
             await next();
             return;
         }
 
-        var deviceId = FindDeviceId(context.ActionArguments.Values, values);
+        var deviceId = FindDeviceId(context, values);
         var bindings = (IDeviceBindings)http.RequestServices.GetService(typeof(IDeviceBindings))!;
         var check = await bindings.CheckAsync(App, user, deviceId, http.RequestAborted);
         if (check is DeviceCheck.Known or DeviceCheck.NoBinding)
@@ -169,35 +221,88 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
         await bindings.RecordAsync(App, user, deviceId, http.Request.Path, http.Connection.RemoteIpAddress?.ToString(), check, refuse, http.RequestAborted);
         if (refuse)
         {
-            context.Result = LegacyResults.Json(ServiceResponse.Fail("This device is not registered for your account. Please login again."));
+            context.Result = LegacyResults.Json(ServiceResponse.Fail(DeviceNotRegistered));
             return;
         }
         await next();
     }
 
-    private string? FindUser(IEnumerable<object?> args, LegacyRequestValues values)
+    /// <summary>
+    /// The first non-blank of <see cref="UserFields"/>, in that order, as the actions take it (<c>First(saId, userName)</c>).
+    /// Only from the action's parameters when any of them has one of the fields (a blank one counts as given: the action
+    /// acts on the next field, or on nothing); from the raw request values otherwise.
+    /// </summary>
+    internal string? FindUser(ActionExecutingContext context, LegacyRequestValues values)
     {
+        var declared = false;
         foreach (var field in UserFields)
+        foreach (var p in context.ActionDescriptor.Parameters)
         {
-            if (values.Get(field) is JsonValue v && v.ToString() is { Length: > 0 } s) return s.Trim();
-            foreach (var arg in args)
-                if (ReadString(arg, field) is { Length: > 0 } fromModel) return fromModel.Trim();
+            context.ActionArguments.TryGetValue(p.Name, out var arg);
+            if (!TryRead(p.Name, p.ParameterType, arg, field, out var value)) continue;
+            declared = true;
+            if (!string.IsNullOrWhiteSpace(value)) return value.Trim();
         }
+        if (declared) return null;
+        foreach (var field in UserFields)
+            if (values.Get(field) is JsonValue v && v.ToString() is { } s && !string.IsNullOrWhiteSpace(s)) return s.Trim();
         return null;
     }
 
-    private static string? FindDeviceId(IEnumerable<object?> args, LegacyRequestValues values)
+    /// <summary><c>deviceInfo.deviceId</c> of the bound model when it has a deviceInfo, else of the raw request.</summary>
+    private static string? FindDeviceId(ActionExecutingContext context, LegacyRequestValues values)
     {
-        if (values.Get("deviceInfo") is JsonObject o && o["deviceId"] is JsonValue v && v.ToString() is { Length: > 0 } s) return s;
-        foreach (var arg in args)
+        foreach (var p in context.ActionDescriptor.Parameters)
         {
-            var device = arg?.GetType().GetProperty("deviceInfo", BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)?.GetValue(arg);
-            if (ReadString(device, "deviceId") is { Length: > 0 } id) return id;
+            if (Property(p.ParameterType, "deviceInfo") is not { } prop || prop.PropertyType != typeof(DeviceInfo)) continue;
+            context.ActionArguments.TryGetValue(p.Name, out var arg);
+            var id = arg is null ? null : (prop.GetValue(arg) as DeviceInfo)?.deviceId;
+            return string.IsNullOrWhiteSpace(id) ? null : id;
         }
+        if (values.Get("deviceInfo") is JsonObject o && o["deviceId"] is JsonValue v && v.ToString() is { Length: > 0 } s) return s;
         return null;
     }
 
-    private static string? ReadString(object? target, string property) =>
-        target?.GetType().GetProperty(property, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
-            ?.GetValue(target) as string;
+    /// <summary>
+    /// Whether parameter <paramref name="name"/> carries <paramref name="field"/>: a string parameter of that name, a JSON
+    /// body (<c>[FromBody] JsonElement</c>) with that property, or a model with that string property; and its value.
+    /// </summary>
+    private static bool TryRead(string name, Type type, object? arg, string field, out string? value)
+    {
+        value = null;
+        if (type == typeof(string))
+        {
+            if (!string.Equals(name, field, StringComparison.OrdinalIgnoreCase)) return false;
+            value = arg as string;
+            return true;
+        }
+        if (type == typeof(JsonElement))
+        {
+            if (arg is not JsonElement { ValueKind: JsonValueKind.Object } body) return false;
+            foreach (var p in body.EnumerateObject())
+                if (string.Equals(p.Name, field, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = p.Value.ValueKind is JsonValueKind.String ? p.Value.GetString() : p.Value.ValueKind is JsonValueKind.Number ? p.Value.GetRawText() : null;
+                    return true;
+                }
+            return false;
+        }
+        if (type.IsPrimitive || type.IsEnum || type == typeof(decimal) || type == typeof(CancellationToken)) return false;
+        if (Property(type, field) is not { } prop || prop.PropertyType != typeof(string)) return false;
+        value = arg is null ? null : prop.GetValue(arg) as string;
+        return true;
+    }
+
+    /// <summary>A public instance property by name, the exact spelling first (models may have zedId and ZedId).</summary>
+    private static PropertyInfo? Property(Type type, string name)
+    {
+        PropertyInfo? match = null;
+        foreach (var p in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (p.GetIndexParameters().Length > 0) continue;
+            if (string.Equals(p.Name, name, StringComparison.Ordinal)) return p;
+            if (match is null && string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase)) match = p;
+        }
+        return match;
+    }
 }

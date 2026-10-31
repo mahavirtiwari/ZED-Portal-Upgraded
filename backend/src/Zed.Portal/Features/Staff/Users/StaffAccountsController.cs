@@ -14,7 +14,9 @@ namespace Zed.Portal.Features.Staff.Users;
 /// New in V4: Admin → User Management. The Admin creates and maintains the logins nobody could create on the old portals
 /// (they were inserted in the database): Master Admins, Ministry, MSME DFOs (StateCoordinator, per state: the NEFT lists
 /// show that state) and the dashboard logins (SuperAdmin, CitizenFeedback, QC). Plain Users rows, so the legacy login and
-/// procedures treat them as before; the password is generated, mailed once and hashed (PasswordStore).
+/// procedures treat them as before; the password is generated and hashed (PasswordStore). A new login is mailed a one-time
+/// link to set its password; Master Admin and Super Admin logins get the generated password (<see cref="StaffWelcomeLogin"/>).
+/// Block, unblock, an edit or a password reset ends the user's sessions (<see cref="SessionStamps"/>).
 /// </summary>
 [Route("api/staff/accounts")]
 [StaffRoles(UserRole.Admin)]
@@ -86,7 +88,9 @@ public sealed class StaffAccountsController(
         await passwords.SetAsync(userId, password, ct);
         log.LogInformation("{Type} login {NewUserId} created by {Actor}", type.Label, userId, UserId);
 
-        var sent = await SendLoginAsync(userId, values.UserName, values.Email, type.Label, password, reset: false, ct);
+        // A one-time link to set the password; Master Admin and Super Admin logins still get the password (StaffWelcomeLogin).
+        var login = await StaffWelcomeLogin.ForAsync(HttpContext, userId, type.RoleId, password, UserId, ct);
+        var sent = await SendLoginAsync(userId, values.UserName, values.Email, type.Label, login, reset: false, ct);
         return new CreatedAccountResponse(sent
             ? $"{type.Label} login {userId} created. The login details have been sent to {values.Email}."
             : $"{type.Label} login {userId} created, but the e-mail with the login details could not be sent. Please use Reset Password to send them again.", userId);
@@ -102,7 +106,9 @@ public sealed class StaffAccountsController(
             "UPDATE Users SET UserName = @UserName, Email = @Email, MobileNo = @MobileNo, StateCode = @StateCode WHERE UserId = @UserId AND RoleId = @RoleId;",
             new { row.UserId, values!.UserName, values.Email, values.MobileNo, values.StateCode, row.RoleId }, ct);
         log.LogInformation("{Type} login {UserId} updated by {Actor}", type!.Label, row.UserId, UserId);
-        return new MessageResponse("Login updated. A change of state applies at the user's next sign-in.");
+        // M12: the state (an MSME DFO's lists) is in the sign-in cookie: the user's sessions end and the next sign-in has the new one.
+        await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
+        return new MessageResponse("Login updated. The user is signed out and the change applies at the next sign-in.");
     }
 
     [HttpPost("{userId}/block")]
@@ -125,8 +131,9 @@ public sealed class StaffAccountsController(
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password WHERE UserId = @UserId AND RoleId = @RoleId;",
             new { Password = passwords.StoredValueFor(password), row.UserId, row.RoleId }, ct);
         log.LogInformation("Password of {UserId} reset by {Actor}", row.UserId, UserId);
+        await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
         var label = Types.First(t => t.RoleId == row.RoleId).Label;
-        return await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, label, password, reset: true, ct)
+        return await SendLoginAsync(row.UserId, row.UserName ?? row.UserId, to, label, new StaffWelcomeLogin(password, null), reset: true, ct)
             ? new MessageResponse($"A new password has been sent to {to}.")
             : this.Problem400("The password was reset, but the e-mail could not be sent. Please try again.");
     }
@@ -149,6 +156,7 @@ public sealed class StaffAccountsController(
         await db.ExecuteSqlAsync("UPDATE Users SET IsActive = @IsActive WHERE UserId = @UserId AND RoleId = @RoleId;",
             new { IsActive = active, row.UserId, row.RoleId }, ct);
         log.LogInformation("Login {UserId} {Action} by {Actor}", row.UserId, active ? "unblocked" : "blocked", UserId);
+        await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
         return new MessageResponse(active ? "Login unblocked." : "Login blocked.");
     }
 
@@ -172,19 +180,18 @@ public sealed class StaffAccountsController(
         return (type, new Values(name!, mail!, mobile, state), null);
     }
 
-    private async Task<bool> SendLoginAsync(string userId, string name, string to, string label, string password, bool reset, CancellationToken ct)
+    private async Task<bool> SendLoginAsync(string userId, string name, string to, string label, StaffWelcomeLogin login, bool reset, CancellationToken ct)
     {
-        // No office copy: the mail carries a password.
+        // No office copy: the mail carries a password or a set-password link.
         var mail = new StaffUserMail(email, templates, portal, addresses, log);
         return await mail.SendAsync<StaffLoginDetailsEmail>(to,
-            (reset ? "New Password" : "Login Details") + " for “MSME Sustainable (ZED) Certification” - " + userId, new()
+            (reset ? "New Password" : "Login Details") + " for “MSME Sustainable (ZED) Certification” - " + userId, login.AddTo(new()
             {
                 [nameof(StaffLoginDetailsEmail.UserName)] = name,
                 [nameof(StaffLoginDetailsEmail.UserId)] = userId,
-                [nameof(StaffLoginDetailsEmail.Password)] = password,
                 [nameof(StaffLoginDetailsEmail.AccountType)] = label,
                 [nameof(StaffLoginDetailsEmail.Reset)] = reset,
                 [nameof(StaffLoginDetailsEmail.LoginUrl)] = mail.LoginUrl,
-            }, ct, copyOffice: false);
+            }), ct, copyOffice: false);
     }
 }

@@ -88,4 +88,15 @@ public sealed class SubUserStore(ISqlExecutor db, IMemoryCache cache, ILogger<Su
             new { UserId = userId, Max = MaxFailedLogins, LockMinutes = (int)LockTime.TotalMinutes }, ct);
 
     private void Forget(string userId) => cache.Remove("subuser:" + userId.ToUpperInvariant());
+
+    /// <summary>
+    /// A sub-user's own session stamp (M12; sub-users have no Users row): derived from its password hash and permissions,
+    /// so a new password (reset by the owner, changed by the sub-user or set through a link) or a change of its screens
+    /// ends its sessions (<see cref="SubUserAccessFilter"/>). Its owner's Users.SessionStamp applies as well.
+    /// </summary>
+    public static string SessionStamp(SubUserRow row)
+    {
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes((row.PasswordHash ?? "") + "|" + row.Permissions));
+        return Convert.ToHexString(hash, 0, 12);
+    }
 }

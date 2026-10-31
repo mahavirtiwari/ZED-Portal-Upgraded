@@ -53,7 +53,7 @@ public sealed class EmailTemplatesTests : IDisposable
         Assert.False(contact.Enabled);
         Assert.True(contact.Customised);
         Assert.Equal(["Name", "Mobile", "Email", "Query", "ZedId", "StandardSubject", "StandardBody"], contact.Placeholders);
-        Assert.DoesNotContain(items, i => i.Key is "EmailLayout" or "StaffSchemeDetailTable" or "ConsultancyCoAllotmentDates" or "_Imports");
+        Assert.DoesNotContain(items, i => i.Key is "EmailLayout" or "StaffSchemeDetailTable" or "ConsultancyCoAllotmentDates" or "StaffSetPasswordNote" or "_Imports");
         Assert.Contains(items, i => i.Key == "DesktopAssessment.NcRaised" && i.Placeholders.Contains("Certification"));
         Assert.Contains(items, i => i.Key == "MsmeResetPasswordEmail" && i.Group == "MSME app");
 

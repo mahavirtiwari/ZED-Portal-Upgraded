@@ -131,6 +131,8 @@ public sealed class RegisteredMsmeController(
 
         await db.ExecuteProcAsync("SP_MSME_DISABLE_PLANT", new { ZedId = zedId, UserId, RoleId = RoleId.ToString(), DisableRemarks = remarks }, ct);
         log.LogWarning("{UserId} deactivated MSME {ZedId}", UserId, zedId);
+        // M12: the unit's open sessions end with its login.
+        await Zed.Core.Security.SessionStamps.EndSessionsAsync(db, host.System, zedId, log, ct);
         return new MessageResponse("MSME deactivated.");
     }
 }

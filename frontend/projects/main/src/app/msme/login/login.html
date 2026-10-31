@@ -3,6 +3,9 @@
     @if (mode() === 'login') {
       <form class="login-form mt-3" (ngSubmit)="login()" novalidate>
         <h2>Registered User</h2>
+        @if (expired()) {
+          <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
+        }
 
         <label for="userId">ZED ID</label>
         <div class="mb-3">

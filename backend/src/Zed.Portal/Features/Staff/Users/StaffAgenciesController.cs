@@ -124,8 +124,8 @@ public sealed class StaffAgenciesController(
     public sealed record CreatedUserResponse(string Message, string? UserId);
 
     /// <summary>
-    /// Creates an agency (SP_INSERT_USER, RoleId 2) with a generated password, which is e-mailed to the
-    /// SPOC and never returned.
+    /// Creates an agency (SP_INSERT_USER, RoleId 2) with a generated password that nobody is told: the SPOC is mailed a
+    /// one-time link to set its own (<see cref="StaffWelcomeLogin"/>).
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<CreatedUserResponse>> Create(AgencyRequest req, CancellationToken ct)
@@ -157,12 +157,13 @@ public sealed class StaffAgenciesController(
         await passwords.SetAsync(newId!, password, ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
 
-        var sent = await Mail.SendAsync<StaffAgencyRegisteredEmail>(values!.EmailId,
-            (host.IsConsultancy() ? "Consultant Organisation" : "Assessment Agency") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId, new()
+        // A one-time link to set the password, not the password (StaffWelcomeLogin); the office's copy has neither.
+        var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId!, (int)UserRole.Agency, password, UserId, ct);
+        var sent = await Mail.SendWelcomeAsync<StaffAgencyRegisteredEmail>(values!.EmailId,
+            (host.IsConsultancy() ? "Consultant Organisation" : "Assessment Agency") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId, login.AddTo(new()
             {
                 [nameof(StaffAgencyRegisteredEmail.UserName)] = values.UserName,
                 [nameof(StaffAgencyRegisteredEmail.UserId)] = newId,
-                [nameof(StaffAgencyRegisteredEmail.Password)] = password,
                 [nameof(StaffAgencyRegisteredEmail.SpocName)] = values.SpocName,
                 [nameof(StaffAgencyRegisteredEmail.MobileNo)] = values.MobileNo,
                 [nameof(StaffAgencyRegisteredEmail.EmailId)] = values.EmailId,
@@ -171,7 +172,7 @@ public sealed class StaffAgenciesController(
                 [nameof(StaffAgencyRegisteredEmail.FinancialVerification)] = values.FinancialVerification,
                 [nameof(StaffAgencyRegisteredEmail.LoginUrl)] = Mail.LoginUrl,
                 [nameof(StaffAgencyRegisteredEmail.Consultancy)] = host.IsConsultancy(),
-            }, ct);
+            }), ct);
         return new CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {values.EmailId}."
             : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
@@ -199,6 +200,9 @@ public sealed class StaffAgenciesController(
         await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null, tuState, tuDistricts), ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, agency.UserId, activity, log, ct);
         log.LogInformation("Agency {UserId} updated by {Actor}", agency.UserId, UserId);
+        // M12: the verification types (sub-roles) are in the sign-in cookies of the agency and of its assessors, to which
+        // the procedure copies them: their sessions end, and the next sign-in has the new ones.
+        await SessionStamps.EndSessionsAsync(db, host.System, agency.UserId, log, ct, withAssessors: true);
         return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
     }
 

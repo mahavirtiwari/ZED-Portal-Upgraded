@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
@@ -194,5 +195,57 @@ public sealed class TuAppTests : IDisposable
         Assert.Equal(41, e.GetProperty("Table1")[0].GetProperty("Id").GetInt32());
         _fa["VerificationStatus"] = 1;
         AssertFail(await Post("/FinancialAssistance/GetDetails", new { zedId = Zed }));
+    }
+
+    // ---------------------------------------------------------------- App sign-in token (C1, H5)
+
+    [Fact]
+    public void GetDetails_answers_the_units_pan_and_bank_details_so_it_is_limited_per_address()
+    {
+        var limit = typeof(global::Zed.Portal.Features.Consultancy.TechnologyUpgradation.TuAppController)
+            .GetMethod(nameof(global::Zed.Portal.Features.Consultancy.TechnologyUpgradation.TuAppController.GetDetails))!
+            .GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), false)
+            .Cast<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>().Single();
+        Assert.Equal(global::Zed.Core.Http.RateLimitPolicies.Sensitive, limit.PolicyName);
+    }
+
+    [Fact]
+    public async Task Enforced_tokens_answer_only_the_allotted_dfo_signed_in_for_the_unit()
+    {
+        var key = Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
+        var app = _host.WithWebHostBuilder(b =>
+        {
+            b.UseSetting("Mobile:AppTokenKey", key);
+            b.UseSetting("Mobile:AppTokens:Apps:SA", "Enforce");
+        });
+        var client = app.CreateClient();
+        var tokens = app.Services.GetRequiredService<global::Zed.Core.Mobile.AppTokens>();
+        _signedIn = "DFO1";
+
+        async Task<JsonElement> Send(string path, object body, string? token)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, path) { Content = JsonContent.Create(body) };
+            if (token is not null) request.Headers.Add(global::Zed.Core.Mobile.AppTokens.Header, token);
+            var r = await client.SendAsync(request);
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+            return JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        }
+
+        const string expired = "Your sign-in has expired. Please sign in again.";
+        AssertFail(await Send("/FinancialAssistance/GetDetails", new { zedId = Zed }, null), expired);
+        AssertFail(await Send("/FinancialAssistance/GetDetails", new { zedId = Zed },
+            await tokens.IssueAsync(global::Zed.Core.Mobile.MobileApps.SiteAssessor, "DFO2", Zed)), expired);
+        AssertFail(await Send("/FinancialAssistance/GetDetails", new { zedId = Zed },
+            await tokens.IssueAsync(global::Zed.Core.Mobile.MobileApps.SiteAssessor, "DFO1", "ZEDMSME000701")), expired);
+
+        var dfo = await tokens.IssueAsync(global::Zed.Core.Mobile.MobileApps.SiteAssessor, "DFO1", Zed);
+        var e = await Send("/FinancialAssistance/GetDetails", new { zedId = Zed }, dfo);
+        Assert.Equal("SBIN0001234", e.GetProperty("Table1")[0].GetProperty("IfscCode").GetString());
+
+        // The writes too.
+        var body = new Dictionary<string, string> { ["ZedID"] = Zed, ["Id"] = "301", ["AmountPaid"] = "120000" };
+        AssertFail(await Send("/FinancialAssistance/updatetechnology", body, null), expired);
+        Assert.Empty(CallsTo("SP_FINANCIAL_ASSISTANCE_UPDATE_TECHNOLOGY_DATA"));
+        Assert.Equal("1", (await Send("/FinancialAssistance/updatetechnology", body, dfo)).GetProperty("status").GetString());
     }
 }

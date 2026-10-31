@@ -64,6 +64,9 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             await failures.AddAsync(ct);
             // The procedure's own message (e.g. "ACCOUNT LOCKED ...") when it gives one.
             var message = sets.Scalar(1);
+            // M12: an account locked by wrong passwords also loses its open sessions.
+            if (IsLocked(message))
+                await SessionStamps.EndSessionsAsync(db, HttpContext.RequestServices.GetRequiredService<PortalHost>().System, req.UserId.Trim(), log, ct);
             return this.Problem400(string.IsNullOrEmpty(message) || message.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase) ? "Invalid credentials." : message);
         }
         if (!await passwords.CompleteLoginAsync(login, row, ct))
@@ -99,6 +102,9 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
     }
 
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
+
+    /// <summary>The login procedures' answer for an account locked by wrong passwords ("ACCOUNT LOCKED. PLEASE LOGIN AFTER 15 MINUTES.").</summary>
+    public static bool IsLocked(string? message) => message?.TrimStart().StartsWith("ACCOUNT LOCKED", StringComparison.OrdinalIgnoreCase) == true;
 
     private string FailureKey(string userId)
     {
@@ -191,7 +197,7 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
 
         var user = new ZedUser(ownerId, owner.Text("UserName"), roleId, owner.Text("Email"), owner.Text("MobileNo"),
             owner.Text("StateCode"), owner.Text("DistrictCode"), SubRoles: subRoles,
-            ActingUserId: sub.UserId, ActingUserName: sub.UserName, PermissionRoutes: routes);
+            ActingUserId: sub.UserId, ActingUserName: sub.UserName, PermissionRoutes: routes, ActingStamp: SubUserStore.SessionStamp(sub));
         await HttpContext.SignInZedUserAsync(user);
         return CurrentUserResponse.From(user);
     }

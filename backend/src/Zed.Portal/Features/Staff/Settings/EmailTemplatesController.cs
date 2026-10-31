@@ -72,7 +72,7 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     private const string General = "MSME and general", Staff = "Staff and agencies", App = "MSME app";
 
     /// <summary>Razor components that are parts of other e-mails, not e-mails.</summary>
-    private static readonly HashSet<string> NotEmails = ["EmailLayout", "StaffSchemeDetailTable", "ConsultancyCoAllotmentDates", "_Imports"];
+    private static readonly HashSet<string> NotEmails = ["EmailLayout", "StaffSchemeDetailTable", "ConsultancyCoAllotmentDates", "StaffSetPasswordNote", "_Imports"];
 
     public sealed record TemplateItem(string Key, string Name, string Group, bool Database, bool Enabled, bool Customised, string? Subject,
         IReadOnlyList<string> Placeholders, string? UpdatedBy, DateTime? UpdatedOn);

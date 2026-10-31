@@ -1,13 +1,14 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { STAFF_ROLE_IDS } from './staff-menu';
 import { StaffLoginShell } from './staff-login-shell';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { PORTAL_LABELS } from '../portal-labels';
+import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from '../session-expiry';
 
 /**
  * Staff, agency and assessor login. Port of Views/User/Login.cshtml. The Consultancy and Surveillance builds open it
@@ -22,6 +23,9 @@ import { PORTAL_LABELS } from '../portal-labels';
       <h1 class="text-center fw-bold" style="font-size: 32px">User Login</h1>
       @if (systemName) {
         <p class="text-center text-muted mb-3">{{ systemName }}</p>
+      }
+      @if (expired) {
+        <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
       }
       <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
         <div class="mb-3">
@@ -59,9 +63,14 @@ export class StaffLoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly captcha = viewChild(Recaptcha);
+  private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');
+  /** Opened because the session ended (sessionExpiryInterceptor): say so, and go back to that page after signing in. */
+  protected readonly expired = this.query.has(EXPIRED_PARAM);
+  protected readonly expiredMessage = SESSION_EXPIRED_MESSAGE;
+  private readonly back = returnUrl(this.query.get(RETURN_PARAM), '/staff');
   /** The server said the Admin signs in on the main portal now (V4 one Admin). */
   protected readonly adminMoved = signal(false);
   protected readonly systemName = PORTAL_SYSTEM === 'main' ? '' : PORTAL_LABELS.portalName;
@@ -102,7 +111,7 @@ export class StaffLoginPage {
         this.http.post<CurrentUser>('/api/staff/auth/login', { userId: this.userId.trim(), password: this.password, captchaToken: this.captchaToken }),
       );
       this.auth.setUser(user);
-      await this.router.navigateByUrl('/staff');
+      await this.router.navigateByUrl(this.back ?? '/staff');
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       this.adminMoved.set(err instanceof HttpErrorResponse && (err.error as { adminOnMainPortal?: boolean } | null)?.adminOnMainPortal === true);

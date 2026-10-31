@@ -24,7 +24,8 @@ namespace Zed.Main.MobileApi.Controllers;
 /// Added over the old code (finding #109): every call after login is checked against the allotment
 /// (<see cref="UnitAsync"/>): the ZED ID and level in the request must have a desktop assessor
 /// (MsmeCertifications.DesktopAssessorId), an assessor named in the request (saId / assessorId) must be that
-/// one, the calling device must have signed in as that assessor (device binding, app "SURV"), and writes
+/// one, the call must carry that assessor's app token for that unit (<see cref="AppTokens"/>, app "SURV", issued by
+/// Login), the calling device must have signed in as that assessor (device binding, app "SURV"), and writes
 /// are accepted only in the matching stage. Uploads go through <see cref="MobileStorage"/>, and request
 /// bodies are no longer written to App_Data/Json.
 /// </para>
@@ -34,16 +35,17 @@ public sealed partial class SurveillanceController(
     ISqlExecutor db,
     IOptions<MobileOptions> options,
     IDeviceBindings devices,
+    AppTokens tokens,
     LoginThrottle throttle,
     ILogger<SurveillanceController> log) : LegacyMobileController
 {
-    /// <summary>Device records of the Bronze surveillance app (MobileDeviceBindings.AppKind is varchar(10)).</summary>
-    internal const string App = "SURV";
+    /// <summary>Device records and app tokens of the Bronze surveillance app (MobileDeviceBindings.AppKind is varchar(10)).</summary>
+    internal const string App = MobileApps.Surveillance;
 
     internal const string InvalidCredentials = "Invalid Credentials.";
     internal const string NotAllocated = "Bronze Surveillance Assessment data not yet allocated for the ZEDID: ";
     internal const string TooManyAttempts = "Too many failed attempts. Please try again after 15 minutes.";
-    internal const string DeviceNotRegistered = "This device is not registered for your account. Please login again.";
+    internal const string DeviceNotRegistered = DeviceBoundAttribute.DeviceNotRegistered;
     private const string UpdateAppMessage = "Download new app from store.";
     private const string DesktopAssessorRoleId = "3";
 
@@ -179,6 +181,8 @@ public sealed partial class SurveillanceController(
 
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
         await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        // The token binds the assessor and the unit the login was checked for (set 4).
+        response.appToken = await tokens.IssueAsync(App, userKey, msme.Text("ZedId") is { Length: > 0 } unitId ? unitId : zedId, ct);
         log.LogInformation("Surveillance app login for {UserId} on {ZedId}", userKey, zedId);
         return LegacyJson(response);
     }
@@ -201,9 +205,10 @@ public sealed partial class SurveillanceController(
     /// <summary>
     /// The allotment check behind every call after login. The app names the unit (userName / zedId) and the
     /// level, but usually not the assessor, so the assessor is taken from the allotment: the unit's
-    /// DesktopAssessorId must be set, an assessor named in the request must be that one, and the calling device
-    /// must have signed in as that assessor (Mobile:DeviceBinding as for the other apps: Monitor records, Enforce
-    /// refuses). Returns the unit row, or the refusal to answer with.
+    /// DesktopAssessorId must be set, an assessor named in the request must be that one, the app token must be that
+    /// assessor's for this unit (Mobile:AppTokens), and the calling device must have signed in as that assessor
+    /// (Mobile:DeviceBinding as for the other apps: Monitor records, Enforce refuses). <paramref name="zedId"/> is the
+    /// unit the action acts on. Returns the unit row, or the refusal to answer with.
     /// </summary>
     private async Task<(SurveillanceUnit? Unit, IActionResult? Refused)> UnitAsync(string action, string? zedId, string? certification,
         Need need, CancellationToken ct)
@@ -222,6 +227,8 @@ public sealed partial class SurveillanceController(
         if (named is not null && !Same(named, unit.DesktopAssessorId))
             return (null, Refuse(action, zedId, certification, $"{named} is not the allotted assessor", NotAllocated + zedId));
 
+        if (await tokens.RefusalAsync(HttpContext, App, unit.DesktopAssessorId!.Trim(), zedId, ct) is { } expired)
+            return (null, expired);
         if (await DeviceRefusalAsync(unit.DesktopAssessorId!.Trim(), DeviceId(values), ct) is { } deviceRefused)
             return (null, deviceRefused);
 

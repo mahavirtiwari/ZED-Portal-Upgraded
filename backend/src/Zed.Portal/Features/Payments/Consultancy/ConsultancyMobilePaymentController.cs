@@ -180,6 +180,7 @@ public sealed partial class ConsultancyMobilePaymentController(
     /// </summary>
     [HttpPost("/Msme/GetConsultancyPaymentDetailsByType")]
     [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> GetConsultancyPaymentDetailsByType(string? certification, string? zedId, CancellationToken ct)
     {
         zedId = zedId?.Trim();

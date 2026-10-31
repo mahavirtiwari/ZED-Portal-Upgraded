@@ -163,6 +163,7 @@ public sealed class SurveillanceAppTests : IDisposable
         Assert.Equal(Zed, SurveillanceAppHost.Arg(args, "ZedId"));
         Assert.Equal("pw", SurveillanceAppHost.Arg(args, "Password"));
         Assert.Contains("dev-1", _t.Devices.Known[("SURV", Assessor)]);
+        Assert.False(string.IsNullOrEmpty(e.GetProperty("appToken").GetString()));
     }
 
     [Fact]

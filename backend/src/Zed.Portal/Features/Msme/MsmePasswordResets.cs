@@ -102,6 +102,8 @@ public sealed class MsmePasswordResets(
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password WHERE UserId = @UserId AND RoleId = 5",
             new { Password = passwords.StoredValueFor(newPassword), UserId = account.ZedId }, ct);
         Audit("password reset", account.ZedId, ip);
+        // M12: the unit's open sessions end with the old password.
+        await SessionStamps.EndSessionsAsync(db, services.GetService<PortalHost>()?.System ?? PortalSystem.Main, account.ZedId, audit, ct);
 
         if (account.MailAddress is { } to)
         {

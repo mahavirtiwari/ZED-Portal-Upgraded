@@ -13,7 +13,9 @@ namespace Zed.Portal.Features.Staff.SubUsers;
 /// New in V4: a MasterAdmin's "operation admins" and an agency's (assessment agency, consultant organisation, surveillance
 /// agency) sub-users. A sub-user signs in with its own ID and password and works as its owner on the screens the owner
 /// ticks (<see cref="SubUserPermissions"/>); the owner can change them, block the sub-user or reset its password at any
-/// time. Sub-users cannot manage sub-users. Logins are generated ("&lt;owner ID&gt;S01", …) and mailed with a password.
+/// time. Sub-users cannot manage sub-users. Logins are generated ("&lt;owner ID&gt;S01", …); a new one is mailed a one-time
+/// link to set its password (<see cref="StaffWelcomeLogin"/>), a reset mails a new password. A new password or other screens
+/// end the sub-user's sessions (<see cref="SubUserStore.SessionStamp"/>).
 /// </summary>
 [Route("api/staff/sub-users")]
 [StaffRoles(UserRole.MasterAdmin, UserRole.Agency)]
@@ -77,7 +79,9 @@ public sealed class SubUsersController(
             PasswordStore.Hash(password), 0, null, null, UserId, DateTime.UtcNow), ct);
         log.LogInformation("Sub-user {NewUserId} created by {Owner} with {Permissions}", newId, UserId, values.Permissions);
 
-        var sent = await SendLoginAsync(newId, values.UserName, values.Email, password, reset: false, ct);
+        // A one-time link to set the password (StaffWelcomeLogin; sub-users' links set the dbo.V4SubUsers hash).
+        var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId, roleId: 0, password, UserId, ct);
+        var sent = await SendLoginAsync(newId, values.UserName, values.Email, login, reset: false, ct);
         return new CreatedSubUserResponse(sent
             ? $"{AccountType} {newId} created. The login details have been sent to {values.Email}."
             : $"{AccountType} {newId} created, but the e-mail with the login details could not be sent. Please use Reset Password to send them again.", newId);
@@ -105,7 +109,7 @@ public sealed class SubUsersController(
         var password = SecureRandom.Password();
         await store.SetPasswordAsync(row.UserId, PasswordStore.Hash(password), UserId, ct);
         log.LogInformation("Password of sub-user {SubUserId} reset by {Owner}", row.UserId, UserId);
-        return await SendLoginAsync(row.UserId, row.UserName, to, password, reset: true, ct)
+        return await SendLoginAsync(row.UserId, row.UserName, to, new StaffWelcomeLogin(password, null), reset: true, ct)
             ? new MessageResponse($"A new password has been sent to {to}.")
             : this.Problem400("The password was reset, but the e-mail could not be sent. Please try again.");
     }
@@ -142,20 +146,19 @@ public sealed class SubUsersController(
         return (new Values(name!, mail!, mobile, keys), null);
     }
 
-    private async Task<bool> SendLoginAsync(string subUserId, string name, string to, string password, bool reset, CancellationToken ct)
+    private async Task<bool> SendLoginAsync(string subUserId, string name, string to, StaffWelcomeLogin login, bool reset, CancellationToken ct)
     {
-        // No office copy: the mail carries a password.
+        // No office copy: the mail carries a password or a set-password link.
         var mail = new StaffUserMail(email, templates, portal, addresses, log);
         return await mail.SendAsync<StaffLoginDetailsEmail>(to,
-            (reset ? "New Password" : "Login Details") + " for “MSME Sustainable (ZED) Certification” - " + subUserId, new()
+            (reset ? "New Password" : "Login Details") + " for “MSME Sustainable (ZED) Certification” - " + subUserId, login.AddTo(new()
             {
                 [nameof(StaffLoginDetailsEmail.UserName)] = name,
                 [nameof(StaffLoginDetailsEmail.UserId)] = subUserId,
-                [nameof(StaffLoginDetailsEmail.Password)] = password,
                 [nameof(StaffLoginDetailsEmail.AccountType)] = AccountType,
                 [nameof(StaffLoginDetailsEmail.WorksFor)] = $"{CurrentUser.UserName} ({UserId})",
                 [nameof(StaffLoginDetailsEmail.Reset)] = reset,
                 [nameof(StaffLoginDetailsEmail.LoginUrl)] = mail.LoginUrl,
-            }, ct, copyOffice: false);
+            }), ct, copyOffice: false);
     }
 }

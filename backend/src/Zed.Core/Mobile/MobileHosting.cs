@@ -19,6 +19,22 @@ public sealed class MobileOptions
     /// <summary>In Enforce mode, also refuse calls that send no device id for a user who has a registered device.</summary>
     public bool RefuseMissingDevice { get; set; }
 
+    /// <summary>
+    /// The app sign-in token (<see cref="Mobile.AppTokens"/>): <c>Mobile:AppTokens:Mode</c> and per-app
+    /// <c>Mobile:AppTokens:Apps:{MobileApps name}</c>. Monitor by default; Enforce only for apps whose installed builds send it.
+    /// </summary>
+    public AppTokenOptions AppTokens { get; set; } = new();
+
+    /// <summary>How long an app token is good for (field users stay signed in offline for days).</summary>
+    public int AppTokenDays { get; set; } = 30;
+
+    /// <summary>
+    /// Base64 of at least 32 random bytes; the same value on a deployment's mobile host and portal (a secret: settings
+    /// "Common" section, never committed). Without it tokens are protected with Data Protection and only the issuing
+    /// host can read them, so the portal cannot check the apps' calls to it.
+    /// </summary>
+    public string? AppTokenKey { get; set; }
+
     /// <summary>Legacy checkMsmeVersion / msmeVersionNo: when on, other app versions are told to update.</summary>
     public bool CheckMsmeVersion { get; set; }
 
@@ -105,11 +121,13 @@ public static class MobileHostingExtensions
         return next(context);
     });
 
-    /// <summary>Legacy mobile support: options, device records and upload storage.</summary>
+    /// <summary>Legacy mobile support: options, device records, app sign-in tokens and upload storage.</summary>
     public static IServiceCollection AddLegacyMobile(this IServiceCollection services, IConfiguration config)
     {
         services.Configure<MobileOptions>(config.GetSection(MobileOptions.Section));
         services.AddSingleton<IDeviceBindings, SqlDeviceBindings>();
+        services.AddMemoryCache();
+        services.AddSingleton<AppTokens>();
         services.AddSingleton<MobileStorage>();
         return services;
     }

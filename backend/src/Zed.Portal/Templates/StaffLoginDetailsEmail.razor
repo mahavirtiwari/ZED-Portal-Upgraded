@@ -1,4 +1,4 @@
-@* New in V4: login details of an account the Admin created (MasterAdmin, Ministry, MSME DFO, dashboard) or of a sub-user an owner created, and of a password the Admin or owner reset. Sent once; the password is never shown again. *@
+@* New in V4: login details of an account the Admin created (MasterAdmin, Ministry, MSME DFO, dashboard) or of a sub-user an owner created, and of a password the Admin or owner reset. Sent once; the password is never shown again. A new login gets a set-password link instead of the password, except Master Admin and Super Admin logins. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear @UserName, </p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
@@ -30,13 +30,44 @@
                 <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">User ID</td>
                 <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UserId</td>
             </tr>
-            <tr>
-                <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Password</td>
-                <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Password</td>
-            </tr>
+            @if (!string.IsNullOrEmpty(Password))
+            {
+                <tr>
+                    <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Password</td>
+                    <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Password</td>
+                </tr>
+            }
         </tbody>
     </table>
-    <p style="font-size: 13px; margin-bottom: 0;">Please change this password after your first login (Change Password in the menu under your name).</p>
+    @* V4 (M2): a new login gets a one-time link to set its password; Master Admin and Super Admin logins still get the password. *@
+    @if (!string.IsNullOrEmpty(Password))
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">Please change this password after your first login (Change Password in the menu under your name).</p>
+    }
+    else if (!string.IsNullOrEmpty(SetPasswordUrl))
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">To sign in, please set your password with the link below. The link can be used once, within @SetPasswordValidHours hours.
+            @if (string.IsNullOrEmpty(WorksFor))
+            {
+                <span>After that, please use "Forgot password?" on the login page with your User ID.</span>
+            }
+            else
+            {
+                <span>After that, please ask @WorksFor to reset your password.</span>
+            }
+        </p>
+        <div style="text-align: center; padding: 20px 0 0;">
+            <a href="@SetPasswordUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #01A08D; text-decoration: none; border-radius: 4px; text-align: center;">Set Password</a>
+        </div>
+    }
+    else if (string.IsNullOrEmpty(WorksFor))
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">To sign in, please set your password with "Forgot password?" on the login page, using your User ID.</p>
+    }
+    else
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">To sign in, please ask @WorksFor to send you a password (Reset Password).</p>
+    }
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
     </div>
@@ -47,7 +78,11 @@
 @code {
     [Parameter, EditorRequired] public string UserName { get; set; } = "";
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
-    [Parameter, EditorRequired] public string Password { get; set; } = "";
+    /// <summary>The generated password: a reset, a Master Admin or Super Admin login, or set-password links switched off.</summary>
+    [Parameter] public string? Password { get; set; }
+    /// <summary>A new login's one-time link to set its password (the staff password-reset link); none: "Forgot password?".</summary>
+    [Parameter] public string? SetPasswordUrl { get; set; }
+    [Parameter] public int SetPasswordValidHours { get; set; }
     /// <summary>e.g. "Master Admin", "MSME DFO", "Operation Admin".</summary>
     [Parameter, EditorRequired] public string AccountType { get; set; } = "";
     /// <summary>A sub-user's owner (agency or MasterAdmin name and ID).</summary>

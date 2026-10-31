@@ -49,6 +49,12 @@ export class AuthService {
     this.loaded = Promise.resolve();
   }
 
+  /** The server ended the session (401): forget the user; the login page asks the server again. */
+  forget(): void {
+    this.user.set(null);
+    this.loaded = null;
+  }
+
   /** Signs out on the server; this page forgets the user even when that call fails (e.g. an expired session). */
   async logout(): Promise<void> {
     try {

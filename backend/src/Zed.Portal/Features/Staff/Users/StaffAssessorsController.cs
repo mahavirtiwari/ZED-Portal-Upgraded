@@ -177,7 +177,8 @@ public sealed class StaffAssessorsController(
     /// <summary>
     /// Creates an assessor under the signed-in agency (SP_INSERT_USER RoleId 3, CreatedBy = the agency; the
     /// procedure copies the agency's verification types). Agencies can only create assessors. Name, e-mail and
-    /// mobile come from the professional lookup; the generated password is e-mailed, never returned.
+    /// mobile come from the professional lookup; the assessor is mailed a one-time link to set its password
+    /// (<see cref="StaffWelcomeLogin"/>), and the generated password is never returned.
     /// </summary>
     [HttpPost]
     [StaffRoles(UserRole.Agency)]
@@ -227,7 +228,7 @@ public sealed class StaffAssessorsController(
             name!, mail!, mobile, password, bronze: false, ConsultancyUsers.TechnicalExpert, ct);
     }
 
-    /// <summary>Hashes for the passwords set here (docs/PASSWORDS.md); <c>password</c> below is the one mailed, the procedure gets its stored value.</summary>
+    /// <summary>Hashes for the passwords set here (docs/PASSWORDS.md); <c>password</c> below is the generated one (mailed only when set-password links are off), the procedure gets its stored value.</summary>
     private PasswordStore Passwords => PasswordStore.For(db, HttpContext.RequestServices);
 
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
@@ -256,15 +257,16 @@ public sealed class StaffAssessorsController(
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
             : (bronze ? "Bronze Assessor" : "Assessor") + " Login Details for “MSME Sustainable (ZED) Certification” - " + newId;
-        var sent = await Mail.SendAsync<StaffAssessorRegisteredEmail>(email, subject, new()
+        // A one-time link to set the password, not the password (StaffWelcomeLogin); the office's copy has neither.
+        var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId!, (int)UserRole.DesktopAssessor, password, UserId, ct);
+        var sent = await Mail.SendWelcomeAsync<StaffAssessorRegisteredEmail>(email, subject, login.AddTo(new()
             {
                 [nameof(StaffAssessorRegisteredEmail.UserId)] = newId,
-                [nameof(StaffAssessorRegisteredEmail.Password)] = password,
                 [nameof(StaffAssessorRegisteredEmail.AgencyName)] = CurrentUser.UserName,
                 [nameof(StaffAssessorRegisteredEmail.IsBronzeAssessor)] = bronze,
                 [nameof(StaffAssessorRegisteredEmail.LoginUrl)] = Mail.LoginUrl,
                 [nameof(StaffAssessorRegisteredEmail.Consultancy)] = host.IsConsultancy(),
-            }, ct);
+            }), ct);
         return new StaffAgenciesController.CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {email}."
             : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
@@ -298,6 +300,8 @@ public sealed class StaffAssessorsController(
             : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"), null, null, null, null), ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, a.UserId, activity, log, ct);
         log.LogInformation("Assessor {UserId} updated by {Actor}", a.UserId, UserId);
+        // M12: a staff user's edit ends its sessions; the next sign-in reads the account as it is now.
+        await SessionStamps.EndSessionsAsync(db, host.System, a.UserId, log, ct);
         return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
     }
 

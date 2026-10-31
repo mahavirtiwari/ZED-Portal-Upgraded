@@ -58,6 +58,8 @@ public sealed class SaLoginTests : IDisposable
         Assert.False(e.GetProperty("isSelfieSubmitted").GetBoolean());
         Assert.False(e.GetProperty("allowFinalSubmit").GetBoolean());
         Assert.Equal(3, e.GetProperty("minimumParameters").GetInt32());
+        // V4: the app sign-in token (sent back in X-Zed-App-Token).
+        Assert.False(string.IsNullOrEmpty(e.GetProperty("appToken").GetString()));
         Assert.Equal(JsonValueKind.Null, e.GetProperty("products").ValueKind);
         Assert.Equal(JsonValueKind.Null, e.GetProperty("inputParameters").ValueKind);
 

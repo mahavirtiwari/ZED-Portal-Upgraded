@@ -35,6 +35,7 @@ public sealed class SAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
+    AppTokens tokens,
     LoginThrottle throttle,
     MobileStorage storage,
     PortalHost portal,
@@ -201,6 +202,8 @@ public sealed class SAController(
 
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
         await devices.RememberAsync(MobileApps.SiteAssessor, userKey, request.deviceInfo, ClientIp, ct);
+        // The calls are checked against the assessor (saId); the unit is recorded but each call checks the allotment itself.
+        response.appToken = await tokens.IssueAsync(MobileApps.SiteAssessor, userKey, unit.Text("ZedId") is { Length: > 0 } unitId ? unitId : request.zedId, ct);
         log.LogInformation("SA app login for {UserId} on {ZedId}", userKey, request.zedId);
         return LegacyJson(response);
     });

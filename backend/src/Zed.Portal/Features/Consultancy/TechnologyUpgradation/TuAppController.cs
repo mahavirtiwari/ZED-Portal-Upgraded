@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Email;
@@ -51,8 +52,10 @@ public sealed class TuAppDetailsRequest
 /// signed in to the consultant app for that unit within <see cref="TuAppOptions.LoginHours"/> (dbo.V4AppSessions, written
 /// by the consultancy mobile deployment's SA/Login, migration 0010); writes only while the application is with that DFO
 /// (VerificationStatus 2), as that DFO; amounts at most what the unit declared; uploads content-checked and stored under
-/// generated names. The rest of the residual risk (no proof that the caller is the DFO) needs an app release that sends
-/// a token: see docs/mobile/CONSULTANT-SA-IMPACT-APPS.md.
+/// generated names. The rest of the residual risk (no proof that the caller is the DFO) is closed by the app sign-in
+/// token (<see cref="AppTokens"/>, finding C1/H5): every call must also carry the consultant app's token of that DFO for
+/// that unit, in the mode of <c>Mobile:AppTokens:Apps:SA</c> on this portal (Monitor records, Enforce refuses), and
+/// GetDetails, which answers the unit's PAN and bank details, is limited per address.
 /// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Consultancy)]
@@ -64,6 +67,7 @@ public sealed class TuAppController(
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
     IConfiguration config,
+    AppTokens tokens,
     ILogger<TuAppController> log) : LegacyMobileController
 {
     public const string NotAvailable = "Technology upgradation details are not available for this unit. Please login again in the app for this unit.";
@@ -75,17 +79,24 @@ public sealed class TuAppController(
 
     /// <summary>The unit's applications as SP_FINANCIAL_ASSISTANCE_GET_DETAILS returns them (Table, Table1, ...).</summary>
     [HttpPost("/FinancialAssistance/GetDetails")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> GetDetails(TuAppDetailsRequest request, CancellationToken ct)
     {
         var zedId = request.zedId?.Trim();
         if (!SchemeRows.IsZedId(zedId)) return Fail(NotAvailable);
-        var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_DETAILS", new { ZedId = zedId }, ct);
-        // An application with its allotted DFO or just decided by them (the app shows it read-only), and that DFO signed in.
+        // An application with its allotted DFO or just decided by them (the app shows it read-only), that DFO signed in, and
+        // the call carrying that DFO's app token for the unit.
         var apps = await TuApplications.LoadAsync(db, zedId!, ct);
         var open = apps.Where(a => a.Status is FaStatus.InProgress or FaStatus.Qc && !string.IsNullOrWhiteSpace(a.AssessorUserId)).ToList();
+        IActionResult? expired = null;
         foreach (var app in open)
-            if (await SignedInAsync(app, ct))
-                return LegacyContent(LegacyResults.DataSetJson(sets));
+        {
+            if (!await SignedInAsync(app, ct)) continue;
+            expired = await tokens.RefusalAsync(HttpContext, MobileApps.SiteAssessor, app.AssessorUserId, zedId, ct);
+            if (expired is null)
+                return LegacyContent(LegacyResults.DataSetJson(await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_DETAILS", new { ZedId = zedId }, ct)));
+        }
+        if (expired is not null) return expired;
         log.LogWarning("TU app GetDetails for {ZedId} refused: no application with a signed-in allotted DFO", zedId);
         return Fail(NotAvailable);
     }
@@ -275,6 +286,8 @@ public sealed class TuAppController(
             log.LogWarning("TU app call for {ZedId}/{Certification} refused: DFO {Dfo} has not signed in to the app for the unit recently", zedId, cert, app.AssessorUserId);
             return (null, Fail(NotAvailable));
         }
+        if (await tokens.RefusalAsync(HttpContext, MobileApps.SiteAssessor, app.AssessorUserId, app.ZedId, ct) is { } expired)
+            return (null, expired);
         return (app, null);
     }
 

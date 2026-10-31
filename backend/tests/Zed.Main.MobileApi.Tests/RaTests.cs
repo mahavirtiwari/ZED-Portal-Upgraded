@@ -46,6 +46,7 @@ public sealed class RaTests : IDisposable
         Assert.DoesNotContain("AC-old", e.GetRawText());
         Assert.DoesNotContain("secret", e.GetRawText());
         Assert.Contains("ra-phone", _t.Devices.Known[(MobileApps.RemoteAssessor, Zed)]);
+        Assert.False(string.IsNullOrEmpty(e.GetProperty("appToken").GetString()));
     }
 
     [Fact]

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 using PortalOptions = Zed.Core.Http.PortalOptions;
 
@@ -30,6 +31,12 @@ public static class ZedClaims
     public const string ActingUserName = "zed:acting_name";
     /// <summary>Staff screens (Angular routes) a sub-user may open; the API checks its permissions on every call.</summary>
     public const string PermissionRoute = "zed:route";
+    /// <summary>Users.SessionStamp at sign-in (<see cref="SessionStamps"/>); absent while the column is NULL.</summary>
+    public const string SessionStamp = "zed:stamp";
+    /// <summary>"Main" when the stamp is the main database's (the Admin handed over to the Consultancy / Surveillance portal).</summary>
+    public const string SessionStampSource = "zed:stamp_db";
+    /// <summary>A sub-user's own stamp (its password and permissions, SubUserStore.SessionStamp), checked by SubUserAccessFilter.</summary>
+    public const string ActingStamp = "zed:acting_stamp";
 }
 
 /// <summary>
@@ -47,7 +54,8 @@ public static class SubRoles
 public sealed record ZedUser(
     string UserId, string UserName, int RoleId, string? Email, string? MobileNo,
     string? StateCode, string? DistrictCode, string? UnitName = null, IReadOnlyList<string>? SubRoles = null,
-    string? ActingUserId = null, string? ActingUserName = null, IReadOnlyList<string>? PermissionRoutes = null)
+    string? ActingUserId = null, string? ActingUserName = null, IReadOnlyList<string>? PermissionRoutes = null,
+    string? ActingStamp = null)
 {
     public bool HasSubRole(string subRole) => SubRoles?.Contains(subRole) == true;
 
@@ -78,6 +86,7 @@ public sealed record ZedUser(
         Add(ZedClaims.ActingUserId, ActingUserId);
         Add(ZedClaims.ActingUserName, ActingUserName);
         foreach (var route in PermissionRoutes ?? []) claims.Add(new Claim(ZedClaims.PermissionRoute, route));
+        Add(ZedClaims.ActingStamp, ActingStamp);
         return new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
     }
 
@@ -92,7 +101,8 @@ public sealed record ZedUser(
             Get(ZedClaims.DistrictCode), Get(ZedClaims.UnitName),
             principal.FindAll(ZedClaims.SubRole).Select(c => c.Value).ToList(),
             Get(ZedClaims.ActingUserId), Get(ZedClaims.ActingUserName),
-            Get(ZedClaims.ActingUserId) is null ? null : principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList());
+            Get(ZedClaims.ActingUserId) is null ? null : principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList(),
+            Get(ZedClaims.ActingStamp));
     }
 }
 
@@ -133,7 +143,11 @@ public static class ZedAuthenticationExtensions
                 // An API returns status codes; the Angular app decides where to navigate.
                 o.Events.OnRedirectToLogin = ctx => { ctx.Response.StatusCode = StatusCodes.Status401Unauthorized; return Task.CompletedTask; };
                 o.Events.OnRedirectToAccessDenied = ctx => { ctx.Response.StatusCode = StatusCodes.Status403Forbidden; return Task.CompletedTask; };
+                // M12: a session ends on the server when the user's access changed (Users.SessionStamp, SessionStamps).
+                o.Events.OnValidatePrincipal = ctx => ctx.HttpContext.RequestServices.GetRequiredService<SessionStampValidator>().ValidateAsync(ctx);
             });
+        services.AddMemoryCache();
+        services.TryAddSingleton<SessionStampValidator>();
         services.AddAuthorization(o =>
         {
             foreach (var sub in SubRoles.All)
@@ -190,9 +204,15 @@ public static class ZedAuthenticationExtensions
             await next();
         });
 
-    public static async Task SignInZedUserAsync(this HttpContext context, ZedUser user)
+    /// <summary>
+    /// Issues the sign-in cookie, with the user's session stamp (<see cref="SessionStamps"/>). <paramref name="stampOnMain"/>:
+    /// the main portal's Admin handed over to this portal, whose stamp is in the main database.
+    /// </summary>
+    public static async Task SignInZedUserAsync(this HttpContext context, ZedUser user, bool stampOnMain = false)
     {
         var principal = user.ToPrincipal();
+        if (context.RequestServices.GetService<SessionStampValidator>() is { } stamps)
+            await stamps.StampAsync(principal, user.UserId, stampOnMain, context.RequestAborted);
         await context.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
         context.User = principal;
         context.IssueXsrfCookie();
@@ -203,6 +223,41 @@ public static class ZedAuthenticationExtensions
         await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         context.User = new ClaimsPrincipal(new ClaimsIdentity());
         context.IssueXsrfCookie();
+    }
+
+    /// <summary>
+    /// The other two portals' sign-in cookies and the folders they run under (Portal:PathBase, as the hosts' Program.cs
+    /// name them). Cookie paths are case-sensitive in browsers: the usual spellings of each folder are listed, and "/"
+    /// for a portal run without a folder (development).
+    /// </summary>
+    public static readonly IReadOnlyList<(string CookieName, string[] Paths)> OtherPortalCookies =
+    [
+        ("zed.consultancy", ["/Consultancy", "/consultancy", "/"]),
+        ("zed.surveillance", ["/surveillance", "/Surveillance", "/"]),
+    ];
+
+    /// <summary>
+    /// One Admin (H11): main's logout also ends the Consultancy and Surveillance sessions in this browser (the Admin's from
+    /// the hand-over, or anyone's). The three portals share one domain, so main can expire the other portals' sign-in
+    /// cookies (and their anti-forgery and XSRF cookies) by name and path. Harmless when they do not exist. The session
+    /// stamp is not changed: the user's sessions on other devices stay signed in.
+    /// </summary>
+    public static void ExpireOtherPortalCookies(this HttpContext context)
+    {
+        var secure = context.SecureCookies();
+        void Expire(string name, string path, bool httpOnly) =>
+            context.Response.Cookies.Append(name, "", new CookieOptions
+            {
+                Path = path, Expires = DateTimeOffset.UnixEpoch, HttpOnly = httpOnly, Secure = secure, SameSite = SameSiteMode.Strict,
+            });
+        foreach (var (name, paths) in OtherPortalCookies)
+            foreach (var path in paths)
+            {
+                Expire(name, path, httpOnly: true);
+                Expire(name + ".AF", path, httpOnly: true);
+                // Main's own XSRF-TOKEN is at "/" (just issued again by the sign-out): only the other portals' folders.
+                if (path != "/") Expire(XsrfCookieName, path, httpOnly: false);
+            }
     }
 }
 

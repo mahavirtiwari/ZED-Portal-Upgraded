@@ -55,6 +55,8 @@ public sealed partial class MsmeController
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @NewPassword WHERE UserId = @UserId AND RoleId = 5",
             new { NewPassword = passwords.StoredValueFor(request.newPassword!), UserId = userId }, ct);
         log.LogInformation("App password change for {UserId}", userId);
+        // Ends the unit's web sessions and app tokens elsewhere (M12), as the portal's Change Password does.
+        await SessionStamps.EndSessionsAsync(db, PortalSystem.Main, userId, log, ct);
 
         await SendMailAsync<MsmePasswordChangedEmail>(user.Text("Email"), "New Login Details - " + userName, new Dictionary<string, object?>
         {

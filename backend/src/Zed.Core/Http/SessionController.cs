@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Security;
@@ -19,11 +20,17 @@ public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOpt
     public ActionResult<CurrentUserResponse> Me() =>
         ZedUser.FromPrincipal(User) is { } user ? CurrentUserResponse.From(user) : NoContent();
 
+    /// <summary>
+    /// Signs out. On the main portal also out of the Consultancy and Surveillance portals in this browser (H11: the Admin's
+    /// sessions there come from main's hand-over and must not outlive main's).
+    /// </summary>
     [HttpPost("auth/logout")]
     [AllowAnonymous]
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutZedUserAsync();
+        if (HttpContext.RequestServices.GetService<PortalHost>() is null or { System: PortalSystem.Main })
+            HttpContext.ExpireOtherPortalCookies();
         return NoContent();
     }
 

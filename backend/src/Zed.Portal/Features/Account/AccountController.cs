@@ -31,7 +31,8 @@ public sealed class AccountController(
 
     /// <summary>
     /// Changes the password after checking the current one, mails a confirmation (without the password,
-    /// unlike the old mail) and signs the user out, as the old page did.
+    /// unlike the old mail) and signs the user out, as the old page did; the account's other sessions end too
+    /// (<see cref="SessionStamps"/>; a sub-user's through its own stamp, SubUserStore.SessionStamp).
     /// </summary>
     [HttpPost("change-password")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
@@ -59,6 +60,8 @@ public sealed class AccountController(
         await passwords.SetAsync(user.UserId, req.NewPassword, ct);
         await db.ExecuteSqlAsync("UPDATE Users SET Password = @Password WHERE UserId = @UserId",
             new { Password = passwords.StoredValueFor(req.NewPassword), user.UserId }, ct);
+        // M12: every session of the account ends (other browsers too; on main also on the Surveillance portal), this one below.
+        await SessionStamps.EndSessionsAsync(db, HttpContext.RequestServices.GetRequiredService<PortalHost>().System, user.UserId, log, ct);
 
         if (row.Text("Email") is { Length: > 0 } to)
         {

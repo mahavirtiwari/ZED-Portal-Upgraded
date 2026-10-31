@@ -12,8 +12,11 @@ The same in all three portals (main, consultancy, surveillance); each portal kee
 | Sub-users | Agency (assessment, Bronze, surveillance agency; consultant organisation) | **Sub-Users** | `dbo.V4SubUsers` |
 
 MSME DFOs are offered on main and consultancy only (the NEFT screens); the DFO's state decides which NEFT
-transactions it sees. The Admin chooses the User ID; a password is generated and mailed to the user (Reset Password
-mails a new one). Block / UnBlock sets `Users.IsActive`.
+transactions it sees. The Admin chooses the User ID; the user is mailed a one-time link to set the password, valid
+24 hours (Master Admin and Super Admin logins get a generated password instead; Reset Password mails a new one).
+Agencies, assessors, consultants and sub-users get the same link in their welcome mail; the office copy has neither
+the password nor the link (docs/PASSWORDS.md, "Staff password reset"). Block / UnBlock sets `Users.IsActive`; it, an
+edit or a new password ends the user's open sessions (docs/PASSWORDS.md, "Sessions").
 
 ## Sub-users (operation admins and agency sub-users)
 
@@ -23,8 +26,8 @@ mails a new one). Block / UnBlock sets `Users.IsActive`.
 * Its **roles and permissions follow its owner**: the owner ticks which of its own screens the sub-user may use (only
   screens of the owner's own menu are offered). The menu shows only those screens, and the API refuses every other
   staff call (`SubUserAccessFilter`), so typing a URL does not help.
-* Changes by the owner (screens, block) apply within 30 seconds; a blocked sub-user is signed out. If the owner is
-  blocked, its sub-users cannot sign in.
+* Changes by the owner (screens, block, Reset Password) apply within 30 seconds: the sub-user is signed out and signs in
+  again with the new screens or password. If the owner is blocked, its sub-users cannot sign in and are signed out.
 * Sub-users cannot create sub-users, change their owner's password or use "Forgot password?": the owner resets their
   password. Five wrong passwords lock a sub-user for 15 minutes (Reset Password unlocks it).
 * Sub-users do not use the mobile apps (the apps keep their own logins).

@@ -6,7 +6,10 @@ using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Users;
 
-/// <summary>Block / unblock / mobile number change, shared by agencies and assessors. Callers have already checked who may act on the user.</summary>
+/// <summary>
+/// Block / unblock / mobile number change, shared by agencies and assessors. Callers have already checked who may act on the
+/// user. Block and unblock end the user's sessions (<see cref="SessionStamps"/>).
+/// </summary>
 internal static class StaffUserActions
 {
     /// <summary>
@@ -21,6 +24,8 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, false, reason, ct))
             return c.Problem400("The user could not be blocked. Please try again.");
         log.LogInformation("User {UserId} blocked by {Actor}", user.UserId, actor);
+        // M12: the user's open sessions end too (on main also those of the Surveillance portal, which the procedure blocks as well).
+        await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
         if (host.IsConsultancy() && StaffUserRules.IsEmail(user.Row.Text("Email")))
         {
@@ -44,6 +49,7 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, true, "", ct))
             return c.Problem400("The user could not be unblocked. Please try again.");
         log.LogInformation("User {UserId} unblocked by {Actor}", user.UserId, actor);
+        await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
         if (StaffUserRules.IsEmail(user.Row.Text("Email")))
             await mail.SendAsync<StaffAccountUnblockedEmail>(user.Row.Text("Email"),

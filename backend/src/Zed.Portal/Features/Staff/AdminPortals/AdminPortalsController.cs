@@ -23,7 +23,8 @@ namespace Zed.Portal.Features.Staff.AdminPortals;
 /// read-only connection to the main database (ConnectionStrings:Main) and signs the Admin in there. A pass is valid
 /// for <see cref="Lifetime"/> and once (each host remembers the passes it took, and records them in the distributed cache
 /// for the other servers). Only an Admin's own sign-in is handed over (not a sub-user's), only as the Admin role, and only
-/// while the account is still an active Admin on main.
+/// while the account is still an active Admin on main. The session here carries main's session stamp: blocking the Admin,
+/// or a new password, on main ends it too (SessionStamps). Main's logout expires this portal's cookie in the browser.
 /// </para>
 /// </summary>
 [ApiController]
@@ -139,7 +140,9 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         }
 
         var user = new ZedUser(userId, row.UserName ?? userId, (int)UserRole.Admin, null, null, null, null, SubRoles: []);
-        await HttpContext.SignInZedUserAsync(user);
+        // The session ends with the Admin's main sessions (M12): its stamp is main's Users.SessionStamp, read through the
+        // same read-only connection (SessionStampValidator).
+        await HttpContext.SignInZedUserAsync(user, stampOnMain: true);
         var xsrf = HttpContext.RequestServices.GetRequiredService<IAntiforgery>().GetAndStoreTokens(HttpContext).RequestToken!;
         log.LogInformation("Admin {UserId} signed in on the {Portal} portal from the main portal", userId, KeyOf(host.System));
         return new HandoffAccepted(user.UserName, xsrf);

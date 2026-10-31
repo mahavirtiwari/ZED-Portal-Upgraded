@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 
@@ -14,6 +15,13 @@ public class ServiceResponse
     public string? errorMessage { get; set; }
     public string? refId { get; set; }
     public string? token { get; set; }
+
+    /// <summary>
+    /// V4: the app sign-in token (<see cref="AppTokens"/>) of a successful login, sent back in the X-Zed-App-Token header.
+    /// Left out of every other answer, so the installed apps see the old layout.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? appToken { get; set; }
 
     public static ServiceResponse Fail(string message) => new() { status = "0", errorMessage = message };
     public static ServiceResponse Ok(string? message = null) => new() { status = "1", errorMessage = message };

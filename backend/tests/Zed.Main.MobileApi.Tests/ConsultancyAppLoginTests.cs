@@ -251,6 +251,7 @@ public sealed class ConsultancyAppLoginTests : IDisposable
         Assert.False(e.TryGetProperty("isSurveillance", out _));
         Assert.False(e.TryGetProperty("minimumParameters", out _));
         Assert.DoesNotContain(Password, e.GetRawText());
+        Assert.False(string.IsNullOrEmpty(e.GetProperty("appToken").GetString()));
 
         var profile = e.GetProperty("companyProfile");
         Assert.Equal("01-02-2024", profile.GetProperty("bdsFromDate").GetString());

@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { StaffLoginPage } from './staff-login';
 import { FeesHostPage } from './fees/fees-host';
 
@@ -39,6 +39,35 @@ describe('StaffLoginPage (one Admin)', () => {
     link.click();
     // The test build is main's, so its own name is stored (on the other builds, theirs).
     expect(sessionStorage.getItem('zed.adminPortal')).toBe('main');
+  });
+});
+
+describe('StaffLoginPage (session expired)', () => {
+  it('says the session expired and returns to that page after signing in', async () => {
+    TestBed.configureTestingModule({
+      imports: [StaffLoginPage],
+      providers: [
+        provideRouter([]), provideHttpClient(), provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({ expired: '1', returnUrl: '/staff/monitoring' }) } } },
+      ],
+    });
+    const fixture = TestBed.createComponent(StaffLoginPage);
+    const http = TestBed.inject(HttpTestingController);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    const el: HTMLElement = fixture.nativeElement;
+    await settle(fixture);
+    for (const r of http.match(() => true)) r.flush(null);
+    expect(el.querySelector('.session-expired')!.textContent).toContain('Your session has expired. Please sign in again.');
+
+    const page = fixture.componentInstance as unknown as { userId: string; password: string; captchaToken: string; login(): Promise<void> };
+    page.userId = 'AGENCY1';
+    page.password = 'secret';
+    page.captchaToken = 'token';
+    const done = page.login();
+    await settle(fixture);
+    http.expectOne('/api/staff/auth/login').flush({ userId: 'AGENCY1', userName: 'Agency', roleId: 2, role: 'Agency' });
+    await done;
+    expect(navigate).toHaveBeenCalledWith('/staff/monitoring');
   });
 });
 

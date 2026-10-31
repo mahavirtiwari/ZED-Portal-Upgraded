@@ -41,7 +41,12 @@ public sealed class MsmeAuthController(
         var sets = await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS", new { UserId = userId, Password = login.ProcedurePassword }, ct);
         var row = sets[0].FirstOrDefault();
         if (row is null)
+        {
+            // M12: an account locked by wrong passwords also loses its open sessions.
+            if (Staff.StaffAuthController.IsLocked(sets.Scalar(1)))
+                await SessionStamps.EndSessionsAsync(db, PortalSystem.Main, userId, log, ct);
             return this.Problem400(sets.Scalar(1) ?? "Invalid credentials.");
+        }
         if (!await passwords.CompleteLoginAsync(login, row, ct))
         {
             log.LogWarning("Blocked login for {UserId}: the password is not the account's own", userId);

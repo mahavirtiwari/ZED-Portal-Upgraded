@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
 
 using Zed.Portal.Features.Staff.Users;
@@ -172,8 +173,9 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
-    public async Task Creating_an_agency_mails_a_generated_password_and_never_returns_it()
+    public async Task Creating_an_agency_mails_a_set_password_link_and_never_the_password()
     {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
         var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = await client.PostAsJsonAsync("/api/staff/users/agencies", AgencyBody());
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
@@ -191,12 +193,68 @@ public sealed class UsersTests : IDisposable
 
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("new@agency.test", mail.To);
-        Assert.Contains(password, mail.HtmlBody);
+        Assert.Null(mail.Cc);
+        Assert.DoesNotContain(password, mail.HtmlBody);
         Assert.Contains("ZEDAA0099", mail.Subject);
+        // A one-time link of 24 hours, recorded as sent by the MasterAdmin who created the agency.
+        var link = Assert.Single(resets.Rows);
+        Assert.Equal("ZEDAA0099", link.UserId);
+        Assert.Equal("MASTER1", link.RequestedBy);
+        Assert.InRange(link.ExpiresAt - link.CreatedAt, TimeSpan.FromHours(23.9), TimeSpan.FromHours(24));
+        Assert.Matches("/reset-password#token=[A-Za-z0-9_-]{43}", mail.HtmlBody);
+        Assert.Contains("within 24 hours", mail.HtmlBody);
     }
 
     [Fact]
-    public async Task After_the_old_sites_a_new_agency_gets_a_random_stored_value_and_a_hash_of_the_mailed_password()
+    public async Task The_office_copy_of_a_new_agency_has_neither_the_password_nor_the_link()
+    {
+        new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new Zed.Core.Data.PortalSettings.SettingRow(Zed.Core.Email.EmailAddresses.RegistrationCc, "office@zed.test")];
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/agencies", AgencyBody())).StatusCode);
+
+        var password = UsersMastersLogin.Arg(Call("SP_INSERT_USER").Args, "Password")!;
+        var unit = Assert.Single(_host.Email.Sent, m => m.To == "new@agency.test");
+        Assert.Null(unit.Cc);
+        Assert.Contains("reset-password#token=", unit.HtmlBody);
+        var office = Assert.Single(_host.Email.Sent, m => m.To == "office@zed.test");
+        Assert.Equal(unit.Subject, office.Subject);
+        Assert.DoesNotContain("reset-password#token=", office.HtmlBody);
+        Assert.DoesNotContain(password, office.HtmlBody);
+        Assert.Contains("Office copy", office.HtmlBody);
+        Assert.Contains("ZEDAA0099", office.HtmlBody);
+    }
+
+    [Fact]
+    public async Task With_set_password_links_switched_off_a_new_agency_gets_the_password_as_before()
+    {
+        // Each test has its own host, so the setting does not reach the others.
+        _host.Services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>()["StaffPasswordReset:Enabled"] = "false";
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/agencies", AgencyBody())).StatusCode);
+        var password = UsersMastersLogin.Arg(Call("SP_INSERT_USER").Args, "Password")!;
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.Contains(password, mail.HtmlBody);
+        Assert.DoesNotContain("reset-password#token=", mail.HtmlBody);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_V4_STAFF_RESET_CREATE");
+    }
+
+    [Fact]
+    public async Task When_the_link_cannot_be_recorded_the_mail_points_to_forgot_password()
+    {
+        // No FakeStaffResets: SP_V4_STAFF_RESET_CREATE answers nothing, as a failed insert.
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/agencies", AgencyBody())).StatusCode);
+        var password = UsersMastersLogin.Arg(Call("SP_INSERT_USER").Args, "Password")!;
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.DoesNotContain(password, mail.HtmlBody);
+        Assert.DoesNotContain("reset-password#token=", mail.HtmlBody);
+        Assert.Contains("Forgot password?", mail.HtmlBody);
+    }
+
+    [Fact]
+    public async Task After_the_old_sites_a_new_agency_gets_a_random_stored_value_and_a_hash_of_a_password_nobody_is_told()
     {
         var passwords = new Zed.TestSupport.FakePasswords().Attach(_host.Sql.Procs);
         var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1"); // the fixture's staff login (no hash) under Dual
@@ -207,8 +265,9 @@ public sealed class UsersTests : IDisposable
         Assert.True(Zed.Core.Security.PasswordStore.IsReplacement(stored)); // also what main's procedure copies to ZED_SURVEILLANCE
         var mail = Assert.Single(_host.Email.Sent).HtmlBody;
         Assert.DoesNotContain(stored!, mail);
-        // The hash is of the password the mail shows.
-        Assert.Contains(System.Text.RegularExpressions.Regex.Matches(mail, "font-weight: 700;\">([^<]+)</td>"),
+        // A hash is recorded, of a generated password that no cell of the mail shows: the agency sets its own.
+        Assert.NotNull(passwords.LastWrite("ZEDAA0099")?.Hash);
+        Assert.DoesNotContain(System.Text.RegularExpressions.Regex.Matches(mail, "font-weight: 700;\">([^<]+)</td>"),
             m => passwords.HashMatches("ZEDAA0099", m.Groups[1].Value.Trim()));
     }
 
@@ -409,6 +468,7 @@ public sealed class UsersTests : IDisposable
     [Fact]
     public async Task Agency_creates_an_assessor_under_itself_with_the_verified_identity()
     {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
         var r = await client.PostAsJsonAsync("/api/staff/users/assessors", new
         {
@@ -436,7 +496,9 @@ public sealed class UsersTests : IDisposable
 
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("pro@zed.test", mail.To);
-        Assert.Contains(password, mail.HtmlBody);
+        Assert.DoesNotContain(password, mail.HtmlBody);
+        Assert.Contains("reset-password#token=", mail.HtmlBody);
+        Assert.Equal(("ZEDBA0099", "AGENCY1"), (Assert.Single(resets.Rows).UserId, resets.Rows[0].RequestedBy));
         Assert.StartsWith("Bronze Assessor Login Details", mail.Subject);
     }
 

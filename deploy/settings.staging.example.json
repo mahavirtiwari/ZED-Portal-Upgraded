@@ -6,7 +6,9 @@
     "Database__Prefix": "ZEDV4_",
     "_Email_comment": "Every staging mail goes to dev.zed@qcin.org (portals and mobile API here; Zed.Jobs in its own section below). Do not add Email__AllowedRecipientDomains: with it, mail to those domains would go to the real recipients. The hosts refuse to start in Staging without one of these settings, unless Email__DeliverToRecipients=true says on purpose that mails go to their real recipients (only for a database without real people's contact details): deploy\\Set-ZedTestMailDelivery.ps1 -Mode Recipients|Redirect switches it in this file, the app pools and Zed.Jobs.",
     "Email__RedirectAllTo": "dev.zed@qcin.org",
-    "Security__Passwords": "Dual"
+    "Security__Passwords": "Dual",
+    "_AppTokenKey_comment": "Secret: base64 of 32 random bytes, its own value here (never the production key). Signs the mobile apps' sign-in tokens; the mobile hosts issue them and the portals check the apps' calls to them (docs/MOBILE-API.md, App sign-in token).",
+    "Mobile__AppTokenKey": ""
   },
   "Portals": {
     "Email__Profiles__Default__Host": "",
@@ -25,7 +27,10 @@
     "Portal__LegacyBaseUrl": "https://zedv3.qci.org.in",
     "Mobile__Culture": "en-US",
     "Mobile__DeviceBinding": "Monitor",
-    "Mobile__RefuseMissingDevice": "false"
+    "Mobile__RefuseMissingDevice": "false",
+    "_AppTokens_comment": "App sign-in token: Monitor for every app. Per app (MSME, SA, RA, SURV) in the application's own section; the consultant app's SA also on the Consultancy portal. MSME and RA stay on Monitor (the store apps cannot send the token).",
+    "Mobile__AppTokens__Mode": "Monitor",
+    "Mobile__AppTokenDays": "30"
   },
   "Main": {
     "_comment": "IIS application /. Consultancy and Surveillance connections: opened read-only by the host (read intent), with the app pool's own Windows login (database/security/01). Storage: a copy of the production folders on the staging server.",

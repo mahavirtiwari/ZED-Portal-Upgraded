@@ -1,8 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.PasswordReset;
 using Zed.Portal.Features.Staff.SubUsers;
+using Zed.TestSupport;
 
 namespace Zed.Main.Api.Tests.Staff;
 
@@ -174,6 +177,75 @@ public sealed class SubUsersTests : IDisposable
         (await agency.PostAsync("/api/staff/sub-users/AGENCY1S01/reset-password", null)).EnsureSuccessStatusCode();
         Assert.Single(Sql("UPDATE dbo.V4SubUsers SET PasswordHash"));
         Assert.Equal("ravi@zed.test", Assert.Single(_host.Email.Sent).To);
+    }
+
+    [Fact]
+    public async Task A_new_password_or_other_screens_end_the_sub_users_session()
+    {
+        SubUser("AGENCY1S01", "AGENCY1", "reports");
+        var (client, _) = await SignInSubUserAsync("AGENCY1S01");
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/staff/dashboard/counts")).StatusCode);
+
+        // The owner reset the password (the row's hash changed; the store forgets its cached row).
+        _subUsers["AGENCY1S01"] = new
+        {
+            UserId = "AGENCY1S01", OwnerUserId = "AGENCY1", OwnerRoleId = 2, UserName = "Ravi", Email = "ravi@zed.test", MobileNo = (string?)null,
+            Permissions = "reports", IsActive = true, PasswordHash = PasswordStore.Hash("Other#Pass789"), FailedLogins = 0,
+            LockedUntil = (DateTime?)null, LastLoginAt = (DateTime?)null, CreatedBy = "AGENCY1", CreatedAt = DateTime.UtcNow,
+        };
+        _host.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>().Remove("subuser:AGENCY1S01");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/staff/dashboard/counts")).StatusCode);
+
+        // Other screens: the same.
+        SubUser("AGENCY1S02", "AGENCY1", "reports");
+        var (second, _) = await SignInSubUserAsync("AGENCY1S02");
+        SubUser("AGENCY1S02", "AGENCY1", "reports,monitoring");
+        _host.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>().Remove("subuser:AGENCY1S02");
+        Assert.Equal(HttpStatusCode.Unauthorized, (await second.GetAsync("/api/staff/dashboard/counts")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_new_sub_user_gets_a_set_password_link_that_sets_its_own_hash()
+    {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
+        // dbo.V4PasswordResets joined to dbo.V4SubUsers, as the two statements of StaffPasswordResets see them.
+        FakeStaffResets.Row? Open(object? args) => resets.Rows.FirstOrDefault(r =>
+            r.TokenHash.AsSpan().SequenceEqual((byte[])args!.GetType().GetProperty("TokenHash")!.GetValue(args)!) && r.IsOpen(DateTime.UtcNow));
+        _host.Sql.Queries[StaffPasswordResets.FindSubUserSql] = args =>
+            Open(args) is { } row && _subUsers.ContainsKey(row.UserId) ? [new { UserId = row.UserId, UserName = "Ravi", Email = "ravi@zed.test" }] : [];
+        _host.Sql.Queries[StaffPasswordResets.UseSubUserSql] = args =>
+        {
+            if (Open(args) is not { } row) return [];
+            row.UsedAt = DateTime.UtcNow;
+            return [row.UserId];
+        };
+
+        var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        (await agency.PostAsJsonAsync("/api/staff/sub-users", new { userName = "Ravi", email = "ravi@zed.test", permissions = new[] { "reports" } })).EnsureSuccessStatusCode();
+        Assert.Single(Sql("INSERT INTO dbo.V4SubUsers"));
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.DoesNotContain(">Password<", mail.HtmlBody);
+        Assert.Contains("within 24 hours", mail.HtmlBody);
+        // After the link: ask the owner ("Forgot password?" is for Users accounts only).
+        Assert.Contains("please ask AGENCY1 name (AGENCY1) to reset your password", mail.HtmlBody);
+        var link = Assert.Single(resets.Rows);
+        Assert.Equal(("AGENCY1S01", "AGENCY1"), (link.UserId, link.RequestedBy));
+        SubUser("AGENCY1S01", "AGENCY1", "reports");
+
+        var token = System.Text.RegularExpressions.Regex.Match(mail.HtmlBody, "reset-password#token=([A-Za-z0-9_-]{43})").Groups[1].Value;
+        var browser = await _host.CreateBrowserAsync();
+        (await browser.PostAsJsonAsync("/api/staff/auth/password-reset/check", new { token })).EnsureSuccessStatusCode();
+        var r = await browser.PostAsJsonAsync("/api/staff/auth/password-reset/reset", new { token, newPassword = "Own#Pass789", confirmPassword = "Own#Pass789" });
+        Assert.True(r.IsSuccessStatusCode, await r.Content.ReadAsStringAsync());
+        var update = Assert.Single(Sql("UPDATE dbo.V4SubUsers SET PasswordHash"));
+        Assert.Equal("AGENCY1S01", FakeSql.Arg(update.Args, "UserId"));
+        Assert.NotEqual(Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed,
+            PasswordStore.Verify(FakeSql.Arg(update.Args, "PasswordHash")!, "Own#Pass789"));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("UPDATE Users SET Password"));
+
+        // Once only.
+        var again = await browser.PostAsJsonAsync("/api/staff/auth/password-reset/reset", new { token, newPassword = "Own#Pass790", confirmPassword = "Own#Pass790" });
+        Assert.Equal(HttpStatusCode.BadRequest, again.StatusCode);
     }
 
     [Fact]

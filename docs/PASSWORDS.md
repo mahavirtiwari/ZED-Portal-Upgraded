@@ -118,8 +118,16 @@ each portal resets the accounts of its own Users table (Consultancy keeps its ow
   send the link from main, and an older surveillance link no longer works. `StaffPasswordReset:MainPortalUrl` overrides
   the main address (default: the surveillance PublicBaseUrl without `Portal:PathBase`). In Dual their surveillance copy
   is their password on this portal and is reset here, as Change Password does.
-- **Sessions:** V4 signs staff in with a cookie only (no server-side session list), so a reset does not end sessions
-  already open elsewhere; they expire after at most 120 minutes without activity.
+- **Sessions:** a reset (and Change Password) ends every session of the account, in every browser, within a minute
+  (`Users.SessionStamp`, migration 0040; see "Sessions" below).
+- **New accounts:** the welcome mail of a new staff account (agency, assessor, consultant, MSME DFO, Ministry, dashboard
+  login, operation admin and sub-user) carries a link of this kind instead of the password: it works once, for 24 hours,
+  and is recorded as sent by the creator. The excluded roles do not apply to it. **Master Admin and Super Admin**
+  accounts still get the generated password in their mail (the user's decision). With `StaffPasswordReset:Enabled=false`
+  every welcome mail carries the password, as before. If the link cannot be recorded, the mail asks the user to use
+  *Forgot password?* (a sub-user: to ask its owner for Reset Password). The office copy of the agency and assessor mails
+  (Email Settings, "Copy of registration…") is a separate mail with neither the password nor the link. A sub-user's
+  link sets its `dbo.V4SubUsers` hash (sub-users have no Users row).
 - `StaffPasswordReset:Enabled=false` turns both ways off on a portal.
 
 Setting up: run 0008 on the three databases and grant the V4 logins `EXECUTE` on `SP_V4_STAFF_RESET_ACCOUNT`,
@@ -153,6 +161,28 @@ Setting up: run 0009 on ZEDCS_V2_LIVE and grant the portal's and the MSME app's 
 `SP_V4_STAFF_RESET_CREATE`, `SP_V4_MSME_RESET_ACCOUNT`, `SP_V4_MSME_RESET_FIND` and `SP_V4_MSME_RESET_USE`.
 After decommission: `EXEC dbo.SP_V4_PURGE_LEGACY_RESET_CODES` (counts), then `@Mode = 'APPLY'` clears `Users.PwdCode`
 and empties `ForgotPwdLinks` (the old site needs them while it is live).
+
+## Sessions (M12)
+
+Web sessions are a sign-in cookie (120 minutes, sliding). Migration `0040_users_session_stamp.sql` (all three databases)
+adds `Users.SessionStamp` (`uniqueidentifier NULL`); sign-in copies it into the cookie and every request compares it
+(`Zed.Core.Security.SessionStamps`, the database value kept a minute per user: `Security:SessionStampCacheSeconds`, 60).
+A different value ends the session: the cookie is removed and the API answers 401. V4 sets a new value on:
+
+- Change Password and a password reset (staff link, MSME link), for the account;
+- block / unblock (Admin's User Management, agencies, assessors, consultants, surveillance agencies and assessors), and
+  an account locked by wrong passwords ("ACCOUNT LOCKED" from the login procedure, staff and MSME);
+- an edit of a staff login (User Management, assessor) and of an agency (its verification types are its sub-roles; its
+  assessors' sessions end too, as the procedure copies them);
+- an MSME deactivated by the SuperAdmin.
+
+On main the copy of the account in ZED_SURVEILLANCE gets a new value too (main's procedures maintain agencies and
+assessors there). The Admin's sessions on the Consultancy and Surveillance portals (the hand-over from main) compare
+main's value, through the read-only main connection. Sub-users have no Users row: a new password, other screens or a
+lock (5 wrong passwords) ends theirs (`SubUserStore.SessionStamp`), as does any change of their owner's stamp.
+Logging out does not change the stamp (the user's other devices stay signed in); main's logout also expires the
+Consultancy and Surveillance cookies in the same browser (H11). Changes made on the old sites, or by the old SQL jobs,
+do not set a new value. NULL until the first change, so deploying 0040 ends no session.
 
 ## Also found
 

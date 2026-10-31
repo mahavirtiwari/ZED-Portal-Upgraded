@@ -581,6 +581,53 @@ public sealed class MobilePaymentTests : IDisposable
         Assert.Equal("1", own.GetProperty("status").GetString());
     }
 
+    // ----- H5: the fee lists carry the unit's PAN -----
+
+    [Theory]
+    [InlineData(typeof(MobilePaymentController), nameof(MobilePaymentController.GetPaymentDetailsByType))]
+    [InlineData(typeof(MobilePaymentController), nameof(MobilePaymentController.GetSurveillancePaymentDetailsByType))]
+    [InlineData(typeof(Zed.Portal.Features.Payments.Consultancy.ConsultancyMobilePaymentController),
+        nameof(Zed.Portal.Features.Payments.Consultancy.ConsultancyMobilePaymentController.GetConsultancyPaymentDetailsByType))]
+    public void Fee_lists_are_limited_per_address(Type controller, string action)
+    {
+        var limit = controller.GetMethod(action)!.GetCustomAttribute<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>();
+        Assert.Equal(Zed.Core.Http.RateLimitPolicies.Sensitive, limit?.PolicyName);
+        Assert.Equal(MobileApps.Msme, controller.GetMethod(action)!.GetCustomAttribute<DeviceBoundAttribute>()?.App);
+    }
+
+    [Fact]
+    public async Task Enforced_app_token_answers_the_fee_list_to_the_units_own_token_only()
+    {
+        var key = Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
+        var app = _app.WithWebHostBuilder(b =>
+        {
+            b.UseSetting("Mobile:AppTokenKey", key);
+            b.UseSetting("Mobile:AppTokens:Apps:MSME", "Enforce");
+        });
+        var client = app.CreateClient();
+        var tokens = app.Services.GetRequiredService<AppTokens>();
+
+        async Task<JsonElement> Fees(string? token)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, "/Msme/GetPaymentDetailsByType")
+            {
+                Content = new FormUrlEncodedContent(new Dictionary<string, string> { ["certification"] = "Bronze", ["zedId"] = Me }),
+            };
+            if (token is not null) request.Headers.Add(AppTokens.Header, token);
+            return await Json(await client.SendAsync(request));
+        }
+
+        var none = await Fees(null);
+        Assert.Equal("0", none.GetProperty("status").GetString());
+        Assert.Equal(AppTokens.ExpiredMessage, none.GetProperty("errorMessage").GetString());
+        var other = await Fees(await tokens.IssueAsync(MobileApps.Msme, "ZEDMSME000002", "ZEDMSME000002"));
+        Assert.Equal(AppTokens.ExpiredMessage, other.GetProperty("errorMessage").GetString());
+        Assert.False(Called("SP_MSME_GET_PAYMENT_DETAILS"));
+
+        var own = await Fees(await tokens.IssueAsync(MobileApps.Msme, Me, Me));
+        Assert.Equal("ABCDE1234F", own.GetProperty("WithOutCoupon")[0].GetProperty("UdyamPanNo").GetString());
+    }
+
     private sealed class FakeMobileGateway : ICcAvenueMobileClient
     {
         public const string Token = "SECURE-TOKEN-1";

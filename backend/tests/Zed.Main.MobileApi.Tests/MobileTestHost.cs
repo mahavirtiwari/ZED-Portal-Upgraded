@@ -114,6 +114,15 @@ public sealed class FakeDevices : IDeviceBindings
         Events.Enqueue((app, userKey, deviceId, path, outcome, refused));
         return Task.CompletedTask;
     }
+
+    /// <summary>Calls without a valid app token (<see cref="AppTokens"/>).</summary>
+    public ConcurrentQueue<(string App, string User, string Path, AppTokenCheck Outcome, bool Refused)> TokenEvents { get; } = new();
+
+    public Task RecordTokenAsync(string app, string userKey, string path, string? ip, AppTokenCheck outcome, bool refused, CancellationToken ct = default)
+    {
+        TokenEvents.Enqueue((app, userKey, path, outcome, refused));
+        return Task.CompletedTask;
+    }
 }
 
 // ---- Probe endpoints (test assembly only) ----
@@ -161,6 +170,15 @@ public sealed class ProbeController : LegacyMobileController
     [HttpPost]
     [DeviceBound(MobileApps.Msme)]
     public IActionResult Guarded(ProbeRequest request) => LegacyJson(ServiceResponse.Ok());
+
+    /// <summary>Echoes the unit it acts on, so a test sees which identity the device and token checks were held against.</summary>
+    [HttpPost]
+    [DeviceBound(MobileApps.Msme)]
+    public IActionResult GuardedEcho(ProbeRequest request) => LegacyJson(new { status = "1", acted = request.zedId ?? request.userName });
+
+    [HttpPost]
+    [DeviceBound(MobileApps.SiteAssessor, "saId")]
+    public IActionResult AssessorGuarded(string? saId, string? zedId) => LegacyJson(ServiceResponse.Ok());
 
     [HttpPost]
     public IActionResult Boom() => throw new InvalidOperationException("secret detail");

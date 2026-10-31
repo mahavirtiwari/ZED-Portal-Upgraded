@@ -245,15 +245,19 @@ public sealed partial class MobilePaymentController(
     /// <summary>
     /// MsmeController.GetPaymentDetailsByType (no session; called only by the app): the fee rows of
     /// SP_MSME_GET_PAYMENT_DETAILS as WithCoupon / WithOutCoupon / CouponStatus, Newtonsoft DataSet layout.
+    /// The rows carry the unit's PAN (UdyamPanNo) and ZED IDs are sequential (finding H5): limited per address, and the
+    /// app token must be the unit's (in the MSME app's mode, Monitor while the store app sends none).
     /// </summary>
     [HttpPost("/Msme/GetPaymentDetailsByType")]
     [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> GetPaymentDetailsByType(string? certification, string? zedId, CancellationToken ct) =>
         FeesFor(Certification, certification, zedId, ct);
 
     /// <summary>SurveillancePayController.GetSurveillancePaymentDetailsByType, the same for the surveillance fee.</summary>
     [HttpPost("/SurveillancePay/GetSurveillancePaymentDetailsByType")]
     [DeviceBound(MobileApps.Msme, "zedId")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> GetSurveillancePaymentDetailsByType(string? certification, string? zedId, CancellationToken ct) =>
         FeesFor(Surveillance, certification, zedId, ct);
 

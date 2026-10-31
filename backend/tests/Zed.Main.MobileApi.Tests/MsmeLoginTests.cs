@@ -68,6 +68,8 @@ public sealed class MsmeLoginTests : IDisposable
         Assert.Equal("0", e.GetProperty("status").GetString());
         Assert.Equal("Invalid Credentials.", e.GetProperty("errorMessage").GetString());
         Assert.Equal(JsonValueKind.Null, e.GetProperty("MsmeDetails").ValueKind);
+        // The app token is in successful logins only; other answers keep the old layout.
+        Assert.False(e.TryGetProperty("appToken", out _));
     }
 
     [Fact]

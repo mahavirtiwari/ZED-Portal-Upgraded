@@ -7,7 +7,8 @@ namespace Zed.Portal.Features.Staff.SubUsers;
 
 /// <summary>
 /// Global filter for sub-users (signed in with <see cref="ZedClaims.ActingUserId"/>): the sub-user must still exist and be
-/// active (checked every request, cached 30 seconds, so a block or a permission change applies at once), and a call to
+/// active (checked every request, cached 30 seconds, so a block or a permission change applies at once), its password and
+/// screens must be those of its sign-in (<see cref="SubUserStore.SessionStamp"/>: a change ends the session), and a call to
 /// /api/staff/… needs a permission that covers it (<see cref="SubUserPermissions"/>). Everything else is checked as for the
 /// owner. Changes made by a sub-user are logged with both IDs.
 /// </summary>
@@ -29,6 +30,16 @@ public sealed class SubUserAccessFilter(SubUserStore store, PortalHost host, ILo
         if (row is null || !row.IsActive || !string.Equals(row.OwnerUserId, user.UserId, StringComparison.OrdinalIgnoreCase))
         {
             log.LogWarning("Sub-user {ActingUserId} of {Owner} is no longer active; signed out", user.ActingUserId, user.UserId);
+            await http.SignOutZedUserAsync();
+            context.Result = new UnauthorizedResult();
+            return;
+        }
+        // M12: a new password or other screens since sign-in, or locked by wrong passwords, end the session (a cookie from
+        // before the stamp has none and ends once too).
+        if (!string.Equals(user.ActingStamp, SubUserStore.SessionStamp(row), StringComparison.Ordinal) ||
+            row.LockedUntil is { } locked && locked > DateTime.UtcNow)
+        {
+            log.LogWarning("Sub-user {ActingUserId} of {Owner}: password, screens or lock changed since sign-in; signed out", user.ActingUserId, user.UserId);
             await http.SignOutZedUserAsync();
             context.Result = new UnauthorizedResult();
             return;

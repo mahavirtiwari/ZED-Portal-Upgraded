@@ -1,7 +1,9 @@
 {
   "_comment": "Copy to the server (e.g. D:\\ZedV4\\settings.json), fill in, restrict to administrators. Never commit the filled copy. Keys are environment variable names: ':' becomes '__'. Sections are merged in order: 'Common' (every application), then 'Portals' (main, Consultancy, Surveillance) or 'Mobile' (the three mobile deployments), then the application's own section, which wins. Install-ZedIis.ps1 adds ASPNETCORE_ENVIRONMENT=Production, DataProtection__KeysPath (per application) and Mobile__System itself. Each host refuses to start and lists what is missing (docs/CUTOVER.md).",
   "Common": {
-    "ConnectionStrings__Main": ""
+    "ConnectionStrings__Main": "",
+    "_AppTokenKey_comment": "Secret: base64 of 32 random bytes (e.g. [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))). Signs the mobile apps' sign-in tokens; the mobile hosts issue them and the portals check the apps' calls to them, so it is here for all. Set it before any app is enforced (docs/MOBILE-API.md, App sign-in token).",
+    "Mobile__AppTokenKey": ""
   },
   "Portals": {
     "Email__Profiles__Default__Host": "",
@@ -14,7 +16,10 @@
   },
   "Mobile": {
     "Mobile__Culture": "en-US",
-    "Mobile__DeviceBinding": "Monitor"
+    "Mobile__DeviceBinding": "Monitor",
+    "_AppTokens_comment": "App sign-in token: Off, Monitor or Enforce. Stay on Monitor. Per app (MSME, SA, RA, SURV) in the application's own section, e.g. Mobile__AppTokens__Apps__SURV in MobileSurveillance, and for the consultant app Mobile__AppTokens__Apps__SA in both MobileConsultancy and Consultancy (the portal checks its technology upgradation calls). Only SURV, SA (site assessor) and SA (consultant) may be enforced, once their new builds are on the Play Store; MSME and RA stay on Monitor (the store apps cannot send the token).",
+    "Mobile__AppTokens__Mode": "Monitor",
+    "Mobile__AppTokenDays": "30"
   },
   "Main": {
     "_comment": "IIS application /. Consultancy and Surveillance connections: a read-only login (EXECUTE on the report procedures).",

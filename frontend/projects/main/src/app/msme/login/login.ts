@@ -1,11 +1,12 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentTextComponent } from '../../content/content-text';
 import { LoginShell } from '../login-shell/login-shell';
+import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from '../../session-expiry';
 
 /** MSME login and forgot-password. Port of Views/Msme/Login.cshtml. */
 @Component({
@@ -18,12 +19,17 @@ export class LoginPage {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
   private readonly captcha = viewChild(Recaptcha);
+  private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
+  /** Opened because the session ended (sessionExpiryInterceptor): go back to that page after signing in. */
+  private readonly back = returnUrl(this.query.get(RETURN_PARAM), '/msme/');
 
   protected readonly mode = signal<'login' | 'reset'>('login');
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
   protected readonly showPassword = signal(false);
+  protected readonly expired = signal(this.query.has(EXPIRED_PARAM));
+  protected readonly expiredMessage = SESSION_EXPIRED_MESSAGE;
 
   protected userId = '';
   protected password = '';
@@ -54,6 +60,7 @@ export class LoginPage {
   protected async login(): Promise<void> {
     this.error.set('');
     this.success.set('');
+    this.expired.set(false);
     if (!this.userId.trim() || !this.password) {
       this.error.set('Please enter your ZED ID and password.');
       return;
@@ -72,7 +79,7 @@ export class LoginPage {
         }),
       );
       this.auth.setUser(user);
-      await this.router.navigateByUrl('/msme/dashboard');
+      await this.router.navigateByUrl(this.back ?? '/msme/dashboard');
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       this.password = '';

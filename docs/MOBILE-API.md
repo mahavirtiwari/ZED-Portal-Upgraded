@@ -45,9 +45,11 @@ Everything below lives in `backend/src/Zed.Core/Mobile` and is covered by
   (`mobileapi/Photos/...`, `mobileapi/SaPhotos/...`).
 - **Never** write request bodies to disk. The old code saved every request, passwords included, to
   `App_Data/Json`. Log only the action, the user and the outcome.
-- Mark every action that acts for a user with `[DeviceBound(MobileApps.X, "fieldName", ...)]`.
-- Logins call `IDeviceBindings.RememberAsync` on success, use `LoginThrottle`, and check
-  `LegacyPasswords.MatchesStored` (the procedures contain hard-coded master passwords).
+- Mark every action that acts for a user with `[DeviceBound(MobileApps.X, "fieldName", ...)]`. It checks the app
+  sign-in token and the device against the field of the **bound model** (the object the action acts on), never a field
+  of the raw request (finding H1).
+- Logins call `IDeviceBindings.RememberAsync` on success, answer `appToken` (`AppTokens.IssueAsync`), use
+  `LoginThrottle`, and check `LegacyPasswords.MatchesStored` (the procedures contain hard-coded master passwords).
 - **Stage checks** (MSME app): before a write, `SP_APP_MSME_STATUS` (the procedure behind the app's own
   buttons) must show the matching stage: basic information only before final submit; evidences and photos
   before final submit or while the current NC is open; NC replies only while the current NC is open;
@@ -89,7 +91,88 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
   is rare among genuine users (phone changes and reinstalls log in again, which registers the
   new device).
 - Limits: a device id is not a secret. Binding stops callers who only know a ZED ID; it does not
-  stop someone who has the victim's device id. v2 closes that gap.
+  stop someone who has the victim's device id. The app sign-in token (below) closes that gap for the rebuilt apps.
+- The user is read from the action's bound model (finding H1). A complex parameter binds the nested `request` object
+  when the body has one, so `{"zedId":"A","request":{"zedId":"B"}}` acts on B and is checked as B. A blank first field
+  is skipped as the actions skip it (`First(saId, userName)`). The raw request is read only when no parameter has any
+  of the fields.
+
+## App sign-in token (finding C1)
+
+Every call after login used to name its user in the body. Now every successful app login also answers a signed token,
+and the rebuilt apps send it back on every call. **The contract is fixed** (the React Native apps are built against it):
+
+- **Login answer**: the string field `appToken` at the top level of the JSON, next to `status`, in every successful
+  login: `Msme/Login`, `RA/Login`, `SA/Login` (site assessor app on Main and Surveillance; consultant and TU verifier / DFO
+  app on Consultancy), `Surveillance/Login`. Failed logins and all other answers do not have the field (the installed
+  apps see the old layout).
+- **Every later call** (JSON and multipart alike, including the app's calls to the portals: payments, technology
+  upgradation): the HTTP header `X-Zed-App-Token: <appToken>`.
+- **Refusal**: exactly like the device-binding refusal, HTTP 200 `application/json`
+  `{"status":"0","errorMessage":"Your sign-in has expired. Please sign in again.","refId":null,"token":null}`. The
+  apps take this text as "sign out and show the login page".
+- **Content** (nothing secret): the app (`MobileApps`: `MSME`, `SA`, `RA`, `SURV`), the user id the login checked
+  (`Users.UserId`: the ZED ID for MSME and RA, the assessor / consultant / DFO otherwise), the unit's ZED ID the login
+  was for, the deployment (a Main token is not taken by Consultancy or Surveillance), the user's session stamp
+  (`dbo.Users.SessionStamp`, `Zed.Core.Security.SessionStamps`) and the issue and expiry times. Lifetime
+  `Mobile:AppTokenDays` (default 30: field users stay signed in offline for days). `Zed.Core.Mobile.AppTokens`.
+- **Protection**: HMAC-SHA256 with `Mobile:AppTokenKey` (base64 of at least 32 random bytes, a secret: settings
+  section `Common`, so that a deployment's mobile host and its portal hold the same key). Without the key the token is
+  protected with ASP.NET Data Protection, which only the issuing host can read: the portals then see every app token
+  as invalid. **Set the key before any app is enforced**; tokens issued before it stay good on the mobile host.
+- **Revocation**: the session stamp in the token must still be the user's (read at most once a minute per host). A
+  password change or a block that bumps the stamp ends the user's app tokens within a minute. If the stamp cannot be
+  read (e.g. the column is missing), the error is logged and tokens are not refused for it.
+
+What a call is checked against (the identity the action acts on):
+
+| Where | App | Token must match |
+|---|---|---|
+| `[DeviceBound]` actions of the MSME and RA apps (Main mobile host; portal `Pay/*`, `SurveillancePay/*`, `ConsultancyPay/*`, `Msme/Get*PaymentDetailsByType`) | `MSME`, `RA` | unit = the ZED ID of the bound model |
+| `[DeviceBound]` actions of the site assessor and consultant apps (`SA/*`; portal `FinancialAssistance/SubmitOpenMeeting`) | `SA` | user = `saId` / `userName` of the bound model (the allotment check of each action covers the unit) |
+| Bronze surveillance app, every call after login that names a unit (`Surveillance/*`) | `SURV` | user = the unit's allotted desktop assessor, unit = the ZED ID of the call |
+| Consultancy portal `FinancialAssistance/GetDetails`, `ValidateEvidence`, `updatetechnology`, `FinalSubmit` (consultant app, DFO) | `SA` | user = the application's allotted DFO, unit = the ZED ID of the call |
+| `Msme/SubmitSurveillancePhoto` (Surveillance mobile host) | `MSME` | unit; no MSME signs in on that deployment, so it can only be monitored |
+
+### Modes
+
+`Mobile:AppTokens:Mode` = `Off` | `Monitor` | `Enforce` (default **Monitor**), and per app
+`Mobile:AppTokens:Apps:<MSME|SA|RA|SURV>`, which wins over the mode. Set them on the mobile host **and** on the portal
+of the same deployment (the portal checks the app's calls to it). Each deployment has its own settings, so `SA` on the
+Consultancy hosts is the consultant app and on Main / Surveillance the site assessor app.
+
+- `Monitor`: the token is checked when present; a missing, invalid, expired, revoked or other user's token is logged and
+  recorded in `dbo.MobileDeviceEvents` (`Outcome` `TokenMissing`, `TokenInvalid`, `TokenExpired`, `TokenOtherUser`,
+  `TokenOtherApp`, `TokenRevoked`; at most one row per user, path and outcome every 10 minutes), and the call goes on.
+- `Enforce`: those calls are refused (always recorded, `Refused = 1`).
+- `Off`: no check (logins still answer `appToken`).
+
+The mode is configuration only. The Admin's existing switches (Administration → API Integrations, the partner API
+groups behind "switch: Udyami Bharat sign-in") are on/off flags of the main portal's partner APIs, stored in the main
+database; a three-way mode per app and per deployment (three databases) does not fit them without a new screen.
+
+### Enforcement plan, per app
+
+| App | Can send the token? | Mode |
+|---|---|---|
+| ZED MSME app (store build) | **No**: its source was never delivered | `MSME`: **Monitor for good**, until a rebuilt MSME app is on the Play Store |
+| Remote assessment app (`RA/*`) | **No**: no source | `RA`: **Monitor for good**, until rebuilt |
+| ZED Surveillance (Bronze, `com.qci.zed.bronzesurveillance`) | Yes, from the new build | `SURV` on the Surveillance mobile host: Enforce once the new build is on the Play Store |
+| ZED SA (site assessor app) | Yes, from the new build | `SA` on the Main and Surveillance mobile hosts: Enforce once the new build is on the Play Store |
+| ZED Consultancy (consultant and DFO / TU verifier) | Yes, from the new build | `SA` on the Consultancy mobile host **and** the Consultancy portal: Enforce once the new build is on the Play Store |
+
+Before switching an app to Enforce: set `Mobile:AppTokenKey` (Common), run the session-stamp migration, publish the new
+build, then watch Monitor until `TokenMissing` comes only from old installs:
+
+```sql
+SELECT AppKind, Outcome, COUNT(*) n, COUNT(DISTINCT UserKey) users
+FROM dbo.MobileDeviceEvents WHERE Outcome LIKE 'Token%' AND At > DATEADD(day, -7, SYSDATETIME())
+GROUP BY AppKind, Outcome ORDER BY n DESC;
+```
+
+Then also set `Mobile:CheckSaVersion` / `Mobile:SaVersion` (or the app's own version gate) so that old installs are told
+to update instead of being signed out on every call. Keep `MSME` and `RA` on Monitor: an Enforce there would sign out
+every user of the store apps.
 
 ## Check on the live services before cut-over
 
@@ -163,7 +246,11 @@ Open before go-live:
   mobile responses, the reconciliation URL/key for mobile orders, and whether the SDK accepts 36-character order
   ids (surveillance orders use GUIDs; CCAvenue documents 30).
 - Rotate the mobile access code/working key (they were in Web.config) and set them as secrets.
-- Set `Mobile:DeviceBinding` on the portal too (it defaults to Monitor).
+- Set `Mobile:DeviceBinding` and `Mobile:AppTokens:*` on the portal too (they default to Monitor). The fee lists
+  (`Msme/GetPaymentDetailsByType`, `SurveillancePay/GetSurveillancePaymentDetailsByType`,
+  `Msme/GetConsultancyPaymentDetailsByType`) carry the unit's PAN (finding H5): they are limited to 10 calls a minute per
+  address (`Sensitive`; the portal answers HTTP 429 beyond that) and check the MSME app's token (Monitor: the store app
+  sends none).
 
 ## Configuration
 
@@ -174,6 +261,9 @@ Open before go-live:
 | `Mobile:StorageRoot` | The old services site's folder (holds `Photos/`, `SaPhotos/`, `Videos/`) |
 | `Mobile:Culture` | Regional format for dates sent as text (default `en-US`) |
 | `Mobile:DeviceBinding`, `Mobile:RefuseMissingDevice` | See above |
+| `Mobile:AppTokens:Mode`, `Mobile:AppTokens:Apps:<app>` | App sign-in token: Off / Monitor (default) / Enforce, per app `MSME`, `SA`, `RA`, `SURV` (see "App sign-in token") |
+| `Mobile:AppTokenDays` | Lifetime of an app token (default 30) |
+| `Mobile:AppTokenKey` | Secret, base64 of at least 32 bytes; the same on the mobile hosts and the portals (settings `Common`) |
 | `Mobile:CheckMsmeVersion`, `Mobile:MsmeVersion` | Version gate for the MSME app (old `checkMsmeVersion`/`msmeVersionNo`) |
 | `Mobile:CheckSaVersion`, `Mobile:SaVersion` | Site assessor app (old `checkSAVersion`/`SAVersionNo`) |
 | `Mobile:CheckRaVersion`, `Mobile:RaVersion` | Remote assessment app |
@@ -242,8 +332,10 @@ call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`
   | ValidateEvidence | updatetechnology | FinalSubmit` (no anti-forgery token, legacy JSON). The main mobile deployment
   serves `GET /mobileapi/photos/{zedId}/TechnologyUpgradation/{photoId}`. All require the unit's allotted DFO to have
   signed in to the consultant app for that unit within `Consultancy:TuApp:LoginHours` (`dbo.V4AppSessions`, migration
-  0010). Reads at VerificationStatus 2–3, writes at 2. FinalSubmit runs as that DFO, role 3. The app sends no identity on
-  these calls: until a token release, anyone who knows the ZED ID can act during a DFO's window.
+  0010). Reads at VerificationStatus 2–3, writes at 2. FinalSubmit runs as that DFO, role 3. The rebuilt app sends the
+  app token: all four calls check it against that DFO and the unit (`Mobile:AppTokens:Apps:SA` on the Consultancy
+  portal; while it is Monitor, anyone who knows the ZED ID can still act during a DFO's window). `GetDetails` (the
+  unit's PAN and bank details, finding H5) is also limited to 10 calls a minute per address (`Sensitive`).
 - **deviceInfo.** None of the consultant, site assessor or Impact apps sends it. Under `Enforce` their calls are "Missing".
 - The Impact apps' own APIs (`/impactmobileapi`, `/liamobileapi`) are not V4; they run on the same IIS site and
   `Install-ZedIis.ps1` leaves them alone.
@@ -289,7 +381,7 @@ file in `file_data`), stored as `SaPhotos/{ZedId}/{level}/SiteTour/{photoId}.jpg
 `SP_APP_SYNC_SUVEILLANCE_PHOTOS` (finding #108). Before anything is written: level Silver or Gold, a site assessment
 allotted and not certified, status 9–13 (else the procedure's "Cannot Sync Now…" text), a JPEG or PNG file within
 `Mobile:MaxFileBytes`, plain names only. Device-bound to the ZED ID (app `MSME`); MSMEs never sign in on this
-deployment, so in practice this records nothing until a v2 token exists.
+deployment, so no app token can exist for it: keep `MSME` on Monitor on the Surveillance mobile host.
 
 ### Not served on this deployment
 
@@ -309,7 +401,8 @@ Its `msme/*` and `RA/*` calls are unreachable, since the login status carries no
 
 ## v2: token-based API (for the next app release)
 
-Design, for the app vendor. Not built yet.
+Design, for the app vendor. Not built yet. The v1 addresses now have the app sign-in token above, which the rebuilt
+apps send; v2 remains the design for short-lived access tokens with refresh.
 
 - **Base address** `/v2/`, JSON in camelCase, errors as RFC 7807 problem details. Uploads are
   multipart only (no base64 in JSON), with per-type size and extension limits.

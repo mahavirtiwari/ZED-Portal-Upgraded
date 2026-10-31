@@ -115,6 +115,18 @@ public static class ZedConfigurationCheck
                 if (Uri.TryCreate(config[key] ?? DefaultFor(key), UriKind.Absolute, out var u) && u.Host.Equals(LiveHost, StringComparison.OrdinalIgnoreCase))
                     problems.Add($"{key} points at the live site ({LiveHost}): set this environment's own address");
 
+        // App sign-in tokens (finding C1): enforcing them needs the shared key, or every app call the portal checks would be refused.
+        var tokens = config.GetSection("Mobile:AppTokens").Get<Zed.Core.Mobile.AppTokenOptions>() ?? new();
+        var enforced = tokens.Mode == Zed.Core.Mobile.AppTokenMode.Enforce || tokens.Apps.Values.Any(m => m == Zed.Core.Mobile.AppTokenMode.Enforce);
+        var tokenKey = config["Mobile:AppTokenKey"];
+        if (!string.IsNullOrWhiteSpace(tokenKey))
+        {
+            var bytes = new byte[tokenKey.Length];
+            if (!Convert.TryFromBase64String(tokenKey.Trim(), bytes, out var length) || length < 32)
+                problems.Add("Mobile:AppTokenKey must be base64 of at least 32 random bytes");
+        }
+        else if (enforced) problems.Add("Mobile:AppTokens is set to Enforce, but Mobile:AppTokenKey is not set");
+
         if (kind == ZedHostKind.Mobile)
         {
             Folder("Mobile:StorageRoot", "App_Data/mobile-storage");

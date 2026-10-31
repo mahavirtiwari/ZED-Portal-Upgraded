@@ -44,8 +44,9 @@ public sealed class StaffAccountsTests : IDisposable
     }
 
     [Fact]
-    public async Task Creates_an_MSME_DFO_for_a_state_and_mails_the_password()
+    public async Task Creates_an_MSME_DFO_for_a_state_and_mails_a_set_password_link()
     {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var noState = await admin.PostAsJsonAsync("/api/staff/accounts", new { userId = "DFOUP01", roleId = 6, userName = "DFO Lucknow", email = "dfo@zed.test", mobileNo = "9876543210" });
         Assert.Equal("Please select the state of the MSME DFO.", await noState.ProblemTitle());
@@ -65,6 +66,26 @@ public sealed class StaffAccountsTests : IDisposable
         Assert.Equal("dfo@zed.test", mail.To);
         Assert.Contains("MSME DFO", mail.HtmlBody);
         Assert.Contains("DFOUP01", mail.HtmlBody);
+        // No password (it was generated and hashed; nobody is told it): a one-time link of 24 hours instead.
+        Assert.DoesNotContain(">Password<", mail.HtmlBody);
+        var link = Assert.Single(resets.Rows);
+        Assert.Equal(("DFOUP01", "ADMIN1"), (link.UserId, link.RequestedBy));
+        Assert.Contains("reset-password#token=", mail.HtmlBody);
+        Assert.Contains("within 24 hours", mail.HtmlBody);
+    }
+
+    [Theory]
+    [InlineData(7, "MASTER09")]
+    [InlineData(10, "SUPER09")]
+    public async Task Master_Admin_and_Super_Admin_logins_still_get_the_password(int roleId, string userId)
+    {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        (await admin.PostAsJsonAsync("/api/staff/accounts", new { userId, roleId, userName = "New Admin", email = "new@zed.test", mobileNo = "9876543210" })).EnsureSuccessStatusCode();
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.Contains(">Password<", mail.HtmlBody);
+        Assert.DoesNotContain("reset-password#token=", mail.HtmlBody);
+        Assert.Empty(resets.Rows);
     }
 
     [Fact]

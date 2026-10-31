@@ -32,6 +32,7 @@ public sealed partial class ConsultancySAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
+    AppTokens tokens,
     LoginThrottle throttle,
     MobileStorage storage,
     ILogger<ConsultancySAController> log) : LegacyMobileController
@@ -261,6 +262,9 @@ public sealed partial class ConsultancySAController(
 
         var userKey = first.Text("UserId") is { Length: > 0 } id ? id : userId;
         await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        // Consultant and DFO alike; the DFO's technology upgradation calls to the consultancy portal check it against the
+        // unit (TuAppController), the SA calls against the user named in them.
+        response.appToken = await tokens.IssueAsync(App, userKey, request.zedId, ct);
         log.LogInformation("Consultancy app login ({Branch}) for {UserId} on {ZedId}", dfo ? "DFO" : "consultant", userKey, request.zedId);
         return LegacyJson(response);
     });

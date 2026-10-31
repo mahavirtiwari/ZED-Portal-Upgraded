@@ -8,7 +8,8 @@ namespace Zed.Portal.Features.Staff.Users;
 /// <summary>
 /// Sends the user-management e-mails (port of UserController.SendRegistrationMail and
 /// BlockOrUnblockBronzeAssessmentMail). The legacy code read the password back from Users and
-/// re-sent it on every unblock and update; here it is only sent once, in the welcome mail of a new user.
+/// re-sent it on every unblock and update; here a new user's welcome mail carries a one-time link to set the password
+/// (<see cref="StaffWelcomeLogin"/>; the password itself only for Master Admin and Super Admin accounts).
 /// </summary>
 public sealed class StaffUserMail(
     IEmailSender email,
@@ -41,5 +42,30 @@ public sealed class StaffUserMail(
             log.LogError(ex, "Sending the {Template} mail failed", typeof(TTemplate).Name);
             return false;
         }
+    }
+
+    /// <summary>
+    /// A welcome mail: to the user only, then (when Email Settings has one) the office mailbox its own copy, with OfficeCopy
+    /// set and neither the password nor the set-password link (as the MSME registration mail; the legacy mail had the
+    /// office in Cc). True when the user's mail was sent. The template needs the parameters Password, SetPasswordUrl and OfficeCopy.
+    /// </summary>
+    public async Task<bool> SendWelcomeAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters, CancellationToken ct)
+        where TTemplate : IComponent
+    {
+        var sent = await SendAsync<TTemplate>(to, subject, parameters, ct, copyOffice: false);
+        try
+        {
+            if (await addresses.GetAsync(EmailAddresses.RegistrationCc, ct) is { } office)
+            {
+                var copy = new Dictionary<string, object?>(parameters) { ["Password"] = null, ["SetPasswordUrl"] = null, ["OfficeCopy"] = true };
+                copy["PublicBaseUrl"] = PublicBaseUrl;
+                await email.SendAsync(new EmailMessage(office, subject, await templates.RenderAsync<TTemplate>(copy), EmailProfiles.Login), ct);
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.LogError(ex, "Sending the office copy of the {Template} mail failed", typeof(TTemplate).Name);
+        }
+        return sent;
     }
 }
