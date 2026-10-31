@@ -248,7 +248,7 @@ public sealed class FeesTests : IDisposable
     }
 
     [Theory]
-    [InlineData("""{"certification":"Bronze","category":3,"additionalShare":5}""", "category")]
+    [InlineData("""{"certification":"Bronze","category":9,"additionalShare":5}""", "category")]
     [InlineData("""{"certification":"Bronze","category":1}""", "additional share")]
     [InlineData("""{"certification":"Bronze","category":0,"baseShare":101}""", "between 0 and 100")]
     [InlineData("""{"certification":"Bronze","category":0,"baseShare":90}""", "would be 110%")]
@@ -291,11 +291,11 @@ public sealed class FeesTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal("Fees added for Micro, Small, Medium Gold.", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
 
-        // One transaction per type: main's three categories, each without and with the joining reward.
+        // One transaction per type: the nine categories, each without and with the joining reward.
         var batches = Inserts();
         Assert.Equal(3, batches.Count);
         var micro = batches[0];
-        Assert.Equal(6, System.Text.RegularExpressions.Regex.Matches(micro.Name, "INSERT INTO AssessmentFee").Count);
+        Assert.Equal(18, System.Text.RegularExpressions.Regex.Matches(micro.Name, "INSERT INTO AssessmentFee").Count);
         Assert.StartsWith("SET XACT_ABORT ON; BEGIN TRANSACTION;", micro.Name);
         Assert.Equal("Micro", FakeSql.Arg(micro.Args, "EnterpriseTypee0"));
         Assert.Equal("Gold", FakeSql.Arg(micro.Args, "Certification0"));
@@ -306,9 +306,11 @@ public sealed class FeesTests : IDisposable
         Assert.Equal(2360m, Dec(micro.Args, "ApplicantContributionAfterSubsidy0"));
         Assert.Equal(1000m, Dec(micro.Args, "Coupon1"));
         Assert.Equal(10800m, Dec(micro.Args, "TotalAfterCoupon1"));
-        Assert.Equal(95m, Dec(micro.Args, "SubsidyPercentage2"));  // SC / ST: 80 + 15
+        Assert.Equal(95m, Dec(micro.Args, "SubsidyPercentage2"));  // SC: 80 + 15
         Assert.Equal(90m, Dec(micro.Args, "SubsidyPercentage4"));  // woman-owned: 80 + 10
         Assert.Equal("2", FakeSql.Arg(micro.Args, "SpecialCategory5"));
+        Assert.Equal("8", FakeSql.Arg(micro.Args, "SpecialCategory17")); // North Eastern Region
+        Assert.Equal(80m, Dec(micro.Args, "SubsidyPercentage16"));     // no additional share given
         Assert.Equal("Small", FakeSql.Arg(batches[1].Args, "EnterpriseTypee0"));
         Assert.Equal("Medium", FakeSql.Arg(batches[2].Args, "EnterpriseTypee0"));
     }

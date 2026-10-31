@@ -67,7 +67,7 @@ describe('FeeStructurePage', () => {
     expect((el.querySelector('#fs-fee') as HTMLInputElement).value).toBe('10000');
     expect((el.querySelector('#fs-reward') as HTMLInputElement).value).toBe('1000');
     const rows = structure();
-    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SC/ST', 'WOM']);
+    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SC', 'WOM']);
     expect(rows[0]).toContain('80%');
     expect(rows[0]).toContain('₹ 8,000.00'); // the Government's share of 10,000 at 80%
     expect(rows[0]).toContain('₹ 2,360.00'); // the MSME's share with GST
@@ -193,7 +193,7 @@ describe('FeeStructurePage', () => {
     await settle();
     const add = el.querySelector('section[aria-labelledby="fs-add"]')!;
     expect(add.textContent).toContain('No fees are set for Micro ZED-X');
-    expect(add.textContent).toContain('Creates 6 rows for Micro ZED-X');
+    expect(add.textContent).toContain('Creates 18 rows for Micro ZED-X');
     expect([...add.querySelectorAll('label')].map((l) => l.textContent!.trim())).toContain('Additional subsidy, WOM (%)');
 
     button('Add Fees', add).click();
@@ -261,7 +261,7 @@ describe('FeeStructurePage on Consultancy', () => {
     expect(el.querySelector('button[data-level="2"]')!.textContent).toContain('No fee set for Micro');
     const levels = [...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-level')].map((c) => c.textContent!.trim());
     expect(levels).toEqual(['Silver', 'Silver', 'Silver', 'Gold']);
-    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SPL', 'GEN']);
+    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SC', 'GEN']);
     // The milestone fee only: its joining reward stays as stored.
     expect(el.querySelector('#fs-reward')).toBeNull();
   });

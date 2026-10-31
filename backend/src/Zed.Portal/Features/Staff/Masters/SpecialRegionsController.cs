@@ -11,8 +11,10 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// aspirational districts, LWE districts, Himalayan states, island territories and the North Eastern Region, each entry
 /// enabled or disabled. Kept in the existing tables (migration 0024): a column per region on dbo.Districts (a district
 /// entry) and on dbo.States (a whole state) - NULL not listed, 0 listed and off, 1 listed and on. The payment
-/// procedures read Districts.IsAspirationalDt (SP_MSME_GET_PAYMENT_DETAILS: special category 1), so after every change
-/// that flag is set for exactly the districts an enabled entry covers: their own column or their state's. Main only.
+/// procedures of the three portals read these columns through dbo.FN_V4_SUBSIDY_CATEGORY (migration 0041: categories
+/// 4 aspirational, 5 LWE, 6 Himalayan, 7 island, 8 North Eastern; a unit is charged the one it fits with the highest
+/// subsidy). Districts.IsAspirationalDt, which the older procedures read, is still set after every change for exactly
+/// the districts an enabled entry covers: their own column or their state's. Main only.
 /// </summary>
 [Route("api/staff/masters/regions")]
 [StaffRoles(UserRole.Admin)]

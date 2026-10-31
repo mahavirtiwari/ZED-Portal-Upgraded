@@ -343,7 +343,7 @@ public sealed class ConsultancyStaffTests : IDisposable
     }
 
     [Fact]
-    public async Task Fees_of_an_empty_milestone_are_added_for_silver_and_gold_with_the_general_row_as_null()
+    public async Task Fees_of_an_empty_milestone_are_added_for_silver_and_gold_in_every_category()
     {
         _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets([FeeRow(1, "Silver", "1", null)]);
         var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
@@ -356,10 +356,10 @@ public sealed class ConsultancyStaffTests : IDisposable
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var batch = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal));
-        // Two categories x Silver and Gold x without and with the reward; consultancy's general row is SpecialCategory NULL.
-        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
+        // Nine categories x Silver and Gold x without and with the reward (migration 0041: the general row is 0 here too).
+        Assert.Equal(36, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
         Assert.Contains(", MileStone)", batch.Name);
-        Assert.Null(FakeSql.Arg(batch.Args, "SpecialCategory0"));
+        Assert.Equal("0", FakeSql.Arg(batch.Args, "SpecialCategory0"));
         Assert.Equal("Silver", FakeSql.Arg(batch.Args, "Certification0"));
         Assert.Equal("Gold", FakeSql.Arg(batch.Args, "Certification2"));
         Assert.Equal("2", FakeSql.Arg(batch.Args, "MileStone0"));

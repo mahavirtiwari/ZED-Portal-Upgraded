@@ -1,6 +1,6 @@
 import { DecimalPipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
-import { AdminPortal, AdminPortalService, PortalSwitchComponent } from '../admin-portal';
+import { AdminPortalService, PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -13,10 +13,24 @@ const HANDHOLDING_LEVELS = ['Silver', 'Gold'];
 /** The name shown for a level's code (ZEDX is ZED-X, migration 0028). */
 export const LEVEL_NAMES: Record<string, string> = { ZEDX: 'ZED-X' };
 
-/** AssessmentFee.SpecialCategory of the payment procedures: what the code and name of each category are on this portal. */
-const categoriesOf = (portal: AdminPortal): Record<number, { code: string; name: string }> => portal === 'main'
-  ? { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SC/ST', name: 'SC / ST-owned or aspirational district MSME' }, 2: { code: 'WOM', name: 'Woman-owned MSME' } }
-  : { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SPL', name: 'Woman / SC / ST-owned or aspirational district MSME' } };
+/**
+ * AssessmentFee.SpecialCategory, the same on the three portals (migration 0041): the payment charges a unit the category it
+ * fits with the highest subsidy; the regions come from Admin → Masters → Subsidy Regions.
+ */
+const CATEGORIES: Record<number, { code: string; name: string }> = {
+  0: { code: 'GEN', name: 'General' },
+  1: { code: 'SC', name: 'SC-owned MSME' },
+  3: { code: 'ST', name: 'ST-owned MSME' },
+  2: { code: 'WOM', name: 'Woman-owned MSME' },
+  4: { code: 'ASP', name: 'Aspirational district' },
+  5: { code: 'LWE', name: 'LWE district' },
+  6: { code: 'HIM', name: 'Himalayan region' },
+  7: { code: 'ISL', name: 'Island territory' },
+  8: { code: 'NER', name: 'North Eastern Region' },
+};
+/** The order the categories are listed in: General, the owners' categories, then the regions. */
+const CATEGORY_ORDER = [0, 1, 3, 2, 4, 5, 6, 7, 8];
+const categoryRank = (category: number) => { const i = CATEGORY_ORDER.indexOf(category); return i < 0 ? 99 : i; };
 
 /** A row of the Payment Structure: its fee row and what its subsidy is made of. */
 interface StructureRow {
@@ -179,7 +193,7 @@ interface SharePreview {
               @for (s of structure(); track s.row.id) {
                 <tr>
                   @if (consultancy) { <td class="fs-level" data-label="Level">{{ s.row.certification }}</td> }
-                  <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1" [class.cat-2]="s.category >= 2">{{ s.code }}</span></td>
+                  <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1 || s.category === 3" [class.cat-2]="s.category === 2" [class.cat-region]="s.category >= 4">{{ s.code }}</span></td>
                   <td class="fs-cat">
                     <strong>{{ s.name }}</strong>
                     @if (s.row.isCouponRow) { <small class="d-block reward-note">with joining reward ₹ {{ s.row.coupon | number: '1.0-2' }}</small> }
@@ -224,7 +238,7 @@ interface SharePreview {
               @for (s of structure(); track s.row.id) {
                 <tr>
                   @if (consultancy) { <td class="fs-level" data-label="Level">{{ s.row.certification }}</td> }
-                  <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1" [class.cat-2]="s.category >= 2">{{ s.code }}</span></td>
+                  <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1 || s.category === 3" [class.cat-2]="s.category === 2" [class.cat-region]="s.category >= 4">{{ s.code }}</span></td>
                   <td class="fs-cat">{{ s.name }}@if (s.row.isCouponRow) { <small class="d-block reward-note">with joining reward</small> }</td>
                   <td class="text-end" data-label="MSME taxable">₹ {{ s.row.subsidyPer | number: '1.2-2' }}</td>
                   <td class="text-end" data-label="TDS 194C">₹ {{ s.row.tds15 | number: '1.2-2' }}</td>
@@ -416,6 +430,7 @@ interface SharePreview {
       background: #eef6f6; color: #2f7c83; white-space: nowrap; }
     .cat-chip.cat-1 { background: #f1f0fb; color: #3f3a7a; }
     .cat-chip.cat-2 { background: #fff4d6; color: #8a6100; }
+    .cat-chip.cat-region { background: #eaf6ee; color: #1e7a3c; }
     .reward-note { color: #3f3a7a; font-weight: 600; }
     .fs-share { color: #2f7c83; }
 
@@ -474,9 +489,9 @@ export class FeeStructurePage {
   private readonly portal = inject(AdminPortalService).effective();
   /** Consultancy: the handholding fee per milestone; "level" below is then the milestone. */
   protected readonly consultancy = this.portal === 'consultancy';
-  private readonly categories = categoriesOf(this.portal);
-  /** The portal's special categories (the Add fees form's additional shares). */
-  protected readonly specialCategories = Object.entries(this.categories).filter(([id]) => id !== '0').map(([id, c]) => ({ id: Number(id), ...c }));
+  private readonly categories = CATEGORIES;
+  /** The special categories, in their order (the Add fees form's additional shares). */
+  protected readonly specialCategories = CATEGORY_ORDER.filter((id) => id !== 0).map((id) => ({ id, ...CATEGORIES[id] }));
   private readonly api = inject(FeesApi);
   private readonly units: readonly string[] = this.consultancy ? MILESTONES : LEVELS;
 
@@ -523,7 +538,7 @@ export class FeeStructurePage {
         const taxableBase = row.isCouponRow ? (row.assessmentFeeAfterCoupon ?? 0) : (row.assessmentFee ?? 0);
         return { row, category, code: c.code, name: c.name, share, additional: category === 0 ? 0 : share - base, goiShare: taxableBase - (row.subsidyPer ?? 0) };
       })
-      .sort((a, b) => levelOrder(a.row.certification) - levelOrder(b.row.certification) || a.category - b.category
+      .sort((a, b) => levelOrder(a.row.certification) - levelOrder(b.row.certification) || categoryRank(a.category) - categoryRank(b.category)
         || Number(a.row.isCouponRow) - Number(b.row.isCouponRow) || a.row.id - b.row.id);
   });
 
@@ -537,8 +552,7 @@ export class FeeStructurePage {
     if (this.rejected()) return `Creates one row for ${name}: the full fee with GST, no subsidy and no joining reward.`;
     const levels = this.consultancy ? 2 : 1;
     const count = Object.keys(this.categories).length * 2 * levels;
-    const cats = Object.values(this.categories).map((c) => c.name.split(' ')[0]).join(' and ');
-    return `Creates ${count} rows for ${name}${this.consultancy ? ' (Silver and Gold)' : ''}: ${cats}, each without and with the joining reward. That's what the payment page reads.`;
+    return `Creates ${count} rows for ${name}${this.consultancy ? ' (Silver and Gold)' : ''}: the ${Object.keys(this.categories).length} subsidy categories, each without and with the joining reward. That's what the payment page reads.`;
   }
 
   protected readonly editing = signal<ShareEdit | null>(null);

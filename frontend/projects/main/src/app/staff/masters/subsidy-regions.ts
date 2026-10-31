@@ -36,7 +36,7 @@ export interface RegionsResponse {
   regions: RegionRow[];
   states: Option[];
   subsidyDistricts: number;
-  /** V4 one Admin: the other portals whose districts differ from these (their payments read their own copy). */
+  /** V4 one Admin: the other portals whose district copies differ from these (their state fee reads their own copy). */
   otherPortals?: { portal: string; districts: number }[] | null;
 }
 
@@ -66,7 +66,7 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
 
     @if (otherPortals().length) {
       <div class="alert alert-warning copy-bar" role="status">
-        <span>The handholding and surveillance payments read their own copy of the districts.
+        <span>The handholding and surveillance payments take the subsidy regions from this page, but keep their own copy of the districts (for the state fee).
           @for (o of otherPortals(); track o.portal) { <strong>{{ o.portal }}</strong>: {{ o.districts }} district{{ o.districts === 1 ? '' : 's' }} differ{{ o.districts === 1 ? 's' : '' }}. }</span>
         <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="copyToOthers()">UPDATE THEM NOW</button>
       </div>

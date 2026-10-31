@@ -89,17 +89,18 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     }
 
     /// <summary>
-    /// The subsidy categories of the payment procedures (main's SP_MSME_GET_PAYMENT_DETAILS: AssessmentFee.SpecialCategory = 2
-    /// for a woman-owned unit, 1 for an SC / ST-owned unit or one in an aspirational district, else 0; Surveillance's put
-    /// woman-owned units in 1 too; no value is the general row).
+    /// The subsidy categories (AssessmentFee.SpecialCategory), the same on the three portals since migration 0041: 0 General,
+    /// 1 SC-owned, 2 woman-owned, 3 ST-owned, 4 aspirational district, 5 LWE district, 6 Himalayan region, 7 island
+    /// territory, 8 North Eastern Region. The payment procedures charge a unit the category it fits with the highest
+    /// subsidy (dbo.FN_V4_SUBSIDY_CATEGORY; the regions from Admin → Masters → Subsidy Regions). No value is the general row.
     /// </summary>
-    public static readonly int[] Categories = [0, 1, 2];
+    public static readonly int[] Categories = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 
     public static int CategoryOf(FeeRow r) => r.SpecialCategory ?? 0;
 
-    /// <param name="Category">0 general (the base share), 1 SC / ST / aspirational district, 2 woman-owned.</param>
+    /// <param name="Category">0 general (the base share), or one of the special <see cref="Categories"/>.</param>
     /// <param name="BaseShare">General: the subsidy every unit of the type gets (%); the other categories keep their additional share on top.</param>
-    /// <param name="AdditionalShare">Categories 1 and 2: the share on top of the base (%).</param>
+    /// <param name="AdditionalShare">A special category: the share on top of the base (%).</param>
     /// <param name="Certification">The level, or on Consultancy the milestone, whose share changes.</param>
     /// <param name="AllLevels">The same shares for every level (Bronze, Silver, Gold, ZED-X), or on Consultancy every milestone.</param>
     public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels);
@@ -180,8 +181,6 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
 
     private string GroupName(string group) => ByMilestone ? "milestone " + group : group == "ZEDX" ? "ZED-X" : group;
 
-    /// <summary>The subsidy categories of each portal's payment procedure (AssessmentFee.SpecialCategory).</summary>
-    public static int[] CategoriesOf(PortalSystem system) => system == PortalSystem.Main ? [0, 1, 2] : [0, 1];
 
     /// <summary>The new rows of <paramref name="type"/> for a level (or milestone); validated, with every amount worked out.</summary>
     public static (List<FeeRow>? Rows, string? Error) NewRows(string type, string group, AddRequest req, PortalSystem system)
@@ -212,7 +211,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var reward = req.Reward ?? 0m;
         if (FeeCalculator.AmountError(reward, "joining reward") is { } rewardError) return (null, rewardError);
         if (reward > FeeCalculator.Round(fee * (1 + FeeCalculator.GstRate))) return (null, "The joining reward cannot be more than the fee with GST.");
-        foreach (var category in CategoriesOf(system))
+        foreach (var category in Categories)
         {
             var additional = 0m;
             if (category != 0)
@@ -223,12 +222,10 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             }
             var share = req.GeneralShare!.Value + additional;
             if (share > 100) return (null, $"The subsidy of category {category} would be {share:0.##}%: it must be at most 100%.");
-            // Consultancy's procedure reads the general row as SpecialCategory NULL (a bit column there), the others as 0.
-            int? stored = consultancy && category == 0 ? null : category;
             foreach (var level in levels)
                 foreach (var coupon in new decimal?[] { null, reward })
                 {
-                    var (row, error) = FeeCalculator.Recalculate(Blank(level, stored, share, coupon), fee, coupon, rejected: false);
+                    var (row, error) = FeeCalculator.Recalculate(Blank(level, category, share, coupon), fee, coupon, rejected: false);
                     if (error is not null) return (null, error);
                     rows.Add(row!);
                 }
