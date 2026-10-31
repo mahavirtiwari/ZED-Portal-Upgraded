@@ -157,6 +157,11 @@ public enum CcAvenueResult
     AlreadyPaid,
     /// <summary>Recorded as not paid: the gateway's own failure/abort, or a different amount.</summary>
     Failed,
+    /// <summary>
+    /// A success the database did not record (its procedure failed: a deadlock, a timeout). Nothing is completed: no receipt,
+    /// mail or ERP posting; the gateway's reconciliation records it later.
+    /// </summary>
+    NotRecorded,
     /// <summary>Recorded as paid; receipt, mail and ERP done.</summary>
     Paid,
 }
@@ -222,8 +227,22 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
         }
         catch (DbException ex)
         {
-            // The procedure raises an error for a repeated response; the first one was recorded.
+            // The procedure raises an error for a repeated response. Complete only a payment that is recorded: a repeat that
+            // lost the race to the first response is that one's (it completes it), and a failed recording is left to the
+            // reconciliation; completing either would send a second receipt, mail and ERP invoice, or one for an unpaid level.
             log.LogWarning(ex, "{Procedure} refused order {OrderId}", module.Procedure, orderId);
+            if (success)
+            {
+                var now = (await db.QuerySqlAsync<PendingOrder>(
+                    $"SELECT ZedId, Certification, Amount, PaymentStatus FROM {module.Orders} WHERE TransactionId = @TransactionId",
+                    new { TransactionId = new Dapper.DbString { Value = orderId, IsAnsi = true, Length = 50 } }, ct)).FirstOrDefault();
+                if (string.Equals(now?.PaymentStatus, "Success", StringComparison.OrdinalIgnoreCase))
+                    return new(CcAvenueResult.AlreadyPaid, certification, null, r);
+                log.LogError("CCAvenue success for order {OrderId} ({ZedId}/{Certification}) was not recorded; left to the reconciliation",
+                    orderId, order.ZedId, certification);
+                return new(CcAvenueResult.NotRecorded, certification,
+                    "Your payment was received, but it could not be recorded yet. It will be updated automatically; if your application does not show it within a day, please contact zed.support@qcin.org.", r);
+            }
         }
 
         if (!success)

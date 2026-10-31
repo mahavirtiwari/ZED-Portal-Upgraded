@@ -280,7 +280,7 @@ public sealed class MilestoneReviewTests : IDisposable
         // "Display it" is already in the plan.
         Assert.Equal(["Write the policy", "Train the staff"], CallsTo("SP_CONSULTANCY_INSERT_BULLETS").Select(a => FakeSql.Arg(a, "BulletPoints")));
         Assert.All(CallsTo("SP_CONSULTANCY_INSERT_BULLETS"), a => Assert.Equal("HandholdingActionPlan", FakeSql.Arg(a, "ReqType")));
-        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Baseline) && FakeSql.Arg(c.Args, "Id") == "802");
+        Assert.Contains(_host.Sql.Calls, c => c.Name.Contains(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Baseline, 1)) && FakeSql.Arg(c.Args, "Id1") == "802");
         // Handholding sets no conformance.
         Assert.Empty(CallsTo("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"));
 
@@ -288,19 +288,19 @@ public sealed class MilestoneReviewTests : IDisposable
         _milestone = 2;
         Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
             new { answers = new object[] { new { id = 801, answer = "Partial" }, new { id = 802, answer = "Yes" } } })).StatusCode);
-        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review1));
+        Assert.Contains(_host.Sql.Calls, c => c.Name.Contains(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review1, 0)));
         Assert.Equal(2, CallsTo("SP_CONSULTANCY_INSERT_BULLETS").Count());
         Assert.Equal(HttpStatusCode.Forbidden, (await (await As(CoConsultant)).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
         _milestone = 3;
         Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
             new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } })).StatusCode);
-        Assert.Contains(_host.Sql.Calls, c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review2));
+        Assert.Contains(_host.Sql.Calls, c => c.Name.Contains(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Review2, 0)));
         // Later milestones answer no checkpoints.
         _milestone = 4;
         var calls = _host.Sql.Calls.Count;
         Assert.NotEqual(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/11/checkpoints",
             new { answers = new object[] { new { id = 801, answer = "Yes" }, new { id = 802, answer = "Yes" } } })).StatusCode);
-        Assert.DoesNotContain(_host.Sql.Calls.Skip(calls), c => c.Name.StartsWith("UPDATE dbo.MsmeOptions", StringComparison.Ordinal));
+        Assert.DoesNotContain(_host.Sql.Calls.Skip(calls), c => c.Name.Contains("UPDATE dbo.MsmeOptions", StringComparison.Ordinal));
     }
 
     [Fact]

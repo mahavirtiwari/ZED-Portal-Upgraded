@@ -225,28 +225,58 @@ public static class CheckpointAnswers
 
     // ------------------------------------------------------------------ write
 
-    internal static string UpdateSql(Stage stage) => stage switch
+    internal static string UpdateSql(Stage stage, int i) => stage switch
     {
-        Stage.Desktop => Update("DaAnswer = @Answer, DaActions = @Actions, DaRemarks = @Remarks"),
-        Stage.Site => Update("SaAnswer = @Answer, SaActions = @Actions, SaRemarks = @Remarks"),
-        Stage.Baseline => Update("HhAnswer = @Answer, HhActions = @Actions, HhRemarks = @Remarks"),
-        Stage.Review1 => Update("HhReview1 = @Answer"),
-        _ => Update("HhReview2 = @Answer"),
+        Stage.Desktop => Update($"DaAnswer = @Answer{i}, DaActions = @Actions{i}, DaRemarks = @Remarks{i}", i),
+        Stage.Site => Update($"SaAnswer = @Answer{i}, SaActions = @Actions{i}, SaRemarks = @Remarks{i}", i),
+        Stage.Baseline => Update($"HhAnswer = @Answer{i}, HhActions = @Actions{i}, HhRemarks = @Remarks{i}", i),
+        Stage.Review1 => Update($"HhReview1 = @Answer{i}", i),
+        _ => Update($"HhReview2 = @Answer{i}", i),
     };
 
-    private static string Update(string set) =>
-        $"UPDATE dbo.MsmeOptions SET {set}, AnsweredBy = @AnsweredBy, AnsweredOn = GETDATE() WHERE Id = @Id AND ZedId = @ZedId AND SectionType = @Certification;";
+    private static string Update(string set, int i) =>
+        $"UPDATE dbo.MsmeOptions SET {set}, AnsweredBy = @AnsweredBy, AnsweredOn = GETDATE() WHERE Id = @Id{i} AND ZedId = @ZedId AND SectionType = @Certification;";
 
-    public static async Task SaveAsync(ISqlExecutor db, string zedId, string level, Stage stage, Decision decision, string userId, CancellationToken ct)
+    /// <summary>The start of the one batch a save sends (the answers, then the requirement's conformance, in one transaction).</summary>
+    public const string SaveBatchStart = "SET XACT_ABORT ON; BEGIN TRANSACTION;";
+
+    /// <summary>
+    /// The legacy procedure that sets the requirement's conformance after the answers; its parameters are given by name.
+    /// Only the assessment pages' own procedures are passed here.
+    /// </summary>
+    public sealed record Conformance(string Procedure, IReadOnlyDictionary<string, object?> Args);
+
+    /// <summary>
+    /// Stores the answers and, with <paramref name="conformance"/>, the requirement's conformance, all or nothing: one batch in
+    /// one transaction, so a failure leaves neither half of it.
+    /// </summary>
+    public static async Task SaveAsync(ISqlExecutor db, string zedId, string level, Stage stage, Decision decision, string userId, CancellationToken ct,
+        Conformance? conformance = null)
     {
-        foreach (var (c, a) in decision.Answers)
-            await db.ExecuteSqlAsync(UpdateSql(stage), new
-            {
-                Id = c.Id, ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level),
-                Answer = AssessmentInput.Ansi(a.Value, 10),
-                Actions = a.Actions.Count == 0 ? null : string.Join("\n", a.Actions),
-                a.Remarks,
-                AnsweredBy = AssessmentInput.Ansi(userId.Length <= 50 ? userId : userId[..50]),
-            }, ct);
+        var sql = new System.Text.StringBuilder(SaveBatchStart).Append('\n');
+        var p = new Dapper.DynamicParameters();
+        p.Add("ZedId", AssessmentInput.Ansi(zedId));
+        p.Add("Certification", AssessmentInput.Ansi(level));
+        p.Add("AnsweredBy", AssessmentInput.Ansi(userId.Length <= 50 ? userId : userId[..50]));
+        for (var i = 0; i < decision.Answers.Count; i++)
+        {
+            var (c, a) = decision.Answers[i];
+            sql.Append(UpdateSql(stage, i)).Append('\n');
+            p.Add("Id" + i, c.Id);
+            p.Add("Answer" + i, AssessmentInput.Ansi(a.Value, 10));
+            p.Add("Actions" + i, a.Actions.Count == 0 ? null : string.Join("\n", a.Actions));
+            p.Add("Remarks" + i, a.Remarks);
+        }
+        if (conformance is not null)
+        {
+            if (!ConformanceProcedures.Contains(conformance.Procedure)) throw new ArgumentException("Unknown procedure.", nameof(conformance));
+            sql.Append("EXEC dbo.").Append(conformance.Procedure).Append(' ')
+                .Append(string.Join(", ", conformance.Args.Keys.Select(k => $"@{k} = @c{k}"))).Append(";\n");
+            foreach (var (k, v) in conformance.Args) p.Add("c" + k, v);
+        }
+        sql.Append("COMMIT;");
+        await db.ExecuteSqlAsync(sql.ToString(), p, ct);
     }
+
+    private static readonly HashSet<string> ConformanceProcedures = ["SP_ASSESSMENT_DA_UPDATE_REQUIREMENT", "SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"];
 }

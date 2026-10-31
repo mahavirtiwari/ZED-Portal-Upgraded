@@ -281,6 +281,9 @@ public sealed class DesktopAssessmentController(
         if (conformance == "No" && remarks is null) return this.Problem400("Please enter remarks.");
         if (remarks?.Length > 2000) return this.Problem400("Remarks must be at most 2000 characters.");
         if (!await InCurrentRound(AssessmentRecords.RequirementSql, id, zedId, level!, record!, ct)) return NotFound();
+        // A requirement with checkpoints takes its conformance from them (Checkpoints below), not a direct Yes / No.
+        if ((await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct)).Count > 0)
+            return this.Problem400("This requirement is answered checkpoint by checkpoint. Please reload the page.");
 
         // As before only Id/Conformance/remark are passed: with the ZED ID the procedure would also reset
         // the certification status, which the old action never did.
@@ -305,9 +308,12 @@ public sealed class DesktopAssessmentController(
         var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, CheckpointAnswers.Stage.Desktop);
         if (decision is null) return this.Problem400(problem!);
 
-        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Desktop, decision, UserId, ct);
-        await db.ExecuteProcAsync("SP_ASSESSMENT_DA_UPDATE_REQUIREMENT",
-            new { Id = id.ToString(CultureInfo.InvariantCulture), decision.Conformance, AssessorRemark = decision.Remarks }, ct);
+        // The answers and the conformance in one transaction (as Conformance: Id / Conformance / remark only).
+        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Desktop, decision, UserId, ct,
+            new("SP_ASSESSMENT_DA_UPDATE_REQUIREMENT", new Dictionary<string, object?>
+            {
+                ["Id"] = id.ToString(CultureInfo.InvariantCulture), ["Conformance"] = decision.Conformance, ["AssessorRemark"] = decision.Remarks,
+            }));
         log.LogInformation("Desktop assessor {UserId} answered the checkpoints of requirement {Id} of {ZedId} {Level}: {Conformance}",
             UserId, id, zedId, level, decision.Conformance);
         return new MessageResponse("Data Updated");

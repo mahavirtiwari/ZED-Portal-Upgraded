@@ -134,8 +134,9 @@ public sealed class CertificationLevelsTests : IDisposable
         var gold = _host.Sql.Calls.Last(c => c.Name == CertificationLevelsController.UpdateSql).Args;
         Assert.Equal(("2", "64", "1"), (FakeSql.Arg(gold, "SurveillanceCount"), FakeSql.Arg(gold, "SurveillanceWithdrawAfterDays"), FakeSql.Arg(gold, "SurveillanceSuspendRounds")));
 
-        // Only a desktop level is applied for by the portal, and only on a reminder.
-        Assert.Contains("desktop", await (await admin.PutAsJsonAsync($"{Url}/gold", Body(autoApply: true))).ProblemTitle());
+        // Only Bronze is applied for by the portal (the legacy apply records a zero payment), and only on a reminder.
+        Assert.Contains("Only Bronze", await (await admin.PutAsJsonAsync($"{Url}/gold", Body(autoApply: true))).ProblemTitle());
+        Assert.Contains("Only Bronze", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(count: 1, mode: "Desktop", autoApply: true))).ProblemTitle());
         var noReminder = Body(count: 1, mode: "Desktop", autoApply: true, suspendRounds: 0);
         noReminder["surveillanceReminders"] = 0;
         Assert.Contains("reminder", await (await admin.PutAsJsonAsync($"{Url}/bronze", noReminder)).ProblemTitle());

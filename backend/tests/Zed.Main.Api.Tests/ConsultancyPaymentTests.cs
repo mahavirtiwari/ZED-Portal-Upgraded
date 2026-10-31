@@ -439,6 +439,31 @@ public sealed class ConsultancyPaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task A_success_the_database_did_not_record_is_not_completed()
+    {
+        _host.Sql.Procs[ConsultancyGateway.Procedure] = _ => throw new DuplicateResponse();   // e.g. a deadlock: nothing recorded
+        var r = await Gateway().PostAsync(Callback, Encrypted(Paid()));
+        Assert.StartsWith("/msme/payment/consultancy-result?status=failure&certification=Silver", r.Headers.Location!.OriginalString);
+        Assert.Contains("could%20not%20be%20recorded", r.Headers.Location!.OriginalString);
+        // No receipt, mail or parameter removal for a payment that is not recorded.
+        Assert.Empty(_host.Email.Sent);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.ConsultancyParameters.RemoveSql);
+    }
+
+    [Fact]
+    public async Task A_repeat_that_lost_the_race_to_the_first_response_completes_nothing()
+    {
+        var reads = 0;
+        // Pending when the repeat reads it, recorded by the first response by the time its own procedure call fails.
+        _host.Sql.Queries[Orders] = _ => [new { ZedId = Me, Certification = "Silver", Amount = 23600.00m, PaymentStatus = ++reads == 1 ? "Pending" : "Success" }];
+        _host.Sql.Procs[ConsultancyGateway.Procedure] = _ => throw new DuplicateResponse();
+        var r = await Gateway().PostAsync(Callback, Encrypted(Paid()));
+        Assert.StartsWith("/msme/payment/consultancy-result?status=success&certification=Silver", r.Headers.Location!.OriginalString);
+        Assert.Empty(_host.Email.Sent);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.ConsultancyParameters.RemoveSql);
+    }
+
+    [Fact]
     public async Task Aborted_payment_is_recorded_with_the_gateway_message()
     {
         _host.Sql.Procs[ConsultancyGateway.Procedure] = _ => throw new DuplicateResponse();   // the procedure may raise; still answered

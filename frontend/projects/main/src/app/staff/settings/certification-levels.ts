@@ -337,7 +337,7 @@ const API = '/api/staff/settings/levels';
                               <span>months after the notice</span>
                             }
                           </div>
-                          @if (e.assessmentMode === 'Desktop' && (e.surveillanceReminders ?? 0) > 0) {
+                          @if (autoApplies(e) && (e.surveillanceReminders ?? 0) > 0) {
                             <span></span>
                             <div class="form-check lv-check">
                               <input class="form-check-input" type="checkbox" id="lv-autoapply" name="surveillanceAutoApply" [(ngModel)]="e.surveillanceAutoApply" />
@@ -570,6 +570,11 @@ export class CertificationLevelsPage {
     return `Due at ${list} months after certification.`;
   }
 
+  /** The portal applies a unit for its surveillance only for Bronze (CertificationLevelsController.AutoApplies). */
+  protected autoApplies(e: LevelForm): boolean {
+    return e.code.toLowerCase() === 'bronze' && e.assessmentMode === 'Desktop';
+  }
+
   /** When the V4 schedule took the level over (Bronze / Silver / Gold: the day their legacy jobs were switched off). */
   protected scheduleStart(e: LevelForm): string {
     const from = e.surveillanceScheduleFrom ? new Date(e.surveillanceScheduleFrom) : null;
@@ -660,7 +665,7 @@ export class CertificationLevelsPage {
       ...(e.surveillanceEnabled
         ? {
             ...Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, e[k]])),
-            surveillanceAutoApply: e.assessmentMode === 'Desktop' && (e.surveillanceReminders ?? 0) > 0 && e.surveillanceAutoApply,
+            surveillanceAutoApply: this.autoApplies(e) && (e.surveillanceReminders ?? 0) > 0 && e.surveillanceAutoApply,
             surveillanceSuspendRounds: e.surveillanceSuspendRounds,
           }
         : {}),

@@ -204,16 +204,33 @@ public sealed class ProcedureChecksTests
     private sealed class Dbs : IJobDatabases
     {
         public IReadOnlyList<string> Names { get; } = ["Main", "Surveillance"];
-        public Zed.Core.Data.ISqlExecutor this[string name] => throw new NotSupportedException();
+        public Zed.Core.Data.ISqlExecutor this[string name] => name == "Main" ? Main : throw new NotSupportedException();
+        public SwitchOverDb Main { get; } = new();
     }
 
-    private static (JobChecker Checker, FakeCatalog Catalog) Checker()
+    /// <summary>Main: answers <see cref="JobSchedule.SwitchedOverSql"/> with the number of levels switched over.</summary>
+    private sealed class SwitchOverDb : Zed.Core.Data.ISqlExecutor
+    {
+        public int Started { get; set; }
+        public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<T>>(sql == JobSchedule.SwitchedOverSql
+                ? [System.Text.Json.JsonSerializer.Deserialize<T>($"{{\"Total\":{Started}}}")!]
+                : throw new NotSupportedException());
+        public Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedure, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<Zed.Core.Data.ResultSets> QueryProcMultipleAsync(string procedure, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> ExecuteProcAsync(string procedure, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
+        public Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
+    }
+
+    private static (JobChecker Checker, FakeCatalog Catalog) Checker() => Checker(new Dbs());
+
+    private static (JobChecker Checker, FakeCatalog Catalog) Checker(Dbs dbs)
     {
         var catalog = new FakeCatalog();
         catalog.Procedures["Main.SP_JOB_X"] = new([], true);
         catalog.Procedures["Surveillance.SP_APPLY"] = new(
             [new("StateName", "varchar", 100, false, false, HasDefault: false), new("Limit", "int", 4, false, false, HasDefault: true)], true);
-        return (new JobChecker(catalog, new Dbs()), catalog);
+        return (new JobChecker(catalog, dbs), catalog);
     }
 
     private static JobDefinition Apply(params (string Name, string? Value)[] parameters)
@@ -298,23 +315,30 @@ public sealed class ProcedureChecksTests
     }
 
     [Fact]
-    public async Task A_legacy_surveillance_job_is_refused_while_the_v4_schedule_runs()
+    public async Task A_legacy_surveillance_job_is_refused_once_the_levels_are_switched_over()
     {
-        var (checker, _) = Checker();
+        var dbs = new Dbs();
+        var (checker, _) = Checker(dbs);
         var legacy = new JobDefinition
         {
             Name = "AutoSuspendingSilverGold", Database = "Main", DailyAt = ["01:30"], Enabled = true,
             Steps = [new JobStep { Procedure = "SP_JOB_X" }, new JobStep { Procedure = "SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_SUSPENSION" }],
         };
-        var v4 = new JobDefinition { Name = "Level surveillance schedule", Procedure = JobSchedule.LevelSchedule, DailyAt = ["01:45"], Enabled = false };
-        Assert.Null(JobSchedule.Conflict(legacy, [legacy, v4]));
+        var v4 = new JobDefinition { Name = "Level surveillance schedule", Procedure = JobSchedule.LevelSchedule, DailyAt = ["01:45"], Enabled = true };
+        Assert.True(JobSchedule.ReplacedByLevelScheduleJob(legacy));
+        Assert.False(JobSchedule.ReplacedByLevelScheduleJob(v4));
 
-        v4.Enabled = true;
-        Assert.Contains("never run both", JobSchedule.Conflict(legacy, [legacy, v4]));
-        Assert.Null(JobSchedule.Conflict(v4, [legacy, v4]));
+        // Before the switch-over the legacy job still runs Bronze / Silver / Gold, even with the V4 entry on (ZED-X).
+        Assert.False(await checker.SwitchedOverAsync(CancellationToken.None));
         var output = new StringWriter();
+        await checker.ReportAsync([legacy, v4], output, CancellationToken.None);
+        Assert.DoesNotContain("Replaced by the V4 surveillance schedule", output.ToString());
+
+        dbs.Main.Started = 3;
+        Assert.True(await checker.SwitchedOverAsync(CancellationToken.None));
+        output = new StringWriter();
         Assert.Equal(1, await checker.ReportAsync([legacy, v4], output, CancellationToken.None));
-        Assert.Contains("replaced by 'Level surveillance schedule'", output.ToString());
+        Assert.Contains("Replaced by the V4 surveillance schedule since the switch-over", output.ToString());
     }
 }
 

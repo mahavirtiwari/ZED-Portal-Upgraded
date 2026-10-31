@@ -255,19 +255,27 @@ public sealed class DesktopAssessmentTests : IDisposable
             },
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        var updates = _host.Sql.Calls.Where(c => c.Name == CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Desktop)).ToList();
-        Assert.Equal(["501:Yes", "502:Partial"], updates.Select(u => FakeSql.Arg(u.Args, "Id") + ":" + FakeSql.Arg(u.Args, "Answer")));
-        Assert.Equal("Train the staff", FakeSql.Arg(updates[1].Args, "Actions"));
-        Assert.Equal("ASSESSOR1", FakeSql.Arg(updates[1].Args, "AnsweredBy"));
-        var call = DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT").Single();
+        // The answers and the requirement's conformance in one batch, one transaction.
+        var save = Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith(CheckpointAnswers.SaveBatchStart, StringComparison.Ordinal));
+        Assert.Contains(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Desktop, 1), save.Name);
+        Assert.Contains("EXEC dbo.SP_ASSESSMENT_DA_UPDATE_REQUIREMENT @Id = @cId, @Conformance = @cConformance, @AssessorRemark = @cAssessorRemark;", save.Name);
+        Assert.EndsWith("COMMIT;", save.Name);
+        Assert.Equal(["501:Yes", "502:Partial"], new[] { 0, 1 }.Select(i => FakeSql.Arg(save.Args, "Id" + i) + ":" + FakeSql.Arg(save.Args, "Answer" + i)));
+        Assert.Equal("Train the staff", FakeSql.Arg(save.Args, "Actions1"));
+        Assert.Equal("ASSESSOR1", FakeSql.Arg(save.Args, "AnsweredBy"));
         Assert.Equal(("11", "No", "2. Partial: Train the staff."),
-            (FakeSql.Arg(call.Args, "Id"), FakeSql.Arg(call.Args, "Conformance"), FakeSql.Arg(call.Args, "AssessorRemark")));
+            (FakeSql.Arg(save.Args, "cId"), FakeSql.Arg(save.Args, "cConformance"), FakeSql.Arg(save.Args, "cAssessorRemark")));
+
+        // The old Yes / No conformance is refused for a requirement with checkpoints.
+        var direct = await client.PostAsJsonAsync(Base + "/requirements/11/conformance", new { conformance = "Yes" });
+        Assert.Contains("checkpoint by checkpoint", await direct.ProblemTitle());
 
         // Another assessor's record, and a requirement of another unit, are refused.
         Assert.Equal(HttpStatusCode.NotFound, (await (await As("ASSESSOR2")).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync(Base + "/requirements/99/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await (await As("AGENCY1")).PostAsJsonAsync(Base + "/requirements/11/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
-        Assert.Single(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT"));
+        Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith(CheckpointAnswers.SaveBatchStart, StringComparison.Ordinal));
+        Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_UPDATE_REQUIREMENT"));
     }
 
     [Theory]

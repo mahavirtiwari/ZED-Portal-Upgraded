@@ -340,9 +340,15 @@ public sealed class RemoteAssessmentTests : IDisposable
         var r = await lead.PostAsJsonAsync(Base + "/requirements/51/checkpoints",
             new { answers = new[] { new { id = 701, answer = "Partial", actions = new[] { "Display the policy" } } } });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Equal("Partial", FakeSql.Arg(Call(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Site)).Args, "Answer"));
-        var args = Call("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT").Args;
-        Assert.Equal(("51", "No", "1. Partial: Display the policy."), (FakeSql.Arg(args, "Id"), FakeSql.Arg(args, "Conformance"), FakeSql.Arg(args, "AssessorRemark")));
+        var save = Assert.Single(_host.Sql.Calls, c => c.Name.StartsWith(CheckpointAnswers.SaveBatchStart, StringComparison.Ordinal));
+        Assert.Contains(CheckpointAnswers.UpdateSql(CheckpointAnswers.Stage.Site, 0), save.Name);
+        Assert.Contains("EXEC dbo.SP_ASSESSMENT_RA_UPDATE_REQUIREMENT ", save.Name);
+        Assert.Equal("Partial", FakeSql.Arg(save.Args, "Answer0"));
+        Assert.Equal(("51", "No", "1. Partial: Display the policy.", "Silver"),
+            (FakeSql.Arg(save.Args, "cId"), FakeSql.Arg(save.Args, "cConformance"), FakeSql.Arg(save.Args, "cAssessorRemark"), FakeSql.Arg(save.Args, "cCertificationType")));
+        // The old Yes / No conformance is refused for a requirement with checkpoints.
+        Assert.Contains("checkpoint by checkpoint", await (await lead.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" })).ProblemTitle());
+        Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"));
     }
 
     [Fact]

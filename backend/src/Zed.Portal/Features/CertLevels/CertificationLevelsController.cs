@@ -81,7 +81,7 @@ public sealed partial class CertificationLevelsController(
     public async Task<ActionResult<MessageResponse>> Update(string code, LevelRequest req, CancellationToken ct)
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
-        if (Validate(req) is { } problem) return this.Problem400(problem);
+        if (Validate(req, level.Code) is { } problem) return this.Problem400(problem);
         if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
         return new MessageResponse($"{req.Name!.Trim()} saved.");
@@ -114,7 +114,7 @@ public sealed partial class CertificationLevelsController(
     {
         var code = req.Code?.Trim() ?? "";
         if (!CodePattern().IsMatch(code)) return this.Problem400("The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).");
-        if (Validate(req) is { } problem) return this.Problem400(problem);
+        if (Validate(req, code) is { } problem) return this.Problem400(problem);
         var all = await CertificationLevels.AllAsync(db, log, ct);
         if (ReferenceEquals(all, CertificationLevels.BuiltIn)) return Unavailable();
         if (all.Any(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Name, req.Name!.Trim(), StringComparison.OrdinalIgnoreCase)))
@@ -152,7 +152,7 @@ public sealed partial class CertificationLevelsController(
         return new MessageResponse("Logo saved.");
     }
 
-    private static string? Validate(LevelRequest r)
+    private static string? Validate(LevelRequest r, string code)
     {
         var name = r.Name?.Trim() ?? "";
         if (name.Length == 0) return "Please enter the level's name.";
@@ -170,8 +170,8 @@ public sealed partial class CertificationLevelsController(
         if (CertificateNumbers.Problem(r.CertNoFormatService, required: false) is { } s) return "Services: " + s;
         if (r.Fee is < 0 or > 10_000_000) return "The fee must be between 0 and 1,00,00,000.";
         if (r.SurveillanceEnabled && Schedule(r).Problem(r.ValidityMonths!.Value) is { } schedule) return schedule;
-        if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && r.AssessmentMode != CertificationLevels.Desktop)
-            return "Only a desktop assessment level (as Bronze) can be applied for its surveillance by the portal.";
+        if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && !AutoApplies(code, r.AssessmentMode))
+            return "Only Bronze can be applied for its surveillance by the portal.";
         if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && (r.SurveillanceReminders ?? SurveillanceSchedule.Default.Reminders) < 1)
             return "To apply for the surveillance on the last reminder, please keep at least one reminder.";
         if (r.SurveillanceEnabled && r.SurveillanceSuspendRounds is < 0 or > 5) return "Please choose which surveillances suspend the certificate.";
@@ -198,10 +198,17 @@ public sealed partial class CertificationLevelsController(
         SurveillanceCount = schedule?.Count, SurveillanceIntervalMonths = schedule?.IntervalMonths, SurveillanceNoticeMonths = schedule?.NoticeMonths,
         SurveillanceReminders = schedule?.Reminders, SurveillanceReminderEveryMonths = schedule?.ReminderEveryMonths,
         SurveillanceSuspendAfterMonths = schedule?.SuspendAfterMonths, SurveillanceWithdrawAfterDays = schedule?.WithdrawAfterDays,
-        SurveillanceAutoApply = schedule is null ? (bool?)null : r.SurveillanceAutoApply == true && r.AssessmentMode == CertificationLevels.Desktop,
+        SurveillanceAutoApply = schedule is null ? (bool?)null : r.SurveillanceAutoApply == true && AutoApplies(code, r.AssessmentMode),
         SurveillanceSuspendRounds = schedule is null ? null : r.SurveillanceSuspendRounds,
         };
     }
+
+    /// <summary>
+    /// The portal applies a unit for its surveillance only for Bronze (desktop): the legacy apply procedure records it as a zero
+    /// payment on the coupon fee row without checking the amount (SP_V4_LEVEL_SURVEILLANCE_SCHEDULE, migration 0037).
+    /// </summary>
+    internal static bool AutoApplies(string code, string? assessmentMode) =>
+        string.Equals(code, "Bronze", StringComparison.OrdinalIgnoreCase) && assessmentMode == CertificationLevels.Desktop;
 
     private static string? Text(string? v) => string.IsNullOrWhiteSpace(v) ? null : v.Trim();
 

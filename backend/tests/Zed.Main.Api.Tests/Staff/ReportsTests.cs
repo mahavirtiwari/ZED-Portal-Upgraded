@@ -81,6 +81,33 @@ public sealed class ReportsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_state_coordinator_gets_the_transactions_of_its_own_state_only()
+    {
+        // The procedure lists every state's financial-assistance transactions with their bank details.
+        _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS"] = _ => FakeSql.Sets(
+            [new { ZedId = "ZEDMSME000009", AccountNo = "111" }, new { ZedId = "ZEDMSME000027", AccountNo = "222" }]);
+        _host.Sql.Queries[ReportsController.StateUnitsSql] = args => FakeSql.Arg(args, "State") == "9" ? [new { ZedId = "ZEDMSME000009" }] : [];
+        var id = ReportCatalog.IdOf("SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS");
+
+        var own = await (await _host.SignInAsync("STATE9")).GetByteArrayAsync($"/api/staff/reports/{id}/download");
+        var sheet = SheetText(own);
+        Assert.Contains("111", sheet);
+        Assert.DoesNotContain("222", sheet);
+        Assert.DoesNotContain("ZEDMSME000027", sheet);
+
+        // No state on the account: nothing.
+        var none = SheetText(await (await _host.SignInAsync("STATE1")).GetByteArrayAsync($"/api/staff/reports/{id}/download"));
+        Assert.DoesNotContain("111", none);
+        Assert.DoesNotContain("222", none);
+    }
+
+    private static string SheetText(byte[] xlsx)
+    {
+        using var zip = new ZipArchive(new MemoryStream(xlsx));
+        return XDocument.Load(zip.GetEntry("xl/worksheets/sheet1.xml")!.Open()).ToString();
+    }
+
+    [Fact]
     public async Task Export_neutralises_formulas_drops_secrets_and_keeps_numbers()
     {
         _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES"] = _ => FakeSql.Sets(

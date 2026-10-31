@@ -355,6 +355,9 @@ public sealed class RemoteAssessmentController(
         if (remarks?.Length > 2000) return this.Problem400("Remarks must be at most 2000 characters.");
         // SP_ASSESSMENT_RA_UPDATE_REQUIREMENT updates by Id alone.
         if (await AssessmentRecords.ItemAsync(db, AssessmentRecords.RequirementSql, id, zedId, level!, ct) is null) return NotFound();
+        // A requirement with checkpoints takes its conformance from them (Checkpoints below), not a direct Yes / No.
+        if ((await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct)).Count > 0)
+            return this.Problem400("This requirement is answered checkpoint by checkpoint. Please reload the page.");
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT", new
         {
@@ -377,11 +380,13 @@ public sealed class RemoteAssessmentController(
         var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, CheckpointAnswers.Stage.Site);
         if (decision is null) return this.Problem400(problem!);
 
-        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Site, decision, UserId, ct);
-        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT", new
-        {
-            Id = id.ToString(CultureInfo.InvariantCulture), ZedId = zedId, decision.Conformance, CertificationType = level, AssessorRemark = decision.Remarks,
-        }, ct);
+        // The answers and the site conformance in one transaction.
+        await CheckpointAnswers.SaveAsync(db, zedId, level!, CheckpointAnswers.Stage.Site, decision, UserId, ct,
+            new("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT", new Dictionary<string, object?>
+            {
+                ["Id"] = id.ToString(CultureInfo.InvariantCulture), ["ZedId"] = zedId, ["Conformance"] = decision.Conformance,
+                ["CertificationType"] = level, ["AssessorRemark"] = decision.Remarks,
+            }));
         log.LogInformation("Site assessor {UserId} answered the checkpoints of requirement {Id} of {ZedId} {Level}: {Conformance}",
             UserId, id, zedId, level, decision.Conformance);
         return new MessageResponse("Data Updated");

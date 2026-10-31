@@ -96,7 +96,7 @@ public sealed class FakeSql : ISqlExecutor
 
     public static string? Arg(object? args, string name) => args switch
     {
-        Dapper.DynamicParameters dp => dp.ParameterNames.Contains(name) ? dp.Get<object?>(name)?.ToString() : null,
+        Dapper.DynamicParameters dp => dp.ParameterNames.Contains(name) ? dp.Get<object?>(name) switch { Dapper.DbString s => s.Value, var v => v?.ToString() } : null,
         _ => args?.GetType().GetProperty(name)?.GetValue(args) switch { Dapper.DbString s => s.Value, var v => v?.ToString() },
     };
 

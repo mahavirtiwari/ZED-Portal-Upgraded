@@ -225,9 +225,12 @@ public sealed partial class NeftController(
         return rows.Where(r => NormaliseState(r.Text("StateId")) == state || NormaliseState(r.Text("PStateId")) == state);
     }
 
-    private bool SeesAllStates() =>
+    private bool SeesAllStates() => SeesAllStates(config, UserId);
+
+    /// <summary>The national NEFT desk: user ids under <c>Neft:AllStatesUserIds</c> see every state (also in the reports).</summary>
+    public static bool SeesAllStates(IConfiguration config, string userId) =>
         (config.GetSection("Neft:AllStatesUserIds").Get<string[]>() ?? [])
-        .Any(u => string.Equals(u?.Trim(), UserId, StringComparison.OrdinalIgnoreCase));
+        .Any(u => string.Equals(u?.Trim(), userId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>State codes are LGD numbers ("9", "09"); compare them as numbers.</summary>
     public static string? NormaliseState(string? code) =>

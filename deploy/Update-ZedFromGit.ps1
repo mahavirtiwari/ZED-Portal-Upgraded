@@ -17,7 +17,9 @@
                     -IncludeMailOutbox runs 0003 again, which the Email Templates need once). -SkipMigrations skips it.
     5. Install      Install-ZedIis.ps1 -Apply for -Apps (default: the three web portals; -IncludeMobile adds the three
                     mobile hosts). App pool settings come from the settings file as before.
-    6. Jobs         with -IncludeJobs: stops the Zed.Jobs service, replaces its files, starts it again.
+    6. Jobs         with -IncludeJobs: stops the Zed.Jobs service, replaces its files, starts it again. The server's
+                    appsettings*.json (the jobs switched on there) are kept; the repository's appsettings.json is put
+                    beside them as appsettings.package.json, to compare for new entries.
     7. Test         Test-ZedDeployment.ps1 against -BaseUrl, for the applications installed. When it fails, the files
                     of step 3 are put back and the pools restarted (unless -NoAutoRollback). The database changes stay:
                     they are additive and the previous version runs on them.
@@ -152,9 +154,10 @@ function Restart-Pools([string[]]$Names) {
     if ($failed.Count) { throw "App pools not started: $($failed -join ', '). Start them in IIS Manager." }
 }
 
-function Copy-Folder([string]$From, [string]$To) {
+function Copy-Folder([string]$From, [string]$To, [string[]]$KeepFiles = @()) {
     New-Item -ItemType Directory -Force -Path $To | Out-Null
-    & robocopy $From $To /MIR /R:3 /W:5 /NFL /NDL /NJH /NJS /NP /XD logs /XF app_offline.htm | Out-Null
+    # Files named in KeepFiles (and app_offline.htm) are neither copied nor removed: the server's copy stays.
+    & robocopy $From $To /MIR /R:3 /W:5 /NFL /NDL /NJH /NJS /NP /XD logs /XF app_offline.htm @KeepFiles | Out-Null
     # robocopy: 0-7 is success (files copied, extra files removed, ...), 8 and above is a failure.
     if ($LASTEXITCODE -ge 8) { throw "robocopy $From -> $To failed (exit code $LASTEXITCODE)." }
     $global:LASTEXITCODE = 0
@@ -311,7 +314,14 @@ try {
             if (-not (Get-Service $JobsService -ErrorAction SilentlyContinue)) { throw "Service $JobsService is missing: install it first (docs/JOBS.md)." }
             Stop-Service $JobsService
             (Get-Service $JobsService).WaitForStatus('Stopped', [TimeSpan]::FromSeconds(60))
-            Copy-Folder (Join-Path $Package 'jobs') $JobsDir
+            # The server's settings say which jobs run (all are off in the repository): keep them on every update.
+            $jobsPackage = Join-Path $Package 'jobs'
+            $keep = if (Test-Path (Join-Path $JobsDir 'appsettings.json')) { @('appsettings.json', 'appsettings.*.json') } else { @() }
+            Copy-Folder $jobsPackage $JobsDir -KeepFiles $keep
+            if ($keep.Count -gt 0) {
+                Copy-Item (Join-Path $jobsPackage 'appsettings.json') (Join-Path $JobsDir 'appsettings.package.json') -Force
+                Write-Ok "kept the server's Zed.Jobs settings; the repository's are in appsettings.package.json (compare for new jobs)"
+            }
             Start-Service $JobsService
             Write-Ok "started $JobsService"
         }

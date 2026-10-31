@@ -1,21 +1,24 @@
 -- Run on ZEDCS_V2_LIVE only. Safe to re-run. Needs 0028 and 0032 (and 0038 on ZED_SURVEILLANCE for the Bronze copy).
 -- The V4 surveillance schedule (SP_V4_LEVEL_SURVEILLANCE_SCHEDULE, run daily by Zed.Jobs "Level surveillance schedule") takes
 -- over Bronze, Silver and Gold from the legacy jobs, on the timings of Administration → Certification Levels, which the
--- Admin can now change for them as for ZED-X. Switch the legacy jobs off on the day the V4 one is switched on, never both:
--- Bronze_Surveillance_Job, Silver_Gold_Surveillance_Data_job, Silver_Gold_Second_Surveillance_Data_job and
--- AutoSuspendingSilverGold (docs/JOBS.md). Certificate_Expiry, AutoMail_Recertification, LatestCertificationUpdate,
+-- Admin can now change for them as for ZED-X. Deploying this changes nothing for them: they stay with the legacy jobs until
+-- the switch-over, on one day: switch the legacy jobs Bronze_Surveillance_Job, Silver_Gold_Surveillance_Data_job,
+-- Silver_Gold_Second_Surveillance_Data_job and AutoSuspendingSilverGold off, then run
+-- EXEC dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE @Start = 1 once (docs/JOBS.md); never both. Certificate_Expiry, AutoMail_Recertification, LatestCertificationUpdate,
 -- ZED_Surveillance_Auto_Reject_Expiring_Bronze and ZED_Daily_Maintenance_Job keep running as before.
 --
 -- New columns of dbo.SectionTypes (NULL = as before for ZED-X):
---   SurveillanceAutoApply      1 = the last reminder applies the unit for its surveillance itself (Bronze: legacy
+--   SurveillanceAutoApply      1 = the last reminder applies the unit for its surveillance itself (Bronze only: legacy
 --                              SP_JOB_TO_SEND_APPLY_FOR_BRONZE_SURVEILLANCE_MAIL_REM2 → SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND)
 --   SurveillanceSuspendRounds  how many rounds suspend a unit that did not apply: NULL every round, 0 none (Bronze), 1 the
 --                              first round only (Silver / Gold: the legacy suspension never reached the second round)
 --   SurveillanceScheduleFrom   the day the V4 schedule started for the level: it does not catch up on a step whose date
 --                              is before that day (the legacy jobs ran each step on one exact day; units they missed are
 --                              listed by the dry run, not mailed or suspended at once). '9999-12-31' = not started yet:
---                              the first run sets it to its day. NULL = no limit (ZED-X, as before).
--- Bronze / Silver / Gold get today's legacy timings (only where the Admin has set none): with First 18 / 15 months and
+--                              the daily run leaves the level alone until a run with @Start = 1 sets its day. NULL = no
+--                              limit (ZED-X, as before).
+-- Bronze / Silver / Gold get today's legacy timings once (the first deploy; later deploys keep the Admin's settings,
+-- surveillance switched off included): with First 18 / 15 months and
 -- Notice 4 every legacy date is the same (Bronze: notice at 14, reminder at 15, applied at 16 months; Silver / Gold: notice
 -- at 11, reminders 12 and 13, suspension at 16; second round notice at 23, reminders 24 and 25; withdrawal 64 days after
 -- the suspension, as legacy's 18 months and 4 days).
@@ -32,21 +35,28 @@ UPDATE dbo.SectionTypes SET
     SurveillanceCount = 1, SurveillanceIntervalMonths = 12, SurveillanceNoticeMonths = 4, SurveillanceReminders = 2,
     SurveillanceReminderEveryMonths = 1, SurveillanceSuspendAfterMonths = 1, SurveillanceWithdrawAfterDays = 64,
     SurveillanceAutoApply = 1, SurveillanceSuspendRounds = 0, SurveillanceScheduleFrom = '9999-12-31'
-WHERE SectionType = 'Bronze' AND IsCertificationLevel = 1 AND SurveillanceCount IS NULL;
+WHERE SectionType = 'Bronze' AND IsCertificationLevel = 1 AND SurveillanceScheduleFrom IS NULL AND SurveillanceCount IS NULL;
 UPDATE dbo.SectionTypes SET
     SurveillanceEnabled = 1,
     FirstSurveillanceMonths = CASE WHEN FirstSurveillanceMonths IS NULL OR FirstSurveillanceMonths = 12 THEN 15 ELSE FirstSurveillanceMonths END,
     SurveillanceCount = 2, SurveillanceIntervalMonths = 12, SurveillanceNoticeMonths = 4, SurveillanceReminders = 2,
     SurveillanceReminderEveryMonths = 1, SurveillanceSuspendAfterMonths = 1, SurveillanceWithdrawAfterDays = 64,
     SurveillanceAutoApply = 0, SurveillanceSuspendRounds = 1, SurveillanceScheduleFrom = '9999-12-31'
-WHERE SectionType IN ('Silver', 'Gold') AND IsCertificationLevel = 1 AND SurveillanceCount IS NULL;
+WHERE SectionType IN ('Silver', 'Gold') AND IsCertificationLevel = 1 AND SurveillanceScheduleFrom IS NULL AND SurveillanceCount IS NULL;
+-- Seeded once: from now on the start day is set (9999-12-31 = not started), so a later deploy leaves the Admin's settings,
+-- surveillance switched off included, as they are.
+UPDATE dbo.SectionTypes SET SurveillanceScheduleFrom = '9999-12-31'
+WHERE SectionType IN ('Bronze', 'Silver', 'Gold') AND IsCertificationLevel = 1 AND SurveillanceScheduleFrom IS NULL;
 GO
 CREATE OR ALTER PROCEDURE dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE
     @Today date = NULL,
     @Level varchar(50) = NULL,
     -- 1: nothing is changed or mailed; the steps the run would take (and those it leaves because their date is before
     -- the level's start) are returned as one result set.
-    @DryRun bit = 0
+    @DryRun bit = 0,
+    -- 1: the switch-over. Bronze / Silver / Gold (start day 9999-12-31) wait until this is run once, on the day the legacy
+    -- SQL Agent jobs are switched off; the daily run never starts them by itself.
+    @Start bit = 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -70,10 +80,11 @@ BEGIN
         INSERT INTO dbo.MsmeHistory (ZedId, Descrip, CreatedDate, CertificationType, StatusType)
         SELECT ZedId, CONCAT(N'Certificate expired on ', FORMAT(@now, 'MMMM d, yyyy')), @now, Certification, 'Expired' FROM @Expired;
 
-        -- A level's first run: the day it started (no catching up on steps before it).
-        UPDATE dbo.SectionTypes SET SurveillanceScheduleFrom = @d
-        WHERE SurveillanceScheduleFrom = '9999-12-31' AND IsCertificationLevel = 1 AND ISNULL(SurveillanceEnabled, 0) = 1
-          AND (@Level IS NULL OR SectionType = @Level);
+        -- The switch-over: the day the levels started (no catching up on steps before it).
+        IF @Start = 1
+            UPDATE dbo.SectionTypes SET SurveillanceScheduleFrom = @d
+            WHERE SurveillanceScheduleFrom = '9999-12-31' AND IsCertificationLevel = 1 AND ISNULL(SurveillanceEnabled, 0) = 1
+              AND (@Level IS NULL OR SectionType = @Level);
     END
 
     -- The levels on this schedule and their settings.
@@ -83,15 +94,18 @@ BEGIN
     SELECT SectionType, ISNULL(DisplayName, SectionType), ISNULL(FirstSurveillanceMonths, 15), ISNULL(SurveillanceCount, 2),
         ISNULL(SurveillanceIntervalMonths, 12), ISNULL(SurveillanceNoticeMonths, 4), ISNULL(SurveillanceReminders, 2),
         ISNULL(SurveillanceReminderEveryMonths, 1), ISNULL(SurveillanceSuspendAfterMonths, 1), ISNULL(SurveillanceWithdrawAfterDays, 64),
-        -- The portal applies only for a desktop level's surveillance (the legacy Bronze procedure).
-        CASE WHEN AssessmentMode = 'Desktop' THEN ISNULL(SurveillanceAutoApply, 0) ELSE 0 END, SurveillanceSuspendRounds,
+        -- The portal applies only for Bronze's surveillance: the legacy Bronze procedure records it as a zero payment on
+        -- the coupon fee row without checking the amount, which is right for Bronze only.
+        CASE WHEN SectionType = 'Bronze' AND AssessmentMode = 'Desktop' THEN ISNULL(SurveillanceAutoApply, 0) ELSE 0 END, SurveillanceSuspendRounds,
         -- A dry run before the first one: as if it started on its day.
         CASE WHEN SurveillanceScheduleFrom = '9999-12-31' THEN @d ELSE SurveillanceScheduleFrom END,
         CASE WHEN AssessmentMode = 'Desktop' THEN 1 ELSE 0 END, ISNULL(OrderNo, 0),
         CASE WHEN SectionType IN ('Bronze', 'Silver', 'Gold') THEN 1 ELSE 0 END
     FROM dbo.SectionTypes
     WHERE IsCertificationLevel = 1 AND ISNULL(SurveillanceEnabled, 0) = 1
-      AND (@Level IS NULL OR SectionType = @Level) AND SectionType NOT LIKE '%[^A-Za-z0-9]%';
+      AND (@Level IS NULL OR SectionType = @Level) AND SectionType NOT LIKE '%[^A-Za-z0-9]%'
+      -- A level not started yet (Bronze / Silver / Gold before the switch-over) is left to the legacy jobs; a dry run shows it.
+      AND (ISNULL(SurveillanceScheduleFrom, '19000101') <> '9999-12-31' OR @DryRun = 1);
 
     -- Every certified record of those levels, with its current round: site levels certified at 16 with the site certificate,
     -- desktop levels (Bronze) at 6 with the desktop certificate. Not a unit the portal stopped mailing (RestrictMail, set by an

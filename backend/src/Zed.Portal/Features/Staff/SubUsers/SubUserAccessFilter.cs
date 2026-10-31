@@ -34,7 +34,7 @@ public sealed class SubUserAccessFilter(SubUserStore store, PortalHost host, ILo
             return;
         }
 
-        if (SubUserPermissions.Under(path, "/api/staff") && !SubUserPermissions.AlwaysReadable(method, path))
+        if (SubUserPermissions.CheckedRoots.Any(root => SubUserPermissions.Under(path, root)) && !SubUserPermissions.AlwaysReadable(method, path))
         {
             var granted = SubUserPermissions.Granted(row.Permissions, user.RoleId, user.SubRoles ?? [], host.System);
             if (!SubUserPermissions.Covers(granted, path))

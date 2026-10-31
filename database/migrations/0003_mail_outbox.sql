@@ -77,6 +77,9 @@ DECLARE procs CURSOR LOCAL FAST_FORWARD FOR
     WHERE o.type = 'P' AND o.name <> 'SP_V4_SEND_DBMAIL'
       AND (m.definition LIKE '%msdb.dbo.sp_send_dbmail%'
            OR (m.definition LIKE '%dbo.SP_V4_SEND_DBMAIL%' AND m.definition NOT LIKE '%SP_V4_SEND_DBMAIL @source =%'))
+      -- V4 procedures that pick the outbox themselves when it exists (0032 SP_V4_SURVEILLANCE_MAIL) are left as they are:
+      -- rewriting them would break their OBJECT_ID('dbo.SP_V4_SEND_DBMAIL') test.
+      AND m.definition NOT LIKE '%OBJECT_ID(''dbo.SP_V4_SEND_DBMAIL''%'
       AND m.uses_ansi_nulls = 1 AND m.uses_quoted_identifier = 1;
 OPEN procs;
 FETCH NEXT FROM procs INTO @name, @def;

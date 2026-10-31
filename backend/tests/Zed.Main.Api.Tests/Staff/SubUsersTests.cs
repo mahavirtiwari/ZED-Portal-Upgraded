@@ -50,6 +50,18 @@ public sealed class SubUsersTests : IDisposable
     private List<(string Name, object? Args)> Sql(string start) => _host.Sql.Calls.Where(c => c.Name.StartsWith(start)).ToList();
 
     [Fact]
+    public void Consultancy_milestone_calls_need_monitoring_or_results()
+    {
+        // The milestone pages (Consultancy) are checked as the staff APIs are, and only Monitoring / Completed and rejected open them.
+        Assert.Contains("/api/consultancy", SubUserPermissions.CheckedRoots);
+        const string milestone = "/api/consultancy/milestones/ZEDMSME000001/Silver/final-submit";
+        var co = SubUserPermissions.For((int)UserRole.Agency, [SubRoles.SiteVerification], PortalSystem.Consultancy);
+        Assert.False(SubUserPermissions.Covers(co.Where(p => p.Key == "reports"), milestone));
+        Assert.True(SubUserPermissions.Covers(co.Where(p => p.Key == "monitoring"), milestone));
+        Assert.True(SubUserPermissions.Covers(co.Where(p => p.Key == "results"), milestone));
+    }
+
+    [Fact]
     public async Task An_agency_creates_a_sub_user_with_screens_of_its_own_menu()
     {
         var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");

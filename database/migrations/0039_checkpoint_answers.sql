@@ -19,17 +19,21 @@ GO
 IF OBJECT_ID('dbo.MsmeOptions', 'U') IS NOT NULL
 BEGIN
     IF COL_LENGTH('dbo.MsmeOptions', 'DaAnswer') IS NULL ALTER TABLE dbo.MsmeOptions ADD DaAnswer varchar(10) NULL;
-    IF COL_LENGTH('dbo.MsmeOptions', 'DaActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD DaActions nvarchar(2000) NULL;
+    IF COL_LENGTH('dbo.MsmeOptions', 'DaActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD DaActions nvarchar(4000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'DaRemarks') IS NULL ALTER TABLE dbo.MsmeOptions ADD DaRemarks nvarchar(1000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'SaAnswer') IS NULL ALTER TABLE dbo.MsmeOptions ADD SaAnswer varchar(10) NULL;
-    IF COL_LENGTH('dbo.MsmeOptions', 'SaActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD SaActions nvarchar(2000) NULL;
+    IF COL_LENGTH('dbo.MsmeOptions', 'SaActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD SaActions nvarchar(4000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'SaRemarks') IS NULL ALTER TABLE dbo.MsmeOptions ADD SaRemarks nvarchar(1000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'HhAnswer') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhAnswer varchar(10) NULL;
-    IF COL_LENGTH('dbo.MsmeOptions', 'HhActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhActions nvarchar(2000) NULL;
+    IF COL_LENGTH('dbo.MsmeOptions', 'HhActions') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhActions nvarchar(4000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'HhRemarks') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhRemarks nvarchar(1000) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'HhReview1') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhReview1 varchar(10) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'HhReview2') IS NULL ALTER TABLE dbo.MsmeOptions ADD HhReview2 varchar(10) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'AnsweredBy') IS NULL ALTER TABLE dbo.MsmeOptions ADD AnsweredBy varchar(50) NULL;
     IF COL_LENGTH('dbo.MsmeOptions', 'AnsweredOn') IS NULL ALTER TABLE dbo.MsmeOptions ADD AnsweredOn datetime NULL;
+    -- Up to 20 actions of 100 characters each, one per line (first created as nvarchar(2000): widened).
+    IF COL_LENGTH('dbo.MsmeOptions', 'DaActions') = 4000 ALTER TABLE dbo.MsmeOptions ALTER COLUMN DaActions nvarchar(4000) NULL;
+    IF COL_LENGTH('dbo.MsmeOptions', 'SaActions') = 4000 ALTER TABLE dbo.MsmeOptions ALTER COLUMN SaActions nvarchar(4000) NULL;
+    IF COL_LENGTH('dbo.MsmeOptions', 'HhActions') = 4000 ALTER TABLE dbo.MsmeOptions ALTER COLUMN HhActions nvarchar(4000) NULL;
 END
 GO

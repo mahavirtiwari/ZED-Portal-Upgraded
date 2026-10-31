@@ -14,8 +14,14 @@ namespace Zed.Portal.Features.Staff.Reports;
 /// </summary>
 [Route("api/staff/reports")]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed class ReportsController(ISqlExecutor db, PortalHost host, ILogger<ReportsController> log) : StaffApiController
+public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfiguration config, ILogger<ReportsController> log) : StaffApiController
 {
+    /// <summary>The units of a state (Msme.StateId or the plant's PStateId), for a State Coordinator's reports.</summary>
+    internal const string StateUnitsSql =
+        "SELECT DISTINCT ZedId FROM dbo.Msme WHERE ZedId IS NOT NULL AND (StateId = @State OR PStateId = @State)";
+
+    private sealed class ZedRow { public string? ZedId { get; init; } }
+
     public sealed record ReportItem(string Id, string Name);
 
     [HttpGet]
@@ -43,10 +49,22 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, ILogger<
             return this.Problem400("This report is not available.");
         }
 
+        // A State Coordinator's reports (the transactions with their bank details) list every state; keep the coordinator's
+        // own state's units, as the NEFT pages do (Neft:AllStatesUserIds see all). A sheet without a ZedId column is left out.
+        HashSet<string>? units = null;
+        if (RoleId == (int)UserRole.StateCoordinator && !Neft.NeftController.SeesAllStates(config, UserId))
+        {
+            units = Neft.NeftController.NormaliseState(CurrentUser.StateCode) is { } state
+                ? (await db.QuerySqlAsync<ZedRow>(StateUnitsSql, new { State = int.Parse(state, System.Globalization.CultureInfo.InvariantCulture) }, ct))
+                    .Select(r => r.ZedId!.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase)
+                : [];
+        }
+
         var sheets = new List<XlsxSheet>();
         for (var i = 0; i < sets.Count; i++)
         {
-            var rows = sets[i];
+            var rows = units is null ? sets[i]
+                : sets[i].Where(r => r.TryGetValue("ZedId", out var z) && z is not null && units.Contains(z.ToString()!.Trim())).ToList();
             var columns = rows.FirstOrDefault()?.Keys.Where(k => !ResultSets.SensitiveColumns.Contains(k)).ToList() ?? [];
             sheets.Add(new XlsxSheet(i == 0 ? "Table" : "Table" + i, columns,
                 rows.Select(r => (IReadOnlyList<object?>)columns.Select(c => r.TryGetValue(c, out var v) ? v : null).ToList())));

@@ -22,6 +22,7 @@ internal static class DashboardStaffLogin
             "QC1" => User("QC1", 17),
             "ADMIN1" => User("ADMIN1", 1),
             "STATE1" => User("STATE1", 6),
+            "STATE9" => User("STATE9", 6, stateCode: "9"),
             _ => FakeSql.Sets([], [new { ERRORMSG = "INVALID CREDENTIAILS" }]),
         };
         host.Sql.Procs["SP_GET_SUB_ROLE"] = _ =>

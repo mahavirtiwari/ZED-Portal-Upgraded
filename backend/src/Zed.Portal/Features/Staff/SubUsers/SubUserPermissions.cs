@@ -14,7 +14,7 @@ public sealed record SubUserPermission(
 
 /// <summary>
 /// The screens an owner can give its sub-users: the owner's own menu (staff-menu.ts), one entry per screen or group of
-/// screens, with the API paths behind it. A sub-user's request to /api/staff/… or /api/account/… is let through only when one
+/// screens, with the API paths behind it. A sub-user's request to /api/staff/… or /api/consultancy/… is let through only when one
 /// of its permissions covers the path (<see cref="SubUserAccessFilter"/>), apart from the read-only calls every screen makes
 /// (<see cref="AlwaysReadable"/>).
 /// </summary>
@@ -29,6 +29,12 @@ public static class SubUserPermissions
     /// <summary>The Desktop Assessment details page, opened from monitoring, allotment and the result lists.</summary>
     private const string DaDetails = "/api/staff/assessment/da/";
 
+    /// <summary>A handholding milestone page (Consultancy), opened from monitoring and the result lists.</summary>
+    private const string Milestones = "/api/consultancy/milestones/";
+
+    /// <summary>The API roots whose calls a sub-user needs a permission for (<see cref="SubUserAccessFilter"/>).</summary>
+    public static readonly string[] CheckedRoots = ["/api/staff", "/api/consultancy"];
+
     public static readonly IReadOnlyList<SubUserPermission> Catalogue =
     [
         // MasterAdmin ("operation admins")
@@ -40,9 +46,9 @@ public static class SubUserPermissions
         new("allot", "Allotment", UserRole.MasterAdmin, All, None,
             ["/staff/assessment/allot"], ["/api/staff/assessment/allot"]),
         new("monitoring", "Monitoring", UserRole.MasterAdmin, All, None,
-            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails]),
+            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails, Milestones]),
         new("results", "Completed and rejected", UserRole.MasterAdmin, All, None,
-            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails]),
+            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones]),
         new("password-reset", "Password Reset Link", UserRole.MasterAdmin, All, None,
             ["/staff/users/password-reset"], ["/api/staff/password-reset"]),
         new("history", "ZED ID History", UserRole.MasterAdmin, Main, None,
@@ -56,7 +62,7 @@ public static class SubUserPermissions
 
         // Agencies, consultant organisations and surveillance agencies
         new("monitoring", "Monitoring", UserRole.Agency, All, SiteOrDesktop,
-            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails]),
+            ["/staff/monitoring"], ["/api/staff/monitoring", DaDetails, Milestones]),
         new("assessors", "Assessors / consultants", UserRole.Agency, All, None,
             ["/staff/users/my-assessors", "/staff/users/assessors", "/staff/users/surveillance-assessors"],
             ["/api/staff/users/assessors", "/api/staff/surveillance-users/assessors"]),
@@ -66,7 +72,7 @@ public static class SubUserPermissions
             ["/staff/sa-allotment", "/staff/site-assessment/co-allotment"],
             ["/api/staff/site-assessment/allotments", "/api/staff/site-assessment/consultancy/allotments"]),
         new("results", "Completed and rejected", UserRole.Agency, All, SiteOrDesktop,
-            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails]),
+            ["/staff/assessment/completed", "/staff/assessment/rejected"], ["/api/staff/assessment/completed", "/api/staff/assessment/rejected", DaDetails, Milestones]),
         new("reports", "Reports", UserRole.Agency, All, None,
             ["/staff/reports"], ["/api/staff/reports"]),
         new("financial-assistance", "Financial Assistance verification", UserRole.Agency, Main, [SubRoles.FinancialVerification],

@@ -72,9 +72,9 @@ public sealed class CheckpointAnswersTests
         var (decision, problem) = Decide([Point(1, "1")], Answers(new AnswerRequest(1, "No", ["Write it"], null)), Stage.Review1);
         Assert.Null(problem);
         Assert.Empty(decision!.Answers[0].Answer.Actions);
-        Assert.Contains("HhReview1 = @Answer", UpdateSql(Stage.Review1));
-        Assert.Contains("HhAnswer = @Answer, HhActions = @Actions", UpdateSql(Stage.Baseline));
-        Assert.Contains("SaAnswer", UpdateSql(Stage.Site));
+        Assert.Contains("HhReview1 = @Answer0", UpdateSql(Stage.Review1, 0));
+        Assert.Contains("HhAnswer = @Answer2, HhActions = @Actions2", UpdateSql(Stage.Baseline, 2));
+        Assert.Contains("SaAnswer", UpdateSql(Stage.Site, 0));
     }
 
     [Fact]

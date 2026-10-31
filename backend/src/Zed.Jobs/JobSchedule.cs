@@ -31,15 +31,21 @@ public static partial class JobSchedule
         "SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_WITHDRAW",
     };
 
-    /// <summary>Why an enabled job must not run beside the other enabled jobs, or null: a legacy surveillance job while the
-    /// V4 schedule that replaced it is enabled (both would mail, suspend and withdraw the same units).</summary>
-    public static string? Conflict(JobDefinition job, IEnumerable<JobDefinition> all)
-    {
-        if (!job.Enabled || !Calls(job).Any(c => ReplacedByLevelSchedule.Contains(c.Procedure ?? ""))) return null;
-        var v4 = all.FirstOrDefault(j => j.Enabled && Calls(j).Any(c => string.Equals(c.Procedure, LevelSchedule, StringComparison.OrdinalIgnoreCase)));
-        return v4 is null ? null
-            : $"It is replaced by '{v4.Name}' ({LevelSchedule}, migration 0037), which is enabled: never run both. Disable this entry.";
-    }
+    /// <summary>The job runs one of the legacy Bronze / Silver / Gold surveillance steps.</summary>
+    public static bool ReplacedByLevelScheduleJob(JobDefinition job) =>
+        Calls(job).Any(c => ReplacedByLevelSchedule.Contains(c.Procedure ?? ""));
+
+    /// <summary>
+    /// Bronze / Silver / Gold are on the V4 schedule: the switch-over run (<see cref="LevelSchedule"/> @Start = 1) set their start
+    /// day (9999-12-31 = not yet). Until then the legacy jobs keep running them, even while the V4 entry runs ZED-X.
+    /// </summary>
+    public const string SwitchedOverSql =
+        "SELECT COUNT(*) AS Total FROM dbo.SectionTypes WHERE IsCertificationLevel = 1 AND SectionType IN ('Bronze', 'Silver', 'Gold') " +
+        "AND SurveillanceScheduleFrom IS NOT NULL AND SurveillanceScheduleFrom <> '99991231'";
+
+    public const string ReplacedMessage =
+        $"Replaced by the V4 surveillance schedule since the switch-over ({LevelSchedule} @Start = 1, migration 0037): " +
+        "switch this job off; both would mail, suspend and withdraw the same units.";
 
     /// <summary>Configuration errors, empty when the job can run.</summary>
     public static IEnumerable<string> Validate(JobDefinition job)

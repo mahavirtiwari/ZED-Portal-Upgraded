@@ -196,6 +196,21 @@ public sealed record JobCheck(JobCheckState State, IReadOnlyList<string> Errors,
 /// <summary>Checks that a job's procedures exist and get every parameter they need, before it is scheduled.</summary>
 public sealed class JobChecker(IProcedureCatalog catalog, IJobDatabases databases)
 {
+    private sealed class CountRow { public int Total { get; init; } }
+
+    /// <summary>Bronze / Silver / Gold are on the V4 schedule (<see cref="JobSchedule.SwitchedOverSql"/>); false before migration 0037.</summary>
+    public async Task<bool> SwitchedOverAsync(CancellationToken ct)
+    {
+        try
+        {
+            return (await databases["Main"].QuerySqlAsync<CountRow>(JobSchedule.SwitchedOverSql, null, ct)).FirstOrDefault()?.Total > 0;
+        }
+        catch (System.Data.Common.DbException)
+        {
+            return false;
+        }
+    }
+
     public async Task<JobCheck> CheckAsync(JobDefinition job, CancellationToken ct, bool includeSchedule = true)
     {
         var errors = includeSchedule ? JobSchedule.Validate(job).ToList()
@@ -263,6 +278,7 @@ public sealed class JobChecker(IProcedureCatalog catalog, IJobDatabases database
     {
         output.WriteLine($"Zed.Jobs check: {jobs.Count} entries in Jobs:Schedules, {jobs.Count(j => j.Enabled)} enabled.");
         var problems = 0;
+        bool? switchedOver = null;
         foreach (var job in jobs)
         {
             var check = await CheckAsync(job, ct, includeSchedule: job.Enabled);
@@ -274,7 +290,8 @@ public sealed class JobChecker(IProcedureCatalog catalog, IJobDatabases database
                 JobCheckState.Unreachable => "UNREACHABLE",
                 _ => "ERROR",
             };
-            var conflict = JobSchedule.Conflict(job, jobs);
+            var conflict = job.Enabled && JobSchedule.ReplacedByLevelScheduleJob(job) && (switchedOver ??= await SwitchedOverAsync(ct))
+                ? JobSchedule.ReplacedMessage : null;
             if (conflict is not null) status = "ERROR";
             if (!job.Enabled && status != "OK") status = "(disabled) " + status;
             if (job.Enabled && (check.State != JobCheckState.Ok || conflict is not null)) problems++;

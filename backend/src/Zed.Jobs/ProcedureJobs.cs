@@ -24,11 +24,6 @@ public sealed class ProcedureJobWorker(
         var jobs = new List<JobDefinition>();
         foreach (var job in o.Schedules.Where(j => j.Enabled))
         {
-            if (JobSchedule.Conflict(job, o.Schedules) is { } conflict)
-            {
-                log.LogError("Job {Job} is not scheduled: {Errors}", job.Name, conflict);
-                continue;
-            }
             var check = await checker.CheckAsync(job, stoppingToken);
             foreach (var w in check.Warnings) log.LogWarning("Job {Job}: {Warning}", job.Name, w);
             if (check.State == JobCheckState.Invalid)
@@ -107,6 +102,9 @@ public sealed class ProcedureJobWorker(
                     throw new InvalidOperationException(string.Join(" ", check.Errors.Concat(check.Warnings)));
                 prepared[job.Name] = calls = check.Calls;
             }
+            // A legacy Bronze / Silver / Gold surveillance job after the switch-over to the V4 schedule: refused (recorded as failed).
+            if (JobSchedule.ReplacedByLevelScheduleJob(job) && await checker.SwitchedOverAsync(ct))
+                throw new InvalidOperationException(JobSchedule.ReplacedMessage);
 
             // The lock is taken in Main (where dbo.V4JobRuns is), whatever databases the steps use.
             await using var lockConn = await JobRuns.TryLockAsync(config.GetConnectionString("Main"), job.Name, ct);

@@ -40,9 +40,10 @@ def check(cond, what):
         sys.exit(1)
 
 
-def run(day, level=None):
+def run(day, level=None, start=False):
     lv = f", @Level = '{level}'" if level else ''
-    sql(f"EXEC dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE @Today = '{day}'{lv};")
+    st = ', @Start = 1' if start else ''
+    sql(f"EXEC dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE @Today = '{day}'{lv}{st};")
 
 
 def dry(day):
@@ -113,10 +114,16 @@ def main():
     check(rows("SELECT CONVERT(varchar(10), SurveillanceScheduleFrom, 120) AS F FROM dbo.SectionTypes WHERE SectionType = 'Bronze';")[0]['F'] == '9999-12-31',
           'the start is not set by a dry run')
 
-    print('first run')
+    print('daily run before the switch-over (the legacy jobs still run the three levels)')
     run(START)
+    check(rows("SELECT CONVERT(varchar(10), SurveillanceScheduleFrom, 120) AS F FROM dbo.SectionTypes WHERE SectionType = 'Silver';")[0]['F'] == '9999-12-31',
+          'the daily run does not start Bronze / Silver / Gold by itself')
+    check(cert(ba, 'Bronze').get('Round') in (None, '0') and cert(sa, 'Silver').get('Round') in (None, '0'), 'nothing done for them')
+
+    print('switch-over: the run with @Start = 1')
+    run(START, start=True)
     check(rows("SELECT CONVERT(varchar(10), SurveillanceScheduleFrom, 120) AS F FROM dbo.SectionTypes WHERE SectionType = 'Silver';")[0]['F'] == START,
-          'the start is the first run')
+          'the start is the switch-over day')
     check(cert(bc, 'Bronze').get('Round') in (None, '0'), 'BC: no catching up (its notice was due before the start)')
     check(cert(sc, 'Silver')['Mail'] == '4', 'SC: the legacy second-round notice stays as it was')
 
