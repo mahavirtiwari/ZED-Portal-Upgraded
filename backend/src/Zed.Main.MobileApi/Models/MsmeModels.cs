@@ -27,6 +27,7 @@ public class BaseServiceRequest
 
 public sealed class MsmeLoginResponse : ServiceResponse
 {
+    // The Twilio fields are always null (video calls were removed); kept because the installed apps read them.
     public string? TwilioAccountSid { get; set; }
     public string? TwilioApiKey { get; set; }
     public string? TwilioApiSecret { get; set; }

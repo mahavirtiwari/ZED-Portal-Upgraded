@@ -69,6 +69,22 @@ public sealed class MsmePasswordResets(
         return null;
     }
 
+    /// <summary>How long the set-password link of a Udyami Bharat registration works (the longest a link may: 24 hours).</summary>
+    public const int SetPasswordValidMinutes = 1440;
+
+    /// <summary>
+    /// Udyami Bharat registration (V4): a one-time link for the new unit to set its first password, as nobody is told the
+    /// generated one. Recorded as sent by <paramref name="requestedBy"/> (not a self-service request). The link's address,
+    /// or null when it could not be recorded (the mail then points to "Forgot password").
+    /// </summary>
+    public async Task<string?> NewSetPasswordUrlAsync(string zedId, string requestedBy, string? ip, CancellationToken ct)
+    {
+        var token = PasswordResetTokens.NewToken();
+        if (!await PasswordResetTokens.CreateAsync(db, zedId, token, SetPasswordValidMinutes, 1, requestedBy, ip, ct)) return null;
+        audit.LogInformation("MSME password reset: set-password link for {ZedId} created at registration by {Actor} from {Ip}", zedId, requestedBy, ip);
+        return PasswordResetTokens.MsmeResetUrl(portal.Value.PublicBaseUrl, token);
+    }
+
     /// <summary>Whether a link can still be used.</summary>
     public async Task<bool> IsOpenAsync(string? token, CancellationToken ct) =>
         await PasswordResetTokens.FindMsmeByTokenAsync(db, token, ct) is not null;

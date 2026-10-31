@@ -48,6 +48,7 @@ public static class PortalSetup
         services.Configure<UdyamiBharatOptions>(config.GetSection(UdyamiBharatOptions.Section));
         services.AddHttpClient<IUdyamiBharatVerifier, UdyamiBharatVerifier>(c => c.Timeout = TimeSpan.FromSeconds(20));
         services.AddScoped<PaymentCompletion>();
+        services.AddScoped<PanCorrectionNotice>();
         services.AddScoped<SurveillancePaymentCompletion>();
         MobilePaymentsSetup.AddMobilePayments(services, config);
         services.AddSingleton<PledgeCertificateService>();

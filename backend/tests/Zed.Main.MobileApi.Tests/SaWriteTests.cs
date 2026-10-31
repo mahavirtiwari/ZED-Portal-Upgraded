@@ -24,8 +24,12 @@ public sealed class SaWriteTests : IDisposable
 
     public void Dispose() => _t.Dispose();
 
-    private static object Photo(string photoId, string? name = "p", string data = "aGVsbG8=", bool isPdf = false) =>
-        new { photoId, name, photo = data, timeStamp = "t", latitude = "1", longitude = "2", comment = "c-" + photoId, isPdf };
+    private static object Photo(string photoId, string? name = "p", string? data = null, bool isPdf = false) =>
+        new
+        {
+            photoId, name, photo = data ?? (isPdf ? AssessorTestHost.PdfBase64 : AssessorTestHost.JpegBase64), timeStamp = "t", latitude = "1", longitude = "2",
+            comment = "c-" + photoId, isPdf,
+        };
 
     private static void AssertFail(JsonElement e, string message)
     {
@@ -106,7 +110,7 @@ public sealed class SaWriteTests : IDisposable
         var e = await _t.Json("/SA/SubmitSelfie", new { saId = Co, zedId = Zed, certificationType = "Silver", selfieImage = Photo("s1", "Selfie") });
         AssertOk(e);
         Assert.Equal(new[] { "status", "errorMessage", "refId", "token" }, e.EnumerateObject().Select(p => p.Name));
-        Assert.Equal("hello", File.ReadAllText(_t.FileUnderRoot("SaPhotos", Zed, "Silver", Co + ".jpg")));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", Co + ".jpg")));
         var args = _t.LastArgs("SP_APP_SA_SAVE_PHOTOS");
         Assert.Equal("Selfie", AssessorTestHost.Arg(args, "PhotoType"));
         Assert.Equal(Co, AssessorTestHost.Arg(args, "AssessorId"));
@@ -369,8 +373,10 @@ public sealed class SaWriteTests : IDisposable
             saId = Other, zedId = Zed, certificationType = "Silver", basicInformation = new { energySources = new[] { "x" } },
         }), "SP_APP_SA_INSERT_BASIC_INFO");
         AssertFail(await _t.Json("/SA/SubmitBasicInformation", new { saId = Lead, zedId = Zed, certificationType = "Silver" }), "No data found.");
-        // No assessor named: cannot be checked, still served (logged).
-        AssertOk(await _t.Json("/SA/SubmitBasicInformation", new { zedId = Zed, certificationType = "Silver", basicInformation = new { energySources = new[] { "x" } } }));
+        // No assessor named (neither saId nor userName): refused, it cannot be checked (H2).
+        AssertNotAllotted(await _t.Json("/SA/SubmitBasicInformation", new { zedId = Zed, certificationType = "Silver", basicInformation = new { energySources = new[] { "x" } } }),
+            "SP_APP_SA_INSERT_BASIC_INFO");
+        AssertOk(await _t.Json("/SA/SubmitBasicInformation", new { userName = Lead, zedId = Zed, certificationType = "Silver", basicInformation = new { energySources = new[] { "x" } } }));
     }
 
     [Fact]
@@ -384,6 +390,38 @@ public sealed class SaWriteTests : IDisposable
         Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b1.jpg")));
         Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b2.pdf")));
         AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new { userName = Lead, zedId = Zed, certificationType = "Silver" }), "No photos found.");
+    }
+
+    [Fact]
+    public async Task Basic_info_photos_take_the_assessor_from_saId_as_the_app_sends_it()
+    {
+        AssertOk(await _t.Json("/SA/SubmitBasicInfoPhotos", new { saId = Co, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1") } }));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b1.jpg")));
+    }
+
+    [Fact]
+    public async Task Basic_info_photos_naming_no_assessor_or_another_one_are_refused()
+    {
+        AssertNotAllotted(await _t.Json("/SA/SubmitBasicInfoPhotos", new { zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1") } }),
+            "SP_SA_APP_CHECK_STATUS");
+        AssertNotAllotted(await _t.Json("/SA/SubmitBasicInfoPhotos", new { saId = Other, userName = Lead, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1") } }),
+            "SP_SA_APP_CHECK_STATUS");
+    }
+
+    [Fact]
+    public async Task Uploads_that_are_not_images_or_pdfs_are_refused()
+    {
+        var html = Convert.ToBase64String("<html><script>alert(1)</script></html>"u8.ToArray());
+        AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new { saId = Lead, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1", data: html) } }),
+            "Invalid Data.");
+        AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b2", isPdf: true, data: AssessorTestHost.JpegBase64) },
+        }), "Invalid Data.");
+        AssertFail(await _t.Json("/SA/SubmitEvidences", new { userType = 1, saId = Lead, zedId = Zed, certificationType = "Silver", addedEvidences = new[] { Photo("ev1", data: html) } }),
+            "Invalid Data.");
+        Assert.Empty(_t.AllFiles());
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
     }
 
     [Fact]

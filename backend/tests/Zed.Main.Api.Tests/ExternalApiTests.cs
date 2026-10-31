@@ -673,6 +673,62 @@ public sealed class ExternalApiTests : IDisposable
         Assert.Empty(_host.Email.Sent);
     }
 
+    private void RegistersAs(string zedId) =>
+        _host.Sql.Procs["SP_API_MSME_INSERT_UDYAM_DETAILS"] = args => FakeSql.Sets(
+            [new { Status = 200, ErrorMessage = "Success.", RequestId = "REQ-1", UdyogAadharNo = Udyam, PlantId = "P1", RefId = "UB000001", FileType = "Pledge", FileExtension = ".pdf" }],
+            [new { ZedId = zedId, MsmeId = 5, Password = FakeSql.Arg(args, "Password"), CertificateNo = "PLEDGE-1", QrCodeNo = "QR1", DateOfPledge = "21-10-2026", Address = "Plot 4, Kanpur" }]);
+
+    [Fact]
+    public async Task RegisterPlant_mails_a_set_password_link_instead_of_the_password_and_the_office_a_copy_without_it()
+    {
+        var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
+        resets.Add("ZEDMSME999001", 5, "owner@acme.test");
+        _settings[Zed.Core.Email.EmailAddresses.RegistrationCc] = "office@zed.test";
+        RegistersAs("ZEDMSME999001");
+
+        var r = await Http().PostAsJsonAsync("/Msme/RegisterPlant", Registration(UdyamiToken));
+
+        Assert.Equal("200", (await Json(r)).GetProperty("StatusCode").GetString());
+        var password = FakeSql.Arg(Assert.Single(CallsTo("SP_API_MSME_INSERT_UDYAM_DETAILS")).Args, "Password")!;
+        var unit = Assert.Single(_host.Email.Sent, m => m.To == "owner@acme.test");
+        Assert.DoesNotContain(password, unit.HtmlBody);
+        Assert.DoesNotContain(">Password<", unit.HtmlBody);
+        Assert.Empty(unit.Cc ?? []);
+
+        // The MSME "Forgot password" link: one use, 24 hours, recorded as sent by the registration (not self-service).
+        var token = System.Text.RegularExpressions.Regex.Match(unit.HtmlBody, "/msme/reset-password#token=([A-Za-z0-9_-]{43})").Groups[1].Value;
+        Assert.NotEmpty(token);
+        var link = Assert.Single(resets.Rows);
+        Assert.Equal("ZEDMSME999001", link.UserId);
+        Assert.Equal(UdyamiApiController.SetPasswordRequestedBy, link.RequestedBy);
+        Assert.True(link.TokenHash.AsSpan().SequenceEqual(Zed.Core.Security.PasswordResetTokens.Hash(token)));
+        Assert.InRange(link.ExpiresAt - link.CreatedAt, TimeSpan.FromHours(23.9), TimeSpan.FromHours(24.1));
+        Assert.Contains("within 24 hours", unit.HtmlBody);
+
+        var office = Assert.Single(_host.Email.Sent, m => m.To == "office@zed.test");
+        Assert.DoesNotContain(password, office.HtmlBody);
+        Assert.DoesNotContain(token, office.HtmlBody);
+        Assert.DoesNotContain("reset-password", office.HtmlBody);
+        Assert.Contains("Office copy", office.HtmlBody);
+        Assert.Contains("ZEDMSME999001", office.HtmlBody);
+    }
+
+    [Fact]
+    public async Task RegisterPlant_without_a_link_points_the_unit_to_forgot_password()
+    {
+        // SP_V4_STAFF_RESET_CREATE answers nothing (the link could not be recorded).
+        RegistersAs("ZEDMSME999001");
+
+        var r = await Http().PostAsJsonAsync("/Msme/RegisterPlant", Registration(UdyamiToken));
+
+        Assert.Equal("200", (await Json(r)).GetProperty("StatusCode").GetString());
+        var password = FakeSql.Arg(Assert.Single(CallsTo("SP_API_MSME_INSERT_UDYAM_DETAILS")).Args, "Password")!;
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.DoesNotContain(password, mail.HtmlBody);
+        Assert.DoesNotContain("#token=", mail.HtmlBody);
+        Assert.Contains("Forgot password", mail.HtmlBody);
+    }
+
     [Fact]
     public async Task GetCertificatesByUdyam_lists_units_in_the_old_shape()
     {

@@ -118,8 +118,9 @@ export class RegisteredMsmePage {
     return staffProfileLink(text(row, 'ZedId'));
   }
 
-  /** Assessment Details page (DA for status 1-6, SA for 9-16), or null. */
+  /** Assessment Details page (DA for status 1-6, SA for 9-16), or null; Consultancy has no assessment pages (handholding). */
   protected assessmentLink(row: Row): string[] | null {
+    if (PORTAL_SYSTEM === 'consultancy') return null;
     const s = this.status(row);
     const ids = [text(row, 'ZedId'), text(row, 'Certification')];
     if (s > 0 && s <= 6) return ['/staff/assessment/da-details', ...ids];

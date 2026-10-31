@@ -111,7 +111,7 @@ public sealed partial class MsmeController
     /// <summary>Claim documents (Photos/{zedId or userName}/FinancialAssistance). Files only, as before.</summary>
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "zedId", "userName")]
-    [MsmeEditAudit("App: financial assistance photos submitted")]
+    [MsmeEditAudit("App: financial assistance photos submitted", "zedId", "userName")]
     public async Task<IActionResult> SubmitFinancialPhotos(SubmitPhotosRequestFile request, List<IFormFile>? files, CancellationToken ct)
     {
         if (!string.IsNullOrEmpty(request.zedId)) request.userName = request.zedId;

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Email;
@@ -14,7 +15,6 @@ namespace Zed.Main.MobileApi.Controllers;
 public sealed partial class MsmeController
 {
     private const int MsmeRoleId = 5;
-    private const string ResetThrottleApp = MobileApps.Msme + ":reset";
     private const string NoUserMessage = "Sorry, no User exists with these details.";
     private const string ResetSentMessage = "A Reset link has been sent your Registered Email ID.";
 
@@ -33,7 +33,7 @@ public sealed partial class MsmeController
         var userName = request.userName?.Trim();
         if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(request.oldPassword))
             return Fail("Invalid Old Password.");
-        if (throttle.IsLocked(MobileApps.Msme, userName))
+        if (throttle.IsLocked(userName))
             return Fail("Too many failed attempts. Please try again after 15 minutes.");
 
         var user = (await db.QueryProcMultipleAsync("SP_GET_USER_DETAILS_BY_USER_ID", new { UserId = userName }, ct)).FirstRow(0);
@@ -42,10 +42,10 @@ public sealed partial class MsmeController
             !await passwords.VerifyCurrentAsync(userName, request.oldPassword,
                 LegacyPasswords.MatchesStored(user, request.oldPassword), ct))
         {
-            throttle.Failed(MobileApps.Msme, userName);
+            throttle.Failed(userName);
             return Fail("Invalid Old Password.");
         }
-        throttle.Succeeded(MobileApps.Msme, userName);
+        throttle.Succeeded(userName);
 
         if (PasswordPolicy.Validate(request.newPassword) is { } policyError)
             return Fail(policyError);
@@ -71,17 +71,18 @@ public sealed partial class MsmeController
     /// sent before the lookup: the lookup, the link and the mail run in the background, so the app can no longer be used
     /// to find out which ZED IDs exist (the old "no User exists" answer did that). The link is a hashed, single-use,
     /// expiring token in dbo.V4PasswordResets (migration 0009, SECURITY-FINDINGS #128) opening the new portal's reset
-    /// page. Limited to 5 requests per ZED ID in 15 minutes here and 3 per hour in the database. Not device-bound: a
+    /// page. Limited to 5 requests per ZED ID in 15 minutes here, 10 a minute per IP and 3 per hour in the database. Not device-bound: a
     /// user who has forgotten the password is often on a new phone.
     /// </summary>
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public IActionResult ResetPassword(string? userName)
     {
         var zedId = userName?.Trim();
         if (string.IsNullOrEmpty(zedId)) return Fail(NoUserMessage);
-        if (throttle.IsLocked(ResetThrottleApp, zedId))
+        if (throttle.IsLocked(zedId, LoginThrottle.Counter.PasswordReset))
             return Fail("Too many reset requests. Please try again after 15 minutes.");
-        throttle.Failed(ResetThrottleApp, zedId); // every request counts
+        throttle.Failed(zedId, LoginThrottle.Counter.PasswordReset); // every request counts
 
         if (zedId.Length <= 50)
         {

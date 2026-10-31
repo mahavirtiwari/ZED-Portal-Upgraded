@@ -30,9 +30,12 @@ export class AuthService {
   readonly currentUser = this.user.asReadonly();
   readonly isSignedIn = computed(() => this.user() !== null);
 
-  /** Asks the API who is signed in. Runs once per page load; also fetches the XSRF cookie. */
+  /** Asks the API who is signed in. Runs once per page load; also fetches the XSRF cookie. A failed call is tried again next time. */
   ensureLoaded(): Promise<void> {
-    this.loaded ??= this.refresh();
+    this.loaded ??= this.refresh().catch((err: unknown) => {
+      this.loaded = null;
+      throw err;
+    });
     return this.loaded;
   }
 
@@ -46,9 +49,16 @@ export class AuthService {
     this.loaded = Promise.resolve();
   }
 
+  /** Signs out on the server; this page forgets the user even when that call fails (e.g. an expired session). */
   async logout(): Promise<void> {
-    await firstValueFrom(this.http.post('/api/auth/logout', null));
-    this.user.set(null);
+    try {
+      await firstValueFrom(this.http.post('/api/auth/logout', null));
+    } catch {
+      // The session is gone or unusable either way: the login page asks the server again.
+    } finally {
+      this.user.set(null);
+      this.loaded = null;
+    }
   }
 }
 

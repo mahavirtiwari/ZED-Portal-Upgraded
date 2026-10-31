@@ -107,6 +107,38 @@ public sealed class LevelSurveillanceTests : IDisposable
     }
 
     [Fact]
+    public async Task A_zedx_surveillance_zero_payment_counts_only_when_its_round_was_recorded()
+    {
+        Status(1);
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_GET_PAYMENT_DETAILS"] = _ => FakeSql.Sets(
+            [], [new { Id = 41, Total = "29500.00", ApplicantContributionAfterSubsidy = "0.00", UdyamPanNo = "ABCDE1234F" }], [new { IsCouponUsed = 1 }]);
+        var rows = 0;
+        _host.Sql.Queries[LevelSurveillance.PaymentsSql] = _ => [rows];
+        var client = await SignedInAsync();
+        (await client.GetAsync("/api/auth/me")).EnsureSuccessStatusCode();   // the signed-in XSRF token
+        var choices = new { useReward = false, gstinApplicable = false, tdsDeductible = false };
+
+        // The procedure skipped (it records only while ZED_SURVEILLANCE's IsBronzePaymentDone is unset): no new payment row.
+        // Before, the legacy status procedure decided, and on the server it answers 0 for ZED-X, which read as recorded.
+        var skipped = await client.PostAsJsonAsync($"{Api}/ZEDX/checkout", choices);
+        Assert.Equal("The payment could not be recorded. Please contact zed.support@qcin.org.", await skipped.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == LevelSurveillance.PaidSql);
+
+        // Recorded: the round's payment row is there.
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS"] = _ =>
+        {
+            rows++;
+            return FakeSql.Sets();
+        };
+        var ok = await client.PostAsJsonAsync($"{Api}/ZEDX/checkout", choices);
+        Assert.Equal("paid", (await ok.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        Assert.Single(_host.Sql.Calls, c => c.Name == LevelSurveillance.PaidSql);
+        Assert.All(_host.Sql.Calls.Where(c => c.Name == LevelSurveillance.PaymentsSql), c =>
+            Assert.Equal((Me, "ZEDX"), (FakeSql.Arg(c.Args, "ZedId"), FakeSql.Arg(c.Args, "Certification"))));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS");
+    }
+
+    [Fact]
     public void The_schedule_is_checked_against_the_validity()
     {
         var d = SurveillanceSchedule.Default;

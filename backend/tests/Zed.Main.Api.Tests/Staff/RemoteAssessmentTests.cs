@@ -1,9 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Zed.Portal.Features.Remote;
 using Zed.Portal.Features.Staff.Assessment;
@@ -69,11 +66,10 @@ public sealed class RemoteAssessmentTests : IDisposable
 {
     private const string Zed = "ZEDMSME000001";
     private const string Base = "/api/staff/remote/" + Zed + "/Silver";
-    private const string Secret = "test-secret-0123456789";
 
     private readonly TestHost _host = new();
-    private readonly WebApplicationFactory<Program> _video;
     private int _status = 9;
+    private int _joinRoomStatus;
     private bool _confirmAllowed = true;
     private bool _raisesNc;
     private readonly List<Dictionary<string, object?>> _photos = [];
@@ -87,16 +83,9 @@ public sealed class RemoteAssessmentTests : IDisposable
     public RemoteAssessmentTests()
     {
         RemoteTestUsers.Register(_host);
-        _video = _host.WithWebHostBuilder(b =>
-        {
-            b.UseSetting("Twilio:AccountSid", "ACtest");
-            b.UseSetting("Twilio:ApiKey", "SKtest");
-            b.UseSetting("Twilio:ApiSecret", Secret);
-        });
-
         _host.Sql.Queries[RemoteAssessmentController.RecordSql[..60]] = args => (FakeSql.Arg(args, "ZedId"), FakeSql.Arg(args, "Certification")) switch
         {
-            (Zed, "Silver") => [new { Id = 5L, ZedId = Zed, Certification = "Silver", CertificationStatus = _status, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = "ASSESSOR2", ModeOfAssessment = "Remote Assessment" }],
+            (Zed, "Silver") => [new { Id = 5L, ZedId = Zed, Certification = "Silver", CertificationStatus = _status, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = "ASSESSOR2", ModeOfAssessment = "Remote Assessment", JoinRoomStatus = _joinRoomStatus }],
             ("ZEDMSME000002", "Silver") => [new { Id = 6L, ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = _onsiteStatus, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = (string?)null, ModeOfAssessment = "Onsite Assessment" }],
             _ => [],
         };
@@ -176,11 +165,10 @@ public sealed class RemoteAssessmentTests : IDisposable
 
     public void Dispose()
     {
-        _video.Dispose();
         _host.Dispose();
     }
 
-    private Task<HttpClient> As(string? user) => RemoteTestUsers.SignInAsync(_video, user);
+    private Task<HttpClient> As(string? user) => RemoteTestUsers.SignInAsync(_host, user);
 
     private (string Name, object? Args) Call(string proc) => _host.Sql.Calls.Last(c => c.Name == proc);
 
@@ -194,7 +182,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         {
             var client = await As(user);
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(Base)).StatusCode);
-            Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync(Base + "/join", null)).StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" })).StatusCode);
         }
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
@@ -204,7 +192,6 @@ public sealed class RemoteAssessmentTests : IDisposable
     {
         var other = await As("ASSESSOR3");
         Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync(Base)).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync(Base + "/join", null)).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" })).StatusCode);
 
         var lead = await As("ASSESSOR1");
@@ -248,7 +235,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         Assert.False(body.GetProperty("openMeeting").GetProperty("participants")[0].TryGetProperty("ZedId", out _));
         var permissions = body.GetProperty("permissions");
         Assert.True(permissions.GetProperty("canAssess").GetBoolean());
-        Assert.True(permissions.GetProperty("videoConfigured").GetBoolean());
+        Assert.False(permissions.TryGetProperty("videoConfigured", out _)); // no video call any more
     }
 
     [Fact]
@@ -281,7 +268,6 @@ public sealed class RemoteAssessmentTests : IDisposable
         Assert.False(body.GetProperty("siteExteriorPhotos")[0].GetProperty("deletable").GetBoolean());
         var r = await co.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" });
         Assert.Equal(HttpStatusCode.Forbidden, r.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await co.PostAsync(Base + "/join", null)).StatusCode);
 
         _status = 15;
         var lead = await As("ASSESSOR1");
@@ -292,38 +278,25 @@ public sealed class RemoteAssessmentTests : IDisposable
     }
 
     [Fact]
-    public async Task Join_returns_a_video_token_for_the_units_room_only()
+    public async Task There_is_no_video_room_and_the_first_change_starts_the_assessment()
     {
         var lead = await As("ASSESSOR1");
-        var r = await lead.PostAsync(Base + "/join", null);
-        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        var body = await r.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal(Zed + " Remote Assessment", body.GetProperty("room").GetString());
-        Assert.Equal(Zed, FakeSql.Arg(Call("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS").Args, "ZedId"));
-
-        var parts = body.GetProperty("token").GetString()!.Split('.');
-        Assert.Equal(3, parts.Length);
-        var expected = TwilioVideoToken.Base64Url(HMACSHA256.HashData(Encoding.UTF8.GetBytes(Secret), Encoding.ASCII.GetBytes(parts[0] + "." + parts[1])));
-        Assert.Equal(expected, parts[2]);
-        var payload = JsonDocument.Parse(Convert.FromBase64String(Pad(parts[1]))).RootElement;
-        Assert.Equal("SKtest", payload.GetProperty("iss").GetString());
-        Assert.Equal("ACtest", payload.GetProperty("sub").GetString());
-        Assert.Equal(Zed + " Remote Assessor", payload.GetProperty("grants").GetProperty("identity").GetString());
-        Assert.Equal(Zed + " Remote Assessment", payload.GetProperty("grants").GetProperty("video").GetProperty("room").GetString());
-        Assert.True(payload.GetProperty("exp").GetInt64() - payload.GetProperty("iat").GetInt64() == 3600);
-        var header = JsonDocument.Parse(Convert.FromBase64String(Pad(parts[0]))).RootElement;
-        Assert.Equal("twilio-fpa;v=1", header.GetProperty("cty").GetString());
-        Assert.DoesNotContain(Secret, await r.Content.ReadAsStringAsync());
-    }
-
-    [Fact]
-    public async Task Join_without_twilio_settings_is_refused()
-    {
-        var lead = await RemoteTestUsers.SignInAsync(_host, "ASSESSOR1");
-        var r = await lead.PostAsync(Base + "/join", null);
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsync(Base + "/join", null)).StatusCode);
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
-        Assert.False((await lead.GetFromJsonAsync<JsonElement>(Base)).GetProperty("permissions").GetProperty("videoConfigured").GetBoolean());
+
+        // Viewing does not start it; the lead assessor's first change does (the lists then show the unit as under assessment).
+        Assert.Equal(HttpStatusCode.OK, (await lead.GetAsync(Base)).StatusCode);
+        Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" })).StatusCode);
+        var start = Call("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS");
+        Assert.Equal(Zed, FakeSql.Arg(start.Args, "ZedId"));
+        Assert.Equal("Silver", FakeSql.Arg(start.Args, "CertificationType"));
+
+        // Once started, it is not marked again.
+        _joinRoomStatus = 1;
+        var before = _host.Sql.Calls.Count(c => c.Name == "SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS");
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/requirements/51/conformance", new { conformance = "Yes" })).StatusCode);
+        Assert.Equal(before, _host.Sql.Calls.Count(c => c.Name == "SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
 
     [Fact]
@@ -474,7 +447,6 @@ public sealed class RemoteAssessmentTests : IDisposable
         // After the closing meeting (status 13): reviewed and submitted on the web, as on the old SaDetails page; no video room.
         _onsiteStatus = 13;
         Assert.Equal(HttpStatusCode.OK, (await lead.GetAsync(onsite)).StatusCode);
-        Assert.Equal("This unit was assessed onsite with the SA app; there is no video call.", await (await lead.PostAsync(onsite + "/join", null)).ProblemTitle());
         Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(onsite + "/final-submit", new { comments = "Site assessment complete" })).StatusCode);
         Assert.Equal("ZEDMSME000002", FakeSql.Arg(Call("SP_ASSESSMENT_RA_FINAL_SUBMIT").Args, "ZedId"));
         Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
@@ -515,11 +487,5 @@ public sealed class RemoteAssessmentTests : IDisposable
         Assert.True(RemoteFiles.BelongsTo("mobileapi/SaCertifiedPhotos/ZEDMSME000001/Silver/a.jpg", "ZEDMSME000001", "Silver"));
         Assert.Null(RemoteFiles.Normalise("SaPhotos/ZEDMSME000001/Silver/../../x.jpg"));
         Assert.Null(RemoteFiles.Normalise("SaPhotos/ZEDMSME000001/Silver/a.aspx"));
-    }
-
-    private static string Pad(string s)
-    {
-        s = s.Replace('-', '+').Replace('_', '/');
-        return s + new string('=', (4 - s.Length % 4) % 4);
     }
 }

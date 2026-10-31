@@ -21,6 +21,12 @@ namespace Zed.Main.MobileApi.Controllers;
 /// Mobile:MaxFileBytes; every path segment is a plain name; the request is device-bound to the ZED ID. The rest of
 /// the surveillance Msme controller is not served (see docs/MOBILE-API.md).
 /// </para>
+/// <para>
+/// The folder is the site assessor's own SiteTour folder (the procedures and the portal build the address from the
+/// PhotoId, so the unit's photos cannot move), and the call has no password behind it: an existing file is never
+/// replaced. The same bytes sent again (a retried sync) go on to the procedure; other bytes under a taken photoId are
+/// refused, so the assessor's evidence cannot be swapped.
+/// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Surveillance)]
 [Route("Msme/SubmitSurveillancePhoto")]
@@ -29,6 +35,7 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
     internal const string ClosedMessage = "Cannot Sync Now. Please check with Assessor as final submission done from their end.";
     private const string InvalidDetails = "Invalid Details.";
     private const string GenericError = "An error has occurred, please try again later.";
+    internal const string ExistsMessage = "Photo already submitted.";
 
     internal const string SiteUnitSql =
         "SELECT Certification, DesktopAssessorId, SiteAssessorId, SaCertificateNo, CertificationStatus, NcCount, " +
@@ -73,7 +80,24 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
         if (!await IsImageAsync(file_data, ct)) return Refuse(zedId, level, "file is not a JPEG or PNG image", "Invalid File Data.");
 
         var folder = storage.Folder("SaPhotos", zedId, level, "SiteTour");
-        await storage.SaveAsync(file_data, folder, MobileStorage.FileName(photo.photoId, ".jpg"), ct);
+        var fileName = MobileStorage.FileName(photo.photoId, ".jpg");
+        var target = storage.Target(folder, fileName);
+        if (System.IO.File.Exists(target))
+        {
+            if (!await SameContentAsync(target, file_data, ct))
+                return Refuse(zedId, level, $"photo {photo.photoId} already exists", ExistsMessage);
+        }
+        else
+        {
+            try
+            {
+                await storage.SaveAsync(file_data, folder, fileName, ct, overwrite: false);
+            }
+            catch (IOException) when (System.IO.File.Exists(target))
+            {
+                return Refuse(zedId, level, $"photo {photo.photoId} written meanwhile", ExistsMessage);
+            }
+        }
 
         var photos = new DataTable();
         foreach (var c in new[] { "PhotoId", "Name", "TimeStamp", "Latitude", "Longitude", "PhotoType" }) photos.Columns.Add(c, typeof(string));
@@ -120,17 +144,17 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
     /// <summary>JPEG (FF D8 FF) or PNG signature; the old code saved any bytes as .jpg in a public folder.</summary>
     internal static async Task<bool> IsImageAsync(IFormFile file, CancellationToken ct)
     {
-        var head = new byte[8];
-        await using var s = file.OpenReadStream();
-        var read = 0;
-        while (read < head.Length)
-        {
-            var n = await s.ReadAsync(head.AsMemory(read), ct);
-            if (n == 0) break;
-            read += n;
-        }
-        var jpeg = read >= 3 && head[0] == 0xFF && head[1] == 0xD8 && head[2] == 0xFF;
-        var png = read >= 8 && head.AsSpan().SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A });
-        return jpeg || png;
+        var head = await MobileStorage.HeadAsync(file, ct);
+        return MobileStorage.IsImage(head);
+    }
+
+    /// <summary>Whether the stored file holds exactly the uploaded bytes (both are at most Mobile:MaxFileBytes).</summary>
+    private static async Task<bool> SameContentAsync(string path, IFormFile file, CancellationToken ct)
+    {
+        if (new FileInfo(path).Length != file.Length) return false;
+        var stored = await System.IO.File.ReadAllBytesAsync(path, ct);
+        using var uploaded = new MemoryStream();
+        await file.CopyToAsync(uploaded, ct);
+        return stored.AsSpan().SequenceEqual(uploaded.GetBuffer().AsSpan(0, (int)uploaded.Length));
     }
 }

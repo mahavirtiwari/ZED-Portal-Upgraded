@@ -86,7 +86,7 @@ export class ResetPasswordPage implements OnInit {
   protected async submit(): Promise<void> {
     this.error.set('');
     if (this.newPassword !== this.confirmPassword) {
-      this.error.set('NewPassword and ConfirmPassword should be same.');
+      this.error.set('The new password and its confirmation do not match.');
       return;
     }
     this.busy.set(true);

@@ -2,6 +2,7 @@ using System.Data;
 using System.Data.Common;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
 using Zed.Core.Forms;
 using Zed.Core.Http;
@@ -65,6 +66,7 @@ public sealed class SAController(
 
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Site assessment app")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
         if (config.GetValue<bool>("Mobile:CheckSaVersion") &&
@@ -74,7 +76,7 @@ public sealed class SAController(
         var assessorId = request.assessorId?.Trim();
         if (string.IsNullOrEmpty(assessorId) || string.IsNullOrEmpty(request.password))
             return LegacyJson(new AssessmentDetails { status = "0", errorMessage = InvalidCredentials });
-        if (throttle.IsLocked(MobileApps.SiteAssessor, assessorId))
+        if (throttle.IsLocked(assessorId))
             return LegacyJson(new AssessmentDetails { status = "0", errorMessage = TooManyAttempts });
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
@@ -89,10 +91,10 @@ public sealed class SAController(
         if (user is null || masterPassword || user.Text("RoleId") != "3")
         {
             if (masterPassword) log.LogWarning("Blocked SA app login with a procedure master password for {UserId}", assessorId);
-            throttle.Failed(MobileApps.SiteAssessor, assessorId);
+            throttle.Failed(assessorId);
             return LegacyJson(new AssessmentDetails { status = "0", errorMessage = InvalidCredentials });
         }
-        throttle.Succeeded(MobileApps.SiteAssessor, assessorId);
+        throttle.Succeeded(assessorId);
 
         // Set 1 only has a row when this assessor is the lead or co-assessor of the unit.
         if (sets[1].Count == 0)
@@ -534,12 +536,13 @@ public sealed class SAController(
         return LegacyJson(result);
     });
 
+    /// <summary>The app names the assessor in saId (the old model read userName, so nothing was checked); either is taken.</summary>
     [HttpPost]
-    [DeviceBound(MobileApps.SiteAssessor, "userName")]
+    [DeviceBound(MobileApps.SiteAssessor, "saId", "userName")]
     public Task<IActionResult> SubmitBasicInfoPhotos(SubmitPhotosRequest request, CancellationToken ct) => Guarded(nameof(SubmitBasicInfoPhotos), async () =>
     {
         RequireCertification(request.certificationType);
-        if (await CheckNamedAssessorAsync(nameof(SubmitBasicInfoPhotos), request.userName, request.zedId, request.certificationType, ct) is { } refused)
+        if (await CheckNamedAssessorAsync(nameof(SubmitBasicInfoPhotos), First(request.saId, request.userName), request.zedId, request.certificationType, ct) is { } refused)
             return refused;
         if (request.photos is null) return Fail("No photos found.");
 
@@ -711,18 +714,11 @@ public sealed class SAController(
     }
 
     /// <summary>
-    /// For the basic-information calls, whose procedures do not record the assessor: an assessor named
-    /// in the request must be allotted; a request that names none cannot be checked (logged).
+    /// For the basic-information calls, whose procedures do not record the assessor: the assessor named in the
+    /// request (saId or userName) must be allotted; a request that names none is refused like an unallotted one.
     /// </summary>
-    private async Task<IActionResult?> CheckNamedAssessorAsync(string action, string? assessorId, string? zedId, string? certification, CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(assessorId))
-        {
-            log.LogWarning("SA/{Action} for {ZedId} names no assessor; allotment not checked", action, zedId);
-            return null;
-        }
-        return await IsAllottedAsync(assessorId, zedId, certification, Role.LeadOrCo, ct) ? null : NotAllotted(action, assessorId, zedId);
-    }
+    private async Task<IActionResult?> CheckNamedAssessorAsync(string action, string? assessorId, string? zedId, string? certification, CancellationToken ct) =>
+        await IsAllottedAsync(assessorId, zedId, certification, Role.LeadOrCo, ct) ? null : NotAllotted(action, assessorId, zedId);
 
     private IActionResult NotAllotted(string action, string? assessorId, string? zedId)
     {

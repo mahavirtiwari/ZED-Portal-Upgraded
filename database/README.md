@@ -46,7 +46,7 @@ powershell -ExecutionPolicy Bypass -File .\setup.ps1                       # def
 powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server "HOST\INST"
 
 # rebuild: drops and recreates ONLY ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE
-powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Force
+powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Force -AllowUnprefixedDrop
 
 # afterwards: verify (read-only)
 sqlcmd -S "localhost\SQLEXPRESS" -E -C -d ZEDCS_V2_LIVE -i verify_references.sql -W -s "|" -f 65001

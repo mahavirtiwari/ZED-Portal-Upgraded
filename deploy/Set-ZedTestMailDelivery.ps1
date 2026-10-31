@@ -13,7 +13,11 @@
   It changes the settings file (a copy of the previous one is kept next to it, administrators only), so the next deploy
   (Update-ZedFromGit.ps1) keeps the choice; the environment of the app pools now (they are restarted); and the
   environment of the Zed.Jobs service (restarted when running). Without -Apply it only shows what it would do.
-  It refuses a settings file whose ASPNETCORE_ENVIRONMENT is Production.
+  It refuses to run on the live server. It reads the environment of every ZED app pool installed here
+  (ASPNETCORE_ENVIRONMENT; a pool without it runs as Production) and of the Zed.Jobs service, and refuses when any of
+  them is Production. It then needs the settings file's Common.ASPNETCORE_ENVIRONMENT to name a test environment
+  (Staging, Test, Testing or Development), or, when the settings file names none (production settings files do not:
+  Install-ZedIis.ps1 adds it to the pools), installed app pools that all name one that is not Production.
 
 .EXAMPLE
   .\deploy\Set-ZedTestMailDelivery.ps1 -Mode Recipients
@@ -49,6 +53,42 @@ $poolSections = [ordered]@{
     'ZedV4-Main' = 'Common', 'Portals', 'Main'; 'ZedV4-Consultancy' = 'Common', 'Portals', 'Consultancy'
     'ZedV4-Surveillance' = 'Common', 'Portals', 'Surveillance'; 'ZedV4-Mobile-Main' = 'Common', 'Mobile', 'MobileMain'
     'ZedV4-Mobile-Consultancy' = 'Common', 'Mobile', 'MobileConsultancy'; 'ZedV4-Mobile-Surveillance' = 'Common', 'Mobile', 'MobileSurveillance'
+}
+
+# Is this the live server? A production settings file has no ASPNETCORE_ENVIRONMENT (Install-ZedIis.ps1 puts it on the
+# pools), so the settings file alone cannot tell: the environment the pools and Zed.Jobs run with now is read too.
+$testEnvironments = @('Staging', 'Test', 'Testing', 'Development')
+$apphost = 'MACHINE/WEBROOT/APPHOST'
+$running = [ordered]@{}
+if (Get-Module -ListAvailable -Name WebAdministration) {
+    Import-Module WebAdministration
+    foreach ($pool in $poolSections.Keys) {
+        if (-not (Test-Path "IIS:\AppPools\$pool")) { continue }
+        $value = Get-WebConfigurationProperty -PSPath $apphost -Name value -ErrorAction SilentlyContinue `
+            -Filter "system.applicationHost/applicationPools/add[@name='$pool']/environmentVariables/add[@name='ASPNETCORE_ENVIRONMENT']"
+        if ($value -and $value.PSObject.Properties['Value']) { $value = $value.Value }
+        # ASP.NET Core runs as Production when the variable is not set.
+        $running["app pool $pool"] = if ([string]$value) { [string]$value } else { 'Production' }
+    }
+}
+if (Get-Service $JobsService -ErrorAction SilentlyContinue) {
+    $serviceVars = @((Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\$JobsService" -Name Environment -ErrorAction SilentlyContinue).Environment)
+    $jobsEnv = @($serviceVars | Where-Object { $_ -match '^(DOTNET|ASPNETCORE)_ENVIRONMENT=' } | ForEach-Object { ($_ -split '=', 2)[1] }) | Select-Object -First 1
+    # Without a variable Zed.Jobs does not mail at all (its mail outbox refuses to send), so only a stated Production counts.
+    if ($jobsEnv) { $running["service $JobsService"] = [string]$jobsEnv }
+}
+foreach ($kv in $running.GetEnumerator()) { Write-Host "    $($kv.Key): $($kv.Value)" }
+$live = @($running.Keys | Where-Object { $running[$_] -eq 'Production' })
+if ($live.Count -gt 0) {
+    throw "This is the live server ($($live -join ', ') run as Production): the live portal always mails its recipients. Nothing was changed."
+}
+if ($testEnvironments -notcontains $envName) {
+    $pools = @($running.Keys | Where-Object { $_ -like 'app pool *' })
+    if ($pools.Count -eq 0) {
+        throw "$Settings names no test environment (Common.ASPNETCORE_ENVIRONMENT is '$envName'; expected one of $($testEnvironments -join ', ')) and no ZED app pool is installed here to read it from. Nothing was changed."
+    }
+    Write-Note "$Settings names no test environment; the installed app pools run as $(@($pools | ForEach-Object { $running[$_] } | Select-Object -Unique) -join ', ')."
+    if (-not $envName) { $envName = ($pools | ForEach-Object { $running[$_] } | Select-Object -First 1) }
 }
 $remove = if ($Mode -eq 'Recipients') { 'Email__RedirectAllTo', 'Email__AllowedRecipientDomains' } else { 'Email__DeliverToRecipients', 'Email__AllowedRecipientDomains' }
 $set = if ($Mode -eq 'Recipients') { @{ Email__DeliverToRecipients = 'true' } } else { @{ Email__RedirectAllTo = $RedirectTo } }

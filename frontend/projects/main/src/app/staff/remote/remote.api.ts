@@ -45,10 +45,10 @@ export interface RemoteDetails {
   openMeeting: Meeting | null;
   closeMeeting: Meeting | null;
   selfies: Selfie[];
-  permissions: { isLeadAssessor: boolean; canAssess: boolean; videoConfigured: boolean };
-  /** Surveillance only: the assessment is held on the agency's meeting link (no video on this page). */
+  permissions: { isLeadAssessor: boolean; canAssess: boolean };
+  /** Surveillance only: the assessment is held on the agency's meeting link. */
   usesMeetingLink?: boolean;
-  /** Main: an onsite unit reviewed after the SA app's closing meeting (no video call). */
+  /** Main: an onsite unit reviewed after the SA app's closing meeting. */
   onsiteReview?: boolean;
   /** Surveillance only: http/https address checked by the API. */
   meetingLink?: string | null;
@@ -60,13 +60,6 @@ export interface RemoteDetails {
 
 /** Surveillance: the old page allowed up to 6 recording links. */
 export const MAX_RECORDING_LINKS = 6;
-
-export interface JoinResponse {
-  token: string;
-  room: string;
-  identity: string;
-  expiresInSeconds: number;
-}
 
 export interface FinalSubmitCheck {
   allowed: boolean;
@@ -96,10 +89,6 @@ export class RemoteApi {
 
   details(zedId: string, certification: string): Observable<RemoteDetails> {
     return this.http.get<RemoteDetails>(this.base(zedId, certification));
-  }
-
-  join(zedId: string, certification: string): Observable<JoinResponse> {
-    return this.http.post<JoinResponse>(`${this.base(zedId, certification)}/join`, {});
   }
 
   basicInfo(zedId: string, certification: string, column: string, value: string): Observable<MessageResponse> {

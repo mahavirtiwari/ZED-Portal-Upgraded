@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using StaffAuthController = Zed.Portal.Features.Staff.StaffAuthController;
 
 namespace Zed.Main.Api.Tests;
 
@@ -67,6 +68,44 @@ public sealed class StaffAuthTests : IDisposable
         var r = await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "ADMIN1", password = "Any#Master1" });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_UPDATE_LOGIN");
+    }
+
+    [Fact]
+    public async Task One_address_cannot_lock_an_account_with_wrong_passwords()
+    {
+        // The procedure counts every call it refuses (FailedLogins) and locks the account at 11 in 30 minutes.
+        _host.Sql.Procs["SP_GET_USER_DETAILS"] = args => FakeSql.Arg(args, "Password") != "Right#Pass1"
+            ? FakeSql.Sets([], [new { ERRORMSG = "INVALID CREDENTIAILS" }])
+            : FakeSql.Arg(args, "UserId") == "AGENCY1" ? User("AGENCY1", 2) : User("ADMIN1", 1);
+        int ProcedureCalls() => _host.Sql.Calls.Count(c => c.Name == "SP_GET_USER_DETAILS");
+        var client = await _host.CreateBrowserAsync();
+
+        for (var i = 0; i < StaffAuthController.FailuresPerAddress; i++)
+            Assert.Equal("Invalid credentials.", await (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "ADMIN1", password = "Wrong#Pass" + i })).ProblemTitle());
+        Assert.Equal(StaffAuthController.FailuresPerAddress, ProcedureCalls());
+
+        // Further attempts from this address, even the right password, are refused without reaching the procedure.
+        Assert.Equal(StaffAuthController.TooManyFailures, await (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "ADMIN1", password = "Wrong#Pass9" })).ProblemTitle());
+        Assert.Equal(StaffAuthController.TooManyFailures, await (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "admin1", password = "Right#Pass1" })).ProblemTitle());
+        Assert.Equal(StaffAuthController.FailuresPerAddress, ProcedureCalls());
+
+        // Another account from the same address is not affected.
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "AGENCY1", password = "Right#Pass1" })).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_successful_sign_in_clears_the_addresss_wrong_passwords()
+    {
+        _host.Sql.Procs["SP_GET_USER_DETAILS"] = args => FakeSql.Arg(args, "Password") == "Right#Pass1"
+            ? User("AGENCY1", 2)
+            : FakeSql.Sets([], [new { ERRORMSG = "INVALID CREDENTIAILS" }]);
+        var client = await _host.CreateBrowserAsync();
+        for (var i = 0; i < StaffAuthController.FailuresPerAddress - 1; i++)
+            await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "AGENCY1", password = "Wrong#Pass" + i });
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "AGENCY1", password = "Right#Pass1" })).StatusCode);
+
+        for (var i = 0; i < StaffAuthController.FailuresPerAddress - 1; i++)
+            Assert.Equal("Invalid credentials.", await (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId = "AGENCY1", password = "Wrong#Pass" + i })).ProblemTitle());
     }
 
     [Fact]

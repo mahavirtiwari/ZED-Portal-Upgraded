@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 
@@ -20,6 +21,40 @@ public sealed record GstinResult(bool Valid, string Message);
 public interface IGstinVerifier
 {
     Task<GstinResult> VerifyAsync(string zedId, string certification, string gstin, CancellationToken ct);
+}
+
+/// <summary>
+/// The app's GSTIN check. The web checkout takes only a GSTIN the unit verified with Protean in its GSTIN step; the app
+/// has no such step and its checkout accepted any well-formed number, so the app's checkout verifies it here, with the
+/// same service, and remembers a valid answer for 30 minutes (as the web step does) so the app's next call does not ask again.
+/// </summary>
+public static class AppGstin
+{
+    public static readonly TimeSpan Remembered = TimeSpan.FromMinutes(30);
+
+    /// <returns>Null when the GSTIN is verified; otherwise the message for the user.</returns>
+    public static async Task<string?> VerifyAsync(
+        IGstinVerifier verifier, IDistributedCache cache,
+        string zedId, string level, string gstin, ILogger log, CancellationToken ct)
+    {
+        var key = $"app-gstin-ok:{zedId}:{gstin}";
+        if (await cache.GetStringAsync(key, ct) is not null) return null;
+
+        GstinResult result;
+        try { result = await verifier.VerifyAsync(zedId, level, gstin, ct); }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+        {
+            log.LogWarning(ex, "GSTIN verification unavailable");
+            return "Unexpected error occurred. Please try after some time.";
+        }
+        if (!result.Valid)
+        {
+            log.LogWarning("App checkout of {ZedId}/{Level}: GSTIN {Gstin} not verified ({Message})", zedId, level, gstin, result.Message);
+            return result.Message;
+        }
+        await cache.SetStringAsync(key, "1", new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = Remembered }, ct);
+        return null;
+    }
 }
 
 /// <summary>

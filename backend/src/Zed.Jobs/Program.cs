@@ -8,7 +8,11 @@ using Zed.Jobs;
 // "Zed.Jobs --check" checks every entry of Jobs:Schedules against the databases, prints the result and exits
 // (non-zero when an enabled job has a problem); run it before enabling jobs on a server.
 var check = args.Contains("--check", StringComparer.OrdinalIgnoreCase);
-var builder = Host.CreateApplicationBuilder(args.Where(a => !a.Equals("--check", StringComparison.OrdinalIgnoreCase)).ToArray());
+var hostArgs = args.Where(a => !a.Equals("--check", StringComparison.OrdinalIgnoreCase)).ToArray();
+// Where the environment name comes from: without one .NET runs as Production, and then the mail outbox does not send
+// (JobsEnvironment). ASPNETCORE_ENVIRONMENT alone (as on the app pools) counts as well.
+var jobsEnvironment = JobsEnvironment.From(hostArgs, Environment.GetEnvironmentVariable);
+var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { Args = hostArgs, EnvironmentName = jobsEnvironment.HostOverride });
 // The outbox worker mails what the procedures queue: outside Production that must not reach real people (staging runs
 // on copies of production data), and a staging mail setting must never be active in Production.
 // A database prefix (a second, prefixed set of test databases) is refused in Production.
@@ -23,6 +27,7 @@ builder.Services.Configure<JobsOptions>(builder.Configuration.GetSection(JobsOpt
 builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.Section));
 builder.Services.AddSingleton<IEmailSender, SmtpEmailSender>();
 builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton(jobsEnvironment);
 builder.Services.AddSingleton<IJobDatabases, JobDatabases>();
 builder.Services.AddSingleton<IProcedureCatalog, SqlProcedureCatalog>();
 builder.Services.AddSingleton<JobChecker>();

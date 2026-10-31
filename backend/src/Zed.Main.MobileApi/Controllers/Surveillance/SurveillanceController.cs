@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
@@ -34,7 +35,6 @@ public sealed partial class SurveillanceController(
     IOptions<MobileOptions> options,
     IDeviceBindings devices,
     LoginThrottle throttle,
-    TwilioVideoTokens twilio,
     ILogger<SurveillanceController> log) : LegacyMobileController
 {
     /// <summary>Device records of the Bronze surveillance app (MobileDeviceBindings.AppKind is varchar(10)).</summary>
@@ -67,6 +67,7 @@ public sealed partial class SurveillanceController(
     /// </summary>
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Surveillance app")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (VersionCheck(request.version) is { } update) return update;
@@ -75,7 +76,7 @@ public sealed partial class SurveillanceController(
         var zedId = request.zedId?.Trim();
         if (string.IsNullOrEmpty(assessorId) || string.IsNullOrEmpty(request.password))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = InvalidCredentials });
-        if (throttle.IsLocked(App, assessorId))
+        if (throttle.IsLocked(assessorId))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = TooManyAttempts });
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
@@ -87,10 +88,10 @@ public sealed partial class SurveillanceController(
         if (user is null || masterPassword || (user.ContainsKey("RoleId") && user.Text("RoleId") != DesktopAssessorRoleId))
         {
             if (masterPassword) log.LogWarning("Blocked surveillance app login with a procedure master password for {UserId}", assessorId);
-            throttle.Failed(App, assessorId);
+            throttle.Failed(assessorId);
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = InvalidCredentials });
         }
-        throttle.Succeeded(App, assessorId);
+        throttle.Succeeded(assessorId);
 
         // Set 4 has a row only when this assessor is the unit's desktop assessor and the unit is at status 1.
         // The old code then read set 1 unchecked; a unit without an Msme row failed with an error page.
@@ -173,8 +174,7 @@ public sealed partial class SurveillanceController(
                 },
                 msmeStatus = MsmeController.StatusFrom(sets.FirstRow(3)),
             },
-            // The old code built the token from request.userName, which this app's login does not need.
-            TwilioToken = twilio.Create(request.userName),
+            TwilioToken = null, // video calls were removed; the field stays for the installed apps
         };
 
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;

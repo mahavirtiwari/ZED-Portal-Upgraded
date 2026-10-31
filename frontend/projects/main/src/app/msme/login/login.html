@@ -34,7 +34,8 @@
       <form class="login-form mt-3" (ngSubmit)="forgotPassword()" novalidate>
         <h2>Reset Password</h2>
         <div class="mb-3">
-          <input name="resetUserId" class="form-control" placeholder="ZED ID" [(ngModel)]="resetUserId" required maxlength="100" />
+          <label for="resetUserId" class="visually-hidden">ZED ID</label>
+          <input id="resetUserId" name="resetUserId" class="form-control" placeholder="ZED ID" [(ngModel)]="resetUserId" required maxlength="100" />
         </div>
         <div class="register-btn">
           <button type="submit" class="btn btn-primary" [disabled]="busy()">RESET PASSWORD</button>

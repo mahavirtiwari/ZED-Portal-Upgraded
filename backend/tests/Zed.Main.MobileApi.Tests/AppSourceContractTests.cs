@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
@@ -75,12 +77,16 @@ public sealed class AppSourceContractTests : IDisposable
 public sealed class TuPhotosTests : IDisposable
 {
     private const string Zed = "ZEDMSME000900";
+    private const string ClientIp = "203.0.113.7";
     private readonly MobileTestHost _host = new();
     private readonly TuConsultancySql _consultancy = new();
     private HttpClient? _client;
 
     private HttpClient Client => _client ??= _host.WithWebHostBuilder(b => b.ConfigureTestServices(s =>
-        s.AddKeyedSingleton<ISqlExecutor>(Controllers.TuPhotosController.ConsultancyKey, _consultancy))).CreateClient();
+    {
+        s.AddKeyedSingleton<ISqlExecutor>(Controllers.TuPhotosController.ConsultancyKey, _consultancy);
+        s.AddSingleton<IStartupFilter>(new RemoteIp(ClientIp));
+    })).CreateClient();
 
     public TuPhotosTests()
     {
@@ -119,6 +125,40 @@ public sealed class TuPhotosTests : IDisposable
     }
 
     [Fact]
+    public async Task With_SameIp_the_document_goes_only_to_the_address_the_dfo_signed_in_from()
+    {
+        _host.Settings["Consultancy:TuApp:SameIp"] = "true";
+        _consultancy.SignedInIp = "198.51.100.1";
+        Assert.Equal(HttpStatusCode.NotFound, (await Get("doc1.pdf")).StatusCode);
+        Assert.Equal(ClientIp, _consultancy.LastIp);
+
+        _consultancy.SignedInIp = ClientIp;
+        Assert.Equal(HttpStatusCode.OK, (await Get("doc1.pdf")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Without_SameIp_the_address_is_not_compared()
+    {
+        _consultancy.SignedInIp = "198.51.100.1";
+        Assert.Equal(HttpStatusCode.OK, (await Get("doc1.pdf")).StatusCode);
+        Assert.Null(_consultancy.LastIp);
+    }
+
+    /// <summary>TestServer requests have no remote address; give them one.</summary>
+    private sealed class RemoteIp(string ip) : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((ctx, nextMiddleware) =>
+            {
+                ctx.Connection.RemoteIpAddress = IPAddress.Parse(ip);
+                return nextMiddleware(ctx);
+            });
+            next(app);
+        };
+    }
+
+    [Fact]
     public async Task The_consultancy_deployment_does_not_serve_it()
     {
         _host.Settings["Mobile:System"] = "Consultancy";
@@ -131,6 +171,9 @@ public sealed class TuConsultancySql : ISqlExecutor
 {
     public int Status { get; set; }
     public string? SignedIn { get; set; }
+    /// <summary>The address of that sign-in; compared when the controller passes one (Consultancy:TuApp:SameIp).</summary>
+    public string? SignedInIp { get; set; }
+    public string? LastIp { get; private set; }
 
     public Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedure, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
 
@@ -149,7 +192,9 @@ public sealed class TuConsultancySql : ISqlExecutor
     {
         IReadOnlyList<T> none = [];
         if (!sql.Contains("dbo.V4AppSessions", StringComparison.Ordinal) || typeof(T) != typeof(DateTime)) return Task.FromResult(none);
-        var ok = SignedIn is not null && FakeSql.Arg(parameters, "UserId") == SignedIn && FakeSql.Arg(parameters, "ZedId") == "ZEDMSME000900";
+        LastIp = FakeSql.Arg(parameters, "Ip");
+        var ok = SignedIn is not null && FakeSql.Arg(parameters, "UserId") == SignedIn && FakeSql.Arg(parameters, "ZedId") == "ZEDMSME000900" &&
+                 (LastIp is null || LastIp == SignedInIp);
         return Task.FromResult<IReadOnlyList<T>>(ok ? [(T)(object)DateTime.UtcNow] : none);
     }
 }

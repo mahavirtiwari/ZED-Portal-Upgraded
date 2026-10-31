@@ -29,17 +29,9 @@ public sealed class RaTests : IDisposable
     private Task<JsonElement> Login(string password, string? version = "1") =>
         _t.Json("/RA/Login", new { userName = Zed, password, version, deviceInfo = new { deviceId = "ra-phone" } });
 
-    private void TwilioConfigured()
-    {
-        _t.Settings["Mobile:Twilio:AccountSid"] = "ACtest";
-        _t.Settings["Mobile:Twilio:ApiKey"] = "SKtest";
-        _t.Settings["Mobile:Twilio:ApiSecret"] = "test-secret-test-secret-test-secret";
-    }
-
     [Fact]
-    public async Task Login_returns_the_msme_details_without_the_twilio_secret()
+    public async Task Login_returns_the_msme_details_and_empty_twilio_fields()
     {
-        TwilioConfigured();
         var e = await Login(Password);
         Assert.Equal("1", e.GetProperty("status").GetString());
         var m = e.GetProperty("MsmeDetails");
@@ -48,9 +40,10 @@ public sealed class RaTests : IDisposable
         Assert.Equal("DIC Agra", m.GetProperty("BasicDetails").GetProperty("Dic_Name").GetString());
         Assert.Equal("Agra", m.GetProperty("PlantDetails").GetProperty("PCity").GetString());
         Assert.Equal("24", m.GetProperty("ActivityDetails").GetProperty("Two_DigitActivity").GetString());
-        Assert.Equal("ACtest", e.GetProperty("TwilioAccountSid").GetString());
-        Assert.Equal("SKtest", e.GetProperty("TwilioApiKey").GetString());
-        Assert.Equal(JsonValueKind.Null, e.GetProperty("TwilioApiSecret").ValueKind);
+        // Video calls were removed: the fields stay for the installed app, always empty (never the procedure's old keys).
+        foreach (var field in new[] { "TwilioAccountSid", "TwilioApiKey", "TwilioApiSecret", "TwilioToken" })
+            Assert.Equal(JsonValueKind.Null, e.GetProperty(field).ValueKind);
+        Assert.DoesNotContain("AC-old", e.GetRawText());
         Assert.DoesNotContain("secret", e.GetRawText());
         Assert.Contains("ra-phone", _t.Devices.Known[(MobileApps.RemoteAssessor, Zed)]);
     }
@@ -98,32 +91,24 @@ public sealed class RaTests : IDisposable
     }
 
     [Fact]
-    public async Task Get_token_issues_a_video_token_with_the_old_shape()
+    public async Task Get_token_keeps_the_old_shape_without_a_token()
     {
-        TwilioConfigured();
         var e = await _t.Json("/RA/GetToken", new { userName = Zed, certificationType = "Silver" });
         Assert.Equal(JsonValueKind.Null, e.GetProperty("status").ValueKind);
-        Assert.Equal(3, e.GetProperty("token").GetString()!.Split('.').Length);
-    }
-
-    [Fact]
-    public async Task Get_token_without_configured_keys_returns_no_token()
-    {
-        var e = await _t.Json("/RA/GetToken", new { userName = Zed });
         Assert.Equal(JsonValueKind.Null, e.GetProperty("token").ValueKind);
     }
 
     [Fact]
     public async Task Enforce_mode_refuses_a_token_for_an_unknown_device()
     {
-        TwilioConfigured();
         _t.Settings["Mobile:DeviceBinding"] = "Enforce";
         await Login(Password);
         var e = await _t.Json("/RA/GetToken", new { userName = Zed, deviceInfo = new { deviceId = "attacker" } });
         Assert.Contains("not registered", e.GetProperty("errorMessage").GetString());
         Assert.Equal(JsonValueKind.Null, e.GetProperty("token").ValueKind);
         e = await _t.Json("/RA/GetToken", new { userName = Zed, deviceInfo = new { deviceId = "ra-phone" } });
-        Assert.Equal(JsonValueKind.String, e.GetProperty("token").ValueKind);
+        Assert.False(e.TryGetProperty("errorMessage", out var message) && message.ValueKind == JsonValueKind.String);
+        Assert.Equal(JsonValueKind.Null, e.GetProperty("token").ValueKind);
     }
 
     [Fact]
@@ -132,10 +117,10 @@ public sealed class RaTests : IDisposable
         var e = await _t.Json("/RA/SubmitSelfie", new
         {
             userName = Zed, certificationType = "Silver", representativeName = "Owner", representativeDesignation = "CEO",
-            photo = new { photo = AssessorTestHost.Base64("img"), timeStamp = "t", latitude = "1", longitude = "2" },
+            photo = new { photo = AssessorTestHost.JpegBase64, timeStamp = "t", latitude = "1", longitude = "2" },
         });
         Assert.Equal("1", e.GetProperty("status").GetString());
-        Assert.Equal("img", File.ReadAllText(_t.FileUnderRoot("Photos", Zed, "Silver", "RA", "Selfe.jpg")));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("Photos", Zed, "Silver", "RA", "Selfe.jpg")));
         var args = _t.LastArgs("SP_APP_MSME_REMOTE_INSERT_SELFIE");
         Assert.Equal("/Photos\\" + Zed + "\\Silver\\RA\\Selfe.jpg", AssessorTestHost.Arg(args, "PhotoPath"));
         Assert.Equal("CEO", AssessorTestHost.Arg(args, "Designation"));
@@ -153,7 +138,7 @@ public sealed class RaTests : IDisposable
     {
         foreach (var (user, cert) in new[] { ("..\\..\\x", "Silver"), (Zed, "..\\..\\x"), (Zed, "Platinum") })
         {
-            var e = await _t.Json("/RA/SubmitSelfie", new { userName = user, certificationType = cert, photo = new { photo = AssessorTestHost.Base64("img") } });
+            var e = await _t.Json("/RA/SubmitSelfie", new { userName = user, certificationType = cert, photo = new { photo = AssessorTestHost.JpegBase64 } });
             Assert.Equal("Invalid Data.", e.GetProperty("errorMessage").GetString());
         }
         Assert.Empty(_t.AllFiles());

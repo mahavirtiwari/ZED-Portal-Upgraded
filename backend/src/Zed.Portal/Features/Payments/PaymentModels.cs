@@ -46,7 +46,7 @@ public static partial class Certifications
     public static string? BlockedBy(string cert, IReadOnlyDictionary<string, int> statuses)
     {
         int S(string l) => statuses.TryGetValue(l, out var s) ? s : 0;
-        if (S(cert) >= 1) return null;   // already applied: the payment procedures decide
+        if (S(cert) >= 1) return null;   // already applied: the checkout refuses it (AlreadyPaidAsync, the payment procedures)
         return cert == "ZEDX"
             ? Paid.FirstOrDefault(l => InProgress(l, S(l)))
             : S("ZEDX") > 0 ? "ZEDX" : null;   // ZED-X in progress or certified
@@ -83,6 +83,38 @@ public static partial class Certifications
 
     private static string LevelName(string level) => level == "ZEDX" ? "ZED-X" : level;
 
+    /// <summary>
+    /// The level is already paid or applied for: no new payment of it may be recorded. The legacy zero-amount procedure
+    /// refuses only Bronze / Silver / Gold (Is{Level}PaymentDone) and records ZED-X again on every call (another
+    /// MsmePaymentInfo row, the questionnaire copied again), so ZED-X is checked here: a recorded payment or a certification
+    /// row of the unit. Not Msme.IsZEDXPaymentDone: SP_V4_CERTIFICATION_PAID sets it only after a recorded payment, and the
+    /// legacy rejection (which renames the rows to ZedId_D) leaves it set, so it would refuse a rejected unit's new
+    /// application. For the three this is the zero procedure's own condition.
+    /// </summary>
+    internal static string PaidSql(string level) => level == "ZEDX"
+        ? "SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = 'ZEDX') " +
+          "OR EXISTS (SELECT 1 FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = 'ZEDX');"
+        : $"SELECT 1 FROM dbo.Msme M WHERE M.ZedId = @ZedId AND ISNULL(M.Is{level}PaymentDone, 0) = 1;";
+
+    /// <summary>
+    /// <see cref="PaidSql"/> for the unit. The level comes from <see cref="Applicable"/> only (it names the flag column).
+    /// Fails closed: when the check cannot be read the level counts as paid.
+    /// </summary>
+    public static async Task<bool> AlreadyPaidAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)
+    {
+        if (CanonicalApplicable(level) is not { } code) return true;
+        try
+        {
+            return (await db.QuerySqlAsync<int>(PaidSql(code), new { ZedId = new Dapper.DbString { Value = zedId, IsAnsi = true, Length = 50 } }, ct)).Count > 0;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogError(ex, "Payment state of {ZedId}/{Level} not read; the payment is refused", zedId, code);
+            return true;
+        }
+    }
+
+
     [GeneratedRegex(@"^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$")]
     public static partial Regex Gstin();
 
@@ -103,12 +135,21 @@ public sealed class FeeOption(IDictionary<string, object?> row)
 
     public string Id => Row.Text("Id");
 
-    public decimal Amount(string field) =>
-        Row.TryGetValue(field, out var v) && v is not null and not DBNull && decimal.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture),
-            NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : 0m;
+    /// <summary>
+    /// The checkout's refusal when <see cref="Due"/> cannot be read: a missing amount is never taken as nothing to pay.
+    /// </summary>
+    public const string Unreadable = "The fee amount could not be confirmed. Please contact zed.support@qcin.org.";
 
-    /// <summary>What the MSME pays: after subsidy, less TDS when TDS is deducted (same fields the old page used).</summary>
-    public decimal Payable(string? tds) => tds switch
+    /// <summary>An amount of the row; null when the column is missing, empty or not a number (never read as 0).</summary>
+    public decimal? Amount(string field) =>
+        Row.TryGetValue(field, out var v) && v is not null and not DBNull && decimal.TryParse(Convert.ToString(v, CultureInfo.InvariantCulture),
+            NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null;
+
+    /// <summary>ApplicantContributionAfterSubsidy: what decides the zero-amount path. Null when unreadable (the checkout is refused).</summary>
+    public decimal? Due => Amount("ApplicantContributionAfterSubsidy");
+
+    /// <summary>What the MSME pays: after subsidy, less TDS when TDS is deducted (same fields the old page used); null when unreadable.</summary>
+    public decimal? Payable(string? tds) => tds switch
     {
         "1.5" => Amount("NetPaybleTds15"),
         "7.5" => Amount("NetPaybleTds75"),

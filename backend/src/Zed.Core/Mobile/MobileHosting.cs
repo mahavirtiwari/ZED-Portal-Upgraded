@@ -35,16 +35,6 @@ public sealed class MobileOptions
 
     /// <summary>Largest single uploaded or base64 file.</summary>
     public long MaxFileBytes { get; set; } = 20 * 1024 * 1024;
-
-    public TwilioOptions Twilio { get; set; } = new();
-}
-
-/// <summary>Twilio Video, for remote assessments. Secrets come from user secrets or the environment.</summary>
-public sealed class TwilioOptions
-{
-    public string AccountSid { get; set; } = "";
-    public string ApiKey { get; set; } = "";
-    public string ApiSecret { get; set; } = "";
 }
 
 /// <summary>

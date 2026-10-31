@@ -19,6 +19,8 @@
         names) are ever created or dropped. Nothing else on the instance is touched; no logins are created.
       * If any of the selected databases already exists the script stops, unless -Force is given,
         in which case those (and only those) are dropped and recreated.
+      * -Force without -DatabasePrefix would drop the unprefixed ZED databases (the ones a server's portals use):
+        it is refused unless -AllowUnprefixedDrop is given as well.
       * -Only limits the run to some of them; the others are left as they are.
 
     Logs are written to .\logs\ (setup-<timestamp>.log, failed-batches-<timestamp>.json,
@@ -28,7 +30,12 @@
     SQL Server instance. Default: localhost\SQLEXPRESS (Windows authentication).
 
 .PARAMETER Force
-    Drop and recreate the three ZED databases if they already exist.
+    Drop and recreate the three ZED databases if they already exist. Without -DatabasePrefix it also needs
+    -AllowUnprefixedDrop.
+
+.PARAMETER AllowUnprefixedDrop
+    With -Force and no -DatabasePrefix: yes, drop the unprefixed databases (ZEDCS_V2_LIVE, ...). For a local
+    development instance only; never on a server whose portals use them.
 
 .PARAMETER ValidateOnly
     Parse the scripts and check connectivity / existing databases; make no changes.
@@ -62,7 +69,8 @@
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\setup.ps1
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server "MYPC\SQLEXPRESS" -Force
+    powershell -ExecutionPolicy Bypass -File .\setup.ps1 -Server "MYPC\SQLEXPRESS" -Force -AllowUnprefixedDrop
+    A local development instance: drops and recreates the unprefixed set.
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\setup.ps1 -ValidateOnly
 .EXAMPLE
@@ -74,6 +82,7 @@
 param(
     [string]$Server = 'localhost\SQLEXPRESS',
     [switch]$Force,
+    [switch]$AllowUnprefixedDrop,
     [switch]$ValidateOnly,
     [switch]$SkipSequenceStubs,
     [string[]]$Only = @(),
@@ -94,6 +103,10 @@ if (-not $SchemaDir) { $SchemaDir = Join-Path $here 'schema' }
 if (-not $LogDir)    { $LogDir    = Join-Path $here 'logs' }
 . (Join-Path $here 'ZedDatabaseNames.ps1')
 Test-ZedDatabasePrefix $DatabasePrefix
+# -Force drops what exists: without a prefix that is the set a server's portals use (ZEDCS_V2_LIVE, ...).
+if ($Force -and -not $DatabasePrefix -and -not $AllowUnprefixedDrop -and -not $ValidateOnly) {
+    throw '-Force without -DatabasePrefix would drop the unprefixed ZED databases (ZEDCS_V2_LIVE, ZED_CONSULTANT, ...). Give -DatabasePrefix (e.g. ZEDV4_) for a prefixed set, or add -AllowUnprefixedDrop on a local development instance.'
+}
 
 # Order matters only for pass 1; cross-database dependencies are resolved by later passes.
 # Keys are the logical names; Phys gives the name on the instance (with -DatabasePrefix).

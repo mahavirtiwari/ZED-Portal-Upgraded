@@ -193,6 +193,26 @@ public sealed class SurveillanceStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task A_manual_zedx_payment_update_runs_the_surveillance_paid_steps()
+    {
+        _host.Sql.Procs["SP_DASHBOARD_PAYMENT_FAILED_TRANSACTIONS"] = _ => FakeSql.Sets([new
+        {
+            ZedId = "ZEDMSME1", TransactionId = "T1", Certification = "ZEDX", AllowManualUpdate = 1, IsCouponUsed = 0,
+        }]);
+        var master = await SurveillanceLogin.SignInAsync(_host, "MASTER1");
+        var r = await master.PostAsJsonAsync("/api/staff/dashboard/failed-transactions/update-payment", new
+        {
+            zedId = "ZEDMSME1", transactionId = "T1", certification = "ZEDX", pgType = "Net Banking", trackingId = "123456789012",
+            bankRefNumber = "B1", paymentReceivedDate = DateTime.UtcNow.ToString("yyyy-MM-dd"), paymentRemarks = "Bank confirmed",
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO");
+        // As after a gateway payment (SurveillancePaymentCompletion): ZED-X's flags, questionnaire and minimum parameters.
+        var paid = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.LevelSurveillance.PaidSql);
+        Assert.Equal(("ZEDMSME1", "ZEDX"), (FakeSql.Arg(paid.Args, "ZedId"), FakeSql.Arg(paid.Args, "Certification")));
+    }
+
+    [Fact]
     public async Task The_fee_master_is_served_unchanged_and_neft_is_not()
     {
         _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets([new { Id = 1, EnterpriseTypee = "Micro", Certification = "Bronze", AssessmentFee = 100m, SubsidyPercentage = 100m }]);

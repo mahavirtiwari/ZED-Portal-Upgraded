@@ -15,7 +15,8 @@ namespace Zed.Main.MobileApi.Controllers;
 /// Here the file is served only when it is a document of the unit's TU application (ZED_CONSULTANT's
 /// SP_FINANCIAL_ASSISTANCE_GET_DETAILS) while the application is with its allotted DFO, or just decided by them, and that
 /// DFO signed in to the consultant app for the unit within <c>Consultancy:TuApp:LoginHours</c> (dbo.V4AppSessions,
-/// migration 0010), as the portal's TuAppController checks. Main deployment only: the files are the MSME app's uploads.
+/// migration 0010), from the same IP address when <c>Consultancy:TuApp:SameIp</c> is set, as the portal's TuAppController
+/// checks. Main deployment only: the files are the MSME app's uploads.
 /// </summary>
 [PortalSystems(PortalSystem.Main)]
 public sealed partial class TuPhotosController(
@@ -49,12 +50,13 @@ public sealed partial class TuPhotosController(
 
         // Sets 0-2 are the Bronze / Silver / Gold applications, 3-5 their documents (as the portal reads them).
         var hours = config.GetValue("Consultancy:TuApp:LoginHours", 12);
+        var ip = config.GetValue("Consultancy:TuApp:SameIp", false) ? ClientIp : null;
         for (var level = 0; level < 3 && level + 3 < sets.Count; level++)
         {
             var app = sets[level].FirstOrDefault();
             if (app is null || app.Text("VerificationStatus") is not ("2" or "3") || app.Text("FinancialAssessorId") is not { Length: > 0 } dfo) continue;
             if (!sets[level + 3].Any(p => string.Equals(p.Text("PhotoId"), photoId, StringComparison.OrdinalIgnoreCase))) continue;
-            if (hours > 0 && await AppSessions.LatestAsync(db, log, AppSessions.Consultant, dfo, zedId, hours, null, ct) is null)
+            if (hours > 0 && await AppSessions.LatestAsync(db, log, AppSessions.Consultant, dfo, zedId, hours, ip, ct) is null)
             {
                 log.LogWarning("TU document {PhotoId} of {ZedId} refused: DFO {Dfo} has not signed in to the app for the unit recently", photoId, zedId, dfo);
                 return NotFound();

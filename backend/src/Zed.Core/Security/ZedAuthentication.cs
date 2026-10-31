@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using PortalOptions = Zed.Core.Http.PortalOptions;
 
 namespace Zed.Core.Security;
 
@@ -144,6 +146,11 @@ public static class ZedAuthenticationExtensions
             o.Cookie.Name = cookieName + ".AF";
             o.Cookie.SameSite = SameSiteMode.Strict;
         });
+        // Behind a load balancer that ends TLS the request arrives as http: when the portal's public address is https,
+        // the sign-in cookie is Secure whatever the request says. The anti-forgery cookie keeps its default policy (with
+        // Always, antiforgery refuses every plain-http request); UseZedPlatform's cookie policy makes it Secure instead.
+        services.AddOptions<CookieAuthenticationOptions>(CookieAuthenticationDefaults.AuthenticationScheme)
+            .Configure<IOptions<PortalOptions>>((o, portal) => { if (HttpsOnly(portal.Value)) o.Cookie.SecurePolicy = CookieSecurePolicy.Always; });
         services.AddScoped<ValidateAntiforgeryFilter>();
         return services;
     }
@@ -160,12 +167,20 @@ public static class ZedAuthenticationExtensions
         {
             HttpOnly = false,
             SameSite = SameSiteMode.Strict,
-            Secure = context.Request.IsHttps,
+            Secure = context.SecureCookies(),
             // Scoped to the app's folder (/Consultancy, /surveillance) so the three systems' tokens on one domain
             // don't overwrite each other; main's path base is empty, so "/".
             Path = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "/",
         });
     }
+
+    /// <summary>True when the portal's public address (<c>Portal:PublicBaseUrl</c>) is https: every cookie is then Secure.</summary>
+    public static bool HttpsOnly(PortalOptions portal) =>
+        Uri.TryCreate(portal.PublicBaseUrl, UriKind.Absolute, out var url) && url.Scheme == Uri.UriSchemeHttps;
+
+    /// <summary>The Secure flag of a cookie set by hand: the request came over https, or the portal's public address is https.</summary>
+    public static bool SecureCookies(this HttpContext context) =>
+        context.Request.IsHttps || context.RequestServices.GetService<IOptions<PortalOptions>>() is { } portal && HttpsOnly(portal.Value);
 
     public static IApplicationBuilder UseXsrfCookie(this IApplicationBuilder app) =>
         app.Use(async (ctx, next) =>

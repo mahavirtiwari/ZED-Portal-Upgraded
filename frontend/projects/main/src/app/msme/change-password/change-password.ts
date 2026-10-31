@@ -6,7 +6,8 @@ import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
 /** ChangePwdViewModel's RegularExpression on the new and the confirm password. */
-const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@#$%^&+=!]).{8,}$/;
+/** As PasswordPolicy on the server: 8 to 50 characters, upper and lower case, a digit and any other character. */
+const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,50}$/;
 const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one digit, and one special character.';
 
 /** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml, in the live page's layout (eye toggles in the fields). */
@@ -103,7 +104,7 @@ export class ChangePasswordPage {
     this.submitted.set(true);
     if (this.problem(this.oldPassword, false) || this.problem(this.newPassword) || this.problem(this.confirmPassword)) return;
     if (this.newPassword !== this.confirmPassword) {
-      this.error.set('NewPassword and ConfirmPassword should be same.');
+      this.error.set('The new password and its confirmation do not match.');
       return;
     }
     this.busy.set(true);

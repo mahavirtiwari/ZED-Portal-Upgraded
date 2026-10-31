@@ -114,7 +114,7 @@ export class RegisterPage {
       return;
     }
     if (!this.captchaToken) {
-      this.error.set('Invalid captcha.');
+      this.error.set('Invalid Captcha.');
       return;
     }
     const res = await this.call(this.api.lookup(this.registrationNo, this.mobileNo, this.captchaToken), () => this.captcha()?.reset());
@@ -131,7 +131,7 @@ export class RegisterPage {
     const p = this.plantIndex();
     const a = this.activityIndex();
     if (p === null || a === null) {
-      this.error.set('Please select the valid data.');
+      this.error.set('Please select the plant and its activity.');
       return;
     }
     const ok = await this.call(this.api.selectPlant(this.lookup()!.registrationId, p, a));
@@ -158,7 +158,7 @@ export class RegisterPage {
       return;
     }
     if (email.toLowerCase() !== this.confirmEmail.trim().toLowerCase()) {
-      this.modalError.set('Email ID not matching.');
+      this.modalError.set('The two e-mail addresses do not match.');
       return;
     }
     const ok = await this.call(this.api.sendOtp(this.lookup()!.registrationId, email, this.confirmEmail.trim()), undefined, true);

@@ -1,8 +1,6 @@
 .evidence-img { display: inline-block; margin: 4px; text-align: center; }
 .evidence-img img { max-height: 120px; max-width: 160px; }
 .photo-grid .evidence-img { display: block; margin: 0; }
-.video-panel { position: sticky; top: 80px; }
-:host ::ng-deep #output video { width: 100%; max-width: 400px; border-radius: 10px; }
 .section-head { margin-bottom: 8px; }
 .panel-head-block { background: #eef6f6; border-radius: 8px; margin-bottom: 10px; }
 .requirement { margin-bottom: 14px; }

@@ -39,6 +39,15 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     private const int MaxText = 2000;
     private const string QrChars = "123456789abcdefghijklmnopqrstuvwxyz";
 
+    /// <summary>
+    /// One decision (final submit, send back, reject) at a time: the procedures read and write the status without locks, so
+    /// a double click certified twice (a second QR code after the first mail). The status is checked again inside the lock.
+    /// </summary>
+    private static readonly SemaphoreSlim Decisions = new(1, 1);
+
+    /// <summary>The answer to a decision whose record moved on while it waited (a second click, or another user).</summary>
+    public const string AlreadyDecided = "This assessment has already been decided. Please reload the page.";
+
     // Look-ups of the rows the SA page edits that AssessmentRecords does not cover.
     public const string MeetingSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id FROM Meetings WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
@@ -145,10 +154,19 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         if (!req.QualityChecked || (desktop && !req.ExemptionsReviewed))
             return this.Problem400("Please confirm the review of the assessment before final submit.");
 
-        var qr = RandomNumberGenerator.GetString(QrChars, 4);
-        await db.ExecuteProcAsync(desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT",
-            new { UserId, ZedId = zedId, CertificationType = level, QrCodeSeqNo = qr }, ct);
-        log.LogInformation("Agency {UserId} final-submitted the {Stage} review of {ZedId} {Certification}", UserId, stage, zedId, level);
+        await Decisions.WaitAsync(ct);
+        try
+        {
+            if (await StillOpen(zedId, certification, a => a.FinalSubmit, stage, ct) is { } decided) return decided;
+            var qr = RandomNumberGenerator.GetString(QrChars, 4);
+            await db.ExecuteProcAsync(desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT",
+                new { UserId, ZedId = zedId, CertificationType = level, QrCodeSeqNo = qr }, ct);
+            log.LogInformation("Agency {UserId} final-submitted the {Stage} review of {ZedId} {Certification}", UserId, stage, zedId, level);
+        }
+        finally
+        {
+            Decisions.Release();
+        }
 
         // Silver/Gold desktop verification only moves on to the site assessment (the old code mailed Bronze only).
         if (desktop && level != "Bronze") return new MessageResponse("Desktop verification completed.");
@@ -170,22 +188,31 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
     public async Task<ActionResult<MessageResponse>> SendBack(string zedId, string certification, SendBackRequest req, CancellationToken ct)
     {
-        var (level, _, _, error) = await ForAction(zedId, certification, a => a.SendBack, ct);
+        var (level, _, stage, error) = await ForAction(zedId, certification, a => a.SendBack, ct);
         if (error is not null) return error;
         var remarks = AssessmentInput.Text(req.Remarks);
         if (remarks is null) return this.Problem400("Please enter the send back remarks.");
         if (remarks.Length > MaxText) return this.Problem400($"Remarks must be at most {MaxText} characters.");
 
-        await db.ExecuteProcAsync("SP_MONITORING_SEND_BACK_TO_ASSESSOR", new
+        await Decisions.WaitAsync(ct);
+        try
         {
-            ZedId = zedId,
-            UserId,
-            RoleId = RoleId.ToString(CultureInfo.InvariantCulture),
-            CertificationType = level,
-            SendBackRemarks = remarks,
-        }, ct);
-        log.LogInformation("{UserId} sent {ZedId} {Certification} back to the assessor", UserId, zedId, level);
-        return new MessageResponse("Sent back to the assessor.");
+            if (await StillOpen(zedId, certification, a => a.SendBack, stage, ct) is { } decided) return decided;
+            await db.ExecuteProcAsync("SP_MONITORING_SEND_BACK_TO_ASSESSOR", new
+            {
+                ZedId = zedId,
+                UserId,
+                RoleId = RoleId.ToString(CultureInfo.InvariantCulture),
+                CertificationType = level,
+                SendBackRemarks = remarks,
+            }, ct);
+            log.LogInformation("{UserId} sent {ZedId} {Certification} back to the assessor", UserId, zedId, level);
+            return new MessageResponse("Sent back to the assessor.");
+        }
+        finally
+        {
+            Decisions.Release();
+        }
     }
 
     /// <summary>
@@ -196,25 +223,36 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     [StaffRoles(UserRole.Agency)]
     public async Task<ActionResult<MessageResponse>> Reject(string zedId, string certification, RejectRequest req, CancellationToken ct)
     {
-        var (level, _, _, error) = await ForAction(zedId, certification, a => a.Reject, ct);
+        var (level, _, stage, error) = await ForAction(zedId, certification, a => a.Reject, ct);
         if (error is not null) return error;
         if (!req.Confirmed) return this.Problem400("Please confirm the rejection.");
 
-        await db.ExecuteProcAsync("SP_MONITORING_REJECT_FINAL_SUBMIT", new { UserId, ZedId = zedId, CertificationType = level }, ct);
-        log.LogInformation("Agency {UserId} rejected {ZedId} {Certification}", UserId, zedId, level);
-
         var completion = CertificationCompletion.Create(HttpContext.RequestServices);
-        var details = await completion.RejectionDetailsAsync(zedId, level!, ct);
+        IDictionary<string, object?>? details;
         var archived = true;
+        await Decisions.WaitAsync(ct);
         try
         {
-            await db.ExecuteProcAsync("SP_MONITORING_REJECT_CERTIFICATION", new { UserId, ZedId = zedId, CertificationType = level }, ct);
+            if (await StillOpen(zedId, certification, a => a.Reject, stage, ct) is { } decided) return decided;
+            await db.ExecuteProcAsync("SP_MONITORING_REJECT_FINAL_SUBMIT", new { UserId, ZedId = zedId, CertificationType = level }, ct);
+            log.LogInformation("Agency {UserId} rejected {ZedId} {Certification}", UserId, zedId, level);
+
+            // The mail details are read before the rows are renamed (as the old action did).
+            details = await completion.RejectionDetailsAsync(zedId, level!, ct);
+            try
+            {
+                await db.ExecuteProcAsync("SP_MONITORING_REJECT_CERTIFICATION", new { UserId, ZedId = zedId, CertificationType = level }, ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex)
+            {
+                // The procedure forces an error when its renaming transaction fails; the rejection itself is saved.
+                log.LogError(ex, "{ZedId} {Certification} rejected but its records could not be archived", zedId, level);
+                archived = false;
+            }
         }
-        catch (Microsoft.Data.SqlClient.SqlException ex)
+        finally
         {
-            // The procedure forces an error when its renaming transaction fails; the rejection itself is saved.
-            log.LogError(ex, "{ZedId} {Certification} rejected but its records could not be archived", zedId, level);
-            archived = false;
+            Decisions.Release();
         }
         var mailed = await completion.SendRejectionAsync(zedId, level!, details, ct);
 
@@ -225,6 +263,19 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
     // ------------------------------------------------------------------ helpers
 
     private ObjectResult Forbidden(string message) => Problem(title: message, statusCode: StatusCodes.Status403Forbidden);
+
+    /// <summary>
+    /// Inside <see cref="Decisions"/>: the decision is still available, on the same page, as checked before waiting. Null when
+    /// it is; otherwise 409 <see cref="AlreadyDecided"/> (the record moved on while this request waited), so the procedure
+    /// does not run a second time.
+    /// </summary>
+    private async Task<ActionResult?> StillOpen(string zedId, string certification, Func<ReviewActions, bool> action, ReviewStage stage, CancellationToken ct)
+    {
+        var (_, _, now, error) = await ForAction(zedId, certification, action, ct);
+        if (error is null && now == stage) return null;
+        log.LogWarning("{UserId}: decision on {ZedId} {Certification} not run, the record was decided meanwhile", UserId, zedId, certification);
+        return Problem(title: AlreadyDecided, statusCode: StatusCodes.Status409Conflict);
+    }
 
     /// <summary>
     /// The record and its review page for an action: 400 for malformed input, 404 when the user may not see

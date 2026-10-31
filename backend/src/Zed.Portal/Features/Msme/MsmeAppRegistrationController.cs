@@ -105,6 +105,8 @@ public sealed class MsmeAppRegistrationController(
         if (!await CaptchaPassedAsync(ct)) return Fail(CaptchaFirst);
         if (Email(email) is not { } address) return Fail("Invalid email.");
 
+        // Under the address's lock, as VerifyPledgeEmailOtp: the send count and the reset of the failures are not raced.
+        using var gate = await store.LockAsync(address, ct);
         var now = DateTimeOffset.UtcNow;
         var state = await store.GetAsync(address, ct) ?? new AppRegistrationState();
         if (state.WindowStartUtc is null || now - state.WindowStartUtc > SendWindow)
@@ -136,9 +138,13 @@ public sealed class MsmeAppRegistrationController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> VerifyPledgeEmailOtp(string? email, string? otp, CancellationToken ct)
     {
-        if (Email(email) is not { } address || await store.GetAsync(address, ct) is not { } state
+        const string expired = "The OTP has expired. Please request a new one.";
+        if (Email(email) is not { } address) return Fail(expired);
+        // Read, count and write under the address's lock: parallel wrong guesses cannot all read the same failure count.
+        using var gate = await store.LockAsync(address, ct);
+        if (await store.GetAsync(address, ct) is not { } state
             || state.OtpHash is null || state.OtpIssuedUtc is null || DateTimeOffset.UtcNow - state.OtpIssuedUtc > OtpLifetime)
-            return Fail("The OTP has expired. Please request a new one.");
+            return Fail(expired);
         if (state.Failures >= MaxOtpFailures) return Fail("Too many wrong attempts. Please request a new OTP.");
 
         var given = AppRegistrationState.HashOtp(address, (otp ?? "").Trim());
@@ -310,6 +316,28 @@ public sealed class AppRegistrationStore(IDistributedCache cache)
         cache.SetAsync(StateKey(email), JsonSerializer.SerializeToUtf8Bytes(state), StateLifetime, ct);
 
     public Task RemoveAsync(string email, CancellationToken ct) => cache.RemoveAsync(StateKey(email), ct);
+
+    /// <summary>
+    /// Holds the address's state for one read-change-write (the OTP send and failure counts) on this server; dispose to
+    /// release. Process-wide gates, striped by key (a few addresses share one), so nothing has to be cleaned up.
+    /// </summary>
+    public async Task<IDisposable> LockAsync(string email, CancellationToken ct)
+    {
+        var gate = Gates[(int)((uint)StringComparer.Ordinal.GetHashCode(StateKey(email)) % (uint)Gates.Length)];
+        await gate.WaitAsync(ct);
+        return new Held(gate);
+    }
+
+    private static readonly SemaphoreSlim[] Gates = Enumerable.Range(0, 64).Select(_ => new SemaphoreSlim(1, 1)).ToArray();
+
+    private sealed class Held(SemaphoreSlim gate) : IDisposable
+    {
+        private int released;
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref released, 1) == 0) gate.Release();
+        }
+    }
 
     public Task MarkCaptchaAsync(string? ip, CancellationToken ct) => cache.SetAsync(CaptchaKey(ip), [1], CaptchaLifetime, ct);
 

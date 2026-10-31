@@ -70,6 +70,15 @@ export class ContactPage {
       this.error.set('Please enter all the required data.');
       return;
     }
+    // As the server checks them (ContactController), so the user is told which field is wrong.
+    if (!/^\d{10}$/.test(this.mobile.trim())) {
+      this.error.set('Please enter a valid 10 digit mobile number.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email.trim())) {
+      this.error.set('Please enter a valid e-mail address.');
+      return;
+    }
     if (!this.captchaToken) {
       this.error.set('Please complete the verification.');
       return;

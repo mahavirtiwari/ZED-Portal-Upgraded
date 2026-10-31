@@ -39,6 +39,7 @@ public sealed class SurveillancePaymentController(
     SurveillancePaymentCompletion completion,
     IOptions<CcAvenueOptions> ccavenue,
     IOptions<PortalOptions> portal,
+    PanCorrectionNotice panNotice,
     ILogger<SurveillancePaymentController> log) : MsmeApiController
 {
     public const string ResponsePath = "/api/payments/ccavenue/surveillance-response";
@@ -131,8 +132,8 @@ public sealed class SurveillancePaymentController(
 
     /// <summary>
     /// "PAN Mismatch Detected" (Msme/UpdatePan, SP_MESE_UPDATE_PAN, which updates all three databases).
-    /// The old page sent the ZED ID and the old PAN from the browser; here both come from the server
-    /// and the GSTIN must have been verified first.
+    /// The old page sent the ZED ID and the old PAN from the browser; here both come from the server,
+    /// the GSTIN must have been verified first, and the change is logged and told to the office (<see cref="PanCorrectionNotice"/>).
     /// </summary>
     [HttpPost("pan")]
     [MsmeEditAudit("Surveillance payment: PAN corrected")]
@@ -156,6 +157,7 @@ public sealed class SurveillancePaymentController(
             log.LogError(ex, "SP_MESE_UPDATE_PAN failed for {ZedId}", ZedId);
             return this.Problem400("Failed to update PAN. Please try again.");
         }
+        await panNotice.RecordAsync(ZedId, "surveillance", oldPan, pan, gstin, ct);
         return new MessageResponse("PAN updated successfully.");
     }
 
@@ -210,9 +212,20 @@ public sealed class SurveillancePaymentController(
             PaymentRefId = fee.Id,
         };
 
-        // Nothing to pay after subsidy/reward (the old page's condition).
-        if (fee.Amount("ApplicantContributionAfterSubsidy") <= 0)
+        // A missing or unreadable amount is refused, never taken as nothing to pay.
+        if (fee.Due is not { } due)
         {
+            log.LogError("Surveillance fee row {FeeId} for {ZedId}/{Certification} has no readable ApplicantContributionAfterSubsidy", fee.Id, ZedId, cert);
+            return this.Problem400(FeeOption.Unreadable);
+        }
+
+        // Nothing to pay after subsidy/reward (the old page's condition).
+        if (due <= 0)
+        {
+            // V4 levels (ZED-X): SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS knows Bronze / Silver / Gold only (it answers 0 for
+            // the others, which read as "recorded"), so the round's payment row is counted before and after the procedure.
+            var v4 = LevelSurveillance.IsV4(cert);
+            var before = v4 ? await LevelSurveillance.PaymentsAsync(db, ZedId, cert, ct) : 0;
             try
             {
                 await db.ExecuteProcAsync("SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS", choices, ct);
@@ -224,7 +237,8 @@ public sealed class SurveillancePaymentController(
             }
             // The procedure raises no error when it skips: it only records anything while
             // ZED_SURVEILLANCE.Msme.IsBronzePaymentDone is not set, whatever the level. Confirm it was recorded.
-            if (await PaymentOpenAsync(cert, ct))
+            var recorded = v4 ? await LevelSurveillance.PaymentsAsync(db, ZedId, cert, ct) > before : !await PaymentOpenAsync(cert, ct);
+            if (!recorded)
             {
                 log.LogError("Zero surveillance payment for {ZedId}/{Certification} was not recorded by the procedure", ZedId, cert);
                 return this.Problem400("The payment could not be recorded. Please contact zed.support@qcin.org.");

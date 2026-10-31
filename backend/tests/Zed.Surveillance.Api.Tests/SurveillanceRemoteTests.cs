@@ -9,7 +9,7 @@ using Zed.Portal.Features.Remote;
 
 namespace Zed.Surveillance.Api.Tests;
 
-/// <summary>The surveillance remote page: meeting link instead of Twilio, recording links, uploaded meeting photos and selfie.</summary>
+/// <summary>The surveillance remote page: meeting link, recording links, uploaded meeting photos and selfie.</summary>
 public sealed class SurveillanceRemoteTests : IDisposable
 {
     private const string Zed = "ZEDMSME000001";
@@ -103,7 +103,6 @@ public sealed class SurveillanceRemoteTests : IDisposable
         Assert.Equal(Link, json.GetProperty("meetingLink").GetString());
         var links = json.GetProperty("recordingLinks");
         Assert.Equal("https://rec.example/1", Assert.Single(links.EnumerateArray()).GetProperty("url").GetString());
-        Assert.False(json.GetProperty("permissions").GetProperty("videoConfigured").GetBoolean());
         Assert.True(json.GetProperty("permissions").GetProperty("canAssess").GetBoolean());
 
         // Photos of the surveillance app are served through the page's file endpoint.
@@ -155,7 +154,7 @@ public sealed class SurveillanceRemoteTests : IDisposable
     public async Task There_is_no_video_room()
     {
         var r = await (await Assessor()).PostAsJsonAsync(Base + "/join", new { });
-        Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, r.StatusCode);
         Assert.Empty(CallsTo("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS"));
     }
 
@@ -221,7 +220,7 @@ public sealed class SurveillanceRemoteTests : IDisposable
         Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/photos", new { target = "OpenMeeting", targetId = 71, image = DataUrl(Png, "png") })).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/photos", new { target = "OpenMeeting", targetId = 71, image = "data:image/jpeg;base64,PHNjcmlwdD4=" })).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(Base + "/photos", new { target = "OpenMeeting", targetId = 72, image = DataUrl(Jpeg) })).StatusCode);
-        // Frame captures of the Twilio page do not exist here.
+        // Frame captures of the old video page do not exist here.
         Assert.Equal(HttpStatusCode.BadRequest, (await lead.PostAsJsonAsync(Base + "/photos", new { target = "SiteTour", image = DataUrl(Jpeg) })).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, (await (await Assessor("ASR2")).PostAsJsonAsync(Base + "/photos", new { target = "Selfie", image = DataUrl(Jpeg) })).StatusCode);
         _photoNames.Add("Selfie on Site_20261021");

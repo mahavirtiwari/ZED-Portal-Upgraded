@@ -1,0 +1,40 @@
+@* Office notice of a unit's "PAN Mismatch Detected" correction on a payment page (new in V4: the change was silent). *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
+    <p style="font-size: 13px; margin-bottom: 0;">A unit has replaced the PAN on record with the PAN of a GSTIN verified on the payment page. Please check that the GSTIN belongs to the unit.</p>
+    <table style="width: 100%; table-layout: fixed; font-size: 13px; border: 1px #dee1e4 solid; background: #f7f8f9;" cellpadding="0" cellspacing="0" border="0">
+        <tbody>
+            <tr>
+                <td style="padding: 6px; width: 50%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">ZED ID</td>
+                <td>@ZedId</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 50%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">Payment</td>
+                <td>@Payment</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 50%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">Previous PAN</td>
+                <td>@(string.IsNullOrEmpty(OldPan) ? "(none)" : OldPan)</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 50%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">New PAN</td>
+                <td>@NewPan</td>
+            </tr>
+            <tr>
+                <td style="padding: 6px; width: 50%; font-size: 13px; text-align: right; color: #999; padding-right: 20px;">GSTIN</td>
+                <td>@Gstin</td>
+            </tr>
+        </tbody>
+    </table>
+    <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string Payment { get; set; } = "";
+    [Parameter] public string? OldPan { get; set; }
+    [Parameter, EditorRequired] public string NewPan { get; set; } = "";
+    [Parameter, EditorRequired] public string Gstin { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

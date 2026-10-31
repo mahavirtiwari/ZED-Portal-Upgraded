@@ -44,7 +44,7 @@ public sealed class SurveillanceSaTests : IDisposable
         var e = await _t.Json("/SA/SubmitStartAssessment", new
         {
             userType = 1, saId = Lead, zedId = Zed, certificationType = "Silver", latitude = "1", longitude = "2", inputComment = "start",
-            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = "aGVsbG8=", timeStamp = "t" } },
+            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = AssessorTestHost.JpegBase64, timeStamp = "t" } },
         });
         Assert.Equal("1", e.GetProperty("status").GetString());
         Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Opening Meeting Photo.jpg")));
@@ -58,7 +58,7 @@ public sealed class SurveillanceSaTests : IDisposable
         var e = await _t.Json("/SA/SubmitStartAssessment", new
         {
             userType = 1, saId = "ZEDAS0099", zedId = Zed, certificationType = "Silver",
-            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = "aGVsbG8=" } },
+            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = AssessorTestHost.JpegBase64 } },
         });
         Assert.Equal("Site Assessment data not yet allocated for the ZEDID: " + Zed, e.GetProperty("errorMessage").GetString());
         Assert.Empty(_t.AllFiles());
@@ -99,7 +99,7 @@ public sealed class SurveillanceMainHostTests : IDisposable
         var e = await t.Json("/SA/SubmitStartAssessment", new
         {
             userType = 1, saId = "ZEDAS0001", zedId = "ZEDMSME000001", certificationType = "Silver",
-            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = "aGVsbG8=" } },
+            assessmentPhotos = new[] { new { photoId = "m1", name = "Opening Meeting Photo", photo = AssessorTestHost.JpegBase64 } },
         });
         Assert.Equal("1", e.GetProperty("status").GetString());
         Assert.True(File.Exists(t.FileUnderRoot("SaPhotos", "ZEDMSME000001", "Silver", "Opening Meeting Photo_m1.jpg")));

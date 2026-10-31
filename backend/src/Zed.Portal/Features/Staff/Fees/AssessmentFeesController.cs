@@ -124,6 +124,23 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         return new MessageResponse(changed == 0 ? "No changes to save." : "Subsidy share updated.");
     }
 
+    /// <summary>The subsidy share of a row: SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.</summary>
+    internal const string ShareSql = "UPDATE AssessmentFee SET SubsidyPercentage = @SubsidyPercentage WHERE Id = @Id AND EnterpriseTypee = @EnterpriseTypee;";
+
+    internal const string FeeSql =
+        "EXEC dbo.SP_MASTER_UPDATE_ASSESSMENT_FEE @Id = @Id, @EnterpriseTypee = @EnterpriseTypee, @Certification = @Certification, " +
+        "@AssessmentFee = @AssessmentFee, @Gst = @Gst, @Total = @Total, @Coupon = @Coupon, @AssessmentFeeAfterCoupon = @AssessmentFeeAfterCoupon, " +
+        "@GstAfterCoupon = @GstAfterCoupon, @TotalAfterCoupon = @TotalAfterCoupon, @SubsidyPer = @SubsidyPer, @SubsidyAmount = @SubsidyAmount, " +
+        "@GstAfterSubsidy = @GstAfterSubsidy, @ApplicantContributionAfterSubsidy = @ApplicantContributionAfterSubsidy, " +
+        "@Tds15 = @Tds15, @Tds75 = @Tds75, @NetPaybleTds15 = @NetPaybleTds15, @NetPaybleTds75 = @NetPaybleTds75;";
+
+    /// <summary>
+    /// One row's save as one batch in one transaction (as CheckpointAnswers.SaveAsync): the subsidy share, when it changed,
+    /// and the amounts. Sent separately, a failure of the second left a share that the stored amounts did not follow.
+    /// </summary>
+    internal static string SaveSql(bool shareChanged) =>
+        "SET XACT_ABORT ON; BEGIN TRANSACTION;\n" + (shareChanged ? ShareSql + "\n" : "") + FeeSql + "\nCOMMIT;";
+
     /// <summary>Writes the rows whose subsidy share or amounts changed, each with an audit line; the number written.</summary>
     private async Task<int> WriteAsync(IReadOnlyList<FeeRow> current, IReadOnlyList<FeeRow> updated, CancellationToken ct)
     {
@@ -134,32 +151,28 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             var before = current.First(r => r.Id == row.Id);
             var shareChanged = row.SubsidyPercentage != before.SubsidyPercentage;
             if (row.SameAmounts(before) && !shareChanged) continue;
-            // SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.
-            if (shareChanged)
-                await db.ExecuteSqlAsync("UPDATE AssessmentFee SET SubsidyPercentage = @SubsidyPercentage WHERE Id = @Id AND EnterpriseTypee = @EnterpriseTypee;",
-                    new { row.SubsidyPercentage, row.Id, row.EnterpriseTypee }, ct);
-            await db.ExecuteProcAsync("SP_MASTER_UPDATE_ASSESSMENT_FEE", new
-            {
-                row.Id,
-                row.EnterpriseTypee,
-                row.Certification,
-                row.AssessmentFee,
-                row.Gst,
-                row.Total,
-                row.Coupon,
-                row.AssessmentFeeAfterCoupon,
-                row.GstAfterCoupon,
-                row.TotalAfterCoupon,
-                row.SubsidyPer,
-                // The procedure stores @SubsidyPer in SubsidyAmount whatever is passed here.
-                SubsidyAmount = row.SubsidyPer,
-                row.GstAfterSubsidy,
-                row.ApplicantContributionAfterSubsidy,
-                row.Tds15,
-                row.Tds75,
-                row.NetPaybleTds15,
-                row.NetPaybleTds75,
-            }, ct);
+            var p = new Dapper.DynamicParameters();
+            p.Add("Id", row.Id);
+            p.Add("EnterpriseTypee", row.EnterpriseTypee);
+            if (shareChanged) p.Add("SubsidyPercentage", row.SubsidyPercentage);
+            p.Add("Certification", row.Certification);
+            p.Add("AssessmentFee", row.AssessmentFee);
+            p.Add("Gst", row.Gst);
+            p.Add("Total", row.Total);
+            p.Add("Coupon", row.Coupon);
+            p.Add("AssessmentFeeAfterCoupon", row.AssessmentFeeAfterCoupon);
+            p.Add("GstAfterCoupon", row.GstAfterCoupon);
+            p.Add("TotalAfterCoupon", row.TotalAfterCoupon);
+            p.Add("SubsidyPer", row.SubsidyPer);
+            // The procedure stores @SubsidyPer in SubsidyAmount whatever is passed here.
+            p.Add("SubsidyAmount", row.SubsidyPer);
+            p.Add("GstAfterSubsidy", row.GstAfterSubsidy);
+            p.Add("ApplicantContributionAfterSubsidy", row.ApplicantContributionAfterSubsidy);
+            p.Add("Tds15", row.Tds15);
+            p.Add("Tds75", row.Tds75);
+            p.Add("NetPaybleTds15", row.NetPaybleTds15);
+            p.Add("NetPaybleTds75", row.NetPaybleTds75);
+            await db.ExecuteSqlAsync(SaveSql(shareChanged), p, ct);
             changed++;
             audit.LogWarning(
                 "Assessment fee row {Id} ({EnterpriseType} {Certification} {MileStone}, system {System}, special category {SpecialCategory}, coupon row {CouponRow}) changed by {Actor}: " +
@@ -380,7 +393,7 @@ public sealed record FeeRow(
 /// Micro/Small/Medium); here it comes from the row's own SubsidyPercentage, which is the subsidy shown to
 /// the MSME on the payment page, so the label and the amount charged can no longer disagree. Values are
 /// computed at full precision and each stored value is rounded to 2 decimals (as SQL Server did with the
-/// strings the old page posted).
+/// strings the old page posted), except NetPaybleTds15/75: the rounded contribution less the rounded TDS.
 /// </summary>
 public static class FeeCalculator
 {
@@ -435,18 +448,20 @@ public static class FeeCalculator
 
         var applicantFee = subsidyBase * share;
         var gstAfterSubsidy = applicantFee * GstRate;
-        var contribution = applicantFee + gstAfterSubsidy;
-        var tdsLow = applicantFee * TdsLowRate;
-        var tdsHigh = applicantFee * TdsHighRate;
+        // The net payable is the stored contribution less the stored TDS, so the three columns always add up (rounding the
+        // full-precision difference instead could differ by a paisa from what the payment page shows).
+        var contribution = Round(applicantFee + gstAfterSubsidy);
+        var tdsLow = Round(applicantFee * TdsLowRate);
+        var tdsHigh = Round(applicantFee * TdsHighRate);
         updated = updated with
         {
             SubsidyPer = Round(applicantFee),
             GstAfterSubsidy = Round(gstAfterSubsidy),
-            ApplicantContributionAfterSubsidy = Round(contribution),
-            Tds15 = Round(tdsLow),
-            Tds75 = Round(tdsHigh),
-            NetPaybleTds15 = Round(contribution - tdsLow),
-            NetPaybleTds75 = Round(contribution - tdsHigh),
+            ApplicantContributionAfterSubsidy = contribution,
+            Tds15 = tdsLow,
+            Tds75 = tdsHigh,
+            NetPaybleTds15 = contribution - tdsLow,
+            NetPaybleTds75 = contribution - tdsHigh,
         };
         return (updated, null);
     }

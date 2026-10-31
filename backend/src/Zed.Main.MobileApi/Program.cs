@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
@@ -20,7 +22,6 @@ builder.Services.AddZedServices(builder.Configuration, host.Database);
 builder.Services.AddZedDataProtection(builder.Configuration, "zed.mobile." + system.ToString().ToLowerInvariant());
 builder.Services.AddLegacyMobile(builder.Configuration);
 builder.Services.AddSingleton<LoginThrottle>();
-builder.Services.AddSingleton<TwilioVideoTokens>();
 builder.Services.AddControllers().ConfigureApplicationPartManager(m =>
     m.FeatureProviders.Add(new PortalControllerFilter(system, typeof(LoginThrottle).Assembly)));
 
@@ -33,12 +34,25 @@ builder.Services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(o =>
     o.ValueLengthLimit = (int)Math.Min(int.MaxValue, maxRequest);
 });
 
-// Mobile users often share an address (carrier NAT), so the per-IP limit is generous; logins
-// are also limited per user name in LoginThrottle.
-builder.Services.Configure<Microsoft.AspNetCore.RateLimiting.RateLimiterOptions>(o =>
+// Mobile users often share an address (carrier NAT), so the per-IP limit is generous; logins and password
+// resets also have the portal's Sensitive policy (10 a minute per IP, [EnableRateLimiting] on those actions)
+// and are limited per user id in LoginThrottle.
+builder.Services.Configure<RateLimiterOptions>(o =>
+{
     o.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(ctx => RateLimitPartition.GetFixedWindowLimiter(
         ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-        _ => new FixedWindowRateLimiterOptions { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) })));
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) }));
+    // The apps show errorMessage of a legacy failure answer; a bare 429 on a login reads as "no network".
+    o.OnRejected = async (ctx, ct) =>
+    {
+        if (ctx.HttpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName != RateLimitPolicies.Sensitive)
+            return;
+        ctx.HttpContext.Response.StatusCode = StatusCodes.Status200OK;
+        ctx.HttpContext.Response.ContentType = "application/json; charset=utf-8";
+        await ctx.HttpContext.Response.WriteAsync(
+            JsonSerializer.Serialize(ServiceResponse.Fail(LoginThrottle.TooManyRequests), LegacyJson.Write), ct);
+    };
+});
 
 // The old services turned dates into text with the server's regional settings (row["X"].ToString()).
 // Set Mobile:Culture to what the old server used; the apps parse these strings.

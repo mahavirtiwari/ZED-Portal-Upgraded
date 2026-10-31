@@ -160,12 +160,11 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Email:Profiles:{Default,Registration,Otp,Allocation}` | `fromAddress/Host/password` and the `Second`, `Otp`, `Third` variants |
 | `Email:RegistrationCc` | `ccAddress` |
 | `CcAvenue:MerchantId/AccessCode/WorkingKey/GatewayUrl` | `CcAvenueMerchantId`, `CcAvenueAccessCode`, `CcAvenueWorkingKey`, `CcAvenueLiveUrl`/`TestUrl` (web integration). Callbacks: `{PublicBaseUrl}/api/payments/ccavenue/response` (ZED), `.../surveillance-response`, `.../consultancy-response` (handholding; replaces `CcAvenueConsultancySuccessUrl/FailUrl`) |
-| `Twilio:AccountSid/ApiKey/ApiSecret/TokenMinutes` (portal API) | Video tokens for the remote assessment screen (were hard-coded; rotate, #29/#48). Without them the screen works without video |
 | `UdyamiBharat:Enabled/TokenUrl/VerifyUrl/ClientId/ClientSecret/ReturnHosts` | Sign-in hand-over from the Udyami Bharat portal (`/Msme/ZedDashboard`). The old code used UBP's UAT gateway and had the secret in source: get production URLs and a new secret from UBP |
 | `CcAvenue:ReconciliationWorkingKey` | `CcAvenueWorkingKeyReconciliation`; CCAvenue keeps posting to `/Pay/UpdatePaymentReconciliationStatus` |
 | `ProteanGstin:Url/UserId/Password` | `ProteanApiUrl`, `ProteanUserId`, `ProteanPassword` (GSTIN verification) |
 | `ExternalApi:TokenLifetimeMinutes/TokenRequestsPerMinute/RequestsPerMinute/MaxInvoiceBytes` | APIs for other systems (RAMP, AP state, Udyami Bharat, incentive portals, ERP invoices); partner secrets and AES keys stay in `ApiClientTokens`. Lower `TokenLifetimeMinutes` (e.g. 60) once callers' token caching is known |
-| `Mobile:*` (mobile API) | See `docs/MOBILE-API.md`: `PathBase`, `StorageRoot` (old services folder), `Culture`, `DeviceBinding`, version check, Twilio keys (were hard-coded; rotate) |
+| `Mobile:*` (mobile API) | See `docs/MOBILE-API.md`: `PathBase`, `StorageRoot` (old services folder), `Culture`, `DeviceBinding`, version check. There are no video calls (Twilio was removed); the old hard-coded Twilio keys must still be revoked (#29/#48) |
 | `Security:Passwords` (all V4 hosts, each mobile deployment too) | `Dual` (default) while any old site is live; `Migrate` from the switch-off; `HashOnly` later. Migration 0005 first; steps in `docs/PASSWORDS.md` |
 | `DataProtection:KeysPath` | Folder for the sign-in and anti-forgery keys; required outside Development; one per application; back it up (docs/CUTOVER.md) |
 | `Cache:SqlServerTable` | Optional, e.g. `dbo.V4Cache` (migration 0006): shared cache for more than one server |

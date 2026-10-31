@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
@@ -23,12 +24,15 @@ namespace Zed.Portal.Features.Payments.Mobile;
 /// <see cref="DeviceBoundAttribute">device-bound</see>. Unlike the MVC actions, the fee row, the amount,
 /// the order id and the zero-amount decision are made here from the procedures (as the web checkout,
 /// <see cref="MsmePaymentController"/>): PaymentRefId and Amount from the app are only compared, and a
-/// different value is refused. Request bodies are not written to disk.
+/// different value is refused. Request bodies are not written to disk. A GSTIN must pass the Protean verification of the
+/// web checkout's GSTIN step (<see cref="AppGstin"/>); the old actions took any well-formed number.
 /// </para>
 /// </summary>
 public sealed partial class MobilePaymentController(
     ISqlExecutor db,
     ICcAvenueMobileClient gateway,
+    IGstinVerifier gstinVerifier,
+    IDistributedCache cache,
     PaymentCompletion completion,
     SurveillancePaymentCompletion surveillanceCompletion,
     IOptions<CcAvenueOptions> ccavenue,
@@ -83,7 +87,7 @@ public sealed partial class MobilePaymentController(
 
         var (p, error) = await PrepareAsync(m, model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Fee.Amount("ApplicantContributionAfterSubsidy") <= 0) return Refuse("No payment is due for this certification.");
+        if (p.Fee.Due is not > 0m) return Refuse("No payment is due for this certification.");
 
         var expected = p.Fee.Payable(p.Tds);
         var newOrderId = m.Surveillance ? Guid.NewGuid().ToString() : null;   // main: the procedure takes the next PaymentSequence value
@@ -199,7 +203,7 @@ public sealed partial class MobilePaymentController(
     {
         var (p, error) = await PrepareAsync(m, model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Fee.Amount("ApplicantContributionAfterSubsidy") > 0)
+        if (p.Fee.Due is not <= 0m)
         {
             log.LogWarning("Mobile {Module} zero payment refused for {ZedId}/{Certification}: fee row {FeeId} is not zero", m.Name, p.ZedId, p.Cert, p.Fee.Id);
             return Refuse("Payment is due for this certification. Please pay online.");
@@ -217,11 +221,12 @@ public sealed partial class MobilePaymentController(
         }
 
         // Confirm it was recorded: the surveillance procedure skips silently (it checks IsBronzePaymentDone
-        // for every level), so do not report a payment that did not happen.
+        // for every level), so do not report a payment that did not happen. ZED-X has no flag the procedure sets
+        // (SP_V4_CERTIFICATION_PAID sets it in the completion), so its payment row is looked for: before, a recorded ZED-X
+        // payment was reported as failed and the app's retry recorded it again.
         var recorded = m.Surveillance
             ? !await SurveillancePaymentOpenAsync(p.ZedId, p.Cert, ct)
-            : (await db.QuerySqlAsync<string>(
-                $"SELECT ZedId FROM Msme WHERE ZedId = @ZedId AND Is{p.Cert}PaymentDone = 1",
+            : (await db.QuerySqlAsync<string>(RecordedSql(p.Cert),
                 new { ZedId = new Dapper.DbString { Value = p.ZedId, IsAnsi = true, Length = 50 } }, ct)).Count > 0;
         if (!recorded)
         {
@@ -305,6 +310,12 @@ public sealed partial class MobilePaymentController(
         if (useReward && (!rewardAvailable || withReward is null)) return (null, "The joining reward is not available.");
         var fee = useReward ? withReward : withoutReward;
         if (fee is null) return (null, "Fee details are not available for this certification.");
+        if (fee.Due is null)
+        {
+            // A missing or unreadable amount is refused, never taken as nothing to pay.
+            log.LogError("Mobile {Module} fee row {FeeId} for {ZedId}/{Certification} has no readable ApplicantContributionAfterSubsidy", m.Name, fee.Id, zedId, cert);
+            return (null, FeeOption.Unreadable);
+        }
 
         // What the app showed must be what is charged.
         if (!string.IsNullOrWhiteSpace(model.PaymentRefId) && model.PaymentRefId.Trim() != fee.Id)
@@ -322,6 +333,15 @@ public sealed partial class MobilePaymentController(
         var udyamPan = (withReward ?? withoutReward)?.Row.Text("UdyamPanNo");
         if (gstin is not null && !string.Equals(udyamPan, Certifications.PanOf(gstin), StringComparison.OrdinalIgnoreCase))
             return (null, "PAN registered in your Udyam portal is not matching with given GSTIN Number.");
+
+        // A level already paid or applied for, as the web checkout: ZED-X on both paths (no procedure refuses it), the
+        // others on the zero path (the zero procedure's own condition).
+        if (!m.Surveillance && (fee.Due <= 0 || cert == "ZEDX") && await Certifications.AlreadyPaidAsync(db, zedId, cert, log, ct))
+            return (null, "Payment is already done for this certification.");
+
+        // Last, as it asks Protean: the GSTIN must be verified, as in the web checkout's GSTIN step.
+        if (gstin is not null && await AppGstin.VerifyAsync(gstinVerifier, cache, zedId, cert, gstin, log, ct) is { } gstinRefusal)
+            return (null, gstinRefusal);
 
         return (new Prepared(zedId, cert, fee, useReward, gstinApplicable, gstin, tdsDeductible, tds, tan), null);
     }
@@ -347,6 +367,14 @@ public sealed partial class MobilePaymentController(
     private static bool IsYes(string? s) => string.Equals(s?.Trim(), "Yes", StringComparison.OrdinalIgnoreCase);
 
     private static bool IsNo(string? s) => string.Equals(s?.Trim(), "No", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A recorded certification payment: Is{Level}PaymentDone for Bronze / Silver / Gold (the zero procedure sets it), the
+    /// level's MsmePaymentInfo row for ZED-X. The level comes from <see cref="Certifications.Applicable"/> only.
+    /// </summary>
+    internal static string RecordedSql(string level) => level == "ZEDX"
+        ? "SELECT ZedId FROM MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = 'ZEDX'"
+        : $"SELECT ZedId FROM Msme WHERE ZedId = @ZedId AND Is{level}PaymentDone = 1";
 
     /// <summary>SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS: 1 while the level is certified and its surveillance fee is unpaid.</summary>
     private async Task<bool> SurveillancePaymentOpenAsync(string zedId, string cert, CancellationToken ct) =>

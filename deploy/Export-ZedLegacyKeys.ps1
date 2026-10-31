@@ -7,9 +7,8 @@
   settings file's section names:
     Main.Udyam__AccessKey              MsmeController, the Udyam service address (GetUdyam/...,<key>)
     Main.Recaptcha__AppSecretKey       MsmeController.ValidateCaptcha, the MSME app's Android reCAPTCHA secret
-    Main.Twilio__AccountSid/ApiKey/ApiSecret and MobileMain.Mobile__Twilio__*   MsmeHelper.GenerateToken
   Each value must be the same in every legacy file that holds it, or the script stops.
-  Not copied, on purpose: the CCAvenue merchant and keys (the live merchant would take real payments on staging; use
+  Not copied, on purpose: the Twilio keys (V4 has no video calls any more), the CCAvenue merchant and keys (the live merchant would take real payments on staging; use
   CCAvenue's test merchant), the web reCAPTCHA keys (registered for the live domain; staging needs its own pair or
   Recaptcha__Enabled=false), the SMTP passwords and the ERP secret (ERP is off on staging).
   Only names, the file and line they came from, their length and a short hash are shown, never a value. The output
@@ -67,14 +66,10 @@ function Find-LegacyValue([string]$Name, [string]$Pattern, [string]$InMethod) {
 Write-Host "==> Reading the legacy code in $LegacyRoot (values are not shown)" -ForegroundColor Cyan
 $udyam = Find-LegacyValue 'Udyam access key' 'mobileNumber\s*\+\s*",([^"]+)"'
 $appSecret = Find-LegacyValue 'MSME app reCAPTCHA secret' '\bsecret\s*=\s*"([^"]{20,})"' 'ValidateCaptcha'
-$sid = Find-LegacyValue 'Twilio account SID' 'twilioAccountSid\s*=\s*"([^"]+)"'
-$apiKey = Find-LegacyValue 'Twilio API key' 'twilioApiKey\s*=\s*"([^"]+)"'
-$apiSecret = Find-LegacyValue 'Twilio API secret' 'twilioApiSecret\s*=\s*"([^"]+)"'
 
 $data = [ordered]@{
     _comment   = "Keys copied from the legacy code by Export-ZedLegacyKeys.ps1 on $(Get-Date -Format 'yyyy-MM-dd HH:mm'). SECRET: never commit, mail or paste it; delete it after deploy\Invoke-ZedStaging.ps1 -Step Keys -Apply."
-    Main       = [ordered]@{ Udyam__AccessKey = $udyam; Recaptcha__AppSecretKey = $appSecret; Twilio__AccountSid = $sid; Twilio__ApiKey = $apiKey; Twilio__ApiSecret = $apiSecret }
-    MobileMain = [ordered]@{ Mobile__Twilio__AccountSid = $sid; Mobile__Twilio__ApiKey = $apiKey; Mobile__Twilio__ApiSecret = $apiSecret }
+    Main       = [ordered]@{ Udyam__AccessKey = $udyam; Recaptcha__AppSecretKey = $appSecret }
 }
 
 # Never inside a Git working tree: the file must not end up in a commit.
@@ -91,7 +86,7 @@ while ($probe) {
 
 Write-Host ''
 Write-Host "Written: $outFull (readable by $($env:USERNAME) only)" -ForegroundColor Green
-Write-Host 'Not copied on purpose: CCAvenue (live merchant), web reCAPTCHA (live domain), SMTP passwords, ERP secret.'
+Write-Host 'Not copied on purpose: Twilio (no video calls in V4), CCAvenue (live merchant), web reCAPTCHA (live domain), SMTP passwords, ERP secret.'
 Write-Host 'Copy the file to the staging server (for example E:\ZedStaging\staging-keys.json), then there:'
 Write-Host '    .\deploy\Invoke-ZedStaging.ps1 -Step Keys -KeysFile E:\ZedStaging\staging-keys.json'
 Write-Host '    .\deploy\Invoke-ZedStaging.ps1 -Step Keys -KeysFile E:\ZedStaging\staging-keys.json -Apply'

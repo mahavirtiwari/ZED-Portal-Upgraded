@@ -3,6 +3,7 @@ using System.Data.Common;
 using System.Globalization;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Mobile;
@@ -19,9 +20,8 @@ namespace Zed.Main.MobileApi.Controllers.Consultancy;
 /// <see cref="Zed.Main.MobileApi.Controllers.SAController"/> is removed by the controller filter, so the routes do not clash.
 /// <para>
 /// Added over the old code: the user named in a call must be allotted to the unit and certification named in it, by
-/// exact user id (the lead consultant MsmeCertifications.SiteAssessorId, a co-consultant in AllotedCoAssessors or a
-/// technical expert in AllotedTechExperts for the current milestone, or the DFO FinancialAssistance.FinancialAssessorId
-/// where the DFO app calls), never the old <c>CoAssessorId LIKE '%id%'</c> (SECURITY-FINDINGS #93); upload paths go
+/// exact user id (the lead consultant MsmeCertifications.SiteAssessorId or a co-consultant in AllotedCoAssessors for the
+/// current milestone, or the DFO FinancialAssistance.FinancialAssessorId where the DFO app calls), never the old <c>CoAssessorId LIKE '%id%'</c> (SECURITY-FINDINGS #93); upload paths go
 /// through <see cref="MobileStorage"/> with fixed extensions (#91); request bodies are no longer written to App_Data/Json;
 /// exception texts are no longer returned.
 /// </para>
@@ -36,7 +36,7 @@ public sealed partial class ConsultancySAController(
     MobileStorage storage,
     ILogger<ConsultancySAController> log) : LegacyMobileController
 {
-    /// <summary>Device records and the login throttle use the site assessor app's key: the consultant app is its fork.</summary>
+    /// <summary>Device records use the site assessor app's key: the consultant app is its fork.</summary>
     public const string App = MobileApps.SiteAssessor;
 
     public const string UpdateAppMessage = "Download new app from store.";
@@ -89,7 +89,10 @@ public sealed partial class ConsultancySAController(
     /// <summary>Who may make a call.</summary>
     private enum Role
     {
-        /// <summary>Lead consultant, co-consultant or technical expert.</summary>
+        /// <summary>
+        /// Lead consultant or co-consultant. Not the technical expert (AllotedTechExperts): Login lets only the lead and
+        /// co-consultants in, so no device is ever bound to an expert and calls in an expert's name are refused.
+        /// </summary>
         Team,
         /// <summary>The team or the allotted DFO (calls the TU verifier app makes: attendance, file uploads).</summary>
         TeamOrDfo,
@@ -107,6 +110,7 @@ public sealed partial class ConsultancySAController(
     /// </summary>
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Consultant app")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
         // The old mobile Web.config had no checkSAVersion, so the old code failed before its try; here the check is
@@ -117,7 +121,7 @@ public sealed partial class ConsultancySAController(
 
         var userId = First(request.assessorId, request.userName)?.Trim();
         if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(request.password)) return LoginFail(InvalidCredentials);
-        if (throttle.IsLocked(App, userId)) return LoginFail(TooManyAttempts);
+        if (throttle.IsLocked(userId)) return LoginFail(TooManyAttempts);
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
         var login = await passwords.BeginLoginAsync(userId, request.password, ct);
@@ -127,7 +131,7 @@ public sealed partial class ConsultancySAController(
         var first = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
         if (first is null)
         {
-            throttle.Failed(App, userId);
+            throttle.Failed(userId);
             return LoginFail(InvalidDetails);
         }
         if (first.Text("StatusCode") != "1")
@@ -135,7 +139,7 @@ public sealed partial class ConsultancySAController(
             // Only the procedure's last branch is about the password; the others are reached with a valid one.
             var message = first.Text("ErrorMessage");
             if (!first.ContainsKey("UserId") && message.StartsWith("Invalid Credentials", StringComparison.OrdinalIgnoreCase))
-                throttle.Failed(App, userId);
+                throttle.Failed(userId);
             return LoginFail(message);
         }
 
@@ -143,10 +147,10 @@ public sealed partial class ConsultancySAController(
         if (first.Text("RoleId") != "3" || !await passwords.CompleteLoginAsync(login, first, ct))
         {
             log.LogWarning("Blocked consultant app login for {UserId}: password or role does not match the Users row", userId);
-            throttle.Failed(App, userId);
+            throttle.Failed(userId);
             return LoginFail(InvalidCredentials);
         }
-        throttle.Succeeded(App, userId);
+        throttle.Succeeded(userId);
 
         // SP_APP_SA_CHECK_LOGIN_V2 takes the consultant branch whenever SiteVerification is set.
         var dfo = !first.Bool("SiteVerification") && first.Bool("FinancialVerification");
@@ -372,8 +376,8 @@ public sealed partial class ConsultancySAController(
         {
             Role.Lead => rows.Contains("Lead"),
             Role.Co => rows.Contains("Co"),
-            Role.TeamOrDfo => rows.Count > 0,
-            _ => rows.Any(r => r is "Lead" or "Co" or "Expert"),
+            Role.TeamOrDfo => rows.Any(r => r is "Lead" or "Co" or "Dfo"),
+            _ => rows.Any(r => r is "Lead" or "Co"),
         };
     }
 

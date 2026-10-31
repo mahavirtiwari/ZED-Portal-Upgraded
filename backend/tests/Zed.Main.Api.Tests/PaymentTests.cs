@@ -68,10 +68,10 @@ public sealed class PaymentTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private void SetFees(string payable, bool rewardUsed) =>
+    private void SetFees(string? payable, bool rewardUsed, string? pan = "ABCDE1234F") =>
         _host.Sql.Procs["SP_MSME_GET_PAYMENT_DETAILS"] = _ => FakeSql.Sets(
-            [new { Id = 11, Total = "11800.00", Coupon = "10000", TotalAfterCoupon = "1800.00", ApplicantContributionAfterSubsidy = "0.00", NetPaybleTds15 = "0.00", NetPaybleTds75 = "0.00", UdyamPanNo = "ABCDE1234F" }],
-            [new { Id = 12, Total = "11800.00", ApplicantContributionAfterSubsidy = payable, NetPaybleTds15 = "2320.00", NetPaybleTds75 = "2160.00", UdyamPanNo = "ABCDE1234F" }],
+            [new { Id = 11, Total = "11800.00", Coupon = "10000", TotalAfterCoupon = "1800.00", ApplicantContributionAfterSubsidy = "0.00", NetPaybleTds15 = "0.00", NetPaybleTds75 = "0.00", UdyamPanNo = pan }],
+            [new { Id = 12, Total = "11800.00", ApplicantContributionAfterSubsidy = payable, NetPaybleTds15 = "2320.00", NetPaybleTds75 = "2160.00", UdyamPanNo = pan }],
             [new { IsCouponUsed = rewardUsed ? 1 : 0 }]);
 
     private async Task<HttpClient> SignedInAsync()
@@ -271,8 +271,11 @@ public sealed class PaymentTests : IDisposable
     }
 
     [Fact]
-    public async Task Pan_correction_needs_a_verified_gstin_and_its_pan()
+    public async Task Pan_correction_needs_a_verified_gstin_and_its_pan_and_tells_the_office()
     {
+        // The office mailbox (read before the first request: the settings are cached).
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new Zed.Core.Data.PortalSettings.SettingRow(Zed.Core.Email.EmailAddresses.RegistrationCc, "office@zed.test")];
         var client = await SignedInAsync();
         Assert.Equal("Please verify the GSTIN first.",
             await (await client.PostAsJsonAsync("/api/msme/payments/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" })).ProblemTitle());
@@ -281,10 +284,24 @@ public sealed class PaymentTests : IDisposable
         Assert.Equal("Please enter the correct PAN associated with that GSTIN.",
             await (await client.PostAsJsonAsync("/api/msme/payments/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "ZZZZZ9999Z" })).ProblemTitle());
 
+        // The unit has a PAN on record (ABCDE1234F): the verified GSTIN's PAN replaces it, and the office is told.
+        var changed = await client.PostAsJsonAsync("/api/msme/payments/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" });
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        var replaced = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
+        Assert.Equal("ABCDE1234F", FakeSql.Arg(replaced.Args, "PanNo"));
+        Assert.Equal("PQRST6789K", FakeSql.Arg(replaced.Args, "UpdatedPanNo"));
+        var notice = Assert.Single(_host.Email.Sent, m => m.Subject.StartsWith("PAN changed on the payment page - ", StringComparison.Ordinal));
+        Assert.Equal("office@zed.test", notice.To);
+        Assert.Contains("ABCDE1234F", notice.HtmlBody);
+        Assert.Contains("PQRST6789K", notice.HtmlBody);
+        Assert.Contains("09PQRST6789K1Z2", notice.HtmlBody);
+
+        // No PAN on record: the verified GSTIN's PAN is recorded, as before.
+        SetFees(payable: "2360.00", rewardUsed: false, pan: null);
         var ok = await client.PostAsJsonAsync("/api/msme/payments/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        var update = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
-        Assert.Equal("ABCDE1234F", FakeSql.Arg(update.Args, "PanNo"));
+        var update = _host.Sql.Calls.Last(c => c.Name == "SP_MESE_UPDATE_PAN");
+        Assert.Null(FakeSql.Arg(update.Args, "PanNo"));
         Assert.Equal("PQRST6789K", FakeSql.Arg(update.Args, "UpdatedPanNo"));
     }
 
@@ -381,5 +398,92 @@ public sealed class PaymentTests : IDisposable
         var call = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION");
         Assert.Equal("Success", FakeSql.Arg(call.Args, "PaymentStatus"));
         Assert.Equal("RECONCILIATION", FakeSql.Arg(call.Args, "ApiType"));
+    }
+
+    private const string Reconcile = "/Pay/UpdatePaymentReconciliationStatus";
+
+    [Fact]
+    public async Task Reconciliation_that_records_a_pending_payment_completes_it_once()
+    {
+        string? status = null;
+        _host.Sql.Queries["SELECT ZedId, Certification, Amount, PaymentStatus FROM PaymentGatewayTransactions"] = args =>
+            FakeSql.Arg(args, "TransactionId") == "100001" ? [new { ZedId = Me, Certification = "Bronze", Amount = 2360.00m, PaymentStatus = status }] : [];
+        // Like the routing procedure: the gateway procedure marks the pending order paid.
+        _host.Sql.Procs["SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"] = args =>
+        {
+            if (FakeSql.Arg(args, "PaymentStatus") == "Success") status = "Success";
+            return FakeSql.Sets([new { ModuleName = "ZED" }]);
+        };
+        var plain = $"order_id=100001&order_status=Shipped&order_mer_param1={Me}&order_mer_param2=Bronze&order_amt=2360.00";
+
+        Assert.Equal(HttpStatusCode.OK, (await Gateway().PostAsync(Reconcile, Encrypted(plain, TestHost.ReconciliationKey))).StatusCode);
+        // As after the browser callback: the certification's V4 step (ZED-X flag, sector questionnaire), receipt and mail.
+        var paid = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.CertificationPaid.Procedure);
+        Assert.Equal((Me, "Bronze"), (FakeSql.Arg(paid.Args, "ZedId"), FakeSql.Arg(paid.Args, "Certification")));
+        Assert.Single(_host.Email.Sent, m => m.Subject == $"ZED Certification Payment Confirmation Details - {Me}");
+
+        // A repeated push, and the browser callback after it, find the order paid: nothing is completed again.
+        Assert.Equal(HttpStatusCode.OK, (await Gateway().PostAsync(Reconcile, Encrypted(plain, TestHost.ReconciliationKey))).StatusCode);
+        var browser = await Gateway().PostAsync("/api/payments/ccavenue/response",
+            Encrypted($"order_id=100001&order_status=Success&amount=2360.00&merchant_param1={Me}&merchant_param2=Bronze"));
+        Assert.Equal("/msme/payment/result?status=success&certification=Bronze", browser.Headers.Location!.OriginalString);
+        Assert.Equal(2, _host.Sql.Calls.Count(c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS");
+        Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.CertificationPaid.Procedure);
+        Assert.Single(_host.Email.Sent);
+    }
+
+    [Fact]
+    public async Task Reconciliation_for_another_amount_or_unit_marks_nothing_paid()
+    {
+        PendingOrder();
+        _host.Sql.Procs["SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"] = _ => FakeSql.Sets([new { ModuleName = "ZED" }]);
+
+        await Gateway().PostAsync(Reconcile, Encrypted(
+            $"order_id=100001&order_status=Success&order_mer_param1={Me}&order_mer_param2=Bronze&order_amt=1.00", TestHost.ReconciliationKey));
+        var call = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION");
+        Assert.Equal("AmountMismatch", FakeSql.Arg(call.Args, "PaymentStatus"));
+
+        // Another unit's push for this order is not recorded at all.
+        var other = await Gateway().PostAsync(Reconcile, Encrypted(
+            "order_id=100001&order_status=Success&order_mer_param1=ZEDMSME999999&order_mer_param2=Bronze&order_amt=2360.00", TestHost.ReconciliationKey));
+        Assert.Equal(HttpStatusCode.OK, other.StatusCode);
+        Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION");
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.CertificationPaid.Procedure);
+        Assert.Empty(_host.Email.Sent);
+    }
+
+    [Fact]
+    public async Task Zedx_already_paid_or_applied_is_not_recorded_again()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+            [new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000)];
+        // The legacy zero procedure would record ZED-X again (it checks Bronze / Silver / Gold only).
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Certifications.PaidSql("ZEDX")] = _ => [1];
+        var client = await SignedInAsync();
+
+        var zero = await client.PostAsJsonAsync("/api/msme/payments/ZEDX/checkout", Choices(reward: true));
+        Assert.Equal("Payment is already done for this certification.", await zero.ProblemTitle());
+        var gateway = await client.PostAsJsonAsync("/api/msme/payments/ZEDX/checkout", Choices());
+        Assert.Equal("Payment is already done for this certification.", await gateway.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name is "SP_MSME_ZERO_PAYMENT_DETAILS" or "SP_MSME_PAYMENT_BASIC_DETAILS");
+        Assert.All(_host.Sql.Calls.Where(c => c.Name == Zed.Portal.Features.Payments.Certifications.PaidSql("ZEDX")),
+            c => Assert.Equal(Me, FakeSql.Arg(c.Args, "ZedId")));
+        Assert.Contains("MsmePaymentInfo", Zed.Portal.Features.Payments.Certifications.PaidSql("ZEDX"));
+        Assert.Contains("MsmeCertifications", Zed.Portal.Features.Payments.Certifications.PaidSql("ZEDX"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("n/a")]
+    public async Task A_fee_row_without_a_readable_amount_is_refused_not_taken_as_free(string? payable)
+    {
+        SetFees(payable, rewardUsed: false);
+        var client = await SignedInAsync();
+        var r = await client.PostAsJsonAsync("/api/msme/payments/Bronze/checkout", Choices());
+        Assert.Equal(Zed.Portal.Features.Payments.FeeOption.Unreadable, await r.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name is "SP_MSME_ZERO_PAYMENT_DETAILS" or "SP_MSME_PAYMENT_BASIC_DETAILS");
+        Assert.Null(new Zed.Portal.Features.Payments.FeeOption(new Dictionary<string, object?> { ["ApplicantContributionAfterSubsidy"] = payable }).Due);
     }
 }

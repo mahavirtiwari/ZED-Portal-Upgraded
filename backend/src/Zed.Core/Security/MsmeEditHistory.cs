@@ -95,12 +95,16 @@ public sealed class SqlMsmeEditHistory(ISqlExecutor db, IServiceProvider service
 /// <summary>
 /// Records the change an applicant's action makes (<see cref="IMsmeEditHistory"/>), with what was submitted. On the web the
 /// MSME is the signed-in user (role MSME; other roles are not recorded here); in the MSME app the ZED ID comes from the
-/// request (zedId / userName), as the app sends it.
+/// request: the first of <c>idFields</c> that is set, which must be the field the action itself acts on
+/// (userName for most MSME app calls; the old order zedId-then-userName could name another unit than the one changed).
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class MsmeEditAuditAttribute(string action) : Attribute, IAsyncActionFilter
+public sealed class MsmeEditAuditAttribute(string action, params string[] idFields) : Attribute, IAsyncActionFilter
 {
     public const int MaxData = 8000;
+
+    /// <summary>Request fields holding the ZED ID in the app, in order (default: userName, then zedId).</summary>
+    public IReadOnlyList<string> IdFields { get; } = idFields.Length > 0 ? idFields : ["userName", "zedId"];
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
@@ -110,7 +114,7 @@ public sealed class MsmeEditAuditAttribute(string action) : Attribute, IAsyncAct
         if (mobile)
         {
             var body = context.ActionArguments.Values.FirstOrDefault(v => v is not null and not CancellationToken);
-            zedId = new[] { "zedId", "userName" }.Select(p => ActionOutcome.Property(body, p) as string).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
+            zedId = IdFields.Select(p => ActionOutcome.Property(body, p) as string).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v))?.Trim();
         }
         else
         {

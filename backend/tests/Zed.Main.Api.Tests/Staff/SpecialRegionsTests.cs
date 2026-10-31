@@ -182,4 +182,17 @@ public sealed class SpecialRegionsTests : IDisposable
         var bad = await admin.PostAsJsonAsync("/api/staff/masters/lgd/apply", new { changes = new[] { new { kind = "dropTable", stateCode = "9" } } });
         Assert.Equal(HttpStatusCode.BadRequest, bad.StatusCode);
     }
+
+    [Fact]
+    public void Each_portal_copy_of_the_districts_is_one_transaction()
+    {
+        Assert.Equal(2, DistrictCopies.Sync.Count);
+        Assert.All(DistrictCopies.Sync.Values, sql =>
+        {
+            // All or nothing per portal: a failure part-way no longer leaves states copied without their districts.
+            Assert.StartsWith("SET XACT_ABORT ON;", sql);
+            Assert.Contains("BEGIN TRANSACTION;", sql);
+            Assert.EndsWith("COMMIT;", sql.TrimEnd());
+        });
+    }
 }

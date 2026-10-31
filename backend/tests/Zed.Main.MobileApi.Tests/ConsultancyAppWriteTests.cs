@@ -33,8 +33,12 @@ public sealed class ConsultancyAppWriteTests : IDisposable
 
     public void Dispose() => _t.Dispose();
 
-    private static object Photo(string photoId, string? name = "p", string data = "aGVsbG8=", bool isPdf = false) =>
-        new { photoId, name, photo = data, timeStamp = "t", latitude = "1", longitude = "2", comment = "c-" + photoId, isPdf };
+    private static object Photo(string photoId, string? name = "p", string? data = null, bool isPdf = false) =>
+        new
+        {
+            photoId, name, photo = data ?? (isPdf ? AssessorTestHost.PdfBase64 : AssessorTestHost.JpegBase64), timeStamp = "t", latitude = "1", longitude = "2",
+            comment = "c-" + photoId, isPdf,
+        };
 
     private static void AssertFail(JsonElement e, string message)
     {
@@ -66,7 +70,8 @@ public sealed class ConsultancyAppWriteTests : IDisposable
         capturedEvidences = new[] { new { photoId = "c1", name = "captured" } },
     };
 
-    private static MultipartFormDataContent PhotoForm(string userName, string section, string photoId = "ph1", bool isPdf = false, string fileName = "shot.aspx")
+    private static MultipartFormDataContent PhotoForm(string userName, string section, string photoId = "ph1", bool isPdf = false, string fileName = "shot.aspx",
+        byte[]? bytes = null)
     {
         var form = new MultipartFormDataContent
         {
@@ -81,7 +86,7 @@ public sealed class ConsultancyAppWriteTests : IDisposable
             { new StringContent("11"), "latitude" },
             { new StringContent("22"), "longitude" },
         };
-        var file = new ByteArrayContent(Encoding.UTF8.GetBytes("file-bytes"));
+        var file = new ByteArrayContent(bytes ?? (isPdf ? AssessorTestHost.Pdf : AssessorTestHost.Jpeg));
         file.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
         form.Add(file, "FormFile", fileName);
         return form;
@@ -98,7 +103,7 @@ public sealed class ConsultancyAppWriteTests : IDisposable
             { new StringContent("on site"), "comments" },
         };
         if (metadata is not null) form.Add(new StringContent(metadata), "selfieMetadata");
-        if (withFile) form.Add(new ByteArrayContent(Encoding.UTF8.GetBytes("selfie")), "files", "selfie.aspx");
+        if (withFile) form.Add(new ByteArrayContent(AssessorTestHost.Jpeg), "files", "selfie.aspx");
         return form;
     }
 
@@ -152,9 +157,16 @@ public sealed class ConsultancyAppWriteTests : IDisposable
     }
 
     [Fact]
-    public async Task A_technical_expert_works_on_the_unit_but_cannot_allot_or_close()
+    public async Task A_technical_expert_cannot_sign_in_to_the_app_so_nothing_in_their_name_is_accepted()
     {
-        AssertOk(await _t.Json("/SA/SubmitProgressReview", Parameter(Expert, Requirement())));
+        // Login lets only the lead and co-consultants in: no device is ever bound to an expert (M14).
+        AssertNotAllotted(await _t.Json("/SA/SubmitProgressReview", Parameter(Expert, Requirement())), "SP_APP_SA_SAVE_PARAMETER");
+        AssertNotAllotted(await _t.Json("/SA/SubmitEvidences", new
+        {
+            saId = Expert, zedId = Zed, certificationType = "Silver", addedEvidences = new[] { Photo("e1") },
+        }), "SP_APP_SA_SAVE_PHOTOS");
+        AssertNotAllotted(await _t.Form("/SA/SubmitPhotos", PhotoForm(Expert, "SiteTour")), "SP_APP_SA_SAVE_PHOTOS");
+        AssertNotAllotted(await _t.Form("/SA/SubmitAttendance", AttendanceForm(Expert)), "SP_APP_SA_INSERT_DAILY_ATTENDANCE");
         AssertNotAllotted(await _t.Json("/SA/SubmitAllocation", new
         {
             saId = Expert, zedId = Zed, certificationType = "Silver",
@@ -231,7 +243,7 @@ public sealed class ConsultancyAppWriteTests : IDisposable
         {
             saId = Lead, zedId = Zed, certificationType = "Silver", sectionName = "Baseline Diagnostic Selfie", addedEvidences = new[] { Photo("e1") },
         }));
-        Assert.Equal("hello", File.ReadAllText(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Baseline Diagnostic Selfie", "e1.jpg")));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Baseline Diagnostic Selfie", "e1.jpg")));
         Assert.Equal("Evidences", ConsultancyAppHost.Arg(_t.LastArgs("SP_APP_SA_SAVE_PHOTOS"), "PhotoType"));
 
         AssertOk(await _t.Json("/SA/SubmitEvidences", new { saId = Lead, zedId = Zed, certificationType = "Silver", addedEvidences = new[] { Photo("e2") } }));
@@ -468,7 +480,7 @@ public sealed class ConsultancyAppWriteTests : IDisposable
         Assert.Equal("ph1.jpg", e.GetProperty("fileName").GetString());
         Assert.Equal($"{Zed}\\Silver\\Training on ZED\\ph1.jpg", e.GetProperty("filePath").GetString());
         Assert.Equal(["status", "errorMessage", "filePath", "fileName"], e.EnumerateObject().Select(p => p.Name));
-        Assert.Equal("file-bytes", File.ReadAllText(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Training on ZED", "ph1.jpg")));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Training on ZED", "ph1.jpg")));
         Assert.Single(_t.AllFiles());
 
         var args = _t.LastArgs("SP_APP_SA_SAVE_PHOTOS");
@@ -497,13 +509,53 @@ public sealed class ConsultancyAppWriteTests : IDisposable
         var e = await _t.Form("/SA/SubmitAttendance", AttendanceForm(Lead));
         AssertOk(e);
         Assert.Equal("LOGIN ATTENDANCE SUBMITTED SUCCESSFULLY", e.GetProperty("errorMessage").GetString());
-        Assert.Equal("selfie", File.ReadAllText(_t.FileUnderRoot("Attendance", Zed, "Silver", "att1.jpg")));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("Attendance", Zed, "Silver", "att1.jpg")));
         Assert.Single(_t.AllFiles());
         var args = _t.LastArgs("SP_APP_SA_INSERT_DAILY_ATTENDANCE");
         Assert.Equal("att1", ConsultancyAppHost.Arg(args, "PhotoId"));
         Assert.Equal("LOGIN", ConsultancyAppHost.Arg(args, "AttendanceType"));
         Assert.Equal("on site", ConsultancyAppHost.Arg(args, "Comments"));
         Assert.Equal(Lead, ConsultancyAppHost.Arg(args, "AssessorId"));
+    }
+
+    [Fact]
+    public async Task Uploads_whose_bytes_are_not_what_they_claim_are_refused()
+    {
+        var html = Encoding.UTF8.GetBytes("<html><script>alert(1)</script></html>");
+        AssertFail(await _t.Form("/SA/SubmitPhotos", PhotoForm(Lead, "SiteTour", bytes: html)), "Invalid Data.");
+        // isPdf decides the extension: an image sent as a PDF, or a PDF as a photo, is refused too.
+        AssertFail(await _t.Form("/SA/SubmitPhotos", PhotoForm(Lead, "SiteTour", isPdf: true, bytes: AssessorTestHost.Jpeg)), "Invalid Data.");
+        AssertFail(await _t.Form("/SA/SubmitPhotos", PhotoForm(Lead, "SiteTour", bytes: AssessorTestHost.Pdf)), "Invalid Data.");
+        AssertFail(await _t.Json("/SA/SubmitEvidences", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver", addedEvidences = new[] { Photo("e1", data: Convert.ToBase64String(html)) },
+        }), "Invalid Data.");
+        AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new
+        {
+            saId = Lead, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1", isPdf: true, data: AssessorTestHost.JpegBase64) },
+        }), "Invalid Data.");
+        var attendance = AttendanceForm(Lead, withFile: false);
+        attendance.Add(new ByteArrayContent(html), "files", "selfie.jpg");
+        AssertFail(await _t.Form("/SA/SubmitAttendance", attendance), "Invalid Data.");
+        Assert.Empty(_t.AllFiles());
+        Assert.Empty(_t.CallsTo("SP_APP_SA_SAVE_PHOTOS"));
+        Assert.Empty(_t.CallsTo("SP_APP_SA_INSERT_DAILY_ATTENDANCE"));
+    }
+
+    [Fact]
+    public async Task Basic_info_photos_take_the_consultant_from_saId_as_the_app_sends_it()
+    {
+        AssertOk(await _t.Json("/SA/SubmitBasicInfoPhotos", new
+        {
+            saId = Co, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b1"), Photo("b2", isPdf: true) },
+        }));
+        Assert.Equal(AssessorTestHost.Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b1.jpg")));
+        Assert.Equal(AssessorTestHost.Pdf, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b2.pdf")));
+        AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new { saId = Expert, zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b3") } }),
+            ConsultancySAController.NotAllocated + Zed);
+        AssertFail(await _t.Json("/SA/SubmitBasicInfoPhotos", new { zedId = Zed, certificationType = "Silver", photos = new[] { Photo("b3") } }),
+            ConsultancySAController.NotAllocated + Zed);
+        Assert.False(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "BasicInfo", "b3.jpg")));
     }
 
     [Fact]

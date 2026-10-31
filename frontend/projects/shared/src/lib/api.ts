@@ -20,7 +20,7 @@ export function apiErrorMessage(err: unknown): string {
     const title = (err.error as { title?: string } | null)?.title;
     if (title) return title;
   }
-  return 'Unexpected error occured. Please try after some time.';
+  return 'Unexpected error occurred. Please try after some time.';
 }
 
 export interface MessageResponse {

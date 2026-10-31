@@ -12,7 +12,16 @@
     2. Build        Build-ZedRelease.ps1 -Ref <branch, tag or commit> into <ReleasesRoot> (tests included unless
                     -SkipTests). Or -Package: an existing package folder or .zip (its .sha256 is checked when present).
     3. Backup       copies each application folder to be replaced (and Zed.Jobs with -IncludeJobs) to
-                    <InstallRoot>\backups\<time>\ (logs\ left out) with backup.json.
+                    <InstallRoot>\backups\<time>\ (logs\ left out) with backup.json. Then, before the migrations, a
+                    database backup (BACKUP DATABASE ... WITH COPY_ONLY, and COMPRESSION where the edition has it; the
+                    log chain and the DBA's own backups are not disturbed) of each database the migrations change:
+                    ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE, with -DatabasePrefix their prefixed names. The
+                    files go to -DatabaseBackupDir: by default <InstallRoot>\backups\<time>\database when SQL Server runs
+                    on this machine (its service account gets Modify there); for SQL Server on another machine
+                    -DatabaseBackupDir is required (a folder on that machine or a share its service account can write).
+                    The file rollback cannot undo migrations; these backups can (RESTORE DATABASE ... WITH REPLACE, with
+                    the portals stopped). -SkipDatabaseBackup leaves them out (not advised); -SkipMigrations needs none.
+                    Those in the backup folders stay for the newest -KeepDatabaseBackups updates (default 2).
     4. Migrations   Invoke-ZedDatabaseScripts.ps1 -Apply -SkipFixes (the migrations are additive and safe to re-run;
                     -IncludeMailOutbox runs 0003 again, which the Email Templates need once). -SkipMigrations skips it.
     5. Install      Install-ZedIis.ps1 -Apply for -Apps (default: the three web portals; -IncludeMobile adds the three
@@ -20,9 +29,10 @@
     6. Jobs         with -IncludeJobs: stops the Zed.Jobs service, replaces its files, starts it again. The server's
                     appsettings*.json (the jobs switched on there) are kept; the repository's appsettings.json is put
                     beside them as appsettings.package.json, to compare for new entries.
-    7. Test         Test-ZedDeployment.ps1 against -BaseUrl, for the applications installed. When it fails, the files
-                    of step 3 are put back and the pools restarted (unless -NoAutoRollback). The database changes stay:
-                    they are additive and the previous version runs on them.
+    7. Test         Test-ZedDeployment.ps1 against -BaseUrl, for the applications installed. When step 5, 6 or 7 fails
+                    (also an install that stops half way), the files of step 3 are put back, app_offline.htm is removed
+                    and the pools restarted (unless -NoAutoRollback). The database changes stay: they are additive and
+                    the previous version runs on them.
 
   -Rollback <backup folder> -Apply puts a backup back by hand (for example the day after an update).
   -Environment Staging (default) or Production chooses the site, the database prefix, the address and the test
@@ -44,7 +54,8 @@
 .EXAMPLE
   .\deploy\Update-ZedFromGit.ps1 -Rollback E:\ZedV4\backups\20261024-1712 -Apply
 .EXAMPLE
-  .\deploy\Update-ZedFromGit.ps1 -Environment Production -SqlServer PRODSQL01 -Settings E:\ZedV4\settings.json -Apply
+  .\deploy\Update-ZedFromGit.ps1 -Environment Production -SqlServer PRODSQL01 -DatabaseBackupDir F:\SqlBackups\ZedUpdate -Settings E:\ZedV4\settings.json -Apply
+  SQL Server on another machine: the database backups go to F:\SqlBackups\ZedUpdate on PRODSQL01.
 #>
 [CmdletBinding(DefaultParameterSetName = 'Update')]
 param(
@@ -61,9 +72,13 @@ param(
     [Parameter(ParameterSetName = 'Update')][switch]$IncludeJobs,
     [Parameter(ParameterSetName = 'Update')][switch]$IncludeMailOutbox,
     [Parameter(ParameterSetName = 'Update')][switch]$SkipMigrations,
+    # Folder for the database backups taken before the migrations, as SQL Server sees it (on the SQL Server machine).
+    [Parameter(ParameterSetName = 'Update')][string]$DatabaseBackupDir,
+    [Parameter(ParameterSetName = 'Update')][switch]$SkipDatabaseBackup,
     [Parameter(ParameterSetName = 'Update')][switch]$SkipTests,
     [Parameter(ParameterSetName = 'Update')][switch]$NoAutoRollback,
     [Parameter(ParameterSetName = 'Update')][int]$KeepReleases = 5,
+    [Parameter(ParameterSetName = 'Update')][int]$KeepDatabaseBackups = 2,
     [Parameter(Mandatory, ParameterSetName = 'Rollback')][string]$Rollback,
     [string]$Settings = 'E:\ZedV4\settings.json',
     [string]$InstallRoot = 'E:\ZedV4',
@@ -82,6 +97,7 @@ $ErrorActionPreference = 'Stop'
 # not written for it (Install-ZedIis reads $app.System, absent on the web portals).
 $deployDir = $PSScriptRoot
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmm'
+$started = Get-Date
 
 # Per environment; anything given on the command line wins.
 $preset = @{
@@ -191,6 +207,86 @@ function Restore-Backup([string]$Folder) {
     if ($Apply) { Restart-Pools $restoreApps; Write-Ok 'restored.' } else { Write-Note 'Dry run: add -Apply to restore.' }
 }
 
+# An install that stopped half way leaves app_offline.htm ("being updated") in the folders it reached.
+function Remove-OfflinePages([string[]]$Names) {
+    foreach ($name in $Names) {
+        $page = Join-Path (Join-Path $InstallRoot $catalog[$name].Folder) 'app_offline.htm'
+        if (Test-Path $page) { Remove-Item $page -Force -ErrorAction SilentlyContinue; Write-Ok "removed $page" }
+    }
+}
+
+# The databases the migrations change (Invoke-ZedDatabaseScripts.ps1 runs them on these three only), as named on the instance.
+function Get-MigratedDatabases { @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE' | ForEach-Object { "$DatabasePrefix$_" }) }
+
+# SQL Server on this machine: its backups can go to a folder here, which this script creates and opens to its service.
+function Test-LocalSqlServer {
+    $hostName = (($SqlServer -replace '^(tcp|np|lpc):', '') -split '[\\,]')[0].Trim()
+    return @('.', 'localhost', '(local)', '127.0.0.1', '::1', $env:COMPUTERNAME) -contains $hostName
+}
+
+# One query against master with sqlcmd (as Invoke-ZedDatabaseScripts.ps1: the password through the environment only).
+function Invoke-MasterQuery([string]$Query) {
+    $tool = Get-Command sqlcmd -ErrorAction SilentlyContinue
+    if (-not $tool) { throw 'sqlcmd was not found: install the SQL Server command line tools, or give -SkipDatabaseBackup.' }
+    $a = @('-S', $SqlServer, '-d', 'master', '-b', '-h', '-1', '-W', '-Q', "SET NOCOUNT ON; $Query")
+    if ($SqlCredential) { $a += @('-U', $SqlCredential.UserName); $env:SQLCMDPASSWORD = $SqlCredential.GetNetworkCredential().Password } else { $a += '-E' }
+    if ($preset.Trust) { $a += '-C' }
+    $previous = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try {
+        $out = @(& $tool.Source @a 2>&1 | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previous
+        if ($SqlCredential) { Remove-Item Env:\SQLCMDPASSWORD -ErrorAction SilentlyContinue }
+    }
+    $global:LASTEXITCODE = 0
+    if ($code -ne 0) { throw "sqlcmd on $SqlServer failed (exit code $code): $($out -join ' ')" }
+    return ,$out
+}
+
+# COPY_ONLY backups of the migrated databases into $Folder (as SQL Server sees it); returns the files written.
+function Backup-Databases([string]$Folder) {
+    $edition = (Invoke-MasterQuery "SELECT CAST(SERVERPROPERTY('Edition') AS nvarchar(128));")[0]
+    # Backup compression: Standard, Enterprise and Developer; not Express or Web.
+    $compress = $edition -notmatch 'Express|Web'
+    $names = (Get-MigratedDatabases | ForEach-Object { "N'$_'" }) -join ', '
+    $sizes = @{}
+    foreach ($line in (Invoke-MasterQuery "SELECT d.name + N'|' + CAST(SUM(CAST(f.size AS bigint)) * 8 / 1024 AS nvarchar(20)) FROM sys.databases d JOIN sys.master_files f ON f.database_id = d.database_id AND f.type = 0 WHERE d.name IN ($names) GROUP BY d.name;")) {
+        $c = $line.Split('|'); if ($c.Count -eq 2) { $sizes[$c[0]] = [int64]$c[1] }
+    }
+    if (Test-LocalSqlServer) {
+        New-Item -ItemType Directory -Force -Path $Folder | Out-Null
+        $account = $null
+        try { $account = (Invoke-MasterQuery "SELECT service_account FROM sys.dm_server_services WHERE servicename LIKE N'SQL Server (%';")[0] } catch { }
+        if (-not $account) {
+            $instance = if ($SqlServer -match '\\(.+)$') { $Matches[1] } else { 'MSSQLSERVER' }
+            $account = if ($instance -ieq 'MSSQLSERVER') { 'NT SERVICE\MSSQLSERVER' } else { "NT SERVICE\MSSQL`$$instance" }
+        }
+        if ($account -notmatch '^(LocalSystem|NT AUTHORITY\\SYSTEM)$') {
+            & icacls $Folder /grant "$($account):(OI)(CI)M" /Q | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Host "   Could not give $account Modify on $Folder (icacls exit code $LASTEXITCODE); the backup may be refused." -ForegroundColor Yellow }
+            $global:LASTEXITCODE = 0
+        }
+        $total = ($sizes.Values | Measure-Object -Sum).Sum
+        $drive = Get-PSDrive -Name ([System.IO.Path]::GetPathRoot([System.IO.Path]::GetFullPath($Folder)).Substring(0, 1))
+        if ($total -and $drive.Free / 1MB -lt $total) {
+            Write-Host "   Only $([math]::Round($drive.Free / 1GB, 1)) GB free on $($drive.Name): for databases of $([math]::Round($total / 1024, 1)) GB (a compressed backup is usually smaller)." -ForegroundColor Yellow
+        }
+    }
+    $files = @()
+    foreach ($db in (Get-MigratedDatabases)) {
+        if (-not $sizes.ContainsKey($db)) { Write-Note "$db is not on $SqlServer`: nothing to back up (the migrations will report it)."; continue }
+        $file = "$($Folder.TrimEnd('\'))\$db-$timestamp.bak"
+        Write-Note "$db ($($sizes[$db]) MB of data files) -> $file$(if ($compress) { ' (compressed)' })"
+        $with = 'COPY_ONLY, INIT' + $(if ($compress) { ', COMPRESSION' } else { '' })
+        Invoke-MasterQuery "BACKUP DATABASE [$($db.Replace(']', ']]'))] TO DISK = N'$($file.Replace("'", "''"))' WITH $with;" | Out-Null
+        Write-Ok "$db backed up"
+        $files += $file
+    }
+    return ,$files
+}
+
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run this in an administrator PowerShell.' }
 New-Item -ItemType Directory -Force -Path (Join-Path $InstallRoot 'logs') | Out-Null
@@ -207,6 +303,22 @@ try {
     foreach ($p in @($InstallRoot, $ReleasesRoot)) { Assert-NotTemporaryDisk $p }
     if (-not (Test-Path $Settings)) { throw "Settings file $Settings is missing (deploy\settings.example.json lists the names)." }
     if (-not $SkipMigrations -and -not $SqlServer) { throw 'Give -SqlServer (the instance with the ZED databases), or -SkipMigrations.' }
+    if ($DatabasePrefix -and $DatabasePrefix -notmatch '^[A-Za-z][A-Za-z0-9_]{0,19}$') { throw "-DatabasePrefix '$DatabasePrefix': letters, digits and _ only (e.g. ZEDV4_)." }
+    # The database backup before the migrations (step 3): on by default.
+    $backupDatabases = -not $SkipMigrations -and -not $SkipDatabaseBackup
+    if ($backupDatabases) {
+        if (-not $DatabaseBackupDir) {
+            if (-not (Test-LocalSqlServer)) {
+                throw "SQL Server $SqlServer is on another machine: give -DatabaseBackupDir, a folder on that machine (or a share its service account can write) for the database backups taken before the migrations. -SkipDatabaseBackup leaves them out (not advised)."
+            }
+            $DatabaseBackupDir = Join-Path $InstallRoot "backups\$timestamp\database"
+        }
+        elseif (Test-LocalSqlServer) { Assert-NotTemporaryDisk $DatabaseBackupDir }
+        Write-Ok "database backup before the migrations: $((Get-MigratedDatabases) -join ', ') -> $DatabaseBackupDir$(if (-not (Test-LocalSqlServer)) { " (on $SqlServer)" })"
+    }
+    elseif ($SkipDatabaseBackup -and -not $SkipMigrations) {
+        Write-Host '   No database backup (-SkipDatabaseBackup): the file rollback cannot undo the migrations.' -ForegroundColor Yellow
+    }
     if (-not $Package) {
         foreach ($tool in 'git', 'dotnet', 'node', 'npm') {
             if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) { throw "$tool is not installed: install it, or build elsewhere and use -Package." }
@@ -284,8 +396,20 @@ try {
     }
     $jobsBackedUp = $false
     if ($IncludeJobs -and (Test-Path $JobsDir)) { Copy-Folder $JobsDir (Join-Path $backup 'ZedJobs'); $jobsBackedUp = $true; Write-Ok 'Zed.Jobs' }
-    [pscustomobject]@{ Version = (Get-InstalledVersion); Taken = (Get-Date -Format s); Apps = $backedUp; Jobs = $jobsBackedUp; Replacing = $newVersion } |
-        ConvertTo-Json | Set-Content (Join-Path $backup 'backup.json') -Encoding UTF8
+    $manifest = [pscustomobject]@{ Version = (Get-InstalledVersion); Taken = (Get-Date -Format s); Apps = $backedUp; Jobs = $jobsBackedUp; Replacing = $newVersion; Databases = @() }
+    $manifest | ConvertTo-Json | Set-Content (Join-Path $backup 'backup.json') -Encoding UTF8
+
+    # 3b. Database backup: the file rollback cannot undo the migrations.
+    $databaseBackups = @()
+    if ($backupDatabases) {
+        Write-Step "Database backup to $DatabaseBackupDir$(if (-not (Test-LocalSqlServer)) { " on $SqlServer" }) (COPY_ONLY)"
+        $databaseBackups = @(Backup-Databases $DatabaseBackupDir)
+        $manifest.Databases = $databaseBackups
+        $manifest | ConvertTo-Json | Set-Content (Join-Path $backup 'backup.json') -Encoding UTF8
+        Write-Ok "database backups: $($databaseBackups -join ', ')"
+        Write-Note 'To undo the migrations: stop the portals, then RESTORE DATABASE [<name>] FROM DISK = N''<file>'' WITH REPLACE for each.'
+    }
+    elseif (-not $SkipMigrations) { Write-Step 'Database backup skipped (-SkipDatabaseBackup)' }
 
     # 4. Migrations
     if ($SkipMigrations) { Write-Step 'Migrations skipped (-SkipMigrations)' }
@@ -337,15 +461,26 @@ try {
         Write-Ok "$newVersion is installed and answers."
     }
     catch {
-        Write-Host "   FAILED: $($_.Exception.Message)" -ForegroundColor Red
-        if ($NoAutoRollback -or -not ($installed -or $IncludeJobs)) {
+        $failure = $_
+        Write-Host "   FAILED: $($failure.Exception.Message)" -ForegroundColor Red
+        if ($NoAutoRollback) {
             Write-Host "   To put the previous files back: .\deploy\Update-ZedFromGit.ps1 -Rollback $backup -Apply" -ForegroundColor Yellow
+            if (-not $installed) { Write-Host '   The install stopped half way: a portal may still show "being updated" (app_offline.htm) until then.' -ForegroundColor Yellow }
         }
         else {
+            # Also when Install-ZedIis.ps1 stopped half way: a portal it reached is offline or half copied.
             Write-Host '   Putting the previous files back.' -ForegroundColor Yellow
-            Restore-Backup $backup
+            try { Restore-Backup $backup }
+            catch { Write-Host "   The restore failed too: $($_.Exception.Message). Run .\deploy\Update-ZedFromGit.ps1 -Rollback $backup -Apply" -ForegroundColor Red }
+            # A portal with nothing to restore (new on this server) must not stay on "being updated" either.
+            Remove-OfflinePages $Apps
         }
-        throw
+        if (-not $installed) {
+            $iisRollback = Get-ChildItem $InstallRoot -Filter 'rollback-*.json' -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -ge $started } |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($iisRollback) { Write-Host "   IIS settings the install changed (app pools, applications): .\deploy\Install-ZedIis.ps1 -Rollback $($iisRollback.FullName) -Apply" -ForegroundColor Yellow }
+        }
+        throw $failure
     }
 
     # Old packages (zed-* with VERSION.txt) and backups (with backup.json): the newest -KeepReleases of each stay.
@@ -358,7 +493,16 @@ try {
             Sort-Object LastWriteTime -Descending | Select-Object -Skip $KeepReleases |
             ForEach-Object { Remove-Item $_.FullName -Recurse -Force; Write-Note "removed old $($_.FullName)" }
     }
+    # Database backups are large: those in the backup folders (the default place) stay for the newest -KeepDatabaseBackups
+    # updates only. A -DatabaseBackupDir elsewhere is the DBA's to tidy.
+    $backupsDir = Join-Path $InstallRoot 'backups'
+    if (Test-Path $backupsDir) {
+        Get-ChildItem $backupsDir -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'database') } |
+            Sort-Object Name -Descending | Select-Object -Skip $KeepDatabaseBackups |
+            ForEach-Object { Remove-Item (Join-Path $_.FullName 'database') -Recurse -Force; Write-Note "removed old database backups in $($_.FullName)" }
+    }
     Write-Step "Done: $newVersion. Backup of the previous files: $backup. Log: $log"
+    if ($databaseBackups.Count) { Write-Note "Database backups taken before the migrations: $($databaseBackups -join ', ')" }
 }
 finally {
     Stop-Transcript | Out-Null

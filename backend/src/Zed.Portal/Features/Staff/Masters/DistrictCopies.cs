@@ -14,7 +14,10 @@ public static class DistrictCopies
 {
     public static readonly IReadOnlyList<(string Database, string Name)> Targets = [("ZED_CONSULTANT", "Consultancy"), ("ZED_SURVEILLANCE", "Surveillance")];
 
+    /// <summary>One target's statements as one batch in one transaction: a failure part-way leaves that copy as it was.</summary>
     private static string SyncSql(string target) => $"""
+        SET XACT_ABORT ON;
+        BEGIN TRANSACTION;
         INSERT INTO {target}.dbo.States (StateCode, StateName, IsActive)
             SELECT LTRIM(RTRIM(m.StateCode)), m.StateName, ISNULL(m.IsActive, 1) FROM ZEDCS_V2_LIVE.dbo.States m
             WHERE NOT EXISTS (SELECT 1 FROM {target}.dbo.States t WHERE LTRIM(RTRIM(t.StateCode)) = LTRIM(RTRIM(m.StateCode)));
@@ -31,6 +34,7 @@ public static class DistrictCopies
             WHERE ISNULL(t.DistrictName, '') <> ISNULL(m.DistrictName, '') OR ISNULL(t.StateName, '') <> ISNULL(m.StateName, '')
                OR ISNULL(CAST(t.IsActive AS int), 1) <> ISNULL(CAST(m.IsActive AS int), 1)
                OR ISNULL(CAST(t.IsAspirationalDt AS int), 0) <> ISNULL(CAST(m.IsAspirationalDt AS int), 0);
+        COMMIT;
         """;
 
     /// <summary>Main's districts that the copy lacks or has differently (name, active, subsidy flag).</summary>

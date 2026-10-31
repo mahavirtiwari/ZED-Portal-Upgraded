@@ -169,7 +169,7 @@ describe('LegacyReportRedirect', () => {
     TestBed.resetTestingModule();
     user = { userId: 'ADMIN1', roleId: 7 };
     await run('ZEDMSME000001', 'Gold', 'surveillance');
-    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001/Gold/report']);
+    expect(opened).toEqual(['/surveillance/api/staff/certification-documents/ZEDMSME000001/Gold/report']);
   });
 
   it('opens the handholding milestone report and checks the milestone', async () => {
@@ -179,7 +179,7 @@ describe('LegacyReportRedirect', () => {
     TestBed.resetTestingModule();
     user = { userId: 'AGENCY1', roleId: 2 };
     await run('ZEDMSME000001', 'Gold', 'consultancy', '3');
-    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001/Gold/report?milestone=3']);
+    expect(opened).toEqual(['/Consultancy/api/staff/certification-documents/ZEDMSME000001/Gold/report?milestone=3']);
     TestBed.resetTestingModule();
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     const el = await run('ZEDMSME000001', 'Silver', 'consultancy', '4');

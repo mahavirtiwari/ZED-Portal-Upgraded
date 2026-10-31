@@ -42,9 +42,13 @@
     </div>
   }
 
-  <!-- The tabs beside the video call (full width on surveillance, which has none). -->
+  @if (d.onsiteReview) {
+    <div class="alert alert-info" role="status" id="onsiteReview">
+      Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.
+    </div>
+  }
   <div class="row g-3">
-    <div class="zed-tabs" [class.col-lg-8]="!meetingMode()" [class.col-lg-12]="meetingMode()">
+    <div class="zed-tabs col-lg-12">
       <ul class="nav nav-tabs" role="tablist">
         @for (x of tabs(); track x.id) {
           <li class="nav-item" role="presentation">
@@ -190,7 +194,7 @@
                                (change)="uploadPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, $any($event.target))" />
                       </label>
                     } @else {
-                      <button type="button" class="btn btn-primary capture" (click)="captureImage(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true)">Capture Photo</button>
+                      <label class="btn btn-primary capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" [attr.aria-label]="kind === 'open' ? 'Opening meeting photo' : 'Closing meeting photo'" (change)="pickPhoto(kind === 'open' ? 'OpenMeeting' : 'CloseMeeting', m.id, kind === 'open' ? 'Opening Meeting Photo' : 'Closing Meeting Photo', true, $any($event.target))" /></label>
                     }
                   }
                 </div>
@@ -299,7 +303,7 @@
                             </div>
                           }
                           @if (canAssess() && !meetingMode() && d.siteExteriorPhotos.length < 2) {
-                            <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('SiteExterior', null, 'Site Exterior Photo')">Capture Photo</button>
+                            <label class="btn btn-primary btn-sm capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Site exterior photo" (change)="pickPhoto('SiteExterior', null, 'Site Exterior Photo', false, $any($event.target))" /></label>
                           }
                         </td>
                         <td>
@@ -374,10 +378,10 @@
                               </div>
                             }
                             @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Photo').length) {
-                              <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('ProductPhoto', id(p), 'Product Photo', true)">Capture Product Photo</button>
+                              <label class="btn btn-primary btn-sm capture">Upload Product Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Product photo" (change)="pickPhoto('ProductPhoto', id(p), 'Product Photo', true, $any($event.target))" /></label>
                             }
                             @if (canAssess() && !meetingMode() && !productPhotos(p, 'Product Description Photo').length) {
-                              <button type="button" class="btn btn-primary btn-sm capture" (click)="captureImage('ProductDescriptionPhoto', id(p), 'Product Description Photo', true)">Capture Description Photo</button>
+                              <label class="btn btn-primary btn-sm capture">Upload Description Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Product description photo" (change)="pickPhoto('ProductDescriptionPhoto', id(p), 'Product Description Photo', true, $any($event.target))" /></label>
                             }
                           </td>
                           <td>
@@ -461,7 +465,7 @@
         <!-- ===================================================== site tour -->
         @if (tab() === 'siteTour') {
           @if (canAssess() && !meetingMode() && d.siteTourPhotos.length < 20) {
-            <button type="button" class="btn btn-primary capture mb-3" (click)="captureImage('SiteTour', null, 'Site Tour')">Capture Photo</button>
+            <label class="btn btn-primary capture mb-3">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Site tour photo" (change)="pickPhoto('SiteTour', null, 'Site Tour', false, $any($event.target))" /></label>
           }
           <div class="photo-grid tour">
             @for (pp of d.siteTourPhotos; track pp.id) {
@@ -561,7 +565,7 @@
                         @if (canAssess() && photosOf(r).length < 5) {
                           <div>
                             @if (!meetingMode()) {
-                              <button type="button" class="btn btn-primary btn-sm mt-2 capture" (click)="captureImage('Requirement', id(r), 'Evidence Photo')">Capture Photo</button>
+                              <label class="btn btn-primary btn-sm mt-2 capture">Upload Photo<input type="file" class="d-none" accept="image/jpeg" aria-label="Evidence photo" (change)="pickPhoto('Requirement', id(r), 'Evidence Photo', false, $any($event.target))" /></label>
                             }
                             <button type="button" class="btn btn-outline-primary btn-sm mt-2 ms-2 from-tour" (click)="fromTourFor.set(id(r))">From Site Tour</button>
                           </div>
@@ -585,30 +589,6 @@
         }
       </div>
     </div>
-
-    <!-- ===================================================== video (surveillance: none; the meeting link is on the Overview tab) -->
-    @if (!meetingMode()) {
-      <div class="col-lg-4">
-        <div class="video-panel zed-card">
-          @if (d.onsiteReview) {
-            <div class="alert alert-info" role="status" id="onsiteReview">
-              Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.
-            </div>
-          } @else if (canAssess()) {
-            @if (!d.permissions.videoConfigured) {
-              <div class="alert alert-warning" role="status">Video calls are not configured on this server.</div>
-            } @else if (videoState() === 'idle' || videoState() === 'error') {
-              <button type="button" class="btn btn-primary start" (click)="startAssessment()">Start Assessment</button>
-            }
-          }
-          @if (videoState() === 'connecting') { <span class="alert alert-info d-block" role="status">Connecting ...</span> }
-          @if (videoState() === 'waiting') { <span class="alert alert-success d-block" role="status">Assessment started. Waiting for MSME</span> }
-          @if (videoState() === 'waiting' || videoState() === 'connected') { <span class="alert alert-success d-block timer">{{ timerText() }}</span> }
-          @if (videoError()) { <div class="alert alert-danger" role="alert">{{ videoError() }}</div> }
-          <div id="output" #output></div>
-        </div>
-      </div>
-    }
   </div>
 }
 
@@ -624,7 +604,7 @@
             <button type="button" class="btn-close" aria-label="Close" (click)="capture.set(null)"></button>
           </div>
           <div class="modal-body text-center">
-            <img [src]="c.image" class="img-fluid" alt="Captured frame" />
+            <img [src]="c.image" class="img-fluid" alt="Chosen photo" />
             <input class="form-control mt-2 mx-auto photo-name" name="photoName" maxlength="50" placeholder="Photo Name" aria-label="Photo name"
                    [disabled]="c.fixedName" [(ngModel)]="c.name" />
             @if (modalError()) { <div class="alert alert-danger mt-2" role="alert">{{ modalError() }}</div> }

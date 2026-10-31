@@ -80,6 +80,16 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         AssertFail(await Post("/Msme/SubmitBasicInformation", Json("""{"userName":"ZEDMSME000001","certificationType":"Bronze"}""")), "No data found.");
 
     [Fact]
+    public async Task The_change_history_names_the_unit_the_action_acted_on()
+    {
+        // The MSME actions act on userName; another zedId in the same request is not what gets recorded.
+        AssertFail(await Post("/Msme/SubmitBasicInformation", Json($$"""{"userName":"{{ZedId}}","zedId":"ZEDMSME000999","certificationType":"Bronze"}""")),
+            "No data found.");
+        var edit = Assert.Single(Host.Sql.Calls, c => c.Name.StartsWith("INSERT INTO ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory", StringComparison.Ordinal));
+        Assert.Equal(ZedId, FakeSql.Arg(edit.Args, "ZedId"));
+    }
+
+    [Fact]
     public async Task SubmitBasicInformation_refuses_path_traversal_in_photo_ids_and_user_names()
     {
         Stage("Bronze", 1);
@@ -248,6 +258,26 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
             "Invalid Details.");
         Stage("Bronze", 2, ncCount: 1, ncStatus: 1);
         AssertOk(await Post("/Msme/SubmitPhotos", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze","photos":[{"photoId":"x","photo":"{{PngBase64}}"}]}""")));
+    }
+
+    [Fact]
+    public async Task Uploads_whose_bytes_are_not_an_image_or_pdf_are_refused()
+    {
+        Stage("Bronze", 1);
+        var html = "<html><script>alert(1)</script></html>"u8.ToArray();
+        var file = new MultipartFormDataContent
+        {
+            { new StringContent(ZedId), "userName" }, { new StringContent("Bronze"), "certificationType" },
+            { FilePart(html, "image/jpeg"), "files", "fake.jpg" },
+        };
+        AssertFail(await Post("/Msme/SubmitPhotos", file), "Invalid Data.");
+        AssertFail(await Post("/Msme/SubmitPhotos", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze","photos":[{"photoId":"h1","photo":"{{Convert.ToBase64String(html)}}"}]}""")),
+            "Invalid Data.");
+        // isPdf picks the .pdf name: an image under it is refused as well.
+        AssertFail(await Post("/Msme/SubmitPhotos", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze","photos":[{"photoId":"h2","isPdf":true,"photo":"{{PngBase64}}"}]}""")),
+            "Invalid Data.");
+        AssertFail(await Post("/Msme/SubmitEvidenceV2", EvidenceForm("""{"photoId":"d1","isPdf":true}""", evidenceId: "7", file: Png(), fileName: "d1.pdf")), "Invalid Data.");
+        Assert.Empty(Directory.EnumerateFiles(Host.StorageRoot, "*", SearchOption.AllDirectories));
     }
 
     [Fact]

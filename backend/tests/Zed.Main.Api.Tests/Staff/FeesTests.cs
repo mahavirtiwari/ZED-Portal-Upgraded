@@ -37,7 +37,9 @@ public sealed class FeesTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private List<(string Name, object? Args)> Updates() => _host.Sql.Calls.Where(c => c.Name == "SP_MASTER_UPDATE_ASSESSMENT_FEE").ToList();
+    /// <summary>The row saves: one batch per row (the share and the amounts in one transaction).</summary>
+    private List<(string Name, object? Args)> Updates() =>
+        _host.Sql.Calls.Where(c => c.Name.Contains("SP_MASTER_UPDATE_ASSESSMENT_FEE", StringComparison.Ordinal)).ToList();
 
     private static decimal Dec(object? args, string name) => decimal.Parse(FakeSql.Arg(args, name)!, System.Globalization.CultureInfo.CurrentCulture);
 
@@ -156,6 +158,47 @@ public sealed class FeesTests : IDisposable
     }
 
     [Fact]
+    public async Task The_share_and_the_amounts_of_a_row_are_saved_in_one_transaction()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 0, baseShare = 75m })).StatusCode);
+
+        // Rows 1, 3 and 4 change: each is one batch, the share update and the procedure inside one transaction.
+        Assert.Equal(3, Updates().Count);
+        Assert.Empty(_host.Sql.Calls.Where(c => c.Name == "SP_MASTER_UPDATE_ASSESSMENT_FEE" || c.Name.StartsWith("UPDATE AssessmentFee", StringComparison.Ordinal)));
+        Assert.All(Updates(), u =>
+        {
+            Assert.StartsWith("SET XACT_ABORT ON; BEGIN TRANSACTION;", u.Name);
+            Assert.True(u.Name.IndexOf("SET SubsidyPercentage", StringComparison.Ordinal) < u.Name.IndexOf("EXEC dbo.SP_MASTER_UPDATE_ASSESSMENT_FEE", StringComparison.Ordinal));
+            Assert.EndsWith("COMMIT;", u.Name);
+            Assert.IsType<Dapper.DynamicParameters>(u.Args);
+        });
+
+        // A fee change that leaves the share alone sends the procedure only, still in its transaction.
+        _host.Sql.Calls.Clear();
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/fees/Micro", new { levels = new[] { new { certification = "Silver", assessmentFee = 30000m } } })).StatusCode);
+        var silver = Assert.Single(Updates());
+        Assert.Equal(AssessmentFeesController.SaveSql(shareChanged: false), silver.Name);
+        Assert.DoesNotContain("SubsidyPercentage =", silver.Name);
+        Assert.Equal(7080m, Dec(silver.Args, "ApplicantContributionAfterSubsidy"));
+        Assert.Equal(6000m, Dec(silver.Args, "SubsidyAmount"));
+    }
+
+    [Fact]
+    public void Net_payable_is_the_stored_contribution_less_the_stored_tds()
+    {
+        // 80 % subsidy on 10,000.15: share 2,000.03; contribution 2,360.0354 -> 2,360.04; TDS 40.0006 -> 40.00, 200.003 -> 200.00.
+        // Rounding the full-precision difference gave 2,320.03 / 2,160.03: one paisa off the page's contribution less TDS.
+        var row = FeeRow.From(Row(5, "Micro", "Bronze", 1m, null, 80m));
+        var (updated, error) = FeeCalculator.Recalculate(row, 10000.15m, null, rejected: false);
+        Assert.Null(error);
+        Assert.Equal(2360.04m, updated!.ApplicantContributionAfterSubsidy);
+        Assert.Equal((40.00m, 200.00m), (updated.Tds15, updated.Tds75));
+        Assert.Equal((2320.04m, 2160.04m), (updated.NetPaybleTds15, updated.NetPaybleTds75));
+        Assert.Equal(updated.ApplicantContributionAfterSubsidy - updated.Tds15, updated.NetPaybleTds15);
+    }
+
+    [Fact]
     public async Task Saving_without_changes_writes_nothing()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
@@ -172,7 +215,7 @@ public sealed class FeesTests : IDisposable
     // ----- subsidy shares (V4) -----
 
     private List<(string Name, object? Args)> ShareUpdates() =>
-        _host.Sql.Calls.Where(c => c.Name.StartsWith("UPDATE AssessmentFee SET SubsidyPercentage", StringComparison.Ordinal)).ToList();
+        _host.Sql.Calls.Where(c => c.Name.Contains("UPDATE AssessmentFee SET SubsidyPercentage", StringComparison.Ordinal)).ToList();
 
     private static string Share(object? args) => decimal.Parse(FakeSql.Arg(args, "SubsidyPercentage")!, System.Globalization.CultureInfo.CurrentCulture).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 

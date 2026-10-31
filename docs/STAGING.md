@@ -105,7 +105,8 @@ Steps, in this order: an administrator PowerShell on the server, in the release 
 
 1. **Build the databases** (about 10 minutes; data and log files in `E:\ZedStaging\SqlData`; the script gives the SQL
    Server service account Modify on the folder; it refuses to touch a database that exists, and even with `-Force` it
-   drops only `ZEDV4_` databases):
+   drops only `ZEDV4_` databases; `-Force` without `-DatabasePrefix` is refused unless `-AllowUnprefixedDrop` is given,
+   which is for a local development instance only):
    ```powershell
    sqlcmd -S .\SQLEXPRESS -E -C -h -1 -Q "SET NOCOUNT ON; SELECT name FROM sys.databases ORDER BY name" > E:\ZedStaging\databases-before.txt
    powershell -ExecutionPolicy Bypass -File database\setup.ps1 -Server ".\SQLEXPRESS" -DatabasePrefix ZEDV4_ -WithKawachStandIn -DataPath E:\ZedStaging\SqlData
@@ -211,13 +212,16 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    mobile API and Zed.Jobs; do not add `Email__AllowedRecipientDomains`). For testing with the real recipients (only while
    the test databases hold no real people's contact details), `deploy\Set-ZedTestMailDelivery.ps1 -Mode Recipients -Apply`
    replaces it with `Email__DeliverToRecipients=true` in the settings file, the app pools and Zed.Jobs; `-Mode Redirect`
-   puts the redirect back. The connection strings are filled in already:
+   puts the redirect back. The script refuses the live server: it stops when any ZED app pool here (no
+   `ASPNETCORE_ENVIRONMENT` counts as Production) or the Zed.Jobs service runs as Production, and it needs the settings
+   file's `Common.ASPNETCORE_ENVIRONMENT` to name the test environment (the example file has it) or, without it, app
+   pools that all name one. The connection strings are filled in already:
    `Server=.\SQLEXPRESS;Database=ZEDV4_…;Integrated Security=true;TrustServerCertificate=true` for every host and
    Zed.Jobs (the prefixed databases of section 3.0, the app pool's own Windows login, no passwords), with
    `Database__Prefix=ZEDV4_`; change them only if the databases get other names. Also: an SMTP account for `Email__Profiles__Default__*` (mail still only reaches dev.zed@qcin.org); a **separate
    reCAPTCHA key pair registered for zedv3.qci.org.in** (or `Recaptcha__Enabled=false`, which leaves the captcha
    untested); **CCAvenue test** merchant and keys only (ask CCAvenue to allow the staging return URLs); the
-   **Udyam access key** (`Udyam__AccessKey`); Protean test credentials; Twilio test credentials or none.
+   **Udyam access key** (`Udyam__AccessKey`); Protean test credentials. (No Twilio: V4 has no video calls.)
    No visible label (decided 2026-10-24: no STAGING banner, title prefix or mail subject prefix); the Staging
    environment still tells search engines not to index the site (X-Robots-Tag, robots.txt), with or without
    `Portal__EnvironmentLabel`. The hosts refuse to start in Staging without a mail redirect.
@@ -277,7 +281,8 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    The install root, the key folders and every storage folder must not be on D: (the Azure temporary disk); the
    script refuses it. Keep the rollback file it writes (section 8).
 4. **Zed.Jobs**: install the service as in JOBS.md "Running it", with the `ZedJobs` section of the settings file as its
-   environment. Leave every `Jobs:Schedules` entry and `Jobs:FolderRename` disabled (the shipped settings have them
+   environment (it holds `DOTNET_ENVIRONMENT` for the test server; without that variable the service's mail outbox sends
+   nothing). Leave every `Jobs:Schedules` entry and `Jobs:FolderRename` disabled (the shipped settings have them
    off); only the mail worker runs, and it sends to dev.zed@qcin.org.
 
 ### 4a. Later updates from Git
@@ -296,10 +301,17 @@ cd E:\Releases\_src                    # any checkout or package folder that has
 ```
 
 It builds the commit into `E:\Releases` (tests included), copies the application folders it replaces to
-`E:\ZedV4\backups\<time>`, runs the migrations (`-SkipFixes`: the fixes stay a reviewed, separate step), installs with
-`Install-ZedIis.ps1` (settings from `E:\ZedV4\settings.json` as before) and runs `Test-ZedDeployment.ps1`. If the test
-fails, the previous files go back and the pools restart (`-NoAutoRollback` leaves them). Database changes stay: the
-migrations are additive and the previous version runs on them. The five newest packages and backups are kept. Log:
+`E:\ZedV4\backups\<time>`, backs up the databases the migrations change (`BACKUP DATABASE ... WITH COPY_ONLY`; the
+three `ZEDV4_` databases on the test server, to `E:\ZedV4\backups\<time>\database`, where the SQL Server service gets
+Modify; the script prints each file), runs the migrations (`-SkipFixes`: the fixes stay a reviewed, separate step),
+installs with `Install-ZedIis.ps1` (settings from `E:\ZedV4\settings.json` as before) and runs `Test-ZedDeployment.ps1`.
+If the install (also one that stops half way), Zed.Jobs or the test fails, the previous files go back, `app_offline.htm`
+is removed and the pools restart (`-NoAutoRollback` leaves them). Database changes stay: the migrations are additive and
+the previous version runs on them; to undo them, restore the database backups (`RESTORE DATABASE [<name>] FROM DISK =
+N'<file>' WITH REPLACE`, with the app pools stopped). `-DatabaseBackupDir <folder>` puts the database backups elsewhere
+(required when SQL Server is on another machine: a folder on that machine); `-SkipDatabaseBackup` leaves them out (not
+advised). The five newest packages and backups are kept, and the database backups of the two newest updates
+(`-KeepDatabaseBackups`). Log:
 `E:\ZedV4\logs\update-<time>.log`. The first update after the Email Templates (migration 0015) needs
 `-IncludeMailOutbox` once, so that 0003 tags the procedures' mail. Never point `-ReleasesRoot` or `-InstallRoot` at D:.
 **No label anywhere.** The portals show no environment ribbon, title prefix or mail subject prefix on any site, whatever

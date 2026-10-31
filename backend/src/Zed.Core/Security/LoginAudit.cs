@@ -188,7 +188,7 @@ public sealed class LoginAuditAttribute(string channel, string app) : Attribute,
         id = Guid.NewGuid().ToString("N");
         http.Response.Cookies.Append(WebDeviceCookie, id, new CookieOptions
         {
-            HttpOnly = true, Secure = http.Request.IsHttps, SameSite = SameSiteMode.Lax, IsEssential = true, MaxAge = TimeSpan.FromDays(730),
+            HttpOnly = true, Secure = http.SecureCookies(), SameSite = SameSiteMode.Lax, IsEssential = true, MaxAge = TimeSpan.FromDays(730),
         });
         return id;
     }

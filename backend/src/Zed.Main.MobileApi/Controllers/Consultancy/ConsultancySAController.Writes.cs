@@ -265,12 +265,13 @@ public sealed partial class ConsultancySAController
         return LegacyJson(result);
     });
 
+    /// <summary>The app names the consultant in saId (the old model read userName); either is taken.</summary>
     [HttpPost]
-    [DeviceBound(App, "userName")]
+    [DeviceBound(App, "saId", "userName")]
     public Task<IActionResult> SubmitBasicInfoPhotos(SubmitPhotosRequest request, CancellationToken ct) => Guarded(nameof(SubmitBasicInfoPhotos), async () =>
     {
         var certification = RequireCertification(request.certificationType);
-        if (await RefuseAsync(nameof(SubmitBasicInfoPhotos), request.userName, request.zedId, certification, Role.Team, ct) is { } refused) return refused;
+        if (await RefuseAsync(nameof(SubmitBasicInfoPhotos), First(request.saId, request.userName), request.zedId, certification, Role.Team, ct) is { } refused) return refused;
         if (request.photos is null) return Fail("No photos found.");
         if (await RequireOpenAsync(request.zedId, request.certificationType, null, ct) is { } stage) return stage;
 

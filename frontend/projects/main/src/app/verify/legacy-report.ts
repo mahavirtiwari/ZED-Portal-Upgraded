@@ -1,6 +1,7 @@
 import { Component, InjectionToken, OnInit, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
+import { PORTAL_API_BASE } from '../staff/admin-portal';
 
 /** Leaves the Angular app for a file address (replaced in tests). */
 export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', {
@@ -75,10 +76,11 @@ export class LegacyReportRedirect implements OnInit {
         this.message.set('This report link is not valid.');
         return;
       }
+      // Staff: the consultancy portal draws the milestone report (main's staff API knows only main's report).
       this.open(
         user.roleId === MSME_ROLE
           ? `/api/msme/certification-documents/${level}/report?milestone=${milestone}`
-          : `/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report?milestone=${milestone}`,
+          : `${PORTAL_API_BASE.consultancy}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report?milestone=${milestone}`,
       );
       return;
     }
@@ -86,7 +88,9 @@ export class LegacyReportRedirect implements OnInit {
     if (user.roleId === MSME_ROLE) {
       this.open(`/api/msme/certification-documents/${type}/report${own ? '' : `?record=${encodeURIComponent(id)}`}`);
     } else {
-      this.open(`/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
+      // Staff: a surveillance report comes from the surveillance portal's staff API.
+      const base = system === 'surveillance' ? PORTAL_API_BASE.surveillance : '';
+      this.open(`${base}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
     }
   }
 }

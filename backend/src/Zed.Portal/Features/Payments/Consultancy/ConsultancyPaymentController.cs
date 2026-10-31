@@ -40,6 +40,7 @@ public sealed class ConsultancyPaymentController(
     IDistributedCache cache,
     IOptions<CcAvenueOptions> ccavenue,
     IOptions<PortalOptions> portal,
+    PanCorrectionNotice panNotice,
     ILogger<ConsultancyPaymentController> log) : MsmeApiController
 {
     public const string ResponsePath = "/api/payments/ccavenue/consultancy-response";
@@ -118,7 +119,8 @@ public sealed class ConsultancyPaymentController(
 
     /// <summary>
     /// "PAN Mismatch Detected" (Msme/UpdatePan, SP_MESE_UPDATE_PAN). The old page sent the ZED ID and the
-    /// old PAN from the browser; here both come from the server and the GSTIN must have been verified first.
+    /// old PAN from the browser; here both come from the server, the GSTIN must have been verified first, and the change
+    /// is logged and told to the office (<see cref="PanCorrectionNotice"/>).
     /// </summary>
     [HttpPost("pan")]
     [MsmeEditAudit("Handholding payment: PAN corrected")]
@@ -142,6 +144,7 @@ public sealed class ConsultancyPaymentController(
             log.LogError(ex, "SP_MESE_UPDATE_PAN failed for {ZedId}", ZedId);
             return this.Problem400("Failed to update PAN. Please try again.");
         }
+        await panNotice.RecordAsync(ZedId, "handholding", oldPan, pan, gstin, ct);
         return new MessageResponse("PAN updated successfully.");
     }
 
@@ -189,8 +192,15 @@ public sealed class ConsultancyPaymentController(
 
         var choices = new ConsultancyChoices(ZedId, level, fee, req.UseReward, req.GstinApplicable, gstin, req.TdsDeductible, tds, tan);
 
+        // A missing or unreadable amount is refused, never taken as nothing to pay.
+        if (fee.Due is not { } due)
+        {
+            log.LogError("Handholding fee row {FeeId} for {ZedId}/{Level} has no readable ApplicantContributionAfterSubsidy", fee.Id, ZedId, level);
+            return this.Problem400(FeeOption.Unreadable);
+        }
+
         // Nothing to pay after subsidy (the old page's condition: a state-subsidy row with nothing left to pay).
-        if (fee.Amount("ApplicantContributionAfterSubsidy") <= 0)
+        if (due <= 0)
         {
             if (!ConsultancyFees.IsStateRow(fee))
             {

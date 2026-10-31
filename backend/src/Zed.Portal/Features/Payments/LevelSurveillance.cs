@@ -49,7 +49,18 @@ public static class LevelSurveillance
         }
     }
 
-    internal const string PaidSql = "EXEC ZED_SURVEILLANCE.dbo.SP_V4_SURVEILLANCE_PAID @ZedId = @ZedId, @Certification = @Certification;";
+    /// <summary>The level's recorded surveillance payments (ZED_SURVEILLANCE MsmePaymentInfo); a recorded round adds a row.</summary>
+    internal const string PaymentsSql =
+        "SELECT COUNT(*) FROM ZED_SURVEILLANCE.dbo.MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = @Certification;";
+
+    /// <summary>
+    /// The count of <see cref="PaymentsSql"/>. The legacy status procedure answers "not open" for V4 levels whatever happened,
+    /// so the zero-amount checkout compares this before and after the procedure to know that the round was recorded.
+    /// </summary>
+    public static async Task<int> PaymentsAsync(ISqlExecutor db, string zedId, string level, CancellationToken ct) =>
+        (await db.QuerySqlAsync<int>(PaymentsSql, new { ZedId = zedId, Certification = level }, ct)).FirstOrDefault();
+
+    internal const string PaidSql ="EXEC ZED_SURVEILLANCE.dbo.SP_V4_SURVEILLANCE_PAID @ZedId = @ZedId, @Certification = @Certification;";
 
     /// <summary>After a recorded surveillance payment of a V4 level; a failure is logged and does not undo the payment.</summary>
     public static async Task PaidAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)

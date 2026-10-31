@@ -17,7 +17,7 @@ V4 replaces both with the **Zed.Jobs** service (`backend/src/Zed.Jobs`):
 | `database/migrations/0003_mail_outbox.sql` (run on **all three** databases) | Adds `dbo.V4MailOutbox` and `dbo.SP_V4_SEND_DBMAIL` (same parameters as `sp_send_dbmail`, queues the mail) and changes every procedure that calls `msdb.dbo.sp_send_dbmail` to call it instead (`CREATE OR ALTER`, permissions kept; safe to re-run; it prints what it converted). |
 | `database/migrations/0004_job_runs.sql` (ZEDCS_V2_LIVE) | `dbo.V4JobRuns`: one row per job run, with errors. |
 | `database/migrations/0007_folder_rename.sql` (ZEDCS_V2_LIVE) | `dbo.SP_V4_FOLDER_RENAME_PENDING`, `dbo.SP_V4_FOLDER_RENAME_RECORD` and `dbo.V4FolderRenameResults`, for the folder rename job below. Additive. |
-| Mail worker | Every 30 s sends queued mail through the SMTP settings of `Email:Profiles` (`Jobs:MailProfiles` maps the Database Mail profile `ZedAdmin` to the service's `Email:Profiles:ZedAdmin`, which falls back to `Default` when it is not configured), marks it sent, or records the error and retries every 10 minutes up to 5 times. Several service instances can run; rows are claimed with `READPAST`. |
+| Mail worker | Every 30 s sends queued mail through the SMTP settings of `Email:Profiles` (`Jobs:MailProfiles` maps the Database Mail profile `ZedAdmin` to the service's `Email:Profiles:ZedAdmin`, which falls back to `Default` when it is not configured), marks it sent, or records the error and retries every 10 minutes up to 5 times. Several service instances can run; rows are claimed with `READPAST`, and each mail's claim is renewed just before it is sent (a mail another instance has claimed since is left to it). A mail that went out but could not be marked sent (the database stopped answering) is not sent again: the service marks it at its next run (if the service restarts before that, set `SentAt` on that row by hand). It sends **nothing** unless the service's environment was set on purpose (`DOTNET_ENVIRONMENT`, or `ASPNETCORE_ENVIRONMENT`, or `--environment`; see [Running it](#running-it)): it logs an error and the mail waits in the outbox, while the other jobs run. The daily status report (`SP_SEND_MAIL_STATUS_COUNTS_AGENCY`) goes only to the Admin's "Daily status report" recipients (Email Settings); without them it is not sent (logged, and closed in the outbox with that reason), never to the outside addresses written in the old procedure. |
 | Job worker | Runs each enabled job of `Jobs:Schedules` at its times (`DailyAt` "HH:mm" in `Jobs:TimeZone`, default Asia/Kolkata, or `EveryMinutes` within an optional `WindowStart`/`WindowEnd`), on every day or only on `DaysOfWeek` / `DaysOfMonth`. A job is one `Procedure` (with optional fixed `Parameters`) or several `Steps` run in order, stopping at the first failure unless the step has `ContinueOnFailure`; a step (or a single-procedure job) can be retried `RetryAttempts` times, `RetryIntervalMinutes` apart, as Agent's step retries. At start each enabled job is checked against its databases (procedure exists, every parameter without a default is set, values fit the declared types); a job that fails the check is logged and not scheduled, a job whose database is unreachable is checked again before it runs. An application lock per job stops two instances running it at once. After a restart, a job whose time passed while the service was down runs once; a job that has never run waits for its next time. |
 | Folder rename worker | `Jobs:FolderRename`: renames the folders of rejected units to their archived ZED ID, without `xp_cmdshell` (replaces `SP_JOB_TO_CREATE_RENAMING_BATCH_FILES`, see [below](#renaming-the-folders-of-rejected-units-jobsfolderrename)). Same schedule fields, lock and `dbo.V4JobRuns` history as the other jobs. |
 
@@ -263,9 +263,20 @@ V4 left waiting).
   in user secrets or environment variables.
 - Locally: `dotnet run --project backend/src/Zed.Jobs` (Development writes mail to `App_Data/mail-pickup`);
   `dotnet run --project backend/src/Zed.Jobs -- --check` checks the schedules against the local databases.
-- Server: `dotnet publish backend/src/Zed.Jobs -c Release -o C:\Services\ZedJobs`, then
-  `sc.exe create ZedJobs binPath= "C:\Services\ZedJobs\Zed.Jobs.exe" start= delayed-auto` and set the service
-  account to one that can reach SQL Server.
+- Server: `dotnet publish backend/src/Zed.Jobs -c Release -o C:\Services\ZedJobs`, then create the service **with its
+  environment** and set the service account to one that can reach SQL Server:
+  ```powershell
+  sc.exe create ZedJobs binPath= "C:\Services\ZedJobs\Zed.Jobs.exe" start= delayed-auto
+  # Production on the live server; on the test server the value of deploy\settings.staging.example.json (ZedJobs section).
+  New-ItemProperty -Path HKLM:\SYSTEM\CurrentControlSet\Services\ZedJobs -Name Environment -PropertyType MultiString `
+      -Value @('DOTNET_ENVIRONMENT=Production') -Force
+  ```
+  The `Environment` value holds all of the service's variables, one `NAME=value` per line: put
+  `DOTNET_ENVIRONMENT` in the same list as the others (for example `Email__Profiles__ZedAdmin__Password`), as `-Force`
+  replaces the whole list. Without `DOTNET_ENVIRONMENT` .NET runs the service as Production, which on a test server with
+  a copy of production data would mail real people: so the mail outbox sends nothing then and logs
+  "The mail outbox sends nothing: no environment is set for Zed.Jobs"; the jobs that do not mail still run. Restart the
+  service after setting it.
 - Watching it:
   ```sql
   SELECT TOP 50 * FROM dbo.V4JobRuns ORDER BY Id DESC;                              -- ZEDCS_V2_LIVE

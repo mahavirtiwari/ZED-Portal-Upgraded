@@ -1,7 +1,9 @@
 using System.Data.Common;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models.Assessor;
@@ -16,16 +18,15 @@ namespace Zed.Main.MobileApi.Controllers;
 
 /// <summary>
 /// The remote assessment app's calls (old SwachhSurvekshanServices RAController), at the same
-/// addresses (/RA/{action}). The user of this app is the MSME (Users.RoleId 5, user name = ZED ID)
-/// joining a video call with the remote assessor, so every call is bound to that ZED ID.
+/// addresses (/RA/{action}). The user of this app is the MSME (Users.RoleId 5, user name = ZED ID),
+/// so every call is bound to that ZED ID. There is no video call any more (Twilio was removed): the
+/// Twilio fields of the replies stay, always empty, so installed apps keep working without it.
 /// </summary>
 public sealed class RAController(
     ISqlExecutor db,
     IConfiguration config,
-    IOptions<MobileOptions> options,
     IDeviceBindings devices,
     LoginThrottle throttle,
-    TwilioVideoTokens twilio,
     MobileStorage storage,
     ILogger<RAController> log) : LegacyMobileController
 {
@@ -38,6 +39,7 @@ public sealed class RAController(
 
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Remote assessment app")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (config.GetValue<bool>("Mobile:CheckRaVersion") &&
@@ -47,7 +49,7 @@ public sealed class RAController(
         var userName = request.userName?.Trim();
         if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(request.password))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = InvalidCredentials });
-        if (throttle.IsLocked(MobileApps.RemoteAssessor, userName))
+        if (throttle.IsLocked(userName))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = SAController.TooManyAttempts });
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
@@ -58,15 +60,14 @@ public sealed class RAController(
         if (user is null || masterPassword || user.Text("RoleId") != "5" || sets[1].Count == 0)
         {
             if (masterPassword) log.LogWarning("Blocked RA app login with a procedure master password for {UserId}", userName);
-            throttle.Failed(MobileApps.RemoteAssessor, userName);
+            throttle.Failed(userName);
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = InvalidCredentials });
         }
-        throttle.Succeeded(MobileApps.RemoteAssessor, userName);
+        throttle.Succeeded(userName);
 
         var msme = sets[1][0];
         var basic = sets.FirstRow(2);
         var zedId = msme.Text("ZedId");
-        var twilioKeys = options.Value.Twilio;
         var response = new MsmeLoginResponse
         {
             status = "1",
@@ -137,10 +138,9 @@ public sealed class RAController(
                 },
             },
             // The old procedure returned the Twilio account SID, API key AND API secret to every
-            // MSME that logged in. The two identifiers come from configuration now; the secret is
-            // never sent (video tokens come from RA/GetToken).
-            TwilioAccountSid = NullIfEmpty(twilioKeys.AccountSid),
-            TwilioApiKey = NullIfEmpty(twilioKeys.ApiKey),
+            // MSME that logged in. Video calls were removed: the fields stay, empty.
+            TwilioAccountSid = null,
+            TwilioApiKey = null,
             TwilioApiSecret = null,
         };
 
@@ -167,13 +167,13 @@ public sealed class RAController(
     }
 
     /// <summary>
-    /// Twilio Video token for the "{ZedId} Remote Assessment" room. The old response had no status,
-    /// only the token; with no Twilio keys configured the token is null.
+    /// The old Twilio Video token of the "{ZedId} Remote Assessment" room. The response had no status, only the token;
+    /// video calls were removed, so the token is always null (as it was on a server without Twilio keys).
     /// </summary>
     [HttpPost]
     [DeviceBound(MobileApps.RemoteAssessor, "userName")]
     public IActionResult GetToken(SubmitGeoLocationRequest request) =>
-        LegacyJson(new ServiceResponse { token = twilio.Create(request.userName?.Trim()) });
+        LegacyJson(new ServiceResponse { token = null });
 
     [HttpPost]
     [DeviceBound(MobileApps.RemoteAssessor, "userName")]

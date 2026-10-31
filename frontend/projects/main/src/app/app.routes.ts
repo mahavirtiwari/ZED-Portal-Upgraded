@@ -1,6 +1,7 @@
 import { Route, Routes, UrlMatcher } from '@angular/router';
 import { authGuard } from '@zed/shared';
-import { STAFF_ROLE_IDS } from './staff/staff-menu';
+import { STAFF_ROLE_IDS, StaffRole as R } from './staff/staff-menu';
+import { staffScreenGuard } from './staff/assessment/assessment-shared';
 import { staffHomeRedirect } from './staff/staff-home.guard';
 import { ASSESSMENT_LEGACY_REDIRECTS, ASSESSMENT_ROUTES } from './staff/assessment/assessment.routes';
 import { VERIFY_ROUTES } from './verify/verify.routes';
@@ -17,8 +18,19 @@ const MSME = 5;
 const STAFF_MSME_PROFILE: Route = {
   path: 'msme-profile/:zedId',
   title: 'ZED | MSME Profile',
+  canActivate: [staffScreenGuard([R.MasterAdmin, R.SuperAdmin, R.Ministry, R.CitizenFeedback, R.QC, R.Agency, R.DesktopAssessor])],
   loadComponent: () => import('./staff/msme-profile/msme-profile').then((m) => m.StaffMsmeProfilePage),
 };
+
+// The roles of each screen's API (the server's StaffRoles), so a typed address opens only for those who can use it.
+const REPORTS = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator]);
+const HISTORY = staffScreenGuard([R.MasterAdmin, R.SuperAdmin, R.CitizenFeedback, R.QC]);
+const NEFT = staffScreenGuard([R.StateCoordinator]);
+const FINANCIAL_ASSISTANCE = staffScreenGuard([R.MasterAdmin, R.Agency, R.DesktopAssessor]);
+const FINANCIAL_SUPPORT = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback]);
+const MONITORING = staffScreenGuard([R.MasterAdmin, R.Agency]);
+const SA_ALLOTMENT = staffScreenGuard([R.Agency]);
+const REMOTE_ASSESSMENTS = staffScreenGuard([R.DesktopAssessor]);
 
 /** Main's staff screens (children of `staff`). */
 /** The incentives page of a type of the old menu (?type= / ?incentiveType=): its group, a state's list for a state name. */
@@ -56,10 +68,11 @@ const MAIN_STAFF_CHILDREN: Routes = [
   {
     path: 'financial-support',
     title: 'ZED | Financial Support',
+    canActivate: [FINANCIAL_SUPPORT],
     loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
   },
-  { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
-  { path: 'history', title: 'ZED | Certification History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
+  { path: 'reports', title: 'ZED | Reports', canActivate: [REPORTS], loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+  { path: 'history', title: 'ZED | Certification History', canActivate: [HISTORY], loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'masters', loadChildren: () => import('./staff/masters/masters.routes').then((m) => m.MASTERS_ROUTES) },
   ...ASSESSMENT_ROUTES,
@@ -73,54 +86,63 @@ const MAIN_STAFF_CHILDREN: Routes = [
   {
     path: 'neft/new',
     title: 'ZED | NEFT New Transactions',
+    canActivate: [NEFT],
     data: { list: 'new' },
     loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
   },
   {
     path: 'neft/approved',
     title: 'ZED | NEFT Approved Transactions',
+    canActivate: [NEFT],
     data: { list: 'approved' },
     loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
   },
   {
     path: 'neft/rejected',
     title: 'ZED | NEFT Rejected Transactions',
+    canActivate: [NEFT],
     data: { list: 'rejected' },
     loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
   },
   {
     path: 'financial-assistance',
     title: 'ZED | Financial Assistance',
+    canActivate: [FINANCIAL_ASSISTANCE],
     loadComponent: () => import('./staff/schemes/fa-submissions').then((m) => m.FaSubmissionsPage),
   },
   {
     path: 'financial-assistance/:zedId',
     title: 'ZED | Financial Assistance',
+    canActivate: [FINANCIAL_ASSISTANCE],
     loadComponent: () => import('./staff/schemes/fa-verification').then((m) => m.FaVerificationPage),
   },
   {
     path: 'incentives/submissions',
     title: 'ZED | Incentive Submissions',
+    canActivate: [staffScreenGuard([R.SuperAdmin])],
     loadComponent: () => import('./staff/schemes/incentive-submissions').then((m) => m.IncentiveSubmissionsPage),
   },
   {
     path: 'incentives/upload',
     title: 'ZED | Upload API Incentives',
+    canActivate: [staffScreenGuard([R.MasterAdmin])],
     loadComponent: () => import('./staff/schemes/incentive-upload').then((m) => m.IncentiveUploadPage),
   },
   // One page per group of the Incentives menu; the old ?type= (the type of the legacy menu) opens its group.
   { path: 'incentives', pathMatch: 'full', redirectTo: ({ queryParams }) => incentivesOfType(queryParams['type']) },
   // New in V4: the cards of "My Incentives" on the MSME dashboard (before :group, which would take the name).
   { path: 'incentives/dashboard-cards', title: 'ZED | Main Dashboard Cards', loadComponent: () => import('./staff/schemes/dashboard-cards').then((m) => m.DashboardCardsPage) },
-  { path: 'incentives/:group', title: 'ZED | Incentives', loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
+  { path: 'incentives/:group', title: 'ZED | Incentives', canActivate: [staffScreenGuard([R.Admin])], loadComponent: () => import('./staff/schemes/incentive-master').then((m) => m.IncentiveMasterPage) },
   {
     path: 'incentives/:group/new',
     title: 'ZED | Create New Incentive',
+    canActivate: [staffScreenGuard([R.Admin])],
     loadComponent: () => import('./staff/schemes/incentive-form').then((m) => m.IncentiveFormPage),
   },
   {
     path: 'incentives/:group/:id/edit',
     title: 'ZED | Edit Incentive',
+    canActivate: [staffScreenGuard([R.Admin])],
     loadComponent: () => import('./staff/schemes/incentive-form').then((m) => m.IncentiveFormPage),
   },
   {
@@ -129,11 +151,12 @@ const MAIN_STAFF_CHILDREN: Routes = [
     data: { loginUrl: '/login' },
     loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
   },
-  { path: 'monitoring', title: 'ZED | Assessment Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
-  { path: 'sa-allotment', title: 'ZED | SA Allotment', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
+  { path: 'monitoring', title: 'ZED | Assessment Monitoring', canActivate: [MONITORING], loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
+  { path: 'sa-allotment', title: 'ZED | SA Allotment', canActivate: [SA_ALLOTMENT], loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
   {
     path: 'remote-assessments',
     title: 'ZED | Remote Assessments',
+    canActivate: [REMOTE_ASSESSMENTS],
     loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
   },
   STAFF_MSME_PROFILE,
@@ -365,8 +388,8 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
     title: 'ZED | Payment Received',
     loadComponent: () => import('./staff/dashboard/payments-received').then((m) => m.PaymentsReceivedPage),
   },
-  { path: 'reports', title: 'ZED | Reports', loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
-  { path: 'history', title: 'ZED | Customer History', loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
+  { path: 'reports', title: 'ZED | Reports', canActivate: [REPORTS], loadComponent: () => import('./staff/reports/reports').then((m) => m.ReportsPage) },
+  { path: 'history', title: 'ZED | Customer History', canActivate: [HISTORY], loadComponent: () => import('./staff/history/zed-history').then((m) => m.ZedHistoryPage) },
   { path: 'users', loadChildren: () => import('./staff/users/users.routes').then((m) => m.USERS_ROUTES) },
   { path: 'fees', loadChildren: () => import('./staff/fees/fees.routes').then((m) => m.FEES_ROUTES) },
   { path: 'settings', loadChildren: () => import('./staff/settings/settings.routes').then((m) => m.SETTINGS_ROUTES) },
@@ -378,7 +401,7 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
     data: { loginUrl: '/login' },
     loadComponent: () => import('./msme/change-password/change-password').then((m) => m.ChangePasswordPage),
   },
-  { path: 'monitoring', title: 'ZED | Monitoring', loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
+  { path: 'monitoring', title: 'ZED | Monitoring', canActivate: [MONITORING], loadComponent: () => import('./staff/monitoring/monitoring').then((m) => m.MonitoringPage) },
   ...ASSESSMENT_ROUTES,
   ...SITE_REVIEW_ROUTES,
   STAFF_MSME_PROFILE,
@@ -397,12 +420,14 @@ const CONSULTANCY_STAFF_CHILDREN: Routes = [
   {
     path: 'neft/new',
     title: 'ZED | NEFT New Transactions',
+    canActivate: [NEFT],
     data: { list: 'new' },
     loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
   },
   {
     path: 'neft/approved',
     title: 'ZED | NEFT Approved Transactions',
+    canActivate: [NEFT],
     data: { list: 'approved' },
     loadComponent: () => import('./staff/neft/neft-transactions').then((m) => m.NeftTransactionsPage),
   },
@@ -429,12 +454,14 @@ const SURVEILLANCE_STAFF_CHILDREN: Routes = [
   {
     path: 'financial-support',
     title: 'ZED | Financial Support',
+    canActivate: [FINANCIAL_SUPPORT],
     loadComponent: () => import('./staff/dashboard/financial-support').then((m) => m.FinancialSupportPage),
   },
-  { path: 'sa-allotment', title: 'ZED | Allot Surveillance', loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
+  { path: 'sa-allotment', title: 'ZED | Allot Surveillance', canActivate: [SA_ALLOTMENT], loadComponent: () => import('./staff/site-assessment/sa-allotment').then((m) => m.SaAllotmentPage) },
   {
     path: 'remote-assessments',
     title: 'ZED | Surveillance Assessments',
+    canActivate: [REMOTE_ASSESSMENTS],
     loadComponent: () => import('./staff/site-assessment/remote-assessments').then((m) => m.RemoteAssessmentsPage),
   },
   { path: 'remote', loadChildren: () => import('./staff/remote/remote.routes').then((m) => m.REMOTE_ROUTES) },

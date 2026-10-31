@@ -281,6 +281,9 @@ public sealed class SurveillancePaymentTests : IDisposable
     [Fact]
     public async Task Pan_correction_needs_a_verified_gstin_and_uses_the_pan_from_the_database()
     {
+        // The office mailbox (read before the first request: the settings are cached).
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new Zed.Core.Data.PortalSettings.SettingRow(Zed.Core.Email.EmailAddresses.RegistrationCc, "office@zed.test")];
         var client = await SignedInAsync();
         Assert.Equal("Please verify the GSTIN first.",
             await (await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" })).ProblemTitle());
@@ -289,11 +292,26 @@ public sealed class SurveillancePaymentTests : IDisposable
         Assert.Equal("Please enter the correct PAN associated with that GSTIN.",
             await (await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "ZZZZZ9999Z" })).ProblemTitle());
 
+        // The unit has a PAN on record (ABCDE1234F): the verified GSTIN's PAN replaces it, and the office is told.
+        var changed = await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" });
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        var replaced = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
+        Assert.Equal("ABCDE1234F", FakeSql.Arg(replaced.Args, "PanNo"));
+        Assert.Equal("PQRST6789K", FakeSql.Arg(replaced.Args, "UpdatedPanNo"));
+        var notice = Assert.Single(_host.Email.Sent, m => m.Subject.StartsWith("PAN changed on the payment page - ", StringComparison.Ordinal));
+        Assert.Equal("office@zed.test", notice.To);
+        Assert.Contains("ABCDE1234F", notice.HtmlBody);
+        Assert.Contains("PQRST6789K", notice.HtmlBody);
+        Assert.Contains("09PQRST6789K1Z2", notice.HtmlBody);
+
+        // No PAN on record: the verified GSTIN's PAN is recorded, as before.
+        _host.Sql.Procs["SP_SURVEILLANCE_MSME_GET_PAYMENT_DETAILS"] = _ => FakeSql.Sets(
+            [], [new { Id = 22, Total = "2360.00", ApplicantContributionAfterSubsidy = "1180.00", UdyamPanNo = (string?)null }], [new { IsCouponUsed = 0 }]);
         var ok = await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Bronze", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K", zedId = "ZEDMSME999999", panNo = "XXXXX0000X" });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        var update = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
+        var update = _host.Sql.Calls.Last(c => c.Name == "SP_MESE_UPDATE_PAN");
         Assert.Equal(Me, FakeSql.Arg(update.Args, "ZedId"));
-        Assert.Equal("ABCDE1234F", FakeSql.Arg(update.Args, "PanNo"));
+        Assert.Null(FakeSql.Arg(update.Args, "PanNo"));
         Assert.Equal("PQRST6789K", FakeSql.Arg(update.Args, "UpdatedPanNo"));
     }
 
@@ -432,7 +450,7 @@ public sealed class SurveillancePaymentTests : IDisposable
         Assert.Equal("RECONCILIATION", FakeSql.Arg(call.Args, "ApiType"));
         Assert.Equal(Me, FakeSql.Arg(call.Args, "ZedId"));
         Assert.Equal(OrderId, FakeSql.Arg(call.Args, "TransactionId"));
-        // As before: no mail, no receipt and no ERP posting from the reconciliation.
+        // No pending order of this portal has that id: the procedure only logs it, and nothing is completed.
         Assert.False(Called("SP_SURVEILLANCE_MSME_PAYMENT_GATEWAY_DETAILS"));
         Assert.False(Called("SP_SURVEILLANCE_MSME_GET_DETAILS"));
         Assert.Empty(_host.Email.Sent);

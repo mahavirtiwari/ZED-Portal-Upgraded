@@ -5,7 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Twilio" Version="8.1.0" />
   </ItemGroup>
 
   <PropertyGroup>

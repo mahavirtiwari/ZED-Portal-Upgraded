@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -9,7 +9,6 @@ import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
-import { TwilioParticipant, TwilioRoom, TwilioTrack, loadTwilioVideo } from './twilio-video';
 
 /** Google Maps address of a latitude/longitude pair ('' when either is missing or not a number). */
 export function mapUrl(lat: unknown, lng: unknown): string {
@@ -60,15 +59,13 @@ interface Choice { kind: 'conformance' | 'product' | 'siteExterior'; id: number 
 interface TextEdit { kind: 'basicInfo' | 'ofi' | 'meeting'; id: number | null; column: string; title: string; value: string; yesNo: boolean }
 interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed: boolean }
 
-type VideoState = 'idle' | 'connecting' | 'waiting' | 'connected' | 'error';
-
 /**
- * The site assessor's remote (video) assessment of a unit. Port of Views/Remote/Index.cshtml: unit
+ * The site assessor's remote assessment of a unit. Port of Views/Remote/Index.cshtml: unit
  * overview, opening/closing meeting (participants, comments, photo), basic info answers, site tour photos,
- * parameter conformance with evidence photos, product and site exterior validation, final submit, and the
- * Twilio video call with the MSME's RA app ("Start Assessment"). Photos are frames captured from the
- * MSME's video. Tabs and pop-ups are signal-controlled markup; nothing from the server is rendered as HTML.
- * Surveillance (the API sends usesMeetingLink): no video and full-width tabs; the Overview tab shows the surveillance dates,
+ * parameter conformance with evidence photos, product and site exterior validation and final submit.
+ * There is no video call on this page (the old Twilio "Start Assessment" was removed): photos are JPEG files the
+ * assessor uploads. Tabs and pop-ups are signal-controlled markup; nothing from the server is rendered as HTML.
+ * Surveillance (the API sends usesMeetingLink): the Overview tab shows the surveillance dates,
  * the assessor, "Click here to Join" (the agency's meeting link, in a new tab) and the site/surveillance locations; the header
  * has Refresh and ASSESSMENT REPORT;
  * the opening/closing meeting photos and the assessor's selfie are uploaded JPEG files, the closing meeting takes up
@@ -120,16 +117,9 @@ export class RemoteAssessmentPage {
     close: { name: '', designation: '' },
   };
 
-  protected readonly videoState = signal<VideoState>('idle');
-  protected readonly videoError = signal('');
-  protected readonly seconds = signal(0);
-  private room: TwilioRoom | null = null;
-  private timer: ReturnType<typeof setInterval> | null = null;
-  private readonly output = viewChild<ElementRef<HTMLElement>>('output');
-
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly canAssess = computed(() => this.data()?.permissions.canAssess ?? false);
-  /** Surveillance: held on the agency's meeting link, no Twilio video. */
+  /** Surveillance: held on the agency's meeting link. */
   protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
   protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;
   protected recordingLink = '';
@@ -137,10 +127,6 @@ export class RemoteAssessmentPage {
   protected readonly currentTab = computed(() => this.tabs().find((x) => x.id === this.tab()) ?? this.tabs()[0]);
   protected readonly daSelfies = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'Selfie'));
   protected readonly daSiteExterior = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'SiteExteriorPhotos'));
-  protected readonly timerText = computed(() => {
-    const s = this.seconds();
-    return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-  });
   protected readonly mapUrl = computed(() => mapUrl(this.data()?.location?.['Latitude'], this.data()?.location?.['Longitude']));
   /**
    * Surveillance Overview (that portal's Remote/Index.cshtml): the site assessment's location (ZedSaLatitude/ZedSaLongitude)
@@ -164,7 +150,6 @@ export class RemoteAssessmentPage {
   protected readonly ncRequirements = computed(() => (this.data()?.requirements ?? []).filter((r) => text(r, 'SaConformance') === 'No'));
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.leaveRoom());
     void this.load();
   }
 
@@ -268,76 +253,20 @@ export class RemoteAssessmentPage {
     });
   }
 
-  // ------------------------------------------------------------------ video
-
-  protected async startAssessment(): Promise<void> {
-    if (this.videoState() === 'connecting' || this.room) return;
-    this.videoState.set('connecting');
-    this.videoError.set('');
-    try {
-      const join = await firstValueFrom(this.api.join(this.zedId, this.certification));
-      const video = await loadTwilioVideo();
-      const room = await video.connect(join.token, { audio: true, video: { width: 400 } });
-      this.room = room;
-      this.videoState.set(room.participants.size ? 'connected' : 'waiting');
-      this.timer = setInterval(() => this.seconds.update((s) => s + 1), 1000);
-      room.participants.forEach((p) => this.participantConnected(p));
-      room.on('participantConnected', (p) => this.participantConnected(p));
-      room.on('participantDisconnected', (p) => this.participantDisconnected(p));
-      room.once('disconnected', () => room.participants.forEach((p) => this.participantDisconnected(p)));
-    } catch (err) {
-      this.videoState.set('error');
-      this.videoError.set(err instanceof Error ? err.message : apiErrorMessage(err));
-    }
-  }
-
-  private participantConnected(participant: TwilioParticipant): void {
-    this.videoState.set('connected');
-    const host = this.output()?.nativeElement;
-    if (!host) return;
-    const div = document.createElement('div');
-    div.id = 'p-' + participant.sid;
-    host.appendChild(div);
-    participant.on('trackSubscribed', (track) => div.appendChild(track.attach()));
-    participant.on('trackUnsubscribed', (track: TwilioTrack) => track.detach().forEach((el) => el.remove()));
-    participant.tracks.forEach((pub) => {
-      if (pub.isSubscribed && pub.track) div.appendChild(pub.track.attach());
-    });
-  }
-
-  private participantDisconnected(participant: TwilioParticipant): void {
-    const host = this.output()?.nativeElement;
-    if (host) [...host.children].find((c) => c.id === 'p-' + participant.sid)?.remove();
-    if (this.room && this.room.participants.size === 0) this.videoState.set('waiting');
-  }
-
-  private leaveRoom(): void {
-    if (this.timer) clearInterval(this.timer);
-    this.timer = null;
-    this.room?.disconnect();
-    this.room = null;
-  }
-
   // ------------------------------------------------------------------ photos
 
-  /** Captures the current frame of the MSME's video with a time stamp (as the old page did). */
-  protected captureImage(target: PhotoTarget, targetId: number | null, defaultName: string, fixedName = false): void {
+  /** Main: a JPEG chosen by the assessor, shown in the photo pop-up to be named (where the name is free) and saved. */
+  protected async pickPhoto(target: PhotoTarget, targetId: number | null, defaultName: string, fixedName: boolean, input: HTMLInputElement): Promise<void> {
     this.notice.set(null);
-    const video = this.output()?.nativeElement.querySelector('video');
-    if (!video || !video.videoWidth) {
-      this.notice.set({ ok: false, text: "The MSME's video is not available. Start the assessment and wait for the MSME to join." });
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    if (!isJpegUpTo5Mb(file)) {
+      this.notice.set({ ok: false, text: 'Please upload a JPEG photo of at most 5 MB.' });
       return;
     }
-    const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#0000ff';
-    ctx.fillText(new Date().toLocaleString(), 10, 30);
     this.modalError.set('');
-    this.capture.set({ target, targetId, image: canvas.toDataURL('image/jpeg', 0.9), name: defaultName, fixedName });
+    this.capture.set({ target, targetId, image: await readAsDataUrl(file), name: defaultName, fixedName });
   }
 
   protected async saveCapture(): Promise<void> {
@@ -359,7 +288,7 @@ export class RemoteAssessmentPage {
     const file = input.files?.[0];
     input.value = '';
     if (!file) return;
-    if (!/^image\/jpe?g$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
+    if (!isJpegUpTo5Mb(file)) {
       this.notice.set({ ok: false, text: 'Please upload a JPEG photo of at most 5 MB.' });
       return;
     }
@@ -515,11 +444,13 @@ export class RemoteAssessmentPage {
       return;
     }
     const ok = await this.run(this.api.finalSubmit(this.zedId, this.certification, f.comments.trim()), () => this.finalSubmit.set(null));
-    if (ok) {
-      this.leaveRoom();
-      this.notice.set({ ok: true, text: 'Assessment submitted.' });
-    }
+    if (ok) this.notice.set({ ok: true, text: 'Assessment submitted.' });
   }
+}
+
+/** The photos the API keeps (RemoteFiles.MaxPhotoBytes). */
+function isJpegUpTo5Mb(file: File): boolean {
+  return /^image\/jpe?g$/i.test(file.type) && file.size <= 5 * 1024 * 1024;
 }
 
 function readAsDataUrl(file: Blob): Promise<string> {

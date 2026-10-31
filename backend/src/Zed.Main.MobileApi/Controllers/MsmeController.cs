@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
@@ -16,7 +18,6 @@ public sealed partial class MsmeController(
     IOptions<MobileOptions> options,
     IDeviceBindings devices,
     LoginThrottle throttle,
-    TwilioVideoTokens twilio,
     ILogger<MsmeController> log) : LegacyMobileController
 {
     private const string UpdateAppMessage = "Download new app from store.";
@@ -29,6 +30,7 @@ public sealed partial class MsmeController(
 
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "MSME app")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct)
     {
         if (VersionCheck(request.version) is { } update) return update;
@@ -36,7 +38,7 @@ public sealed partial class MsmeController(
         var userName = request.userName?.Trim();
         if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(request.password))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = "Invalid Credentials." });
-        if (throttle.IsLocked(MobileApps.Msme, userName))
+        if (throttle.IsLocked(userName))
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = "Too many failed attempts. Please try again after 15 minutes." });
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
@@ -47,10 +49,10 @@ public sealed partial class MsmeController(
         if (user is null || masterPassword || sets.Count < 4 || sets[1].Count == 0)
         {
             if (masterPassword) log.LogWarning("Blocked app login with a procedure master password for {UserId}", userName);
-            throttle.Failed(MobileApps.Msme, userName);
+            throttle.Failed(userName);
             return LegacyJson(new MsmeLoginResponse { status = "0", errorMessage = "Invalid Credentials." });
         }
-        throttle.Succeeded(MobileApps.Msme, userName);
+        throttle.Succeeded(userName);
 
         var msme = sets.FirstRow(1);
         var basic = sets.FirstRow(2);
@@ -130,7 +132,7 @@ public sealed partial class MsmeController(
                 },
                 msmeStatus = StatusFrom(sets.FirstRow(3)),
             },
-            TwilioToken = twilio.Create(userName),
+            TwilioToken = null, // video calls were removed; the field stays for the installed apps
         };
 
         await devices.RememberAsync(MobileApps.Msme, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, ct);

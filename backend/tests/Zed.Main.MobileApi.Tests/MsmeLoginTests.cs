@@ -55,7 +55,7 @@ public sealed class MsmeLoginTests : IDisposable
         Assert.Equal("NC raised", st.GetProperty("bronze").GetProperty("nc1StatusText").GetString());
         Assert.Equal(0, st.GetProperty("financialAssistanceStatus").GetInt32());
         Assert.True(st.GetProperty("isCouponUsed").GetBoolean());
-        // No Twilio keys configured: no token, and the key fields stay empty as before.
+        // Video calls were removed: no token, and the key fields stay empty as before.
         Assert.Equal(JsonValueKind.Null, e.GetProperty("TwilioToken").ValueKind);
         Assert.Equal(JsonValueKind.Null, e.GetProperty("TwilioApiSecret").ValueKind);
         Assert.Contains("dev-1", _host.Devices.Known[(MobileApps.Msme, "ZEDMSME000001")]);

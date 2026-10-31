@@ -183,6 +183,15 @@ public sealed class SurveillanceAppTests : IDisposable
     }
 
     [Fact]
+    public async Task Login_sends_no_video_token_now_that_video_calls_are_removed()
+    {
+        LoginProc();
+        var e = await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, userName = "ZEDMSME999999", password = "pw" });
+        AssertOk(e);
+        Assert.Equal(JsonValueKind.Null, e.GetProperty("TwilioToken").ValueKind);
+    }
+
+    [Fact]
     public async Task Login_is_locked_after_five_failures()
     {
         for (var i = 0; i < 5; i++) await _t.Json("/Surveillance/Login", new { assessorId = Assessor, zedId = Zed, password = "x" });

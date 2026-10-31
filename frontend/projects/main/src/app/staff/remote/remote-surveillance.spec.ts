@@ -38,7 +38,7 @@ function details(recordings = 1, meetingLink: string | null = 'https://meet.exam
     openMeeting: { id: 71, comments: 'Hello', participants: [], photos: [] },
     closeMeeting: { id: 72, comments: null, participants: [], photos: [] },
     selfies: [],
-    permissions: { isLeadAssessor: true, canAssess: true, videoConfigured: false },
+    permissions: { isLeadAssessor: true, canAssess: true },
     usesMeetingLink: true,
     meetingLink,
     recordingLinks: Array.from({ length: recordings }, (_, i) => ({ id: i + 1, url: `https://rec.example/${i + 1}` })),
@@ -94,7 +94,6 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect(join.getAttribute('target')).toBe('_blank');
     expect(join.getAttribute('rel')).toContain('noopener');
     expect(button('Start Assessment')).toBeUndefined();
-    expect(el.textContent).not.toContain('Video calls are not configured');
 
     await openTab('Assessment Evidence');
     expect(el.querySelector('.capture')).toBeNull();

@@ -6,6 +6,9 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
 
+/** Main saved, the surveillance portal did not: its message says which. */
+class PartlySavedError extends Error {}
+
 export type EsgFollowUpType = 'single_choice' | 'text_box';
 
 export interface EsgFollowUp {
@@ -360,8 +363,14 @@ export class EsgChecklistPage {
         const free = <T extends { id: number | null }>(x: T): T => (x.id !== null && mainIds.has(x.id) ? { ...x, id: null } : x);
         return { ...d, questions: withIds.map((q) => (q.inMain ? q : { ...free(q), yes: q.yes && free(q.yes), no: q.no && free(q.no) })) };
       });
-      await firstValueFrom(this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: sections.map((x) => toSection(x, (q) => q.inSurveillance)) },
-        { context: EsgChecklistPage.onSurveillance }));
+      try {
+        await firstValueFrom(this.http.put<MessageResponse>(EsgChecklistPage.url, { sections: sections.map((x) => toSection(x, (q) => q.inSurveillance)) },
+          { context: EsgChecklistPage.onSurveillance }));
+      } catch (err) {
+        // Main is already saved: say so, so the admin saves again for Surveillance only rather than doubting both.
+        await this.load(false);
+        throw new PartlySavedError(`The checklist was saved for ZED Certification, but not for Surveillance: ${apiErrorMessage(err)} Please save again.`);
+      }
       return { message: main.message.replace('ESG checklist saved.', 'ESG checklist saved for ZED Certification and Surveillance.') };
     });
   }
@@ -390,7 +399,7 @@ export class EsgChecklistPage {
       await this.load(false);
       this.success.set(r.message);
     } catch (err) {
-      this.error.set(apiErrorMessage(err));
+      this.error.set(err instanceof PartlySavedError ? err.message : apiErrorMessage(err));
     } finally {
       this.busy.set(false);
     }

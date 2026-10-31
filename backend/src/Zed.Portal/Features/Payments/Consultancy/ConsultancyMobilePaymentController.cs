@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
@@ -22,11 +23,14 @@ namespace Zed.Portal.Features.Payments.Consultancy;
 /// the request and every unit action is <see cref="DeviceBoundAttribute">device-bound</see>; the milestone,
 /// fee row, amount, order id and zero-amount decision are made here, and PaymentRefId / Amount from the
 /// app are only compared. Request bodies are not written to disk (the old GetToken appended them to
-/// App_Data\Json\CCAVENUE_CONSULTANCY\{ZedId}.json, a path built from the request).
+/// App_Data\Json\CCAVENUE_CONSULTANCY\{ZedId}.json, a path built from the request). A GSTIN must pass the Protean
+/// verification of the web checkout (<see cref="AppGstin"/>).
 /// </summary>
 public sealed partial class ConsultancyMobilePaymentController(
     ISqlExecutor db,
     ICcAvenueMobileClient gateway,
+    IGstinVerifier gstinVerifier,
+    IDistributedCache cache,
     IOptions<CcAvenueOptions> ccavenue,
     ILogger<ConsultancyMobilePaymentController> log) : LegacyMobileController
 {
@@ -58,7 +62,7 @@ public sealed partial class ConsultancyMobilePaymentController(
 
         var (p, error) = await PrepareAsync(model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Choices.Fee.Amount("ApplicantContributionAfterSubsidy") <= 0) return Refuse("No payment is due for this milestone.");
+        if (p.Choices.Fee.Due is not > 0m) return Refuse("No payment is due for this milestone.");
 
         var expected = p.Choices.Fee.Payable(p.Choices.Tds);
         var orderId = Guid.NewGuid().ToString();
@@ -155,7 +159,7 @@ public sealed partial class ConsultancyMobilePaymentController(
     {
         var (p, error) = await PrepareAsync(model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Choices.Fee.Amount("ApplicantContributionAfterSubsidy") > 0 || !ConsultancyFees.IsStateRow(p.Choices.Fee))
+        if (p.Choices.Fee.Due is not <= 0m || !ConsultancyFees.IsStateRow(p.Choices.Fee))
         {
             log.LogWarning("Mobile handholding zero payment refused for {ZedId}/{Level}: fee row {FeeId} is not a zero state-subsidy row",
                 p.Choices.ZedId, p.Choices.Level, p.Choices.Fee.Id);
@@ -214,6 +218,12 @@ public sealed partial class ConsultancyMobilePaymentController(
         if (useReward && !fees.RewardAvailable) return (null, "The joining reward is not available.");
         var fee = useReward ? fees.WithReward : fees.WithoutReward;
         if (fee is null) return (null, "Fee details are not available for this milestone.");
+        if (fee.Due is null)
+        {
+            // A missing or unreadable amount is refused, never taken as nothing to pay.
+            log.LogError("Mobile handholding fee row {FeeId} for {ZedId}/{Level} has no readable ApplicantContributionAfterSubsidy", fee.Id, zedId, level);
+            return (null, FeeOption.Unreadable);
+        }
 
         // What the app showed must be what is charged.
         if (!string.IsNullOrWhiteSpace(model.PaymentRefId) && model.PaymentRefId.Trim() != fee.Id)
@@ -230,6 +240,10 @@ public sealed partial class ConsultancyMobilePaymentController(
 
         if (gstin is not null && !string.Equals(fees.UdyamPan, Certifications.PanOf(gstin), StringComparison.OrdinalIgnoreCase))
             return (null, "PAN registered in your Udyam portal is not matching with given GSTIN Number.");
+
+        // Last, as it asks Protean: the GSTIN must be verified, as in the web checkout's GSTIN step.
+        if (gstin is not null && await AppGstin.VerifyAsync(gstinVerifier, cache, zedId, level, gstin, log, ct) is { } gstinRefusal)
+            return (null, gstinRefusal);
 
         return (new Prepared(new ConsultancyChoices(zedId, level, fee, useReward, gstinApplicable, gstin, tdsDeductible, tds, tan), state.NextMilestone), null);
     }

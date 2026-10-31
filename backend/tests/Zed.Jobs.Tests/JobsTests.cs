@@ -73,12 +73,19 @@ public sealed class MailOutboxTests
         public List<OutboxMail> Pending { get; } = [];
         public List<EmailTemplateOverride> Templates { get; } = [];
         public List<SmtpServerRow> Servers { get; } = [];
+        public List<PortalSettings.SettingRow> Settings { get; } = [];
         public ConcurrentQueue<(string Sql, object? Args)> Executed { get; } = new();
+        public int Claims { get; private set; }
+
+        /// <summary>Rows an UPDATE reports (default 1); throwing fails that statement.</summary>
+        public Func<string, int> Rows { get; set; } = _ => 1;
 
         public Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
         {
             if (sql == MailOutboxSender.TemplatesSql) return Task.FromResult<IReadOnlyList<T>>(Templates.Cast<T>().ToList());
             if (sql.Contains("FROM dbo.V4SmtpServers")) return Task.FromResult<IReadOnlyList<T>>(Servers.Cast<T>().ToList());
+            if (sql.Contains("FROM dbo.V4Settings")) return Task.FromResult<IReadOnlyList<T>>(Settings.Cast<T>().ToList());
+            Claims++;
             var batch = Pending.Cast<T>().ToList();
             Pending.Clear();
             return Task.FromResult<IReadOnlyList<T>>(batch);
@@ -86,8 +93,9 @@ public sealed class MailOutboxTests
 
         public Task<int> ExecuteSqlAsync(string sql, object? parameters = null, CancellationToken ct = default)
         {
+            var rows = Rows(sql);
             Executed.Enqueue((sql, parameters));
-            return Task.FromResult(1);
+            return Task.FromResult(rows);
         }
 
         public Task<IReadOnlyList<T>> QueryProcAsync<T>(string procedure, object? parameters = null, CancellationToken ct = default) => throw new NotSupportedException();
@@ -100,6 +108,12 @@ public sealed class MailOutboxTests
         public IReadOnlyList<string> Names => dbs.Keys.ToList();
         public ISqlExecutor this[string name] => dbs[name];
     }
+
+    private static MailOutboxSender Sender(Dictionary<string, ISqlExecutor> dbs, IEmailSender email, JobsEnvironment? environment = null) =>
+        new(new Databases(dbs), email, Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance,
+            environment ?? new JobsEnvironment("Production", JobsEnvironment.DotnetVariable));
+
+    private static object? Arg(object? args, string name) => args!.GetType().GetProperty(name)!.GetValue(args);
 
     private sealed class FakeEmail : IEmailSender
     {
@@ -122,8 +136,7 @@ public sealed class MailOutboxTests
         var surv = new FakeDb();
         surv.Pending.Add(new OutboxMail(7, null, "c@x.test", "d@x.test", null, "Plain", "1 < 2\nline", "TEXT", 1));
         var email = new FakeEmail();
-        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main, ["Surveillance"] = surv }), email,
-            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+        var sender = Sender(new() { ["Main"] = main, ["Surveillance"] = surv }, email);
 
         Assert.Equal(2, await sender.SendBatchAsync(CancellationToken.None));
         var html = email.Sent.Single(m => m.Subject == "Allotted");
@@ -150,8 +163,7 @@ public sealed class MailOutboxTests
         consultancy.Pending.Add(new OutboxMail(3, "ZedAdmin", "c@x.test", null, null, "Milestone", "<b>Hi</b>", "HTML", 1));
         consultancy.Servers.Add(new SmtpServerRow("Default", "smtp.consultancy.test", 587, true, "hh@zed.test", null, null));
         var email = new FakeEmail();
-        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main, ["Surveillance"] = surv, ["Consultancy"] = consultancy }), email,
-            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+        var sender = Sender(new() { ["Main"] = main, ["Surveillance"] = surv, ["Consultancy"] = consultancy }, email);
 
         Assert.Equal(3, await sender.SendBatchAsync(CancellationToken.None));
         Assert.Equal(("smtp.db.test", "db@zed.test"), (email.Sent.Single(m => m.To == "a@x.test").Server!.Host, email.Sent.Single(m => m.To == "a@x.test").Server!.From));
@@ -167,13 +179,98 @@ public sealed class MailOutboxTests
         var main = new FakeDb();
         main.Pending.Add(new OutboxMail(3, "ZedAdmin", "a@x.test", null, null, "S", "B", "HTML", 2));
         var email = new FakeEmail { Fail = _ => true };
-        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main }), email,
-            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+        var sender = Sender(new() { ["Main"] = main }, email);
 
         Assert.Equal(0, await sender.SendBatchAsync(CancellationToken.None));
-        var (sql, args) = Assert.Single(main.Executed);
-        Assert.Equal(MailOutboxSender.FailedSql, sql);
-        Assert.Equal("SMTP said no", args!.GetType().GetProperty("Error")!.GetValue(args));
+        Assert.Equal(new[] { MailOutboxSender.RenewSql, MailOutboxSender.FailedSql }, main.Executed.Select(e => e.Sql));
+        Assert.Equal("SMTP said no", Arg(main.Executed.Last().Args, "Error"));
+    }
+
+    [Fact]
+    public async Task Each_mails_claim_is_renewed_just_before_sending_and_a_mail_claimed_elsewhere_since_is_left_alone()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(1, "ZedAdmin", "a@x.test", null, null, "Mine", "B", "HTML", 1));
+        main.Pending.Add(new OutboxMail(2, "ZedAdmin", "b@x.test", null, null, "Taken", "B", "HTML", 1));
+        // Mail 2's claim was taken over by another instance (its Attempts went up): the renewal finds no row.
+        main.Rows = sql => sql == MailOutboxSender.RenewSql && main.Executed.Count(e => e.Sql == MailOutboxSender.RenewSql) == 1 ? 0 : 1;
+        var email = new FakeEmail();
+
+        Assert.Equal(1, await Sender(new() { ["Main"] = main }, email).SendBatchAsync(CancellationToken.None));
+        Assert.Equal("a@x.test", Assert.Single(email.Sent).To);
+        var executed = main.Executed.ToList();
+        Assert.Equal((MailOutboxSender.RenewSql, 1L, 1), (executed[0].Sql, (long)Arg(executed[0].Args, "Id")!, (int)Arg(executed[0].Args, "Attempts")!));
+        Assert.Equal(MailOutboxSender.SentSql, executed[1].Sql);
+        Assert.Equal((MailOutboxSender.RenewSql, 2L), (executed[2].Sql, (long)Arg(executed[2].Args, "Id")!));
+        Assert.Equal(3, executed.Count);
+        Assert.Contains("Attempts = @Attempts", MailOutboxSender.RenewSql);
+        Assert.Contains("SentAt IS NULL", MailOutboxSender.RenewSql);
+    }
+
+    [Fact]
+    public async Task A_sent_mail_whose_mark_fails_is_not_released_for_a_retry_and_is_marked_at_the_next_run()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(5, "ZedAdmin", "a@x.test", null, null, "S", "B", "HTML", 1));
+        var down = true;
+        main.Rows = sql => sql == MailOutboxSender.SentSql && down ? throw new InvalidOperationException("database gone") : 1;
+        var email = new FakeEmail();
+        var sender = Sender(new() { ["Main"] = main }, email);
+
+        Assert.Equal(1, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Single(email.Sent);
+        // Not recorded as a failure (that would let it be sent again).
+        Assert.DoesNotContain(main.Executed, e => e.Sql == MailOutboxSender.FailedSql);
+
+        // Still down: that outbox is not read, so nothing is claimed or sent again.
+        var claims = main.Claims;
+        Assert.Equal(0, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Equal(claims, main.Claims);
+
+        // Back: the mail is marked sent first, then the outbox is read as usual; the mail is never sent twice.
+        down = false;
+        Assert.Equal(0, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Equal(5L, Arg(main.Executed.Last(e => e.Sql == MailOutboxSender.SentSql).Args, "Id"));
+        Assert.Equal(claims + 1, main.Claims);
+        Assert.Single(email.Sent);
+    }
+
+    [Fact]
+    public async Task Nothing_is_sent_when_the_services_environment_was_not_set_on_purpose()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(1, "ZedAdmin", "msme@x.test", null, null, "S", "B", "HTML", 1));
+        var email = new FakeEmail();
+        var sender = Sender(new() { ["Main"] = main }, email, JobsEnvironment.From([], _ => null));
+
+        Assert.Equal(0, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Equal(0, await sender.SendBatchAsync(CancellationToken.None));
+        Assert.Empty(email.Sent);
+        // Not even claimed: the mail waits in the outbox for a service started with its environment.
+        Assert.Equal(0, main.Claims);
+        Assert.Empty(main.Executed);
+    }
+
+    [Fact]
+    public async Task The_daily_status_report_is_not_sent_without_the_Admins_report_recipients()
+    {
+        var main = new FakeDb();
+        main.Pending.Add(new OutboxMail(1, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "Daily Skill Express Status Report", "<b>r</b>", "HTML", 1,
+            "SP_SEND_MAIL_STATUS_COUNTS_AGENCY"));
+        main.Pending.Add(new OutboxMail(2, "ZedAdmin", "msme@x.test", null, null, "Other", "B", "HTML", 1));
+        var email = new FakeEmail();
+
+        Assert.Equal(1, await Sender(new() { ["Main"] = main }, email).SendBatchAsync(CancellationToken.None));
+        Assert.Equal("msme@x.test", Assert.Single(email.Sent).To);
+        Assert.Contains(main.Executed, e => e.Sql == MailOutboxSender.NoReportRecipientsSql && Equals(Arg(e.Args, "Id"), 1L));
+        Assert.DoesNotContain(email.Sent, m => m.To.Contains("geostat", StringComparison.OrdinalIgnoreCase) || m.To.Contains("gmail", StringComparison.OrdinalIgnoreCase));
+
+        // With the Admin's recipients it goes to them.
+        main.Pending.Add(new OutboxMail(3, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "Daily Skill Express Status Report", "<b>r</b>", "HTML", 1));
+        main.Settings.Add(new PortalSettings.SettingRow(EmailAddresses.DbReportRecipients, "reports@zed.test"));
+        email.Sent.Clear();
+        Assert.Equal(1, await Sender(new() { ["Main"] = main }, email).SendBatchAsync(CancellationToken.None));
+        Assert.Equal("reports@zed.test", Assert.Single(email.Sent).To);
     }
 
     [Fact]
@@ -194,10 +291,16 @@ public sealed class MailOutboxTests
         Assert.Equal("msme@x.test", other.To);
         Assert.Equal(["b@x.test", "monitor@zed.test"], other.Bcc!);
 
-        // Without settings: as the procedure queued it.
-        var plain = MailOutboxSender.ToMessage(new OutboxMail(3, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "S", "B", "HTML", 1), new JobsOptions());
-        Assert.Equal("ks@geostat.in;keerthisreenu@gmail.com", plain.To);
+        // Without settings: other mails as the procedure queued them; the status report never goes to the old fixed
+        // outside addresses.
+        var plain = MailOutboxSender.ToMessage(new OutboxMail(3, "ZedAdmin", "msme@x.test", null, null, "S", "B", "HTML", 1), new JobsOptions());
+        Assert.Equal("msme@x.test", plain.To);
         Assert.Null(plain.Bcc);
+        Assert.Throws<InvalidOperationException>(() => MailOutboxSender.ToMessage(
+            new OutboxMail(4, "ZedAdmin", "ks@geostat.in;keerthisreenu@gmail.com", null, null, "S", "B", "HTML", 1), new JobsOptions()));
+        Assert.Throws<InvalidOperationException>(() => MailOutboxSender.ToMessage(
+            new OutboxMail(5, "ZedAdmin", "KS@geostat.in", null, null, "S", "B", "HTML", 1), new JobsOptions(),
+            new Dictionary<string, string> { [EmailAddresses.DbReportRecipients] = " " }));
     }
 
     [Fact]
@@ -212,8 +315,7 @@ public sealed class MailOutboxTests
         main.Templates.Add(new EmailTemplateOverride("db:SP_SEND_MAIL_AUTO_ALLOT_AGENCY", true, "ZED: {{StandardSubject}}", "<h1>Note</h1>{{StandardBody}}", "ADMIN1", null));
         main.Templates.Add(new EmailTemplateOverride("db:SP_SEND_MAIL_STATUS_COUNTS_AGENCY", true, null, "<div>{{StandardBody}}</div>", "ADMIN1", null));
         var email = new FakeEmail();
-        var sender = new MailOutboxSender(new Databases(new() { ["Main"] = main }), email,
-            Options.Create(new JobsOptions()), NullLogger<MailOutboxSender>.Instance);
+        var sender = Sender(new() { ["Main"] = main }, email);
 
         Assert.Equal(3, await sender.SendBatchAsync(CancellationToken.None));
         Assert.DoesNotContain(email.Sent, m => m.To == "a@x.test");
@@ -234,5 +336,51 @@ public sealed class MailOutboxTests
         Assert.Contains("SentAt IS NULL", MailOutboxSender.ClaimSql);
         Assert.Contains("READPAST", MailOutboxSender.ClaimSql);
         Assert.Contains("Attempts < @MaxAttempts", MailOutboxSender.ClaimSql);
+    }
+}
+
+public sealed class JobsEnvironmentTests
+{
+    private static Func<string, string?> Vars(params (string Name, string Value)[] vars) =>
+        name => vars.FirstOrDefault(v => v.Name == name).Value;
+
+    [Fact]
+    public void An_environment_counts_only_when_given_on_purpose()
+    {
+        // sc.exe create without DOTNET_ENVIRONMENT: .NET would run as Production; the mail outbox does not send.
+        var none = JobsEnvironment.From([], Vars());
+        Assert.False(none.IsExplicit);
+        Assert.Null(none.HostOverride);
+        Assert.False(JobsEnvironment.From([], Vars((JobsEnvironment.DotnetVariable, "  "))).IsExplicit);
+
+        var dotnet = JobsEnvironment.From([], Vars((JobsEnvironment.DotnetVariable, "Staging"), (JobsEnvironment.AspNetCoreVariable, "Production")));
+        Assert.Equal(("Staging", JobsEnvironment.DotnetVariable), (dotnet.Name, dotnet.Source));
+        Assert.True(dotnet.IsExplicit);
+        Assert.Null(dotnet.HostOverride);
+
+        // Production on the live server is a choice too.
+        Assert.True(JobsEnvironment.From([], Vars((JobsEnvironment.DotnetVariable, "Production"))).IsExplicit);
+    }
+
+    [Fact]
+    public void ASPNETCORE_ENVIRONMENT_alone_names_the_hosts_environment()
+    {
+        var aspnet = JobsEnvironment.From([], Vars((JobsEnvironment.AspNetCoreVariable, "Staging")));
+        Assert.True(aspnet.IsExplicit);
+        Assert.Equal("Staging", aspnet.HostOverride);
+    }
+
+    [Theory]
+    [InlineData("--environment", "Staging")]
+    [InlineData("--environment=Staging", null)]
+    [InlineData("/environment", "Staging")]
+    [InlineData("--ENVIRONMENT=Staging", null)]
+    public void The_command_line_counts_first(string first, string? second)
+    {
+        var args = second is null ? new[] { first } : new[] { first, second };
+        var e = JobsEnvironment.From(args, Vars((JobsEnvironment.DotnetVariable, "Production")));
+        Assert.Equal(("Staging", JobsEnvironment.CommandLine), (e.Name, e.Source));
+        Assert.Null(e.HostOverride);
+        Assert.False(JobsEnvironment.From(["--environment"], Vars()).IsExplicit);
     }
 }

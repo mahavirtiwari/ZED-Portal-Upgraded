@@ -1,6 +1,7 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, PortalLinksService } from '@zed/shared';
+import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
 
 /**
  * Frame of the signed-in MSME pages: header, MSME menu and footer.
@@ -119,6 +120,12 @@ export class MsmeLayout {
 
   protected async logout(): Promise<void> {
     await this.auth.logout();
+    // The Udyami Bharat return link belongs to this sign-in only.
+    try {
+      sessionStorage.removeItem(UBP_RETURN_KEY);
+    } catch {
+      // Storage blocked: nothing kept there.
+    }
     await this.router.navigateByUrl('/msme/login');
   }
 }

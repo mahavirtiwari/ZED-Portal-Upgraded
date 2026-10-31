@@ -72,14 +72,14 @@ public sealed class ConsultancyPaymentTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private void SetFees(string payable, string? stateLabel = null, int rewardUsed = 0) =>
+    private void SetFees(string payable, string? stateLabel = null, int rewardUsed = 0, string? pan = "abcde1234f") =>
         // The procedure's two result sets are the same AssessmentFee row (Coupon IS NULL).
         _host.Sql.Procs["SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS"] = _ =>
         {
             var row = new Dictionary<string, object?>
             {
                 ["Id"] = 31, ["Total"] = "200000.00", ["Coupon"] = null, ["ApplicantContributionAfterSubsidy"] = payable,
-                ["NetPaybleTds15"] = "23200.00", ["NetPaybleTds75"] = "21600.00", ["UdyamPanNo"] = "abcde1234f", ["SubsidyLabel"] = "(80%)",
+                ["NetPaybleTds15"] = "23200.00", ["NetPaybleTds75"] = "21600.00", ["UdyamPanNo"] = pan, ["SubsidyLabel"] = "(80%)",
                 ["MileStone"] = 2, ["IsActive"] = true,
             };
             if (stateLabel is not null) row["StateSubsidyLabel"] = stateLabel;
@@ -325,16 +325,33 @@ public sealed class ConsultancyPaymentTests : IDisposable
     [Fact]
     public async Task Pan_correction_needs_a_verified_gstin_and_uses_the_pan_from_the_database()
     {
+        // The office mailbox (read before the first request: the settings are cached).
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new Zed.Core.Data.PortalSettings.SettingRow(Zed.Core.Email.EmailAddresses.RegistrationCc, "office@zed.test")];
         var client = await SignedInAsync();
         Assert.Equal("Please verify the GSTIN first.",
             await (await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Silver", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" })).ProblemTitle());
 
         await client.PostAsJsonAsync($"{Api}/gstin", new { certification = "Silver", gstin = "09PQRST6789K1Z2" });
+        // The unit has a PAN on record (ABCDE1234F): the verified GSTIN's PAN replaces it, and the office is told.
+        var changed = await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Silver", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K" });
+        Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
+        var replaced = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
+        Assert.Equal("ABCDE1234F", FakeSql.Arg(replaced.Args, "PanNo"));
+        Assert.Equal("PQRST6789K", FakeSql.Arg(replaced.Args, "UpdatedPanNo"));
+        var notice = Assert.Single(_host.Email.Sent, m => m.Subject.StartsWith("PAN changed on the payment page - ", StringComparison.Ordinal));
+        Assert.Equal("office@zed.test", notice.To);
+        Assert.Contains("ABCDE1234F", notice.HtmlBody);
+        Assert.Contains("PQRST6789K", notice.HtmlBody);
+        Assert.Contains("09PQRST6789K1Z2", notice.HtmlBody);
+
+        // No PAN on record: the verified GSTIN's PAN is recorded, as before.
+        SetFees(payable: "23600.00", pan: null);
         var ok = await client.PostAsJsonAsync($"{Api}/pan", new { certification = "Silver", gstin = "09PQRST6789K1Z2", pan = "PQRST6789K", zedId = "ZEDMSME999999", panNo = "XXXXX0000X" });
         Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
-        var update = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MESE_UPDATE_PAN");
+        var update = _host.Sql.Calls.Last(c => c.Name == "SP_MESE_UPDATE_PAN");
         Assert.Equal(Me, FakeSql.Arg(update.Args, "ZedId"));
-        Assert.Equal("ABCDE1234F", FakeSql.Arg(update.Args, "PanNo"));
+        Assert.Null(FakeSql.Arg(update.Args, "PanNo"));
         Assert.Equal("PQRST6789K", FakeSql.Arg(update.Args, "UpdatedPanNo"));
     }
 
@@ -558,6 +575,80 @@ public sealed class ConsultancyPaymentTests : IDisposable
         var bronze = await Json(await App().CreateClient().PostAsync("/ConsultancyPay/GetToken", new FormUrlEncodedContent(AppRequest(level: "Bronze"))));
         Assert.Equal("Invalid details.", bronze.GetProperty("errorMessage").GetString());
         Assert.False(Called("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS"));
+    }
+
+    [Fact]
+    public async Task App_GetToken_takes_only_a_gstin_protean_verifies()
+    {
+        var request = AppRequest(amount: "23600.00");
+        request["UnitGstin"] = "Yes";
+        request["Gst"] = Gstin;
+
+        _host.Gstin.Valid = false;
+        var refused = await Json(await App().CreateClient().PostAsync("/ConsultancyPay/GetToken", new FormUrlEncodedContent(request)));
+        Assert.Equal(("0", "Invalid GSTIN."), (refused.GetProperty("status").GetString(), refused.GetProperty("errorMessage").GetString()));
+        Assert.False(Called("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS"));
+
+        _host.Gstin.Valid = true;
+        var ok = await Json(await App().CreateClient().PostAsync("/ConsultancyPay/GetToken", new FormUrlEncodedContent(request)));
+        Assert.Equal("1", ok.GetProperty("status").GetString());
+        Assert.Equal(Gstin, FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS").Args, "Gstin"));
+        Assert.Equal([Gstin, Gstin], _host.Gstin.Calls.ToArray());
+    }
+
+    // ----- reconciliation push -----
+
+    private void ReconciliationOrder(int orderMilestone, int dueMilestone, int payments, Func<string?> status)
+    {
+        _host.Sql.Queries[Orders] = args =>
+            FakeSql.Arg(args, "TransactionId") == OrderId ? [new { ZedId = Me, Certification = "Silver", Amount = 23600.00m, PaymentStatus = status() }] : [];
+        _host.Sql.Queries[ConsultancyGateway.MilestoneQuery] = args =>
+            FakeSql.Arg(args, "TransactionId") == OrderId ? [new { OrderMilestone = (int?)orderMilestone, DueMilestone = dueMilestone, Payments = payments }] : [];
+    }
+
+    private static string Pushed(int milestone) =>
+        $"order_id={OrderId}&order_status=Success&order_mer_param1={Me}&order_mer_param2=Silver&order_mer_param3=Milestone {milestone}&order_amt=23600.00";
+
+    [Fact]
+    public async Task Reconciliation_of_a_late_milestone_1_payment_does_not_open_milestone_2()
+    {
+        // Milestone 1 was paid (another order) and completed; this order of milestone 1 is paid late.
+        ReconciliationOrder(orderMilestone: 1, dueMilestone: 2, payments: 1, status: () => null);
+        _host.Sql.Procs["SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"] = _ => FakeSql.Sets([new { ModuleName = "CONSULTANCY" }]);
+
+        var r = await Gateway().PostAsync("/Pay/UpdatePaymentReconciliationStatus", Encrypted(Pushed(1), TestHost.ReconciliationKey));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        // Recorded as not paid (the gateway procedure would open the next milestone for any successful order).
+        var call = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION");
+        Assert.Equal(ConsultancyGateway.MilestoneMismatch, FakeSql.Arg(call.Args, "PaymentStatus"));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == ConsultancyParameters.RemoveSql);
+        Assert.Empty(_host.Email.Sent);
+    }
+
+    [Fact]
+    public async Task Reconciliation_that_records_the_milestone_due_completes_it_once()
+    {
+        string? status = null;
+        ReconciliationOrder(orderMilestone: 2, dueMilestone: 2, payments: 0, status: () => status);
+        _host.Sql.Procs["SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION"] = args =>
+        {
+            if (FakeSql.Arg(args, "PaymentStatus") == "Success") status = "Success";
+            return FakeSql.Sets([new { ModuleName = "CONSULTANCY" }]);
+        };
+
+        await Gateway().PostAsync("/Pay/UpdatePaymentReconciliationStatus", Encrypted(Pushed(2), TestHost.ReconciliationKey));
+        Assert.Equal("Success", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION").Args, "PaymentStatus"));
+        // The module's completion: the parameters not used in consultancy, receipt and mails.
+        Assert.Single(_host.Sql.Calls, c => c.Name == ConsultancyParameters.RemoveSql);
+        Assert.Contains(_host.Email.Sent, m => m.Subject == $"ZED Handholding Support (Milestone 2) Payment Confirmation Details - {Me}");
+        var mails = _host.Email.Sent.Count;
+
+        // The browser callback that follows finds the order paid: nothing is recorded or completed again.
+        var browser = await Gateway().PostAsync(Callback, Encrypted(Paid()));
+        Assert.StartsWith(ConsultancyCallbackController.ResultPage + "?status=success", browser.Headers.Location!.OriginalString);
+        Assert.False(Called(ConsultancyGateway.Procedure));
+        Assert.Single(_host.Sql.Calls, c => c.Name == ConsultancyParameters.RemoveSql);
+        Assert.Equal(mails, _host.Email.Sent.Count);
     }
 
     [Fact]

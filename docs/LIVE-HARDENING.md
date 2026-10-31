@@ -536,7 +536,7 @@ README).
 
 | What | Where it was exposed | Finding |
 |---|---|---|
-| **Twilio** API key and secret (and review the account SID) | `MsmeHelper`, `RAServiceHelper` (all three services), `RemoteController`, and `SP_APP_MSME_REMOTE_CHECK_LOGIN` in all three databases, which returned it to every MSME | #29, #48, #96, #110 |
+| **Twilio** API key and secret (V4 has no video calls: revoke them, or close the account) | `MsmeHelper`, `RAServiceHelper` (all three services), `RemoteController`, and `SP_APP_MSME_REMOTE_CHECK_LOGIN` in all three databases, which returned it to every MSME | #29, #48, #96, #110 |
 | **SelectPdf** API key | `MonitoringController`, `PdfController` | #29, #63 |
 | **UBP** (Udyami Bharat) client secret | `Helpers/UdyamiIntegrationService.cs` | #73 |
 | **ERP**: Azure AD client secret of the production Dynamics 365 Business Central | `Helpers/ErpIntegrationService.cs` | #23 |

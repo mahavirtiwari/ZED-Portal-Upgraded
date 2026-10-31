@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Main.MobileApi.Models;
 
@@ -29,6 +31,7 @@ public sealed partial class SurveillanceController
     /// MSME pages that are not ported. Answers the old "no user" text without mailing.
     /// </summary>
     [HttpPost]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public IActionResult ResetPassword(string? userName)
     {
         log.LogInformation("Surveillance/ResetPassword called for {ZedId}; no MSME accounts here", userName);

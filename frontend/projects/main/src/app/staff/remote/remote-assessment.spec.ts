@@ -5,7 +5,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { RemoteAssessmentPage } from './remote-assessment';
 import { RemoteDetails } from './remote.api';
-import { TwilioParticipant, TwilioRoom } from './twilio-video';
 
 const BASE = '/api/staff/remote/ZEDMSME000001/Silver';
 
@@ -35,7 +34,7 @@ function details(canAssess = true): RemoteDetails {
     openMeeting: { id: 71, comments: 'Introductions', participants: [{ Name: 'R Sharma', Designation: 'Owner' }], photos: [] },
     closeMeeting: { id: 72, comments: null, participants: [], photos: [] },
     selfies: [],
-    permissions: { isLeadAssessor: canAssess, canAssess, videoConfigured: true },
+    permissions: { isLeadAssessor: canAssess, canAssess },
   };
 }
 
@@ -77,7 +76,6 @@ describe('RemoteAssessmentPage', () => {
 
   afterEach(() => {
     http.verify();
-    delete (window as { Twilio?: unknown }).Twilio;
     vi.restoreAllMocks();
   });
 
@@ -86,61 +84,16 @@ describe('RemoteAssessmentPage', () => {
     expect(el.textContent).toContain('Acme <b>Steel</b>');
     expect(el.querySelector('table b')).toBeNull();
     expect(el.querySelector('a.map-link')!.getAttribute('href')).toBe('https://www.google.com/maps?q=26.1,80.2');
-    expect(button('Start Assessment')).toBeTruthy();
   });
 
   it('is read-only for the co-assessor', async () => {
     await create(details(false));
     expect(el.querySelector('.alert-info')!.textContent).toContain('Only the lead assessor');
-    expect(button('Start Assessment')).toBeUndefined();
     await openTab('Parameters');
     expect(el.querySelector('.validate-requirement')).toBeNull();
     expect(el.querySelector('.final-submit')).toBeNull();
     expect(el.querySelector('table.requirement img')).toBeNull(); // option text is not HTML
     expect(el.querySelector('table.requirement')!.textContent).toContain('<img src=x onerror=alert(1)>');
-  });
-
-  it('joins the video room with the token from the API', async () => {
-    await create(details());
-    const participants = new Map<string, TwilioParticipant>();
-    const handlers: Record<string, (p: TwilioParticipant) => void> = {};
-    const room: TwilioRoom = {
-      name: 'ZEDMSME000001 Remote Assessment',
-      participants,
-      on: (event, cb) => { handlers[event] = cb; },
-      once: () => undefined,
-      disconnect: vi.fn(),
-    };
-    const connect = vi.fn().mockResolvedValue(room);
-    (window as { Twilio?: unknown }).Twilio = { Video: { connect } };
-
-    button('Start Assessment').click();
-    await settle(fixture);
-    http.expectOne((r) => r.method === 'POST' && r.url === BASE + '/join')
-      .flush({ token: 'jwt-token', room: room.name, identity: 'ZEDMSME000001 Remote Assessor', expiresInSeconds: 3600 });
-    await settle(fixture);
-    expect(connect).toHaveBeenCalledWith('jwt-token', { audio: true, video: { width: 400 } });
-    expect(el.textContent).toContain('Waiting for MSME');
-
-    const video = document.createElement('video');
-    handlers['participantConnected']({
-      sid: 'PA1', identity: 'ZEDMSME000001',
-      tracks: new Map([['t', { isSubscribed: true, track: { kind: 'video', attach: () => video, detach: () => [video] } }]]),
-      on: () => undefined,
-    });
-    await settle(fixture);
-    expect(el.querySelector('#output video')).toBe(video);
-    fixture.destroy();
-    expect(room.disconnect).toHaveBeenCalled();
-  });
-
-  it('shows the API message when the video cannot start', async () => {
-    await create(details());
-    button('Start Assessment').click();
-    await settle(fixture);
-    http.expectOne(BASE + '/join').flush({ title: 'Video calls are not configured on this server. Please contact the ZED team.' }, { status: 400, statusText: 'Bad Request' });
-    await settle(fixture);
-    expect(el.querySelector('.video-panel .alert-danger')!.textContent).toContain('not configured');
   });
 
   it('records conformance and reloads', async () => {
@@ -192,15 +145,27 @@ describe('RemoteAssessmentPage', () => {
     expect(Array.from(el.querySelectorAll('.cp-chip')).map((c) => c.textContent!.trim())).toEqual(['DA: Yes', 'SA: Partial']);
   });
 
-  it('asks for the MSME video before capturing and saves a captured frame', async () => {
+  it('takes only a JPEG upload and saves it under the name given', async () => {
     await create(details());
     await openTab('Site Tour');
-    (el.querySelector('button.capture') as HTMLButtonElement).click();
-    await settle(fixture);
-    expect(el.querySelector('.alert-danger')!.textContent).toContain("The MSME's video is not available");
+    const input = el.querySelector('label.capture input[type=file]') as HTMLInputElement;
+    expect(input.getAttribute('accept')).toBe('image/jpeg');
+    const pick = async (file: File) => {
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change'));
+      await settle(fixture);
+      await new Promise((r) => setTimeout(r, 20)); // FileReader
+      await settle(fixture);
+    };
+    await pick(new File(['x'], 'a.png', { type: 'image/png' }));
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please upload a JPEG photo of at most 5 MB.');
+    expect(el.querySelector('.modal')).toBeNull();
 
-    const capture = (fixture.componentInstance as unknown as { capture: WritableSignal<unknown> }).capture;
-    capture.set({ target: 'SiteTour', targetId: null, image: 'data:image/jpeg;base64,/9j/4AAQ', name: 'Boiler', fixedName: false });
+    await pick(new File(['x'], 'a.jpg', { type: 'image/jpeg' }));
+    const capture = (fixture.componentInstance as unknown as { capture: WritableSignal<{ image: string; name: string } | null> }).capture;
+    expect(capture()!.image).toMatch(/^data:image\/jpeg;base64,/);
+    expect(capture()!.name).toBe('Site Tour');
+    capture.set({ ...capture()!, image: 'data:image/jpeg;base64,/9j/4AAQ', name: 'Boiler' });
     await settle(fixture);
     (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
@@ -266,13 +231,14 @@ describe('RemoteAssessmentPage', () => {
   it('reviews an onsite unit after the SA app without the video call', async () => {
     await create({ ...details(), onsiteReview: true });
     expect(el.querySelector('#onsiteReview')!.textContent).toContain('Assessed onsite with the SA app');
-    expect(button('Start Assessment')).toBeUndefined();
   });
 
-  it('keeps the side video panel and the refresh link on main', async () => {
+  it('has no video call: full-width tabs and the refresh link on main', async () => {
     await create(details());
-    expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-8');
-    expect(el.querySelector('.video-panel')).not.toBeNull();
+    expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-12');
+    expect(el.querySelector('.video-panel')).toBeNull();
+    expect(el.querySelector('#output')).toBeNull();
+    expect(button('Start Assessment')).toBeUndefined();
     expect(el.querySelector('.refresh-link')).not.toBeNull();
     expect(el.querySelector('a.assessment-report')).toBeNull();
   });

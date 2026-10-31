@@ -72,6 +72,12 @@ public sealed class AssessorTestHost : IDisposable
 
     public static string Base64(string text) => Convert.ToBase64String(Encoding.UTF8.GetBytes(text));
 
+    /// <summary>The start of a JPEG file: enough for the upload content check (MobileStorage.RequireContent).</summary>
+    public static readonly byte[] Jpeg = [0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46];
+    public static readonly byte[] Pdf = "%PDF-1.4 test"u8.ToArray();
+    public static string JpegBase64 => Convert.ToBase64String(Jpeg);
+    public static string PdfBase64 => Convert.ToBase64String(Pdf);
+
     public void Dispose()
     {
         _client?.Dispose();

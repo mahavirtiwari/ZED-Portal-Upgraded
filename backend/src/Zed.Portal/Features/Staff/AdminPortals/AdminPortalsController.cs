@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Caching.Distributed;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -20,8 +21,9 @@ namespace Zed.Portal.Features.Staff.AdminPortals;
 /// (OtpType "AdminHandoff:{Portal}", MobileNo = the Admin's user id, OTP = SHA-256 of the pass, Response = the name) and
 /// gives the pass to the browser; the browser posts it to the other portal's API, which reads the row through its
 /// read-only connection to the main database (ConnectionStrings:Main) and signs the Admin in there. A pass is valid
-/// for <see cref="Lifetime"/> and once (each host remembers the passes it took). Only an Admin's own sign-in is handed
-/// over (not a sub-user's), and only as the Admin role.
+/// for <see cref="Lifetime"/> and once (each host remembers the passes it took, and records them in the distributed cache
+/// for the other servers). Only an Admin's own sign-in is handed over (not a sub-user's), only as the Admin role, and only
+/// while the account is still an active Admin on main.
 /// </para>
 /// </summary>
 [ApiController]
@@ -84,8 +86,17 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         "SELECT TOP (1) MobileNo AS UserId, Response AS UserName FROM dbo.OTP " +
         "WHERE OtpType = @OtpType AND OTP = @Hash AND CreatedDate >= DATEADD(SECOND, -@Seconds, GETDATE()) ORDER BY Id DESC;";
 
+    /// <summary>The account must still be an active Admin on main when its pass is used (read through the read-only connection).</summary>
+    internal const string ActiveAdminSql =
+        "SELECT TOP (1) UserId FROM dbo.Users WHERE UserId = @UserId AND RoleId = @RoleId AND IsActive = 1;";
+
+    public sealed record ActiveAdminRow(string? UserId);
+
     /// <summary>Passes already taken on this host (until they expire).</summary>
     private static readonly ConcurrentDictionary<string, DateTime> Taken = new();
+
+    /// <summary>Distributed cache key of a taken pass (shared by the servers and recycles when Cache:SqlServerTable is set).</summary>
+    internal static string TakenKey(string hash) => "admin-handoff-taken:" + hash;
 
     /// <summary>
     /// POST api/staff/admin-portals/handoff (Consultancy / Surveillance): signs in the main portal's Admin with the pass
@@ -114,10 +125,17 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         foreach (var old in Taken.Where(t => t.Value < now).Select(t => t.Key).ToList()) Taken.TryRemove(old, out _);
         var row = (await main.QuerySqlAsync<HandoffRow>(FindSql, new { OtpType = TypePrefix + host.System, Hash = hash, Seconds = (int)Lifetime.TotalSeconds }, ct))
             .FirstOrDefault();
-        if (row?.UserId is not { Length: > 0 } userId || !Taken.TryAdd(hash, now + Lifetime + Lifetime))
+        if (row?.UserId is not { Length: > 0 } userId || !Taken.TryAdd(hash, now + Lifetime + Lifetime) || !await TakeEverywhereAsync(hash, ct))
         {
             log.LogWarning("Admin hand-over refused on the {Portal} host: unknown, expired or used pass", KeyOf(host.System));
             return Problem(title: "The sign-in from the main portal has expired. Please open this portal again from the main Admin.", statusCode: StatusCodes.Status400BadRequest);
+        }
+        // The pass was issued up to two minutes ago: the Admin may have been blocked or changed since.
+        var admin = await main.QuerySqlAsync<ActiveAdminRow>(ActiveAdminSql, new { UserId = userId, RoleId = (int)UserRole.Admin }, ct);
+        if (admin.Count == 0)
+        {
+            log.LogWarning("Admin hand-over refused on the {Portal} host: {UserId} is no longer an active Admin on main", KeyOf(host.System), userId);
+            return Problem(title: "The sign-in from the main portal is not valid. Please open this portal again from the main Admin.", statusCode: StatusCodes.Status400BadRequest);
         }
 
         var user = new ZedUser(userId, row.UserName ?? userId, (int)UserRole.Admin, null, null, null, null, SubRoles: []);
@@ -125,6 +143,20 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         var xsrf = HttpContext.RequestServices.GetRequiredService<IAntiforgery>().GetAndStoreTokens(HttpContext).RequestToken!;
         log.LogInformation("Admin {UserId} signed in on the {Portal} portal from the main portal", userId, KeyOf(host.System));
         return new HandoffAccepted(user.UserName, xsrf);
+    }
+
+    /// <summary>
+    /// Records the pass as taken in the distributed cache too, so another server (or this one after a recycle) refuses it;
+    /// false when it already is. Not atomic between servers (read, then write), which leaves a window of milliseconds
+    /// instead of the pass's lifetime.
+    /// </summary>
+    private async Task<bool> TakeEverywhereAsync(string hash, CancellationToken ct)
+    {
+        if (HttpContext.RequestServices.GetService<IDistributedCache>() is not { } cache) return true;
+        var key = TakenKey(hash);
+        if (await cache.GetAsync(key, ct) is not null) return false;
+        await cache.SetAsync(key, [1], new DistributedCacheEntryOptions { AbsoluteExpirationRelativeToNow = Lifetime + Lifetime }, ct);
+        return true;
     }
 
     internal static string Hash(string token) => Convert.ToBase64String(SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));

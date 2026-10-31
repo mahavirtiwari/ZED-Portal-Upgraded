@@ -19,13 +19,15 @@ namespace Zed.Portal.Features.ExternalApi;
 /// Changed: the request bodies (owner, PAN, mobile, e-mail) are no longer written to App_Data\Json\API;
 /// the generated password comes from a cryptographic RNG (old: 4 characters from System.Random);
 /// certificates are read from the storage root instead of being downloaded from the public site; error
-/// answers no longer carry exception text or the file URL.
+/// answers no longer carry exception text or the file URL; the registration mail carries a one-time link to set the
+/// password instead of the password, and the office mailbox gets a copy without it.
 /// </para>
 /// </summary>
 [ExternalApiErrors(ExternalApiErrorsAttribute.Plain500)]
 public sealed class UdyamiApiController(
     ISqlExecutor db,
     PledgeCertificateService certificates,
+    MsmePasswordResets resets,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     EmailAddresses addresses,
@@ -33,6 +35,9 @@ public sealed class UdyamiApiController(
     IWebHostEnvironment env,
     ILogger<UdyamiApiController> log) : ExternalApiController
 {
+    /// <summary>V4PasswordResets.RequestedBy of the set-password link mailed at registration.</summary>
+    public const string SetPasswordRequestedBy = "Udyami Bharat";
+
     private ApiClients Clients => new(db, Options);
 
     /// <summary>Msme/RegisterPlant (POST): SP_API_MSME_INSERT_UDYAM_DETAILS, pledge certificate PDF, registration mail.</summary>
@@ -73,7 +78,7 @@ public sealed class UdyamiApiController(
             b.UdyogAadharNo, b.SocialCategory, b.SocialCategoryName, b.Gender, b.PH, b.PanNo, b.Address,
             b.MajorActivity, b.MajorActivityName, b.CommmenceDate, LgDistrictCode = b.LG_DT_Code, Pincode = b.PINCode,
             b.PreviousEMType, b.PreviousEMNumber, b.TotalEmp, b.InvestmentCost, DicName = b.Dic_Name, b.AppliedDate,
-            // Nobody is told this password (the unit signs in through the hand-over or resets it); after the old sites a random value.
+            // Nobody is told this password (the unit signs in through the hand-over, or sets its own with the mailed link); after the old sites a random value.
             Password = PasswordStore.For(db, HttpContext.RequestServices).StoredValueFor(SecureRandom.Password()),
             p.ZedCertified,
             UamNumber = p.UAM_No,
@@ -129,18 +134,32 @@ public sealed class UdyamiApiController(
 
         try
         {
-            var html = await templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
+            // No password in the mail (old: the generated one, to the address the partner sent, copied to the office):
+            // a one-time link to set it, the MSME "Forgot password" link; without one, the mail points to "Forgot password".
+            string? setPasswordUrl = null;
+            try
+            {
+                setPasswordUrl = await resets.NewSetPasswordUrlAsync(zedId, SetPasswordRequestedBy, ClientIp, ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                log.LogError(ex, "Set-password link for {ZedId} could not be created (Udyami RegisterPlant)", zedId);
+            }
+            Task<string> Render(bool officeCopy) => templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
             {
                 [nameof(PledgeCertificateEmail.UnitName)] = unitName,
                 [nameof(PledgeCertificateEmail.ZedId)] = zedId,
-                // The generated first password, as in the web registration mail (the MSME needs it to sign in).
-                [nameof(PledgeCertificateEmail.Password)] = row.Text("Password"),
+                [nameof(PledgeCertificateEmail.SetPasswordUrl)] = officeCopy ? null : setPasswordUrl,
+                [nameof(PledgeCertificateEmail.SetPasswordValidHours)] = MsmePasswordResets.SetPasswordValidMinutes / 60,
+                [nameof(PledgeCertificateEmail.OfficeCopy)] = officeCopy,
                 [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
-            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
-            await email.SendAsync(new EmailMessage(msme.UserEmail!,
-                "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + zedId,
-                html, EmailProfiles.Registration, cc), ct);
+            await email.SendAsync(new EmailMessage(msme.UserEmail!, MsmeRegistrationService.RegistrationSubject + zedId,
+                await Render(officeCopy: false), EmailProfiles.Registration), ct);
+            // The office mailbox gets its own copy, without the link (old: Cc of the unit's mail).
+            if (await addresses.GetAsync(EmailAddresses.RegistrationCc, ct) is { } office)
+                await email.SendAsync(new EmailMessage(office, MsmeRegistrationService.RegistrationSubject + zedId,
+                    await Render(officeCopy: true), EmailProfiles.Registration), ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -258,7 +277,7 @@ public sealed class UdyamiApiController(
             (a.Activity, 100), (a.Two_DigitActivity, 2000), (a.Four_DigitActivity, 2000), (a.Five_DigitActivity, 2000), (a.ActivityDetail_Id, 50),
         };
         if (limits.Any(l => !SafeInput.Ok(l.Value, l.Max))) return false;
-        // The procedure refuses an empty e-mail itself; anything given must be one address (it receives the password).
+        // The procedure refuses an empty e-mail itself; anything given must be one address (it receives the set-password link).
         return string.IsNullOrWhiteSpace(m.UserEmail) || MailAddress.TryCreate(m.UserEmail.Trim(), out var address) && address.Address == m.UserEmail.Trim();
     }
 

@@ -110,7 +110,8 @@ without an app update, but the apps send `deviceInfo.deviceId` with most calls.
   ZED ID, also unknown ones (the old "Sorry, no User exists with these details." let anyone find out which ZED IDs
   exist, #128). The link opens the new portal's reset page; check the app shows the message as before.
 - The virtual folder (`Mobile:PathBase`) and the folder holding `Photos/`, `SaPhotos/` (`Mobile:StorageRoot`).
-- Whether the remote-assessment app builds video tokens itself from the Twilio secret it used to receive (#48).
+- Video calls were removed: `RA/GetToken` and the login replies still carry their Twilio fields, always empty. Check the
+  installed remote-assessment, MSME and surveillance apps cope with no token (they did on a server without Twilio keys).
 
 ## MSME app registration (on the portal)
 
@@ -177,7 +178,6 @@ Open before go-live:
 | `Mobile:CheckSaVersion`, `Mobile:SaVersion` | Site assessor app (old `checkSAVersion`/`SAVersionNo`) |
 | `Mobile:CheckRaVersion`, `Mobile:RaVersion` | Remote assessment app |
 | `Mobile:MaxRequestBytes`, `Mobile:MaxFileBytes` | 30 MB request / 20 MB file by default |
-| `Mobile:Twilio:AccountSid`, `ApiKey`, `ApiSecret` | Video tokens for remote assessment. The old keys were in source code and must be rotated; put the new ones in user secrets or the environment. |
 | `Email:*`, `Portal:PublicBaseUrl` | As for the portal |
 
 Local run: launch configuration `mobile-api` (port 5104). The dev seed user `ZEDMSMEDEV001`

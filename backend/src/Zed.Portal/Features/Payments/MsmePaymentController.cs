@@ -32,6 +32,7 @@ public sealed class MsmePaymentController(
     PaymentCompletion completion,
     IOptions<CcAvenueOptions> ccavenue,
     IOptions<PortalOptions> portal,
+    PanCorrectionNotice panNotice,
     ILogger<MsmePaymentController> log) : MsmeApiController
 {
     public const string ResponsePath = "/api/payments/ccavenue/response";
@@ -103,7 +104,8 @@ public sealed class MsmePaymentController(
 
     /// <summary>
     /// "PAN Mismatch Detected": replaces the Udyam PAN with the PAN of a verified GSTIN (SP_MESE_UPDATE_PAN).
-    /// The old page only compared them in the browser; here the GSTIN must have been verified first.
+    /// The old page only compared them in the browser; here the GSTIN must have been verified first, and the change is
+    /// logged and told to the office (<see cref="PanCorrectionNotice"/>).
     /// </summary>
     [HttpPost("pan")]
     [MsmeEditAudit("Certification payment: PAN corrected")]
@@ -127,6 +129,7 @@ public sealed class MsmePaymentController(
             log.LogError(ex, "SP_MESE_UPDATE_PAN failed for {ZedId}", ZedId);
             return this.Problem400("Failed to update PAN. Please try again.");
         }
+        await panNotice.RecordAsync(ZedId, "certification", oldPan, pan, gstin, ct);
         return new MessageResponse("PAN updated successfully.");
     }
 
@@ -183,8 +186,18 @@ public sealed class MsmePaymentController(
             PaymentRefId = fee.Id,
         };
 
+        // A missing or unreadable amount is refused, never taken as nothing to pay.
+        if (fee.Due is not { } due)
+        {
+            log.LogError("Fee row {FeeId} for {ZedId}/{Certification} has no readable ApplicantContributionAfterSubsidy", fee.Id, ZedId, cert);
+            return this.Problem400(FeeOption.Unreadable);
+        }
+        // A level already paid or applied for: the zero procedure re-records ZED-X, and no procedure refuses a ZED-X order.
+        if ((due <= 0 || cert == "ZEDX") && await Certifications.AlreadyPaidAsync(db, ZedId, cert, log, ct))
+            return this.Problem400("Payment is already done for this certification.");
+
         // Nothing to pay after subsidy/reward (the old page's condition).
-        if (fee.Amount("ApplicantContributionAfterSubsidy") <= 0)
+        if (due <= 0)
         {
             try
             {

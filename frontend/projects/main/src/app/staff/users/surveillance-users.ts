@@ -445,8 +445,15 @@ export class SurveillanceUsersPage {
     await this.loadDistricts(state);
   }
 
+  /** The state's districts; on a failed load the list is emptied (never the previous state's) and the error shown. */
   private async loadDistricts(state: string): Promise<void> {
-    this.districts.set(state ? (await firstValueFrom(this.api.districts(state))).map((x) => ({ value: x.districtCode, label: x.districtName })) : []);
+    this.districts.set([]);
+    if (!state) return;
+    try {
+      this.districts.set((await firstValueFrom(this.api.districts(state))).map((x) => ({ value: x.districtCode, label: x.districtName })));
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    }
   }
 
   protected async saveBronze(d: BronzeDialog): Promise<void> {

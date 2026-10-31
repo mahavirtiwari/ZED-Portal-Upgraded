@@ -76,15 +76,61 @@ public sealed class MobileStorage(IOptions<MobileOptions> options, IWebHostEnvir
             throw new UnsafePathException("The file data is not valid base64.");
         }
         if (bytes.LongLength > MaxFileBytes) throw new UnsafePathException("The file is too large.");
+        RequireContent(fileName, bytes);
         await File.WriteAllBytesAsync(Target(folder, fileName), bytes, ct);
     }
 
-    public async Task SaveAsync(IFormFile file, string folder, string fileName, CancellationToken ct = default)
+    /// <summary>
+    /// Saves an uploaded file. With <paramref name="overwrite"/> false an existing file is never replaced
+    /// (<see cref="IOException"/> instead).
+    /// </summary>
+    public async Task SaveAsync(IFormFile file, string folder, string fileName, CancellationToken ct = default, bool overwrite = true)
     {
         if (file.Length > MaxFileBytes) throw new UnsafePathException("The file is too large.");
-        await using var stream = File.Create(Target(folder, fileName));
+        var head = await HeadAsync(file, ct);
+        RequireContent(fileName, head);
+        await using var stream = new FileStream(Target(folder, fileName), overwrite ? FileMode.Create : FileMode.CreateNew, FileAccess.Write);
         await file.CopyToAsync(stream, ct);
     }
+
+    /// <summary>
+    /// The bytes must be what the file name's extension says (the extension often comes from the request, e.g. isPdf):
+    /// a JPEG (FF D8 FF) or PNG image for .jpg, .jpeg and .png, a PDF ("%PDF") for .pdf. The old services saved any
+    /// bytes. Other extensions (videos) are not checked. A mismatch refuses the request like a bad name.
+    /// </summary>
+    public static void RequireContent(string fileName, ReadOnlySpan<byte> head)
+    {
+        var ext = Path.GetExtension(fileName);
+        if (ImageExtensions.Contains(ext) && !IsImage(head))
+            throw new UnsafePathException($"'{fileName}' is not a JPEG or PNG image.");
+        if (string.Equals(ext, ".pdf", StringComparison.OrdinalIgnoreCase) && !IsPdf(head))
+            throw new UnsafePathException($"'{fileName}' is not a PDF document.");
+    }
+
+    /// <summary>JPEG (FF D8 FF) or PNG signature.</summary>
+    public static bool IsImage(ReadOnlySpan<byte> head) =>
+        head.StartsWith(JpegSignature) || head.StartsWith(PngSignature);
+
+    public static bool IsPdf(ReadOnlySpan<byte> head) => head.StartsWith(PdfSignature);
+
+    /// <summary>The first bytes of an uploaded file (enough for the signatures above).</summary>
+    public static async Task<byte[]> HeadAsync(IFormFile file, CancellationToken ct = default)
+    {
+        var head = new byte[8];
+        await using var s = file.OpenReadStream();
+        var read = 0;
+        while (read < head.Length)
+        {
+            var n = await s.ReadAsync(head.AsMemory(read), ct);
+            if (n == 0) break;
+            read += n;
+        }
+        return head[..read];
+    }
+
+    private static ReadOnlySpan<byte> JpegSignature => [0xFF, 0xD8, 0xFF];
+    private static ReadOnlySpan<byte> PngSignature => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+    private static ReadOnlySpan<byte> PdfSignature => "%PDF"u8;
 
     /// <summary>Path of a file in a folder from <see cref="Folder"/>, checked to stay under the root.</summary>
     public string Target(string folder, string fileName)

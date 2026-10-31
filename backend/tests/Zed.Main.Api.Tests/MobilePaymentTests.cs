@@ -461,6 +461,66 @@ public sealed class MobilePaymentTests : IDisposable
         Assert.Single(_host.Sql.Calls, c => c.Name == "SP_SURVEILLANCE_MSME_ZERO_PAYMENT_DETAILS");
     }
 
+    [Fact]
+    public async Task Zedx_zero_payment_is_reported_once_recorded_and_not_recorded_again()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.CertLevels.CertificationLevels.Sql] = _ =>
+            [new Zed.Portal.Features.CertLevels.CertificationLevel("ZEDX", "ZED-X", 40, null, null, null, true, "Site", 36, true, 12, "{DDMMYYYY}_{ZEDNO}", null, null, 75000)];
+        // ZED-X has no payment flag the procedure sets: its MsmePaymentInfo row shows the payment.
+        var recorded = false;
+        _host.Sql.Procs["SP_MSME_ZERO_PAYMENT_DETAILS"] = _ =>
+        {
+            recorded = true;
+            return FakeSql.Sets();
+        };
+        _host.Sql.Queries[MobilePaymentController.RecordedSql("ZEDX")] = _ => recorded ? [Me] : [];
+
+        var ok = await Json(await Client().PostAsync("/Pay/SubmitZeroPaymentDetails", new FormUrlEncodedContent(Request(level: "ZEDX", useCoupon: "Yes", paymentRefId: "11"))));
+        Assert.Equal("1", ok.GetProperty("status").GetString());
+        var paid = Assert.Single(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.CertificationPaid.Procedure);
+        Assert.Equal("ZEDX", FakeSql.Arg(paid.Args, "Certification"));
+
+        // Paid now: the app's retry is refused instead of recording ZED-X (and copying its questionnaire) again.
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Certifications.PaidSql("ZEDX")] = _ => [1];
+        var again = await Json(await Client().PostAsync("/Pay/SubmitZeroPaymentDetails", new FormUrlEncodedContent(Request(level: "ZEDX", useCoupon: "Yes", paymentRefId: "11"))));
+        Assert.Equal(("0", "Payment is already done for this certification."), (again.GetProperty("status").GetString(), again.GetProperty("errorMessage").GetString()));
+        Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_ZERO_PAYMENT_DETAILS");
+    }
+
+    [Fact]
+    public async Task Gstin_must_pass_the_protean_verification_of_the_web_checkout()
+    {
+        var request = Request(amount: "2360.00");
+        request["UnitGstin"] = "Yes";
+        request["Gst"] = Gstin;
+
+        _host.Gstin.Valid = false;
+        var refused = await Json(await Client().PostAsync("/Pay/GetToken", new FormUrlEncodedContent(request)));
+        Assert.Equal(("0", "Invalid GSTIN."), (refused.GetProperty("status").GetString(), refused.GetProperty("errorMessage").GetString()));
+        Assert.False(Called("SP_MSME_PAYMENT_BASIC_DETAILS"));
+
+        // Verified: the answer is remembered, as after the web's GSTIN step.
+        _host.Gstin.Valid = true;
+        Assert.Equal("1", (await Json(await Client().PostAsync("/Pay/GetToken", new FormUrlEncodedContent(request)))).GetProperty("status").GetString());
+        Assert.Equal("1", (await Json(await Client().PostAsync("/Pay/GetToken", new FormUrlEncodedContent(request)))).GetProperty("status").GetString());
+        Assert.Equal([Gstin, Gstin], _host.Gstin.Calls.ToArray());
+    }
+
+    [Fact]
+    public async Task A_fee_row_without_a_readable_amount_is_refused_not_taken_as_free()
+    {
+        _host.Sql.Procs["SP_MSME_GET_PAYMENT_DETAILS"] = _ => FakeSql.Sets(
+            [new { Id = 11, Total = "11800.00", Coupon = "10000", ApplicantContributionAfterSubsidy = (string?)null, UdyamPanNo = "ABCDE1234F" }],
+            [new { Id = 12, Total = "11800.00", ApplicantContributionAfterSubsidy = (string?)null, UdyamPanNo = "ABCDE1234F" }],
+            [new { IsCouponUsed = 0 }]);
+        var zero = await Json(await Client().PostAsync("/Pay/SubmitZeroPaymentDetails", new FormUrlEncodedContent(Request(useCoupon: "Yes", paymentRefId: "11"))));
+        Assert.Equal(Zed.Portal.Features.Payments.FeeOption.Unreadable, zero.GetProperty("errorMessage").GetString());
+        var token = await Json(await Client().PostAsync("/Pay/GetToken", new FormUrlEncodedContent(Request())));
+        Assert.Equal(Zed.Portal.Features.Payments.FeeOption.Unreadable, token.GetProperty("errorMessage").GetString());
+        Assert.False(Called("SP_MSME_ZERO_PAYMENT_DETAILS"));
+        Assert.False(Called("SP_MSME_PAYMENT_BASIC_DETAILS"));
+    }
+
     // ----- fee lists -----
 
     [Fact]

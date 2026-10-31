@@ -353,6 +353,8 @@ public sealed class FinancialPerformance
 public sealed class SubmitPhotosRequest
 {
     public string? userName { get; set; }
+    /// <summary>The consultant as the app sends it (BaseServiceRequest.saId); the old model had only userName.</summary>
+    public string? saId { get; set; }
     public string? zedId { get; set; }
     public string? certificationType { get; set; }
     public List<PhotoInformation>? photos { get; set; }

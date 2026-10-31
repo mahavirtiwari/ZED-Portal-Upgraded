@@ -88,6 +88,8 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
     /// The page posted to Dashboard/UpdatePaymentDetailsWithInfo, which is missing from the legacy source
     /// (only UpdatePaymentDetails exists, without any authentication filter); this is rebuilt from the
     /// procedure the page's fields belong to. The transaction must be one the failed list offers for update.
+    /// The module steps of a gateway payment apply too: the milestone check before a handholding payment is recorded, and
+    /// the V4 paid steps after it (ZED-X certification on main, ZED-X surveillance on Surveillance, the consultancy parameters).
     /// </summary>
     [HttpPost("failed-transactions/update-payment")]
     [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin)]
@@ -107,6 +109,16 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
         if (row.Text("AllowManualUpdate") != "1" || (IsTrue(row.Text("IsCouponUsed")) && row.Text("UseCoupon") == "Yes"))
             return this.Problem400("The payment status of this transaction cannot be updated.");
 
+        // Consultancy: the gateway callback's milestone check (ConsultancyGateway). The procedure opens the next milestone for
+        // whatever order it is given, so an old order of a milestone already paid would open the following one unpaid.
+        if (host.System == PortalSystem.Consultancy &&
+            await Payments.Consultancy.ConsultancyGateway.VerifyMilestoneAsync(db, transactionId, new Dictionary<string, string>(), ct) is not null)
+        {
+            log.LogWarning("{UserId}: manual payment update of {TransactionId} ({ZedId}/{Certification}) refused: not the milestone due, or that milestone is paid",
+                UserId, transactionId, zedId, cert);
+            return this.Problem400("This transaction is not for the milestone due now, or that milestone is already paid. Its status cannot be updated.");
+        }
+
         var date = DateOnly.ParseExact(req.PaymentReceivedDate!, "yyyy-MM-dd", CultureInfo.InvariantCulture);
         var gst = string.IsNullOrWhiteSpace(req.GstNumber) || !string.IsNullOrEmpty(row.Text("Gstin")) ? null : req.GstNumber.Trim().ToUpperInvariant();
 
@@ -124,6 +136,8 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
             UserId, transactionId, zedId, cert);
         if (host.System == PortalSystem.Main) await Payments.CertificationPaid.RunAsync(db, row.Text("ZedId"), cert, log, ct);
         if (host.System == PortalSystem.Consultancy) await Payments.Consultancy.ConsultancyParameters.ApplyAsync(db, row.Text("ZedId"), cert, log, ct);
+        // V4 levels (ZED-X): the surveillance paid steps the legacy procedures do not do (as SurveillancePaymentCompletion).
+        if (host.System == PortalSystem.Surveillance) await Payments.LevelSurveillance.PaidAsync(db, row.Text("ZedId"), cert, log, ct);
 
         if (host.System != PortalSystem.Main)
         {

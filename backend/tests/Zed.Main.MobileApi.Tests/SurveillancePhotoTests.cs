@@ -65,6 +65,29 @@ public sealed class SurveillancePhotoTests : IDisposable
         Assert.Empty(_t.CallsTo("SP_APP_SYNC_SUVEILLANCE_PHOTOS"));
     }
 
+    [Fact]
+    public async Task An_existing_photo_is_never_replaced_but_the_same_bytes_may_be_synced_again()
+    {
+        _t.Sql.Unit(Zed, "Silver", null, status: 10, siteAssessor: "ZEDAS0001");
+        // The site assessor's own site tour photo under the same photoId (H3).
+        var evidence = _t.FileUnderRoot("SaPhotos", Zed, "Silver", "SiteTour", "p1.jpg");
+        Directory.CreateDirectory(Path.GetDirectoryName(evidence)!);
+        byte[] assessorPhoto = [0xFF, 0xD8, 0xFF, 0xE1, 9, 9, 9, 9];
+        File.WriteAllBytes(evidence, assessorPhoto);
+
+        AssertFail((await _t.Send("/Msme/SubmitSurveillancePhoto", Form(Jpeg))).Body, "Photo already submitted.");
+        Assert.Equal(assessorPhoto, File.ReadAllBytes(evidence));
+        Assert.Empty(_t.CallsTo("SP_APP_SYNC_SUVEILLANCE_PHOTOS"));
+
+        // A retried sync of the unit's own photo: the file is kept and the row is recorded.
+        var (e, _) = await _t.Send("/Msme/SubmitSurveillancePhoto", Form(Jpeg, photoId: "p2"));
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        var (again, _) = await _t.Send("/Msme/SubmitSurveillancePhoto", Form(Jpeg, photoId: "p2"));
+        Assert.Equal("1", again.GetProperty("status").GetString());
+        Assert.Equal(Jpeg, File.ReadAllBytes(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "SiteTour", "p2.jpg")));
+        Assert.Equal(2, _t.CallsTo("SP_APP_SYNC_SUVEILLANCE_PHOTOS").Count);
+    }
+
     [Theory]
     [InlineData(8, "Cannot Sync Now. Please check with Assessor as final submission done from their end.")]
     [InlineData(14, "Cannot Sync Now. Please check with Assessor as final submission done from their end.")]

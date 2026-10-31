@@ -33,7 +33,13 @@ public static class ConsultancyGateway
         "(SELECT COUNT(*) FROM ZED_CONSULTANT.dbo.MsmePaymentInfo P WHERE P.ZedId = T.ZedId AND P.Certification = T.Certification AND P.MileStoneNum = T.MileStoneNumber) AS Payments " +
         "FROM ZED_CONSULTANT.dbo.PaymentGatewayTransactions T WHERE T.TransactionId = @TransactionId";
 
-    private static async Task<string?> VerifyMilestoneAsync(ISqlExecutor db, string orderId, IReadOnlyDictionary<string, string> fields, CancellationToken ct)
+    /// <summary>
+    /// The milestone check of a successful payment, before it is recorded: null when the order is for the milestone due and
+    /// that milestone has no payment yet, else <see cref="MilestoneMismatch"/>. Also run by the reconciliation push and the
+    /// staff "update payment status" of the failed transactions, which record through procedures with the same flaw.
+    /// </summary>
+    /// <param name="fields">The decrypted response (merchant_param3 is checked when present); empty for a staff update.</param>
+    public static async Task<string?> VerifyMilestoneAsync(ISqlExecutor db, string orderId, IReadOnlyDictionary<string, string> fields, CancellationToken ct)
     {
         var m = (await db.QuerySqlAsync<MilestoneState>(MilestoneQuery,
             new { TransactionId = new Dapper.DbString { Value = orderId, IsAnsi = true, Length = 50 } }, ct)).FirstOrDefault();

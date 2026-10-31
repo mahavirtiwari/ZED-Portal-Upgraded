@@ -20,7 +20,7 @@ This answers the "Ask the vendor" questions of MOBILE-API.md, Surveillance: it i
 |---|---|---|
 | `surveillancemobileapi/surveillance/` | **everything of the assessment** (`webService` and `surveillanceBronzeWebService` both point here) | mobile API, `Mobile:System=Surveillance`, `SurveillanceController` |
 | `surveillancemobileapi/msme/` | surveillance (Silver/Gold) NC replies, status and final submit (`surveillanceNcWebService`), `SubmitSurveillancePhoto` | same host; only `Msme/SubmitSurveillancePhoto` is served |
-| `mobileapi/RA/` | remote assessment (selfie, Twilio token, status) | mobile API, Main, `RAController` |
+| `mobileapi/RA/` | remote assessment (selfie, status; the Twilio token is always empty now) | mobile API, Main, `RAController` |
 | `Msme/` (portal) | registration (FinalSubmit, captcha, plant/activity, pledge e-mail OTP), payment fee rows | portal |
 | `Pay/` (portal) | `GetToken`, `SubmitZeroPaymentDetails`; CCAvenue redirect/cancel `pay/successtransmobile`, `pay/failuretransmobile` | portal |
 | `mobileapi/msme/` | defined, **never used** in this build | — |

@@ -124,7 +124,7 @@ export class StaffMsmeProfilePage {
     try {
       this.profile.set(await firstValueFrom(this.http.get<StaffMsmeProfile>(this.url)));
     } catch (err) {
-      this.error.set(apiErrorMessage(err) === 'Unexpected error occured. Please try after some time.' ? 'This unit was not found or is not allotted to you.' : apiErrorMessage(err));
+      this.error.set(apiErrorMessage(err) === 'Unexpected error occurred. Please try after some time.' ? 'This unit was not found or is not allotted to you.' : apiErrorMessage(err));
     } finally {
       this.loading.set(false);
     }

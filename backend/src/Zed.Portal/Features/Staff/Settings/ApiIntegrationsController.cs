@@ -95,7 +95,6 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
         new("GSTIN verification (Protean)", "GSTIN check on the payment page", "Server configuration (Protean)", true),
         new("Udyami Bharat portal", "Verifies the sign-in token of units coming from UBP", "Server configuration (UdyamiBharat); switch: Udyami Bharat sign-in", true),
         new("Google reCAPTCHA", "Captcha of the login and registration forms", "Administration → Settings → Captcha Settings", true),
-        new("Twilio Video", "Video calls of the remote assessments in the apps", "Server configuration (Twilio)", true),
         new("E-mail (SMTP)", "All mails, OTPs included", "Administration → Settings → Email Settings", true),
         new("PayU payment gateway", "Alternative gateway of the old portal", "Not used in V4", false),
         new("SelectPDF", "HTML to PDF for certificates and summaries", "Not used in V4 (PDFs are made on the server)", false),

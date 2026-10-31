@@ -302,7 +302,8 @@ public sealed class ConsultancyStaffTests : IDisposable
 
         var r = await client.PutAsJsonAsync("/api/staff/fees/Micro", new { levels = new[] { new { certification = "MileStone1", assessmentFee = 2000m } } });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        var updates = _host.Sql.Calls.Where(c => c.Name == "SP_MASTER_UPDATE_ASSESSMENT_FEE").ToList();
+        // One batch per row (the share and the amounts in one transaction).
+        var updates = _host.Sql.Calls.Where(c => c.Name.Contains("SP_MASTER_UPDATE_ASSESSMENT_FEE", StringComparison.Ordinal)).ToList();
         Assert.Equal(new[] { "1", "3" }, updates.Select(u => FakeSql.Arg(u.Args, "Id") ?? "").ToArray());
         Assert.Equal(100m, decimal.Parse(FakeSql.Arg(updates[1].Args, "Coupon")!, System.Globalization.CultureInfo.InvariantCulture));
         Assert.Equal(2000m, decimal.Parse(FakeSql.Arg(updates[0].Args, "AssessmentFee")!, System.Globalization.CultureInfo.InvariantCulture));
@@ -373,16 +374,31 @@ public sealed class ConsultancyStaffTests : IDisposable
         {
             ZedId = "ZEDMSME1", TransactionId = "T1", Certification = "Silver", AllowManualUpdate = 1, IsCouponUsed = 0, MileStoneNumber = 2,
         }]);
+        // The gateway callback's milestone check: T1 is for milestone 2, the one due, which has no payment yet.
+        var milestone = new { OrderMilestone = (int?)2, DueMilestone = 2, Payments = 0 };
+        _host.Sql.Queries[Zed.Portal.Features.Payments.Consultancy.ConsultancyGateway.MilestoneQuery] = args =>
+            FakeSql.Arg(args, "TransactionId") == "T1" ? [milestone] : [];
         var master = await ConsultancyLogin.SignInAsync(_host, "MASTER1");
         var list = await master.GetFromJsonAsync<JsonElement>("/api/staff/dashboard/failed-transactions");
         Assert.Equal(2, list[0].GetProperty("MileStoneNumber").GetInt32());
-        var r = await master.PostAsJsonAsync("/api/staff/dashboard/failed-transactions/update-payment", new
+        var update = new
         {
             zedId = "ZEDMSME1", transactionId = "T1", certification = "Silver", pgType = "Net Banking", trackingId = "123456789012",
             bankRefNumber = "B1", paymentReceivedDate = DateTime.UtcNow.ToString("yyyy-MM-dd"), paymentRemarks = "Bank confirmed",
-        });
+        };
+
+        // Milestone 2 already paid by another order (or milestone 3 due): marking T1 paid would open the next milestone unpaid.
+        milestone = new { OrderMilestone = (int?)2, DueMilestone = 2, Payments = 1 };
+        var refused = await master.PostAsJsonAsync("/api/staff/dashboard/failed-transactions/update-payment", update);
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.StartsWith("This transaction is not for the milestone due now", await refused.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO");
+
+        milestone = new { OrderMilestone = (int?)2, DueMilestone = 2, Payments = 0 };
+        var r = await master.PostAsJsonAsync("/api/staff/dashboard/failed-transactions/update-payment", update);
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO");
+        Assert.Contains(_host.Sql.Calls, c => c.Name == Zed.Portal.Features.Payments.Consultancy.ConsultancyParameters.RemoveSql);
         await Task.Delay(200);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.StartsWith("SP_API_FINANCE", StringComparison.Ordinal));
     }

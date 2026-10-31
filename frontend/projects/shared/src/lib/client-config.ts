@@ -38,8 +38,12 @@ export class ClientConfigService {
   private readonly http = inject(HttpClient);
   private config: Promise<ClientConfig> | null = null;
 
+  /** Loaded once; a failed load is tried again on the next call. */
   get(): Promise<ClientConfig> {
-    this.config ??= firstValueFrom(this.http.get<ClientConfig>('/api/config'));
+    this.config ??= firstValueFrom(this.http.get<ClientConfig>('/api/config')).catch((err: unknown) => {
+      this.config = null;
+      throw err;
+    });
     return this.config;
   }
 }

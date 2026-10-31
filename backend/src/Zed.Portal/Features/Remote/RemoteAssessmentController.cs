@@ -15,9 +15,9 @@ using Zed.Portal.Features.Staff.Assessment;
 namespace Zed.Portal.Features.Remote;
 
 /// <summary>
-/// The site assessor's live remote (video) assessment of a unit: Views/Remote/Index.cshtml, reached from the
+/// The site assessor's remote assessment of a unit: Views/Remote/Index.cshtml, reached from the
 /// "ASSESS" link of the Remote/Onsite Assessment list for units allotted in "Remote Assessment" mode. Port of
-/// RemoteController Index (Twilio token; SP_ASSESSMENT_DA_DETAILS + SP_ASSESSMENT_SA_DETAILS through
+/// RemoteController Index (SP_ASSESSMENT_DA_DETAILS + SP_ASSESSMENT_SA_DETAILS through
 /// Assessment/GetDaDetails and GetSaDetails), UpdateStartAssessmentStatus (SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS),
 /// UpdateBasicInfo (SP_ASSESSMENT_RA_UPDATE_BASIC_INFO), UpdateConfirmance (SP_ASSESSMENT_RA_UPDATE_REQUIREMENT),
 /// ValidateProduct (SP_ASSESSMENT_RA_UPDATE_PRODUCT), ValidateSiteExterior (SP_ASSESSMENT_RA_UPDATE_SITE_EXTERIOR),
@@ -28,21 +28,26 @@ namespace Zed.Portal.Features.Remote;
 /// The old controller had no sign-in check at all: anyone could mint a video token for any unit's room,
 /// change its assessment and final-submit it (which issues the certification number when no NC is raised).
 /// Here: desktop assessors with the site verification sub-role only; the unit must be allotted in remote
-/// mode and the caller must be its lead assessor (the co-assessor can view); changes and the video token
-/// only while the remote assessment is open (status 9 or 13, when the old page let it in); every id must
-/// belong to the unit; captured photos are decoded, type-checked and stored under server-chosen names;
+/// mode and the caller must be its lead assessor (the co-assessor can view); changes only while the remote
+/// assessment is open (status 9 or 13, when the old page let it in); every id must belong to the unit;
+/// uploaded photos are decoded, type-checked and stored under server-chosen names;
 /// photos are served through <see cref="File"/>; the final submit re-runs the procedure's checks and the
 /// NC decision comes from the procedure, not the browser.
 /// </para>
 /// <para>
+/// There is no video call any more (the Twilio video room of the old "Start Assessment" was removed): the assessor uploads
+/// the photos as JPEG files, and the lead assessor's first change marks the assessment started (JoinRoomStatus, which the
+/// old "Start Assessment" set and the assessment lists count by), see <see cref="ForAssessor"/>.
+/// </para>
+/// <para>
 /// Surveillance (ZEDCS_SURVEILLANCE Remote/Index, Silver/Gold surveillance held on an external video meeting): the page
-/// opens for units allotted as "Onsite Assessment" (shown as Remote), at status 9 or 13; there is no Twilio video.
+/// opens for units allotted as "Onsite Assessment" (shown as Remote), at status 9 or 13.
 /// Instead the details carry the agency's meeting link (Join button) and the closing meeting's recording links (up to
 /// 6, <see cref="AddRecordingLink"/>); the opening/closing meeting photos and the assessor's selfie are uploaded files,
 /// stored with the legacy names under <c>surveillancemobileapi/SaPhotos/{ZedId}/{Certification}</c> and recorded
 /// through the site-assessor photo procedure SP_APP_SA_SAVE_PHOTOS, as the old page did through the mobile
 /// SA/SaveCapturedPhoto (no sign-in, paths from the request: S9). "From Site Tour" passes the app photo's address in
-/// the form the surveillance SP_ASSESSMENT_RA_UPDATE_PHOTOS expects. Frame captures from the video do not exist there.
+/// the form the surveillance SP_ASSESSMENT_RA_UPDATE_PHOTOS expects.
 /// </para>
 /// </summary>
 [Route("api/staff/remote/{zedId}/{certification}")]
@@ -53,7 +58,6 @@ public sealed class RemoteAssessmentController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    IConfiguration config,
     PortalHost host,
     ILogger<RemoteAssessmentController> log) : StaffApiController
 {
@@ -63,7 +67,7 @@ public sealed class RemoteAssessmentController(
     /// <summary>Surveillance: at most this many recording links (the old page hid "Add Recording Link" at 6).</summary>
     public const int MaxRecordingLinks = 6;
 
-    /// <summary>Surveillance: the remote assessment runs on the agency's meeting link (no Twilio).</summary>
+    /// <summary>Surveillance: the remote assessment runs on the agency's meeting link.</summary>
     private bool MeetingMode => host.System == PortalSystem.Surveillance;
     public static readonly string[] Levels = ["Silver", "Gold", "ZEDX"];
 
@@ -112,7 +116,7 @@ public sealed class RemoteAssessmentController(
     public sealed record RemotePhoto(long Id, string? Name, string? Url, bool Deletable);
     public sealed record Meeting(long Id, string? Comments, IReadOnlyList<Dictionary<string, object?>> Participants, IReadOnlyList<RemotePhoto> Photos);
     public sealed record Selfie(string? Url, string? RepresentativeName, string? Designation);
-    public sealed record Permissions(bool IsLeadAssessor, bool CanAssess, bool VideoConfigured);
+    public sealed record Permissions(bool IsLeadAssessor, bool CanAssess);
 
     public sealed record RecordingLink(long Id, string Url);
 
@@ -232,7 +236,7 @@ public sealed class RemoteAssessmentController(
             MeetingOf(1, 2, 5),
             MeetingOf(3, 4, 8),
             sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath"), MeetingMode), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))).ToList(),
-            new Permissions(IsLead(record!), canAssess, !MeetingMode && TwilioVideoOptions.From(config).IsConfigured))
+            new Permissions(IsLead(record!), canAssess))
         {
             UsesMeetingLink = MeetingMode ? true : null,
             OnsiteReview = OnsiteReview(record!) ? true : null,
@@ -293,30 +297,6 @@ public sealed class RemoteAssessmentController(
     }
 
     // ======================================================================== video
-
-    public sealed record JoinResponse(string Token, string Room, string Identity, int ExpiresInSeconds);
-
-    /// <summary>
-    /// "Start Assessment": marks that the assessor joined the room (lets the MSME's RA app call in) and returns
-    /// a Twilio Video token for the unit's room. Only the lead assessor of an open remote assessment gets one.
-    /// </summary>
-    [HttpPost("join")]
-    public async Task<ActionResult<JoinResponse>> Join(string zedId, string certification, CancellationToken ct)
-    {
-        var (level, record, error) = await ForAssessor(zedId, certification, ct);
-        if (error is not null) return error;
-        if (MeetingMode) return this.Problem400("This assessment is held on the meeting link given by the agency.");
-        if (OnsiteReview(record!)) return this.Problem400("This unit was assessed onsite with the SA app; there is no video call.");
-        var twilio = TwilioVideoOptions.From(config);
-        if (!twilio.IsConfigured) return this.Problem400("Video calls are not configured on this server. Please contact the ZED team.");
-
-        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS", new { ZedId = zedId, CertificationType = level }, ct);
-        var room = TwilioVideoToken.RoomName(zedId);
-        var identity = zedId + " Remote Assessor";
-        var token = TwilioVideoToken.Create(twilio, identity, room, DateTimeOffset.UtcNow);
-        log.LogInformation("Assessor {UserId} joined the remote assessment room of {ZedId} {Certification}", UserId, zedId, level);
-        return new JoinResponse(token, room, identity, Math.Clamp(twilio.TokenMinutes, 5, 240) * 60);
-    }
 
     // ======================================================================== assessor actions
 
@@ -759,10 +739,12 @@ public sealed class RemoteAssessmentController(
         public string? SiteAssessorId { get; init; }
         public string? CoAssessorId { get; init; }
         public string? ModeOfAssessment { get; init; }
+        /// <summary>1 once the remote assessment was started (the old "Start Assessment"); the assessment lists count by it.</summary>
+        public int? JoinRoomStatus { get; init; }
     }
 
     public const string RecordSql =
-        "SELECT TOP 1 CAST(Id AS bigint) AS Id, ZedId, Certification, CertificationStatus, NcCount, SiteAssessorId, CoAssessorId, ModeOfAssessment " +
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, ZedId, Certification, CertificationStatus, NcCount, SiteAssessorId, CoAssessorId, ModeOfAssessment, JoinRoomStatus " +
         "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
 
     public const string MeetingSql =
@@ -796,13 +778,22 @@ public sealed class RemoteAssessmentController(
         return (level, record, null);
     }
 
-    /// <summary>As <see cref="ForViewer"/>, then 403 unless the caller is the lead assessor and the remote assessment is open.</summary>
+    /// <summary>
+    /// As <see cref="ForViewer"/>, then 403 unless the caller is the lead assessor and the remote assessment is open. On Main
+    /// the lead assessor's first change marks a remote-mode unit's assessment started, as the old "Start Assessment" did
+    /// (SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS; the assessment lists then count the unit as under site assessment).
+    /// </summary>
     private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForAssessor(string zedId, string certification, CancellationToken ct)
     {
         var (level, record, error) = await ForViewer(zedId, certification, ct);
         if (error is not null) return (level, record, error);
         if (!IsLead(record!)) return (level, record, Forbidden("Only the lead assessor can carry out the remote assessment."));
         if (!IsOpen(record!)) return (level, record, Forbidden("This remote assessment is not open."));
+        if (!MeetingMode && !OnsiteReview(record!) && record!.CertificationStatus == 9 && record.JoinRoomStatus != 1)
+        {
+            await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS", new { ZedId = zedId, CertificationType = level }, ct);
+            log.LogInformation("Assessor {UserId} started the remote assessment of {ZedId} {Certification}", UserId, zedId, level);
+        }
         return (level, record, null);
     }
 

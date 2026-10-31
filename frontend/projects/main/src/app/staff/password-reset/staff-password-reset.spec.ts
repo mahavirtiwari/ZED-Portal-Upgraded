@@ -101,7 +101,7 @@ describe('staff password reset', () => {
       type(el, '#confirmPassword', 'Other#Pass1');
       (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
       await settle(fixture);
-      expect(el.querySelector('.alert-danger')!.textContent).toContain('should be same');
+      expect(el.querySelector('.alert-danger')!.textContent).toContain('do not match');
 
       type(el, '#confirmPassword', 'New#Pass123');
       (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));

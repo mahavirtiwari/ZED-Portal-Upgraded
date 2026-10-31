@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Email;
@@ -24,6 +25,7 @@ public sealed class MsmeRegistrationService(
     public const string AlreadyRegistered = "Selected Plant already registered.";
     public const string NotApplicable = "Currently this scheme is not applicable for the selected plant activity.";
     public const string RegistrationFailed = "Registrtion failed. Try again after some time.";
+    public const string RegistrationSubject = "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - ";
 
     /// <summary>The MSME created by <see cref="CompleteAsync"/>.</summary>
     public sealed record Registered(string ZedId, string UnitName, bool EmailSent, ZedUser User);
@@ -53,13 +55,18 @@ public sealed class MsmeRegistrationService(
         CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),
             s.Activity!.GetValueOrDefault("Two_DigitActivity"), emailId, ip, ct);
 
-    /// <summary>Records the OTP (the legacy OTP table) and mails it; false when the mail could not be sent.</summary>
+    /// <summary>Start of the value V4 writes to OTP.OTP for a pledge OTP: never the OTP itself.</summary>
+    public const string OtpPlaceholderPrefix = "V4!";
+
+    /// <summary>Records that an OTP was mailed (the legacy OTP table) and mails it; false when the mail could not be sent.</summary>
     public async Task<bool> SendOtpMailAsync(string address, string otp, CancellationToken ct)
     {
-        // Kept for the audit trail the legacy code wrote (OTP.MobileNo holds the e-mail for pledge OTPs).
+        // Kept for the audit trail the legacy code wrote (OTP.MobileNo holds the e-mail for pledge OTPs). V4 checks the
+        // OTP against the hash in its own state, and nothing reads this row's OTP back (the old site's
+        // VerifyPledgeEmailOtp only matches the OTPs it wrote itself), so the column gets a random value, not the OTP.
         await db.ExecuteSqlAsync(
             "INSERT INTO OTP (OtpType, MobileNo, OTP, CreatedDate) VALUES ('Pledge', @Email, @Otp, GETDATE())",
-            new { Email = new Dapper.DbString { Value = address, IsAnsi = true, Length = 50 }, Otp = new Dapper.DbString { Value = otp, IsAnsi = true, Length = 50 } }, ct);
+            new { Email = new Dapper.DbString { Value = address, IsAnsi = true, Length = 50 }, Otp = new Dapper.DbString { Value = OtpPlaceholder(), IsAnsi = true, Length = 50 } }, ct);
 
         var html = await templates.RenderAsync<RegistrationOtpEmail>(new Dictionary<string, object?>
         {
@@ -145,26 +152,41 @@ public sealed class MsmeRegistrationService(
 
     private async Task<bool> SendRegistrationMailAsync(string zedId, string unitName, string password, string to, CancellationToken ct)
     {
+        Task<string> Render(bool officeCopy) => templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
+        {
+            [nameof(PledgeCertificateEmail.UnitName)] = unitName,
+            [nameof(PledgeCertificateEmail.ZedId)] = zedId,
+            [nameof(PledgeCertificateEmail.Password)] = officeCopy ? null : password,
+            [nameof(PledgeCertificateEmail.OfficeCopy)] = officeCopy,
+            [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+        });
+
+        bool sent;
         try
         {
-            var html = await templates.RenderAsync<PledgeCertificateEmail>(new Dictionary<string, object?>
-            {
-                [nameof(PledgeCertificateEmail.UnitName)] = unitName,
-                [nameof(PledgeCertificateEmail.ZedId)] = zedId,
-                [nameof(PledgeCertificateEmail.Password)] = password,
-                [nameof(PledgeCertificateEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
-            });
-            var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
-            await email.SendAsync(new EmailMessage(to,
-                "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - " + zedId,
-                html, EmailProfiles.Registration, cc), ct);
-            return true;
+            // To the unit only: the office mailbox gets its own copy below, without the password (old: Cc of this mail).
+            await email.SendAsync(new EmailMessage(to, RegistrationSubject + zedId, await Render(officeCopy: false), EmailProfiles.Registration), ct);
+            sent = true;
         }
         catch (Exception ex)
         {
             // The MSME is registered at this point; a mail failure must not undo that.
             log.LogError(ex, "Registration mail failed for {ZedId}", zedId);
-            return false;
+            sent = false;
         }
+
+        try
+        {
+            if (await addresses.GetAsync(EmailAddresses.RegistrationCc, ct) is { } office)
+                await email.SendAsync(new EmailMessage(office, RegistrationSubject + zedId, await Render(officeCopy: true), EmailProfiles.Registration), ct);
+        }
+        catch (Exception ex)
+        {
+            log.LogError(ex, "Office copy of the registration mail failed for {ZedId}", zedId);
+        }
+        return sent;
     }
+
+    /// <summary>The value written to OTP.OTP for a pledge OTP: random, so no OTP typed on the old site can match it.</summary>
+    private static string OtpPlaceholder() => OtpPlaceholderPrefix + Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
 }

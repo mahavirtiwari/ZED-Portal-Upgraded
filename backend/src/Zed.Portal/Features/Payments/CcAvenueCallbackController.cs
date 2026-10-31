@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Payments;
+using Zed.Portal.Features.Payments.Consultancy;
 
 namespace Zed.Portal.Features.Payments;
 
@@ -63,6 +64,13 @@ public sealed class CcAvenueCallbackController(
     /// ZED ID from a property the reconciliation field names never bind to; so it recorded nothing and
     /// never reached its mail and ERP code.
     /// </para>
+    /// <para>
+    /// The push goes through the module checks and the completion of the browser callback
+    /// (<see cref="CcAvenueResponseProcessor.ReconcileAsync"/>): the consultancy milestone check before it is recorded and,
+    /// when the push is what marked the order paid, the module's completion (ZED-X / surveillance paid steps, the consultancy
+    /// parameters, receipt, mail and ERP). Before, a payment first recorded here got none of them, and a late milestone-1
+    /// payment could open milestone 2.
+    /// </para>
     /// </summary>
     [HttpPost("/Pay/UpdatePaymentReconciliationStatus")]
     [HttpPost("/SurveillancePay/UpdatePaymentReconciliationStatus")]
@@ -72,36 +80,20 @@ public sealed class CcAvenueCallbackController(
         if (!Processor.TryDecrypt(encResp, options.Value.ReconciliationWorkingKey, out var decrypted, out var r))
             return BadRequest(new { status = "400", errorMessage = "Invalid data." });
 
-        var status = r.GetValueOrDefault("order_status") ?? "";
-        if (string.Equals(status, "Shipped", StringComparison.OrdinalIgnoreCase)) status = "Success";
-
-        var sets = await db.QueryProcMultipleAsync("SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION", new
-        {
-            ZedId = r.GetValueOrDefault("order_mer_param1"),
-            Certification = r.GetValueOrDefault("order_mer_param2"),
-            TransactionId = r.GetValueOrDefault("order_id"),
-            PaymentStatus = status,
-            PaymentResponse = Cut(decrypted),
-            PaymentResponseNv = Cut(decrypted),
-            RawData = Cut(encResp!),
-            ApiType = "RECONCILIATION",
-            IpAddress = ClientIp,
-        }, ct);
-
-        // The MVC action meant to post to the ERP here, but its module check was inverted: it never posted
-        // ZED payments (those post from the browser callback) and posted other modules' payments with the
-        // ZED procedures (the wrong documents). The old surveillance action never got that far (see above).
-        // Effective behaviour, kept: nothing is posted here. ZED and surveillance payments post from the
-        // browser callback; anything missed is listed by SP_API_FINANCE_GET_ZEDIDS_PENDING.
-        log.LogInformation("Reconciliation {OrderId}: {Status} (module {Module})", r.GetValueOrDefault("order_id"), status, sets[0].FirstOrDefault()?.Text("ModuleName"));
+        // In the routing procedure's order: ZED_SURVEILLANCE, ZED_CONSULTANT, then main.
+        CcAvenueGatewayModule[] modules =
+        [
+            CcAvenueGatewayModule.Surveillance(surveillance),
+            ConsultancyGateway.Module(ConsultancyPaymentCompletion.Create(HttpContext.RequestServices), db),
+            CcAvenueGatewayModule.Certification(completion),
+        ];
+        await Processor.ReconcileAsync(encResp!, decrypted, r, modules, ClientIp, ct);
         return Ok(new { status = "200", errorMessage = "Success" });
     }
 
     private CcAvenueResponseProcessor Processor => new(db, log);
 
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
-
-    private static string Cut(string s) => s.Length > 5000 ? s[..5000] : s;
 
     private StatusCodeResult Result(CcAvenueOutcome outcome, string? kind) => outcome.Result switch
     {
@@ -177,25 +169,50 @@ public sealed record CcAvenueOutcome(CcAvenueResult Result, string? Certificatio
 /// </summary>
 public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
 {
+    /// <summary>
+    /// One response is recorded at a time in this process. Each path (web, app, reconciliation) reads the order, records the
+    /// response and decides from what it read whether it is the one that marked the order paid; serialised, two responses for
+    /// one order (a browser callback and the reconciliation push arriving together) never both complete it.
+    /// </summary>
+    private static readonly SemaphoreSlim Recording = new(1, 1);
+
     public async Task<CcAvenueOutcome> ProcessAsync(string? encResp, string workingKey, CcAvenueGatewayModule module, string? ip, CancellationToken ct)
     {
         if (!TryDecrypt(encResp, workingKey, out var decrypted, out var r))
             return new(CcAvenueResult.Invalid, null, "Invalid response from the payment gateway.", r);
 
+        (CcAvenueOutcome Outcome, string? PaidBy) recorded;
+        await Recording.WaitAsync(ct);
+        try
+        {
+            recorded = await RecordAsync(decrypted, r, module, ip, ct);
+        }
+        finally
+        {
+            Recording.Release();
+        }
+
+        // Receipt, mail and ERP outside the lock; only the response that recorded the payment gets here.
+        if (recorded.PaidBy is { } zedId) await module.Complete(zedId, recorded.Outcome.Certification!, ct);
+        return recorded.Outcome;
+    }
+
+    /// <returns>The outcome, and the unit whose payment to complete when this response recorded it as paid.</returns>
+    private async Task<(CcAvenueOutcome Outcome, string? PaidBy)> RecordAsync(
+        string decrypted, Dictionary<string, string> r, CcAvenueGatewayModule module, string? ip, CancellationToken ct)
+    {
         var orderId = r.GetValueOrDefault("order_id") ?? "";
         var zedId = r.GetValueOrDefault("merchant_param1") ?? "";
         var certification = Certifications.CanonicalApplicable(r.GetValueOrDefault("merchant_param2")) ?? "";
         var status = r.GetValueOrDefault("order_status") ?? "";
 
         // The order must be one this portal created, for the same unit and level.
-        var order = (await db.QuerySqlAsync<PendingOrder>(
-            $"SELECT ZedId, Certification, Amount, PaymentStatus FROM {module.Orders} WHERE TransactionId = @TransactionId",
-            new { TransactionId = new Dapper.DbString { Value = orderId, IsAnsi = true, Length = 50 } }, ct)).FirstOrDefault();
+        var order = await OrderAsync(module, orderId, ct);
         if (order is null || !string.Equals(order.ZedId, zedId, StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(order.Certification, certification, StringComparison.OrdinalIgnoreCase))
         {
             log.LogError("CCAvenue response for unknown or mismatched order {OrderId} ({ZedId}/{Certification}) in {Orders}", orderId, zedId, certification, module.Orders);
-            return new(CcAvenueResult.Unmatched, certification, "The payment could not be matched to an application. Please contact zed.support@qcin.org.", r);
+            return (new CcAvenueOutcome(CcAvenueResult.Unmatched, certification, "The payment could not be matched to an application. Please contact zed.support@qcin.org.", r), null);
         }
 
         var success = string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase);
@@ -206,8 +223,8 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
             success = false;
         }
 
-        if (string.Equals(order.PaymentStatus, "Success", StringComparison.OrdinalIgnoreCase))
-            return new(CcAvenueResult.AlreadyPaid, certification, null, r);   // already recorded (e.g. the reconciliation came first)
+        if (IsPaid(order.PaymentStatus))
+            return (new CcAvenueOutcome(CcAvenueResult.AlreadyPaid, certification, null, r), null);   // already recorded (e.g. the reconciliation came first)
 
         if (success && module.Verify is not null && await module.Verify(order.ZedId, certification, orderId, r, ct) is { Length: > 0 } refused)
         {
@@ -233,24 +250,122 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
             log.LogWarning(ex, "{Procedure} refused order {OrderId}", module.Procedure, orderId);
             if (success)
             {
-                var now = (await db.QuerySqlAsync<PendingOrder>(
-                    $"SELECT ZedId, Certification, Amount, PaymentStatus FROM {module.Orders} WHERE TransactionId = @TransactionId",
-                    new { TransactionId = new Dapper.DbString { Value = orderId, IsAnsi = true, Length = 50 } }, ct)).FirstOrDefault();
-                if (string.Equals(now?.PaymentStatus, "Success", StringComparison.OrdinalIgnoreCase))
-                    return new(CcAvenueResult.AlreadyPaid, certification, null, r);
+                if (IsPaid((await OrderAsync(module, orderId, ct))?.PaymentStatus))
+                    return (new CcAvenueOutcome(CcAvenueResult.AlreadyPaid, certification, null, r), null);
                 log.LogError("CCAvenue success for order {OrderId} ({ZedId}/{Certification}) was not recorded; left to the reconciliation",
                     orderId, order.ZedId, certification);
-                return new(CcAvenueResult.NotRecorded, certification,
-                    "Your payment was received, but it could not be recorded yet. It will be updated automatically; if your application does not show it within a day, please contact zed.support@qcin.org.", r);
+                return (new CcAvenueOutcome(CcAvenueResult.NotRecorded, certification,
+                    "Your payment was received, but it could not be recorded yet. It will be updated automatically; if your application does not show it within a day, please contact zed.support@qcin.org.", r), null);
             }
         }
 
         if (!success)
-            return new(CcAvenueResult.Failed, certification,
-                r.GetValueOrDefault("status_message") is { Length: > 0 } m ? m : r.GetValueOrDefault("failure_message"), r);
+            return (new CcAvenueOutcome(CcAvenueResult.Failed, certification,
+                r.GetValueOrDefault("status_message") is { Length: > 0 } m ? m : r.GetValueOrDefault("failure_message"), r), null);
 
-        await module.Complete(order.ZedId, certification, ct);
-        return new(CcAvenueResult.Paid, certification, null, r);
+        return (new CcAvenueOutcome(CcAvenueResult.Paid, certification, null, r), order.ZedId);
+    }
+
+    /// <summary>
+    /// CCAvenue's status push (reconciliation), decrypted with the reconciliation key. Recorded as before through
+    /// SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION (it logs every push and routes it by order id to the module's gateway
+    /// procedure, skipping a payment already recorded), now with the checks and the completion of <see cref="ProcessAsync"/>:
+    /// <list type="bullet">
+    /// <item>the order is looked up in the modules' tables, in the procedure's order, and must be for the pushed unit and
+    /// level, or nothing is recorded (an order no module knows is passed on: the procedure only logs it);</item>
+    /// <item>a success for another amount (order_amt, when sent) is recorded as "AmountMismatch", and one the module's check
+    /// refuses (the consultancy milestone) with the module's status: neither marks anything paid, so a late milestone-1
+    /// payment no longer opens milestone 2;</item>
+    /// <item>the module's completion runs only when this push turned the pending order into a paid one: never for an order
+    /// the browser callback or an earlier push had recorded, so never twice.</item>
+    /// </list>
+    /// The completion posts to the ERP as the browser callback does. The MVC action never posted ZED payments here (its module
+    /// check was inverted), so a payment first recorded by the push was left to SP_API_FINANCE_GET_ZEDIDS_PENDING.
+    /// </summary>
+    /// <param name="modules">The modules whose orders the push may be for, in the routing procedure's order.</param>
+    public async Task ReconcileAsync(string encResp, string decrypted, IReadOnlyDictionary<string, string> r,
+        IReadOnlyList<CcAvenueGatewayModule> modules, string? ip, CancellationToken ct)
+    {
+        var orderId = r.GetValueOrDefault("order_id") ?? "";
+        var pushedZedId = r.GetValueOrDefault("order_mer_param1");
+        var pushedLevel = r.GetValueOrDefault("order_mer_param2");
+        var status = r.GetValueOrDefault("order_status") ?? "";
+        if (string.Equals(status, "Shipped", StringComparison.OrdinalIgnoreCase)) status = "Success";
+
+        // The module checks read the checkout's fields by their redirect names (merchant_param3: the milestone).
+        var fields = new Dictionary<string, string>(r);
+        foreach (var (name, value) in r)
+            if (name.StartsWith("order_mer_param", StringComparison.Ordinal)) fields.TryAdd("merchant_param" + name["order_mer_param".Length..], value);
+
+        CcAvenueGatewayModule? module = null;
+        PendingOrder? order = null;
+        string? certification = null, paidBy = null;
+        await Recording.WaitAsync(ct);
+        try
+        {
+            foreach (var m in modules)
+            {
+                if (await OrderAsync(m, orderId, ct) is not { } found) continue;
+                (module, order) = (m, found);
+                break;
+            }
+
+            var success = string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase);
+            var wasPaid = false;
+            if (module is not null && order is not null)
+            {
+                certification = Certifications.CanonicalApplicable(pushedLevel);
+                if (!string.Equals(order.ZedId, pushedZedId, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(order.Certification, certification, StringComparison.OrdinalIgnoreCase))
+                {
+                    log.LogError("Reconciliation for order {OrderId} ({ZedId}/{Certification}) does not match the order in {Orders}; not recorded",
+                        orderId, pushedZedId, pushedLevel, module.Orders);
+                    return;
+                }
+                wasPaid = IsPaid(order.PaymentStatus);
+                if (success && !wasPaid)
+                {
+                    if (r.GetValueOrDefault("order_amt") is { Length: > 0 } amount && !SameAmount(amount, order.Amount))
+                    {
+                        log.LogError("Reconciliation amount {Paid} differs from order amount {Expected} for {OrderId}", amount, order.Amount, orderId);
+                        (status, success) = ("AmountMismatch", false);
+                    }
+                    else if (module.Verify is not null && await module.Verify(order.ZedId, certification!, orderId, fields, ct) is { Length: > 0 } refused)
+                    {
+                        log.LogError("Reconciliation for order {OrderId} ({ZedId}/{Certification}) refused by the module check: {Status}",
+                            orderId, order.ZedId, certification, refused);
+                        (status, success) = (refused, false);
+                    }
+                }
+            }
+
+            var sets = await db.QueryProcMultipleAsync("SP_MSME_PAYMENT_GATEWAY_DETAILS_RECONCILIATION", new
+            {
+                ZedId = order?.ZedId ?? pushedZedId,
+                Certification = certification ?? pushedLevel,
+                TransactionId = orderId,
+                PaymentStatus = status,
+                PaymentResponse = Cut(decrypted),
+                PaymentResponseNv = Cut(decrypted),
+                RawData = Cut(encResp),
+                ApiType = "RECONCILIATION",
+                IpAddress = ip,
+            }, ct);
+            log.LogInformation("Reconciliation {OrderId}: {Status} (module {Module})", orderId, status, sets[0].FirstOrDefault()?.Text("ModuleName"));
+
+            // Paid by this push only when the order was pending and is paid now (the procedure skips a recorded payment).
+            if (module is not null && order is not null && success && !wasPaid)
+            {
+                if (IsPaid((await OrderAsync(module, orderId, ct))?.PaymentStatus)) paidBy = order.ZedId;
+                else log.LogWarning("Reconciliation success for order {OrderId} ({ZedId}/{Certification}) was not recorded as paid", orderId, order.ZedId, certification);
+            }
+        }
+        finally
+        {
+            Recording.Release();
+        }
+
+        if (paidBy is not null) await module!.Complete(paidBy, certification!, ct);
     }
 
     public bool TryDecrypt(string? encResp, string key, out string decrypted, out Dictionary<string, string> fields)
@@ -271,8 +386,17 @@ public sealed class CcAvenueResponseProcessor(ISqlExecutor db, ILogger log)
         }
     }
 
+    private async Task<PendingOrder?> OrderAsync(CcAvenueGatewayModule module, string orderId, CancellationToken ct) =>
+        (await db.QuerySqlAsync<PendingOrder>(
+            $"SELECT ZedId, Certification, Amount, PaymentStatus FROM {module.Orders} WHERE TransactionId = @TransactionId",
+            new { TransactionId = new Dapper.DbString { Value = orderId, IsAnsi = true, Length = 50 } }, ct)).FirstOrDefault();
+
+    private static bool IsPaid(string? status) => string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase);
+
     private static bool SameAmount(string? paid, decimal? expected) =>
         expected is { } b && decimal.TryParse(paid, NumberStyles.Number, CultureInfo.InvariantCulture, out var a) && a == b;
+
+    private static string Cut(string s) => s.Length > 5000 ? s[..5000] : s;
 
     private sealed record PendingOrder(string ZedId, string Certification, decimal? Amount, string? PaymentStatus);
 }

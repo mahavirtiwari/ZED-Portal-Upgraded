@@ -113,13 +113,36 @@ public static class ZedHostingExtensions
         });
 
         services.Configure<ForwardedHeadersOptions>(o =>
-            o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto);
+        {
+            o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            // Loopback (IIS on the same server) is always trusted; a load balancer elsewhere only when listed, so its
+            // X-Forwarded-For gives the rate limits and logs the client's address instead of the balancer's.
+            foreach (var entry in TrustedProxies(config))
+            {
+                if (System.Net.IPAddress.TryParse(entry, out var address)) o.KnownProxies.Add(address);
+                else if (System.Net.IPNetwork.TryParse(entry, out var network)) o.KnownIPNetworks.Add(network);
+                else throw new InvalidOperationException($"{TrustedProxiesSetting}: '{entry}' is not an IP address or network (e.g. 10.0.0.5 or 10.0.0.0/24).");
+            }
+        });
         return services;
+    }
+
+    /// <summary>Addresses or networks (CIDR) of the proxies in front of the hosts, as a list or one comma-separated value.</summary>
+    public const string TrustedProxiesSetting = "Security:TrustedProxies";
+
+    public static IReadOnlyList<string> TrustedProxies(IConfiguration config)
+    {
+        var section = config.GetSection(TrustedProxiesSetting);
+        var values = section.Value is { } single ? new[] { single } : section.GetChildren().Select(c => c.Value).OfType<string>();
+        return values.SelectMany(v => v.Split([',', ';'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
     }
 
     public static WebApplication UseZedPlatform(this WebApplication app)
     {
         app.UseForwardedHeaders();
+        // An https public address: every cookie is Secure, also over plain http behind a TLS-ending balancer.
+        if (ZedAuthenticationExtensions.HttpsOnly(app.Services.GetRequiredService<Microsoft.Extensions.Options.IOptions<PortalOptions>>().Value))
+            app.UseCookiePolicy(new CookiePolicyOptions { Secure = CookieSecurePolicy.Always });
         app.UseZedEnvironmentLabel();
         app.UseExceptionHandler();
         app.UseStatusCodePages();

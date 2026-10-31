@@ -36,7 +36,7 @@ public sealed class EmailAddresses(IPortalSettings settings, IOptions<EmailOptio
     [
         new(ContactInbox, "Contact ZED queries", "Receives the queries sent from the Contact ZED page.", false, [PortalSystem.Main]),
         new(RegistrationCc, "Copy of registration, payment and allotment mails",
-            "Copied on the registration, payment, milestone, allotment and app registration mails (legacy ccAddress).", false, AllSystems),
+            "Copied on the registration, payment, milestone, allotment and app registration mails (legacy ccAddress). Also told when a unit changes its PAN on a payment page.", false, AllSystems),
         new(ZedTeamInbox, "ZED team: allotment rejections",
             "Told when an agency or consultant organisation rejects an allotted assessment or consultancy.", false, AllSystems),
         new(SchemeRejectionInbox, "Financial assistance / technology upgradation rejections",
@@ -45,7 +45,7 @@ public sealed class EmailAddresses(IPortalSettings settings, IOptions<EmailOptio
         new(DbMailBcc, "Copy of every database mail",
             "Blind copy of each mail the database procedures send (allotments, reminders, surveillance, rejections).", true, AllSystems),
         new(DbReportRecipients, "Daily status report",
-            "Recipients of the database's daily MSME status report, instead of the addresses fixed in the procedure.", true,
+            "Recipients of the database's daily MSME status report. Until they are set, the report is not sent.", true,
             [PortalSystem.Main]),
     ];
 
