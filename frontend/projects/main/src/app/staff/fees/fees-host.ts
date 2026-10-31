@@ -1,17 +1,13 @@
-import { Component, inject } from '@angular/core';
-import { AdminPortalService } from '../admin-portal';
-import { AssessmentFeesPage } from './assessment-fees';
+import { Component } from '@angular/core';
 import { FeeStructurePage } from './fee-structure';
 
 /**
- * Masters → Payments: the Fee Structure (main and surveillance) or the handholding fee per milestone (consultancy).
- * On the main portal the Admin's portal switch picks which (V4 one Admin); on the other builds, their own.
+ * Masters → Payments: the Fee Structure of the portal the Admin's switch picks (V4 one Admin), the same page on all three:
+ * per level on ZED Certification and Surveillance, per handholding milestone on Consultancy.
  */
 @Component({
   selector: 'zed-staff-fees-host',
-  imports: [AssessmentFeesPage, FeeStructurePage],
-  template: `@if (consultancy) { <zed-staff-assessment-fees /> } @else { <zed-staff-fee-structure /> }`,
+  imports: [FeeStructurePage],
+  template: `<zed-staff-fee-structure />`,
 })
-export class FeesHostPage {
-  protected readonly consultancy = inject(AdminPortalService).effective() === 'consultancy';
-}
+export class FeesHostPage {}

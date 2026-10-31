@@ -100,22 +100,23 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// <param name="Category">0 general (the base share), 1 SC / ST / aspirational district, 2 woman-owned.</param>
     /// <param name="BaseShare">General: the subsidy every unit of the type gets (%); the other categories keep their additional share on top.</param>
     /// <param name="AdditionalShare">Categories 1 and 2: the share on top of the base (%).</param>
-    /// <param name="AllLevels">The same shares for every level (Bronze, Silver, Gold, ZED-X).</param>
+    /// <param name="Certification">The level, or on Consultancy the milestone, whose share changes.</param>
+    /// <param name="AllLevels">The same shares for every level (Bronze, Silver, Gold, ZED-X), or on Consultancy every milestone.</param>
     public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels);
 
     /// <summary>
     /// V4: the subsidy share of a category (AssessmentFee.SubsidyPercentage, which the MSME's payment page shows and charges),
-    /// with every amount of the changed rows worked out again (joining reward rows keep their reward).
+    /// with every amount of the changed rows worked out again (joining reward rows keep their reward). Consultancy: per
+    /// milestone (its Silver and Gold rows alike, as its fee), or for every milestone.
     /// </summary>
     [HttpPut("{enterpriseType}/subsidy")]
     public async Task<ActionResult<MessageResponse>> UpdateSubsidy(string enterpriseType, SubsidyRequest req, CancellationToken ct)
     {
-        if (ByMilestone) return NotFound();
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
         if (type == "Rejected") return this.Problem400("Rejected units get no subsidy.");
         var current = await LoadAsync(type, ct);
-        var (updated, error) = ApplySubsidy(current, req);
+        var (updated, error) = ApplySubsidy(current, req, ByMilestone);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
         loggers.CreateLogger(AuditCategory).LogInformation(
@@ -123,6 +124,159 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             type, req.AllLevels ? "all" : req.Certification, req.Category, UserId, req.AllLevels, changed);
         return new MessageResponse(changed == 0 ? "No changes to save." : "Subsidy share updated.");
     }
+
+    /// <summary>Consultancy's handholding milestones (AssessmentFee.MileStone, an int there).</summary>
+    public static readonly string[] ConsultancyMilestones = ["1", "2", "3"];
+
+    /// <param name="Certification">The level, or on Consultancy the milestone ("1" to "3").</param>
+    /// <param name="Reward">The joining reward (0 when none); the reward rows are made with it.</param>
+    /// <param name="GeneralShare">The subsidy every unit of the type gets (%).</param>
+    /// <param name="AdditionalShares">Per special category of the portal: the share on top of the general one (%).</param>
+    /// <param name="AlsoTypes">Other enterprise types to give the same fees (those that already have fees are left alone).</param>
+    public sealed record AddRequest(string? Certification, decimal? AssessmentFee, decimal? Reward, decimal? GeneralShare,
+        Dictionary<int, decimal?>? AdditionalShares, List<string>? AlsoTypes);
+
+    /// <summary>
+    /// V4: the fees of a level (Consultancy: a milestone) that has no AssessmentFee rows for the type, so its units can pay.
+    /// Makes the rows the payment procedures read: per subsidy category of the portal, one without and one with the joining
+    /// reward (Coupon IS NULL / IS NOT NULL); Rejected units one row at full fee. Every amount comes from <see cref="FeeCalculator"/>.
+    /// </summary>
+    [HttpPost("{enterpriseType}/add")]
+    public async Task<ActionResult<MessageResponse>> Add(string enterpriseType, AddRequest req, CancellationToken ct)
+    {
+        var type = Type(enterpriseType);
+        if (type is null) return NotFound();
+        var group = ByMilestone
+            ? ConsultancyMilestones.FirstOrDefault(m => m == req.Certification?.Trim())
+            : Canonical(req.Certification, Levels);
+        if (group is null) return this.Problem400(ByMilestone ? "Please select a valid milestone." : "Please select a valid certification level.");
+        var types = new List<string> { type };
+        foreach (var also in req.AlsoTypes ?? [])
+            if (Type(also) is { } t && t != "Rejected" && type != "Rejected" && !types.Contains(t)) types.Add(t);
+
+        var added = new List<string>();
+        var skipped = new List<string>();
+        foreach (var t in types)
+        {
+            var current = await LoadAsync(t, ct);
+            if (current.Any(r => Same(ByMilestone ? r.MileStone : r.Certification, group)))
+            {
+                if (t == type) return this.Problem400($"{type} {GroupName(group)} already has fees: change them on this page instead.");
+                skipped.Add(t);
+                continue;
+            }
+            var (rows, error) = NewRows(t, group, req, host.System);
+            if (error is not null) return this.Problem400(error);
+            await InsertAsync(rows!, ct);
+            added.Add(t);
+            loggers.CreateLogger(AuditCategory).LogInformation(
+                "Fees of {EnterpriseType} {Group} added by {Actor} (system {System}): {Rows} row(s), fee {Fee}, reward {Reward}, general share {Share}",
+                t, group, UserId, host.System, rows!.Count, req.AssessmentFee, req.Reward, req.GeneralShare);
+        }
+        var message = $"Fees added for {string.Join(", ", added)} {GroupName(group)}.";
+        if (skipped.Count > 0) message += $" {string.Join(", ", skipped)} already had fees and were left as they were.";
+        return new MessageResponse(message);
+    }
+
+    private string GroupName(string group) => ByMilestone ? "milestone " + group : group == "ZEDX" ? "ZED-X" : group;
+
+    /// <summary>The subsidy categories of each portal's payment procedure (AssessmentFee.SpecialCategory).</summary>
+    public static int[] CategoriesOf(PortalSystem system) => system == PortalSystem.Main ? [0, 1, 2] : [0, 1];
+
+    /// <summary>The new rows of <paramref name="type"/> for a level (or milestone); validated, with every amount worked out.</summary>
+    public static (List<FeeRow>? Rows, string? Error) NewRows(string type, string group, AddRequest req, PortalSystem system)
+    {
+        if (FeeCalculator.AmountError(req.AssessmentFee, "fee") is { } feeError) return (null, feeError);
+        var fee = req.AssessmentFee!.Value;
+        var rejected = type == "Rejected";
+        var consultancy = system == PortalSystem.Consultancy;
+        // The levels a row is made for: the level itself, or on Consultancy each handholding level of the milestone.
+        var levels = consultancy ? new[] { "Silver", "Gold" } : [group];
+        var milestone = consultancy ? group : null;
+        var rows = new List<FeeRow>();
+        FeeRow Blank(string level, int? category, decimal share, decimal? coupon) => new(
+            0, type, level, category, true, share, null, null, null, coupon, null, null, null, null, null, null, null, null, null, null, milestone);
+
+        if (rejected)
+        {
+            foreach (var level in levels)
+            {
+                var (row, error) = FeeCalculator.Recalculate(Blank(level, null, 0m, null), fee, null, rejected: true);
+                if (error is not null) return (null, error);
+                rows.Add(row!);
+            }
+            return (rows, null);
+        }
+
+        if (ShareError(req.GeneralShare, "general subsidy share") is { } shareError) return (null, shareError);
+        var reward = req.Reward ?? 0m;
+        if (FeeCalculator.AmountError(reward, "joining reward") is { } rewardError) return (null, rewardError);
+        if (reward > FeeCalculator.Round(fee * (1 + FeeCalculator.GstRate))) return (null, "The joining reward cannot be more than the fee with GST.");
+        foreach (var category in CategoriesOf(system))
+        {
+            var additional = 0m;
+            if (category != 0)
+            {
+                var value = req.AdditionalShares is { } a && a.TryGetValue(category, out var v) ? v : 0m;
+                if (ShareError(value, $"additional share of category {category}") is { } addError) return (null, addError);
+                additional = value!.Value;
+            }
+            var share = req.GeneralShare!.Value + additional;
+            if (share > 100) return (null, $"The subsidy of category {category} would be {share:0.##}%: it must be at most 100%.");
+            // Consultancy's procedure reads the general row as SpecialCategory NULL (a bit column there), the others as 0.
+            int? stored = consultancy && category == 0 ? null : category;
+            foreach (var level in levels)
+                foreach (var coupon in new decimal?[] { null, reward })
+                {
+                    var (row, error) = FeeCalculator.Recalculate(Blank(level, stored, share, coupon), fee, coupon, rejected: false);
+                    if (error is not null) return (null, error);
+                    rows.Add(row!);
+                }
+        }
+        return (rows, null);
+    }
+
+    /// <summary>The new rows in one transaction (AssessmentFee is the legacy table the procedures read; no procedure inserts one).</summary>
+    private async Task InsertAsync(IReadOnlyList<FeeRow> rows, CancellationToken ct)
+    {
+        var p = new Dapper.DynamicParameters();
+        var sql = new System.Text.StringBuilder("SET XACT_ABORT ON; BEGIN TRANSACTION;\n");
+        for (var i = 0; i < rows.Count; i++)
+        {
+            var r = rows[i];
+            sql.Append(InsertSql(i, r.MileStone is not null)).Append('\n');
+            p.Add($"EnterpriseTypee{i}", r.EnterpriseTypee);
+            p.Add($"Certification{i}", r.Certification);
+            p.Add($"SpecialCategory{i}", r.SpecialCategory);
+            p.Add($"SubsidyPercentage{i}", r.SubsidyPercentage);
+            p.Add($"AssessmentFee{i}", r.AssessmentFee);
+            p.Add($"Gst{i}", r.Gst);
+            p.Add($"Total{i}", r.Total);
+            p.Add($"Coupon{i}", r.Coupon);
+            p.Add($"AssessmentFeeAfterCoupon{i}", r.AssessmentFeeAfterCoupon);
+            p.Add($"GstAfterCoupon{i}", r.GstAfterCoupon);
+            p.Add($"TotalAfterCoupon{i}", r.TotalAfterCoupon);
+            p.Add($"SubsidyPer{i}", r.SubsidyPer);
+            p.Add($"GstAfterSubsidy{i}", r.GstAfterSubsidy);
+            p.Add($"ApplicantContributionAfterSubsidy{i}", r.ApplicantContributionAfterSubsidy);
+            p.Add($"Tds15{i}", r.Tds15);
+            p.Add($"Tds75{i}", r.Tds75);
+            p.Add($"NetPaybleTds15{i}", r.NetPaybleTds15);
+            p.Add($"NetPaybleTds75{i}", r.NetPaybleTds75);
+            if (r.MileStone is not null) p.Add($"MileStone{i}", int.Parse(r.MileStone, CultureInfo.InvariantCulture));
+        }
+        sql.Append("COMMIT;");
+        await db.ExecuteSqlAsync(sql.ToString(), p, ct);
+    }
+
+    /// <summary>One new row; SubsidyAmount holds the applicant's share as SP_MASTER_UPDATE_ASSESSMENT_FEE stores it.</summary>
+    internal static string InsertSql(int i, bool milestone) =>
+        "INSERT INTO AssessmentFee (EnterpriseTypee, Certification, SpecialCategory, IsActive, SubsidyPercentage, AssessmentFee, Gst, Total, Coupon, " +
+        "AssessmentFeeAfterCoupon, GstAfterCoupon, TotalAfterCoupon, SubsidyPer, SubsidyAmount, GstAfterSubsidy, ApplicantContributionAfterSubsidy, " +
+        "Tds15, Tds75, NetPaybleTds15, NetPaybleTds75" + (milestone ? ", MileStone" : "") + ") VALUES (" +
+        $"@EnterpriseTypee{i}, @Certification{i}, @SpecialCategory{i}, 1, @SubsidyPercentage{i}, @AssessmentFee{i}, @Gst{i}, @Total{i}, @Coupon{i}, " +
+        $"@AssessmentFeeAfterCoupon{i}, @GstAfterCoupon{i}, @TotalAfterCoupon{i}, @SubsidyPer{i}, @SubsidyPer{i}, @GstAfterSubsidy{i}, " +
+        $"@ApplicantContributionAfterSubsidy{i}, @Tds15{i}, @Tds75{i}, @NetPaybleTds15{i}, @NetPaybleTds75{i}" + (milestone ? $", @MileStone{i}" : "") + ");";
 
     /// <summary>The subsidy share of a row: SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.</summary>
     internal const string ShareSql = "UPDATE AssessmentFee SET SubsidyPercentage = @SubsidyPercentage WHERE Id = @Id AND EnterpriseTypee = @EnterpriseTypee;";
@@ -256,35 +410,49 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// The new subsidy shares: General sets the base (the other categories move with it, keeping their additional share);
     /// a category sets its additional share on top of the level's base. Every changed row is recalculated.
     /// </summary>
-    public static (List<FeeRow>? Rows, string? Error) ApplySubsidy(IReadOnlyList<FeeRow> current, SubsidyRequest req)
+    /// <param name="byMilestone">Consultancy: <c>req.Certification</c> is a milestone; the share changes for its rows of every
+    /// level, each level against its own general row.</param>
+    public static (List<FeeRow>? Rows, string? Error) ApplySubsidy(IReadOnlyList<FeeRow> current, SubsidyRequest req, bool byMilestone = false)
     {
         if (current.Count == 0) return (null, "No fee rows exist for this enterprise type.");
         if (req.Category is not { } category || !Categories.Contains(category)) return (null, "Please choose the subsidy category.");
         var share = category == 0 ? req.BaseShare : req.AdditionalShare;
         var label = category == 0 ? "base share" : "additional share";
         if (ShareError(share, label) is { } shareError) return (null, shareError);
-        string[] levels;
-        if (req.AllLevels) levels = Levels.Where(l => current.Any(r => Same(r.Certification, l))).ToArray();
-        else if (Canonical(req.Certification, Levels) is { } one && current.Any(r => Same(r.Certification, one))) levels = [one];
+        // The rows of one group: a level, or on Consultancy a milestone.
+        Func<FeeRow, string?> groupOf = byMilestone ? r => r.MileStone : r => r.Certification;
+        string[] groups;
+        if (byMilestone)
+        {
+            var milestones = Milestones(current);
+            if (req.AllLevels) groups = [.. milestones];
+            else if (milestones.FirstOrDefault(m => string.Equals(m, req.Certification?.Trim(), StringComparison.OrdinalIgnoreCase)) is { } one) groups = [one];
+            else return (null, "Please select a valid milestone.");
+        }
+        else if (req.AllLevels) groups = Levels.Where(l => current.Any(r => Same(r.Certification, l))).ToArray();
+        else if (Canonical(req.Certification, Levels) is { } one && current.Any(r => Same(r.Certification, one))) groups = [one];
         else return (null, "Please select a valid certification level.");
 
         var result = current.ToList();
-        foreach (var level in levels)
+        foreach (var (group, level) in groups.SelectMany(g => current.Where(r => Same(groupOf(r), g)).Select(r => r.Certification?.Trim() ?? "")
+                     .Distinct(StringComparer.OrdinalIgnoreCase).Select(l => (g, l))))
         {
-            var general = current.FirstOrDefault(r => Same(r.Certification, level) && CategoryOf(r) == 0 && !r.IsCouponRow)
-                          ?? current.FirstOrDefault(r => Same(r.Certification, level) && CategoryOf(r) == 0);
-            if (general?.SubsidyPercentage is not { } oldBase) return (null, $"The {level} fees have no general row with a subsidy; please correct the master data first.");
+            var name = byMilestone ? $"{group} {level}" : level;
+            bool InGroup(FeeRow r) => Same(groupOf(r), group) && Same(r.Certification, level);
+            var general = current.FirstOrDefault(r => InGroup(r) && CategoryOf(r) == 0 && !r.IsCouponRow)
+                          ?? current.FirstOrDefault(r => InGroup(r) && CategoryOf(r) == 0);
+            if (general?.SubsidyPercentage is not { } oldBase) return (null, $"The {name} fees have no general row with a subsidy; please correct the master data first.");
             for (var i = 0; i < result.Count; i++)
             {
                 var row = result[i];
-                if (!Same(row.Certification, level)) continue;
+                if (!InGroup(row)) continue;
                 decimal pct;
                 if (category == 0) pct = CategoryOf(row) == 0 ? share!.Value : share!.Value + ((row.SubsidyPercentage ?? oldBase) - oldBase);
                 else if (CategoryOf(row) == category) pct = oldBase + share!.Value;
                 else continue;
-                if (pct is < 0 or > 100) return (null, $"The {level} subsidy of category {CategoryOf(row)} would be {pct:0.##}%: it must be between 0 and 100.");
+                if (pct is < 0 or > 100) return (null, $"The {name} subsidy of category {CategoryOf(row)} would be {pct:0.##}%: it must be between 0 and 100.");
                 if (pct == row.SubsidyPercentage) continue;
-                if (row.AssessmentFee is not { } fee) return (null, $"Fee row {row.Id} ({level}) has no fee; please save the fee first.");
+                if (row.AssessmentFee is not { } fee) return (null, $"Fee row {row.Id} ({name}) has no fee; please save the fee first.");
                 var (recalculated, error) = FeeCalculator.Recalculate(row with { SubsidyPercentage = pct }, fee, null, rejected: false);
                 if (error is not null) return (null, error);
                 result[i] = recalculated!;

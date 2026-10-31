@@ -72,16 +72,19 @@ describe('StaffLoginPage (session expired)', () => {
 });
 
 describe('FeesHostPage', () => {
-  it('shows the handholding fees when the Admin chose the Consultancy portal', async () => {
+  it('shows the handholding fees per milestone, on the same page, when the Admin chose the Consultancy portal', async () => {
     sessionStorage.setItem('zed.adminPortal', 'consultancy');
     TestBed.configureTestingModule({ imports: [FeesHostPage], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] });
     const fixture = TestBed.createComponent(FeesHostPage);
     await settle(fixture);
+    for (const r of TestBed.inject(HttpTestingController).match(() => true)) r.flush({ enterpriseType: 'Micro', levels: [], rows: [], groupBy: 'MileStone' });
+    await settle(fixture);
     const el: HTMLElement = fixture.nativeElement;
-    expect(el.querySelector('zed-staff-assessment-fees')).not.toBeNull();
-    expect(el.querySelector('zed-staff-fee-structure')).toBeNull();
+    expect(el.querySelector('zed-staff-fee-structure')).not.toBeNull();
+    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Milestone 1');
+    expect([...el.querySelectorAll('.lv-name')].map((n) => n.textContent!.trim())).toEqual(['Milestone 1', 'Milestone 2', 'Milestone 3']);
+    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.trim())).toEqual(['Micro', 'Small', 'Medium']);
     expect(el.querySelector('.ps-tab.on')!.textContent!.trim()).toBe('Consultancy');
-    for (const r of TestBed.inject(HttpTestingController).match(() => true)) r.flush(null);
     sessionStorage.clear();
   });
 });

@@ -313,6 +313,61 @@ public sealed class ConsultancyStaffTests : IDisposable
     }
 
     [Fact]
+    public async Task The_subsidy_share_is_set_per_milestone_for_its_silver_and_gold_rows_or_for_every_milestone()
+    {
+        Dictionary<string, object?> Row(int id, string cert, string milestone, int category, decimal share)
+        {
+            var row = FeeRow(id, cert, milestone, null);
+            row["SpecialCategory"] = category;
+            row["SubsidyPercentage"] = share;
+            return row;
+        }
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets(
+            [Row(1, "Silver", "MileStone1", 0, 80m), Row(2, "Silver", "MileStone1", 1, 85m), Row(3, "Gold", "MileStone1", 0, 80m), Row(4, "Silver", "MileStone2", 0, 80m)]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        Dictionary<string, decimal> Shares() => _host.Sql.Calls.Where(c => c.Name.Contains("SET SubsidyPercentage", StringComparison.Ordinal))
+            .ToDictionary(c => FakeSql.Arg(c.Args, "Id")!, c => decimal.Parse(FakeSql.Arg(c.Args, "SubsidyPercentage")!, System.Globalization.CultureInfo.InvariantCulture));
+
+        // Milestone 1 only: both levels' general rows take the base, the SC / ST row keeps its 5% on top; milestone 2 is untouched.
+        var one = await client.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "MileStone1", category = 0, baseShare = 90m, allLevels = false });
+        Assert.Equal(HttpStatusCode.OK, one.StatusCode);
+        Assert.Equal(new Dictionary<string, decimal> { ["1"] = 90m, ["2"] = 95m, ["3"] = 90m }, Shares());
+
+        _host.Sql.Calls.Clear();
+        var all = await client.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "MileStone1", category = 0, baseShare = 90m, allLevels = true });
+        Assert.Equal(HttpStatusCode.OK, all.StatusCode);
+        Assert.Equal(90m, Shares()["4"]);
+
+        var unknown = await client.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Silver", category = 0, baseShare = 90m, allLevels = false });
+        Assert.Equal("Please select a valid milestone.", await unknown.ProblemTitle());
+    }
+
+    [Fact]
+    public async Task Fees_of_an_empty_milestone_are_added_for_silver_and_gold_with_the_general_row_as_null()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets([FeeRow(1, "Silver", "1", null)]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        Assert.Equal("Micro milestone 1 already has fees: change them on this page instead.",
+            await (await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "1", assessmentFee = 1000m, generalShare = 80m })).ProblemTitle());
+
+        var r = await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new
+        {
+            certification = "2", assessmentFee = 100000m, reward = 0m, generalShare = 90m, additionalShares = new Dictionary<int, decimal> { [1] = 5m },
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var batch = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal));
+        // Two categories x Silver and Gold x without and with the reward; consultancy's general row is SpecialCategory NULL.
+        Assert.Equal(8, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
+        Assert.Contains(", MileStone)", batch.Name);
+        Assert.Null(FakeSql.Arg(batch.Args, "SpecialCategory0"));
+        Assert.Equal("Silver", FakeSql.Arg(batch.Args, "Certification0"));
+        Assert.Equal("Gold", FakeSql.Arg(batch.Args, "Certification2"));
+        Assert.Equal("2", FakeSql.Arg(batch.Args, "MileStone0"));
+        Assert.Equal("1", FakeSql.Arg(batch.Args, "SpecialCategory4"));
+        Assert.Equal(95m, decimal.Parse(FakeSql.Arg(batch.Args, "SubsidyPercentage4")!, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
     public async Task Dashboard_cards_use_the_handholding_columns()
     {
         _host.Sql.Procs["SP_DASHBOARD_GET_DETAILS"] = _ => FakeSql.Sets([new { AssessmentAgencies = 4, SiteAssessors = 9, SilverM1PaymentDone = 3, BronzeTotal = 99 }]);

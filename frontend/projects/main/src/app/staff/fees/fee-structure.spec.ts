@@ -187,4 +187,101 @@ describe('FeeStructurePage', () => {
     expect(button('Rejected').getAttribute('aria-pressed')).toBe('true');
     expect(el.querySelector('button[data-level="Bronze"]')!.textContent).not.toContain('Joining reward');
   });
+
+  it('offers Add fees for a level without fees and sends the fee, reward, shares and the other types', async () => {
+    (el.querySelector('button[data-level="ZEDX"]') as HTMLButtonElement).click();
+    await settle();
+    const add = el.querySelector('section[aria-labelledby="fs-add"]')!;
+    expect(add.textContent).toContain('No fees are set for Micro ZED-X');
+    expect(add.textContent).toContain('Creates 6 rows for Micro ZED-X');
+    expect([...add.querySelectorAll('label')].map((l) => l.textContent!.trim())).toContain('Additional subsidy, WOM (%)');
+
+    button('Add Fees', add).click();
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter the fee and the General subsidy.');
+
+    await typeIn('#fs-add-fee', '50000');
+    await typeIn('#fs-add-reward', '5000');
+    await typeIn('#fs-add-general', '80');
+    await typeIn('#fs-add-cat-2', '10');
+    button('Add Fees', el.querySelector('section[aria-labelledby="fs-add"]')!).click();
+    await settle();
+    const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/fees/Micro/add');
+    expect(req.request.body).toEqual({
+      certification: 'ZEDX', assessmentFee: 50000, reward: 5000, generalShare: 80, additionalShares: { 2: 10 }, alsoTypes: ['Small', 'Medium'],
+    });
+    req.flush({ message: 'Fees added for Micro, Small, Medium ZED-X.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Fees added');
+  });
+});
+
+describe('FeeStructurePage on Consultancy', () => {
+  let fixture: ComponentFixture<FeeStructurePage>;
+  let http: HttpTestingController;
+  let el: HTMLElement;
+
+  async function settle() {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  const milestone = (r: FeeRow, m: string): FeeRow => ({ ...r, mileStone: m });
+  const handholding: FeesResponse = {
+    enterpriseType: 'Micro', groupBy: 'MileStone',
+    levels: [{ certification: '1', assessmentFee: 150000, coupon: 1000, hasCouponRows: true }],
+    rows: [
+      milestone(row(11, 'Silver', 0, 90, 150000), '1'), milestone(row(12, 'Silver', 1, 95, 150000), '1'),
+      milestone(row(13, 'Gold', 0, 90, 150000), '1'), milestone(row(14, 'Silver', 0, 90, 150000, 1000), '1'),
+    ],
+  };
+
+  beforeEach(async () => {
+    sessionStorage.setItem('zed.adminPortal', 'consultancy');
+    await TestBed.configureTestingModule({ imports: [FeeStructurePage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    fixture = TestBed.createComponent(FeeStructurePage);
+    http = TestBed.inject(HttpTestingController);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(handholding);
+    await settle();
+  });
+
+  afterEach(() => {
+    http.verify();
+    sessionStorage.clear();
+  });
+
+  it('shows a card per milestone and the Silver and Gold rows of the milestone with their level', () => {
+    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Milestone 1');
+    expect(el.querySelector('button[data-level="2"]')!.textContent).toContain('No fee set for Micro');
+    const levels = [...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-level')].map((c) => c.textContent!.trim());
+    expect(levels).toEqual(['Silver', 'Silver', 'Silver', 'Gold']);
+    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SPL', 'GEN']);
+    // The milestone fee only: its joining reward stays as stored.
+    expect(el.querySelector('#fs-reward')).toBeNull();
+  });
+
+  it('saves the milestone fee without the reward and edits the share for every milestone', async () => {
+    const fee = el.querySelector('#fs-fee') as HTMLInputElement;
+    fee.value = '160000';
+    fee.dispatchEvent(new Event('input'));
+    await settle();
+    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Save Fee') as HTMLButtonElement).click();
+    await settle();
+    const save = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/fees/Micro');
+    expect(save.request.body).toEqual({ levels: [{ certification: '1', assessmentFee: 160000, coupon: null }] });
+    save.flush({ message: 'Data updated.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(handholding);
+    await settle();
+
+    (el.querySelector('section[aria-labelledby="fs-structure"] tbody button') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.modal')!.textContent).toContain('Apply to all three milestones');
+  });
 });

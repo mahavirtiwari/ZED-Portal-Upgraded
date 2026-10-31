@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Zed.Portal.Features.Staff.Fees;
@@ -272,5 +272,82 @@ public sealed class FeesTests : IDisposable
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 0, baseShare = 10m })).StatusCode);
         Assert.Empty(ShareUpdates());
+    }
+
+    // ----- adding the fees of a level that has none -----
+
+    private List<(string Name, object? Args)> Inserts() =>
+        _host.Sql.Calls.Where(c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal)).ToList();
+
+    [Fact]
+    public async Task Fees_are_added_for_an_empty_level_per_category_with_and_without_the_reward_and_for_the_other_types()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.PostAsJsonAsync("/api/staff/fees/Micro/add", new
+        {
+            certification = "Gold", assessmentFee = 10000m, reward = 1000m, generalShare = 80m,
+            additionalShares = new Dictionary<int, decimal> { [1] = 15m, [2] = 10m }, alsoTypes = new[] { "Small", "Medium", "Rejected" },
+        });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("Fees added for Micro, Small, Medium Gold.", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+
+        // One transaction per type: main's three categories, each without and with the joining reward.
+        var batches = Inserts();
+        Assert.Equal(3, batches.Count);
+        var micro = batches[0];
+        Assert.Equal(6, System.Text.RegularExpressions.Regex.Matches(micro.Name, "INSERT INTO AssessmentFee").Count);
+        Assert.StartsWith("SET XACT_ABORT ON; BEGIN TRANSACTION;", micro.Name);
+        Assert.Equal("Micro", FakeSql.Arg(micro.Args, "EnterpriseTypee0"));
+        Assert.Equal("Gold", FakeSql.Arg(micro.Args, "Certification0"));
+        Assert.Equal("0", FakeSql.Arg(micro.Args, "SpecialCategory0"));
+        Assert.Null(FakeSql.Arg(micro.Args, "Coupon0"));
+        Assert.Equal(80m, Dec(micro.Args, "SubsidyPercentage0"));
+        Assert.Equal(2000m, Dec(micro.Args, "SubsidyPer0"));
+        Assert.Equal(2360m, Dec(micro.Args, "ApplicantContributionAfterSubsidy0"));
+        Assert.Equal(1000m, Dec(micro.Args, "Coupon1"));
+        Assert.Equal(10800m, Dec(micro.Args, "TotalAfterCoupon1"));
+        Assert.Equal(95m, Dec(micro.Args, "SubsidyPercentage2"));  // SC / ST: 80 + 15
+        Assert.Equal(90m, Dec(micro.Args, "SubsidyPercentage4"));  // woman-owned: 80 + 10
+        Assert.Equal("2", FakeSql.Arg(micro.Args, "SpecialCategory5"));
+        Assert.Equal("Small", FakeSql.Arg(batches[1].Args, "EnterpriseTypee0"));
+        Assert.Equal("Medium", FakeSql.Arg(batches[2].Args, "EnterpriseTypee0"));
+    }
+
+    [Fact]
+    public async Task A_level_with_fees_is_not_added_again_and_other_types_with_fees_are_left_alone()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var again = await admin.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "Bronze", assessmentFee = 10000m, reward = 0m, generalShare = 80m });
+        Assert.Equal("Micro Bronze already has fees: change them on this page instead.", await again.ProblemTitle());
+
+        var small = await admin.PostAsJsonAsync("/api/staff/fees/Small/add", new { certification = "Bronze", assessmentFee = 10000m, reward = 0m, generalShare = 60m, alsoTypes = new[] { "Micro" } });
+        Assert.Equal("Fees added for Small Bronze. Micro already had fees and were left as they were.",
+            (await small.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        Assert.Single(Inserts());
+    }
+
+    [Fact]
+    public async Task Rejected_units_get_one_row_at_the_full_fee()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.PostAsJsonAsync("/api/staff/fees/Rejected/add", new { certification = "ZEDX", assessmentFee = 50000m });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var batch = Assert.Single(Inserts());
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
+        Assert.Equal(0m, Dec(batch.Args, "SubsidyPercentage0"));
+        Assert.Equal(59000m, Dec(batch.Args, "ApplicantContributionAfterSubsidy0"));
+    }
+
+    [Theory]
+    [InlineData("{\"certification\":\"Gold\",\"assessmentFee\":10000,\"generalShare\":95,\"additionalShares\":{\"1\":10}}", "The subsidy of category 1 would be 105%: it must be at most 100%.")]
+    [InlineData("{\"certification\":\"Gold\",\"assessmentFee\":1000,\"reward\":2000,\"generalShare\":80}", "The joining reward cannot be more than the fee with GST.")]
+    [InlineData("{\"certification\":\"Platinum\",\"assessmentFee\":1000,\"generalShare\":80}", "Please select a valid certification level.")]
+    [InlineData("{\"certification\":\"Gold\",\"generalShare\":80}", "Please enter the fee.")]
+    public async Task Fees_that_cannot_be_charged_are_refused(string body, string message)
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var r = await admin.PostAsync("/api/staff/fees/Micro/add", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(message, await r.ProblemTitle());
+        Assert.Empty(Inserts());
     }
 }

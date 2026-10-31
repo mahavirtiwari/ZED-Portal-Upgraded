@@ -7,13 +7,16 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee } from './fees.api';
 
 const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
+/** Consultancy's handholding milestones (AssessmentFee.MileStone); one fee each, for Silver and Gold alike. */
+const MILESTONES = ['1', '2', '3'] as const;
+const HANDHOLDING_LEVELS = ['Silver', 'Gold'];
 /** The name shown for a level's code (ZEDX is ZED-X, migration 0028). */
 export const LEVEL_NAMES: Record<string, string> = { ZEDX: 'ZED-X' };
 
 /** AssessmentFee.SpecialCategory of the payment procedures: what the code and name of each category are on this portal. */
-const categoriesOf = (portal: AdminPortal): Record<number, { code: string; name: string }> => portal === 'surveillance'
-  ? { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SPL', name: 'Woman / SC / ST-owned or aspirational district MSME' } }
-  : { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SC/ST', name: 'SC / ST-owned or aspirational district MSME' }, 2: { code: 'WOM', name: 'Woman-owned MSME' } };
+const categoriesOf = (portal: AdminPortal): Record<number, { code: string; name: string }> => portal === 'main'
+  ? { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SC/ST', name: 'SC / ST-owned or aspirational district MSME' }, 2: { code: 'WOM', name: 'Woman-owned MSME' } }
+  : { 0: { code: 'GEN', name: 'General' }, 1: { code: 'SPL', name: 'Woman / SC / ST-owned or aspirational district MSME' } };
 
 /** A row of the Payment Structure: its fee row and what its subsidy is made of. */
 interface StructureRow {
@@ -46,6 +49,15 @@ interface LevelSummary {
   msmePays: number | null;
 }
 
+/** The Add fees form of a level (or milestone) without fees. */
+interface AddForm {
+  fee: number | null;
+  reward: number | null;
+  general: number | null;
+  additional: Record<number, number | null>;
+  alsoOthers: boolean;
+}
+
 /** The pop-up's preview of a share: what a unit of the category (no joining reward) would pay on the level's fee. */
 interface SharePreview {
   fee: number;
@@ -65,7 +77,9 @@ interface SharePreview {
  * share, the MSME's share with GST) with an Edit of the category's subsidy share (base plus additional), and the TDS
  * deductions with the net payable. Bronze, Silver and Gold have the same structure, only the fee differs. Every amount is
  * worked out by the server (AssessmentFeesController); the joining reward rows keep their logic (the reward comes off the
- * total before the subsidy). Consultancy keeps its fee per milestone (assessment-fees.ts). V4 layout: the enterprise type
+ * total before the subsidy). Consultancy has the same page per handholding milestone: one fee per milestone for its Silver
+ * and Gold rows (a Level column in the tables), the subsidy share per milestone or for all three. A level (or milestone)
+ * without fees offers Add fees, which makes the rows the payment page reads. V4 layout: the enterprise type
  * as a segmented switch, a card per level (fee, General subsidy, what the MSME pays) that picks the level, category chips,
  * the MSME share and net payable columns highlighted, a card per row on phones, and the share pop-up with a preview of
  * the amounts beside the fields.
@@ -76,8 +90,8 @@ interface SharePreview {
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">Fee Structure — {{ levelName(level()) }}</h3>
-        <p class="page-sub">Fee, subsidy split, GST and both TDS deductions for {{ levelName(level()) }} certification of {{ type() }} enterprises.</p>
+        <h3 class="registration-title">{{ consultancy ? 'Handholding Fee' : 'Fee Structure' }} — {{ levelName(level()) }}</h3>
+        <p class="page-sub">Fee, subsidy split, GST and both TDS deductions for {{ consultancy ? levelName(level()).toLowerCase() + ' handholding' : levelName(level()) + ' certification' }} of {{ type() }} enterprises.</p>
       </div>
       <div class="page-actions fs-type">
         <span class="fs-type-label">Enterprise type</span>
@@ -91,7 +105,7 @@ interface SharePreview {
     <!-- One Admin (V4): the portal whose settings these are (each portal has its own fees). -->
     <zed-portal-switch />
 
-    <nav class="lv-cards" aria-label="Certification level">
+    <nav class="lv-cards" [class.three]="consultancy" [attr.aria-label]="consultancy ? 'Milestone' : 'Certification level'">
       @for (c of summary(); track c.code) {
         <button type="button" class="lv-card" [class.active]="level() === c.code" [class.is-unset]="!c.set" [attr.aria-pressed]="level() === c.code"
                 [attr.data-level]="c.code" (click)="pickLevel(c.code)">
@@ -117,15 +131,17 @@ interface SharePreview {
 
     @if (fee(); as f) {
       <section class="zed-card" aria-labelledby="fs-rates">
-        <h5 class="fs-h" id="fs-rates">Certification Fee &amp; Rates <span class="zed-chip">{{ levelName(level()) }}</span><span class="zed-chip">{{ type() }}</span></h5>
-        <p class="muted">{{ rejected() ? 'Units whose certification was rejected pay the full fee again: no subsidy and no joining reward.' : 'The fee is before GST. It is split by subsidy category first; GST and TDS then apply to the MSME share only.' }}</p>
+        <h5 class="fs-h" id="fs-rates">{{ consultancy ? 'Handholding' : 'Certification' }} Fee &amp; Rates <span class="zed-chip">{{ levelName(level()) }}</span><span class="zed-chip">{{ type() }}</span></h5>
+        <p class="muted">{{ rejected() ? 'Units whose certification was rejected pay the full fee again: no subsidy and no joining reward.'
+          : consultancy ? 'One fee per milestone, the same for Silver and Gold handholding. GST and TDS apply to the MSME share only; the joining reward is kept.'
+          : 'The fee is before GST. It is split by subsidy category first; GST and TDS then apply to the MSME share only.' }}</p>
         <div class="fs-rates">
           <div>
             <label class="form-label" for="fs-fee">Fee (before GST)<span class="req">*</span></label>
             <input class="form-control" id="fs-fee" type="number" min="0" step="0.01" [(ngModel)]="feeInput" (ngModelChange)="feeChanged.set(true)" />
             <small class="muted">With GST: ₹ {{ (feeInput ?? 0) * 1.18 | number: '1.2-2' }}</small>
           </div>
-          @if (f.hasCouponRows && !rejected()) {
+          @if (f.hasCouponRows && !rejected() && !consultancy) {
             <div>
               <label class="form-label" for="fs-reward">Joining reward (₹)<span class="req">*</span></label>
               <input class="form-control" id="fs-reward" type="number" min="0" step="0.01" [(ngModel)]="rewardInput" (ngModelChange)="feeChanged.set(true)" />
@@ -154,6 +170,7 @@ interface SharePreview {
           <table class="table table-zed fs-table">
             <thead>
               <tr>
+                @if (consultancy) { <th>Level</th> }
                 <th>Code</th><th>Category</th><th class="text-end">Subsidy</th><th class="text-end">GoI share</th><th class="text-end col-pay">MSME share</th>
                 <th class="text-end">GST &#64; 18%</th><th class="text-end">MSME taxable</th><th class="text-center">Actions</th>
               </tr>
@@ -161,6 +178,7 @@ interface SharePreview {
             <tbody>
               @for (s of structure(); track s.row.id) {
                 <tr>
+                  @if (consultancy) { <td class="fs-level" data-label="Level">{{ s.row.certification }}</td> }
                   <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1" [class.cat-2]="s.category >= 2">{{ s.code }}</span></td>
                   <td class="fs-cat">
                     <strong>{{ s.name }}</strong>
@@ -183,7 +201,7 @@ interface SharePreview {
                   </td>
                 </tr>
               } @empty {
-                <tr class="empty-row"><td colspan="8" style="padding: 0"><div class="no-data">No fee rows for {{ type() }} {{ levelName(level()) }}.</div></td></tr>
+                <tr class="empty-row"><td [attr.colspan]="consultancy ? 9 : 8" style="padding: 0"><div class="no-data">No fee rows for {{ type() }} {{ levelName(level()) }}.</div></td></tr>
               }
             </tbody>
           </table>
@@ -197,6 +215,7 @@ interface SharePreview {
           <table class="table table-zed fs-table">
             <thead>
               <tr>
+                @if (consultancy) { <th>Level</th> }
                 <th>Code</th><th>Category</th><th class="text-end">MSME taxable</th><th class="text-end">TDS 194C</th><th class="text-end col-net">Net after 194C</th>
                 <th class="text-end">TDS 194J</th><th class="text-end col-net">Net after 194J</th>
               </tr>
@@ -204,6 +223,7 @@ interface SharePreview {
             <tbody>
               @for (s of structure(); track s.row.id) {
                 <tr>
+                  @if (consultancy) { <td class="fs-level" data-label="Level">{{ s.row.certification }}</td> }
                   <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1" [class.cat-2]="s.category >= 2">{{ s.code }}</span></td>
                   <td class="fs-cat">{{ s.name }}@if (s.row.isCouponRow) { <small class="d-block reward-note">with joining reward</small> }</td>
                   <td class="text-end" data-label="MSME taxable">₹ {{ s.row.subsidyPer | number: '1.2-2' }}</td>
@@ -218,7 +238,47 @@ interface SharePreview {
         </div>
       </section>
     } @else if (loaded()) {
-      <div class="zed-card"><div class="no-data">No fees are set for {{ type() }} {{ levelName(level()) }}. Pick another level or enterprise type.</div></div>
+      <section class="zed-card add-fees" aria-labelledby="fs-add">
+        <h5 class="fs-h" id="fs-add">Add fees <span class="zed-chip">{{ levelName(level()) }}</span><span class="zed-chip">{{ type() }}</span></h5>
+        <p class="muted">No fees are set for {{ type() }} {{ levelName(level()) }} on this portal, so {{ type() }} units can't pay for it yet. Enter them here; every amount is worked out by the server.</p>
+        <div class="fs-rates">
+          <div>
+            <label class="form-label" for="fs-add-fee">Fee (before GST)<span class="req">*</span></label>
+            <input class="form-control" id="fs-add-fee" type="number" min="0" step="0.01" [(ngModel)]="add.fee" />
+            <small class="muted">With GST: ₹ {{ (add.fee ?? 0) * 1.18 | number: '1.2-2' }}</small>
+          </div>
+          @if (!rejected()) {
+            <div>
+              <label class="form-label" for="fs-add-reward">Joining reward (₹)</label>
+              <input class="form-control" id="fs-add-reward" type="number" min="0" step="0.01" placeholder="0 if none" [(ngModel)]="add.reward" />
+              <small class="muted">Comes off the total with GST for units that get it.</small>
+            </div>
+            <div>
+              <label class="form-label" for="fs-add-general">Subsidy, General (%)<span class="req">*</span></label>
+              <input class="form-control" id="fs-add-general" type="number" min="0" max="100" step="0.01" [(ngModel)]="add.general" />
+            </div>
+            @for (c of specialCategories; track c.id) {
+              <div>
+                <label class="form-label" [for]="'fs-add-cat-' + c.id">Additional subsidy, {{ c.code }} (%)</label>
+                <input class="form-control" [id]="'fs-add-cat-' + c.id" type="number" min="0" max="100" step="0.01" placeholder="0 if none" [(ngModel)]="add.additional[c.id]" />
+                <small class="muted">{{ c.name }}</small>
+              </div>
+            }
+          }
+        </div>
+        @if (!rejected() && otherTypes().length) {
+          <label class="toggle-card mt-3" [class.active]="add.alsoOthers" for="fs-add-others">
+            <input class="form-check-input" type="checkbox" id="fs-add-others" [(ngModel)]="add.alsoOthers" />
+            <span>Also add {{ otherTypes().join(' and ') }} with the same fee and shares
+              <small>Types that already have {{ levelName(level()) }} fees are left as they are.</small></span>
+          </label>
+        }
+        <p class="add-note">{{ addNote() }}</p>
+        <div class="save-bar">
+          <span class="muted me-auto">Nothing is saved until you press Add Fees.</span>
+          <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="addFees()">Add Fees</button>
+        </div>
+      </section>
     }
 
     @if (editing(); as e) {
@@ -258,8 +318,9 @@ interface SharePreview {
                   <h6 class="fs-group">Applies to</h6>
                   <label class="toggle-card" [class.active]="e.allLevels" for="fs-all">
                     <input class="form-check-input" type="checkbox" id="fs-all" [(ngModel)]="e.allLevels" />
-                    <span>Apply to Bronze, Silver and Gold
-                      <small>{{ e.allLevels ? 'The three levels get the same share.' : 'Only ' + levelName(level()) + ' changes.' }}</small></span>
+                    <span>{{ consultancy ? 'Apply to all three milestones' : 'Apply to Bronze, Silver and Gold' }}
+                      <small>{{ e.allLevels ? (consultancy ? 'The three milestones get the same share.' : 'The three levels get the same share.')
+                        : 'Only ' + levelName(level()) + ' changes' + (consultancy ? ' (its Silver and Gold rows).' : '.') }}</small></span>
                   </label>
                 </div>
                 @if (sharePreview(e); as p) {
@@ -310,6 +371,12 @@ interface SharePreview {
 
     /* A card per level: picks the level shown below. */
     .lv-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .lv-cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .fs-table td.fs-level { font-weight: 600; color: #23474a; }
+    .add-fees .toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; cursor: pointer; font-weight: 600; }
+    .add-fees .toggle-card .form-check-input { float: none; flex: none; margin: 3px 0 0; }
+    .add-fees .toggle-card small { display: block; color: #5f6f70; font-size: 12px; font-weight: 400; }
+    .add-note { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: #f4f8f8; font-size: 13px; color: #5f6f70; }
     .lv-card { display: flex; flex-direction: column; gap: 4px; text-align: left; background: #fff; border: 1px solid #dfe9ea; border-radius: 12px;
       padding: 12px 16px; cursor: pointer; min-width: 0; color: #232527; border-top: 4px solid #cbd9da; }
     .lv-card:hover { border-color: #45a5ad; background: #f7fbfb; }
@@ -378,7 +445,7 @@ interface SharePreview {
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 
     @media (max-width: 991.98px) {
-      .lv-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .lv-cards, .lv-cards.three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 767.98px) {
       .fs-edit { grid-template-columns: minmax(0, 1fr); }
@@ -403,12 +470,19 @@ interface SharePreview {
   `,
 })
 export class FeeStructurePage {
-  /** The categories of the portal whose fees these are (the switch on main; the build's own elsewhere). */
-  private readonly categories = categoriesOf(inject(AdminPortalService).effective());
+  /** The portal whose fees these are (the switch on main; the build's own elsewhere). */
+  private readonly portal = inject(AdminPortalService).effective();
+  /** Consultancy: the handholding fee per milestone; "level" below is then the milestone. */
+  protected readonly consultancy = this.portal === 'consultancy';
+  private readonly categories = categoriesOf(this.portal);
+  /** The portal's special categories (the Add fees form's additional shares). */
+  protected readonly specialCategories = Object.entries(this.categories).filter(([id]) => id !== '0').map(([id, c]) => ({ id: Number(id), ...c }));
   private readonly api = inject(FeesApi);
+  private readonly units: readonly string[] = this.consultancy ? MILESTONES : LEVELS;
 
-  protected readonly types = ENTERPRISE_TYPES;
-  protected readonly level = signal<string>('Bronze');
+  /** Consultancy's fee page offered Micro, Small and Medium only. */
+  protected readonly types: readonly string[] = this.consultancy ? ENTERPRISE_TYPES.filter((t) => t !== 'Rejected') : ENTERPRISE_TYPES;
+  protected readonly level = signal<string>(this.consultancy ? '1' : 'Bronze');
   protected readonly type = signal<string>('Micro');
   protected readonly rejected = computed(() => this.type() === 'Rejected');
   private readonly levelFees = signal<LevelFee[]>([]);
@@ -419,11 +493,11 @@ export class FeeStructurePage {
   protected rewardInput: number | null = null;
   protected readonly feeChanged = signal(false);
 
-  /** One card per level, with the saved amounts of the type's General unit (no joining reward). */
+  /** One card per level (milestone), with the saved amounts of the type's General unit (no joining reward). */
   protected readonly summary = computed<LevelSummary[]>(() =>
-    LEVELS.map((code) => {
+    this.units.map((code) => {
       const f = this.levelFees().find((l) => l.certification === code);
-      const general = this.rows().find((r) => r.certification === code && (r.specialCategory ?? 0) === 0 && !r.isCouponRow);
+      const general = this.rows().find((r) => this.inUnit(r, code) && (r.specialCategory ?? 0) === 0 && !r.isCouponRow);
       return {
         code, set: !!f, fee: f?.assessmentFee ?? null, reward: f?.hasCouponRows && !this.rejected() ? f.coupon : null,
         subsidy: general?.subsidyPercentage ?? null, msmePays: general?.applicantContributionAfterSubsidy ?? null,
@@ -432,19 +506,40 @@ export class FeeStructurePage {
   );
 
   protected readonly structure = computed<StructureRow[]>(() => {
-    const of = this.rows().filter((r) => r.certification === this.level());
-    const general = of.find((r) => (r.specialCategory ?? 0) === 0 && !r.isCouponRow) ?? of.find((r) => (r.specialCategory ?? 0) === 0);
-    const base = general?.subsidyPercentage ?? 0;
+    const of = this.rows().filter((r) => this.inUnit(r, this.level()));
+    // Each level against its own General row (Consultancy: Silver and Gold of the milestone).
+    const baseOf = (level: string) => {
+      const mine = of.filter((r) => r.certification === level);
+      const general = mine.find((r) => (r.specialCategory ?? 0) === 0 && !r.isCouponRow) ?? mine.find((r) => (r.specialCategory ?? 0) === 0);
+      return general?.subsidyPercentage ?? 0;
+    };
+    const levelOrder = (l: string) => HANDHOLDING_LEVELS.indexOf(l);
     return of
       .map((row) => {
+        const base = baseOf(row.certification);
         const category = row.specialCategory ?? 0;
         const c = this.categories[category] ?? { code: `CAT ${category}`, name: `Special category ${category}` };
         const share = row.subsidyPercentage ?? 0;
         const taxableBase = row.isCouponRow ? (row.assessmentFeeAfterCoupon ?? 0) : (row.assessmentFee ?? 0);
         return { row, category, code: c.code, name: c.name, share, additional: category === 0 ? 0 : share - base, goiShare: taxableBase - (row.subsidyPer ?? 0) };
       })
-      .sort((a, b) => a.category - b.category || Number(a.row.isCouponRow) - Number(b.row.isCouponRow) || a.row.id - b.row.id);
+      .sort((a, b) => levelOrder(a.row.certification) - levelOrder(b.row.certification) || a.category - b.category
+        || Number(a.row.isCouponRow) - Number(b.row.isCouponRow) || a.row.id - b.row.id);
   });
+
+  /** Add fees: the other types the same fees can go to (not Rejected). */
+  protected readonly otherTypes = computed(() => this.rejected() ? [] : this.types.filter((t) => t !== this.type() && t !== 'Rejected'));
+  protected add: AddForm = FeeStructurePage.emptyAdd();
+
+  /** What Add fees makes, as the server does (AssessmentFeesController.NewRows). */
+  protected addNote(): string {
+    const name = `${this.type()} ${this.levelName(this.level())}`;
+    if (this.rejected()) return `Creates one row for ${name}: the full fee with GST, no subsidy and no joining reward.`;
+    const levels = this.consultancy ? 2 : 1;
+    const count = Object.keys(this.categories).length * 2 * levels;
+    const cats = Object.values(this.categories).map((c) => c.name.split(' ')[0]).join(' and ');
+    return `Creates ${count} rows for ${name}${this.consultancy ? ' (Silver and Gold)' : ''}: ${cats}, each without and with the joining reward. That's what the payment page reads.`;
+  }
 
   protected readonly editing = signal<ShareEdit | null>(null);
   protected readonly loaded = signal(false);
@@ -457,18 +552,41 @@ export class FeeStructurePage {
   }
 
   protected levelName(code: string): string {
-    return LEVEL_NAMES[code] ?? code;
+    return this.consultancy ? `Milestone ${code}` : LEVEL_NAMES[code] ?? code;
+  }
+
+  /** Whether a row belongs to a level (Consultancy: to a milestone). */
+  private inUnit(r: FeeRow, code: string): boolean {
+    return this.consultancy ? String(r.mileStone ?? '').trim() === code : r.certification === code;
+  }
+
+  private static emptyAdd(): AddForm {
+    return { fee: null, reward: null, general: null, additional: {}, alsoOthers: true };
+  }
+
+  protected async addFees(): Promise<void> {
+    const a = this.add;
+    if (a.fee === null || a.fee === undefined || (!this.rejected() && (a.general === null || a.general === undefined))) {
+      this.error.set(this.rejected() ? 'Please enter the fee.' : 'Please enter the fee and the General subsidy.');
+      return;
+    }
+    await this.run(() => this.api.add(this.type(), {
+      certification: this.level(), assessmentFee: a.fee, reward: this.rejected() ? null : (a.reward ?? 0), generalShare: this.rejected() ? null : a.general,
+      additionalShares: this.rejected() ? {} : a.additional, alsoTypes: a.alsoOthers ? this.otherTypes() : [],
+    }));
   }
 
   protected pickLevel(level: string): void {
     this.level.set(level);
     this.success.set('');
+    this.add = FeeStructurePage.emptyAdd();
     this.resetInputs();
   }
 
   protected pickType(type: string): void {
     this.type.set(type);
     this.success.set('');
+    this.add = FeeStructurePage.emptyAdd();
     void this.load();
   }
 
@@ -493,12 +611,13 @@ export class FeeStructurePage {
   protected async saveFee(): Promise<void> {
     const f = this.fee();
     if (!f) return;
-    const reward = f.hasCouponRows && !this.rejected();
+    const reward = f.hasCouponRows && !this.rejected() && !this.consultancy;
     if (this.feeInput === null || this.feeInput === undefined || (reward && (this.rewardInput === null || this.rewardInput === undefined))) {
       this.error.set('Please enter the fee and the joining reward.');
       return;
     }
-    await this.run(() => this.api.save(this.type(), [{ certification: f.certification, assessmentFee: this.feeInput, coupon: reward ? this.rewardInput : null }]));
+    // Consultancy keeps the stored joining reward (its milestone fee only).
+    await this.run(() => this.api.save(this.type(), [{ certification: f.certification, assessmentFee: this.feeInput, coupon: reward && !this.consultancy ? this.rewardInput : null }]));
   }
 
   protected async saveShare(e: ShareEdit): Promise<void> {
@@ -542,7 +661,9 @@ export class FeeStructurePage {
       const res = await firstValueFrom(this.api.fees(this.type()));
       this.levelFees.set(res.levels);
       this.rows.set(res.rows);
-      if (!res.levels.some((l) => l.certification === this.level()) && res.levels.length) this.level.set(res.levels[0].certification);
+      if (!res.levels.some((l) => l.certification === this.level()) && res.levels.length && this.units.includes(res.levels[0].certification)) {
+        this.level.set(res.levels[0].certification);
+      }
       this.resetInputs();
       this.loaded.set(true);
     } catch (err) {

@@ -62,6 +62,17 @@ export interface SubsidyRequest {
   allLevels: boolean;
 }
 
+/** V4: the fees of a level (Consultancy: a milestone) that has none yet. */
+export interface AddFeesRequest {
+  certification: string;
+  assessmentFee: number | null;
+  reward: number | null;
+  generalShare: number | null;
+  /** Per special category of the portal (1, 2): the share on top of the general one. */
+  additionalShares: Record<number, number | null>;
+  alsoTypes: string[];
+}
+
 /** Client for api/staff/fees (Zed.Main.Api AssessmentFeesController). Admin only; amounts are computed on the server. */
 @Injectable({ providedIn: 'root' })
 export class FeesApi {
@@ -77,6 +88,10 @@ export class FeesApi {
 
   save(type: string, levels: LevelRequest[]): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}`, { levels });
+  }
+
+  add(type: string, req: AddFeesRequest): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/add`, req);
   }
 
   saveSubsidy(type: string, req: SubsidyRequest): Observable<MessageResponse> {
