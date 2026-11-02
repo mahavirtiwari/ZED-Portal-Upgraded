@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Icon, OutlinedInput, RadioButton, useBackHandler, useNavigation, useRoute, useUi } from '@zed/shared';
+import { CheckBox, Icon, OutlinedInput, RadioButton, useBackHandler, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
@@ -15,10 +15,22 @@ import {
   YES,
   isCompletedOrSubmitted,
   type AllottedParameters,
+  type CheckpointAnswer,
   type PhotoInformation,
   type RequirementDetails,
 } from '../models';
 import { Divider, SaButton, SaFrame, sa } from '../ui/kit';
+import {
+  ANSWERS,
+  checkpointOptions,
+  checkpointProblem,
+  conformanceOf,
+  hasCheckpoints,
+  initialAnswers,
+  setAnswer,
+  setRemarks,
+  toggleAction,
+} from '../checkpoints';
 
 const NEXT_BUTTON = 1;
 const PREVIOUS_BUTTON = 2;
@@ -134,7 +146,7 @@ function ParameterRow({ p, onPress, testID }: { p: AllottedParameters; onPress: 
   );
 }
 
-type Draft = { conformance: string | null; comment: string; added: PhotoInformation[] };
+type Draft = { conformance: string | null; comment: string; added: PhotoInformation[]; answers: CheckpointAnswer[] };
 
 /** QuestionsPagerActivity (not swipeable): one page per requirement of the parameter. */
 export function QuestionsPagerScreen() {
@@ -224,6 +236,10 @@ function QuestionView({
   const [added, setAdded] = useState<PhotoInformation[]>(draft?.added ?? []);
   const [loaded, setLoaded] = useState(draft != null);
   const [radioError, setRadioError] = useState(false);
+  // V4: a requirement with checkpoints is answered checkpoint by checkpoint; its conformance follows (checkpoints.ts).
+  const checkpointMode = hasCheckpoints(question);
+  const [answers, setAnswers] = useState<CheckpointAnswer[]>(draft?.answers ?? initialAnswers(question));
+  const computed = checkpointMode ? conformanceOf(answers) : null;
   const last = position === count - 1;
 
   // The added evidences of the question, read from EvidenceData when their photo is not in the parameter.
@@ -243,13 +259,17 @@ function QuestionView({
   }, []);
 
   useEffect(() => {
-    saveDraft({ conformance, comment, added });
-  }, [conformance, comment, added, saveDraft]);
+    saveDraft({ conformance, comment, added, answers });
+  }, [conformance, comment, added, answers, saveDraft]);
+
+  const evidencesUnopened = () => {
+    const unopened = (question.providedEvidences ?? []).some(e => e && (e.evidenceLocalUri ?? '').trim() !== '' && !e.isOpened);
+    if (unopened) ui.showAlert('Please open all the Uploaded Evidences to select a option');
+    return unopened;
+  };
 
   const pickConformance = (value: string) => {
-    const unopened = (question.providedEvidences ?? []).some(e => e && (e.evidenceLocalUri ?? '').trim() !== '' && !e.isOpened);
-    if (unopened) {
-      ui.showAlert('Please open all the Uploaded Evidences to select a option');
+    if (evidencesUnopened()) {
       setConformance(null);
       return;
     }
@@ -257,10 +277,31 @@ function QuestionView({
     setConformance(value);
   };
 
+  const pickAnswer = (id: number, value: string) => {
+    if (evidencesUnopened()) return;
+    setRadioError(false);
+    setAnswers(a => setAnswer(a, id, value));
+  };
+
   /** The evidence references kept in the parameter: the photo is left out (read from EvidenceData by id), as the legacy cleared it. */
   const references = () => added.map(p => ({ ...p, photo: null }));
 
   const prepareData = (): RequirementDetails | null => {
+    if (checkpointMode) {
+      const problem = checkpointProblem(question, answers);
+      if (problem) {
+        setRadioError(true);
+        ui.snackbar(problem);
+        return null;
+      }
+      const decided = conformanceOf(answers)!;
+      if (decided === YES && added.length === 0) {
+        ui.snackbar('Please add at least one Evidence');
+        return null;
+      }
+      // Comments are optional: when not conforming the server writes the checkpoints' answers as the remarks.
+      return { ...question, conformance: decided, comments: comment.trim(), checkpointAnswers: answers, addedEvidences: references(), reviewNeeded: false };
+    }
     if (conformance == null) {
       setRadioError(true);
       ui.snackbar('Please enter required details');
@@ -286,7 +327,10 @@ function QuestionView({
 
   const review = () => {
     const details: RequirementDetails = { ...question, comments: comment, addedEvidences: references(), reviewNeeded: true };
-    if (conformance != null) details.conformance = conformance;
+    if (checkpointMode) {
+      details.checkpointAnswers = answers;
+      if (computed != null) details.conformance = computed;
+    } else if (conformance != null) details.conformance = conformance;
     onClick(REVIEW_BUTTON, details, last);
   };
 
@@ -350,14 +394,25 @@ function QuestionView({
         </View>
       </View>
       <Divider />
-      {(question.options ?? [])
-        .filter(o => o && (o.label ?? '').trim() !== '')
-        .map((o, i) => (
-          <View key={i} style={styles.optionRow}>
-            <Text style={styles.bullet}>•</Text>
-            <Text style={styles.optionText}>{o.label}</Text>
-          </View>
-        ))}
+      {checkpointMode ? (
+        <CheckpointList
+          question={question}
+          answers={answers}
+          error={radioError}
+          onAnswer={pickAnswer}
+          onAction={(id, action) => setAnswers(a => toggleAction(a, id, action))}
+          onRemarks={(id, value) => setAnswers(a => setRemarks(a, id, value))}
+        />
+      ) : (
+        (question.options ?? [])
+          .filter(o => o && (o.label ?? '').trim() !== '')
+          .map((o, i) => (
+            <View key={i} style={styles.optionRow}>
+              <Text style={styles.bullet}>•</Text>
+              <Text style={styles.optionText}>{o.label}</Text>
+            </View>
+          ))
+      )}
       {question.reviewNeeded ? <Text style={styles.reviewLabel}>(Review Needed)</Text> : null}
       {question.moreInfo?.trim() ? (
         <Pressable onPress={() => ui.showAlert(question.moreInfo!)} style={styles.moreInfo} testID="q-more-info">
@@ -373,11 +428,19 @@ function QuestionView({
       {text('DA Option', withId(question.daOptionId, question.daOption), 'da-option')}
       {text('DA Status', question.daStatus, 'da-status')}
       {text('DA Comment', question.daComment, 'da-comment')}
-      <Text style={[styles.qLabel, radioError && { color: '#B00020' }]}>Conformance{radioError ? ' (!)' : ''}</Text>
-      <View style={styles.radios}>
-        <RadioButton label="Yes" selected={conformance === YES} onPress={() => pickConformance(YES)} testID="q-yes" />
-        <RadioButton label="No" selected={conformance === NO} onPress={() => pickConformance(NO)} testID="q-no" />
-      </View>
+      {checkpointMode ? (
+        <Text style={styles.qLabel} testID="q-computed">
+          Conformance: <Text style={styles.qValue}>{computed ?? '—'}</Text> <Text style={styles.computedNote}>(from the checkpoints)</Text>
+        </Text>
+      ) : (
+        <>
+          <Text style={[styles.qLabel, radioError && { color: '#B00020' }]}>Conformance{radioError ? ' (!)' : ''}</Text>
+          <View style={styles.radios}>
+            <RadioButton label="Yes" selected={conformance === YES} onPress={() => pickConformance(YES)} testID="q-yes" />
+            <RadioButton label="No" selected={conformance === NO} onPress={() => pickConformance(NO)} testID="q-no" />
+          </View>
+        </>
+      )}
       <Text style={styles.qLabel}>Comments</Text>
       <OutlinedInput value={comment} onChangeText={setComment} multiline showCounter maxLength={500} autoCapitalize="sentences" testID="q-comment" />
       <Text style={styles.qLabel}>Add Evidence</Text>
@@ -406,7 +469,85 @@ function QuestionView({
   );
 }
 
+/** V4: the checkpoints of a requirement, each answered Yes / Partial / No; Partial / No take the actions needed (or a remark). */
+function CheckpointList({
+  question,
+  answers,
+  error,
+  onAnswer,
+  onAction,
+  onRemarks,
+}: {
+  question: RequirementDetails;
+  answers: CheckpointAnswer[];
+  error: boolean;
+  onAnswer: (id: number, value: string) => void;
+  onAction: (id: number, action: string) => void;
+  onRemarks: (id: number, value: string) => void;
+}) {
+  return (
+    <View testID="q-checkpoints">
+      {checkpointOptions(question).map(o => {
+        const c = o.checkpoint!;
+        const a = answers.find(x => x.id === o.id);
+        const mandatory = c.evidences.filter(e => e.mandatory);
+        const evidence =
+          mandatory.length === 0
+            ? 'Evidence: none mandatory'
+            : 'Evidence: ' +
+              mandatory.map(e => (e.name ?? '') + (e.uploaded ? (e.verified === NO ? ' (refused)' : ' \u2713') : ' (not uploaded)')).join(', ') +
+              ' (mandatory)';
+        return (
+          <View key={o.id} style={styles.checkpoint} testID={'cp-' + o.id}>
+            <Text style={styles.optionText}>{(o.code ? o.code + '. ' : '') + (o.label ?? '')}</Text>
+            <Text style={styles.cpMeta}>{(c.desktopAnswer ? 'DA: ' + c.desktopAnswer + '   ' : '') + evidence}</Text>
+            <View style={styles.segments}>
+              {ANSWERS.map(v => (
+                <Pressable
+                  key={v}
+                  style={[styles.segment, a?.answer === v && styles.segmentOn, error && !a?.answer && styles.segmentError]}
+                  onPress={() => onAnswer(o.id, v)}
+                  testID={'cp-' + o.id + '-' + v.toLowerCase()}
+                >
+                  <Text style={[styles.segmentText, a?.answer === v && styles.segmentTextOn]}>{v}</Text>
+                </Pressable>
+              ))}
+            </View>
+            {a?.answer && a.answer !== YES ? (
+              c.actions.length > 0 ? (
+                <View>
+                  <Text style={styles.cpLabel}>Actions needed:</Text>
+                  {c.actions.map((action, i) => (
+                    <CheckBox key={i} label={action} checked={a.actions.includes(action)} onChange={() => onAction(o.id, action)} testID={'cp-' + o.id + '-action-' + i} />
+                  ))}
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.cpLabel}>What is needed</Text>
+                  <OutlinedInput value={a.remarks ?? ''} onChangeText={t => onRemarks(o.id, t)} multiline maxLength={1000} testID={'cp-' + o.id + '-remarks'} />
+                </View>
+              )
+            ) : null}
+          </View>
+        );
+      })}
+      <Text style={styles.cpNote}>Yes on a checkpoint needs its mandatory evidence uploaded and not refused by the desktop assessor.</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  checkpoint: { borderBottomColor: sa.divider, borderBottomWidth: 1, paddingVertical: 8 },
+  cpMeta: { color: sa.coolGrey, fontSize: 13, marginTop: 2 },
+  cpLabel: { color: sa.labelColor, fontSize: 13, fontWeight: 'bold', marginTop: 6 },
+  cpNote: { color: sa.coolGrey, fontSize: 12, marginTop: 6 },
+  segments: { flexDirection: 'row', marginTop: 6, gap: 6 },
+  segment: { borderColor: sa.silver, borderWidth: 1, borderRadius: 4, paddingVertical: 6, paddingHorizontal: 14 },
+  segmentOn: { backgroundColor: sa.primary, borderColor: sa.primary },
+  segmentError: { borderColor: '#B00020' },
+  segmentText: { color: sa.darkGrey, fontSize: 14, fontWeight: 'bold' },
+  segmentTextOn: { color: sa.white },
+  computedNote: { color: sa.coolGrey, fontSize: 12, fontWeight: 'normal' },
   progressText: { color: sa.darkGrey, fontSize: 14, fontWeight: 'bold', padding: 12 },
   progressBar: { height: 6, flexDirection: 'row', backgroundColor: sa.silver, marginHorizontal: 12, marginBottom: 8, borderRadius: 3, overflow: 'hidden' },
   progressFill: { backgroundColor: sa.primary },

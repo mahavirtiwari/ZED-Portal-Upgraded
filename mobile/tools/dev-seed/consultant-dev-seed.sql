@@ -15,9 +15,9 @@
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_NAME() <> 'ZED_CONSULTANT'
+IF DB_NAME() NOT IN ('ZED_CONSULTANT', 'ZEDV4CHK_ZED_CONSULTANT')
 BEGIN
-    RAISERROR('Run only on a local development ZED_CONSULTANT database.', 16, 1);
+    RAISERROR('Run only on a local development ZED_CONSULTANT database (or its throwaway ZEDV4CHK_ copy).', 16, 1);
     RETURN;
 END
 

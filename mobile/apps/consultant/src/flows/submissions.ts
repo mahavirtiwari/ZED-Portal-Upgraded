@@ -291,6 +291,9 @@ export async function submitModuleParameter(app: SaApp, module: ParametersModule
     const r = await app.api.submitModuleParameter(module, { ...baseRequest(app), allottedParameterObj: parameter });
     if (!isSuccess(r)) return refusalMessage(r);
     parameter.status = SUBMITTED;
+    // The plan just sent is what the server now has from this app: the base of the next merge.
+    if (module === 'handholdingActionPlan')
+      for (const req of parameter.requirements ?? []) if (req) req.plannedActivitiesBase = [...(req.plannedActivities ?? [])];
     return null;
   } catch (e) {
     return failureMessage(e);

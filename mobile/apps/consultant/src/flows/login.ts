@@ -1,6 +1,6 @@
 import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
-import { isFourthMilestone, normalizeDetails, type AssessmentDetails } from '../models';
+import { isFourthMilestone, normalizeDetails, rememberPlanBase, type AssessmentDetails } from '../models';
 
 export const LOGIN_SUCCESSFUL = 'Login Successful.';
 export const INVALID_USER = 'Invalid Username or Password';
@@ -72,6 +72,7 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     // getAssessmentDetailsByUserId reads the same row: a stored consultancy without parameters is replaced, unless it
     // is a technology upgradation one (kept); the "already in progress" alert never shows.
     if (current == null || (!hasParams(current) && !isFourthMilestone(current))) {
+      rememberPlanBase(loginResp);
       await app.saveDetails(loginResp, input.assessorId, input.zedId);
     }
     const d = app.details!;

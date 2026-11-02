@@ -87,7 +87,29 @@ export type Evidences = {
   isOpened: boolean;
 };
 
-export type Option = { id: number; code?: string | null; label?: string | null; origionalEvidences?: Evidences[] | null };
+export type Option = {
+  id: number;
+  code?: string | null;
+  label?: string | null;
+  origionalEvidences?: Evidences[] | null;
+  /** V4: the option is a checkpoint of the requirement, answered Yes / Partial / No (checkpoints.ts). */
+  checkpoint?: CheckpointInfo | null;
+};
+
+/** V4 (server CheckpointAnswers): the Admin's actions needed, the checkpoint's evidences, the earlier answers. */
+export type CheckpointInfo = {
+  actions: string[];
+  evidences: CheckpointEvidence[];
+  desktopAnswer?: string | null;
+  siteAnswer?: string | null;
+  siteActions?: string[] | null;
+  siteRemarks?: string | null;
+};
+
+export type CheckpointEvidence = { name?: string | null; mandatory: boolean; uploaded: boolean; verified?: string | null };
+
+/** The site assessor's answer to one checkpoint (Option.id), sent with the parameter. */
+export type CheckpointAnswer = { id: number; answer: string | null; actions: string[]; remarks?: string | null };
 
 export type RequirementDetails = {
   id: string;
@@ -109,6 +131,8 @@ export type RequirementDetails = {
   options?: Option[] | null;
   comments?: string | null;
   reviewNeeded: boolean;
+  /** V4: Yes / Partial / No per checkpoint; the requirement's conformance follows from them. */
+  checkpointAnswers?: CheckpointAnswer[] | null;
 };
 
 export type AllottedParameters = {

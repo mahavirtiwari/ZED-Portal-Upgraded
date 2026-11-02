@@ -6,6 +6,7 @@ import { SaAppProvider } from '../src/app/context';
 import type { SaApp } from '../src/app/SaApp';
 import { newAttendance } from '../src/attendance';
 import { COMPLETED, IN_PROGRESS } from '../src/models';
+import { checkpointProblem, conformanceOf } from '../src/checkpoints';
 import { FakeServer, makeApp } from './helpers/harness';
 import { allocationAnswer, loginAnswer, SA_ID, ZED_ID } from './helpers/fixtures';
 
@@ -124,5 +125,50 @@ describe('QuestionsFragment', () => {
     const p = app.details!.allottedParameters!.find(x => x.parameterId === '9102')!;
     expect(p.status).toBe(IN_PROGRESS);
     expect(p.requirements![0]!.reviewNeeded).toBe(true);
+  });
+});
+
+describe('checkpoints (V4: Yes / Partial / No per checkpoint)', () => {
+  /** Requirement 9203 with two checkpoints: 9303 with a mandatory evidence, 9304 with actions needed. */
+  function withCheckpoints(verified: string | null = 'Yes') {
+    const answer = loginAnswer();
+    const p = answer.allottedParameters!.find(x => x.parameterId === '9102')!;
+    p.requirements![0]!.options = [
+      { id: 9303, code: '1', label: 'The unit trains its test staff', checkpoint: { actions: [], evidences: [{ name: 'Training register', mandatory: true, uploaded: true, verified }], desktopAnswer: 'Yes' } },
+      { id: 9304, code: '2', label: 'Training is recorded', checkpoint: { actions: ['Keep a training register', 'Train new staff'], evidences: [], desktopAnswer: 'Partial' } },
+    ];
+    return answer;
+  }
+
+  it('answers each checkpoint; the conformance follows and the answers are kept with the requirement', async () => {
+    const app = await appWith(withCheckpoints());
+    const r = render(app, 'QuestionsPager', { parameterId: '9102', parameterName: 'Test Parameter Two' });
+    expect(byTestId(r, 'q-yes')).toHaveLength(0); // no single Yes / No any more
+    expect(texts(r)).toEqual(expect.arrayContaining(['1. The unit trains its test staff', 'DA: Partial   Evidence: none mandatory']));
+    await act(async () => handler(r, 'q-save').props.onPress());
+    expect(texts(r)).toContain('Checkpoint 1: please choose Yes, Partial or No.');
+
+    await act(async () => handler(r, 'cp-9303-yes').props.onPress());
+    await act(async () => handler(r, 'cp-9304-partial').props.onPress());
+    await act(async () => handler(r, 'q-save').props.onPress());
+    expect(texts(r)).toContain('Checkpoint 2: please tick the actions needed.');
+    await act(async () => handler(r, 'cp-9304-action-0', 'onChange').props.onChange(true));
+    await act(async () => handler(r, 'q-save').props.onPress());
+
+    const req = app.details!.allottedParameters!.find(x => x.parameterId === '9102')!.requirements![0]!;
+    // A Partial is not conforming; no comment is needed (the server writes the answers as the remarks).
+    expect(req).toMatchObject({ conformance: 'No', reviewNeeded: false });
+    expect(req.checkpointAnswers).toEqual([
+      { id: 9303, answer: 'Yes', actions: [], remarks: null },
+      { id: 9304, answer: 'Partial', actions: ['Keep a training register'], remarks: null },
+    ]);
+  });
+
+  it('follows the web rules: a Yes needs the mandatory evidence not refused', () => {
+    const q = withCheckpoints('No').allottedParameters!.find(x => x.parameterId === '9102')!.requirements![0]!;
+    const yes = [{ id: 9303, answer: 'Yes', actions: [] }, { id: 9304, answer: 'Yes', actions: [] }];
+    expect(checkpointProblem(q, yes)).toBe('Checkpoint 1: Yes needs every mandatory evidence; "Training register" was not verified.');
+    expect(conformanceOf(yes)).toBe('Yes');
+    expect(conformanceOf([{ id: 9303, answer: null, actions: [] }])).toBeNull();
   });
 });

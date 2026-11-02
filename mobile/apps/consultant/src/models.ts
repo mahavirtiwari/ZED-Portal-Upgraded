@@ -150,6 +150,11 @@ export type RequirementDetails = {
   gapsIdentified?: string[] | null;
   /** Handholding action plan */
   plannedActivities?: string[] | null;
+  /**
+   * V4: the plan as the app last had it from the server (downloaded, or last sent). Sent with the plan so the server keeps
+   * what the web added or removed since (SubmitHandholdingActionPlan merges); not shown.
+   */
+  plannedActivitiesBase?: string[] | null;
   estimatedTimeInDays?: string | null;
   /** Suggestion for technology intervention */
   suggestedTechnologyIntervention?: string[] | null;
@@ -414,6 +419,17 @@ function normalizeParameters(list: AllottedParameters[] | null | undefined) {
 function normalizeMenuStatus<T extends HomeMenuStatus>(s: T | null | undefined): T | null | undefined {
   if (s) s.status = status(s.status);
   return s;
+}
+
+/**
+ * The downloaded action plan becomes each requirement's base (what the server had), for the merge on the next submit. The
+ * plan arrives in the allotted parameters; the action plan screen copies them the first time it opens (moduleData), base
+ * included.
+ */
+export function rememberPlanBase(d: AssessmentDetails): void {
+  for (const p of [...(d.allottedParameters ?? []), ...(d.handholdingActionPlanData?.parameters ?? [])]) {
+    for (const r of p?.requirements ?? []) if (r) r.plannedActivitiesBase = [...(r.plannedActivities ?? [])];
+  }
 }
 
 export function normalizeDetails(d: AssessmentDetails): AssessmentDetails {

@@ -16,6 +16,7 @@ import {
   syncOpenMeeting,
 } from '../src/flows/submissions';
 import { BUILT_IN_BASIC_INFO, STANDARD_KEYS } from '../src/forms';
+import { moduleData } from '../src/screens/ModuleScreens';
 import { newAttendance } from '../src/attendance';
 import { syncNow } from '../src/sync/queue';
 import {
@@ -29,11 +30,13 @@ import {
   isProgressReviewValid,
   newBasicInformation,
   onRequirementUpdated,
+  rememberPlanBase,
   Status,
   SUBMITTED,
   TO_START,
   tu,
   type AllottedParameters,
+  type AssessmentDetails,
   type ConsultantPhoto,
   type FinancialAssistanceDetailsResponse,
   type PhotoInformation,
@@ -170,6 +173,37 @@ describe('milestone sections (AllottedParameters.onRequirementUpdated, the valid
     expect(param.status).toBe(COMPLETED);
     server.online = false;
     expect(await submitModuleParameter(app, 'technologyIntervention', param)).toBe('Network not available');
+  });
+
+  it('the action plan is sent with the plan the app started from, which moves on after a successful submit', async () => {
+    const server = new FakeServer(uploads);
+    const { app } = await openConsultancy(server);
+    const param = p();
+    const r = param.requirements![0]!;
+    r.plannedActivities = ['Train', 'Calibrate'];
+    rememberPlanBase({ handholdingActionPlanData: { parameters: [param] } } as unknown as AssessmentDetails);
+    r.plannedActivities = ['Train', 'Log readings'];
+    expect(await submitModuleParameter(app, 'handholdingActionPlan', param)).toBeNull();
+    const sent = server.last('SubmitHandholdingActionPlan')!.json!.allottedParameterObj as AllottedParameters;
+    expect(sent.requirements![0]!.plannedActivities).toEqual(['Train', 'Log readings']);
+    expect(sent.requirements![0]!.plannedActivitiesBase).toEqual(['Train', 'Calibrate']);
+    expect(r.plannedActivitiesBase).toEqual(['Train', 'Log readings']);
+
+    // A refused submit keeps the old base (the server did not take the plan).
+    server.responder = req => (req.url.endsWith('SubmitHandholdingActionPlan') ? { status: '0', errorMessage: 'Refused' } : uploads(req));
+    r.plannedActivities = ['Train'];
+    expect(await submitModuleParameter(app, 'handholdingActionPlan', param)).toBe('Refused');
+    expect(r.plannedActivitiesBase).toEqual(['Train', 'Log readings']);
+  });
+
+  it('the downloaded plan is the base of the action plan screen, which copies the allotted parameters', async () => {
+    const answer = loginAnswer();
+    const r = answer.allottedParameters![0]!.requirements![0]!;
+    r.plannedActivities = ['Write the test procedure'];
+    rememberPlanBase(answer);
+    const { app } = await openConsultancy(new FakeServer(uploads), answer);
+    const copy = moduleData(app, 'handholdingActionPlan', true)!.parameters[0]!.requirements![0]!;
+    expect(copy.plannedActivitiesBase).toEqual(['Write the test procedure']);
   });
 
   it('the progress review selfie: the file, then SubmitSelfie with it', async () => {
