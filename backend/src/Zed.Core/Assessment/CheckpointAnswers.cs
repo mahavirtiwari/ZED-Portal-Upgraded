@@ -1,13 +1,16 @@
 using System.Data.Common;
+using Dapper;
+using Microsoft.Extensions.Logging;
 using Zed.Core.Data;
 
-namespace Zed.Portal.Features.Staff.Assessment;
+namespace Zed.Core.Assessment;
 
 /// <summary>
 /// Yes / Partial / No for each checkpoint of a requirement (V4, migration 0039). A unit's checkpoints are its rows of
 /// dbo.MsmeOptions (copied from the questionnaire at payment); the Admin's actions needed come from dbo.Options.ActionsNeeded
 /// and the evidence of each checkpoint from dbo.Evidences.OptionCode (migration 0034; handholding reads main's questionnaire).
-/// The desktop assessor, the lead site assessor and the handholding consultant answer; the requirement's legacy conformance
+/// The desktop assessor, the site assessor (remote assessment page, and the SA app's SubmitParameter) and the handholding
+/// consultant answer; the requirement's legacy conformance
 /// is then Yes when every checkpoint is Yes, otherwise No (a Partial is not conforming). A requirement without checkpoint
 /// rows, or a database before 0039, keeps the old Yes / No conformance.
 /// </summary>
@@ -59,7 +62,7 @@ public static class CheckpointAnswers
         """;
 
     /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZEDCS_V2_LIVE.dbo" (handholding).</param>
-    internal static string CheckpointSql(string master) => Rows(
+    public static string CheckpointSql(string master) => Rows(
         "CAST(X.Id AS bigint) AS Id, LTRIM(RTRIM(X.OptionCode)) AS OptionCode, X.OptionName, m.ActionsNeeded, " +
         "X.DaAnswer, X.DaActions, X.DaRemarks, X.SaAnswer, X.SaActions, X.SaRemarks, X.HhAnswer, X.HhActions, X.HhRemarks, X.HhReview1, X.HhReview2",
         "MsmeOptions",
@@ -69,7 +72,7 @@ public static class CheckpointAnswers
     /// The unit's evidences that belong to a checkpoint. The Admin's edit renumbers the questionnaire's evidences, so an
     /// evidence is found by its id, else by its requirement, number and name.
     /// </summary>
-    internal static string EvidenceSql(string master) => Rows(
+    public static string EvidenceSql(string master) => Rows(
         "CAST(X.Id AS bigint) AS Id, LTRIM(RTRIM(m.OptionCode)) AS OptionCode, X.EvidenceName, CAST(ISNULL(X.EvidenceType, 0) AS bit) AS Mandatory, " +
         "CAST(CASE WHEN X.SyncedDate IS NULL THEN 0 ELSE 1 END AS bit) AS Uploaded, X.IsVerified",
         "MsmeEvidences",
@@ -121,7 +124,7 @@ public static class CheckpointAnswers
     public static async Task<IReadOnlyList<Checkpoint>> LoadAsync(ISqlExecutor db, string zedId, string level, long? requirementId, string master,
         ILogger log, CancellationToken ct)
     {
-        var args = new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), RequirementId = requirementId };
+        var args = new { ZedId = Ansi(zedId), Certification = Ansi(level), RequirementId = requirementId };
         try
         {
             var rows = await db.QuerySqlAsync<CheckpointRow>(CheckpointSql(master), args, ct);
@@ -225,7 +228,7 @@ public static class CheckpointAnswers
 
     // ------------------------------------------------------------------ write
 
-    internal static string UpdateSql(Stage stage, int i) => stage switch
+    public static string UpdateSql(Stage stage, int i) => stage switch
     {
         Stage.Desktop => Update($"DaAnswer = @Answer{i}, DaActions = @Actions{i}, DaRemarks = @Remarks{i}", i),
         Stage.Site => Update($"SaAnswer = @Answer{i}, SaActions = @Actions{i}, SaRemarks = @Remarks{i}", i),
@@ -255,15 +258,15 @@ public static class CheckpointAnswers
     {
         var sql = new System.Text.StringBuilder(SaveBatchStart).Append('\n');
         var p = new Dapper.DynamicParameters();
-        p.Add("ZedId", AssessmentInput.Ansi(zedId));
-        p.Add("Certification", AssessmentInput.Ansi(level));
-        p.Add("AnsweredBy", AssessmentInput.Ansi(userId.Length <= 50 ? userId : userId[..50]));
+        p.Add("ZedId", Ansi(zedId));
+        p.Add("Certification", Ansi(level));
+        p.Add("AnsweredBy", Ansi(userId.Length <= 50 ? userId : userId[..50]));
         for (var i = 0; i < decision.Answers.Count; i++)
         {
             var (c, a) = decision.Answers[i];
             sql.Append(UpdateSql(stage, i)).Append('\n');
             p.Add("Id" + i, c.Id);
-            p.Add("Answer" + i, AssessmentInput.Ansi(a.Value, 10));
+            p.Add("Answer" + i, Ansi(a.Value, 10));
             p.Add("Actions" + i, a.Actions.Count == 0 ? null : string.Join("\n", a.Actions));
             p.Add("Remarks" + i, a.Remarks);
         }
@@ -279,4 +282,6 @@ public static class CheckpointAnswers
     }
 
     private static readonly HashSet<string> ConformanceProcedures = ["SP_ASSESSMENT_DA_UPDATE_REQUIREMENT", "SP_ASSESSMENT_RA_UPDATE_REQUIREMENT"];
+
+    private static DbString Ansi(string? value, int length = 50) => new() { Value = value, IsAnsi = true, Length = length };
 }

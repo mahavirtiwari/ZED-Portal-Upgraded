@@ -86,6 +86,9 @@ public sealed class RequirementDetails
     public List<PhotoInformation>? addedEvidences { get; set; }
     public string? conformance { get; set; }
     public string? comments { get; set; }
+    /// <summary>V4, SA app: Yes / Partial / No per checkpoint; for a requirement with checkpoints its conformance follows from them.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<CheckpointAnswerInfo>? checkpointAnswers { get; set; }
 }
 
 public sealed class EvidenceInfo
@@ -105,6 +108,40 @@ public sealed class OptionInfo
     public string? label { get; set; }
     public string? image { get; set; }
     public List<SubOption>? subOptions { get; set; }
+    /// <summary>V4, SA app: the option is a checkpoint of the requirement (MsmeOptions row, migration 0039); null otherwise.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CheckpointInfo? checkpoint { get; set; }
+}
+
+/// <summary>A checkpoint as the site assessor answers it: the Admin's actions needed, its evidences, the earlier answers.</summary>
+public sealed class CheckpointInfo
+{
+    public List<string> actions { get; set; } = [];
+    public List<CheckpointEvidenceInfo> evidences { get; set; } = [];
+    /// <summary>The desktop assessor's Yes / Partial / No.</summary>
+    public string? desktopAnswer { get; set; }
+    /// <summary>The site answer saved so far (another device, or the web).</summary>
+    public string? siteAnswer { get; set; }
+    public List<string>? siteActions { get; set; }
+    public string? siteRemarks { get; set; }
+}
+
+public sealed class CheckpointEvidenceInfo
+{
+    public string? name { get; set; }
+    public bool mandatory { get; set; }
+    public bool uploaded { get; set; }
+    /// <summary>The desktop assessor's Yes / No on the evidence (a No blocks a Yes on the checkpoint).</summary>
+    public string? verified { get; set; }
+}
+
+/// <summary>The site assessor's answer to one checkpoint (OptionInfo.id), sent with SubmitParameter.</summary>
+public sealed class CheckpointAnswerInfo
+{
+    public long id { get; set; }
+    public string? answer { get; set; }
+    public List<string>? actions { get; set; }
+    public string? remarks { get; set; }
 }
 
 public sealed class SubOption

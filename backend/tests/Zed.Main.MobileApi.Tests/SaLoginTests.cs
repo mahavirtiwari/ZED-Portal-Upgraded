@@ -92,6 +92,29 @@ public sealed class SaLoginTests : IDisposable
         Assert.Equal("Fully", opt.GetProperty("subOptions")[0].GetProperty("label").GetString());
 
         Assert.Contains("sa-phone", _t.Devices.Known[(MobileApps.SiteAssessor, "ZEDAS0001")]);
+        // Without checkpoint rows (a database before 0039) the option stays plain.
+        Assert.False(opt.TryGetProperty("checkpoint", out _));
+    }
+
+    [Fact]
+    public async Task The_options_carry_their_checkpoint_with_actions_evidence_and_earlier_answers()
+    {
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.CheckpointSql("dbo")] = args => FakeSql.Arg(args, "ZedId") == "ZEDMSME000001"
+            ? [new { RequirementRowId = 21L, Id = 31L, OptionCode = "O1", OptionName = "Yes", ActionsNeeded = "Write the policy\nDisplay it", DaAnswer = "Partial",
+                     SaAnswer = "No", SaActions = "Display it", SaRemarks = (string?)null }]
+            : [];
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.EvidenceSql("dbo")] = _ =>
+            [new { RequirementRowId = 21L, Id = 51L, OptionCode = "O1", EvidenceName = "Policy", Mandatory = true, Uploaded = true, IsVerified = "Yes" }];
+
+        var e = await Login(Password);
+        var c = e.GetProperty("allottedParameters")[0].GetProperty("requirements")[0].GetProperty("options")[0].GetProperty("checkpoint");
+        Assert.Equal(["Write the policy", "Display it"], c.GetProperty("actions").EnumerateArray().Select(x => x.GetString()));
+        Assert.Equal("Partial", c.GetProperty("desktopAnswer").GetString());
+        Assert.Equal("No", c.GetProperty("siteAnswer").GetString());
+        Assert.Equal(["Display it"], c.GetProperty("siteActions").EnumerateArray().Select(x => x.GetString()));
+        var ev = Assert.Single(c.GetProperty("evidences").EnumerateArray());
+        Assert.True(ev.GetProperty("mandatory").GetBoolean());
+        Assert.Equal("Yes", ev.GetProperty("verified").GetString());
     }
 
     [Fact]

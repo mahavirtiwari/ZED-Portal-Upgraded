@@ -336,6 +336,20 @@ The consultant app (1.2/74), the site assessor app (1.2/45) and the two Impact A
 call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`, `TuAppTests`):
 - **Legacy paths.** The consultant app requests `SA//<Action>` for the RestHelper actions. The mobile host collapses
   repeated slashes before routing (`UseLegacyPathNormalization`), as IIS/MVC 5 did.
+- **Checkpoints in the site assessor app (V4).** `SA/Login` puts each requirement checkpoint (migration 0039) on its option:
+  `checkpoint: { actions, evidences: [{ name, mandatory, uploaded, verified }], desktopAnswer, siteAnswer, siteActions, siteRemarks }`
+  (absent when the requirement has none). `SA/SubmitParameter` takes `checkpointAnswers: [{ id, answer, actions, remarks }]`
+  per requirement (id = the option id) and checks them with the web's rules (`Zed.Core.Assessment.CheckpointAnswers`, stage
+  Site: Yes needs every mandatory evidence uploaded and not refused by the desktop assessor; Partial / No need the actions
+  needed ticked, or a remark when there are none). The requirement's conformance and remarks then come from the answers,
+  not from the app's Yes / No, and the answers are saved to `MsmeOptions.SaAnswer/SaActions/SaRemarks` after the parameter.
+  A requirement with checkpoints sent without answers (an app from before V4) is refused: "Please update the ZED SA app to
+  answer this requirement checkpoint by checkpoint."
+- **Action plan merge (consultant app, V4).** `SA/SubmitHandholdingActionPlan` takes `plannedActivitiesBase` per requirement:
+  the plan as the app last had it from the server (downloaded, or last sent). The web edits the same plan (milestone page;
+  the baseline's checkpoint actions are added there), so the server merges: the app's items, less those the web removed
+  since, plus those the web added since (texts compared trimmed, ignoring case). Without it (older apps) the app's plan
+  replaces the requirement's plan, as before.
 - **Main `SA/SubmitAttendance`** (site assessor app): multipart `saId`, `zedId`, `certificationType`, `attendanceType`
   (≤50), `comments` (≤4000), `selfieMetadata` (JSON with `photoId`), file `files`. Lead or co-assessor allotted to the
   unit. Stored as `Attendance/{zed}/{cert}/{photoId}.jpg`, then `SP_APP_SA_INSERT_DAILY_ATTENDANCE`; the answer is the

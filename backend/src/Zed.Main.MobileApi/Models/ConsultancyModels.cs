@@ -101,6 +101,11 @@ public sealed class RequirementDetails
     // Rationale for Technology Intervention
     public string? technologyInterventionRationale { get; set; }
     public List<string>? plannedActivities { get; set; }
+    /// <summary>
+    /// V4: the action plan as the app last had it from the server (downloaded, or last sent); the server keeps what the
+    /// web added or removed since (<see cref="Controllers.Consultancy.ConsultancySAController.MergePlan"/>). Null from older apps.
+    /// </summary>
+    public List<string>? plannedActivitiesBase { get; set; }
     public List<PhotoInformation>? capturedEvidences { get; set; }
     public List<string>? suggestedTechnologyIntervention { get; set; }
     // SubmitProgressReview

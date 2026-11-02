@@ -236,6 +236,64 @@ public sealed class SaWriteTests : IDisposable
         Assert.Equal("21", photos.Rows[0]["PhotoType"]);
     }
 
+    /// <summary>Requirement 21's checkpoints: 501 with a mandatory evidence (uploaded, verified), 502 with actions needed.</summary>
+    private void Checkpoints(string verified = "Yes")
+    {
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.CheckpointSql("dbo")] = args => FakeSql.Arg(args, "ZedId") == Zed
+            ? [new { RequirementRowId = 21L, Id = 501L, OptionCode = "1", OptionName = "Has a quality policy", ActionsNeeded = (string?)null, DaAnswer = "Yes" },
+               new { RequirementRowId = 21L, Id = 502L, OptionCode = "2", OptionName = "Policy is displayed", ActionsNeeded = "Display it in the local language\nTrain supervisors", DaAnswer = "Partial" }]
+            : [];
+        _t.Fake.Queries[global::Zed.Core.Assessment.CheckpointAnswers.EvidenceSql("dbo")] = _ =>
+            [new { RequirementRowId = 21L, Id = 31L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = true, IsVerified = verified }];
+    }
+
+    private static object CheckpointParameter(object? checkpointAnswers) => new
+    {
+        saId = Co, zedId = Zed, certificationType = "Silver",
+        allottedParameterObj = new
+        {
+            parameterId = "1", parameterCode = "A1",
+            requirements = new object[] { new { id = 21, code = "R1", conformance = "True", comments = "", checkpointAnswers } },
+        },
+    };
+
+    [Fact]
+    public async Task A_requirement_with_checkpoints_takes_its_conformance_from_the_checkpoint_answers()
+    {
+        Checkpoints();
+        AssertOk(await _t.Json("/SA/SubmitParameter", CheckpointParameter(new object[]
+        {
+            new { id = 501, answer = "Yes" },
+            new { id = 502, answer = "Partial", actions = new[] { "Display it in the local language" } },
+        })));
+        // The app said Yes; the checkpoints say No (a Partial is not conforming), with the summary as remarks.
+        var reqs = AssessorTestHost.Tvp(_t.LastArgs("SP_APP_SA_SAVE_PARAMETER"), "RequirementsList")!;
+        Assert.Equal("No", reqs.Rows[0]["Conformance"]);
+        Assert.Equal("2. Partial: Display it in the local language.", reqs.Rows[0]["AssessorRemarks"]);
+        // The answers are saved after the parameter (the site columns of MsmeOptions).
+        var save = _t.Fake.Calls.Last(c => c.Name.Contains("UPDATE dbo.MsmeOptions SET SaAnswer", StringComparison.Ordinal));
+        static string? Value(object? args, string name) =>
+            (args as Dapper.DynamicParameters)!.Get<object?>(name) switch { Dapper.DbString s => s.Value, var v => v?.ToString() };
+        Assert.Equal("Partial", Value(save.Args, "Answer1"));
+        Assert.Equal("Display it in the local language", Value(save.Args, "Actions1"));
+    }
+
+    [Fact]
+    public async Task Checkpoint_answers_follow_the_web_rules_and_an_old_app_is_asked_to_update()
+    {
+        Checkpoints(verified: "No");
+        // Yes needs the mandatory evidence not refused by the desktop assessor.
+        var refused = await _t.Json("/SA/SubmitParameter", CheckpointParameter(new object[] { new { id = 501, answer = "Yes" }, new { id = 502, answer = "Yes" } }));
+        Assert.Equal("0", refused.GetProperty("status").GetString());
+        Assert.Contains("\"Policy\" was not verified", refused.GetProperty("errorMessage").GetString());
+        // A Partial needs the actions needed ticked.
+        refused = await _t.Json("/SA/SubmitParameter", CheckpointParameter(new object[] { new { id = 501, answer = "No", remarks = "Not written" }, new { id = 502, answer = "Partial" } }));
+        Assert.Contains("please tick the actions needed", refused.GetProperty("errorMessage").GetString());
+        // An app without checkpoint answers (before V4).
+        AssertFail(await _t.Json("/SA/SubmitParameter", CheckpointParameter(null)), "Please update the ZED SA app to answer this requirement checkpoint by checkpoint.");
+        Assert.DoesNotContain(_t.Fake.Calls, c => c.Name == "SP_APP_SA_SAVE_PARAMETER");
+    }
+
     [Fact]
     public async Task Parameter_and_ofi_comments_for_another_assessors_unit_are_refused()
     {

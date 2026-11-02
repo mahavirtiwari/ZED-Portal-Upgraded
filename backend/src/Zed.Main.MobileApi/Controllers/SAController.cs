@@ -3,6 +3,7 @@ using System.Data.Common;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Forms;
 using Zed.Core.Http;
@@ -198,6 +199,7 @@ public sealed class SAController(
                     return requirement;
                 }).ToList();
             }
+            await AttachCheckpointsAsync(response.allottedParameters, unit.Text("ZedId") is { Length: > 0 } z ? z : request.zedId, response.certificationType, ct);
         }
 
         var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
@@ -207,6 +209,35 @@ public sealed class SAController(
         log.LogInformation("SA app login for {UserId} on {ZedId}", userKey, request.zedId);
         return LegacyJson(response);
     });
+
+    /// <summary>
+    /// V4: the checkpoints of the unit's requirements (migration 0039) on their options, so the app answers Yes / Partial / No
+    /// per checkpoint as the web does (CheckpointAnswers). A database before 0039 has none: the options stay plain.
+    /// </summary>
+    private async Task AttachCheckpointsAsync(List<AllottedParameters>? parameters, string? zedId, string? level, CancellationToken ct)
+    {
+        if (parameters is null || string.IsNullOrWhiteSpace(zedId) || string.IsNullOrWhiteSpace(level)) return;
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct);
+        if (checkpoints.Count == 0) return;
+        foreach (var r in parameters.SelectMany(p => p.requirements ?? []))
+        {
+            var mine = checkpoints.Where(c => c.RequirementId == r.id).ToList();
+            foreach (var o in r.options ?? [])
+            {
+                var c = mine.FirstOrDefault(x => x.Id == o.id) ?? mine.FirstOrDefault(x => Same(x.OptionCode, o.code));
+                if (c is null) continue;
+                o.checkpoint = new CheckpointInfo
+                {
+                    actions = [.. c.Actions],
+                    evidences = c.Evidences.Select(e => new CheckpointEvidenceInfo { name = e.Name, mandatory = e.Mandatory, uploaded = e.Uploaded, verified = e.Verified }).ToList(),
+                    desktopAnswer = c.Desktop?.Value,
+                    siteAnswer = c.Site?.Value,
+                    siteActions = c.Site is { Actions.Count: > 0 } s ? [.. s.Actions] : null,
+                    siteRemarks = c.Site?.Remarks,
+                };
+            }
+        }
+    }
 
     private static List<AssessorDetails> Assessors(IDictionary<string, object?> unit)
     {
@@ -370,11 +401,33 @@ public sealed class SAController(
         if (!st.OpenMeetingSubmitted) return Fail(OpenNotSubmitted + request.zedId);
         if (request.allottedParameterObj is not { requirements: { } requirements } parameter) return Fail(ErrorText);
 
+        // V4: a requirement with checkpoints is answered checkpoint by checkpoint, with the web's rules (CheckpointAnswers);
+        // its conformance and remarks follow from the answers, not from the app's Yes / No.
+        var checkpoints = await CheckpointAnswers.LoadAsync(db, request.zedId ?? "", request.certificationType ?? "", null, "dbo", log, ct);
+        var decisions = new Dictionary<int, CheckpointAnswers.Decision>();
+        foreach (var r in requirements)
+        {
+            var mine = checkpoints.Where(c => c.RequirementId == r.id).ToList();
+            if (mine.Count == 0) continue;
+            if (r.checkpointAnswers is not { Count: > 0 } answers)
+            {
+                log.LogWarning("SA app {SaId} sent requirement {Id} of {ZedId} without its checkpoint answers (old app)", request.saId, r.id, request.zedId);
+                return Fail(CheckpointsNeedUpdate);
+            }
+            var (decision, problem) = CheckpointAnswers.Decide(mine,
+                new CheckpointAnswers.SaveRequest(answers.Select(a => new CheckpointAnswers.AnswerRequest(a.id, a.answer, a.actions, a.remarks)).ToList(), r.comments),
+                CheckpointAnswers.Stage.Site);
+            if (decision is null) return Fail($"{r.code}: {problem}");
+            decisions[r.id] = decision;
+        }
+
         var reqs = Table("RequirementId", "RequirementCode", "Conformance", "AssessorRemarks");
         var photos = PhotoTable();
         foreach (var r in requirements)
         {
-            AddRow(reqs, r.id.ToString(System.Globalization.CultureInfo.InvariantCulture), r.code ?? "", r.conformance, r.comments ?? "");
+            var decided = decisions.GetValueOrDefault(r.id);
+            AddRow(reqs, r.id.ToString(System.Globalization.CultureInfo.InvariantCulture), r.code ?? "",
+                decided?.Conformance ?? r.conformance, decided is null ? r.comments ?? "" : decided.Remarks ?? "");
             foreach (var p in r.addedEvidences ?? [])
             {
                 // Evidence photos were uploaded by SubmitEvidences; here only their ids are linked.
@@ -394,8 +447,16 @@ public sealed class SAController(
         args.Add("PhotoType", "Parameters");
         args.Add("RequirementsList", reqs.AsTableValuedParameter("DynamicRequirementsList"));
         if (photos.Rows.Count > 0) args.Add("PhotoList", photos.AsTableValuedParameter("DynamicPhotoList2"));
-        return LegacyJson(await ExecAsync("SP_APP_SA_SAVE_PARAMETER", args, ct));
+        var result = await ExecAsync("SP_APP_SA_SAVE_PARAMETER", args, ct);
+        if (result.status == "1")
+            foreach (var decision in decisions.Values)
+                await CheckpointAnswers.SaveAsync(db, request.zedId!, request.certificationType!, CheckpointAnswers.Stage.Site, decision, request.saId ?? "", ct);
+        return LegacyJson(result);
     });
+
+    /// <summary>An app without checkpoint answers (before V4) for a requirement that has checkpoints.</summary>
+    internal const string CheckpointsNeedUpdate =
+        "Please update the ZED SA app to answer this requirement checkpoint by checkpoint.";
 
     [HttpPost]
     [DeviceBound(MobileApps.SiteAssessor, "saId")]

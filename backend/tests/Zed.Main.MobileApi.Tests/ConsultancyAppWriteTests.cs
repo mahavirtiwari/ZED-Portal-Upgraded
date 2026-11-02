@@ -348,6 +348,40 @@ public sealed class ConsultancyAppWriteTests : IDisposable
     }
 
     [Fact]
+    public async Task Action_plan_keeps_what_the_web_added_or_removed_since_the_apps_copy()
+    {
+        // The app started from Train + Calibrate and added "Log readings"; meanwhile the web removed Calibrate and added
+        // a checkpoint action.
+        _t.Fake.Queries[global::Zed.Main.MobileApi.Controllers.Consultancy.ConsultancySAController.PlanSql[..60]] = args =>
+            ConsultancyAppHost.Arg(args, "RequirementId") == "210"
+                ? [new { BulletPoints = "Train" }, new { BulletPoints = "Display the policy in local language" }]
+                : [];
+        var requirement = new
+        {
+            id = 210, code = "R1", estimatedTimeInDays = "30",
+            plannedActivities = new[] { "Train", "Calibrate", "Log readings" },
+            plannedActivitiesBase = new[] { "Train", "Calibrate" },
+        };
+        AssertOk(await _t.Json("/SA/SubmitHandholdingActionPlan", Parameter(Co, requirement)));
+        var bullets = AssessorTestHost.Tvp(_t.LastArgs("SP_APP_SA_SAVE_PARAMETER"), "BulletList")!;
+        Assert.Equal(["Train", "Log readings", "Display the policy in local language"],
+            bullets.Rows.Cast<System.Data.DataRow>().Select(r => r["Designation"].ToString()));
+    }
+
+    [Theory]
+    // app, baseline, current (web) -> merged
+    [InlineData("A|B", "A|B", "A|B", "A|B")]          // nothing changed on the web
+    [InlineData("A", "A|B", "A|B", "A")]              // the consultant removed B in the app
+    [InlineData("A|B", "A|B", "A", "A")]              // the web removed B
+    [InlineData("A|B2", "A|B", "A|B|C", "A|B2|C")]    // edited in the app, added on the web
+    [InlineData(" a |A", "", "A", "a")]               // blanks, case and duplicates
+    public void Action_plan_merge(string app, string baseline, string current, string merged)
+    {
+        static string[] L(string s) => s.Length == 0 ? [] : s.Split('|');
+        Assert.Equal(L(merged), global::Zed.Main.MobileApi.Controllers.Consultancy.ConsultancySAController.MergePlan(L(app), L(baseline), L(current)));
+    }
+
+    [Fact]
     public async Task Technology_intervention_sends_the_rationale_as_requirement_code()
     {
         AssertOk(await _t.Json("/SA/SubmitTechnologyIntervention", Parameter(Lead, Requirement())));

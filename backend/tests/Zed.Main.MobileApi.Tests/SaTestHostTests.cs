@@ -123,8 +123,8 @@ public sealed class AllotmentSql(FakeSql inner) : ISqlExecutor
 
     public async Task<IReadOnlyList<T>> QuerySqlAsync<T>(string sql, object? parameters = null, CancellationToken ct = default)
     {
-        await inner.QuerySqlAsync<T>(sql, parameters, ct);
-        if (typeof(T) != typeof(AssessorAllotment) || !sql.Contains("MsmeCertifications", StringComparison.Ordinal)) return [];
+        var rowsOfInner = await inner.QuerySqlAsync<T>(sql, parameters, ct);
+        if (typeof(T) != typeof(AssessorAllotment) || !sql.Contains("MsmeCertifications", StringComparison.Ordinal)) return rowsOfInner;
         var key = ((FakeSql.Arg(parameters, "ZedId") ?? "").ToUpperInvariant(), (FakeSql.Arg(parameters, "Certification") ?? "").ToUpperInvariant());
         if (!Allotments.TryGetValue(key, out var a)) return [];
         return (IReadOnlyList<T>)(object)new List<AssessorAllotment> { new() { SiteAssessorId = a.Lead, CoAssessorId = a.Co } };

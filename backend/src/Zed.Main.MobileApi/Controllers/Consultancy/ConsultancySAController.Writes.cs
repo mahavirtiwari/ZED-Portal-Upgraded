@@ -391,12 +391,64 @@ public sealed partial class ConsultancySAController
         Guarded(nameof(SubmitBaselineDiagnostic), () => SaveParameterAsync(nameof(SubmitBaselineDiagnostic), request, "BaselineDiagnostic",
             r => (r.code, r.conformance), r => r.gapsIdentified, r => r.capturedEvidences, ct));
 
-    /// <summary>Planned activities: Conformance carries estimatedTimeInDays; photos from addedEvidences and capturedEvidences.</summary>
+    /// <summary>
+    /// Planned activities: Conformance carries estimatedTimeInDays; photos from addedEvidences and capturedEvidences.
+    /// The procedure replaces a requirement's whole plan, but the web edits the same plan (milestone page; the baseline's
+    /// checkpoint actions are added there): when the app sends the plan it started from (plannedActivitiesBase), what the web
+    /// added or removed since is kept (<see cref="MergePlan"/>). Without it (older apps) the app's plan replaces it, as before.
+    /// </summary>
     [HttpPost]
     [DeviceBound(App, "saId")]
     public Task<IActionResult> SubmitHandholdingActionPlan(SubmitParameterRequest request, CancellationToken ct) =>
         Guarded(nameof(SubmitHandholdingActionPlan), () => SaveParameterAsync(nameof(SubmitHandholdingActionPlan), request, "HandholdingActionPlan",
-            r => (r.code, r.estimatedTimeInDays), r => r.plannedActivities, r => [.. r.addedEvidences ?? [], .. r.capturedEvidences ?? []], ct));
+            r => (r.code, r.estimatedTimeInDays), r => r.plannedActivities, r => [.. r.addedEvidences ?? [], .. r.capturedEvidences ?? []], ct,
+            prepare: MergeWebPlanAsync));
+
+    /// <summary>The plan of a requirement in the current milestone (the rows SP_APP_SA_SAVE_PARAMETER replaces).</summary>
+    public const string PlanSql =
+        "SELECT BulletPoints FROM MsmeRequirementBullets WHERE ZedId = @ZedId AND CertificationType = @Certification " +
+        "AND RequirementId = @RequirementId AND ReqType = 'HandholdingActionPlan' AND NcCount = (SELECT TOP 1 NcCount FROM MsmeCertifications " +
+        "WHERE ZedId = @ZedId AND Certification = @Certification AND SiteAssessorId IS NOT NULL AND SaCertificateNo IS NULL)";
+
+    private sealed class PlanRow { public string? BulletPoints { get; init; } }
+
+    private async Task MergeWebPlanAsync(SubmitParameterRequest request, IReadOnlyList<RequirementDetails> requirements, CancellationToken ct)
+    {
+        foreach (var r in requirements)
+        {
+            if (r.plannedActivitiesBase is null) continue;
+            var current = (await db.QuerySqlAsync<PlanRow>(PlanSql, new
+            {
+                ZedId = request.zedId, Certification = request.certificationType, RequirementId = Invariant(r.id),
+            }, ct)).Select(p => p.BulletPoints ?? "").ToList();
+            var merged = MergePlan(r.plannedActivities ?? [], r.plannedActivitiesBase, current);
+            if (merged.Count != (r.plannedActivities?.Count ?? 0))
+                log.LogInformation("Action plan of requirement {Id} of {ZedId}: {App} from the app, {Merged} kept with the web's changes",
+                    r.id, request.zedId, r.plannedActivities?.Count ?? 0, merged.Count);
+            r.plannedActivities = merged;
+        }
+    }
+
+    /// <summary>
+    /// Three-way merge of a requirement's plan (texts compared trimmed, ignoring case): the app's items, less those the web
+    /// removed since the app's copy (in <paramref name="baseline"/>, gone from <paramref name="current"/>), then the items the
+    /// web added since (in <paramref name="current"/>, not in <paramref name="baseline"/>). Items the consultant removed in the
+    /// app stay removed; duplicates and blanks are dropped.
+    /// </summary>
+    public static List<string> MergePlan(IReadOnlyList<string?> app, IReadOnlyList<string?> baseline, IReadOnlyList<string?> current)
+    {
+        var cmp = StringComparer.OrdinalIgnoreCase;
+        static string Key(string? s) => s?.Trim() ?? "";
+        var baseSet = baseline.Select(Key).ToHashSet(cmp);
+        var currentSet = current.Select(Key).ToHashSet(cmp);
+        var seen = new HashSet<string>(cmp);
+        var merged = new List<string>();
+        foreach (var item in app.Select(Key))
+            if (item.Length > 0 && !(baseSet.Contains(item) && !currentSet.Contains(item)) && seen.Add(item)) merged.Add(item);
+        foreach (var item in current.Select(Key))
+            if (item.Length > 0 && !baseSet.Contains(item) && seen.Add(item)) merged.Add(item);
+        return merged;
+    }
 
     /// <summary>RequirementCode carries the rationale and Conformance the fixed text "Conformance"; photos from addedEvidences.</summary>
     [HttpPost]
@@ -419,11 +471,13 @@ public sealed partial class ConsultancySAController
     /// </summary>
     private async Task<IActionResult> SaveParameterAsync(string action, SubmitParameterRequest request, string type,
         Func<RequirementDetails, (string? Code, string? Conformance)> fields, Func<RequirementDetails, List<string>?> bullets,
-        Func<RequirementDetails, List<PhotoInformation>?> evidences, CancellationToken ct)
+        Func<RequirementDetails, List<PhotoInformation>?> evidences, CancellationToken ct,
+        Func<SubmitParameterRequest, IReadOnlyList<RequirementDetails>, CancellationToken, Task>? prepare = null)
     {
         if (await RefuseAsync(action, request.saId, request.zedId, request.certificationType, Role.Team, ct) is { } refused) return refused;
         if (await RequireOpenAsync(request.zedId, request.certificationType, request.saId, ct) is { } stage) return stage;
         if (request.allottedParameterObj is not { requirements: { } requirements } parameter) return Fail(ErrorText);
+        if (prepare is not null) await prepare(request, requirements, ct);
 
         var reqs = Table("RequirementId", "RequirementCode", "Conformance", "AssessorRemarks");
         var photos = PhotoTable();

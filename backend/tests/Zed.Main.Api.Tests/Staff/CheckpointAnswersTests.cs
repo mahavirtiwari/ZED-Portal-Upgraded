@@ -1,5 +1,6 @@
+using Zed.Core.Assessment;
 using Zed.Portal.Features.Staff.Assessment;
-using static Zed.Portal.Features.Staff.Assessment.CheckpointAnswers;
+using static Zed.Core.Assessment.CheckpointAnswers;
 
 namespace Zed.Main.Api.Tests.Staff;
 
