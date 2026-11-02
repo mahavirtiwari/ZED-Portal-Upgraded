@@ -3,9 +3,10 @@
   Builds a ZED React Native app as a release APK on a Windows server: gets the code from Git, installs the JavaScript
   packages, builds with Gradle, checks which server the APK talks to, and copies it to -Output.
 .DESCRIPTION
-  Apps (-App): msme = ZED Surveillance, the Bronze surveillance app (com.qci.zed.bronzesurveillance; the workspace is
-  called "msme", it is not the store MSME app, whose source was never delivered); assessor = ZED SA (site assessment);
-  consultant = ZED Consultancy (handholding); all = the three.
+  Apps (-App): zedmsme = ZED MSME, the applicant app (com.qci.zed.msmeapp: registration, certifications, documents;
+  installs next to the Play Store ZED MSME app); msme = ZED Surveillance, the Bronze surveillance app
+  (com.qci.zed.bronzesurveillance; the workspace is called "msme" but it is not the applicant app); assessor = ZED SA
+  (site assessment); consultant = ZED Consultancy (handholding); all = the four.
 
   By default the APK talks to the TEST server (https://zedv3.qci.org.in) and is signed with the Android debug key of
   this machine: for testers, not for the Play Store. A phone that has a test APK signed on another machine must
@@ -20,8 +21,11 @@
   The tools come from Install-ZedApkTools.ps1 (-ToolsRoot); caches and temporary files stay under -ToolsRoot, off the
   system drive. A log is written to <Output>\logs.
 .EXAMPLE
+  powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App zedmsme
+  # ZED MSME (the applicant app) for the test server, from the latest main.
+.EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App msme
-  # ZED Surveillance (Bronze) for the test server, from the latest main.
+  # ZED Surveillance (Bronze) for the test server.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App all -Ref 520e94d
 .EXAMPLE
@@ -30,8 +34,8 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('msme', 'assessor', 'consultant', 'all')]
-    [string]$App = 'msme',
+    [ValidateSet('zedmsme', 'msme', 'assessor', 'consultant', 'all')]
+    [string]$App = 'zedmsme',
     [string]$ToolsRoot = 'E:\ZedApkTools',
     [string]$Source = 'E:\ZedApkBuild\src',
     [string]$Repository = 'https://github.com/mahavirtiwari/ZED-Portal-Upgraded.git',
@@ -59,6 +63,7 @@ function Invoke-Tool {
 
 # The apps: workspace folder, file label, Gradle's output file prefix.
 $apps = [ordered]@{
+    zedmsme    = @{ Label = 'ZED-MSME'; Id = 'com.qci.zed.msmeapp' }
     msme       = @{ Label = 'ZED-Surveillance-Bronze'; Id = 'com.qci.zed.bronzesurveillance' }
     assessor   = @{ Label = 'ZED-SA'; Id = 'com.qci.zed.siteassessment' }
     consultant = @{ Label = 'ZED-Consultancy'; Id = 'com.qci.zed.consultancy' }

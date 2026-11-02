@@ -7,7 +7,8 @@ and on a Windows build server; adjust the drive letters and folders to that mach
 
 | App | Workspace | applicationId | Version | Test server addresses it uses |
 |---|---|---|---|---|
-| ZED Surveillance (Bronze, the "MSME" build) | `apps/msme` | `com.qci.zed.bronzesurveillance` | 1.9 (13) | `/surveillancemobileapi/surveillance/`, `/surveillancemobileapi/msme/`, `/mobileapi/RA/` |
+| ZED MSME (the applicant app) | `apps/zedmsme` | `com.qci.zed.msmeapp` | 2.0 (1) | `/mobileapi/msme/`, `/mobileapi/RA/`, `/mobileapi/` (texts, forms); portal `/Msme/`, `/Pay/` |
+| ZED Surveillance (Bronze surveillance) | `apps/msme` | `com.qci.zed.bronzesurveillance` | 1.9 (13) | `/surveillancemobileapi/surveillance/`, `/surveillancemobileapi/msme/`, `/mobileapi/RA/` |
 | ZED SA (site assessment) | `apps/assessor` | `com.qci.zed.siteassessment` | 1.3 (46) | `/mobileapi/SA/` |
 | ZED Consultancy (handholding) | `apps/consultant` | `com.qci.zed.consultancy` | 1.3 (75) | `/consultancymobileapi/SA/`, `/Consultancy/FinancialAssistance/`, `/mobileapi/photos/` |
 
@@ -27,9 +28,9 @@ Two scripts in `mobile/tools` do everything below. Run them in PowerShell; tools
 2. Build (clones or updates its own checkout in `E:\ZedApkBuild\src`, builds for the test server, checks the server
    setting with aapt2, copies the APK with a `.sha256` to `E:\Releases\apk`, log in `E:\Releases\apk\logs`):
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App msme
+   powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App zedmsme
    ```
-   `-App assessor`, `-App consultant` or `-App all` for the others; `-Ref <commit or tag>` for a given version;
+   `-App msme` (ZED Surveillance), `-App assessor`, `-App consultant` or `-App all` for the others; `-Ref <commit or tag>` for a given version;
    `-Production` (with the four `ZED_UPLOAD_*` environment variables of the upload keystore) for a Play Store APK,
    refused if it would be signed with the debug key.
 

@@ -6,11 +6,26 @@ applicationId and signing key, so installed apps update in place). Requirements:
 | Workspace | What | Legacy source (read only) | applicationId | State |
 |---|---|---|---|---|
 | `packages/shared` (`@zed/shared`) | Foundation shared by all apps | — | — | done |
+| `apps/zedmsme` (`@zed/zedmsme`) | **ZED MSME** (the applicant: registration, certifications, documents) | the MSME code base in `ZED_MSME_Bronze` | `com.qci.zed.msmeapp` (new; installs next to the store app) | first test release, see below |
 | `apps/msme` (`@zed/msme`) | **ZED Surveillance** (Bronze surveillance desktop assessor) | `ZED_MSME_Bronze` | `com.qci.zed.bronzesurveillance` | done, see [docs/MSME-PARITY.md](docs/MSME-PARITY.md) |
 | `apps/assessor` (`@zed/assessor`) | **ZED SA** (site assessment, lead and co-assessor) | `ZED_SA_Studio` | `com.qci.zed.siteassessment` | done, see [docs/SA-PARITY.md](docs/SA-PARITY.md); no source for a surveillance build |
 | `apps/consultant` (`@zed/consultant`) | **ZED Consultancy** (handholding: lead and co-consultant, DFO technology upgradation) | `ZEDConsultant` | `com.qci.zed.consultancy` | done, see [docs/CONSULTANT-PARITY.md](docs/CONSULTANT-PARITY.md) |
 | `apps/desktop-assessment` | Desktop assessment | `ZED_DA/ZED_DA_App` | `com.zed.zeddaapplication` | later |
 | `apps/surveillance` | Surveillance | `ZEDSurveillance` | `com.prd.zedsa.surveillance` | later |
+
+**About `apps/zedmsme`:** the applicant app ("ZED MSME", 2.0), made from `apps/msme` with the MSME screens that the
+Bronze surveillance build hid switched back on and ported: sign-in with the ZED ID and password only (password as typed),
+Forgot Password and Change Password, the registration (Welcome, Udyam validation, unit and activity, e-mail and OTP,
+Summary, ZED Pledge, Success), the dashboard with the certification steps, My Certifications with Bronze, Silver and Gold
+and the pledge certificate, and My Documents. Its calls go to the main system (`mobileapi/msme/`, the code base's unused
+`retrofit` base; texts and forms from `mobileapi/`), the registration to the portal (`Msme/`). New in V4: the Udyam
+record comes from the server (`Msme/LookupUdyam`; the old app read the Udyam service with a key built in, SECURITY-FINDINGS
+#132) and there is no SafetyNet captcha; documents and certificates download with the sign-in token
+(`Msme/AppDocument`), as V4 no longer serves them as public files. Not in the applicant app: the assessor selfie, the
+surveillance photos, the desktop assessor's pre-final-submit questions and the video call (removed from ZED). Not yet:
+My Incentives, Financial Assistance, Other Incentives and the CCAvenue card payment (a level with a fee shows that online
+payment is not available; a zero-fee application works). Its own applicationId: the store app's package name and
+signing key were never delivered, so it does not update the store app.
 
 **About `apps/msme`:** `ZED_MSME_Bronze` is not the store MSME app. It is the Bronze surveillance build for the
 desktop assessor ("ZED Surveillance"; sign-in with assessor ID, the unit's ZED ID and the assessor's password), built

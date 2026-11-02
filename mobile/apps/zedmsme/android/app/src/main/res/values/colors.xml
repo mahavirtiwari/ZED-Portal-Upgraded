@@ -1,0 +1,7 @@
+<resources>
+    <!-- Legacy res/values/colors.xml (theme Theme.ZEDMSME) -->
+    <color name="app_color">#FF45A5AD</color>
+    <color name="app_color_dark">#FF368289</color>
+    <color name="app_color_secondary">#FFB3E079</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
+</resources>
