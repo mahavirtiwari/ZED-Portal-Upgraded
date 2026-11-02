@@ -36,6 +36,12 @@ public sealed class RequestHashResponse : ServiceResponse
     public string? merchantId { get; set; }
     public string? accessCode { get; set; }
     public string? amount { get; set; }
+
+    /// <summary>
+    /// V4, for the ZED MSME app 2.0: the CCAvenue SDK's environment for this server's mobile gateway
+    /// (<see cref="MobilePaymentController.SdkEnvironment"/>); the store app does not read it.
+    /// </summary>
+    public string? paymentEnvironment { get; set; }
 }
 
 /// <summary>CCAvenue's getSecureToken answer (SwatchSarvekshan/Models/Common.cs SecureTokenResponse).</summary>

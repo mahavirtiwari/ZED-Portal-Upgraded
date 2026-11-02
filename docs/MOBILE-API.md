@@ -240,7 +240,10 @@ carrier addresses cannot finish). `GET` of these addresses is not affected (the 
 `Pay/failuretransmobile`, `Pay/SubmitZeroPaymentDetails`, `Msme/GetPaymentDetailsByType`, and the same under
 `SurveillancePay/` (`GetSurveillancePaymentDetailsByType`) and `ConsultancyPay/` (`GetToken`, `GetTokenRSA`, `successtransmobile`, `failuretransmobile`, `SubmitZeroPaymentDetails`, plus `Msme/GetConsultancyPaymentDetailsByType`). The app uses CCAvenue's mobile SDK with its own access
 code and working key (`CcAvenue:MobileAccessCode`, `CcAvenue:MobileWorkingKey`, `CcAvenue:MobileServiceUrl`).
-Callbacks go through the same checks as the web flow (`CcAvenueResponseProcessor`).
+Callbacks go through the same checks as the web flow (`CcAvenueResponseProcessor`). New in V4: the `GetToken` reply
+also carries `paymentEnvironment`, the SDK environment that matches `CcAvenue:MobileServiceUrl` (`app_staging` when it
+is test.ccavenue.com, else `app_live`), so a test server's app pays on CCAvenue's test gateway without a separate
+build; an app that gets no value uses `app_live`.
 
 Open before go-live:
 - Confirm on one live app request that `Amount` in `GetToken` is the net payable; V4 refuses a different amount.

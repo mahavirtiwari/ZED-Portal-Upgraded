@@ -104,6 +104,14 @@ public sealed class MobilePaymentTests : IDisposable
 
     // ----- GetToken -----
 
+    [Theory]
+    [InlineData("https://test.ccavenue.com", "app_staging")]
+    [InlineData("https://test.ccavenue.com/", "app_staging")]
+    [InlineData("https://secure.ccavenue.com", "app_live")]
+    [InlineData("", "app_live")]
+    public void The_sdk_environment_follows_the_mobile_gateway(string url, string environment) =>
+        Assert.Equal(environment, MobilePaymentController.SdkEnvironment(url));
+
     [Fact]
     public async Task GetToken_returns_what_the_sdk_needs_with_the_amount_and_order_from_the_server()
     {
@@ -117,6 +125,8 @@ public sealed class MobilePaymentTests : IDisposable
         Assert.Equal("AVMOBILE", json.GetProperty("accessCode").GetString());
         Assert.Equal("12345", json.GetProperty("merchantId").GetString());
         Assert.Equal(MobilePaymentHashes.Sha512("100001INR2360.00" + FakeMobileGateway.Token), json.GetProperty("requestHash").GetString());
+        // The SDK environment for the configured gateway: the test host uses CCAvenue's test site.
+        Assert.Equal("app_staging", json.GetProperty("paymentEnvironment").GetString());
         // Legacy RequestHashResponse layout: base fields present, as null.
         Assert.Equal(JsonValueKind.Null, json.GetProperty("errorMessage").ValueKind);
         Assert.True(json.TryGetProperty("refId", out _));

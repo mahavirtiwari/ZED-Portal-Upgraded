@@ -127,6 +127,7 @@ public sealed partial class MobilePaymentController(
             response.accessCode = o.MobileAccessCode;
             response.merchantId = o.MerchantId;
             response.amount = amountText;
+            response.paymentEnvironment = SdkEnvironment(o.MobileServiceUrl);
             log.LogInformation("Mobile {Module} order {OrderId} for {ZedId}/{Certification}, amount {Amount}", m.Name, orderId, p.ZedId, p.Cert, amountText);
         }
         else
@@ -137,6 +138,16 @@ public sealed partial class MobilePaymentController(
         }
         return LegacyJson(response);
     }
+
+    /// <summary>
+    /// The CCAvenue Android SDK's environment for the configured mobile gateway: "app_staging" (test.ccavenue.com) for
+    /// CCAvenue's test site, else "app_live" (secure.ccavenue.com). The old app always sent "app_live", so a test server
+    /// with test credentials sent its orders to the live gateway.
+    /// </summary>
+    public static string SdkEnvironment(string? mobileServiceUrl) =>
+        Uri.TryCreate(mobileServiceUrl, UriKind.Absolute, out var u) && u.Host.Equals("test.ccavenue.com", StringComparison.OrdinalIgnoreCase)
+            ? "app_staging"
+            : "app_live";
 
     // ----- GetTokenRSA -----
 
