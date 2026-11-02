@@ -126,6 +126,8 @@ export type PaymentHashResponse = BaseServiceResponse & {
   merchantId: string;
   accessCode: string;
   amount: string;
+  /** V4: the CCAvenue SDK environment of the server's gateway (app_live or app_staging). */
+  paymentEnvironment?: string | null;
 };
 
 export type ParametersResponse = BaseServiceResponse & { parameters?: Element[] | null };

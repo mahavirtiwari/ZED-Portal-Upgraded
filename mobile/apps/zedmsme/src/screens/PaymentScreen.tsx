@@ -26,6 +26,7 @@ import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest } from
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from '../app/context';
+import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
 import { NO, YES, type CertificationType } from '../models';
 
 const RS = '₹';
@@ -34,8 +35,7 @@ const TDS_TEN = '10';
 
 // The disclaimer, instructions, joining reward notes and result messages are Admin texts (app.msme.certification.payment.*,
 // app.msme.payment.*), the legacy wording until the server's arrives.
-export const CCAVENUE_NOT_AVAILABLE =
-  'Online payment through CCAvenue is not available in this version of the app. Please make the payment on the ZED portal.';
+const PAYMENT_ERROR = 'Unknown error occurred while making the payment';
 
 /** BigDecimal.toString of the server's amounts. */
 const num = (v: number | null | undefined) => (v == null ? '' : String(v));
@@ -124,8 +124,17 @@ export function PaymentScreen() {
         } else ui.showAlert(r.errorMessage ?? 'Error occurred while while processing request, please try again');
       } else {
         const r = await app.api.getPaymentToken(request);
-        if (isSuccess(r)) ui.showAlert(CCAVENUE_NOT_AVAILABLE);
-        else ui.showAlert(r.errorMessage ?? 'Error occurred while getting data');
+        if (!isSuccess(r)) return ui.showAlert(r.errorMessage ?? 'Error occurred while getting data');
+        ui.hideLoading();
+        // AvenuesApplication.startTransaction; the callbacks as PaymentActivity's.
+        const result = await startCheckout(checkoutOrder(r, app.user?.MsmeDetails, type, app.api.site));
+        if (result.outcome === 'cancel') ui.toast('Transaction cancelled', { long: true });
+        else if (result.outcome === 'error') ui.showAlert(result.error?.trim() ? result.error : PAYMENT_ERROR);
+        else if (!result.status && result.description) ui.showAlert(result.description);
+        else {
+          setSuccess(isPaid(result));
+          setPage(3);
+        }
       }
     } catch (e) {
       ui.showAlert(e instanceof Error ? e.message : 'Error occurred while getting data');
@@ -314,6 +323,7 @@ function DetailsPage({
             title="PROCEED TO PAYMENT"
             small
             style={{ alignSelf: 'center' }}
+            testID="payment-confirm"
             onPress={() => {
               const req = summaryOpen;
               setSummaryOpen(null);

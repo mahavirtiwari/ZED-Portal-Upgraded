@@ -17,4 +17,11 @@
         <item name="colorAccent">@color/app_color</item>
         <item name="android:colorAccent">@color/app_color</item>
     </style>
+    <!-- The invisible host of a CCAvenue checkout (ccavenue/CcAvenueCheckoutActivity): AppCompat, transparent. -->
+    <style name="CcAvenueCheckoutTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
 </resources>

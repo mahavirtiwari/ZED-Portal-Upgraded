@@ -23,8 +23,12 @@ expenditure and bank details with their uploads; the other incentives open the p
 record comes from the server (`Msme/LookupUdyam`; the old app read the Udyam service with a key built in, SECURITY-FINDINGS
 #132) and there is no SafetyNet captcha; documents and certificates download with the sign-in token
 (`Msme/AppDocument`), as V4 no longer serves them as public files. Not in the applicant app: the assessor selfie, the
-surveillance photos, the desktop assessor's pre-final-submit questions and the video call (removed from ZED). Not yet:
-the CCAvenue card payment (a level with a fee shows that online payment is not available; a zero-fee application works).
+surveillance photos, the desktop assessor's pre-final-submit questions and the video call (removed from ZED). The
+certification fee is paid with CCAvenue's Android SDK (`android/app/libs/indiasdk_grid_v1.2.aar`, the one of the old
+app; native module `ZedCcAvenue`, `src/ccavenue.ts`): the order comes from `Pay/GetToken`, which also names the SDK
+environment of the server's gateway (`app_staging` for test.ccavenue.com, else `app_live`), and the server records the
+payment from CCAvenue's redirect (`Pay/successtransmobile`); the app's answer only picks the Success or Failure page.
+If CCAvenue never opens its screens, "Opening the payment gateway…" offers Cancel (Back cancels too).
 End to end on an emulator: a throwaway `ZEDV4CHK_` set (`database\setup.ps1 -DatabasePrefix ZEDV4CHK_ -WithKawachStandIn`,
 then `deploy\Invoke-ZedDatabaseScripts.ps1` with the same prefix), `tools/dev-seed/seed-local-msme-app.ps1` (a unit at
 the document upload and a certified unit with Financial Assistance open; password in `apps/zedmsme/.env.local`), the

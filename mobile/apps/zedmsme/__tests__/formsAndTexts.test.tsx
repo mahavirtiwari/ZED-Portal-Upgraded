@@ -7,7 +7,7 @@ import { AppDrawerHost, AppDrawerOverlay } from '../src/app/AppDrawer';
 import { MsmeAppProvider } from '../src/app/context';
 import type { MsmeApp } from '../src/app/MsmeApp';
 import { BUILT_IN_BASIC_INFO, stampFormAnswers, validateBasicInformation } from '../src/forms';
-import { basicInformationIsValid, certificationDetailsOf, type BasicInformation } from '../src/models';
+import { certificationDetailsOf, type BasicInformation } from '../src/models';
 import { submitBasicInformation } from '../src/sync/submissions';
 import { FakeServer, makeApp, type SentRequest } from './helpers/harness';
 import { legacyPhoto, writeLegacyLoginRow, writeLegacyPhotoRows, ZED_ID } from './helpers/legacyFixture';
