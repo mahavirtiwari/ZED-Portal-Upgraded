@@ -79,6 +79,63 @@ public sealed class MsmeAppRegistrationController(
         return Success();
     }
 
+    /// <summary>
+    /// V4, for the ZED MSME app 2.0 (React Native): the Udyam record of the number and its registered mobile, fetched by the
+    /// server. The old app read the Udyam service itself with the access key built in (SECURITY-FINDINGS #132). The new
+    /// app has no captcha: the lookup is limited per address (Sensitive) and to <see cref="MaxLookupFailures"/> failed
+    /// lookups per Udyam number in 30 minutes (guessing the mobile); a successful one counts as the address's captcha pass
+    /// for the plant check and the OTP mail. Only what the app shows is returned; FinalSubmit looks the record up again.
+    /// </summary>
+    [HttpPost("/Msme/LookupUdyam")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> LookupUdyam(string? udyamNumber, string? mobileNo, CancellationToken ct)
+    {
+        var regNo = (udyamNumber ?? "").Trim().ToUpperInvariant();
+        var mobile = (mobileNo ?? "").Trim();
+        if (!MsmeRegistrationController.UdyamPattern().IsMatch(regNo)) return Fail("Please enter a valid Udyam Registration Number.");
+        if (!MsmeRegistrationController.MobilePattern().IsMatch(mobile)) return Fail("Please enter a valid 10 digit mobile number.");
+
+        using var gate = await store.LockAsync(LookupKey(regNo), ct);
+        var failures = await store.LookupFailuresAsync(regNo, ct);
+        if (failures >= MaxLookupFailures)
+        {
+            Audit("Udyam lookup refused (too many failures)", regNo);
+            return Fail(TooManyLookups);
+        }
+
+        var (lookup, error) = await MsmeRegistrationController.LookupUdyamAsync(udyam, regNo, mobile, log, ct);
+        if (lookup is null)
+        {
+            // The Udyam service being down is not the user's guess.
+            if (error != MsmeRegistrationController.UdyamUnavailable) await store.SaveLookupFailuresAsync(regNo, failures + 1, ct);
+            Audit($"Udyam lookup refused ({error})", regNo);
+            return Fail(error!);
+        }
+
+        await store.MarkCaptchaAsync(ClientIp, ct);
+        Audit("Udyam lookup", regNo);
+        var basic = lookup.BasicDetails;
+        return LegacyJson(new
+        {
+            status = "1",
+            BasicDetails = LookupShown.Where(basic.ContainsKey).ToDictionary(k => k, k => basic[k]),
+            lookup.Plants,
+            lookup.Activities,
+        });
+    }
+
+    public const int MaxLookupFailures = 5;
+    public const string TooManyLookups = "Too many attempts for this Udyam Registration Number. Please try again after 30 minutes.";
+
+    /// <summary>The Udyam fields the app shows (enterprise box, summary); the rest of the record stays on the server.</summary>
+    private static readonly string[] LookupShown =
+    [
+        "UdyogAadharNo", "EnterpriseName", "OwnerName", "EnterpriseType", "SocialCategory", "Gender",
+        "Address", "state_name", "DISTRICT_NAME", "PINCode", "MajorActivity",
+    ];
+
+    private static string LookupKey(string regNo) => "udyam-lookup:" + regNo;
+
     /// <summary>MsmeController.ValidatePlantAndActivity: SP_MSME_VALIDATE_UDYAM_DETAILS for the chosen plant and activity.</summary>
     [HttpPost("/Msme/ValidatePlantAndActivity")]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
@@ -340,6 +397,15 @@ public sealed class AppRegistrationStore(IDistributedCache cache)
     }
 
     public Task MarkCaptchaAsync(string? ip, CancellationToken ct) => cache.SetAsync(CaptchaKey(ip), [1], CaptchaLifetime, ct);
+
+    /// <summary>Failed Udyam lookups of one number in the last 30 minutes (LookupUdyam).</summary>
+    public async Task<int> LookupFailuresAsync(string regNo, CancellationToken ct) =>
+        await cache.GetAsync(LookupFailuresKey(regNo), ct) is { Length: 4 } bytes ? BitConverter.ToInt32(bytes) : 0;
+
+    public Task SaveLookupFailuresAsync(string regNo, int failures, CancellationToken ct) =>
+        cache.SetAsync(LookupFailuresKey(regNo), BitConverter.GetBytes(failures), CaptchaLifetime, ct);
+
+    private static string LookupFailuresKey(string regNo) => "msme-app-lookup:" + regNo.Trim().ToUpperInvariant();
 
     public async Task<bool> CaptchaPassedAsync(string? ip, CancellationToken ct) => await cache.GetAsync(CaptchaKey(ip), ct) is not null;
 

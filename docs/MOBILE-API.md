@@ -209,6 +209,13 @@ token, answered with `{status:"1"|"0", errorMessage}` (`MsmeAppRegistrationContr
 | `Msme/SendPledgeEmailOtp` | `{email}` | 4-character OTP (the app's field takes 4 capitals; no look-alike characters), mailed through the web registration's mail; 5 mails per address in 30 minutes |
 | `Msme/VerifyPledgeEmailOtp` | `{email, otp}` | Valid 10 minutes, once, 5 wrong attempts, case-insensitive; marks the address verified for 30 minutes |
 | `Msme/FinalSubmit` | `RegistrationRequest`: `PledgeEmailId`, `RegistrationType` ("UDYAM"), `RegistrationFrom` ("Android"), `BasicDetails`, `PlantDetails`, `ActivityDetails` (the app's own copy of the Udyam record) | See below |
+| `Msme/LookupUdyam` (new, ZED MSME app 2.0) | `{udyamNumber, mobileNo}` | The Udyam record looked up by the server: the fields the app shows (`BasicDetails`: number, name, owner, type, social category, gender, address), `Plants` and `Activities`. Replaces the old app's own Udyam call with a built-in key and its captcha: at most 5 failed lookups per Udyam number in 30 minutes (guessing the mobile), and a success counts as the address's captcha pass for the plant check and the OTP mail |
+
+The ZED MSME app 2.0 (`mobile/apps/zedmsme`) also downloads its documents from the portal: `GET Msme/AppDocument?path=…`
+with its sign-in token (`X-Zed-App-Token`, required whatever the MSME token mode). `path` is an address from
+`GetMyDocuments` (V4 no longer serves those as public files) or `pledge` for the pledge certificate, drawn now; only what
+`SP_MSME_GET_MY_DOCUMENTS` lists for the token's ZED ID is served (`MsmeAppFilesController`, as the web's
+`MsmeFilesController`). The portal needs the same `Mobile:AppTokenKey` as the mobile host to read the token.
 
 The app sends no session or registration id, so the calls are linked only by the client address (captcha) and the
 pledge e-mail address (OTP and verification), held server-side in the distributed cache. **FinalSubmit trusts none of

@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Content;
 using Zed.Portal.Features.Msme;
 
@@ -164,6 +166,42 @@ public sealed class MsmeDocumentsTests : IDisposable
         var pdf = await r.Content.ReadAsStringAsync();
         Assert.StartsWith("%PDF", pdf);
         Assert.NotEqual("%PDF-1.4 old pledge", pdf);
+    }
+
+    [Fact]
+    public async Task The_new_app_gets_its_documents_with_its_sign_in_token_only()
+    {
+        WriteFile($"Certifications/DA/{Me}/Bronze.pdf", "%PDF-1.4 bronze");
+        WriteFile($"Certificates/DA/{Other}/Bronze.pdf", "%PDF-1.4 other");
+        var key = Convert.ToBase64String(Enumerable.Range(1, 32).Select(i => (byte)i).ToArray());
+        // The MSME app's token mode stays Monitor for the store app: this address needs a valid token all the same.
+        using var app = _host.WithWebHostBuilder(b => b.UseSetting("Mobile:AppTokenKey", key));
+        var client = app.CreateClient();
+        var tokens = app.Services.GetRequiredService<Zed.Core.Mobile.AppTokens>();
+        var mine = await tokens.IssueAsync(Zed.Core.Mobile.MobileApps.Msme, Me, Me);
+
+        async Task<HttpResponseMessage> Get(string path, string? token)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Get, "/Msme/AppDocument?path=" + Uri.EscapeDataString(path));
+            if (token is not null) request.Headers.Add(Zed.Core.Mobile.AppTokens.Header, token);
+            return await client.SendAsync(request);
+        }
+
+        // The path as GetMyDocuments answers it (the old site's address).
+        var bronze = await Get($"{Site}/Certifications/DA/{Me}/Bronze.pdf", mine);
+        Assert.Equal(HttpStatusCode.OK, bronze.StatusCode);
+        Assert.Equal("%PDF-1.4 bronze", await bronze.Content.ReadAsStringAsync());
+
+        var pledge = await Get("pledge", mine);
+        Assert.Equal(HttpStatusCode.OK, pledge.StatusCode);
+        Assert.Equal($"Pledge_Certificate_{Me}.pdf", pledge.Content.Headers.ContentDisposition!.FileNameStar);
+        Assert.StartsWith("%PDF", await pledge.Content.ReadAsStringAsync());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Get($"{Site}/Certifications/DA/{Me}/Bronze.pdf", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Get("pledge", "h1.forged.token")).StatusCode);
+        // Another unit's certificate is not listed for this token's unit.
+        Assert.Equal(HttpStatusCode.NotFound, (await Get($"{Site}/Certificates/DA/{Other}/Bronze.pdf", mine)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Get("Uploads/Documents/../../../secret.pdf", mine)).StatusCode);
     }
 
     [Fact]

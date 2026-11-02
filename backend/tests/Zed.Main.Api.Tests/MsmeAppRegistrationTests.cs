@@ -240,6 +240,55 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
     }
 
     [Fact]
+    public async Task The_new_app_looks_udyam_up_on_the_server_and_needs_no_captcha()
+    {
+        var app = _host.CreateClient();
+        var r = await Post(app, "LookupUdyam", new { udyamNumber = Udyam.ToLowerInvariant(), mobileNo = "9999999999" });
+        using var doc = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+        Assert.Equal("1", root.GetProperty("status").GetString());
+        var basic = root.GetProperty("BasicDetails");
+        Assert.Equal("Acme Castings", basic.GetProperty("EnterpriseName").GetString());
+        Assert.Equal("Micro", basic.GetProperty("EnterpriseType").GetString());
+        // Only what the app shows: not the e-mail, state and district ids of the Udyam record.
+        Assert.False(basic.TryGetProperty("EmailId", out _));
+        Assert.False(basic.TryGetProperty("State_Id", out _));
+        Assert.Equal("P1", root.GetProperty("Plants")[0].GetProperty("PlantIdNo").GetString());
+        Assert.Equal("24", root.GetProperty("Activities")[0].GetProperty("Two_DigitActivity").GetString());
+
+        // The successful lookup stands for the captcha: plant check, OTP and registration follow without ValidateCaptcha.
+        Assert.Equal("1", (await Answer(await Post(app, "ValidatePlantAndActivity",
+            new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" }))).Status);
+        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge }))).Status);
+        var otp = OtpInMail().Match(_host.Email.Sent.Last(m => m.To == Pledge).HtmlBody).Groups[1].Value;
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
+        Assert.Equal("1", (await Answer(await Post(app, "FinalSubmit", RegistrationBody()))).Status);
+    }
+
+    [Fact]
+    public async Task Failed_udyam_lookups_are_limited_per_number()
+    {
+        var app = _host.CreateClient();
+        Assert.Equal(("0", "Please enter a valid Udyam Registration Number."),
+            await Answer(await Post(app, "LookupUdyam", new { udyamNumber = "UDYAM-1", mobileNo = "9999999999" })));
+        Assert.Equal(("0", "Please enter a valid 10 digit mobile number."),
+            await Answer(await Post(app, "LookupUdyam", new { udyamNumber = Udyam, mobileNo = "99999" })));
+
+        var good = _host.Udyam.Result;
+        _host.Udyam.Result = new([], [], []); // the Udyam service's answer to a wrong mobile
+        for (var i = 0; i < MsmeAppRegistrationController.MaxLookupFailures; i++)
+            Assert.Contains("does not exist in the UDYAM Database",
+                (await Answer(await Post(app, "LookupUdyam", new { udyamNumber = Udyam, mobileNo = "9000000000" }))).Message);
+
+        // Now even the right mobile waits: the mobile cannot be guessed.
+        _host.Udyam.Result = good;
+        Assert.Equal(("0", MsmeAppRegistrationController.TooManyLookups),
+            await Answer(await Post(app, "LookupUdyam", new { udyamNumber = Udyam, mobileNo = "9999999999" })));
+        // A failed lookup is no captcha pass.
+        Assert.Equal(("0", MsmeAppRegistrationController.CaptchaFirst), await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge })));
+    }
+
+    [Fact]
     public async Task Get_requests_to_these_addresses_are_not_the_app_endpoints()
     {
         var client = _host.CreateClient();
