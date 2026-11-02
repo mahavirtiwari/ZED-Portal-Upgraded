@@ -37,7 +37,7 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-men
             <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0" #bar>
               <li class="nav-item tag">
                 <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" aria-label="Home">
-                  <img src="Images/svgicons/home.svg" alt="" />
+                  <img src="Images/svgicons/home.svg" alt="" /><span class="d-lg-none ms-2">Home</span>
                 </a>
               </li>
               @for (entry of entries(); track $index) {

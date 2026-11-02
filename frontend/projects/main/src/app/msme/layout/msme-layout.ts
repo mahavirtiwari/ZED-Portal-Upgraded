@@ -34,7 +34,7 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
             <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0">
               <li class="nav-item tag">
                 <a class="nav-link" routerLink="/msme/dashboard" routerLinkActive="active" aria-label="Dashboard">
-                  <img src="/Images/svgicons/home.svg" alt="" />
+                  <img src="/Images/svgicons/home.svg" alt="" /><span class="d-lg-none ms-2">Dashboard</span>
                 </a>
               </li>
               <li class="nav-item tag"><a class="nav-link" routerLink="/msme/documents" routerLinkActive="active">My Documents</a></li>
@@ -42,7 +42,7 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
               @if (links.url('contact'); as u) {
                 <li class="nav-item tag"><a class="nav-link" [href]="u" target="_blank" rel="noopener">Contact ZED</a></li>
               }
-              <li class="nav-item dropdown tag">
+              <li class="nav-item dropdown tag user-menu">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()"
                         (click)="toggleUserMenu($event)">
                   {{ user()?.userName }}

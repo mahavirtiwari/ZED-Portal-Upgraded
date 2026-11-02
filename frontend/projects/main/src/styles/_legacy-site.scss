@@ -3360,6 +3360,25 @@ footer small {
 .navbar-toggle .icon-bar {
     background: #fff!important;
 }
+// V4: under 992px (the bar shows its menu button) the menu is a list: one entry per row across the bar, left-aligned,
+// a line between the rows instead of the row's vertical separators, and a drop-down opens in place under its entry.
+// #main_navbar outweighs the layouts' own rules for the wide-screen row.
+@media (max-width: 991.98px) {
+    #main_navbar.zed-navbar .navbar-collapse { margin-top: 8px; }
+    #main_navbar.zed-navbar .nav { align-items: stretch; width: 100%; }
+    #main_navbar.zed-navbar .nav > li { border-right: 0; border-top: 1px solid rgba(255, 255, 255, 0.35); padding: 0; }
+    #main_navbar.zed-navbar .nav > li.user-menu { border-top-color: rgba(255, 255, 255, 0.75); }
+    #main_navbar.zed-navbar .nav > li > a.nav-link,
+    #main_navbar.zed-navbar .nav > li > button.nav-link {
+        display: flex; align-items: center; width: 100%; margin-top: 0; padding: 10px 6px;
+        text-align: left; white-space: normal; border-bottom: 0; border-radius: 6px;
+    }
+    #main_navbar.zed-navbar .nav > li > a.nav-link.active,
+    #main_navbar.zed-navbar .nav > li > button.nav-link.active { border-bottom: 0; background: rgba(255, 255, 255, 0.15); }
+    #main_navbar.zed-navbar .nav > li > .dropdown-toggle::after { margin-left: auto; transition: transform 0.15s; }
+    #main_navbar.zed-navbar .nav > li > .dropdown-toggle[aria-expanded='true']::after { transform: rotate(180deg); }
+    #main_navbar.zed-navbar .dropdown-menu { position: static; margin: 0 0 10px; max-height: none; box-shadow: none; }
+}
 .nav .open > a, .nav .open > a:hover, .nav .open > a:focus {
     background-color: transparent;
     border-color:none;
