@@ -1,6 +1,8 @@
 /**
  * Offline sends of this app through the shared {@link SyncQueue}: what the legacy app left as "COMPLETED but not
- * SUBMITTED" in its local data is queued and sent when the connection returns, in order, per unit and level.
+ * SUBMITTED" in its local data is queued and sent when the connection returns, in order, per unit and level. The
+ * replies to a surveillance round's NC (`surveillance`) are queued apart (own keys and group) and sent to the
+ * surveillance host.
  */
 import { isNetworkAvailable, isSuccess, type BaseServiceResponse, type HandlerResult, type SyncJob } from '@zed/shared';
 import type { MsmeApp } from '../app/MsmeApp';
@@ -21,7 +23,7 @@ export type QueueKind = 'basicInfo' | 'evidence' | 'ncSitePhotos' | 'ncProduct' 
 const result = (r: BaseServiceResponse | null): HandlerResult =>
   isSuccess(r) ? { ok: true } : { ok: false, error: r?.errorMessage ?? 'Unknown Error Occurred' };
 
-type Payload = { cert: CertificationType; evidenceId?: string; index?: number; requirementId?: string };
+type Payload = { cert: CertificationType; surveillance?: boolean; evidenceId?: string; index?: number; requirementId?: string };
 
 export function registerHandlers(app: MsmeApp): void {
   const q = app.queue;
@@ -46,26 +48,26 @@ export function registerHandlers(app: MsmeApp): void {
   q.register(
     'ncSitePhotos',
     wrap(async p => {
-      const nc = activeNc(app, p.cert);
+      const nc = activeNc(app, p.cert, !!p.surveillance);
       if (!nc || nc.sitePhotosSubmitted) return { status: '1' };
-      return submitNcSitePhotos(app, p.cert);
+      return submitNcSitePhotos(app, p.cert, !!p.surveillance);
     }),
   );
   q.register(
     'ncProduct',
     wrap(async p => {
-      const product = activeNc(app, p.cert)?.products?.[p.index ?? -1];
+      const product = activeNc(app, p.cert, !!p.surveillance)?.products?.[p.index ?? -1];
       if (!product || product.status === Status.SUBMITTED) return { status: '1' };
-      return submitNcProduct(app, p.cert, product);
+      return submitNcProduct(app, p.cert, product, !!p.surveillance);
     }),
   );
   q.register(
     'ncRequirement',
     wrap(async p => {
-      const nc = activeNc(app, p.cert);
+      const nc = activeNc(app, p.cert, !!p.surveillance);
       const req = nc?.parameters?.flatMap(e => e.requirements ?? []).find(r => r.id === p.requirementId);
       if (!req || req.status === Status.SUBMITTED) return { status: '1' };
-      return submitNcRequirement(app, p.cert, req);
+      return submitNcRequirement(app, p.cert, req, !!p.surveillance);
     }),
   );
 }
@@ -74,8 +76,8 @@ function enqueue(app: MsmeApp, kind: QueueKind, id: string, label: string, paylo
   const user = app.loginId!;
   return app.queue.enqueue({
     kind,
-    key: `${user}:${kind}:${payload.cert}:${id}`,
-    group: `${user}:${payload.cert}:M`,
+    key: `${user}:${kind}:${payload.cert}:${payload.surveillance ? 'S:' : ''}${id}`,
+    group: `${user}:${payload.cert}:${payload.surveillance ? 'S' : 'M'}`,
     userId: user,
     label,
     payload,
@@ -88,14 +90,17 @@ export const queueBasicInfo = (app: MsmeApp, cert: CertificationType) =>
 export const queueEvidence = (app: MsmeApp, cert: CertificationType, evidenceId: string, label: string) =>
   enqueue(app, 'evidence', evidenceId, `Evidence: ${label}`, { cert, evidenceId });
 
-export const queueNcSitePhotos = (app: MsmeApp, cert: CertificationType) =>
-  enqueue(app, 'ncSitePhotos', 'site', 'Non-conformance: Site Exterior Photos', { cert });
+/** "Non-conformance" or, for a surveillance round's NC, "Non-conformance (Surveillance)" in the pending list. */
+const ncLabel = (surveillance: boolean) => (surveillance ? 'Non-conformance (Surveillance)' : 'Non-conformance');
 
-export const queueNcProduct = (app: MsmeApp, cert: CertificationType, index: number, name: string) =>
-  enqueue(app, 'ncProduct', `p${index}`, `Non-conformance product: ${name}`, { cert, index });
+export const queueNcSitePhotos = (app: MsmeApp, cert: CertificationType, surveillance = false) =>
+  enqueue(app, 'ncSitePhotos', 'site', `${ncLabel(surveillance)}: Site Exterior Photos`, { cert, surveillance });
 
-export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, requirementId: string, label: string) =>
-  enqueue(app, 'ncRequirement', requirementId, `Non-conformance: ${label}`, { cert, requirementId });
+export const queueNcProduct = (app: MsmeApp, cert: CertificationType, index: number, name: string, surveillance = false) =>
+  enqueue(app, 'ncProduct', `p${index}`, `${ncLabel(surveillance)} product: ${name}`, { cert, index, surveillance });
+
+export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, requirementId: string, label: string, surveillance = false) =>
+  enqueue(app, 'ncRequirement', requirementId, `${ncLabel(surveillance)}: ${label}`, { cert, requirementId, surveillance });
 
 /**
  * After sign-in: queue whatever the local data shows as done but not sent (also data the legacy app left behind),
@@ -113,17 +118,18 @@ export async function queueOutstanding(app: MsmeApp): Promise<number> {
             await queueEvidence(app, cert, ev.id, ev.label ?? ev.id);
             n++;
           }
-    const nc = details.activeNcDetails;
-    if (nc) {
+    for (const surveillance of [false, true]) {
+      const nc = activeNc(app, cert, surveillance);
+      if (!nc) continue;
       for (const [i, p] of (nc.products ?? []).entries())
         if (p.status === Status.COMPLETED) {
-          await queueNcProduct(app, cert, i, p.productName ?? '');
+          await queueNcProduct(app, cert, i, p.productName ?? '', surveillance);
           n++;
         }
       for (const e of nc.parameters ?? [])
         for (const r of e.requirements ?? [])
           if (r.status === Status.COMPLETED) {
-            await queueNcRequirement(app, cert, r.id, `${e.code}. ${e.label ?? ''}`);
+            await queueNcRequirement(app, cert, r.id, `${e.code}. ${e.label ?? ''}`, surveillance);
             n++;
           }
     }

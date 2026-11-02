@@ -22,8 +22,14 @@ expenditure and bank details with their uploads; the other incentives open the p
 `retrofit` base; texts and forms from `mobileapi/`), the registration to the portal (`Msme/`). New in V4: the Udyam
 record comes from the server (`Msme/LookupUdyam`; the old app read the Udyam service with a key built in, SECURITY-FINDINGS
 #132) and there is no SafetyNet captcha; documents and certificates download with the sign-in token
-(`Msme/AppDocument`), as V4 no longer serves them as public files. Not in the applicant app: the assessor selfie, the
-surveillance photos, the desktop assessor's pre-final-submit questions and the video call (removed from ZED). The
+(`Msme/AppDocument`), as V4 no longer serves them as public files. The replies to a surveillance round's NC are back
+as in the legacy app: at surveillance status "3" (main's `GetMsmeStatus`) "Surveillance Assessment" (red NC frame) opens
+the NC screens on the scheduled date ("Non-Conformances(Surveillance)"), whose status, NC details, replies and close go to
+the Surveillance host (`surveillancemobileapi/msme/`, `SurveillanceMsmeController`, which takes the main sign-in token:
+both MobileApi deployments need the same `Mobile:AppTokenKey`); that round's statuses and replies are kept apart on the
+phone (`msmeSurveillanceStatus`) and in the sync queue. Not in the applicant app: the assessor selfie, the surveillance
+data entry at status "1" and its photos (the desktop assessor's, ZED Surveillance app), the desktop assessor's
+pre-final-submit questions and the video call (removed from ZED). The
 certification fee is paid with CCAvenue's Android SDK (`android/app/libs/indiasdk_grid_v1.2.aar`, the one of the old
 app; native module `ZedCcAvenue`, `src/ccavenue.ts`): the order comes from `Pay/GetToken`, which also names the SDK
 environment of the server's gateway (`app_staging` for test.ccavenue.com, else `app_live`), and the server records the

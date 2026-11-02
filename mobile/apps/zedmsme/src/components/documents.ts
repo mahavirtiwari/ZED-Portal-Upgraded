@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import { isNetworkAvailable, zedDevice, type Ui } from '@zed/shared';
+import { isNetworkAvailable, SESSION_EXPIRED_MESSAGE, zedDevice, type Ui } from '@zed/shared';
 import type { MsmeApp } from '../app/MsmeApp';
 
 const FILE = /\.(pdf|jpe?g|png|docx?|xlsx?|pptx?|csv|txt)$/i;
@@ -10,6 +10,15 @@ function fileNameFor(path: string, name: string) {
   const last = decodeURIComponent(path.split(/[?#]/)[0]?.split('/').pop() ?? '');
   if (FILE.test(last)) return last.replace(/[^\w.\- ]/g, '_');
   return name.replace(/[^\w\- ]/g, '_') + '.pdf';
+}
+
+/**
+ * Msme/AppDocument answers 401 when it does not accept the app sign-in token; the native download then fails with
+ * "HTTP 401" (ZedDeviceModule.downloadFile).
+ */
+export function isSignInRefused(e: unknown): boolean {
+  const message = typeof e === 'object' && e !== null && 'message' in e ? String((e as { message: unknown }).message) : '';
+  return /\bHTTP 401\b/.test(message);
 }
 
 /**
@@ -30,8 +39,11 @@ export async function openDocument(app: MsmeApp, ui: Ui, path: string, name: str
     if (fileName.toLowerCase().endsWith('.pdf')) zedDevice().openPdf(local, fileName);
     else if (IMAGE.test(fileName)) zedDevice().openImage(local);
     else ui.showAlert('This document can be opened from My Documents on the ZED portal.');
-  } catch {
-    ui.toast('Unknown error occurred while downloading file', { long: true });
+  } catch (e) {
+    // New in V4: a refused sign-in ends the session as on the app's other calls (shared http.ts): the login page with
+    // "Your sign-in has expired. Please sign in again." (SessionExpiryGate), not "Unknown error".
+    if (isSignInRefused(e)) app.session.expire(SESSION_EXPIRED_MESSAGE);
+    else ui.toast('Unknown error occurred while downloading file', { long: true });
   } finally {
     ui.hideLoading();
   }

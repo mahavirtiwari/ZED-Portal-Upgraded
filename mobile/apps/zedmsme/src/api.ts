@@ -5,10 +5,13 @@
  * shapes as apps/msme. Every request also carries `version` and `deviceInfo`.
  *
  * Bases:
- *   mobileapi/msme/   sign-in, certification steps, NC replies, documents, passwords (Zed.Main.MobileApi MsmeController)
- *   mobileapi/RA/     remote assessment
- *   Msme/ and Pay/    portal: registration, payment details, token, zero payment
- *   mobileapi/        Admin texts and forms of the main system
+ *   mobileapi/msme/               sign-in, certification steps, NC replies, documents, passwords (Zed.Main.MobileApi MsmeController)
+ *   surveillancemobileapi/msme/   the replies to a surveillance round's NCs: GetMsmeStatus, GetNcDetailsByType,
+ *                                 SubmitSiteExteriorInfo, SubmitNcProduct, SubmitNcRequirement, FinalSubmit
+ *                                 (`surveillance = true`; the legacy `surveillanceNcWebService`, SurveillanceMsmeController)
+ *   mobileapi/RA/                 remote assessment
+ *   Msme/ and Pay/                portal: registration, payment details, token, zero payment
+ *   mobileapi/                    Admin texts and forms of the main system
  *
  * New in V4 (2.0): the Udyam record comes from the server (Msme/LookupUdyam); the old app read the Udyam service
  * itself with a built-in key and showed a SafetyNet captcha (both gone).
@@ -180,6 +183,7 @@ export class MsmeApi {
   /** The portal site (pledge certificate, Msme/ViewStatus). */
   readonly site: string;
   private readonly msme: string;
+  private readonly surveillanceMsme: string;
   private readonly remote: string;
   private readonly portalMsme: string;
   private readonly pay: string;
@@ -189,6 +193,7 @@ export class MsmeApi {
     this.http = http ?? new HttpClient();
     this.site = env.baseUrl + '/';
     this.msme = apiBase(env, 'mobileapi/msme/');
+    this.surveillanceMsme = apiBase(env, 'surveillancemobileapi/msme/');
     this.remote = apiBase(env, 'mobileapi/RA/');
     this.portalMsme = apiBase(env, 'Msme/');
     this.pay = apiBase(env, 'Pay/');
@@ -209,14 +214,22 @@ export class MsmeApi {
     return baseRequest(this.ctx(), userName, fields);
   }
 
+  /** The NC calls' base: the main system's, or the surveillance host's for a surveillance round's NCs. */
+  private ncBase(surveillance: boolean) {
+    return surveillance ? this.surveillanceMsme : this.msme;
+  }
+
   /** LoginRequest(username, password, zedId = username): the applicant signs in with the ZED ID and password only. */
   login(username: string, password: string) {
     return this.http.postJson<LoginResponse>(this.msme + 'login', this.req(username, { password, zedId: username }));
   }
 
-  /** GetMsmeStatus: the certification statuses (pull to refresh, after a payment). */
-  getMsmeStatus(username: string) {
-    return this.http.postJson<MsmeStatus>(this.msme + 'GetMsmeStatus', this.req(username, {}));
+  /**
+   * GetMsmeStatus: the certification statuses (pull to refresh, after a payment); `surveillance`: the surveillance
+   * round's, from the surveillance host (NonConformancesActivity.handleSurveillanceFlow).
+   */
+  getMsmeStatus(username: string, surveillance = false) {
+    return this.http.postJson<MsmeStatus>(this.ncBase(surveillance) + 'GetMsmeStatus', this.req(username, {}));
   }
 
   /** GetMyDocuments: `{ zedId }` only (a Map in the legacy code, no version). */
@@ -339,29 +352,35 @@ export class MsmeApi {
     ]);
   }
 
-  /** FinalSubmit (BaseCertificationRequest): the documents of a level, and the close of its NC replies. */
-  finalSubmit(username: string, certificationType: string) {
-    return this.http.postJson<BaseServiceResponse>(this.msme + 'FinalSubmit', this.req(username, { certificationType }));
+  /**
+   * FinalSubmit (BaseCertificationRequest): the documents of a level, and the close of its NC replies (`surveillance`:
+   * of the surveillance round's NC, on the surveillance host).
+   */
+  finalSubmit(username: string, certificationType: string, surveillance = false) {
+    return this.http.postJson<BaseServiceResponse>(this.ncBase(surveillance) + 'FinalSubmit', this.req(username, { certificationType }));
   }
 
-  getNcDetails(username: string, certificationType: string, ncCount: number) {
-    return this.http.postJson<NcDetails>(this.msme + 'GetNcDetailsByType', this.req(username, { certificationType, ncCount }));
+  getNcDetails(username: string, certificationType: string, ncCount: number, surveillance = false) {
+    return this.http.postJson<NcDetails>(this.ncBase(surveillance) + 'GetNcDetailsByType', this.req(username, { certificationType, ncCount }));
   }
 
   /** NcSitePhotosSubmitRequest: JSON with the photos (base64 filled in) and the MSME remarks. */
-  submitNcSitePhotos(username: string, certificationType: string, photos: PhotoData[], msmeRemarks: string) {
-    return this.http.postJson<BaseServiceResponse>(this.msme + 'SubmitSiteExteriorInfo', this.req(username, { certificationType, photos, msmeRemarks }));
+  submitNcSitePhotos(username: string, certificationType: string, photos: PhotoData[], msmeRemarks: string, surveillance = false) {
+    return this.http.postJson<BaseServiceResponse>(
+      this.ncBase(surveillance) + 'SubmitSiteExteriorInfo',
+      this.req(username, { certificationType, photos, msmeRemarks }),
+    );
   }
 
   /** SubmitNcProduct: productDetailsNc as JSON (photos without base64) and both photos in `files`. */
-  submitNcProduct(username: string, certificationType: string, product: ProductDetailsNc) {
+  submitNcProduct(username: string, certificationType: string, product: ProductDetailsNc, surveillance = false) {
     const photos = [product.productPhoto, product.productDescriptionPhoto].filter((p): p is PhotoData => p != null);
     const json = gsonJson({
       ...product,
       productPhoto: product.productPhoto ? { ...product.productPhoto, photo: null } : null,
       productDescriptionPhoto: product.productDescriptionPhoto ? { ...product.productDescriptionPhoto, photo: null } : null,
     });
-    return this.http.postMultipart<BaseServiceResponse>(this.msme + 'SubmitNcProduct', [
+    return this.http.postMultipart<BaseServiceResponse>(this.ncBase(surveillance) + 'SubmitNcProduct', [
       { name: 'userName', value: username },
       { name: 'certificationType', value: certificationType },
       { name: 'productDetailsNc', value: json },
@@ -380,6 +399,7 @@ export class MsmeApi {
     isFirst: boolean,
     isLast: boolean,
     msmeRemarks: string | null | undefined,
+    surveillance = false,
   ) {
     const fields: MultipartField[] = [
       { name: 'userName', value: username },
@@ -392,7 +412,7 @@ export class MsmeApi {
     ];
     if (msmeRemarks != null) fields.push({ name: 'msmeRemarks', value: msmeRemarks });
     fields.push(...contextFields(this.ctx()), filePart('file_data', photo, fileNameOf(photo.photoPath ?? '')));
-    return this.http.postMultipart<BaseServiceResponse>(this.msme + 'SubmitNcRequirement', fields);
+    return this.http.postMultipart<BaseServiceResponse>(this.ncBase(surveillance) + 'SubmitNcRequirement', fields);
   }
 
   changePassword(request: { userName: string; oldPassword: string; newPassword: string }) {

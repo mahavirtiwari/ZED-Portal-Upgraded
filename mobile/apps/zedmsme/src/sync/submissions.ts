@@ -147,14 +147,17 @@ export function findEvidence(details: CertificationDetails | null, evidenceId: s
 
 // ---------------------------------------------------------------- Non-conformances
 
-/** The desktop assessment's open NC (the replies to a surveillance round's NCs are not served, see api.ts). */
-export function activeNc(app: MsmeApp, type: CertificationType) {
-  return certification(app, type)?.activeNcDetails ?? null;
+/**
+ * The open NC of the desktop assessment, or with `surveillance` of the surveillance round (msmeSurveillanceStatus,
+ * answered on the surveillance host, api.ts).
+ */
+export function activeNc(app: MsmeApp, type: CertificationType, surveillance = false) {
+  return certification(app, type, surveillance)?.activeNcDetails ?? null;
 }
 
 /** NonConformanceViewModel.submitSiteExteriorPhotos */
-export async function submitNcSitePhotos(app: MsmeApp, type: CertificationType): Promise<BaseServiceResponse> {
-  const nc = activeNc(app, type);
+export async function submitNcSitePhotos(app: MsmeApp, type: CertificationType, surveillance = false): Promise<BaseServiceResponse> {
+  const nc = activeNc(app, type, surveillance);
   if (!nc?.siteExteriorPhotoData || nc.msmeRemarksSitePhoto == null) return errorResponse(null);
   try {
     let photos: PhotoData[];
@@ -163,7 +166,7 @@ export async function submitNcSitePhotos(app: MsmeApp, type: CertificationType):
     } catch (e) {
       return errorResponse((e as Error).message);
     }
-    const r = await app.api.submitNcSitePhotos(app.loginId!, type, photos, nc.msmeRemarksSitePhoto);
+    const r = await app.api.submitNcSitePhotos(app.loginId!, type, photos, nc.msmeRemarksSitePhoto, surveillance);
     if (isSuccess(r)) {
       nc.sitePhotosSubmitted = true;
       await app.persist();
@@ -175,7 +178,12 @@ export async function submitNcSitePhotos(app: MsmeApp, type: CertificationType):
 }
 
 /** NonConformanceViewModel.submitProduct (only a COMPLETED product is sent). */
-export async function submitNcProduct(app: MsmeApp, type: CertificationType, product: ProductDetailsNc): Promise<BaseServiceResponse> {
+export async function submitNcProduct(
+  app: MsmeApp,
+  type: CertificationType,
+  product: ProductDetailsNc,
+  surveillance = false,
+): Promise<BaseServiceResponse> {
   if (product.status !== Status.COMPLETED) return errorResponse(null);
   const copy = deepCopy(product);
   const photos = [copy.productPhoto, copy.productDescriptionPhoto].filter((p): p is PhotoData => p != null);
@@ -190,7 +198,7 @@ export async function submitNcProduct(app: MsmeApp, type: CertificationType, pro
       if (p.photoId === copy.productPhoto?.photoId) copy.productPhoto = p;
       else if (p.photoId === copy.productDescriptionPhoto?.photoId) copy.productDescriptionPhoto = p;
     }
-    const r = await app.api.submitNcProduct(app.loginId!, type, copy);
+    const r = await app.api.submitNcProduct(app.loginId!, type, copy, surveillance);
     if (isSuccess(r)) {
       product.status = Status.SUBMITTED;
       await app.persist();
@@ -202,7 +210,12 @@ export async function submitNcProduct(app: MsmeApp, type: CertificationType, pro
 }
 
 /** NonConformanceViewModel.submitRequirement: one request per photo. */
-export async function submitNcRequirement(app: MsmeApp, type: CertificationType, requirement: Requirement): Promise<BaseServiceResponse> {
+export async function submitNcRequirement(
+  app: MsmeApp,
+  type: CertificationType,
+  requirement: Requirement,
+  surveillance = false,
+): Promise<BaseServiceResponse> {
   if ((requirement.status ?? Status.TO_START) !== Status.COMPLETED) return errorResponse(null);
   let photos: PhotoData[];
   try {
@@ -222,6 +235,7 @@ export async function submitNcRequirement(app: MsmeApp, type: CertificationType,
         i === 0,
         i === photos.length - 1,
         requirement.msmeRemarks,
+        surveillance,
       );
       if (isSuccess(response)) {
         requirement.status = Status.SUBMITTED;

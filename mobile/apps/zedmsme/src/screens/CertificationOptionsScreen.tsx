@@ -1,6 +1,19 @@
 import React from 'react';
 import { Linking, ScrollView, View } from 'react-native';
-import { BackBar, colors, dimens, htmlToPlain, ScreenFrame, sharedIcons, shapes, useAppText, useNavigation, useRoute, useUi } from '@zed/shared';
+import {
+  BackBar,
+  colors,
+  dimens,
+  htmlToPlain,
+  isToday,
+  ScreenFrame,
+  sharedIcons,
+  shapes,
+  useAppText,
+  useNavigation,
+  useRoute,
+  useUi,
+} from '@zed/shared';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
@@ -13,6 +26,8 @@ import {
   anyActiveNc,
   certificationDetailsOf,
   isAnyCertificationCompleted,
+  isSurveillanceNcActive,
+  parsedSurveillanceDate,
   Status,
   type CertificationType,
 } from '../models';
@@ -48,6 +63,9 @@ export function CertificationOptionsScreen() {
   const showReport = !!details?.report?.trim();
   const showIncentives = (status ? isAnyCertificationCompleted(status) : false) && !!details?.incentives?.trim();
   const showRemote = details?.remoteStatus === '1';
+  // Only the surveillance round's NC replies (status "3"): status "1", the surveillance itself, is the desktop
+  // assessor's data entry in the ZED Surveillance app.
+  const showSurveillanceNc = details ? isSurveillanceNcActive(details) : false;
   const image = type === 'Bronze' ? images.bronze : type === 'Silver' ? images.silver : images.gold;
 
   return (
@@ -111,6 +129,18 @@ export function CertificationOptionsScreen() {
               right={sharedIcons.ic_forward_arrow}
               onPress={() => nav.push('RemoteAssessmentInitial', { certificationType: type })}
               testID="option-remote"
+            />
+          ) : null}
+          {showSurveillanceNc ? (
+            <ClickableOption
+              label="Surveillance Assessment"
+              right={icons.ic_forward_arrow}
+              style={shapes.ncRectangle}
+              onPress={() => {
+                if (isToday(parsedSurveillanceDate(details!))) nav.push('NonConformances', { certificationType: type, isSurveillance: true });
+                else alert('This module will be activated on the scheduled assessment date only');
+              }}
+              testID="option-surveillance"
             />
           ) : null}
         </ScrollView>

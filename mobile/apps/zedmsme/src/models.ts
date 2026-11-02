@@ -399,14 +399,32 @@ export function updateCertificationDetails(local: MsmeStatus, server: MsmeStatus
   local.isCouponUsed = server.isCouponUsed;
 }
 
+/**
+ * MsmeDetails.updateMsmeSurveillanceStatus: the surveillance round's statuses (GetMsmeStatus of the surveillance host),
+ * kept apart from msmeStatus with their own NC replies; later answers only update the statuses.
+ */
+export function updateMsmeSurveillanceStatus(details: MsmeDetails, status: MsmeStatus) {
+  if (details.msmeSurveillanceStatus == null) {
+    normalizeStatus(status);
+    details.msmeSurveillanceStatus = status;
+  } else {
+    updateCertificationDetails(details.msmeSurveillanceStatus, status);
+  }
+}
+
 export const isAnyCertificationCompleted = (s: MsmeStatus) => s.bronze?.status === 3 || s.silver?.status === 4 || s.gold?.status === 4;
 
 export const anyActiveNc = (c: CertificationDetails) =>
   c.nc1Status !== 0 || c.nc2Status !== 0 || c.nc3Status !== 0 || c.nc4Status !== 0 || c.nc5Status !== 0;
 
 export const isCompletedAndDisabled = (c: CertificationDetails) => c.status === 5;
-/** Status "1": the surveillance photos. (Status "3", the surveillance round's NC replies, is not served by V4.) */
+/**
+ * Status "1": a surveillance is scheduled. Its data entry is the desktop assessor's (ZED Surveillance app), so the
+ * applicant app offers nothing for it.
+ */
 export const isSurveillanceActive = (c: CertificationDetails) => c.surveillanceStatus === '1';
+/** Status "3": an NC of the surveillance round is open; the unit answers it against the surveillance host. */
+export const isSurveillanceNcActive = (c: CertificationDetails) => c.surveillanceStatus === '3';
 export const parsedSurveillanceDate = (c: CertificationDetails) => parseLegacyDate(c.surveillanceDate);
 
 /** getSurveillanceInfo: created on first use. */
