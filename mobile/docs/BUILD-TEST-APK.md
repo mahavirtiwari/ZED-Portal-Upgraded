@@ -16,6 +16,25 @@ internal name of the test server setting (testers never see it); a release build
 (`https://loginzed.msme.gov.in`). Check every APK with `aapt2` (below) before
 it is opened on a phone or emulator with a network.
 
+## With the scripts (server or PC)
+
+Two scripts in `mobile/tools` do everything below. Run them in PowerShell; tools and caches go to `E:` (`-ToolsRoot`), never the system drive.
+
+1. Once per machine, install JDK 17, Node.js and the Android SDK into `E:\ZedApkTools` (needs Git and about 8 GB):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\mobile\tools\Install-ZedApkTools.ps1
+   ```
+2. Build (clones or updates its own checkout in `E:\ZedApkBuild\src`, builds for the test server, checks the server
+   setting with aapt2, copies the APK with a `.sha256` to `E:\Releases\apk`, log in `E:\Releases\apk\logs`):
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App msme
+   ```
+   `-App assessor`, `-App consultant` or `-App all` for the others; `-Ref <commit or tag>` for a given version;
+   `-Production` (with the four `ZED_UPLOAD_*` environment variables of the upload keystore) for a Play Store APK,
+   refused if it would be signed with the debug key.
+
+The manual steps follow.
+
 ## Prerequisites
 
 | Tool | Version used | Notes |
