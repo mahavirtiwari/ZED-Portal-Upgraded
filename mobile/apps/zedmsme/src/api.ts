@@ -30,6 +30,7 @@ import {
   type PhotoData,
   type RequestContext,
 } from '@zed/shared';
+import type { FinancialAssistance } from './financialAssistance';
 import type { BasicInformation, CertificationType, Element, LoginResponse, MsmeStatus, NcDetails, ProductDetailsNc } from './models';
 
 export type EsgField = {
@@ -227,6 +228,37 @@ export class MsmeApi {
    */
   documentUrl(path: string) {
     return this.portalMsme + 'AppDocument?path=' + encodeURIComponent(path);
+  }
+
+  // ----- Financial Assistance (FinAssistanceViewModel) -----
+
+  /** SubmitFinancialPhotos: `zedId` and the files of one upload field, named photoId + extension. */
+  submitFinancialPhotos(zedId: string, photos: PhotoData[]) {
+    return this.http.postMultipart<BaseServiceResponse>(this.msme + 'SubmitFinancialPhotos', [
+      { name: 'zedId', value: zedId },
+      ...contextFields(this.ctx()),
+      ...photos.map(p => filePart('files', p, p.photoId + extensionOf(fileNameOf(p.photoPath ?? '')))),
+    ]);
+  }
+
+  /** SubmitFinancialData: the claim as JSON (the photos' metadata without base64). */
+  submitFinancialData(claim: FinancialAssistance) {
+    const strip = (list: PhotoData[]) => list.map(p => ({ ...p, photo: null }));
+    return this.http.postJson<BaseServiceResponse>(this.msme + 'SubmitFinancialData', {
+      ...claim,
+      CertificationDetails: { ...claim.CertificationDetails, Photos: strip(claim.CertificationDetails.Photos) },
+      ExpenditureDetails: {
+        ...claim.ExpenditureDetails,
+        Photos: strip(claim.ExpenditureDetails.Photos),
+        InvoicePhotos: strip(claim.ExpenditureDetails.InvoicePhotos),
+      },
+      AccountDetails: { ...claim.AccountDetails, Photos: strip(claim.AccountDetails.Photos) },
+    });
+  }
+
+  /** Incentive/DetailsMobile: the incentives page (a WebView in the legacy app, the browser here). */
+  get incentivesUrl() {
+    return this.site + 'Incentive/DetailsMobile';
   }
 
   // ----- Registration (portal Msme/, no sign-in) -----

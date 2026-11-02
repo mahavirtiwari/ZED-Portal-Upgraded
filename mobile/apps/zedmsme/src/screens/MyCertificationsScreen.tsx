@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BackBar, colors, dimens, OutlinedButton, ScreenFrame, shapes, textStyles, useNavigation, useUi } from '@zed/shared';
+import { BackBar, colors, dimens, formatDate, OutlinedButton, parseLegacyDate, ScreenFrame, shapes, textStyles, useFocusEffect, useNavigation, useUi } from '@zed/shared';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
@@ -8,7 +8,7 @@ import { CertificationCard, certificationCardState } from '../components/Certifi
 import { openDocument } from '../components/documents';
 import { SyncAllButton } from '../components/SyncAllButton';
 import { certificationDetailsOf, type CertificationType, type MsmeStatus } from '../models';
-import { useCertificationClick } from './DashboardScreen';
+import { refreshStatus, useCertificationClick } from './DashboardScreen';
 
 const LEVELS: { type: CertificationType; title: string; color: string; image: number }[] = [
   { type: 'Bronze', title: 'BRONZE CERTIFICATION', color: colors.bronze, image: images.bronze },
@@ -24,7 +24,9 @@ export function MyCertificationsScreen() {
   const openDrawer = useOpenDrawer('dashboard');
   const onCertificationClick = useCertificationClick();
   const status = app.user?.MsmeDetails?.msmeStatus ?? null;
-  const pledgeDate = app.user?.MsmeDetails?.DateOfPledge;
+  // MsmeDetails.getFormattedPledgeDate: "MMM dd, yyyy"; nothing when the date cannot be read.
+  const pledgeDate = formatPledgeDate(app.user?.MsmeDetails?.DateOfPledge);
+  useFocusEffect(useCallback(() => void refreshStatus(app).catch(() => undefined), [app]));
 
   return (
     <ScreenFrame title="ZED Certifications" onMenu={openDrawer} headerRight={<SyncAllButton />}>
@@ -58,6 +60,12 @@ export function MyCertificationsScreen() {
       </View>
     </ScreenFrame>
   );
+}
+
+/** DateOfPledge ("MM/dd/yyyy hh:mm:ss a") as "MMM dd, yyyy"; '' when it cannot be read. */
+export function formatPledgeDate(value: string | null | undefined): string {
+  const d = parseLegacyDate(value);
+  return d ? formatDate(d, 'MMM dd, yyyy') : '';
 }
 
 /**

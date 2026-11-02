@@ -3,8 +3,8 @@
 (globalThis as { __ZED_PALETTE__?: Record<string, string> }).__ZED_PALETTE__ = {
   appColor: '#FFB243',
   appColorDark: '#E0952C',
-  appColor3: '#33FFB243',
-  appColor90: '#E6FFB243',
+  appColor3: '#FFB24333', // React Native reads #RRGGBBAA (Android's #AARRGGBB)
+  appColor90: '#FFB243E6',
   appColorSecondary: '#FFB243',
   textColor: '#232527',
   darkGrey: '#232527',

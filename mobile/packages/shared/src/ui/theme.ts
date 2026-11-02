@@ -10,8 +10,8 @@ const override = ((globalThis as { __ZED_PALETTE__?: Record<string, string> })._
 
 const baseColors = {
   appColor: '#45A5AD',
-  appColor3: '#3345A5AD',
-  appColor90: '#E645A5AD',
+  appColor3: '#45A5AD33', // React Native reads #RRGGBBAA (Android's #AARRGGBB)
+  appColor90: '#45A5ADE6',
   appColorDark: '#368289',
   appColorSecondary: '#B3E079',
   textColor: '#232527',

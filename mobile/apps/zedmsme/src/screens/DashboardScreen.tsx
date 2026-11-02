@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   colors,
@@ -15,6 +15,7 @@ import {
   textStyles,
   useAppText,
   useBackHandler,
+  useFocusEffect,
   useNavigation,
   useRoute,
   useUi,
@@ -37,16 +38,22 @@ export function DashboardScreen() {
   const details = app.user?.MsmeDetails;
   const steps = useAppText('app.msme.dashboard.certificationSteps');
   const certificationsInfo = useAppText('app.msme.dashboard.info.myCertifications');
+  const incentivesInfo = useAppText('app.msme.dashboard.info.myIncentives');
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
     // prepareViews: after login the Enterprise Profile opens on top (with Proceed).
     if (route.params?.fromLogin) nav.push('MyAccount', { showProceed: true, hideHeaderMenu: true });
-    // New (the code base's refresh was switched off): the statuses are asked again, so that a payment or the
-    // office's decision shows without signing in again.
-    refreshStatus(app).catch(() => undefined);
-  }, [app, nav, route.params?.fromLogin]);
+  }, [nav, route.params?.fromLogin]);
+
+  // New (the code base's refresh was switched off): the statuses are asked again whenever the dashboard shows, so that
+  // a submission, a payment or the office's decision shows without signing in again.
+  useFocusEffect(
+    useCallback(() => {
+      refreshStatus(app).catch(() => undefined);
+    }, [app]),
+  );
 
   // onBackPressed with no fragment: "Are you sure you want to exit?"
   useBackHandler(() => {
@@ -73,6 +80,20 @@ export function DashboardScreen() {
               <Icon icon={icons.ic_dashboard_arrow} />
             </View>
             <Text style={styles.certText}>Apply for Bronze, Silver or Gold Certifications</Text>
+          </Pressable>
+          <Pressable style={styles.certCard} onPress={() => nav.push('Incentives')} testID="dashboard-incentives">
+            <GradientFill from="#F6B36B" to="#E58A3A" angle="diagonal" radius={8} />
+            <View style={styles.certRow}>
+              <Pressable
+                onPress={() => ui.alert('My Incentives', incentivesInfo ? htmlToPlain(incentivesInfo.html) : '', [{ text: 'OK' }])}
+                style={{ marginRight: dimens.padding1 }}
+                testID="dashboard-incentives-info">
+                <Icon icon={icons.ic_info} />
+              </Pressable>
+              <Text style={[textStyles.subheading, styles.certTitle]}>My Incentives</Text>
+              <Icon icon={icons.ic_dashboard_arrow} />
+            </View>
+            <Text style={styles.certText}>Apply to avail incentives</Text>
           </Pressable>
           <ZedGearDivider />
           {steps ? (
@@ -122,7 +143,7 @@ export function ZedGearDivider() {
 }
 
 /** DashboardActivity.startRefresh: GetMsmeStatus, taken into the stored data (updateCertificationDetails). */
-async function refreshStatus(app: ReturnType<typeof useMsme>) {
+export async function refreshStatus(app: ReturnType<typeof useMsme>) {
   if (!app.loginId || !(await isNetworkAvailable())) return;
   const server = await app.api.getMsmeStatus(app.loginId);
   const local = app.user?.MsmeDetails?.msmeStatus;

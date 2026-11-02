@@ -176,5 +176,5 @@ const styles = StyleSheet.create({
   optionIcon: { width: 64, height: 90, margin: dimens.padding1 },
   divider: { width: 1, backgroundColor: colors.lightGrey },
   actionBox: { justifyContent: 'center', alignItems: 'center' },
-  overlay: { ...StyleSheet.absoluteFill, backgroundColor: '#AAFFFFFF', borderRadius: 4 },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: '#FFFFFFAA', borderRadius: 4 },
 });

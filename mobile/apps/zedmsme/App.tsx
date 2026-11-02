@@ -24,6 +24,8 @@ import {
 } from './src/screens/NonConformanceScreens';
 import { PaymentScreen } from './src/screens/PaymentScreen';
 import { PendingUploadsScreen } from './src/screens/PendingUploadsScreen';
+import { FinancialAssistanceScreen } from './src/screens/FinancialAssistanceScreen';
+import { IncentivesScreen } from './src/screens/IncentivesScreen';
 import { MyDocumentsScreen } from './src/screens/MyDocumentsScreen';
 import { ChangePasswordScreen, ForgotPasswordScreen } from './src/screens/PasswordScreens';
 import { RegistrationScreen } from './src/screens/RegistrationScreen';
@@ -35,6 +37,8 @@ export const SCREENS: ScreenMap = {
   Registration: RegistrationScreen,
   Dashboard: DashboardScreen,
   MyDocuments: MyDocumentsScreen,
+  Incentives: IncentivesScreen,
+  FinancialAssistance: FinancialAssistanceScreen,
   ChangePassword: ChangePasswordScreen,
   MyAccount: MyAccountScreen,
   MyCertifications: MyCertificationsScreen,

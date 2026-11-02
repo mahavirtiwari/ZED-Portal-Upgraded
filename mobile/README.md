@@ -17,14 +17,19 @@ applicationId and signing key, so installed apps update in place). Requirements:
 Bronze surveillance build hid switched back on and ported: sign-in with the ZED ID and password only (password as typed),
 Forgot Password and Change Password, the registration (Welcome, Udyam validation, unit and activity, e-mail and OTP,
 Summary, ZED Pledge, Success), the dashboard with the certification steps, My Certifications with Bronze, Silver and Gold
-and the pledge certificate, and My Documents. Its calls go to the main system (`mobileapi/msme/`, the code base's unused
+and the pledge certificate, My Documents, and My Incentives with the Financial Assistance application (certificate,
+expenditure and bank details with their uploads; the other incentives open the portal's incentives page in the browser). Its calls go to the main system (`mobileapi/msme/`, the code base's unused
 `retrofit` base; texts and forms from `mobileapi/`), the registration to the portal (`Msme/`). New in V4: the Udyam
 record comes from the server (`Msme/LookupUdyam`; the old app read the Udyam service with a key built in, SECURITY-FINDINGS
 #132) and there is no SafetyNet captcha; documents and certificates download with the sign-in token
 (`Msme/AppDocument`), as V4 no longer serves them as public files. Not in the applicant app: the assessor selfie, the
 surveillance photos, the desktop assessor's pre-final-submit questions and the video call (removed from ZED). Not yet:
-My Incentives, Financial Assistance, Other Incentives and the CCAvenue card payment (a level with a fee shows that online
-payment is not available; a zero-fee application works). Its own applicationId: the store app's package name and
+the CCAvenue card payment (a level with a fee shows that online payment is not available; a zero-fee application works).
+End to end on an emulator: a throwaway `ZEDV4CHK_` set (`database\setup.ps1 -DatabasePrefix ZEDV4CHK_ -WithKawachStandIn`,
+then `deploy\Invoke-ZedDatabaseScripts.ps1` with the same prefix), `tools/dev-seed/seed-local-msme-app.ps1` (a unit at
+the document upload and a certified unit with Financial Assistance open; password in `apps/zedmsme/.env.local`), the
+portal and the MobileApi (`Mobile:System=Main`, `PathBase=/mobileapi`) run locally with the same `Mobile:AppTokenKey`
+behind one address for `10.0.2.2:5106`, and a debug build with `-PzedEnvironment=local -PzedBundleDebug=true`. Its own applicationId: the store app's package name and
 signing key were never delivered, so it does not update the store app.
 
 **About `apps/msme`:** `ZED_MSME_Bronze` is not the store MSME app. It is the Bronze surveillance build for the

@@ -40,5 +40,5 @@ const styles = StyleSheet.create({
   box: { margin: dimens.padding2, backgroundColor: colors.lightGrey2, borderRadius: 5 },
   row: { flexDirection: 'row', alignItems: 'center', margin: dimens.padding2 },
   label: { flex: 1, marginHorizontal: dimens.padding2, fontSize: dimens.textSize, color: colors.black },
-  overlay: { ...StyleSheet.absoluteFill, backgroundColor: '#AAFFFFFF', borderRadius: 5 },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: '#FFFFFFAA', borderRadius: 5 },
 });

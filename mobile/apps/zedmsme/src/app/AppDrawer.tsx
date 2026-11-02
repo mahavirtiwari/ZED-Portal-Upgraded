@@ -5,7 +5,7 @@ import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from './context';
 
-export type DrawerKey = 'dashboard' | 'documents' | 'profile' | 'pending' | 'password';
+export type DrawerKey = 'dashboard' | 'documents' | 'profile' | 'incentives' | 'pending' | 'password';
 
 type DrawerState = { open: boolean; checked: DrawerKey };
 const DrawerContext = createContext<{ open: (checked: DrawerKey) => void; state: DrawerState; close: () => void } | null>(null);
@@ -73,9 +73,10 @@ function AppDrawer({ open, checked, onClose }: { open: boolean; checked: DrawerK
       items={[
         // item1: goToDashboard()
         { key: 'dashboard', title: 'Dashboard', icon: icons.ic_nav_dashboard, onPress: () => nav.reset([{ name: 'Dashboard' }]) },
-        // item2 (hidden in the Bronze surveillance build). Incentives (item4) come with the Financial Assistance screens.
+        // item2 and item4 (hidden in the Bronze surveillance build).
         { key: 'documents', title: 'My Documents', icon: icons.ic_my_documents, onPress: () => nav.push('MyDocuments') },
         { key: 'profile', title: 'View Profile', icon: icons.ic_nav_my_account, onPress: () => nav.push('MyAccount') },
+        { key: 'incentives', title: 'Incentives', icon: icons.ic_incentives, onPress: () => nav.push('Incentives') },
         // New: what is waiting to be sent (the legacy app had no such list).
         { key: 'pending', title: 'Pending Uploads', icon: icons.ic_upload, onPress: () => nav.push('PendingUploads') },
         // item5: Utils.composeEmail(arrayOf("zed@qcin.org"), "")
