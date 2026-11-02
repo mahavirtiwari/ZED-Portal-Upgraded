@@ -176,6 +176,14 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
 
     public IReadOnlyList<string> UserFields { get; } = userFields.Length > 0 ? userFields : ["zedId", "userName"];
 
+    /// <summary>
+    /// Another app that may make this call as well, signed in as the same user (the rebuilt ZED MSME app makes the remote
+    /// assessment calls RA/CheckAssessment and RA/SubmitSelfie with its own MSME sign-in). A call that carries a genuine
+    /// token of this app is checked as this app's: its token for the same user / unit, and the devices it signed in on;
+    /// in the mode of <see cref="App"/>. Any other call is checked as <see cref="App"/>'s, as before.
+    /// </summary>
+    public string? AlsoApp { get; set; }
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var http = context.HttpContext;
@@ -191,10 +199,13 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
         var values = await LegacyRequestValues.GetAsync(http);
         var user = FindUser(context, values);
 
+        // The app whose token and devices the call is checked against: AlsoApp when its token comes with the call.
+        var app = AlsoApp is not null && tokens?.Read(http.Request.Headers[AppTokens.Header].ToString()) is { } token &&
+                  string.Equals(token.App, AlsoApp, StringComparison.OrdinalIgnoreCase) ? AlsoApp : App;
         if (tokens is not null)
         {
-            var asUnit = MobileApps.ActsAsUnit(App);
-            if (await tokens.RefusalAsync(http, App, asUnit ? null : user, asUnit ? user : null, http.RequestAborted) is { } expired)
+            var asUnit = MobileApps.ActsAsUnit(app);
+            if (await tokens.RefusalAsync(http, App, asUnit ? null : user, asUnit ? user : null, http.RequestAborted, tokenApp: app) is { } expired)
             {
                 context.Result = expired;
                 return;
@@ -209,7 +220,7 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
 
         var deviceId = FindDeviceId(context, values);
         var bindings = (IDeviceBindings)http.RequestServices.GetService(typeof(IDeviceBindings))!;
-        var check = await bindings.CheckAsync(App, user, deviceId, http.RequestAborted);
+        var check = await bindings.CheckAsync(app, user, deviceId, http.RequestAborted);
         if (check is DeviceCheck.Known or DeviceCheck.NoBinding)
         {
             await next();
@@ -218,7 +229,7 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
 
         var refuse = mode == DeviceBindingMode.Enforce &&
                      (check == DeviceCheck.Unknown || options!.Value.RefuseMissingDevice);
-        await bindings.RecordAsync(App, user, deviceId, http.Request.Path, http.Connection.RemoteIpAddress?.ToString(), check, refuse, http.RequestAborted);
+        await bindings.RecordAsync(app, user, deviceId, http.Request.Path, http.Connection.RemoteIpAddress?.ToString(), check, refuse, http.RequestAborted);
         if (refuse)
         {
             context.Result = LegacyResults.Json(ServiceResponse.Fail(DeviceNotRegistered));

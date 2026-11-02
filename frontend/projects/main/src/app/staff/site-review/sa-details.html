@@ -35,10 +35,8 @@
 @if (data(); as d) {
   @if (perms().assessorOnCurrentPortal) {
     <div class="alert alert-info" role="status">
-      The site assessor's actions (validation, conformance, remarks, final submit) are done on the current portal.
-      @if (legacy.saDetails(d.zedId, d.certification); as href) {
-        <a [href]="href" class="btn btn-primary btn-sm ms-2">Open on the current portal</a>
-      }
+      The site assessor's actions (validation, conformance, remarks, NC review, final submit) are on the site assessment page.
+      <a [routerLink]="['/staff/remote', d.zedId, d.certification]" class="btn btn-primary btn-sm ms-2 open-site-assessment">Open the site assessment</a>
     </div>
   }
 

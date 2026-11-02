@@ -37,8 +37,12 @@ public sealed partial class SurveillanceController(
     IDeviceBindings devices,
     AppTokens tokens,
     LoginThrottle throttle,
-    ILogger<SurveillanceController> log) : LegacyMobileController
+    ILogger<SurveillanceController> log) : SurveillanceControllerBase
 {
+    private protected override ISqlExecutor Db => db;
+    private protected override ILogger Log => log;
+    private protected override string LogArea => "Surveillance";
+
     /// <summary>Device records and app tokens of the Bronze surveillance app (MobileDeviceBindings.AppKind is varchar(10)).</summary>
     internal const string App = MobileApps.Surveillance;
 
@@ -246,12 +250,6 @@ public sealed partial class SurveillanceController(
     }
 
     private const string MsmeInvalidDetails = "Invalid Details.";
-
-    private ContentResult Refuse(string action, string? zedId, string? certification, string reason, string message)
-    {
-        log.LogWarning("Surveillance/{Action} refused for {ZedId} {Certification}: {Reason}", action, zedId, certification, reason);
-        return Fail(message);
-    }
 
     /// <summary>The device check of <see cref="DeviceBoundAttribute"/>, for the assessor found in the allotment.</summary>
     private async Task<IActionResult?> DeviceRefusalAsync(string assessorId, string? deviceId, CancellationToken ct)

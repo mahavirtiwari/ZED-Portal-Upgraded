@@ -143,6 +143,36 @@ public sealed class MsmeAppNcTests : MsmeAppTestBase
             Json($$"""{"userName":"{{ZedId}}","certificationType":"Gold","photos":[{"photoId":"..\\..\\..\\evil-site","photo":"{{PngBase64}}"}]}""")), "Invalid Data.");
         AssertNothingOutside("evil-site.jpg");
     }
+
+    /// <summary>
+    /// The web data entry's rule (MsmeEntry.Stage.NcOpen): NC 1 to 5 with that NC raised, at the desktop NC (status 2) or,
+    /// for Silver and Gold, the site NC (3). A count above 5 is the rejection, Bronze's 3 is certified or rejected.
+    /// </summary>
+    [Theory]
+    [InlineData("Bronze", 2, 1, 1, true)]
+    [InlineData("Silver", 3, 2, 1, true)]
+    [InlineData("Bronze", 3, 1, 1, false)]
+    [InlineData("Silver", 4, 2, 1, false)]
+    [InlineData("Bronze", 2, 6, 0, false)]
+    [InlineData("Gold", 3, 6, 0, false)]
+    [InlineData("Bronze", 2, 1, 2, false)]
+    public async Task Nc_replies_are_taken_only_while_the_current_nc_is_open(string level, int status, int ncCount, int ncStatus, bool open)
+    {
+        Stage(level, status, ncCount, ncStatus);
+        var body = $$"""{"userName":"{{ZedId}}","certificationType":"{{level}}","msmeRemarks":"ok","photos":[{"photoId":"s9","photo":"{{PngBase64}}"}]}""";
+        var e = await Post("/Msme/SubmitSiteExteriorInfo", Json(body));
+        if (open)
+        {
+            AssertOk(e);
+            Assert.Single(CallsTo("SP_APP_MSME_INSERT_SITE_EXTERIOR"));
+        }
+        else
+        {
+            AssertFail(e, "Invalid Details.");
+            Assert.Empty(CallsTo("SP_APP_MSME_INSERT_SITE_EXTERIOR"));
+            Assert.False(Directory.Exists(StoragePath("Photos")));
+        }
+    }
 }
 
 public sealed class MsmeAppFinancialTests : MsmeAppTestBase

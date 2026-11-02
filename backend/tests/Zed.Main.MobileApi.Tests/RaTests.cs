@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Zed.Core.Mobile;
 
@@ -165,5 +166,92 @@ public sealed class RaTests : IDisposable
         Assert.Equal("1", (await Login(Password)).GetProperty("status").GetString());
         Assert.Equal(Password, FakeSql.Arg(_t.Fake.Calls.Last(c => c.Name == "SP_APP_MSME_REMOTE_CHECK_LOGIN").Args, "Password"));
         Assert.True(global::Zed.Core.Security.PasswordStore.IsReplacement(passwords.Accounts[Zed].Stored));
+    }
+
+    // ---------------------------------------------------------------- the rebuilt ZED MSME app (MSME app token)
+
+    /// <summary>The ZED MSME app's sign-in (msme/login): its MSME app token, its device remembered for the MSME app.</summary>
+    private async Task<string> MsmeAppLogin(string device)
+    {
+        _t.Fake.Procs["SP_APP_MSME_CHECK_LOGIN"] = _ => FakeSql.Sets(
+            [new Dictionary<string, object?> { ["UserId"] = Zed, ["Password"] = Password, ["RoleId"] = 5 }],
+            [new { ZedId = Zed, MsmeId = "11" }], [new { EnterpriseName = "Acme" }], [new { BronzeStatus = 1 }]);
+        var e = await _t.Json("/Msme/Login", new { userName = Zed, password = Password, deviceInfo = new { deviceId = device } });
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        return e.GetProperty("appToken").GetString()!;
+    }
+
+    private async Task<JsonElement> WithToken(string path, object body, string? token)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json"),
+        };
+        if (token is not null) request.Headers.Add(AppTokens.Header, token);
+        var r = await _t.Client.SendAsync(request);
+        return JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+    }
+
+    private void EnforceTokensAndDevices()
+    {
+        _t.Settings["Mobile:AppTokenKey"] = AppTokenTests.Key;
+        _t.Settings["Mobile:AppTokens:Apps:RA"] = "Enforce";
+        _t.Settings["Mobile:DeviceBinding"] = "Enforce";
+        _t.Fake.Procs["SP_APP_MSME_REMOTE_CHECK_START_ASSESSMENT"] = _ => FakeSql.Sets([new { AssessmentDate = "05/01/2024 10:00:00", AllowCalling = 1 }]);
+    }
+
+    private static object Selfie(string user, string device) => new
+    {
+        userName = user, certificationType = "Silver", representativeName = "Owner", representativeDesignation = "CEO",
+        photo = new { photo = AssessorTestHost.JpegBase64, timeStamp = "t", latitude = "1", longitude = "2" }, deviceInfo = new { deviceId = device },
+    };
+
+    [Fact]
+    public async Task Check_assessment_and_selfie_take_the_msme_app_token_and_device_under_enforce()
+    {
+        EnforceTokensAndDevices();
+        var msme = await MsmeAppLogin("msme-phone");
+
+        var e = await WithToken("/RA/CheckAssessment", new { userName = Zed, certificationType = "Silver", deviceInfo = new { deviceId = "msme-phone" } }, msme);
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        Assert.Equal("05/01/2024 10:00:00", e.GetProperty("assementDate").GetString());
+        e = await WithToken("/RA/SubmitSelfie", Selfie(Zed, "msme-phone"), msme);
+        Assert.Equal("1", e.GetProperty("status").GetString());
+        Assert.Single(_t.CallsTo("SP_APP_MSME_REMOTE_INSERT_SELFIE"));
+        Assert.Empty(_t.Devices.TokenEvents);
+
+        // The remote assessment app's own sign-in keeps working.
+        var ra = (await Login(Password)).GetProperty("appToken").GetString();
+        e = await WithToken("/RA/CheckAssessment", new { userName = Zed, certificationType = "Silver", deviceInfo = new { deviceId = "ra-phone" } }, ra);
+        Assert.Equal("1", e.GetProperty("status").GetString());
+    }
+
+    [Fact]
+    public async Task The_msme_app_token_is_taken_for_its_own_unit_and_device_and_by_those_two_calls_only()
+    {
+        EnforceTokensAndDevices();
+        var msme = await MsmeAppLogin("msme-phone");
+        const string Expired = AppTokens.ExpiredMessage;
+
+        // Another unit, no token, a device the MSME app never signed in on (the RA app's included): refused.
+        var other = await WithToken("/RA/CheckAssessment", new { userName = "ZEDMSME000002", certificationType = "Silver", deviceInfo = new { deviceId = "msme-phone" } }, msme);
+        Assert.Equal(Expired, other.GetProperty("errorMessage").GetString());
+        Assert.Contains(_t.Devices.TokenEvents, ev => ev.App == MobileApps.Msme && ev.Outcome == AppTokenCheck.OtherUser && ev.Refused);
+        var none = await WithToken("/RA/SubmitSelfie", Selfie(Zed, "msme-phone"), null);
+        Assert.Equal(Expired, none.GetProperty("errorMessage").GetString());
+        await Login(Password);   // the RA app on "ra-phone"
+        var device = await WithToken("/RA/SubmitSelfie", Selfie(Zed, "ra-phone"), msme);
+        Assert.Contains("not registered", device.GetProperty("errorMessage").GetString());
+        Assert.Contains(_t.Devices.Events, ev => ev.App == MobileApps.Msme && ev.Device == "ra-phone" && ev.Refused);
+        Assert.Empty(_t.CallsTo("SP_APP_MSME_REMOTE_INSERT_SELFIE"));
+
+        // The other RA calls still want the RA app's token.
+        var location = await WithToken("/RA/SubmitLocation",
+            new { userName = Zed, certificationType = "Silver", location = new { latitude = "1", longitude = "2" }, deviceInfo = new { deviceId = "msme-phone" } }, msme);
+        Assert.Equal(Expired, location.GetProperty("errorMessage").GetString());
+        Assert.Equal(Expired, (await WithToken("/RA/GetToken", new { userName = Zed, deviceInfo = new { deviceId = "msme-phone" } }, msme))
+            .GetProperty("errorMessage").GetString());
+        Assert.Contains(_t.Devices.TokenEvents, ev => ev.App == MobileApps.RemoteAssessor && ev.Outcome == AppTokenCheck.OtherApp && ev.Refused);
+        Assert.Empty(_t.CallsTo("SP_APP_MSME_REMOTE_INSERT_LOCATION"));
     }
 }

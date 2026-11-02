@@ -74,6 +74,7 @@ public sealed class AppTokens
     private readonly string system;
     private readonly TimeProvider time;
     private readonly byte[]? key;
+    private bool warnedNoIssuerDb;
 
     public AppTokens(IOptions<MobileOptions> options, IDataProtectionProvider protection, ISqlExecutor db, IMemoryCache cache,
         ILogger<AppTokens> log, PortalHost? host = null, TimeProvider? time = null)
@@ -116,7 +117,14 @@ public sealed class AppTokens
     }
 
     /// <summary>The token's content when it is genuine and from this deployment (expired or not), else null.</summary>
-    public AppToken? Read(string? token)
+    public AppToken? Read(string? token) => Read(token, system);
+
+    /// <summary>
+    /// The token's content when it is genuine and was issued by the deployment <paramref name="issuer"/>, else null. A
+    /// token of another deployment can be read only when it is signed with the shared <c>Mobile:AppTokenKey</c> ("h1."):
+    /// the Data Protection keys are each host's own.
+    /// </summary>
+    private AppToken? Read(string? token, string issuer)
     {
         if (string.IsNullOrWhiteSpace(token) || token.Length > MaxLength) return null;
         token = token.Trim();
@@ -138,7 +146,7 @@ public sealed class AppTokens
             }
             if (bytes is null) return null;
             var p = JsonSerializer.Deserialize<Payload>(bytes);
-            if (p is null || string.IsNullOrEmpty(p.App) || string.IsNullOrEmpty(p.User) || !string.Equals(p.System, system, StringComparison.Ordinal))
+            if (p is null || string.IsNullOrEmpty(p.App) || string.IsNullOrEmpty(p.User) || !string.Equals(p.System, issuer, StringComparison.Ordinal))
                 return null;
             return new AppToken(p.App, p.User, p.Unit, p.Stamp ?? "", p.System, DateTimeOffset.FromUnixTimeSeconds(p.Issued),
                 DateTimeOffset.FromUnixTimeSeconds(p.Expires));
@@ -153,18 +161,41 @@ public sealed class AppTokens
     /// Checks <paramref name="token"/> for a call of <paramref name="app"/> that acts for <paramref name="user"/> and/or
     /// <paramref name="unit"/> (each compared only when given; a given unit must be the token's unit).
     /// </summary>
-    public async Task<AppTokenCheck> CheckAsync(string? token, string app, string? user, string? unit, CancellationToken ct = default)
+    public Task<AppTokenCheck> CheckAsync(string? token, string app, string? user, string? unit, CancellationToken ct = default) =>
+        CheckAsync(token, system, db, app, user, unit, ct);
+
+    /// <summary>
+    /// <see cref="CheckAsync(string?, string, string?, string?, CancellationToken)"/> for a token that the deployment
+    /// <paramref name="issuer"/> issued (the MSME app signs in on Main and answers its unit's surveillance NC on the
+    /// Surveillance host). Only a token signed with the key both hosts hold (<c>Mobile:AppTokenKey</c>) can be read. The
+    /// session stamp is the issuer's, read from <paramref name="issuerDb"/>, the issuer's database; without it the stamp
+    /// is not checked (logged).
+    /// </summary>
+    public Task<AppTokenCheck> CheckIssuedByAsync(string? token, PortalSystem issuer, ISqlExecutor? issuerDb, string app, string? user, string? unit,
+        CancellationToken ct = default)
+    {
+        if (issuerDb is null && !warnedNoIssuerDb)
+        {
+            warnedNoIssuerDb = true;
+            log.LogWarning("App tokens of {Issuer} are taken without their session stamp: that deployment's database is not configured here", issuer);
+        }
+        return CheckAsync(token, issuer.ToString(), issuerDb, app, user, unit, ct);
+    }
+
+    private async Task<AppTokenCheck> CheckAsync(string? token, string issuer, ISqlExecutor? stamps, string app, string? user, string? unit,
+        CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(token)) return AppTokenCheck.Missing;
-        if (Read(token) is not { } t) return AppTokenCheck.Invalid;
+        if (Read(token, issuer) is not { } t) return AppTokenCheck.Invalid;
         if (!string.Equals(t.App, app, StringComparison.OrdinalIgnoreCase)) return AppTokenCheck.OtherApp;
         if (time.GetUtcNow() >= t.ExpiresAt) return AppTokenCheck.Expired;
         if (!string.IsNullOrWhiteSpace(user) && !Same(user, t.User)) return AppTokenCheck.OtherUser;
         if (!string.IsNullOrWhiteSpace(unit) && !Same(unit, t.Unit)) return AppTokenCheck.OtherUser;
         // A stamp that cannot be read (database error) is logged in StampAsync and not held against the caller.
         // A different cached stamp is read again first: the login (another host, perhaps) may have seen a newer one.
-        if (await StampAsync(t.User, fresh: false, ct) is { } cached && !string.Equals(cached, t.Stamp, StringComparison.Ordinal) &&
-            await StampAsync(t.User, fresh: true, ct) is { } current && !string.Equals(current, t.Stamp, StringComparison.Ordinal))
+        if (stamps is not null &&
+            await StampAsync(stamps, issuer, t.User, fresh: false, ct) is { } cached && !string.Equals(cached, t.Stamp, StringComparison.Ordinal) &&
+            await StampAsync(stamps, issuer, t.User, fresh: true, ct) is { } current && !string.Equals(current, t.Stamp, StringComparison.Ordinal))
             return AppTokenCheck.Revoked;
         return AppTokenCheck.Valid;
     }
@@ -173,15 +204,35 @@ public sealed class AppTokens
     /// The check of one call, in the app's mode: null when the call may go on (Off, Monitor, or a valid token), else the
     /// refusal to answer with (Enforce), the device-binding refusal's shape with <see cref="ExpiredMessage"/>. Anything
     /// but a valid token is recorded with the device events (dbo.MobileDeviceEvents, Outcome "Token…").
+    /// <paramref name="tokenApp"/>: the token is checked as that app's instead (a call of <paramref name="app"/> that
+    /// another app may make too, <see cref="DeviceBoundAttribute.AlsoApp"/>); the mode stays <paramref name="app"/>'s.
     /// </summary>
-    public async Task<IActionResult?> RefusalAsync(HttpContext http, string app, string? user, string? unit, CancellationToken ct = default)
+    public async Task<IActionResult?> RefusalAsync(HttpContext http, string app, string? user, string? unit, CancellationToken ct = default,
+        string? tokenApp = null)
     {
         var mode = ModeFor(app);
         if (mode == AppTokenMode.Off) return null;
-        var check = await CheckAsync(http.Request.Headers[Header].ToString(), app, user, unit, ct);
-        if (check == AppTokenCheck.Valid) return null;
+        tokenApp ??= app;
+        var check = await CheckAsync(http.Request.Headers[Header].ToString(), tokenApp, user, unit, ct);
+        return await RefuseAsync(http, tokenApp, user, unit, check, mode == AppTokenMode.Enforce, ct);
+    }
 
-        var refuse = mode == AppTokenMode.Enforce;
+    /// <summary>
+    /// The check of a call served for an app that signed in on the deployment <paramref name="issuer"/>
+    /// (<see cref="CheckIssuedByAsync"/>). Always enforced, whatever the app's mode: such calls are new in V4 and only the
+    /// rebuilt apps, which send the token, make them. Anything but a valid token is recorded and refused as in Enforce.
+    /// </summary>
+    public async Task<IActionResult?> IssuedByRefusalAsync(HttpContext http, PortalSystem issuer, ISqlExecutor? issuerDb, string app, string? user,
+        string? unit, CancellationToken ct = default)
+    {
+        var check = await CheckIssuedByAsync(http.Request.Headers[Header].ToString(), issuer, issuerDb, app, user, unit, ct);
+        return await RefuseAsync(http, app, user, unit, check, refuse: true, ct);
+    }
+
+    private async Task<IActionResult?> RefuseAsync(HttpContext http, string app, string? user, string? unit, AppTokenCheck check, bool refuse,
+        CancellationToken ct)
+    {
+        if (check == AppTokenCheck.Valid) return null;
         var who = (string.IsNullOrWhiteSpace(user) ? unit : user)?.Trim() ?? "";
         if (http.RequestServices.GetService(typeof(IDeviceBindings)) is IDeviceBindings devices)
             await devices.RecordTokenAsync(app, who, http.Request.Path, http.Connection.RemoteIpAddress?.ToString(), check, refuse, ct);
@@ -195,13 +246,16 @@ public sealed class AppTokens
     /// The user's session stamp, cached for a minute (a password change or block ends app tokens within that minute);
     /// <paramref name="fresh"/> (at login) reads it from the database. Null when it cannot be read.
     /// </summary>
-    private async Task<string?> StampAsync(string userId, bool fresh, CancellationToken ct)
+    private Task<string?> StampAsync(string userId, bool fresh, CancellationToken ct) => StampAsync(db, system, userId, fresh, ct);
+
+    /// <summary>The stamp in <paramref name="database"/>, the database of the deployment <paramref name="issuer"/> (cached per deployment).</summary>
+    private async Task<string?> StampAsync(ISqlExecutor database, string issuer, string userId, bool fresh, CancellationToken ct)
     {
-        var cacheKey = "zed.apptoken.stamp|" + userId.Trim().ToUpperInvariant();
+        var cacheKey = "zed.apptoken.stamp|" + (issuer == system ? "" : issuer + "|") + userId.Trim().ToUpperInvariant();
         if (!fresh && cache.TryGetValue(cacheKey, out string? cached)) return cached;
         try
         {
-            var stamp = await SessionStamps.ReadAsync(db, userId.Trim(), ct);
+            var stamp = await SessionStamps.ReadAsync(database, userId.Trim(), ct);
             cache.Set(cacheKey, stamp, StampCacheTime);
             return stamp;
         }

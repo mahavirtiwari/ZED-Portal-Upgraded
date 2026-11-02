@@ -78,7 +78,7 @@ public sealed class SiteReviewController(
     private static readonly string[] SectionAssessorFields = ["AllotedAssessorId", "AllotedAssessorName", "AssessorRank"];
     private static readonly string[] RequirementFields =
         ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "UpdatedDate", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
-    private static readonly string[] NcRequirementFields = ["Id", "SectionCode", "RequirementCode", "SaConformance", "SaAssessorRemarks", "MsmeComments"];
+    private static readonly string[] NcRequirementFields = ["Id", "SectionCode", "RequirementCode", "SaConformance", "SaAssessorRemarks", "MsmeComments", "PreviousAssessorRemarks"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields = ["Id", "SectionCode", "RequirementCode", "EvidenceName", "NcCount", "SyncedDate"];
@@ -127,7 +127,7 @@ public sealed class SiteReviewController(
     public sealed record Permissions(
         ReviewActions Review,
         bool CanWithdrawExemption,     // master admin: exemption Yes -> No while the site assessment is scheduled (status 8)
-        bool AssessorOnCurrentPortal); // the user is the site/co-assessor and the site assessment is open: done on the current portal
+        bool AssessorOnCurrentPortal); // the user is the site/co-assessor and the site assessment is open: done on the site assessment page (staff/remote)
 
     public sealed record SaDetailsResponse(
         string ZedId,
@@ -497,9 +497,8 @@ public sealed class SiteReviewController(
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
 
-        var root = Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.Value.StorageRoot));
-        var fullPath = SiteReviewFiles.StorageCandidates(requested, zedId)
-            .Select(c => MsmeFilePaths.Resolve(root, c))
+        var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
+            .SelectMany(root => SiteReviewFiles.StorageCandidates(requested, zedId).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {

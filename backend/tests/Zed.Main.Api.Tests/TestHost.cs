@@ -23,12 +23,16 @@ public sealed class TestHost : WebApplicationFactory<Program>
 
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "zed-tests-" + Guid.NewGuid().ToString("N"));
 
+    /// <summary>Set before the first request: Portal:AssessmentStorageRoot, the live layout's separate folder of the apps' files.</summary>
+    public string? AssessmentStorageRoot { get; set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
         builder.UseSetting("ConnectionStrings:Main", "Server=unused;Database=unused");
         builder.UseSetting("Recaptcha:Enabled", "false");
         builder.UseSetting("Portal:StorageRoot", StorageRoot);
+        if (AssessmentStorageRoot is not null) builder.UseSetting("Portal:AssessmentStorageRoot", AssessmentStorageRoot);
         builder.UseSetting("Email:ContactInbox", "zed.support@example.test");
         builder.UseSetting("CcAvenue:MerchantId", "12345");
         builder.UseSetting("CcAvenue:AccessCode", "AVTEST");
@@ -57,6 +61,7 @@ public sealed class TestHost : WebApplicationFactory<Program>
     {
         base.Dispose(disposing);
         if (Directory.Exists(StorageRoot)) Directory.Delete(StorageRoot, recursive: true);
+        if (AssessmentStorageRoot is not null && Directory.Exists(AssessmentStorageRoot)) Directory.Delete(AssessmentStorageRoot, recursive: true);
     }
 
     private sealed class XsrfHandler(System.Net.CookieContainer cookies, Uri baseAddress) : DelegatingHandler

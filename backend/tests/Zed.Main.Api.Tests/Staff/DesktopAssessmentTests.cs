@@ -332,6 +332,46 @@ public sealed class DesktopAssessmentTests : IDisposable
     }
 
     [Fact]
+    public async Task A_second_final_submit_that_waited_for_the_first_is_refused_and_the_procedure_runs_once()
+    {
+        using var submitting = new ManualResetEventSlim();
+        using var release = new ManualResetEventSlim();
+        _host.Sql.Procs["SP_ASSESSMENT_DA_FINAL_SUBMIT"] = _ =>
+        {
+            submitting.Set();
+            release.Wait(TimeSpan.FromSeconds(10));
+            _record = Record(status: 4, nc: 1, nc1: 1);   // NC 1 raised, waiting for the MSME
+            return FakeSql.Sets();
+        };
+        var reads = 0;
+        var records = _host.Sql.Queries[AssessmentRecords.CertificationSql];
+        _host.Sql.Queries[AssessmentRecords.CertificationSql] = args =>
+        {
+            var rows = records(args).ToList();
+            Interlocked.Increment(ref reads);
+            return rows;
+        };
+        var client = await As("ASSESSOR1");
+        var body = new { remarks = "All checked" };
+
+        var first = Task.Run(() => client.PostAsJsonAsync(Base + "/final-submit", body));
+        Assert.True(submitting.Wait(TimeSpan.FromSeconds(10)));
+        var before = Volatile.Read(ref reads);
+        // The double click: it passes the state check (still status 3) while the first submit runs, and waits for it.
+        var second = Task.Run(() => client.PostAsJsonAsync(Base + "/final-submit", body));
+        for (var i = 0; i < 400 && Volatile.Read(ref reads) == before; i++) await Task.Delay(25);
+        release.Set();
+
+        Assert.Equal(HttpStatusCode.OK, (await first).StatusCode);
+        var r = await second;
+        Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
+        Assert.Equal(DesktopAssessmentController.AlreadySubmitted, await r.ProblemTitle());
+        // One submit: the procedure ran once (no second run in the fresh NC round) and one NC mail went out.
+        Assert.Single(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_FINAL_SUBMIT"));
+        Assert.Single(_host.Email.Sent);
+    }
+
+    [Fact]
     public async Task Master_admin_may_only_withdraw_an_exemption_of_a_silver_or_gold_record_under_review()
     {
         var admin = await As("MADMIN");

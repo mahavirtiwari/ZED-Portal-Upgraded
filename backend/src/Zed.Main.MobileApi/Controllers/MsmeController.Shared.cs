@@ -56,11 +56,18 @@ public sealed partial class MsmeController
     /// app's buttons): Status 0 = not paid, 1 = paid and not yet final-submitted, 2+ = submitted;
     /// NcCount and the current NC's status (1 = raised, 2 = response submitted).
     /// </summary>
-    internal sealed record LevelStage(int Status, int NcCount, int CurrentNcStatus)
+    internal sealed record LevelStage(int Status, int NcCount, int CurrentNcStatus, bool Bronze = false)
     {
         public bool Paid => Status > 0;
         public bool BeforeFinalSubmit => Status == 1;
-        public bool NcOpen => NcCount > 0 && (NcCount > 5 || CurrentNcStatus == 1);
+
+        /// <summary>
+        /// An NC raised and not yet answered, as the web data entry's rule (MsmeEntry.Stage.NcOpen): NC 1 to 5 (a count
+        /// above 5 is the rejection, status 7 / 17), its status 1, and the level under assessment: Status 2 (desktop
+        /// assessment, the desktop NC at status 4) or, for Silver, Gold and ZED-X, 3 (site assessment, the site NC at 14).
+        /// Bronze's 3 is certified or rejected.
+        /// </summary>
+        public bool NcOpen => NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && (Status == 2 || (Status == 3 && !Bronze));
     }
 
     /// <summary>Null when the level is not Bronze/Silver/Gold/ZED-X or the ZED ID is unknown.</summary>
@@ -81,7 +88,7 @@ public sealed partial class MsmeController
         // The status columns are NULL when there is no Msme row for the ZED ID.
         if (!row.TryGetValue(level + "Status", out var status) || status is null or DBNull) return null;
         var nc = row.Int(level + "StatusOfNc");
-        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0);
+        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, level == "Bronze");
     }
 
     private ContentResult StageRefused(string action, string? zedId, string? certificationType, LevelStage? stage)

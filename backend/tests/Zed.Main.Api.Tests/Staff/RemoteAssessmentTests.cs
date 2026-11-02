@@ -79,6 +79,9 @@ public sealed class RemoteAssessmentTests : IDisposable
     private static string JpegDataUrl => "data:image/jpeg;base64," + Convert.ToBase64String(Jpeg);
 
     private int _onsiteStatus = 9;
+    private int _onsiteNc;
+    private int _onsiteNc1Status;
+    private int _onsiteNc2Status;
 
     public RemoteAssessmentTests()
     {
@@ -86,7 +89,7 @@ public sealed class RemoteAssessmentTests : IDisposable
         _host.Sql.Queries[RemoteAssessmentController.RecordSql[..60]] = args => (FakeSql.Arg(args, "ZedId"), FakeSql.Arg(args, "Certification")) switch
         {
             (Zed, "Silver") => [new { Id = 5L, ZedId = Zed, Certification = "Silver", CertificationStatus = _status, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = "ASSESSOR2", ModeOfAssessment = "Remote Assessment", JoinRoomStatus = _joinRoomStatus }],
-            ("ZEDMSME000002", "Silver") => [new { Id = 6L, ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = _onsiteStatus, NcCount = 0, SiteAssessorId = "ASSESSOR1", CoAssessorId = (string?)null, ModeOfAssessment = "Onsite Assessment" }],
+            ("ZEDMSME000002", "Silver") => [new { Id = 6L, ZedId = "ZEDMSME000002", Certification = "Silver", CertificationStatus = _onsiteStatus, NcCount = _onsiteNc, SiteAssessorId = "ASSESSOR1", CoAssessorId = (string?)null, ModeOfAssessment = "Onsite Assessment", Nc1Status = _onsiteNc1Status, Nc2Status = _onsiteNc2Status }],
             _ => [],
         };
         _host.Sql.Queries["SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmeRequirements"] = args =>
@@ -472,6 +475,109 @@ public sealed class RemoteAssessmentTests : IDisposable
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Contains("owner@acme.test", mail.To);
         Assert.DoesNotContain("secret-pw", mail.HtmlBody);
+    }
+
+    /// <summary>An onsite Silver unit in NC round 1: requirement 52 and product 32 are the round's, requirement 53 the first assessment's.</summary>
+    private const string NcUnit = "/api/staff/remote/ZEDMSME000002/Silver";
+
+    private void NcRound(int nc1Status, int openProducts = 0, int photosSent = 0, int photosUnanswered = 0)
+    {
+        (_onsiteStatus, _onsiteNc, _onsiteNc1Status) = (14, 1, nc1Status);
+        _host.Sql.Queries["SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmeRequirements"] = args =>
+            FakeSql.Arg(args, "ZedId") != "ZEDMSME000002" ? [] : FakeSql.Arg(args, "Id") switch
+            {
+                "52" => [new { Id = 52L, NcCount = 1 }],
+                "53" => [new { Id = 53L, NcCount = 0 }],
+                _ => [],
+            };
+        _host.Sql.Queries["SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmeProducts"] = args =>
+            FakeSql.Arg(args, "Id") == "32" && FakeSql.Arg(args, "ZedId") == "ZEDMSME000002" ? [new { Id = 32L, NcCount = 1 }] : [];
+        _host.Sql.Queries[RemoteAssessmentController.RoundProductsOpenSql] = _ => [openProducts];
+        _host.Sql.Queries[RemoteAssessmentController.RoundSitePhotosSql] = _ => [new { Sent = photosSent, Unanswered = photosUnanswered }];
+    }
+
+    [Fact]
+    public async Task An_nc_round_opens_once_the_msme_has_answered_it_and_only_its_own_rows_change()
+    {
+        var lead = await As("ASSESSOR1");
+
+        // NC 1 raised, the MSME has not answered yet: the page shows the round, nothing can change.
+        NcRound(nc1Status: 1);
+        var details = await (await lead.GetAsync(NcUnit)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, details.GetProperty("nc").GetProperty("round").GetInt32());
+        Assert.False(details.GetProperty("nc").GetProperty("submitted").GetBoolean());
+        Assert.False(details.GetProperty("permissions").GetProperty("canAssess").GetBoolean());
+        var early = await lead.PostAsJsonAsync(NcUnit + "/requirements/52/conformance", new { conformance = "Yes" });
+        Assert.Equal(HttpStatusCode.Forbidden, early.StatusCode);
+        Assert.Equal("The MSME has not submitted its answers to this NC round yet.", await early.ProblemTitle());
+
+        // Answered (Nc1Status 2): the round's requirement and product can be assessed.
+        NcRound(nc1Status: 2, photosSent: 2);
+        details = await (await lead.GetAsync(NcUnit)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(details.GetProperty("nc").GetProperty("submitted").GetBoolean());
+        Assert.True(details.GetProperty("permissions").GetProperty("canAssess").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(NcUnit + "/requirements/52/conformance", new { conformance = "Yes" })).StatusCode);
+        Assert.Equal("52", FakeSql.Arg(Call("SP_ASSESSMENT_RA_UPDATE_REQUIREMENT").Args, "Id"));
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(NcUnit + "/products/32/validate", new { isVerified = "Yes" })).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(NcUnit + "/site-exterior/validate", new { isVerified = "Yes" })).StatusCode);
+
+        // The first assessment's rows, answers, meetings and photos stay as they are.
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(NcUnit + "/requirements/53/conformance", new { conformance = "No", remarks = "x" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await lead.PostAsJsonAsync(NcUnit + "/requirements/53/checkpoints", new { answers = Array.Empty<object>() })).StatusCode);
+        var basic = await lead.PostAsJsonAsync(NcUnit + "/basic-info", new { column = "SaEnergySources", value = "Solar" });
+        Assert.Equal(HttpStatusCode.Forbidden, basic.StatusCode);
+        Assert.Equal("In an NC round only the NC answers can be assessed.", await basic.ProblemTitle());
+        Assert.Equal(HttpStatusCode.Forbidden, (await lead.PostAsJsonAsync(NcUnit + "/photos", new { target = "SiteTour", image = JpegDataUrl })).StatusCode);
+        Assert.False(Called("SP_ASSESSMENT_RA_UPDATE_BASIC_INFO"));
+    }
+
+    [Fact]
+    public async Task An_nc_round_needs_its_products_and_site_photos_answered_before_final_submit()
+    {
+        var lead = await As("ASSESSOR1");
+        NcRound(nc1Status: 2, openProducts: 1);
+        var refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Reviewed" });
+        Assert.Equal("You may have missed assessment of one or more products of this NC round. Please review.", await refused.ProblemTitle());
+
+        NcRound(nc1Status: 2, photosSent: 2, photosUnanswered: 2);
+        refused = await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Reviewed" });
+        Assert.Equal("You may have missed assessment of the site exterior photos of this NC round. Please review.", await refused.ProblemTitle());
+        Assert.False(Called("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
+
+        // No site exterior photos in this round: the button refuses rather than answer nothing.
+        NcRound(nc1Status: 2);
+        Assert.Equal("The MSME sent no site exterior photos in this NC round.",
+            await (await lead.PostAsJsonAsync(NcUnit + "/site-exterior/validate", new { isVerified = "Yes" })).ProblemTitle());
+
+        // All answered and conforming: the NCs close (status 15).
+        _host.Sql.Procs["SP_ASSESSMENT_RA_FINAL_SUBMIT"] = _ => { _onsiteStatus = 15; return FakeSql.Sets(); };
+        var closed = await (await lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "NCs closed" })).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Assessment submitted. The NCs are closed and the assessment goes to the agency.", closed.GetProperty("message").GetString());
+        Assert.Empty(_host.Email.Sent);
+    }
+
+    [Fact]
+    public async Task Two_final_submits_at_once_run_the_procedure_once()
+    {
+        var lead = await As("ASSESSOR1");
+        NcRound(nc1Status: 2);
+        _raisesNc = true;
+        var runs = 0;
+        _host.Sql.Procs["SP_ASSESSMENT_RA_FINAL_SUBMIT"] = _ =>
+        {
+            Interlocked.Increment(ref runs);
+            Thread.Sleep(300);
+            // NC 2 raised: the second submit must not run on the fresh round.
+            (_onsiteNc, _onsiteNc2Status) = (2, 1);
+            return FakeSql.Sets();
+        };
+        var answers = await Task.WhenAll(
+            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "First" }),
+            lead.PostAsJsonAsync(NcUnit + "/final-submit", new { comments = "Second" }));
+
+        Assert.Equal(1, runs);
+        Assert.Single(answers, a => a.StatusCode == HttpStatusCode.OK);
+        Assert.Single(answers, a => a.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Forbidden);
     }
 
     [Fact]

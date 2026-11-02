@@ -8,7 +8,7 @@
 Certified ZED-X units are made directly in the tables (the assessment itself is zedx_e2e.py's), then
 SP_V4_LEVEL_SURVEILLANCE_SCHEDULE runs for chosen days (@Today): notice, reminders, suspension, withdrawal, a paid round
 (SP_V4_SURVEILLANCE_PAID: flags and the NIC sector-wise questionnaire), the second round, a third round (archived when it
-opens) and expiry. Stops at the first surprise. No API is needed. Bronze / Silver / Gold (migration 0037):
+opens), expiry, and the nightly auto-rejection of a ZED-X NC past its closure date. Stops at the first surprise. No API is needed. Bronze / Silver / Gold (migration 0037):
 level_surveillance_bsg_check.py.
 """
 import os
@@ -21,6 +21,7 @@ SURV = MAIN.replace('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE')
 assert MAIN.startswith('ZEDV4CHK_') and SURV.startswith('ZEDV4CHK_'), 'throwaway databases only'
 SOURCE = 'ZEDMSME990001'  # the seed's unit, copied for each case
 UNITS = {'A': 'ZEDMSME990011', 'B': 'ZEDMSME990012', 'C': 'ZEDMSME990013', 'D': 'ZEDMSME990014'}
+AUTO_REJECT = 'ZEDMSME990015'  # case E only, inside a transaction that is rolled back
 
 
 def check(cond, what):
@@ -193,10 +194,31 @@ def case_d_expiry():
     check(rows(f"SELECT COUNT(*) AS N FROM dbo.MsmeHistory WHERE ZedId = '{zed}' AND StatusType = 'Expired';")[0]['N'] == '1', 'history')
 
 
+def case_e_auto_reject():
+    """The nightly AutoReject job (SP_ASSESSMENT_DA_AUTO_REJECT on both databases; fixes main/14 and surveillance/08): a
+    ZED-X site NC (14) past its NC closure date is rejected (17) as Gold's. The procedure takes every such record of the
+    database, so this runs in a transaction that is rolled back."""
+    zed = AUTO_REJECT
+    print(f'E {zed}: ZED-X site NC past its closure date, {zed}_X a day before it')
+    for db in (MAIN, SURV):
+        r = rows(f"BEGIN TRANSACTION; "
+                 f"INSERT INTO dbo.MsmeCertifications (ZedId, Certification, CertificationStatus, NcCount, NcFinalClosureDt) VALUES "
+                 f"('{zed}', 'ZEDX', 14, 1, DATEADD(DAY, -1, GETDATE())), ('{zed}_X', 'ZEDX', 14, 1, DATEADD(DAY, 1, GETDATE())); "
+                 f"EXEC dbo.SP_ASSESSMENT_DA_AUTO_REJECT; "
+                 f"SELECT C.ZedId, C.CertificationStatus AS S, C.NcCount AS N, CAST(C.IsAutoReject AS int) AS A, "
+                 f"(SELECT COUNT(*) FROM dbo.MsmeHistory H WHERE H.ZedId = C.ZedId AND H.CertificationType = 'ZEDX' "
+                 f"AND H.StatusType LIKE 'Certification auto Rejected%') AS H "
+                 f"FROM dbo.MsmeCertifications C WHERE C.ZedId IN ('{zed}', '{zed}_X') ORDER BY C.ZedId; "
+                 f"ROLLBACK;", db)
+        got = [(x['S'], x['N'], x['A'] == '1', x['H']) for x in r]
+        check(got == [('17', '6', True, '1'), ('14', '1', False, '0')], f'{db}: rejected past the closure date only: {got}')
+
+
 if __name__ == '__main__':
     setup()
     case_a_not_applied()
     case_b_two_rounds()
     case_c_three_rounds()
     case_d_expiry()
+    case_e_auto_reject()
     print('all checks passed')

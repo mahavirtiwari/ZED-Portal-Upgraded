@@ -52,6 +52,17 @@ def step_pay():
     check(sections == ['1'], f'questionnaire copied for NIC 24 only: {sections}')
 
 
+def conform(client, base, r, checkpoints, what, value='Yes', remarks=None):
+    """A requirement's conformance: checkpoint by checkpoint where it has checkpoints (migration 0039), else Yes / No."""
+    mine = [c for c in checkpoints if str(c['requirementId']) == str(r['Id'])]
+    if not mine:
+        return ok(client.post(f"{base}/requirements/{r['Id']}/conformance", {'conformance': value, 'remarks': remarks}), what)
+    answers = [{'id': c['id'], 'answer': value,
+                'actions': [] if value == 'Yes' else c['actions'][:1],
+                'remarks': None if value == 'Yes' or c['actions'] else (remarks or 'Needs work')} for c in mine]
+    return ok(client.post(f"{base}/requirements/{r['Id']}/checkpoints", {'answers': answers, 'remarks': remarks}), what + ' (checkpoints)')
+
+
 def evidence_ids(state):
     return [e['id'] for s in state['sections'] for r in s['requirements'] for e in r['evidences']]
 
@@ -90,8 +101,7 @@ def step_desktop():
     da = ok(d.get(f'/api/staff/assessment/da/{ZED}/{LEVEL}'), 'desktop assessment page')
     print('  sets:', {k: (len(v) if isinstance(v, list) else type(v).__name__) for k, v in da.items()})
     for r in da.get('requirements', []):
-        ok(d.post(f"/api/staff/assessment/da/{ZED}/{LEVEL}/requirements/{r['Id']}/conformance", {'conformance': 'Yes', 'remarks': None}),
-           f"requirement {r.get('RequirementCode')} conforms")
+        conform(d, f'/api/staff/assessment/da/{ZED}/{LEVEL}', r, da.get('checkpoints', []), f"requirement {r.get('RequirementCode')} conforms")
     for e in da.get('evidences', []):
         if str(e.get('ValidationRequired')).lower() not in ('true', '1'):
             continue
@@ -189,6 +199,32 @@ def step_nc():
     check(c['Nc1Status'] == '2', f"NC 1 answered (Nc1Status 2): {c}")
 
 
+def step_nc_review():
+    """The lead assessor reviews the MSME's answers to the site NC on the web (site assessment page, NC tab) and final-submits."""
+    s1 = staff('SAX1')
+    base = f'/api/staff/remote/{ZED}/{LEVEL}'
+    view = ok(s1.get(base), 'lead assessor opens the NC round')
+    check(view.get('nc') == {'round': 1, 'submitted': True} and view['permissions']['canAssess'], f"NC 1 answered and open: {view.get('nc')}")
+    check(s1.post(base + '/basic-info', {'column': 'SaEnergySources', 'value': 'Solar'})[0] == 403, 'first assessment read-only in the NC round')
+    round_ = next(r for r in ok(s1.get(f'/api/staff/site-review/{ZED}/{LEVEL}'), 'site details with the NC round')['ncRounds'] if r['ncCount'] == 1)
+    check([r['RequirementCode'] for r in round_['requirements']] == ['2'], f"the round holds requirement 2: {round_['requirements']}")
+    check(round_['requirements'][0].get('MsmeComments') == 'Export register now maintained', f"MSME answer shown: {round_['requirements'][0]}")
+    for r in round_['requirements']:
+        conform(s1, base, r, view.get('checkpoints', []), f"NC requirement {r['RequirementCode']} now conforms", remarks='Register seen')
+    for p_ in round_['products']:
+        ok(s1.post(f"{base}/products/{p_['id']}/validate", {'isVerified': 'Yes', 'remarks': None}), f"NC product {p_['id']} verified")
+    if round_['photos']:
+        ok(s1.post(base + '/site-exterior/validate', {'isVerified': 'Yes', 'remarks': None}), 'NC site exterior photos verified')
+    chk = ok(s1.post(base + '/final-submit/check'), 'final submit check')
+    check(chk['allowed'] and not chk['raisesNc'], f'closes the NC: {chk}')
+    done = ok(s1.post(base + '/final-submit', {'comments': 'NC closed'}), 'site final submit of NC 1')
+    check('NCs are closed' in done['message'], done['message'])
+    c = cert()
+    check(c['CertificationStatus'] == '15', f'status 15 (to the agency): {c}')
+    again = s1.post(base + '/final-submit', {'comments': 'again'})
+    check(again[0] in (403, 404), f'a second submit is refused: {again[0]}')
+
+
 def step_certify():
     # The unit also holds a certified Bronze: ZED-X is a separate track and must not end it.
     sql(f"IF NOT EXISTS (SELECT 1 FROM dbo.MsmeCertifications WHERE ZedId='{ZED}' AND Certification='Bronze') "
@@ -221,7 +257,7 @@ def step_certify():
     check(str(dash['certStatus'].get('ZEDXStatus')) == '16', f"dashboard shows ZED-X certified: {dash['certStatus'].get('ZEDXStatus')}")
 
 
-STEPS = ['admin', 'pay', 'entry', 'desktop', 'qc_desktop', 'sa_allot', 'sa_app', 'site_submit', 'nc', 'certify']
+STEPS = ['admin', 'pay', 'entry', 'desktop', 'qc_desktop', 'sa_allot', 'sa_app', 'site_submit', 'nc', 'nc_review', 'certify']
 
 if __name__ == '__main__':
     first = sys.argv[1] if len(sys.argv) > 1 else STEPS[0]

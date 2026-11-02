@@ -30,19 +30,26 @@
 @if (notice(); as nt) {
   <div class="alert alert-dismissible" [class.alert-success]="nt.ok" [class.alert-danger]="!nt.ok" role="status">
     {{ nt.text }}
+    @if (!data() && !error()) { <a class="btn btn-link back-to-list" routerLink="/staff/remote-assessments">Back to the list</a> }
     <button type="button" class="btn-close" aria-label="Close" (click)="notice.set(null)"></button>
   </div>
 }
 
 @if (data(); as d) {
-  @if (!d.permissions.canAssess) {
+  @if (d.nc; as nc) {
+    <div class="alert" [class.alert-warning]="!nc.submitted" [class.alert-info]="nc.submitted" role="status" id="ncState">
+      @if (!nc.submitted) { NC {{ nc.round }} has been raised to the MSME. Its answers will show on the NC {{ nc.round }} tab once the MSME submits them. }
+      @else if (d.permissions.canAssess) { The MSME has submitted its answers to NC {{ nc.round }}. Review them on the NC {{ nc.round }} tab, then final submit. }
+      @else { The MSME has submitted its answers to NC {{ nc.round }}; the lead assessor reviews them. }
+    </div>
+  } @else if (!d.permissions.canAssess) {
     <div class="alert alert-info" role="status">
       @if (!d.permissions.isLeadAssessor) { Only the lead assessor can carry out this remote assessment; you can view it. }
       @else { This remote assessment is not open; it is shown read-only. }
     </div>
   }
 
-  @if (d.onsiteReview) {
+  @if (d.onsiteReview && !d.nc) {
     <div class="alert alert-info" role="status" id="onsiteReview">
       Assessed onsite with the SA app. Review the findings on the tabs, then final submit the site assessment.
     </div>
@@ -587,6 +594,118 @@
             </div>
           }
         }
+
+        <!-- ===================================================== NC round (the old SaDetails page's NC tabs) -->
+        @if (tab() === 'nc' && d.nc; as nc) {
+          @let rd = ncRound();
+          @if (!nc.submitted) {
+            <p class="text-muted nc-waiting">Waiting for the MSME's answers to NC {{ nc.round }}.</p>
+          } @else if (!rd) {
+            <p class="text-muted">The answers of NC {{ nc.round }} could not be loaded. Please refresh.</p>
+          } @else {
+            @if (rd.products.length) {
+              <h5 class="nc-heading">Products</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered table-zed nc-products">
+                  <thead>
+                    <tr><th>Product Name</th><th class="text-center">Product Photo</th><th class="text-center">Product Description</th><th>MSME Remarks</th><th>Verified</th><th>Assessor Remarks</th></tr>
+                  </thead>
+                  <tbody>
+                    @for (p of rd.products; track p.id) {
+                      <tr>
+                        <td>{{ p.productName }}</td>
+                        <td class="text-center">@if (p.photoUrl) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.photoUrl)"><img [src]="p.photoUrl" height="60" alt="Product photo" /></button> }</td>
+                        <td class="text-center">
+                          @if (p.descriptionKind === 'pdf') {
+                            <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                          } @else if (p.descriptionKind === 'image') {
+                            <button type="button" class="btn btn-link p-0" (click)="preview.set(p.descriptionUrl)"><img [src]="p.descriptionUrl" height="60" alt="Product description" /></button>
+                          }
+                        </td>
+                        <td>{{ p.msmeRemarks }}</td>
+                        <td>
+                          {{ p.isSaVerified }}
+                          @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-product" (click)="openNcProduct(p)">{{ p.isSaVerified ? 'Edit' : 'Validate' }}</button> }
+                        </td>
+                        <td>{{ p.saAssessorRemarks }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+
+            @if (rd.photos.length) {
+              <h5 class="nc-heading">Site Exterior Photos</h5>
+              <div class="d-flex flex-wrap gap-3 align-items-end mb-2">
+                @for (p of rd.photos; track $index) {
+                  @if (p.url) { <button type="button" class="btn btn-link p-0" (click)="preview.set(p.url)"><img [src]="p.url" height="100" alt="Site exterior" /></button> }
+                }
+              </div>
+              <div class="mb-3">
+                <strong>Verified:</strong> {{ rd.photos[0].isVerified }}
+                @if (rd.photos[0].assessorRemarks) { <br /><strong>Assessor Remarks:</strong> {{ rd.photos[0].assessorRemarks }} }
+                @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-site" (click)="openNcSiteExterior()">{{ rd.photos[0].isVerified ? 'Edit' : 'Validate' }}</button> }
+              </div>
+            }
+
+            @for (s of rd.sections; track t(s, 'Id')) {
+              <div class="panel panel-default panel-black mt-3"><div class="panel-body">{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</div></div>
+              @for (r of ncRequirementsOf(s); track t(r, 'Id')) {
+                @let cp = ncCheckpointCounts(r);
+                <table class="table table-bordered table-zed requirement nc-requirement">
+                  <tbody>
+                    <tr>
+                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                      <td colspan="2">
+                        @for (o of ncOptionsOf(r); track $index) {
+                          <div>
+                            {{ t(o, 'OptionName') }}
+                            @let a = answersOf(r, o);
+                            @if (a.site) { <span class="cp-chip" [attr.data-v]="a.site" title="Site assessment">SA: {{ a.site }}</span> }
+                            <ul>@for (so of ncSubOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
+                          </div>
+                        }
+                      </td>
+                    </tr>
+                    @if (t(r, 'PreviousAssessorRemarks')) {
+                      <tr><th>NC raised</th><td colspan="2">{{ t(r, 'PreviousAssessorRemarks') }}</td></tr>
+                    }
+                    <tr>
+                      <th>MSME</th>
+                      <td>{{ t(r, 'MsmeComments') }}</td>
+                      <td style="padding: 0">
+                        @for (e of ncEvidencesOf(r); track t(e, 'Id')) {
+                          <div class="p-2">
+                            {{ t(e, 'EvidenceName') }}
+                            @if (t(e, 'FileUrl')) { <a class="float-end nc-evidence" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a> }
+                          </div>
+                        } @empty {
+                          <div class="p-2"><strong>No Document Uploaded</strong></div>
+                        }
+                      </td>
+                    </tr>
+                    <tr>
+                      <th>Assessor</th>
+                      <td>
+                        <strong>Conformance:</strong> {{ t(r, 'SaConformance') }}
+                        @if (cp.total) { <small class="text-muted ms-2">Checkpoints: Yes {{ cp.yes }} · Partial {{ cp.partial }} · No {{ cp.no }}</small> }
+                        @if (canAssessNc()) { <button type="button" class="btn btn-outline-primary btn-sm ms-2 nc-validate-requirement" (click)="openConformance(r)">{{ t(r, 'SaConformance') ? 'Edit' : (cp.total ? 'Answer' : 'Validate') }}</button> }
+                      </td>
+                      <td><strong>Assessor Remarks:</strong> {{ t(r, 'SaAssessorRemarks') }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              }
+            }
+
+            @if (canAssessNc()) {
+              <div class="submit-bar">
+                <button type="button" class="btn btn-primary btn-md final-submit nc-final-submit" [disabled]="busy()" (click)="openFinalSubmit()">Final Submit</button>
+              </div>
+            }
+          }
+        }
       </div>
     </div>
   </div>
@@ -756,6 +875,14 @@
                     <td>{{ t(p, 'SaAssessorRemarks') }}</td>
                   </tr>
                 }
+              </tbody>
+            </table>
+          }
+          @if (ncRoundProducts().length) {
+            <table class="table table-zed table-bordered">
+              <thead><tr><th>Product Name</th><th>Assessor Remarks</th></tr></thead>
+              <tbody>
+                @for (p of ncRoundProducts(); track p.id) { <tr><td>{{ p.productName }}</td><td>{{ p.saAssessorRemarks }}</td></tr> }
               </tbody>
             </table>
           }

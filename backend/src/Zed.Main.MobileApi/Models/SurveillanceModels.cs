@@ -63,8 +63,12 @@ public sealed class SurveillanceUnit
         _ => 0,
     };
 
-    /// <summary>The unit's current NC round has been raised and not yet answered (as MsmeController.LevelStage.NcOpen).</summary>
-    public bool NcOpen => NcCount is > 0 && (NcCount > 5 || CurrentNcStatus == 1);
+    /// <summary>
+    /// The unit's current NC round has been raised and not yet answered, as the web data entry's rule
+    /// (MsmeEntry.Stage.NcOpen): NC 1 to 5 (a count above 5 is the rejection, status 7 / 17), its status 1, and the level
+    /// at the desktop NC (status 4) or the site NC (14).
+    /// </summary>
+    public bool NcOpen => NcCount is >= 1 and <= 5 && CurrentNcStatus == 1 && CertificationStatus is 4 or 14;
 
     /// <summary>Allotted to the desktop assessor and not yet final-submitted (the login procedure's own condition).</summary>
     public bool BeforeFinalSubmit => CertificationStatus == 1 && (NcCount ?? 0) == 0;

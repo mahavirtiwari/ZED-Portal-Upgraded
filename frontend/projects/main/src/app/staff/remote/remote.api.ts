@@ -56,6 +56,11 @@ export interface RemoteDetails {
   recordingLinks?: { id: number; url: string }[];
   /** The checkpoints of the requirements with the desktop and site answers (migration 0039). */
   checkpoints?: Checkpoint[];
+  /**
+   * An open NC round (status 14): its number and whether the MSME has submitted its answers. Its rows come from the site
+   * details (SiteReviewApi, ncRounds); the lead assessor's answers go through this API.
+   */
+  nc?: { round: number; submitted: boolean } | null;
 }
 
 /** Surveillance: the old page allowed up to 6 recording links. */

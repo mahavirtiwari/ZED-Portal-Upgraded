@@ -245,9 +245,8 @@ public sealed class DesktopAssessmentController(
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
 
-        var root = StorageRoot;
-        var fullPath = DaFiles.StorageCandidates(requested, zedId, host.System)
-            .Select(c => MsmeFilePaths.Resolve(root, c))
+        var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
+            .SelectMany(root => DaFiles.StorageCandidates(requested, zedId, host.System).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {
@@ -522,6 +521,17 @@ public sealed class DesktopAssessmentController(
 
     public sealed record FinalSubmitRequest(string? Remarks);
 
+    /// <summary>
+    /// One desktop final submit at a time: SP_ASSESSMENT_DA_FINAL_SUBMIT reads and writes the status without locks, so a
+    /// double click (or a retry) ran it twice: the first raised NC n, the second ran with the new NcCount, found nothing
+    /// "No" in that fresh round and certified with the NC open. The record is read and checked again inside the lock
+    /// (<see cref="StillSubmittable"/>), as <see cref="Monitoring.MonitoringReviewController"/> does for its decisions.
+    /// </summary>
+    private static readonly SemaphoreSlim FinalSubmits = new(1, 1);
+
+    /// <summary>The answer to a final submit whose record moved on while it waited (a second click, a retry).</summary>
+    public const string AlreadySubmitted = "This assessment has already been submitted. Please reload the page.";
+
     [HttpPost("final-submit")]
     [StaffRoles(UserRole.DesktopAssessor)]
     [SubRole(SubRoles.DesktopVerification)]
@@ -534,11 +544,21 @@ public sealed class DesktopAssessmentController(
         if (remarks.Length > 2000) return this.Problem400("Remarks must be at most 2000 characters.");
         if (!record!.CanFinalSubmit(CurrentUser)) return Forbidden("This assessment cannot be submitted now.");
 
-        // The old page sent "isNcRaised" from the browser; the procedure's own answer is used instead.
-        var check = await Confirm(zedId, level!, ct);
-        if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
+        FinalSubmitCheck check;
+        await FinalSubmits.WaitAsync(ct);
+        try
+        {
+            if (await StillSubmittable(zedId, certification, record, ct) is { } submitted) return submitted;
+            // The old page sent "isNcRaised" from the browser; the procedure's own answer is used instead.
+            check = await Confirm(zedId, level!, ct);
+            if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
 
-        await db.ExecuteProcAsync("SP_ASSESSMENT_DA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = remarks }, ct);
+            await db.ExecuteProcAsync("SP_ASSESSMENT_DA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = remarks }, ct);
+        }
+        finally
+        {
+            FinalSubmits.Release();
+        }
         log.LogInformation("Assessor {UserId} final-submitted {ZedId} {Certification} (NC raised: {Nc})", UserId, zedId, level, check.RaisesNc);
         if (check.RaisesNc)
             await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
@@ -567,6 +587,19 @@ public sealed class DesktopAssessmentController(
         if (record is null || !record.CanView(user)) return (level, null, NotFound());
         if (!record.CanAssess(user)) return (level, record, Forbidden("This assessment is not open for your desktop verification."));
         return (level, record, null);
+    }
+
+    /// <summary>
+    /// Inside <see cref="FinalSubmits"/>: the record read again is still open for this assessor's final submit, in the
+    /// state (status and NC round) checked before waiting. Null when it is; otherwise 409 <see cref="AlreadySubmitted"/>,
+    /// so the procedure does not run a second time.
+    /// </summary>
+    private async Task<ActionResult?> StillSubmittable(string zedId, string certification, CertificationRecord before, CancellationToken ct)
+    {
+        var (_, now, error) = await ForAssessor(zedId, certification, ct);
+        if (error is null && now!.CanFinalSubmit(CurrentUser) && now.Status == before.Status && now.Nc == before.Nc) return null;
+        log.LogWarning("{UserId}: desktop final submit of {ZedId} {Certification} not run, the record was submitted meanwhile", UserId, zedId, certification);
+        return Problem(title: AlreadySubmitted, statusCode: StatusCodes.Status409Conflict);
     }
 
     /// <summary>The row exists for this ZED ID and certification, in the current NC round.</summary>

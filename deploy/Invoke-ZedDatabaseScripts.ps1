@@ -12,7 +12,7 @@
            0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
            0011 all three | 0012 all three | 0013 all three |
            0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
-           0041 all three (ZED_CONSULTANT first)
+           0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -147,6 +147,8 @@ $Migrations = @(
     @{ File = '0040_users_session_stamp.sql';   Dbs = $Zed;      Markers = @('COL:dbo.Users.SessionStamp') }
     # ZED_CONSULTANT first: main's and ZED_SURVEILLANCE's SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS call its function.
     @{ File = '0041_subsidy_categories.sql';    Dbs = @($Cons, $Main, $Surv); Markers = @('FN:dbo.FN_V4_SUBSIDY_CATEGORY') }
+    # Changes only 0037's procedure: the marker is a text of its new definition.
+    @{ File = '0042_level_surveillance_paid_and_skipped_steps.sql'; Dbs = @($Main); Markers = @('DEF:dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE:S2 Payment Completed') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{
@@ -262,6 +264,8 @@ function Get-MarkerState([string]$db, [string[]]$markers) {
         if ($kind -eq 'I') { $parts = $name.Split('.'); "CASE WHEN EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'$($parts[2])' AND object_id = OBJECT_ID(N'$($parts[0]).$($parts[1])')) THEN 1 ELSE 0 END" }
         # COL:schema.table.column - a column added to an existing (legacy) table.
         elseif ($kind -eq 'COL') { $parts = $name.Split('.'); "CASE WHEN COL_LENGTH(N'$($parts[0]).$($parts[1])', N'$($parts[2])') IS NULL THEN 0 ELSE 1 END" }
+        # DEF:schema.object:text - an object whose definition contains the text (a migration that only changes a procedure).
+        elseif ($kind -eq 'DEF') { $parts = $name.Split(':', 2); "CASE WHEN OBJECT_DEFINITION(OBJECT_ID(N'$($parts[0])')) LIKE N'%$($parts[1].Replace("'", "''"))%' THEN 1 ELSE 0 END" }
         else { "CASE WHEN OBJECT_ID(N'$name', N'$kind') IS NULL THEN 0 ELSE 1 END" }
     }
     $found = [int](Get-Rows $db ("SELECT " + ($tests -join ' + ')))[0]

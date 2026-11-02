@@ -129,10 +129,12 @@ What a call is checked against (the identity the action acts on):
 | Where | App | Token must match |
 |---|---|---|
 | `[DeviceBound]` actions of the MSME and RA apps (Main mobile host; portal `Pay/*`, `SurveillancePay/*`, `ConsultancyPay/*`, `Msme/Get*PaymentDetailsByType`) | `MSME`, `RA` | unit = the ZED ID of the bound model |
+| `RA/CheckAssessment`, `RA/SubmitSelfie` (also called by the rebuilt ZED MSME app, which signs in through `msme/login` and never holds an RA token) | `RA`, or `MSME` when the call carries an MSME app token (`[DeviceBound(..., AlsoApp = MSME)]`) | unit = the ZED ID of the bound model; with an MSME token also the MSME app's devices. The mode is `RA`'s. The other `RA/*` calls take `RA` tokens only |
 | `[DeviceBound]` actions of the site assessor and consultant apps (`SA/*`; portal `FinancialAssistance/SubmitOpenMeeting`) | `SA` | user = `saId` / `userName` of the bound model (the allotment check of each action covers the unit) |
 | Bronze surveillance app, every call after login that names a unit (`Surveillance/*`) | `SURV` | user = the unit's allotted desktop assessor, unit = the ZED ID of the call |
 | Consultancy portal `FinancialAssistance/GetDetails`, `ValidateEvidence`, `updatetechnology`, `FinalSubmit` (consultant app, DFO) | `SA` | user = the application's allotted DFO, unit = the ZED ID of the call |
 | `Msme/SubmitSurveillancePhoto` (Surveillance mobile host) | `MSME` | unit; no MSME signs in on that deployment, so it can only be monitored |
+| `Msme/GetMsmeStatus`, `GetNcDetailsByType`, `SubmitNcRequirement`, `SubmitNcProduct`, `SubmitSiteExteriorInfo`, `FinalSubmit` (Surveillance mobile host, the ZED MSME app's surveillance NC replies) | `MSME`, **issued by Main** | unit = the ZED ID of the call; **always enforced** (below, "Surveillance") |
 
 ### Modes
 
@@ -156,7 +158,7 @@ database; a three-way mode per app and per deployment (three databases) does not
 | App | Can send the token? | Mode |
 |---|---|---|
 | ZED MSME app (store build) | **No**: its source was never delivered | `MSME`: **Monitor for good**, until a rebuilt MSME app is on the Play Store |
-| Remote assessment app (`RA/*`) | **No**: no source | `RA`: **Monitor for good**, until rebuilt |
+| Remote assessment app (`RA/*`) | **No**: no source. Its two calls the rebuilt ZED MSME app makes (`RA/CheckAssessment`, `RA/SubmitSelfie`) take that app's MSME token too | `RA`: **Monitor for good**, until rebuilt. Under Enforce the rebuilt MSME app is not signed out on those two calls (its MSME token for the same ZED ID passes); the old store RA app would be |
 | ZED Surveillance (Bronze, `com.qci.zed.bronzesurveillance`) | Yes, from the new build | `SURV` on the Surveillance mobile host: Enforce once the new build is on the Play Store |
 | ZED SA (site assessor app) | Yes, from the new build | `SA` on the Main and Surveillance mobile hosts: Enforce once the new build is on the Play Store |
 | ZED Consultancy (consultant and DFO / TU verifier) | Yes, from the new build | `SA` on the Consultancy mobile host **and** the Consultancy portal: Enforce once the new build is on the Play Store |
@@ -273,7 +275,7 @@ Open before go-live:
 | `Mobile:DeviceBinding`, `Mobile:RefuseMissingDevice` | See above |
 | `Mobile:AppTokens:Mode`, `Mobile:AppTokens:Apps:<app>` | App sign-in token: Off / Monitor (default) / Enforce, per app `MSME`, `SA`, `RA`, `SURV` (see "App sign-in token") |
 | `Mobile:AppTokenDays` | Lifetime of an app token (default 30) |
-| `Mobile:AppTokenKey` | Secret, base64 of at least 32 bytes; the same on the mobile hosts and the portals (settings `Common`) |
+| `Mobile:AppTokenKey` | Secret, base64 of at least 32 bytes; the same on the mobile hosts and the portals (settings `Common`). The Main and Surveillance mobile hosts **must** hold the same key: the ZED MSME app's surveillance NC replies carry Main's token to the Surveillance host |
 | `Mobile:CheckMsmeVersion`, `Mobile:MsmeVersion` | Version gate for the MSME app (old `checkMsmeVersion`/`msmeVersionNo`) |
 | `Mobile:CheckSaVersion`, `Mobile:SaVersion` | Site assessor app (old `checkSAVersion`/`SAVersionNo`) |
 | `Mobile:CheckRaVersion`, `Mobile:RaVersion` | Remote assessment app |
@@ -362,7 +364,8 @@ database.
 |---|---|---|
 | `SA/*` | `SAController` (also Main) | Same procedures and parameters as Main. Login answers `isSurveillance: true` and the unit's `minimumParameters` (from the procedure). Open/closing meeting photos are saved as `SaPhotos/{ZedId}/{level}/{name}.jpg` (Main: `{name}_{photoId}.jpg`). |
 | `Surveillance/*` | `Controllers/Surveillance/SurveillanceController.*` | Bronze surveillance app, below. |
-| `Msme/SubmitSurveillancePhoto` | `SurveillancePhotoController` | Below. No other `Msme/*` action is served here. |
+| `Msme/SubmitSurveillancePhoto` | `SurveillancePhotoController` | Below. |
+| `Msme/GetMsmeStatus`, `GetNcDetailsByType`, `SubmitNcRequirement`, `SubmitNcProduct`, `SubmitSiteExteriorInfo`, `FinalSubmit` | `Controllers/Surveillance/SurveillanceMsmeController.cs` | The ZED MSME app's replies to a Bronze surveillance NC, below. No other `Msme/*` action is served here. |
 
 ### Bronze surveillance app (`Surveillance/*`)
 
@@ -384,6 +387,37 @@ unit's data, the unit being the request's `userName`.
   procedure lacks six columns the old code read). Refused: `SubmitFinancialData`, `SubmitFinancialPhotos` (the MSME's
   own claim, made on main). `SubmitVideo` as on Main.
 
+### The MSME's replies to a surveillance NC (`Msme/*`, ZED MSME app)
+
+When the desktop assessor raises an NC in the surveillance review (ZED_SURVEILLANCE `MsmeCertifications` status 4,
+`NcCount = n`, `Nc{n}Status = 1`), the mail tells the MSME to answer it in the mobile application. Main's
+`SP_APP_MSME_STATUS` then answers `BronzeSurveillanceStatus = 3` (and the date, today), and the ZED MSME app
+(`apps/zedmsme`) shows "Surveillance Assessment" and opens the NC screens against this host, as the old
+SurveillanceServices `MsmeController` did. `SurveillanceMsmeController` serves exactly those calls, with the request
+and response formats of Main's `Msme/*`, on this database's copies of the MSME app procedures (same parameters as
+Main's; checked 2026-11-02):
+
+| Call | What it does |
+|---|---|
+| `GetMsmeStatus` | `SP_APP_MSME_STATUS` of ZED_SURVEILLANCE (the surveillance round's NC statuses; the app keeps them apart from main's, `msmeSurveillanceStatus`). `"Invalid ZED ID."` for a unit not in this database. |
+| `GetNcDetailsByType` | `SP_APP_MSME_GET_NC_DETAILS_BY_TYPE`, for a unit with a surveillance row of that level. |
+| `SubmitNcRequirement`, `SubmitNcProduct`, `SubmitSiteExteriorInfo` | As on Main (`Photos/{ZedId}/{level}/...` under this host's `Mobile:StorageRoot`, where the surveillance review opens them), only while the NC is open. |
+| `FinalSubmit` | The NC close: the photo check (`SP_ASSESSMENT_CHECK_NC_PHOTO_AVAILABILITY`), `SP_APP_MSME_FINAL_SUBMIT` (at `NcCount > 0` it sets `Nc{n}Status = 2`; the status stays 4 and the desktop assessor reviews the reply on the web) and the NC reply mail. Only while the NC is open. |
+
+- **Token**: the MSME signs in on Main, so every call must carry the MSME app's token **issued by Main** for the ZED ID
+  of the call (`AppTokens.IssuedByRefusalAsync`). Refused otherwise, in every `Mobile:AppTokens` mode (the calls are new
+  in V4 and only the rebuilt app makes them), with the usual refusal and a `Token…` row in this database's
+  `MobileDeviceEvents`. Only a token signed with `Mobile:AppTokenKey` can be read here, so the **Main and Surveillance
+  mobile hosts must hold the same key**. The session stamp is main's (`dbo.Users.SessionStamp` of the ZED ID), read
+  through `ConnectionStrings:Main` (read intent, the connection the assessors' login already uses on this host);
+  without that connection the token is still checked but not its stamp (logged once).
+- **Device binding**: not checked. The MSME's devices are recorded in main's `MobileDeviceBindings` at login and this
+  database has none for it; the token proves the sign-in.
+- **Stage**: writes only while the unit's current NC is open (`SurveillanceUnit.NcOpen`, the web rule of
+  `MsmeEntry.Stage.NcOpen`: status 4 or 14, NC 1 to 5, that NC's status 1; an `NcCount` above 5 is the rejection),
+  else `"Invalid Details."`. The same rule now holds for the Bronze surveillance app's own NC replies, and on Main for
+  the MSME app's (`LevelStage.NcOpen`: status 2, or 3 for Silver, Gold and ZED-X).
+
 ### `Msme/SubmitSurveillancePhoto`
 
 Photo of a Silver/Gold surveillance meeting (`selfie`, `interior`, `exterior` or `sitetour` = PhotoInformation JSON,
@@ -395,10 +429,9 @@ deployment, so no app token can exist for it: keep `MSME` on Monitor on the Surv
 
 ### Not served on this deployment
 
-Old `Msme/*` (Index, Login, ChangePassword, ResetPassword, GetMsmeStatus, GetMyDocuments, GetParametersByType,
-SubmitBasicInformation, SubmitEvidenceNotUsed, SubmitEvidenceV2, SubmitPhotos, SubmitVideo, FinalSubmit,
-GetNcDetailsByType, SubmitNcRequirement, SubmitNcProduct, SubmitSiteExteriorInfo, SubmitFinancialData,
-SubmitFinancialPhotos) and `RA/*` (Index, Login, CheckAssessment, GetToken, SubmitSelfie, SubmitLocation): no MSME
+Old `Msme/*` (Index, Login, ChangePassword, ResetPassword, GetMyDocuments, GetParametersByType,
+SubmitBasicInformation, SubmitEvidenceNotUsed, SubmitEvidenceV2, SubmitPhotos, SubmitVideo, SubmitFinancialData,
+SubmitFinancialPhotos; the NC calls above are served) and `RA/*` (Index, Login, CheckAssessment, GetToken, SubmitSelfie, SubmitLocation): no MSME
 accounts exist in ZED_SURVEILLANCE and remote surveillance uses meeting links. `SA/SaveCapturedPhoto` is called by the
 web page `Remote/Index` and is served by the portal. Check the IIS logs of `/surveillancemobileapi` before go-live.
 
@@ -406,7 +439,8 @@ web page `Remote/Index` and is served by the portal. Check the IIS logs of `/sur
 (`com.qci.zed.bronzesurveillance` 1.8, delivered as `ZED_MSME_Bronze`). It uses `/surveillancemobileapi/surveillance/*`
 for the whole assessment and never fills `deviceInfo`, so keep `Mobile:RefuseMissingDevice = false` for it. It sends no
 assessor id after login, and calls `SubmitFinancialAssistanceDetails` and `SubmitEsgChecklist` before `FinalSubmit`.
-Its `msme/*` and `RA/*` calls are unreachable, since the login status carries no surveillance or remote flags.
+Its `msme/*` and `RA/*` calls are unreachable, since the login status carries no surveillance or remote flags (the
+`msme/*` NC calls are served for the ZED MSME app, above).
 `SurveillanceAppContractTests` replays its exact requests.
 
 ## v2: token-based API (for the next app release)

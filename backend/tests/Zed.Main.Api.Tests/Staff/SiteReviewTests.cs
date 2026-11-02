@@ -234,6 +234,21 @@ public sealed class SiteReviewTests : IDisposable
     // ------------------------------------------------------------------ files
 
     [Fact]
+    public async Task App_files_are_found_in_the_assessment_storage_root_of_the_live_layout()
+    {
+        // Live layout: the apps' files are in the old services folder (Portal:AssessmentStorageRoot), not the site root.
+        _host.AssessmentStorageRoot = _host.StorageRoot + "-services";
+        var file = Path.Combine(_host.AssessmentStorageRoot, "mobileapi", "SaPhotos", Zed, "Silver", "SiteTour", "9.jpg");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await File.WriteAllBytesAsync(file, [0xFF, 0xD8, 0xFF]);
+
+        var client = await As("AGENCYSV");
+        var r = await client.GetAsync(Base + "/files/mobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/9.jpg");
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(Base + "/files/mobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/8.jpg")).StatusCode);
+    }
+
+    [Fact]
     public async Task Files_are_served_from_the_records_folders_only()
     {
         var file = Path.Combine(_host.StorageRoot, "mobileapi", "SaCertifiedPhotos", Zed, "Silver", "SiteTour", "9.jpg");

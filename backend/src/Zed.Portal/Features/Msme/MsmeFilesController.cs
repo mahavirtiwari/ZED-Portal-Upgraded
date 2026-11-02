@@ -212,6 +212,22 @@ public static class MsmeFilePaths
     public static string Root(IWebHostEnvironment env, PortalOptions portal) =>
         Path.GetFullPath(Path.Combine(env.ContentRootPath, portal.StorageRoot));
 
+    /// <summary>
+    /// Where the staff pages look for the mobile apps' files (mobileapi/…, surveillancemobileapi/…, SaPhotos/…), in order:
+    /// <c>Portal:AssessmentStorageRoot</c> when set (the old services site folder that holds those applications, as the MSME
+    /// pages read them: <see cref="MsmeEvidenceFilesController"/>), then the portal's storage root (the remote assessment
+    /// page's own photos, and a layout where both are one folder). Before this the staff pages read the storage root only,
+    /// so with the live layout every app photo and evidence answered 404.
+    /// </summary>
+    public static IReadOnlyList<string> AppFileRoots(IServiceProvider services, IWebHostEnvironment env, PortalOptions portal)
+    {
+        var main = Root(env, portal);
+        var configured = (services.GetService(typeof(IConfiguration)) as IConfiguration)?[MsmeEvidenceFilesController.StorageRootSetting];
+        if (string.IsNullOrWhiteSpace(configured)) return [main];
+        var assessment = Path.GetFullPath(Path.Combine(env.ContentRootPath, configured));
+        return string.Equals(assessment, main, StringComparison.OrdinalIgnoreCase) ? [main] : [assessment, main];
+    }
+
     /// <summary>The stored file of a normalised relative path (either certificate folder), or null when it is not there.</summary>
     public static string? Find(string storageRoot, string relative) =>
         StorageCandidates(relative).Select(c => Resolve(storageRoot, c)).FirstOrDefault(p => p is not null && File.Exists(p));

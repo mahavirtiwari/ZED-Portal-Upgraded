@@ -152,8 +152,13 @@ public sealed class RAController(
         return LegacyJson(response);
     }
 
+    /// <summary>
+    /// Also called by the rebuilt ZED MSME app (mobile/apps/zedmsme), signed in through msme/login: it holds an MSME app
+    /// token, never an RA one, so this call and <see cref="SubmitSelfie"/> take the MSME app's token and device for the
+    /// same ZED ID too (<see cref="DeviceBoundAttribute.AlsoApp"/>; docs/MOBILE-API.md).
+    /// </summary>
     [HttpPost]
-    [DeviceBound(MobileApps.RemoteAssessor, "userName")]
+    [DeviceBound(MobileApps.RemoteAssessor, "userName", AlsoApp = MobileApps.Msme)]
     public async Task<IActionResult> CheckAssessment(SubmitGeoLocationRequest request, CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_REMOTE_CHECK_START_ASSESSMENT",
@@ -178,8 +183,9 @@ public sealed class RAController(
     public IActionResult GetToken(SubmitGeoLocationRequest request) =>
         LegacyJson(new ServiceResponse { token = null });
 
+    /// <summary>The rebuilt ZED MSME app's call too, with its MSME app token (see <see cref="CheckAssessment"/>).</summary>
     [HttpPost]
-    [DeviceBound(MobileApps.RemoteAssessor, "userName")]
+    [DeviceBound(MobileApps.RemoteAssessor, "userName", AlsoApp = MobileApps.Msme)]
     public async Task<IActionResult> SubmitSelfie(SubmitSelfieRequest request, CancellationToken ct)
     {
         if (request.photo is not { photo: { Length: > 0 } data } photo)

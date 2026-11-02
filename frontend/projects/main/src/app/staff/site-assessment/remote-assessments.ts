@@ -113,6 +113,9 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
                       <!-- V4: after the SA app's closing meeting the lead assessor reviews and final-submits here (old SaDetails page). -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
                         <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">REVIEW &amp; SUBMIT</a>
+                      } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
+                        <!-- An NC round: the MSME's answers are reviewed and final-submitted on the same page (NC tab). -->
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">REVIEW NC</a>
                       }
                     } @else if (s['ModeOfAssessment'] === 'Remote Assessment') {
                       <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>

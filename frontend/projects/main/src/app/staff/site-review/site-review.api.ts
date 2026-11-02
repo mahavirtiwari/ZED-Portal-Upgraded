@@ -83,7 +83,7 @@ export interface SaPermissions {
   review: ReviewActions;
   /** Master admin: exemption Yes → No while the site assessment is scheduled. */
   canWithdrawExemption: boolean;
-  /** The user is this unit's site/co-assessor and the site assessment is open: its actions are on the current portal. */
+  /** The user is this unit's site/co-assessor and the site assessment is open: its actions are on the site assessment page (staff/remote). */
   assessorOnCurrentPortal: boolean;
 }
 

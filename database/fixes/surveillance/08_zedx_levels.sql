@@ -17,6 +17,8 @@
 --                                        wrote LastestCertification = 'Gold')
 --   SP_MONITORING_SEND_BACK_TO_ASSESSOR  status after a send back: site levels 13 / 14 also for ZEDX (else NULL)
 --   SP_MONITORING_REJECT_FINAL_SUBMIT    rejection after NC5: re-certification enabled on main as for Silver / Gold
+--   SP_ASSESSMENT_DA_AUTO_REJECT         the nightly AutoReject job: a surveillance past its NC closure date is rejected
+--                                        (17) for ZEDX as for Silver / Gold
 -- The payment flags and the NIC sector-wise questionnaire of a ZED-X surveillance are set by the portal after the payment
 -- (migration 0033, SP_V4_SURVEILLANCE_PAID), not here. Bronze / Silver / Gold behave exactly as before.
 --
@@ -329,7 +331,10 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
  N'Certification in (''Silver'',''Gold'',''ZEDX'')', 2),
 (N'dbo.SP_MONITORING_REJECT_FINAL_SUBMIT', N'ZED-X re-certification after an NC5 rejection, as Silver / Gold',
  N'IF @CertificationType IN (''Silver'', ''Gold'')',
- N'IF @CertificationType IN (''Silver'', ''Gold'', ''ZEDX'')', 1);
+ N'IF @CertificationType IN (''Silver'', ''Gold'', ''ZEDX'')', 1),
+(N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'ZED-X surveillance past its NC closure date rejected as Silver / Gold',
+ N'Certification in (''Silver'',''Gold'')',
+ N'Certification in (''Silver'',''Gold'',''ZEDX'')', 2);
 GO
 
 DECLARE @Mode varchar(10) = 'PREVIEW';   -- PREVIEW: print only. APPLY: alter the procedures (all or none).

@@ -83,7 +83,7 @@ Other bases:
 
 | App call | V4 | Result |
 |---|---|---|
-| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | not served (MOBILE-API "Not served on this deployment") | unreachable: needs `surveillanceStatus` 1/3, which the surveillance host never returns. The old service had these on its `MsmeController`. The React Native rewrite no longer has these calls (2026-10-31). |
+| `surveillancemobileapi/msme/GetMsmeStatus`, `FinalSubmit`, `GetNcDetailsByType`, `SubmitSiteExteriorInfo`, `SubmitNcProduct`, `SubmitNcRequirement` | `SurveillanceMsmeController` (2026-11-02; MOBILE-API "The MSME's replies to a surveillance NC") | unreachable in this build: needs `surveillanceStatus` 3, which the surveillance host's login never returns, and the calls need the MSME's sign-in token from Main. The old service had these on its `MsmeController`; the ZED MSME applicant app (`apps/zedmsme`) makes them, with main's `GetMsmeStatus` status. This build's React Native rewrite no longer has them (2026-10-31). |
 | `surveillancemobileapi/msme/SubmitSurveillancePhoto` | `SurveillancePhotoController` | unreachable for the same reason |
 | `mobileapi/RA/SubmitSelfie`, `GetToken`, `CheckAssessment` | `RAController` (Main) | unreachable (needs `remoteStatus` "1"); fields match (the app's extra `siteExteriorPhoto` was ignored by the old service too) |
 | `Pay/GetToken`, `Pay/SubmitZeroPaymentDetails`, `Msme/GetPaymentDetailsByType` | portal `MobilePaymentController` | OK: same request (PaymentRefId, ZedId, Certification, Amount, UseCoupon, UnitGstin, Gst, TdsDeductible, Tds, Tan) and response (requestHash, orderId, merchantId, accessCode, amount) |

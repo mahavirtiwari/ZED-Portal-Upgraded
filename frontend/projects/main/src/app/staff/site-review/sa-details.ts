@@ -3,7 +3,7 @@ import { Component, computed, effect, inject, input, signal, untracked } from '@
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text, useLegacyPortal } from '../assessment/assessment-shared';
+import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, isZedId } from '../assessment/assessment.api';
 import { RemarksTarget, ReviewActionsBar, ReviewRemarksDialog } from '../monitoring/review-actions';
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
@@ -31,8 +31,8 @@ export const SA_TAB_TITLES: Record<number, string> = {
  * Staff review page of a Silver/Gold site assessment. Port of Views/Assessment/SaDetails.cshtml: read-only
  * for every role of the old page, with the agency / master-admin actions (edit remarks and OFI comments,
  * final submit, send back, reject; master admin: withdraw an exemption, send back an automatic rejection)
- * where the server allows them. The site assessor's own actions (validate, conformance, final submit) are
- * still done on the current portal; the page links there for the assessor of the unit.
+ * where the server allows them. The site assessor's own actions (validate, conformance, NC review, final submit) are on
+ * the site assessment page (staff/remote); the page links there for the assessors of the unit.
  * <p>Surveillance build (that portal's SaDetails.cshtml): tabs 1-7 put the surveillance next to the original certification
  * on main ({@link SaSurveillanceTab}, loaded with the page; MasterAdmin also sees the original's blocks), the NC tabs are
  * the surveillance's, and there is no Attendance tab.</p>
@@ -51,7 +51,6 @@ export class SaDetailsPage {
   private readonly api = inject(SiteReviewApi);
   private readonly assessment = inject(AssessmentApi);
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
-  protected readonly legacy = useLegacyPortal();
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;

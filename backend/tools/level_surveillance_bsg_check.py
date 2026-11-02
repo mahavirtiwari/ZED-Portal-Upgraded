@@ -1,4 +1,4 @@
-"""Bronze / Silver / Gold surveillance on the V4 schedule (migrations 0037 / 0038), day by day on the local throwaway
+"""Bronze / Silver / Gold surveillance on the V4 schedule (migrations 0037 / 0038 / 0042), day by day on the local throwaway
 databases (ZEDV4CHK_*), with the legacy timings that 0037 gives them.
 
     1. build as for zedx_surveillance_check.py (setup.ps1 -DatabasePrefix ZEDV4CHK_ -WithKawachStandIn,
@@ -10,7 +10,11 @@ Certified units are made directly in the tables; SP_V4_LEVEL_SURVEILLANCE_SCHEDU
 the dates are those of the legacy jobs (Bronze: notice at 14 months, reminder at 15, applied by the portal at 16, never
 suspended; Silver / Gold: notice at 11, reminders at 12 and 13, suspension at 16, withdrawal 64 days later with
 re-certification enabled; second round at 23, 24 and 25 months once the first is certified, never suspended). The schedule
-starts on its first run: steps due before it are not caught up (listed by the dry run). Stops at the first surprise.
+starts on its first run: a step due before it sends no mail (a suspension or a withdrawal is not done, the portal does not
+apply), but a notice still opens the round and a reminder is counted, so the unit's later steps come in their time (0042;
+all listed by the dry run). A payment is what the ZED_SURVEILLANCE payment procedures leave on main: the level's
+IsSur{Level}PaymentDone and MsmeCertifications.RestrictMail = 'Payment Completed' (0042 keeps those units on the schedule).
+Stops at the first surprise.
 """
 import os
 import sys
@@ -25,11 +29,13 @@ START = '2026-06-01'      # the schedule's first run
 UNITS = {
     'BA': 'ZEDMSME991001',  # Bronze, never applies: notice, reminder, applied by the portal
     'BB': 'ZEDMSME991002',  # Bronze, since certified Silver: left alone
-    'BC': 'ZEDMSME991003',  # Bronze whose notice was due before the start: not caught up
+    'BC': 'ZEDMSME991003',  # Bronze whose notice, reminder and apply were due before the start: no mail, not applied
+    'BD': 'ZEDMSME991004',  # Bronze whose notice and reminder were due before the start: applied by the portal in its time
     'SA': 'ZEDMSME991011',  # Silver, never applies: notice, reminders, suspension, withdrawal
     'SB': 'ZEDMSME991012',  # Silver, pays and is certified: second round, no suspension in it
     'SC': 'ZEDMSME991013',  # Silver whose legacy second-round notice was sent (mail 4): the reminder continues it
     'SD': 'ZEDMSME991014',  # Silver with RestrictMail: left alone
+    'SE': 'ZEDMSME991015',  # Silver, round 1 paid and certified, round 2 notice due before the start: reminders follow
     'GA': 'ZEDMSME991021',  # Gold: notice at 11 months
 }
 
@@ -80,6 +86,13 @@ def setup():
             f"UPDATE dbo.MsmeBasicInformation SET ReCertification = NULL, IsEligibleForBenefits = 1 WHERE ZedId = {ids};")
 
 
+def pay(zed, level):
+    """What the ZED_SURVEILLANCE payment procedures leave on main (SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS and the
+    others): the level's surveillance payment flag and RestrictMail = 'Payment Completed'."""
+    sql(f"UPDATE dbo.Msme SET IsSur{level}PaymentDone = 1 WHERE ZedId = '{zed}';"
+        f"UPDATE dbo.MsmeCertifications SET RestrictMail = 'Payment Completed' WHERE ZedId = '{zed}' AND Certification = '{level}';")
+
+
 def certify(key, level, day, **extra):
     zed = UNITS[key]
     desk = level == 'Bronze'
@@ -99,16 +112,28 @@ def main():
     bb = certify('BB', 'Bronze', '2025-06-10')
     certify('BB', 'Silver', '2025-09-01')
     bc = certify('BC', 'Bronze', '2025-01-10')
+    bd = certify('BD', 'Bronze', '2025-02-15')
     sa = certify('SA', 'Silver', '2025-08-10')
     sb = certify('SB', 'Silver', '2025-08-10', FirstSurveDueDate='2026-08-10')
-    sc = certify('SC', 'Silver', '2024-08-10', EnableSurveillance1=2, AutoMailSend=4)
+    sc = certify('SC', 'Silver', '2024-08-10', EnableSurveillance1=2, AutoMailSend=4, RestrictMail='Payment Completed')
     sql(f"UPDATE dbo.Msme SET IsSurSilverPaymentDone = NULL WHERE ZedId = '{sc}';")
     sd = certify('SD', 'Silver', '2025-08-10', RestrictMail=1)
     ga = certify('GA', 'Gold', '2025-08-10')
+    se = certify('SE', 'Silver', '2024-06-10', EnableSurveillance1=1, AutoMailSend=3)
+    pay(se, 'Silver')
+    sql(f"INSERT INTO dbo.MsmeCertifications (ZedId, Certification, CertificationStatus, CertificationStatusDate) "
+        f"VALUES ('{se}', 'Silver', 16, '2025-10-01');", SURV)
 
     print('dry run before the first run (nothing changes)')
     plan = dry(START)
     check(any(p['ZedId'] == bc and p['Step'] == 'Notice' and p['Note'] for p in plan), f'BC: notice due 2026-03-10 listed as before the start')
+    steps = [(p['Step'], p['Note']) for p in plan if p['ZedId'] == bc]
+    check([s for s, _ in steps] == ['Auto-apply', 'Notice', 'Reminder'] and all(n for _, n in steps) and 'not applied' in steps[0][1],
+          f'BC: its reminder and the portal\'s apply listed after the notice, all before the start (not applied): {steps}')
+    steps = [(p['Step'], p['Note']) for p in plan if p['ZedId'] == bd]
+    check([s for s, _ in steps] == ['Notice', 'Reminder'] and all(n for _, n in steps), f'BD: notice and reminder before the start: {steps}')
+    steps = [(p['Step'], p['Round'], p['Note']) for p in plan if p['ZedId'] == se]
+    check(len(steps) == 1 and steps[0][:2] == ('Notice', '2') and steps[0][2], f'SE (paid, RestrictMail set): round 2 notice listed: {steps}')
     check(not any(p['ZedId'] in (bb, sd) for p in plan), 'BB (since Silver) and SD (RestrictMail) not in the plan')
     check(cert(bc, 'Bronze').get('Round') in (None, '0'), 'nothing written by the dry run')
     check(rows("SELECT CONVERT(varchar(10), SurveillanceScheduleFrom, 120) AS F FROM dbo.SectionTypes WHERE SectionType = 'Bronze';")[0]['F'] == '9999-12-31',
@@ -124,8 +149,29 @@ def main():
     run(START, start=True)
     check(rows("SELECT CONVERT(varchar(10), SurveillanceScheduleFrom, 120) AS F FROM dbo.SectionTypes WHERE SectionType = 'Silver';")[0]['F'] == START,
           'the start is the switch-over day')
-    check(cert(bc, 'Bronze').get('Round') in (None, '0'), 'BC: no catching up (its notice was due before the start)')
+    c = cert(bc, 'Bronze')
+    check((c['Round'], c['Mail']) == ('1', '3'), f'BC: round opened, reminder and apply counted (all due before the start): {c}')
+    check(mails(bc) == [], f'BC: no mail: {mails(bc)}')
+    check(rows(f"SELECT COUNT(*) AS N FROM dbo.MsmeCertifications WHERE ZedId = '{bc}';", SURV)[0]['N'] == '0',
+          'BC: not applied by the portal (its day was before the start)')
+    h = rows(f"SELECT StatusType AS T FROM dbo.MsmeHistory WHERE ZedId = '{bc}' AND Descrip LIKE '%before the V4 schedule started%' ORDER BY Id;")
+    check([x['T'] for x in h] == ['SurveillanceOpened', 'SurveillanceReminder', 'SurveillanceNotAutoApplied'], f'BC: history {h}')
+    c = cert(bd, 'Bronze')
+    check((c['Round'], c['Mail'], mails(bd)) == ('1', '2', []), f'BD: round opened and reminder counted without mail: {c} {mails(bd)}')
+    c = cert(se, 'Silver')
+    check((c['Round'], c['Mail'], mails(se)) == ('2', '11', []), f'SE: round 2 opened without mail: {c} {mails(se)}')
+    check(rows(f"SELECT ISNULL(CAST(IsSurSilverPaymentDone AS int), 0) AS P FROM dbo.Msme WHERE ZedId = '{se}';")[0]['P'] == '0',
+          "SE: round 1's payment flag cleared")
     check(cert(sc, 'Silver')['Mail'] == '4', 'SC: the legacy second-round notice stays as it was')
+
+    print('Bronze BD (certified 2025-02-15): applied by the portal at 16 months, after the start')
+    run('2026-06-14', 'Bronze')
+    check(cert(bd, 'Bronze')['Mail'] == '2', 'BD: not a day early')
+    run('2026-06-15', 'Bronze')
+    check((cert(bd, 'Bronze')['Mail'], mails(bd)) == ('3', [('Auto-Applied', '1')]), f'BD: applied by the portal: {mails(bd)}')
+    check(rows(f"SELECT COUNT(*) AS N FROM dbo.MsmeCertifications WHERE ZedId = '{bd}' AND Certification = 'Bronze';", SURV)[0]['N'] == '1',
+          'BD: its surveillance record made')
+    check((cert(bc, 'Bronze')['Mail'], mails(bc)) == ('3', []), 'BC: still nothing')
 
     print('Bronze BA (certified 2025-06-10)')
     run('2026-08-09', 'Bronze')
@@ -155,12 +201,14 @@ def main():
     run('2026-07-10', 'Silver')
     check((cert(sa, 'Silver')['Round'], cert(sa, 'Silver')['Mail']) == ('1', '1'), 'SA: notice at 11 months')
     check((cert(sb, 'Silver')['Round'], cert(sb, 'Silver')['Due1']) == ('1', '2026-08-10'), 'SB: notice, its due date kept')
-    sql(f"UPDATE dbo.Msme SET IsSurSilverPaymentDone = 1 WHERE ZedId = '{sb}';")
+    pay(sb, 'Silver')
     sql(f"INSERT INTO dbo.MsmeCertifications (ZedId, Certification, CertificationStatus) VALUES ('{sb}', 'Silver', 1);", SURV)
     run('2026-08-10', 'Silver')
     check(cert(sa, 'Silver')['Mail'] == '2', 'SA: reminder 1 at 12 months')
     check(cert(sb, 'Silver')['Mail'] == '1', 'SB: paid, no reminder')
     check(cert(sc, 'Silver')['Mail'] == '12', 'SC: reminder 1 of round 2 at 24 months (legacy mail 4 = the round 2 notice)')
+    check((cert(se, 'Silver')['Mail'], mails(se)) == ('13', [('REMINDER', '2'), ('REMINDER', '2')]),
+          f'SE: reminders 1 and 2 of round 2 (24 and 25 months), one per run: {mails(se)}')
     run('2026-09-10', 'Silver')
     check(cert(sa, 'Silver')['Mail'] == '3', 'SA: reminder 2 at 13 months')
     run('2026-12-09', 'Silver')

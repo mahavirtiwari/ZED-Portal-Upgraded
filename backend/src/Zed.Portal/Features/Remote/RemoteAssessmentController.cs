@@ -40,6 +40,14 @@ namespace Zed.Portal.Features.Remote;
 /// old "Start Assessment" set and the assessment lists count by), see <see cref="ForAssessor"/>.
 /// </para>
 /// <para>
+/// NC rounds (the old SaDetails page's NC tabs): once the MSME has answered the current NC round (status 14,
+/// Nc{n}Status 2) the lead assessor reviews that round's products, site exterior photos and requirements here and
+/// final-submits again: all conforming closes the NCs (status 15), anything not conforming raises the next round
+/// (SP_ASSESSMENT_RA_FINAL_SUBMIT). Only the round's own rows can be changed then (<see cref="InCurrentRound"/>), nothing of
+/// the first assessment. One final submit at a time (<see cref="FinalSubmits"/>): a second click must not run the procedure
+/// on the round the first one just raised.
+/// </para>
+/// <para>
 /// Surveillance (ZEDCS_SURVEILLANCE Remote/Index, Silver/Gold surveillance held on an external video meeting): the page
 /// opens for units allotted as "Onsite Assessment" (shown as Remote), at status 9 or 13.
 /// Instead the details carry the agency's meeting link (Join button) and the closing meeting's recording links (up to
@@ -69,6 +77,13 @@ public sealed class RemoteAssessmentController(
 
     /// <summary>Surveillance: the remote assessment runs on the agency's meeting link.</summary>
     private bool MeetingMode => host.System == PortalSystem.Surveillance;
+
+    /// <summary>
+    /// One final submit at a time: the procedure reads NcCount and the round's answers without locks, so two submits in a row
+    /// raised NC n and then, on the fresh round with nothing answered "No", closed it and issued the certification number.
+    /// The record is checked again inside the lock.
+    /// </summary>
+    private static readonly SemaphoreSlim FinalSubmits = new(1, 1);
     public static readonly string[] Levels = ["Silver", "Gold", "ZEDX"];
 
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
@@ -154,7 +169,15 @@ public sealed class RemoteAssessmentController(
 
         /// <summary>The checkpoints of the requirements, by MsmeRequirements.Id, with the desktop and site answers (migration 0039).</summary>
         public IReadOnlyList<CheckpointAnswers.Checkpoint> Checkpoints { get; init; } = [];
+
+        /// <summary>
+        /// An open NC round (status 14): its number and whether the MSME has submitted its answers. The round's rows come
+        /// from the site details (api/staff/site-review, NcRounds); the changes are made through this controller.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public NcReview? Nc { get; init; }
     }
+
+    public sealed record NcReview(int Round, bool Submitted);
 
     // ======================================================================== read
 
@@ -247,6 +270,7 @@ public sealed class RemoteAssessmentController(
                     .Where(r => r.Url is not null).Select(r => new RecordingLink(r.Id, r.Url!)).ToList()
                 : null,
             Checkpoints = checkpoints,
+            Nc = InNcRound(record!) ? new NcReview(record!.NcCount!.Value, record.CurrentNcStatus == 2) : null,
         };
     }
 
@@ -262,9 +286,9 @@ public sealed class RemoteAssessmentController(
         var (_, _, error) = await ForViewer(zedId, level, ct);
         if (error is not null) return NotFound();
 
-        var root = StorageRoot;
-        var fullPath = RemoteFiles.StorageCandidates(requested)
-            .Select(c => MsmeFilePaths.Resolve(root, c))
+        // The page's own photos are under the storage root; the apps' (selfie, site tour) under the assessment root.
+        var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
+            .SelectMany(root => RemoteFiles.StorageCandidates(requested).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {
@@ -326,7 +350,7 @@ public sealed class RemoteAssessmentController(
     [HttpPost("requirements/{id:long}/conformance")]
     public async Task<ActionResult<MessageResponse>> Conformance(string zedId, string certification, long id, ConformanceRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
         var conformance = AssessmentInput.YesNo(req.Conformance);
         var remarks = AssessmentInput.Text(req.Remarks);
@@ -334,7 +358,7 @@ public sealed class RemoteAssessmentController(
         if (conformance == "No" && remarks is null) return this.Problem400("Please enter remarks.");
         if (remarks?.Length > 2000) return this.Problem400("Remarks must be at most 2000 characters.");
         // SP_ASSESSMENT_RA_UPDATE_REQUIREMENT updates by Id alone.
-        if (await AssessmentRecords.ItemAsync(db, AssessmentRecords.RequirementSql, id, zedId, level!, ct) is null) return NotFound();
+        if (!await InCurrentRound(AssessmentRecords.RequirementSql, id, zedId, level!, record!, ct)) return NotFound();
         // A requirement with checkpoints takes its conformance from them (Checkpoints below), not a direct Yes / No.
         if ((await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct)).Count > 0)
             return this.Problem400("This requirement is answered checkpoint by checkpoint. Please reload the page.");
@@ -353,9 +377,9 @@ public sealed class RemoteAssessmentController(
     [HttpPost("requirements/{id:long}/checkpoints")]
     public async Task<ActionResult<MessageResponse>> Checkpoints(string zedId, string certification, long id, CheckpointAnswers.SaveRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
-        if (await AssessmentRecords.ItemAsync(db, AssessmentRecords.RequirementSql, id, zedId, level!, ct) is null) return NotFound();
+        if (!await InCurrentRound(AssessmentRecords.RequirementSql, id, zedId, level!, record!, ct)) return NotFound();
         var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, id, "dbo", log, ct);
         var (decision, problem) = CheckpointAnswers.Decide(checkpoints, req, CheckpointAnswers.Stage.Site);
         if (decision is null) return this.Problem400(problem!);
@@ -377,11 +401,11 @@ public sealed class RemoteAssessmentController(
     [HttpPost("products/{id:long}/validate")]
     public async Task<ActionResult<MessageResponse>> ValidateProduct(string zedId, string certification, long id, ValidationRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
         if (Validation(req, out var verified, out var remarks) is { } invalid) return this.Problem400(invalid);
         // SP_ASSESSMENT_RA_UPDATE_PRODUCT updates by Id alone.
-        if (await AssessmentRecords.ItemAsync(db, AssessmentRecords.ProductSql, id, zedId, level!, ct) is null) return NotFound();
+        if (!await InCurrentRound(AssessmentRecords.ProductSql, id, zedId, level!, record!, ct)) return NotFound();
 
         await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_PRODUCT", new
         {
@@ -393,9 +417,12 @@ public sealed class RemoteAssessmentController(
     [HttpPost("site-exterior/validate")]
     public async Task<ActionResult<MessageResponse>> ValidateSiteExterior(string zedId, string certification, ValidationRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
         if (Validation(req, out var verified, out var remarks) is { } invalid) return this.Problem400(invalid);
+        // In an NC round the procedure answers the round's new site exterior photos (SaPhotos); there must be some.
+        if (InNcRound(record!) && (await RoundPhotosAsync(zedId, level!, record!.NcCount!.Value, ct)).Sent == 0)
+            return this.Problem400("The MSME sent no site exterior photos in this NC round.");
         await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_SITE_EXTERIOR", new
         {
             ZedId = zedId, CertificationType = level, IsSaVerified = verified, SaAssessorRemarks = remarks,
@@ -699,9 +726,9 @@ public sealed class RemoteAssessmentController(
     [HttpPost("final-submit/check")]
     public async Task<ActionResult<FinalSubmitCheck>> CheckFinalSubmit(string zedId, string certification, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
-        return await Confirm(zedId, level!, ct);
+        return await Confirm(zedId, level!, record!, ct);
     }
 
     public sealed record FinalSubmitRequest(string? Comments);
@@ -709,21 +736,44 @@ public sealed class RemoteAssessmentController(
     [HttpPost("final-submit")]
     public async Task<ActionResult<MessageResponse>> FinalSubmit(string zedId, string certification, FinalSubmitRequest req, CancellationToken ct)
     {
-        var (level, _, error) = await ForAssessor(zedId, certification, ct);
+        var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
         var comments = AssessmentInput.Text(req.Comments);
         if (comments is null) return this.Problem400("Please enter comments.");
         if (comments.Length > 2000) return this.Problem400("Comments must be at most 2000 characters.");
 
-        // The old FinalSubmit ran without these checks and took "NC raised" from the browser.
-        var check = await Confirm(zedId, level!, ct);
-        if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
+        FinalSubmitCheck check;
+        RemoteRecord? after;
+        await FinalSubmits.WaitAsync(ct);
+        try
+        {
+            // Still the same open assessment or NC round as checked before waiting (a second click finds it submitted).
+            var now = await RecordAsync(zedId, level!, ct);
+            if (now is null || !IsLead(now) || !IsOpen(now) || now.CertificationStatus != record!.CertificationStatus || now.NcCount != record.NcCount)
+                return this.Problem400("This assessment has already been submitted. Please reload the page.");
 
-        await db.ExecuteProcAsync("SP_ASSESSMENT_RA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = comments }, ct);
-        log.LogInformation("Assessor {UserId} final-submitted the remote assessment of {ZedId} {Certification} (NC raised: {Nc})", UserId, zedId, level, check.RaisesNc);
+            // The old FinalSubmit ran without these checks and took "NC raised" from the browser.
+            check = await Confirm(zedId, level!, now, ct);
+            if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
+
+            await db.ExecuteProcAsync("SP_ASSESSMENT_RA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = comments }, ct);
+            after = await RecordAsync(zedId, level!, ct);
+        }
+        finally
+        {
+            FinalSubmits.Release();
+        }
+        log.LogInformation("Assessor {UserId} final-submitted the site assessment of {ZedId} {Certification} (NC round {Round}, now status {Status}, NC {Nc})",
+            UserId, zedId, level, record!.NcCount ?? 0, after?.CertificationStatus, after?.NcCount);
         if (check.RaisesNc)
             await DesktopAssessmentEmails.Create(HttpContext.RequestServices).SendAsync(DesktopAssessmentEmails.Kind.NcRaised, zedId, level!, comments, ct);
-        return new MessageResponse("Assessment submitted.");
+        return new MessageResponse(after?.CertificationStatus switch
+        {
+            14 => $"Assessment submitted. NC {after.NcCount} was raised to the MSME.",
+            15 => InNcRound(record) ? "Assessment submitted. The NCs are closed and the assessment goes to the agency." : "Assessment submitted.",
+            17 => "Assessment submitted. The NCs were not closed after NC 5: the certification is rejected.",
+            _ => "Assessment submitted.",
+        });
     }
 
     // ======================================================================== helpers
@@ -741,11 +791,34 @@ public sealed class RemoteAssessmentController(
         public string? ModeOfAssessment { get; init; }
         /// <summary>1 once the remote assessment was started (the old "Start Assessment"); the assessment lists count by it.</summary>
         public int? JoinRoomStatus { get; init; }
+        public int? Nc1Status { get; init; }
+        public int? Nc2Status { get; init; }
+        public int? Nc3Status { get; init; }
+        public int? Nc4Status { get; init; }
+        public int? Nc5Status { get; init; }
+
+        /// <summary>Status of the current NC round (Nc{NcCount}Status: 1 raised, 2 answered by the MSME).</summary>
+        public int CurrentNcStatus => NcCount switch
+        {
+            1 => Nc1Status ?? 0, 2 => Nc2Status ?? 0, 3 => Nc3Status ?? 0, 4 => Nc4Status ?? 0, 5 => Nc5Status ?? 0, _ => 0,
+        };
     }
 
     public const string RecordSql =
-        "SELECT TOP 1 CAST(Id AS bigint) AS Id, ZedId, Certification, CertificationStatus, NcCount, SiteAssessorId, CoAssessorId, ModeOfAssessment, JoinRoomStatus " +
+        "SELECT TOP 1 CAST(Id AS bigint) AS Id, ZedId, Certification, CertificationStatus, NcCount, SiteAssessorId, CoAssessorId, ModeOfAssessment, JoinRoomStatus, " +
+        "Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status " +
         "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
+
+    /// <summary>Products of an NC round the assessor has not answered yet (the procedure checks them for remote units only).</summary>
+    public const string RoundProductsOpenSql =
+        "SELECT COUNT(*) FROM MsmeProducts WHERE ZedId = @ZedId AND Certification = @Certification AND NcCount = @NcCount AND IsSaVerified IS NULL";
+
+    /// <summary>The site exterior photos the MSME sent in an NC round (SP_APP_MSME_INSERT_SITE_EXTERIOR, site levels), and those not answered.</summary>
+    public const string RoundSitePhotosSql =
+        "SELECT COUNT(*) AS Sent, ISNULL(SUM(CASE WHEN IsVerified IS NULL THEN 1 ELSE 0 END), 0) AS Unanswered FROM SaPhotos " +
+        "WHERE ZedId = @ZedId AND Certification = @Certification AND NcCount = @NcCount AND PhotoType = 'SiteExteriorPhotos'";
+
+    private sealed class RoundPhotos { public int Sent { get; init; } public int Unanswered { get; init; } }
 
     public const string MeetingSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id, MeetingType FROM Meetings WHERE Id = @Id AND ZedId = @ZedId AND CertificationType = @Certification";
@@ -760,18 +833,29 @@ public sealed class RemoteAssessmentController(
 
     private bool IsLead(RemoteRecord r) => Is(r.SiteAssessorId, UserId);
 
-    /// <summary>The old page let the assessor in at status 9 (remote assessment in progress) or 13.</summary>
-    public static bool IsOpen(RemoteRecord r) => r.CertificationStatus is 9 or 13;
+    /// <summary>
+    /// The old page let the assessor in at status 9 (remote assessment in progress) or 13, and its NC tabs once the MSME had
+    /// answered the current round (status 14, Nc{n}Status 2).
+    /// </summary>
+    public static bool IsOpen(RemoteRecord r) => r.CertificationStatus is 9 or 13 || NcRoundAnswered(r);
+
+    /// <summary>Status 14 with NC 1 to 5 raised (answered by the MSME or not).</summary>
+    public static bool InNcRound(RemoteRecord r) => r.CertificationStatus == 14 && r.NcCount is >= 1 and <= 5;
+
+    public static bool NcRoundAnswered(RemoteRecord r) => InNcRound(r) && r.CurrentNcStatus == 2;
 
     private bool CanAssess(RemoteRecord r) => IsLead(r) && IsOpen(r);
+
+    private async Task<RemoteRecord?> RecordAsync(string zedId, string level, CancellationToken ct) =>
+        (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
+            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
 
     /// <summary>404 unless the unit is allotted in remote mode with the caller as lead or co-assessor.</summary>
     private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForViewer(string zedId, string certification, CancellationToken ct)
     {
         var level = Level(certification);
         if (!AssessmentInput.IsId(zedId) || level is null) return (null, null, this.Problem400("Invalid request."));
-        var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
-            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
+        var record = await RecordAsync(zedId, level, ct);
         if (record is null || !ModeAllowed(record) ||
             !(Is(record.SiteAssessorId, UserId) || Is(record.CoAssessorId, UserId)))
             return (level, null, NotFound());
@@ -782,13 +866,20 @@ public sealed class RemoteAssessmentController(
     /// As <see cref="ForViewer"/>, then 403 unless the caller is the lead assessor and the remote assessment is open. On Main
     /// the lead assessor's first change marks a remote-mode unit's assessment started, as the old "Start Assessment" did
     /// (SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS; the assessment lists then count the unit as under site assessment).
+    /// In an NC round only <paramref name="roundWork"/> actions (the round's products, site exterior photos and requirements,
+    /// and the final submit) are open, as on the old NC tabs; the first assessment's answers, meetings and photos stay as they are.
     /// </summary>
-    private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForAssessor(string zedId, string certification, CancellationToken ct)
+    private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForAssessor(string zedId, string certification, CancellationToken ct,
+        bool roundWork = false)
     {
         var (level, record, error) = await ForViewer(zedId, certification, ct);
         if (error is not null) return (level, record, error);
         if (!IsLead(record!)) return (level, record, Forbidden("Only the lead assessor can carry out the remote assessment."));
-        if (!IsOpen(record!)) return (level, record, Forbidden("This remote assessment is not open."));
+        if (!IsOpen(record!)) return (level, record, Forbidden(InNcRound(record!)
+            ? "The MSME has not submitted its answers to this NC round yet."
+            : "This remote assessment is not open."));
+        if (InNcRound(record!) && !roundWork)
+            return (level, record, Forbidden("In an NC round only the NC answers can be assessed."));
         if (!MeetingMode && !OnsiteReview(record!) && record!.CertificationStatus == 9 && record.JoinRoomStatus != 1)
         {
             await db.ExecuteProcAsync("SP_ASSESSMENT_RA_UPDATE_JOIN_ROOM_STATUS", new { ZedId = zedId, CertificationType = level }, ct);
@@ -800,15 +891,17 @@ public sealed class RemoteAssessmentController(
     private bool ModeAllowed(RemoteRecord r) => ModeAllowed(r, host.System);
 
     /// <summary>
-    /// Main: units allotted in remote mode, and onsite units once the SA app's closing meeting is in (status 13): the lead
-    /// assessor then reviews and final-submits the site assessment here, as the old Assessment/SaDetails page did through
-    /// the same Remote actions. Surveillance: also "Onsite Assessment" (what its allotment stores; shown as Remote).
+    /// Main: units allotted in remote mode, and onsite units once the SA app's closing meeting is in (status 13) or in an NC
+    /// round (status 14): the lead assessor then reviews and final-submits the site assessment here, as the old
+    /// Assessment/SaDetails page did through the same Remote actions. Surveillance: also "Onsite Assessment" (what its
+    /// allotment stores; shown as Remote).
     /// </summary>
     private static bool ModeAllowed(RemoteRecord r, PortalSystem system)
     {
         var m = r.ModeOfAssessment?.Trim();
         return string.Equals(m, RemoteMode, StringComparison.OrdinalIgnoreCase) ||
-               (string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase) && (system == PortalSystem.Surveillance || r.CertificationStatus == 13));
+               (string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase) &&
+                (system == PortalSystem.Surveillance || r.CertificationStatus == 13 || InNcRound(r)));
     }
 
     /// <summary>Main onsite unit after the app's closing meeting: reviewed here, without the video room.</summary>
@@ -883,8 +976,29 @@ public sealed class RemoteAssessmentController(
             RemoteFiles.Url(zedId, level, stored, MeetingMode),
             canAssess && Is(p.Text("AssessorId"), UserId));
 
-    private async Task<FinalSubmitCheck> Confirm(string zedId, string level, CancellationToken ct)
+    /// <summary>The row exists for this ZED ID and certification, in the record's current round (0 before any NC).</summary>
+    private async Task<bool> InCurrentRound(string sql, long id, string zedId, string level, RemoteRecord record, CancellationToken ct) =>
+        await AssessmentRecords.ItemAsync(db, sql, id, zedId, level, ct) is { } item && (item.NcCount ?? 0) == (record.NcCount ?? 0);
+
+    private async Task<int> CountAsync(string sql, string zedId, string level, int ncCount, CancellationToken ct) =>
+        (await db.QuerySqlAsync<int>(sql, new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), NcCount = ncCount }, ct))
+        .FirstOrDefault();
+
+    private async Task<RoundPhotos> RoundPhotosAsync(string zedId, string level, int ncCount, CancellationToken ct) =>
+        (await db.QuerySqlAsync<RoundPhotos>(RoundSitePhotosSql,
+            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), NcCount = ncCount }, ct)).FirstOrDefault() ?? new RoundPhotos();
+
+    private async Task<FinalSubmitCheck> Confirm(string zedId, string level, RemoteRecord record, CancellationToken ct)
     {
+        // An NC round: every product and site exterior photo set the MSME sent must be answered (the procedure checks the
+        // products of remote units only, and an unanswered photo set would pass as conforming).
+        if (InNcRound(record) && record.NcCount is { } round)
+        {
+            if (await CountAsync(RoundProductsOpenSql, zedId, level, round, ct) > 0)
+                return new FinalSubmitCheck(false, "You may have missed assessment of one or more products of this NC round. Please review.", false);
+            if ((await RoundPhotosAsync(zedId, level, round, ct)).Unanswered > 0)
+                return new FinalSubmitCheck(false, "You may have missed assessment of the site exterior photos of this NC round. Please review.", false);
+        }
         var sets = await db.QueryProcMultipleAsync("SP_ASSESSMENT_RA_CONFIRM_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level }, ct);
         var row = sets[0].FirstOrDefault();
         var allowed = row is not null && row.Text("AllowFinalSubmit") == "1";

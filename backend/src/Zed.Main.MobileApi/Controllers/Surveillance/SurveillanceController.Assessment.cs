@@ -302,15 +302,7 @@ public sealed partial class SurveillanceController
         if (allow.Count == 0) return Fail(InvalidDetails);
         if (allow.Bool("AllowFinalSubmit")) return Fail(allow.Text("ErrorMessage"));
 
-        var photos = await db.QueryProcMultipleAsync("SP_ASSESSMENT_CHECK_NC_PHOTO_AVAILABILITY", check, ct);
-        // Only the first non-empty list is checked, as before.
-        foreach (var (index, message) in new[] { (0, "Site Exterior Photos not synced."), (1, "Product Photos not synced."), (2, "Evidence Photos not synced.") })
-        {
-            if (index >= photos.Count || photos[index].Count == 0) continue;
-            if (photos[index].Any(r => !LegacyPhotoExists(r.Values.FirstOrDefault()?.ToString())))
-                return Fail(message);
-            break;
-        }
+        if (await PhotosNotSyncedAsync(check, ct) is { } missing) return Fail(missing);
 
         var error = await TryExecuteAsync("SP_APP_MSME_FINAL_SUBMIT", new
         {
@@ -324,35 +316,6 @@ public sealed partial class SurveillanceController
 
         await SendSubmissionMailAsync(request.userName ?? "", request.certificationType ?? "", ct);
         return LegacyJson(new ServiceResponse { status = "1" });
-    }
-
-    private async Task SendSubmissionMailAsync(string zedId, string certification, CancellationToken ct)
-    {
-        IDictionary<string, object?> row;
-        try
-        {
-            row = (await db.QueryProcMultipleAsync("SP_EMAIL_GET_DETAILS", new { ZedId = zedId, Certification = certification }, ct)).FirstRow(0);
-        }
-        catch (System.Data.Common.DbException ex)
-        {
-            log.LogWarning(ex, "No mail details for {ZedId} {Certification}", zedId, certification);
-            return;
-        }
-        if (row.Count == 0) return;
-        // Only these columns are read: the procedure also returns passwords.
-        var parameters = new Dictionary<string, object?>
-        {
-            [nameof(MsmeSubmissionEmail.EnterpriseName)] = row.Text("EnterpriseName"),
-            [nameof(MsmeSubmissionEmail.ZedId)] = zedId,
-            [nameof(MsmeSubmissionEmail.Certification)] = certification,
-            [nameof(MsmeSubmissionEmail.NcCount)] = row.Int("NcCount"),
-        };
-        if (row.Text("NcCount") is "0" or "")
-            await SendMailAsync<MsmeSubmissionEmail>(row.Text("EmailId"), "ZED Basic information and Document Upload Confirmation – " + zedId, parameters, null, ct, copyOffice: true);
-        else
-            await SendMailAsync<MsmeSubmissionEmail>(row.Text("EmailId"),
-                "Submission of response to Non-conformance(s) raised under “MSME Sustainable (ZED) Certification” Scheme  - " + zedId,
-                parameters, [row.Text("AssessorEmailId"), row.Text("AgencyEmailId")], ct, copyOffice: true);
     }
 
     /// <summary>SP_APP_SUBMIT_FINANCIAL_ASSISTANCE_AVAILED (AvailedFinancialSupport, replaced on every call): only before final submit.</summary>

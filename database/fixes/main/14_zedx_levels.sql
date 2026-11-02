@@ -18,6 +18,8 @@
 --                                        mark the unit's Bronze / Silver certificate UPGRADED (Gold's branch did both).
 --   SP_MSME_GET_DETAILS                  the certification details page of a ZED-X surveillance (ZEDXSurveillance):
 --                                        read from ZED_SURVEILLANCE as GoldSurveillance is (else the page is empty).
+--   SP_ASSESSMENT_DA_AUTO_REJECT         the nightly AutoReject job: a site NC (14) past its NC closure date is rejected
+--                                        (17) for ZEDX as for Silver / Gold (else a ZED-X unit stays at 14 for ever).
 -- Bronze, Silver and Gold behave exactly as before. The portal then numbers the ZED-X certificate in the Admin's format
 -- (Administration -> Certification Levels; Zed.Portal LevelCertification).
 -- What breaks: nothing for Bronze / Silver / Gold.
@@ -337,7 +339,10 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
 	BEGIN
 		exec ZED_SURVEILLANCE.[dbo].[SP_MSME_GET_DETAILS] null, @ZedId, ''ZEDX''
 	END
-	ELSE IF @CertificationType=''GoldSurveillance''', 1);
+	ELSE IF @CertificationType=''GoldSurveillance''', 1),
+(N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'ZED-X site NC past its closure date rejected as Silver / Gold',
+ N'Certification in (''Silver'',''Gold'')',
+ N'Certification in (''Silver'',''Gold'',''ZEDX'')', 2);
 GO
 
 DECLARE @Mode varchar(10) = 'PREVIEW';   -- PREVIEW: print only. APPLY: alter the procedures (all or none).

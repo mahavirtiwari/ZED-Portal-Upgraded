@@ -2,12 +2,13 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, tap } from 'rxjs';
 import { withApiBase } from '../../api-base';
 import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
 import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
+import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 
 /** Google Maps address of a latitude/longitude pair ('' when either is missing or not a number). */
@@ -19,7 +20,7 @@ export function mapUrl(lat: unknown, lng: unknown): string {
 
 export interface MapLocation { title: string; lat: string; lng: string; href: string }
 
-export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting';
+export type RemoteTab = 'instructions' | 'overview' | 'openMeeting' | 'basicInfo' | 'siteTour' | 'parameters' | 'closeMeeting' | 'nc';
 
 export const TABS: { id: RemoteTab; no: number; title: string }[] = [
   { id: 'overview', no: 1, title: 'Assessment Overview' },
@@ -71,6 +72,10 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  * the opening/closing meeting photos and the assessor's selfie are uploaded JPEG files, the closing meeting takes up
  * to 6 recording links, and parameter evidence comes from the site tour photos of the app; the page opens on that
  * portal's Instructions tab and calls the site tour "Assessment Evidence".
+ * NC rounds (the old SaDetails page's NC tabs): at status 14 the page opens on an "NC n" tab with the MSME's answers to the
+ * round (from the site details, SiteReviewApi); once they are submitted the lead assessor answers the round's products,
+ * site exterior photos and requirements (checkpoints where the requirement has them) and final-submits. The other tabs are
+ * then read-only.
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
@@ -82,6 +87,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
 })
 export class RemoteAssessmentPage {
   private readonly api = inject(RemoteApi);
+  private readonly siteReview = inject(SiteReviewApi);
   private readonly content = inject(ContentService);
   private readonly assessmentApi = inject(AssessmentApi);
   private readonly params = inject(ActivatedRoute).snapshot.paramMap;
@@ -118,12 +124,23 @@ export class RemoteAssessmentPage {
   };
 
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
-  protected readonly canAssess = computed(() => this.data()?.permissions.canAssess ?? false);
+  /** The open NC round (status 14), if any. */
+  protected readonly nc = computed(() => this.data()?.nc ?? null);
+  /** The NC round's rows (products, site exterior photos, requirements with the MSME's answers). */
+  protected readonly ncRound = signal<SaNcRound | null>(null);
+  /** The first assessment's tabs: read-only during an NC round. */
+  protected readonly canAssess = computed(() => (this.data()?.permissions.canAssess ?? false) && !this.nc());
+  /** The NC tab: the lead assessor, once the MSME has submitted the round. */
+  protected readonly canAssessNc = computed(() => (this.data()?.permissions.canAssess ?? false) && !!this.nc()?.submitted);
   /** Surveillance: held on the agency's meeting link. */
   protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
   protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;
   protected recordingLink = '';
-  protected readonly tabs = computed(() => (this.meetingMode() ? SURVEILLANCE_TABS : TABS));
+  protected readonly tabs = computed(() => {
+    const base = this.meetingMode() ? SURVEILLANCE_TABS : TABS;
+    const nc = this.nc();
+    return nc ? [...base, { id: 'nc' as RemoteTab, no: base.length + 1, title: `NC ${nc.round}` }] : base;
+  });
   protected readonly currentTab = computed(() => this.tabs().find((x) => x.id === this.tab()) ?? this.tabs()[0]);
   protected readonly daSelfies = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'Selfie'));
   protected readonly daSiteExterior = computed(() => (this.data()?.daPhotos ?? []).filter((p) => text(p, 'PhotoType') === 'SiteExteriorPhotos'));
@@ -145,9 +162,11 @@ export class RemoteAssessmentPage {
     withApiBase(`/api/staff/certification-documents/${encodeURIComponent(this.zedId)}/${encodeURIComponent(this.data()?.certification ?? this.certification)}/report`));
   /** Product descriptions opened on this page (the old page marked them opened without a reload). */
   private readonly opened = signal<ReadonlySet<string>>(new Set());
-  /** Products and parameters marked "No" (shown in the final-submit pop-up). */
-  protected readonly ncProducts = computed(() => (this.data()?.products ?? []).filter((p) => text(p, 'IsSaVerified') === 'No'));
-  protected readonly ncRequirements = computed(() => (this.data()?.requirements ?? []).filter((r) => text(r, 'SaConformance') === 'No'));
+  /** Products and parameters marked "No" (shown in the final-submit pop-up); in an NC round, the round's. */
+  protected readonly ncProducts = computed(() => (this.nc() ? [] : (this.data()?.products ?? []).filter((p) => text(p, 'IsSaVerified') === 'No')));
+  protected readonly ncRequirements = computed(() =>
+    (this.nc() ? (this.ncRound()?.requirements ?? []) : (this.data()?.requirements ?? [])).filter((r) => text(r, 'SaConformance') === 'No'));
+  protected readonly ncRoundProducts = computed(() => (this.ncRound()?.products ?? []).filter((p) => p.isSaVerified === 'No'));
 
   constructor() {
     void this.load();
@@ -159,8 +178,15 @@ export class RemoteAssessmentPage {
     this.loading.set(true);
     try {
       const first = this.data() === null;
-      this.data.set(await firstValueFrom(this.api.details(this.zedId, this.certification)));
+      const details = await firstValueFrom(this.api.details(this.zedId, this.certification));
+      // The NC round's rows (with the MSME's answers and their files) are those of the site details page.
+      const round = details.nc
+        ? ((await firstValueFrom(this.siteReview.details(this.zedId, this.certification))).ncRounds ?? []).find((r) => r.ncCount === details.nc!.round) ?? null
+        : null;
+      this.data.set(details);
+      this.ncRound.set(round);
       if (first && this.meetingMode()) this.tab.set('instructions');
+      if (first && details.nc) this.tab.set('nc');
       this.error.set('');
     } catch (err) {
       this.error.set(apiErrorMessage(err));
@@ -230,6 +256,46 @@ export class RemoteAssessmentPage {
 
   protected section(r: Row): Row | undefined {
     return (this.data()?.sections ?? []).find((s) => text(s, 'SectionCode') === text(r, 'SectionCode'));
+  }
+
+  // ------------------------------------------------------------------ NC round
+
+  private static same(a: Row, b: Row, ...columns: string[]): boolean {
+    return columns.every((c) => text(a, c).trim() === text(b, c).trim());
+  }
+
+  protected ncRequirementsOf(section: Row): Row[] {
+    return (this.ncRound()?.requirements ?? []).filter((r) => RemoteAssessmentPage.same(r, section, 'SectionCode'));
+  }
+
+  protected ncOptionsOf(r: Row): Row[] {
+    return (this.ncRound()?.options ?? []).filter((o) => RemoteAssessmentPage.same(o, r, 'SectionCode', 'RequirementCode'));
+  }
+
+  protected ncSubOptionsOf(o: Row): Row[] {
+    return (this.ncRound()?.subOptions ?? []).filter((s) => RemoteAssessmentPage.same(s, o, 'SectionCode', 'RequirementCode', 'OptionCode'));
+  }
+
+  protected ncEvidencesOf(r: Row): Row[] {
+    return (this.ncRound()?.evidences ?? []).filter((e) => RemoteAssessmentPage.same(e, r, 'SectionCode', 'RequirementCode'));
+  }
+
+  /** The checkpoint answers of an NC requirement row: the site assessor's of this round. */
+  protected ncCheckpointCounts(r: Row): { yes: number; partial: number; no: number; total: number } {
+    const all = checkpointsOf(this.data()?.checkpoints, r['Id']);
+    const count = (v: string) => all.filter((c) => c.site?.value === v).length;
+    return { yes: count('Yes'), partial: count('Partial'), no: count('No'), total: all.length };
+  }
+
+  protected openNcProduct(p: SaNcProduct): void {
+    this.modalError.set('');
+    this.choice.set({ kind: 'product', id: p.id, title: p.productName ?? 'Product', value: p.isSaVerified ?? '', remarks: p.saAssessorRemarks ?? '', max: 1000 });
+  }
+
+  protected openNcSiteExterior(): void {
+    this.modalError.set('');
+    const first = this.ncRound()?.photos?.[0];
+    this.choice.set({ kind: 'siteExterior', id: null, title: 'Site Exterior Photos', value: first?.isVerified ?? '', remarks: first?.assessorRemarks ?? '', max: 1000 });
   }
 
   /** The product description PDF was opened (ProductDescOpenedTime, or on this page): the icon turns blue. */
@@ -443,8 +509,21 @@ export class RemoteAssessmentPage {
       this.modalError.set('Please enter comments.');
       return;
     }
-    const ok = await this.run(this.api.finalSubmit(this.zedId, this.certification, f.comments.trim()), () => this.finalSubmit.set(null));
-    if (ok) this.notice.set({ ok: true, text: 'Assessment submitted.' });
+    let message = 'Assessment submitted.';
+    const ok = await this.run(
+      this.api.finalSubmit(this.zedId, this.certification, f.comments.trim()).pipe(tap((r) => (message = r.message || message))),
+      () => this.finalSubmit.set(null),
+    );
+    if (ok) {
+      // A submitted onsite unit (closed, NC round sent to the MSME or to the agency) is no longer open here: the reload
+      // answers 404, so the page keeps only the outcome and the way back to the list.
+      if (this.error()) {
+        this.error.set('');
+        this.data.set(null);
+        this.ncRound.set(null);
+      }
+      this.notice.set({ ok: true, text: message });
+    }
   }
 }
 

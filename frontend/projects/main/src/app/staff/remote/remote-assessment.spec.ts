@@ -301,4 +301,96 @@ describe('RemoteAssessmentPage', () => {
     expect(items).toEqual(['Signed by owner']);
     expect(el.querySelector('.modal')!.textContent).toContain('Policy exists');
   });
+  describe('NC round', () => {
+    const SITE = '/api/staff/site-review/ZEDMSME000001/Silver';
+    const round = {
+      ncCount: 1,
+      products: [{ id: 32, productName: 'Valve', exported: 'No', ncCount: 1, productParentId: null, photoUrl: null, descriptionUrl: null, descriptionKind: null, isSaVerified: null, saAssessorRemarks: null, msmeRemarks: 'New label' }],
+      oldProducts: [],
+      sections: [{ Id: 42, SectionCode: '1', SectionName: 'Leadership' }],
+      requirements: [{ Id: 52, SectionCode: '1', RequirementCode: '1', SaConformance: null, SaAssessorRemarks: null, MsmeComments: 'Policy signed', PreviousAssessorRemarks: 'Policy not signed' }],
+      options: [{ SectionCode: '1', RequirementCode: '1', OptionCode: '1', OptionName: 'Policy exists' }],
+      subOptions: [],
+      evidences: [{ Id: 93, SectionCode: '1', RequirementCode: '1', EvidenceName: 'NC1', FileUrl: '/files/nc1.pdf' }],
+      photos: [],
+      commentsId: null,
+      assessorComments: null,
+    };
+
+    function ncDetails(submitted: boolean): RemoteDetails {
+      return { ...details(), msme: { ...details().msme, CertificationStatus: 14, NcCount: 1 }, nc: { round: 1, submitted } };
+    }
+
+    async function createNc(data: RemoteDetails) {
+      await create(data);
+      http.expectOne(SITE).flush({ ncRounds: [round] });
+      await settle(fixture);
+    }
+
+    it('opens on the NC tab and waits for the MSME before anything can be assessed', async () => {
+      await createNc(ncDetails(false));
+      expect(el.querySelector('#ncState')!.textContent).toContain('NC 1 has been raised to the MSME');
+      expect(el.querySelector('.nav-link.active')!.textContent!.trim()).toBe('NC 1');
+      expect(el.querySelector('.nc-waiting')).not.toBeNull();
+      expect(el.querySelector('.nc-final-submit')).toBeNull();
+    });
+
+    it('shows the MSME answers, validates the round rows and keeps the first assessment read-only', async () => {
+      await createNc(ncDetails(true));
+      expect(el.querySelector('table.nc-products')!.textContent).toContain('New label');
+      const requirement = el.querySelector('table.nc-requirement')!.textContent!;
+      expect(requirement).toContain('Policy not signed');
+      expect(requirement).toContain('Policy signed');
+      expect(el.querySelector('a.nc-evidence')!.getAttribute('href')).toBe('/files/nc1.pdf');
+
+      (el.querySelector('.nc-validate-product') as HTMLButtonElement).click();
+      await settle(fixture);
+      const yes = el.querySelector('.modal input[value=Yes]') as HTMLInputElement;
+      yes.click();
+      yes.dispatchEvent(new Event('change'));
+      (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      const req = http.expectOne(BASE + '/products/32/validate');
+      expect(req.request.body).toEqual({ isVerified: 'Yes', remarks: '' });
+      req.flush({ message: 'Data Updated' });
+      await reload(ncDetails(true));
+      http.expectOne(SITE).flush({ ncRounds: [round] });
+      await settle(fixture);
+
+      (el.querySelector('.nc-validate-requirement') as HTMLButtonElement).click();
+      await settle(fixture);
+      expect(el.querySelector('.modal-title')!.textContent).toContain('Conformance');
+
+      (el.querySelector('.modal .btn-close') as HTMLButtonElement).click();
+      await settle(fixture);
+      await openTab('Parameters');
+      expect(el.querySelector('.validate-requirement')).toBeNull();
+      expect(el.querySelector('.final-submit')).toBeNull();
+    });
+
+    it('final-submits the round and shows the server message', async () => {
+      await createNc(ncDetails(true));
+      (el.querySelector('.nc-final-submit') as HTMLButtonElement).click();
+      await settle(fixture);
+      http.expectOne(BASE + '/final-submit/check').flush({ allowed: true, message: null, raisesNc: false });
+      await settle(fixture);
+      (el.querySelector('#finalComments') as HTMLTextAreaElement).value = 'NCs closed';
+      el.querySelector('#finalComments')!.dispatchEvent(new Event('input'));
+      const confirm = el.querySelector('#finalConfirm') as HTMLInputElement;
+      confirm.click();
+      confirm.dispatchEvent(new Event('change'));
+      await settle(fixture);
+      (el.querySelector('.modal .submit') as HTMLInputElement).click();
+      await settle(fixture);
+      http.expectOne(BASE + '/final-submit').flush({ message: 'Assessment submitted. The NCs are closed and the assessment goes to the agency.' });
+      // The onsite unit is no longer open here (404): only the outcome and the way back stay.
+      await settle(fixture);
+      http.expectOne((r) => r.method === 'GET' && r.url === BASE).flush({ title: 'Not Found' }, { status: 404, statusText: 'Not Found' });
+      await settle(fixture);
+      expect(el.querySelector('.alert-success')!.textContent).toContain('The NCs are closed');
+      expect(el.querySelector('.alert-danger')).toBeNull();
+      expect(el.querySelector('a.back-to-list')).not.toBeNull();
+      expect(el.querySelector('.nav-tabs')).toBeNull();
+    });
+  });
 });

@@ -177,10 +177,10 @@ describe('SaDetailsPage', () => {
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('not available');
   });
 
-  it('shows read-only roles no actions and links the site assessor to the current portal', async () => {
+  it('shows read-only roles no actions and links the site assessor to the site assessment page', async () => {
     await open(details({ role: 'DesktopAssessor', permissions: { review: NO_REVIEW, canWithdrawExemption: false, assessorOnCurrentPortal: true } }));
-    const link = el.querySelector<HTMLAnchorElement>('.alert-info a')!;
-    expect(link.getAttribute('href')).toBe('https://legacy.example.test/Assessment/SaDetails?zedId=ZEDMSME000001&Certification=Silver');
+    const link = el.querySelector<HTMLAnchorElement>('.alert-info a.open-site-assessment')!;
+    expect(link.getAttribute('href')).toBe('/staff/remote/ZEDMSME000001/Silver');
     tab('Parameters');
     await settle();
     expect(button('Edit Remarks')).toBeUndefined();
