@@ -123,6 +123,17 @@ public sealed class FakeDevices : IDeviceBindings
         TokenEvents.Enqueue((app, userKey, path, outcome, refused));
         return Task.CompletedTask;
     }
+
+    /// <summary>The phone registered last (the last one remembered).</summary>
+    public Task<RegisteredDevice?> RegisteredAsync(string app, string userKey, CancellationToken ct = default) =>
+        Task.FromResult(Known.TryGetValue((app, userKey.ToUpperInvariant()), out var ids) && ids.TryPeek(out var last)
+            ? new RegisteredDevice(last, "Test Phone", "14", null, null, null, null) : null);
+
+    public Task KeepOnlyAsync(string app, string userKey, string deviceId, CancellationToken ct = default)
+    {
+        Known[(app, userKey.ToUpperInvariant())] = [deviceId];
+        return Task.CompletedTask;
+    }
 }
 
 // ---- Probe endpoints (test assembly only) ----

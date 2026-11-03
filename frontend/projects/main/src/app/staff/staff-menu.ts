@@ -163,6 +163,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the site tour sections of the site assessor app (main and surveillance only).
+  { label: 'Site Tour Sections', route: '/staff/settings/site-tour-sections', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the partners calling ZED's APIs, with a switch per partner and per API.
   { label: 'API Integrations', route: '/staff/settings/api-integrations', roles: [R.Admin], menu: 'Administration' },
   // New in V4: where "Contact ZED" goes (the ZED website's contact page).
@@ -268,6 +270,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the site tour sections of the site assessor app (main and surveillance only).
+  { label: 'Site Tour Sections', route: '/staff/settings/site-tour-sections', roles: [R.Admin], menu: 'Administration' },
   { label: 'Certification Levels', route: '/staff/settings/levels', roles: [R.Admin], menu: 'Administration' },
 
   // MasterAdmin

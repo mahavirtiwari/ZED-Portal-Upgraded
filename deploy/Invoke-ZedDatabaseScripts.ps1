@@ -149,6 +149,7 @@ $Migrations = @(
     @{ File = '0041_subsidy_categories.sql';    Dbs = @($Cons, $Main, $Surv); Markers = @('FN:dbo.FN_V4_SUBSIDY_CATEGORY') }
     # Changes only 0037's procedure: the marker is a text of its new definition.
     @{ File = '0042_level_surveillance_paid_and_skipped_steps.sql'; Dbs = @($Main); Markers = @('DEF:dbo.SP_V4_LEVEL_SURVEILLANCE_SCHEDULE:S2 Payment Completed') }
+    @{ File = '0043_site_evidence_checks.sql';  Dbs = @($Main, $Surv); Markers = @('COL:dbo.MsmeEvidences.SaAvailable', 'COL:dbo.MsmeEvidences.SaPhotoIds', 'COL:dbo.MsmeEvidences.SaAnsweredOn') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

@@ -51,6 +51,9 @@ public static class MobileApps
 
 public enum DeviceCheck { Known, Unknown, Missing, NoBinding }
 
+/// <summary>A phone registered for a user of an app (dbo.MobileDeviceBindings).</summary>
+public sealed record RegisteredDevice(string DeviceId, string? Model, string? OsVersion, DateTime? FirstSeenAt, DateTime? LastLoginAt, DateTime? LastSeenAt, string? LastIp);
+
 public interface IDeviceBindings
 {
     /// <summary>Call after a successful login: this device may act for this user from now on.</summary>
@@ -62,6 +65,12 @@ public interface IDeviceBindings
 
     /// <summary>A call without a valid app token (<see cref="AppTokens"/>), with the device events (Outcome "Token…").</summary>
     Task RecordTokenAsync(string app, string userKey, string path, string? ip, AppTokenCheck outcome, bool refused, CancellationToken ct = default);
+
+    /// <summary>V4 (one phone per site assessor): the user's phone signed in from last, or null.</summary>
+    Task<RegisteredDevice?> RegisteredAsync(string app, string userKey, CancellationToken ct = default);
+
+    /// <summary>V4 (one phone per site assessor): forgets the user's other phones, keeping <paramref name="deviceId"/>.</summary>
+    Task KeepOnlyAsync(string app, string userKey, string deviceId, CancellationToken ct = default);
 }
 
 /// <summary>Device records in ZEDCS_V2_LIVE (database/schema/05_mobile_devices.sql).</summary>
@@ -150,6 +159,38 @@ public sealed class SqlDeviceBindings(ISqlExecutor sql, ILogger<SqlDeviceBinding
         }
     }
 
+    /// <summary>The user's phone signed in from last (the one-phone rule keeps it when several were registered before).</summary>
+    public const string RegisteredSql =
+        "SELECT TOP (1) DeviceId, Model, OsVersion, FirstSeenAt, LastLoginAt, LastSeenAt, LastIp FROM dbo.MobileDeviceBindings " +
+        "WHERE AppKind = @App AND UserKey = @User ORDER BY LastLoginAt DESC, LastSeenAt DESC;";
+
+    public const string KeepOnlySql = "DELETE FROM dbo.MobileDeviceBindings WHERE AppKind = @App AND UserKey = @User AND DeviceId <> @Device;";
+
+    /// <summary>The Admin releases the user's phone(s): the next sign-in registers the new phone.</summary>
+    public const string ReleaseSql = "DELETE FROM dbo.MobileDeviceBindings WHERE AppKind = @App AND UserKey = @User;";
+
+    public sealed class RegisteredRow
+    {
+        public string? DeviceId { get; init; }
+        public string? Model { get; init; }
+        public string? OsVersion { get; init; }
+        public DateTime? FirstSeenAt { get; init; }
+        public DateTime? LastLoginAt { get; init; }
+        public DateTime? LastSeenAt { get; init; }
+        public string? LastIp { get; init; }
+    }
+
+    public Task<RegisteredDevice?> RegisteredAsync(string app, string userKey, CancellationToken ct = default) => ReadRegisteredAsync(sql, app, userKey, ct);
+
+    public static async Task<RegisteredDevice?> ReadRegisteredAsync(ISqlExecutor db, string app, string userKey, CancellationToken ct)
+    {
+        var r = (await db.QuerySqlAsync<RegisteredRow>(RegisteredSql, new { App = app, User = userKey.Trim() }, ct)).FirstOrDefault();
+        return r?.DeviceId is null ? null : new RegisteredDevice(r.DeviceId, r.Model, r.OsVersion, r.FirstSeenAt, r.LastLoginAt, r.LastSeenAt, r.LastIp);
+    }
+
+    public Task KeepOnlyAsync(string app, string userKey, string deviceId, CancellationToken ct = default) =>
+        sql.ExecuteSqlAsync(KeepOnlySql, new { App = app, User = userKey.Trim(), Device = Clean(deviceId) }, ct);
+
     private static string? Clean(string? deviceId) =>
         string.IsNullOrWhiteSpace(deviceId) ? null : Truncate(deviceId.Trim(), 200);
 
@@ -184,13 +225,21 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
     /// </summary>
     public string? AlsoApp { get; set; }
 
+    /// <summary>
+    /// The call needs a valid app token for the user whatever the app's token mode (<see cref="AppTokens.RequiredRefusalAsync"/>):
+    /// for calls new in V4 that only the rebuilt apps make (the site assessor app's dashboard reads), so that Monitor, kept
+    /// for the installed apps, does not leave them open. A call that names no user is refused too. The device check stays
+    /// in <c>Mobile:DeviceBinding</c>'s mode.
+    /// </summary>
+    public bool TokenRequired { get; set; }
+
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var http = context.HttpContext;
         var options = http.RequestServices.GetService(typeof(IOptions<MobileOptions>)) as IOptions<MobileOptions>;
         var tokens = http.RequestServices.GetService(typeof(AppTokens)) as AppTokens;
         var mode = options?.Value.DeviceBinding ?? DeviceBindingMode.Off;
-        if (mode == DeviceBindingMode.Off && (tokens is null || tokens.ModeFor(App) == AppTokenMode.Off))
+        if (!TokenRequired && mode == DeviceBindingMode.Off && (tokens is null || tokens.ModeFor(App) == AppTokenMode.Off))
         {
             await next();
             return;
@@ -202,7 +251,21 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
         // The app whose token and devices the call is checked against: AlsoApp when its token comes with the call.
         var app = AlsoApp is not null && tokens?.Read(http.Request.Headers[AppTokens.Header].ToString()) is { } token &&
                   string.Equals(token.App, AlsoApp, StringComparison.OrdinalIgnoreCase) ? AlsoApp : App;
-        if (tokens is not null)
+        if (TokenRequired)
+        {
+            var asUnit = MobileApps.ActsAsUnit(App);
+            if (tokens is null || string.IsNullOrWhiteSpace(user))
+            {
+                context.Result = LegacyResults.Json(ServiceResponse.Fail(AppTokens.ExpiredMessage));
+                return;
+            }
+            if (await tokens.RequiredRefusalAsync(http, App, asUnit ? null : user, asUnit ? user : null, http.RequestAborted) is { } refused)
+            {
+                context.Result = refused;
+                return;
+            }
+        }
+        else if (tokens is not null)
         {
             var asUnit = MobileApps.ActsAsUnit(app);
             if (await tokens.RefusalAsync(http, App, asUnit ? null : user, asUnit ? user : null, http.RequestAborted, tokenApp: app) is { } expired)

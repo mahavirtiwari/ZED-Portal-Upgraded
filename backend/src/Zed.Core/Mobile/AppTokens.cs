@@ -218,6 +218,17 @@ public sealed class AppTokens
     }
 
     /// <summary>
+    /// The check of a call that is new in V4 and made only by the rebuilt apps, which send the token (the site assessor
+    /// app's dashboard calls, <see cref="DeviceBoundAttribute.TokenRequired"/>): always enforced, whatever the app's mode.
+    /// Anything but a valid token for <paramref name="user"/> / <paramref name="unit"/> is recorded and refused as in Enforce.
+    /// </summary>
+    public async Task<IActionResult?> RequiredRefusalAsync(HttpContext http, string app, string? user, string? unit, CancellationToken ct = default)
+    {
+        var check = await CheckAsync(http.Request.Headers[Header].ToString(), app, user, unit, ct);
+        return await RefuseAsync(http, app, user, unit, check, refuse: true, ct);
+    }
+
+    /// <summary>
     /// The check of a call served for an app that signed in on the deployment <paramref name="issuer"/>
     /// (<see cref="CheckIssuedByAsync"/>). Always enforced, whatever the app's mode: such calls are new in V4 and only the
     /// rebuilt apps, which send the token, make them. Anything but a valid token is recorded and refused as in Enforce.

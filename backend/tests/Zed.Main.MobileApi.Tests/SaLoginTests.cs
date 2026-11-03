@@ -66,6 +66,7 @@ public sealed class SaLoginTests : IDisposable
         var profile = e.GetProperty("companyProfile");
         Assert.Equal("ZEDMSME000001", profile.GetProperty("zedId").GetString());
         Assert.Equal("Acme", profile.GetProperty("msmeName").GetString());
+        // Without the sector master's name, the code as before.
         Assert.Equal("24", profile.GetProperty("sectorName").GetString());
         Assert.Equal(JsonValueKind.Null, profile.GetProperty("sectorId").ValueKind);
 
@@ -94,6 +95,15 @@ public sealed class SaLoginTests : IDisposable
         Assert.Contains("sa-phone", _t.Devices.Known[(MobileApps.SiteAssessor, "ZEDAS0001")]);
         // Without checkpoint rows (a database before 0039) the option stays plain.
         Assert.False(opt.TryGetProperty("checkpoint", out _));
+    }
+
+    [Fact]
+    public async Task The_unit_profile_has_the_nic_sector_name_with_its_code()
+    {
+        _t.Fake.Queries[Zed.Main.MobileApi.Controllers.SAController.SectorNameSql] = args => FakeSql.Arg(args, "Code") == "24" ? ["Manufacture of basic metals"] : [];
+        var profile = (await Login(Password)).GetProperty("companyProfile");
+        Assert.Equal("24", profile.GetProperty("sectorId").GetString());
+        Assert.Equal("Manufacture of basic metals", profile.GetProperty("sectorName").GetString());
     }
 
     [Fact]

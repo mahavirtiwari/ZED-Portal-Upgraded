@@ -4,8 +4,9 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PORTAL_SYSTEM } from '../../portal-system';
-import { StaffRole } from '../staff-menu';
+import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
+import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 
@@ -45,7 +46,7 @@ function emptyAssessor(): AssessorModel {
  */
 @Component({
   selector: 'zed-staff-assessor-form',
-  imports: [FormsModule, RouterLink, MultiSelect],
+  imports: [FormsModule, RouterLink, MultiSelect, AssessorMobilePanel],
   templateUrl: './assessor-form.html',
   styles: `
     fieldset { min-width: 0; }
@@ -114,6 +115,11 @@ export class AssessorFormPage {
   protected readonly isNew = !this.userId;
   /** Agencies create and edit their assessors; the MasterAdmin only views them. */
   protected readonly canEdit = signal(this.isNew && this.isAgency);
+  /**
+   * V4: the saved assessor's registered mobile of the site assessor app (one phone per assessor), for the Admin and the
+   * MasterAdmin only (never agencies), on the main portal (Consultancy has no site assessor app).
+   */
+  protected readonly showsMobile = !this.isNew && canSeeAssessorMobile(this.auth.currentUser()?.roleId) && inject(STAFF_SYSTEM) === 'main';
 
   protected model: AssessorModel = emptyAssessor();
   protected readonly maskedIdProof = signal<string | null>(null);

@@ -1,5 +1,7 @@
 using System.Text.Json;
+using Zed.Core.Assessment;
 using Zed.Core.Mobile;
+using Zed.Main.MobileApi.Controllers;
 
 namespace Zed.Main.MobileApi.Tests;
 
@@ -20,7 +22,16 @@ public sealed class SaWriteTests : IDisposable
     {
         _t.Sql.Allot(Zed, "Silver", Lead, Co);
         _t.Fake.Procs["SP_SA_APP_CHECK_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?>(_flags)]);
+        // The team's site tour: every standard section has its minimum of photos (the closing meeting checks it).
+        _t.Fake.Queries[SiteTourSections.PhotosSql] = _ => _tour;
     }
+
+    private IReadOnlyList<object> _tour = FullTour();
+
+    /// <summary>The minimum of photos of each standard section, named as SA/SubmitSiteTour stores them.</summary>
+    internal static IReadOnlyList<object> FullTour() => SiteTourSections.Defaults
+        .SelectMany((s, i) => Enumerable.Range(1, s.Min).Select(n => (object)new { PhotoId = $"{s.Id}-{n}", Name = $"{i + 1}. {s.Title} - photo {n}" }))
+        .ToList();
 
     public void Dispose() => _t.Dispose();
 
@@ -294,6 +305,79 @@ public sealed class SaWriteTests : IDisposable
         Assert.DoesNotContain(_t.Fake.Calls, c => c.Name == "SP_APP_SA_SAVE_PARAMETER");
     }
 
+    /// <summary>Requirement 21's listed evidences: 31 of checkpoint 1, 32 of the requirement itself.</summary>
+    private void Listed() => _t.Fake.Queries[SiteEvidenceChecks.Sql("dbo")] = _ =>
+        [new { RequirementRowId = 21L, Id = 31L, OptionCode = "1", EvidenceName = "Policy", Mandatory = true, Uploaded = true, IsVerified = "Yes" },
+         new { RequirementRowId = 21L, Id = 32L, OptionCode = (string?)null, EvidenceName = "Training register", Mandatory = false, Uploaded = false, IsVerified = (string?)null }];
+
+    private static object EvidenceParameter(object[] checkpointAnswers, object[]? evidenceChecks, string[]? photos = null) => new
+    {
+        saId = Co, zedId = Zed, certificationType = "Silver",
+        allottedParameterObj = new
+        {
+            parameterId = "1", parameterCode = "A1",
+            requirements = new object[]
+            {
+                new
+                {
+                    id = 21, code = "R1", conformance = "True", comments = "• Policy seen", checkpointAnswers, evidenceChecks,
+                    addedEvidences = (photos ?? []).Select(id => new { photoId = id, name = "Policy", timeStamp = "t", latitude = "1", longitude = "2" }).ToArray(),
+                },
+            },
+        },
+    };
+
+    private static readonly object[] AllYes = [new { id = 501, answer = "Yes" }, new { id = 502, answer = "Yes" }];
+
+    [Fact]
+    public async Task Each_listed_evidence_is_answered_and_photographed_when_available()
+    {
+        Checkpoints();
+        Listed();
+        // An app without the checks (before the listed evidences).
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes, null)), SAController.EvidenceNeedUpdate);
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes, [new { id = 31, available = "Yes", photoIds = new[] { "p1" } }], ["p1"])),
+            "R1: Please answer whether \"Training register\" is available at the site.");
+        // A Yes needs its photo among the requirement's photos.
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes,
+            [new { id = 31, available = "Yes", photoIds = new[] { "p9" } }, new { id = 32, available = "Yes", photoIds = new[] { "p2" } }], ["p2"])),
+            "R1: Please capture a photo of \"Policy\".");
+        Assert.DoesNotContain(_t.Fake.Calls, c => c.Name == "SP_APP_SA_SAVE_PARAMETER");
+
+        AssertOk(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes,
+            [new { id = 31, available = "Yes", photoIds = new[] { "p1" } }, new { id = 32, available = "yes", photoIds = new[] { "p2", "p3" } }], ["p1", "p2", "p3"])));
+        var saves = _t.Fake.Calls.Where(c => c.Name == SiteEvidenceChecks.UpdateSql).ToList();
+        Assert.Equal(2, saves.Count);
+        string? Arg(int i, string name) => ((Dapper.DbString)saves[i].Args!.GetType().GetProperty(name)!.GetValue(saves[i].Args)!).Value;
+        Assert.Equal("Yes", Arg(1, "Available"));
+        Assert.Equal("p2,p3", Arg(1, "PhotoIds"));
+
+        // At most three photos of one evidence.
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes,
+            [new { id = 31, available = "Yes", photoIds = new[] { "p1", "p2", "p3", "p4" } }, new { id = 32, available = "No" }], ["p1", "p2", "p3", "p4"])),
+            "R1: \"Policy\" takes at most 3 photos.");
+    }
+
+    [Fact]
+    public async Task An_evidence_not_available_keeps_the_requirement_from_conforming()
+    {
+        Checkpoints();
+        Listed();
+        // The policy (checkpoint 1) is not available: checkpoint 1 cannot be Yes.
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes,
+            [new { id = 31, available = "No" }, new { id = 32, available = "Yes", photoIds = new[] { "p2" } }], ["p2"])),
+            "R1: Checkpoint 1 cannot be Yes: \"Policy\" is not available at the site.");
+        // The register (no checkpoint) is not available: the requirement cannot be Yes, whichever checkpoint says so.
+        AssertFail(await _t.Json("/SA/SubmitParameter", EvidenceParameter(AllYes,
+            [new { id = 31, available = "Yes", photoIds = new[] { "p1" } }, new { id = 32, available = "No" }], ["p1"])),
+            "R1: The conformance cannot be Yes: \"Training register\" is not available at the site.");
+        // With a Partial checkpoint the requirement is No (an NC) and the answers are kept.
+        AssertOk(await _t.Json("/SA/SubmitParameter", EvidenceParameter(
+            [new { id = 501, answer = "Yes" }, new { id = 502, answer = "Partial", actions = new[] { "Train supervisors" } }],
+            [new { id = 31, available = "Yes", photoIds = new[] { "p1" } }, new { id = 32, available = "No" }], ["p1"])));
+        Assert.Equal("No", AssessorTestHost.Tvp(_t.LastArgs("SP_APP_SA_SAVE_PARAMETER"), "RequirementsList")!.Rows[0]["Conformance"]);
+    }
+
     [Fact]
     public async Task Parameter_and_ofi_comments_for_another_assessors_unit_are_refused()
     {
@@ -363,6 +447,30 @@ public sealed class SaWriteTests : IDisposable
         }));
         Assert.Equal("Close Meeting", AssessorTestHost.Arg(_t.LastArgs("SP_SA_APP_INSERT_OPEN_MEETING"), "PhotoType"));
         Assert.True(File.Exists(_t.FileUnderRoot("SaPhotos", Zed, "Silver", "Closing_c1.jpg")));
+    }
+
+    [Fact]
+    public async Task Closing_meeting_needs_every_site_tour_section_minimum()
+    {
+        _flags["FinalSubmissionDone"] = true;
+        // Production / Machine Shop (3 needed) has two; an unsectioned photo of an older app counts for none.
+        _tour = FullTour().Where(r => !((dynamic)r).PhotoId.Equals("production-3"))
+            .Append(new { PhotoId = "old", Name = "gate" }).ToList();
+        AssertFail(await _t.Json("/SA/SubmitEndAssessment", new { userType = 1, saId = Lead, zedId = Zed, certificationType = "Silver", endComment = "x" }),
+            "Site Tour: \"Production / Machine Shop\" needs at least 3 photos (2 uploaded). Please capture and sync them before the closing meeting.");
+        Assert.Empty(_t.CallsTo("SP_SA_APP_INSERT_OPEN_MEETING"));
+
+        // A photo sent twice (a resend) counts once; renumbered sections still count by name.
+        _tour = FullTour().Append(new { PhotoId = "production-1", Name = "3. Production / Machine Shop - photo 1" })
+            .Select(r => (object)new { ((dynamic)r).PhotoId, Name = ((string)((dynamic)r).Name).Replace("3. Production", "7. Production") }).ToList();
+        AssertOk(await _t.Json("/SA/SubmitEndAssessment", new { userType = 1, saId = Lead, zedId = Zed, certificationType = "Silver", endComment = "x" }));
+    }
+
+    [Fact]
+    public async Task Co_assessor_final_submit_does_not_check_the_site_tour()
+    {
+        _tour = [];
+        AssertOk(await _t.Json("/SA/SubmitEndAssessment", new { userType = 2, saId = Co, zedId = Zed, certificationType = "Silver", endComment = "done" }));
     }
 
     [Fact]

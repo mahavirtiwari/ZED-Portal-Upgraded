@@ -46,7 +46,7 @@ public static class CheckpointAnswers
     // ------------------------------------------------------------------ read
 
     /// <summary>The unit's requirement rows with their checkpoints: those of the same round (NcCount), else the first copy.</summary>
-    private static string Rows(string select, string table, string join) => $"""
+    internal static string Rows(string select, string table, string join) => $"""
         WITH R AS (
             SELECT CAST(r.Id AS bigint) AS RequirementRowId, LTRIM(RTRIM(r.SectionCode)) AS Sc, LTRIM(RTRIM(r.RequirementCode)) AS Rc, ISNULL(r.NcCount, 0) AS Nc
             FROM dbo.MsmeRequirements r

@@ -18,6 +18,8 @@ export const PORTAL_API_BASE: Record<AdminPortal, string> = { main: '', consulta
 export const ALL_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
 /** The portals that have the home page banner (Upload Image). */
 export const BANNER_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
+/** The portals whose site assessor app has a site tour (Admin → Site Tour Sections). */
+export const SITE_TOUR_PORTALS: readonly AdminPortal[] = ['main', 'surveillance'];
 
 /**
  * The APIs of the screens with the portal switch, and the portals that have them: while the Admin has chosen one of
@@ -28,6 +30,7 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/settings/email', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/email-templates', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
+  { prefix: '/api/staff/settings/site-tour-sections', portals: SITE_TOUR_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/links', portals: ALL_PORTALS },
   { prefix: '/api/staff/accounts', portals: ALL_PORTALS },

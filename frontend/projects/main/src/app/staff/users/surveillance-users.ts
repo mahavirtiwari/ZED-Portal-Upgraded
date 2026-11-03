@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
+import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
 import { CodeName, RESET_CONFIRM, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
 import { PagedView, PagerComponent } from '../pager';
@@ -36,7 +37,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel],
   template: `
     <div class="page-head">
       <div>
@@ -177,6 +178,9 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                       @if (s.isActive) {
                         <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset('assessors', s.userId)">Reset Link</button>
                       }
+                      @if (showsMobile) {
+                        <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Registered mobile of ' + s.userId" (click)="mobileOf.set(s.userId)">Mobile</button>
+                      }
                     </div>
                     <label class="bronze-switch form-switch" [class.is-on]="s.allowBronzeSurveillance">
                       <input type="checkbox" role="switch" class="form-check-input" [checked]="!!s.allowBronzeSurveillance" [disabled]="busy()" (change)="setAssessorBronze(s, $any($event.target).checked)" />
@@ -233,6 +237,24 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
           <div class="modal-footer">
             <button type="button" class="btn btn-default" (click)="bronze.set(null)">Close</button>
             <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="saveBronze(d)">Save</button>
+          </div>
+        </div></div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
+
+    @if (mobileOf(); as id) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="mobile-title">
+        <div class="modal-dialog modal-popup sv-dialog"><div class="modal-content">
+          <div class="modal-header">
+            <h3 class="registration-title m-0" id="mobile-title">Registered Mobile – {{ id }}</h3>
+            <button type="button" class="btn-close" aria-label="Close" (click)="mobileOf.set(null)"></button>
+          </div>
+          <div class="modal-body">
+            <zed-assessor-mobile [userId]="id" system="surveillance" [plain]="true" />
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" (click)="mobileOf.set(null)">Close</button>
           </div>
         </div></div>
       </div>
@@ -348,7 +370,10 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
 export class SurveillanceUsersPage {
   private readonly api = inject(SurveillanceUsersApi);
   protected readonly kind: 'agencies' | 'assessors' = inject(ActivatedRoute).snapshot.data['kind'] === 'agencies' ? 'agencies' : 'assessors';
-  private readonly isMaster = inject(AuthService).currentUser()?.roleId === StaffRole.MasterAdmin;
+  private readonly roleId = inject(AuthService).currentUser()?.roleId;
+  private readonly isMaster = this.roleId === StaffRole.MasterAdmin;
+  /** V4: the assessor's registered mobile of the surveillance site assessor app, for the Admin and the MasterAdmin (not agencies). */
+  protected readonly showsMobile = this.kind === 'assessors' && canSeeAssessorMobile(this.roleId);
 
   protected readonly agencies = signal<SurveillanceAgency[]>([]);
   protected readonly assessors = signal<SurveillanceAssessor[]>([]);
@@ -360,6 +385,8 @@ export class SurveillanceUsersPage {
   protected readonly busy = signal(false);
   protected readonly bronze = signal<BronzeDialog | null>(null);
   protected readonly block = signal<BlockDialog | null>(null);
+  /** The assessor whose registered mobile is shown in the pop-up. */
+  protected readonly mobileOf = signal<string | null>(null);
 
   /** The tile chosen above the list. */
   protected readonly filter = signal<ListFilter>('all');

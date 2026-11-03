@@ -153,6 +153,9 @@ describe('AssessorFormPage', () => {
       nicSectors: [], areasOfKnowledge: [], reasonForRejection: null, isActive: true, agencyUserId: 'AGENCY1', canEdit: false,
     });
     await settle(fixture);
+    // The registered mobile card (assessor-mobile.spec.ts) loads below the form.
+    http.expectOne('/api/staff/assessor-mobile/ZEDAS0001').flush({ userId: 'ZEDAS0001', device: null, signIns: [] });
+    await settle(fixture);
     expect(el.querySelector('h3')!.textContent).toContain('Assessor Details');
     expect((el.querySelector('fieldset') as HTMLFieldSetElement).disabled).toBe(true);
     expect([...el.querySelectorAll('button')].some((b) => ['Create', 'Update'].includes(b.textContent!.trim()))).toBe(false);

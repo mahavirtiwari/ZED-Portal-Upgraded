@@ -182,6 +182,10 @@
   }
 </form>
 
+@if (showsMobile && !loading() && userId) {
+  <zed-assessor-mobile [userId]="userId" system="main" />
+}
+
 @if (loading() || saving() || searching()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
 }

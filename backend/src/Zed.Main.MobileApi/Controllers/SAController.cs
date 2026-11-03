@@ -32,7 +32,7 @@ namespace Zed.Main.MobileApi.Controllers;
 /// </para>
 /// </summary>
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
-public sealed class SAController(
+public sealed partial class SAController(
     ISqlExecutor db,
     IConfiguration config,
     IDeviceBindings devices,
@@ -40,6 +40,7 @@ public sealed class SAController(
     LoginThrottle throttle,
     MobileStorage storage,
     PortalHost portal,
+    IPortalSettings settings,
     ILogger<SAController> log) : LegacyMobileController
 {
     internal const string UpdateAppMessage = "Download new app from store.";
@@ -71,20 +72,86 @@ public sealed class SAController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
-        if (config.GetValue<bool>("Mobile:CheckSaVersion") &&
-            !string.Equals(config["Mobile:SaVersion"] ?? "", request.version, StringComparison.Ordinal))
-            return LegacyJson(new ServiceResponse { status = "2", errorMessage = UpdateAppMessage });
+        var signIn = await CheckSignInAsync(request.assessorId, request.password, request.version, request.zedId, ct);
+        if (signIn.Refusal is { } refusal)
+            return LegacyJson(refusal.Status == "2"
+                ? new ServiceResponse { status = refusal.Status, errorMessage = refusal.Message }
+                : new AssessmentDetails { status = refusal.Status, errorMessage = refusal.Message });
 
-        var assessorId = request.assessorId?.Trim();
-        if (string.IsNullOrEmpty(assessorId) || string.IsNullOrEmpty(request.password))
-            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = InvalidCredentials });
-        if (throttle.IsLocked(assessorId))
-            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = TooManyAttempts });
+        var answer = await UnitAnswerAsync(signIn.Sets!, request.zedId, ct);
+        if (answer.Response is not { } response)
+            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = answer.Refusal });
+
+        var userKey = signIn.UserKey!;
+        if (await OtherPhoneAsync(userKey, request.deviceInfo, ct) is { } phone)
+            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = phone });
+        await RegisterPhoneAsync(userKey, request.deviceInfo, ct);
+        // The calls are checked against the assessor (saId); the unit is recorded but each call checks the allotment itself.
+        response.appToken = await tokens.IssueAsync(MobileApps.SiteAssessor, userKey, answer.ZedId, ct);
+        log.LogInformation("SA app login for {UserId} on {ZedId}", userKey, request.zedId);
+        return LegacyJson(response);
+    });
+
+    /// <summary>
+    /// V4: an assessor signs in to the SA app on one phone only (<c>Mobile:SaOnePhone</c>, on unless set to false): a
+    /// sign-in from another phone than the one registered (the phone signed in from last) is refused until the Admin
+    /// releases it (Admin → assessor → Registered mobile). The refusal is recorded as a device event and, by
+    /// <see cref="LoginAuditAttribute"/>, in the sign-in log with the phone's make, model, OS, app version and IP.
+    /// </summary>
+    private async Task<string?> OtherPhoneAsync(string userKey, DeviceInfo? device, CancellationToken ct)
+    {
+        if (!config.GetValue("Mobile:SaOnePhone", true)) return null;
+        var deviceId = device?.deviceId?.Trim();
+        if (string.IsNullOrEmpty(deviceId)) return DeviceInfoMissing;
+        if (await devices.RegisteredAsync(MobileApps.SiteAssessor, userKey, ct) is not { } registered
+            || string.Equals(registered.DeviceId, deviceId, StringComparison.Ordinal)) return null;
+        log.LogWarning("SA sign-in of {UserId} refused: registered on device {Registered}, tried {Device}", userKey, registered.DeviceId, deviceId);
+        await devices.RecordAsync(MobileApps.SiteAssessor, userKey, deviceId, Request.Path, ClientIp, DeviceCheck.Unknown, refused: true, ct);
+        return OtherPhone(registered.Model);
+    }
+
+    /// <summary>Registers the phone (make, model, OS, IP) and, with the one-phone rule, forgets the assessor's other phones.</summary>
+    private async Task RegisterPhoneAsync(string userKey, DeviceInfo? device, CancellationToken ct)
+    {
+        await devices.RememberAsync(MobileApps.SiteAssessor, userKey, device, ClientIp, ct);
+        if (config.GetValue("Mobile:SaOnePhone", true) && device?.deviceId?.Trim() is { Length: > 0 } id)
+            await devices.KeepOnlyAsync(MobileApps.SiteAssessor, userKey, id, ct);
+    }
+
+    public const string DeviceInfoMissing = "Device information missing. Please update the ZED SA app.";
+
+    public static string OtherPhone(string? model) =>
+        $"Your account is registered on another mobile{(string.IsNullOrWhiteSpace(model) ? "" : $" ({model.Trim()})")}. Please ask the ZED Admin to release it to sign in on this mobile.";
+
+    /// <summary>A refused sign-in: <c>status</c> "2" (update the app) or "0", and the text the app shows.</summary>
+    private sealed record SignInRefusal(string Status, string Message);
+
+    /// <summary>The checks of a sign-in passed: the procedure's result sets (set 0 the Users row) and the assessor's user id.</summary>
+    private sealed record SignInCheck(SignInRefusal? Refusal, IDictionary<string, object?>? User, ResultSets? Sets, string? UserKey);
+
+    /// <summary>
+    /// The checks every sign-in of the app makes (<see cref="Login"/> for one unit, <see cref="SignIn"/> without one): the
+    /// version gate, the per-assessor throttle, the password (PasswordStore; the procedure family has hard-coded master
+    /// passwords, so the typed password must equal the row's own) and the Users row SP_APP_SA_CHECK_LOGIN answers in set 0
+    /// (RoleId 3, SiteVerification 1, active). <paramref name="zedId"/> is passed to the procedure as it was; without one its
+    /// unit sets are empty.
+    /// </summary>
+    private async Task<SignInCheck> CheckSignInAsync(string? typedAssessorId, string? password, string? version, string? zedId, CancellationToken ct)
+    {
+        static SignInCheck Refuse(string status, string message) => new(new SignInRefusal(status, message), null, null, null);
+
+        if (config.GetValue<bool>("Mobile:CheckSaVersion") &&
+            !string.Equals(config["Mobile:SaVersion"] ?? "", version, StringComparison.Ordinal))
+            return Refuse("2", UpdateAppMessage);
+
+        var assessorId = typedAssessorId?.Trim();
+        if (string.IsNullOrEmpty(assessorId) || string.IsNullOrEmpty(password)) return Refuse("0", InvalidCredentials);
+        if (throttle.IsLocked(assessorId)) return Refuse("0", TooManyAttempts);
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
-        var login = await passwords.BeginLoginAsync(assessorId, request.password, ct);
+        var login = await passwords.BeginLoginAsync(assessorId, password, ct);
         var sets = await db.QueryProcMultipleAsync("SP_APP_SA_CHECK_LOGIN",
-            new { ZedId = request.zedId, UserId = assessorId, Password = login.ProcedurePassword }, ct);
+            new { ZedId = zedId, UserId = assessorId, Password = login.ProcedurePassword }, ct);
 
         // Set 0 is the Users row (RoleId 3, SiteVerification 1, active). The procedure family has
         // hard-coded master passwords, so the typed password must equal the row's own.
@@ -94,16 +161,26 @@ public sealed class SAController(
         {
             if (masterPassword) log.LogWarning("Blocked SA app login with a procedure master password for {UserId}", assessorId);
             throttle.Failed(assessorId);
-            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = InvalidCredentials });
+            return Refuse("0", InvalidCredentials);
         }
         throttle.Succeeded(assessorId);
+        return new SignInCheck(null, user, sets, user.Text("UserId") is { Length: > 0 } id ? id : assessorId);
+    }
 
+    /// <summary>The unit's answer of <see cref="Login"/>, or the text it is refused with; <c>ZedId</c> is the unit the token names.</summary>
+    private sealed record UnitAnswer(AssessmentDetails? Response, string? Refusal, string? ZedId);
+
+    /// <summary>
+    /// The unit's part of SP_APP_SA_CHECK_LOGIN (sets 1 to 8) as the app reads it, shared by <see cref="Login"/> and
+    /// <see cref="Assessment"/>: "not allocated" when set 1 is empty (the procedure answers it only for the unit's lead or
+    /// co-assessor), "closed" from the closing meeting on (status 13).
+    /// </summary>
+    private async Task<UnitAnswer> UnitAnswerAsync(ResultSets sets, string? requestedZedId, CancellationToken ct)
+    {
         // Set 1 only has a row when this assessor is the lead or co-assessor of the unit.
-        if (sets[1].Count == 0)
-            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = NotAllocated + request.zedId });
+        if (sets[1].Count == 0) return new UnitAnswer(null, NotAllocated + requestedZedId, null);
         var unit = sets[1][0];
-        if (unit.Int("CertificationStatus") >= 13)
-            return LegacyJson(new AssessmentDetails { status = "0", errorMessage = LoginClosed + request.zedId });
+        if (unit.Int("CertificationStatus") >= 13) return new UnitAnswer(null, LoginClosed + requestedZedId, null);
 
         var flags = sets.FirstRow(8);
         var response = new AssessmentDetails
@@ -199,16 +276,32 @@ public sealed class SAController(
                     return requirement;
                 }).ToList();
             }
-            await AttachCheckpointsAsync(response.allottedParameters, unit.Text("ZedId") is { Length: > 0 } z ? z : request.zedId, response.certificationType, ct);
         }
 
-        var userKey = user.Text("UserId") is { Length: > 0 } id ? id : assessorId;
-        await devices.RememberAsync(MobileApps.SiteAssessor, userKey, request.deviceInfo, ClientIp, ct);
-        // The calls are checked against the assessor (saId); the unit is recorded but each call checks the allotment itself.
-        response.appToken = await tokens.IssueAsync(MobileApps.SiteAssessor, userKey, unit.Text("ZedId") is { Length: > 0 } unitId ? unitId : request.zedId, ct);
-        log.LogInformation("SA app login for {UserId} on {ZedId}", userKey, request.zedId);
-        return LegacyJson(response);
-    });
+        // V4: the NIC sector's name with its code (the procedure answers the code only); the apps show "25. Name".
+        if (response.companyProfile.sectorName is { Length: > 0 } sectorCode && sectorCode.Trim().All(char.IsAsciiDigit)
+            && (await db.QuerySqlAsync<string?>(SectorNameSql, new { Code = new DbString { Value = sectorCode.Trim(), IsAnsi = true, Length = 50 } }, ct))
+                .FirstOrDefault() is { Length: > 0 } sectorName)
+        {
+            response.companyProfile.sectorId = sectorCode.Trim();
+            response.companyProfile.sectorName = sectorName.Trim();
+        }
+
+        var zedId = unit.Text("ZedId") is { Length: > 0 } z ? z : requestedZedId;
+        if (response.allottedParameters is not null)
+        {
+            await AttachCheckpointsAsync(response.allottedParameters, zedId, response.certificationType, ct);
+            await AttachListedEvidencesAsync(response.allottedParameters, zedId, response.certificationType, ct);
+        }
+        if (!string.IsNullOrEmpty(zedId) && !string.IsNullOrEmpty(response.certificationType))
+        {
+            // V4: the unit's site tour sections and the team's photos of each (redesigned app; older apps ignore them).
+            var sections = await UnitSiteTourSectionsAsync(zedId, response.certificationType, ct);
+            var counts = SiteTourSections.Count(sections, (await SiteTourSections.PhotosAsync(db, zedId, response.certificationType, ct)).Select(r => (r.PhotoId, r.Name)));
+            response.siteTourSections = sections.Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, counts[t.Id])).ToList();
+        }
+        return new UnitAnswer(response, null, zedId);
+    }
 
     /// <summary>
     /// V4: the checkpoints of the unit's requirements (migration 0039) on their options, so the app answers Yes / Partial / No
@@ -236,6 +329,24 @@ public sealed class SAController(
                     siteRemarks = c.Site?.Remarks,
                 };
             }
+        }
+    }
+
+    /// <summary>V4: the evidences the Admin lists for each requirement, with the site's earlier answers (<see cref="SiteEvidenceChecks"/>).</summary>
+    private async Task AttachListedEvidencesAsync(List<AllottedParameters> parameters, string? zedId, string? level, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(zedId) || string.IsNullOrWhiteSpace(level)) return;
+        var listed = await SiteEvidenceChecks.LoadAsync(db, zedId, level, "dbo", log, ct);
+        if (listed.Count == 0) return;
+        foreach (var r in parameters.SelectMany(p => p.requirements ?? []))
+        {
+            var mine = listed.Where(e => e.RequirementId == r.id).ToList();
+            if (mine.Count > 0)
+                r.listedEvidences = mine.Select(e => new ListedEvidenceInfo
+                {
+                    id = e.Id, name = e.Name, mandatory = e.Mandatory, checkpoint = e.Checkpoint, uploaded = e.Uploaded, verified = e.Verified,
+                    available = e.Available, photoIds = [.. e.PhotoIds],
+                }).ToList();
         }
     }
 
@@ -378,13 +489,38 @@ public sealed class SAController(
         if (st.ClosingMeetingSubmitted) return Fail(Closed + request.zedId);
         if (!st.OpenMeetingSubmitted) return Fail(OpenNotSubmitted + request.zedId);
 
+        // V4 (redesigned app): a photo may name its site tour section (Admin → Site Tour Sections, the unit's level and NIC
+        // sector); the name stored (SaPhotos.Name, which the web's site review and remote assessment pages show) is then
+        // "3. Production / Machine Shop - remark", cut to 200 characters. Without one, the comment as before. A section takes
+        // at most its maximum of photos, the team's photos already stored included.
+        var sections = await UnitSiteTourSectionsAsync(request.zedId!, request.certificationType!, ct);
+        var sent = (request.siteTourPhotos ?? []).Where(p => !string.IsNullOrEmpty(p.photo)).ToList();
+        foreach (var p in sent)
+            if (!string.IsNullOrWhiteSpace(p.section) && SiteTourSections.Find(sections, p.section) is null)
+                return Fail(UnknownSiteTourSection);
+        if (sent.Any(p => !string.IsNullOrWhiteSpace(p.section)))
+        {
+            var resent = sent.Select(p => p.photoId).ToHashSet(StringComparer.Ordinal);
+            var stored = (await SiteTourSections.PhotosAsync(db, request.zedId!, request.certificationType!, ct)).Where(r => !resent.Contains(r.PhotoId ?? ""));
+            var counts = SiteTourSections.Count(sections, stored.Select(r => (r.PhotoId, r.Name)));
+            foreach (var p in sent)
+                if (SiteTourSections.Find(sections, p.section) is { } section) counts[section.Id]++;
+            if (sections.FirstOrDefault(t => counts[t.Id] > t.Max) is { } over)
+            {
+                log.LogInformation("SA/SubmitSiteTour: {ZedId} section {Section} over its maximum of {Max}", request.zedId, over.Id, over.Max);
+                return Fail(TooManySiteTourPhotos(over));
+            }
+        }
+
         var photos = PhotoTable();
         foreach (var p in request.siteTourPhotos ?? [])
         {
             if (string.IsNullOrEmpty(p.photo)) continue;
             var folder = storage.Folder("SaPhotos", request.zedId, request.certificationType, "SiteTour");
             await storage.SaveBase64Async(p.photo, folder, MobileStorage.FileName(p.photoId, ".jpg"), ct);
-            AddPhoto(photos, p.photoId, p.comment, p.timeStamp, p.latitude, p.longitude);
+            var name = SiteTourSections.Find(sections, p.section) is { } section
+                ? SiteTourSections.Name(SiteTourSections.Label(sections, section), p.comment) : p.comment;
+            AddPhoto(photos, p.photoId, name, p.timeStamp, p.latitude, p.longitude);
         }
         return LegacyJson(await SavePhotosAsync(nameof(SubmitSiteTour), request.saId, request.zedId, request.certificationType, "SiteTour", photos, ct));
     });
@@ -421,6 +557,28 @@ public sealed class SAController(
             decisions[r.id] = decision;
         }
 
+        // V4: each evidence the Admin lists for a requirement is answered at the site (Yes with its photo, or No); a No keeps
+        // the requirement from conforming (SiteEvidenceChecks).
+        var listed = await SiteEvidenceChecks.LoadAsync(db, request.zedId ?? "", request.certificationType ?? "", "dbo", log, ct);
+        var checked_ = new List<(IReadOnlyList<SiteEvidenceChecks.Listed> Listed, List<SiteEvidenceChecks.Check> Checks)>();
+        foreach (var r in requirements)
+        {
+            var mine = listed.Where(e => e.RequirementId == r.id).ToList();
+            if (mine.Count == 0) continue;
+            if (r.evidenceChecks is null)
+            {
+                log.LogWarning("SA app {SaId} sent requirement {Id} of {ZedId} without its evidence checks (old app)", request.saId, r.id, request.zedId);
+                return Fail(EvidenceNeedUpdate);
+            }
+            var checks = r.evidenceChecks.Select(x => new SiteEvidenceChecks.Check(x.id, x.available, x.photoIds)).ToList();
+            var decided = decisions.GetValueOrDefault(r.id);
+            var yes = decided is null ? [] : decided.Answers.Where(a => a.Answer.Value == CheckpointAnswers.Yes).Select(a => a.Checkpoint.OptionCode).ToList();
+            var photoIds = (r.addedEvidences ?? []).Select(p => p.photoId?.Trim() ?? "").Where(p => p.Length > 0).ToList();
+            if (SiteEvidenceChecks.Problem(mine, checks, photoIds, yes, decided?.Conformance ?? r.conformance) is { } evidenceProblem)
+                return Fail($"{r.code}: {evidenceProblem}");
+            checked_.Add((mine, checks));
+        }
+
         var reqs = Table("RequirementId", "RequirementCode", "Conformance", "AssessorRemarks");
         var photos = PhotoTable();
         foreach (var r in requirements)
@@ -449,10 +607,31 @@ public sealed class SAController(
         if (photos.Rows.Count > 0) args.Add("PhotoList", photos.AsTableValuedParameter("DynamicPhotoList2"));
         var result = await ExecAsync("SP_APP_SA_SAVE_PARAMETER", args, ct);
         if (result.status == "1")
+        {
             foreach (var decision in decisions.Values)
                 await CheckpointAnswers.SaveAsync(db, request.zedId!, request.certificationType!, CheckpointAnswers.Stage.Site, decision, request.saId ?? "", ct);
+            foreach (var (mine, checks) in checked_)
+                await SiteEvidenceChecks.SaveAsync(db, request.zedId!, mine, checks, request.saId ?? "", ct);
+        }
         return LegacyJson(result);
     });
+
+    /// <summary>The NIC 2-digit sector's name (dbo.Sectors, the sector master).</summary>
+    public const string SectorNameSql = "SELECT TOP (1) SectorName FROM dbo.Sectors WHERE LTRIM(RTRIM(SectorCode)) = @Code;";
+
+    /// <summary>SA/SubmitParameter: a requirement with listed evidences sent without their checks (an older app).</summary>
+    public const string EvidenceNeedUpdate = "Please update the ZED SA app to answer the evidences listed for this requirement.";
+
+    /// <summary>SA/SubmitSiteTour: a photo's section is not one of the unit's (<see cref="SiteTourSections"/>).</summary>
+    public const string UnknownSiteTourSection = "Unknown site tour section. Please update the ZED SA app.";
+
+    /// <summary>SA/SubmitSiteTour: the section would have more photos than its maximum.</summary>
+    public static string TooManySiteTourPhotos(SiteTourSection s) =>
+        $"Site Tour: \"{s.Title}\" takes at most {s.Max} photo{(s.Max == 1 ? "" : "s")}. Please remove the extra photos.";
+
+    /// <summary>The site tour sections asked of the unit (Admin → Site Tour Sections; its level and NIC sector).</summary>
+    private async Task<IReadOnlyList<SiteTourSection>> UnitSiteTourSectionsAsync(string zedId, string certificationType, CancellationToken ct) =>
+        SiteTourSections.For(await SiteTourSections.LoadAsync(settings, ct), await AppFormUnit.ForAsync(db, zedId.Trim(), certificationType, ct));
 
     /// <summary>An app without checkpoint answers (before V4) for a requirement that has checkpoints.</summary>
     internal const string CheckpointsNeedUpdate =
@@ -523,6 +702,11 @@ public sealed class SAController(
         if (!st.AllParametersSyncedByLead) return Fail(NotSynced + request.zedId);
         if (!st.AllParametersSyncedByCo) return Fail(NotSynced + request.zedId);
         if (!st.FinalSubmissionDone) return Fail("Final submissions not synced yet by Assessors for the ZEDID: " + request.zedId);
+
+        // V4: every site tour section of the unit has its minimum of photos (the team's, as stored).
+        var sections = await UnitSiteTourSectionsAsync(request.zedId!, request.certificationType!, ct);
+        var counts = SiteTourSections.Count(sections, (await SiteTourSections.PhotosAsync(db, request.zedId!, request.certificationType!, ct)).Select(r => (r.PhotoId, r.Name)));
+        if (SiteTourSections.Shortfall(sections, counts) is { } shortfall) return Fail(shortfall);
 
         var participants = Participants(request.endParticipants);
         var photos = await SaveMeetingPhotosAsync(request, ct);

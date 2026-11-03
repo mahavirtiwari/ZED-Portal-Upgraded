@@ -83,8 +83,11 @@ public sealed class StaffPasswordResets(
 
     // ------------------------------------------------------------------ Self-service
 
-    /// <summary>"Forgot password?" (runs in the background; every outcome is only written to the audit log).</summary>
-    public async Task RequestAsync(string typedUserId, string? ip, CancellationToken ct)
+    /// <summary>
+    /// "Forgot password?" (runs in the background; every outcome is only written to the audit log). <paramref name="onlyRoleId"/>:
+    /// only an account of that Users.RoleId (the site assessor app's request, <c>AssessorAppController</c>).
+    /// </summary>
+    public async Task RequestAsync(string typedUserId, string? ip, CancellationToken ct, int? onlyRoleId = null)
     {
         var o = Options;
         var userId = Clean(typedUserId);
@@ -92,6 +95,7 @@ public sealed class StaffPasswordResets(
 
         var account = await FindAccountAsync(userId, ct);
         if (account is null) { Audit("no staff account", userId, ip); return; }
+        if (onlyRoleId is { } role && account.RoleId != role) { Audit($"role {account.RoleId} refused (role {role} only here)", account.UserId, ip); return; }
         if (!account.IsActive) { Audit("account blocked", account.UserId, ip); return; }
         if (o.ExcludedRoleIds.Contains(account.RoleId)) { Audit($"role {account.RoleId} excluded from self-service", account.UserId, ip); return; }
         if (MailAddress(account) is not { } to) { Audit("no valid e-mail address", account.UserId, ip); return; }

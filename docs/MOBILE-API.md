@@ -103,7 +103,7 @@ Every call after login used to name its user in the body. Now every successful a
 and the rebuilt apps send it back on every call. **The contract is fixed** (the React Native apps are built against it):
 
 - **Login answer**: the string field `appToken` at the top level of the JSON, next to `status`, in every successful
-  login: `Msme/Login`, `RA/Login`, `SA/Login` (site assessor app on Main and Surveillance; consultant and TU verifier / DFO
+  login: `Msme/Login`, `RA/Login`, `SA/Login`, `SA/SignIn` (site assessor app on Main and Surveillance; consultant and TU verifier / DFO
   app on Consultancy), `Surveillance/Login`. Failed logins and all other answers do not have the field (the installed
   apps see the old layout).
 - **Every later call** (JSON and multipart alike, including the app's calls to the portals: payments, technology
@@ -131,6 +131,8 @@ What a call is checked against (the identity the action acts on):
 | `[DeviceBound]` actions of the MSME and RA apps (Main mobile host; portal `Pay/*`, `SurveillancePay/*`, `ConsultancyPay/*`, `Msme/Get*PaymentDetailsByType`) | `MSME`, `RA` | unit = the ZED ID of the bound model |
 | `RA/CheckAssessment`, `RA/SubmitSelfie` (also called by the rebuilt ZED MSME app, which signs in through `msme/login` and never holds an RA token) | `RA`, or `MSME` when the call carries an MSME app token (`[DeviceBound(..., AlsoApp = MSME)]`) | unit = the ZED ID of the bound model; with an MSME token also the MSME app's devices. The mode is `RA`'s. The other `RA/*` calls take `RA` tokens only |
 | `[DeviceBound]` actions of the site assessor and consultant apps (`SA/*`; portal `FinancialAssistance/SubmitOpenMeeting`) | `SA` | user = `saId` / `userName` of the bound model (the allotment check of each action covers the unit) |
+| Site assessor app 2.0 reads `SA/Assessments`, `SA/Assessment`, `SA/Notifications`, `SA/Reports` (Main and Surveillance mobile hosts) | `SA` | user = `saId`; **always enforced** (`TokenRequired`), see "Site assessor app 2.0" |
+| Portal `GET SA/AppReport` (Main and Surveillance portals) | `SA` | the token's assessor must be the record's lead or co-assessor; always required |
 | Bronze surveillance app, every call after login that names a unit (`Surveillance/*`) | `SURV` | user = the unit's allotted desktop assessor, unit = the ZED ID of the call |
 | Consultancy portal `FinancialAssistance/GetDetails`, `ValidateEvidence`, `updatetechnology`, `FinalSubmit` (consultant app, DFO) | `SA` | user = the application's allotted DFO, unit = the ZED ID of the call |
 | `Msme/SubmitSurveillancePhoto` (Surveillance mobile host) | `MSME` | unit; no MSME signs in on that deployment, so it can only be monitored |
@@ -345,6 +347,40 @@ call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`
   not from the app's Yes / No, and the answers are saved to `MsmeOptions.SaAnswer/SaActions/SaRemarks` after the parameter.
   A requirement with checkpoints sent without answers (an app from before V4) is refused: "Please update the ZED SA app to
   answer this requirement checkpoint by checkpoint."
+- **Evidences listed by the Admin (redesigned SA app, migration 0043).** `SA/Login` / `SA/Assessment` put the unit's
+  evidences of each requirement (its rows of `MsmeEvidences`, the checkpoint each belongs to when the questionnaire links
+  one) on the requirement: `listedEvidences: [{ id, name, mandatory, checkpoint, uploaded, verified, available, photoIds }]`
+  (absent when none; `available` / `photoId` the site's earlier answer). The app asks for each whether it is available at
+  the site (Yes / No) and, for a Yes, 1 to 3 photos of it, taken or picked from the site tour (sent among the requirement's
+  `addedEvidences`, uploaded by `SA/SubmitEvidences`); a requirement with listed evidences shows only them, one without
+  keeps the free photos. `SA/SubmitParameter` takes `evidenceChecks: [{ id, available, photoIds }]` per such requirement
+  and refuses (before anything is stored): no checks ("Please update the ZED SA app to answer the evidences listed for this
+  requirement."), an evidence not answered, a Yes without a photo, with more than 3 or with one not among the
+  requirement's, a No with its checkpoint answered Yes ("Checkpoint 1
+  cannot be Yes: \"Policy\" is not available at the site."), and a No with the requirement's conformance Yes (an evidence
+  of no checkpoint, or a requirement without checkpoints). A Partial or No checkpoint already makes the requirement No (an
+  NC). The answers are saved to `MsmeEvidences.SaAvailable/SaPhotoIds/SaAnsweredBy/SaAnsweredOn` after the parameter
+  (`Zed.Core.Assessment.SiteEvidenceChecks`; before 0043 nothing is listed and the free photos stay). The requirement's
+  comments (`comments` → `SaAssessorRemarks`) are kept by the redesigned app as points, one "• point" line each (500
+  characters in all, as before).
+- **One phone per site assessor (V4).** `SA/SignIn` and `SA/Login` (the redesigned and the installed app) refuse a
+  sign-in from another phone than the assessor's registered one (the phone signed in from last,
+  `dbo.MobileDeviceBindings`, AppKind `SA`): `{"status":"0","errorMessage":"Your account is registered on another mobile
+  (Samsung SM-A515F). Please ask the ZED Admin to release it to sign in on this mobile."}`, and a sign-in without
+  `deviceInfo.deviceId` ("Device information missing. Please update the ZED SA app."). A successful sign-in registers the
+  phone (make and model, OS version, IP, first / last sign-in) and forgets the assessor's other phones, so an assessor who
+  used several keeps the last one. Every attempt, refused ones included, is in `dbo.V4LoginEvents` (IP, device ID, model,
+  manufacturer, OS version, API level, app version) and a refusal also in `dbo.MobileDeviceEvents`. The Master Admin (not
+  the agency) sees the phone and the recent sign-ins on the assessor's page ("Registered mobile"; on Surveillance the
+  "Mobile" button of the assessor's row) and releases it (`api/staff/assessor-mobile/{userId}`, GET / DELETE, Main and
+  Surveillance); the next sign-in then registers the new phone. `Mobile:SaOnePhone: false` turns the rule off (on by default). The app's offline sign-in on its own phone is not
+  affected.
+- **The unit's NIC sector name (V4).** `SA/Login` / `SA/Assessment` answer `companyProfile.sectorId` (the NIC 2-digit code
+  the procedure gives) and `companyProfile.sectorName` (its name from `dbo.Sectors`); the apps show "25. Name". Without a
+  name in the master, `sectorName` stays the code and `sectorId` null, as before.
+- **No separate selfie on site (redesigned SA app).** The app no longer asks for the "Selfie on site" before the
+  checklist: the punch-in and punch-out of the attendance carry the assessor's selfie. `SA/SubmitSelfie` stays for the
+  installed app and for a selfie an older version kept on the phone; no SA call requires it.
 - **Action plan merge (consultant app, V4).** `SA/SubmitHandholdingActionPlan` takes `plannedActivitiesBase` per requirement:
   the plan as the app last had it from the server (downloaded, or last sent). The web edits the same plan (milestone page;
   the baseline's checkpoint actions are added there), so the server merges: the app's items, less those the web removed
@@ -456,6 +492,180 @@ assessor id after login, and calls `SubmitFinancialAssistanceDetails` and `Submi
 Its `msme/*` and `RA/*` calls are unreachable, since the login status carries no surveillance or remote flags (the
 `msme/*` NC calls are served for the ZED MSME app, above).
 `SurveillanceAppContractTests` replays its exact requests.
+
+## Site assessor app 2.0 (redesigned app, Main and Surveillance)
+
+The redesigned site assessor app (`mobile/apps/assessor`) signs in with the assessor ID and password only, shows a
+dashboard of all the assessor's assessments and opens one unit at a time. Served by `SAController` (partial
+`Controllers/SAController.App.cs`, models at the end of `Models/AssessorModels.cs`) on the Main and Surveillance mobile
+hosts, and by `Zed.Portal/Features/AssessorApp/AssessorAppController.cs` on the Main and Surveillance portals; tests
+`SaAppTests` (mobile) and `AssessorAppTests` (portal). **Nothing changes for the installed app**: `SA/Login` and every
+`SA/Submit*` call keep their checks and formats; the writes stay the existing `SA/Submit*` calls. No new table or
+column: the data comes from the legacy tables.
+
+All answers are legacy JSON (`status` "1" / "0", `errorMessage`, plus `refId`, `token` always null). Dates are ISO text in
+server time (`"2026-05-04T10:00:00"`), null when unknown.
+
+### `SA/SignIn`
+
+Request `{ "assessorId", "password", "version", "deviceInfo": { "deviceId", ... } }`. The checks of `SA/Login`, shared
+code (`CheckSignInAsync`): version gate (`Mobile:CheckSaVersion`: `status "2"`, "Download new app from store."), the
+per-assessor throttle (5 failures, 15 minutes), PasswordStore, the procedures' master-password block, and the Users row
+of `SP_APP_SA_CHECK_LOGIN` (called with `ZedId = NULL`, so only its set 0 is filled) with RoleId 3, site verification,
+active. Refusals carry `SA/Login`'s texts ("Invalid credetials.", "Too many failed attempts..."), with the fields below
+null. `Sensitive` rate limit, login audit, device remembered. The `appToken` names **no unit**: every `SA/Submit*` call
+checks the allotment of the unit it names against `saId` itself and compares only the user with the token, so the
+existing calls work unchanged with it (tested under Enforce).
+
+```json
+{ "status": "1", "errorMessage": null, "refId": null, "token": null, "appToken": "h1....",
+  "profile": { "assessorId", "name", "email", "mobile", "assessorType", "certificateNo", "sectorActivity",
+               "agencyId", "agencyName", "agencyEmail", "agencyMobile", "desktopVerification": true, "siteVerification": true,
+               "levels": [ { "code": "Silver", "name": "Silver", "mode": "Site" } ] },
+  "counts": { "total", "upcoming", "ongoing", "submitted", "certified", "closed" },
+  "assessments": [ "as SA/Assessments" ],
+  "siteTourSections": [ { "id": "entrance", "no": 1, "title": "Unit Entrance & Signage", "hint", "min": 1, "max": 2, "uploaded": 0 } ] }
+```
+
+Profile: from the Users row (`UserName`, `Email`, `MobileNo`, `AssessorType` "Assessor" / "BronzeAssessor",
+`CertificateNo`, `SectorActivity` (migration 0028), `CreatedBy` = the agency, whose `UserName` is `agencyName`). On
+Surveillance `assessorType`, `certificateNo` and `sectorActivity` are always null (no such columns). `levels`: there is no
+per-assessor level data; it lists the enabled site levels of `dbo.SectionTypes` (`AssessmentMode = 'Site'`; ZED-X only
+once the Admin enables it), which every assessor who can sign in (site verification) assesses, plus Bronze (`"Desktop"`)
+for a Bronze assessor; Silver and Gold when the level settings cannot be read.
+
+### `SA/Assessments`, `SA/Assessment`, `SA/Notifications`, `SA/Reports`
+
+Requests `{ "saId", "deviceInfo" }` (`SA/Assessment` also `"zedId"` and optional `"certificationType"`), with
+`X-Zed-App-Token`. These are new calls that only the new app makes, so the token is **required whatever
+`Mobile:AppTokens:Apps:SA` says** (`[DeviceBound(..., TokenRequired = true)]`; Monitor stays for the installed app): a
+missing, invalid, expired, revoked or other assessor's token, or no `saId`, answers the usual
+`{"status":"0","errorMessage":"Your sign-in has expired. Please sign in again."}` and is recorded (`MobileDeviceEvents`,
+`Token...`). The device check follows `Mobile:DeviceBinding`. The Users row must still be an active site assessor
+(RoleId 3, `SiteVerification`, `IsActive`), else the same refusal.
+
+**`SA/Assessments`** answers `{ status, errorMessage, counts, assessments: [...] }`. The certifications whose
+`MsmeCertifications.SiteAssessorId` or `CoAssessorId` is the assessor (two index-friendly look-ups joined by `UNION`;
+varchar parameters), levels Silver, Gold, ZEDX, status 8 on, the unit's own rows (not the `_D` / `_R_` copies); open ones
+(status up to 15) always, finished ones while their status date (else the SA date) is within 12 months; at most 500,
+newest SA date first. (`AllotedCoAssessors` exists only in ZED_CONSULTANT; Main and Surveillance have one co-assessor
+column, which the procedures use.)
+
+```json
+{ "zedId", "certificationType": "Gold", "levelName": "Gold | ZED-X", "enterpriseName", "unitName", "address",
+  "district", "state", "pincode", "assessmentDate", "modeOfAssessment": "Onsite Assessment | Remote Assessment",
+  "certificationStatus": 9, "statusDate", "stage", "statusLabel", "ncRound": 0, "ncAnswered": false,
+  "openMeetingSubmitted": true, "canOpen": true, "role": "Lead | Co", "userType": 1,
+  "team": [ { "assessorId", "name", "email", "mobile", "role": "Lead | Co", "userType": 1 } ],
+  "spoc": { "name", "designation", "email", "phone", "source": "representative | owner | null" },
+  "latitude", "longitude" }
+```
+
+| `certificationStatus` | `stage` / `statusLabel` |
+|---|---|
+| 8 (allotted; the lead allots the parameters) | `scheduled` / Scheduled |
+| 9 to 12 | `inProgress` / In Progress once the open meeting is in (remote mode: the remote assessment joined, `JoinRoomStatus` 1), else `scheduled` |
+| 13 (closing meeting done; the lead reviews and final-submits on the web) | `submitted` / Submitted |
+| 14 (NC round `ncRound`; `ncAnswered` when `Nc{n}Status` is 2) | `ncRound` / "NC Round 2" or "NC Round 2 - Answered" |
+| 15 (NCs closed or none; with the agency) | `underReview` / Under Review |
+| 16 | `certified` / Certified |
+| 17, 99, 100 | `rejected` / Rejected |
+| anything else | `closed` / Closed |
+
+`counts`: `upcoming` = scheduled, `ongoing` = inProgress, `submitted` = submitted + ncRound + underReview, `certified`,
+`closed` = rejected + closed. `canOpen`: status 8 to 12, what `SA/Login` and `SA/Assessment` open. Unit fields: `Msme`
+(`PAddress`, `PDistrictName`, `PStateName`, `PPin`, `PUnitName`, `OwnerName`, `MobileNo`) and `MsmeBasicInformation`
+(`EnterpriseName`, `EmailId`), the columns `SA/Login` reads. **SPOC**: the data has no unit contact person; `name` and
+`designation` are the representative the MSME named in the remote assessment app (`MsmeSelfies`), else `name` is the
+Udyam owner and `designation` null; `email` / `phone` are the unit's registered ones. **Location**: the MSME's own
+geo-location (`MsmeLocations`, remote assessment app), else where the lead held the open meeting (`Meetings`); often null
+for onsite units before the open meeting. Not given (no data): a progress percentage, an SA end date.
+
+**`SA/Assessment`** answers exactly what `SA/Login` answers for that unit (same `AssessmentDetails` shape and
+checkpoints, shared code `UnitAnswerAsync`), without `appToken`, with its refusals: "Site Assessment data not yet
+allocated for the ZEDID: ..." (not the unit's lead or co-assessor) and "SA Closing Meeting Submitted, hence SA is deemed
+completed for the ZEDID: ..." (status 13 on). It runs `SP_APP_SA_CHECK_LOGIN` with a password that matches nothing (set 0
+stays empty; the unit's sets do not depend on it). The procedure itself picks the unit's open certification
+(`SiteAssessorId` set, `SaCertificateNo` empty), as at login; `certificationType`, when sent, must be that one, else "not
+yet allocated".
+
+**`SA/Notifications`** answers `{ status, errorMessage, notifications: [ { "id", "type", "title", "text", "zedId",
+"certificationType", "enterpriseName", "date" } ] }`, newest first, at most 100, read-only (no table; the app keeps the
+read state by `id`, which is stable). From `MsmeHistory` of the last 30 days, the assessor's units only, the newest row of
+each kind per unit: `allotted` (`ScheduledOn`, "New assessment assigned"), `ncRaised` (`Nc{n}Raised`), `certified`
+(`GetCertified`; or status 16 with a status date in the window), `sentBack` ("Agency Send back to Assessor", "MasterAdmin
+Send back to Assessor from Rejection"), `rejected` (the NC rejections). From the units' state: `reminder` (status 8 / 9 not
+started, SA date today or tomorrow; dated now) and `ncAnswered` (status 14, `Nc{n}Status` 2: the lead reviews the answers
+on the web, Remote / Onsite Assessment; dated by `Nc{n}Submitted`). Ids: `h{MsmeHistory.Id}`,
+`r-{zedId}-{level}-{yyyyMMdd}`, `nc-{zedId}-{level}-{n}`, `c-{zedId}-{level}`.
+
+**`SA/Reports`** answers `{ status, errorMessage, reports: [ { "zedId", "baseZedId", "certificationType", "levelName",
+"enterpriseName", "district", "state", "assessmentDate", "certificationStatus", "statusDate", "stage", "statusLabel",
+"role", "team", "reportAvailable", "reportPath" } ] }`: every record from the closing meeting (status 13) on, including
+rejected / reset copies (`zedId` `ZEDMSME000123_D_45`, `baseZedId` the unit), at most 200, newest first.
+`reportAvailable` when the portal draws the report (certified 16 or rejected 99, as the staff download); `reportPath` =
+`SA/AppReport?zedId=...&certificationType=...`, relative to the portal, else null.
+
+### Report PDF (portal)
+
+`GET {portal}/SA/AppReport?zedId=ZEDMSME000004&certificationType=Gold` with `X-Zed-App-Token`. `{portal}` is the
+deployment's portal address (Main `https://<host>/`, Surveillance the surveillance portal under its `Portal:PathBase`).
+The token must be a genuine, unexpired, unrevoked `SA` token of this deployment (else HTTP 401) and its assessor the
+record's lead or co-assessor; another assessor's record, Bronze, an unknown level or a record without a report answer 404.
+The PDF is the staff download's (`CertificationDownloads.ReportAsync`, `application/pdf`, legacy file name). `Sensitive`
+rate limit (HTTP 429 beyond 10 a minute per address). The portal needs the mobile host's `Mobile:AppTokenKey`.
+
+### Forgot password (portal)
+
+`POST {portal}/SA/AppForgotPassword` with `{ "assessorId": "ZEDAS009" }` or `{ "email": "..." }` always answers
+`{"status":"1","errorMessage":"If the Assessor ID or e-mail address belongs to an active assessor account, a link to set a
+new password has been sent to its registered e-mail address."}`, before any look-up (background work), so neither the
+answer nor its timing tells whether the account exists. `{"status":"0","errorMessage":"Please enter your Assessor ID or
+registered e-mail address."}` for empty (or over-long) input; "Password reset is not available on this portal..." when
+`StaffPasswordReset:Enabled` is off. It is the web's "Forgot password?" (`StaffPasswordResets.RequestAsync`): the same mail
+("ZED Password Reset - {UserId}") and link (`{Portal:PublicBaseUrl}/reset-password#token=...`), the same rules (blocked,
+excluded roles, no e-mail address, Surveillance accounts whose password main holds get main's hint), limited to RoleId 3;
+by e-mail, each active assessor (up to 5) with that `Users.Email`. No captcha (the app cannot show the web's): the
+`Sensitive` limit (10 a minute per address) and `StaffPasswordReset:MaxRequestsPerHour` per account (3) apply.
+
+### Site tour sections
+
+The Admin decides the sections on the main portal (Administration → Site Tour Sections, per system: Main and
+Surveillance; `api/staff/settings/site-tour-sections`, GET / PUT the whole list / DELETE back to the standard ten). Each
+section has a key (`id`, never changed), a name, what to capture (`hint`), a minimum and a maximum of photos (0–50, max at
+least 1), the certification levels and NIC 2-digit sectors it is asked of (none = all) and whether it is in use. Stored as
+JSON in `dbo.V4Settings` (key `SiteTour.Sections`, migration 0011; no new table); without a saved list the ten standard
+sections of the redesigned app (19 photos at least, 30 at most) — `Zed.Core.Assessment.SiteTourSections`.
+
+- `SA/Login` and `SA/Assessment` answer the unit's sections (in use, its level, its NIC sector as App Forms reads it) as
+  `siteTourSections: [{ id, no, title, hint, min, max, uploaded }]`; `uploaded` counts the team's site tour photos stored
+  so far (`SaPhotos`, PhotoType `SiteTour`, distinct PhotoId) by the section name in `SaPhotos.Name`. Older apps ignore it.
+  `SA/SignIn` (no unit) answers every section in use with `uploaded` 0.
+- `SA/SubmitSiteTour` (request otherwise unchanged): each photo may carry `"section"`: its key, its name (any case) or its
+  number in the unit's list; `"comment"` stays the plain remark. The name stored (`SaPhotos.Name`, which the web's site
+  review and remote assessment pages show under the photo) is `"3. Production / Machine Shop - CNC line"` (no remark:
+  `"3. Production / Machine Shop"`), cut to 200 characters (`varchar(200)`). A section the unit does not have refuses the
+  call before anything is stored: `{"status":"0","errorMessage":"Unknown site tour section. Please update the ZED SA
+  app."}`. A section over its maximum (the team's stored photos and the call's, a photo sent again counted once) refuses
+  the call: `Site Tour: "Unit Entrance & Signage" takes at most 2 photos. Please remove the extra photos.` Without
+  `section` (the installed app) the comment is stored as before and counts for no section.
+- `SA/SubmitEndAssessment` of the lead (the closing meeting) is refused until every section of the unit has its minimum:
+  `Site Tour: "Production / Machine Shop" needs at least 3 photos (2 uploaded). Please capture and sync them before the
+  closing meeting.` Photos are counted by section name, so a section the Admin moves keeps its photos; a renamed section
+  starts again. The co-assessor's final submit does not check it. When the redesigned app is released, raise
+  `Mobile:SaVersion` so the installed app (which cannot file photos under sections) is asked to update.
+
+Long names: a photo name over 200 characters without a section (a comment over 200) makes `SP_APP_SA_SAVE_PHOTOS` fail
+with "String or binary data would be truncated" (checked on SQL Server with the `DynamicPhotoList2` type and the app's
+SqlClient call): the call answers `status "0"` ("An error has occurred, please try again later."), the photo files are
+already on disk and no `SaPhotos` row is written. This is unchanged from before; with a section the server cuts the name.
+
+### Configuration on the test server
+
+- `Mobile:AppTokenKey` (Common) on the Main and Surveillance mobile hosts **and** portals (the report download reads the
+  token on the portal). Without it the mobile reads still work (Data Protection), but `SA/AppReport` answers 401.
+- Migration 0040 (session stamp) for revocation; 0028 for `sectorActivity` and the level list (optional).
+- `Mobile:AppTokens:Apps:SA` may stay Monitor for the installed app; the new reads require the token anyway.
 
 ## v2: token-based API (for the next app release)
 

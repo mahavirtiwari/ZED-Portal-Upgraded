@@ -40,6 +40,13 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./app-forms').then((m) => m.AppFormsPage),
   },
+  // New in V4: the site tour sections of the site assessor app and the photos each needs.
+  {
+    path: 'site-tour-sections',
+    title: 'ZED | Site Tour Sections',
+    canActivate: [admin],
+    loadComponent: () => import('./site-tour-sections').then((m) => m.SiteTourSectionsPage),
+  },
   {
     path: 'esg-checklist',
     title: 'ZED | ESG Checklist',
