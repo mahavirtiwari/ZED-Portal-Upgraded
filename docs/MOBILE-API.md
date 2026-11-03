@@ -375,6 +375,10 @@ call with V4 (docs/mobile/CONSULTANT-SA-IMPACT-APPS.md; `AppSourceContractTests`
   "Mobile" button of the assessor's row) and releases it (`api/staff/assessor-mobile/{userId}`, GET / DELETE, Main and
   Surveillance); the next sign-in then registers the new phone. `Mobile:SaOnePhone: false` turns the rule off (on by default). The app's offline sign-in on its own phone is not
   affected.
+- **App version (redesigned SA app 2.0, versionCode 47).** `SA/SignIn` and `SA/Login` refuse another version with
+  status "2" (the app's "update the app" question) when the host has `Mobile:CheckSaVersion` = true and
+  `Mobile:SaVersion` = "2.0" (compared with the app's versionName). Set them in the `MobileMain` and `MobileSurveillance`
+  sections of the deploy settings only: the consultant app (Consultancy host, still 1.3) reads the same two settings.
 - **The unit's NIC sector name (V4).** `SA/Login` / `SA/Assessment` answer `companyProfile.sectorId` (the NIC 2-digit code
   the procedure gives) and `companyProfile.sectorName` (its name from `dbo.Sectors`); the apps show "25. Name". Without a
   name in the master, `sectorName` stays the code and `sectorId` null, as before.

@@ -81,7 +81,9 @@
     "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
     "Consultancy__TuApp__LoginHours": "12",
     "Mobile__CheckMsmeVersion": "false",
-    "Mobile__MsmeVersion": ""
+    "Mobile__MsmeVersion": "",
+    "Mobile__CheckSaVersion": "true",
+    "Mobile__SaVersion": "2.0"
   },
   "MobileConsultancy": {
     "_comment": "IIS application /Consultancymobileapi (database ZEDV4_ZED_CONSULTANT).",
@@ -91,7 +93,9 @@
   "MobileSurveillance": {
     "_comment": "IIS application /surveillancemobileapi (database ZEDV4_ZED_SURVEILLANCE).",
     "ConnectionStrings__Surveillance": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_SURVEILLANCE;Integrated Security=true;TrustServerCertificate=true",
-    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_SURVEILLANCE_SERVICES"
+    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_SURVEILLANCE_SERVICES",
+    "Mobile__CheckSaVersion": "true",
+    "Mobile__SaVersion": "2.0"
   },
   "ZedJobs": {
     "_comment": "NOT read by Install-ZedIis.ps1: environment of the Zed.Jobs Windows service on staging (docs/JOBS.md 'Running it'). Leave every Jobs:Schedules entry and Jobs:FolderRename disabled (the shipped appsettings.json has them off); the mail worker may run, and then sends only to dev.zed@qcin.org.",

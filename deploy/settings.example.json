@@ -62,7 +62,9 @@
     "_comment": "IIS application /mobileapi. StorageRoot: the old services site's folder (Photos, SaPhotos, Videos). Culture: what the old server used (docs/MOBILE-API.md).",
     "Mobile__StorageRoot": "",
     "Mobile__CheckMsmeVersion": "false",
-    "Mobile__MsmeVersion": ""
+    "Mobile__MsmeVersion": "",
+    "Mobile__CheckSaVersion": "false",
+    "Mobile__SaVersion": "2.0"
   },
   "MobileConsultancy": {
     "_comment": "IIS application /Consultancymobileapi (database ZED_CONSULTANT).",
@@ -72,6 +74,8 @@
   "MobileSurveillance": {
     "_comment": "IIS application /surveillancemobileapi (database ZED_SURVEILLANCE).",
     "ConnectionStrings__Surveillance": "",
-    "Mobile__StorageRoot": ""
+    "Mobile__StorageRoot": "",
+    "Mobile__CheckSaVersion": "false",
+    "Mobile__SaVersion": "2.0"
   }
 }
