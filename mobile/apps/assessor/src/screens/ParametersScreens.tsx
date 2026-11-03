@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Dimensions, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useBackHandler, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { isAttendanceTakenToday, isLoggedOutToday } from '../attendance';
@@ -20,7 +20,7 @@ import {
   type PhotoInformation,
   type RequirementDetails,
 } from '../models';
-import { Badge, C, Card, CharCounter, ConformanceChoice, EmptyState, Field, HeroHeader, Page, ProgressBar, SectionLabel, Strip, ZButton, ZIcon, z, type Tone } from '../ui/zed';
+import { Badge, C, Card, CharCounter, ConformanceChoice, EmptyState, Field, HeroHeader, Page, ProgressBar, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type Tone } from '../ui/zed';
 import {
   ANSWERS,
   PARTIAL,
@@ -60,13 +60,13 @@ export function ParametersPagerScreen() {
   return (
     <Page testID="parameters-pager">
       <HeroHeader title="Assessment checklist" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+      <ZScroll horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
         {[0, 1].map(page => (
           <View key={page} style={{ width }}>
             <ParametersPage app={app} page={page} />
           </View>
         ))}
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -134,7 +134,7 @@ function ParametersPage({ app, page }: { app: ReturnType<typeof useSa>; page: nu
     return <EmptyState icon="clipboard" headline="No parameters" lines={['No parameters are allotted to you for this assessment.']} testID={`no-params-${page}`} />;
   }
   return (
-    <ScrollView contentContainerStyle={styles.pageContent}>
+    <ZScroll contentContainerStyle={styles.pageContent}>
       <View style={styles.progressPanel}>
         <ProgressBar value={requirements.length ? assessed / requirements.length : 0} />
         <Text style={styles.progressText} testID={`progress-${page}`}>
@@ -155,7 +155,7 @@ function ParametersPage({ app, page }: { app: ReturnType<typeof useSa>; page: nu
         <ZButton title="Submit" disabled={!canSubmit} onPress={submit} style={styles.submit} testID={`submit-checklist-${page}`} />
         {!canSubmit ? <Text style={styles.hint}>Assess every requirement before submitting.</Text> : null}
       </View>
-    </ScrollView>
+    </ZScroll>
   );
 }
 
@@ -560,7 +560,7 @@ function QuestionView({
           </Pressable>
         }
       />
-      <ScrollView contentContainerStyle={styles.qContent} keyboardShouldPersistTaps="handled" testID={`question-${position}`}>
+      <ZScroll contentContainerStyle={styles.qContent} keyboardShouldPersistTaps="handled" testID={`question-${position}`}>
         <Card>
           <View style={z.rowBetween}>
             {parameterCode ? <Badge label={`Parameter ${parameterCode}`} tone="primary" /> : <View />}
@@ -735,7 +735,7 @@ function QuestionView({
           <ZButton title={last ? 'Save' : 'Save ›'} onPress={() => save(false)} testID="q-save" style={styles.navButton} />
         </View>
         <Text style={[styles.note, styles.centered]}>“Review” flags the requirement for a second look before submit.</Text>
-      </ScrollView>
+      </ZScroll>
     </>
   );
 }

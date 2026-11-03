@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { randomUuid } from '../util/uuid';
@@ -12,7 +12,7 @@ import {
 } from '../flows/submissions';
 import { useInlineCapture } from '../photo/capture';
 import { FAILED_TO_SUBMIT, newPhotoInformation, SAVED_LOCALLY, type Participant, type PhotoInformation, type SubmitAssessmentRequest } from '../models';
-import { Avatar, C, CharCounter, Card, Field, HeroHeader, Page, SectionLabel, Strip, ZButton, ZIcon, z, type IconName } from '../ui/zed';
+import { Avatar, C, Card, CharCounter, Field, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName } from '../ui/zed';
 
 const COMMENT_MAX = 500;
 
@@ -140,7 +140,7 @@ export function SiteImagesScreen() {
   return (
     <Page testID="site-images">
       <HeroHeader title="Site Photos" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <View style={styles.banner}>
           <ZIcon name="camera" size={22} color={C.primary} />
           <View style={{ flex: 1, marginLeft: 14 }}>
@@ -182,7 +182,7 @@ export function SiteImagesScreen() {
           text={done === 2 ? 'Section ready for submission.' : 'Ensure the unit name is visible in the frame.'}
         />
         <SubmitButton title="Proceed" ready={done === 2} onPress={proceed} style={{ marginTop: 8 }} testID="site-images-proceed" />
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -309,7 +309,7 @@ export function MeetingScreen() {
   return (
     <Page testID="meeting">
       <HeroHeader title={isClose ? 'Closing Meeting' : 'Opening Meeting'} subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
         <Card>
           <View style={z.rowCenter}>
             <ZIcon name="calendar" size={18} color={C.primary} />
@@ -396,7 +396,7 @@ export function MeetingScreen() {
           </View>
         ) : null}
         <SubmitButton title={isClose ? 'Proceed' : 'Submit'} ready={captured && participants.length > 0} onPress={onSubmit} style={{ marginTop: 8 }} testID="meeting-submit" />
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isSuccess, useNavigation, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { PREFS } from '../db/stores';
@@ -17,7 +17,7 @@ import {
   syncSelfie,
 } from '../flows/submissions';
 import { areAllParametersSubmitted, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, SUBMITTED, UNKNOWN_ERROR, type AllottedParameters, type ServiceResponse } from '../models';
-import { C, HeroHeader, Page, SectionLabel, Strip, ZButton, ZIcon, z } from '../ui/zed';
+import { C, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 import { useSubmissionSuccess } from './FinalCommentsScreen';
 import { TickBox } from './ParametersScreens';
 
@@ -188,7 +188,7 @@ export function SubmitParametersScreen() {
   return (
     <Page testID="submit-parameters">
       {header}
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <SectionLabel label="Sync Assessment" />
         {nothing ? (
           <View testID="no-data">
@@ -252,7 +252,7 @@ export function SubmitParametersScreen() {
           />
           <ZButton title="SYNC ALL" disabled={!canSyncParams} style={styles.bulkButton} testID="sync-all" onPress={() => submitOne(completed[0]!, 'all')} />
         </View>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

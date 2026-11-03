@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { isLatestEntryLogout } from '../attendance';
 import { basicInfoSubmitted, needsBasicInfoFirst, saveCloseMeeting, submitBasicInformation, submitEndAssessment } from '../flows/submissions';
 import { areAllParametersSubmitted, FAILED_TO_SUBMIT, SAVED_LOCALLY, UNKNOWN_ERROR, type SubmitAssessmentRequest } from '../models';
-import { Avatar, C, CharCounter, Card, Field, HeroHeader, Page, SectionLabel, ZIcon, z } from '../ui/zed';
+import { Avatar, C, Card, CharCounter, Field, HeroHeader, Page, SectionLabel, z, ZIcon, ZScroll } from '../ui/zed';
 import { base64Uri, geoText, SubmitButton } from './MeetingScreens';
 
 const COMMENT_MAX = 1000;
@@ -123,7 +123,7 @@ export function FinalCommentsScreen() {
   return (
     <Page testID="final-comments">
       <HeroHeader title={params.finalSubmission ? 'Final Submission' : 'Closing Meeting'} subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
         {participants.length > 0 ? (
           <View>
             <SectionLabel label="Participants" right={<Text style={z.muted}>{String(participants.length)}</Text>} />
@@ -172,7 +172,7 @@ export function FinalCommentsScreen() {
           testID="final-comment"
         />
         <SubmitButton title="Submit" ready onPress={onSubmit} style={{ marginTop: 8 }} testID="final-submit" />
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

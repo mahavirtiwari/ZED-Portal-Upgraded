@@ -4,7 +4,7 @@
  * conformance_choice, empty_state, ...) so every screen is drawn from the same parts.
  */
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { Dimensions, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ScrollViewProps, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
 
@@ -113,9 +113,87 @@ export function ZIcon({ name, size = 20, color = C.tPrimary, strokeWidth = 1.8 }
 // ------------------------------------------------------------------ frame, headers, tabs
 
 /** The page: the design's light grey background, safe-area aware. */
-export function Page({ children, testID, style }: { children: React.ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
+/**
+ * The on-screen keyboard's height while it is open, else 0. The app draws edge to edge (Android 15 and later), so the
+ * window no longer shrinks for the keyboard (adjustResize): the pages make room for it themselves.
+ */
+export function useKeyboardHeight(): number {
+  const [height, setHeight] = React.useState(0);
+  React.useEffect(() => {
+    // From the keyboard's top edge to the bottom of the screen: the reported height leaves out the navigation bar.
+    const show = Keyboard.addListener('keyboardDidShow', e =>
+      setHeight(Math.max(e.endCoordinates.height, Dimensions.get('screen').height - e.endCoordinates.screenY)),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
+/** Room left below the focused field when it is scrolled above the keyboard. */
+const FIELD_MARGIN = 24;
+
+/**
+ * ScrollView of the pages: when the keyboard opens (the page has made room for it, see `Page`), the focused field of this
+ * scroll view is scrolled into view. A field of another scroll view (a page lower in the stack) is left alone.
+ */
+export const ZScroll = React.forwardRef<ScrollViewInstance, ScrollViewProps>(function ZScroll({ onScroll, onLayout, ...props }, ref) {
+  const inner = React.useRef<ScrollViewInstance>(null);
+  const offset = React.useRef(0);
+  const visible = React.useRef(0);
+  React.useImperativeHandle(ref, () => inner.current as ScrollViewInstance);
+  const pending = React.useRef(false);
+  const reveal = React.useCallback(() => {
+    if (!pending.current) return;
+    pending.current = false;
+    const input = TextInput.State.currentlyFocusedInput() as unknown as { measureLayout?: Function } | null;
+    const content = (inner.current as unknown as { getInnerViewRef?: () => unknown } | null)?.getInnerViewRef?.();
+    if (!input?.measureLayout || !content) return;
+    input.measureLayout(
+      content,
+      (_x: number, y: number, _w: number, h: number) => {
+        const bottom = y + h + FIELD_MARGIN;
+        if (bottom > offset.current + visible.current) inner.current?.scrollTo({ y: bottom - visible.current, animated: true });
+        else if (y < offset.current) inner.current?.scrollTo({ y: Math.max(0, y - FIELD_MARGIN), animated: true });
+      },
+      () => undefined,
+    );
+  }, []);
+  React.useEffect(() => {
+    // Once the page has made room for the keyboard (the next layout of this scroll view), else shortly after.
+    const sub = Keyboard.addListener('keyboardDidShow', () => {
+      pending.current = true;
+      setTimeout(reveal, 300);
+    });
+    return () => sub.remove();
+  }, [reveal]);
   return (
-    <View style={[s.page, style]} testID={testID}>
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      scrollEventThrottle={16}
+      {...props}
+      ref={inner}
+      onScroll={e => {
+        offset.current = e.nativeEvent.contentOffset.y;
+        onScroll?.(e);
+      }}
+      onLayout={e => {
+        visible.current = e.nativeEvent.layout.height;
+        onLayout?.(e);
+        reveal();
+      }}
+    />
+  );
+});
+
+/** A page: its content (scroll views, the bottom bar) stays above the keyboard, the focused field scrolled into view. */
+export function Page({ children, testID, style }: { children: React.ReactNode; testID?: string; style?: StyleProp<ViewStyle> }) {
+  const keyboard = useKeyboardHeight();
+  return (
+    <View style={[s.page, style, keyboard ? { paddingBottom: keyboard } : null]} testID={testID}>
       {children}
     </View>
   );
@@ -311,8 +389,12 @@ export function Field({
   return (
     <View style={[{ marginBottom: 14 }, style]}>
       {label ? <Text style={s.fieldLabel}>{label.toUpperCase()}</Text> : null}
-      <View style={[s.field, error ? { borderColor: C.danger } : null, input.editable === false && { backgroundColor: C.muted }]}>
-        {icon ? <ZIcon name={icon} size={18} color={C.tMuted} /> : null}
+      <View style={[s.field, input.multiline ? s.fieldTop : null, error ? { borderColor: C.danger } : null, input.editable === false && { backgroundColor: C.muted }]}>
+        {icon ? (
+          <View style={input.multiline ? s.fieldIconTop : null}>
+            <ZIcon name={icon} size={18} color={C.tMuted} />
+          </View>
+        ) : null}
         <TextInput placeholderTextColor={C.tMuted} {...input} style={[s.fieldInput, icon ? { marginLeft: 10 } : null, input.multiline ? s.fieldMulti : null]} testID={testID} />
         {right}
       </View>
@@ -521,8 +603,9 @@ export function DashedTile({ label, icon = 'camera', onPress, size = 96, testID 
 
 /** A centred modal sheet over a dim backdrop (team popup, punch-out, add evidence). */
 export function Sheet({ children, onClose, title, testID }: { children: React.ReactNode; onClose?: () => void; title?: string; testID?: string }) {
+  const keyboard = useKeyboardHeight();
   return (
-    <View style={s.backdrop} testID={testID}>
+    <View style={[s.backdrop, keyboard ? { paddingBottom: keyboard } : null]} testID={testID}>
       <View style={s.sheet}>
         {title || onClose ? (
           <View style={s.sheetHead}>
@@ -578,6 +661,8 @@ const s = StyleSheet.create({
   field: { flexDirection: 'row', alignItems: 'center', borderColor: C.border, borderWidth: 1, borderRadius: 10, backgroundColor: C.surface, paddingHorizontal: 12, minHeight: 48 },
   fieldInput: { flex: 1, fontSize: 15, color: C.tPrimary, paddingVertical: 10 },
   fieldMulti: { minHeight: 96, textAlignVertical: 'top' },
+  fieldTop: { alignItems: 'flex-start' },
+  fieldIconTop: { marginTop: 13 },
   fieldError: { color: C.danger, fontSize: 12, marginTop: 4 },
   badge: { borderRadius: 11, paddingHorizontal: 10, height: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   badgeSmall: { height: 18, paddingHorizontal: 8, borderRadius: 9 },

@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useBackHandler, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { isAttendanceTakenToday, isLoggedOutToday, latestEntry } from '../attendance';
@@ -7,7 +7,7 @@ import { clearMeetingDraft, newAssessmentRequest } from '../flows/submissions';
 import { areAllParametersCompletedOrSubmitted, COMPLETED, EVIDENCE_SITE_TOUR, IN_PROGRESS, isSaBasicInfoCompleted, isSaBasicInfoSubmitted, SUBMITTED } from '../models';
 import { formatDate, formatRange, labelOf, progressOf, toneOf } from '../portfolio';
 import { sectionsOf, tourCounts, tourShortfall } from '../siteTour';
-import { Avatar, Badge, C, Card, HeroHeader, LevelBadge, levelOf, ListRow, Page, ProgressBar, SectionLabel, ZIcon, z, type IconName } from '../ui/zed';
+import { Avatar, Badge, C, Card, HeroHeader, LevelBadge, levelOf, ListRow, Page, ProgressBar, SectionLabel, z, ZIcon, ZScroll, type IconName } from '../ui/zed';
 import { openMap } from './assessmentActions';
 import { SubmitButton } from './MeetingScreens';
 import { checkAutoTime, MILLIS_PER_DAY, saDateOf } from './common';
@@ -157,7 +157,7 @@ export function AssessmentDetailScreen() {
   return (
     <Page testID="assessment-options">
       <HeroHeader title={profile.msmeName ?? summary?.enterpriseName ?? app.zedId} subtitle={app.zedId} onBack={() => toHome()} />
-      <ScrollView contentContainerStyle={z.screenPad} testID="company-profile">
+      <ZScroll contentContainerStyle={z.screenPad} testID="company-profile">
         <Card>
           <View style={z.rowBetween}>
             <LevelBadge certification={d.certificationType} small />
@@ -300,7 +300,7 @@ export function AssessmentDetailScreen() {
           ) : null}
         </Card>
         {!lead && !d.isCloseMeetingSubmitted ? <SubmitButton title="Final Submit" ready={allDone} onPress={finalSubmission} testID="option-final-submission" /> : null}
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

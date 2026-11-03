@@ -1,11 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BackHandler, Image, Linking, PermissionsAndroid, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Image, Linking, PermissionsAndroid, Pressable, StyleSheet, Text, View } from 'react-native';
 import { htmlToPlain, isNetworkAvailable, SESSION_EXPIRED_PARAM, useAppText, useBackHandler, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSa } from '../app/context';
 import { images as legacyImages } from '../assets/images';
 import { normalizeSignIn, signIn } from '../flows/login';
-import { C, Card, Field, HeroHeader, images, Strip, ZIcon, z } from '../ui/zed';
+import { C, Card, Field, HeroHeader, images, Strip, useKeyboardHeight, z, ZIcon, ZScroll } from '../ui/zed';
 import { showUpdateAlert } from './assessmentActions';
 import { SubmitButton } from './MeetingScreens';
 
@@ -118,6 +118,7 @@ export function LoginScreen() {
   const nav = useNavigation();
   const { params } = useRoute<{ saDateDue?: boolean; [SESSION_EXPIRED_PARAM]?: string }>();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const windowNote = useAppText('app.assessor.login.windowNote');
   const [assessorId, setAssessorId] = useState('ZEDAS');
   const [password, setPassword] = useState('');
@@ -183,37 +184,39 @@ export function LoginScreen() {
   };
 
   return (
-    <ScrollView style={{ backgroundColor: C.bg }} contentContainerStyle={[st.login, { paddingTop: 12 + insets.top }]} keyboardShouldPersistTaps="handled" testID="login">
-      {/* The legacy sign-in page's illustration stays at the top of the page. */}
-      <Image source={legacyImages.login_image} style={st.loginImage} resizeMode="contain" testID="login-image" />
-      <Image source={images.zedMark} style={st.loginMark} resizeMode="contain" />
-      <Text style={st.brand}>ZED Assessment</Text>
-      <Text style={[z.h1, { textAlign: 'center', marginTop: 10 }]}>Sign in</Text>
-      <Text style={[z.sub, { textAlign: 'center', marginTop: 6, marginBottom: 20 }]}>Use the credentials emailed to your registered ID.</Text>
-      <Card style={{ padding: 16, paddingBottom: 24 }}>
-        <Field label="Assessor ID" icon="shield" value={assessorId} onChangeText={setAssessorId} autoCapitalize="characters" autoCorrect={false} testID="login-assessor-id" />
-        <Field
-          label="Password"
-          icon="lock"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          autoCorrect={false}
-          testID="login-password"
-          right={
-            <Text onPress={() => setShowPassword(v => !v)} style={st.show} testID="login-password-toggle">
-              {showPassword ? 'Hide' : 'Show'}
-            </Text>
-          }
-        />
-        <Pressable style={{ alignSelf: 'flex-end', marginBottom: 14 }} onPress={() => nav.push('ForgotPassword')} testID="login-forgot">
-          <Text style={st.link}>Forgot password?</Text>
-        </Pressable>
-        <SubmitButton title="Sign in" ready={!!assessorId.trim() && !!password.trim()} onPress={onLogin} testID="login-button" />
-      </Card>
-      <Strip tone="primary" icon="mail" title="First-time sign-in?" text="Your Assessor ID and password are shared on your registered email by the assessment agency." />
-    </ScrollView>
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingBottom: keyboard }}>
+      <ZScroll style={{ backgroundColor: C.bg }} contentContainerStyle={[st.login, { paddingTop: 12 + insets.top }]} keyboardShouldPersistTaps="handled" testID="login">
+        {/* The legacy sign-in page's illustration stays at the top of the page. */}
+        <Image source={legacyImages.login_image} style={st.loginImage} resizeMode="contain" testID="login-image" />
+        <Image source={images.zedMark} style={st.loginMark} resizeMode="contain" />
+        <Text style={st.brand}>ZED Assessment</Text>
+        <Text style={[z.h1, { textAlign: 'center', marginTop: 10 }]}>Sign in</Text>
+        <Text style={[z.sub, { textAlign: 'center', marginTop: 6, marginBottom: 20 }]}>Use the credentials emailed to your registered ID.</Text>
+        <Card style={{ padding: 16, paddingBottom: 24 }}>
+          <Field label="Assessor ID" icon="shield" value={assessorId} onChangeText={setAssessorId} autoCapitalize="characters" autoCorrect={false} testID="login-assessor-id" />
+          <Field
+            label="Password"
+            icon="lock"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            testID="login-password"
+            right={
+              <Text onPress={() => setShowPassword(v => !v)} style={st.show} testID="login-password-toggle">
+                {showPassword ? 'Hide' : 'Show'}
+              </Text>
+            }
+          />
+          <Pressable style={{ alignSelf: 'flex-end', marginBottom: 14 }} onPress={() => nav.push('ForgotPassword')} testID="login-forgot">
+            <Text style={st.link}>Forgot password?</Text>
+          </Pressable>
+          <SubmitButton title="Sign in" ready={!!assessorId.trim() && !!password.trim()} onPress={onLogin} testID="login-button" />
+        </Card>
+        <Strip tone="primary" icon="mail" title="First-time sign-in?" text="Your Assessor ID and password are shared on your registered email by the assessment agency." />
+      </ZScroll>
+    </View>
   );
 }
 
@@ -228,6 +231,7 @@ export function ForgotPasswordScreen() {
   const nav = useNavigation();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState<string | null>(null);
+  const keyboard = useKeyboardHeight();
   const busy = useRef(false);
 
   useBackHandler(() => {
@@ -255,9 +259,9 @@ export function ForgotPasswordScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.bg }} testID="forgot-password">
+    <View style={{ flex: 1, backgroundColor: C.bg, paddingBottom: keyboard }} testID="forgot-password">
       <HeroHeader title="Forgot password" onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
         <Text style={z.h2}>Reset your password</Text>
         <Text style={[z.sub, { marginTop: 6, marginBottom: 20 }]}>Enter your Assessor ID or the email address registered with QCI. We'll send a secure link to set a new password.</Text>
         <Field
@@ -279,7 +283,7 @@ export function ForgotPasswordScreen() {
         <Pressable onPress={() => Linking.openURL('mailto:support@qcin.org').catch(() => undefined)}>
           <Strip tone="neutral" icon="help" title="Didn't receive the email?" text="Check your spam folder or write to support@qcin.org for help." />
         </Pressable>
-      </ScrollView>
+      </ZScroll>
     </View>
   );
 }

@@ -1,10 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isSuccess, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { submitAllocation } from '../flows/submissions';
 import { FAILED_TO_SUBMIT, type AssessorDetails, type ParametersDetails } from '../models';
-import { Avatar, Badge, C, Card, HeroHeader, Page, SectionLabel, ZButton, ZIcon, z } from '../ui/zed';
+import { Avatar, Badge, C, Card, HeroHeader, Page, SectionLabel, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 
 /** The assessor's role under the name (AssessorDetails.userType: 1 lead, 2 co-assessor). */
 const roleOf = (a: AssessorDetails | undefined) => (a?.userType === '1' ? 'Lead Assessor' : a?.userType === '2' ? 'Co Assessor' : null);
@@ -129,7 +129,7 @@ export function AllocationScreen() {
   return (
     <Page testID="allocation">
       <HeroHeader title="Parameter Allocation" subtitle={app.zedId} onBack={nav.canGoBack() ? () => nav.pop() : undefined} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Text style={styles.intro}>{'Assign each clause to a team member.\nLead Assessor reviews all sections.'}</Text>
 
         <Card style={styles.counts}>
@@ -197,7 +197,7 @@ export function AllocationScreen() {
         <Text style={[styles.hint, allDone && styles.hintDone]} testID="allocation-hint">
           {allDone ? `${allocated} of ${toAllocate.length} sections allocated.` : 'Co-assessors cannot log in until parameters are allocated.'}
         </Text>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

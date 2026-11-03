@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Modal, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { htmlToPlain, isNetworkAvailable, SESSION_EXPIRED_MESSAGE, useAppText, useBackHandler, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSa } from '../app/context';
@@ -22,7 +22,7 @@ import {
   type ReportSummary,
   type TeamMember,
 } from '../portfolio';
-import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, ZButton, ZIcon, z, type IconName, type TabKey } from '../ui/zed';
+import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
 import { cleanData, viewAssessment } from './assessmentActions';
 import { showExitAlert } from './common';
 
@@ -175,7 +175,7 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
           ))}
         </View>
       </View>
-      <ScrollView contentContainerStyle={z.screenPad} refreshControl={refreshControl}>
+      <ZScroll contentContainerStyle={z.screenPad} refreshControl={refreshControl}>
         {list.length === 0 ? (
           <EmptyState
             icon="clipboard"
@@ -201,7 +201,7 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
           <QuickAction icon="bell" label="Alerts" onPress={() => nav.push('Notifications')} testID="quick-notifications" />
           <QuickAction icon="help" label="Help" onPress={() => nav.push('Help')} testID="quick-help" />
         </View>
-      </ScrollView>
+      </ZScroll>
       {team ? <TeamPopup a={team} onClose={() => setTeam(null)} /> : null}
     </View>
   );
@@ -346,7 +346,7 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
   return (
     <View style={{ flex: 1 }}>
       <PlainHeader title="My assessments" testID="list-header" />
-      <ScrollView contentContainerStyle={z.screenPad} refreshControl={refreshControl} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={z.screenPad} refreshControl={refreshControl} keyboardShouldPersistTaps="handled">
         <Text style={[z.muted, { marginBottom: 10 }]}>{`${list.length} total · ${shown.length} shown`}</Text>
         <View style={st.search}>
           <ZIcon name="search" size={18} color={C.tMuted} />
@@ -373,7 +373,7 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
         ) : shown.length === 0 ? (
           <EmptyState icon="search" headline="No matching assessments" lines={['Try another name, ZED ID or level.']} testID="list-no-match" />
         ) : null}
-      </ScrollView>
+      </ZScroll>
     </View>
   );
 }
@@ -407,7 +407,7 @@ function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl
   return (
     <View style={{ flex: 1 }}>
       <PlainHeader title="Reports" testID="reports-header" />
-      <ScrollView contentContainerStyle={z.screenPad} refreshControl={refreshControl} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={z.screenPad} refreshControl={refreshControl} keyboardShouldPersistTaps="handled">
         <Text style={[z.muted, { marginBottom: 10 }]}>Submitted and approved assessment reports</Text>
         <View style={[st.search, { marginBottom: 14 }]}>
           <ZIcon name="search" size={18} color={C.tMuted} />
@@ -453,7 +453,7 @@ function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl
         {all.length === 0 ? (
           <EmptyState icon="document" headline="No reports yet" lines={['Reports of the assessments you submit appear here.']} testID="reports-empty" />
         ) : null}
-      </ScrollView>
+      </ZScroll>
     </View>
   );
 }
@@ -482,7 +482,7 @@ function ProfileHome() {
     ]);
 
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 32 }} testID="profile">
+    <ZScroll contentContainerStyle={{ paddingBottom: 32 }} testID="profile">
       <HeroHeader title="" right={<View />}>
         <View style={{ alignItems: 'center' }}>
           <Avatar name={me?.name || me?.assessorId || '?'} size={72} color={C.heroOverlay} />
@@ -517,7 +517,7 @@ function ProfileHome() {
         </Card>
         <ZButton title="Sign out" icon="logout" variant="dangerOutline" onPress={signOut} style={{ marginTop: 8 }} testID="sign-out" />
       </View>
-    </ScrollView>
+    </ZScroll>
   );
 }
 

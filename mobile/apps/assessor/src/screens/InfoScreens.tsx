@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, useNavigation, zedDevice } from '@zed/shared';
 import { useSa } from '../app/context';
 import { formatDateTime } from '../portfolio';
-import { C, Card, EmptyState, HeroHeader, images, ListRow, Page, SectionLabel, ZIcon, z, type IconName } from '../ui/zed';
+import { C, Card, EmptyState, HeroHeader, images, ListRow, Page, SectionLabel, z, ZIcon, ZScroll, type IconName } from '../ui/zed';
 
 export const WEB_LOGIN = 'loginzed.msme.gov.in';
 
@@ -32,7 +32,7 @@ export function NotificationsScreen() {
   return (
     <Page testID="notifications">
       <HeroHeader title="Notifications" onBack={() => nav.pop()} right={markRead} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         {list.map(n => {
           const unread = !app.isRead(n.id);
           return (
@@ -54,7 +54,7 @@ export function NotificationsScreen() {
         {list.length === 0 ? (
           <EmptyState icon="bell" headline="No notifications yet" lines={['New allotments, reminders and report updates appear here.']} testID="notifications-empty" />
         ) : null}
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -80,7 +80,7 @@ export function ViewProfileScreen() {
   return (
     <Page testID="view-profile">
       <HeroHeader title="My profile" subtitle={me?.assessorId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Card>
           {rows
             .filter(([, v]) => !!v)
@@ -94,7 +94,7 @@ export function ViewProfileScreen() {
         <Text style={[z.muted, { textAlign: 'center' }]}>
           {me?.agencyEmail ? `Your profile is kept by your assessment agency. To change it, write to ${me.agencyEmail}.` : 'Your profile is kept by your assessment agency.'}
         </Text>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -125,7 +125,7 @@ export function HelpScreen() {
   return (
     <Page testID="help">
       <HeroHeader title="Help & support" onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <SectionLabel label="Your assessment agency" />
         <Card style={{ paddingVertical: 4 }} testID="help-agency">
           <ListRow icon="users" title={me?.agencyName || me?.agencyId || 'Not available'} subtitle="Agency" testID="help-agency-name" />
@@ -149,7 +149,7 @@ export function HelpScreen() {
             </Pressable>
           ))}
         </Card>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -164,7 +164,7 @@ export function AboutScreen() {
   return (
     <Page testID="about">
       <HeroHeader title="About" onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Image source={images.zedLogo} style={st.logo} resizeMode="contain" />
         <Text style={[z.sub, { textAlign: 'center' }]} testID="about-version">{`ZED Site Assessment - v${info.versionName} (build ${info.versionCode})`}</Text>
         <SectionLabel label="What is ZED?" />
@@ -184,7 +184,7 @@ export function AboutScreen() {
         </Card>
         <Text style={st.footer}>{`Web login: ${WEB_LOGIN}`}</Text>
         <Text style={st.footer}>{`© ${new Date().getFullYear()} Quality Council of India · Ministry of MSME`}</Text>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

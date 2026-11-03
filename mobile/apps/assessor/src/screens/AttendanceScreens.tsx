@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   fileUri,
   formatDate,
@@ -32,7 +32,7 @@ import {
 import { queueAttendance, submitAttendance } from '../flows/submissions';
 import { useSaPhotoCapture } from '../photo/capture';
 import { UNKNOWN_ERROR, type Attendance } from '../models';
-import { Badge, C, Card, HeroHeader, Page, SectionLabel, Sheet, Strip, ZButton, ZIcon, z } from '../ui/zed';
+import { Badge, C, Card, HeroHeader, Page, SectionLabel, Sheet, Strip, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 import { base64Uri, DashedBox, geoText, SelfieCard, SubmitButton, TimePlaceCard } from './MeetingScreens';
 
 type Result = (ok: boolean) => void;
@@ -200,7 +200,7 @@ export function AttendanceScreen() {
   return (
     <Page testID="attendance">
       <HeroHeader title="Attendance" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Strip tone={status.tone} icon={status.icon} title={status.title} text={status.text} />
 
         <Card>
@@ -295,7 +295,7 @@ export function AttendanceScreen() {
           </View>
         ) : null}
         <Text style={styles.footnote}>Attendance is geo-tagged and time-stamped.</Text>
-      </ScrollView>
+      </ZScroll>
 
       {punchOutOpen ? (
         <Sheet testID="punch-out-sheet">
@@ -393,14 +393,14 @@ export function PunchInScreen() {
   return (
     <Page testID="punch-in-form">
       <HeroHeader title="Attendance" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Card>
           <PunchHeader title={out ? 'Punch out' : 'Punch in'} sub={out ? 'Capture your selfie & confirm to close the day.' : 'Capture your selfie & confirm to start the day.'} />
           <TimePlaceCard time={nowText()} place={geo ?? 'Location is captured with the selfie'} />
           <SelfieCard uri={selfieUri(selfie)} geo={geo} onPress={take} testID="attendance-selfie" />
         </Card>
         <SubmitButton title={out ? 'Punch out & submit' : 'Punch in & submit'} ready={!!selfie} onPress={() => punch(selfie)} style={{ marginTop: 8 }} testID="punch-done" />
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -413,7 +413,7 @@ export function AttendanceLogScreen() {
   return (
     <Page testID="attendance-log-screen">
       <HeroHeader title="Attendance" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={z.screenPad}>
+      <ZScroll contentContainerStyle={z.screenPad}>
         <Card>
           <SectionLabel label="Assessment attendance log" style={{ marginTop: 0 }} />
           {rows.length > 0 ? <AttendanceTable rows={rows} /> : <DashedBox label="No attendance recorded yet" icon="calendar" style={{ height: 84 }} />}
@@ -421,7 +421,7 @@ export function AttendanceLogScreen() {
         <DaysAttended count={rows.filter(r => r.loginDate != null).length} />
         <Text style={styles.footnote}>Attendance is geo-tagged and time-stamped.</Text>
         <ZButton title="Close" variant="ghost" onPress={() => nav.pop()} style={{ marginTop: 16 }} testID="log-close" />
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

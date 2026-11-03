@@ -1,12 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { htmlToPlain, useAppText, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { PREFS } from '../db/stores';
 import { useInlineCapture } from '../photo/capture';
 import { EVIDENCE_ADDED, EVIDENCE_SITE_TOUR, newPhotoInformation, type PhotoInformation } from '../models';
-import { Badge, C, CharCounter, Card, HeroHeader, Page, ProgressBar, SectionLabel, Strip, ZButton, ZIcon, z, type Tone } from '../ui/zed';
+import { Badge, C, Card, CharCounter, HeroHeader, Page, ProgressBar, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type Tone } from '../ui/zed';
 import { decodeTourComment, encodeTourComment, sectionFull, sectionsOf, tourCounts, type TourSection } from '../siteTour';
 import { randomUuid } from '../util/uuid';
 
@@ -161,7 +161,7 @@ export function NewEvidenceScreen() {
   return (
     <Page testID="new-evidence">
       <HeroHeader title="Add evidence" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <Card>
           <Viewfinder photo={evidence.photo} onShutter={pickMode ? undefined : take} testID="evidence-photo" />
           <Text style={styles.noteLabel}>EVIDENCE NAME</Text>
@@ -170,7 +170,7 @@ export function NewEvidenceScreen() {
           <Text style={styles.hint}>Geo-coordinates and timestamp are added automatically.</Text>
           <SheetActions title="Save evidence" onSave={add} onCancel={() => nav.pop()} saveID="evidence-add" cancelID="evidence-cancel" />
         </Card>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -266,7 +266,7 @@ export function SiteTourScreen() {
   return (
     <Page testID="site-tour">
       <HeroHeader title="Site Tour" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]}>
+      <ZScroll contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]}>
         <View style={styles.summary}>
           <View style={z.rowCenter}>
             <ZIcon name="image" size={22} color={C.primaryDark} />
@@ -352,7 +352,7 @@ export function SiteTourScreen() {
             <Text style={styles.footer}>Every photo is geo-tagged and time-stamped automatically.</Text>
           </>
         ) : null}
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -448,7 +448,7 @@ export function NewSitePhotoScreen() {
   return (
     <Page testID="new-site-photo">
       <HeroHeader title={editMode ? 'Edit tour photo' : 'Add tour photo'} subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
+      <ZScroll contentContainerStyle={[z.screenPad, { paddingBottom: 32 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <Card>
           <SectionLabel label="Section" brand style={styles.flush} />
           <Pressable style={styles.picker} onPress={pickSection} testID="site-photo-section">
@@ -473,7 +473,7 @@ export function NewSitePhotoScreen() {
           <Text style={styles.hint}>Geo-coordinates and timestamp are added automatically.</Text>
           <SheetActions title={editMode ? 'Update photo' : 'Save photo'} onSave={add} onCancel={() => nav.pop()} saveID="site-photo-submit" cancelID="site-photo-cancel" />
         </Card>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

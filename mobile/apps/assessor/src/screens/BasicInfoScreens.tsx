@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   basicInfoValue,
@@ -33,7 +33,7 @@ import { basicInfoSubmitted, submitBasicInformation } from '../flows/submissions
 import { ASSESSOR_BASIC_INFO, BUILT_IN_BASIC_INFO, CAPACITY_UNITS, ENERGY_SOURCES, STANDARD_KEYS } from '../forms';
 import { useSaPhotoCapture } from '../photo/capture';
 import { DATA_ERROR, newBasicInformation, normalizeBasicInformation, Status, YES, type BasicInformation, type ProductDetails, type RawMaterialDetails } from '../models';
-import { C, Card, EmptyState, HeroHeader, Page, ZButton, ZIcon, z } from '../ui/zed';
+import { C, Card, EmptyState, HeroHeader, Page, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 import { randomUuid } from '../util/uuid';
 
 const countryNames = () => (countries as Array<{ name?: string }>).map(c => c.name ?? '').filter(Boolean);
@@ -592,13 +592,13 @@ export function BasicInformationScreen() {
   return (
     <Page testID="basic-information">
       <HeroHeader title="Basic Info" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+      <ZScroll keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         {body}
         <View style={[styles.pad, styles.buttons]}>
           <ZButton title="Save Basic Info" onPress={() => onProceed(true)} testID="basic-save" />
           <ZButton title="Submit Basic Info" variant="outline" onPress={() => onProceed(false)} testID="basic-submit" />
         </View>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -656,7 +656,7 @@ export function BasicInfoRowScreen() {
   return (
     <Page testID="basic-info-row">
       <HeroHeader title="Basic Info" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+      <ZScroll keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <SectionBand title={isProduct ? 'Products / articles details' : 'Raw material / bought-out part'} />
         <View style={styles.pad}>
           {isProduct ? (
@@ -718,7 +718,7 @@ export function BasicInfoRowScreen() {
           )}
           <ZButton title={isProduct ? 'Save product' : 'Save material'} onPress={submit} style={styles.rowSubmit} testID="row-submit" />
         </View>
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }
@@ -748,7 +748,7 @@ export function BasicDetailsDisplayScreen() {
   return (
     <Page testID="basic-details">
       <HeroHeader title="Basic Info" subtitle={app.zedId} onBack={() => nav.pop()} />
-      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+      <ZScroll contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         {b ? (
           <>
             <SectionBand title="Basic information" />
@@ -787,7 +787,7 @@ export function BasicDetailsDisplayScreen() {
         ) : (
           <EmptyState icon="document" headline="No basic information yet" lines={["The unit's basic details have not been received."]} />
         )}
-      </ScrollView>
+      </ZScroll>
     </Page>
   );
 }

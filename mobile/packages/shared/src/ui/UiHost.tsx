@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   BackHandler,
+  Dimensions,
   Keyboard,
   Modal,
   Pressable,
@@ -156,7 +157,7 @@ export function UiHost({ children }: { children: React.ReactNode }) {
             setCustomDialog(null);
             customDialog.onBack?.();
           }}>
-          <View style={styles.customScrim}>{customDialog.render(() => setCustomDialog(null))}</View>
+          <KeyboardRoom>{customDialog.render(() => setCustomDialog(null))}</KeyboardRoom>
         </Modal>
       )}
     </UiContext.Provider>
@@ -231,6 +232,26 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
       </Pressable>
     </Modal>
   );
+}
+
+/**
+ * The custom dialog's scrim, kept above the on-screen keyboard: apps that draw edge to edge (Android 15 and later) are no
+ * longer resized for it (adjustResize), so a dialog's field and buttons would sit under the keyboard.
+ */
+function KeyboardRoom({ children }: { children: React.ReactNode }) {
+  const [keyboard, setKeyboard] = useState(0);
+  useEffect(() => {
+    // From the keyboard's top edge to the bottom of the screen: the reported height leaves out the navigation bar.
+    const show = Keyboard.addListener('keyboardDidShow', e =>
+      setKeyboard(Math.max(e.endCoordinates.height, Dimensions.get('screen').height - e.endCoordinates.screenY)),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return <View style={[styles.customScrim, keyboard ? { paddingBottom: keyboard } : null]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
