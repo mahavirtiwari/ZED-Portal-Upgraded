@@ -69,7 +69,9 @@
   "MobileConsultancy": {
     "_comment": "IIS application /Consultancymobileapi (database ZED_CONSULTANT).",
     "ConnectionStrings__Consultancy": "",
-    "Mobile__StorageRoot": ""
+    "Mobile__StorageRoot": "",
+    "Mobile__CheckSaVersion": "false",
+    "Mobile__SaVersion": "2.0"
   },
   "MobileSurveillance": {
     "_comment": "IIS application /surveillancemobileapi (database ZED_SURVEILLANCE).",

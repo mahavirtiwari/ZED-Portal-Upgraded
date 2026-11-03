@@ -10,7 +10,7 @@ and on a Windows build server; adjust the drive letters and folders to that mach
 | ZED MSME (the applicant app) | `apps/zedmsme` | `com.qci.zed.msmeapp` | 2.0 (1) | `/mobileapi/msme/`, `/mobileapi/RA/`, `/mobileapi/` (texts, forms); portal `/Msme/`, `/Pay/` |
 | ZED Surveillance (Bronze surveillance) | `apps/msme` | `com.qci.zed.bronzesurveillance` | 1.9 (13) | `/surveillancemobileapi/surveillance/`, `/surveillancemobileapi/msme/`, `/mobileapi/RA/` |
 | ZED SA (site assessment) | `apps/assessor` | `com.qci.zed.siteassessment` | 2.0 (47) | `/mobileapi/SA/`; portal `/SA/` (report, password reset) |
-| ZED Consultancy (handholding) | `apps/consultant` | `com.qci.zed.consultancy` | 1.3 (75) | `/consultancymobileapi/SA/`, `/Consultancy/FinancialAssistance/`, `/mobileapi/photos/` |
+| ZED Consultancy (handholding) | `apps/consultant` | `com.qci.zed.consultancy` | 2.0 (76) | `/consultancymobileapi/SA/`, `/Consultancy/FinancialAssistance/`, `/mobileapi/photos/`; portal `/Consultancy/SA/` (report, password reset) |
 
 **Never run a build against production.** The server is fixed at build time: `-PzedEnvironment=staging` is the
 internal name of the test server setting (testers never see it); a release build without it points at production
@@ -118,7 +118,7 @@ The APKs are written to (the date is the build date):
 
 - `apps\msme\android\app\build\outputs\apk\release\Android_ZED_BronzeSurveillance_<MMM-dd-yyyy>-1.9-13.apk`
 - `apps\assessor\android\app\build\outputs\apk\release\ZEDSA_Android_<MMM-dd-yyyy>-2.0-47.apk`
-- `apps\consultant\android\app\build\outputs\apk\release\ZEDConsultancy_Android_<MMM-dd-yyyy>-1.3-75.apk`
+- `apps\consultant\android\app\build\outputs\apk\release\ZEDConsultancy_Android_<MMM-dd-yyyy>-2.0-76.apk`
 
 ## Check the server setting with aapt2 (before any network use)
 

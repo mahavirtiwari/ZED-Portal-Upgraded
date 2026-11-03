@@ -1,6 +1,6 @@
 {
   "name": "@zed/consultant",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "private": true,
   "description": "ZED Consultancy (com.qci.zed.consultancy), React Native rewrite of ZEDConsultant",
   "scripts": {

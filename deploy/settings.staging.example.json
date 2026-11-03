@@ -88,7 +88,9 @@
   "MobileConsultancy": {
     "_comment": "IIS application /Consultancymobileapi (database ZEDV4_ZED_CONSULTANT).",
     "ConnectionStrings__Consultancy": "Server=.\\SQLEXPRESS;Database=ZEDV4_ZED_CONSULTANT;Integrated Security=true;TrustServerCertificate=true",
-    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES"
+    "Mobile__StorageRoot": "E:\\ZedStaging\\storage\\ZED_CONSULTANT_SERVICES",
+    "Mobile__CheckSaVersion": "true",
+    "Mobile__SaVersion": "2.0"
   },
   "MobileSurveillance": {
     "_comment": "IIS application /surveillancemobileapi (database ZEDV4_ZED_SURVEILLANCE).",
