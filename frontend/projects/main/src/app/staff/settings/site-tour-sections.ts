@@ -3,7 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { PortalSwitchComponent, SITE_TOUR_PORTALS } from '../admin-portal';
+import { AdminPortalService, PortalSwitchComponent, SITE_TOUR_PORTALS } from '../admin-portal';
 import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 
 /** A section of the site tour (Zed.Core.Assessment.SiteTourSection). Empty levels / sectors: all. */
@@ -74,7 +74,8 @@ export function sectionId(title: string, taken: readonly string[]): string {
  * each needs (minimum) and takes (maximum), and the certification levels and NIC sectors each is asked of (none = all).
  * Laid out as App Forms: a row per section with its scope as chips, moved up and down, and a pop-up to add or edit one.
  * Each change saves the whole list (PUT); "Reset to standard sections" goes back to the ten of the redesigned app.
- * One Admin (V4): the portal switch picks the ZED Certification or the Surveillance portal's sections.
+ * One Admin (V4): the portal switch picks the ZED Certification, the Consultancy (the consultant app's site tour, milestone 1)
+ * or the Surveillance portal's sections.
  */
 @Component({
   selector: 'zed-staff-site-tour-sections',
@@ -83,7 +84,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
     <div class="page-head">
       <div>
         <h3 class="registration-title">Site tour sections</h3>
-        <p class="page-sub">The sections the site assessor app files site tour photos under, with the photos each needs. Limit a section to levels and NIC sectors.</p>
+        <p class="page-sub">The sections the {{ appName() }} files site tour photos under, with the photos each needs. Limit a section to levels and NIC sectors.</p>
       </div>
       @if (data(); as d) {
         <div class="page-actions">
@@ -320,6 +321,10 @@ export class SiteTourSectionsPage {
 
   protected readonly limits = SITE_TOUR_LIMITS;
   protected readonly portals = SITE_TOUR_PORTALS;
+  /** The app whose site tour the chosen portal's sections are. */
+  private readonly adminPortal = inject(AdminPortalService);
+  protected readonly appName = computed(() =>
+    this.adminPortal.effective(SITE_TOUR_PORTALS) === 'consultancy' ? 'consultant app (milestone 1 visit)' : 'site assessor app');
   protected readonly data = signal<SiteTourSectionsResponse | null>(null);
   protected readonly editing = signal<Editing | null>(null);
   protected readonly busy = signal(false);

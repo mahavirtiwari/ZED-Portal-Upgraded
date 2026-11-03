@@ -71,6 +71,16 @@ describe('One Admin: portal switch and calls to the chosen portal', () => {
     retried.flush([{ key: 'k' }]);
     expect(await call).toEqual([{ key: 'k' }]);
   });
+
+  it('sends the site tour sections to the Consultancy portal too (the consultant app has a site tour)', async () => {
+    portals.select('consultancy');
+    const call = firstValueFrom(http.get('/api/staff/settings/site-tour-sections'));
+    await handOver('consultancy', 'cons-xsrf');
+    backend.expectOne('/Consultancy/api/staff/settings/site-tour-sections').flush({ sections: [] });
+    expect(await call).toEqual({ sections: [] });
+    // A screen the Consultancy portal does not have stays on main.
+    expect(portals.effective(['main', 'surveillance'])).toBe('main');
+  });
 });
 
 @Component({

@@ -4,12 +4,14 @@ using System.Globalization;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models.Consultancy;
 using LoginServiceRequest = Zed.Main.MobileApi.Models.LoginServiceRequest;
+using SiteTourSectionInfo = Zed.Main.MobileApi.Models.Assessor.SiteTourSectionInfo;
 
 namespace Zed.Main.MobileApi.Controllers.Consultancy;
 
@@ -35,6 +37,7 @@ public sealed partial class ConsultancySAController(
     AppTokens tokens,
     LoginThrottle throttle,
     MobileStorage storage,
+    IPortalSettings settings,
     ILogger<ConsultancySAController> log) : LegacyMobileController
 {
     /// <summary>Device records use the site assessor app's key: the consultant app is its fork.</summary>
@@ -114,72 +117,163 @@ public sealed partial class ConsultancySAController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public Task<IActionResult> Login(LoginServiceRequest request, CancellationToken ct) => Guarded(nameof(Login), async () =>
     {
+        var signIn = await CheckSignInAsync(First(request.assessorId, request.userName), request.password, request.version, request.zedId, ct);
+        if (signIn.Refusal is { } refusal)
+            return LegacyJson(refusal.Status == "2"
+                ? new ServiceResponse { status = refusal.Status, errorMessage = refusal.Message }
+                : new AssessmentDetails { status = refusal.Status, errorMessage = refusal.Message });
+
+        // SP_APP_SA_CHECK_LOGIN_V2 takes the consultant branch whenever SiteVerification is set.
+        var first = signIn.User!;
+        var dfo = !first.Bool("SiteVerification") && first.Bool("FinancialVerification");
+        var userKey = signIn.UserKey!;
+        var answer = await UnitAnswerAsync(nameof(Login), signIn.Sets!, request.zedId, dfo, userKey, ct);
+        if (answer.Response is not { } response) return LoginFail(answer.Refusal!);
+
+        await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
+        // Consultant and DFO alike; the DFO's technology upgradation calls to the consultancy portal check it against the
+        // unit (TuAppController), the SA calls against the user named in them.
+        response.appToken = await tokens.IssueAsync(App, userKey, request.zedId, ct);
+        log.LogInformation("Consultancy app login ({Branch}) for {UserId} on {ZedId}", dfo ? "DFO" : "consultant", userKey, request.zedId);
+        return LegacyJson(response);
+    });
+
+    /// <summary>A refused sign-in: <c>status</c> "2" (update the app) or "0", and the text the app shows.</summary>
+    private sealed record SignInRefusal(string Status, string Message);
+
+    /// <summary>The checks of a sign-in passed: the procedure's result sets (set 0 the Users row) and the user id.</summary>
+    private sealed record SignInCheck(SignInRefusal? Refusal, IDictionary<string, object?>? User, ResultSets? Sets, string? UserKey);
+
+    /// <summary>
+    /// The account's Users row as SP_APP_SA_CHECK_LOGIN_V2 selects it (role 3, active, consultant or DFO, the password sent):
+    /// read for a sign-in without a unit, where the procedure always ends in its "not yet allocated" branch.
+    /// </summary>
+    public const string SignInUserSql =
+        "SELECT TOP (1) UserId, Password, RoleId, UserName, Email, MobileNo, CreatedBy, IsActive, SiteVerification, FinancialVerification " +
+        "FROM dbo.Users WHERE RoleId = 3 AND UserId = @UserId AND Password = @Password AND IsActive = 1 " +
+        "AND (SiteVerification = 1 OR FinancialVerification = 1);";
+
+    private sealed class SignInUserRow
+    {
+        public string? UserId { get; init; }
+        public string? Password { get; init; }
+        public int? RoleId { get; init; }
+        public string? UserName { get; init; }
+        public string? Email { get; init; }
+        public string? MobileNo { get; init; }
+        public string? CreatedBy { get; init; }
+        public bool? IsActive { get; init; }
+        public bool? SiteVerification { get; init; }
+        public bool? FinancialVerification { get; init; }
+
+        public IDictionary<string, object?> ToRow() => new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["UserId"] = UserId, ["Password"] = Password, ["RoleId"] = RoleId, ["UserName"] = UserName, ["Email"] = Email,
+            ["MobileNo"] = MobileNo, ["CreatedBy"] = CreatedBy, ["IsActive"] = IsActive == true,
+            ["SiteVerification"] = SiteVerification == true, ["FinancialVerification"] = FinancialVerification == true,
+        };
+    }
+
+    /// <summary>
+    /// The checks every sign-in of the app makes (<see cref="Login"/> for one unit, <see cref="SignIn"/> without one): the
+    /// version gate, the per-user throttle, the password (PasswordStore; the procedure family has hard-coded master passwords,
+    /// so the typed password must equal the row's own) and SP_APP_SA_CHECK_LOGIN_V2 with its texts, whose set 0 must be a
+    /// Users row with RoleId 3. Without a <paramref name="zedId"/> the procedure ends, for a valid account, in its "not yet
+    /// allocated" branch: the Users row is then read as it selects it (<see cref="SignInUserSql"/>).
+    /// </summary>
+    private async Task<SignInCheck> CheckSignInAsync(string? typedUserId, string? password, string? version, string? zedId, CancellationToken ct)
+    {
+        static SignInCheck Refuse(string status, string message) => new(new SignInRefusal(status, message), null, null, null);
+
         // The old mobile Web.config had no checkSAVersion, so the old code failed before its try; here the check is
         // off unless Mobile:CheckSaVersion is set for this deployment.
         if (config.GetValue<bool>("Mobile:CheckSaVersion") &&
-            !string.Equals(config["Mobile:SaVersion"] ?? "", request.version, StringComparison.Ordinal))
-            return LegacyJson(new ServiceResponse { status = "2", errorMessage = UpdateAppMessage });
+            !string.Equals(config["Mobile:SaVersion"] ?? "", version, StringComparison.Ordinal))
+            return Refuse("2", UpdateAppMessage);
 
-        var userId = First(request.assessorId, request.userName)?.Trim();
-        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(request.password)) return LoginFail(InvalidCredentials);
-        if (throttle.IsLocked(userId)) return LoginFail(TooManyAttempts);
+        var userId = typedUserId?.Trim();
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(password)) return Refuse("0", InvalidCredentials);
+        if (throttle.IsLocked(userId)) return Refuse("0", TooManyAttempts);
 
         var passwords = PasswordStore.For(db, HttpContext.RequestServices);
-        var login = await passwords.BeginLoginAsync(userId, request.password, ct);
+        var login = await passwords.BeginLoginAsync(userId, password, ct);
         var sets = await db.QueryProcMultipleAsync("SP_APP_SA_CHECK_LOGIN_V2",
-            new { UserId = userId, Password = login.ProcedurePassword, ZedId = request.zedId }, ct);
+            new { UserId = userId, Password = login.ProcedurePassword, ZedId = zedId }, ct);
 
         var first = sets.Count > 0 ? sets[0].FirstOrDefault() : null;
         if (first is null)
         {
             throttle.Failed(userId);
-            return LoginFail(InvalidDetails);
+            return Refuse("0", InvalidDetails);
         }
         if (first.Text("StatusCode") != "1")
         {
             // Only the procedure's last branch is about the password; the others are reached with a valid one.
             var message = first.Text("ErrorMessage");
-            if (!first.ContainsKey("UserId") && message.StartsWith("Invalid Credentials", StringComparison.OrdinalIgnoreCase))
+            var credentials = !first.ContainsKey("UserId") && message.StartsWith("Invalid Credentials", StringComparison.OrdinalIgnoreCase);
+            var allocation = message.StartsWith(NotAllocated, StringComparison.OrdinalIgnoreCase) || message.StartsWith(DfoNotAllocated, StringComparison.OrdinalIgnoreCase);
+            if (zedId is not null || credentials || !allocation)
+            {
+                if (credentials) throttle.Failed(userId);
+                return Refuse("0", message);
+            }
+            var row = (await db.QuerySqlAsync<SignInUserRow>(SignInUserSql, new
+            {
+                UserId = new DbString { Value = userId.Replace(' ', '_'), IsAnsi = true, Length = 50 },
+                Password = new DbString { Value = login.ProcedurePassword, IsAnsi = true, Length = 50 },
+            }, ct)).FirstOrDefault();
+            if (row is null)
+            {
                 throttle.Failed(userId);
-            return LoginFail(message);
+                return Refuse("0", InvalidCredentials);
+            }
+            first = row.ToRow();
         }
 
         // The Users row: the password must be the account's own (PasswordStore; the V2 procedure compares it too).
         if (first.Text("RoleId") != "3" || !await passwords.CompleteLoginAsync(login, first, ct))
         {
-            log.LogWarning("Blocked consultant app login for {UserId}: password or role does not match the Users row", userId);
+            log.LogWarning("Blocked consultant app sign-in for {UserId}: password or role does not match the Users row", userId);
             throttle.Failed(userId);
-            return LoginFail(InvalidCredentials);
+            return Refuse("0", InvalidCredentials);
         }
         throttle.Succeeded(userId);
+        return new SignInCheck(null, first, sets, first.Text("UserId") is { Length: > 0 } id ? id : userId);
+    }
 
-        // SP_APP_SA_CHECK_LOGIN_V2 takes the consultant branch whenever SiteVerification is set.
-        var dfo = !first.Bool("SiteVerification") && first.Bool("FinancialVerification");
-        var notAllotted = (dfo ? DfoNotAllocated : NotAllocated) + request.zedId;
+    /// <summary>The unit's answer of <see cref="Login"/>, or the text it is refused with.</summary>
+    private sealed record UnitAnswer(AssessmentDetails? Response, string? Refusal);
+
+    /// <summary>
+    /// The unit's part of SP_APP_SA_CHECK_LOGIN_V2 (sets 1 to 9) as the app reads it, shared by <see cref="Login"/> and
+    /// <see cref="Assessment"/>: "not yet allocated" when set 1 has no allotted row or the user is not allotted to the unit
+    /// by exact id; then the app sign-in is recorded for the technology upgradation calls.
+    /// </summary>
+    private async Task<UnitAnswer> UnitAnswerAsync(string action, ResultSets sets, string? requestedZedId, bool dfo, string userKey, CancellationToken ct)
+    {
+        var notAllotted = (dfo ? DfoNotAllocated : NotAllocated) + requestedZedId;
 
         // Set 1 is empty (or a placeholder without UserType) when the sub-procedure found no allotment; the old code
         // then failed on Convert.ToInt32 and returned the exception text.
         var unit = sets[1].FirstOrDefault();
-        if (unit is null || unit.Text("UserType").Length == 0)
-            return LoginFail(notAllotted);
+        if (unit is null || unit.Text("UserType").Length == 0) return new UnitAnswer(null, notAllotted);
 
         // SP_APP_SA_CHECK_LOGIN_V2 lets a co-consultant through with CoAssessorId LIKE '%id%' (#93): check the
         // allotment by exact id before answering.
         var certification = unit.Text("CertificationType");
-        var allotted = await AllotmentsAsync(request.zedId, certification, ct);
+        var allotted = await AllotmentsAsync(requestedZedId, certification, ct);
         var ok = dfo
-            ? allotted.Any(a => a.Role == "Dfo" && Same(a.UserId, userId))
-            : allotted.Any(a => a.Role is "Lead" or "Co" && Same(a.UserId, userId));
+            ? allotted.Any(a => a.Role == "Dfo" && Same(a.UserId, userKey))
+            : allotted.Any(a => a.Role is "Lead" or "Co" && Same(a.UserId, userKey));
         if (!ok)
         {
-            log.LogWarning("Refused consultant app login: {UserId} is not allotted to {ZedId} {Certification}", userId, request.zedId, certification);
-            return LoginFail(notAllotted);
+            log.LogWarning("Refused consultant app {Action}: {UserId} is not allotted to {ZedId} {Certification}", action, userKey, requestedZedId, certification);
+            return new UnitAnswer(null, notAllotted);
         }
 
         // The app's technology upgradation calls to the consultancy web site carry no identity; the portal accepts them for a
         // unit whose allotted DFO signed in here recently (dbo.V4AppSessions, migration 0010; TuAppController).
-        await AppSessions.RecordAsync(db, log, AppSessions.Consultant, first.Text("UserId") is { Length: > 0 } uid ? uid : userId,
-            request.zedId!.Trim(), certification, ClientIp, ct);
+        await AppSessions.RecordAsync(db, log, AppSessions.Consultant, userKey, requestedZedId!.Trim(), certification, ClientIp, ct);
 
         var flags = sets.FirstRow(8);
         var response = new AssessmentDetails
@@ -260,14 +354,30 @@ public sealed partial class ConsultancySAController(
                     .Select(r => Requirement(r, element.parameterCode, sets)).ToList();
         }
 
-        var userKey = first.Text("UserId") is { Length: > 0 } id ? id : userId;
-        await devices.RememberAsync(App, userKey, request.deviceInfo, ClientIp, ct);
-        // Consultant and DFO alike; the DFO's technology upgradation calls to the consultancy portal check it against the
-        // unit (TuAppController), the SA calls against the user named in them.
-        response.appToken = await tokens.IssueAsync(App, userKey, request.zedId, ct);
-        log.LogInformation("Consultancy app login ({Branch}) for {UserId} on {ZedId}", dfo ? "DFO" : "consultant", userKey, request.zedId);
-        return LegacyJson(response);
-    });
+        // V4: the NIC sector's name with its code (the procedure answers the code only); the apps show "25. Name".
+        if (response.companyProfile.sectorName is { Length: > 0 } sectorCode && sectorCode.Trim().All(char.IsAsciiDigit)
+            && (await db.QuerySqlAsync<string?>(SectorNameSql, new { Code = new DbString { Value = sectorCode.Trim(), IsAnsi = true, Length = 50 } }, ct))
+                .FirstOrDefault() is { Length: > 0 } sectorName)
+        {
+            response.companyProfile.sectorId = sectorCode.Trim();
+            response.companyProfile.sectorName = sectorName.Trim();
+        }
+
+        // V4: the unit's site tour sections and the team's photos of each (redesigned app; older apps ignore them). Only
+        // milestone 1 has a site tour; the technology upgradation (DFO) has none.
+        var zedId = requestedZedId!.Trim();
+        if (!dfo && response.milestone == SiteTourMilestone && certification.Length > 0)
+        {
+            var sections = await UnitSiteTourSectionsAsync(zedId, certification, ct);
+            var counts = SiteTourSections.Count(sections, (await SiteTourPhotosAsync(zedId, certification, ct)).Select(r => (r.PhotoId, r.Name)));
+            response.siteTourSections = sections.Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, counts[t.Id])).ToList();
+        }
+        else response.siteTourSections = [];
+        return new UnitAnswer(response, null);
+    }
+
+    /// <summary>The NIC 2-digit sector's name (dbo.Sectors, the sector master).</summary>
+    public const string SectorNameSql = SAController.SectorNameSql;
 
     private static ContentResult LoginFail(string message) => LegacyJson(new AssessmentDetails { status = "0", errorMessage = message });
 

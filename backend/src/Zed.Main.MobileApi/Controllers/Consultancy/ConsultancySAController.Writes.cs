@@ -1,6 +1,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Text.Json;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Forms;
 using Zed.Core.Http;
@@ -64,13 +65,39 @@ public sealed partial class ConsultancySAController
         if (await RefuseAsync(nameof(SubmitSiteTour), request.saId, request.zedId, certification, Role.Team, ct) is { } refused) return refused;
         if (await RequireOpenAsync(request.zedId, request.certificationType, request.saId, ct) is { } stage) return stage;
 
+        // V4 (redesigned app), as the site assessor app's SA/SubmitSiteTour: a photo may name its site tour section (Admin →
+        // Site Tour Sections of the Consultancy system, the unit's level and NIC sector); the name stored (SaPhotos.Name) is
+        // then "3. Production / Machine Shop - remark", cut to 200 characters. Without one, the comment as before. A section
+        // takes at most its maximum of photos, the team's photos of the milestone already stored included.
+        var zedId = request.zedId!.Trim();
+        var sent = (request.siteTourPhotos ?? []).Where(p => !string.IsNullOrEmpty(p.photo)).ToList();
+        var sections = sent.Any(p => !string.IsNullOrWhiteSpace(p.section)) ? await UnitSiteTourSectionsAsync(zedId, certification, ct) : [];
+        foreach (var p in sent)
+            if (!string.IsNullOrWhiteSpace(p.section) && SiteTourSections.Find(sections, p.section) is null)
+                return Fail(SAController.UnknownSiteTourSection);
+        if (sections.Count > 0)
+        {
+            var resent = sent.Select(p => p.photoId).ToHashSet(StringComparer.Ordinal);
+            var stored = (await SiteTourPhotosAsync(zedId, certification, ct)).Where(r => !resent.Contains(r.PhotoId ?? ""));
+            var counts = SiteTourSections.Count(sections, stored.Select(r => (r.PhotoId, r.Name)));
+            foreach (var p in sent)
+                if (SiteTourSections.Find(sections, p.section) is { } section) counts[section.Id]++;
+            if (sections.FirstOrDefault(t => counts[t.Id] > t.Max) is { } over)
+            {
+                log.LogInformation("Consultancy SA/SubmitSiteTour: {ZedId} section {Section} over its maximum of {Max}", zedId, over.Id, over.Max);
+                return Fail(SAController.TooManySiteTourPhotos(over));
+            }
+        }
+
         var photos = PhotoTable();
         foreach (var p in request.siteTourPhotos ?? [])
         {
             if (string.IsNullOrEmpty(p.photo)) continue;
             var folder = storage.Folder("SaPhotos", request.zedId, certification, "SiteTour");
             await storage.SaveBase64Async(p.photo, folder, MobileStorage.FileName(p.photoId, ".jpg"), ct);
-            AddPhoto(photos, p.photoId, p.comment, p.timeStamp, p.latitude, p.longitude);
+            var name = SiteTourSections.Find(sections, p.section) is { } section
+                ? SiteTourSections.Name(SiteTourSections.Label(sections, section), p.comment) : p.comment;
+            AddPhoto(photos, p.photoId, name, p.timeStamp, p.latitude, p.longitude);
         }
         return LegacyJson(await SavePhotosAsync(nameof(SubmitSiteTour), request.saId, request.zedId, request.certificationType, "SiteTour", photos, ct));
     });
@@ -151,6 +178,16 @@ public sealed partial class ConsultancySAController
         if (!st.AllParametersSyncedByLead) return Fail(NotSynced + request.zedId);
         if (!st.AllParametersSyncedByCo) return Fail(NotSynced + request.zedId);
         if (!st.FinalSubmissionDone) return Fail(FinalNotSynced + request.zedId);
+
+        // V4: the closing meeting of milestone 1 (the milestone with the site tour) waits until every site tour section of the
+        // unit has its minimum of photos (the team's, as stored for the milestone).
+        var zedId = request.zedId!.Trim();
+        if (await CurrentMilestoneAsync(zedId, certification, ct) == SiteTourMilestone)
+        {
+            var sections = await UnitSiteTourSectionsAsync(zedId, certification, ct);
+            var counts = SiteTourSections.Count(sections, (await SiteTourPhotosAsync(zedId, certification, ct)).Select(r => (r.PhotoId, r.Name)));
+            if (SiteTourSections.Shortfall(sections, counts) is { } shortfall) return Fail(shortfall);
+        }
 
         var participants = Participants(request.endParticipants);
         var photos = await SaveMeetingPhotosAsync(request, certification, ct);

@@ -635,7 +635,7 @@ by e-mail, each active assessor (up to 5) with that `Users.Email`. No captcha (t
 ### Site tour sections
 
 The Admin decides the sections on the main portal (Administration → Site Tour Sections, per system: Main and
-Surveillance; `api/staff/settings/site-tour-sections`, GET / PUT the whole list / DELETE back to the standard ten). Each
+Surveillance, and Consultancy for the consultant app, below; `api/staff/settings/site-tour-sections`, GET / PUT the whole list / DELETE back to the standard ten). Each
 section has a key (`id`, never changed), a name, what to capture (`hint`), a minimum and a maximum of photos (0–50, max at
 least 1), the certification levels and NIC 2-digit sectors it is asked of (none = all) and whether it is in use. Stored as
 JSON in `dbo.V4Settings` (key `SiteTour.Sections`, migration 0011; no new table); without a saved list the ten standard
@@ -670,6 +670,147 @@ already on disk and no `SaPhotos` row is written. This is unchanged from before;
   token on the portal). Without it the mobile reads still work (Data Protection), but `SA/AppReport` answers 401.
 - Migration 0040 (session stamp) for revocation; 0028 for `sectorActivity` and the level list (optional).
 - `Mobile:AppTokens:Apps:SA` may stay Monitor for the installed app; the new reads require the token anyway.
+
+## Consultant app, redesigned (Consultancy)
+
+The redesigned consultant app (`mobile/apps/consultant`, `com.qci.zed.consultancy`) works like the site assessor app 2.0
+above: sign-in with the consultant ID and password only, a dashboard of all the consultant's handholding cases, one unit
+opened at a time. Served on the Consultancy mobile host (`/consultancymobileapi`, ZED_CONSULTANT) by
+`ConsultancySAController` (partial `Controllers/Consultancy/ConsultancySAController.App.cs`, `ConsultancyAppData`; models at
+the end of `Models/ConsultancyModels.cs`) and on the Consultancy portal by
+`Zed.Portal/Features/Consultancy/ConsultantApp/ConsultantAppController.cs`; tests `ConsultancyAppDashboardTests` (mobile)
+and `ConsultantAppTests` (Zed.Consultancy.Api.Tests). **Nothing changes for the installed app**: `SA/Login` and every
+`SA/Submit*` call keep their checks and formats (`SA/Login` now also answers `companyProfile.sectorId` and
+`siteTourSections`, which older apps ignore). No new table or column. Unlike the site assessor app there is **no one-phone
+rule**. Same JSON conventions as the SA app 2.0 (legacy `status` / `errorMessage`, ISO dates in server time).
+
+### `SA/SignIn`
+
+Request `{ "assessorId", "password", "version", "deviceInfo" }` (`assessorId` = the consultant ID). The checks of
+`SA/Login`, shared code (`CheckSignInAsync`): version gate (`Mobile:CheckSaVersion` / `Mobile:SaVersion`, status "2"),
+the throttle (5 failures, 15 minutes), PasswordStore and the master-password block, `SP_APP_SA_CHECK_LOGIN_V2` with
+`ZedId = NULL` and its own refusal texts ("Invalid Credentials. Please check"). Without a unit the procedure ends, for a
+valid account, in its "not yet allocated" branch; the Users row it would have answered is then read as it selects it
+(`SignInUserSql`: RoleId 3, the password sent, active, site or financial verification) and must pass PasswordStore and
+RoleId 3. An account that is a technology upgradation verifier only (DFO, no site verification) is refused: "Technology
+upgradation verifiers sign in with the unit's ZED ID." (they keep using `SA/Login`). `Sensitive` rate limit, login audit,
+device remembered (app key `SA`), app token without a unit.
+
+```json
+{ "status": "1", "errorMessage": null, "appToken": "h1....",
+  "profile": { "assessorId", "name", "email", "mobile", "agencyId", "agencyName", "agencyEmail", "agencyMobile" },
+  "counts": { "total", "upcoming", "ongoing", "submitted", "completed", "closed" },
+  "assessments": [ "as SA/Assessments" ],
+  "siteTourSections": [ { "id", "no", "title", "hint", "min", "max", "uploaded": 0 } ] }
+```
+
+`agency*` is the consultant's Consultant Organisation: `Users.CreatedBy` (a CO creates its consultants, SP_INSERT_USER from
+the CO's sign-in) and that CO's own Users row (`UserName`, `Email`, `MobileNo`).
+
+### `SA/Assessments`, `SA/Assessment`, `SA/Notifications`, `SA/Reports`
+
+Requests `{ "saId", "deviceInfo" }` (`SA/Assessment` also `"zedId"`, optional `"certificationType"`) with `X-Zed-App-Token`,
+**required whatever `Mobile:AppTokens:Apps:SA` says**; the Users row must still be an active consultant (RoleId 3,
+`SiteVerification`, `IsActive`), else `{"status":"0","errorMessage":"Your sign-in has expired. Please sign in again."}`.
+
+**`SA/Assessments`** answers `{ status, errorMessage, counts, assessments: [...] }`. ZED_CONSULTANT keeps one
+`MsmeCertifications` row per milestone (`NcCount` 1 to 3). The rows the consultant is on (lead `SiteAssessorId`, or
+co-consultant in `AllotedCoAssessors` of that milestone: two index-friendly look-ups joined by `UNION`), levels
+Bronze/Silver/Gold, not the `_` copies, status 8 on; open ones always, finished ones (above 15) while their status date
+(else the visit date) is within 12 months. One case per unit and level: the latest milestone the consultant is on.
+
+```json
+{ "zedId", "certificationType": "Silver", "levelName", "enterpriseName", "unitName", "address", "district", "state", "pincode",
+  "assessmentDate": "the milestone visit date", "certificationStatus": 9, "statusDate", "stage", "statusLabel",
+  "openMeetingSubmitted": true, "canOpen": true, "role": "Lead | Co", "userType": 1,
+  "team": [ { "assessorId", "name", "email", "mobile", "role": "Lead | Co", "userType": 1 } ],
+  "spoc": { "name", "designation", "email", "phone", "source": "representative | owner | null" },
+  "latitude", "longitude",
+  "milestone": 2,
+  "milestones": [ { "no": 1, "status": "done", "label": "Baseline Diagnostic & Action Plan" },
+                  { "no": 2, "status": "current", "label": "Progress Review 1" },
+                  { "no": 3, "status": "locked", "label": "Progress Review 2" } ] }
+```
+
+| `certificationStatus` (the milestone row) | `stage` / `statusLabel` |
+|---|---|
+| 8 (allotted to the CO) | `scheduled` / Scheduled |
+| 9 (consultants allotted) | `inProgress` / In Progress once the milestone's open meeting is in (`Meetings`, NcCount), else `scheduled` |
+| 13 (closing meeting done; the lead final-submits on the web) | `submitted` / Submitted; `sentBack` / Sent Back when the CO sent it back (`SendBackStatus` 1) |
+| 15 (with the Consultant Organisation) | `underReview` / Under Review |
+| 16 (completed by the CO), 100 (accepted by the MSME) | `completed` / Completed, Accepted |
+| 99 | `rejected` / Rejected |
+| anything else | `closed` / Closed |
+
+`counts`: `upcoming` = scheduled, `ongoing` = inProgress + sentBack, `submitted` = submitted + underReview, `completed`,
+`closed` = rejected + closed. `canOpen`: the unit's latest milestone at status 8 or 9 (what `SA/Login` opens).
+`milestones`: from the unit's milestone rows, `done` (completed / accepted, or a later milestone exists), `current` (the
+latest, not done), `locked` (no row yet: the MSME has not paid for it). The technology upgradation ("milestone 4" of the
+installed app) is the DFO's and is not listed. Team: the milestone's lead and co-consultants (`AllotedCoAssessors`, Users).
+SPOC and location as in the SA app 2.0 (`MsmeSelfies`, `MsmeLocations`, the open meeting; usually null here).
+
+**`SA/Assessment`** answers exactly what `SA/Login` answers for that unit (same `AssessmentDetails`, shared code
+`UnitAnswerAsync`), without `appToken`, with its refusals: `SP_APP_SA_CHECK_LOGIN_V2`'s unit branch (`OpenUnitSql`, the
+co-consultant matched exactly as database fix 05): "Handholding Closing Meeting Submitted for the ZEDID: …" when the unit
+is past status 9, "Handholding Consultant not yet allocated for the ZEDID: …" otherwise; then
+`SP_APP_SA_CONSULTANCY_CHECK_LOGIN` (its sets are the V2 sets 1 to 9; it does not read the password, which is sent as
+`V4!REFUSED`) and the exact allotment check. A `certificationType` that is not the unit's open level is "not yet
+allocated". Like `SA/Login`, it records the app sign-in (`V4AppSessions`).
+
+**`SA/Notifications`** answers `{ status, errorMessage, notifications: [ { "id", "type", "title", "text", "zedId",
+"certificationType", "enterpriseName", "date" } ] }`, newest first, at most 100. From `MsmeHistory` of the last 30 days
+(the consultant's units, the newest row of each kind per unit, level and milestone): `allotted` (`ScheduledOn`, "New
+handholding case assigned", with the visit date), `completed` (`Completed`, SP_MONITORING_RA_FINAL_SUBMIT: "Milestone 2
+completed"), `sentBack` (`CO Send back to Consultant`). From the cases: `reminder` (a milestone visit today or tomorrow not
+started; dated now) and `accepted` (status 100 with a status date in the window). Ids `h{MsmeHistory.Id}`,
+`r-{zedId}-{level}-{milestone}-{yyyyMMdd}`, `a-{zedId}-{level}-{milestone}`.
+
+**`SA/Reports`** answers `{ status, errorMessage, reports: [ { "zedId", "certificationType", "levelName", "milestone",
+"milestoneLabel", "enterpriseName", "district", "state", "assessmentDate", "certificationStatus", "statusDate", "stage",
+"statusLabel", "role", "team", "reportAvailable", "reportPath" } ] }`: every milestone of the consultant from the closing
+meeting (status 13) on, at most 300, newest first. `reportAvailable` for Silver / Gold milestones completed, accepted or
+rejected; `reportPath` = `SA/AppReport?zedId=...&certificationType=...&milestone=n`, relative to the **consultancy portal**.
+
+### Milestone report and forgot password (consultancy portal)
+
+- `GET {consultancy portal}/SA/AppReport?zedId=…&certificationType=Silver|Gold&milestone=1..3` (milestone optional: the
+  current one) with `X-Zed-App-Token`: a genuine, unexpired `SA` token of this deployment (else 401), its consultant the
+  lead or a co-consultant **of that milestone** (else 404). The PDF is the MSME's download (`MilestoneDownloads`): the
+  current milestone drawn from `SP_REPORT_GET_DETAILS` once completed (16), accepted (100) or rejected (99) and stored under
+  its legacy name; an earlier milestone from the file stored when it was completed (404 when it was never stored). Bronze,
+  milestone 4, a bad id: 404. `Sensitive` rate limit.
+- `POST {consultancy portal}/SA/AppForgotPassword` with `{ "assessorId" }` or `{ "email" }`: the Consultancy portal's staff
+  "Forgot password?" (`StaffPasswordResets`, mail "ZED Password Reset - {UserId}", link to this portal's
+  `/reset-password`) limited to RoleId 3 (the app's accounts), by e-mail each active RoleId 3 account (up to 5) with that
+  address. Always `{"status":"1","errorMessage":"If the Consultant ID or e-mail address belongs to an active consultant
+  account, a link to set a new password has been sent to its registered e-mail address."}` before any look-up; "Please
+  enter your Consultant ID or registered e-mail address." for empty input; `Sensitive` limit and 3 links an hour per account.
+
+### Site tour sections (Consultancy)
+
+Admin → Site Tour Sections now has the Consultancy portal in its switch (main portal; `SITE_TOUR_PORTALS`), stored in
+ZED_CONSULTANT's `V4Settings` (`SiteTour.Sections`, migration 0011); the levels offered are Silver and Gold. Only milestone
+1 has a site tour:
+- `SA/Login` / `SA/Assessment` of milestone 1 answer the unit's sections (level, NIC sector from `Msme.TwoDigitActivity`)
+  as `siteTourSections: [{ id, no, title, hint, min, max, uploaded }]`; `uploaded` counts the team's site tour photos of the
+  current milestone as `SA/SubmitSiteTour` stores them (`SaPhotos`, PhotoType `SiteTour`, `NcCount` = the current
+  milestone, distinct PhotoId, by the section name). Other milestones and the DFO answer `[]`. `SA/SignIn` answers every
+  section in use with `uploaded` 0.
+- `SA/SubmitSiteTour` takes `"section"` (key, name or number) per photo, stores `"3. Production / Machine Shop - remark"`
+  (200 characters) and refuses an unknown section or one over its maximum with the SA app's texts ("Unknown site tour
+  section. Please update the ZED SA app.", `Site Tour: "…" takes at most 2 photos. Please remove the extra photos.`).
+- `SA/SubmitEndAssessment` of the lead (closing meeting) when the current milestone is 1 is refused until every section has
+  its minimum (`Site Tour: "…" needs at least 3 photos (2 uploaded). Please capture and sync them before the closing
+  meeting.`); the co-consultant's final submit and milestones 2 and 3 are not checked.
+- `companyProfile.sectorId` / `sectorName`: the NIC code and its `dbo.Sectors` name, as on the SA app.
+
+### Configuration on the test server
+
+- `Mobile:AppTokenKey` on the Consultancy mobile host **and** the Consultancy portal (the report reads the token there).
+- Migration 0011 on ZED_CONSULTANT (V4Settings) for the Admin's sections (without it, the ten standard sections); 0001 and
+  0040 as for the installed app. `StaffPasswordReset:Enabled` on the Consultancy portal for forgot password.
+- `Mobile:CheckSaVersion` / `Mobile:SaVersion` of the Consultancy mobile host gate both `SA/Login` and `SA/SignIn`: raise
+  it when the redesigned app is released (the installed app cannot file photos under sections).
 
 ## v2: token-based API (for the next app release)
 

@@ -215,6 +215,35 @@ describe('SiteTourSectionsPage', () => {
   });
 });
 
+describe('SiteTourSectionsPage portal switch', () => {
+  afterEach(() => sessionStorage.clear());
+
+  async function open(portal: string | null): Promise<HTMLElement> {
+    sessionStorage.clear();
+    if (portal) sessionStorage.setItem('zed.adminPortal', portal);
+    await TestBed.configureTestingModule({ imports: [SiteTourSectionsPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    const fixture = TestBed.createComponent(SiteTourSectionsPage);
+    const http = TestBed.inject(HttpTestingController);
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    http.match(() => true).forEach((r) => r.flush(r.request.url.endsWith('/sectors') ? [] : { sections: [], levels: [], customised: false }));
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture.nativeElement;
+  }
+
+  it('offers the three portals and names the app whose site tour the sections are', async () => {
+    let el = await open(null);
+    expect([...el.querySelectorAll('.ps-tab')].map((t) => t.textContent!.trim())).toEqual(['ZED Certification', 'Consultancy', 'Surveillance']);
+    expect(el.querySelector('.page-sub')!.textContent).toContain('the site assessor app files');
+
+    TestBed.resetTestingModule();
+    el = await open('consultancy');
+    expect(el.querySelector('.ps-tab.on')!.textContent!.trim()).toBe('Consultancy');
+    expect(el.querySelector('.page-sub')!.textContent).toContain('the consultant app (milestone 1 visit) files');
+  });
+});
+
 describe('sectionId', () => {
   it('makes a key from the name, unique among the others', () => {
     expect(sectionId('Paint Shop', ['entrance'])).toBe('paint-shop');

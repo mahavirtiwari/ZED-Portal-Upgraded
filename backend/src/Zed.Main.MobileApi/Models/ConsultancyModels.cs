@@ -1,4 +1,8 @@
 using Zed.Core.Mobile;
+using SaNotification = Zed.Main.MobileApi.Models.Assessor.SaNotification;
+using SaSpoc = Zed.Main.MobileApi.Models.Assessor.SaSpoc;
+using SaTeamMember = Zed.Main.MobileApi.Models.Assessor.SaTeamMember;
+using SiteTourSectionInfo = Zed.Main.MobileApi.Models.Assessor.SiteTourSectionInfo;
 
 // Field-for-field copies of the classes the consultant app (and the TU verifier / DFO app) exchange with the old
 // ZEDCS_CONSULTANCY SwachhSurvekshanServices SAController (DataModels.Requests / Responses / DataModel and
@@ -24,6 +28,12 @@ public sealed class PhotoInformation
     public string? latitude { get; set; }
     public string? longitude { get; set; }
     public string? comment { get; set; }
+    /// <summary>
+    /// New in V4 (redesigned consultant app, SA/SubmitSiteTour only): the site tour section the photo is filed under, its key,
+    /// name or number in the unit's list (<see cref="AssessmentDetails.siteTourSections"/>). Never answered (left out when null).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? section { get; set; }
 }
 
 public sealed class Participant
@@ -222,6 +232,11 @@ public sealed class AssessmentDetails : ServiceResponse
     public bool isSelfieSubmitted { get; set; }
     public string? certificationType { get; set; }
     public int milestone { get; set; }
+    /// <summary>
+    /// New in V4 (redesigned consultant app): the unit's site tour sections in order (milestone 1, the milestone with the site
+    /// tour; empty in the others), with their photo limits and the photos the team has uploaded. Older apps ignore it.
+    /// </summary>
+    public List<SiteTourSectionInfo>? siteTourSections { get; set; }
 }
 
 /// <summary>BasicInfoConsultancyRequest (: BaseServiceRequest).</summary>
@@ -485,6 +500,152 @@ public sealed class CheckParameterSyncStatusRequest
     public string? saId { get; set; }
     public string? zedId { get; set; }
     public string? certificationType { get; set; }
+}
+
+// ---------- Redesigned consultant app: sign-in without a unit, dashboard reads ----------
+// New in V4, after the SA app 2.0 calls (Models.Assessor: the team, SPOC, notice and site tour section shapes are the same);
+// the installed app never sends or reads these. Dates are ISO text ("2026-05-04T10:00:00", server time).
+
+/// <summary>SA/SignIn: the consultant's own sign-in, without a ZED ID.</summary>
+public sealed class ConsultantSignInRequest
+{
+    public string? assessorId { get; set; }
+    public string? password { get; set; }
+    public string? version { get; set; }
+    public DeviceInfo? deviceInfo { get; set; }
+}
+
+/// <summary>SA/Assessments, SA/Notifications, SA/Reports: the signed-in consultant (the token's user).</summary>
+public sealed class ConsultantRequest
+{
+    public string? saId { get; set; }
+    public DeviceInfo? deviceInfo { get; set; }
+}
+
+/// <summary>SA/Assessment: one of the consultant's units, opened as SA/Login opened it.</summary>
+public sealed class ConsultantAssessmentRequest
+{
+    public string? saId { get; set; }
+    public string? zedId { get; set; }
+    public string? certificationType { get; set; }
+    public DeviceInfo? deviceInfo { get; set; }
+}
+
+public sealed class ConsultantSignInResponse : ServiceResponse
+{
+    public ConsultantProfile? profile { get; set; }
+    public ConsultantCounts? counts { get; set; }
+    public List<ConsultantCase>? assessments { get; set; }
+    public List<SiteTourSectionInfo>? siteTourSections { get; set; }
+}
+
+public sealed class ConsultantProfile
+{
+    public string? assessorId { get; set; }
+    public string? name { get; set; }
+    public string? email { get; set; }
+    public string? mobile { get; set; }
+    /// <summary>The Consultant Organisation that created the consultant (Users.CreatedBy) and its name, e-mail and mobile.</summary>
+    public string? agencyId { get; set; }
+    public string? agencyName { get; set; }
+    public string? agencyEmail { get; set; }
+    public string? agencyMobile { get; set; }
+}
+
+public sealed class ConsultantCounts
+{
+    public int total { get; set; }
+    /// <summary>scheduled.</summary>
+    public int upcoming { get; set; }
+    /// <summary>inProgress and sentBack.</summary>
+    public int ongoing { get; set; }
+    /// <summary>submitted and underReview.</summary>
+    public int submitted { get; set; }
+    public int completed { get; set; }
+    /// <summary>rejected and closed.</summary>
+    public int closed { get; set; }
+}
+
+/// <summary>A handholding case of the consultant: one unit and level, at the latest milestone the consultant is allotted to.</summary>
+public sealed class ConsultantCase
+{
+    public string? zedId { get; set; }
+    public string? certificationType { get; set; }
+    public string? levelName { get; set; }
+    public string? enterpriseName { get; set; }
+    public string? unitName { get; set; }
+    public string? address { get; set; }
+    public string? district { get; set; }
+    public string? state { get; set; }
+    public string? pincode { get; set; }
+    /// <summary>The milestone visit date (MsmeCertifications.AssessmentDate of the milestone).</summary>
+    public string? assessmentDate { get; set; }
+    public int certificationStatus { get; set; }
+    public string? statusDate { get; set; }
+    /// <summary>scheduled, inProgress, submitted, sentBack, underReview, completed, rejected, closed.</summary>
+    public string? stage { get; set; }
+    public string? statusLabel { get; set; }
+    public bool openMeetingSubmitted { get; set; }
+    /// <summary>SA/Assessment opens it (the milestone at status 8 or 9, as SA/Login).</summary>
+    public bool canOpen { get; set; }
+    /// <summary>"Lead" or "Co"; userType 1 / 2 as SA/Login answers it.</summary>
+    public string? role { get; set; }
+    public int userType { get; set; }
+    public List<SaTeamMember>? team { get; set; }
+    public SaSpoc? spoc { get; set; }
+    public string? latitude { get; set; }
+    public string? longitude { get; set; }
+    /// <summary>The case's milestone (1 to 3; MsmeCertifications.NcCount).</summary>
+    public int milestone { get; set; }
+    public List<MilestoneStep>? milestones { get; set; }
+}
+
+/// <summary>One milestone of the unit's handholding, for the case's progress.</summary>
+public sealed class MilestoneStep
+{
+    public int no { get; set; }
+    /// <summary>"done", "current" or "locked".</summary>
+    public string? status { get; set; }
+    public string? label { get; set; }
+}
+
+public sealed class ConsultantAssessmentsResponse : ServiceResponse
+{
+    public ConsultantCounts? counts { get; set; }
+    public List<ConsultantCase>? assessments { get; set; }
+}
+
+public sealed class ConsultantNotificationsResponse : ServiceResponse
+{
+    public List<SaNotification>? notifications { get; set; }
+}
+
+public sealed class ConsultantReport
+{
+    public string? zedId { get; set; }
+    public string? certificationType { get; set; }
+    public string? levelName { get; set; }
+    public int milestone { get; set; }
+    public string? milestoneLabel { get; set; }
+    public string? enterpriseName { get; set; }
+    public string? district { get; set; }
+    public string? state { get; set; }
+    public string? assessmentDate { get; set; }
+    public int certificationStatus { get; set; }
+    public string? statusDate { get; set; }
+    public string? stage { get; set; }
+    public string? statusLabel { get; set; }
+    public string? role { get; set; }
+    public List<SaTeamMember>? team { get; set; }
+    /// <summary>The consultancy portal serves the milestone report PDF (Silver / Gold, milestone completed or rejected).</summary>
+    public bool reportAvailable { get; set; }
+    /// <summary>Address of the PDF relative to the consultancy portal (GET with the app token), or null.</summary>
+    public string? reportPath { get; set; }
+}
+
+public sealed class ConsultantReportsResponse : ServiceResponse
+{
+    public List<ConsultantReport>? reports { get; set; }
 }
 
 // ---------- Server-side only ----------

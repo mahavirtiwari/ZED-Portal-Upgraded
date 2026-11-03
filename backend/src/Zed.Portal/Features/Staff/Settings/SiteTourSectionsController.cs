@@ -11,12 +11,14 @@ namespace Zed.Portal.Features.Staff.Settings;
 /// Admin → Site Tour Sections (new in V4): the sections the site assessor app files the site tour photos under, the photos
 /// each needs (minimum) and takes (maximum), and the certification levels and NIC sectors each is asked of (none = all).
 /// Per system, in the system's own database (dbo.V4Settings, migration 0011; <see cref="SiteTourSections"/>). The mobile API
-/// gives each unit its sections, refuses photos beyond a maximum and the closing meeting before every minimum is met.
+/// gives each unit its sections, refuses photos beyond a maximum and the closing meeting before every minimum is met. On the
+/// Consultancy system they are the sections of the consultant app's site tour (handholding milestone 1, Silver and Gold); the
+/// Admin manages them from the main portal through the portal switch.
 /// </summary>
 [Route("api/staff/settings/site-tour-sections")]
 [StaffRoles(UserRole.Admin)]
-[PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
-public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExecutor db, ILogger<SiteTourSectionsController> log) : StaffApiController
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
+public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExecutor db, PortalHost host, ILogger<SiteTourSectionsController> log) : StaffApiController
 {
     public sealed record LevelOption(string Code, string Name);
 
@@ -28,8 +30,11 @@ public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExe
     [HttpGet]
     public async Task<SectionsResponse> Get(CancellationToken ct)
     {
+        // Bronze has no site tour; handholding (Consultancy) is towards Silver or Gold only.
         var levels = (await CertLevels.CertificationLevels.AllAsync(db, log, ct))
-            .Where(l => !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase))
+            .Where(l => host.System == PortalSystem.Consultancy
+                ? l.Code is "Silver" or "Gold"
+                : !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase))
             .Select(l => new LevelOption(l.Code, l.Name)).ToList();
         return new SectionsResponse(await SiteTourSections.LoadAsync(settings, ct), levels, !string.IsNullOrWhiteSpace(await settings.GetAsync(SiteTourSections.Key, ct)));
     }
