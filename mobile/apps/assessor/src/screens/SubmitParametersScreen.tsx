@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckBox, isNetworkAvailable, isSuccess, useUi } from '@zed/shared';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { isNetworkAvailable, isSuccess, useNavigation, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { PREFS } from '../db/stores';
 import {
@@ -17,8 +17,9 @@ import {
   syncSelfie,
 } from '../flows/submissions';
 import { areAllParametersSubmitted, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, SUBMITTED, UNKNOWN_ERROR, type AllottedParameters, type ServiceResponse } from '../models';
-import { SaButton, SaFrame, sa } from '../ui/kit';
+import { C, HeroHeader, Page, SectionLabel, Strip, ZButton, ZIcon, z } from '../ui/zed';
 import { useSubmissionSuccess } from './FinalCommentsScreen';
+import { TickBox } from './ParametersScreens';
 
 type PendingRow = { kind: 'openMeeting' | 'selfie' | 'siteTour' | 'closeMeeting'; title: string };
 
@@ -28,6 +29,7 @@ const failure = (r: { errorMessage?: string | null } | null) => (r?.errorMessage
 export function SubmitParametersScreen() {
   const app = useSa();
   const ui = useUi();
+  const nav = useNavigation();
   const onSuccess = useSubmissionSuccess();
   const d = app.details!;
   const [pending, setPending] = useState<PendingRow[] | null>(null);
@@ -167,72 +169,152 @@ export function SubmitParametersScreen() {
     if (mode === 'selected' && nextSelected) return submitOne(nextSelected, 'selected');
   };
 
-  if (pending == null) return <SaFrame>{null}</SaFrame>;
+  const header = <HeroHeader title="Sync Assessment" subtitle={app.zedId} onBack={() => nav.pop()} />;
+  if (pending == null) return <Page>{header}</Page>;
 
   const rows = closeRow ? [...pending, closeRow] : pending;
   const showParams = pending.length === 0;
+  const canSyncParams = showParams && completed.length > 0;
+  // Already on the server: shown as SYNCED, nothing to do.
+  const synced = [
+    d.userType === 1 && d.isOpenMeetingSubmitted && !pending.some(r => r.kind === 'openMeeting') ? 'Opening Meeting' : null,
+    d.isSelfieSubmitted && !pending.some(r => r.kind === 'selfie') ? 'Selfie on Site' : null,
+    d.isSiteTourSubmitted ? 'Site Tour' : null,
+  ].filter((t): t is string => t != null);
+  const submittedParams = (d.allottedParameters ?? []).filter(p => p && p.status === SUBMITTED);
+  const nothing = rows.length === 0 && !canSyncParams;
+  const allSynced = synced.length > 0 || submittedParams.length > 0;
+
   return (
-    <SaFrame testID="submit-parameters">
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
+    <Page testID="submit-parameters">
+      {header}
+      <ScrollView contentContainerStyle={z.screenPad}>
+        <SectionLabel label="Sync Assessment" />
+        {nothing ? (
+          <View testID="no-data">
+            {allSynced ? (
+              <Strip text="All synced · nothing left on this phone" tone="success" icon="check" />
+            ) : (
+              <Strip text="Nothing captured yet · nothing to sync" tone="warning" />
+            )}
+          </View>
+        ) : (
+          <Strip text="Saved on this phone · Ready to sync" tone="success" icon="check" />
+        )}
+
         {rows.map(row => (
-          <View key={row.kind} style={styles.pendingRow}>
-            <Text style={styles.pendingTitle}>{row.title}</Text>
-            <SaButton title="Sync" onPress={() => syncRow(row)} style={styles.syncButton} testID={`sync-${row.kind}`} />
-          </View>
+          <SyncRow key={row.kind} title={row.title} chip={<SyncChip onPress={() => syncRow(row)} testID={`sync-${row.kind}`} />} />
         ))}
-        {showParams && completed.length === 0 && !closeRow ? <Text style={styles.progressText} testID="no-data">No data to sync</Text> : null}
-        {showParams && completed.length > 0 ? (
-          <View>
-            <View style={styles.pendingRow}>
-              <Text style={styles.pendingTitle}>Sync All</Text>
-              <SaButton title="Sync" onPress={() => submitOne(completed[0]!, 'all')} style={styles.syncButton} testID="sync-all" />
-            </View>
-            <View style={styles.pendingRow}>
-              <Text style={styles.pendingTitle}>Sync Selected</Text>
-              <SaButton
-                title="Sync"
-                style={styles.syncButton}
-                testID="sync-selected"
-                onPress={() => {
-                  const first = completed.find(x => x.isSelectedToSubmit);
-                  if (first) submitOne(first, 'selected');
-                  else ui.toast('Please select the Parameters you want to submit');
-                }}
-              />
-            </View>
+        {synced.map(t => (
+          <SyncRow key={t} title={t} chip={<SyncedChip />} />
+        ))}
+
+        {showParams && (completed.length > 0 || submittedParams.length > 0) ? (
+          <>
+            <SectionLabel label="Parameters" style={styles.paramsLabel} />
             {completed.map((p, i) => (
-              <View key={`${p.parameterId}-${i}`} style={styles.paramRow}>
-                <CheckBox
-                  label=""
-                  checked={p.isSelectedToSubmit}
-                  onChange={c => {
-                    p.isSelectedToSubmit = c;
-                    rerender(x => x + 1);
-                  }}
-                  testID={`select-${i}`}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.paramName}>{p.parameterName}</Text>
-                  <Text style={[styles.paramStatus, p.requirements && { color: sa.teal }]}>
-                    {p.requirements ? `${p.requirements.length} Question(s) | Completed` : '0 Question(s)'}
-                  </Text>
-                </View>
-                <SaButton title="Submit" onPress={() => submitOne(p, 'one')} style={styles.syncButton} testID={`submit-param-${i}`} />
-              </View>
+              <SyncRow
+                key={`${p.parameterId}-${i}`}
+                title={p.parameterName ?? ''}
+                subtitle={p.requirements ? `${p.requirements.length} requirement(s) · Completed` : '0 requirement(s)'}
+                tick={
+                  <TickBox
+                    checked={p.isSelectedToSubmit}
+                    onChange={c => {
+                      p.isSelectedToSubmit = c;
+                      rerender(x => x + 1);
+                    }}
+                    testID={`select-${i}`}
+                  />
+                }
+                chip={<SyncChip onPress={() => submitOne(p, 'one')} testID={`submit-param-${i}`} />}
+              />
             ))}
-          </View>
+            {submittedParams.map((p, i) => (
+              <SyncRow key={`done-${p.parameterId}-${i}`} title={p.parameterName ?? ''} chip={<SyncedChip />} />
+            ))}
+          </>
         ) : null}
+        {nothing && !allSynced ? <NoDataRows /> : null}
+
+        <View style={styles.bulk}>
+          <ZButton
+            title="SYNC SELECTED"
+            variant="secondary"
+            disabled={!canSyncParams}
+            style={[styles.bulkButton, canSyncParams && { backgroundColor: C.success, borderColor: C.success }]}
+            testID="sync-selected"
+            onPress={() => {
+              const first = completed.find(x => x.isSelectedToSubmit);
+              if (first) submitOne(first, 'selected');
+              else ui.toast('Please select the Parameters you want to submit');
+            }}
+          />
+          <ZButton title="SYNC ALL" disabled={!canSyncParams} style={styles.bulkButton} testID="sync-all" onPress={() => submitOne(completed[0]!, 'all')} />
+        </View>
       </ScrollView>
-    </SaFrame>
+    </Page>
+  );
+}
+
+/** A row of the sync list: tick box (parameters), title, status chip. */
+function SyncRow({ title, subtitle, tick, chip, muted }: { title: string; subtitle?: string; tick?: React.ReactNode; chip: React.ReactNode; muted?: boolean }) {
+  return (
+    <View style={styles.row}>
+      {tick ? <View style={styles.tick}>{tick}</View> : null}
+      <View style={styles.rowText}>
+        <Text style={[styles.rowTitle, muted && { color: C.tMuted }]}>{title}</Text>
+        {subtitle ? <Text style={styles.rowSub}>{subtitle}</Text> : null}
+      </View>
+      {chip}
+    </View>
+  );
+}
+
+const SyncChip = ({ onPress, testID }: { onPress: () => void; testID: string }) => (
+  <Pressable style={({ pressed }) => [styles.chip, styles.chipSync, pressed && { opacity: 0.85 }]} onPress={onPress} accessibilityRole="button" testID={testID}>
+    <Text style={[styles.chipText, { color: C.tInverse }]}>SYNC</Text>
+  </Pressable>
+);
+
+const SyncedChip = () => (
+  <View style={[styles.chip, { backgroundColor: C.successBg }]}>
+    <ZIcon name="check" size={14} color={C.success} />
+    <Text style={[styles.chipText, styles.chipSynced]}>SYNCED</Text>
+  </View>
+);
+
+/** Nothing on the phone and nothing synced yet: the sections, each "NO DATA". */
+function NoDataRows() {
+  return (
+    <>
+      {['Opening Meeting', 'Selfie on Site', 'Site Tour', 'Parameters', 'Closing Meeting'].map(t => (
+        <SyncRow
+          key={t}
+          title={t}
+          muted
+          chip={
+            <View style={[styles.chip, { backgroundColor: C.muted }]}>
+              <Text style={[styles.chipText, { color: C.tMuted }]}>NO DATA</Text>
+            </View>
+          }
+        />
+      ))}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  pendingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderBottomColor: sa.divider, borderBottomWidth: 1 },
-  pendingTitle: { flex: 1, color: sa.labelColor, fontSize: 16, fontWeight: 'bold' },
-  syncButton: { margin: 5, minHeight: 40 },
-  progressText: { color: sa.darkGrey, fontSize: 16, fontWeight: 'bold', padding: 16, textAlign: 'center' },
-  paramRow: { flexDirection: 'row', alignItems: 'center', padding: 6, borderBottomColor: sa.divider, borderBottomWidth: 1 },
-  paramName: { color: sa.darkGrey, fontSize: 16, padding: 8 },
-  paramStatus: { color: sa.coolGrey, fontSize: 14, fontWeight: 'bold', paddingHorizontal: 8, paddingBottom: 8 },
+  paramsLabel: { marginTop: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 56, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 14, paddingVertical: 8, marginBottom: 8 },
+  tick: { marginRight: 12 },
+  rowText: { flex: 1, marginRight: 8 },
+  rowTitle: { fontSize: 14, color: C.tPrimary },
+  rowSub: { fontSize: 11, color: C.success, fontWeight: '600', marginTop: 2 },
+  chip: { minWidth: 76, height: 32, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  chipSync: { backgroundColor: C.primary },
+  chipText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  chipSynced: { color: C.success, marginLeft: 4 },
+  bulk: { flexDirection: 'row', gap: 12, backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 16, marginTop: 8 },
+  bulkButton: { flex: 1, borderRadius: 24 },
 });

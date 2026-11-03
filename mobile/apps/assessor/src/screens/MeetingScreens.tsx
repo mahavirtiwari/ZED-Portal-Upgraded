@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { isNetworkAvailable, isNetworkError, isSuccess, OutlinedInput, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
+import { Image, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { randomUuid } from '../util/uuid';
 import {
@@ -8,55 +8,182 @@ import {
   newAssessmentRequest,
   openMeetingSubmitted,
   saveOpenMeetingOffline,
-  saveSelfieOffline,
-  selfieSubmitted,
   setMeetingDraft,
 } from '../flows/submissions';
 import { useInlineCapture } from '../photo/capture';
 import { FAILED_TO_SUBMIT, newPhotoInformation, SAVED_LOCALLY, type Participant, type PhotoInformation, type SubmitAssessmentRequest } from '../models';
-import { PhotoTile, SaButton, SaFrame, sa } from '../ui/kit';
+import { Avatar, C, CharCounter, Card, Field, HeroHeader, Page, SectionLabel, Strip, ZButton, ZIcon, z, type IconName } from '../ui/zed';
 
 const COMMENT_MAX = 500;
 
-/** SiteImagesCapturingActivity: the opening meeting's site exterior and interior photos. */
+// ------------------------------------------------------------------ building blocks of the on-site screens (also used by Attendance and Final Comments)
+
+/** The image of an inline (base64) photo. */
+export const base64Uri = (base64: string) => `data:image/jpeg;base64,${base64.replace(/\s/g, '')}`;
+
+/** "lat, long" of a geo-tag, or null without one. */
+export function geoText(lat: string | number | null | undefined, long: string | number | null | undefined): string | null {
+  return lat != null && long != null && lat !== '' && long !== '' ? `${lat}, ${long}` : null;
+}
+
+/**
+ * The full-width bottom call to action. Not `ready` (something still missing) it looks disabled like the design's
+ * empty state, but stays pressable so the screen's own checks still answer with their messages.
+ */
+export function SubmitButton({ title, ready, onPress, style, testID }: { title: string; ready: boolean; onPress: () => void; style?: StyleProp<ViewStyle>; testID?: string }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.submit, !ready && styles.submitIdle, pressed && { opacity: 0.85 }, style]} onPress={onPress} accessibilityRole="button" testID={testID}>
+      <Text style={[styles.submitText, !ready && { color: C.tMuted }]}>{title}</Text>
+    </Pressable>
+  );
+}
+
+/** Dashed "nothing captured yet" box of any size (dashed_placeholder). */
+export function DashedBox({ label, icon = 'camera', onPress, style, testID }: { label?: string; icon?: IconName; onPress?: () => void; style?: StyleProp<ViewStyle>; testID?: string }) {
+  return (
+    <Pressable style={[styles.dashed, style]} onPress={onPress} disabled={!onPress} testID={testID}>
+      <ZIcon name={icon} size={22} color={C.tMuted} />
+      {label ? <Text style={[z.muted, { marginTop: 6, textAlign: 'center' }]}>{label}</Text> : null}
+    </Pressable>
+  );
+}
+
+/** The tinted time / place card of the punch-out popup (07b). */
+export function TimePlaceCard({ time, place }: { time: string; place: string }) {
+  return (
+    <View style={styles.timePlace}>
+      <View style={z.rowCenter}>
+        <ZIcon name="calendar" size={18} color={C.primary} />
+        <View style={{ marginLeft: 10, flex: 1 }}>
+          <Text style={styles.smallCaps}>TIME</Text>
+          <Text style={styles.timeValue}>{time}</Text>
+        </View>
+      </View>
+      <View style={styles.timePlaceDivider} />
+      <View style={z.rowCenter}>
+        <ZIcon name="map-pin" size={16} color={C.primary} />
+        <Text style={[z.sub, { marginLeft: 8, flex: 1 }]} numberOfLines={1}>
+          {place}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/** The selfie card of the punch-out popup (07b): preview, "Selfie required / captured", geo-tag, Capture / Retake. */
+export function SelfieCard({ uri, geo, onPress, testID }: { uri: string | null; geo: string | null; onPress: () => void; testID?: string }) {
+  return (
+    <View style={styles.selfieCard}>
+      {uri ? (
+        <Image source={{ uri }} style={[styles.selfieSize, styles.selfiePhoto]} resizeMode="cover" testID={testID ? `${testID}-image` : undefined} />
+      ) : (
+        <DashedBox onPress={onPress} style={styles.selfieSize} />
+      )}
+      <View style={{ flex: 1, marginLeft: 16 }}>
+        <ZIcon name="camera" size={22} color={C.primary} />
+        <Text style={[styles.selfieState, !uri && { color: C.tMuted }]}>{uri ? 'Selfie captured' : 'Selfie required'}</Text>
+        <View style={[z.rowCenter, { marginTop: 6 }]}>
+          <ZIcon name="map-pin" size={12} color={C.tMuted} />
+          <Text style={[z.muted, { marginLeft: 4, flex: 1 }]} numberOfLines={2}>
+            {geo ? `Geo-tagged · ${geo}` : 'Geo-tagged'}
+          </Text>
+        </View>
+        <Pressable style={styles.pill} onPress={onPress} testID={testID}>
+          <Text style={styles.pillText}>{uri ? 'Retake' : 'Capture'}</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+// ------------------------------------------------------------------ screens
+
+/** SiteImagesCapturingActivity: the opening meeting's two site exterior photos (redesign; the legacy took an exterior and an interior one). */
 export function SiteImagesScreen() {
   const app = useSa();
   const ui = useUi();
   const nav = useNavigation();
   const { capture } = useInlineCapture();
+  // Redesign: two photos of the site exterior (was one exterior and one interior).
   const [exterior, setExterior] = useState<PhotoInformation>(() => newPhotoInformation(randomUuid));
-  const [interior, setInterior] = useState<PhotoInformation>(() => newPhotoInformation(randomUuid));
+  const [exterior2, setExterior2] = useState<PhotoInformation>(() => newPhotoInformation(randomUuid));
   const request = useMemo(() => newAssessmentRequest(app), [app]);
 
-  const take = async (which: 'exterior' | 'interior') => {
+  const take = async (which: 'exterior' | 'exterior-2') => {
     const shot = await capture();
     if (!shot) return;
     const update = (p: PhotoInformation): PhotoInformation => ({
       ...p,
       photo: shot.base64,
       timeStamp: shot.timeStamp,
-      name: which === 'exterior' ? 'Site Exterior Photo' : 'Site Interior Photo',
+      name: which === 'exterior' ? 'Site Exterior Photo 1' : 'Site Exterior Photo 2',
     });
     if (which === 'exterior') setExterior(update);
-    else setInterior(update);
+    else setExterior2(update);
   };
 
   const proceed = () => {
-    if (!exterior.photo) return ui.toast('Please capture site exterior photo');
-    if (!interior.photo) return ui.toast('Please capture site interior photo');
-    request.assessmentPhotos = [exterior, interior];
+    if (!exterior.photo || !exterior2.photo) return ui.toast('Please capture 2 site exterior photos');
+    request.assessmentPhotos = [exterior, exterior2];
     setMeetingDraft(app, request);
     nav.push('Meeting', { fromSiteImages: true });
   };
 
+  const shots = [
+    { key: 'exterior' as const, label: 'Site Exterior 1', photo: exterior },
+    { key: 'exterior-2' as const, label: 'Site Exterior 2', photo: exterior2 },
+  ];
+  const done = shots.filter(s => s.photo.photo).length;
+  // The first missing photo is the one to take next (the design's orange "Capture" tile).
+  const next = shots.find(s => !s.photo.photo)?.key;
+
   return (
-    <SaFrame testID="site-images">
-      <ScrollView contentContainerStyle={styles.content}>
-        <PhotoTile title="Take Site Exterior Photo" base64={exterior.photo} onPress={() => take('exterior')} testID="site-exterior" />
-        <PhotoTile title="Take Site Interior Photo" base64={interior.photo} onPress={() => take('interior')} testID="site-interior" />
-        <SaButton title="Proceed" large onPress={proceed} testID="site-images-proceed" />
+    <Page testID="site-images">
+      <HeroHeader title="Site Photos" subtitle={app.zedId} onBack={() => nav.pop()} />
+      <ScrollView contentContainerStyle={z.screenPad}>
+        <View style={styles.banner}>
+          <ZIcon name="camera" size={22} color={C.primary} />
+          <View style={{ flex: 1, marginLeft: 14 }}>
+            <Text style={styles.bannerTitle}>Site Exterior · 2 photos required</Text>
+            <Text style={z.sub}>Capture two photos of the site exterior.</Text>
+            <View style={[z.rowCenter, { marginTop: 4 }]}>
+              <ZIcon name="map-pin" size={11} color={C.primary} />
+              <Text style={styles.bannerGeo}>All photos geo-tagged automatically</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.tiles}>
+          {shots.map(s =>
+            s.photo.photo ? (
+              <Pressable key={s.key} style={styles.tile} onPress={() => take(s.key)} testID={`site-${s.key}`}>
+                <Image source={{ uri: base64Uri(s.photo.photo) }} style={StyleSheet.absoluteFill} resizeMode="cover" testID={`site-${s.key}-image`} />
+                <View style={styles.tilePin}>
+                  <ZIcon name="map-pin" size={14} color={C.tInverse} />
+                </View>
+                <View style={styles.tileBar}>
+                  <Text style={styles.tileBarText} numberOfLines={1}>{`${s.label} · ${s.photo.timeStamp ?? ''}`}</Text>
+                </View>
+              </Pressable>
+            ) : s.key === next ? (
+              <Pressable key={s.key} style={[styles.tile, styles.tileNext]} onPress={() => take(s.key)} testID={`site-${s.key}`}>
+                <ZIcon name="camera" size={32} color={C.primary} />
+                <Text style={styles.tileNextText}>Capture</Text>
+                <Text style={z.muted}>{s.label}</Text>
+              </Pressable>
+            ) : (
+              <DashedBox key={s.key} label={s.label} onPress={() => take(s.key)} style={[styles.tile, { backgroundColor: C.surface }]} testID={`site-${s.key}`} />
+            ),
+          )}
+        </View>
+        <Strip
+          tone={done === 2 ? 'success' : 'warning'}
+          icon={done === 2 ? 'check' : 'info'}
+          title={`${done} of 2 photos captured`}
+          text={done === 2 ? 'Section ready for submission.' : 'Ensure the unit name is visible in the frame.'}
+        />
+        <SubmitButton title="Proceed" ready={done === 2} onPress={proceed} style={{ marginTop: 8 }} testID="site-images-proceed" />
       </ScrollView>
-    </SaFrame>
+    </Page>
   );
 }
 
@@ -175,35 +302,102 @@ export function MeetingScreen() {
     else submitOpenMeeting();
   };
 
+  const captured = !!photo.photo;
+  const full = participants.length >= 15;
+  const geo = coords ? geoText(coords.latitude, coords.longitude) : null;
+
   return (
-    <SaFrame testID="meeting">
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <PhotoTile title={title} base64={photo.photo} onPress={takePhoto} testID="meeting-photo" />
-        <Text style={styles.sectionLabel}>Participants</Text>
-        {participants.map((p, i) => (
-          <View key={`${p.name}-${i}`} style={styles.participant}>
-            <Text style={styles.participantText} testID={`participant-${i}`}>{`${p.name} - ${p.designation}`}</Text>
-            <Pressable onPress={() => deleteParticipant(i)} testID={`participant-${i}-delete`} style={styles.deleteTouch}>
-              <Text style={styles.deleteText}>✕</Text>
-            </Pressable>
+    <Page testID="meeting">
+      <HeroHeader title={isClose ? 'Closing Meeting' : 'Opening Meeting'} subtitle={app.zedId} onBack={() => nav.pop()} />
+      <ScrollView contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+        <Card>
+          <View style={z.rowCenter}>
+            <ZIcon name="calendar" size={18} color={C.primary} />
+            <View style={{ marginLeft: 10, flex: 1 }}>
+              <Text style={styles.smallCaps}>TIME</Text>
+              <Text style={[styles.timeValue, !captured && { color: C.tMuted }]} testID="meeting-time">
+                {captured ? photo.timeStamp ?? '' : 'Starts on tap'}
+              </Text>
+            </View>
           </View>
-        ))}
-        <SaButton title="+ Add" onPress={addParticipant} disabled={participants.length >= 15} style={{ alignSelf: 'flex-start' }} testID="add-participant" />
+          <View style={styles.cardDivider} />
+          <Text style={[styles.meetingState, { color: captured ? C.success : C.tMuted }]}>{captured ? (isClose ? 'Closing in progress' : 'Meeting in progress') : 'Not started'}</Text>
+        </Card>
+
+        <SectionLabel
+          label={isClose ? 'Participants · auto-populated from Opening' : 'Participants'}
+          right={
+            <Pressable onPress={full ? undefined : addParticipant} disabled={full} hitSlop={8} testID="add-participant">
+              <Text style={[styles.link, full && { color: C.tMuted }]}>+ Add</Text>
+            </Pressable>
+          }
+        />
+        <Card style={participants.length ? styles.participantsCard : null}>
+          {participants.length === 0 ? (
+            <DashedBox
+              label={isClose ? 'Participants copy over from Opening Meeting' : 'No participants added yet'}
+              icon="users"
+              onPress={addParticipant}
+              style={{ height: 68 }}
+              testID="participants-empty"
+            />
+          ) : (
+            participants.map((p, i) => (
+              <View key={`${p.name}-${i}`} style={[styles.participant, i < participants.length - 1 && styles.participantDivider]}>
+                <Avatar name={p.name ?? ''} size={28} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.participantName} testID={`participant-${i}`}>
+                    {p.name}
+                  </Text>
+                  <Text style={z.sub}>{p.designation}</Text>
+                </View>
+                <Pressable
+                  onPress={() => deleteParticipant(i)}
+                  hitSlop={8}
+                  style={[styles.deleteTouch, isClose && { backgroundColor: C.dangerBg }]}
+                  accessibilityLabel="Delete participant"
+                  testID={`participant-${i}-delete`}
+                >
+                  <ZIcon name="close" size={16} color={isClose ? C.danger : C.tMuted} />
+                </Pressable>
+              </View>
+            ))
+          )}
+        </Card>
+
+        {captured ? (
+          <Pressable style={styles.photoDone} onPress={takePhoto} testID="meeting-photo">
+            <ZIcon name="check" size={22} color={C.success} />
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={styles.photoDoneTitle}>{isClose ? 'Closing-meeting photo captured' : 'Group photo captured'}</Text>
+              <View style={[z.rowCenter, { marginTop: 3 }]} testID="lat-long">
+                <ZIcon name="map-pin" size={12} color={C.tMuted} />
+                <Text style={[z.muted, { marginLeft: 4, flex: 1 }]} numberOfLines={1}>
+                  {geo ? `Geo-tagged · ${geo}` : 'Geo-tagged automatically'}
+                </Text>
+              </View>
+            </View>
+            <Image source={{ uri: base64Uri(photo.photo!) }} style={styles.photoThumb} resizeMode="cover" testID="meeting-photo-image" />
+            <ZIcon name="chevron-right" size={20} color={C.tMuted} />
+          </Pressable>
+        ) : (
+          <DashedBox
+            label={isClose ? 'Capture closing-meeting photo · geo-tagged' : 'Capture group photo · geo-tagged'}
+            onPress={takePhoto}
+            style={styles.photoEmpty}
+            testID="meeting-photo"
+          />
+        )}
+
         {!isClose ? (
           <View>
-            <Text style={styles.sectionLabel}>Comments</Text>
-            <OutlinedInput value={comment} onChangeText={setComment} multiline showCounter maxLength={COMMENT_MAX} autoCapitalize="sentences" testID="meeting-comment" />
+            <SectionLabel label="Remarks" right={<CharCounter used={comment.length} limit={COMMENT_MAX} />} />
+            <Field value={comment} onChangeText={setComment} multiline maxLength={COMMENT_MAX} autoCapitalize="sentences" placeholder="Add meeting remarks" testID="meeting-comment" />
           </View>
         ) : null}
-        {coords ? (
-          <View style={styles.latLong} testID="lat-long">
-            <Text style={styles.latLongText}>{`Latitude : ${coords.latitude}`}</Text>
-            <Text style={styles.latLongText}>{`Longitude : ${coords.longitude}`}</Text>
-          </View>
-        ) : null}
-        <SaButton title={isClose ? 'Proceed' : 'Submit'} large onPress={onSubmit} testID="meeting-submit" />
+        <SubmitButton title={isClose ? 'Proceed' : 'Submit'} ready={captured && participants.length > 0} onPress={onSubmit} style={{ marginTop: 8 }} testID="meeting-submit" />
       </ScrollView>
-    </SaFrame>
+    </Page>
   );
 }
 
@@ -226,91 +420,63 @@ function ParticipantDialog({ onDone }: { onDone: (p: Participant | null) => void
   return (
     <View style={styles.dialog} testID="participant-dialog">
       <Text style={styles.dialogTitle}>Enter Participant Information</Text>
-      <TextInput style={styles.dialogInput} placeholder="Name" value={name} onChangeText={setName} autoCapitalize="words" testID="participant-name" />
-      {error.name ? <Text style={styles.dialogError}>{error.name}</Text> : null}
-      <TextInput style={styles.dialogInput} placeholder="Designation" value={designation} onChangeText={setDesignation} autoCapitalize="words" testID="participant-designation" />
-      {error.designation ? <Text style={styles.dialogError}>{error.designation}</Text> : null}
+      <Field label="Name" placeholder="Name" icon="user" value={name} onChangeText={setName} autoCapitalize="words" error={error.name} testID="participant-name" />
+      <Field
+        label="Designation"
+        placeholder="Designation"
+        icon="clipboard"
+        value={designation}
+        onChangeText={setDesignation}
+        autoCapitalize="words"
+        error={error.designation}
+        testID="participant-designation"
+      />
       <View style={styles.dialogButtons}>
-        <Text style={styles.dialogButton} onPress={() => onDone(null)} testID="participant-cancel">
-          CANCEL
-        </Text>
-        <Text style={styles.dialogButton} onPress={add} testID="participant-add">
-          ADD PARTICIPANT
-        </Text>
+        <ZButton title="Cancel" variant="ghost" onPress={() => onDone(null)} style={{ flex: 36 }} testID="participant-cancel" />
+        <ZButton title="Add participant" onPress={add} style={{ flex: 64, marginLeft: 12 }} testID="participant-add" />
       </View>
     </View>
   );
 }
 
-/** SelfieCapturingActivity: the assessor's selfie on site (front camera), then the parameters. */
-export function SelfieScreen() {
-  const app = useSa();
-  const ui = useUi();
-  const nav = useNavigation();
-  const [selfie, setSelfie] = useState<PhotoInformation>(() => newPhotoInformation(randomUuid));
-  const [coords, setCoords] = useState<Coordinates | null>(null);
-  // This screen's showAlert continues to the parameters (also after a mocked location alert).
-  const onward = (message: string) => ui.alert(null, message, [{ text: 'OK', onPress: () => nav.replace('ParametersPager') }], false);
-  const { capture } = useInlineCapture({ onConnectionFailure: onward });
-
-  const take = async () => {
-    const shot = await capture({ front: true });
-    if (!shot) return;
-    setCoords(shot.coords);
-    setSelfie(p => ({ ...p, photo: shot.base64, timeStamp: shot.timeStamp, name: 'Selfie on Site' }));
-  };
-
-  const proceed = async () => {
-    if (!selfie.photo) return ui.toast('Please capture Selfie on site');
-    if (!coords) return ui.toast('Please capture Geotag');
-    const request = { ...newAssessmentRequest(app), selfieImage: { ...selfie, latitude: coords.latitude, longitude: coords.longitude } };
-    delete (request as { userType?: number }).userType;
-    const offline = async () => {
-      if (await saveSelfieOffline(app, request)) onward(SAVED_LOCALLY);
-      else ui.toast('Network is not available');
-    };
-    if (!(await isNetworkAvailable())) return offline();
-    ui.showLoading('Please Wait...');
-    let response = null;
-    try {
-      response = await app.api.submitSelfie(request);
-    } catch (e) {
-      ui.hideLoading();
-      if (isNetworkError(e)) return offline();
-    }
-    ui.hideLoading();
-    if (isSuccess(response)) {
-      ui.toast('Submitted successfully', { long: true });
-      await selfieSubmitted(app);
-      nav.replace('ParametersPager');
-    } else {
-      ui.toast(response?.errorMessage ? response.errorMessage : FAILED_TO_SUBMIT, { long: true });
-    }
-  };
-
-  return (
-    <SaFrame testID="selfie">
-      <ScrollView contentContainerStyle={styles.content}>
-        <PhotoTile title="Take Selfie on Site" base64={selfie.photo} onPress={take} testID="selfie-photo" />
-        <SaButton title="SUBMIT & PROCEED" large onPress={proceed} testID="selfie-proceed" />
-      </ScrollView>
-    </SaFrame>
-  );
-}
-
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  sectionLabel: { color: sa.darkGrey, fontSize: 16, fontWeight: 'bold', marginTop: 12, marginBottom: 5 },
-  participant: { flexDirection: 'row', alignItems: 'center', backgroundColor: sa.paleGrey, borderRadius: 3, marginBottom: 5, paddingLeft: 10 },
-  participantText: { flex: 1, color: sa.darkGrey, fontSize: 15, paddingVertical: 8 },
-  deleteTouch: { padding: 10 },
-  deleteText: { color: '#EE4056', fontSize: 16, fontWeight: 'bold' },
-  latLong: { marginTop: 8 },
-  latLongText: { color: sa.darkGrey, fontSize: 15 },
-  dialog: { backgroundColor: sa.white, borderRadius: 4, padding: 20, margin: 24 },
-  dialogTitle: { fontSize: 18, fontWeight: '500', color: sa.black, marginBottom: 10 },
-  dialogInput: { borderBottomColor: sa.primary, borderBottomWidth: 1, fontSize: 16, marginTop: 10, paddingVertical: 6 },
-  dialogError: { color: '#B00020', fontSize: 13 },
-  dialogButtons: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 },
-  dialogButton: { color: sa.primary, fontWeight: '500', fontSize: 14, paddingHorizontal: 12, paddingVertical: 8 },
+  submit: { minHeight: 52, borderRadius: 12, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  submitIdle: { backgroundColor: C.muted },
+  submitText: { fontSize: 15, fontWeight: '700', color: C.tInverse, letterSpacing: 0.3 },
+  dashed: { borderRadius: 12, borderWidth: 1.5, borderColor: C.border, borderStyle: 'dashed', backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  smallCaps: { fontSize: 10, fontWeight: '600', color: C.tMuted, letterSpacing: 0.5 },
+  timeValue: { fontSize: 14, fontWeight: '700', color: C.tPrimary, marginTop: 2 },
+  timePlace: { backgroundColor: C.primaryBg, borderRadius: 12, padding: 12, marginBottom: 12 },
+  timePlaceDivider: { height: 1, backgroundColor: C.divider, marginVertical: 10 },
+  selfieCard: { flexDirection: 'row', borderColor: C.primary, borderWidth: 1, borderRadius: 12, padding: 12 },
+  selfieSize: { width: 96, height: 116, borderRadius: 10 },
+  selfiePhoto: { backgroundColor: C.tPrimary },
+  selfieState: { fontSize: 13, fontWeight: '700', color: C.tPrimary, marginTop: 10 },
+  pill: { marginTop: 10, height: 28, width: 96, borderRadius: 10, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center' },
+  pillText: { fontSize: 11, fontWeight: '700', color: C.primaryDark },
+  banner: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: C.primaryBg, borderRadius: 12, padding: 16, marginBottom: 16 },
+  bannerTitle: { fontSize: 13, fontWeight: '700', color: C.tPrimary, marginBottom: 2 },
+  bannerGeo: { fontSize: 10, fontWeight: '600', color: C.primary, marginLeft: 4 },
+  tiles: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  tile: { flex: 1, aspectRatio: 1 / 0.95, borderRadius: 14, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: C.primaryBg },
+  tileNext: { backgroundColor: C.surface, borderColor: C.primary, borderWidth: 1 },
+  tileNextText: { fontSize: 12, fontWeight: '700', color: C.primary, marginTop: 6 },
+  tilePin: { position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center' },
+  tileBar: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 28, backgroundColor: C.primary, justifyContent: 'center', paddingHorizontal: 10 },
+  tileBarText: { fontSize: 10, fontWeight: '600', color: C.tInverse },
+  cardDivider: { height: 1, backgroundColor: C.divider, marginVertical: 10 },
+  meetingState: { fontSize: 11, fontWeight: '600', textAlign: 'center' },
+  link: { fontSize: 12, fontWeight: '600', color: C.primary },
+  participantsCard: { paddingVertical: 6 },
+  participant: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  participantDivider: { borderBottomColor: C.divider, borderBottomWidth: 1 },
+  participantName: { fontSize: 13, fontWeight: '600', color: C.tPrimary },
+  deleteTouch: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  photoDone: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.primaryBg, borderRadius: 12, padding: 14, marginBottom: 12 },
+  photoDoneTitle: { fontSize: 14, fontWeight: '600', color: C.tPrimary },
+  photoThumb: { width: 40, height: 40, borderRadius: 8, marginHorizontal: 8 },
+  photoEmpty: { height: 84, marginBottom: 12 },
+  dialog: { backgroundColor: C.surface, borderRadius: 16, padding: 18, margin: 20 },
+  dialogTitle: { fontSize: 17, fontWeight: '700', color: C.tPrimary, marginBottom: 14 },
+  dialogButtons: { flexDirection: 'row', marginTop: 4 },
 });

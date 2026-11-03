@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { isNetworkAvailable, isNetworkError, isSuccess, OutlinedInput, useNavigation, useRoute, useUi } from '@zed/shared';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { isLatestEntryLogout } from '../attendance';
 import { basicInfoSubmitted, needsBasicInfoFirst, saveCloseMeeting, submitBasicInformation, submitEndAssessment } from '../flows/submissions';
 import { areAllParametersSubmitted, FAILED_TO_SUBMIT, SAVED_LOCALLY, UNKNOWN_ERROR, type SubmitAssessmentRequest } from '../models';
-import { SaButton, SaFrame, sa } from '../ui/kit';
+import { Avatar, C, CharCounter, Card, Field, HeroHeader, Page, SectionLabel, ZIcon, z } from '../ui/zed';
+import { base64Uri, geoText, SubmitButton } from './MeetingScreens';
+
+const COMMENT_MAX = 1000;
 
 export const ASSESSMENT_COMPLETED = 'Assessment completed successfully and all the details are submitted\n\n Thank You!';
 
@@ -28,7 +31,7 @@ export function FinalCommentsScreen() {
   const app = useSa();
   const ui = useUi();
   const nav = useNavigation();
-  const { params } = useRoute<{ closeMeetingData?: SubmitAssessmentRequest }>();
+  const { params } = useRoute<{ closeMeetingData?: SubmitAssessmentRequest; finalSubmission?: boolean }>();
   const request = params.closeMeetingData;
   const [comment, setComment] = useState('');
   const onSuccess = useSubmissionSuccess();
@@ -111,21 +114,77 @@ export function FinalCommentsScreen() {
     await submitData();
   };
 
+  // What the closing meeting captured (none on the assessor's final submission).
+  const participants = request.endParticipants ?? [];
+  const meetingPhoto = (request.assessmentPhotos ?? []).find(p => !!p.photo && (p.name ?? '').includes('Closing Meeting Photo')) ?? null;
+  const geo = geoText(request.latitude, request.longitude);
+  const summaryLabel = d.userType === 1 ? 'Assessment Summary' : 'Comments';
+
   return (
-    <SaFrame testID="final-comments">
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.label} testID="final-comments-label">
-          {d.userType === 1 ? 'Assessment Summary' : 'Comments'}
-        </Text>
-        {/* The counter of the layout (500) stayed although the screen allowed 1000 characters. */}
-        <OutlinedInput value={comment} onChangeText={setComment} multiline showCounter maxLength={1000} autoCapitalize="sentences" testID="final-comment" />
-        <SaButton title="Submit" large onPress={onSubmit} testID="final-submit" />
+    <Page testID="final-comments">
+      <HeroHeader title={params.finalSubmission ? 'Final Submission' : 'Closing Meeting'} subtitle={app.zedId} onBack={() => nav.pop()} />
+      <ScrollView contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+        {participants.length > 0 ? (
+          <View>
+            <SectionLabel label="Participants" right={<Text style={z.muted}>{String(participants.length)}</Text>} />
+            <Card style={styles.participantsCard}>
+              {participants.map((p, i) => (
+                <View key={`${p.name}-${i}`} style={[styles.participant, i < participants.length - 1 && styles.participantDivider]}>
+                  <Avatar name={p.name ?? ''} size={28} />
+                  <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={styles.participantName}>{p.name}</Text>
+                    <Text style={z.sub}>{p.designation}</Text>
+                  </View>
+                </View>
+              ))}
+            </Card>
+          </View>
+        ) : null}
+        {meetingPhoto?.photo ? (
+          <View style={styles.photoDone}>
+            <ZIcon name="check" size={22} color={C.success} />
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={styles.photoDoneTitle}>Closing-meeting photo captured</Text>
+              <View style={[z.rowCenter, { marginTop: 3 }]}>
+                <ZIcon name="map-pin" size={12} color={C.tMuted} />
+                <Text style={[z.muted, { marginLeft: 4, flex: 1 }]} numberOfLines={1}>
+                  {geo ? `Geo-tagged · ${geo}` : 'Geo-tagged automatically'}
+                </Text>
+              </View>
+            </View>
+            <Image source={{ uri: base64Uri(meetingPhoto.photo) }} style={styles.photoThumb} resizeMode="cover" />
+          </View>
+        ) : null}
+        <View style={styles.labelRow}>
+          <Text style={styles.label} testID="final-comments-label">
+            {summaryLabel}
+          </Text>
+          <CharCounter used={comment.length} limit={COMMENT_MAX} />
+        </View>
+        {/* The legacy layout's counter said 500 although the screen allowed 1000 characters; the counter shows 1000. */}
+        <Field
+          value={comment}
+          onChangeText={setComment}
+          multiline
+          maxLength={COMMENT_MAX}
+          autoCapitalize="sentences"
+          placeholder={d.userType === 1 ? 'Add the assessment summary' : 'Add your comments'}
+          testID="final-comment"
+        />
+        <SubmitButton title="Submit" ready onPress={onSubmit} style={{ marginTop: 8 }} testID="final-submit" />
       </ScrollView>
-    </SaFrame>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16 },
-  label: { color: sa.darkGrey, fontSize: 16, fontWeight: 'bold', marginBottom: 5 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 8 },
+  label: { fontSize: 11, fontWeight: '600', color: C.tSecondary, letterSpacing: 0.5, textTransform: 'uppercase' },
+  participantsCard: { paddingVertical: 6 },
+  participant: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  participantDivider: { borderBottomColor: C.divider, borderBottomWidth: 1 },
+  participantName: { fontSize: 13, fontWeight: '600', color: C.tPrimary },
+  photoDone: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.primaryBg, borderRadius: 12, padding: 14, marginBottom: 12 },
+  photoDoneTitle: { fontSize: 14, fontWeight: '600', color: C.tPrimary },
+  photoThumb: { width: 40, height: 40, borderRadius: 8, marginLeft: 8 },
 });

@@ -16,6 +16,7 @@ import {
   type PhotoData,
   type RequestContext,
 } from '@zed/shared';
+import type { AssessmentsResponse, NotificationsResponse, ReportsResponse, SignInResponse } from './portfolio';
 import type { Attendance, AssessmentDetails, BaseServiceRequest, BasicInformation, ParametersDetails, AllottedParameters, PhotoInformation, ServiceResponse, SubmitAssessmentRequest, SubmitSelfieImageRequest } from './models';
 
 export type SaSystem = 'main' | 'surveillance';
@@ -56,6 +57,29 @@ export class SaApi {
 
   login(request: Omit<LoginRequest, 'version'>) {
     return this.rest.postJson<AssessmentDetails>(this.base + 'Login', this.body(request));
+  }
+
+  /** New (redesign): assessor ID + password only; the profile and the assessor's assessments. */
+  signIn(request: { assessorId: string; password: string }) {
+    return this.rest.postJson<SignInResponse>(this.base + 'SignIn', this.body(request));
+  }
+
+  /** New (redesign): the units the assessor is lead or co-assessor of. */
+  assessments(saId: string) {
+    return this.retrofit.postJson<AssessmentsResponse>(this.base + 'Assessments', this.body({ saId }));
+  }
+
+  /** New (redesign): the Login answer for one unit, without the password. */
+  assessment(request: { saId: string; zedId: string; certificationType?: string | null }) {
+    return this.rest.postJson<AssessmentDetails>(this.base + 'Assessment', this.body(request));
+  }
+
+  notifications(saId: string) {
+    return this.retrofit.postJson<NotificationsResponse>(this.base + 'Notifications', this.body({ saId }));
+  }
+
+  reports(saId: string) {
+    return this.retrofit.postJson<ReportsResponse>(this.base + 'Reports', this.body({ saId }));
   }
 
   submitAllocation(req: BaseServiceRequest & { allocatedParameters: ParametersDetails[] }) {

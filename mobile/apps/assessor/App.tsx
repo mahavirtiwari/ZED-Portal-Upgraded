@@ -7,17 +7,26 @@ import { SaAppProvider, useSa } from './src/app/context';
 import { SaApp } from './src/app/SaApp';
 import { registerHandlers, syncNow } from './src/sync/queue';
 import { AlertScreen, AllocationScreen } from './src/screens/AllocationScreens';
-import { AssessmentOptionsScreen } from './src/screens/AssessmentOptionsScreen';
+import { AssessmentDetailScreen } from './src/screens/AssessmentDetailScreen';
 import { AttendanceLogScreen, AttendanceScreen, PunchInScreen } from './src/screens/AttendanceScreens';
 import { BasicDetailsDisplayScreen, BasicInfoRowScreen, BasicInformationScreen } from './src/screens/BasicInfoScreens';
-import { CompanyProfileScreen } from './src/screens/CompanyProfileScreen';
 import { NewEvidenceScreen, NewSitePhotoScreen, SiteTourScreen } from './src/screens/EvidenceScreens';
 import { FinalCommentsScreen } from './src/screens/FinalCommentsScreen';
-import { LoginScreen } from './src/screens/LoginScreen';
-import { MeetingScreen, SelfieScreen, SiteImagesScreen } from './src/screens/MeetingScreens';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { AboutScreen, HelpScreen, NotificationsScreen, ViewProfileScreen } from './src/screens/InfoScreens';
+import { ForgotPasswordScreen, LoginScreen, SplashScreen } from './src/screens/LoginScreen';
+import { MeetingScreen, SiteImagesScreen } from './src/screens/MeetingScreens';
 import { ParametersPagerScreen, QuestionsPagerScreen } from './src/screens/ParametersScreens';
 import { SubmitParametersScreen } from './src/screens/SubmitParametersScreen';
-import { sa } from './src/ui/kit';
+import { C } from './src/ui/zed';
+
+/** The pages of the signed-in assessor (redesign); the sign-in page when the assessor is gone. */
+function withAssessor<P extends object>(Screen: React.ComponentType<P>): React.ComponentType<P> {
+  return function AssessorScreen(props: P) {
+    const app = useSa();
+    return app.assessor ? <Screen {...props} /> : null;
+  };
+}
 
 /**
  * The screens below the login need the open assessment. When it is removed (end of the assessment, punch-out after the
@@ -31,14 +40,21 @@ function withAssessment<P extends object>(Screen: React.ComponentType<P>): React
 }
 
 export const SCREENS: ScreenMap = {
+  Splash: SplashScreen,
   Login: LoginScreen,
-  CompanyProfile: withAssessment(CompanyProfileScreen),
+  ForgotPassword: ForgotPasswordScreen,
+  Home: withAssessor(HomeScreen),
+  Notifications: withAssessor(NotificationsScreen),
+  ViewProfile: withAssessor(ViewProfileScreen),
+  Help: HelpScreen,
+  About: AboutScreen,
+  // The company profile and the steps are one page in the redesign (07 Assessment Detail); both legacy names lead there.
+  CompanyProfile: withAssessment(AssessmentDetailScreen),
   Alert: withAssessment(AlertScreen),
   Allocation: withAssessment(AllocationScreen),
-  AssessmentOptions: withAssessment(AssessmentOptionsScreen),
+  AssessmentOptions: withAssessment(AssessmentDetailScreen),
   SiteImages: withAssessment(SiteImagesScreen),
   Meeting: withAssessment(MeetingScreen),
-  Selfie: withAssessment(SelfieScreen),
   ParametersPager: withAssessment(ParametersPagerScreen),
   QuestionsPager: withAssessment(QuestionsPagerScreen),
   NewEvidence: withAssessment(NewEvidenceScreen),
@@ -92,11 +108,11 @@ export default function App() {
       <UiHost>
         {app ? (
           <SaAppProvider app={app}>
-            <StackNavigator screens={SCREENS} initial={{ name: 'Login' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
+            <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
           </SaAppProvider>
         ) : (
           <View style={styles.loading}>
-            <ActivityIndicator color={sa.primary} />
+            <ActivityIndicator color={C.primary} />
           </View>
         )}
       </UiHost>
@@ -104,4 +120,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({ loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: sa.white } });
+const styles = StyleSheet.create({ loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.surface } });

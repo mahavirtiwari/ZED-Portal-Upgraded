@@ -1,7 +1,8 @@
 import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
 import { PREFS } from '../db/stores';
-import { normalizeDetails, setAllParametersToCompleted, Status, type AssessmentDetails } from '../models';
+import { normalizeDetails, setAllParametersToCompleted, Status, type AssessmentDetails, type RequirementDetails } from '../models';
+import type { AssessmentSummary } from '../portfolio';
 
 export const LOGIN_SUCCESSFUL = 'Login Successful.';
 export const INVALID_USER = 'Invalid Username or Password';
@@ -87,7 +88,7 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     let available = false;
     if (hasParams(d)) {
       available = true;
-      app.saveCredentials(input.assessorId, input.password, input.zedId);
+      if (input.password) app.saveCredentials(input.assessorId, input.password, input.zedId);
     }
     if (loginResp.isOpenMeetingSubmitted) d.isOpenMeetingSubmitted = true;
     if (loginResp.isSelfieSubmitted) d.isSelfieSubmitted = true;
@@ -100,6 +101,12 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     }
     if (loginResp.isBasicInfoSubmitted) d.isBasicInfoSubmitted = true;
     if (loginResp.allowFinalSubmit) d.allowFinalSubmit = true;
+    // V4: the unit's site tour sections (the Admin may change them) and the team's photos uploaded so far.
+    if (loginResp.siteTourSections) d.siteTourSections = loginResp.siteTourSections;
+    // V4: the evidences listed for each requirement as the server has them now (the answers on the phone stay).
+    const listed = new Map<string, RequirementDetails['listedEvidences']>();
+    for (const p of loginResp.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r?.listedEvidences) listed.set(String(r.id), r.listedEvidences);
+    for (const p of d.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r && listed.has(String(r.id))) r.listedEvidences = listed.get(String(r.id));
     await app.update();
     return { kind: 'proceed', userType: Number(loginResp.userType ?? 0), allottedParamsAvailable: available };
   }
@@ -107,3 +114,80 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
   const d = await app.loadDetails(input.assessorId, input.zedId);
   return { kind: 'proceed', userType: null, allottedParamsAvailable: hasParams(d) };
 }
+
+// ------------------------------------------------------------------ redesign: one sign-in, several assessments
+
+export type SignInOutcome = { kind: 'proceed'; toast?: string } | { kind: 'update' } | { kind: 'toast'; message: string };
+
+/** The sign-in page: assessor ID and password, trimmed (the ID upper-cased) as before. */
+export function normalizeSignIn(assessorId: string, password: string): { assessorId: string; password: string } | null {
+  if (assessorId.trim() === '' || password.trim() === '') return null;
+  return { assessorId: assessorId.trim().toUpperCase(), password: password.trim() };
+}
+
+/**
+ * SA/SignIn: the same checks as SA/Login on the server, without a ZED ID. Online the token is kept for the assessor and
+ * the profile and list for the offline sign-in; offline (or no answer) the credential kept by the last online sign-in.
+ */
+export async function signIn(app: SaApp, input: { assessorId: string; password: string }, online: boolean): Promise<SignInOutcome> {
+  const offline = async (): Promise<SignInOutcome> => {
+    if (!app.compareCredentials(input.assessorId, input.password, '')) return { kind: 'toast', message: NETWORK_UNAVAILABLE };
+    await app.resumeAssessor(input.assessorId);
+    await app.session.resumed(input.assessorId);
+    return { kind: 'proceed' };
+  };
+  if (!online) return offline();
+  let resp;
+  try {
+    resp = await app.api.signIn(input);
+  } catch (e) {
+    if (isNetworkError(e)) return offline();
+    resp = null;
+  }
+  const status = resp ? String(resp.status ?? '') : '';
+  if (resp && status === '1') {
+    const token = takeAppToken(resp);
+    await app.session.signedIn(input.assessorId, token);
+    app.saveCredentials(input.assessorId, input.password, '');
+    await app.signedInAs({ ...(resp.profile ?? {}), assessorId: resp.profile?.assessorId || input.assessorId }, resp.assessments ?? []);
+    return { kind: 'proceed', toast: LOGIN_SUCCESSFUL };
+  }
+  if (resp && status === '2') return { kind: 'update' };
+  return { kind: 'toast', message: resp?.errorMessage ? resp.errorMessage : INVALID_USER };
+}
+
+export type OpenOutcome = { kind: 'open'; userType: number; allottedParamsAvailable: boolean } | { kind: 'update' } | { kind: 'alert'; message: string } | { kind: 'toast'; message: string };
+
+/**
+ * Opens one unit. Online: SA/Assessment (the Login answer for the unit, same refusals), applied to the stored row as a
+ * sign-in did (the local work is kept, the server's flags taken). Offline: the stored row of this assessor and unit.
+ */
+export async function openAssessment(app: SaApp, a: AssessmentSummary, online: boolean): Promise<OpenOutcome> {
+  const assessorId = app.assessor?.assessorId ?? '';
+  const input = { assessorId, password: '', zedId: a.zedId };
+  const offline = async (): Promise<OpenOutcome> => {
+    const d = await app.loadDetails(assessorId, a.zedId);
+    if (!d) return { kind: 'toast', message: NETWORK_UNAVAILABLE };
+    return { kind: 'open', userType: d.userType || 1, allottedParamsAvailable: hasParams(d) };
+  };
+  if (!online) return offline();
+  let resp: AssessmentDetails | null = null;
+  try {
+    resp = await app.api.assessment({ saId: assessorId, zedId: a.zedId, certificationType: a.certificationType });
+  } catch (e) {
+    if (isNetworkError(e)) return offline();
+    resp = null;
+  }
+  const status = resp ? String(resp.status ?? '') : '';
+  if (resp && status === '1') {
+    const token = takeAppToken(resp);
+    if (token) await app.session.signedIn(assessorId, token);
+    const out = await proceedWith(app, resp, input);
+    if (out.kind !== 'proceed') return out;
+    return { kind: 'open', userType: out.userType ?? 1, allottedParamsAvailable: out.allottedParamsAvailable };
+  }
+  if (resp && status === '2') return { kind: 'update' };
+  return { kind: 'toast', message: resp?.errorMessage ? resp.errorMessage : UNKNOWN_ANSWER };
+}
+
+const UNKNOWN_ANSWER = 'Unable to open the assessment, please try again.';

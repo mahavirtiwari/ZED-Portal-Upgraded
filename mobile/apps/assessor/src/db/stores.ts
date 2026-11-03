@@ -58,6 +58,12 @@ export class AssessorStore {
     return r.rows[0] ? parse<AssessmentDetails>(textOf(r.rows[0].AssessorDataColumn)) : null;
   }
 
+  /** New (redesign): the assessments kept on the phone (splash). */
+  async count(): Promise<number> {
+    const r = await this.db.execute('SELECT COUNT(*) AS n FROM AssessorData');
+    return Number(r.rows[0]?.n ?? 0);
+  }
+
   async delete(userId: string): Promise<boolean> {
     const r = await this.db.execute('DELETE FROM AssessorData WHERE UserId = ?', [userId]);
     return r.rowsAffected > 0;

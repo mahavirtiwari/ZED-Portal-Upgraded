@@ -44,6 +44,8 @@ export type PhotoInformation = {
   /** 1 added evidence, 2 site tour */
   type: number;
   comment?: string | null;
+  /** V4 (redesign, SA/SubmitSiteTour only): the site tour section's title; never kept on the phone. */
+  section?: string | null;
 };
 
 /** PhotoInformation(): UUID + "_" + millis. */
@@ -133,6 +135,22 @@ export type RequirementDetails = {
   reviewNeeded: boolean;
   /** V4: Yes / Partial / No per checkpoint; the requirement's conformance follows from them. */
   checkpointAnswers?: CheckpointAnswer[] | null;
+  /** V4 (redesign): the evidences the Admin lists for the requirement, each answered and photographed at the site (listedEvidence.ts). */
+  listedEvidences?: ListedEvidence[] | null;
+  /** V4: the site's answer for each listed evidence, sent with the parameter. */
+  evidenceChecks?: Array<{ id: number; available: string | null; photoIds: string[] }> | null;
+};
+
+/** An evidence the Admin lists for a requirement (SA/Login); `checkpoint` is the option code of the checkpoint it belongs to. */
+export type ListedEvidence = {
+  id: number;
+  name: string;
+  mandatory: boolean;
+  checkpoint?: string | null;
+  uploaded: boolean;
+  verified?: string | null;
+  available?: string | null;
+  photoIds?: string[] | null;
 };
 
 export type AllottedParameters = {
@@ -244,7 +262,11 @@ export type AssessmentDetails = BaseServiceResponse & {
   /** V4 surveillance deployment only (SA login answers it for Silver/Gold surveillance). */
   isSurveillance?: boolean;
   minimumParameters?: number;
+  /** V4 (redesign): the unit's site tour sections, their photo limits and the team's photos uploaded (siteTour.ts). */
+  siteTourSections?: SiteTourSectionInfo[] | null;
 };
+
+export type SiteTourSectionInfo = { id?: string | null; no?: number; title?: string | null; hint?: string | null; min?: number; max?: number; uploaded?: number };
 
 /** Requests (service/*). Every request also carries `version` and `deviceInfo` (new). */
 export type BaseServiceRequest = { saId: string; zedId: string; certificationType: string };
