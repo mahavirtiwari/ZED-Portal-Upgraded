@@ -59,9 +59,10 @@ android {
         applicationId "com.qci.zed.siteassessment"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // Legacy store build: versionCode 45, versionName 1.2. Must only grow.
-        versionCode 46
-        versionName "1.3"
+        // Legacy store build: versionCode 45, versionName 1.2; V4 1.3 (46); the redesigned app 2.0 (47). Must only grow.
+        // The server's Mobile:SaVersion (Main and Surveillance mobile hosts) is compared with versionName.
+        versionCode 47
+        versionName "2.0"
     }
     signingConfigs {
         debug {

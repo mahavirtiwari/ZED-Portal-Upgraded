@@ -1,6 +1,6 @@
 {
   "name": "@zed/assessor",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "private": true,
   "description": "ZED SA (com.qci.zed.siteassessment), React Native rewrite of ZED_SA_Studio",
   "scripts": {
