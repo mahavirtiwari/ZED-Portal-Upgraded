@@ -1,26 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
-import {
-  CheckBox,
-  FieldBox,
-  FieldLabel,
-  htmlToPlain,
-  Icon,
-  isSuccess,
-  OutlinedInput,
-  PhotosField,
-  TextField,
-  useAppText,
-  useBackHandler,
-  useNavigation,
-  useUi,
-  YesNo,
-  zedDevice,
-  type PhotoData,
-} from '@zed/shared';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { htmlToPlain, isSuccess, NUMERIC_MAX_LENGTH, numericFilter, PhotosField, useAppText, useBackHandler, useNavigation, useUi, zedDevice, type PhotoData } from '@zed/shared';
 import { useSa } from '../app/context';
 import type { SaApp } from '../app/SaApp';
-import { icons } from '../assets/icons';
 import { failureMessage, finalSubmitTechnologyUpgradation, refusalMessage, technologyUpgradationSubmitted } from '../flows/submissions';
 import { useSaPhotoCapture } from '../photo/capture';
 import {
@@ -40,9 +22,10 @@ import {
   type FinancialAssistanceDocument,
   type TechnologyDetails,
 } from '../models';
-import { DialogFrame, Divider, MenuRow, PageTitle, ReviewItem, SaButton, SaFrame, StaticLabel, sa } from '../ui/kit';
+import { Badge, C, Card, Field, HeroHeader, Page, SectionLabel, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 
 const DOCUMENTS_VALIDATION_ERROR = 'Please validate all the documents';
+const TITLE = 'Technology Upgradation';
 
 /** TechnologyDetails' getters: label and value when the value is there. */
 function technologyRows(t: TechnologyDetails): Array<[string, string]> {
@@ -57,23 +40,22 @@ function technologyRows(t: TechnologyDetails): Array<[string, string]> {
   return rows.filter((r): r is [string, string] => r[1] != null);
 }
 
-function ReadOnlyField({ label, value, onEdit, testID }: { label: string; value: string; onEdit?: () => void; testID?: string }) {
+/** A read-only detail: label above the value, an edit icon when it can be changed. */
+function ReadOnlyField({ label, value, onEdit, last, testID }: { label: string; value: string; onEdit?: () => void; last?: boolean; testID?: string }) {
   return (
-    <FieldBox testID={testID}>
-      <FieldLabel label={label} />
-      <OutlinedInput
-        value={value}
-        editable={false}
-        testID={testID ? `${testID}-value` : undefined}
-        right={
-          onEdit ? (
-            <Text onPress={onEdit} style={{ padding: 8 }} testID={testID ? `${testID}-edit` : undefined}>
-              <Icon icon={icons.ic_baseline_edit_24} size={24} />
-            </Text>
-          ) : undefined
-        }
-      />
-    </FieldBox>
+    <View style={[styles.detail, !last && styles.detailDivider]} testID={testID}>
+      <View style={styles.flex}>
+        <Text style={styles.detailLabel}>{label}</Text>
+        <Text style={styles.detailValue} testID={testID ? `${testID}-value` : undefined}>
+          {value}
+        </Text>
+      </View>
+      {onEdit ? (
+        <Pressable onPress={onEdit} hitSlop={8} style={styles.editIcon} accessibilityLabel="Edit" testID={testID ? `${testID}-edit` : undefined}>
+          <ZIcon name="edit" size={20} color={C.primaryDark} />
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
@@ -108,7 +90,7 @@ export function TechnologyUpgradationScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useBackHandler(() => {
+  const goBack = () => {
     if (selected) {
       setSelected(null);
     } else {
@@ -117,10 +99,14 @@ export function TechnologyUpgradationScreen() {
         { text: 'No', style: 'cancel' },
       ]);
     }
+  };
+  useBackHandler(() => {
+    goBack();
     return true;
   });
 
-  if (!data) return <SaFrame testID="technology-upgradation">{null}</SaFrame>;
+  const header = <HeroHeader title={selected ? 'Technology Details' : TITLE} subtitle={app.zedId} onBack={goBack} />;
+  if (!data) return <Page testID="technology-upgradation">{header}</Page>;
 
   const finalSubmit = async (details: CertificationDetails) => {
     if (await app.store.meeting(app.userId, true)) {
@@ -162,13 +148,14 @@ export function TechnologyUpgradationScreen() {
   };
 
   return (
-    <SaFrame testID="technology-upgradation">
+    <Page testID="technology-upgradation">
+      {header}
       {selected ? (
         <TechnologyDetailsView app={app} data={data} cert={cert} technology={selected} onDone={() => (setSelected(null), refresh())} onValidated={refresh} />
       ) : (
         <TechnologiesList app={app} data={data} cert={cert} onSelect={setSelected} onFinalSubmission={onFinalSubmission} onValidated={refresh} />
       )}
-    </SaFrame>
+    </Page>
   );
 }
 
@@ -193,26 +180,36 @@ function TechnologiesList({
   const cheque = tu.copyOfCancelledCheque(data, cert);
   const anyIncomplete = items.some(t => !t.isCompleted);
   const enabled = !anyIncomplete && (certificate == null || !!certificate.isValidateClicked) && (cheque == null || !!cheque.isValidateClicked);
+  const done = items.filter(t => t.isCompleted).length;
   return (
-    <ScrollView contentContainerStyle={{ padding: 8 }}>
-      <PageTitle>Technologies</PageTitle>
+    <ZScroll contentContainerStyle={z.screenPad}>
+      <SectionLabel label="Technologies" right={<Text style={z.muted}>{`${done} of ${items.length} completed`}</Text>} />
       {items.map((t, i) => (
-        <MenuRow
-          key={`${t.Id}-${i}`}
-          label={t.TechnologyName ?? ''}
-          status={t.isCompleted ? 'Completed' : 'Not Completed'}
-          statusColor={t.isCompleted ? sa.teal : undefined}
-          statusBold={t.isCompleted}
-          onPress={() => onSelect(t)}
-          testID={`tu-tech-${i}`}
-        />
+        <Card key={`${t.Id}-${i}`} onPress={() => onSelect(t)} style={styles.techRow} testID={`tu-tech-${i}`}>
+          <View style={[styles.well, !t.isCompleted && { backgroundColor: C.muted }]}>
+            <ZIcon name="settings" size={20} color={t.isCompleted ? C.primary : C.tMuted} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.techName}>{t.TechnologyName ?? ''}</Text>
+            <View style={styles.techMeta}>
+              <Badge label={t.isCompleted ? 'Completed' : 'Not Completed'} tone={t.isCompleted ? 'success' : 'neutral'} small testID={`tu-tech-${i}-status`} />
+            </View>
+          </View>
+          <ZIcon name="chevron-right" size={18} color={C.tMuted} />
+        </Card>
       ))}
-      {certificate ? <DocumentRow app={app} document={certificate} technologyCode="" onValidated={onValidated} testID="tu-certificate" /> : null}
-      <StaticLabel label="Financial Details" />
+      {certificate ? (
+        <>
+          <SectionLabel label="Certificate" style={styles.section} />
+          <DocumentRow app={app} document={certificate} technologyCode="" onValidated={onValidated} testID="tu-certificate" />
+        </>
+      ) : null}
+      <SectionLabel label="Financial Details" style={styles.section} />
       {cheque ? <DocumentRow app={app} document={cheque} technologyCode="" onValidated={onValidated} testID="tu-cheque" /> : null}
       <Summary data={data} cert={cert} items={items} />
-      <SaButton title="Final Submission" large disabled={!enabled} onPress={onFinalSubmission} testID="tu-final-submission" />
-    </ScrollView>
+      <ZButton title="Final Submission" disabled={!enabled} onPress={onFinalSubmission} style={styles.bigButton} testID="tu-final-submission" />
+      {!enabled ? <Text style={styles.hint}>Complete every technology and validate the documents first.</Text> : null}
+    </ZScroll>
   );
 }
 
@@ -232,28 +229,25 @@ function Summary({ data, cert, items }: { data: FinancialAssistanceDetailsRespon
   const eligible = (total * percentage) / 100;
   return (
     <View>
-      <StaticLabel label="Summary" />
-      <View style={styles.summary} testID="tu-summary">
-        <SummaryRow label="Name of Technology" value="Amount (Rs.)" bold />
-        <Divider style={{ marginVertical: 2 }} />
+      <SectionLabel label="Summary" style={styles.section} />
+      <Card style={styles.summary} testID="tu-summary">
+        <SummaryRow label="Name of Technology" value="Amount (Rs.)" head />
         {accepted.map((t, i) => (
           <SummaryRow key={`${t.Id}-${i}`} label={t.TechnologyName ?? ''} value={twoDecimals(t.AmountPaid) ?? ''} />
         ))}
-        <Divider style={{ marginVertical: 2 }} />
         <SummaryRow label="Total Amount" value={twoDecimals(total) ?? ''} bold />
-        <Divider style={{ marginVertical: 2 }} />
         {/* The legacy showed a fixed 300000.00 above the maximum, whatever the maximum was. */}
-        <SummaryRow label="Technology Support Eligible Amount" value={eligible <= maxSubsidy ? (twoDecimals(eligible) ?? '') : '300000.00'} bold />
-      </View>
+        <SummaryRow label="Technology Support Eligible Amount" value={eligible <= maxSubsidy ? (twoDecimals(eligible) ?? '') : '300000.00'} bold accent />
+      </Card>
     </View>
   );
 }
 
-function SummaryRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function SummaryRow({ label, value, bold, head, accent }: { label: string; value: string; bold?: boolean; head?: boolean; accent?: boolean }) {
   return (
-    <View style={styles.summaryRow}>
-      <Text style={[styles.summaryLabel, bold && { fontWeight: 'bold' }]}>{label}</Text>
-      <Text style={[styles.summaryValue, bold && { fontWeight: 'bold' }]}>{value}</Text>
+    <View style={[styles.summaryRow, (bold || head) && styles.summaryRule]}>
+      <Text style={[styles.summaryLabel, head && styles.summaryHead, bold && styles.summaryBold]}>{label}</Text>
+      <Text style={[styles.summaryValue, head && styles.summaryHead, bold && styles.summaryBold, accent && { color: C.primaryDark }]}>{value}</Text>
     </View>
   );
 }
@@ -314,21 +308,48 @@ function TechnologyDetailsView({
     onDone();
   };
 
+  const rows: Array<{ label: string; value: string; onEdit?: () => void; testID?: string }> = technologyRows(t).map(([label, value]) => ({ label, value }));
+  if (t.AmountPaid != null) rows.push({ label: 'Amount Paid before GST (Rs.)', value: amount, onEdit: editAmount, testID: 'tu-amount' });
+  if (t.ModeOfPayment != null) rows.push({ label: 'Mode of Payment', value: t.ModeOfPayment });
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 8 }}>
-      <Text style={styles.subheading}>Technology Details</Text>
-      <Text style={styles.subheading} testID="tu-tech-title">
-        {t.TechnologyName ?? ''}
-      </Text>
-      {technologyRows(t).map(([label, value]) => (
-        <ReadOnlyField key={label} label={label} value={value} />
-      ))}
-      {t.AmountPaid != null ? <ReadOnlyField label="Amount Paid before GST (Rs.)" value={amount} onEdit={editAmount} testID="tu-amount" /> : null}
-      {t.ModeOfPayment != null ? <ReadOnlyField label="Mode of Payment" value={t.ModeOfPayment} /> : null}
+    <ZScroll contentContainerStyle={z.screenPad}>
+      <Card>
+        <Text style={styles.cardLabel}>Technology Details</Text>
+        <Text style={styles.techTitle} testID="tu-tech-title">
+          {t.TechnologyName ?? ''}
+        </Text>
+      </Card>
+      {rows.length > 0 ? (
+        <Card style={styles.details}>
+          {rows.map((row, i) => (
+            <ReadOnlyField key={row.label} label={row.label} value={row.value} onEdit={row.onEdit} last={i === rows.length - 1} testID={row.testID} />
+          ))}
+        </Card>
+      ) : null}
+      {purchased || invoice ? <SectionLabel label="Documents" style={styles.section} /> : null}
       {purchased ? <DocumentRow app={app} document={purchased} technologyCode={code} onValidated={onValidated} testID="tu-purchased" /> : null}
       {invoice ? <DocumentRow app={app} document={invoice} technologyCode={code} onValidated={onValidated} testID="tu-invoice" /> : null}
-      <SaButton title="Proceed" large disabled={!validated} onPress={proceed} testID="tu-proceed" />
-    </ScrollView>
+      <ZButton title="Proceed" disabled={!validated} onPress={proceed} style={styles.bigButton} testID="tu-proceed" />
+      {!validated ? <Text style={styles.hint}>Validate both documents to proceed.</Text> : null}
+    </ZScroll>
+  );
+}
+
+/** A dialog in the redesign's look: white card, bold title and the close icon. */
+function ZDialog({ title, onClose, children, testID }: { title?: string | null; onClose?: () => void; children: React.ReactNode; testID?: string }) {
+  return (
+    <View style={styles.dialog} testID={testID}>
+      <View style={styles.dialogHead}>
+        <Text style={styles.dialogTitle}>{title ?? ''}</Text>
+        {onClose ? (
+          <Pressable onPress={onClose} hitSlop={10} testID="dialog-close" accessibilityLabel="Close">
+            <ZIcon name="close" size={20} color={C.tSecondary} />
+          </Pressable>
+        ) : null}
+      </View>
+      <ZScroll keyboardShouldPersistTaps="handled">{children}</ZScroll>
+    </View>
   );
 }
 
@@ -336,17 +357,13 @@ function TechnologyDetailsView({
 function AmountDialog({ initial, onDone }: { initial: string; onDone: (v: string | null) => void }) {
   const [value, setValue] = useState(initial);
   return (
-    <View style={styles.amountDialog} testID="amount-dialog">
-      <TextField label="Enter Value" value={value} onChange={setValue} numeric testID="amount-input" />
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <Text style={styles.dialogButton} onPress={() => onDone(null)} testID="amount-cancel">
-          CANCEL
-        </Text>
-        <Text style={styles.dialogButton} onPress={() => onDone(value)} testID="amount-ok">
-          OK
-        </Text>
+    <ZDialog title="Enter Value" testID="amount-dialog">
+      <Field value={value} onChangeText={t => setValue(numericFilter(t))} keyboardType="number-pad" maxLength={NUMERIC_MAX_LENGTH} testID="amount-input" />
+      <View style={styles.dialogButtons}>
+        <ZButton title="Cancel" variant="ghost" small onPress={() => onDone(null)} style={styles.flex} testID="amount-cancel" />
+        <ZButton title="OK" small onPress={() => onDone(value)} style={styles.flex} testID="amount-ok" />
       </View>
-    </View>
+    </ZDialog>
   );
 }
 
@@ -411,17 +428,72 @@ function DocumentRow({ app, document, technologyCode, onValidated, testID }: { a
       () => undefined,
     );
 
-  const image = isPdf ? <Icon icon={icons.ic_baseline_picture_as_pdf_18} size={48} /> : url ? <Image source={{ uri: url }} style={{ width: 64, height: 64 }} resizeMode="contain" /> : undefined;
+  const validateTitle = hasData || document.isValidateClicked ? 'Edit' : 'Validate';
+  const validateEnabled = hasData || viewed || !!document.isValidateClicked;
   return (
-    <ReviewItem
-      label={`${document.Name ?? ''}\ncaptured at ${document.CreatedDate ?? ''}`}
-      imageNode={image}
-      onView={view}
-      validateTitle={hasData || document.isValidateClicked ? 'Edit' : 'Validate'}
-      validateEnabled={hasData || viewed || !!document.isValidateClicked}
-      onValidate={validate}
-      testID={testID}
-    />
+    <Card style={styles.doc} testID={testID}>
+      <View style={styles.docThumb}>
+        {isPdf ? (
+          <ZIcon name="document" size={26} color={C.danger} />
+        ) : url ? (
+          <Image source={{ uri: url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : (
+          <ZIcon name="image" size={24} color={C.primary} />
+        )}
+      </View>
+      <View style={styles.flex}>
+        <Text style={styles.docName} numberOfLines={2}>
+          {document.Name ?? ''}
+        </Text>
+        <Text style={styles.docDate} numberOfLines={1}>{`captured at ${document.CreatedDate ?? ''}`}</Text>
+        {document.isValidateClicked ? (
+          <View style={styles.docBadge}>
+            <Badge label="Validated" tone="success" small />
+          </View>
+        ) : null}
+      </View>
+      <View style={styles.docButtons}>
+        <ZButton title="View" small variant="outline" onPress={view} style={styles.docButton} testID={`${testID}-view`} />
+        <ZButton title={validateTitle} small onPress={validate} disabled={!validateEnabled} style={styles.docButton} testID={`${testID}-validate`} />
+      </View>
+    </Card>
+  );
+}
+
+/** Two radio cards (the legacy YesNo): the first green, the second red when chosen; testIDs `${prefix}-${option}`. */
+function TwoChoice({ label, options, value, onChange, testID }: { label: string; options: [string, string]; value: string | null; onChange: (v: string) => void; testID: string }) {
+  return (
+    <View style={styles.choiceBox} testID={testID}>
+      <Text style={styles.choiceLabel}>{label}</Text>
+      <View style={styles.choices}>
+        {options.map((o, i) => {
+          const on = value === o;
+          const tone = i === 0 ? { fg: C.success, bg: C.successBg } : { fg: C.danger, bg: C.dangerBg };
+          return (
+            <Pressable
+              key={o}
+              style={[styles.choice, on && { borderColor: tone.fg, backgroundColor: tone.bg }, on && styles.choiceOn]}
+              onPress={() => onChange(o)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: on }}
+              testID={`${testID}-${o}`}>
+              <View style={[styles.radio, { borderColor: on ? tone.fg : C.border }]}>{on ? <View style={[styles.radioDot, { backgroundColor: tone.fg }]} /> : null}</View>
+              <Text style={[styles.choiceText, on && { color: tone.fg }, on && styles.choiceTextOn]}>{o}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+/** A tick box with its label (the legacy CheckBox). */
+function TickBox({ label, checked, onChange, testID }: { label: string; checked: boolean; onChange: (c: boolean) => void; testID?: string }) {
+  return (
+    <Pressable style={styles.tickRow} onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} testID={testID}>
+      <View style={[styles.tick, checked && styles.tickOn]}>{checked ? <ZIcon name="check" size={14} color={C.tInverse} strokeWidth={2.6} /> : null}</View>
+      <Text style={styles.tickLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -435,16 +507,15 @@ function VerifyEvidenceDialog({ document, technologyCode, onClose, onSubmit }: {
   const [attachments, setAttachments] = useState<PhotoData[]>(document.uploadedAttachments ?? []);
   const askAttachments = shouldAskForAttachments(document, technologyCode);
   return (
-    <DialogFrame title="Verify Evidence" onClose={onClose}>
+    <ZDialog title="Verify Evidence" onClose={onClose}>
       <View testID="verify-dialog">
-        <YesNo label="Verified" value={verified} onChange={setVerified} testID="verify-verified" />
+        <TwoChoice label="VERIFIED" options={[YES, NO]} value={verified} onChange={setVerified} testID="verify-verified" />
         {askAttachments && verified === YES ? (
           <PhotosField label="Capture Evidences" photos={attachments} onChange={setAttachments} capturer={capturer} store={app.photos} maxPhotos={5} testID="verify-attachments" />
         ) : null}
-        <TextField label="Remarks" value={remarks} onChange={setRemarks} multiline testID="verify-remarks" />
-        <SaButton
+        <Field label="Remarks" value={remarks} onChangeText={setRemarks} multiline maxLength={500} testID="verify-remarks" />
+        <ZButton
           title="Submit"
-          style={{ alignSelf: 'flex-end' }}
           onPress={() => {
             document.IsVerified = verified;
             document.AssessorRemarks = remarks.trim() === '' ? null : remarks;
@@ -455,7 +526,7 @@ function VerifyEvidenceDialog({ document, technologyCode, onClose, onSubmit }: {
           testID="verify-submit"
         />
       </View>
-    </DialogFrame>
+    </ZDialog>
   );
 }
 
@@ -468,40 +539,80 @@ function RejectCommentDialog({ existing, onClose, onSubmit }: { existing: [boole
   const [commentError, setCommentError] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   return (
-    <DialogFrame title="Confirm Final Submit" onClose={onClose}>
+    <ZDialog title="Confirm Final Submit" onClose={onClose}>
       <View testID="final-submit-dialog">
-        <YesNo
-          label="Please select"
+        <TwoChoice
+          label="PLEASE SELECT"
+          options={['Accept', 'Reject']}
           value={response === YES ? 'Accept' : response === NO ? 'Reject' : null}
           onChange={v => setResponse(v === 'Accept' ? YES : NO)}
-          yesLabel="Accept"
-          noLabel="Reject"
           testID="tu-decision"
         />
-        <TextField label="Comments" value={comment} onChange={t => (setComment(t), setCommentError(null))} error={commentError} multiline testID="tu-comments" />
-        <CheckBox label={confirmText ? htmlToPlain(confirmText.html) : ''} checked={confirmed} onChange={setConfirmed} testID="tu-confirm" />
-        <SaButton
+        <Field label="Comments" value={comment} onChangeText={t => (setComment(t), setCommentError(null))} error={commentError} multiline maxLength={500} testID="tu-comments" />
+        <TickBox label={confirmText ? htmlToPlain(confirmText.html) : ''} checked={confirmed} onChange={setConfirmed} testID="tu-confirm" />
+        <ZButton
           title="Submit"
-          style={{ alignSelf: 'flex-end' }}
           onPress={() => {
             if (response == null) return;
             if (comment.trim() === '') return setCommentError('Required');
             if (!confirmed) return ui.snackbar('Please confirm');
             onSubmit(response === YES, comment);
           }}
+          style={styles.dialogSubmit}
           testID="tu-submit"
         />
       </View>
-    </DialogFrame>
+    </ZDialog>
   );
 }
 
 const styles = StyleSheet.create({
-  subheading: { fontSize: 22, fontWeight: 'bold', color: sa.subheading, marginBottom: 8, marginTop: 5 },
-  summary: { backgroundColor: sa.white, borderColor: '#C7CACD', borderWidth: 0.5, padding: 5 },
-  summaryRow: { flexDirection: 'row', paddingVertical: 4, paddingHorizontal: 8 },
-  summaryLabel: { flex: 1, color: sa.darkGrey, fontSize: 15 },
-  summaryValue: { color: sa.darkGrey, fontSize: 15 },
-  amountDialog: { backgroundColor: sa.white, borderRadius: 4, padding: 16, margin: 24 },
-  dialogButton: { color: sa.primary, fontWeight: '500', fontSize: 14, paddingHorizontal: 12, paddingVertical: 8 },
+  flex: { flex: 1 },
+  section: { marginTop: 12 },
+  techRow: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  well: { width: 44, height: 44, borderRadius: 10, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  techName: { fontSize: 15, fontWeight: '700', color: C.tPrimary },
+  techMeta: { flexDirection: 'row', marginTop: 6 },
+  bigButton: { minHeight: 52, borderRadius: 12, marginTop: 12 },
+  hint: { fontSize: 11, color: C.tMuted, textAlign: 'center', marginTop: 8 },
+  summary: { paddingVertical: 6 },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8 },
+  summaryRule: { borderTopColor: C.divider, borderTopWidth: 1 },
+  summaryLabel: { flex: 1, fontSize: 14, color: C.tPrimary, marginRight: 8 },
+  summaryValue: { fontSize: 14, color: C.tPrimary },
+  summaryHead: { fontSize: 11, fontWeight: '600', color: C.tSecondary, letterSpacing: 0.4 },
+  summaryBold: { fontWeight: '700' },
+  cardLabel: { fontSize: 12, fontWeight: '700', color: C.primaryDark },
+  techTitle: { fontSize: 18, fontWeight: '700', color: C.tPrimary, marginTop: 4 },
+  details: { paddingVertical: 4 },
+  detail: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  detailDivider: { borderBottomColor: C.divider, borderBottomWidth: 1 },
+  detailLabel: { fontSize: 11, fontWeight: '600', color: C.tSecondary, letterSpacing: 0.3 },
+  detailValue: { fontSize: 15, color: C.tPrimary, marginTop: 2 },
+  editIcon: { padding: 6 },
+  doc: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  docThumb: { width: 56, height: 56, borderRadius: 10, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', marginRight: 12 },
+  docName: { fontSize: 14, fontWeight: '700', color: C.tPrimary },
+  docDate: { fontSize: 11, color: C.tSecondary, marginTop: 2 },
+  docBadge: { flexDirection: 'row', marginTop: 4 },
+  docButtons: { gap: 6, marginLeft: 8 },
+  docButton: { minWidth: 88 },
+  dialog: { backgroundColor: C.surface, borderRadius: 16, padding: 18, margin: 20, maxHeight: '90%' },
+  dialogHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  dialogTitle: { fontSize: 17, fontWeight: '700', color: C.tPrimary },
+  dialogButtons: { flexDirection: 'row', gap: 10 },
+  dialogSubmit: { marginTop: 8 },
+  choiceBox: { marginBottom: 14 },
+  choiceLabel: { fontSize: 12, fontWeight: '600', color: C.tSecondary, marginBottom: 6 },
+  choices: { flexDirection: 'row', gap: 10 },
+  choice: { flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  radioDot: { width: 9, height: 9, borderRadius: 5 },
+  choiceText: { fontSize: 15, color: C.tPrimary },
+  choiceOn: { borderWidth: 2 },
+  choiceTextOn: { fontWeight: '700' },
+  tickRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 8 },
+  tick: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  tickOn: { backgroundColor: C.primary, borderColor: C.primary },
+  tickLabel: { flex: 1, fontSize: 13, color: C.tPrimary, marginLeft: 10, lineHeight: 18 },
 });

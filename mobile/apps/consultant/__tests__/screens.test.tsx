@@ -7,7 +7,7 @@ import type { SaApp } from '../src/app/SaApp';
 import { newAttendance } from '../src/attendance';
 import { COMPLETED, Status } from '../src/models';
 import { FakeServer, makeApp } from './helpers/harness';
-import { loginAnswer, SA_ID, tuAnswer, ZED_ID } from './helpers/fixtures';
+import { allocationAnswer, loginAnswer, SA_ID, tuAnswer, ZED_ID } from './helpers/fixtures';
 
 jest.setTimeout(60000);
 
@@ -39,7 +39,7 @@ async function appWith(answer = loginAnswer(), punchedIn = true) {
   return app;
 }
 
-describe('AssessmentOptionsActivity (the dashboard)', () => {
+describe('Milestone home (AssessmentOptionsActivity + CompanyProfileActivity)', () => {
   it('first milestone, lead consultant: the sections in order with their statuses', async () => {
     const app = await appWith();
     const r = render(app, 'AssessmentOptions');
@@ -57,9 +57,8 @@ describe('AssessmentOptionsActivity (the dashboard)', () => {
       'option-training-on-handholding',
       'option-closing-meeting',
       'option-sync-data',
-      'option-clear-data',
     ]);
-    expect(texts(r)).toEqual(expect.arrayContaining(['Dashboard', 'In Progress', 'Not completed', 'Handholding Action Plan (Optional)']));
+    expect(texts(r)).toEqual(expect.arrayContaining(['In progress', 'Pending', 'Handholding Action Plan', 'Optional · action plan per parameter', '0 of 11 sections completed']));
     // The opening meeting is needed first for the sections.
     await act(async () => handler(r, 'option-diagnostic-study').props.onPress());
     expect(texts(r)).toContain('Opening meeting is pending');
@@ -117,13 +116,21 @@ describe('AssessmentOptionsActivity (the dashboard)', () => {
   });
 });
 
-describe('CompanyProfileActivity', () => {
-  it('shows the BDS and HAP dates, the address and the contact boxes, and "Proceed"', async () => {
+describe('Milestone home: the unit (CompanyProfileActivity)', () => {
+  it('shows the BDS and HAP dates, the address and the SPOC contact, and the allocation done', async () => {
     const app = await appWith();
     const r = render(app, 'CompanyProfile', { userType: 1, allottedParamsAvailable: true });
-    expect(texts(r)).toEqual(
-      expect.arrayContaining(['Welcome', 'BASIC INFORMATION', 'BDS (From & To)', '10/24/2026 - 10/31/2026', 'HAP (From & To)', 'UNIT ADDRESS', 'Plot 2, Test Road', 'State/UT', 'PIN Code', 'UNIT SPOC DETAILS', 'PROCEED']),
-    );
+    expect(texts(r)).toEqual(expect.arrayContaining(['BDS (From & To)', '10/24/2026 - 10/31/2026', 'HAP (From & To)', 'Plot 2, Test Road', 'Milestone 1', 'Parameter Allocation', 'Completed']));
+    expect(byTestId(r, 'profile-unit-address')).toHaveLength(1);
+  });
+
+  it('a lead consultant without allocated parameters is sent to the allocation by every section', async () => {
+    const app = await appWith(allocationAnswer());
+    const r = render(app, 'CompanyProfile', { userType: 1, allottedParamsAvailable: false });
+    await act(async () => undefined);
+    expect(texts(r)).toContain('Locked · finish Parameter Allocation');
+    await act(async () => handler(r, 'option-site-photos').props.onPress());
+    expect(byTestId(r, 'allocation')).toHaveLength(1);
   });
 
   it('the HAP dates belong to the first milestone only', async () => {
@@ -138,15 +145,13 @@ describe('Baseline diagnostic study (ParametersFragment, RequirementFragment)', 
     const app = await appWith(loginAnswer({ isOpenMeetingSubmitted: true }));
     const r = render(app, 'Module', { module: 'baselineDiagnostic' });
     expect(app.details!.baselineDiagnosticStudyData?.parameters).toHaveLength(2);
-    expect(texts(r)).toEqual(expect.arrayContaining(['PARAMETERS', 'Test Parameter Two', '1 Question(s) | To Start']));
+    expect(texts(r)).toEqual(expect.arrayContaining(['PARAMETERS', 'Test Parameter Two', 'To Start', '1 Question(s)']));
     await act(async () => handler(r, 'module-param-1').props.onPress());
-    expect(texts(r)).toEqual(expect.arrayContaining(['REQUIREMENT', 'The unit trains its test staff']));
+    expect(texts(r)).toEqual(expect.arrayContaining(['Requirement 1', 'The unit trains its test staff']));
     await act(async () => handler(r, 'req-proceed').props.onPress());
     expect(texts(r)).toContain('Missing/Invalid Data');
     // Conformance "No" needs the gaps identified.
-    // The picker's promise settles with the choice: press without waiting for it.
-    act(() => void handler(r, 'req-conformance-press').props.onPress());
-    await act(async () => handler(r, 'pick-item-1').props.onPress());
+    await act(async () => handler(r, 'req-conformance-no').props.onPress());
     await act(async () => handler(r, 'req-proceed').props.onPress());
     const param = app.details!.baselineDiagnosticStudyData!.parameters[1]!;
     expect(param.status).not.toBe(COMPLETED);
@@ -158,7 +163,7 @@ describe('Baseline diagnostic study (ParametersFragment, RequirementFragment)', 
     expect(param.requirements![0]).toMatchObject({ conformance: 'No', gapsIdentified: ['No training plan'], reviewNeeded: false });
     // The allotted parameters themselves are untouched.
     expect(app.details!.allottedParameters![1]!.status).toBe(0);
-    expect(texts(r)).toContain('1 Question(s) | Completed');
+    expect(texts(r)).toContain('Completed');
   });
 });
 

@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { PhotosField, TextField, useBackHandler, useFocusEffect, useNavigation, useRoute, useUi, type PhotoData } from '@zed/shared';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { COMMENT_LENGTH, NUMERIC_MAX_LENGTH, numericFilter, PhotosField, useBackHandler, useFocusEffect, useNavigation, useRoute, useUi, type PhotoData } from '@zed/shared';
 import { useSa } from '../app/context';
 import type { SaApp } from '../app/SaApp';
-import { icons } from '../assets/icons';
 import { submitModuleParameter, submitProgressReviewSelfie } from '../flows/submissions';
 import { useSaPhotoCapture } from '../photo/capture';
 import {
@@ -28,9 +27,8 @@ import {
   type ParametersModule,
   type RequirementDetails,
 } from '../models';
-import { DropdownInput, MultiplePointsInput, REQUIRED, usePresentPhotos } from '../ui/inputs';
-import { BulletText, MenuRow, NavigationFooter, PageTitle, ReviewItem, SaButton, SaFrame, sa } from '../ui/kit';
-import { Icon } from '@zed/shared';
+import { promptComment, REQUIRED, usePresentPhotos } from '../ui/inputs';
+import { Badge, C, Card, CharCounter, Field, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName, type Tone } from '../ui/zed';
 
 /** The screens' titles (headers). */
 export const MODULE_TITLES: Record<ParametersModule, string> = {
@@ -58,34 +56,45 @@ export function moduleData(app: SaApp, module: ParametersModule, create = false)
   return (d[key] as BaselineDiagnosticStudyData | null | undefined) ?? null;
 }
 
-const CONFORMANCE_OPTIONS = [YES, NO, PARTIAL];
+/** The answers in the design's order (the legacy dropdown listed Yes, No, Partial). */
+const CONFORMANCE_OPTIONS = [YES, PARTIAL, NO];
 
-/** ParametersListAdapter: "n Question(s) | status" in its colour, " (Review Needed)" in red while in progress. */
+const STATUS_BADGES: Record<number, { label: string; tone: Tone }> = {
+  [TO_START]: { label: 'To Start', tone: 'neutral' },
+  [IN_PROGRESS]: { label: 'In Progress', tone: 'warning' },
+  [COMPLETED]: { label: 'Completed', tone: 'success' },
+  [SUBMITTED]: { label: 'Submitted', tone: 'primary' },
+};
+
+/** ParametersListAdapter in the design's parameter card: icon well, name, status chip, "n Question(s)", "Review Needed" while in progress. */
 function ParameterRow({ p, onPress, testID }: { p: AllottedParameters; onPress: () => void; testID: string }) {
   const n = p.requirements?.length;
-  let status = '0 Question(s)';
-  let color: string = sa.bodyTextGrey;
-  let review = false;
-  if (p.requirements != null) {
-    if (p.status === TO_START) {
-      status = `${n} Question(s) | To Start`;
-      color = sa.coolGrey;
-    } else if (p.status === IN_PROGRESS) {
-      status = `${n} Question(s) | In Progress`;
-      color = sa.squash;
-      review = p.requirements.some(r => r.reviewNeeded);
-    } else if (p.status === COMPLETED || p.status === SUBMITTED) {
-      status = `${n} Question(s) | ${p.status === COMPLETED ? 'Completed' : 'Submitted'}`;
-      color = sa.teal;
-    }
-  }
-  return <MenuRow label={`${p.parameterName ?? ''}${review ? ' (Review Needed)' : ''}`} status={status} statusColor={color} onPress={onPress} bordered testID={testID} />;
+  const badge = p.requirements != null ? STATUS_BADGES[p.status] : undefined;
+  const review = p.requirements != null && p.status === IN_PROGRESS && p.requirements.some(r => r.reviewNeeded);
+  const idle = !badge || p.status === TO_START;
+  return (
+    <Card onPress={onPress} style={styles.paramCard} testID={testID}>
+      <View style={[styles.well, idle && { backgroundColor: C.muted }]}>
+        <ZIcon name="clipboard" size={20} color={idle ? C.tMuted : C.primary} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={styles.paramName}>{p.parameterName ?? ''}</Text>
+        <View style={styles.paramMeta}>
+          {badge ? <Badge label={badge.label} tone={badge.tone} small testID={`${testID}-status`} /> : null}
+          {review ? <Badge label="Review Needed" tone="danger" small testID={`${testID}-review`} /> : null}
+          <Text style={styles.paramCount}>{`${p.requirements != null ? n : 0} Question(s)`}</Text>
+        </View>
+      </View>
+      <ZIcon name="chevron-right" size={18} color={C.tMuted} />
+    </Card>
+  );
 }
 
 /**
  * BaselineDiagnosticStudyActivity / HandholdingActionPlanActivity / SuggestionForTechnologyInterventionActivity /
- * ProgressReviewActivity with their ParametersFragment: the parameters (the screen's own copy), BACK, and PROCEED to
- * send the completed ones one after the other (their evidences first). All sent: the section is submitted.
+ * ProgressReviewActivity with their ParametersFragment: the parameters (the screen's own copy), BACK, and SUBMIT
+ * (the legacy PROCEED) to send the completed ones one after the other (their evidences first). All sent: the section is
+ * submitted.
  */
 export function ModuleScreen() {
   const app = useSa();
@@ -149,17 +158,30 @@ export function ModuleScreen() {
     }
   };
 
+  // Grey while nothing is ready to send; still tappable, as the legacy PROCEED was.
+  const ready = data.parameters.some(p => p.status === COMPLETED) || data.parameters.every(p => p.status === SUBMITTED);
+  const done = data.parameters.filter(p => p.status === COMPLETED || p.status === SUBMITTED).length;
+
   return (
-    <SaFrame title={MODULE_TITLES[module]} testID="module">
-      <PageTitle>PARAMETERS</PageTitle>
-      <ScrollView contentContainerStyle={{ padding: 5 }}>
+    <Page testID="module">
+      <HeroHeader title={MODULE_TITLES[module]} subtitle={app.zedId} onBack={() => nav.pop()} />
+      <ZScroll contentContainerStyle={z.screenPad}>
+        <SectionLabel label="Parameters" right={<Text style={z.muted} testID="module-progress">{`${done} of ${data.parameters.length} completed`}</Text>} />
         {data.parameters.map((p, i) => (
           <ParameterRow key={`${p.parameterId}-${i}`} p={p} onPress={() => nav.push('Requirements', { module, parameterIndex: i })} testID={`module-param-${i}`} />
         ))}
-      </ScrollView>
-      <NavigationFooter onBack={() => nav.pop()} onProceed={sync} testID="module-footer" />
-    </SaFrame>
+      </ZScroll>
+      <Footer>
+        <ZButton title="Back" variant="outline" onPress={() => nav.pop()} style={styles.footerButton} testID="module-footer-back" />
+        <ZButton title="Submit" onPress={sync} variant={ready ? 'primary' : 'ghost'} style={[styles.footerButton, !ready && styles.grey]} testID="module-footer-proceed" />
+      </Footer>
+    </Page>
   );
+}
+
+/** The white bar under a screen with its buttons. */
+function Footer({ children }: { children: React.ReactNode }) {
+  return <View style={styles.footer}>{children}</View>;
 }
 
 /** SelfieFragment of the progress review: "Consultant Selfie on Site"; BACK without one leaves the progress review. */
@@ -189,12 +211,19 @@ export function ProgressReviewSelfieScreen() {
   };
 
   return (
-    <SaFrame title={MODULE_TITLES.progressReview} testID="pr-selfie">
-      <ScrollView contentContainerStyle={{ padding: 8 }}>
-        <PhotosField label="Consultant Selfie on Site" photos={selfie ? [selfie] : []} onChange={l => setSelfie(l[0] ?? null)} capturer={capturer} store={app.photos} testID="pr-selfie-photo" />
-      </ScrollView>
-      <NavigationFooter onBack={back} onProceed={proceed} testID="pr-selfie-footer" />
-    </SaFrame>
+    <Page testID="pr-selfie">
+      <HeroHeader title={MODULE_TITLES.progressReview} subtitle={app.zedId} onBack={back} />
+      <ZScroll contentContainerStyle={z.screenPad}>
+        <Strip text="Take a selfie at the unit before the progress review." icon="camera" />
+        <Card>
+          <PhotosField label="Consultant Selfie on Site" photos={selfie ? [selfie] : []} onChange={l => setSelfie(l[0] ?? null)} capturer={capturer} store={app.photos} testID="pr-selfie-photo" />
+        </Card>
+      </ZScroll>
+      <Footer>
+        <ZButton title="Back" variant="outline" onPress={back} style={styles.footerButton} testID="pr-selfie-footer-back" />
+        <ZButton title="Proceed" onPress={proceed} variant={selfie ? 'primary' : 'ghost'} style={[styles.footerButton, !selfie && styles.grey]} testID="pr-selfie-footer-proceed" />
+      </Footer>
+    </Page>
   );
 }
 
@@ -240,7 +269,8 @@ export function RequirementsScreen() {
   };
 
   return (
-    <SaFrame title={MODULE_TITLES[params.module]} testID="requirements">
+    <Page testID="requirements">
+      <HeroHeader title={parameter.parameterName || MODULE_TITLES[params.module]} subtitle={`${MODULE_TITLES[params.module]} · ${app.zedId}`} onBack={() => nav.pop()} />
       <FlatList
         ref={list}
         data={parameter.requirements ?? []}
@@ -257,6 +287,7 @@ export function RequirementsScreen() {
               module={params.module}
               requirement={item}
               index={i}
+              count={size}
               onBack={onBackClicked}
               onUpdated={() => updated(i)}
               onReview={(m: ParametersModule) => nav.push('RequirementReview', { module: params.module, parameterIndex: params.parameterIndex, requirementIndex: i, review: m })}
@@ -264,7 +295,7 @@ export function RequirementsScreen() {
           </View>
         )}
       />
-    </SaFrame>
+    </Page>
   );
 }
 
@@ -273,12 +304,182 @@ export function RequirementReviewScreen() {
   const app = useSa();
   const nav = useNavigation();
   const { params } = useRoute<{ module: ParametersModule; parameterIndex: number; requirementIndex: number; review: ParametersModule }>();
-  const requirement = moduleData(app, params.module)?.parameters[params.parameterIndex]?.requirements?.[params.requirementIndex];
+  const parameter = moduleData(app, params.module)?.parameters[params.parameterIndex];
+  const requirement = parameter?.requirements?.[params.requirementIndex];
   if (!requirement) return null;
   return (
-    <SaFrame title={MODULE_TITLES[params.module]} testID="requirement-review">
-      <RequirementPage module={params.review} requirement={requirement} index={params.requirementIndex} readOnly onBack={() => nav.pop()} onUpdated={() => undefined} onReview={() => undefined} />
-    </SaFrame>
+    <Page testID="requirement-review">
+      <HeroHeader title={MODULE_TITLES[params.review]} subtitle={app.zedId} onBack={() => nav.pop()} />
+      <RequirementPage
+        module={params.review}
+        requirement={requirement}
+        index={params.requirementIndex}
+        count={parameter?.requirements?.length ?? 0}
+        readOnly
+        onBack={() => nav.pop()}
+        onUpdated={() => undefined}
+        onReview={() => undefined}
+      />
+    </Page>
+  );
+}
+
+const ANSWER_TONES: Record<string, { fg: string; bg: string }> = {
+  [YES]: { fg: C.success, bg: C.successBg },
+  [PARTIAL]: { fg: C.warning, bg: C.warningBg },
+  [NO]: { fg: C.danger, bg: C.dangerBg },
+};
+
+/** Yes / Partial / No: the design's radio cards, three in a row (green / amber / red when chosen). */
+function AnswerChoice({ value, onChange, disabled, error, testIDPrefix }: { value: string | null; onChange: (v: string) => void; disabled?: boolean; error?: boolean; testIDPrefix: string }) {
+  return (
+    <View style={[styles.answers, error && styles.answersError]} testID={`${testIDPrefix}-box`}>
+      {CONFORMANCE_OPTIONS.map(v => {
+        const on = value === v;
+        const tone = ANSWER_TONES[v]!;
+        return (
+          <Pressable
+            key={v}
+            style={[styles.answer, on && { borderColor: tone.fg, backgroundColor: tone.bg }, on && styles.answerOn, disabled && !on && styles.answerOff]}
+            onPress={disabled ? undefined : () => onChange(v)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: on, disabled: !!disabled }}
+            testID={`${testIDPrefix}-${v.toLowerCase()}`}
+          >
+            <View style={[styles.radio, { borderColor: on ? tone.fg : C.border }]}>{on ? <View style={[styles.radioDot, { backgroundColor: tone.fg }]} /> : null}</View>
+            <Text style={[styles.answerText, on && { color: tone.fg }, on && styles.answerTextOn]}>{v}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * MultiplePointsInputHelper in the design's look: each point a card with a bullet (edit and delete when editable) and
+ * "+ Add another …", which opens the same comment dialog. `error` marks the list when a required one is empty.
+ */
+function PointsList({
+  label,
+  addLabel,
+  value,
+  onChange,
+  readOnly,
+  error,
+  testID,
+}: {
+  label: string;
+  addLabel: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  readOnly?: boolean;
+  error?: string | null;
+  testID: string;
+}) {
+  const ui = useUi();
+  return (
+    <View testID={testID}>
+      <SectionLabel label={label} style={styles.label} right={error ? <Badge label={error} tone="danger" small /> : undefined} />
+      {value.map((point, i) => (
+        <View key={`${i}-${point}`} style={styles.point}>
+          <View style={styles.bulletDot} />
+          <Text style={styles.pointText} testID={`${testID}-${i}`}>
+            {point}
+          </Text>
+          {!readOnly ? (
+            <>
+              <Pressable
+                style={styles.pointIcon}
+                hitSlop={6}
+                onPress={async () => {
+                  const t = await promptComment(ui, point);
+                  if (t != null) onChange(value.map((p, j) => (j === i ? t : p)));
+                }}
+                accessibilityLabel="Edit"
+                testID={`${testID}-${i}-edit`}>
+                <ZIcon name="edit" size={18} color={C.primaryDark} />
+              </Pressable>
+              <Pressable style={styles.pointIcon} hitSlop={6} onPress={() => onChange(value.filter((_, j) => j !== i))} accessibilityLabel="Delete" testID={`${testID}-${i}-delete`}>
+                <ZIcon name="close" size={18} color={C.danger} />
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      ))}
+      {readOnly && value.length === 0 ? <Text style={styles.none}>None</Text> : null}
+      {!readOnly ? (
+        <Pressable
+          style={({ pressed }) => [styles.addPoint, error ? styles.addPointError : null, pressed && { opacity: 0.85 }]}
+          onPress={async () => {
+            const t = await promptComment(ui, null);
+            if (t != null) onChange([...value, t]);
+          }}
+          accessibilityRole="button"
+          testID={`${testID}-add`}>
+          <ZIcon name="plus" size={16} color={C.primaryDark} />
+          <Text style={styles.addPointText}>{value.length ? `Add another ${addLabel}` : `Add ${addLabel}`}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+const BULLET = '• ';
+/** The remark's points: one "• point" line each. */
+const bulletsOf = (text: string) =>
+  text
+    .split('\n')
+    .map(l => l.replace(/^\s*[•\-*]\s*/, '').trim())
+    .filter(l => l !== '');
+const bulletText = (points: readonly string[]) => points.map(p => BULLET + p.trim()).join('\n');
+
+/** "Remarks, if any" as bullet points ("• point" lines; 500 characters in all, as the comment box allowed). */
+function RemarksBullets({ value, onChange, readOnly }: { value: string; onChange: (v: string) => void; readOnly?: boolean }) {
+  const ui = useUi();
+  const [point, setPoint] = useState('');
+  const points = bulletsOf(value);
+  const add = () => {
+    const t = point.trim();
+    if (!t) return;
+    const next = bulletText([...points, t]);
+    if (next.length > COMMENT_LENGTH) return ui.toast(`Remarks can be up to ${COMMENT_LENGTH} characters`);
+    onChange(next);
+    setPoint('');
+  };
+  return (
+    <View testID="req-remarks-box">
+      <SectionLabel label="Remarks, if any" style={styles.label} right={!readOnly ? <CharCounter used={value.length} limit={COMMENT_LENGTH} /> : undefined} />
+      {points.map((t, i) => (
+        <View key={`${i}-${t}`} style={styles.point} testID={`req-remarks-${i}`}>
+          <View style={styles.bulletDot} />
+          <Text style={styles.pointText}>{t}</Text>
+          {!readOnly ? (
+            <Pressable style={styles.pointIcon} hitSlop={6} onPress={() => onChange(bulletText(points.filter((_, j) => j !== i)))} accessibilityLabel="Remove" testID={`req-remarks-${i}-remove`}>
+              <ZIcon name="close" size={18} color={C.danger} />
+            </Pressable>
+          ) : null}
+        </View>
+      ))}
+      {readOnly && points.length === 0 ? <Text style={styles.none}>None</Text> : null}
+      {!readOnly ? (
+        <View style={styles.remarkAdd}>
+          <TextInput
+            value={point}
+            onChangeText={setPoint}
+            placeholder={points.length ? 'Add another remark' : 'Add a remark'}
+            placeholderTextColor={C.tMuted}
+            style={styles.remarkInput}
+            maxLength={COMMENT_LENGTH}
+            autoCapitalize="sentences"
+            onSubmitEditing={add}
+            blurOnSubmit={false}
+            returnKeyType="done"
+            testID="req-remarks"
+          />
+          <ZButton title="Add" small variant="outline" onPress={add} testID="req-remarks-add" />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -287,6 +488,7 @@ function RequirementPage({
   module,
   requirement: r,
   index,
+  count,
   readOnly = false,
   onBack,
   onUpdated,
@@ -295,6 +497,7 @@ function RequirementPage({
   module: ParametersModule;
   requirement: RequirementDetails;
   index: number;
+  count: number;
   readOnly?: boolean;
   onBack: () => void;
   onUpdated: () => void;
@@ -380,71 +583,173 @@ function RequirementPage({
   const err = (k: string) => (errors.has(k) ? REQUIRED : null);
   const showEvidence = !readOnly && (module === 'baselineDiagnostic' || (module === 'progressReview' && !m4));
   const reviewRows: ParametersModule[] = module === 'progressReview' ? (m4 ? ['technologyIntervention'] : ['baselineDiagnostic', 'handholdingActionPlan', 'technologyIntervention']) : [];
+  const viewOnly = module === 'progressReview' && m4;
+  const last = index === count - 1;
+  const evidence = showEvidence && photos ? (
+    <>
+      <SectionLabel label={`Evidence (${photos.length} of 5)`} style={styles.label} />
+      <Card style={styles.evidence}>
+        <PhotosField label="Add Evidence" photos={photos} onChange={setEvidence} capturer={capturer} store={app.photos} maxPhotos={5} testID="req-evidence" />
+      </Card>
+      <Text style={styles.note}>{'At least 1 photograph is needed for “Yes” and “Partial”; maximum 5 allowed.'}</Text>
+    </>
+  ) : null;
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ padding: 8 }} keyboardShouldPersistTaps="handled">
-        <View style={styles.requirementBox}>
-          <Text style={styles.requirementLabel}>REQUIREMENT</Text>
+    <View style={styles.flex}>
+      <ZScroll contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
+        <Card testID="req-card">
+          <View style={z.rowBetween}>
+            <Text style={styles.reqLabel}>{`Requirement ${index + 1}`}</Text>
+            {count > 0 ? <Text style={z.muted} testID="req-count">{`${index + 1} of ${count}`}</Text> : null}
+          </View>
           {(r.options ?? []).map((o, i) =>
             o && o.label?.trim() ? (
               <View key={`${o.code}-${i}`}>
-                <BulletText text={o.label} />
-                {(o.subOptions ?? []).map((s, j) => (s?.label?.trim() ? <BulletText key={`${s.code}-${j}`} text={s.label} indent /> : null))}
+                <View style={styles.optionRow}>
+                  <View style={styles.optionDot} />
+                  <Text style={styles.optionText}>{o.label}</Text>
+                </View>
+                {(o.subOptions ?? []).map((s, j) =>
+                  s?.label?.trim() ? (
+                    <View key={`${s.code}-${j}`} style={[styles.optionRow, styles.subOption]}>
+                      <View style={[styles.optionDot, styles.subDot]} />
+                      <Text style={styles.subText}>{s.label}</Text>
+                    </View>
+                  ) : null,
+                )}
               </View>
             ) : null,
           )}
-        </View>
+          {r.reviewNeeded ? (
+            <View style={styles.reviewFlag}>
+              <Badge label="Review Needed" tone="warning" small />
+            </View>
+          ) : null}
+        </Card>
+        {reviewRows.length > 0 ? <SectionLabel label="Earlier sections" style={styles.label} /> : null}
         {reviewRows.map(m => (
-          <ReviewItem key={m} label={MODULE_TITLES[m]} onView={() => onReview(m)} testID={`review-${m}`} />
+          <ReviewRow key={m} label={MODULE_TITLES[m]} icon={m === 'baselineDiagnostic' ? 'search' : m === 'handholdingActionPlan' ? 'clipboard' : 'settings'} onView={() => onReview(m)} testID={`review-${m}`} />
         ))}
         {module === 'baselineDiagnostic' ? (
           <>
-            <DropdownInput label="Conformance" options={CONFORMANCE_OPTIONS} value={conformance} onChange={setConformance} error={err('conformance')} disabled={readOnly} testID="req-conformance" />
-            {showEvidence && photos ? <PhotosField label="Add Evidence" photos={photos} onChange={setEvidence} capturer={capturer} store={app.photos} maxPhotos={5} testID="req-evidence" /> : null}
-            <MultiplePointsInput label="Gaps Identified" value={gaps} onChange={setGaps} readOnly={readOnly} testID="req-gaps" />
-            <TextField label="Remarks, if any" value={remarks} onChange={setRemarks} multiline disabled={readOnly} testID="req-remarks" />
+            <SectionLabel label="Conformance" style={styles.label} right={err('conformance') ? <Badge label={REQUIRED} tone="danger" small /> : undefined} />
+            <AnswerChoice value={conformance} onChange={setConformance} error={!!err('conformance')} disabled={readOnly} testIDPrefix="req-conformance" />
+            {evidence}
+            <PointsList label="Gaps Identified" addLabel="gap" value={gaps} onChange={setGaps} readOnly={readOnly} testID="req-gaps" />
+            <RemarksBullets value={remarks} onChange={setRemarks} readOnly={readOnly} />
           </>
         ) : null}
         {module === 'handholdingActionPlan' ? (
           <>
-            <MultiplePointsInput label="Planned Activity(ies)" value={planned} onChange={setPlanned} readOnly={readOnly} error={err('planned')} testID="req-planned" />
-            <TextField label="Estimated Time (in days)" value={estimated} onChange={setEstimated} numeric error={err('estimated')} disabled={readOnly} testID="req-estimated" />
-            <TextField label="Remarks, if any" value={remarks} onChange={setRemarks} multiline disabled={readOnly} testID="req-remarks" />
+            <PointsList label="Planned Activity(ies)" addLabel="activity" value={planned} onChange={setPlanned} readOnly={readOnly} error={err('planned')} testID="req-planned" />
+            <SectionLabel label="Estimated Time (in days)" style={styles.label} />
+            <Field
+              value={estimated}
+              onChangeText={t => setEstimated(numericFilter(t))}
+              keyboardType="number-pad"
+              maxLength={NUMERIC_MAX_LENGTH}
+              icon="calendar"
+              right={<Text style={styles.days}>Days</Text>}
+              error={err('estimated')}
+              editable={!readOnly}
+              testID="req-estimated"
+            />
+            <RemarksBullets value={remarks} onChange={setRemarks} readOnly={readOnly} />
           </>
         ) : null}
         {module === 'technologyIntervention' ? (
           <>
-            <MultiplePointsInput label="Suggested Technology Intervention" value={suggested} onChange={setSuggested} readOnly={readOnly} error={err('suggested')} testID="req-suggested" />
-            <TextField label="Rationale for Technology Intervention" value={rationale} onChange={setRationale} error={err('rationale')} disabled={readOnly} testID="req-rationale" />
-            <TextField label="Remarks, if any" value={remarks} onChange={setRemarks} multiline disabled={readOnly} testID="req-remarks" />
+            <PointsList label="Suggested Technology Intervention" addLabel="intervention" value={suggested} onChange={setSuggested} readOnly={readOnly} error={err('suggested')} testID="req-suggested" />
+            <SectionLabel label="Rationale for Technology Intervention" style={styles.label} />
+            <Field value={rationale} onChangeText={setRationale} error={err('rationale')} editable={!readOnly} testID="req-rationale" />
+            <RemarksBullets value={remarks} onChange={setRemarks} readOnly={readOnly} />
           </>
         ) : null}
         {module === 'progressReview' ? (
           <>
-            <DropdownInput label="Is proposed activity completed?" options={CONFORMANCE_OPTIONS} value={proposed} onChange={setProposed} error={err('proposed')} disabled={m4} testID="req-proposed" />
+            <SectionLabel label="Is proposed activity completed?" style={styles.label} right={err('proposed') ? <Badge label={REQUIRED} tone="danger" small /> : undefined} />
+            <AnswerChoice value={proposed} onChange={setProposed} error={!!err('proposed')} disabled={m4} testIDPrefix="req-proposed" />
             {!m4 ? (
               <>
-                {showEvidence && photos ? <PhotosField label="Add Evidence" photos={photos} onChange={setEvidence} capturer={capturer} store={app.photos} maxPhotos={5} testID="req-evidence" /> : null}
-                <TextField label="Remarks, if any" value={remarks} onChange={setRemarks} multiline testID="req-remarks" />
+                <RemarksBullets value={remarks} onChange={setRemarks} />
+                {evidence}
               </>
             ) : null}
           </>
         ) : null}
-      </ScrollView>
+      </ZScroll>
       {!readOnly ? (
-        <View style={styles.footer}>
-          <SaButton title="Back" onPress={onBack} disabled={index === 0} left={<Icon icon={icons.ic_back_arrow} size={16} />} style={{ margin: 0 }} testID="req-back" />
-          {!(module === 'progressReview' && m4) ? <SaButton title="Review" onPress={review} style={{ margin: 0 }} testID="req-review" /> : <View style={{ width: 80 }} />}
-          <SaButton title="Proceed" onPress={proceed} style={{ margin: 0 }} testID="req-proceed" />
-        </View>
+        <Footer>
+          <ZButton title="Previous" variant="outline" onPress={onBack} disabled={index === 0} style={styles.navButton} testID="req-back" />
+          {!viewOnly ? <ZButton title="Review" variant="ghost" onPress={review} style={styles.navButton} testID="req-review" /> : null}
+          <ZButton title={viewOnly ? 'Next' : last ? 'Save' : 'Save & Next'} onPress={proceed} style={[styles.navButton, styles.saveButton]} testID="req-proceed" />
+        </Footer>
       ) : null}
     </View>
   );
 }
 
+/** layout_review_item of the progress review: the earlier section and VIEW. */
+function ReviewRow({ label, icon, onView, testID }: { label: string; icon: IconName; onView: () => void; testID: string }) {
+  return (
+    <Card style={styles.reviewRow} testID={testID}>
+      <View style={styles.well}>
+        <ZIcon name={icon} size={20} color={C.primary} />
+      </View>
+      <Text style={[styles.flex, styles.reviewLabel]} numberOfLines={2}>
+        {label}
+      </Text>
+      <ZButton title="View" small variant="outline" onPress={onView} testID={`${testID}-view`} />
+    </Card>
+  );
+}
+
 const styles = StyleSheet.create({
-  requirementBox: { backgroundColor: sa.paleBlue, borderRadius: 5, padding: 5 },
-  requirementLabel: { color: sa.blue, fontWeight: 'bold', fontSize: 14 },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: sa.lightGrey, padding: 8 },
+  flex: { flex: 1 },
+  label: { marginTop: 12 },
+  // parameter list (09 / 11 / 12 / 08)
+  paramCard: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: C.border },
+  well: { width: 44, height: 44, borderRadius: 10, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  paramName: { fontSize: 15, fontWeight: '700', color: C.tPrimary },
+  paramMeta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 },
+  paramCount: { fontSize: 12, color: C.tSecondary },
+  footer: { flexDirection: 'row', gap: 10, backgroundColor: C.surface, borderTopColor: C.border, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  footerButton: { flex: 1, borderRadius: 12 },
+  grey: { backgroundColor: C.muted, borderColor: C.muted },
+  // requirement (10 / 11e / 12 / 08e)
+  reqLabel: { fontSize: 13, fontWeight: '700', color: C.primaryDark },
+  optionRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 },
+  optionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.primary, marginTop: 8, marginRight: 10 },
+  optionText: { flex: 1, fontSize: 15, color: C.tPrimary, lineHeight: 22 },
+  subOption: { marginLeft: 16, marginTop: 6 },
+  subDot: { backgroundColor: C.tMuted, width: 5, height: 5 },
+  subText: { flex: 1, fontSize: 14, color: C.tSecondary, lineHeight: 20 },
+  reviewFlag: { flexDirection: 'row', marginTop: 10 },
+  reviewRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderWidth: 1, borderColor: C.border, marginBottom: 8 },
+  reviewLabel: { fontSize: 14, fontWeight: '700', color: C.tPrimary, marginRight: 8 },
+  answers: { flexDirection: 'row', gap: 8 },
+  answersError: { borderRadius: 12, borderWidth: 1, borderColor: C.danger, padding: 2 },
+  answer: { flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10 },
+  answerOn: { borderWidth: 2 },
+  answerOff: { opacity: 0.6 },
+  radio: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  radioDot: { width: 9, height: 9, borderRadius: 5 },
+  answerText: { fontSize: 14, color: C.tPrimary },
+  answerTextOn: { fontWeight: '700' },
+  point: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingLeft: 14, paddingRight: 8, paddingVertical: 10, marginBottom: 8 },
+  bulletDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.primaryDark, marginRight: 12 },
+  pointText: { flex: 1, fontSize: 14, fontWeight: '600', color: C.tPrimary },
+  pointIcon: { padding: 6 },
+  none: { fontSize: 13, color: C.tMuted, marginBottom: 8 },
+  addPoint: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 46, borderRadius: 10, borderWidth: 1, borderColor: C.primaryBg, backgroundColor: C.primaryBg },
+  addPointError: { borderColor: C.danger },
+  addPointText: { fontSize: 14, fontWeight: '700', color: C.primaryDark },
+  remarkAdd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  remarkInput: { flex: 1, minHeight: 44, borderColor: C.border, borderWidth: 1, borderRadius: 10, backgroundColor: C.surface, paddingHorizontal: 12, fontSize: 14, color: C.tPrimary },
+  days: { fontSize: 12, fontWeight: '600', color: C.tSecondary, backgroundColor: C.muted, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, overflow: 'hidden' },
+  evidence: { paddingVertical: 8 },
+  note: { fontSize: 11, color: C.tMuted, marginTop: -4, marginBottom: 4 },
+  navButton: { flex: 1, paddingHorizontal: 6, borderRadius: 12 },
+  saveButton: { flex: 1.3 },
 });

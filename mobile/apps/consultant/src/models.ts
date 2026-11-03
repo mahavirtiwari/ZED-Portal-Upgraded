@@ -353,6 +353,8 @@ export type AssessmentDetails = BaseServiceResponse & {
   /** 1 to 3: handholding milestones; 4: technology upgradation verification (DFO). */
   milestone: number;
   technologyUpgradationStatus: Status;
+  /** V4: the unit's site tour sections (Admin → Site Tour Sections) and the photos the team has uploaded under each. */
+  siteTourSections?: { id?: string | null; no?: number; title?: string | null; hint?: string | null; min?: number; max?: number; uploaded?: number }[] | null;
 };
 
 /** Requests (service/*). Every request also carries `version` and `deviceInfo` (new). */

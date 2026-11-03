@@ -7,19 +7,29 @@ import { SaAppProvider, useSa } from './src/app/context';
 import { SaApp } from './src/app/SaApp';
 import { registerHandlers, syncNow } from './src/sync/queue';
 import { AlertScreen, AllocationScreen } from './src/screens/AllocationScreens';
-import { AssessmentOptionsScreen } from './src/screens/AssessmentOptionsScreen';
 import { AttendanceLogScreen, AttendanceScreen, PunchInScreen } from './src/screens/AttendanceScreens';
 import { BasicInfoSectionScreen, BasicInformationScreen } from './src/screens/BasicInfoScreens';
-import { CompanyProfileScreen } from './src/screens/CompanyProfileScreen';
+import { CaseDetailScreen } from './src/screens/CaseDetailScreen';
 import { NewSitePhotoScreen, SiteTourScreen } from './src/screens/EvidenceScreens';
 import { FinalCommentsScreen } from './src/screens/FinalCommentsScreen';
-import { LoginScreen } from './src/screens/LoginScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { AboutScreen, HelpScreen, NotificationsScreen, ViewProfileScreen } from './src/screens/InfoScreens';
+import { ForgotPasswordScreen, LoginScreen, SplashScreen } from './src/screens/LoginScreen';
 import { MeetingScreen, SiteImagesScreen } from './src/screens/MeetingScreens';
+import { MilestoneScreen } from './src/screens/MilestoneScreen';
 import { ModuleScreen, ProgressReviewSelfieScreen, RequirementReviewScreen, RequirementsScreen } from './src/screens/ModuleScreens';
 import { SubmitParametersScreen } from './src/screens/SubmitParametersScreen';
 import { TechnologyUpgradationScreen } from './src/screens/TechnologyUpgradationScreens';
 import { TrainingScreen } from './src/screens/TrainingScreen';
 import { sa } from './src/ui/kit';
+
+/** The pages of the signed-in consultant (redesign); nothing when the consultant is gone (back to the sign-in page). */
+function withConsultant<P extends object>(Screen: React.ComponentType<P>): React.ComponentType<P> {
+  return function ConsultantScreen(props: P) {
+    const app = useSa();
+    return app.assessor ? <Screen {...props} /> : null;
+  };
+}
 
 /**
  * The screens below the login need the open consultancy. When it is removed (end of the assessment, punch-out after the
@@ -33,11 +43,20 @@ function withAssessment<P extends object>(Screen: React.ComponentType<P>): React
 }
 
 export const SCREENS: ScreenMap = {
+  Splash: SplashScreen,
   Login: LoginScreen,
-  CompanyProfile: withAssessment(CompanyProfileScreen),
+  ForgotPassword: ForgotPasswordScreen,
+  Home: withConsultant(HomeScreen),
+  CaseDetail: withConsultant(CaseDetailScreen),
+  Notifications: withConsultant(NotificationsScreen),
+  ViewProfile: withConsultant(ViewProfileScreen),
+  Help: HelpScreen,
+  About: AboutScreen,
+  // The company profile and the dashboard are one page in the redesign (01 Milestone Home); both legacy names lead there.
+  CompanyProfile: withAssessment(MilestoneScreen),
   Alert: withAssessment(AlertScreen),
   Allocation: withAssessment(AllocationScreen),
-  AssessmentOptions: withAssessment(AssessmentOptionsScreen),
+  AssessmentOptions: withAssessment(MilestoneScreen),
   SiteImages: withAssessment(SiteImagesScreen),
   Meeting: withAssessment(MeetingScreen),
   SiteTour: withAssessment(SiteTourScreen),
@@ -95,7 +114,7 @@ export default function App() {
       <UiHost>
         {app ? (
           <SaAppProvider app={app}>
-            <StackNavigator screens={SCREENS} initial={{ name: 'Login' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
+            <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
           </SaAppProvider>
         ) : (
           <View style={styles.loading}>

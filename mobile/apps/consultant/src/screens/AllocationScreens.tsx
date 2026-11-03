@@ -1,37 +1,43 @@
 import React, { useRef, useState } from 'react';
-import { BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { isNetworkAvailable, isSuccess, useNavigation, useRoute, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
-import { images } from '../assets/images';
 import { submitAllocation } from '../flows/submissions';
-import { FAILED_TO_SUBMIT, type ParametersDetails } from '../models';
-import { SaButton, SaFrame, sa } from '../ui/kit';
+import { FAILED_TO_SUBMIT, type AssessorDetails, type ParametersDetails } from '../models';
+import { Avatar, Badge, C, Card, HeroHeader, Page, SectionLabel, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
+
+/** The consultant's role under the name (AssessorDetails.userType: 1 lead, 2 co-consultant). */
+const roleOf = (a: AssessorDetails | undefined) => (a?.userType === '1' ? 'Lead Consultant' : a?.userType === '2' ? 'Co-consultant' : null);
 
 /** AlertActivity: allocation pending (exclamation) or submitted (done). */
 export function AlertScreen() {
+  const app = useSa();
   const nav = useNavigation();
   const { params } = useRoute<{ allocationPending?: boolean }>();
   const pending = params.allocationPending === true;
   return (
-    <SaFrame testID="alert-screen">
+    <Page testID="alert-screen">
+      <HeroHeader title="Parameter Allocation" subtitle={app.zedId} />
       <View style={styles.alertBox}>
-        <Image source={pending ? images.ic_exclamation_48dp : images.ic_done_teal} style={styles.alertImage} resizeMode="contain" />
+        <View style={[styles.alertWell, { backgroundColor: pending ? C.warningBg : C.successBg }]}>
+          <ZIcon name={pending ? 'info' : 'check'} size={40} color={pending ? C.warning : C.success} />
+        </View>
         <Text style={styles.alertText} testID="alert-message">
           {pending ? 'Allocation from Lead Consultant pending.\n\nPlease try again after sometime.' : 'Allocation Submitted'}
         </Text>
-        <SaButton
-          title="EXIT"
-          large
+        <ZButton
+          title="Exit"
           testID="alert-exit"
+          style={styles.alertButton}
           // Opened with CLEAR_TASK: finish() on "pending" closed the app.
           onPress={() => (pending ? BackHandler.exitApp() : nav.reset([{ name: 'Login' }]))}
         />
       </View>
-    </SaFrame>
+    </Page>
   );
 }
 
-/** AllocationActivity: the lead assessor allots each parameter to an assessor. */
+/** AllocationActivity: the lead consultant allots each parameter to a consultant. */
 export function AllocationScreen() {
   const app = useSa();
   const ui = useUi();
@@ -115,66 +121,111 @@ export function AllocationScreen() {
     }
   };
 
+  const toAllocate = details.filter(p => !p.isExcemptedFromSa);
+  const allocated = toAllocate.filter(p => p.assigneeName != null).length;
+
   return (
-    <SaFrame testID="allocation">
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-        <Pressable style={styles.detailsHeader} onPress={() => setShowCounts(s => !s)} testID="details-label">
-          <Text style={styles.detailsLabel}>ALLOCATION DETAILS</Text>
-          <Image source={showCounts ? images.ic_keyboard_arrow_up_black_18dp : images.ic_keyboard_arrow_down_black_18dp} style={styles.arrow} />
+    <Page testID="allocation">
+      <HeroHeader title="Parameter Allocation" subtitle={app.zedId} onBack={nav.canGoBack() ? () => nav.pop() : undefined} />
+      <ZScroll contentContainerStyle={z.screenPad}>
+        <Text style={styles.intro}>{'Assign each parameter to a team member.\nLead Consultant reviews all parameters.'}</Text>
+
+        {details.map((p, i) => {
+          const assignee = p.assigneeName != null ? assessors.find(a => a.assessorId === p.assigneeId) : undefined;
+          const error = errors.has(i);
+          return (
+            <Card key={`${p.parameterId}-${i}`} style={error ? styles.cardError : undefined}>
+              <View style={styles.paramHead}>
+                <Text style={[styles.paramName, error && { color: C.danger }]} testID={`param-${i}-name`}>
+                  {`${i + 1} ${p.parameterName ?? ''}`}
+                  {error ? '  (!)' : ''}
+                </Text>
+                {p.isExcemptedFromSa ? <Badge label="Exempted" tone="danger" small /> : null}
+              </View>
+              <Pressable
+                style={[styles.select, p.assigneeName != null && styles.selectOn, p.isExcemptedFromSa && styles.selectOff]}
+                disabled={p.isExcemptedFromSa}
+                onPress={() => pick(i)}
+                testID={`param-${i}-assignee`}>
+                {p.assigneeName != null ? (
+                  <>
+                    <Avatar name={p.assigneeName} size={30} />
+                    <View style={styles.selectText}>
+                      <Text style={styles.name}>{p.assigneeName}</Text>
+                      {roleOf(assignee) ? <Text style={styles.role}>{roleOf(assignee)}</Text> : null}
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.userWell}>
+                      <ZIcon name="user" size={14} color={C.tMuted} />
+                    </View>
+                    <Text style={[styles.selectText, styles.placeholder]}>Select</Text>
+                  </>
+                )}
+                <ZIcon name="chevron-down" size={18} color={C.tMuted} />
+              </Pressable>
+            </Card>
+          );
+        })}
+
+        <Pressable style={[z.rowBetween, styles.previewHead]} onPress={() => setShowCounts(s => !s)} testID="details-label">
+          <SectionLabel label="Allocation preview" style={styles.flatLabel} />
+          <ZIcon name={showCounts ? 'chevron-down' : 'chevron-right'} size={18} color={C.tMuted} />
         </Pressable>
-        {showCounts
-          ? assessors.map(a => (
-              <View key={a.assessorId!} style={styles.countRow}>
-                <Text style={styles.countLabel}>{a.assessorName}</Text>
+        {showCounts ? (
+          <Card style={styles.counts}>
+            {assessors.map((a, i) => (
+              <View key={a.assessorId!} style={[styles.countRow, i > 0 && styles.countDivider]}>
+                <Avatar name={a.assessorName!} size={32} />
+                <View style={styles.countName}>
+                  <Text style={styles.name}>{a.assessorName}</Text>
+                  {roleOf(a) ? <Text style={styles.role}>{roleOf(a)}</Text> : null}
+                </View>
                 <Text style={styles.countValue} testID={`count-${a.assessorId}`}>
                   {details.filter(p => p.assigneeId != null && p.assigneeId === a.assessorId).length}
                 </Text>
               </View>
-            ))
-          : null}
-        <View style={styles.box}>
-          <Text style={styles.header}>PARAMETERS</Text>
-          {details.map((p, i) => (
-            <View key={`${p.parameterId}-${i}`} style={styles.paramRow}>
-              {p.isExcemptedFromSa ? <Text style={styles.exempted}>Exempted</Text> : null}
-              <Text style={[styles.paramName, errors.has(i) && styles.paramError]} testID={`param-${i}-name`}>
-                {`${i + 1} ${p.parameterName ?? ''}`}
-                {errors.has(i) ? '  (!)' : ''}
-              </Text>
-              <Pressable
-                style={[styles.spinner, p.isExcemptedFromSa && { opacity: 0.5 }]}
-                disabled={p.isExcemptedFromSa}
-                onPress={() => pick(i)}
-                testID={`param-${i}-assignee`}>
-                <Text style={styles.spinnerText}>{p.assigneeName ?? 'Select'}</Text>
-                <Text style={styles.spinnerArrow}>▾</Text>
-              </Pressable>
+            ))}
+            <View style={[z.rowBetween, styles.total]}>
+              <Text style={styles.totalLabel}>Total allocated</Text>
+              <Text style={styles.totalValue} testID="allocation-total">{`${allocated} of ${toAllocate.length} parameters`}</Text>
             </View>
-          ))}
-        </View>
-        <SaButton title="SUBMIT ALLOCATION" large onPress={submitData} testID="submit-allocation" />
-      </ScrollView>
-    </SaFrame>
+          </Card>
+        ) : null}
+
+        <ZButton title="Save allocation" onPress={submitData} style={styles.save} testID="submit-allocation" />
+      </ZScroll>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  alertBox: { flex: 1, padding: 20, justifyContent: 'center' },
-  alertImage: { width: 96, height: 96, alignSelf: 'center' },
-  alertText: { textAlign: 'center', fontSize: 18, color: sa.darkGrey, marginVertical: 20 },
-  detailsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: sa.silver },
-  detailsLabel: { fontWeight: 'bold', fontSize: 14, color: sa.darkGrey },
-  arrow: { width: 18, height: 18 },
-  countRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 6 },
-  countLabel: { color: sa.coolGrey, fontSize: 15 },
-  countValue: { color: sa.darkGrey, fontSize: 15, fontWeight: 'bold' },
-  box: { margin: 12, borderColor: '#C7CACD', borderWidth: 0.5 },
-  header: { backgroundColor: sa.silver, paddingLeft: 16, paddingVertical: 8, fontSize: 14, fontWeight: 'bold', color: sa.darkGrey },
-  paramRow: { padding: 8, borderBottomColor: sa.divider, borderBottomWidth: 1 },
-  exempted: { color: sa.red, fontSize: 12, fontWeight: 'bold' },
-  paramName: { color: sa.darkGrey, fontSize: 15, marginVertical: 4 },
-  paramError: { color: '#B00020' },
-  spinner: { flexDirection: 'row', alignItems: 'center', borderColor: '#C7CACD', borderWidth: 1, borderRadius: 4, padding: 10 },
-  spinnerText: { flex: 1, color: sa.darkGrey, fontSize: 15 },
-  spinnerArrow: { color: sa.coolGrey, fontSize: 16 },
+  alertBox: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center' },
+  alertWell: { width: 88, height: 88, borderRadius: 44, alignItems: 'center', justifyContent: 'center' },
+  alertText: { textAlign: 'center', fontSize: 16, fontWeight: '600', color: C.tPrimary, marginVertical: 20 },
+  alertButton: { alignSelf: 'stretch' },
+  intro: { fontSize: 13, color: C.tSecondary, marginBottom: 14, lineHeight: 18 },
+  cardError: { borderWidth: 1, borderColor: C.danger },
+  paramHead: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10 },
+  paramName: { flex: 1, fontSize: 14, fontWeight: '700', color: C.tPrimary, marginRight: 8 },
+  select: { flexDirection: 'row', alignItems: 'center', minHeight: 48, borderRadius: 10, borderWidth: 1, borderColor: C.border, backgroundColor: C.surface, paddingHorizontal: 10 },
+  selectOn: { backgroundColor: C.primaryBg, borderColor: C.primaryBg },
+  selectOff: { opacity: 0.5 },
+  selectText: { flex: 1, marginLeft: 10 },
+  userWell: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.muted, alignItems: 'center', justifyContent: 'center' },
+  placeholder: { fontSize: 14, color: C.tMuted },
+  name: { fontSize: 14, fontWeight: '700', color: C.tPrimary },
+  role: { fontSize: 11, color: C.tSecondary, marginTop: 1 },
+  previewHead: { marginTop: 4 },
+  flatLabel: { marginTop: 0, marginBottom: 0 },
+  counts: { paddingVertical: 4, marginTop: 8 },
+  countRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  countDivider: { borderTopColor: C.divider, borderTopWidth: 1 },
+  countName: { flex: 1, marginLeft: 12 },
+  countValue: { fontSize: 15, fontWeight: '700', color: C.primaryDark },
+  total: { borderTopColor: C.divider, borderTopWidth: 1, paddingVertical: 10 },
+  totalLabel: { fontSize: 12, color: C.tSecondary },
+  totalValue: { fontSize: 13, fontWeight: '700', color: C.tPrimary },
+  save: { minHeight: 52, borderRadius: 12, marginTop: 8 },
 });

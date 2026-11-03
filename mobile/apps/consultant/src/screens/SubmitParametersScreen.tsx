@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CheckBox, isNetworkAvailable, isSuccess, useNavigation, useUi } from '@zed/shared';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { isNetworkAvailable, isSuccess, useNavigation, useUi } from '@zed/shared';
 import { useSa } from '../app/context';
 import { baseRequest, selfieSyncAllowed, siteTourSubmitted, submitEndAssessment, submitSiteTour, syncOpenMeeting, syncSelfie } from '../flows/submissions';
 import { allowCloseMeetingSubmission, COMPLETED, EVIDENCE_SITE_TOUR, FAILED_TO_SUBMIT, isLead, SUBMITTED, type AllottedParameters, type ServiceResponse } from '../models';
-import { SaButton, SaFrame, sa } from '../ui/kit';
+import { C, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName } from '../ui/zed';
 import { ASSESSMENT_COMPLETED, useSubmissionSuccess } from './FinalCommentsScreen';
 
 type PendingRow = { kind: 'openMeeting' | 'selfie' | 'siteTour' | 'closeMeeting'; title: string };
@@ -161,72 +161,162 @@ export function SubmitParametersScreen() {
     if (mode === 'selected' && nextSelected) return submitOne(nextSelected, 'selected');
   };
 
-  if (pending == null) return <SaFrame>{null}</SaFrame>;
+  const header = <HeroHeader title="Sync Data" subtitle={app.zedId} onBack={() => nav.pop()} />;
+  if (pending == null) return <Page>{header}</Page>;
 
   const rows = closeRow ? [...pending, closeRow] : pending;
   const showParams = pending.length === 0;
+  const canSyncParams = showParams && completed.length > 0;
+  // Already on the server: shown as SYNCED, nothing to do.
+  const synced = ([
+    isLead(d) && d.isOpenMeetingSubmitted && !pending.some(r => r.kind === 'openMeeting') ? { kind: 'openMeeting', title: 'Opening Meeting' } : null,
+    d.isSelfieSubmitted && !pending.some(r => r.kind === 'selfie') ? { kind: 'selfie', title: 'Selfie on Site' } : null,
+    d.isSiteTourSubmitted ? { kind: 'siteTour', title: 'Site Tour' } : null,
+  ] as Array<PendingRow | null>).filter((t): t is PendingRow => t != null);
+  const nothing = rows.length === 0 && !canSyncParams;
+  const allSynced = synced.length > 0;
+
   return (
-    <SaFrame testID="submit-parameters">
-      <ScrollView contentContainerStyle={{ paddingBottom: 16 }}>
-        {rows.map(row => (
-          <View key={row.kind} style={styles.pendingRow}>
-            <Text style={styles.pendingTitle}>{row.title}</Text>
-            <SaButton title="Sync" onPress={() => syncRow(row)} style={styles.syncButton} testID={`sync-${row.kind}`} />
+    <Page testID="submit-parameters">
+      {header}
+      <ZScroll contentContainerStyle={z.screenPad}>
+        {nothing ? (
+          <View testID="no-data">
+            {allSynced ? (
+              <Strip title="All data synced" text="Nothing left on this phone" tone="success" icon="check" />
+            ) : (
+              <Strip text="No data available to sync at this time." tone="warning" />
+            )}
           </View>
+        ) : (
+          <Strip title="Saved on this phone" text="Ready to sync" tone="warning" icon="sync" />
+        )}
+
+        {rows.length > 0 || synced.length > 0 ? <SectionLabel label={nothing ? 'Synced items' : 'Sync queue'} /> : null}
+        {rows.map(row => (
+          <SyncRow key={row.kind} icon={ICONS[row.kind]} title={row.title} subtitle="Queued" chip={<SyncChip onPress={() => syncRow(row)} testID={`sync-${row.kind}`} />} />
         ))}
-        {showParams && completed.length === 0 && !closeRow ? <Text style={styles.progressText} testID="no-data">No data to sync</Text> : null}
-        {showParams && completed.length > 0 ? (
-          <View>
-            <View style={styles.pendingRow}>
-              <Text style={styles.pendingTitle}>Sync All</Text>
-              <SaButton title="Sync" onPress={() => submitOne(completed[0]!, 'all')} style={styles.syncButton} testID="sync-all" />
+        {synced.map(row => (
+          <SyncRow key={`synced-${row.kind}`} icon={ICONS[row.kind]} title={row.title} chip={<SyncedChip />} />
+        ))}
+
+        {nothing && !allSynced ? (
+          <View style={styles.empty}>
+            <View style={styles.emptyWell}>
+              <ZIcon name="sync" size={36} color={C.tMuted} />
             </View>
-            <View style={styles.pendingRow}>
-              <Text style={styles.pendingTitle}>Sync Selected</Text>
-              <SaButton
-                title="Sync"
-                style={styles.syncButton}
-                testID="sync-selected"
-                onPress={() => {
-                  const first = completed.find(x => x.isSelectedToSubmit);
-                  if (first) submitOne(first, 'selected');
-                  else ui.toast('Please select the Parameters you want to submit');
-                }}
-              />
-            </View>
-            {completed.map((p, i) => (
-              <View key={`${p.parameterId}-${i}`} style={styles.paramRow}>
-                <CheckBox
-                  label=""
-                  checked={p.isSelectedToSubmit}
-                  onChange={c => {
-                    p.isSelectedToSubmit = c;
-                    rerender(x => x + 1);
-                  }}
-                  testID={`select-${i}`}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.paramName}>{p.parameterName}</Text>
-                  <Text style={[styles.paramStatus, p.requirements && { color: sa.teal }]}>
-                    {p.requirements ? `${p.requirements.length} Question(s) | Completed` : '0 Question(s)'}
-                  </Text>
-                </View>
-                <SaButton title="Submit" onPress={() => submitOne(p, 'one')} style={styles.syncButton} testID={`submit-param-${i}`} />
-              </View>
-            ))}
+            <Text style={styles.emptyTitle} testID="no-data-title">
+              No data to sync
+            </Text>
+            <Text style={styles.emptyText}>There are no pending items to send to the server right now.</Text>
           </View>
         ) : null}
-      </ScrollView>
-    </SaFrame>
+
+        {canSyncParams ? (
+          <>
+            <SectionLabel label="Parameters" style={styles.paramsLabel} />
+            {completed.map((p, i) => (
+              <SyncRow
+                key={`${p.parameterId}-${i}`}
+                icon="clipboard"
+                title={p.parameterName ?? ''}
+                subtitle={p.requirements ? `${p.requirements.length} Question(s) | Completed` : '0 Question(s)'}
+                done={!!p.requirements}
+                tick={
+                  <TickBox
+                    checked={p.isSelectedToSubmit}
+                    onChange={c => {
+                      p.isSelectedToSubmit = c;
+                      rerender(x => x + 1);
+                    }}
+                    testID={`select-${i}`}
+                  />
+                }
+                chip={<SyncChip title="SUBMIT" onPress={() => submitOne(p, 'one')} testID={`submit-param-${i}`} />}
+              />
+            ))}
+          </>
+        ) : null}
+      </ZScroll>
+      <View style={styles.bulk}>
+        <ZButton
+          title="Sync Selected"
+          variant="outline"
+          disabled={!canSyncParams}
+          style={styles.bulkButton}
+          testID="sync-selected"
+          onPress={() => {
+            const first = completed.find(x => x.isSelectedToSubmit);
+            if (first) submitOne(first, 'selected');
+            else ui.toast('Please select the Parameters you want to submit');
+          }}
+        />
+        <ZButton title="Sync All" icon="sync" disabled={!canSyncParams} style={styles.bulkButton} testID="sync-all" onPress={() => submitOne(completed[0]!, 'all')} />
+      </View>
+    </Page>
+  );
+}
+
+const ICONS: Record<PendingRow['kind'], IconName> = { openMeeting: 'users', selfie: 'camera', siteTour: 'image', closeMeeting: 'users' };
+
+/** A row of the sync list: tick box (parameters), icon well, title, status chip. */
+function SyncRow({ icon, title, subtitle, done, tick, chip }: { icon: IconName; title: string; subtitle?: string; done?: boolean; tick?: React.ReactNode; chip: React.ReactNode }) {
+  return (
+    <View style={styles.row}>
+      {tick ? <View style={styles.tick}>{tick}</View> : null}
+      <View style={styles.well}>
+        <ZIcon name={icon} size={20} color={C.primary} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        {subtitle ? <Text style={[styles.rowSub, done && styles.rowSubDone]}>{subtitle}</Text> : null}
+      </View>
+      {chip}
+    </View>
+  );
+}
+
+const SyncChip = ({ onPress, testID, title = 'SYNC' }: { onPress: () => void; testID: string; title?: string }) => (
+  <Pressable style={({ pressed }) => [styles.chip, styles.chipSync, pressed && { opacity: 0.85 }]} onPress={onPress} accessibilityRole="button" testID={testID}>
+    <Text style={[styles.chipText, { color: C.tInverse }]}>{title}</Text>
+  </Pressable>
+);
+
+const SyncedChip = () => (
+  <View style={[styles.chip, { backgroundColor: C.successBg }]}>
+    <ZIcon name="check" size={14} color={C.success} />
+    <Text style={[styles.chipText, styles.chipSynced]}>SYNCED</Text>
+  </View>
+);
+
+/** A tick box (rounded square, green when ticked). */
+function TickBox({ checked, onChange, testID }: { checked: boolean; onChange: (checked: boolean) => void; testID?: string }) {
+  return (
+    <Pressable onPress={() => onChange(!checked)} accessibilityRole="checkbox" accessibilityState={{ checked }} hitSlop={6} testID={testID}>
+      <View style={[styles.box, checked && styles.boxOn]}>{checked ? <ZIcon name="check" size={14} color={C.tInverse} strokeWidth={2.6} /> : null}</View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  pendingRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, borderBottomColor: sa.divider, borderBottomWidth: 1 },
-  pendingTitle: { flex: 1, color: sa.labelColor, fontSize: 16, fontWeight: 'bold' },
-  syncButton: { margin: 5, minHeight: 40 },
-  progressText: { color: sa.darkGrey, fontSize: 16, fontWeight: 'bold', padding: 16, textAlign: 'center' },
-  paramRow: { flexDirection: 'row', alignItems: 'center', padding: 6, borderBottomColor: sa.divider, borderBottomWidth: 1 },
-  paramName: { color: sa.darkGrey, fontSize: 16, padding: 8 },
-  paramStatus: { color: sa.coolGrey, fontSize: 14, fontWeight: 'bold', paddingHorizontal: 8, paddingBottom: 8 },
+  paramsLabel: { marginTop: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', minHeight: 64, backgroundColor: C.surface, borderRadius: 12, borderWidth: 1, borderColor: C.border, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 8 },
+  tick: { marginRight: 10 },
+  well: { width: 40, height: 40, borderRadius: 10, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  rowText: { flex: 1, marginRight: 8 },
+  rowTitle: { fontSize: 14, fontWeight: '700', color: C.tPrimary },
+  rowSub: { fontSize: 11, color: C.tSecondary, marginTop: 2 },
+  rowSubDone: { color: C.success, fontWeight: '600' },
+  chip: { minWidth: 72, height: 30, borderRadius: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
+  chipSync: { backgroundColor: C.primary },
+  chipText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  chipSynced: { color: C.success, marginLeft: 4 },
+  box: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  boxOn: { backgroundColor: C.success, borderColor: C.success },
+  empty: { alignItems: 'center', backgroundColor: C.surface, borderRadius: 14, borderWidth: 1, borderColor: C.border, paddingVertical: 28, paddingHorizontal: 24 },
+  emptyWell: { width: 96, height: 96, borderRadius: 48, backgroundColor: C.muted, alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: C.tPrimary, marginTop: 16 },
+  emptyText: { fontSize: 13, color: C.tSecondary, marginTop: 6, textAlign: 'center' },
+  bulk: { flexDirection: 'row', gap: 12, backgroundColor: C.surface, borderTopColor: C.border, borderTopWidth: 1, paddingHorizontal: 16, paddingVertical: 12 },
+  bulkButton: { flex: 1, borderRadius: 12 },
 });

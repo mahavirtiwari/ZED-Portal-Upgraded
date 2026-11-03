@@ -6,7 +6,7 @@ jest.mock('@op-engineering/op-sqlite', () => ({ open: jest.fn() }));
 jest.mock('react-native-svg', () => {
   const React = require('react');
   const C = (name: string) => (props: Record<string, unknown>) => React.createElement(name, props, props.children);
-  return { __esModule: true, default: C('Svg'), Svg: C('Svg'), Path: C('Path'), G: C('G'), Defs: C('Defs'), ClipPath: C('ClipPath'), LinearGradient: C('LinearGradient'), Stop: C('Stop'), Rect: C('Rect') };
+  return { __esModule: true, default: C('Svg'), Svg: C('Svg'), Path: C('Path'), G: C('G'), Defs: C('Defs'), ClipPath: C('ClipPath'), LinearGradient: C('LinearGradient'), Stop: C('Stop'), Rect: C('Rect'), Circle: C('Circle'), Line: C('Line') };
 });
 jest.mock('react-native-safe-area-context', () => ({
   SafeAreaProvider: ({ children }: { children: unknown }) => children,
