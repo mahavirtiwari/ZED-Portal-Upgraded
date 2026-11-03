@@ -32,7 +32,7 @@ import {
 import { queueAttendance, submitAttendance } from '../flows/submissions';
 import { useSaPhotoCapture } from '../photo/capture';
 import { UNKNOWN_ERROR, type Attendance } from '../models';
-import { Badge, C, Card, HeroHeader, Page, SectionLabel, Sheet, Strip, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
+import { Badge, C, Card, GradientFill, HeroHeader, Page, SectionLabel, Sheet, Strip, z, ZButton, ZIcon, ZScroll } from '../ui/zed';
 import { base64Uri, DashedBox, geoText, SelfieCard, SubmitButton, TimePlaceCard } from './MeetingScreens';
 
 type Result = (ok: boolean) => void;
@@ -237,6 +237,7 @@ export function AttendanceScreen() {
           <View style={styles.punchRow}>
             {punchedIn ? (
               <View style={[styles.punchTile, styles.tileFilled]}>
+                <GradientFill />
                 <Text style={[styles.punchTitle, { color: C.tInverse }]}>Punch-in</Text>
                 <Text style={[styles.punchSub, { color: C.heroSubText }]} testID="punch-in-value">
                   {lastIn ? when(timeOf(lastIn)) : '--:--'}
@@ -244,6 +245,7 @@ export function AttendanceScreen() {
               </View>
             ) : (
               <Pressable style={({ pressed }) => [styles.punchTile, styles.tileFilled, pressed && { opacity: 0.85 }]} onPress={punchIn} testID="punch-in">
+                <GradientFill />
                 <Text style={[styles.punchTitle, { color: C.tInverse }]}>Punch-in</Text>
                 <Text style={[styles.punchSub, { color: C.heroSubText }]} testID="punch-in-value">
                   {inSelfie.selfie ? 'Tap to punch in' : 'Capture selfie first'}
@@ -437,7 +439,7 @@ const styles = StyleSheet.create({
   geoText: { flex: 1, fontSize: 10, color: C.tMuted, textAlign: 'center' },
   punchRow: { flexDirection: 'row', gap: 16, marginTop: 6 },
   punchTile: { flex: 1, height: 60, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  tileFilled: { backgroundColor: C.primary },
+  tileFilled: { backgroundColor: C.primary, overflow: 'hidden' },
   tileOutline: { backgroundColor: C.surface, borderColor: C.primary, borderWidth: 1 },
   tileLocked: { backgroundColor: C.muted },
   punchTitle: { fontSize: 14, fontWeight: '700' },

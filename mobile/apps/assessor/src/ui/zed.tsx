@@ -6,20 +6,25 @@
 import React from 'react';
 import { Dimensions, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ScrollViewProps, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle, Line, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 export const C = {
   primary: '#F9A63A',
   primaryDark: '#E08A1E',
+  /** End colour of the headers' gradient (45 degrees from the primary; the legacy one was flat #FFB243). */
+  primaryDeep: '#E08A1E',
+  /** Orange text on white (the primary is too light for text). */
+  primaryText: '#B86A0F',
   primaryLight: '#FEB244',
   accent: '#5BA53C',
-  bg: '#F7F8FA',
+  /** Page background: a light tint of the app colour (the brighter look). */
+  bg: '#FDF6EC',
   surface: '#FFFFFF',
   muted: '#F1F3F6',
   border: '#E3E6EB',
   divider: '#EDEFF2',
-  tPrimary: '#1F2937',
-  tSecondary: '#5B6472',
+  tPrimary: '#13202B',
+  tSecondary: '#3F4754',
   tMuted: '#98A2B3',
   tInverse: '#FFFFFF',
   success: '#2E9E4B',
@@ -31,6 +36,11 @@ export const C = {
   info: '#1B75BB',
   infoBg: '#E4F0FA',
   primaryBg: '#FDF0DC',
+  /** Light app-colour lines: the progress track, outlined chips. */
+  primaryTrack: '#FBE3C2',
+  primaryEdge: '#F6D4A6',
+  /** The end of the progress gradient. */
+  green: '#5BA53C',
   heroOverlay: 'rgba(255,255,255,0.22)',
   heroSubText: 'rgba(255,255,255,0.92)',
 } as const;
@@ -199,6 +209,30 @@ export function Page({ children, testID, style }: { children: React.ReactNode; t
   );
 }
 
+/**
+ * The headers' gradient (45 degrees, primary #F9A63A to #E08A1E) behind its parent; the parent clips it (overflow
+ * hidden) to its own corners.
+ */
+export function GradientFill() {
+  // Drawn at the parent's measured size: a percentage-sized Svg keeps the size of its first layout.
+  const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size ? (
+        <Svg width={size.w} height={size.h}>
+          <Defs>
+            <LinearGradient id="zedGradient" x1="0" y1="1" x2="1" y2="0">
+              <Stop offset="0" stopColor={C.primary} />
+              <Stop offset="1" stopColor={C.primaryDeep} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#zedGradient)" />
+        </Svg>
+      ) : null}
+    </View>
+  );
+}
+
 /** ZED orange hero header (hero_header): back arrow, title, subtitle, and the ZED mark or a bell with a count. */
 export function HeroHeader({
   title,
@@ -223,6 +257,7 @@ export function HeroHeader({
   const insets = useSafeAreaInsets();
   return (
     <View style={[s.hero, { paddingTop: insets.top + 14 }]} testID={testID}>
+      <GradientFill />
       <View style={s.heroRow}>
         {onBack ? (
           <Pressable onPress={onBack} hitSlop={12} style={{ marginRight: 10 }} testID="header-back" accessibilityLabel="Back">
@@ -263,6 +298,7 @@ export function PlainHeader({ title, subtitle, right, testID }: { title: string;
   const insets = useSafeAreaInsets();
   return (
     <View style={[s.plain, { paddingTop: insets.top + 16 }]} testID={testID}>
+      <GradientFill />
       <View style={{ flex: 1 }}>
         <Text style={s.plainTitle} testID="header-title">
           {title}
@@ -406,13 +442,24 @@ export function Field({
 // ------------------------------------------------------------------ badges, chips, labels
 
 export type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger' | 'primary';
+/** Solid badges (the brighter look); neutral ones stay quiet. */
 const TONES: Record<Tone, { bg: string; fg: string }> = {
+  neutral: { bg: C.muted, fg: C.tSecondary },
+  info: { bg: C.info, fg: C.tInverse },
+  success: { bg: C.success, fg: C.tInverse },
+  warning: { bg: '#D97706', fg: C.tInverse },
+  danger: { bg: C.danger, fg: C.tInverse },
+  primary: { bg: C.primary, fg: C.tInverse },
+};
+
+/** Notes and status strips keep soft tints (the badges are solid). */
+const SOFT_TONES: Record<Tone, { bg: string; fg: string }> = {
   neutral: { bg: C.muted, fg: C.tSecondary },
   info: { bg: C.infoBg, fg: C.info },
   success: { bg: C.successBg, fg: C.success },
   warning: { bg: C.warningBg, fg: C.warning },
   danger: { bg: C.dangerBg, fg: C.danger },
-  primary: { bg: C.primaryBg, fg: C.primaryDark },
+  primary: { bg: C.primaryBg, fg: C.primaryText },
 };
 
 export function Badge({ label, tone = 'neutral', small, testID }: { label: string; tone?: Tone; small?: boolean; testID?: string }) {
@@ -436,7 +483,7 @@ export function LevelBadge({ certification, small }: { certification: string | n
 
 export function Chip({ label, active, onPress, testID }: { label: string; active?: boolean; onPress?: () => void; testID?: string }) {
   return (
-    <Pressable style={[s.chip, active && { backgroundColor: C.primary }]} onPress={onPress} testID={testID}>
+    <Pressable style={[s.chip, active && { backgroundColor: C.primary, borderColor: C.primary }]} onPress={onPress} testID={testID}>
       <Text style={[s.chipText, active && { color: C.tInverse }]}>{label}</Text>
     </Pressable>
   );
@@ -451,11 +498,26 @@ export function SectionLabel({ label, brand, right, style }: { label: string; br
   );
 }
 
-export function ProgressBar({ value, color = C.primary, height = 8 }: { value: number; color?: string; height?: number }) {
+/** Progress: the app colour running into green (a single `color` draws it flat). */
+export function ProgressBar({ value, color, height = 8 }: { value: number; color?: string; height?: number }) {
   const v = Math.max(0, Math.min(1, value));
+  const [width, setWidth] = React.useState(0);
+  const fill = Math.round(width * v);
   return (
-    <View style={{ height, borderRadius: height / 2, backgroundColor: C.muted, overflow: 'hidden' }}>
-      <View style={{ width: `${v * 100}%`, height, borderRadius: height / 2, backgroundColor: color }} />
+    <View style={{ height, borderRadius: height / 2, backgroundColor: C.primaryTrack, overflow: 'hidden' }} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
+      {color ? (
+        <View style={{ width: `${v * 100}%`, height, borderRadius: height / 2, backgroundColor: color }} />
+      ) : fill > 0 ? (
+        <Svg width={fill} height={height}>
+          <Defs>
+            <LinearGradient id="zedProgress" x1="0" y1="0" x2="1" y2="0">
+              <Stop offset="0" stopColor={C.primary} />
+              <Stop offset="1" stopColor={C.green} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={fill} height={height} rx={height / 2} fill="url(#zedProgress)" />
+        </Svg>
+      ) : null}
     </View>
   );
 }
@@ -494,7 +556,7 @@ export function EmptyState({ icon, headline, lines, cta, onCta, testID }: { icon
 
 /** Info / warning strip (tinted, with an icon). */
 export function Strip({ text, tone = 'primary', icon = 'info', title }: { text: string; tone?: Tone; icon?: IconName; title?: string }) {
-  const t = TONES[tone];
+  const t = SOFT_TONES[tone];
   return (
     <View style={[s.strip, { backgroundColor: t.bg }]}>
       <ZIcon name={icon} size={16} color={t.fg} />
@@ -631,28 +693,28 @@ export const z = StyleSheet.create({
   body: { fontSize: 14, color: C.tPrimary },
   sub: { fontSize: 13, color: C.tSecondary },
   muted: { fontSize: 12, color: C.tMuted },
-  idText: { fontSize: 12, fontWeight: '700', color: C.tMuted, letterSpacing: 0.5 },
+  idText: { fontSize: 12, fontWeight: '700', color: C.primaryText, letterSpacing: 0.5 },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
 });
 
 const s = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.bg },
-  hero: { backgroundColor: C.primary, paddingHorizontal: 16, paddingBottom: 18 },
+  hero: { backgroundColor: C.primary, paddingHorizontal: 16, paddingBottom: 18, overflow: 'hidden' },
   heroRow: { flexDirection: 'row', alignItems: 'center' },
   heroTitle: { fontSize: 20, fontWeight: '700', color: C.tInverse },
   heroSub: { fontSize: 13, color: C.heroSubText, marginTop: 2 },
   bell: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.heroOverlay, alignItems: 'center', justifyContent: 'center' },
   bellDot: { position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: C.danger, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   bellDotText: { color: C.tInverse, fontSize: 10, fontWeight: '700' },
-  plain: { backgroundColor: C.surface, paddingHorizontal: 20, paddingBottom: 14, flexDirection: 'row', alignItems: 'center', borderBottomColor: C.border, borderBottomWidth: 1 },
-  plainTitle: { fontSize: 22, fontWeight: '700', color: C.tPrimary },
-  plainSub: { fontSize: 12, color: C.tMuted, marginTop: 4 },
+  plain: { backgroundColor: C.primary, paddingHorizontal: 20, paddingBottom: 16, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  plainTitle: { fontSize: 22, fontWeight: '700', color: C.tInverse },
+  plainSub: { fontSize: 12, color: C.heroSubText, marginTop: 4 },
   mark: { backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', backgroundColor: C.surface, borderTopColor: C.border, borderTopWidth: 1, paddingTop: 10 },
   tab: { flex: 1, alignItems: 'center' },
   tabLabel: { fontSize: 11, fontWeight: '500', marginTop: 4 },
-  card: { backgroundColor: C.surface, borderRadius: 14, padding: 16, marginBottom: 12, elevation: 1, shadowColor: '#0F172A', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  card: { backgroundColor: C.surface, borderRadius: 14, padding: 16, marginBottom: 12, elevation: 3, shadowColor: C.primaryDark, shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
   button: { minHeight: 48, borderRadius: 10, borderWidth: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   buttonSmall: { minHeight: 40, paddingHorizontal: 12 },
   buttonDisabled: { backgroundColor: C.muted, borderColor: C.muted },
@@ -667,10 +729,10 @@ const s = StyleSheet.create({
   badge: { borderRadius: 11, paddingHorizontal: 10, height: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
   badgeSmall: { height: 18, paddingHorizontal: 8, borderRadius: 9 },
   badgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
-  chip: { height: 28, borderRadius: 14, paddingHorizontal: 14, backgroundColor: C.muted, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  chipText: { fontSize: 12, fontWeight: '600', color: C.tSecondary },
+  chip: { height: 28, borderRadius: 14, paddingHorizontal: 14, backgroundColor: C.surface, borderWidth: 1, borderColor: C.primaryEdge, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  chipText: { fontSize: 12, fontWeight: '600', color: C.primaryText },
   sectionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 8 },
-  sectionLabel: { fontSize: 11, fontWeight: '600', color: C.tSecondary, letterSpacing: 0.5 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: C.primaryText, letterSpacing: 0.5 },
   empty: { alignItems: 'center', paddingVertical: 28, paddingHorizontal: 24 },
   emptyWell: { width: 88, height: 88, borderRadius: 44, backgroundColor: C.primaryBg, alignItems: 'center', justifyContent: 'center' },
   emptyHeadline: { fontSize: 16, fontWeight: '700', color: C.tPrimary, marginTop: 18, textAlign: 'center' },

@@ -22,7 +22,7 @@ import {
   type ReportSummary,
   type TeamMember,
 } from '../portfolio';
-import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
+import { Avatar, Badge, BottomTabs, C, Card, Chip, EmptyState, GradientFill, HeroHeader, LevelBadge, ListRow, Page, PlainHeader, ProgressBar, SectionLabel, Sheet, z, ZButton, ZIcon, ZScroll, type IconName, type TabKey } from '../ui/zed';
 import { cleanData, viewAssessment } from './assessmentActions';
 import { showExitAlert } from './common';
 
@@ -142,6 +142,7 @@ function Dashboard({ stored, onView, onClean, onTab, refreshControl }: ListProps
   return (
     <View style={{ flex: 1 }}>
       <View style={[st.dashHero, { paddingTop: insets.top + 14 }]} testID="dashboard-header">
+        <GradientFill />
         <View style={z.rowBetween}>
           <View style={{ flex: 1 }}>
             <Text style={st.welcome}>Welcome back,</Text>
@@ -238,7 +239,7 @@ function AssessmentCard({
   const teamSize = a.team?.length ?? 0;
   const id = a.zedId;
   return (
-    <Card testID={`assessment-${id}`}>
+    <Card style={st.caseCard} testID={`assessment-${id}`}>
       <View style={z.rowBetween}>
         {hideId ? <LevelBadge certification={a.certificationType} small /> : <Text style={z.idText}>{id}</Text>}
         <Badge label={status} tone={toneOf(stageOf(a, d))} small testID={`status-${id}`} />
@@ -522,7 +523,7 @@ function ProfileHome() {
 }
 
 const st = StyleSheet.create({
-  dashHero: { backgroundColor: C.primary, paddingHorizontal: 20, paddingBottom: 18 },
+  dashHero: { backgroundColor: C.primary, paddingHorizontal: 20, paddingBottom: 18, overflow: 'hidden' },
   welcome: { color: C.heroSubText, fontSize: 13 },
   dashName: { color: C.tInverse, fontSize: 22, fontWeight: '700', marginTop: 2 },
   bell: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.heroOverlay, alignItems: 'center', justifyContent: 'center' },
@@ -547,7 +548,8 @@ const st = StyleSheet.create({
   member: { flexDirection: 'row', paddingVertical: 10 },
   memberDivider: { borderTopColor: C.divider, borderTopWidth: 1 },
   memberText: { fontSize: 12, color: C.tSecondary, marginLeft: 6 },
-  search: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.muted, borderRadius: 10, paddingHorizontal: 12, minHeight: 44 },
+  search: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderColor: C.primaryEdge, borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, minHeight: 44 },
+  caseCard: { borderLeftWidth: 4, borderLeftColor: C.primary },
   searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: C.tPrimary },
   filters: { flexDirection: 'row', gap: 8, marginVertical: 14 },
   profileName: { color: C.tInverse, fontSize: 20, fontWeight: '700', marginTop: 10 },

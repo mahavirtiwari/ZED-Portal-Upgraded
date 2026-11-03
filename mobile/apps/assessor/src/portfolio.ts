@@ -124,8 +124,9 @@ const LABELS: Record<string, string> = {
 export const labelOf = (a: { stage?: string | null; statusLabel?: string | null }) => a.statusLabel || LABELS[a.stage ?? 'scheduled'] || 'Scheduled';
 
 const STAGE_TONE: Record<string, 'info' | 'warning' | 'primary' | 'success' | 'neutral' | 'danger'> = {
-  scheduled: 'info',
-  inProgress: 'warning',
+  scheduled: 'neutral',
+  // Blue: the app colour is orange, so an orange badge would not stand out.
+  inProgress: 'info',
   submitted: 'primary',
   ncRound: 'warning',
   underReview: 'primary',
