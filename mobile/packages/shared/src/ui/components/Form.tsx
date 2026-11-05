@@ -16,7 +16,7 @@ import {
 import { COMMENT_LENGTH, decimalFilter, NUMERIC_MAX_LENGTH, numericFilter, percentageFilter, REQUIRED } from '../../forms/validation';
 import { sharedIcons } from '../sharedIcons';
 import { colors, dimens, shapes, textStyles } from '../theme';
-import { useUi } from '../UiHost';
+import { useKeyboardInset, useUi } from '../UiHost';
 import { Icon } from './Icon';
 
 /** The grey outlined box every view helper sits in (grey_outline_rectangle, margin 5, padding 8). */
@@ -188,17 +188,20 @@ export function RadioButton({
   selected,
   onPress,
   style,
+  tinted = false,
   testID,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
+  /** android:buttonTint="@color/app_color": the ring in the app colour even when not chosen. */
+  tinted?: boolean;
   testID?: string;
 }) {
   return (
     <Pressable style={[styles.radio, style]} onPress={onPress} testID={testID} accessibilityRole="radio" accessibilityState={{ selected }}>
-      <View style={[styles.radioOuter, { borderColor: selected ? colors.appColor : '#757575' }]}>
+      <View style={[styles.radioOuter, { borderColor: selected || tinted ? colors.appColor : '#757575' }]}>
         {selected ? <View style={styles.radioInner} /> : null}
       </View>
       <Text style={styles.radioLabel}>{label}</Text>
@@ -234,7 +237,7 @@ export function YesNo({
           <FieldLabel label={label} error={error} style={{ fontWeight: 'normal' }} />
         </View>
         {options.map(o => (
-          <RadioButton key={o} label={o} selected={value === o} onPress={() => onChange(o)} style={{ margin: dimens.padding1 }} testID={testID ? `${testID}-${o}` : undefined} />
+          <RadioButton key={o} label={o} selected={value === o} onPress={() => onChange(o)} style={{ margin: dimens.padding1 }} tinted testID={testID ? `${testID}-${o}` : undefined} />
         ))}
       </View>
     );
@@ -244,7 +247,7 @@ export function YesNo({
       <FieldLabel label={label} error={error} />
       <View style={[styles.dashed, styles.row]}>
         {options.map(o => (
-          <RadioButton key={o} label={o} selected={value === o} onPress={() => onChange(o)} style={{ flex: 1 }} testID={testID ? `${testID}-${o}` : undefined} />
+          <RadioButton key={o} label={o} selected={value === o} onPress={() => onChange(o)} style={{ flex: 1 }} tinted testID={testID ? `${testID}-${o}` : undefined} />
         ))}
       </View>
     </FieldBox>
@@ -586,9 +589,11 @@ export function ZedDialog({
   children: React.ReactNode;
   testID?: string;
 }) {
+  // The dialog sits above the keyboard, so the field being typed in and its message stay in sight.
+  const keyboard = useKeyboardInset();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={() => (cancelable ? onClose() : undefined)}>
-      <View style={styles.dialogScrim}>
+      <View style={[styles.dialogScrim, keyboard ? { paddingBottom: keyboard + 16 } : null]}>
         <View style={styles.dialogCard} testID={testID}>
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: dimens.padding3 }}>
             <View style={styles.dialogHeader}>

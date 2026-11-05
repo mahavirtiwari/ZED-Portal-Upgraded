@@ -238,7 +238,8 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
  * The custom dialog's scrim, kept above the on-screen keyboard: apps that draw edge to edge (Android 15 and later) are no
  * longer resized for it (adjustResize), so a dialog's field and buttons would sit under the keyboard.
  */
-function KeyboardRoom({ children }: { children: React.ReactNode }) {
+/** How much of the screen the open keyboard covers (0 when closed); with edge to edge, nothing resizes for it. */
+export function useKeyboardInset(): number {
   const [keyboard, setKeyboard] = useState(0);
   useEffect(() => {
     // From the keyboard's top edge to the bottom of the screen: the reported height leaves out the navigation bar.
@@ -251,6 +252,11 @@ function KeyboardRoom({ children }: { children: React.ReactNode }) {
       hide.remove();
     };
   }, []);
+  return keyboard;
+}
+
+function KeyboardRoom({ children }: { children: React.ReactNode }) {
+  const keyboard = useKeyboardInset();
   return <View style={[styles.customScrim, keyboard ? { paddingBottom: keyboard } : null]}>{children}</View>;
 }
 

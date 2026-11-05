@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   colors,
   dimens,
   Icon,
   isSuccess,
+  lineHeight,
   OutlinedInput,
   RadioButton,
   ScreenFrame,
-  sharedIcons,
   shapes,
   textStyles,
   useBackHandler,
@@ -28,6 +28,7 @@ import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
 import { NO, YES, type CertificationType } from '../models';
+import { Footer as LegacyFooter } from '../ui/legacy';
 
 const RS = '₹';
 const TDS_TWO = '2';
@@ -164,16 +165,9 @@ export function PaymentScreen() {
   );
 }
 
+/** registration_footer of the payment pages. */
 function Footer({ onBack, proceedTitle, onProceed }: { onBack: () => void; proceedTitle: string; onProceed: () => void }) {
-  return (
-    <View style={styles.footer}>
-      <Pressable style={styles.footerBack} onPress={onBack} testID="payment-back">
-        <Icon icon={sharedIcons.ic_back_arrow} />
-        <Text style={{ fontSize: 13, color: colors.black, fontWeight: 'bold', marginLeft: 4 }}>BACK</Text>
-      </Pressable>
-      <ZedButton title={proceedTitle} onPress={onProceed} small style={{ alignSelf: 'auto' }} testID="payment-proceed" />
-    </View>
-  );
+  return <LegacyFooter onBack={onBack} proceedTitle={proceedTitle} onProceed={onProceed} backTestID="payment-back" proceedTestID="payment-proceed" />;
 }
 
 function TextPage({ title, textKey, onBack, onProceed }: { title: string; textKey: string; onBack: () => void; onProceed: () => void }) {
@@ -275,8 +269,8 @@ function DetailsPage({
           {tdsDeductible === YES ? (
             <>
               <View style={{ flexDirection: 'row', padding: dimens.padding2 }}>
-                <RadioButton label="2%" selected={tds === TDS_TWO} onPress={() => setTds(TDS_TWO)} style={{ flex: 1 }} />
-                <RadioButton label="10%" selected={tds === TDS_TEN} onPress={() => setTds(TDS_TEN)} style={{ flex: 1 }} />
+                <RadioButton label="2%" selected={tds === TDS_TWO} onPress={() => setTds(TDS_TWO)} style={{ flex: 1 }} tinted />
+                <RadioButton label="10%" selected={tds === TDS_TEN} onPress={() => setTds(TDS_TEN)} style={{ flex: 1 }} tinted />
               </View>
               <View style={{ marginHorizontal: dimens.padding1 }}>
                 <OutlinedInput value={tan} onChangeText={t => (setTan(t), t.trim() && setTanError(undefined))} placeholder="TAN Number" error={tanError} />
@@ -284,24 +278,26 @@ function DetailsPage({
             </>
           ) : null}
           {showCoupon ? (
-            <View style={styles.coupon}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ padding: dimens.padding1, color: colors.couponBorder, fontWeight: 'bold' }}>Joining Reward*</Text>
-                <Text style={{ padding: dimens.padding1, fontWeight: 'bold', color: colors.black }}>{formatCurrency(withCoupon!.Coupon)}</Text>
-                {rewardNote ? <Text style={{ padding: dimens.padding1, color: colors.black }}>{htmlToPlain(rewardNote.html)}</Text> : null}
-                {type === 'Bronze' && bronzeNote ? <Text style={{ padding: dimens.padding1, color: colors.black }}>{htmlToPlain(bronzeNote.html)}</Text> : null}
-              </View>
-              {rewardApplied ? (
-                <View style={{ alignItems: 'center' }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Icon icon={icons.ic_green_tick} />
-                    <Text style={{ color: colors.green, fontWeight: 'bold' }}>{'Reward\nApplied'}</Text>
+            // coupon_container (coupon_outline_rectangle): the title and amount, the note with Apply Reward (or Reward
+            // Applied / Remove) beside it, then the balance note across the box.
+            <View style={styles.coupon} testID="joining-reward">
+              <Text style={styles.couponTitle}>Joining Reward*</Text>
+              <Text style={styles.couponAmount}>{formatCurrency(withCoupon!.Coupon)}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={[styles.couponText, { flex: 1 }]}>{rewardNote ? htmlToPlain(rewardNote.html) : ''}</Text>
+                {rewardApplied ? (
+                  <View style={{ alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', padding: dimens.padding1 }}>
+                      <Icon icon={icons.ic_green_tick} />
+                      <Text style={{ color: colors.green, fontWeight: 'bold', marginLeft: dimens.padding1 }}>{'Reward\nApplied'}</Text>
+                    </View>
+                    <ZedButton title="Remove" small style={{ backgroundColor: colors.ncRed }} onPress={() => (setRewardApplied(false), setDetails(withoutCoupon))} testID="remove-reward" />
                   </View>
-                  <ZedButton title="Remove" small style={{ backgroundColor: colors.ncRed }} onPress={() => (setRewardApplied(false), setDetails(withoutCoupon))} />
-                </View>
-              ) : (
-                <ZedButton title={'Apply\nReward'} small onPress={() => (setRewardApplied(true), setDetails(withCoupon))} testID="apply-reward" />
-              )}
+                ) : (
+                  <ZedButton title={'Apply\nReward'} small onPress={() => (setRewardApplied(true), setDetails(withCoupon))} textStyle={{ textAlign: 'center' }} testID="apply-reward" />
+                )}
+              </View>
+              {type === 'Bronze' && bronzeNote ? <Text style={styles.couponText}>{htmlToPlain(bronzeNote.html)}</Text> : null}
             </View>
           ) : null}
           <Text style={textStyles.subheading}>Summary</Text>
@@ -384,11 +380,7 @@ function ResultPage({ type, success, onDashboard, onStart, onRetry }: { type: Ce
 
 const styles = StyleSheet.create({
   body: { paddingBottom: dimens.padding4, fontSize: dimens.textSize, color: colors.black },
-  footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.lightGrey, padding: dimens.padding2 },
-  footerBack: { flexDirection: 'row', alignItems: 'center', padding: dimens.padding2 },
   coupon: {
-    flexDirection: 'row',
-    alignItems: 'center',
     margin: dimens.padding2,
     padding: dimens.padding2,
     borderWidth: 1,
@@ -396,6 +388,9 @@ const styles = StyleSheet.create({
     borderColor: colors.couponBorder,
     borderRadius: 5,
   },
+  couponTitle: { padding: dimens.padding1, color: colors.couponBorder, fontWeight: 'bold', fontSize: dimens.textSize },
+  couponAmount: { padding: dimens.padding1, fontWeight: 'bold', color: colors.black, fontSize: dimens.textSize },
+  couponText: { padding: dimens.padding1, color: colors.black, fontSize: dimens.textSize, lineHeight: lineHeight(dimens.textSize) },
   summaryRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.progressBarColor },
   summaryLabel: { flex: 65, padding: dimens.padding2, color: colors.textColor, fontSize: dimens.textSize },
   summaryValue: { flex: 35, padding: dimens.padding2, color: colors.textColor, fontWeight: 'bold', fontSize: dimens.textSize },

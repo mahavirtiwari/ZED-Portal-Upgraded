@@ -120,14 +120,16 @@ function DocumentRow({
 
 const styles = StyleSheet.create({
   page: { padding: dimens.padding2, backgroundColor: colors.white, flexGrow: 1 },
-  heading: { ...textStyles.subheading, color: colors.appColorDark, marginTop: dimens.padding2 },
+  // @style/TextSubheading
+  heading: { ...textStyles.subheading, marginTop: dimens.padding2 },
+  // layout_clickable_option: the grey_2 box
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: dimens.padding2,
-    paddingHorizontal: dimens.padding1,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.lightGrey,
+    margin: dimens.padding2,
+    padding: dimens.padding2,
+    backgroundColor: colors.lightGrey2,
+    borderRadius: 5,
   },
   name: { flex: 1, marginHorizontal: dimens.padding2, color: colors.black, fontSize: dimens.textSize },
   error: { color: colors.error, padding: dimens.padding2 },

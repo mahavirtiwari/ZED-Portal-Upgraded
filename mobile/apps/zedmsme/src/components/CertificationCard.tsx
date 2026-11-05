@@ -84,6 +84,8 @@ export function CertificationCard({
   action,
   onApply,
   onOpen,
+  onInfo,
+  onDetails,
   showTitle = true,
   testID,
 }: {
@@ -95,13 +97,26 @@ export function CertificationCard({
   action: 'apply' | 'arrow' | 'none' | 'gone';
   onApply?: () => void;
   onOpen?: () => void;
+  /** The white info icon at the right of the title strip (the current app's; opens the level's info dialog). */
+  onInfo?: () => void;
+  /** VIEW DETAILS under the steps (the current app's): the status popup; grey and inactive while the level has not started. */
+  onDetails?: (() => void) | null;
   showTitle?: boolean;
   testID?: string;
 }) {
   return (
     <View style={styles.wrapper} testID={testID}>
-      {showTitle ? <Text style={[styles.title, { backgroundColor: titleColor }]}>{title}</Text> : null}
-      <View style={styles.card}>
+      {showTitle ? (
+        <View style={[styles.title, { backgroundColor: titleColor }]}>
+          <Text style={styles.titleText}>{title}</Text>
+          {onInfo ? (
+            <Pressable onPress={onInfo} hitSlop={12} testID={testID ? `${testID}-info` : undefined}>
+              <Icon icon={icons.ic_info} size={20} />
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
+      <View style={[styles.card, onDetails !== undefined && styles.cardWithDetails]}>
         <View style={styles.cardBody}>
           <View style={styles.left}>
             <View style={styles.statusRow}>
@@ -111,6 +126,11 @@ export function CertificationCard({
               </Text>
             </View>
             <PageStatus state={state} />
+            {onDetails !== undefined ? (
+              <Pressable onPress={onDetails ?? undefined} disabled={!onDetails} hitSlop={8} testID={testID ? `${testID}-details` : undefined}>
+                <Text style={[styles.details, !onDetails && { color: colors.labelColor }]}>VIEW DETAILS</Text>
+              </Pressable>
+            ) : null}
           </View>
           <Image source={image} style={styles.optionIcon} resizeMode="contain" />
           <View style={styles.divider} />
@@ -149,15 +169,15 @@ function PageStatus({ state }: { state: CardState }) {
 const styles = StyleSheet.create({
   wrapper: { paddingVertical: dimens.padding2 },
   title: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginHorizontal: dimens.padding2,
     padding: dimens.padding3,
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: 'bold',
     borderTopLeftRadius: dimens.padding1,
     borderTopRightRadius: dimens.padding1,
     overflow: 'hidden',
   },
+  titleText: { flex: 1, color: colors.white, fontSize: 14, fontWeight: 'bold' },
   card: {
     height: 110,
     marginHorizontal: dimens.padding2,
@@ -166,6 +186,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     elevation: 2,
   },
+  cardWithDetails: { height: 140 },
+  details: { color: colors.appColor, fontWeight: 'bold', fontSize: dimens.textSize14, letterSpacing: 1.2, paddingHorizontal: dimens.padding2 },
   cardBody: { flex: 1, flexDirection: 'row', paddingVertical: dimens.padding1 },
   left: { flex: 1 },
   statusRow: { flexDirection: 'row', alignItems: 'center', padding: dimens.padding2 },

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, dimens, Drawer, Icon, sharedIcons, useNavigation, useUi, zedDevice } from '@zed/shared';
+import { colors, dimens, Drawer, Icon, sharedIcons, useNavigation, useUi, zedDevice, type IconDefinition } from '@zed/shared';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from './context';
@@ -33,6 +33,24 @@ export function useOpenDrawer(checked: DrawerKey) {
   return () => ctx?.open(checked);
 }
 
+/**
+ * The pending uploads item in the style of the other menu icons (ic_nav_*: the light grey rounded square, a dark grey
+ * glyph): ic_upload scaled into the square.
+ */
+const navPendingUploads: IconDefinition = {
+  width: 42,
+  height: 42,
+  viewBox: [0, 0, 42, 42],
+  paths: [
+    { d: 'M0 8c0-4.42 3.58-8 8-8h26c4.42 0 8 3.58 8 8v26c0 4.42-3.58 8-8 8h-26c-4.42 0-8-3.58-8-8z', fill: colors.lightGrey },
+    {
+      d: 'M22.125 15.825V25.5h-2.25V15.825l-4.5 4.5L13.8 18.75l6.42 -6.42C20.445 12.105 20.67 12 21 12c0.345 0 0.57 0.105 0.795 0.345L28.2 18.75L26.625 20.325l-4.5 -4.5z',
+      fill: colors.darkGrey2,
+    },
+    { d: 'M28.875 30H13.125v-2.25h15.75V30z', fill: colors.darkGrey2 },
+  ],
+};
+
 function enterpriseTypeImage(type: string | null | undefined) {
   if (type === 'Micro') return images.ic_micro;
   if (type === 'Small') return images.ic_small;
@@ -54,6 +72,8 @@ function AppDrawer({ open, checked, onClose }: { open: boolean; checked: DrawerK
       checkedKey={checked}
       version={`v${app.versionName}`}
       banner={images.zed_banner}
+      largeBanner
+      checkedTint={false}
       header={
         <View style={styles.headerBox}>
           {typeImage ? <Image source={typeImage} style={{ margin: dimens.padding1 }} /> : null}
@@ -78,7 +98,7 @@ function AppDrawer({ open, checked, onClose }: { open: boolean; checked: DrawerK
         { key: 'profile', title: 'View Profile', icon: icons.ic_nav_my_account, onPress: () => nav.push('MyAccount') },
         { key: 'incentives', title: 'Incentives', icon: icons.ic_incentives, onPress: () => nav.push('Incentives') },
         // New: what is waiting to be sent (the legacy app had no such list).
-        { key: 'pending', title: 'Pending Uploads', icon: icons.ic_upload, onPress: () => nav.push('PendingUploads') },
+        { key: 'pending', title: 'Pending Uploads', icon: navPendingUploads, onPress: () => nav.push('PendingUploads') },
         // item5: Utils.composeEmail(arrayOf("zed@qcin.org"), "")
         {
           key: 'contact',

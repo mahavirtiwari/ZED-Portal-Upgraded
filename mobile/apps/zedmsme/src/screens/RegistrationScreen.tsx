@@ -3,21 +3,37 @@
  * and OTP dialogs between "Unit and Activity" and "Summary". Calls on the portal (Msme/), no sign-in.
  *
  * New in V4 (2.0): the Udyam record comes from the server (Msme/LookupUdyam), not from the Udyam service with a key
- * built into the app, and there is no SafetyNet captcha (the server limits the lookups instead).
+ * built into the app, and there is no SafetyNet captcha (the server limits the lookups instead). A wrong Udyam number,
+ * mobile number or e-mail shows its message while typing (registrationValidation).
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  CheckBox,
+  Animated,
+  Dimensions,
+  Image,
+  Keyboard,
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type KeyboardTypeOptions,
+  type ScrollViewInstance,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
   colors,
   dimens,
   errorOf,
+  GradientFill,
   HtmlText,
   htmlToPlain,
-  OutlinedInput,
+  Icon,
+  parseSimpleHtml,
   ScreenFrame,
   shapes,
-  textStyles,
   UNKNOWN_ERROR,
   useAppText,
   useBackHandler,
@@ -29,12 +45,29 @@ import {
 } from '@zed/shared';
 import type { UdyamRecord } from '../api';
 import { useMsme } from '../app/context';
-import { Footer } from './PasswordScreens';
+import { icons } from '../assets/icons';
+import { images } from '../assets/images';
+import {
+  confirmEmailError,
+  EMAIL_ERROR,
+  EMAIL_MISMATCH,
+  emailError,
+  isValidEmail,
+  isValidMobile,
+  isValidUdyam,
+  MOBILE_START_ERROR,
+  mobileError,
+  sanitizeMobile,
+  sanitizeUdyam,
+  UDYAM_PREFIX,
+  udyamError,
+} from '../registrationValidation';
+import { DarkHeading, Footer, IconRow, Note, OptionCard, RadioRow, RegistrationCommon } from '../ui/legacy';
 
 const TITLES = ['Registration', 'Udyam Validation', 'Unit and Activity', 'Summary', 'ZED Pledge', 'Successful'];
-const UDYAM_PREFIX = 'UDYAM-';
 const OTP_RESEND_SECONDS = 600;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PLEDGE_GOLD_DARK = '#B1783B';
+const PLEDGE_GOLD_LIGHT = '#EED17E';
 
 type Lookup = { basic: UdyamRecord; plants: UdyamRecord[]; activities: UdyamRecord[] };
 
@@ -61,21 +94,45 @@ function today() {
   return `${two(d.getDate())}/${two(d.getMonth() + 1)}/${d.getFullYear()}`;
 }
 
+/** The keyboard's height over the screen (edge to edge, the window no longer shrinks for it). */
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', e =>
+      setHeight(Math.max(e.endCoordinates.height, Dimensions.get('screen').height - e.endCoordinates.screenY)),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
 export function RegistrationScreen() {
   const app = useMsme();
   const ui = useUi();
   const nav = useNavigation();
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const [page, setPage] = useState(0);
   const [udyam, setUdyam] = useState(UDYAM_PREFIX);
+  const [udyamTouched, setUdyamTouched] = useState(false);
   const [mobile, setMobile] = useState('');
-  const [mobileError, setMobileError] = useState<string | undefined>();
+  const [mobileTouched, setMobileTouched] = useState(false);
+  const [mobileStartError, setMobileStartError] = useState(false);
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [plant, setPlant] = useState<number | null>(null);
   const [activity, setActivity] = useState<number | null>(null);
   const [email, setEmail] = useState('');
   const [dialog, setDialog] = useState<'email' | 'otp' | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  // PledgeFragment: I/We Pledge waits until the pledge text has moved in.
+  const [pledgeShown, setPledgeShown] = useState(false);
   const busy = useRef(false);
+  const scroll = useRef<ScrollViewInstance>(null);
+  const activityY = useRef(0);
 
   // Back: from the first and the last page the registration closes; otherwise one page back (not while loading).
   useBackHandler(() => {
@@ -84,6 +141,10 @@ export function RegistrationScreen() {
     setPage(p => p - 1);
     return true;
   });
+
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [page]);
 
   const run = async <T extends BaseServiceResponse>(fn: () => Promise<T>) => {
     if (busy.current) return null;
@@ -171,99 +232,119 @@ export function RegistrationScreen() {
 
   const back = () => (page === 0 || page === 5 ? nav.pop() : setPage(p => p - 1));
 
+  const choosePlant = (i: number) => {
+    setPlant(i);
+    setActivity(null);
+    // The activities follow the plants: bring them into view (after they are laid out).
+    setTimeout(() => scroll.current?.scrollTo({ y: activityY.current, animated: true }), 50);
+  };
+
+  const footer =
+    page === 0 ? (
+      <Footer onBack={() => nav.pop()} backTitle="Back to Login" onProceed={() => setPage(1)} />
+    ) : page === 1 ? (
+      <Footer onBack={back} onProceed={validateUdyam} proceedEnabled={isValidUdyam(udyam) && isValidMobile(mobile)} />
+    ) : page === 2 ? (
+      <Footer onBack={back} onProceed={validatePlant} proceedEnabled={chosenPlant != null && chosenActivity != null} />
+    ) : page === 3 ? (
+      <Footer onBack={back} onProceed={() => (setPledgeShown(false), setPage(4))} proceedEnabled={confirmed} proceedTitle="Proceed to Pledge" />
+    ) : page === 4 ? (
+      <Footer onBack={back} onProceed={pledge} proceedEnabled={pledgeShown} proceedTitle="I/We Pledge" />
+    ) : null;
+
   return (
     <ScreenFrame title={TITLES[page] ?? 'Registration'} testID="registration">
-      <ScrollView contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" testID={`registration-page-${page}`}>
-        {page >= 1 && page <= 4 ? <Dots current={page} /> : null}
-        {page === 0 ? <Welcome onBack={() => nav.pop()} onProceed={() => setPage(1)} /> : null}
-        {page === 1 ? (
-          <View>
-            <Text style={styles.label}>Enter your Udyam Registration Number:</Text>
-            <OutlinedInput
-              value={udyam}
-              onChangeText={t => setUdyam(t.toUpperCase())}
-              autoCapitalize="characters"
-              placeholder="UDYAM-XX-99-9999999"
-              testID="udyam-number"
-            />
-            <Text style={styles.label}>Enter your Udyam Registered Mobile Number:</Text>
-            <OutlinedInput
-              value={mobile}
-              keyboardType="phone-pad"
-              maxLength={10}
-              error={mobileError}
-              onChangeText={t => {
-                const digits = t.replace(/\D/g, '');
-                // Utils.validateMobileNumber: a mobile number cannot begin with 0-5.
-                if (digits.length > 0 && Number(digits[0]) < 6) {
-                  setMobileError('Mobile Number cannot begin with 0-5');
-                  setMobile('');
-                  return;
-                }
-                setMobileError(undefined);
-                setMobile(digits);
-              }}
-              testID="udyam-mobile"
-            />
-            <Footer onBack={back} onProceed={validateUdyam} proceedEnabled={udyam.trim().length > UDYAM_PREFIX.length && mobile.length === 10} />
-          </View>
-        ) : null}
-        {page === 2 && lookup ? (
-          <View>
-            <ValidatedNote />
-            <EnterpriseBox basic={lookup.basic} />
-            <Text style={styles.label}>Please select any one Plant Location and its Activity</Text>
-            <Text style={styles.heading}>Plant Location</Text>
-            {lookup.plants.map((p, i) => (
-              <Choice
-                key={`plant-${i}`}
-                title={text(p, 'UnitName')}
-                detail={plantAddress(p)}
-                selected={plant === i}
-                selectTitle="Select this unit"
-                onSelect={() => (setPlant(i), setActivity(null))}
-                testID={`plant-${i}`}
+      <View style={[styles.body, { paddingBottom: Math.max(0, keyboard - insets.bottom) }]}>
+        <ScrollView ref={scroll} contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" testID={`registration-page-${page}`}>
+          {/* The pledge keeps the Summary's step (statusThree current) and hides the banner (it is in the frame). */}
+          {page <= 4 ? <RegistrationCommon current={page === 4 ? 2 : page - 1} banner={page !== 4} /> : null}
+          {page === 0 ? <Welcome /> : null}
+          {page === 1 ? (
+            <View>
+              <Text style={styles.fieldLabel}>Enter your Udyam Registration Number:</Text>
+              <RegInput
+                value={udyam}
+                onChangeText={t => setUdyam(sanitizeUdyam(t))}
+                onBlur={() => setUdyamTouched(true)}
+                floatingLabel="UDYAM-XX-99-9999999"
+                helper="(as provided at the time of Udyam Registration)"
+                error={udyamError(udyam, udyamTouched)}
+                autoCapitalize="characters"
+                testID="udyam-number"
               />
-            ))}
-            {chosenPlant ? (
-              <View>
-                <Text style={styles.heading}>Plant Activity</Text>
-                <Text style={styles.label}>
-                  Please select Plant activity for the selected Plant location:{'\n'}
-                  <Text style={{ fontWeight: 'bold' }}>{plantAddress(chosenPlant)}</Text>
-                </Text>
-                {lookup.activities.map((a, i) => (
-                  <Choice
-                    key={`activity-${i}`}
-                    title={text(a, 'Activity')}
-                    detail={activityCodes(a)}
-                    selected={activity === i}
-                    selectTitle="Select this Activity"
-                    onSelect={() => setActivity(i)}
-                    testID={`activity-${i}`}
-                  />
-                ))}
+              <Text style={styles.fieldLabel}>Enter your Udyam Registered Mobile Number:</Text>
+              <RegInput
+                value={mobile}
+                keyboardType="phone-pad"
+                maxLength={10}
+                onChangeText={t => {
+                  // Utils.validateFirstCharOfPhoneNumber: a mobile number cannot begin with 0-5 (the field is emptied).
+                  const m = sanitizeMobile(t);
+                  setMobileStartError(m.startError);
+                  setMobile(m.value);
+                }}
+                onBlur={() => setMobileTouched(true)}
+                helper="(As mentioned on the Udyam Registration)"
+                error={mobileStartError ? MOBILE_START_ERROR : mobileError(mobile, mobileTouched)}
+                testID="udyam-mobile"
+              />
+            </View>
+          ) : null}
+          {page === 2 && lookup ? (
+            <View>
+              <ValidatedNote />
+              <DarkHeading title="Basic Information" />
+              <EnterpriseCard basic={lookup.basic} />
+              <Text style={styles.select}>Please select any one Plant location and its activity</Text>
+              <DarkHeading title="Plant Location" />
+              {lookup.plants.map((p, i) => (
+                <View key={`plant-${i}`} testID={`plant-${i}`}>
+                  <OptionCard selected={plant === i} onPress={() => choosePlant(i)} testID={`plant-${i}-select`}>
+                    <RadioRow selected={plant === i} label="Select this Unit" />
+                    {text(p, 'UnitName') ? <IconRow icon={icons.ic_plant_name} text={text(p, 'UnitName')} /> : null}
+                    {plantAddress(p) ? <IconRow icon={icons.ic_location_teal} text={plantAddress(p)} /> : null}
+                  </OptionCard>
+                </View>
+              ))}
+              <View onLayout={e => (activityY.current = e.nativeEvent.layout.y)}>
+                {chosenPlant ? (
+                  <View>
+                    <Note tone="yellow" style={styles.activityNote} testID="activity-note">
+                      <Text style={styles.centred}>
+                        Please select Plant activity for the selected Plant location:{'\n'}
+                        <Text style={{ fontWeight: 'bold' }}>{plantAddress(chosenPlant)}</Text>
+                      </Text>
+                    </Note>
+                    {lookup.activities.map((a, i) => (
+                      <View key={`activity-${i}`} testID={`activity-${i}`}>
+                        <OptionCard selected={activity === i} onPress={() => setActivity(i)} testID={`activity-${i}-select`}>
+                          <RadioRow selected={activity === i} label="Select this Activity" />
+                          <ActivityRows activity={a} />
+                        </OptionCard>
+                      </View>
+                    ))}
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-            <Footer onBack={back} onProceed={validatePlant} proceedEnabled={chosenPlant != null && chosenActivity != null} />
-          </View>
-        ) : null}
-        {page === 3 && lookup && chosenPlant && chosenActivity ? (
-          <Summary
-            email={email}
-            basic={lookup.basic}
-            plant={chosenPlant}
-            activity={chosenActivity}
-            confirmed={confirmed}
-            onConfirm={setConfirmed}
-            onEdit={() => setPage(2)}
-            onBack={back}
-            onProceed={() => setPage(4)}
-          />
-        ) : null}
-        {page === 4 ? <Pledge onBack={back} onPledge={pledge} /> : null}
-        {page === 5 ? <Success onLogin={() => nav.reset([{ name: 'Launcher' }])} /> : null}
-      </ScrollView>
+            </View>
+          ) : null}
+          {page === 3 && lookup && chosenPlant && chosenActivity ? (
+            <Summary
+              email={email}
+              basic={lookup.basic}
+              plant={chosenPlant}
+              activity={chosenActivity}
+              confirmed={confirmed}
+              onConfirm={setConfirmed}
+              onEditEmail={() => setDialog('email')}
+              onEdit={() => setPage(2)}
+            />
+          ) : null}
+          {page === 4 ? <Pledge onShown={() => setPledgeShown(true)} /> : null}
+          {page === 5 ? <Success onLogin={() => nav.reset([{ name: 'Launcher' }])} /> : null}
+        </ScrollView>
+        {footer}
+      </View>
       {dialog === 'email' ? <EmailDialog initial={email} onClose={() => setDialog(null)} onProceed={sendOtp} /> : null}
       {dialog === 'otp' ? (
         <OtpDialog email={email} onClose={() => setDialog(null)} onSubmit={verifyOtp} onResend={() => (setDialog(null), sendOtp(email))} />
@@ -272,100 +353,174 @@ export function RegistrationScreen() {
   );
 }
 
-function activityCodes(a: UdyamRecord) {
-  return [
-    ['2 Digit', text(a, 'Two_DigitActivity')],
-    ['4 Digit', text(a, 'Four_DigitActivity')],
-    ['5 Digit', text(a, 'Five_DigitActivity')],
-  ]
-    .filter(([, v]) => v)
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('   ');
-}
-
-/** layout_page_status: four dots, the current one in the app colour, the done ones filled. */
-function Dots({ current }: { current: number }) {
+/**
+ * TextInputLayout (OutlinedBox) of the registration pages: the hint on the outline, the helper text under it, the
+ * error in its place when there is one.
+ */
+function RegInput({
+  value,
+  onChangeText,
+  onBlur,
+  floatingLabel,
+  placeholder,
+  helper,
+  error,
+  keyboardType,
+  maxLength,
+  autoCapitalize = 'none',
+  testID,
+}: {
+  value: string;
+  onChangeText: (t: string) => void;
+  onBlur?: () => void;
+  floatingLabel?: string;
+  placeholder?: string;
+  helper?: string;
+  error?: string;
+  keyboardType?: KeyboardTypeOptions;
+  maxLength?: number;
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  testID?: string;
+}) {
+  const [focused, setFocused] = useState(false);
   return (
-    <View style={styles.dots}>
-      {[1, 2, 3, 4].map(i => (
-        <View key={i} style={[styles.dot, i < current && styles.dotDone, i === current && styles.dotCurrent]} />
-      ))}
+    <View style={styles.inputWrap}>
+      <View style={[styles.outline, focused && styles.outlineFocused, error != null && styles.outlineError]}>
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+          maxLength={maxLength}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={false}
+          placeholder={placeholder}
+          placeholderTextColor={colors.labelColor}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            onBlur?.();
+          }}
+          testID={testID}
+        />
+        {floatingLabel ? (
+          <Text style={[styles.floating, focused && { color: colors.appColor }, error != null && { color: colors.error }]}>{floatingLabel}</Text>
+        ) : null}
+      </View>
+      {error != null ? (
+        <Text style={styles.error} testID={testID ? `${testID}-error` : undefined}>
+          {error}
+        </Text>
+      ) : helper ? (
+        <Text style={styles.helper}>{helper}</Text>
+      ) : null}
     </View>
   );
 }
 
-function Welcome({ onBack, onProceed }: { onBack: () => void; onProceed: () => void }) {
+/** fragment_msme_registration: Welcome, what to keep ready, and the Udyam Registration link in the green box. */
+function Welcome() {
   const welcome = useAppText('app.msme.registration.welcome');
+  const html = welcome?.html ?? '';
+  // The paragraph with the link goes in the green box (point_three, registration_link, point_four).
+  const m = /<p>((?:(?!<\/p>)[\s\S])*?)<a\s+href="([^"]+)"[^>]*>([\s\S]*?)<\/a>([\s\S]*?)<\/p>/i.exec(html);
+  const before = m ? html.slice(0, m.index) : html;
   return (
-    <View>
+    <View testID="welcome">
       <Text style={styles.welcome}>Welcome</Text>
-      {welcome ? <HtmlText html={welcome.html} style={styles.body} /> : null}
-      <Footer onBack={onBack} backTitle="BACK TO LOGIN" onProceed={onProceed} />
+      {before ? <HtmlText html={before} style={styles.welcomeText} paragraphGap={16} /> : null}
+      {m ? (
+        <Note tone="green" style={styles.linkBox}>
+          {htmlToPlain(m[1] ?? '').trim() ? <Text style={[styles.welcomeText, styles.centred, styles.linkBoxText]}>{htmlToPlain(m[1] ?? '').trim()}</Text> : null}
+          <Pressable style={styles.link} onPress={() => Linking.openURL(m[2] ?? '').catch(() => undefined)} testID="udyam-link">
+            <Text style={styles.linkText}>{htmlToPlain(m[3] ?? '').trim() || m[2]}</Text>
+            <Icon icon={icons.ic_external_link} size={30} />
+          </Pressable>
+          {htmlToPlain(m[4] ?? '').trim() ? <Text style={[styles.welcomeText, styles.centred, styles.linkBoxText]}>{htmlToPlain(m[4] ?? '').trim()}</Text> : null}
+        </Note>
+      ) : null}
     </View>
   );
 }
 
 function ValidatedNote() {
   const note = useAppText('app.msme.registration.validatedNote');
-  return note ? <Text style={styles.validated}>{htmlToPlain(note.html)}</Text> : null;
+  return note ? (
+    <Note tone="green" center testID="validated-note">
+      {htmlToPlain(note.html)}
+    </Note>
+  ) : null;
 }
 
-/** layout_enterprise_details: name, then Udyam Number, Unit Address, Entrepreneur Name, Social Category, Gender. */
-function EnterpriseBox({ basic, short = false }: { basic: UdyamRecord; short?: boolean }) {
+function enterpriseTypeImage(type: string) {
+  if (type === 'Micro') return images.ic_micro;
+  if (type === 'Small') return images.ic_small;
+  if (type === 'Medium') return images.ic_medium;
+  return null;
+}
+
+/** layout_enterprise_details: the type badge, the name, then Unit Address, Entrepreneur Name, Social Category, Gender, Udyam Number. */
+function EnterpriseCard({ basic, short = false }: { basic: UdyamRecord; short?: boolean }) {
   const address = [text(basic, 'Address'), [text(basic, 'DISTRICT_NAME'), text(basic, 'state_name'), text(basic, 'PINCode')].filter(Boolean).join(', ')]
     .filter(Boolean)
     .join('\n');
   const rows: [string, string][] = short
     ? [['Udyam Number', text(basic, 'UdyogAadharNo')]]
     : [
-        ['Udyam Number', text(basic, 'UdyogAadharNo')],
         ['Unit Address', address],
         ['Entrepreneur Name', text(basic, 'OwnerName')],
         ['Social Category', text(basic, 'SocialCategory')],
         ['Gender', text(basic, 'Gender')],
+        ['Udyam Number', text(basic, 'UdyogAadharNo')],
       ];
+  const type = text(basic, 'EnterpriseType');
+  const badge = enterpriseTypeImage(type);
   return (
-    <View style={styles.box} testID="enterprise-box">
-      <Text style={styles.enterprise}>
-        {text(basic, 'EnterpriseName')}
-        {text(basic, 'EnterpriseType') ? <Text style={styles.type}>{'  ' + text(basic, 'EnterpriseType')}</Text> : null}
-      </Text>
-      {rows.map(([k, v]) => (
-        <View key={k} style={styles.row}>
-          <Text style={styles.rowLabel}>{k}</Text>
-          <Text style={styles.rowValue}>{v}</Text>
-        </View>
-      ))}
+    <View style={styles.enterprise} testID="enterprise-box">
+      {badge ? <Image source={badge} style={styles.badge} /> : type ? <Text style={styles.type}>{type.toUpperCase()}</Text> : null}
+      <Text style={styles.enterpriseName}>{text(basic, 'EnterpriseName')}</Text>
+      {rows
+        .filter(([, v]) => v)
+        .map(([k, v]) => (
+          <View key={k} style={styles.row}>
+            <Text style={styles.rowLabel}>{k}</Text>
+            <Text style={styles.rowValue}>{v}</Text>
+          </View>
+        ))}
     </View>
   );
 }
 
-function Choice({
-  title,
-  detail,
-  selected,
-  selectTitle,
-  onSelect,
-  testID,
-}: {
-  title: string;
-  detail: string;
-  selected: boolean;
-  selectTitle: string;
-  onSelect: () => void;
-  testID: string;
-}) {
+/** layout_activity_selection: the activity, then its 2, 4 and 5 digit codes. */
+function ActivityRows({ activity }: { activity: UdyamRecord }) {
   return (
-    <View style={[styles.box, selected && styles.selected]} testID={testID}>
-      {title ? <Text style={styles.choiceTitle}>{title}</Text> : null}
-      {detail ? <Text style={styles.body}>{detail}</Text> : null}
-      <Pressable style={[styles.select, selected && styles.selectOn]} onPress={onSelect} testID={`${testID}-select`}>
-        <Text style={[styles.selectText, selected && { color: colors.white }]}>{selected ? 'Selected' : selectTitle}</Text>
-      </Pressable>
+    <View>
+      {text(activity, 'Activity') ? <IconRow icon={icons.ic_manufacturing} text={text(activity, 'Activity')} /> : null}
+      {text(activity, 'Two_DigitActivity') ? <IconRow icon={icons.ic_manufacturing_two} text={text(activity, 'Two_DigitActivity')} /> : null}
+      {text(activity, 'Four_DigitActivity') ? <IconRow icon={icons.ic_manufacturing_three} text={text(activity, 'Four_DigitActivity')} /> : null}
+      {text(activity, 'Five_DigitActivity') ? <IconRow icon={icons.ic_manufacturing_four} text={text(activity, 'Five_DigitActivity')} /> : null}
     </View>
   );
 }
 
+/** The confirmation check box on the yellow box (teal outline, filled when ticked). */
+function ConfirmBox({ label, checked, onChange, testID }: { label: string; checked: boolean; onChange: (c: boolean) => void; testID?: string }) {
+  return (
+    <Pressable
+      style={styles.confirm}
+      onPress={() => onChange(!checked)}
+      testID={testID}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}>
+      <View style={[styles.confirmBox, checked && styles.confirmBoxOn]}>
+        {checked ? <Text style={styles.confirmTick}>✓</Text> : null}
+      </View>
+      <Text style={styles.confirmText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** fragment_registration_summary: the e-mail, the enterprise, the unit and the activity, each with its edit pencil. */
 function Summary({
   email,
   basic,
@@ -373,9 +528,8 @@ function Summary({
   activity,
   confirmed,
   onConfirm,
+  onEditEmail,
   onEdit,
-  onBack,
-  onProceed,
 }: {
   email: string;
   basic: UdyamRecord;
@@ -383,59 +537,95 @@ function Summary({
   activity: UdyamRecord;
   confirmed: boolean;
   onConfirm: (c: boolean) => void;
+  onEditEmail: () => void;
   onEdit: () => void;
-  onBack: () => void;
-  onProceed: () => void;
 }) {
   const note = useAppText('app.msme.registration.emailNote');
   const confirm = useAppText('app.msme.registration.confirm.checkbox');
+  const label = confirm ? htmlToPlain(confirm.html) : '';
   return (
     <View>
-      <Pressable onPress={onEdit}>
-        <Text style={styles.heading}>Provided Email ID</Text>
-      </Pressable>
-      <Text style={styles.body} testID="summary-email">
-        {email}
-      </Text>
-      {note ? <Text style={styles.note}>{htmlToPlain(note.html)}</Text> : null}
-      <EnterpriseBox basic={basic} short />
-      <Pressable onPress={onEdit}>
-        <Text style={styles.heading}>Selected Unit</Text>
-      </Pressable>
-      <View style={styles.box}>
-        <Text style={styles.choiceTitle}>{text(plant, 'UnitName')}</Text>
-        <Text style={styles.body}>{plantAddress(plant)}</Text>
+      <DarkHeading title="Provided Email ID" onEdit={onEditEmail} testID="summary-email-heading" />
+      <View style={styles.emailRow}>
+        <Icon icon={icons.ic_email_teal} size={20} />
+        <Text style={styles.emailText} testID="summary-email">
+          {email}
+        </Text>
       </View>
-      <Pressable onPress={onEdit}>
-        <Text style={styles.heading}>Selected Activity</Text>
-      </Pressable>
-      <View style={styles.box}>
-        <Text style={styles.choiceTitle}>{text(activity, 'Activity')}</Text>
-        <Text style={styles.body}>{activityCodes(activity)}</Text>
+      {note ? (
+        <Note tone="green" center>
+          {htmlToPlain(note.html).replace(/ on this Email ID\.?$/, ' on the above Email ID')}
+        </Note>
+      ) : null}
+      <EnterpriseCard basic={basic} short />
+      <DarkHeading title="Selected Unit" onEdit={onEdit} testID="summary-unit-heading" />
+      <View style={styles.outlined}>
+        {text(plant, 'UnitName') ? <IconRow icon={icons.ic_plant_name} text={text(plant, 'UnitName')} /> : null}
+        {plantAddress(plant) ? <IconRow icon={icons.ic_location_teal} text={plantAddress(plant)} /> : null}
       </View>
-      <CheckBox label={confirm ? htmlToPlain(confirm.html) : ''} checked={confirmed} onChange={onConfirm} testID="summary-confirm" />
-      <Footer onBack={onBack} onProceed={onProceed} proceedEnabled={confirmed} proceedTitle="PROCEED TO PLEDGE" />
+      <DarkHeading title="Selected Activity" onEdit={onEdit} testID="summary-activity-heading" />
+      <View style={styles.outlined}>
+        <ActivityRows activity={activity} />
+      </View>
+      <View style={styles.confirmWrap}>
+        <ConfirmBox label={label} checked={confirmed} onChange={onConfirm} testID="summary-confirm" />
+      </View>
     </View>
   );
 }
 
-function Pledge({ onBack, onPledge }: { onBack: () => void; onPledge: () => void }) {
+/** fragment_pledge: the gold frame with the PLEDGE tag, the ZED banner and the pledge on its cream box. */
+function Pledge({ onShown }: { onShown: () => void }) {
   const pledge = useAppText('app.msme.registration.pledge');
+  // anim/pledge_text: the text moves up from 650 to its place in 5 s.
+  const y = useRef(new Animated.Value(650)).current;
+  useEffect(() => {
+    Animated.timing(y, { toValue: 0, duration: 5000, useNativeDriver: true }).start(() => onShown());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <View>
-      {pledge ? <HtmlText html={pledge.html} style={styles.pledge} /> : null}
-      <Footer onBack={onBack} onProceed={onPledge} proceedTitle="I/We Pledge" />
+    <View style={styles.pledgeFrame} testID="pledge">
+      <GradientFill from={PLEDGE_GOLD_LIGHT} to={PLEDGE_GOLD_DARK} angle="diagonal" />
+      <View style={styles.pledgeInner}>
+        <Image source={images.zed_banner} style={styles.pledgeBanner} resizeMode="contain" />
+        {pledge ? (
+          <Animated.Text style={[styles.pledgeText, { transform: [{ translateY: y }] }]}>{htmlToPlain(pledge.html)}</Animated.Text>
+        ) : null}
+      </View>
+      <Image source={images.pledge_text} style={styles.pledgeTag} />
     </View>
   );
 }
 
+/** fragment_registration_success: the illustration, then the Admin's text (paragraphs bold, items as bullets). */
 function Success({ onLogin }: { onLogin: () => void }) {
   const success = useAppText('app.msme.registration.success');
+  const blocks = success ? parseSimpleHtml(success.html) : [];
   return (
     <View testID="registration-success">
-      <Text style={styles.welcome}>Registration Successful!</Text>
-      {success ? <HtmlText html={success.html} style={styles.body} /> : null}
-      <ZedButton title="Go To Login" onPress={onLogin} style={{ marginTop: dimens.padding3 }} testID="go-to-login" />
+      <View style={styles.successCard}>
+        <Image source={images.ic_registration_success} style={styles.successImage} resizeMode="contain" />
+        <Text style={styles.successTitle}>Registration Successful!</Text>
+        {blocks.map((b, i) =>
+          b.marker ? (
+            <View key={i} style={styles.bullet}>
+              <Text style={styles.successText}>•</Text>
+              <Text style={[styles.successText, { flex: 1, marginLeft: dimens.padding3 }]}>
+                {b.runs.map((r, j) => (
+                  <Text key={j} style={r.bold ? { fontWeight: 'bold' } : undefined}>
+                    {r.text}
+                  </Text>
+                ))}
+              </Text>
+            </View>
+          ) : (
+            <Text key={i} style={[styles.successText, styles.successHeading]}>
+              {b.runs.map(r => r.text).join('')}
+            </Text>
+          ),
+        )}
+      </View>
+      <ZedButton title="Go To Login" onPress={onLogin} small style={styles.centredButton} testID="go-to-login" />
     </View>
   );
 }
@@ -445,22 +635,45 @@ function EmailDialog({ initial, onClose, onProceed }: { initial: string; onClose
   const note = useAppText('app.msme.registration.emailNote');
   const [email, setEmail] = useState(initial);
   const [again, setAgain] = useState(initial);
-  const [error, setError] = useState<string | undefined>();
+  const [touched, setTouched] = useState({ email: false, again: false });
+  const [submitError, setSubmitError] = useState<string | undefined>();
   const proceed = () => {
+    setTouched({ email: true, again: true });
     const a = email.trim();
-    if (!EMAIL.test(a)) return setError('Not a valid email');
-    if (a.toLowerCase() !== again.trim().toLowerCase()) return setError('Email ID is not matching');
-    setError(undefined);
+    if (!isValidEmail(a)) return setSubmitError(EMAIL_ERROR);
+    if (a.toLowerCase() !== again.trim().toLowerCase()) return setSubmitError(EMAIL_MISMATCH);
+    setSubmitError(undefined);
     onProceed(a);
   };
+  const emailMessage = emailError(email, touched.email) ?? (submitError === EMAIL_ERROR ? EMAIL_ERROR : undefined);
+  const againMessage =
+    confirmEmailError(email, again, touched.again) ?? (submitError === EMAIL_MISMATCH && !emailMessage ? EMAIL_MISMATCH : undefined);
   return (
     <ZedDialog visible title="Enter Email ID" onClose={onClose} cancelable={false} testID="email-dialog">
-      {note ? <Text style={styles.note}>{htmlToPlain(note.html)}</Text> : null}
-      <Text style={styles.label}>YOUR EMAIL ID</Text>
-      <OutlinedInput value={email} onChangeText={t => (setEmail(t), setError(undefined))} keyboardType="email-address" autoCapitalize="none" testID="email" />
-      <Text style={styles.label}>CONFIRM EMAIL ID</Text>
-      <OutlinedInput value={again} onChangeText={t => (setAgain(t), setError(undefined))} keyboardType="email-address" autoCapitalize="none" error={error} testID="email-again" />
-      <ZedButton title="Proceed" onPress={proceed} style={{ marginTop: dimens.padding2 }} testID="email-proceed" />
+      {note ? (
+        <Note tone="green" style={styles.dialogNote}>
+          {htmlToPlain(note.html)}
+        </Note>
+      ) : null}
+      <Text style={styles.dialogLabel}>YOUR EMAIL ID</Text>
+      <RegInput
+        value={email}
+        onChangeText={t => (setEmail(t), setSubmitError(undefined))}
+        onBlur={() => setTouched(s => ({ ...s, email: true }))}
+        keyboardType="email-address"
+        error={emailMessage}
+        testID="email"
+      />
+      <Text style={styles.dialogLabel}>CONFIRM EMAIL ID</Text>
+      <RegInput
+        value={again}
+        onChangeText={t => (setAgain(t), setSubmitError(undefined))}
+        onBlur={() => setTouched(s => ({ ...s, again: true }))}
+        keyboardType="email-address"
+        error={againMessage}
+        testID="email-again"
+      />
+      <ZedButton title="Proceed" onPress={proceed} small style={styles.centredButton} testID="email-proceed" />
     </ZedDialog>
   );
 }
@@ -478,9 +691,13 @@ function OtpDialog({ email, onClose, onSubmit, onResend }: { email: string; onCl
   }, [left]);
   return (
     <ZedDialog visible title="Enter OTP" onClose={onClose} cancelable={false} testID="otp-dialog">
-      {sent ? <Text style={styles.body}>{htmlToPlain(sent.html)}</Text> : null}
-      <Text style={styles.label}>Please enter the OTP</Text>
-      <OutlinedInput
+      {sent ? (
+        <Note tone="green" style={styles.dialogNote}>
+          {htmlToPlain(sent.html)}
+        </Note>
+      ) : null}
+      <Text style={styles.otpLabel}>Please enter the OTP</Text>
+      <RegInput
         value={otp}
         onChangeText={t => (setOtp(t.toUpperCase()), setError(undefined))}
         maxLength={4}
@@ -489,36 +706,111 @@ function OtpDialog({ email, onClose, onSubmit, onResend }: { email: string; onCl
         error={error}
         testID="otp"
       />
-      <ZedButton title="Resend OTP" onPress={onResend} disabled={left > 0} style={{ marginTop: dimens.padding2 }} testID="otp-resend" />
-      {left > 0 ? <Text style={styles.note}>Resend OTP will be activated after {left} secs</Text> : null}
-      <Text style={styles.note}>If you have not received the OTP, then please re-check the Email ID.</Text>
-      <ZedButton title="Submit" onPress={() => (otp.trim() === '' ? setError('Please enter OTP') : onSubmit(otp.trim()))} testID="otp-submit" />
+      <ZedButton title="Resend OTP" onPress={onResend} disabled={left > 0} small style={styles.centredButton} testID="otp-resend" />
+      {left > 0 ? (
+        <Note tone="blue" style={styles.dialogNote}>
+          {`Resend OTP will be activated after ${left} secs`}
+        </Note>
+      ) : null}
+      <Note tone="yellow" style={styles.dialogNote}>
+        If you have not received the OTP, then please re-check the Email ID.
+      </Note>
+      <ZedButton
+        title="Submit"
+        onPress={() => (otp.trim() === '' ? setError('Please enter OTP') : onSubmit(otp.trim()))}
+        small
+        style={styles.centredButton}
+        testID="otp-submit"
+      />
     </ZedDialog>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { padding: dimens.padding2, backgroundColor: colors.white, flexGrow: 1 },
-  label: { ...textStyles.defaultLabel, marginTop: dimens.padding2 },
-  heading: { ...textStyles.defaultLabel, color: colors.appColorDark, fontWeight: 'bold', marginTop: dimens.padding3 },
-  body: { color: colors.black, fontSize: dimens.textSize14 },
-  note: { color: colors.labelColor, fontSize: dimens.textSize14, marginVertical: dimens.padding1 },
-  welcome: { fontSize: 24, fontWeight: 'bold', color: colors.black, marginBottom: dimens.padding2 },
-  validated: { color: colors.appColorDark, fontSize: dimens.textSize14, marginBottom: dimens.padding2 },
-  pledge: { fontSize: 18, color: colors.black, lineHeight: 28 },
-  box: { ...shapes.lightGreyOutlineFilled, padding: dimens.padding2, marginTop: dimens.padding1 },
-  selected: { borderColor: colors.appColor, borderWidth: 2 },
-  enterprise: { fontSize: 16, fontWeight: 'bold', color: colors.black, marginBottom: dimens.padding1 },
-  type: { fontSize: 12, fontWeight: 'normal', color: colors.appColorDark },
-  row: { flexDirection: 'row', paddingVertical: 3 },
-  rowLabel: { width: 130, color: colors.labelColor, fontSize: dimens.textSize14 },
-  rowValue: { flex: 1, color: colors.black, fontSize: dimens.textSize14 },
-  choiceTitle: { fontWeight: 'bold', color: colors.black, fontSize: 15, marginBottom: 2 },
-  select: { alignSelf: 'flex-start', marginTop: dimens.padding1, borderWidth: 1, borderColor: colors.appColor, borderRadius: 4, paddingHorizontal: 12, paddingVertical: 6 },
-  selectOn: { backgroundColor: colors.appColor },
-  selectText: { color: colors.appColorDark, fontWeight: 'bold' },
-  dots: { flexDirection: 'row', justifyContent: 'center', marginBottom: dimens.padding2 },
-  dot: { width: 10, height: 10, borderRadius: 5, marginHorizontal: 4, backgroundColor: colors.labelColor, opacity: 0.4 },
-  dotDone: { backgroundColor: colors.appColor, opacity: 0.6 },
-  dotCurrent: { backgroundColor: colors.appColor, opacity: 1 },
+  body: { flex: 1 },
+  page: { padding: dimens.padding4, backgroundColor: colors.white, flexGrow: 1 },
+  centred: { textAlign: 'center' },
+  fieldLabel: { fontWeight: 'bold', color: colors.textColor, fontSize: 18, marginTop: dimens.padding3, marginBottom: dimens.padding2 },
+  inputWrap: { marginHorizontal: dimens.padding1, marginBottom: dimens.padding2 },
+  outline: { borderWidth: 1, borderColor: colors.labelColor, borderRadius: 4, minHeight: 56, justifyContent: 'center', backgroundColor: colors.white },
+  outlineFocused: { borderColor: colors.appColor, borderWidth: 2 },
+  outlineError: { borderColor: colors.error, borderWidth: 2 },
+  input: { fontSize: 18, color: colors.black, paddingHorizontal: dimens.padding4, paddingVertical: dimens.padding3 },
+  floating: {
+    position: 'absolute',
+    top: -10,
+    left: 12,
+    paddingHorizontal: 4,
+    backgroundColor: colors.white,
+    color: colors.labelColor,
+    fontSize: 13,
+    letterSpacing: 0.4,
+  },
+  helper: { color: colors.labelColor, fontSize: 14, marginTop: 4, marginLeft: dimens.padding4, letterSpacing: 0.4 },
+  error: { color: colors.error, fontSize: 14, marginTop: 4, marginLeft: dimens.padding4 },
+  welcome: { fontSize: dimens.textSize2, fontWeight: 'bold', color: colors.black, marginBottom: dimens.padding4 },
+  welcomeText: { color: colors.black, fontSize: dimens.textSize, lineHeight: 23 },
+  linkBox: { padding: dimens.padding3, marginTop: dimens.padding4 },
+  linkBoxText: { padding: dimens.padding2 },
+  link: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.appColorSecondary,
+    borderRadius: 5,
+    paddingVertical: dimens.padding1,
+    paddingLeft: dimens.padding2,
+    paddingRight: dimens.padding1,
+  },
+  linkText: { flex: 1, color: colors.black, fontSize: dimens.textSize },
+  select: { fontSize: dimens.textSize3, fontWeight: 'bold', color: colors.black, marginVertical: dimens.padding2, lineHeight: 30 },
+  activityNote: { backgroundColor: colors.activitySelectTextBackground, marginTop: dimens.padding3 },
+  enterprise: { ...shapes.greyRectangle, padding: dimens.padding2, marginVertical: dimens.padding1 },
+  badge: { margin: dimens.padding1 },
+  type: { margin: dimens.padding1, fontSize: 12, fontWeight: 'bold', color: colors.labelColor },
+  enterpriseName: { margin: dimens.padding1, fontSize: 20, fontWeight: 'bold', color: colors.black },
+  row: { paddingHorizontal: dimens.padding1, paddingVertical: dimens.padding1 },
+  rowLabel: { color: colors.labelColor, fontSize: dimens.textSize },
+  rowValue: { color: colors.black, fontSize: dimens.textSize, lineHeight: 23, marginTop: 2 },
+  emailRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.lightGrey2, borderRadius: 5, padding: dimens.padding3, marginTop: dimens.padding1 },
+  emailText: { flex: 1, marginLeft: dimens.padding3, color: colors.black, fontSize: dimens.textSize },
+  outlined: {
+    borderWidth: 2,
+    borderColor: colors.progressBarColor,
+    borderRadius: 5,
+    padding: dimens.padding2,
+    paddingTop: 0,
+    marginVertical: dimens.padding2,
+  },
+  confirmWrap: { backgroundColor: colors.yellow, borderRadius: 5, marginVertical: dimens.padding3 },
+  confirm: { flexDirection: 'row', alignItems: 'center', padding: dimens.padding3 },
+  confirmBox: { width: 22, height: 22, borderWidth: 2, borderColor: colors.appColor, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
+  confirmBoxOn: { backgroundColor: colors.appColor },
+  confirmTick: { color: colors.white, fontWeight: 'bold', fontSize: 14, lineHeight: 16 },
+  confirmText: { flex: 1, marginLeft: dimens.padding3, color: colors.black, fontSize: dimens.textSize, lineHeight: 23 },
+  pledgeFrame: { borderRadius: 2, overflow: 'hidden', paddingBottom: dimens.padding3 },
+  pledgeInner: { margin: dimens.padding3, marginBottom: 0, backgroundColor: colors.white, padding: dimens.padding2, overflow: 'hidden' },
+  pledgeBanner: { width: '100%', height: 72, marginBottom: dimens.padding2 },
+  pledgeText: {
+    margin: dimens.padding3,
+    padding: dimens.padding4,
+    backgroundColor: colors.pledgeTextBackground,
+    borderRadius: 5,
+    textAlign: 'center',
+    fontSize: dimens.textSize2,
+    fontWeight: 'bold',
+    fontStyle: 'italic',
+    color: colors.black,
+    lineHeight: 28,
+  },
+  pledgeTag: { position: 'absolute', top: 0, left: 0, width: 34, height: 104, backgroundColor: colors.white },
+  successCard: { ...shapes.greyRectangle, margin: dimens.padding3, padding: dimens.padding4 },
+  successImage: { width: 256, height: 256, alignSelf: 'center' },
+  successTitle: { textAlign: 'center', fontSize: dimens.textSize2, fontWeight: 'bold', color: colors.black, marginTop: dimens.padding3 },
+  successText: { color: colors.black, fontSize: dimens.textSize, lineHeight: 23 },
+  successHeading: { fontWeight: 'bold', marginVertical: dimens.padding3 },
+  bullet: { flexDirection: 'row', marginVertical: dimens.padding1, paddingLeft: dimens.padding2 },
+  centredButton: { alignSelf: 'center', marginTop: dimens.padding3 },
+  dialogNote: { marginBottom: dimens.padding3 },
+  dialogLabel: { fontWeight: 'bold', color: colors.textColor, fontSize: dimens.textSize, marginTop: dimens.padding2, marginBottom: dimens.padding2, letterSpacing: 0.5 },
+  otpLabel: { fontWeight: 'bold', color: colors.textColor, fontSize: dimens.textSize, marginBottom: dimens.padding2 },
 });

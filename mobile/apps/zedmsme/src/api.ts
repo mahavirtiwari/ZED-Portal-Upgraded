@@ -134,6 +134,8 @@ export type PaymentHashResponse = BaseServiceResponse & {
 };
 
 export type ParametersResponse = BaseServiceResponse & { parameters?: Element[] | null };
+/** Msme/AppCertificationStatus: the status page's fields (SP_MSME_GET_DETAILS), null when a step is not reached. */
+export type CertificationStatusResponse = BaseServiceResponse & { certification?: string; steps?: Record<string, string | null> };
 export type RemoteAssessmentStatusResponse = BaseServiceResponse & { assementDate?: string | null; allowCalling?: boolean };
 
 /** Msme/LookupUdyam: the fields of the Udyam record the app shows, and the plants and activities to choose from. */
@@ -243,6 +245,14 @@ export class MsmeApi {
    */
   documentUrl(path: string) {
     return this.portalMsme + 'AppDocument?path=' + encodeURIComponent(path);
+  }
+
+  /**
+   * New in V4: the status steps behind a certification card's VIEW DETAILS, with the sign-in token
+   * (Msme/AppCertificationStatus on the portal; the legacy app showed the unsigned Msme/ViewStatus page in a WebView).
+   */
+  getCertificationStatus(certification: CertificationType) {
+    return this.http.getJson<CertificationStatusResponse>(this.portalMsme + 'AppCertificationStatus?certification=' + encodeURIComponent(certification));
   }
 
   // ----- Financial Assistance (FinAssistanceViewModel) -----

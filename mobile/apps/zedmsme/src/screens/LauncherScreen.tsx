@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Image, PermissionsAndroid, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
   colors,
   dimens,
@@ -24,6 +25,8 @@ import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { updateCertificationDetails, type LoginResponse } from '../models';
 import { queueOutstanding, syncNow } from '../sync/queue';
+import { GearDivider } from '../ui/legacy';
+import { PasswordToggle } from './PasswordScreens';
 
 const SPLASH_MS = 2500;
 const NETWORK_UNAVAILABLE = 'Network Unavailable';
@@ -200,11 +203,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           testID="login-password"
-          right={
-            <Pressable onPress={() => setShowPassword(s => !s)} style={{ paddingHorizontal: 12 }} testID="password-toggle">
-              <Text style={{ color: colors.labelColor, fontSize: 18 }}>{showPassword ? '◉' : '◎'}</Text>
-            </Pressable>
-          }
+          right={<PasswordToggle shown={showPassword} onToggle={() => setShowPassword(s => !s)} testID="password-toggle" />}
         />
       </View>
       <View style={styles.loginRow}>
@@ -213,7 +212,9 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         </Pressable>
         <ZedButton title="Login" onPress={login} style={{ flex: 1 }} testID="login-button" />
       </View>
-      <View style={styles.newUser}>
+      <GearDivider style={styles.divider} />
+      <View style={styles.newUser} testID="new-user">
+        <RegisterOptionBackground />
         <Text style={styles.newUserTitle}>New User</Text>
         {newUser ? <HtmlText html={newUser.html} style={styles.newUserText} /> : null}
         <ZedButton
@@ -228,6 +229,32 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+/**
+ * drawable/register_option_background: a radial gradient from the secondary colour (80% across, 10% down) to the app
+ * colour at 320 dp, in rounded corners (8 dp).
+ */
+function RegisterOptionBackground() {
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  return (
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, styles.newUserBackground]}
+      onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+      {size ? (
+        <Svg width={size.w} height={size.h}>
+          <Defs>
+            <RadialGradient id="register" gradientUnits="userSpaceOnUse" cx={size.w * 0.8} cy={size.h * 0.1} r={320}>
+              <Stop offset="0" stopColor={colors.appColorSecondary} />
+              <Stop offset="1" stopColor={colors.appColor} />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width={size.w} height={size.h} rx={dimens.padding2} ry={dimens.padding2} fill="url(#register)" />
+        </Svg>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: dimens.padding4 },
   splashLogo: { width: '100%', height: 320, margin: dimens.padding2 },
@@ -239,8 +266,10 @@ const styles = StyleSheet.create({
   loginRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
   forgot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: dimens.padding2 },
   forgotText: { color: colors.black, fontSize: 14, fontWeight: 'bold' },
-  newUser: { alignSelf: 'stretch', marginTop: dimens.padding3, padding: dimens.padding3, borderRadius: 8, backgroundColor: colors.appColor },
+  divider: { alignSelf: 'stretch', marginHorizontal: dimens.padding1 },
+  newUser: { alignSelf: 'stretch', padding: dimens.padding3, borderRadius: dimens.padding2, overflow: 'hidden', backgroundColor: colors.appColor },
+  newUserBackground: { borderRadius: dimens.padding2, overflow: 'hidden' },
   newUserTitle: { color: colors.white, fontSize: 24, fontWeight: 'bold' },
   newUserText: { color: colors.white },
-  registerButton: { alignSelf: 'stretch', backgroundColor: colors.white },
+  registerButton: { alignSelf: 'stretch', backgroundColor: colors.white, marginTop: dimens.padding3 },
 });

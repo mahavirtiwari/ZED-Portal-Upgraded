@@ -14,6 +14,8 @@ const baseColors = {
   appColor90: '#45A5ADE6',
   appColorDark: '#368289',
   appColorSecondary: '#B3E079',
+  /** Behind the status bar (the legacy theme's statusBarColor); ZED MSME's current app has it white. */
+  statusBar: '#B3E079',
   textColor: '#232527',
   black: '#000000',
   white: '#FFFFFF',
@@ -46,7 +48,9 @@ const baseColors = {
 
 export type Palette = Partial<Record<keyof typeof baseColors, string>>;
 
-export const colors: Readonly<typeof baseColors> = { ...baseColors, ...(override as Palette) };
+const merged = { ...baseColors, ...(override as Palette) };
+// The status bar follows the secondary colour unless an app sets its own.
+export const colors: Readonly<typeof baseColors> = { ...merged, statusBar: override.statusBar ?? merged.appColorSecondary };
 
 export const dimens = {
   padding1: 5,

@@ -212,6 +212,10 @@ describe('ZED MSME applicant screens', () => {
     const app = await signedInApp();
     const r = render(app, 'MyCertifications');
     for (const id of ['bronze-card', 'silver-card', 'gold-card', 'pledge-download']) expect(byTestId(r, id)).toHaveLength(1);
+    // The info icon on a level's strip opens its info (showCertificationInfo).
+    await press(r, 'silver-card-info');
+    expect(byTestId(r, 'certification-info')).toHaveLength(1);
+    expect(texts(r)).toContain('This level has 14 parameters, which need to be conformed to, for achieving a Certification.');
   });
 
   it('My Documents lists the guidelines and certificates and downloads one with the sign-in token', async () => {

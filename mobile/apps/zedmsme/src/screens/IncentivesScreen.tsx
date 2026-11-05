@@ -1,7 +1,21 @@
 import React from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { BackBar, colors, dimens, htmlToPlain, Icon, ScreenFrame, useAppText, useNavigation, useUi, type IconDefinition } from '@zed/shared';
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import {
+  BackBar,
+  colors,
+  dimens,
+  htmlToPlain,
+  Icon,
+  lineHeight,
+  ScreenFrame,
+  textStyles,
+  useAppText,
+  useNavigation,
+  useUi,
+  type IconDefinition,
+} from '@zed/shared';
 import { icons } from '../assets/icons';
+import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { isAnyCertificationCompleted } from '../models';
@@ -9,15 +23,29 @@ import { isAnyCertificationCompleted } from '../models';
 const KAWACH_MARKET = 'market://details?id=com.qci.msme.kawach';
 const KAWACH_WEB = 'https://play.google.com/store/apps/details?id=com.qci.msme.kawach';
 
-/** The incentives that open the incentives page once a level is certified (GradedIncentivesActivity for all of them). */
-const GRADED: [string, string][] = [
-  ['Handholding Support', 'Cost: Rs. 2,00,000/- (Subsidy as per MSME size) for improving systems and processes'],
-  ['Technology Upgradation', 'Support of up to Rs. 3,00,000/- for moving towards Zero Effect Solutions'],
-  ['Ministry of MSME', 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs'],
-  ['States/UTs', 'Incentives by States/UTs for ZED Certified MSMEs'],
-  ['Financial Institutions', 'Incentives by Financial Institutions for ZED Certified MSMEs'],
-  ['Other Incentives', 'Incentives by Central Ministries/Other Organizations for ZED Certified MSMEs'],
+/**
+ * The incentives that open the incentives page once a level is certified (GradedIncentivesActivity for all of them):
+ * title, description, the legacy logo and how many leading characters of the description are in the coupon blue.
+ */
+const GRADED: [string, string, ImageSourcePropType, number][] = [
+  ['Handholding Support', 'Cost: Rs. 2,00,000/- (Subsidy as per MSME size) for improving systems and processes', images.handholding_logo, 47],
+  ['Technology Upgradation', 'Support of up to Rs. 3,00,000/- for moving towards Zero Effect Solutions', images.technology_logo, 31],
+  ['Ministry of MSME', 'Incentives by MoMSME through its schemes, for ZED Certified MSMEs', images.msme_logo, 0],
+  ['States/UTs', 'Incentives by States/UTs for ZED Certified MSMEs', images.state_uts_logo, 0],
+  ['Financial Institutions', 'Incentives by Financial Institutions for ZED Certified MSMEs', images.financial_institution_logo, 0],
+  ['Other Incentives', 'Incentives by Central Ministries/Other Organizations for ZED Certified MSMEs', images.graded_incentives_logo, 0],
 ];
+
+/** getForegroundColorSpan: the first `n` characters in the coupon blue. */
+const highlighted = (text: string, n: number) =>
+  n > 0 ? (
+    <>
+      <Text style={{ color: colors.couponBorder }}>{text.slice(0, n)}</Text>
+      {text.slice(n)}
+    </>
+  ) : (
+    text
+  );
 
 const rupees = (value: string | null | undefined) => {
   const n = Number(value ?? '');
@@ -47,38 +75,49 @@ export function IncentivesScreen() {
 
   return (
     <ScreenFrame title="My Incentives" onMenu={openDrawer} testID="incentives">
-      <View style={{ flex: 1, backgroundColor: colors.white }}>
-        <BackBar zedId={app.user?.MsmeDetails?.ZedId} onBack={() => nav.pop()} />
+      <View style={{ flex: 1, backgroundColor: colors.lightGrey2 }}>
+        {/* fragment_my_incentives: BACK only, no ZED ID. */}
+        <BackBar onBack={() => nav.pop()} />
         <ScrollView contentContainerStyle={{ padding: dimens.padding2 }}>
           <Incentive
             title="MSME KAWACH"
-            detail="WASH Certification on Safety & Hygiene · Free (₹ 5,750 + Taxes, 100% Subsidized)"
-            right={icons.ic_external_link}
+            logo={images.kawach_logo}
+            detail={
+              <>
+                {'WASH Certification on Safety & Hygiene\n\n'}
+                <Text style={{ fontWeight: 'bold', color: colors.couponBorder }}>Free </Text>
+                <Text style={{ textDecorationLine: 'line-through' }}>₹ 5,750 + Taxes</Text>, 100% Subsidized
+              </>
+            }
+            right={icons.ic_incentive_arrow_enabled}
             onPress={() => open(KAWACH_MARKET, KAWACH_WEB)}
             testID="incentive-kawach"
           />
           <Incentive
             title="Joining Reward"
-            detail="Rs. 10,000/- Limited purpose reward, linked with ZED Certification Levels"
+            logo={images.reward}
+            detail={highlighted('Rs. 10,000/- Limited purpose reward, linked with ZED Certification Levels', 12)}
             right={status?.isCouponUsed ? icons.ic_baseline_view_48 : icons.ic_incentive_arrow_enabled}
             onPress={joiningReward}
             testID="incentive-joining-reward"
           />
           <Incentive
             title="Financial Assistance"
-            detail="75% of Subsidy (Max. Rs. 50,000/-) For System Certification or Product Certification of Product Testing"
+            logo={images.financial_assistance_logo}
+            detail={highlighted('75% of Subsidy (Max. Rs. 50,000/-) For System Certification or Product Certification of Product Testing', 34)}
             enabled={status?.financialAssistanceStatus === 1}
             right={icons.ic_incentive_arrow_enabled}
             onPress={() => nav.push('FinancialAssistance')}
             testID="incentive-financial-assistance"
           />
-          {GRADED.map(([title, detail], i) => (
+          {GRADED.map(([title, detail, logo, blue], i) => (
             <Incentive
               key={title}
               title={title}
-              detail={detail}
+              logo={logo}
+              detail={highlighted(detail, blue)}
               enabled={certified}
-              right={icons.ic_external_link}
+              right={icons.ic_incentive_arrow_enabled}
               onPress={() => open(app.api.incentivesUrl)}
               testID={`incentive-graded-${i}`}
             />
@@ -89,9 +128,14 @@ export function IncentivesScreen() {
   );
 }
 
-/** layout_incentives_option: title, description and the arrow; a disabled option is greyed and does nothing. */
+/**
+ * layout_incentives_option: the logo with the arrow (in its grey square) on the right, the title (TextSubheading) and
+ * the description under it, on a white card with the green outline. A disabled option shows the disabled arrow and does
+ * nothing.
+ */
 function Incentive({
   title,
+  logo,
   detail,
   right,
   enabled = true,
@@ -99,36 +143,45 @@ function Incentive({
   testID,
 }: {
   title: string;
-  detail: string;
+  logo: ImageSourcePropType;
+  detail: React.ReactNode;
   right: IconDefinition;
   enabled?: boolean;
   onPress: () => void;
   testID: string;
 }) {
   return (
-    <Pressable style={[styles.card, !enabled && styles.disabled]} onPress={enabled ? onPress : undefined} disabled={!enabled} testID={testID}>
-      <Icon icon={icons.ic_incentives} />
-      <View style={{ flex: 1, marginHorizontal: dimens.padding2 }}>
-        <Text style={styles.title}>{title}</Text>
-        <Text style={styles.detail}>{detail}</Text>
+    <Pressable style={styles.card} onPress={enabled ? onPress : undefined} disabled={!enabled} testID={testID}>
+      <View style={styles.top}>
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+        {enabled && right === icons.ic_baseline_view_48 ? (
+          <View style={styles.viewBox}>
+            <Icon icon={right} />
+          </View>
+        ) : (
+          <Icon icon={enabled ? right : icons.ic_incentive_arrow_disabled} />
+        )}
       </View>
-      <Icon icon={enabled ? right : icons.ic_incentive_arrow_disabled} />
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.detail} numberOfLines={4}>
+        {detail}
+      </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: dimens.padding2,
-    marginVertical: dimens.padding1,
+    margin: dimens.padding2,
+    padding: dimens.padding4,
     borderWidth: 1,
-    borderColor: colors.lightGrey,
-    borderRadius: 8,
+    borderColor: colors.green,
+    borderRadius: dimens.padding2,
     backgroundColor: colors.white,
   },
-  disabled: { opacity: 0.45 },
-  title: { color: colors.black, fontWeight: 'bold', fontSize: dimens.textSize },
-  detail: { color: colors.labelColor, fontSize: dimens.textSize14, marginTop: 2 },
+  viewBox: { padding: dimens.padding2, borderRadius: 8, backgroundColor: colors.lightGrey },
+  top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  logo: { width: dimens.incentiveLogoSize, height: dimens.incentiveLogoSize, borderRadius: 12 },
+  title: { ...textStyles.subheading, marginTop: dimens.padding2 },
+  detail: { color: colors.black, fontSize: dimens.textSize, lineHeight: lineHeight(dimens.textSize) },
 });

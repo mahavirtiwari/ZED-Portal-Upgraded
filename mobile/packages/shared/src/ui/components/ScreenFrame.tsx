@@ -16,7 +16,7 @@ const OfflineNoteContext = createContext<string | null>(OFFLINE_NOTE);
 export const OfflineNoteProvider = OfflineNoteContext.Provider;
 
 /**
- * BaseActivity's layout (activity_base + default_header): status bar in the secondary colour, the gradient header
+ * BaseActivity's layout (activity_base + default_header): status bar in the secondary colour (colors.statusBar), the gradient header
  * (menu icon, date, title), the red offline note, the grey "BACK ... ZED ID" bar, then the screen content.
  */
 export function ScreenFrame({
@@ -46,7 +46,7 @@ export function ScreenFrame({
   return (
     <View style={styles.root} testID={testID}>
       <StatusBar barStyle="dark-content" />
-      <View style={{ height: insets.top, backgroundColor: colors.appColorSecondary }} />
+      <View style={{ height: insets.top, backgroundColor: colors.statusBar }} />
       {showHeader && (
         <View style={styles.header}>
           <GradientFill from={colors.appColor} to={colors.appColorSecondary} angle={90} />
@@ -106,6 +106,8 @@ export function Drawer({
   checkedKey,
   version,
   banner,
+  largeBanner = false,
+  checkedTint = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -114,6 +116,10 @@ export function Drawer({
   checkedKey?: string;
   version: string;
   banner?: ImageSourcePropType;
+  /** header_navigation_drawer as ZED MSME has it: the logo at its full width, the close button centred beside it. */
+  largeBanner?: boolean;
+  /** false: the open item only in the app colour (no tinted background). */
+  checkedTint?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const x = useRef(new Animated.Value(-300)).current;
@@ -131,7 +137,7 @@ export function Drawer({
               <Pressable onPress={onClose} testID="drawer-close">
                 <Icon icon={sharedIcons.ic_close_dialog} size={36} />
               </Pressable>
-              {banner ? <Image source={banner} style={styles.banner} resizeMode="contain" /> : null}
+              {banner ? <Image source={banner} style={largeBanner ? styles.bannerLarge : styles.banner} resizeMode="contain" /> : null}
             </View>
             {header}
           </View>
@@ -141,7 +147,7 @@ export function Drawer({
               <Pressable
                 key={item.key}
                 testID={`drawer-${item.key}`}
-                style={[styles.drawerItem, checked && styles.drawerItemChecked]}
+                style={[styles.drawerItem, checked && checkedTint && styles.drawerItemChecked]}
                 onPress={() => {
                   onClose();
                   if (!checked) setTimeout(item.onPress, 220); // MenuDrawerListener.runWhenIdle
@@ -187,6 +193,7 @@ const styles = StyleSheet.create({
   drawerHeader: { padding: dimens.padding3 },
   drawerTop: { flexDirection: 'row', alignItems: 'center' },
   banner: { flex: 1, height: 64, marginLeft: dimens.padding2 },
+  bannerLarge: { flex: 1, aspectRatio: 512 / 497, marginLeft: dimens.padding2 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: 16, marginHorizontal: 8, borderRadius: 4 },
   drawerItemChecked: { backgroundColor: 'rgba(69,165,173,0.12)' },
   drawerItemText: { marginLeft: 32, fontSize: 14, fontWeight: '500', color: 'rgba(0,0,0,0.87)' },
