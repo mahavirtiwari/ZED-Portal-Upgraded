@@ -24,9 +24,13 @@ public static class AssessmentReport
 {
     public sealed record Assets(SKImage Cover, SKImage Header, SKImage About, SKImage? Level, SKImage LastPage, SKImage? Map);
 
+    /// <summary>The disclaimer points, with the level's validity ("3 years" for 36 months, as the old page; "18 months").</summary>
+    public static string[] Disclaimer(int validityMonths) => Texts.DisclaimerFor(validityMonths);
+
     private const int NcRounds = 5;
 
-    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos, bool surveillance = false)
+    /// <param name="validityMonths">The level's validity (Administration → Certification Levels), stated in the disclaimer.</param>
+    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos, bool surveillance = false, int validityMonths = DocumentLevels.DefaultValidityMonths)
     {
         var unit = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No report data.");
         var zedId = unit.Text("ZedId");
@@ -56,8 +60,9 @@ public static class AssessmentReport
         pdf.Space(4);
         pdf.Panel("DISCLAIMER");
         pdf.Paragraph(Texts.DisclaimerIntro, italic: true);
-        for (var i = 0; i < Texts.Disclaimer.Length; i++)
-            pdf.Paragraph(Texts.Disclaimer[i], 9.5f, indent: 22, bullet: (char)('a' + i) + ".");
+        var disclaimer = Disclaimer(validityMonths);
+        for (var i = 0; i < disclaimer.Length; i++)
+            pdf.Paragraph(disclaimer[i], 9.5f, indent: 22, bullet: (char)('a' + i) + ".");
 
         pdf.Space(4);
         // Keep the summary table and the location together, as the old page did.
@@ -278,13 +283,25 @@ public static class AssessmentReport
         public const string About3 = "In this report, findings are presented on an exception basis only.";
         public const string DisclaimerIntro = "This disclaimer governs the use of this report. By using this report, you accept this disclaimer in full.";
 
+        /// <summary>The validity point of <see cref="Disclaimer"/>; {0} is the period ("3 years", "18 months").</summary>
+        private const string ValidityClause = "The Certification is valid only for a period of {0} from the date of issue as mentioned on the Certificate, subject to surveillance assessment (as applicable) conducted within the validity period. The cost of surveillance will be borne by the applicant MSME.";
+
+        /// <summary>The disclaimer with the level's validity: "3 years" for 36 months (as the old page), "18 months".</summary>
+        public static string[] DisclaimerFor(int months)
+        {
+            var period = months > 0 && months % 12 == 0
+                ? $"{months / 12} year{(months == 12 ? "" : "s")}"
+                : $"{months} month{(months == 1 ? "" : "s")}";
+            return [.. Disclaimer.Select(d => d == ValidityClause ? string.Format(System.Globalization.CultureInfo.InvariantCulture, ValidityClause, period) : d)];
+        }
+
         public static readonly string[] Disclaimer =
         [
             "This is an electronically generated report/transcript. It does not require any signature.",
             "The Certification is voluntary and the report provided pertains to the systems and processes of this unit only.",
             "This report is for the purpose of summarizing the outcomes of the assessment process for the applicant Unit as per the information provided by the Applicant.",
             "The assessment has been conducted subsequent to the undertaking by the MSME that it complies with and fulfils all relevant and applicable regulatory and statutory norms/licenses/requirements pertaining to the functioning of this manufacturing unit. Any deviation from this undertaking may result in recall/withdrawal of the Certification provided.",
-            "The Certification is valid only for a period of 3 years from the date of issue as mentioned on the Certificate, subject to surveillance assessment (as applicable) conducted within the validity period. The cost of surveillance will be borne by the applicant MSME.",
+            ValidityClause,
             "This Report contains a summary of assessment findings as validated through the assessment which is based on the requirements of the relevant ZED Certification Level.",
             "The ZED logo can only be used by those MSMEs which have successfully achieved a Certification (Bronze, Silver or Gold). The guidelines regarding logo usage are being sent separately.",
             "This report has been made for the exclusive use and benefit of the MSME assessed and Ministry of MSME or any of its implementation partner will not accept any liability that may arise if this report is used for any purpose other than intended for nor to any third party in respect of this report.",

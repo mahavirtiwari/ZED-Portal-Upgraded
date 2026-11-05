@@ -106,7 +106,8 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var level = Validate(zedId, certification);
         var row = await CertificateRowAsync(db, zedId, level, ct);
         var relative = DocumentLevels.CertificatePath(zedId, level);
-        var settings = DocumentLevels.IsBuiltIn(level) ? null : await CertificationLevels.FindAsync(db, level, log, ct);
+        // Every level's validity is the Admin's (Certification Levels); V4 levels also take their logo from there.
+        var settings = await CertificationLevels.FindAsync(db, level, log, ct);
         try
         {
             var pdf = RenderCertificate(level, row, surveillance: false, settings);
@@ -130,7 +131,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var row = await CertificateRowAsync(surveillanceDb, zedId, level, ct);
         var relative = DocumentLevels.SurveillanceCertificatePath(zedId, level);
         // V4 levels: the Admin's settings are main's (dbo.SectionTypes), read by name from ZED_SURVEILLANCE's connection.
-        var settings = DocumentLevels.IsBuiltIn(level) ? null : await CertificationLevels.FindAsync(surveillanceDb, level, log, ct, fromOtherDatabase: true);
+        var settings = await CertificationLevels.FindAsync(surveillanceDb, level, log, ct, fromOtherDatabase: true);
         var round = DocumentLevels.IsBuiltIn(level) ? null : await SurveillanceRoundAsync(surveillanceDb, zedId, level, ct);
         try
         {
@@ -207,13 +208,17 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
             texts.Add(new("DateOfSurveillance", row.Text("DateOfSurveillance"), Anchor: TextAnchor.TopLeft));
             texts.Add(new("SurveillanceNo", row.Text("SurveillanceNo")));
         }
-        // V4 levels (ZED-X): the Admin's validity under "Certificate Validity :" (the Silver/Gold artwork prints three
-        // years), and the logo uploaded in Administration → Certification Levels over the artwork's badge. Their
-        // surveillance artwork leaves out the "1" of "Surveillance 1 Completed on :": the round goes there.
+        // The Admin's validity (Administration → Certification Levels) under "Certificate Validity :". Bronze, Silver and
+        // Gold: in the artwork's own font and place (their artwork printed "Three years from the date of issue"; the line
+        // is now blank, so 36 months looks as before); V4 levels (ZED-X) as before. V4 levels also get the logo uploaded
+        // there over the artwork's badge, and their surveillance artwork leaves out the "1" of "Surveillance 1 Completed
+        // on :": the round goes there.
+        var validity = DocumentLevels.ValidityText(settings?.ValidityMonths ?? DocumentLevels.DefaultValidityMonths);
         List<CertificateImage> images = [];
-        if (!DocumentLevels.IsBuiltIn(level))
+        if (DocumentLevels.IsBuiltIn(level)) texts.Add(new("ArtworkValidity", validity));
+        else
         {
-            texts.Add(new("Validity", DocumentLevels.ValidityText(settings?.ValidityMonths ?? DocumentLevels.DefaultValidityMonths)));
+            texts.Add(new("Validity", validity));
             if (surveillance) texts.Add(new("SurveillanceRound", surveillanceRound?.ToString(CultureInfo.InvariantCulture) ?? SurveillanceRound(row.Text("SurveillanceNo"))));
             if (settings?.LogoPath is { Length: > 0 } logo && _storage.Find(logo) is { } logoPath)
                 images.Add(new CertificateImage(File.ReadAllBytes(logoPath), BadgeCenterX, BadgeCenterY, BadgeSize, BadgeClearRadius));
@@ -307,8 +312,11 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         // The old page showed ~/GoogleMaps/{ZedId}_{Level}.jpg when a static map had been downloaded earlier.
         using var map = Map(surveillance ? "Surveillance/" : "", zedId, level);
         using var photos = new ReportPhotos(_storage.Root, zedId);
+        // The disclaimer states the level's validity (Administration → Certification Levels; main's, also for surveillance).
+        var settings = await CertificationLevels.FindAsync(db, level, log, ct, fromOtherDatabase: surveillance);
 
-        return AssessmentReport.Render(sets, new AssessmentReport.Assets(cover, header, about, badge, lastPage, map), photos, surveillance);
+        return AssessmentReport.Render(sets, new AssessmentReport.Assets(cover, header, about, badge, lastPage, map), photos, surveillance,
+            settings?.ValidityMonths ?? DocumentLevels.DefaultValidityMonths);
     }
 
     /// <summary>

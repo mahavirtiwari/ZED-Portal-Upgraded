@@ -13,7 +13,7 @@
            0011 all three | 0012 all three | 0013 all three |
            0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
            0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE | 0043 ZEDCS_V2_LIVE, ZED_SURVEILLANCE |
-           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE
+           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -155,6 +155,7 @@ $Migrations = @(
     @{ File = '0044_consultancy_fee_schedule.sql'; Dbs = @($Cons); Markers = @('COL:dbo.AssessmentFee.PayAllAtMilestone1', 'COL:dbo.AssessmentFee.PayAllFrom', 'FN:dbo.FN_V4_PAY_ALL_AT_MILESTONE1', 'FN:dbo.FN_V4_STATE_HANDHOLDING_FEE', 'DEF:dbo.SP_MSME_ZERO_PAYMENT_DETAILS:FN_V4_PAY_ALL_AT_MILESTONE1') }
     @{ File = '0045_consultancy_fee_levels.sql'; Dbs = @($Main, $Surv); Markers = @('DEF:dbo.SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS:FN_V4_PAY_ALL_AT_MILESTONE1') }
     @{ File = '0046_recertification_fee_and_validity.sql'; Dbs = @($Main); Markers = @('DEF:dbo.SP_MSME_GET_PAYMENT_DETAILS:@RecertFeeType', 'DEF:dbo.SP_JOB_TO_UPDATE_3YEARS_COMPLETED_TO_EXPIRED:T.ValidityMonths', 'DEF:dbo.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_RECERTIFICATION:T.ValidityMonths') }
+    @{ File = '0047_certificate_validity.sql'; Dbs = $Zed; Markers = @('FN:dbo.FN_V4_VALIDITY_MONTHS', 'DEF:dbo.SP_API_GET_CERTIFIED_UNIT_DETAILS_BY_UDYAM:FN_V4_VALIDITY_MONTHS') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

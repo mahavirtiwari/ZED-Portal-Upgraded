@@ -98,6 +98,40 @@ public sealed class ZedXCertificateTests : IDisposable
     }
 
     [Fact]
+    public async Task Bronze_silver_and_gold_print_the_admins_validity_in_the_artworks_place()
+    {
+        // The artwork's "Three years from the date of issue" line is blank now: the layouts print the level's validity
+        // there, in the artwork's font (all four layouts, as Surveillance draws Bronze and Gold too).
+        var assets = Path.Combine(AppContext.BaseDirectory, "Assets", "Documents");
+        foreach (var layout in new[] { "SaCertification.json", "DaCertification.json", "Surveillance/SaCertification.json", "Surveillance/DaCertification.json" })
+        {
+            var field = Zed.Core.Certificates.CertificateComposer.LoadLayout(Path.Combine(assets, layout))["ArtworkValidity"];
+            Assert.Equal("Times New Roman", field.Family);
+            Assert.Equal(398, field.X);
+        }
+
+        // The certificate changes with the Admin's validity of the level (36 months reads as the artwork did).
+        DocumentsTestData.Register(_host);
+        object Silver(int months) => new
+        {
+            Code = "Silver", Name = "Silver", OrderNo = 20, Description = (string?)null, Comment = (string?)null, LogoPath = (string?)null, IsEnabled = true,
+            AssessmentMode = "Site", ValidityMonths = months, SurveillanceEnabled = true, FirstSurveillanceMonths = 15,
+            CertNoFormat = (string?)null, CertNoFormatManufacturing = (string?)null, CertNoFormatService = (string?)null, Fee = 0m,
+        };
+        async Task<byte[]> SilverPdf(int months)
+        {
+            _host.Sql.Queries[CertificationLevels.Sql] = _ => [Silver(months)];
+            using var scope = _host.Services.CreateScope();
+            return (await scope.ServiceProvider.GetRequiredService<IAssessmentDocuments>().IssueCertificateAsync(Me, "Silver", default)).Content;
+        }
+        Assert.NotEqual(await SilverPdf(36), await SilverPdf(48));
+
+        Assert.Contains("valid only for a period of 3 years from the date of issue", string.Join(" ", Zed.Portal.Features.Documents.AssessmentReport.Disclaimer(36)));
+        Assert.Contains("valid only for a period of 4 years from the date of issue", string.Join(" ", Zed.Portal.Features.Documents.AssessmentReport.Disclaimer(48)));
+        Assert.Contains("valid only for a period of 18 months from the date of issue", string.Join(" ", Zed.Portal.Features.Documents.AssessmentReport.Disclaimer(18)));
+    }
+
+    [Fact]
     public async Task The_number_and_first_surveillance_come_from_the_admins_settings()
     {
         var certified = new DateTime(2026, 10, 29, 11, 0, 0);
