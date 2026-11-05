@@ -219,6 +219,8 @@ public sealed class SurveillanceStaffTests : IDisposable
         var admin = await SurveillanceLogin.SignInAsync(_host, "ADMIN1");
         var fees = await admin.GetFromJsonAsync<JsonElement>("/api/staff/fees/Micro");
         Assert.Equal("Certification", fees.GetProperty("groupBy").GetString());
+        // The Recertification fee is main's (a surveillance unit does not re-certify here).
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/fees/Recertification")).StatusCode);
         var coord = await SurveillanceLogin.SignInAsync(_host, "COORD1");
         Assert.Equal(HttpStatusCode.NotFound, (await coord.GetAsync("/api/staff/neft/transactions")).StatusCode);
     }

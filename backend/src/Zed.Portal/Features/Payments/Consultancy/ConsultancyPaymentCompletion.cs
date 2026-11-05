@@ -128,6 +128,9 @@ public static class ConsultancyPaymentSummary
 
     public static List<SummaryLine> Lines(IDictionary<string, object?> p)
     {
+        // A milestone paid at milestone 1 ("pay all at milestone 1", migration 0044): its Rs. 0 record.
+        if (V(p, "PaymentType") == "PaidAtMilestone1")
+            return [new("Handholding Fee", "Paid at milestone 1"), new("Net Payable Amount", "₹ 0.00", Bold: true)];
         var lines = new List<SummaryLine>
         {
             new("Handholding Fee", "₹ " + V(p, "Total")),

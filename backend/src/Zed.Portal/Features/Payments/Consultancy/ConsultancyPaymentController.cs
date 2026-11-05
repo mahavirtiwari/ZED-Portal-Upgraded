@@ -64,7 +64,9 @@ public sealed class ConsultancyPaymentController(
         Dictionary<string, object?> WithoutReward,
         bool RewardAvailable,
         string? UdyamPan,
-        bool StateSubsidy);
+        bool StateSubsidy,
+        bool CoversAllMilestones = false,
+        bool PaidAtMilestone1 = false);
 
     private static readonly string[] FeeFields =
     [
@@ -87,7 +89,8 @@ public sealed class ConsultancyPaymentController(
         var fees = await ConsultancyFees.LoadAsync(db, ZedId, level, ct);
         if (fees.WithoutReward is null) return this.Problem400(NoFees);
         return new OptionsResponse(level, state.NextMilestone, fees.RewardAvailable ? Pick(fees.WithReward!) : null, Pick(fees.WithoutReward),
-            fees.RewardAvailable, fees.UdyamPan, ConsultancyFees.IsStateRow(fees.WithoutReward));
+            fees.RewardAvailable, fees.UdyamPan, ConsultancyFees.IsStateRow(fees.WithoutReward),
+            ConsultancyFees.CoversAllMilestones(fees.WithoutReward), ConsultancyFees.IsPaidAtMilestone1(fees.WithoutReward));
     }
 
     // ----- GSTIN and PAN -----
@@ -199,10 +202,11 @@ public sealed class ConsultancyPaymentController(
             return this.Problem400(FeeOption.Unreadable);
         }
 
-        // Nothing to pay after subsidy (the old page's condition: a state-subsidy row with nothing left to pay).
+        // Nothing to pay: a state-subsidy row with nothing left to pay (the old page's condition), or a milestone paid at
+        // milestone 1 ("pay all at milestone 1", migration 0044).
         if (due <= 0)
         {
-            if (!ConsultancyFees.IsStateRow(fee))
+            if (!ConsultancyFees.IsStateRow(fee) && !ConsultancyFees.IsPaidAtMilestone1(fee))
             {
                 // The old page sent this to the gateway with amount 0; the zero procedure only records state-subsidy rows.
                 log.LogError("Handholding fee row {FeeId} for {ZedId}/{Level} has nothing to pay but no state subsidy", fee.Id, ZedId, level);
@@ -322,6 +326,15 @@ public sealed record ConsultancyFees(FeeOption? WithReward, FeeOption? WithoutRe
 
     /// <summary>A StateAssessmentFee row (Andhra Pradesh state subsidy): it has a StateSubsidyLabel.</summary>
     public static bool IsStateRow(FeeOption fee) => fee.Row.Text("StateSubsidyLabel").Length > 0;
+
+    /// <summary>A "pay all at milestone 1" row (AssessmentFee.PayAllAtMilestone1, migration 0044), not a state row.</summary>
+    private static bool IsPayAll(FeeOption fee) => !IsStateRow(fee) && fee.Row.Text("PayAllAtMilestone1") is "1" or "True" or "true";
+
+    /// <summary>Milestone 1 charged for all three milestones.</summary>
+    public static bool CoversAllMilestones(FeeOption fee) => IsPayAll(fee) && fee.Row.Text("MileStone") == "1";
+
+    /// <summary>Milestone 2 or 3 of a unit that paid all three at milestone 1: nothing to pay, recorded as a Rs. 0 payment.</summary>
+    public static bool IsPaidAtMilestone1(FeeOption fee) => IsPayAll(fee) && fee.Row.Text("MileStone") is "2" or "3";
 }
 
 /// <summary>A unit's payment choices with the fee row chosen on the server.</summary>

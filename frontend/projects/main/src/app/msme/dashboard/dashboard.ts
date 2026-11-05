@@ -112,9 +112,6 @@ const STEPS: Record<Level, StepRule[]> = {
 /** Status code meaning "certified" per level (MsmeCertifications.CertificationStatus). */
 const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16, ZEDX: 16 };
 
-/** The old page showed Bronze re-certification to this one pilot unit only; kept as is. */
-const BRONZE_RECERT_PILOT = ['ZEDMSME1062064'];
-
 /**
  * MSME dashboard. Port of Views/Msme/Dashboard.cshtml: unit summary, certification cards,
  * incentives, certification steps, the information pop-ups and the first two steps of applying
@@ -438,9 +435,9 @@ export class DashboardPage {
   }
 
   protected reCertificationVisible(level: Level): boolean {
+    // Every level, Bronze included (the old page showed Bronze re-certification to one pilot unit only).
     const b = this.basic();
-    const pilotOk = level !== 'Bronze' || BRONZE_RECERT_PILOT.includes(String(this.msme()['ZedId']));
-    return this.is(b, 'ReCertification', 1) && b['ReCertificationLevel'] === level && pilotOk;
+    return this.is(b, 'ReCertification', 1) && b['ReCertificationLevel'] === level;
   }
 
   protected legacy(path: string): string {

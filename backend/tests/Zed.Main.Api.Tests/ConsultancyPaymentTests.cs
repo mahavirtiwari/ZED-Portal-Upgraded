@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Finance;
 using Zed.Core.Mobile;
 using Zed.Core.Payments;
+using Zed.Portal.Features.Payments;
 using Zed.Portal.Features.Payments.Consultancy;
 using Zed.Portal.Features.Payments.Mobile;
 
@@ -72,7 +73,7 @@ public sealed class ConsultancyPaymentTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private void SetFees(string payable, string? stateLabel = null, int rewardUsed = 0, string? pan = "abcde1234f") =>
+    private void SetFees(string payable, string? stateLabel = null, int rewardUsed = 0, string? pan = "abcde1234f", bool payAll = false) =>
         // The procedure's two result sets are the same AssessmentFee row (Coupon IS NULL).
         _host.Sql.Procs["SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS"] = _ =>
         {
@@ -83,6 +84,7 @@ public sealed class ConsultancyPaymentTests : IDisposable
                 ["MileStone"] = 2, ["IsActive"] = true,
             };
             if (stateLabel is not null) row["StateSubsidyLabel"] = stateLabel;
+            if (payAll) row["PayAllAtMilestone1"] = true;
             return FakeSql.Sets([row], [row], [new { IsCouponUsed = rewardUsed }]);
         };
 
@@ -279,6 +281,42 @@ public sealed class ConsultancyPaymentTests : IDisposable
         Assert.Equal($"ZED Handholding Support (Milestone 2) Payment Confirmation Details - {Me}", mail.Subject);
         Assert.Contains("Handholding Fee", mail.HtmlBody);
         Assert.DoesNotContain("Password", mail.HtmlBody, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task A_milestone_paid_at_milestone_1_is_recorded_at_zero()
+    {
+        // "Pay all at milestone 1" (migration 0044): milestone 2's zero row of a unit that paid all three.
+        SetFees(payable: "0.00", payAll: true);
+        var client = await SignedInAsync();
+        var options = await client.GetFromJsonAsync<JsonElement>($"{Api}/Silver/options");
+        Assert.True(options.GetProperty("paidAtMilestone1").GetBoolean());
+        Assert.False(options.GetProperty("coversAllMilestones").GetBoolean());
+
+        var r = await client.PostAsJsonAsync($"{Api}/Silver/checkout", Choices());
+        Assert.Equal("paid", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString());
+        var zero = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_CONSULTANCY_MSME_ZERO_PAYMENT_DETAILS");
+        Assert.Equal("31", FakeSql.Arg(zero.Args, "PaymentRefId"));
+        Assert.False(Called("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS"));
+    }
+
+    [Fact]
+    public void Pay_all_rows_are_told_apart_by_milestone_and_the_receipt_says_paid_at_milestone_1()
+    {
+        FeeOption Row(int milestone, bool payAll, string? state = null) => new(new Dictionary<string, object?>
+        {
+            ["Id"] = 7, ["MileStone"] = milestone, ["PayAllAtMilestone1"] = payAll ? true : null, ["StateSubsidyLabel"] = state,
+            ["ApplicantContributionAfterSubsidy"] = milestone == 1 ? "7080.00" : "0.00",
+        });
+        Assert.True(ConsultancyFees.CoversAllMilestones(Row(1, payAll: true)));
+        Assert.False(ConsultancyFees.IsPaidAtMilestone1(Row(1, payAll: true)));
+        Assert.True(ConsultancyFees.IsPaidAtMilestone1(Row(3, payAll: true)));
+        Assert.False(ConsultancyFees.IsPaidAtMilestone1(Row(3, payAll: false)));
+        Assert.False(ConsultancyFees.IsPaidAtMilestone1(Row(2, payAll: true, state: "(20%)")));
+
+        var lines = ConsultancyPaymentSummary.Lines(new Dictionary<string, object?> { ["PaymentType"] = "PaidAtMilestone1", ["Total"] = "0.00" });
+        Assert.Equal("Paid at milestone 1", lines[0].Value);
+        Assert.Equal("₹ 0.00", lines[^1].Value);
     }
 
     [Fact]

@@ -10,6 +10,10 @@ export interface ConsultancyOptions extends PaymentOptions {
   milestone: number;
   /** Andhra Pradesh state subsidy row (StateAssessmentFee). */
   stateSubsidy: boolean;
+  /** Milestone 1 charged for all three milestones (the schedule "pay all at milestone 1"). */
+  coversAllMilestones?: boolean;
+  /** Milestone 2 or 3 already paid at milestone 1: nothing to pay. */
+  paidAtMilestone1?: boolean;
 }
 
 export interface ConsultancyCheckoutRequest extends CheckoutRequest {

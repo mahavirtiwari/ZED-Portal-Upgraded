@@ -81,9 +81,10 @@ describe('FeesHostPage', () => {
     await settle(fixture);
     const el: HTMLElement = fixture.nativeElement;
     expect(el.querySelector('zed-staff-fee-structure')).not.toBeNull();
-    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Milestone 1');
+    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Silver, Milestone 1');
     expect([...el.querySelectorAll('.lv-name')].map((n) => n.textContent!.trim())).toEqual(['Milestone 1', 'Milestone 2', 'Milestone 3']);
-    expect([...el.querySelectorAll('.seg button')].map((b) => b.textContent!.trim())).toEqual(['Micro', 'Small', 'Medium']);
+    expect([...el.querySelectorAll('[aria-label="Enterprise type"] button')].map((b) => b.textContent!.trim())).toEqual(['Micro', 'Small', 'Medium']);
+    expect([...el.querySelectorAll('[aria-label="Handholding level"] button')].map((b) => b.textContent!.trim())).toEqual(['Silver', 'Gold']);
     expect(el.querySelector('.ps-tab.on')!.textContent!.trim()).toBe('Consultancy');
     sessionStorage.clear();
   });

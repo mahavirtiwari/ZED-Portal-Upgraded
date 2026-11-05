@@ -31,6 +31,7 @@ public sealed class FeesTests : IDisposable
                 Row(4, "Micro", "Bronze", 9000m, null, 100m, 1),
             ]),
             "Rejected" => FakeSql.Sets([Row(9, "Rejected", "Bronze", 10000m, null, 0m)]),
+            "Recertification" => FakeSql.Sets([Row(10, "RECERTIFICATION", "Silver", 40000m, null, 0m)]),
             _ => FakeSql.Sets([]),
         };
     }
@@ -272,6 +273,37 @@ public sealed class FeesTests : IDisposable
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "Bronze", category = 0, baseShare = 10m })).StatusCode);
         Assert.Empty(ShareUpdates());
+    }
+
+    [Fact]
+    public async Task The_recertification_fee_is_a_full_fee_of_its_own()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var body = await admin.GetFromJsonAsync<JsonElement>("/api/staff/fees/recertification");
+        Assert.Equal("Recertification", body.GetProperty("enterpriseType").GetString());
+        Assert.Equal("Silver", body.GetProperty("levels")[0].GetProperty("certification").GetString());
+
+        var r = await admin.PutAsJsonAsync("/api/staff/fees/Recertification", new { levels = new[] { new { certification = "Silver", assessmentFee = 45000m } } });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var save = Assert.Single(Updates());
+        Assert.Equal("10", FakeSql.Arg(save.Args, "Id"));
+        Assert.Equal(53100m, Dec(save.Args, "ApplicantContributionAfterSubsidy"));   // no subsidy: 45000 + 18% GST
+
+        Assert.Equal("Recertification fees have no subsidy.", await (await admin.PutAsJsonAsync("/api/staff/fees/Recertification/subsidy",
+            new { certification = "Silver", category = 0, baseShare = 10m })).ProblemTitle());
+
+        // Added like the Rejected fee: one row at the full fee; never given to another type, nor another type's fees to it.
+        var add = await admin.PostAsJsonAsync("/api/staff/fees/Recertification/add", new { certification = "Gold", assessmentFee = 50000m, alsoTypes = new[] { "Micro" } });
+        Assert.Equal(HttpStatusCode.OK, add.StatusCode);
+        var batch = Assert.Single(Inserts());
+        Assert.Equal(1, System.Text.RegularExpressions.Regex.Matches(batch.Name, "INSERT INTO AssessmentFee").Count);
+        Assert.Equal("Recertification", FakeSql.Arg(batch.Args, "EnterpriseTypee0"));
+        Assert.Equal(59000m, Dec(batch.Args, "ApplicantContributionAfterSubsidy0"));
+        var micro = await admin.PostAsJsonAsync("/api/staff/fees/Micro/add", new
+        {
+            certification = "Gold", assessmentFee = 10000m, reward = 0m, generalShare = 80m, alsoTypes = new[] { "Recertification" },
+        });
+        Assert.Equal("Fees added for Micro Gold.", (await micro.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
     }
 
     // ----- adding the fees of a level that has none -----

@@ -22,8 +22,11 @@ namespace Zed.Portal.Features.Staff.Fees;
 /// </list>
 /// <para>
 /// Also served by Surveillance (same procedures and columns; the rows main's surveillance payment charges) and by
-/// Consultancy, whose AssessmentFee rows carry a MileStone column: the handholding fee is set per milestone (as the old
-/// page's three MileStone inputs did) for Micro / Small / Medium, the coupon stays as stored.
+/// Consultancy, whose AssessmentFee rows carry a MileStone column: the handholding fee is set per level (Silver, Gold) and
+/// milestone for Micro / Small / Medium (the old page's three MileStone inputs set one fee for both levels), the coupon
+/// stays as stored. Consultancy also has the payment schedule: milestone by milestone, or all three at milestone 1 from a
+/// date (migration 0044, <see cref="PayAllRows"/>). Main also has the Recertification fee (migration 0046): the full fee
+/// a unit pays to re-certify a level, set like the Rejected fee.
 /// </para>
 /// </summary>
 [Route("api/staff/fees")]
@@ -35,22 +38,39 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     public const string AuditCategory = "Zed.Audit.AssessmentFee";
 
     public static readonly string[] EnterpriseTypes = ["Micro", "Small", "Medium", "Rejected"];
+    /// <summary>Main: also the Recertification fee (AssessmentFee EnterpriseTypee 'RECERTIFICATION', migration 0046).</summary>
+    public static readonly string[] MainEnterpriseTypes = ["Micro", "Small", "Medium", "Rejected", "Recertification"];
+
+    /// <summary>The types charged the full fee: no subsidy, no joining reward (one row per level).</summary>
+    public static bool IsFullFee(string type) => type is "Rejected" or "Recertification";
     /// <summary>The levels with fee rows (ZEDX = ZED-X, migration 0028; a level shows once it has rows).</summary>
     public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
 
-    public sealed record LevelFee(string Certification, decimal? AssessmentFee, decimal? Coupon, bool HasCouponRows);
+    /// <param name="Level">Consultancy: the handholding level (Silver, Gold) of the milestone in <paramref name="Certification"/>.</param>
+    public sealed record LevelFee(string Certification, decimal? AssessmentFee, decimal? Coupon, bool HasCouponRows, string? Level = null);
     /// <param name="GroupBy">"Certification" (one fee per level), or "MileStone" on Consultancy (Levels[].Certification is then the milestone).</param>
-    public sealed record FeesResponse(string EnterpriseType, IReadOnlyList<LevelFee> Levels, IReadOnlyList<FeeRow> Rows, string GroupBy = "Certification");
+    /// <param name="Schedule">Consultancy: how units pay the three milestones.</param>
+    public sealed record FeesResponse(string EnterpriseType, IReadOnlyList<LevelFee> Levels, IReadOnlyList<FeeRow> Rows, string GroupBy = "Certification",
+        PaymentSchedule? Schedule = null);
+
+    /// <param name="PayAllAtMilestone1">Units starting handholding from <paramref name="From"/> pay all three milestones at milestone 1.</param>
+    /// <param name="Prepared">The milestone-1 rows of that schedule exist (made when it is first switched on).</param>
+    public sealed record PaymentSchedule(bool PayAllAtMilestone1, DateOnly? From, bool Prepared);
 
     /// <summary>Consultancy's fee page offered Micro, Small and Medium only.</summary>
     public static readonly string[] ConsultancyEnterpriseTypes = ["Micro", "Small", "Medium"];
 
     private bool ByMilestone => host.System == PortalSystem.Consultancy;
 
-    private string? Type(string enterpriseType) => Canonical(enterpriseType, ByMilestone ? ConsultancyEnterpriseTypes : EnterpriseTypes);
+    private string? Type(string enterpriseType) => Canonical(enterpriseType, host.System switch
+    {
+        PortalSystem.Consultancy => ConsultancyEnterpriseTypes,
+        PortalSystem.Main => MainEnterpriseTypes,
+        _ => EnterpriseTypes,
+    });
 
     private FeesResponse Response(string type, List<FeeRow> rows) =>
-        ByMilestone ? new FeesResponse(type, MilestoneSummary(rows), rows, "MileStone") : new FeesResponse(type, Summary(rows), rows);
+        ByMilestone ? new FeesResponse(type, MilestoneSummary(rows), rows, "MileStone", ScheduleOf(rows)) : new FeesResponse(type, Summary(rows), rows);
 
     [HttpGet("{enterpriseType}")]
     public async Task<ActionResult<FeesResponse>> Get(string enterpriseType, CancellationToken ct)
@@ -61,7 +81,8 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         return Response(type, rows);
     }
 
-    public sealed record LevelRequest(string? Certification, decimal? AssessmentFee, decimal? Coupon);
+    /// <param name="Level">Consultancy: the handholding level whose milestone fee changes (null: Silver and Gold alike).</param>
+    public sealed record LevelRequest(string? Certification, decimal? AssessmentFee, decimal? Coupon, string? Level = null);
     public sealed record FeesRequest(List<LevelRequest>? Levels);
 
     /// <summary>The rows as they would be saved, without saving (the page shows the computed amounts while editing).</summary>
@@ -71,7 +92,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
         var current = await LoadAsync(type, ct);
-        var (updated, error) = ByMilestone ? ApplyMilestones(current, req) : Apply(type, current, req);
+        var (updated, error) = ByMilestone ? ApplyConsultancy(current, req) : Apply(type, current, req);
         if (error is not null) return this.Problem400(error);
         return Response(type, updated!);
     }
@@ -82,7 +103,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
         var current = await LoadAsync(type, ct);
-        var (updated, error) = ByMilestone ? ApplyMilestones(current, req) : Apply(type, current, req);
+        var (updated, error) = ByMilestone ? ApplyConsultancy(current, req) : Apply(type, current, req);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
         loggers.CreateLogger(AuditCategory).LogInformation("Assessment fees of {EnterpriseType} saved by {Actor}: {Changed} row(s) changed", type, UserId, changed);
@@ -104,7 +125,8 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// <param name="AdditionalShare">A special category: the share on top of the base (%).</param>
     /// <param name="Certification">The level, or on Consultancy the milestone, whose share changes.</param>
     /// <param name="AllLevels">The same shares for every level (Bronze, Silver, Gold, ZED-X), or on Consultancy every milestone.</param>
-    public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels);
+    /// <param name="Level">Consultancy: the handholding level whose share changes (null: Silver and Gold alike).</param>
+    public sealed record SubsidyRequest(string? Certification, int? Category, decimal? BaseShare, decimal? AdditionalShare, bool AllLevels, string? Level = null);
 
     /// <summary>
     /// V4: the subsidy share of a category (AssessmentFee.SubsidyPercentage, which the MSME's payment page shows and charges),
@@ -116,9 +138,9 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     {
         var type = Type(enterpriseType);
         if (type is null) return NotFound();
-        if (type == "Rejected") return this.Problem400("Rejected units get no subsidy.");
+        if (IsFullFee(type)) return this.Problem400(type == "Rejected" ? "Rejected units get no subsidy." : $"{type} fees have no subsidy.");
         var current = await LoadAsync(type, ct);
-        var (updated, error) = ApplySubsidy(current, req, ByMilestone);
+        var (updated, error) = ByMilestone ? ApplyConsultancySubsidy(current, req) : ApplySubsidy(current, req);
         if (error is not null) return this.Problem400(error);
         var changed = await WriteAsync(current, updated!, ct);
         loggers.CreateLogger(AuditCategory).LogInformation(
@@ -135,8 +157,9 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// <param name="GeneralShare">The subsidy every unit of the type gets (%).</param>
     /// <param name="AdditionalShares">Per special category of the portal: the share on top of the general one (%).</param>
     /// <param name="AlsoTypes">Other enterprise types to give the same fees (those that already have fees are left alone).</param>
+    /// <param name="Levels">Consultancy: the handholding levels to add the milestone's fees for (null: Silver and Gold).</param>
     public sealed record AddRequest(string? Certification, decimal? AssessmentFee, decimal? Reward, decimal? GeneralShare,
-        Dictionary<int, decimal?>? AdditionalShares, List<string>? AlsoTypes);
+        Dictionary<int, decimal?>? AdditionalShares, List<string>? AlsoTypes, List<string>? Levels = null);
 
     /// <summary>
     /// V4: the fees of a level (Consultancy: a milestone) that has no AssessmentFee rows for the type, so its units can pay.
@@ -152,18 +175,22 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             ? ConsultancyMilestones.FirstOrDefault(m => m == req.Certification?.Trim())
             : Canonical(req.Certification, Levels);
         if (group is null) return this.Problem400(ByMilestone ? "Please select a valid milestone." : "Please select a valid certification level.");
+        var (levels, levelError) = AddLevels(req, host.System, group);
+        if (levelError is not null) return this.Problem400(levelError);
         var types = new List<string> { type };
         foreach (var also in req.AlsoTypes ?? [])
-            if (Type(also) is { } t && t != "Rejected" && type != "Rejected" && !types.Contains(t)) types.Add(t);
+            if (Type(also) is { } t && !IsFullFee(t) && !IsFullFee(type) && !types.Contains(t)) types.Add(t);
 
         var added = new List<string>();
         var skipped = new List<string>();
         foreach (var t in types)
         {
             var current = await LoadAsync(t, ct);
-            if (current.Any(r => Same(ByMilestone ? r.MileStone : r.Certification, group)))
+            if (current.Any(r => !PayAllRows.IsPayAll(r) && (ByMilestone
+                    ? Same(r.MileStone, group) && levels!.Any(l => Same(r.Certification, l))
+                    : Same(r.Certification, group))))
             {
-                if (t == type) return this.Problem400($"{type} {GroupName(group)} already has fees: change them on this page instead.");
+                if (t == type) return this.Problem400($"{type} {GroupName(group, levels)} already has fees: change them on this page instead.");
                 skipped.Add(t);
                 continue;
             }
@@ -171,16 +198,126 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             if (error is not null) return this.Problem400(error);
             await InsertAsync(rows!, ct);
             added.Add(t);
+            // The schedule "pay all at milestone 1" is on: the new milestone may complete a level's three.
+            if (ByMilestone && ScheduleOf(current) is { PayAllAtMilestone1: true, From: { } from })
+                await AddPayAllRowsAsync(t, from, ct);
             loggers.CreateLogger(AuditCategory).LogInformation(
                 "Fees of {EnterpriseType} {Group} added by {Actor} (system {System}): {Rows} row(s), fee {Fee}, reward {Reward}, general share {Share}",
                 t, group, UserId, host.System, rows!.Count, req.AssessmentFee, req.Reward, req.GeneralShare);
         }
-        var message = $"Fees added for {string.Join(", ", added)} {GroupName(group)}.";
+        var message = $"Fees added for {string.Join(", ", added)} {GroupName(group, levels)}.";
         if (skipped.Count > 0) message += $" {string.Join(", ", skipped)} already had fees and were left as they were.";
         return new MessageResponse(message);
     }
 
-    private string GroupName(string group) => ByMilestone ? "milestone " + group : group == "ZEDX" ? "ZED-X" : group;
+    private string GroupName(string group, IReadOnlyList<string>? levels = null) =>
+        ByMilestone ? (levels is { Count: > 0 } ? string.Join(" and ", levels) + " " : "") + "milestone " + group : group == "ZEDX" ? "ZED-X" : group;
+
+    /// <summary>Consultancy's handholding levels (the order the page lists them in).</summary>
+    public static readonly string[] HandholdingLevels = ["Silver", "Gold"];
+
+    /// <summary>The levels a new milestone's fees are added for: Consultancy the chosen handholding levels (default both), else the level.</summary>
+    public static (List<string>? Levels, string? Error) AddLevels(AddRequest req, PortalSystem system, string group)
+    {
+        if (system != PortalSystem.Consultancy) return ([group], null);
+        if (req.Levels is null || req.Levels.Count == 0) return ([.. HandholdingLevels], null);
+        var levels = new List<string>();
+        foreach (var l in req.Levels)
+        {
+            if (HandholdingLevels.FirstOrDefault(h => Same(l, h)) is not { } level) return (null, "Please select Silver or Gold.");
+            if (!levels.Contains(level)) levels.Add(level);
+        }
+        return ([.. HandholdingLevels.Where(levels.Contains)], null);
+    }
+
+    // ---- Consultancy: the payment schedule --------------------------------------------------------
+
+    /// <param name="PayAllAtMilestone1">Units pay all three milestones at milestone 1 (from <paramref name="From"/>), else milestone by milestone.</param>
+    public sealed record ScheduleRequest(bool PayAllAtMilestone1, DateOnly? From);
+
+    /// <summary>
+    /// V4 (migration 0044): how units pay the three handholding milestones, for Micro, Small and Medium alike. Switched on,
+    /// it makes the rows the payment procedures read (<see cref="PayAllRows"/>) for every level and subsidy category that
+    /// has fees for all three milestones, and from the date units whose milestone 1 is paid then pay all three at once;
+    /// units already started keep paying milestone by milestone. Switched off, new units pay milestone by milestone again;
+    /// a unit that paid all three still has nothing more to pay.
+    /// </summary>
+    [HttpPut("schedule")]
+    public async Task<ActionResult<MessageResponse>> UpdateSchedule(ScheduleRequest req, CancellationToken ct)
+    {
+        if (!ByMilestone) return NotFound();
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var before = new List<PaymentSchedule>();
+        foreach (var t in ConsultancyEnterpriseTypes) before.Add(ScheduleOf(await LoadAsync(t, ct)));
+        DateOnly? from = null;
+        if (req.PayAllAtMilestone1)
+        {
+            if (req.From is not { } f) return this.Problem400("Please enter the date from which units pay all three milestones at milestone 1.");
+            if (f < today && !before.Any(b => b.PayAllAtMilestone1 && b.From == f)) return this.Problem400("The date cannot be in the past.");
+            from = f;
+        }
+
+        var incomplete = new List<string>();
+        foreach (var t in ConsultancyEnterpriseTypes)
+        {
+            if (from is { } start) await AddPayAllRowsAsync(t, start, ct);
+            var rows = await LoadAsync(t, ct);
+            var (normal, payAll) = Split(rows);
+            await WriteAsync(payAll, PayAllRows.Sync(normal, payAll), ct);
+            await db.ExecuteSqlAsync(ScheduleSql, new { EnterpriseTypee = t, From = from?.ToDateTime(TimeOnly.MinValue) }, ct);
+            if (from is not null) incomplete.AddRange(PayAllRows.IncompleteLevels(normal).Select(l => $"{t} {l}"));
+        }
+        loggers.CreateLogger(AuditCategory).LogWarning("Handholding payment schedule set by {Actor}: pay all at milestone 1 {PayAll} from {From}",
+            UserId, req.PayAllAtMilestone1, from);
+
+        if (from is not { } on)
+            return new MessageResponse("Units starting handholding now pay milestone by milestone. Units that paid all three milestones at milestone 1 have nothing more to pay.");
+        var message = $"From {on:dd-MM-yyyy}, units starting handholding pay all three milestones at milestone 1. Units already started keep paying milestone by milestone.";
+        if (incomplete.Count > 0)
+            message += $" {string.Join(", ", incomplete)}: fees are not set for all three milestones, so those units still pay milestone by milestone.";
+        return new MessageResponse(message);
+    }
+
+    /// <summary>Starts or stops the schedule of a type: the date on its milestone-1 PayAllAtMilestone1 rows (NULL: off).</summary>
+    internal const string ScheduleSql =
+        "UPDATE AssessmentFee SET PayAllFrom = @From WHERE EnterpriseTypee = @EnterpriseTypee AND PayAllAtMilestone1 = 1 AND MileStone = 1;";
+
+    /// <summary>Makes the PayAllAtMilestone1 rows a type is missing (levels and categories with fees for all three milestones).</summary>
+    private async Task AddPayAllRowsAsync(string type, DateOnly from, CancellationToken ct)
+    {
+        var (normal, payAll) = Split(await LoadAsync(type, ct));
+        var missing = PayAllRows.Missing(normal, payAll, from);
+        if (missing.Count == 0) return;
+        await InsertAsync(missing, ct);
+        loggers.CreateLogger(AuditCategory).LogInformation("Pay-all-at-milestone-1 rows of {EnterpriseType} added by {Actor}: {Rows} row(s)", type, UserId, missing.Count);
+    }
+
+    /// <summary>The schedule shown on the page: on when a milestone-1 PayAllAtMilestone1 row has a start date.</summary>
+    public static PaymentSchedule ScheduleOf(IReadOnlyList<FeeRow> rows)
+    {
+        var first = rows.Where(r => PayAllRows.IsPayAll(r) && Same(r.MileStone, "1")).ToList();
+        var from = first.Where(r => r.PayAllFrom is not null).Select(r => r.PayAllFrom).Min();
+        return new PaymentSchedule(from is not null, from, first.Count > 0);
+    }
+
+    /// <summary>Consultancy fee change: the ordinary rows as <see cref="ApplyMilestones"/>, the PayAllAtMilestone1 rows worked out again from them.</summary>
+    public static (List<FeeRow>? Rows, string? Error) ApplyConsultancy(IReadOnlyList<FeeRow> current, FeesRequest req)
+    {
+        var (normal, payAll) = Split(current);
+        var (updated, error) = ApplyMilestones(normal, req);
+        return error is not null ? (null, error) : ([.. updated!, .. PayAllRows.Sync(updated!, payAll)], null);
+    }
+
+    /// <summary>Consultancy share change: the ordinary rows as <see cref="ApplySubsidy"/>, the PayAllAtMilestone1 rows worked out again from them.</summary>
+    public static (List<FeeRow>? Rows, string? Error) ApplyConsultancySubsidy(IReadOnlyList<FeeRow> current, SubsidyRequest req)
+    {
+        var (normal, payAll) = Split(current);
+        var (updated, error) = ApplySubsidy(normal, req, byMilestone: true);
+        return error is not null ? (null, error) : ([.. updated!, .. PayAllRows.Sync(updated!, payAll)], null);
+    }
+
+    private static (List<FeeRow> Normal, List<FeeRow> PayAll) Split(IReadOnlyList<FeeRow> rows) =>
+        (rows.Where(r => !PayAllRows.IsPayAll(r)).ToList(), rows.Where(PayAllRows.IsPayAll).ToList());
 
 
     /// <summary>The new rows of <paramref name="type"/> for a level (or milestone); validated, with every amount worked out.</summary>
@@ -188,10 +325,11 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     {
         if (FeeCalculator.AmountError(req.AssessmentFee, "fee") is { } feeError) return (null, feeError);
         var fee = req.AssessmentFee!.Value;
-        var rejected = type == "Rejected";
+        var rejected = IsFullFee(type);
         var consultancy = system == PortalSystem.Consultancy;
-        // The levels a row is made for: the level itself, or on Consultancy each handholding level of the milestone.
-        var levels = consultancy ? new[] { "Silver", "Gold" } : [group];
+        // The levels a row is made for: the level itself, or on Consultancy the chosen handholding levels of the milestone.
+        var (levels, levelError) = AddLevels(req, system, group);
+        if (levelError is not null) return (null, levelError);
         var milestone = consultancy ? group : null;
         var rows = new List<FeeRow>();
         FeeRow Blank(string level, int? category, decimal share, decimal? coupon) => new(
@@ -199,7 +337,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
 
         if (rejected)
         {
-            foreach (var level in levels)
+            foreach (var level in levels!)
             {
                 var (row, error) = FeeCalculator.Recalculate(Blank(level, null, 0m, null), fee, null, rejected: true);
                 if (error is not null) return (null, error);
@@ -223,7 +361,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             }
             var share = req.GeneralShare!.Value + additional;
             if (share > 100) return (null, $"The subsidy of category {category} would be {share:0.##}%: it must be at most 100%.");
-            foreach (var level in levels)
+            foreach (var level in levels!)
                 foreach (var coupon in new decimal?[] { null, reward })
                 {
                     var (row, error) = FeeCalculator.Recalculate(Blank(level, category, share, coupon), fee, coupon, rejected: false);
@@ -242,7 +380,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         for (var i = 0; i < rows.Count; i++)
         {
             var r = rows[i];
-            sql.Append(InsertSql(i, r.MileStone is not null)).Append('\n');
+            sql.Append(InsertSql(i, r.MileStone is not null, PayAllRows.IsPayAll(r))).Append('\n');
             p.Add($"EnterpriseTypee{i}", r.EnterpriseTypee);
             p.Add($"Certification{i}", r.Certification);
             p.Add($"SpecialCategory{i}", r.SpecialCategory);
@@ -262,19 +400,22 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
             p.Add($"NetPaybleTds15{i}", r.NetPaybleTds15);
             p.Add($"NetPaybleTds75{i}", r.NetPaybleTds75);
             if (r.MileStone is not null) p.Add($"MileStone{i}", int.Parse(r.MileStone, CultureInfo.InvariantCulture));
+            if (PayAllRows.IsPayAll(r)) p.Add($"PayAllFrom{i}", r.PayAllFrom?.ToDateTime(TimeOnly.MinValue));
         }
         sql.Append("COMMIT;");
         await db.ExecuteSqlAsync(sql.ToString(), p, ct);
     }
 
     /// <summary>One new row; SubsidyAmount holds the applicant's share as SP_MASTER_UPDATE_ASSESSMENT_FEE stores it.</summary>
-    internal static string InsertSql(int i, bool milestone) =>
+    /// <param name="payAll">A Consultancy PayAllAtMilestone1 row (migration 0044).</param>
+    internal static string InsertSql(int i, bool milestone, bool payAll = false) =>
         "INSERT INTO AssessmentFee (EnterpriseTypee, Certification, SpecialCategory, IsActive, SubsidyPercentage, AssessmentFee, Gst, Total, Coupon, " +
         "AssessmentFeeAfterCoupon, GstAfterCoupon, TotalAfterCoupon, SubsidyPer, SubsidyAmount, GstAfterSubsidy, ApplicantContributionAfterSubsidy, " +
-        "Tds15, Tds75, NetPaybleTds15, NetPaybleTds75" + (milestone ? ", MileStone" : "") + ") VALUES (" +
+        "Tds15, Tds75, NetPaybleTds15, NetPaybleTds75" + (milestone ? ", MileStone" : "") + (payAll ? ", PayAllAtMilestone1, PayAllFrom" : "") + ") VALUES (" +
         $"@EnterpriseTypee{i}, @Certification{i}, @SpecialCategory{i}, 1, @SubsidyPercentage{i}, @AssessmentFee{i}, @Gst{i}, @Total{i}, @Coupon{i}, " +
         $"@AssessmentFeeAfterCoupon{i}, @GstAfterCoupon{i}, @TotalAfterCoupon{i}, @SubsidyPer{i}, @SubsidyPer{i}, @GstAfterSubsidy{i}, " +
-        $"@ApplicantContributionAfterSubsidy{i}, @Tds15{i}, @Tds75{i}, @NetPaybleTds15{i}, @NetPaybleTds75{i}" + (milestone ? $", @MileStone{i}" : "") + ");";
+        $"@ApplicantContributionAfterSubsidy{i}, @Tds15{i}, @Tds75{i}, @NetPaybleTds15{i}, @NetPaybleTds75{i}" + (milestone ? $", @MileStone{i}" : "") +
+        (payAll ? $", 1, @PayAllFrom{i}" : "") + ");";
 
     /// <summary>The subsidy share of a row: SP_MASTER_UPDATE_ASSESSMENT_FEE has no SubsidyPercentage parameter.</summary>
     internal const string ShareSql = "UPDATE AssessmentFee SET SubsidyPercentage = @SubsidyPercentage WHERE Id = @Id AND EnterpriseTypee = @EnterpriseTypee;";
@@ -357,21 +498,30 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
                 return new LevelFee(l, of[0].AssessmentFee, coupon?.Coupon, coupon is not null);
             }).ToList();
 
-    /// <summary>Consultancy: the fee of each milestone (that of its first row; the old page set all rows of a milestone alike).</summary>
-    private static List<LevelFee> MilestoneSummary(IReadOnlyList<FeeRow> rows) =>
-        Milestones(rows).Select(m =>
-        {
-            var of = rows.Where(r => Same(r.MileStone, m)).ToList();
-            return new LevelFee(m, of[0].AssessmentFee, of.FirstOrDefault(r => r.IsCouponRow)?.Coupon, of.Any(r => r.IsCouponRow));
-        }).ToList();
+    /// <summary>Consultancy: the fee of each level's milestones (that of its first ordinary row), Silver first.</summary>
+    private static List<LevelFee> MilestoneSummary(IReadOnlyList<FeeRow> rows)
+    {
+        var normal = rows.Where(r => !PayAllRows.IsPayAll(r)).ToList();
+        var levels = normal.Select(r => r.Certification?.Trim() ?? "").Where(l => l.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(l => Array.FindIndex(HandholdingLevels, h => Same(l, h)) is var i && i >= 0 ? i : HandholdingLevels.Length)
+            .ThenBy(l => l, StringComparer.OrdinalIgnoreCase).ToList();
+        return levels.SelectMany(level => Milestones(normal).Select(m =>
+            {
+                var of = normal.Where(r => Same(r.MileStone, m) && Same(r.Certification, level)).ToList();
+                return of.Count == 0 ? null
+                    : new LevelFee(m, of[0].AssessmentFee, of.FirstOrDefault(r => r.IsCouponRow)?.Coupon, of.Any(r => r.IsCouponRow), of[0].Certification.Trim());
+            }))
+            .OfType<LevelFee>().ToList();
+    }
 
     private static List<string> Milestones(IReadOnlyList<FeeRow> rows) =>
         rows.Select(r => r.MileStone?.Trim() ?? "").Where(m => m.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(m => m, StringComparer.OrdinalIgnoreCase).ToList();
 
     /// <summary>
-    /// Consultancy: one fee per milestone, applied to every row (Silver and Gold, with and without coupon) of that milestone.
-    /// The coupon of a coupon row is kept and must still fit in the new total.
+    /// Consultancy: one fee per level and milestone, applied to every ordinary row (with and without coupon) of that level and
+    /// milestone; without a level, to Silver and Gold alike (as the old page did). The coupon of a coupon row is kept and must
+    /// still fit in the new total. The PayAllAtMilestone1 rows are not passed here (<see cref="ApplyConsultancy"/>).
     /// </summary>
     public static (List<FeeRow>? Rows, string? Error) ApplyMilestones(IReadOnlyList<FeeRow> current, FeesRequest req)
     {
@@ -384,16 +534,28 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         foreach (var level in levels)
         {
             var milestone = milestones.FirstOrDefault(m => string.Equals(m, level?.Certification?.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (level is null || milestone is null || !seen.Add(milestone)) return (null, "Please select a valid milestone.");
-            if (FeeCalculator.AmountError(level.AssessmentFee, $"{milestone} fee") is { } feeError) return (null, feeError);
-            if (level.Coupon is not null && result.Any(r => Same(r.MileStone, milestone) && r.IsCouponRow && r.Coupon != level.Coupon))
+            if (level is null || milestone is null) return (null, "Please select a valid milestone.");
+            string? handholding = null;
+            if (level.Level is not null && (handholding = HandholdingLevels.FirstOrDefault(h => Same(level.Level, h))) is null)
+                return (null, "Please select Silver or Gold.");
+            // A milestone once per level; one for both levels excludes that milestone of either level.
+            var key = milestone + "|" + (handholding ?? "*");
+            if (!seen.Add(key) || (handholding is null
+                    ? seen.Any(k => k != key && k.StartsWith(milestone + "|", StringComparison.OrdinalIgnoreCase))
+                    : seen.Contains(milestone + "|*")))
+                return (null, "Please select a valid milestone.");
+            bool InScope(FeeRow r) => Same(r.MileStone, milestone) && (handholding is null || Same(r.Certification, handholding));
+            if (!result.Any(InScope)) return (null, $"{handholding} has no fees for milestone {milestone}: add them first.");
+            var label = (handholding is null ? "" : handholding + " ") + $"milestone {milestone} fee";
+            if (FeeCalculator.AmountError(level.AssessmentFee, label) is { } feeError) return (null, feeError);
+            if (level.Coupon is not null && result.Any(r => InScope(r) && r.IsCouponRow && r.Coupon != level.Coupon))
                 return (null, "The coupon cannot be changed on this page.");
             var fee = level.AssessmentFee!.Value;
             for (var i = 0; i < result.Count; i++)
             {
-                if (!Same(result[i].MileStone, milestone)) continue;
+                if (!InScope(result[i])) continue;
                 if (result[i].IsCouponRow && result[i].Coupon > FeeCalculator.Round(fee * (1 + FeeCalculator.GstRate)))
-                    return (null, $"The {milestone} fee with GST cannot be less than the coupon of row {result[i].Id}.");
+                    return (null, $"The {label} with GST cannot be less than the coupon of row {result[i].Id}.");
                 var (row, error) = FeeCalculator.Recalculate(result[i], fee, null, rejected: false);
                 if (error is not null) return (null, error);
                 result[i] = row!;
@@ -431,9 +593,12 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         else if (Canonical(req.Certification, Levels) is { } one && current.Any(r => Same(r.Certification, one))) groups = [one];
         else return (null, "Please select a valid certification level.");
 
+        string? only = null;
+        if (byMilestone && req.Level is not null && (only = HandholdingLevels.FirstOrDefault(h => Same(req.Level, h))) is null)
+            return (null, "Please select Silver or Gold.");
         var result = current.ToList();
         foreach (var (group, level) in groups.SelectMany(g => current.Where(r => Same(groupOf(r), g)).Select(r => r.Certification?.Trim() ?? "")
-                     .Distinct(StringComparer.OrdinalIgnoreCase).Select(l => (g, l))))
+                     .Distinct(StringComparer.OrdinalIgnoreCase).Where(l => only is null || Same(l, only)).Select(l => (g, l))))
         {
             var name = byMilestone ? $"{group} {level}" : level;
             bool InGroup(FeeRow r) => Same(groupOf(r), group) && Same(r.Certification, level);
@@ -474,7 +639,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
         if (current.Count == 0) return (null, "No fee rows exist for this enterprise type.");
         var levels = req.Levels ?? [];
         if (levels.Count == 0) return (null, "Please enter the assessment fees.");
-        var rejected = type == "Rejected";
+        var rejected = IsFullFee(type);
         var result = current.ToList();
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var level in levels)
@@ -516,7 +681,8 @@ public sealed record FeeRow(
     decimal? AssessmentFee, decimal? Gst, decimal? Total,
     decimal? Coupon, decimal? AssessmentFeeAfterCoupon, decimal? GstAfterCoupon, decimal? TotalAfterCoupon,
     decimal? SubsidyPer, decimal? GstAfterSubsidy, decimal? ApplicantContributionAfterSubsidy,
-    decimal? Tds15, decimal? Tds75, decimal? NetPaybleTds15, decimal? NetPaybleTds75, string? MileStone = null)
+    decimal? Tds15, decimal? Tds75, decimal? NetPaybleTds15, decimal? NetPaybleTds75, string? MileStone = null,
+    bool? PayAllAtMilestone1 = null, DateOnly? PayAllFrom = null)
 {
     /// <summary>Rows with a coupon value are the coupon variants (the payment procedures pick them with Coupon IS NOT NULL).</summary>
     public bool IsCouponRow => Coupon is not null;
@@ -529,7 +695,15 @@ public sealed record FeeRow(
         Dec(r, "Coupon"), Dec(r, "AssessmentFeeAfterCoupon"), Dec(r, "GstAfterCoupon"), Dec(r, "TotalAfterCoupon"),
         Dec(r, "SubsidyPer"), Dec(r, "GstAfterSubsidy"), Dec(r, "ApplicantContributionAfterSubsidy"),
         Dec(r, "Tds15"), Dec(r, "Tds75"), Dec(r, "NetPaybleTds15"), Dec(r, "NetPaybleTds75"),
-        r.Text("MileStone") is { Length: > 0 } m ? m : null);
+        r.Text("MileStone") is { Length: > 0 } m ? m : null,
+        r.Text("PayAllAtMilestone1") is "1" or "True" or "true" ? true : null,
+        r.TryGetValue("PayAllFrom", out var from) ? from switch
+        {
+            DateTime d => DateOnly.FromDateTime(d),
+            DateOnly d => d,
+            string t when DateOnly.TryParse(t, CultureInfo.InvariantCulture, out var d) => d,
+            _ => null,
+        } : null);
 
     private static decimal? Dec(IDictionary<string, object?> r, string column) =>
         r.TryGetValue(column, out var v) && v is not null and not DBNull
@@ -541,6 +715,93 @@ public sealed record FeeRow(
         AssessmentFeeAfterCoupon == o.AssessmentFeeAfterCoupon && GstAfterCoupon == o.GstAfterCoupon && TotalAfterCoupon == o.TotalAfterCoupon &&
         SubsidyPer == o.SubsidyPer && GstAfterSubsidy == o.GstAfterSubsidy && ApplicantContributionAfterSubsidy == o.ApplicantContributionAfterSubsidy &&
         Tds15 == o.Tds15 && Tds75 == o.Tds75 && NetPaybleTds15 == o.NetPaybleTds15 && NetPaybleTds75 == o.NetPaybleTds75;
+}
+
+/// <summary>
+/// Consultancy's "pay all at milestone 1" rows (AssessmentFee.PayAllAtMilestone1, migration 0044), made and kept by the fee
+/// page from the ordinary rows (no coupon) of each enterprise type, level and subsidy category:
+/// <list type="bullet">
+/// <item>milestone 1: what milestone 1 charges a unit paying that way, every amount of the three milestones' rows added
+/// up (each milestone's GST, subsidy and TDS as on its own row), with milestone 1's subsidy share as its label;</item>
+/// <item>milestones 2 and 3: nothing to pay (all amounts 0, the milestone's share as its label), recorded as a Rs. 0
+/// payment when the milestone opens (ZED_CONSULTANT SP_MSME_ZERO_PAYMENT_DETAILS, PaymentType 'PaidAtMilestone1').</item>
+/// </list>
+/// SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS chooses them through FN_V4_PAY_ALL_AT_MILESTONE1 (milestone 1: the schedule's
+/// date, PayAllFrom; 2 and 3: the unit's milestone 1 was paid on such a row).
+/// </summary>
+public static class PayAllRows
+{
+    public static bool IsPayAll(FeeRow r) => r.PayAllAtMilestone1 == true;
+
+    private static readonly string[] Three = ["1", "2", "3"];
+
+    private static string Group(FeeRow r) =>
+        string.Join('|', r.EnterpriseTypee?.Trim() ?? "", r.Certification?.Trim() ?? "", AssessmentFeesController.CategoryOf(r)).ToUpperInvariant();
+
+    private static bool Same(string? a, string b) => string.Equals(a?.Trim(), b, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The ordinary rows without a coupon of each group, by milestone 1 to 3 (null where one is missing).</summary>
+    private static Dictionary<string, FeeRow?[]> Ordinary(IEnumerable<FeeRow> normal) =>
+        normal.Where(r => !IsPayAll(r) && !r.IsCouponRow && Three.Any(m => Same(r.MileStone, m)))
+            .GroupBy(Group)
+            .ToDictionary(g => g.Key, g => Three.Select(m => g.Where(r => Same(r.MileStone, m)).OrderBy(r => r.Id).FirstOrDefault()).ToArray());
+
+    private static decimal? Sum(FeeRow[] rows, Func<FeeRow, decimal?> column) => rows.Sum(r => column(r) ?? 0m);
+
+    /// <summary>The amounts of a pay-all row from its group's three ordinary rows.</summary>
+    public static FeeRow Worked(FeeRow row, FeeRow[] three)
+    {
+        var zero = row with
+        {
+            Coupon = null, AssessmentFeeAfterCoupon = null, GstAfterCoupon = null, TotalAfterCoupon = null,
+            AssessmentFee = 0m, Gst = 0m, Total = 0m, SubsidyPer = 0m, GstAfterSubsidy = 0m, ApplicantContributionAfterSubsidy = 0m,
+            Tds15 = 0m, Tds75 = 0m, NetPaybleTds15 = 0m, NetPaybleTds75 = 0m,
+        };
+        if (!Same(row.MileStone, "1"))
+            return zero with { SubsidyPercentage = three[int.Parse(row.MileStone!.Trim(), CultureInfo.InvariantCulture) - 1].SubsidyPercentage };
+        return zero with
+        {
+            SubsidyPercentage = three[0].SubsidyPercentage,
+            AssessmentFee = Sum(three, r => r.AssessmentFee), Gst = Sum(three, r => r.Gst), Total = Sum(three, r => r.Total),
+            SubsidyPer = Sum(three, r => r.SubsidyPer), GstAfterSubsidy = Sum(three, r => r.GstAfterSubsidy),
+            ApplicantContributionAfterSubsidy = Sum(three, r => r.ApplicantContributionAfterSubsidy),
+            Tds15 = Sum(three, r => r.Tds15), Tds75 = Sum(three, r => r.Tds75),
+            NetPaybleTds15 = Sum(three, r => r.NetPaybleTds15), NetPaybleTds75 = Sum(three, r => r.NetPaybleTds75),
+        };
+    }
+
+    /// <summary>The existing pay-all rows with their amounts worked out again (a row whose group lacks a milestone is kept as it is).</summary>
+    public static List<FeeRow> Sync(IReadOnlyList<FeeRow> normal, IReadOnlyList<FeeRow> payAll)
+    {
+        var groups = Ordinary(normal);
+        return payAll.Select(p => Three.Any(m => Same(p.MileStone, m)) && groups.TryGetValue(Group(p), out var three) && three.All(r => r is not null)
+            ? Worked(p, three!) : p).ToList();
+    }
+
+    /// <summary>The pay-all rows a type is missing: for each group with all three milestones, those of its milestones without one.</summary>
+    public static List<FeeRow> Missing(IReadOnlyList<FeeRow> normal, IReadOnlyList<FeeRow> payAll, DateOnly from)
+    {
+        var have = payAll.Select(p => Group(p) + "|" + p.MileStone?.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var rows = new List<FeeRow>();
+        foreach (var (key, three) in Ordinary(normal).OrderBy(g => g.Key, StringComparer.Ordinal))
+        {
+            if (three.Any(r => r is null)) continue;
+            foreach (var m in Three)
+            {
+                if (have.Contains(key + "|" + m)) continue;
+                var like = three[0]!;
+                var blank = like with { Id = 0, IsActive = true, MileStone = m, PayAllAtMilestone1 = true, PayAllFrom = m == "1" ? from : null };
+                rows.Add(Worked(blank, three!));
+            }
+        }
+        return rows;
+    }
+
+    /// <summary>The levels of a type without fees for all three milestones (their units keep paying milestone by milestone).</summary>
+    public static List<string> IncompleteLevels(IReadOnlyList<FeeRow> normal) =>
+        normal.Where(r => !IsPayAll(r) && !r.IsCouponRow).GroupBy(r => r.Certification?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Key.Length > 0 && Three.Any(m => !g.Any(r => Same(r.MileStone, m))))
+            .Select(g => g.Key).OrderBy(l => l, StringComparer.OrdinalIgnoreCase).ToList();
 }
 
 /// <summary>

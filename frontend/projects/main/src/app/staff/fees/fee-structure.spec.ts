@@ -188,6 +188,20 @@ describe('FeeStructurePage', () => {
     expect(el.querySelector('button[data-level="Bronze"]')!.textContent).not.toContain('Joining reward');
   });
 
+  it('has the Recertification fee: the full fee to re-certify a level, without subsidy edits', async () => {
+    button('Recertification', el.querySelector('[role=group][aria-label="Enterprise type"]')!).click();
+    await settle();
+    http.expectOne('/api/staff/fees/Recertification').flush({
+      enterpriseType: 'Recertification', levels: [{ certification: 'Silver', assessmentFee: 40000, coupon: null, hasCouponRows: false }],
+      rows: [{ ...row(10, 'Silver', 0, 0, 40000), enterpriseTypee: 'RECERTIFICATION' }],
+    });
+    await settle();
+    expect(el.textContent).toContain('Units re-certifying a level pay this full fee');
+    expect(el.textContent).toContain('separate from the Rejected fee');
+    expect(el.querySelector('section[aria-labelledby="fs-structure"] tbody button')).toBeNull();
+    expect(el.querySelector('#fs-reward')).toBeNull();
+  });
+
   it('offers Add fees for a level without fees and sends the fee, reward, shares and the other types', async () => {
     (el.querySelector('button[data-level="ZEDX"]') as HTMLButtonElement).click();
     await settle();
@@ -230,14 +244,25 @@ describe('FeeStructurePage on Consultancy', () => {
     fixture.detectChanges();
   }
 
+  const button = (text: string, root: ParentNode = el) =>
+    [...root.querySelectorAll('button')].find((b) => b.textContent!.trim() === text) as HTMLButtonElement;
+  const codes = () => [...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim());
   const milestone = (r: FeeRow, m: string): FeeRow => ({ ...r, mileStone: m });
   const handholding: FeesResponse = {
     enterpriseType: 'Micro', groupBy: 'MileStone',
-    levels: [{ certification: '1', assessmentFee: 150000, coupon: 1000, hasCouponRows: true }],
+    levels: [
+      { certification: '1', assessmentFee: 150000, coupon: 1000, hasCouponRows: true, level: 'Silver' },
+      { certification: '2', assessmentFee: 150000, coupon: null, hasCouponRows: false, level: 'Silver' },
+      { certification: '3', assessmentFee: 100000, coupon: null, hasCouponRows: false, level: 'Silver' },
+      { certification: '1', assessmentFee: 250000, coupon: null, hasCouponRows: false, level: 'Gold' },
+    ],
     rows: [
       milestone(row(11, 'Silver', 0, 90, 150000), '1'), milestone(row(12, 'Silver', 1, 95, 150000), '1'),
-      milestone(row(13, 'Gold', 0, 90, 150000), '1'), milestone(row(14, 'Silver', 0, 90, 150000, 1000), '1'),
+      milestone(row(13, 'Gold', 0, 90, 250000), '1'), milestone(row(14, 'Silver', 0, 90, 150000, 1000), '1'),
+      milestone(row(15, 'Silver', 0, 90, 150000), '2'), milestone(row(16, 'Silver', 0, 90, 100000), '3'),
+      { ...milestone(row(17, 'Silver', 0, 90, 400000), '1'), payAllAtMilestone1: true, payAllFrom: '2027-01-01' },
     ],
+    schedule: { payAllAtMilestone1: true, from: '2027-01-01', prepared: true },
   };
 
   beforeEach(async () => {
@@ -256,25 +281,33 @@ describe('FeeStructurePage on Consultancy', () => {
     sessionStorage.clear();
   });
 
-  it('shows a card per milestone and the Silver and Gold rows of the milestone with their level', () => {
-    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Milestone 1');
-    expect(el.querySelector('button[data-level="2"]')!.textContent).toContain('No fee set for Micro');
-    const levels = [...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-level')].map((c) => c.textContent!.trim());
-    expect(levels).toEqual(['Silver', 'Silver', 'Silver', 'Gold']);
-    expect([...el.querySelectorAll('section[aria-labelledby="fs-structure"] td.fs-code')].map((c) => c.textContent!.trim())).toEqual(['GEN', 'GEN', 'SC', 'GEN']);
+  it('shows the fees of the handholding level per milestone, Silver and Gold separately', async () => {
+    expect(el.querySelector('h3')!.textContent).toContain('Handholding Fee — Silver, Milestone 1');
+    expect(el.querySelector('button[data-level="3"]')!.textContent).toContain('100,000');
+    // Silver milestone 1 only (not Gold's row, nor the pay-all row).
+    expect(codes()).toEqual(['GEN', 'GEN', 'SC']);
+    expect(el.querySelector('[data-testid="hh-total"]')!.textContent).toContain('400,000');
     // The milestone fee only: its joining reward stays as stored.
     expect(el.querySelector('#fs-reward')).toBeNull();
+
+    button('Gold', el.querySelector('[aria-label="Handholding level"]')!).click();
+    await settle();
+    expect(el.querySelector('h3')!.textContent).toContain('Gold, Milestone 1');
+    expect(codes()).toEqual(['GEN']);
+    expect(el.querySelector('button[data-level="2"]')!.textContent).toContain('No fee set for Micro');
+    expect(el.querySelector('[data-testid="hh-total"]')).toBeNull();
+    expect((el.querySelector('#fs-fee') as HTMLInputElement).value).toBe('250000');
   });
 
-  it('saves the milestone fee without the reward and edits the share for every milestone', async () => {
+  it('saves the fee of the level and milestone and edits the share of the level', async () => {
     const fee = el.querySelector('#fs-fee') as HTMLInputElement;
     fee.value = '160000';
     fee.dispatchEvent(new Event('input'));
     await settle();
-    ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Save Fee') as HTMLButtonElement).click();
+    button('Save Fee').click();
     await settle();
     const save = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/fees/Micro');
-    expect(save.request.body).toEqual({ levels: [{ certification: '1', assessmentFee: 160000, coupon: null }] });
+    expect(save.request.body).toEqual({ levels: [{ certification: '1', assessmentFee: 160000, coupon: null, level: 'Silver' }] });
     save.flush({ message: 'Data updated.' });
     await settle();
     http.expectOne('/api/staff/fees/Micro').flush(handholding);
@@ -282,6 +315,68 @@ describe('FeeStructurePage on Consultancy', () => {
 
     (el.querySelector('section[aria-labelledby="fs-structure"] tbody button') as HTMLButtonElement).click();
     await settle();
-    expect(el.querySelector('.modal')!.textContent).toContain('Apply to all three milestones');
+    expect(el.querySelector('.modal')!.textContent).toContain('Apply to all three milestones of Silver');
+    button('Save Share', el.querySelector('.modal')!).click();
+    await settle();
+    const share = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/fees/Micro/subsidy');
+    expect(share.request.body).toMatchObject({ certification: '1', category: 0, allLevels: true, level: 'Silver' });
+    share.flush({ message: 'Subsidy share updated.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(handholding);
+    await settle();
+  });
+
+  it('shows what milestone 1 charges for all three and switches the schedule back to milestone by milestone', async () => {
+    const payAll = el.querySelector('section[aria-labelledby="fs-payall"]')!;
+    expect(payAll.textContent).toContain('From 01-01-2027');
+    expect(payAll.querySelectorAll('tbody tr').length).toBe(1);
+    expect(el.querySelector('section[aria-labelledby="fs-schedule"]')!.textContent).toContain('All at milestone 1 from 01-01-2027');
+    expect((el.querySelector('#fs-sched-from') as HTMLInputElement).value).toBe('2027-01-01');
+
+    const each = el.querySelector('#fs-sched-each') as HTMLInputElement;
+    each.click();
+    await settle();
+    expect(el.querySelector('#fs-sched-from')).toBeNull();
+    button('Save Schedule').click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/fees/schedule');
+    expect(put.request.body).toEqual({ payAllAtMilestone1: false, from: null });
+    put.flush({ message: 'Units starting handholding now pay milestone by milestone.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush({ ...handholding, schedule: { payAllAtMilestone1: false, from: null, prepared: true } });
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('milestone by milestone');
+    expect(el.querySelector('section[aria-labelledby="fs-payall"]')!.textContent).toContain('Schedule off');
+
+    // On again: the date is needed.
+    (el.querySelector('#fs-sched-all') as HTMLInputElement).click();
+    await settle();
+    button('Save Schedule').click();
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Please enter the date');
+  });
+
+  it('adds a milestone for the level shown, and for the other level when it has none either', async () => {
+    (el.querySelector('button[data-level="2"]') as HTMLButtonElement).click();
+    await settle();
+    button('Gold', el.querySelector('[aria-label="Handholding level"]')!).click();
+    await settle();
+    const add = () => el.querySelector('section[aria-labelledby="fs-add"]')!;
+    // Silver has milestone 2: only Gold's rows are made.
+    expect(add().textContent).toContain('Creates 18 rows for Micro Gold Milestone 2');
+    expect(el.querySelector('#fs-add-level')).toBeNull();
+    (el.querySelector('#fs-add-fee') as HTMLInputElement).value = '50000';
+    el.querySelector('#fs-add-fee')!.dispatchEvent(new Event('input'));
+    (el.querySelector('#fs-add-general') as HTMLInputElement).value = '80';
+    el.querySelector('#fs-add-general')!.dispatchEvent(new Event('input'));
+    await settle();
+    button('Add Fees', add()).click();
+    await settle();
+    const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/fees/Micro/add');
+    expect(req.request.body).toMatchObject({ certification: '2', assessmentFee: 50000, levels: ['Gold'] });
+    req.flush({ message: 'Fees added for Micro Gold milestone 2.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(handholding);
+    await settle();
   });
 });

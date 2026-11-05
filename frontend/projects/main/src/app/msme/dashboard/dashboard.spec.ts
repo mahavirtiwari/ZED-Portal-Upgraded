@@ -17,7 +17,7 @@ describe('DashboardPage', () => {
   }
 
   async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
-                        incentives: object = { builtIn: [], incentives: [] }, levels: object[] = []) {
+                        incentives: object = { builtIn: [], incentives: [] }, levels: object[] = [], basic: Record<string, unknown> = {}) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -25,7 +25,7 @@ describe('DashboardPage', () => {
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: 'https://old.example' });
     http.expectOne('/api/msme/dashboard').flush({
       msme: { ZedId: 'ZEDMSME000001', EnterpriseName: 'Acme Castings', EnterpriseType: 'Micro', ...msme },
-      basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: reCertification },
+      basicInfo: { UdyogAadharNo: 'UDYAM-UP-29-0003915', ReCertification: reCertification, ...basic },
       certStatus: { BronzeStatus: 0, SilverStatus: 0, GoldStatus: 0, ...certStatus },
     });
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
@@ -211,6 +211,12 @@ describe('DashboardPage', () => {
     (card('gold').querySelector('.apply-btn') as HTMLElement).click();
     await settle();
     expect(keys()).toEqual(['msme.certification.payment.disclaimer', 'msme.certification.payment.disclaimer.closing']);
+  });
+
+  it('offers Bronze re-certification to every unit it is enabled for', async () => {
+    await render({ BronzeStatus: 6 }, {}, 1, undefined, [], { ReCertificationLevel: 'Bronze' });
+    expect(card('bronze').textContent).toContain('RE-CERTIFICATION');
+    expect(card('silver').textContent).not.toContain('RE-CERTIFICATION');
   });
 
   it('shows the certification steps from the Texts', async () => {

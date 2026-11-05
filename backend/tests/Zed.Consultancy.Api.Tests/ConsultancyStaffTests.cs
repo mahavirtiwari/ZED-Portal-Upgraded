@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Zed.Core.Data;
 using Zed.Main.Api.Tests;
+using Zed.Portal.Features.Staff.Fees;
 
 namespace Zed.Consultancy.Api.Tests;
 
@@ -297,7 +298,10 @@ public sealed class ConsultancyStaffTests : IDisposable
         var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
         var get = await client.GetFromJsonAsync<JsonElement>("/api/staff/fees/Micro");
         Assert.Equal("MileStone", get.GetProperty("groupBy").GetString());
-        Assert.Equal(2, get.GetProperty("levels").GetArrayLength());
+        // One fee per level and milestone: Silver 1, Silver 2, Gold 1.
+        Assert.Equal(3, get.GetProperty("levels").GetArrayLength());
+        Assert.Equal("Gold", get.GetProperty("levels")[2].GetProperty("level").GetString());
+        Assert.False(get.GetProperty("schedule").GetProperty("payAllAtMilestone1").GetBoolean());
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/fees/Rejected")).StatusCode);
 
         var r = await client.PutAsJsonAsync("/api/staff/fees/Micro", new { levels = new[] { new { certification = "MileStone1", assessmentFee = 2000m } } });
@@ -347,8 +351,10 @@ public sealed class ConsultancyStaffTests : IDisposable
     {
         _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets([FeeRow(1, "Silver", "1", null)]);
         var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
-        Assert.Equal("Micro milestone 1 already has fees: change them on this page instead.",
+        Assert.Equal("Micro Silver and Gold milestone 1 already has fees: change them on this page instead.",
             await (await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "1", assessmentFee = 1000m, generalShare = 80m })).ProblemTitle());
+        Assert.Equal("Micro Silver milestone 1 already has fees: change them on this page instead.",
+            await (await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new { certification = "1", assessmentFee = 1000m, generalShare = 80m, levels = new[] { "silver" } })).ProblemTitle());
 
         var r = await client.PostAsJsonAsync("/api/staff/fees/Micro/add", new
         {
@@ -365,6 +371,142 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.Equal("2", FakeSql.Arg(batch.Args, "MileStone0"));
         Assert.Equal("1", FakeSql.Arg(batch.Args, "SpecialCategory4"));
         Assert.Equal(95m, decimal.Parse(FakeSql.Arg(batch.Args, "SubsidyPercentage4")!, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async Task Silver_and_gold_have_their_own_fee_and_share_per_milestone()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets(
+            [FeeRow(1, "Silver", "1", null), FeeRow(2, "Gold", "1", null), FeeRow(3, "Gold", "2", null)]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+
+        var r = await client.PutAsJsonAsync("/api/staff/fees/Micro", new { levels = new[] { new { certification = "1", assessmentFee = 3000m, level = "Gold" } } });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var updates = _host.Sql.Calls.Where(c => c.Name.Contains("SP_MASTER_UPDATE_ASSESSMENT_FEE", StringComparison.Ordinal)).ToList();
+        Assert.Equal(new[] { "2" }, updates.Select(u => FakeSql.Arg(u.Args, "Id") ?? "").ToArray());
+
+        _host.Sql.Calls.Clear();
+        var share = await client.PutAsJsonAsync("/api/staff/fees/Micro/subsidy", new { certification = "1", category = 0, baseShare = 90m, allLevels = true, level = "Gold" });
+        Assert.Equal(HttpStatusCode.OK, share.StatusCode);
+        Assert.Equal(new[] { "2", "3" }, _host.Sql.Calls.Where(c => c.Name.Contains("SET SubsidyPercentage", StringComparison.Ordinal))
+            .Select(c => FakeSql.Arg(c.Args, "Id") ?? "").OrderBy(x => x).ToArray());
+
+        Assert.Equal("Please select Silver or Gold.", await (await client.PutAsJsonAsync("/api/staff/fees/Micro",
+            new { levels = new[] { new { certification = "1", assessmentFee = 3000m, level = "Bronze" } } })).ProblemTitle());
+        Assert.Equal("Silver has no fees for milestone 2: add them first.", await (await client.PutAsJsonAsync("/api/staff/fees/Micro",
+            new { levels = new[] { new { certification = "2", assessmentFee = 3000m, level = "Silver" } } })).ProblemTitle());
+    }
+
+    private static Dictionary<string, object?> Priced(int id, string cert, string milestone, decimal fee, bool payAll = false, DateTime? from = null)
+    {
+        var row = FeeRow(id, cert, milestone, null);
+        var (applicant, gst) = (fee * 0.2m, fee * 0.2m * 0.18m);
+        row["SpecialCategory"] = 0;
+        row["AssessmentFee"] = fee;
+        row["Gst"] = fee * 0.18m;
+        row["Total"] = fee * 1.18m;
+        row["SubsidyPer"] = applicant;
+        row["GstAfterSubsidy"] = gst;
+        row["ApplicantContributionAfterSubsidy"] = applicant + gst;
+        row["Tds15"] = applicant * 0.02m;
+        row["Tds75"] = applicant * 0.1m;
+        row["NetPaybleTds15"] = applicant + gst - applicant * 0.02m;
+        row["NetPaybleTds75"] = applicant + gst - applicant * 0.1m;
+        if (payAll)
+        {
+            row["PayAllAtMilestone1"] = true;
+            row["PayAllFrom"] = from;
+        }
+        return row;
+    }
+
+    [Fact]
+    public async Task The_payment_schedule_makes_the_rows_of_all_three_milestones_and_sets_the_date()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = args => FakeSql.Arg(args, "MsmeType") == "Micro"
+            ? FakeSql.Sets([Priced(1, "Silver", "1", 10000m), Priced(2, "Silver", "2", 10000m), Priced(3, "Silver", "3", 20000m), Priced(4, "Gold", "1", 30000m)])
+            : FakeSql.Sets([]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        var today = DateOnly.FromDateTime(DateTime.Now);
+
+        Assert.Equal("The date cannot be in the past.", await (await client.PutAsJsonAsync("/api/staff/fees/schedule",
+            new { payAllAtMilestone1 = true, from = today.AddDays(-1).ToString("yyyy-MM-dd") })).ProblemTitle());
+        Assert.Equal("Please enter the date from which units pay all three milestones at milestone 1.", await (await client.PutAsJsonAsync("/api/staff/fees/schedule",
+            new { payAllAtMilestone1 = true })).ProblemTitle());
+
+        var on = await client.PutAsJsonAsync("/api/staff/fees/schedule", new { payAllAtMilestone1 = true, from = today.ToString("yyyy-MM-dd") });
+        Assert.Equal(HttpStatusCode.OK, on.StatusCode);
+        var message = (await on.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString()!;
+        Assert.Contains("units starting handholding pay all three milestones at milestone 1", message);
+        // Gold has only milestone 1: its units keep paying milestone by milestone.
+        Assert.Contains("Micro Gold: fees are not set for all three milestones", message);
+
+        // Silver's three rows: milestone 1 the three added up (40000), 2 and 3 nothing to pay.
+        var batch = Assert.Single(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal));
+        Assert.Equal(3, System.Text.RegularExpressions.Regex.Matches(batch.Name, "PayAllAtMilestone1").Count);
+        decimal D(string name) => decimal.Parse(FakeSql.Arg(batch.Args, name)!, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Equal("1", FakeSql.Arg(batch.Args, "MileStone0"));
+        Assert.Equal(40000m, D("AssessmentFee0"));
+        Assert.Equal(9440m, D("ApplicantContributionAfterSubsidy0"));
+        Assert.Equal(0m, D("ApplicantContributionAfterSubsidy1"));
+        Assert.Equal(80m, D("SubsidyPercentage2"));
+        Assert.Null(FakeSql.Arg(batch.Args, "PayAllFrom1"));
+
+        var dates = _host.Sql.Calls.Where(c => c.Name == AssessmentFeesController.ScheduleSql).ToList();
+        Assert.Equal(new[] { "Micro", "Small", "Medium" }, dates.Select(c => FakeSql.Arg(c.Args, "EnterpriseTypee")).ToArray());
+        Assert.All(dates, c => Assert.NotNull(FakeSql.Arg(c.Args, "From")));
+
+        _host.Sql.Calls.Clear();
+        var off = await client.PutAsJsonAsync("/api/staff/fees/schedule", new { payAllAtMilestone1 = false });
+        Assert.Equal(HttpStatusCode.OK, off.StatusCode);
+        Assert.All(_host.Sql.Calls.Where(c => c.Name == AssessmentFeesController.ScheduleSql), c => Assert.Null(FakeSql.Arg(c.Args, "From")));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("INSERT INTO AssessmentFee", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_milestone_fee_change_works_out_the_pay_all_rows_again()
+    {
+        var today = DateTime.Today;
+        _host.Sql.Procs["SP_MASTER_GET_ASSESSMENT_FEE"] = _ => FakeSql.Sets(
+        [
+            Priced(1, "Silver", "1", 10000m), Priced(2, "Silver", "2", 10000m), Priced(3, "Silver", "3", 10000m),
+            Priced(7, "Silver", "1", 30000m, payAll: true, from: today), Priced(8, "Silver", "2", 0m, payAll: true), Priced(9, "Silver", "3", 0m, payAll: true),
+        ]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        var get = await client.GetFromJsonAsync<JsonElement>("/api/staff/fees/Micro");
+        Assert.True(get.GetProperty("schedule").GetProperty("payAllAtMilestone1").GetBoolean());
+        // The pay-all rows are not milestone fees of their own.
+        Assert.Equal(3, get.GetProperty("levels").GetArrayLength());
+
+        var r = await client.PutAsJsonAsync("/api/staff/fees/Micro", new { levels = new[] { new { certification = "2", assessmentFee = 20000m, level = "Silver" } } });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var updates = _host.Sql.Calls.Where(c => c.Name.Contains("SP_MASTER_UPDATE_ASSESSMENT_FEE", StringComparison.Ordinal)).ToList();
+        Assert.Equal(new[] { "2", "7" }, updates.Select(u => FakeSql.Arg(u.Args, "Id") ?? "").ToArray());
+        var pay = updates[1].Args;
+        Assert.Equal(40000m, decimal.Parse(FakeSql.Arg(pay, "AssessmentFee")!, System.Globalization.CultureInfo.InvariantCulture));
+        Assert.Equal(9440m, decimal.Parse(FakeSql.Arg(pay, "ApplicantContributionAfterSubsidy")!, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public void Pay_all_rows_add_up_the_three_milestones_and_leave_2_and_3_with_nothing_to_pay()
+    {
+        static FeeRow R(int id, string m, decimal fee, decimal pct) => new(id, "Micro", "Gold", 0, true, pct, fee, fee * 0.18m, fee * 1.18m, null, null, null, null,
+            fee * 0.2m, fee * 0.2m * 0.18m, fee * 0.2m * 1.18m, fee * 0.004m, fee * 0.02m, fee * 0.2m * 1.18m - fee * 0.004m, fee * 0.2m * 1.18m - fee * 0.02m, m);
+        var normal = new List<FeeRow> { R(1, "1", 10000m, 80m), R(2, "2", 20000m, 70m), R(3, "3", 30000m, 80m), R(4, "1", 999m, 80m) with { Coupon = 100m } };
+        var from = new DateOnly(2027, 1, 1);
+        var rows = PayAllRows.Missing(normal, [], from);
+        Assert.Equal(new[] { "1", "2", "3" }, rows.Select(r => r.MileStone).ToArray());
+        Assert.All(rows, r => Assert.True(r.PayAllAtMilestone1));
+        Assert.Equal(60000m, rows[0].AssessmentFee);
+        Assert.Equal(14160m, rows[0].ApplicantContributionAfterSubsidy);
+        Assert.Equal(from, rows[0].PayAllFrom);
+        Assert.Null(rows[1].PayAllFrom);
+        Assert.Equal(0m, rows[1].ApplicantContributionAfterSubsidy);
+        Assert.Equal(70m, rows[1].SubsidyPercentage);
+        // Already there: nothing more to make; a level without all three milestones gets none.
+        Assert.Empty(PayAllRows.Missing(normal, rows, from));
+        Assert.Empty(PayAllRows.Missing(normal.Take(2).ToList(), [], from));
+        Assert.Equal(new[] { "Gold" }, PayAllRows.IncompleteLevels(normal.Take(2).ToList()));
     }
 
     [Fact]

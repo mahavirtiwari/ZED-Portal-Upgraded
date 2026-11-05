@@ -149,8 +149,9 @@ public sealed partial class ConsultancyMobilePaymentController(
 
     /// <summary>
     /// ConsultancyPayController.SubmitZeroPaymentDetails as the app called it (no session, ZED ID in the
-    /// body). Only for a state-subsidy fee row chosen here with nothing to pay (the web page's condition);
-    /// the old action recorded whatever PaymentRefId was sent, for any unit and level.
+    /// body). Only for a fee row chosen here with nothing to pay: a state-subsidy row (the web page's condition) or a
+    /// milestone paid at milestone 1 (migration 0044); the old action recorded whatever PaymentRefId was sent, for any
+    /// unit and level.
     /// </summary>
     [HttpPost("/ConsultancyPay/SubmitZeroPaymentDetails")]
     [DeviceBound(MobileApps.Msme, "zedId")]
@@ -159,9 +160,9 @@ public sealed partial class ConsultancyMobilePaymentController(
     {
         var (p, error) = await PrepareAsync(model, ct);
         if (p is null) return Refuse(error!);
-        if (p.Choices.Fee.Due is not <= 0m || !ConsultancyFees.IsStateRow(p.Choices.Fee))
+        if (p.Choices.Fee.Due is not <= 0m || !(ConsultancyFees.IsStateRow(p.Choices.Fee) || ConsultancyFees.IsPaidAtMilestone1(p.Choices.Fee)))
         {
-            log.LogWarning("Mobile handholding zero payment refused for {ZedId}/{Level}: fee row {FeeId} is not a zero state-subsidy row",
+            log.LogWarning("Mobile handholding zero payment refused for {ZedId}/{Level}: fee row {FeeId} is not a zero state-subsidy or paid-at-milestone-1 row",
                 p.Choices.ZedId, p.Choices.Level, p.Choices.Fee.Id);
             return Refuse("Payment is due for this milestone. Please pay online.");
         }

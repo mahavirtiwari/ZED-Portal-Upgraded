@@ -127,6 +127,19 @@ describe('ConsultancyPaymentPage', () => {
     expect(el.textContent).toContain('(20%)');
   });
 
+  it('says when milestone 1 covers all three milestones, and when a milestone was paid with it', async () => {
+    await toPayment(options({ milestone: 1, coversAllMilestones: true }));
+    expect(el.querySelector('[data-testid="covers-all"]')!.textContent).toContain('covers all three milestones of Silver');
+    expect(el.textContent).toContain('(Milestones 1, 2 and 3)');
+    expect(el.querySelector('[data-testid="paid-at-1"]')).toBeNull();
+  });
+
+  it('says a milestone paid at milestone 1 has nothing to pay', async () => {
+    await toPayment(options({ paidAtMilestone1: true, withoutReward: { Total: 0, ApplicantContributionAfterSubsidy: 0, SubsidyLabel: '(80%)' } }));
+    expect(el.querySelector('[data-testid="paid-at-1"]')!.textContent).toContain('Milestone 2 was paid with milestone 1');
+    expect(el.querySelector('[data-testid="covers-all"]')).toBeNull();
+  });
+
   it('checks the form, then sends only the choices and the milestone shown to checkout', async () => {
     await toPayment();
     button('PROCEED TO PAY').click();

@@ -110,8 +110,14 @@
               <!-- Summary -->
               <div class="zed-card payment-summary">
                 <h4>Summary</h4>
+                @if (options()?.coversAllMilestones) {
+                  <p class="summary-note" data-testid="covers-all">This payment covers all three milestones of {{ level() }} handholding. Milestones 2 and 3 will have nothing more to pay.</p>
+                }
+                @if (options()?.paidAtMilestone1) {
+                  <p class="summary-note" data-testid="paid-at-1">Milestone {{ milestone() }} was paid with milestone 1: there is nothing to pay. Proceed to start it.</p>
+                }
                 <div class="summary-rows">
-                  <div><span>Handholding Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
+                  <div><span>Handholding Fee @if (options()?.coversAllMilestones) { <small class="d-block">(Milestones 1, 2 and 3)</small> }</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
                   @if (useReward()) {
                     <div><span>Joining Reward</span><strong>- ₹ {{ n('Coupon') | number: '1.2-2' }}</strong></div>
                     <div><span>Final Certification Fee<small class="d-block">(After adjusting joining reward)</small></span><strong>₹ {{ n('TotalAfterCoupon') | number: '1.2-2' }}</strong></div>
