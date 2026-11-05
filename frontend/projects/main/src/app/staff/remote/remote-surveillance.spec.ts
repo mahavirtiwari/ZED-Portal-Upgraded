@@ -48,7 +48,8 @@ function details(recordings = 1, meetingLink: string | null = 'https://meet.exam
 /** The instructions as the Admin set them (Admin → Texts); the standard text is in the catalogue (backend). */
 const INSTRUCTIONS: ContentText = {
   key: 'staff.surveillance.remote.instructions', enabled: true,
-  html: '<ol>\n  <li>Surveillance Assessments are mandatory.</li>\n  <li>A Weblink will be provided by the <b>Assessment Agency</b>.</li>\n</ol>',
+  html: '<ol>\n  <li>Surveillance Assessments are mandatory.</li>\n  <li>A Weblink will be provided by the <b>Assessment Agency</b>.</li>\n'
+    + '  <li>Two Surveillance Assessments within a Certification cycle of {{Validity}}.</li>\n</ol>',
 };
 
 describe('RemoteAssessmentPage (surveillance meeting link)', () => {
@@ -108,11 +109,18 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect(el.querySelector('.tab-title h4')!.textContent).toContain('Instructions');
     expect(el.textContent).toContain('Instructions for Completing the Silver/Gold Surveillance Process');
     const rows = [...el.querySelectorAll('.tab-content tbody tr')].map((r) => r.textContent!.trim());
-    expect(rows).toEqual(['1. Surveillance Assessments are mandatory.', '2. A Weblink will be provided by the Assessment Agency.']);
-    expect(el.querySelector('.tab-content tbody tr:last-child b')!.textContent).toBe('Assessment Agency');
+    expect(rows).toEqual(['1. Surveillance Assessments are mandatory.', '2. A Weblink will be provided by the Assessment Agency.',
+      '3. Two Surveillance Assessments within a Certification cycle of three years.']);
+    expect(el.querySelector('.tab-content tbody tr:nth-child(2) b')!.textContent).toBe('Assessment Agency');
     expect([...el.querySelectorAll('.nav-link')].map((b) => b.textContent!.trim())).toEqual([
       'Instructions', 'Assessment Overview', 'Opening Meeting', 'Basic Info', 'Assessment Evidence', 'Parameters', 'Closing Meeting',
     ]);
+  });
+
+  it("says the level's validity (Certification Levels) in the instructions", async () => {
+    await create({ ...details(), validityMonths: 48 });
+    expect(el.querySelector('.tab-content tbody tr:nth-child(3)')!.textContent!.trim())
+      .toBe('3. Two Surveillance Assessments within a Certification cycle of four years.');
   });
 
   it('shows the surveillance overview: dates, assessor, meeting link and both locations', async () => {

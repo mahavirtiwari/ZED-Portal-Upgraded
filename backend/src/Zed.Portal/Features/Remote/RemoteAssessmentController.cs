@@ -176,6 +176,9 @@ public sealed class RemoteAssessmentController(
         /// from the site details (api/staff/site-review, NcRounds); the changes are made through this controller.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public NcReview? Nc { get; init; }
+
+        /// <summary>The level's certificate validity in months (Administration → Certification Levels, main's): the Instructions tab says it.</summary>
+        public int ValidityMonths { get; init; } = Documents.DocumentLevels.DefaultValidityMonths;
     }
 
     public sealed record NcReview(int Round, bool Submitted);
@@ -238,6 +241,8 @@ public sealed class RemoteAssessmentController(
         }).ToList();
 
         var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level!, null, "dbo", log, ct);
+        // Main's level settings, also on Surveillance (as its certificates read them).
+        var settings = await CertLevels.CertificationLevels.FindAsync(db, level, log, ct, fromOtherDatabase: host.System == PortalSystem.Surveillance);
         Meeting? MeetingOf(int meetingSet, int participantSet, int photoSet) =>
             sa[meetingSet].FirstOrDefault() is { } m && long.TryParse(m.Text("Id"), out var id)
                 ? new Meeting(id, NullIfEmpty(m.Text("Comments")), Pick(sa[participantSet], ["Name", "Designation"]), Photos(sa[photoSet]))
@@ -272,6 +277,7 @@ public sealed class RemoteAssessmentController(
                 : null,
             Checkpoints = checkpoints,
             Nc = InNcRound(record!) ? new NcReview(record!.NcCount!.Value, record.CurrentNcStatus == 2) : null,
+            ValidityMonths = settings?.ValidityMonths ?? Documents.DocumentLevels.DefaultValidityMonths,
         };
     }
 

@@ -4,12 +4,23 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom, tap } from 'rxjs';
 import { withApiBase } from '../../api-base';
-import { ContentService, ContentTextComponent, textParts } from '../../content/content-text';
+import { ContentService, ContentTextComponent, fillText, textParts } from '../../content/content-text';
 import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
 import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
+
+const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+
+/** A certificate validity in words, as the certificate words it: 36 → "three years", 12 → "one year", 18 → "18 months". */
+export function validityText(months: number): string {
+  if (months > 0 && months % 12 === 0) {
+    const years = months / 12;
+    return `${NUMBERS[years] ?? years} year${years === 1 ? '' : 's'}`;
+  }
+  return `${months} month${months === 1 ? '' : 's'}`;
+}
 
 /** Google Maps address of a latitude/longitude pair ('' when either is missing or not a number). */
 export function mapUrl(lat: unknown, lng: unknown): string {
@@ -99,7 +110,8 @@ export class RemoteAssessmentPage {
   /** The Instructions tab of the surveillance page (Admin → Texts): one row per item. */
   protected readonly instructions = computed(() => {
     const t = this.content.text('staff.surveillance.remote.instructions');
-    return t?.enabled ? textParts(t.html, 'li') : [];
+    // {{Validity}}: the unit's level validity (Administration → Certification Levels).
+    return t?.enabled ? textParts(fillText(t.html, { Validity: validityText(this.data()?.validityMonths ?? 36) }), 'li') : [];
   });
   protected readonly basicInfo = BASIC_INFO;
 
