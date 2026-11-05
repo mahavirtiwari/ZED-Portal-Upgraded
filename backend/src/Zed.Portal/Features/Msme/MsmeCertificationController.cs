@@ -43,7 +43,7 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
     private static readonly string[] CertStatusFields = ["BronzeStatus", "CertPath", "SurveCertPath"];
 
     /// <summary>The MsmeHistory pivot (StatusType → description). Milestone columns come from ZED_CONSULTANT.</summary>
-    private static readonly string[] StatusFields =
+    internal static readonly string[] StatusFields =
     [
         "ApplicationReceived", "BasicInfoStatus", "DesktopVerification", "BronzeDesktopVerification",
         "ScheduledOn", "CompletedOn",
@@ -80,6 +80,6 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
     }
 
     /// <summary>Copies the listed columns (null when the procedure did not return them).</summary>
-    private static Dictionary<string, object?> Pick(IDictionary<string, object?>? row, string[] fields) =>
+    internal static Dictionary<string, object?> Pick(IDictionary<string, object?>? row, string[] fields) =>
         fields.ToDictionary(f => f, f => row is not null && row.TryGetValue(f, out var v) && v is not DBNull ? v : null);
 }
