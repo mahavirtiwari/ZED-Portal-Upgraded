@@ -67,6 +67,18 @@ public sealed class MsmeAppStatusTests : IDisposable
     }
 
     [Fact]
+    public async Task Answers_ZED_X_as_the_web_status_page_does()
+    {
+        var (client, token) = await AppAsync();
+
+        var json = JsonDocument.Parse(await (await GetAsync(client, "zedx", token)).Content.ReadAsStringAsync()).RootElement;
+
+        Assert.Equal("1", json.GetProperty("status").GetString());
+        Assert.Equal("ZEDX", json.GetProperty("certification").GetString());
+        Assert.Equal("ZEDX", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_GET_DETAILS").Args, "CertificationType"));
+    }
+
+    [Fact]
     public async Task Needs_a_valid_token()
     {
         var (client, _) = await AppAsync();
@@ -80,7 +92,7 @@ public sealed class MsmeAppStatusTests : IDisposable
     [InlineData("BronzeSurveillance")]
     [InlineData("Platinum")]
     [InlineData("Bronze' OR 1=1 --")]
-    public async Task Only_the_three_levels_are_answered(string certification)
+    public async Task Only_the_known_levels_are_answered(string certification)
     {
         var (client, token) = await AppAsync();
 

@@ -1,17 +1,31 @@
 # ZED-X in the store MSME app: what the app vendor must add
 
 ZED-X (level code `ZEDX`, shown as "ZED-X") is the fourth certification level, next to Bronze, Silver and Gold. The
-V4 mobile server (`/mobileapi`) already accepts it. The **store MSME app** ("ZED MSME", Play Store / App Store)
-has Bronze, Silver and Gold built in, so it needs a new release to show ZED-X. Its source code is not in this
-repository (`docs/mobile/APPS-INVENTORY.md`), so the vendor who holds it has to make that change.
+V4 mobile server (`/mobileapi`) accepts it.
 
-Until then, units enter ZED-X on the web: **My Certifications → ZED-X → ENTER DETAILS** (`/msme/entry/ZEDX`). It covers
+**ZED MSME app 2.0** (`mobile/apps/zedmsme`, built with `mobile/tools/Build-ZedApk.ps1 -App zedmsme`) shows it:
+
+- **ZED Certifications:** a fourth card under Gold, shown once the Admin enables ZED-X (`/api/public/levels`) and
+  always once the unit has paid for it. It has the Admin's name, description, comment and logo (a built-in badge when
+  no logo is uploaded), with Gold's four steps.
+- **APPLY / greyed out:** as the web dashboard (`levelDisabled`). ZED-X can't be applied for while Bronze, Silver or
+  Gold is in progress; once ZED-X is paid, the three that have not started are greyed out.
+- **The rest:** payment, basic information, documents, final submit, NC, VIEW DETAILS (`Msme/AppCertificationStatus`
+  takes `ZEDX`), the certificate (`ZEDXCertificatePath` in the status, `ZEDX` in `GetMyDocuments`) and the dashboard
+  text "Bronze, Silver, Gold or ZED-X".
+- **Sign-in answer:** `Msme/Login` adds ZED-X to `msmeStatus`, as `GetMsmeStatus` does. The older store app ignores the
+  extra fields.
+
+The rest of this page is the contract for any other build of the store MSME app ("ZED MSME", Play Store / App Store)
+whose source is not in this repository (`docs/mobile/APPS-INVENTORY.md`).
+
+Units can also enter ZED-X on the web: **My Certifications → ZED-X → ENTER DETAILS** (`/msme/entry/ZEDX`). It covers
 basic information, documents, final submit and the answers to non-conformances (**ANSWER NC**), with the same procedures
 and folders as the app. The app must show what
 was entered on the web and must not ask for it again: the server holds a single copy of the data.
 
 > The `mobile/apps/msme` workspace in this repository is the **Bronze surveillance** app for desktop assessors
-> (`com.qci.zed.bronzesurveillance`), not the store MSME app. An APK built from it does not show ZED-X to units.
+> (`com.qci.zed.bronzesurveillance`), not the MSME app. An APK built from it does not show ZED-X to units.
 > The site assessment app (`mobile/apps/assessor`) takes the level from the server, so it needs no change for ZED-X.
 
 ## The level

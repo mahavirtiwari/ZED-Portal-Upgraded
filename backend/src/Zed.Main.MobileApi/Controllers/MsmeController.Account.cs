@@ -158,6 +158,7 @@ public sealed partial class MsmeController
         // Only the guidelines given to the MSMEs (Admin → Documents/Videos); a video opens from DocumentPath.
         var access = await HttpContext.RequestServices.GetRequiredService<Zed.Core.Content.IDocumentAccessStore>().AllAsync(ct);
         sets = Zed.Core.Content.MsmeGuidelines.ForMsme(sets, access, videoAsPath: true);
+        if (sets.Count > 1) await ZedXAppStatus.AddCertificateAsync(db, zedId, sets[1].FirstOrDefault(), log, ct);
         return LegacyContent(LegacyResults.DataSetJson(sets, ["Guidelines", "Certificates", "PaymentReceipts"]));
     }
 }

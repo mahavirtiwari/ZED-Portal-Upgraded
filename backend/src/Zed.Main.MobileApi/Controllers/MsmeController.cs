@@ -58,6 +58,9 @@ public sealed partial class MsmeController(
         var msme = sets.FirstRow(1);
         var basic = sets.FirstRow(2);
         var zedId = msme.Text("ZedId");
+        // ZED-X's columns are not in the login procedure (V4); the ZED MSME app 2.0 shows its card from them.
+        var statusRow = sets.FirstRow(3);
+        if (statusRow.Count > 0 && zedId.Length > 0) await ZedXAppStatus.MergeAsync(db, zedId, statusRow, log, ct);
 
         var response = new MsmeLoginResponse
         {
@@ -131,7 +134,7 @@ public sealed partial class MsmeController(
                     Five_DigitActivity = msme.Text("FiveDigitActivity"),
                     ActivityDetail_Id = msme.Text("ActivityDetailId"),
                 },
-                msmeStatus = StatusFrom(sets.FirstRow(3)),
+                msmeStatus = StatusFrom(statusRow),
             },
             TwilioToken = null, // video calls were removed; the field stays for the installed apps
         };

@@ -309,6 +309,43 @@ public sealed class MsmeAppAccountTests : MsmeAppTestBase
         Assert.False(e.GetProperty("Table3")[0].TryGetProperty("Password", out _));
     }
     [Fact]
+    public async Task GetMyDocuments_adds_the_ZED_X_certificate_once_certified()
+    {
+        Host.Sql.Procs["SP_MSME_GET_MY_DOCUMENTS"] = _ => FakeSql.Sets(
+            [],
+            [new Dictionary<string, object?> { ["ZedId"] = ZedId, ["Pledge"] = "https://x/Pledge.pdf", ["Bronze"] = null }],
+            [],
+            []);
+        Host.Sql.Queries["SELECT CASE WHEN c.CertificationStatus > 15"] = _ => [new
+        {
+            ZEDXStatus = 4, ZEDXStatusOfNc = 0, ZEDXStatusOfNc1 = 0, ZEDXStatusOfNc2 = 0, ZEDXStatusOfNc3 = 0, ZEDXStatusOfNc4 = 0,
+            ZEDXStatusOfNc5 = 0, ZEDXSelfieStatus = 0, ZEDXCertificatePath = $"Certificates/SA/{ZedId}/ZEDX.pdf",
+        }];
+        var r = await Client.PostAsync("/Msme/GetMyDocuments", Json($$"""{"zedId":"{{ZedId}}"}"""));
+        var e = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal($"Certificates/SA/{ZedId}/ZEDX.pdf", e.GetProperty("Certificates")[0].GetProperty("ZEDX").GetString());
+    }
+
+    [Fact]
+    public async Task GetMsmeStatus_answers_ZED_X_next_to_the_three_levels()
+    {
+        Host.Sql.Procs["SP_APP_MSME_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BronzeStatus"] = 0, ["SilverStatus"] = 0, ["GoldStatus"] = 0,
+        }]);
+        Host.Sql.Queries["SELECT CASE WHEN c.CertificationStatus > 15"] = _ => [new
+        {
+            ZEDXStatus = 2, ZEDXStatusOfNc = 0, ZEDXStatusOfNc1 = 0, ZEDXStatusOfNc2 = 0, ZEDXStatusOfNc3 = 0, ZEDXStatusOfNc4 = 0,
+            ZEDXStatusOfNc5 = 0, ZEDXSelfieStatus = 0,
+        }];
+        var e = await Post("/Msme/GetMsmeStatus", Json($$"""{"userName":"{{ZedId}}","version":"1.0.0"}"""));
+        Assert.Equal(2, e.GetProperty("zedx").GetProperty("status").GetInt32());
+        // Not certified: no certificate (the legacy JSON writes a missing text as "").
+        var certificate = e.GetProperty("zedx").GetProperty("certificate");
+        Assert.True(certificate.ValueKind == JsonValueKind.Null || certificate.GetString() == "");
+    }
+
+    [Fact]
     public async Task ChangePassword_records_the_hash_and_after_the_old_sites_stores_a_random_value()
     {
         var passwords = new global::Zed.TestSupport.FakePasswords().Attach(Host.Sql.Procs);

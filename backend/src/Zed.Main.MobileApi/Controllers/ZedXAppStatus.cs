@@ -15,7 +15,7 @@ internal static class ZedXAppStatus
 
     public sealed record Row(int ZEDXStatus, int ZEDXStatusOfNc, int ZEDXStatusOfNc1, int ZEDXStatusOfNc2, int ZEDXStatusOfNc3,
         int ZEDXStatusOfNc4, int ZEDXStatusOfNc5, int ZEDXSelfieStatus, string? Nc1StatusTextZEDX, string? Nc2StatusTextZEDX,
-        string? Nc3StatusTextZEDX, string? Nc4StatusTextZEDX, string? Nc5StatusTextZEDX);
+        string? Nc3StatusTextZEDX, string? Nc4StatusTextZEDX, string? Nc5StatusTextZEDX, string? ZEDXCertificatePath = null);
 
     private static string NcText(int n) =>
         $"(SELECT TOP 1 h.Descrip FROM dbo.MsmeHistory h WHERE h.ZedId = m.ZedId AND h.StatusType IN ('Nc{n}Raised', 'Nc{n}Submitted') " +
@@ -26,7 +26,9 @@ internal static class ZedXAppStatus
         "WHEN m.IsZEDXPaymentDone = 1 THEN 1 ELSE 0 END AS ZEDXStatus, ISNULL(c.NcCount, 0) AS ZEDXStatusOfNc, " +
         "ISNULL(c.Nc1Status, 0) AS ZEDXStatusOfNc1, ISNULL(c.Nc2Status, 0) AS ZEDXStatusOfNc2, ISNULL(c.Nc3Status, 0) AS ZEDXStatusOfNc3, " +
         "ISNULL(c.Nc4Status, 0) AS ZEDXStatusOfNc4, ISNULL(c.Nc5Status, 0) AS ZEDXStatusOfNc5, ISNULL(c.IsSaSelfieSubmitted, 0) AS ZEDXSelfieStatus, " +
-        string.Join(", ", Enumerable.Range(1, 5).Select(NcText)) + " " +
+        string.Join(", ", Enumerable.Range(1, 5).Select(NcText)) + ", " +
+        // The certificate as My Documents lists it (MsmeMyDocuments.AddV4LevelsAsync): certified, certificate number given.
+        "CASE WHEN c.CertificationStatus = 16 AND c.SaCertificateNo IS NOT NULL THEN 'Certificates/SA/' + m.ZedId + '/ZEDX.pdf' END AS ZEDXCertificatePath " +
         "FROM dbo.Msme m LEFT JOIN dbo.MsmeCertifications c ON c.ZedId = m.ZedId AND c.Certification = 'ZEDX' WHERE m.ZedId = @ZedId;";
 
     /// <summary>ZED-X's row for the unit, or null (unknown unit, or migration 0029 not applied).</summary>
@@ -61,5 +63,16 @@ internal static class ZedXAppStatus
         row["Nc3StatusTextZEDX"] = r.Nc3StatusTextZEDX;
         row["Nc4StatusTextZEDX"] = r.Nc4StatusTextZEDX;
         row["Nc5StatusTextZEDX"] = r.Nc5StatusTextZEDX;
+        row["ZEDXCertificatePath"] = r.ZEDXCertificatePath;
+    }
+
+    /// <summary>
+    /// GetMyDocuments: adds the ZEDX column to the certificates row (SP_MSME_GET_MY_DOCUMENTS lists Bronze, Silver and Gold
+    /// only), null until certified, as the portal's My Documents does.
+    /// </summary>
+    public static async Task AddCertificateAsync(ISqlExecutor db, string? zedId, IDictionary<string, object?>? certificates, ILogger log, CancellationToken ct)
+    {
+        if (certificates is null) return;
+        certificates["ZEDX"] = (await ReadAsync(db, zedId, log, ct))?.ZEDXCertificatePath;
     }
 }

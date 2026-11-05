@@ -38,6 +38,35 @@ public sealed class MsmeLoginTests : IDisposable
     }
 
     [Fact]
+    public async Task Login_adds_ZED_X_to_the_button_states_when_it_can_be_read()
+    {
+        _host.Sql.Queries["SELECT CASE WHEN c.CertificationStatus > 15"] = _ => [new
+        {
+            ZEDXStatus = 4, ZEDXStatusOfNc = 1, ZEDXStatusOfNc1 = 2, ZEDXStatusOfNc2 = 0, ZEDXStatusOfNc3 = 0, ZEDXStatusOfNc4 = 0,
+            ZEDXStatusOfNc5 = 0, ZEDXSelfieStatus = 1, Nc1StatusTextZEDX = "NC answered", Nc2StatusTextZEDX = (string?)null,
+            Nc3StatusTextZEDX = (string?)null, Nc4StatusTextZEDX = (string?)null, Nc5StatusTextZEDX = (string?)null,
+            ZEDXCertificatePath = "Certificates/SA/ZEDMSME000001/ZEDX.pdf",
+        }];
+
+        var st = (await Login(Password)).GetProperty("MsmeDetails").GetProperty("msmeStatus");
+
+        Assert.Equal(2, st.GetProperty("bronze").GetProperty("status").GetInt32());
+        Assert.Equal(4, st.GetProperty("ZEDXStatus").GetInt32());
+        var zedx = st.GetProperty("zedx");
+        Assert.Equal(4, zedx.GetProperty("status").GetInt32());
+        Assert.Equal(2, zedx.GetProperty("nc1Status").GetInt32());
+        Assert.Equal("NC answered", zedx.GetProperty("nc1StatusText").GetString());
+        Assert.Equal("Certificates/SA/ZEDMSME000001/ZEDX.pdf", zedx.GetProperty("certificate").GetString());
+    }
+
+    [Fact]
+    public async Task Login_leaves_ZED_X_out_when_it_cannot_be_read()
+    {
+        var st = (await Login(Password)).GetProperty("MsmeDetails").GetProperty("msmeStatus");
+        Assert.False(st.TryGetProperty("zedx", out var zedx) && zedx.ValueKind != JsonValueKind.Null);
+    }
+
+    [Fact]
     public async Task Successful_login_returns_the_legacy_shape_and_remembers_the_device()
     {
         var e = await Login(Password);
