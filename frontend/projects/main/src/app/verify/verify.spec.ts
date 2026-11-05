@@ -62,6 +62,17 @@ describe('VerifyPage', () => {
     });
     expect(text()).toContain('Surveillance 1 completed on: May 1, 2025');
     expect(text()).toContain('Surveillance 2 completed on: May 1, 2026');
+    expect(text()).not.toContain('Surveillance 2 Due Date');
+  });
+
+  it('shows the second surveillance due date once surveillance 1 is completed', async () => {
+    await open('sc', 'P13abcd', {
+      certification: 'Silver',
+      details: { EnterpriseName: 'ACME', SurveillanceCompletionDate: 'April 2, 2027', OldSurveillanceDate: null, FirstSurveDueDate: 'April 10, 2027',
+        SecondSurveDueDate: 'April 10, 2028' },
+    });
+    expect(text()).toContain('Surveillance 1 completed on: April 2, 2027');
+    expect(text()).toContain('Surveillance 2 Due Date: April 10, 2028');
   });
 
   it('shows a pledge certificate', async () => {

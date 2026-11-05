@@ -37,7 +37,7 @@ public sealed partial class VerifyController(ISqlExecutor db) : ControllerBase
     private static readonly string[] CertificationFields =
     [
         "EnterpriseName", "CertificateNo", "DateOfCertification", "DateOfExpiry", "Address", "UdyogAadharNo",
-        "CertificationPhase", "FirstSurveDueDate", "SurveillanceCompletionDate", "OldSurveillanceDate",
+        "CertificationPhase", "FirstSurveDueDate", "SecondSurveDueDate", "SurveillanceCompletionDate", "OldSurveillanceDate",
     ];
 
     [GeneratedRegex("^[A-Za-z0-9]{1,50}$")]

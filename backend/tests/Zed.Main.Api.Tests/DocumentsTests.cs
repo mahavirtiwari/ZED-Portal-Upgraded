@@ -70,7 +70,7 @@ internal static class DocumentsTestData
                 ["EnterpriseName"] = "ACME CASTINGS UNIT 1", ["CertificateNo"] = "21102026_1234", ["DateOfCertification"] = "October 21, 2026",
                 ["DateOfExpiry"] = "October 21, 2029", ["Address"] = "Plot 4, Industrial Area, Kanpur, Uttar Pradesh-208001",
                 ["UdyogAadharNo"] = "UDYAM-UP-29-0003915", ["MobileNo"] = "9999999999", ["EmailId"] = "owner@acme.test",
-                ["CertificationPhase"] = "ACTIVE", ["FirstSurveDueDate"] = "January 14, 2028", ["Certification"] = "Bronze",
+                ["CertificationPhase"] = "ACTIVE", ["FirstSurveDueDate"] = "January 14, 2028", ["SecondSurveDueDate"] = "January 14, 2029", ["Certification"] = "Bronze",
                 ["SurveillanceCompletionDate"] = null, ["OldSurveillanceDate"] = null,
             }])
             : FakeSql.Sets([]);
@@ -444,6 +444,7 @@ public sealed class DocumentsTests : IDisposable
         var details = json.GetProperty("details");
         Assert.Equal("ACME CASTINGS UNIT 1", details.GetProperty("EnterpriseName").GetString());
         Assert.Equal("October 21, 2029", details.GetProperty("DateOfExpiry").GetString());
+        Assert.Equal("January 14, 2029", details.GetProperty("SecondSurveDueDate").GetString());
         Assert.False(details.TryGetProperty("MobileNo", out _));
         Assert.False(details.TryGetProperty("EmailId", out _));
 

@@ -109,6 +109,8 @@ export class VerifyPage {
       lines.push({ label: 'Surveillance 2 completed on', value: completed });
     } else {
       lines.push(completed ? { label: 'Surveillance 1 completed on', value: completed } : { label: 'Surveillance 1 Due Date', value: d['FirstSurveDueDate'] });
+      // V4 (migration 0050): the second due date from the level's settings, once surveillance 1 is completed.
+      if (completed && d['SecondSurveDueDate']) lines.push({ label: 'Surveillance 2 Due Date', value: d['SecondSurveDueDate'] });
     }
     return lines;
   });
