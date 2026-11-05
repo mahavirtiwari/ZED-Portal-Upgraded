@@ -28,9 +28,12 @@ import {
   isAnyCertificationCompleted,
   isSurveillanceNcActive,
   parsedSurveillanceDate,
+  certificationLabel,
+  levelName,
   Status,
   type CertificationType,
 } from '../models';
+import { zedxLevel } from '../levels';
 
 /** CertificationOptionsFragment */
 export function CertificationOptionsScreen() {
@@ -66,10 +69,21 @@ export function CertificationOptionsScreen() {
   // Only the surveillance round's NC replies (status "3"): status "1", the surveillance itself, is the desktop
   // assessor's data entry in the ZED Surveillance app.
   const showSurveillanceNc = details ? isSurveillanceNcActive(details) : false;
-  const image = type === 'Bronze' ? images.bronze : type === 'Silver' ? images.silver : images.gold;
+  const zedxLogo = type === 'ZEDX' ? zedxLevel(app.levels)?.logoUrl : null;
+  const image =
+    type === 'Bronze'
+      ? images.bronze
+      : type === 'Silver'
+        ? images.silver
+        : type === 'Gold'
+          ? images.gold
+          : zedxLogo
+            ? { uri: app.api.levelLogoUrl(zedxLogo) }
+            : images.zedx;
+  const name = levelName(type, zedxLevel(app.levels)?.name);
 
   return (
-    <ScreenFrame title={`${type} Certification`} onMenu={openDrawer} headerRight={<SyncAllButton />}>
+    <ScreenFrame title={type === 'ZEDX' ? `${name} Certification` : certificationLabel(type)} onMenu={openDrawer} headerRight={<SyncAllButton />}>
       <View style={{ flex: 1, backgroundColor: colors.white }}>
         <BackBar zedId={app.user?.MsmeDetails?.ZedId} onBack={() => nav.pop()} />
         <ScrollView contentContainerStyle={{ margin: dimens.padding1 }}>
@@ -106,7 +120,7 @@ export function CertificationOptionsScreen() {
               left={icons.ic_basic_info_doc_upload}
               right={icons.ic_download}
               // The certificate's address is no public file in V4: downloaded with the sign-in token (Msme/AppDocument).
-              onPress={() => openDocument(app, ui, details!.certificate!.trim(), `${type} Certificate`)}
+              onPress={() => openDocument(app, ui, details!.certificate!.trim(), `${name} Certificate`)}
               testID="option-certificate"
             />
           ) : null}

@@ -27,7 +27,7 @@ import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
-import { NO, YES, type CertificationType } from '../models';
+import { levelName, NO, YES, type CertificationType } from '../models';
 import { Footer as LegacyFooter } from '../ui/legacy';
 
 const RS = '₹';
@@ -347,7 +347,7 @@ function SummaryRows({ summary }: { summary: Summary }) {
 
 /** PaymentResultFragment */
 function ResultPage({ type, success, onDashboard, onStart, onRetry }: { type: CertificationType; success: boolean; onDashboard: () => void; onStart: () => void; onRetry: () => void }) {
-  const text = useAppText(success ? 'app.msme.payment.success' : 'app.msme.payment.failure', { Certification: type });
+  const text = useAppText(success ? 'app.msme.payment.success' : 'app.msme.payment.failure', { Certification: levelName(type) });
   // The built-in wording keeps the legacy look (paragraphs, the quoted certification in bold); the Admin's HTML is shown as written.
   const message = text && !text.fromServer ? htmlToPlain(text.html).replace(/\n/g, '\n\n') : '';
   const q1 = message.indexOf('"');

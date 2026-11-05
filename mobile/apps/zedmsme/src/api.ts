@@ -164,9 +164,23 @@ export type CertificateLinks = {
   Bronze?: string | null;
   Silver?: string | null;
   Gold?: string | null;
+  /** New in V4: ZED-X's certificate once certified. */
+  ZEDX?: string | null;
   Wash?: string | null;
   Webinar?: string | null;
 };
+/** New in V4: a level the Admin has enabled (portal api/public/levels; Administration → Certification Levels). */
+export type PublicLevel = {
+  code: string;
+  name: string;
+  description?: string | null;
+  comment?: string | null;
+  /** The portal's address of the Admin's logo (relative), or null. */
+  logoUrl?: string | null;
+  validityMonths?: number | null;
+  fee?: number | null;
+};
+
 export type DocumentsResponse = BaseServiceResponse & {
   Guidelines?: GuidelineDocument[] | null;
   Certificates?: CertificateLinks[] | null;
@@ -200,6 +214,16 @@ export class MsmeApi {
     this.portalMsme = apiBase(env, 'Msme/');
     this.pay = apiBase(env, 'Pay/');
     this.host = apiBase(env, 'mobileapi/');
+  }
+
+  /** New in V4 (docs/mobile/ZEDX-MSME-APP.md): the levels the Admin has enabled, with name, description and logo. */
+  getPublicLevels() {
+    return this.http.getJson<PublicLevel[]>(this.site + 'api/public/levels');
+  }
+
+  /** The full address of a level's logo (`logoUrl` is relative to the portal). */
+  levelLogoUrl(logoUrl: string) {
+    return /^https?:\/\//i.test(logoUrl) ? logoUrl : this.site + logoUrl.replace(/^\/+/, '');
   }
 
   /** New in V4 (docs/mobile/APP-TEXTS.md): the Admin texts of this host's system. */

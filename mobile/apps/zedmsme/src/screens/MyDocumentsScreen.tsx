@@ -13,6 +13,7 @@ const CERTIFICATES: [keyof CertificateLinks, string][] = [
   ['Bronze', 'Bronze Certificate'],
   ['Silver', 'Silver Certificate'],
   ['Gold', 'Gold Certificate'],
+  ['ZEDX', 'ZED-X Certificate'],
   ['Wash', 'WASH Certificate'],
   ['Webinar', 'Webinar Participation Certificate'],
 ];

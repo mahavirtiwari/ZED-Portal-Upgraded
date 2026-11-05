@@ -6,7 +6,13 @@
 import { parseLegacyDate, type BaseServiceResponse, type PhotoData } from '@zed/shared';
 import { BUILT_IN_BASIC_INFO, validateBasicInformation } from './forms';
 
-export type CertificationType = 'Bronze' | 'Silver' | 'Gold';
+/** ZEDX is ZED-X (Administration → Certification Levels): shown once the Admin enables it, with Gold's four steps. */
+export type CertificationType = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+
+export const ZEDX: CertificationType = 'ZEDX';
+
+/** The level's name on screen: "ZED-X" for ZEDX (the Admin's name when the server gives one). */
+export const levelName = (type: CertificationType, adminName?: string | null) => (type === 'ZEDX' ? adminName?.trim() || 'ZED-X' : type);
 
 export enum Status {
   TO_START = 'TO_START',
@@ -327,6 +333,8 @@ export type MsmeStatus = BaseServiceResponse & {
   bronze?: CertificationDetails | null;
   silver?: CertificationDetails | null;
   gold?: CertificationDetails | null;
+  /** New in V4: ZED-X; left out by servers that cannot read it (GetMsmeStatus, Login). */
+  zedx?: CertificationDetails | null;
   financialAssistanceStatus: number;
   latestCertification?: string | null;
   dateOfAvail?: string | null;
@@ -363,7 +371,7 @@ export function associatedIdOf(user: LoginResponse | null): string | null {
 
 export function certificationDetailsOf(status: MsmeStatus | null | undefined, type: CertificationType): CertificationDetails | null {
   if (!status) return null;
-  return (type === 'Bronze' ? status.bronze : type === 'Silver' ? status.silver : status.gold) ?? null;
+  return (type === 'Bronze' ? status.bronze : type === 'Silver' ? status.silver : type === 'Gold' ? status.gold : status.zedx) ?? null;
 }
 
 /** CertificationDetails.updateStatus: only the server's fields are taken; local work stays. */
@@ -392,6 +400,14 @@ export function updateCertificationDetails(local: MsmeStatus, server: MsmeStatus
   if (server.bronze && local.bronze) updateStatus(local.bronze, server.bronze);
   if (server.silver && local.silver) updateStatus(local.silver, server.silver);
   if (server.gold && local.gold) updateStatus(local.gold, server.gold);
+  // ZED-X is not in the login answers stored by earlier versions: taken over whole the first time.
+  if (server.zedx) {
+    if (local.zedx) updateStatus(local.zedx, server.zedx);
+    else {
+      normalizeCertification(server.zedx);
+      local.zedx = server.zedx;
+    }
+  }
   local.financialAssistanceStatus = server.financialAssistanceStatus ?? 0;
   local.latestCertification = server.latestCertification;
   local.dateOfAvail = server.dateOfAvail;
@@ -412,7 +428,8 @@ export function updateMsmeSurveillanceStatus(details: MsmeDetails, status: MsmeS
   }
 }
 
-export const isAnyCertificationCompleted = (s: MsmeStatus) => s.bronze?.status === 3 || s.silver?.status === 4 || s.gold?.status === 4;
+export const isAnyCertificationCompleted = (s: MsmeStatus) =>
+  s.bronze?.status === 3 || s.silver?.status === 4 || s.gold?.status === 4 || s.zedx?.status === 4;
 
 export const anyActiveNc = (c: CertificationDetails) =>
   c.nc1Status !== 0 || c.nc2Status !== 0 || c.nc3Status !== 0 || c.nc4Status !== 0 || c.nc5Status !== 0;
@@ -495,6 +512,7 @@ export function normalizeStatus(s: MsmeStatus | null | undefined) {
   normalizeCertification(s.bronze);
   normalizeCertification(s.silver);
   normalizeCertification(s.gold);
+  normalizeCertification(s.zedx);
 }
 
 /** Fills what Gson's defaults would have filled (also for data saved by the legacy app). */
@@ -526,5 +544,5 @@ export function evidencesOf(c: CertificationDetails | null): Evidence[] {
 
 export function certificationLabel(type: CertificationType): string {
   // R.string.Bronze_Certification / Silver_Certification / Gold_Certification ("Bronze Surveillance" in the surveillance build)
-  return type === 'Bronze' ? 'Bronze Certification' : type === 'Silver' ? 'Silver Certification' : 'Gold Certification';
+  return `${levelName(type)} Certification`;
 }

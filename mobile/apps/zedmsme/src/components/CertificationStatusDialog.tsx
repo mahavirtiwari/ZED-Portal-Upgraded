@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, dimens, Icon, ZedButton, ZedDialog } from '@zed/shared';
 import { icons } from '../assets/icons';
-import type { CertificationType } from '../models';
+import { certificationLabel, type CertificationType } from '../models';
 import { Note } from '../ui/legacy';
 
 /**
@@ -32,7 +32,7 @@ export type CertificationStatus = { applicationReceived: string | null; steps: S
 
 const text = (v: string | null | undefined) => (v != null && String(v).trim() !== '' ? String(v).trim() : null);
 
-/** Views/Msme/ViewStatus.cshtml: Bronze has no assessment step, Silver and Gold have Remote/Onsite Assessment. */
+/** Views/Msme/ViewStatus.cshtml: Bronze has no assessment step, Silver, Gold and ZED-X have Remote/Onsite Assessment. */
 export function certificationStatus(level: CertificationType, f: Record<string, string | null | undefined>): CertificationStatus {
   const line = (who: StatusLine['who'], key: string): StatusLine[] => {
     const t = text(f[key]);
@@ -107,7 +107,7 @@ export function CertificationStatusDialog({
   onClose: () => void;
 }) {
   return (
-    <ZedDialog visible title={`${level} Certification`} onClose={onClose} testID="status-dialog">
+    <ZedDialog visible title={certificationLabel(level)} onClose={onClose} testID="status-dialog">
       {status.applicationReceived ? (
         <Note tone="green" testID="status-received">
           <Text style={styles.line}>

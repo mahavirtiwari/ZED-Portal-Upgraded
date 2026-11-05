@@ -6,6 +6,8 @@ export const images = {
   bronze_gs: require('./images/bronze_gs.jpg'),
   silver: require('./images/silver.jpg'),
   gold: require('./images/gold.jpg'),
+  /** New in V4: ZED-X's badge (the web's zedx.svg), used until the Admin uploads a logo. */
+  zedx: require('./images/zedx.png'),
   ic_micro: require('./images/ic_micro.png'),
   ic_small: require('./images/ic_small.png'),
   ic_medium: require('./images/ic_medium.png'),

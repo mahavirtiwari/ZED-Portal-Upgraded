@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import {
   BackBar,
   colors,
@@ -17,7 +17,7 @@ import {
   useUi,
   ZedDialog,
 } from '@zed/shared';
-import type { CertificationStatusResponse } from '../api';
+import type { CertificationStatusResponse, PublicLevel } from '../api';
 import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
@@ -25,12 +25,13 @@ import { CertificationCard, certificationCardState } from '../components/Certifi
 import { certificationStatus, CertificationStatusDialog, type CertificationStatus } from '../components/CertificationStatusDialog';
 import { openDocument } from '../components/documents';
 import { SyncAllButton } from '../components/SyncAllButton';
-import { certificationDetailsOf, type CertificationType, type MsmeStatus } from '../models';
+import { certificationDetailsOf, levelName, type CertificationType, type MsmeStatus } from '../models';
+import { showZedx, zedxLevel } from '../levels';
 import { DarkHeading } from '../ui/legacy';
 import { refreshStatus, useCertificationClick } from './DashboardScreen';
 
-/** showCertificationInfo: the level's two lines (donottranslate.xml bronze_info_one ... gold_info_two). */
-const LEVEL_INFO: Record<CertificationType, { title: string; lines: [string, string] }> = {
+/** showCertificationInfo: the level's two lines (donottranslate.xml bronze_info_one ... gold_info_two); ZED-X's from the Admin. */
+const LEVEL_INFO: Record<Exclude<CertificationType, 'ZEDX'>, { title: string; lines: [string, string] }> = {
   Bronze: {
     title: 'Bronze Certification',
     lines: [
@@ -54,13 +55,37 @@ const LEVEL_INFO: Record<CertificationType, { title: string; lines: [string, str
   },
 };
 
-const LEVELS: { type: CertificationType; title: string; color: string; image: number }[] = [
+/** ZED-X's title strip: the web's ZED-X panel colour (the app colour itself is unchanged). */
+export const ZEDX_COLOR = '#3F8F96';
+
+type LevelCard = { type: CertificationType; title: string; color: string; image: ImageSourcePropType };
+
+const LEVELS: LevelCard[] = [
   { type: 'Bronze', title: 'BRONZE CERTIFICATION', color: colors.bronze, image: images.bronze },
   { type: 'Silver', title: 'SILVER CERTIFICATION', color: colors.silver, image: images.silver },
   { type: 'Gold', title: 'GOLD CERTIFICATION', color: colors.gold, image: images.gold },
 ];
 
-/** MyCertificationsFragment ("ZED Certifications"): Bronze, Silver and Gold, then the ZED Pledge Certificate. */
+/** The cards of the screen: Bronze, Silver, Gold and, when shown, ZED-X with the Admin's name and logo. */
+export function levelCards(
+  levels: PublicLevel[] | null | undefined,
+  status: MsmeStatus | null | undefined,
+  logoUrl: (url: string) => string,
+): LevelCard[] {
+  if (!showZedx(levels, status)) return LEVELS;
+  const zedx = zedxLevel(levels);
+  return [
+    ...LEVELS,
+    {
+      type: 'ZEDX',
+      title: `${levelName('ZEDX', zedx?.name)} CERTIFICATION`.toUpperCase(),
+      color: ZEDX_COLOR,
+      image: zedx?.logoUrl ? { uri: logoUrl(zedx.logoUrl) } : images.zedx,
+    },
+  ];
+}
+
+/** MyCertificationsFragment ("ZED Certifications"): Bronze, Silver, Gold (and ZED-X), then the ZED Pledge Certificate. */
 export function MyCertificationsScreen() {
   const app = useMsme();
   const ui = useUi();
@@ -87,18 +112,25 @@ export function MyCertificationsScreen() {
     if (isSuccess(r) && r.steps) setStatusOf({ level, status: certificationStatus(level, r.steps) });
     else ui.toast(errorOf(r), { long: true });
   };
-  useFocusEffect(useCallback(() => void refreshStatus(app).catch(() => undefined), [app]));
+  useFocusEffect(
+    useCallback(() => {
+      void refreshStatus(app).catch(() => undefined);
+      void app.refreshLevels();
+    }, [app]),
+  );
+  const cards = levelCards(app.levels, status, url => app.api.levelLogoUrl(url));
 
   return (
     <ScreenFrame title="ZED Certifications" onMenu={openDrawer} headerRight={<SyncAllButton />}>
       <View style={{ flex: 1, backgroundColor: colors.white }}>
         <BackBar zedId={app.user?.MsmeDetails?.ZedId} onBack={() => nav.pop()} />
         <ScrollView contentContainerStyle={{ padding: dimens.padding2 }}>
-          {LEVELS.map(level => {
+          {cards.map(level => {
             const details = certificationDetailsOf(status, level.type);
             const action = certificationAction(status, level.type);
             // setCertificationStatus is only called when the details exist; otherwise the card keeps its defaults.
-            const state = certificationCardState(details, level.type === 'Bronze', details != null && action === 'none');
+            // ZED-X may have no details yet (left out by servers that cannot read it): greyed out all the same when it cannot be applied for.
+            const state = certificationCardState(details, level.type === 'Bronze', (details != null || level.type === 'ZEDX') && action === 'none');
             return (
               <CertificationCard
                 key={level.type}
@@ -125,15 +157,15 @@ export function MyCertificationsScreen() {
           </View>
         </ScrollView>
       </View>
-      {info ? <CertificationInfoDialog type={info} onClose={() => setInfo(null)} /> : null}
+      {info ? <CertificationInfoDialog type={info} zedx={zedxLevel(app.levels)} onClose={() => setInfo(null)} /> : null}
       {statusOf ? <CertificationStatusDialog level={statusOf.level} status={statusOf.status} onClose={() => setStatusOf(null)} /> : null}
     </ScreenFrame>
   );
 }
 
 /** dialog_certification_info: the level's title and its two bullet lines. */
-function CertificationInfoDialog({ type, onClose }: { type: CertificationType; onClose: () => void }) {
-  const { title, lines } = LEVEL_INFO[type];
+function CertificationInfoDialog({ type, zedx, onClose }: { type: CertificationType; zedx: PublicLevel | null; onClose: () => void }) {
+  const { title, lines } = levelInfo(type, zedx);
   return (
     <ZedDialog visible title={title} onClose={onClose} testID="certification-info">
       {lines.map(line => (
@@ -146,6 +178,13 @@ function CertificationInfoDialog({ type, onClose }: { type: CertificationType; o
   );
 }
 
+/** The info dialog's title and lines: the built-in ones, or ZED-X's description and comment as the Admin wrote them. */
+export function levelInfo(type: CertificationType, zedx: PublicLevel | null): { title: string; lines: string[] } {
+  if (type !== 'ZEDX') return LEVEL_INFO[type];
+  const lines = [zedx?.description, zedx?.comment].map(l => l?.trim() ?? '').filter(l => l.length > 0);
+  return { title: `${levelName('ZEDX', zedx?.name)} Certification`, lines };
+}
+
 /** DateOfPledge ("MM/dd/yyyy hh:mm:ss a") as "MMM dd, yyyy"; '' when it cannot be read. */
 export function formatPledgeDate(value: string | null | undefined): string {
   const d = parseLegacyDate(value);
@@ -155,10 +194,23 @@ export function formatPledgeDate(value: string | null | undefined): string {
 /**
  * handleCertificationAction: APPLY when the level has no details or all three are inactive; the arrow for status 1-4;
  * for status 0, Silver and Gold may be applied for when the levels below allow it; otherwise nothing.
+ * New in V4, ZED-X as the web dashboard (and the server, Certifications.BlockedBy): ZED-X and Bronze / Silver / Gold never
+ * run at once. ZED-X cannot be applied for while one of the three is in progress, and once ZED-X is paid the three that
+ * have not started are greyed out.
  */
 export function certificationAction(status: MsmeStatus | null, type: CertificationType): 'apply' | 'arrow' | 'none' {
   const details = certificationDetailsOf(status, type);
   const of = (t: CertificationType) => certificationDetailsOf(status, t)?.status;
+  // In progress: paid and not yet certified (Bronze 1-2, Silver and Gold 1-3).
+  const inProgress = (t: CertificationType) => {
+    const v = of(t) ?? 0;
+    return t === 'Bronze' ? v === 1 || v === 2 : v >= 1 && v <= 3;
+  };
+  if (type === 'ZEDX') {
+    if (details == null || details.status === 0) return (['Bronze', 'Silver', 'Gold'] as const).some(inProgress) ? 'none' : 'apply';
+    return details.status >= 1 && details.status <= 4 ? 'arrow' : 'none';
+  }
+  if ((of('ZEDX') ?? 0) >= 1 && (details == null || details.status === 0)) return 'none';
   const allInactive = status != null && of('Bronze') === 0 && of('Silver') === 0 && of('Gold') === 0;
   if (details == null || allInactive) return 'apply';
   if (details.status >= 1 && details.status <= 4) return 'arrow';

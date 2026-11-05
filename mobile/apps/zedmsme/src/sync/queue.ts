@@ -108,7 +108,7 @@ export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, requir
  */
 export async function queueOutstanding(app: MsmeApp): Promise<number> {
   let n = 0;
-  for (const cert of ['Bronze', 'Silver', 'Gold'] as CertificationType[]) {
+  for (const cert of ['Bronze', 'Silver', 'Gold', 'ZEDX'] as CertificationType[]) {
     const details = certification(app, cert);
     if (!details) continue;
     for (const e of details.parameters ?? [])

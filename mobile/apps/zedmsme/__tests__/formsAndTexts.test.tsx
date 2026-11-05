@@ -81,6 +81,8 @@ describe('server content (Content/Texts, Forms/Definition)', () => {
     const { app, server, loginDb } = await signedInApp();
     await app.refreshServerContent();
     expect(server.requests.map(r => r.url).sort()).toEqual([
+      // New in V4: the enabled levels (ZED-X's card), from the portal.
+      'http://10.0.2.2:5106/api/public/levels',
       'http://10.0.2.2:5106/mobileapi/Content/Texts',
       'http://10.0.2.2:5106/mobileapi/Forms/Definition?form=msme.basicInfo',
     ]);

@@ -25,7 +25,8 @@ import { images } from '../assets/images';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { SyncAllButton } from '../components/SyncAllButton';
-import { certificationDetailsOf, normalizeElements, plantAddress, updateCertificationDetails, type CertificationType, type MsmeDetails } from '../models';
+import { certificationDetailsOf, levelName, normalizeElements, plantAddress, updateCertificationDetails, type CertificationType, type MsmeDetails } from '../models';
+import { showZedx, zedxLevel } from '../levels';
 
 /** DashboardActivity */
 export function DashboardScreen() {
@@ -92,7 +93,7 @@ export function DashboardScreen() {
           {details ? <EnterpriseCard details={details} /> : null}
           <OptionCard
             title="My Certifications"
-            text="Apply for Bronze, Silver or Gold Certifications"
+            text={`Apply for ${levelsText(app)} Certifications`}
             from="#8DE09D"
             to="#60C473"
             onPress={() => nav.push('MyCertifications')}
@@ -220,6 +221,12 @@ export function ZedGearDivider() {
       <Image source={images.ic_zed_gear_grey} style={styles.gearImage} resizeMode="contain" />
     </View>
   );
+}
+
+/** "Bronze, Silver or Gold", with ZED-X once its card is shown (My Certifications). */
+export function levelsText(app: Pick<ReturnType<typeof useMsme>, 'levels' | 'user'>): string {
+  if (!showZedx(app.levels, app.user?.MsmeDetails?.msmeStatus)) return 'Bronze, Silver or Gold';
+  return `Bronze, Silver, Gold or ${levelName('ZEDX', zedxLevel(app.levels)?.name)}`;
 }
 
 /** DashboardActivity.startRefresh: GetMsmeStatus, taken into the stored data (updateCertificationDetails). */

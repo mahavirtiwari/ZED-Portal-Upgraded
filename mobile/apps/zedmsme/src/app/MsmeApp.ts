@@ -16,7 +16,7 @@ import {
   type Environment,
   type SqlDb,
 } from '@zed/shared';
-import { MsmeApi } from '../api';
+import { MsmeApi, type PublicLevel } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { BUILT_IN_BASIC_INFO, MSME_BASIC_INFO } from '../forms';
 import { associatedIdOf, normalizeLoginResponse, type LoginResponse } from '../models';
@@ -24,6 +24,8 @@ import { associatedIdOf, normalizeLoginResponse, type LoginResponse } from '../m
 /** Legacy database names (database/DBHelper.java, database/AppDatabase.java). */
 export const LOGIN_DB_NAME = 'QCI_MSME_DB';
 export const MEDIA_DB_NAME = 'ZED_MSME_Media_DB';
+/** KeyValueStore key of the enabled levels (api/public/levels). */
+const LEVELS_KEY = 'publicLevels';
 
 export type MsmeAppDeps = {
   loginDb: SqlDb;
@@ -54,6 +56,11 @@ export class MsmeApp {
   readonly environment: Environment;
   readonly versionName: string;
 
+  /**
+   * New in V4: the levels the Admin has enabled (api/public/levels), kept for offline use; null until the server has
+   * answered once on this phone.
+   */
+  private _levels: PublicLevel[] | null = null;
   private _user: LoginResponse | null = null;
   private _loginId: string | null = null;
   private listeners = new Set<() => void>();
@@ -96,6 +103,24 @@ export class MsmeApp {
     await this.tokens.ensureSchema();
     await this.texts.load();
     await this.forms.load([MSME_BASIC_INFO]);
+    this._levels = await this.cache.get<PublicLevel[]>(LEVELS_KEY).catch(() => null);
+  }
+
+  get levels(): PublicLevel[] | null {
+    return this._levels;
+  }
+
+  /** The enabled levels from the server; a failure keeps the last answer without a message. */
+  async refreshLevels(): Promise<void> {
+    try {
+      const levels = await this.api.getPublicLevels();
+      if (!Array.isArray(levels)) return;
+      this._levels = levels;
+      await this.cache.set(LEVELS_KEY, levels);
+      this.touch();
+    } catch {
+      // offline or an older server: the last answer stays
+    }
   }
 
   /**
@@ -106,6 +131,7 @@ export class MsmeApp {
     await Promise.all([
       this.texts.refresh(() => this.api.getTexts()),
       this.forms.refresh(MSME_BASIC_INFO, () => this.api.getFormDefinition(MSME_BASIC_INFO)),
+      this.refreshLevels(),
     ]);
   }
 
