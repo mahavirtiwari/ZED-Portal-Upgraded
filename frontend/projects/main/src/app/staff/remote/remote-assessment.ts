@@ -22,6 +22,12 @@ export function validityText(months: number): string {
   return `${months} month${months === 1 ? '' : 's'}`;
 }
 
+/** A surveillance fee before GST as the instructions word it: 10000 → "Rs. 10,000/- plus GST". */
+export function feeText(fee: number | null | undefined): string {
+  if (fee === null || fee === undefined || !(fee > 0)) return 'as shown on the payment page';
+  return `Rs. ${fee.toLocaleString('en-IN', { maximumFractionDigits: 2 })}/- plus GST`;
+}
+
 /** A level's number of surveillances in words, as the instructions word it: 2 → "Two Surveillance Assessments". */
 export function surveillancesText(count: number): string {
   const word = NUMBERS[count] ?? String(count);
@@ -116,12 +122,15 @@ export class RemoteAssessmentPage {
   /** The Instructions tab of the surveillance page (Admin → Texts): one row per item. */
   protected readonly instructions = computed(() => {
     const t = this.content.text('staff.surveillance.remote.instructions');
-    // {{Validity}} and {{SurveillanceAssessments}}: the unit's level settings (Administration → Certification Levels).
+    // {{Validity}}, {{SurveillanceAssessments}} and {{Level}}: the unit's level settings (Administration → Certification
+    // Levels); {{SurveillanceFee}}: its surveillance fee (Admin → Masters → Payments).
     const d = this.data();
     return t?.enabled
       ? textParts(fillText(t.html, {
         Validity: validityText(d?.validityMonths ?? 36),
         SurveillanceAssessments: surveillancesText(d?.surveillanceCount ?? 2),
+        Level: d?.levelName || d?.certification || this.certification,
+        SurveillanceFee: feeText(d?.surveillanceFee),
       }), 'li')
       : [];
   });

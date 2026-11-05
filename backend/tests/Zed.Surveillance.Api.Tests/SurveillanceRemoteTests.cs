@@ -114,6 +114,22 @@ public sealed class SurveillanceRemoteTests : IDisposable
     }
 
     [Fact]
+    public async Task The_instructions_get_the_levels_surveillance_fee_and_settings()
+    {
+        // No fee row for the unit's type and level: nothing to show (the page says "as shown on the payment page").
+        var none = await (await Assessor()).GetFromJsonAsync<JsonElement>(Base);
+        Assert.False(none.TryGetProperty("surveillanceFee", out _));
+        Assert.Equal(36, none.GetProperty("validityMonths").GetInt32());
+        Assert.Equal(2, none.GetProperty("surveillanceCount").GetInt32());
+
+        _host.Sql.Queries[RemoteAssessmentController.SurveillanceFeeSql] = args =>
+            FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "Level") == "Silver" ? [new { AssessmentFee = 10000m }] : [];
+        var json = await (await Assessor()).GetFromJsonAsync<JsonElement>(Base);
+        Assert.Equal(10000m, json.GetProperty("surveillanceFee").GetDecimal());
+        Assert.Equal("Silver", json.GetProperty("levelName").GetString());
+    }
+
+    [Fact]
     public async Task Overview_shows_the_surveillance_assessor_both_locations_and_opened_descriptions()
     {
         var json = await (await Assessor()).GetFromJsonAsync<JsonElement>(Base);

@@ -60,6 +60,10 @@ export interface RemoteDetails {
   validityMonths?: number;
   /** The level's number of surveillances in a certification cycle (Administration → Certification Levels). */
   surveillanceCount?: number;
+  /** The level's name (Administration → Certification Levels). */
+  levelName?: string | null;
+  /** Surveillance only: the level's surveillance fee before GST for the unit's enterprise type (Admin → Masters → Payments). */
+  surveillanceFee?: number | null;
   /**
    * An open NC round (status 14): its number and whether the MSME has submitted its answers. Its rows come from the site
    * details (SiteReviewApi, ncRounds); the lead assessor's answers go through this API.

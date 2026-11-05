@@ -309,7 +309,9 @@ public static partial class ContentCatalogue
         Web("staff.assessment.remote.fairConfirm.checkbox", "Remote assessment: final submit check box", StaffAssessment, MainAndSurveillance, FairConfirm),
         // The Instructions tab of the surveillance build: one table row per item. {{Validity}}: the unit's level validity
         // (Administration → Certification Levels), "three years" for 36 months, "18 months"; {{SurveillanceAssessments}}: its
-        // number of surveillances there, "Two Surveillance Assessments" (Silver / Gold), "One Surveillance Assessment".
+        // number of surveillances there, "Two Surveillance Assessments" (Silver / Gold), "One Surveillance Assessment";
+        // {{Level}}: its name; {{SurveillanceFee}}: its surveillance fee for the unit's enterprise type from the fee master
+        // (Admin → Masters → Payments, Surveillance), "Rs. 10,000/- plus GST" ("as shown on the payment page" when none is set).
         Web("staff.surveillance.remote.instructions", "Remote surveillance: instructions", StaffSurveillance, [PortalSystem.Surveillance], """
             <ol>
               <li>Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.</li>
@@ -317,7 +319,7 @@ public static partial class ContentCatalogue
               <li>MSMEs that upgrade from Silver to Gold Certification during the certification cycle will not require to undergo Surveillance Assessments for the previous level.</li>
               <li>The Certification shall be suspended/withdrawn if the MSME fails to apply for Surveillance Assessments or the MSME doesn’t successfully completes the Surveillance Assessments.</li>
               <li>In the cases of Withdrawal, the MSME will have to apply a fresh by paying the entire Assessment/ Certification Fee.</li>
-              <li>Surveillance Assessment Fee for Silver and Gold Certifications are is Rs.10,000/- and Rs.20,000/-, respectively.</li>
+              <li>Surveillance Assessment Fee for {{Level}} Certification is {{SurveillanceFee}} (subsidy as applicable).</li>
               <li>The MSME shall require to pay the beneficiary contribution in advance (as applicable) at the beginning of each Surveillance Assessment.</li>
               <li>MSMEs will be eligible for the subsidies as specified in ZED Scheme Guidelines for Surveillance Assessment.</li>
               <li>Remote Surveillance Assessment will be conducted by Assessor(s) as allocated by empaneled Assessment Agency.</li>
@@ -326,7 +328,7 @@ public static partial class ContentCatalogue
               <li>MSME must download ZED MSME mobile application available on Google Play Store (Android) and App Store (iPhone) on or before the day of Surveillance Assessment.</li>
               <li>A Weblink will be provided by the Assessment Agency to conduct the remote assessment. MSME must join the meeting by clicking on the link on the day of assessment.</li>
             </ol>
-            """, "Validity", "SurveillanceAssessments"),
+            """, "Validity", "SurveillanceAssessments", "Level", "SurveillanceFee"),
 
         // staff/monitoring/review-actions: the agency's pop-ups on the desktop and site review pages (all builds)
         Web("staff.monitoring.review.exemptionsReviewed.checkbox", "Review final submit: exemptions check box", StaffMonitoring, All,

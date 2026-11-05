@@ -182,7 +182,23 @@ public sealed class RemoteAssessmentController(
 
         /// <summary>The level's number of surveillances in a certification cycle (Administration → Certification Levels, main's).</summary>
         public int SurveillanceCount { get; init; } = CertLevels.SurveillanceSchedule.Default.Count;
+
+        /// <summary>The level's name (Administration → Certification Levels; ZEDX is "ZED-X (Export)").</summary>
+        public string? LevelName { get; init; }
+
+        /// <summary>
+        /// Surveillance only: the level's surveillance fee before GST for the unit's enterprise type (General, without a
+        /// joining reward), from this portal's fee master (Admin → Masters → Payments); null when none is set.
+        /// </summary>
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public decimal? SurveillanceFee { get; init; }
     }
+
+    public sealed record SurveillanceFeeRow(decimal? AssessmentFee);
+
+    /// <summary>The surveillance fee of a unit's level and enterprise type (ZED_SURVEILLANCE AssessmentFee, the General row).</summary>
+    public const string SurveillanceFeeSql =
+        "SELECT TOP (1) F.AssessmentFee FROM dbo.AssessmentFee F JOIN dbo.Msme M ON M.EnterpriseTypee = F.EnterpriseTypee " +
+        "WHERE M.ZedId = @ZedId AND F.Certification = @Level AND F.Coupon IS NULL AND ISNULL(F.SpecialCategory, 0) = 0 ORDER BY F.Id;";
 
     public sealed record NcReview(int Round, bool Submitted);
 
@@ -282,6 +298,10 @@ public sealed class RemoteAssessmentController(
             Nc = InNcRound(record!) ? new NcReview(record!.NcCount!.Value, record.CurrentNcStatus == 2) : null,
             ValidityMonths = settings?.ValidityMonths ?? Documents.DocumentLevels.DefaultValidityMonths,
             SurveillanceCount = settings?.Schedule.Count ?? CertLevels.SurveillanceSchedule.Default.Count,
+            LevelName = settings?.Name ?? level,
+            SurveillanceFee = MeetingMode
+                ? (await db.QuerySqlAsync<SurveillanceFeeRow>(SurveillanceFeeSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault()?.AssessmentFee
+                : null,
         };
     }
 
