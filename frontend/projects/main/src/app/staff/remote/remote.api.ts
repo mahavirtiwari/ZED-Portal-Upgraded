@@ -58,6 +58,8 @@ export interface RemoteDetails {
   checkpoints?: Checkpoint[];
   /** The level's certificate validity in months (Administration → Certification Levels). */
   validityMonths?: number;
+  /** The level's number of surveillances in a certification cycle (Administration → Certification Levels). */
+  surveillanceCount?: number;
   /**
    * An open NC round (status 14): its number and whether the MSME has submitted its answers. Its rows come from the site
    * details (SiteReviewApi, ncRounds); the lead assessor's answers go through this API.

@@ -22,6 +22,12 @@ export function validityText(months: number): string {
   return `${months} month${months === 1 ? '' : 's'}`;
 }
 
+/** A level's number of surveillances in words, as the instructions word it: 2 → "Two Surveillance Assessments". */
+export function surveillancesText(count: number): string {
+  const word = NUMBERS[count] ?? String(count);
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} Surveillance Assessment${count === 1 ? '' : 's'}`;
+}
+
 /** Google Maps address of a latitude/longitude pair ('' when either is missing or not a number). */
 export function mapUrl(lat: unknown, lng: unknown): string {
   const a = Number(lat);
@@ -110,8 +116,14 @@ export class RemoteAssessmentPage {
   /** The Instructions tab of the surveillance page (Admin → Texts): one row per item. */
   protected readonly instructions = computed(() => {
     const t = this.content.text('staff.surveillance.remote.instructions');
-    // {{Validity}}: the unit's level validity (Administration → Certification Levels).
-    return t?.enabled ? textParts(fillText(t.html, { Validity: validityText(this.data()?.validityMonths ?? 36) }), 'li') : [];
+    // {{Validity}} and {{SurveillanceAssessments}}: the unit's level settings (Administration → Certification Levels).
+    const d = this.data();
+    return t?.enabled
+      ? textParts(fillText(t.html, {
+        Validity: validityText(d?.validityMonths ?? 36),
+        SurveillanceAssessments: surveillancesText(d?.surveillanceCount ?? 2),
+      }), 'li')
+      : [];
   });
   protected readonly basicInfo = BASIC_INFO;
 

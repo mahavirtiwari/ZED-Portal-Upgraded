@@ -308,11 +308,12 @@ public static partial class ContentCatalogue
         // staff/remote (main and surveillance builds)
         Web("staff.assessment.remote.fairConfirm.checkbox", "Remote assessment: final submit check box", StaffAssessment, MainAndSurveillance, FairConfirm),
         // The Instructions tab of the surveillance build: one table row per item. {{Validity}}: the unit's level validity
-        // (Administration → Certification Levels), "three years" for 36 months, "18 months".
+        // (Administration → Certification Levels), "three years" for 36 months, "18 months"; {{SurveillanceAssessments}}: its
+        // number of surveillances there, "Two Surveillance Assessments" (Silver / Gold), "One Surveillance Assessment".
         Web("staff.surveillance.remote.instructions", "Remote surveillance: instructions", StaffSurveillance, [PortalSystem.Surveillance], """
             <ol>
               <li>Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.</li>
-              <li>Each certified MSME must undergo Two Surveillance Assessments within a Certification cycle of {{Validity}}.</li>
+              <li>Each certified MSME must undergo {{SurveillanceAssessments}} within a Certification cycle of {{Validity}}.</li>
               <li>MSMEs that upgrade from Silver to Gold Certification during the certification cycle will not require to undergo Surveillance Assessments for the previous level.</li>
               <li>The Certification shall be suspended/withdrawn if the MSME fails to apply for Surveillance Assessments or the MSME doesn’t successfully completes the Surveillance Assessments.</li>
               <li>In the cases of Withdrawal, the MSME will have to apply a fresh by paying the entire Assessment/ Certification Fee.</li>
@@ -325,7 +326,7 @@ public static partial class ContentCatalogue
               <li>MSME must download ZED MSME mobile application available on Google Play Store (Android) and App Store (iPhone) on or before the day of Surveillance Assessment.</li>
               <li>A Weblink will be provided by the Assessment Agency to conduct the remote assessment. MSME must join the meeting by clicking on the link on the day of assessment.</li>
             </ol>
-            """, "Validity"),
+            """, "Validity", "SurveillanceAssessments"),
 
         // staff/monitoring/review-actions: the agency's pop-ups on the desktop and site review pages (all builds)
         Web("staff.monitoring.review.exemptionsReviewed.checkbox", "Review final submit: exemptions check box", StaffMonitoring, All,

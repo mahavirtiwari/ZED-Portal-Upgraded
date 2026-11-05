@@ -179,6 +179,9 @@ public sealed class RemoteAssessmentController(
 
         /// <summary>The level's certificate validity in months (Administration → Certification Levels, main's): the Instructions tab says it.</summary>
         public int ValidityMonths { get; init; } = Documents.DocumentLevels.DefaultValidityMonths;
+
+        /// <summary>The level's number of surveillances in a certification cycle (Administration → Certification Levels, main's).</summary>
+        public int SurveillanceCount { get; init; } = CertLevels.SurveillanceSchedule.Default.Count;
     }
 
     public sealed record NcReview(int Round, bool Submitted);
@@ -278,6 +281,7 @@ public sealed class RemoteAssessmentController(
             Checkpoints = checkpoints,
             Nc = InNcRound(record!) ? new NcReview(record!.NcCount!.Value, record.CurrentNcStatus == 2) : null,
             ValidityMonths = settings?.ValidityMonths ?? Documents.DocumentLevels.DefaultValidityMonths,
+            SurveillanceCount = settings?.Schedule.Count ?? CertLevels.SurveillanceSchedule.Default.Count,
         };
     }
 

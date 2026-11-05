@@ -49,7 +49,7 @@ function details(recordings = 1, meetingLink: string | null = 'https://meet.exam
 const INSTRUCTIONS: ContentText = {
   key: 'staff.surveillance.remote.instructions', enabled: true,
   html: '<ol>\n  <li>Surveillance Assessments are mandatory.</li>\n  <li>A Weblink will be provided by the <b>Assessment Agency</b>.</li>\n'
-    + '  <li>Two Surveillance Assessments within a Certification cycle of {{Validity}}.</li>\n</ol>',
+    + '  <li>{{SurveillanceAssessments}} within a Certification cycle of {{Validity}}.</li>\n</ol>',
 };
 
 describe('RemoteAssessmentPage (surveillance meeting link)', () => {
@@ -117,10 +117,16 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     ]);
   });
 
-  it("says the level's validity (Certification Levels) in the instructions", async () => {
-    await create({ ...details(), validityMonths: 48 });
+  it("says the level's validity and number of surveillances (Certification Levels) in the instructions", async () => {
+    await create({ ...details(), validityMonths: 48, surveillanceCount: 3 });
     expect(el.querySelector('.tab-content tbody tr:nth-child(3)')!.textContent!.trim())
-      .toBe('3. Two Surveillance Assessments within a Certification cycle of four years.');
+      .toBe('3. Three Surveillance Assessments within a Certification cycle of four years.');
+  });
+
+  it('words one surveillance in the singular', async () => {
+    await create({ ...details(), validityMonths: 18, surveillanceCount: 1 });
+    expect(el.querySelector('.tab-content tbody tr:nth-child(3)')!.textContent!.trim())
+      .toBe('3. One Surveillance Assessment within a Certification cycle of 18 months.');
   });
 
   it('shows the surveillance overview: dates, assessor, meeting link and both locations', async () => {
