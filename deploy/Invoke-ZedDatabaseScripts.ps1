@@ -13,7 +13,7 @@
            0011 all three | 0012 all three | 0013 all three |
            0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
            0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE | 0043 ZEDCS_V2_LIVE, ZED_SURVEILLANCE |
-           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE
+           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once)
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -157,6 +157,8 @@ $Migrations = @(
     @{ File = '0046_recertification_fee_and_validity.sql'; Dbs = @($Main); Markers = @('DEF:dbo.SP_MSME_GET_PAYMENT_DETAILS:@RecertFeeType', 'DEF:dbo.SP_JOB_TO_UPDATE_3YEARS_COMPLETED_TO_EXPIRED:T.ValidityMonths', 'DEF:dbo.SP_JOB_TO_SEND_AUTO_MAIL_FOR_CERTIFICATE_RECERTIFICATION:T.ValidityMonths') }
     @{ File = '0047_certificate_validity.sql'; Dbs = $Zed; Markers = @('FN:dbo.FN_V4_VALIDITY_MONTHS', 'DEF:dbo.SP_API_GET_CERTIFIED_UNIT_DETAILS_BY_UDYAM:FN_V4_VALIDITY_MONTHS') }
     @{ File = '0048_first_surveillance_due_date.sql'; Dbs = @($Main); Markers = @('FN:dbo.FN_V4_FIRST_SURVEILLANCE_MONTHS', 'DEF:dbo.SP_MONITORING_DA_FINAL_SUBMIT:FN_V4_FIRST_SURVEILLANCE_MONTHS', 'DEF:dbo.SP_MONITORING_RA_FINAL_SUBMIT:FN_V4_FIRST_SURVEILLANCE_MONTHS') }
+    # Runs once (a data change): the extended property it leaves is the marker.
+    @{ File = '0049_first_surveillance_due_date_existing.sql'; Dbs = @($Main); Markers = @('EP:dbo.MsmeCertifications:V4_0049_FirstSurveDueDate') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{
@@ -273,6 +275,8 @@ function Get-MarkerState([string]$db, [string[]]$markers) {
         # COL:schema.table.column - a column added to an existing (legacy) table.
         elseif ($kind -eq 'COL') { $parts = $name.Split('.'); "CASE WHEN COL_LENGTH(N'$($parts[0]).$($parts[1])', N'$($parts[2])') IS NULL THEN 0 ELSE 1 END" }
         # DEF:schema.object:text - an object whose definition contains the text (a migration that only changes a procedure).
+        # EP:schema.table:name - an extended property a run-once migration leaves on a table.
+        elseif ($kind -eq 'EP') { $parts = $name.Split(':', 2); "CASE WHEN EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0 AND major_id = OBJECT_ID(N'$($parts[0])') AND name = N'$($parts[1].Replace("'", "''"))') THEN 1 ELSE 0 END" }
         elseif ($kind -eq 'DEF') { $parts = $name.Split(':', 2); "CASE WHEN OBJECT_DEFINITION(OBJECT_ID(N'$($parts[0])')) LIKE N'%$($parts[1].Replace("'", "''"))%' THEN 1 ELSE 0 END" }
         else { "CASE WHEN OBJECT_ID(N'$name', N'$kind') IS NULL THEN 0 ELSE 1 END" }
     }
