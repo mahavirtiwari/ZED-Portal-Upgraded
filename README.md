@@ -210,23 +210,25 @@ cd frontend; npx ng test main --watch=false
 Production is https://zedv3.qci.org.in (docs/PRODUCTION.md). Run on the server from the repository folder, in an
 Administrator PowerShell.
 
-**Switching to production (once):**
-1. **Settings:** run the dry run, then the same with `-Apply`:
+**Switching to production (once), in this order and in one session:**
+1. **Test data, in SSMS:** `database\production\02_remove_test_data.sql`, a preview first, then with `@Mode = 'APPLY'`.
+   It removes the test units and keeps the Admin setup. It backs up all three databases first and cleans all three or
+   none. It goes first: until the update, mail still goes only to the test mailbox.
+2. **Settings:** run the dry run, then the same with `-Apply`:
    ```powershell
    .\deploy\Set-ZedProductionSettings.ps1
    ```
    It makes the settings file and Zed.Jobs' environment Production ones and lists what is left by hand (above all
    QCI's live CCAvenue account in the `Main` section).
-2. **Update:** see below.
-3. **In SSMS**, each as a preview first, then with `@Mode = 'APPLY'`:
-   - `database\production\01_portal_address.sql`: QR codes and links point at zedv3.
-   - `database\production\02_remove_test_data.sql`: removes the test units and keeps the Admin setup; it takes a
-     backup first.
-4. **Administration → Settings → Payment Gateway and Invoices:** switch Online payments off until the live account
+3. **Update:** see below.
+4. **Addresses, in SSMS:** `database\production\01_portal_address.sql`, a preview first, then with `@Mode = 'APPLY'`:
+   QR codes and links point at zedv3.
+5. **Administration → Settings → Payment Gateway and Invoices:** switch Online payments off until the live account
    works.
 
 **Every update:** the dry run first, then the same with `-Apply`. It takes file and database backups, runs the
-migrations, installs, smoke-tests, and rolls back on its own when the test fails:
+migrations, installs, smoke-tests, and rolls back on its own when the test fails (the files and the app pools'
+environment settings):
 ```powershell
 .\deploy\Update-ZedFromGit.ps1 -Ref <commit> -IncludeMobile -IncludeJobs
 ```

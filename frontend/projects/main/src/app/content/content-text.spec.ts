@@ -70,6 +70,33 @@ describe('zed-text', () => {
     expect(fixture.nativeElement.querySelector('.own-hidden').textContent).toBe('Hidden copy');
   });
 
+  it('shows "Try again" for a required text that cannot be loaded, and asks again only when pressed', async () => {
+    @Component({
+      imports: [ContentTextComponent],
+      template: `<zed-text key="msme.certification.payment.disclaimer" [required]="true" /><zed-text key="msme.other" />`,
+    })
+    class RequiredHost {}
+    const fixture = TestBed.createComponent(RequiredHost);
+    await settle(fixture);
+    http.expectOne('/api/content').flush(null, { status: 500, statusText: 'Server Error' });
+    await settle(fixture);
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.querySelectorAll('.zed-text-failed').length).toBe(1);
+    expect(el.querySelector('.zed-text-failed')!.textContent).toContain('This text could not be loaded.');
+    // No new request by itself on later renders.
+    fixture.detectChanges();
+    await settle(fixture);
+    http.expectNone('/api/content');
+
+    (el.querySelector('.zed-text-retry') as HTMLButtonElement).click();
+    await settle(fixture);
+    http.expectOne('/api/content').flush([{ key: 'msme.certification.payment.disclaimer', enabled: true, html: '<p class="d">Read me</p>' }]);
+    await settle(fixture);
+    expect(el.querySelector('.zed-text-failed')).toBeNull();
+    expect(el.querySelector('.d')!.textContent).toBe('Read me');
+    expect(TestBed.inject(ContentService).loaded()).toBe(true);
+  });
+
   it('encodes the values it fills in', () => {
     expect(fillText('<b>{{ A }}</b>{{b}}', { a: '"x"', B: 0 })).toBe('<b>&quot;x&quot;</b>0');
   });

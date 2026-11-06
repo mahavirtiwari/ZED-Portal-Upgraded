@@ -40,7 +40,7 @@ public sealed class PortalLinksTests : IDisposable
     {
         var anonymous = await _host.CreateBrowserAsync();
         // Nothing saved: the ZED website's contact page (the server configuration).
-        Assert.Equal("https://zed-staging.qci.org.in/contact-us", (await anonymous.GetFromJsonAsync<SessionController.ClientConfig>("/api/config"))!.ContactUrl);
+        Assert.Equal("https://zed.msme.gov.in/contact-us", (await anonymous.GetFromJsonAsync<SessionController.ClientConfig>("/api/config"))!.ContactUrl);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync(Url)).StatusCode);
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync($"{Url}/contact", new { url = "https://x.example.org" })).StatusCode);
@@ -48,7 +48,7 @@ public sealed class PortalLinksTests : IDisposable
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var links = (await admin.GetFromJsonAsync<PortalLinksController.LinksResponse>(Url))!.Links;
         Assert.Equal(["contact", "ministry", "playStore", "appStore", "lgd"], links.Select(l => l.Key));
-        Assert.Equal(new PortalLinksController.LinkItem("contact", "Contact ZED", PortalLinks.All[0].ShownOn, null, "https://zed-staging.qci.org.in/contact-us", true), links[0]);
+        Assert.Equal(new PortalLinksController.LinkItem("contact", "Contact ZED", PortalLinks.All[0].ShownOn, null, "https://zed.msme.gov.in/contact-us", true), links[0]);
         Assert.All(links, l => Assert.True(l.Enabled));
 
         foreach (var bad in new[] { "javascript:alert(1)", "ftp://zed.example.org", "zed contact", "https://localhost/x" })

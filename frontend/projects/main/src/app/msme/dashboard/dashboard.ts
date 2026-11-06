@@ -4,7 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { ContentTextComponent } from '../../content/content-text';
+import { ContentService, ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
 import { levelLogo, levelName } from '../shared/levels';
 import { isWebEntryLevel } from '../entry/entry.api';
@@ -212,6 +212,8 @@ export class DashboardPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
   private readonly http = inject(HttpClient);
+  /** The disclaimer and instructions must be shown before ACCEPT & PROCEED. */
+  protected readonly textsLoaded = inject(ContentService).loaded;
 
   protected readonly data = signal<DashboardData | null>(null);
   protected readonly loading = signal(true);

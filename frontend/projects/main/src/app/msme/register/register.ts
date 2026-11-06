@@ -78,6 +78,12 @@ export class RegisterPage {
     const pledge = this.content.text('msme.registration.pledge');
     return pledge?.enabled ? textParts(pledge.html, 'p') : [];
   });
+  /** The pledge text could not be loaded: a message with "Try again"; the pledge button stays off until it shows. */
+  protected readonly pledgeFailed = this.content.failed;
+  protected readonly pledgeLoaded = this.content.loaded;
+  protected retryPledge(): void {
+    this.content.retry();
+  }
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopResendTimer());
@@ -209,7 +215,7 @@ export class RegisterPage {
 
   /** "I/WE PLEDGE" → create the registration. */
   protected async takePledge(): Promise<void> {
-    if (!this.pledgeReady()) return;
+    if (!this.pledgeReady() || !this.pledgeLoaded()) return;
     const res = await this.call(this.api.submit(this.lookup()!.registrationId));
     if (!res) return;
     this.result.set(res);

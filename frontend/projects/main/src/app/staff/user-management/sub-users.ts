@@ -413,6 +413,8 @@ export class SubUsersPage {
   }
 
   protected async resetPassword(u: SubUser): Promise<void> {
+    const who = `${u.userId}${u.userName ? ' (' + u.userName + ')' : ''}`;
+    if (!window.confirm(`Reset the password of ${who}? A new password is e-mailed to the user.`)) return;
     await this.run(() => this.http.post<MessageResponse>(`${API}/${encodeURIComponent(u.userId)}/reset-password`, null), false);
   }
 

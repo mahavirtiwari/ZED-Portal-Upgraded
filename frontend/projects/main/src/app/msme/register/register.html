@@ -227,12 +227,17 @@
                   <span class="pledge-line" [style.animation-delay.ms]="$index * 1000" [innerHTML]="line + ' '"></span>
                 }
               </div>
+              @if (pledgeFailed()) {
+                <div class="alert alert-warning pledge-failed" role="alert">
+                  This text could not be loaded. <button type="button" class="btn btn-link pledge-retry" (click)="retryPledge()">Try again</button>
+                </div>
+              }
             </div>
           </div>
         </div>
         <div class="stepper-footer-sec initial-step1">
           <button type="button" class="btn btn-default" (click)="go('summary')">BACK</button>
-          <button type="button" class="btn btn-primary" [class.btn-disabled]="!pledgeReady()" [disabled]="!pledgeReady() || busy()" (click)="takePledge()">
+          <button type="button" class="btn btn-primary" [class.btn-disabled]="!pledgeReady() || !pledgeLoaded()" [disabled]="!pledgeReady() || !pledgeLoaded() || busy()" (click)="takePledge()">
             I/WE PLEDGE
           </button>
         </div>

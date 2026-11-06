@@ -37,7 +37,7 @@ public sealed class ProductionHostingTests : IDisposable
         ["ConnectionStrings:Main"] = "Server=db;Database=ZEDCS_V2_LIVE",
         ["ConnectionStrings:Consultancy"] = "Server=db;Database=ZED_CONSULTANT",
         ["ConnectionStrings:Surveillance"] = "Server=db;Database=ZED_SURVEILLANCE",
-        ["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in",
+        ["Portal:PublicBaseUrl"] = "https://zedv3.qci.org.in",
         ["Portal:StorageRoot"] = folder,
         ["DataProtection:KeysPath"] = folder,
         ["Email:Profiles:Default:Host"] = "smtp.example.test",
@@ -146,6 +146,40 @@ public sealed class ProductionHostingTests : IDisposable
     [Theory]
     [InlineData(ZedHostKind.Portal)]
     [InlineData(ZedHostKind.Mobile)]
+    public void Production_never_uses_the_old_portal_as_its_own_address(ZedHostKind kind)
+    {
+        var s = CompleteMain();
+        s["Mobile:StorageRoot"] = folder;
+        s["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in";
+        Assert.Contains(Check(s, kind: kind), p => p.StartsWith("Portal:PublicBaseUrl points at the old portal"));
+        // Links to the old portal (view-only) stay allowed in Production.
+        s["Portal:PublicBaseUrl"] = "https://zedv3.qci.org.in";
+        s["Portal:LegacyBaseUrl"] = "https://loginzed.msme.gov.in";
+        Assert.Empty(Check(s, kind: kind));
+    }
+
+    [Fact]
+    public void The_mobile_hosts_need_an_https_address()
+    {
+        var s = CompleteMain();
+        s["Mobile:StorageRoot"] = folder;
+        s.Remove("Portal:PublicBaseUrl");
+        Assert.Contains(Check(s, kind: ZedHostKind.Mobile), p => p.StartsWith("Portal:PublicBaseUrl must be the https address"));
+    }
+
+    [Fact]
+    public void Production_refuses_the_ccavenue_test_service_of_the_apps()
+    {
+        var s = CompleteMain();
+        s["CcAvenue:MobileServiceUrl"] = "https://test.ccavenue.com";
+        Assert.Contains(Check(s), p => p.StartsWith("CcAvenue:MobileServiceUrl points at the CCAvenue test service"));
+        s["CcAvenue:MobileServiceUrl"] = "https://secure.ccavenue.com";
+        Assert.Empty(Check(s));
+    }
+
+    [Theory]
+    [InlineData(ZedHostKind.Portal)]
+    [InlineData(ZedHostKind.Mobile)]
     public void A_test_environment_may_not_point_at_the_live_site(ZedHostKind kind)
     {
         var s = StagingMain();
@@ -156,8 +190,8 @@ public sealed class ProductionHostingTests : IDisposable
         s["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in";
         s.Remove("Portal:LegacyBaseUrl"); // the shipped default is the live site too
         var problems = Check(s, kind: kind, environment: "Staging");
-        Assert.Contains(problems, p => p.StartsWith("Portal:PublicBaseUrl points at the live site"));
-        Assert.Contains(problems, p => p.StartsWith("Portal:LegacyBaseUrl points at the live site"));
+        Assert.Contains(problems, p => p.StartsWith("Portal:PublicBaseUrl points at the old portal"));
+        Assert.Contains(problems, p => p.StartsWith("Portal:LegacyBaseUrl points at the old portal"));
     }
 
     [Theory]
@@ -198,7 +232,7 @@ public sealed class ProductionHostingTests : IDisposable
     {
         var problems = Check(new()
         {
-            ["Portal:PublicBaseUrl"] = "https://loginzed.msme.gov.in/Consultancy",
+            ["Portal:PublicBaseUrl"] = "https://zedv3.qci.org.in/Consultancy",
             ["Portal:StorageRoot"] = folder,
             ["DataProtection:KeysPath"] = folder,
             ["Recaptcha:Enabled"] = "false",
@@ -212,9 +246,11 @@ public sealed class ProductionHostingTests : IDisposable
     public void Mobile_host_needs_its_database_and_storage_folder()
     {
         Assert.Equal(
-            ["ConnectionStrings:Surveillance is not set", $"Mobile:StorageRoot: folder {Path.Combine(folder, "missing")} does not exist"],
+            ["ConnectionStrings:Surveillance is not set", $"Mobile:StorageRoot: folder {Path.Combine(folder, "missing")} does not exist",
+             "Portal:PublicBaseUrl must be the https address of this system (used in the apps' mail and document links)"],
             Check(new() { ["Mobile:StorageRoot"] = Path.Combine(folder, "missing") }, PortalSystem.Surveillance, ZedHostKind.Mobile));
-        Assert.Empty(Check(new() { ["ConnectionStrings:Main"] = "x", ["Mobile:StorageRoot"] = folder }, PortalSystem.Main, ZedHostKind.Mobile));
+        Assert.Empty(Check(new() { ["ConnectionStrings:Main"] = "x", ["Mobile:StorageRoot"] = folder, ["Portal:PublicBaseUrl"] = "https://zedv3.qci.org.in" },
+            PortalSystem.Main, ZedHostKind.Mobile));
     }
 
     private sealed class ProductionHost : WebApplicationFactory<Program>

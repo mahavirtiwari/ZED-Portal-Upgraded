@@ -106,7 +106,7 @@ public static class SettingSecret
 /// Refreshed every 30 seconds (<see cref="CcAvenueSettingsRefresher"/>) and at once after a save on this host. Every
 /// payment endpoint gets it through <c>IOptions&lt;CcAvenueOptions&gt;</c> (registered transient over <see cref="Current"/>).
 /// </summary>
-public sealed class CcAvenueSettings(IOptionsMonitor<CcAvenueOptions> file, IPortalSettings settings, ILogger<CcAvenueSettings> log)
+public sealed class CcAvenueSettings(IOptionsMonitor<CcAvenueOptions> file, IPortalSettings settings, IHostEnvironment env, ILogger<CcAvenueSettings> log)
 {
     private volatile Snapshot? snapshot;
 
@@ -124,7 +124,9 @@ public sealed class CcAvenueSettings(IOptionsMonitor<CcAvenueOptions> file, IPor
         {
             var values = new Dictionary<string, string?>();
             foreach (var key in PaymentGatewayKeys.All) values[key] = await settings.GetAsync(key, ct);
-            snapshot = Build(file.CurrentValue, values);
+            // Production never takes a saved test account (one saved while this server was the test server): units could
+            // otherwise "pay" with CCAvenue's test cards.
+            snapshot = Build(file.CurrentValue, values, allowTest: !env.IsProduction());
             if (snapshot.Problem is { } problem) log.LogError("Payment gateway settings: {Problem}; the server file's account is used", problem);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -134,7 +136,7 @@ public sealed class CcAvenueSettings(IOptionsMonitor<CcAvenueOptions> file, IPor
     }
 
     /// <summary>The options from the saved values (keys protected) over the file's; the file's alone when the set is incomplete.</summary>
-    public static Snapshot Build(CcAvenueOptions fromFile, IReadOnlyDictionary<string, string?> saved)
+    public static Snapshot Build(CcAvenueOptions fromFile, IReadOnlyDictionary<string, string?> saved, bool allowTest = true)
     {
         string? Plain(string key) => saved.GetValueOrDefault(key) is { Length: > 0 } v ? v.Trim() : null;
         var merchant = Plain(PaymentGatewayKeys.MerchantId);
@@ -152,6 +154,8 @@ public sealed class CcAvenueSettings(IOptionsMonitor<CcAvenueOptions> file, IPor
             return new Snapshot(fromFile, false, "a saved key cannot be read on this server (enter the keys again)");
 
         var test = string.Equals(Plain(PaymentGatewayKeys.Mode), "test", StringComparison.OrdinalIgnoreCase);
+        if (test && !allowTest)
+            return new Snapshot(fromFile, false, "the saved account is a CCAvenue test account, which the live portal does not use (save the live account)");
         return new Snapshot(new CcAvenueOptions
         {
             MerchantId = merchant,

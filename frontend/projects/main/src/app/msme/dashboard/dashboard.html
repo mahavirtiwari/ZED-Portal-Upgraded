@@ -290,7 +290,7 @@
             <div class="zed-card disclaimer-sec">
               <!-- Points 5–6 are not shown for a re-certification: the last point is then number 5. -->
               <div class="disclaimer-points">
-                <zed-text key="msme.certification.payment.disclaimer" />
+                <zed-text key="msme.certification.payment.disclaimer" [required]="true" />
                 @if (!(num('ReCertification', basic()) > 0)) {
                   <zed-text key="msme.certification.payment.disclaimer.firstCertification" />
                   <zed-text key="msme.certification.payment.disclaimer.closing" [values]="{ Number: 7 }" />
@@ -300,7 +300,7 @@
               </div>
               <div class="form-actions">
                 <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                <button type="button" class="btn btn-primary" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
+                <button type="button" class="btn btn-primary" [class.btn-disabled]="!textsLoaded()" [disabled]="!textsLoaded()" (click)="goStep('instructions')">ACCEPT &amp; PROCEED</button>
               </div>
             </div>
           </div>
@@ -314,10 +314,10 @@
               </div>
             </div>
             <div class="zed-card disclaimer-sec">
-              <zed-text key="msme.certification.payment.instructions" />
+              <zed-text key="msme.certification.payment.instructions" [required]="true" />
               <div class="form-actions">
                 <button type="button" class="btn btn-default" (click)="goStep('home')">BACK</button>
-                <button type="button" class="btn btn-primary" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
+                <button type="button" class="btn btn-primary" [class.btn-disabled]="!textsLoaded()" [disabled]="!textsLoaded()" (click)="goStep('payment')">ACCEPT &amp; PROCEED</button>
               </div>
             </div>
           </div>

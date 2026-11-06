@@ -9,6 +9,8 @@
     "Mobile__AppTokenKey": ""
   },
   "Portals": {
+    "_ContactUrl_comment": "Contact ZED until the Admin sets it in Administration -> Links.",
+    "Portal__ContactUrl": "https://zed.msme.gov.in/contact-us",
     "Email__Profiles__Default__Host": "",
     "Email__Profiles__Default__Port": "587",
     "Email__Profiles__Default__From": "",
@@ -18,6 +20,8 @@
     "Recaptcha__SecretKey": ""
   },
   "Mobile": {
+    "_PublicBaseUrl_comment": "The apps' reset-password mail and document links: this system's https address, never the old portal.",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
     "Mobile__Culture": "en-US",
     "Mobile__DeviceBinding": "Monitor",
     "_AppTokens_comment": "App sign-in token: Off, Monitor or Enforce. Stay on Monitor. Per app (MSME, SA, RA, SURV) in the application's own section, e.g. Mobile__AppTokens__Apps__SURV in MobileSurveillance, and for the consultant app Mobile__AppTokens__Apps__SA in both MobileConsultancy and Consultancy (the portal checks its technology upgradation calls). Only SURV, SA (site assessor) and SA (consultant) may be enforced, once their new builds are on the Play Store; MSME and RA stay on Monitor (the store apps cannot send the token).",

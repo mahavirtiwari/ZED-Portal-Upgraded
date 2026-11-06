@@ -18,7 +18,7 @@ export interface ClientConfig {
 }
 
 /** Until /api/config answers (and for a server without the setting). */
-export const DEFAULT_CONTACT_URL = 'https://zed-staging.qci.org.in/contact-us';
+export const DEFAULT_CONTACT_URL = 'https://zed.msme.gov.in/contact-us';
 
 /** The links to pages outside the portal (Admin → Links), with the addresses used until /api/config answers. */
 export const PORTAL_LINK_DEFAULTS = {

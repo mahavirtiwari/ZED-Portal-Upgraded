@@ -32,6 +32,16 @@ public static class RateLimitPolicies
 
 public static class ZedHostingExtensions
 {
+    /// <summary>
+    /// The Sensitive rate limit's bucket. Not signed in (sign-in, reset, verification): one bucket per address for all
+    /// those endpoints together, so guesses cannot be spread over the apps' login endpoints. Signed in: per user and
+    /// endpoint, so one user's payments or uploads never use up another's, or the sign-ins of their office.
+    /// </summary>
+    internal static string SensitivePartition(HttpContext ctx) =>
+        ctx.User.Identity?.IsAuthenticated == true && !string.IsNullOrEmpty(ctx.User.Identity.Name)
+            ? "u:" + ctx.User.Identity.Name + "|" + ctx.Request.Path.Value?.ToLowerInvariant()
+            : "ip:" + (ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown");
+
     /// <summary>Wiring shared by the Main, Consultancy and Surveillance APIs.</summary>
     public static IServiceCollection AddZedPlatform(
         this IServiceCollection services, IConfiguration config, string defaultDatabase, string authCookieName)
@@ -107,8 +117,10 @@ public static class ZedHostingExtensions
         services.AddRateLimiter(o =>
         {
             o.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            // 10 a minute: per address for sign-in and the other anonymous endpoints (together), per user and endpoint once
+            // signed in (SensitivePartition).
             o.AddPolicy(RateLimitPolicies.Sensitive, ctx => RateLimitPartition.GetFixedWindowLimiter(
-                ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                SensitivePartition(ctx),
                 _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
             o.AddPolicy(RateLimitPolicies.PasswordReset, ctx => RateLimitPartition.GetFixedWindowLimiter(
                 ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",

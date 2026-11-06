@@ -192,6 +192,22 @@ public sealed class CcAvenueSettingsBuildTests
     }
 
     [Fact]
+    public void Production_never_takes_a_saved_test_account()
+    {
+        var key = SettingSecret.Protect("KEY0123456789ABCDEF");
+        var saved = new Dictionary<string, string?>
+        {
+            [PaymentGatewayKeys.MerchantId] = "222", [PaymentGatewayKeys.AccessCode] = "CODE", [PaymentGatewayKeys.WorkingKey] = key,
+            [PaymentGatewayKeys.ReconciliationWorkingKey] = key, [PaymentGatewayKeys.Mode] = "test",
+        };
+        Assert.True(CcAvenueSettings.Build(File, saved).FromAdmin);
+        var live = CcAvenueSettings.Build(File, saved, allowTest: false);
+        Assert.False(live.FromAdmin);
+        Assert.Same(File, live.Options);
+        Assert.Contains("test account", live.Problem);
+    }
+
+    [Fact]
     public void A_live_set_uses_the_live_gateway_and_the_app_keys()
     {
         var key = SettingSecret.Protect("KEY0123456789ABCDEF");

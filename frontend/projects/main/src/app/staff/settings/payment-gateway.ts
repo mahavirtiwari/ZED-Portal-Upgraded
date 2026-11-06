@@ -90,6 +90,10 @@ export interface PaymentGatewayInfo {
             Server settings file: {{ i.gateway.file.configured ? 'merchant ' + (i.gateway.file.merchantId ?? '') + ', ' + (i.gateway.file.mode === 'test' ? 'test' : 'live') + ' gateway' : 'no complete account' }}.
           </p>
         }
+        <p class="muted">
+          Before changing to another merchant account: switch Online payments off, wait about 30 minutes so payments in
+          progress can finish, save the new account, then switch Online payments on again.
+        </p>
         <div class="grid">
           <span class="lbl">Gateway</span>
           <span>

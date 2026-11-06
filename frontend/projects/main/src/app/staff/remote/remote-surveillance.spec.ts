@@ -64,7 +64,7 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
       providers: [
         provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
         { provide: ActivatedRoute, useValue: { snapshot: { paramMap: convertToParamMap({ zedId: 'ZEDMSME000001', certification: 'Silver' }) } } },
-        { provide: ContentService, useValue: { text: (key: string) => (key === INSTRUCTIONS.key ? INSTRUCTIONS : null) } },
+        { provide: ContentService, useValue: { text: (key: string) => (key === INSTRUCTIONS.key ? INSTRUCTIONS : null), loaded: () => true, failed: () => false, retry: () => undefined } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(RemoteAssessmentPage);

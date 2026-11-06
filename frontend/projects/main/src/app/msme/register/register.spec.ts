@@ -119,7 +119,7 @@ describe('RegisterPage pledge', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [RegisterPage],
-      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ContentService, useValue: { text: (key: string) => texts.get(key) ?? null } }],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: ContentService, useValue: { text: (key: string) => texts.get(key) ?? null, loaded: () => true, failed: () => false, retry: () => undefined } }],
     }).compileComponents();
     window.scrollTo = () => undefined;
   });

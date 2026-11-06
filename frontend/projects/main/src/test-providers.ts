@@ -8,7 +8,7 @@ import { ContentService } from './app/content/content-text';
  * Links are the default addresses (app/portal-links.spec.ts tests the real service).
  */
 const providers: Provider[] = [
-  { provide: ContentService, useValue: { text: () => null } },
+  { provide: ContentService, useValue: { text: () => null, loaded: () => true, failed: () => false, retry: () => undefined } },
   { provide: PortalLinksService, useValue: { url: (key: PortalLinkKey) => PORTAL_LINK_DEFAULTS[key] } },
 ];
 

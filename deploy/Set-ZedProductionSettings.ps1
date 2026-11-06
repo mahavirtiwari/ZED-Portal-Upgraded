@@ -103,6 +103,16 @@ if ($main) {
     Set-Value $main 'Main' 'CcAvenue__GatewayUrl' $liveGateway
     Set-Value $main 'Main' 'CcAvenue__MobileServiceUrl' $liveService
 }
+# The apps' reset and document links (the mobile hosts refuse to start without an https address) and Contact ZED (until the
+# Admin sets it under Links): never the old portal or a test site.
+$mobile = Section 'Mobile'
+if ($mobile -and (-not [string]$mobile.Portal__PublicBaseUrl -or [string]$mobile.Portal__PublicBaseUrl -match 'loginzed\.msme\.gov\.in')) {
+    Set-Value $mobile 'Mobile' 'Portal__PublicBaseUrl' 'https://zedv3.qci.org.in'
+}
+$portals = Section 'Portals'
+if ($portals -and (-not [string]$portals.Portal__ContactUrl -or [string]$portals.Portal__ContactUrl -match 'staging')) {
+    Set-Value $portals 'Portals' 'Portal__ContactUrl' 'https://zed.msme.gov.in/contact-us'
+}
 
 # ---------------------------------------------------------------- what is left by hand
 Write-Step 'Still to do by hand'
@@ -153,7 +163,14 @@ if (-not (Get-Service $JobsService -ErrorAction SilentlyContinue)) { Write-Note 
 else {
     $key = "HKLM:\SYSTEM\CurrentControlSet\Services\$JobsService"
     $current = @((Get-ItemProperty $key -Name Environment -ErrorAction SilentlyContinue).Environment)
-    $set = [ordered]@{ DOTNET_ENVIRONMENT = 'Production'; Database__Prefix = $prefix; Database__AllowPrefixInProduction = 'true' }
+    # The previous environment (it holds the same secrets as the settings file: administrators only), to put it back by
+    # hand if the update is rolled back: the code before 2026-11-06 does not start with these Production settings.
+    $jobsBackup = "$Settings.$(Get-Date -Format 'yyyyMMdd-HHmmss').$JobsService-environment.bak"
+    [IO.File]::WriteAllLines($jobsBackup, [string[]]@($current | Where-Object { $_ }), (New-Object Text.UTF8Encoding $false))
+    & icacls $jobsBackup /inheritance:r /grant:r 'BUILTIN\Administrators:(F)' 'NT AUTHORITY\SYSTEM:(F)' | Out-Null
+    Write-Ok "previous $JobsService environment saved in $jobsBackup"
+    Write-Note "To put it back: New-ItemProperty -Path '$key' -Name Environment -PropertyType MultiString -Value (Get-Content '$jobsBackup') -Force"
+    $set =[ordered]@{ DOTNET_ENVIRONMENT = 'Production'; Database__Prefix = $prefix; Database__AllowPrefixInProduction = 'true' }
     $names = @($removeEverywhere) + @('ASPNETCORE_ENVIRONMENT') + @($set.Keys)
     $kept = @($current | Where-Object { $_ -and ($names -notcontains ($_ -split '=', 2)[0]) })
     $kept += @($set.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" })

@@ -10,37 +10,45 @@ move of the old portal's data) is not used.
 
 ## 0. Switching to production: the order (server team)
 
-1. **Settings:** `.\deploy\Set-ZedProductionSettings.ps1` (dry run), then with `-Apply`. It makes the settings file and the
-   Zed.Jobs service's environment a Production one (section 1) and lists what is left by hand. It restarts nothing: the
-   code installed now would not start as Production.
-2. **Live CCAvenue account:** QCI's current live account in the Main section (`CcAvenue__MerchantId`, `AccessCode`,
-   `WorkingKey`, `ReconciliationWorkingKey`, `MobileAccessCode`, `MobileWorkingKey`). The script already points the gateway
-   at CCAvenue's live addresses.
-3. **Update:** `.\deploy\Update-ZedFromGit.ps1 -IncludeMobile -IncludeJobs` (dry run), then with `-Apply`. It installs the
-   new code with the Production settings and runs the migrations (0051, 0052).
-4. **Addresses:** `database\production\01_portal_address.sql` in SSMS (PREVIEW, then `@Mode = 'APPLY'`). The QR codes,
-   verification and mail links that the databases hand out then point at https://zedv3.qci.org.in instead of the old portal.
-4a. **Test data, once:** `database\production\02_remove_test_data.sql` in SSMS. Run it as a PREVIEW first; it only counts
+Do steps 1 to 4 in one session, in this order. The test data goes first: until step 4 the running portals still redirect
+all mail to the test mailbox, so the test mails waiting in the queue never reach a real person.
+
+1. **Test data, once:** `database\production\02_remove_test_data.sql` in SSMS. Run it as a PREVIEW first; it only counts
    what it would remove. Then run it with `@Mode = 'APPLY'`, `@Confirm = 'DELETE ALL UNITS'` and `@BackupFolder`.
    - **Removed:** every unit registered while this was the test server, with its certifications, assessments,
      payments, invoices, history and logins, plus the test logs (mail queue, OTPs, failed logins, sign-in history).
    - **Kept:** the Admin's setup (levels, fees, questionnaires, masters, texts, templates, forms, settings) and every
      staff account.
-   - **Before it changes anything:** it backs up each database, and it refuses a database with more than 1,000 units.
-     If a backup fails, nothing is removed from that database. Use a folder SQL Server's service account can write to,
-     for example its default backup folder (`SELECT SERVERPROPERTY('InstanceDefaultBackupPath')`).
+   - **All three databases or none:** it first counts, and refuses when a database has more than 1,000 units. Then it
+     backs up all three databases; if one backup fails, nothing is removed anywhere. Then it cleans the three databases
+     in one transaction: if anything fails, all three stay as they were. Use a folder SQL Server's service account can
+     write to, for example its default backup folder (`SELECT SERVERPROPERTY('InstanceDefaultBackupPath')`).
    - **Staff accounts with dev.zed@qcin.org:** it lists them; give them their real e-mail in User Management.
    - **The units' files:** move them aside, don't delete them: under the portal's storage folder `Photos`, `PDFs\SA`,
      `Certificates` and `ReceiptInvoice`, and under the mobile storage folder `Photos` and `SaPhotos`.
-5. **Administration → Settings → Payment Gateway and Invoices:**
+2. **Settings:** `.\deploy\Set-ZedProductionSettings.ps1` (dry run), then with `-Apply`. It makes the settings file and the
+   Zed.Jobs service's environment a Production one (section 1) and lists what is left by hand. It restarts nothing: the
+   code installed now would not start as Production. It keeps a copy of the settings file and of the Zed.Jobs
+   environment (administrators only) and prints how to put the Zed.Jobs environment back.
+3. **Live CCAvenue account:** QCI's current live account in the Main section (`CcAvenue__MerchantId`, `AccessCode`,
+   `WorkingKey`, `ReconciliationWorkingKey`, `MobileAccessCode`, `MobileWorkingKey`). The script already points the gateway
+   at CCAvenue's live addresses.
+4. **Update:** `.\deploy\Update-ZedFromGit.ps1 -IncludeMobile -IncludeJobs` (dry run), then with `-Apply`. It installs the
+   new code with the Production settings and runs the migrations (0051, 0052).
+5. **Addresses:** `database\production\01_portal_address.sql` in SSMS (PREVIEW, then `@Mode = 'APPLY'`). The QR codes,
+   verification and mail links that the databases hand out then point at https://zedv3.qci.org.in instead of the old portal.
+6. **Administration → Settings → Payment Gateway and Invoices:**
    - Online payments are On by default: switch them Off until the live account is in.
-   - Enter the new merchant account there when it arrives.
+   - Enter the new merchant account there when it arrives. Before changing to another merchant account later: switch
+     Online payments off, wait about 30 minutes so payments in progress can finish, save the account, switch them on.
    - Invoices stay Off.
-6. **Check:** `Test-ZedDeployment.ps1` ran in step 3; then sign in to each portal.
+7. **Check:** `Test-ZedDeployment.ps1` ran in step 4; then sign in to each portal.
 
-If the update in step 3 fails and rolls back, the app pools may already carry the Production settings with the old
-code. Put the settings file back from the `.bak` copy that step 1 made and run `Install-ZedIis.ps1` again, or fix the
-cause and run the update again.
+If the update in step 4 fails, it puts back the previous files and the app pools' previous environment settings
+(`environment.bin` in the backup folder, encrypted for this server), so the old code starts again as before. Zed.Jobs
+gets back the environment it had at the start of the update, which step 2 had already made a Production one: put the
+copy from step 2 back with the command that step printed, then restart Zed.Jobs. Then fix the cause and run the update
+again.
 
 ## 1. Server settings file: what changes (server team, before the next update)
 

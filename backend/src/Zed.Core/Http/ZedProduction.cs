@@ -108,12 +108,14 @@ public static class ZedConfigurationCheck
         // Staging runs on copies of production data: no mail to real people, and never a staging setting in Production.
         problems.AddRange(Zed.Core.Email.MailSafety.Problems(config, env));
         problems.AddRange(ZedDatabaseNames.Problems(config, env));
-        // The shipped defaults are the live addresses: a test environment must set its own, or its mail links and
-        // "open in the old portal" links would send testers (and their actions) to the live site.
-        if (!env.IsProduction())
-            foreach (var key in new[] { "Portal:PublicBaseUrl", "Portal:LegacyBaseUrl" })
-                if (Uri.TryCreate(config[key] ?? DefaultFor(key), UriKind.Absolute, out var u) && u.Host.Equals(LiveHost, StringComparison.OrdinalIgnoreCase))
-                    problems.Add($"{key} points at the live site ({LiveHost}): set this environment's own address");
+        // The shipped defaults are the old portal's addresses. This system's own address (mail links, QR codes, the apps'
+        // reset and document links) must never be the old portal, also in Production (https://zedv3.qci.org.in since
+        // 2026-11-06) and on the mobile hosts. "Open in the old portal" links (LegacyBaseUrl) may point there in Production.
+        foreach (var key in env.IsProduction() ? ["Portal:PublicBaseUrl"] : new[] { "Portal:PublicBaseUrl", "Portal:LegacyBaseUrl" })
+            // In Production a missing address is reported by the https check below; only one that is set is compared here.
+            if (Uri.TryCreate(config[key] ?? (env.IsProduction() ? null : DefaultFor(key)), UriKind.Absolute, out var u)
+                && u.Host.Equals(LiveHost, StringComparison.OrdinalIgnoreCase))
+                problems.Add($"{key} points at the old portal ({LiveHost}): set this system's own address");
 
         // App sign-in tokens (finding C1): enforcing them needs the shared key, or every app call the portal checks would be refused.
         var tokens = config.GetSection("Mobile:AppTokens").Get<Zed.Core.Mobile.AppTokenOptions>() ?? new();
@@ -130,6 +132,9 @@ public static class ZedConfigurationCheck
         if (kind == ZedHostKind.Mobile)
         {
             Folder("Mobile:StorageRoot", "App_Data/mobile-storage");
+            // The apps' reset-password mail and document links are built from it.
+            if (!Uri.TryCreate(config["Portal:PublicBaseUrl"], UriKind.Absolute, out var mobileUrl) || mobileUrl.Scheme != Uri.UriSchemeHttps)
+                problems.Add("Portal:PublicBaseUrl must be the https address of this system (used in the apps' mail and document links)");
             return problems;
         }
 
@@ -175,6 +180,8 @@ public static class ZedConfigurationCheck
             foreach (var k in new[] { "MerchantId", "AccessCode", "WorkingKey", "ReconciliationWorkingKey" }) Require("CcAvenue:" + k);
             if (env.IsProduction() && (config["CcAvenue:GatewayUrl"] ?? "").Contains("test.ccavenue.com", StringComparison.OrdinalIgnoreCase))
                 problems.Add("CcAvenue:GatewayUrl points at the CCAvenue test gateway");
+            if (env.IsProduction() && (config["CcAvenue:MobileServiceUrl"] ?? "").Contains("test.ccavenue.com", StringComparison.OrdinalIgnoreCase))
+                problems.Add("CcAvenue:MobileServiceUrl points at the CCAvenue test service (the apps' payments)");
             Require("Udyam:AccessKey", "Udyam registration lookups");
             if (config.GetValue("Recaptcha:Enabled", true))
                 Require("Recaptcha:AppSecretKey", "MSME app registration captcha, the Android reCAPTCHA key");

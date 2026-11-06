@@ -37,6 +37,8 @@
 --    The checkout procedures (SP_*_PAYMENT_BASIC_DETAILS, *_PAYMENT_GATEWAY_DETAILS, SP_MSME_ZERO_PAYMENT_DETAILS) take
 --    the chosen row by its Id and are not changed; the *_old and SP_MSME_GET_PAYMENT_DETAILS_BEFORE_STATE copies neither.
 -- The procedures are created with dynamic SQL because each database has its own (one script for the three databases).
+-- A procedure that already calls FN_V4_SUBSIDY_CATEGORY is not created again: a re-run never undoes the later
+-- migrations' edits of it (0042, 0044-0046).
 SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET XACT_ABORT ON;
@@ -242,7 +244,7 @@ END';
 GO
 -- ---------------------------------------------------------------- 4. the payment procedures
 -- ZED_CONSULTANT
-IF DB_NAME() = N'ZED_CONSULTANT'
+IF DB_NAME() = N'ZED_CONSULTANT' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_MSME_GET_PAYMENT_DETAILS')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
@@ -298,7 +300,7 @@ BEGIN
 END';
 GO
 -- ZEDCS_V2_LIVE
-IF DB_NAME() = N'ZEDCS_V2_LIVE'
+IF DB_NAME() = N'ZEDCS_V2_LIVE' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_MSME_GET_PAYMENT_DETAILS')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
@@ -413,7 +415,7 @@ BEGIN
 	SELECT  case when ((@IsRecertification=1 AND @Certification=@RecertificationLevel) OR IsCouponUsed=1)  then 1 else 0 end as IsCouponUsed, @IsRecertification IsRecertification, @RecertificationLevel RecertificationLevel from msme where ZedId=@ZedId
 END';
 GO
-IF DB_NAME() = N'ZEDCS_V2_LIVE'
+IF DB_NAME() = N'ZEDCS_V2_LIVE' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
@@ -490,7 +492,7 @@ BEGIN
 END';
 GO
 -- ZED_SURVEILLANCE
-IF DB_NAME() = N'ZED_SURVEILLANCE'
+IF DB_NAME() = N'ZED_SURVEILLANCE' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_MSME_GET_PAYMENT_DETAILS')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
@@ -568,7 +570,7 @@ BEGIN
 	SELECT  case when IsCouponUsed=1 then 1 else 0 end as IsCouponUsed from msme where ZedId=@ZedId
 END';
 GO
-IF DB_NAME() = N'ZED_SURVEILLANCE'
+IF DB_NAME() = N'ZED_SURVEILLANCE' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_CONSULTANCY_MSME_GET_PAYMENT_DETAILS')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'-- =============================================
 -- Author:		<Author,,Name>
 -- Create date: <Create Date,,>
@@ -612,7 +614,7 @@ BEGIN
 	SELECT  case when IsCouponUsed=1 then 1 else 0 end as IsCouponUsed from ZED_CONSULTANT.dbo.msme where ZedId=@ZedId
 END';
 GO
-IF DB_NAME() = N'ZED_SURVEILLANCE'
+IF DB_NAME() = N'ZED_SURVEILLANCE' AND ISNULL(OBJECT_DEFINITION(OBJECT_ID(N'dbo.SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND')), N'') NOT LIKE N'%FN_V4_SUBSIDY_CATEGORY%'
     EXEC sys.sp_executesql N'CREATE OR ALTER PROCEDURE [dbo].[SP_APPLY_BRONZE_SURVEILLANCE_FROM_BACKEND] 
 (
 	@ZedId varchar(50) = NULL,

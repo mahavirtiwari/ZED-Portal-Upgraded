@@ -833,92 +833,9 @@ public sealed partial class SAController(
         return LegacyJson(await SavePhotosAsync(nameof(SubmitEvidences), request.saId, request.zedId, request.certificationType, "Evidences", photos, ct));
     });
 
-    // ------------------------------------------------------------------ Hotel self-assessment leftovers
-    // These four act on SelfAssessments / SaPaymentCases (the hotel self-certification product this
-    // code base was copied from) and carry no identity. No app calls them: the portal pages that do
-    // (Frontend/Login/Index.cshtml) post to their own site's /SA/... controller.
-
-    /// <summary>
-    /// SP_SA_GET_REG_DETAILS cannot be created in any of the three databases (ambiguous column), so the
-    /// old action always returned the empty DataSet "{}"; that stays the answer when the call fails.
-    /// Only the columns the old page read are returned, never contact details.
-    /// </summary>
-    [HttpPost]
-    public async Task<IActionResult> GetSiteAssessmentDetails(string? registrationNo, CancellationToken ct)
-    {
-        log.LogInformation("SA/GetSiteAssessmentDetails called for {RegistrationNo}", registrationNo);
-        ResultSets sets;
-        try
-        {
-            sets = await db.QueryProcMultipleAsync("SP_SA_GET_REG_DETAILS", new { RegistrationNo = registrationNo }, ct);
-        }
-        catch (DbException ex)
-        {
-            log.LogWarning(ex, "SP_SA_GET_REG_DETAILS failed (it does not exist in the current databases)");
-            return LegacyContent("{}");
-        }
-        var kept = new List<IReadOnlyList<IDictionary<string, object?>>>();
-        for (var i = 0; i < sets.Count; i++)
-        {
-            var allowed = i switch { 0 => RegDetailsColumns, 1 => AmountColumns, _ => EmptyColumns };
-            kept.Add(sets[i].Select(r => (IDictionary<string, object?>)r.Where(kv => allowed.Contains(kv.Key))
-                .ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.OrdinalIgnoreCase)).ToList());
-        }
-        return LegacyContent(LegacyResults.DataSetJson(new ResultSets(kept)));
-    }
-
-    private static readonly IReadOnlySet<string> RegDetailsColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "RegistrationNumber", "SaDate", "SaDateForm", "UtrNumber", "GstNumber", "FinalSaDate", "SaStatus", "SaStatusDisplay", "PaymentDate" };
-    private static readonly IReadOnlySet<string> AmountColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-        { "Amount", "Gst", "Total" };
-    private static readonly IReadOnlySet<string> EmptyColumns = new HashSet<string>();
-
-    [HttpPost]
-    public async Task<IActionResult> UpdateSaDeclaration(string? registrationNo, CancellationToken ct)
-    {
-        log.LogInformation("SA/UpdateSaDeclaration called for {RegistrationNo}", registrationNo);
-        var response = await ExecAsync("SP_SA_UPDATE_DECLARATION", new { RegistrationNumber = registrationNo }, ct);
-        return LegacyContent(System.Text.Json.JsonSerializer.Serialize(response, Zed.Core.Mobile.LegacyJson.Write));
-    }
-
-    [HttpPost]
-    public async Task<IActionResult> SubmitSaReg(string? SaDate, string? RegistrationNumber, CancellationToken ct)
-    {
-        log.LogInformation("SA/SubmitSaReg called for {RegistrationNo}", RegistrationNumber);
-        ResultSets check;
-        try
-        {
-            check = await db.QueryProcMultipleAsync("SP_SA_CHECK_VALID_DATE", new { RegistrationNumber, SaDate }, ct);
-        }
-        catch (DbException ex)
-        {
-            // The old code read Tables[0].Rows[0] of the empty DataSet and returned the exception as JSON.
-            log.LogWarning(ex, "SP_SA_CHECK_VALID_DATE failed");
-            return Fail(ErrorText);
-        }
-        if (check.Count == 0 || check[0].Count == 0) return Fail(ErrorText);
-
-        var response = check[0][0].Text("ValidDate") == "1"
-            ? await ExecAsync("SP_SA_INSERT_REGISTRATION_DATA", new { RegistrationNumber, SaDate }, ct)
-            : ServiceResponse.Fail("Please select valid date.");
-        return LegacyContent(System.Text.Json.JsonSerializer.Serialize(response, Zed.Core.Mobile.LegacyJson.Write));
-    }
-
-    /// <summary>The hotel self-assessment fee table (public price list).</summary>
-    [HttpPost]
-    public async Task<IActionResult> GetAmounts(CancellationToken ct)
-    {
-        try
-        {
-            var sets = await db.QueryProcMultipleAsync("SP_SA_GET_AMOUNTS_MASTER", null, ct);
-            return LegacyContent(LegacyResults.DataSetJson(sets));
-        }
-        catch (DbException ex)
-        {
-            log.LogWarning(ex, "SP_SA_GET_AMOUNTS_MASTER failed");
-            return LegacyContent("{}");
-        }
-    }
+    // The hotel self-assessment leftovers (GetSiteAssessmentDetails, UpdateSaDeclaration, SubmitSaReg, GetAmounts) were
+    // removed before go-live: they acted on SelfAssessments / SaPaymentCases by registration number with no identity, and
+    // no app calls them (SECURITY-FINDINGS #49).
 
     // ------------------------------------------------------------------ Helpers
 

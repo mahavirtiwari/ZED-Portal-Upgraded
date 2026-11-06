@@ -183,7 +183,51 @@ function Copy-Folder([string]$From, [string]$To, [string[]]$KeepFiles = @()) {
     $global:LASTEXITCODE = 0
 }
 
-# Puts a backup folder back: app_offline.htm while copying, then the pools (and Zed.Jobs) restart.
+# The app pools' environment variables and Zed.Jobs' service environment as they were before the install: a rollback puts
+# them back with the files, so the previous code never starts with settings it does not know (for example Production with
+# a database prefix, which the code before 2026-11-06 refuses). They hold connection strings and keys: the file is
+# encrypted for this machine (DPAPI) and readable by administrators only.
+$EnvironmentFile = 'environment.bin'
+function Save-Environment([string[]]$Names, [string]$File) {
+    Import-Module WebAdministration
+    $pools = [ordered]@{}
+    foreach ($n in $Names) {
+        $pool = $catalog[$n].Pool
+        if (-not (Test-Path "IIS:\AppPools\$pool")) { continue }
+        $pools[$pool] = @(Get-WebConfiguration -PSPath 'MACHINE/WEBROOT/APPHOST' -Filter "system.applicationHost/applicationPools/add[@name='$pool']/environmentVariables/add" |
+            ForEach-Object { [ordered]@{ name = [string]$_.name; value = [string]$_.value } })
+    }
+    $jobsKey = "HKLM:\SYSTEM\CurrentControlSet\Services\$JobsService"
+    $jobs = if (Test-Path $jobsKey) { [ordered]@{ saved = $true; values = @((Get-ItemProperty $jobsKey -Name Environment -ErrorAction SilentlyContinue).Environment | Where-Object { $_ }) } } else { [ordered]@{ saved = $false } }
+    Add-Type -AssemblyName System.Security
+    $bytes = [Text.Encoding]::UTF8.GetBytes(([ordered]@{ pools = $pools; jobs = $jobs } | ConvertTo-Json -Depth 6))
+    [IO.File]::WriteAllBytes($File, [Security.Cryptography.ProtectedData]::Protect($bytes, $null, [Security.Cryptography.DataProtectionScope]::LocalMachine))
+    & icacls $File /inheritance:r /grant:r 'BUILTIN\Administrators:(F)' 'NT AUTHORITY\SYSTEM:(F)' | Out-Null
+    return @($pools.Keys)
+}
+function Restore-Environment([string]$File, [bool]$Jobs) {
+    Import-Module WebAdministration
+    Add-Type -AssemblyName System.Security
+    $bytes = [Security.Cryptography.ProtectedData]::Unprotect([IO.File]::ReadAllBytes($File), $null, [Security.Cryptography.DataProtectionScope]::LocalMachine)
+    $saved = [Text.Encoding]::UTF8.GetString($bytes) | ConvertFrom-Json
+    foreach ($p in $saved.pools.PSObject.Properties) {
+        if (-not (Test-Path "IIS:\AppPools\$($p.Name)")) { continue }
+        $filter = "system.applicationHost/applicationPools/add[@name='$($p.Name)']/environmentVariables"
+        Clear-WebConfiguration -PSPath 'MACHINE/WEBROOT/APPHOST' -Filter $filter -ErrorAction SilentlyContinue
+        foreach ($v in @($p.Value)) { if ($v) { Add-WebConfigurationProperty -PSPath 'MACHINE/WEBROOT/APPHOST' -Filter $filter -Name '.' -Value @{ name = $v.name; value = $v.value } } }
+        Write-Ok "environment of $($p.Name) put back"
+    }
+    if ($Jobs -and $saved.jobs.saved) {
+        $jobsKey = "HKLM:\SYSTEM\CurrentControlSet\Services\$JobsService"
+        $values = [string[]]@($saved.jobs.values | Where-Object { $_ })
+        if ($values.Count) { New-ItemProperty -Path $jobsKey -Name Environment -PropertyType MultiString -Value $values -Force | Out-Null }
+        else { Remove-ItemProperty -Path $jobsKey -Name Environment -ErrorAction SilentlyContinue }
+        Write-Ok "environment of $JobsService put back"
+    }
+}
+
+# Puts a backup folder back: app_offline.htm while copying, the previous environment settings, then the pools (and
+# Zed.Jobs) restart.
 function Restore-Backup([string]$Folder) {
     $manifestFile = Join-Path $Folder 'backup.json'
     if (-not (Test-Path $manifestFile)) { throw "$Folder has no backup.json: not a backup of this script." }
@@ -198,6 +242,11 @@ function Restore-Backup([string]$Folder) {
         Set-Content (Join-Path $dest 'app_offline.htm') '<html><body>Updating, back in a minute.</body></html>' -Encoding UTF8
         Copy-Folder (Join-Path $Folder $folderName) $dest
         Remove-Item (Join-Path $dest 'app_offline.htm') -Force -ErrorAction SilentlyContinue
+    }
+    $environment = Join-Path $Folder $EnvironmentFile
+    if (Test-Path $environment) {
+        Write-Note "app pool$(if ($manifest.Jobs) { ' and Zed.Jobs' }) environment <- $environment"
+        if ($Apply) { Restore-Environment $environment ([bool]$manifest.Jobs) }
     }
     if ($manifest.Jobs) {
         Write-Note "Zed.Jobs <- $(Join-Path $Folder 'ZedJobs')"
@@ -400,6 +449,8 @@ try {
     }
     $jobsBackedUp = $false
     if ($IncludeJobs -and (Test-Path $JobsDir)) { Copy-Folder $JobsDir (Join-Path $backup 'ZedJobs'); $jobsBackedUp = $true; Write-Ok 'Zed.Jobs' }
+    $savedPools = @(Save-Environment $Apps (Join-Path $backup $EnvironmentFile))
+    Write-Ok "environment settings of $(if ($savedPools.Count) { $savedPools -join ', ' } else { 'no app pool yet' })$(if ($jobsBackedUp) { " and $JobsService" }) (encrypted, administrators only)"
     $manifest = [pscustomobject]@{ Version = (Get-InstalledVersion); Taken = (Get-Date -Format s); Apps = $backedUp; Jobs = $jobsBackedUp; Replacing = $newVersion; Databases = @() }
     $manifest | ConvertTo-Json | Set-Content (Join-Path $backup 'backup.json') -Encoding UTF8
 
