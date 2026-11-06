@@ -63,6 +63,9 @@ describe('CertificationLevelsPage', () => {
     const d = new Date(2026, 9, 29);
     expect(formatCertificateNo('{DDMMYYYY}_{ZEDNO}', d, 'ZEDMSME129350', 'Bronze', null)).toBe('29102026_129350');
     expect(formatCertificateNo('ZX-{CAT}-{YY}{MM}-{ZEDID}', d, 'ZEDMSME129350', 'ZEDX', 'Services')).toBe('ZX-S-2610-ZEDMSME129350');
+    // New ZED IDs (ZEDM / ZEDS): the serial keeps the sector letter.
+    expect(formatCertificateNo('{DDMMYYYY}_{ZEDNO}', d, 'ZEDM000123', 'Silver', 'Manufacturing')).toBe('29102026_M000123');
+    expect(formatCertificateNo('{DDMMYYYY}_{ZEDNO}', d, 'ZEDS000045', 'Gold', 'Services')).toBe('29102026_S000045');
   });
 
   it('shows each level as a box with its certificate settings and enables ZED-X', async () => {
@@ -92,7 +95,7 @@ describe('CertificationLevelsPage', () => {
     typeIn('#lv-format', 'ZX-{YYYY}');
     typeIn('#lv-format-m', 'ZXM/{YYYY}/{ZEDNO}');
     await settle();
-    expect(el.querySelector('.modal-body')!.textContent).toContain(`ZXM/${new Date().getFullYear()}/129350`);
+    expect(el.querySelector('.modal-body')!.textContent).toContain(`ZXM/${new Date().getFullYear()}/M000123`);
     (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle();
     expect(el.querySelector('.modal .help-block')!.textContent).toContain('{ZEDID} or {ZEDNO}');

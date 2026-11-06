@@ -103,11 +103,21 @@ interface LevelForm {
   surveillanceScheduleFrom: string | null;
 }
 
+/**
+ * The serial of a certificate number, as ZedIds.CertificateSerial on the server (migration 0051): old IDs lose
+ * "ZEDMSME" (ZEDMSME129350 → 129350), new IDs lose "ZED" (ZEDM000123 → M000123, ZEDS000045 → S000045).
+ */
+export function certificateSerial(zedId: string): string {
+  if (/^ZEDMSME/i.test(zedId)) return zedId.slice(7);
+  if (/^ZED[MS]\d/i.test(zedId)) return zedId.slice(3);
+  return zedId.length > 7 ? zedId.slice(7) : zedId;
+}
+
 /** As CertificateNumbers.Format on the server (the preview of the formats). */
 export function formatCertificateNo(format: string, date: Date, zedId: string, level: string, category: 'Manufacturing' | 'Services' | null): string {
   const p = (n: number) => String(n).padStart(2, '0');
   const yyyy = String(date.getFullYear());
-  const digits = zedId.length > 7 ? zedId.slice(7) : zedId;
+  const digits = certificateSerial(zedId);
   return format
     .replaceAll('{DDMMYYYY}', `${p(date.getDate())}${p(date.getMonth() + 1)}${yyyy}`)
     .replaceAll('{YYYY}', yyyy)
@@ -120,7 +130,8 @@ export function formatCertificateNo(format: string, date: Date, zedId: string, l
     .replaceAll('{CAT}', category === 'Services' ? 'S' : category === 'Manufacturing' ? 'M' : '');
 }
 
-const SAMPLE_ZED_ID = 'ZEDMSME129350';
+/** A new unit's ZED ID for the previews (ZEDM / ZEDS by sector since migration 0051). */
+const sampleZedId = (category: 'Manufacturing' | 'Services' | null) => (category === 'Services' ? 'ZEDS000123' : 'ZEDM000123');
 
 /** The colour of a level's card and preview (the dashboard boxes' colours; teal for the others). */
 const ACCENTS: Record<string, string> = { BRONZE: '#d07b5c', SILVER: '#9aa5ab', GOLD: '#c9a227', ZEDX: '#3f8f96' };
@@ -601,7 +612,7 @@ export class CertificationLevelsPage {
   }
 
   protected preview(format: string, code: string, category: 'Manufacturing' | 'Services' | null): string {
-    return formatCertificateNo(format, new Date(), SAMPLE_ZED_ID, code || 'LEVEL', category);
+    return formatCertificateNo(format, new Date(), sampleZedId(category), code || 'LEVEL', category);
   }
 
   protected logoOf(code: string): string | null {

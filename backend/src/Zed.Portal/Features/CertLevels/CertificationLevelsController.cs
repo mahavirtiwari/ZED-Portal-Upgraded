@@ -37,7 +37,7 @@ public sealed partial class CertificationLevelsController(
     }
 
     internal static LevelItem Item(CertificationLevel l) =>
-        new(l, CertificateNumbers.Format(l.CertNoFormat, DateTime.Today, "ZEDMSME129350", l.Code, null), LogoUrl(l));
+        new(l, CertificateNumbers.Format(l.CertNoFormat, DateTime.Today, "ZEDM000123", l.Code, null), LogoUrl(l));
 
     /// <summary>The level's logo: the uploaded one, or the built-in picture of Bronze / Silver / Gold.</summary>
     public static string? LogoUrl(CertificationLevel l) =>

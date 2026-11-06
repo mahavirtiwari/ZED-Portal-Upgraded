@@ -482,10 +482,12 @@ public sealed class ErpFinanceModuleTests
     private readonly FakeSql _sql = new();
     private readonly List<Uri> _posted = [];
 
+    private readonly InvoicesOnSettings _settings = new();
+
     private ErpFinanceService Service() => new(
         new HttpClient(new StubHandler(_posted)), _sql,
         Options.Create(new ErpOptions { Enabled = true, TenantId = "tenant", ClientId = "id", ClientSecret = "secret", CompanyBaseUrl = "https://erp.example.test/company" }),
-        NullLogger<ErpFinanceService>.Instance);
+        _settings, NullLogger<ErpFinanceService>.Instance);
 
     public ErpFinanceModuleTests()
     {
@@ -513,6 +515,16 @@ public sealed class ErpFinanceModuleTests
         var log = Assert.Single(_sql.Calls, c => c.Name == "SP_API_FINANCE_UNIT_DETAILS_RESPONSE");
         Assert.Equal(module, FakeSql.Arg(log.Args, "ModuleName"));
         Assert.Equal("OK", FakeSql.Arg(log.Args, "StatusCode"));
+    }
+
+    [Fact]
+    public async Task Nothing_is_posted_while_invoices_are_off()
+    {
+        // Admin → Settings → Payment Gateway and Invoices: off is the default (no row).
+        _settings.Values.Clear();
+        await Service().PushAsync(new ErpPush("ZEDM000001", "Bronze", ErpDocument.Invoice, "ZED"));
+        Assert.Empty(_sql.Calls);
+        Assert.Empty(_posted);
     }
 
     [Fact]

@@ -2,6 +2,9 @@
   "_comment": "Copy to the server (e.g. D:\\ZedV4\\settings.json), fill in, restrict to administrators. Never commit the filled copy. Keys are environment variable names: ':' becomes '__'. Sections are merged in order: 'Common' (every application), then 'Portals' (main, Consultancy, Surveillance) or 'Mobile' (the three mobile deployments), then the application's own section, which wins. Install-ZedIis.ps1 adds ASPNETCORE_ENVIRONMENT=Production, DataProtection__KeysPath (per application) and Mobile__System itself. Each host refuses to start and lists what is missing (docs/CUTOVER.md).",
   "Common": {
     "ConnectionStrings__Main": "",
+    "_Database_comment": "Production on https://zedv3.qci.org.in runs on the ZEDV4_ databases (docs/PRODUCTION.md): both settings, in every application and Zed.Jobs. Leave both empty for databases with their plain names.",
+    "Database__Prefix": "ZEDV4_",
+    "Database__AllowPrefixInProduction": "true",
     "_AppTokenKey_comment": "Secret: base64 of 32 random bytes (e.g. [Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))). Signs the mobile apps' sign-in tokens; the mobile hosts issue them and the portals check the apps' calls to them, so it is here for all. Set it before any app is enforced (docs/MOBILE-API.md, App sign-in token).",
     "Mobile__AppTokenKey": ""
   },
@@ -25,7 +28,7 @@
     "_comment": "IIS application /. Consultancy and Surveillance connections: a read-only login (EXECUTE on the report procedures).",
     "ConnectionStrings__Consultancy": "",
     "ConnectionStrings__Surveillance": "",
-    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in",
     "Portal__StorageRoot": "",
     "Portal__AssessmentStorageRoot": "",
     "Udyam__AccessKey": "",
@@ -45,7 +48,7 @@
     "_comment": "IIS application /Consultancy. StorageRoot: the same folder as main's.",
     "ConnectionStrings__Consultancy": "",
     "Portal__PathBase": "/Consultancy",
-    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in/Consultancy",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/Consultancy",
     "Portal__LegacyBaseUrl": "https://loginzed.msme.gov.in/Consultancy",
     "Portal__StorageRoot": "",
     "Consultancy__SharedStorageRoot": ""
@@ -54,7 +57,7 @@
     "_comment": "IIS application /surveillance. StorageRoot: the same folder as main's.",
     "ConnectionStrings__Surveillance": "",
     "Portal__PathBase": "/surveillance",
-    "Portal__PublicBaseUrl": "https://loginzed.msme.gov.in/surveillance",
+    "Portal__PublicBaseUrl": "https://zedv3.qci.org.in/surveillance",
     "Portal__LegacyBaseUrl": "https://loginzed.msme.gov.in/surveillance",
     "Portal__StorageRoot": ""
   },

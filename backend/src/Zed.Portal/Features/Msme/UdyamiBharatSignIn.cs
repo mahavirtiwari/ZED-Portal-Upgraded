@@ -128,7 +128,7 @@ public sealed partial class UdyamiBharatSignInController(
     {
         if (!options.Value.Enabled) return this.Problem400("Sign-in from Udyami Bharat is not available at the moment. Please use the MSME login.");
         var zedId = req.ApplicationNo?.Trim().ToUpperInvariant() ?? "";
-        if (!ZedId().IsMatch(zedId) || string.IsNullOrWhiteSpace(req.Token) || req.Token.Length > 4000)
+        if (!Zed.Core.Data.ZedIds.IsUnitId(zedId) || string.IsNullOrWhiteSpace(req.Token) || req.Token.Length > 4000)
             return this.Problem400("Invalid token.");
 
         UdyamiVerification result;
@@ -183,6 +183,4 @@ public sealed partial class UdyamiBharatSignInController(
             : null;
     }
 
-    [GeneratedRegex(@"^ZEDMSME\d{1,12}$")]
-    private static partial Regex ZedId();
 }

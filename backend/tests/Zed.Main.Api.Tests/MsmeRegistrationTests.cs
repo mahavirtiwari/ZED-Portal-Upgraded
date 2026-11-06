@@ -14,7 +14,7 @@ public sealed partial class MsmeRegistrationTests : IDisposable
     {
         // [0] plant not yet registered, [1] activity eligible, [2] e-mail usage ok.
         _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ =>
-            FakeSql.Sets([], [new { TwoDigitActivity = "24" }], [new { EmailCountStatus = "0", ErrorMessage = "" }]);
+            FakeSql.Sets([], [new { TwoDigitActivity = "24", SectorType = "Manufacturing" }], [new { EmailCountStatus = "0", ErrorMessage = "" }]);
         _host.Sql.Procs["SP_MSME_INSERT_UDYAM_DETAILS"] = _ => FakeSql.Sets([new
         {
             ZedId = "ZEDMSME999001", MsmeId = "1", Password = "x7k2m9p4q3", CertificateNo = "ZED/PLEDGE/0001",
@@ -109,7 +109,7 @@ public sealed partial class MsmeRegistrationTests : IDisposable
     [Fact]
     public async Task Already_registered_plant_is_rejected()
     {
-        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000002" }], [new { TwoDigitActivity = "24" }]);
+        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000002" }], [new { TwoDigitActivity = "24", SectorType = "Manufacturing" }]);
         var (client, id) = await StartAsync();
         var r = await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 0, activityIndex = 0 });
         Assert.Equal("Selected Plant already registered.", await r.ProblemTitle());

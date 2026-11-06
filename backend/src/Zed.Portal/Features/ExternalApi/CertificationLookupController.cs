@@ -346,9 +346,8 @@ public static class CertificationLookups
             });
     }
 
-    /// <summary>ZEDMSME followed by digits: the only ZED ID shape used to build file paths.</summary>
-    public static bool IsZedId(string? value) =>
-        value is { Length: > 7 and <= 30 } && value.StartsWith("ZEDMSME", StringComparison.OrdinalIgnoreCase) && value[7..].All(char.IsAsciiDigit);
+    /// <summary>A unit's ZED ID (ZEDMSME000123, or ZEDM000123 / ZEDS000123 since migration 0051): the only shapes used to build file paths.</summary>
+    public static bool IsZedId(string? value) => Zed.Core.Data.ZedIds.IsUnitId(value);
 
     /// <summary>A stored file by its legacy relative path (Certificates ⇄ Certifications tried), or null.</summary>
     public static string? FindStoredFile(IWebHostEnvironment env, PortalOptions portal, string legacyPath)

@@ -834,7 +834,7 @@ public sealed class ConsultancyPaymentErpTests
     private ErpFinanceService Service() => new(
         new HttpClient(new StubHandler(_posted)), _sql,
         Options.Create(new ErpOptions { Enabled = true, TenantId = "tenant", ClientId = "id", ClientSecret = "secret", CompanyBaseUrl = "https://erp.example.test/company" }),
-        NullLogger<ErpFinanceService>.Instance);
+        new InvoicesOnSettings(), NullLogger<ErpFinanceService>.Instance);
 
     public ConsultancyPaymentErpTests()
     {

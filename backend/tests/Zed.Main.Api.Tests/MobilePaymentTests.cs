@@ -185,6 +185,17 @@ public sealed class MobilePaymentTests : IDisposable
     }
 
     [Fact]
+    public async Task GetToken_is_refused_while_the_admin_has_switched_online_payments_off()
+    {
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ => [new { SettingKey = Zed.Core.Payments.PaymentSwitch.EnabledKey, SettingValue = "false" }];
+        var json = await Json(await Client().PostAsync("/Pay/GetToken", new FormUrlEncodedContent(Request())));
+        Assert.Equal("0", json.GetProperty("status").GetString());
+        Assert.Equal(Zed.Core.Payments.PaymentSwitch.OffMessage, json.GetProperty("errorMessage").GetString());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_PAYMENT_BASIC_DETAILS");
+        Assert.Empty(_gateway.TokenOrders);
+    }
+
+    [Fact]
     public async Task GetToken_refuses_when_the_procedure_amount_differs_from_the_fee_row()
     {
         _host.Sql.Procs["SP_MSME_PAYMENT_BASIC_DETAILS"] = _ => FakeSql.Sets([new { AmountToBePaid = "1.00", TransactionId = "100002" }]);

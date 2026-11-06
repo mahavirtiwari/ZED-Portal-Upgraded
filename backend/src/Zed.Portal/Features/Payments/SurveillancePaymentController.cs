@@ -249,6 +249,9 @@ public sealed class SurveillancePaymentController(
 
         var expected = fee.Payable(tds);
         // The procedure needs the order id from the caller (SurveillancePayController.Complete used a GUID).
+        // Admin → Settings → Payment Gateway and Invoices: online payments switched off (an amount of zero was recorded above).
+        if (!await PaymentSwitch.IsOnAsync(HttpContext.RequestServices.GetRequiredService<Zed.Core.Data.IPortalSettings>(), ct))
+            return this.Problem400(PaymentSwitch.OffMessage);
         var orderId = Guid.NewGuid().ToString();
         var args = new
         {

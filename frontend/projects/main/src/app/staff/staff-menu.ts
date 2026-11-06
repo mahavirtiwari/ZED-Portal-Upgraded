@@ -160,6 +160,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
   { label: 'Captcha Settings', route: '/staff/settings/captcha', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Settings', route: '/staff/settings/email', roles: [R.Admin], menu: 'Administration' },
+  // New in V4: the CCAvenue account and the invoice switch (main portal only: payments run there).
+  { label: 'Payment Gateway and Invoices', route: '/staff/settings/payment-gateway', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },

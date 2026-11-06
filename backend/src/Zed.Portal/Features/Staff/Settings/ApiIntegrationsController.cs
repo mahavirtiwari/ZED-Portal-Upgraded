@@ -89,8 +89,8 @@ public sealed class ApiIntegrationsController(ISqlExecutor db, IPortalSettings s
     /// <summary>The services ZED calls (from the legacy code; for information: they are configured on the server).</summary>
     public static readonly IReadOnlyList<OutboundItem> Outbound =
     [
-        new("CCAvenue payment gateway", "Certification, handholding and surveillance fee payments", "Server configuration (CcAvenue)", true),
-        new("QCI ERP (Business Central)", "Customer, invoice and receipt posting after a payment", "Server configuration (Erp)", true),
+        new("CCAvenue payment gateway", "Certification, handholding and surveillance fee payments", "Administration → Settings → Payment Gateway and Invoices (or the server configuration, CcAvenue)", true),
+        new("QCI ERP (Business Central)", "Customer, invoice and receipt posting after a payment", "Server configuration (Erp); switch: Payment Gateway and Invoices → Invoices", true),
         new("Udyam registration (MoMSME)", "Udyam number check at MSME registration", "Server configuration (Udyam)", true),
         new("GSTIN verification (Protean)", "GSTIN check on the payment page", "Server configuration (Protean)", true),
         new("Udyami Bharat portal", "Verifies the sign-in token of units coming from UBP", "Server configuration (UdyamiBharat); switch: Udyami Bharat sign-in", true),

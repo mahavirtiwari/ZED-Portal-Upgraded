@@ -16,6 +16,13 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./captcha-settings').then((m) => m.CaptchaSettingsPage),
   },
+  // New in V4: the CCAvenue account and the invoice switch (main portal; the API refuses the others).
+  {
+    path: 'payment-gateway',
+    title: 'ZED | Payment Gateway and Invoices',
+    canActivate: [admin],
+    loadComponent: () => import('./payment-gateway').then((m) => m.PaymentGatewayPage),
+  },
   {
     path: 'email',
     title: 'ZED | Email Settings',

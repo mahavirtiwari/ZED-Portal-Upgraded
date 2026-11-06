@@ -26,7 +26,7 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
     {
         // [0] plant not yet registered, [1] activity eligible, [2] e-mail usage ok.
         _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ =>
-            FakeSql.Sets([], [new { TwoDigitActivity = "24" }], [new { EmailCountStatus = "0", ErrorMessage = "" }]);
+            FakeSql.Sets([], [new { TwoDigitActivity = "24", SectorType = "Manufacturing" }], [new { EmailCountStatus = "0", ErrorMessage = "" }]);
         _host.Sql.Procs["SP_MSME_INSERT_UDYAM_DETAILS"] = _ => FakeSql.Sets([new
         {
             ZedId = "ZEDMSME999002", MsmeId = "2", Password = "unused", CertificateNo = "ZED/PLEDGE/0002",
@@ -213,7 +213,7 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
         var plant = new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" };
 
-        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000777" }], [new { TwoDigitActivity = "24" }], []);
+        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000777" }], [new { TwoDigitActivity = "24", SectorType = "Manufacturing" }], []);
         Assert.Equal(("0", MsmeRegistrationService.AlreadyRegistered), await Answer(await Post(app, "ValidatePlantAndActivity", plant)));
         Assert.Equal(("0", MsmeRegistrationService.AlreadyRegistered), await Answer(await Post(app, "FinalSubmit", RegistrationBody())));
 
@@ -224,6 +224,20 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         Assert.Equal(("0", MsmeAppRegistrationController.UamNotSupported), await Answer(await Post(app, "FinalSubmit", RegistrationBody(type: "UAM"))));
         Assert.Equal(("0", MsmeAppRegistrationController.InvalidData),
             await Answer(await Post(app, "ValidatePlantAndActivity", new Dictionary<string, string> { ["UdyogAadharNo"] = "not-a-number", ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" })));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
+    }
+
+    [Fact]
+    public async Task A_sector_without_a_type_is_refused_before_the_unit_submits()
+    {
+        var app = _host.CreateClient();
+        var otp = await CaptchaPlantAndOtpAsync(app);
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
+        var plant = new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" };
+        // Migration 0051: the new ZED ID (ZEDM / ZEDS) needs the sector's type in Masters → Sectors.
+        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([], [new { TwoDigitActivity = "24", SectorType = (string?)null }], []);
+        Assert.Equal(("0", MsmeRegistrationService.SectorTypeMissing), await Answer(await Post(app, "ValidatePlantAndActivity", plant)));
+        Assert.Equal(("0", MsmeRegistrationService.SectorTypeMissing), await Answer(await Post(app, "FinalSubmit", RegistrationBody())));
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
     }
 

@@ -46,7 +46,7 @@ public interface IErpFinanceService
 }
 
 public sealed class ErpFinanceService(
-    HttpClient http, ISqlExecutor db, IOptions<ErpOptions> options, ILogger<ErpFinanceService> log) : IErpFinanceService
+    HttpClient http, ISqlExecutor db, IOptions<ErpOptions> options, IPortalSettings settings, ILogger<ErpFinanceService> log) : IErpFinanceService
 {
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
@@ -56,6 +56,12 @@ public sealed class ErpFinanceService(
         if (!o.Enabled)
         {
             log.LogInformation("ERP disabled; skipped {Document} for {ZedId}/{Certification}", push.Document, push.ZedId, push.Certification);
+            return;
+        }
+        // Admin → Settings → Payment Gateway and Invoices: invoices off (the default) means nothing is posted.
+        if (!await Zed.Core.Payments.InvoiceSettings.IsEnabledAsync(settings, ct))
+        {
+            log.LogInformation("Invoices are off; skipped {Document} for {ZedId}/{Certification}", push.Document, push.ZedId, push.Certification);
             return;
         }
 

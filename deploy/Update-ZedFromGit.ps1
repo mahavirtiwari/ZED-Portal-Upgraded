@@ -35,16 +35,18 @@
                     the previous version runs on them.
 
   -Rollback <backup folder> -Apply puts a backup back by hand (for example the day after an update).
-  -Environment Staging (default) or Production chooses the site, the database prefix, the address and the test
-  options; every one of them can also be given on its own. Log: <InstallRoot>\logs\update-<time>.log.
+  -Environment Production (default: https://zedv3.qci.org.in, site ZEDV4, the ZEDV4_ databases on .\SQLEXPRESS) or
+  Staging (the same, with the test checks) chooses the site, the database prefix, the address and the test options;
+  every one of them can also be given on its own. Production needs the server's settings file set for Production
+  first (docs/PRODUCTION.md): with the test settings still there, the smoke test fails and the update is rolled back. Log: <InstallRoot>\logs\update-<time>.log.
   Windows PowerShell 5.1 or later, in an administrator PowerShell.
 
 .EXAMPLE
   .\deploy\Update-ZedFromGit.ps1
-  Dry run on staging: shows the installed version, the commit main points at and the database plan. Nothing changes.
+  Dry run on production: shows the installed version, the commit main points at and the database plan. Nothing changes.
 .EXAMPLE
   .\deploy\Update-ZedFromGit.ps1 -Apply -IncludeMailOutbox
-  Staging: builds main, backs up, runs the migrations (and 0003 again), installs the three portals, tests.
+  Production: builds main, backs up, runs the migrations (and 0003 again), installs the three portals, tests.
 .EXAMPLE
   .\deploy\Update-ZedFromGit.ps1 -Ref 254cfd6 -IncludeMobile -IncludeJobs -Apply
   A chosen commit, with the mobile hosts and Zed.Jobs.
@@ -59,7 +61,7 @@
 #>
 [CmdletBinding(DefaultParameterSetName = 'Update')]
 param(
-    [ValidateSet('Staging', 'Production')][string]$Environment = 'Staging',
+    [ValidateSet('Production', 'Staging')][string]$Environment = 'Production',
     [Parameter(ParameterSetName = 'Update')][string]$Ref = 'main',
     [Parameter(ParameterSetName = 'Update')][string]$RepoUrl = 'https://github.com/mahavirtiwari/ZED-Portal-Upgraded.git',
     # A package folder or .zip to install instead of building one.
@@ -101,8 +103,10 @@ $started = Get-Date
 
 # Per environment; anything given on the command line wins.
 $preset = @{
+    # Production is https://zedv3.qci.org.in on this server (2026-11-06, docs/PRODUCTION.md): site ZEDV4, the ZEDV4_ databases
+    # on .\SQLEXPRESS. Staging keeps the same site with the test checks (noindex), for a test copy set up like before.
+    Production = @{ SiteName = 'ZEDV4'; DatabasePrefix = 'ZEDV4_'; SqlServer = '.\SQLEXPRESS'; BaseUrl = 'https://zedv3.qci.org.in'; Trust = $true; NoIndex = $false }
     Staging    = @{ SiteName = 'ZEDV4'; DatabasePrefix = 'ZEDV4_'; SqlServer = '.\SQLEXPRESS'; BaseUrl = 'https://zedv3.qci.org.in'; Trust = $true; NoIndex = $true }
-    Production = @{ SiteName = 'Default Web Site'; DatabasePrefix = ''; SqlServer = $null; BaseUrl = 'https://loginzed.msme.gov.in'; Trust = $false; NoIndex = $false }
 }[$Environment]
 if (-not $PSBoundParameters.ContainsKey('SiteName')) { $SiteName = $preset.SiteName }
 if (-not $PSBoundParameters.ContainsKey('DatabasePrefix')) { $DatabasePrefix = $preset.DatabasePrefix }

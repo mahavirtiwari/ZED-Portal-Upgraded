@@ -64,7 +64,7 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.True(list.GetProperty("stored").GetBoolean());
         var zedx = list.GetProperty("levels")[2];
         Assert.Equal("ZED-X", zedx.GetProperty("level").GetProperty("name").GetString());
-        Assert.Matches(@"^\d{8}_129350$", zedx.GetProperty("sample").GetString());
+        Assert.Matches(@"^\d{8}_M000123$", zedx.GetProperty("sample").GetString());
         Assert.Equal("/Images/Dashboard/bronze.png", list.GetProperty("levels")[0].GetProperty("logoUrl").GetString());
 
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync($"{Url}/Platinum", Level())).StatusCode);

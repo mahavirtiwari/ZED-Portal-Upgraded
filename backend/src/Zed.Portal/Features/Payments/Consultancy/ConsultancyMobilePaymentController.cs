@@ -54,6 +54,9 @@ public sealed partial class ConsultancyMobilePaymentController(
     public async Task<IActionResult> GetToken(PaymentsViewModel model, CancellationToken ct)
     {
         var o = ccavenue.Value;
+        // Admin → Settings → Payment Gateway and Invoices: online payments switched off.
+        if (!await PaymentSwitch.IsOnAsync(HttpContext.RequestServices.GetRequiredService<Zed.Core.Data.IPortalSettings>(), ct))
+            return Refuse(PaymentSwitch.OffMessage);
         if (string.IsNullOrEmpty(o.MerchantId) || string.IsNullOrEmpty(o.MobileAccessCode) || string.IsNullOrEmpty(o.MobileWorkingKey))
         {
             log.LogError("CCAvenue mobile access code or working key is not configured");

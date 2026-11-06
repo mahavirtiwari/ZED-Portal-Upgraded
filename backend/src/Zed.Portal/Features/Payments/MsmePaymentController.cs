@@ -213,6 +213,9 @@ public sealed class MsmePaymentController(
             return new CheckoutResponse("paid");
         }
 
+        // Admin → Settings → Payment Gateway and Invoices: online payments switched off (an amount of zero was recorded above).
+        if (!await PaymentSwitch.IsOnAsync(HttpContext.RequestServices.GetRequiredService<Zed.Core.Data.IPortalSettings>(), ct))
+            return this.Problem400(PaymentSwitch.OffMessage);
         var expected = fee.Payable(tds);
         var row = (await db.QueryProcMultipleAsync("SP_MSME_PAYMENT_BASIC_DETAILS", args, ct))[0].FirstOrDefault();
         if (row is null) return this.Problem400("Payment is already done for this certification.");

@@ -150,7 +150,8 @@ public static class CertificationLevels
 
 /// <summary>
 /// Certificate numbers from the Admin's format. Tokens: {DDMMYYYY} {DD} {MM} {YYYY} {YY} (the date of certification),
-/// {ZEDID} (ZEDMSME129350), {ZEDNO} (its digits, 129350), {LEVEL} (the level's code) and {CAT} (M for Manufacturing,
+/// {ZEDID} (ZEDMSME129350), {ZEDNO} (its serial: 129350 for ZEDMSME129350, M000123 for ZEDM000123, S000045 for ZEDS000045;
+/// <see cref="Zed.Core.Data.ZedIds.CertificateSerial"/>), {LEVEL} (the level's code) and {CAT} (M for Manufacturing,
 /// S for Services). Today's number is {DDMMYYYY}_{ZEDNO} (SP_MONITORING_DA/RA_FINAL_SUBMIT).
 /// </summary>
 public static partial class CertificateNumbers
@@ -181,7 +182,7 @@ public static partial class CertificateNumbers
 
     public static string Format(string format, DateTime date, string zedId, string level, string? category)
     {
-        var digits = zedId.Length > 7 ? zedId[7..] : zedId;
+        var digits = Zed.Core.Data.ZedIds.CertificateSerial(zedId);
         var cat = string.Equals(category, "Services", StringComparison.OrdinalIgnoreCase) ? "S"
             : string.Equals(category, "Manufacturing", StringComparison.OrdinalIgnoreCase) ? "M" : "";
         return format

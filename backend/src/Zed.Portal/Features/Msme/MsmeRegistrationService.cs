@@ -24,13 +24,16 @@ public sealed class MsmeRegistrationService(
 {
     public const string AlreadyRegistered = "Selected Plant already registered.";
     public const string NotApplicable = "Currently this scheme is not applicable for the selected plant activity.";
+    /// <summary>The selected activity's NIC sector has no type in Masters → Sectors: the new ZED ID (ZEDM / ZEDS) cannot be made.</summary>
+    public const string SectorTypeMissing =
+        "The sector (Manufacturing / Services) of the selected plant activity is not set yet. Please contact the ZED team.";
     public const string RegistrationFailed = "Registrtion failed. Try again after some time.";
     public const string RegistrationSubject = "Registration Details and Pledge Certificate for “MSME Sustainable (ZED) Certification” Scheme - ";
 
     /// <summary>The MSME created by <see cref="CompleteAsync"/>.</summary>
     public sealed record Registered(string ZedId, string UnitName, bool EmailSent, ZedUser User);
 
-    /// <summary>SP_MSME_VALIDATE_UDYAM_DETAILS: [0] plant already registered, [1] eligible activity, [2] e-mail usage limit.</summary>
+    /// <summary>SP_MSME_VALIDATE_UDYAM_DETAILS: [0] plant already registered, [1] eligible activity (with its sector type), [2] e-mail usage limit.</summary>
     public async Task<string?> CheckEligibilityAsync(string? udyogAadharNo, string? plantIdNo, string? twoDigitActivity,
         string? emailId, string? ip, CancellationToken ct)
     {
@@ -45,6 +48,8 @@ public sealed class MsmeRegistrationService(
 
         if (sets[0].Count > 0) return AlreadyRegistered;
         if (sets[1].Count == 0) return NotApplicable;
+        // Migration 0051: the ZED ID carries the sector (ZEDM / ZEDS), taken only from Masters → Sectors (SectorType).
+        if (!sets[1].Any(r => r.Text("SectorType") is "Manufacturing" or "Services")) return SectorTypeMissing;
         if (emailId is not null && sets.Count > 2 && sets[2].FirstOrDefault() is { } limit && limit.Text("EmailCountStatus") == "1")
             return limit.Text("ErrorMessage");
         return null;

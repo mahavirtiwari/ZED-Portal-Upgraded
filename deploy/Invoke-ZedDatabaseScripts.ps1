@@ -13,7 +13,7 @@
            0011 all three | 0012 all three | 0013 all three |
            0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
            0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE | 0043 ZEDCS_V2_LIVE, ZED_SURVEILLANCE |
-           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE
+           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE | 0051 ZEDCS_V2_LIVE | 0052 ZED_CONSULTANT, ZED_SURVEILLANCE (after 0051)
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -160,6 +160,8 @@ $Migrations = @(
     # Runs once (a data change): the extended property it leaves is the marker.
     @{ File = '0049_first_surveillance_due_date_existing.sql'; Dbs = @($Main); Markers = @('EP:dbo.MsmeCertifications:V4_0049_FirstSurveDueDate') }
     @{ File = '0050_second_surveillance_due_date.sql'; Dbs = @($Main); Markers = @('FN:dbo.FN_V4_SECOND_SURVEILLANCE_MONTHS', 'DEF:dbo.SP_MONITORING_RA_FINAL_SUBMIT:FN_V4_SECOND_SURVEILLANCE_MONTHS', 'DEF:dbo.SP_VERIFY_QR_CODE:SecondSurveDueDate', 'EP:dbo.MsmeCertifications:V4_0050_SecondSurveDueDate') }
+    @{ File = '0051_zed_id_format_and_invoices.sql'; Dbs = @($Main); Markers = @('SO:dbo.V4ZedIdManufacturingSequence', 'SO:dbo.V4ZedIdServicesSequence', 'SO:dbo.V4InvoiceManufacturingSequence', 'SO:dbo.V4InvoiceServicesSequence', 'FN:dbo.FN_V4_CERTIFICATE_SERIAL', 'DEF:dbo.SP_MSME_INSERT_UDYAM_DETAILS:V4ZedIdManufacturingSequence', 'DEF:dbo.SP_MONITORING_DA_FINAL_SUBMIT:FN_V4_CERTIFICATE_SERIAL', 'DEF:dbo.SP_MONITORING_RA_FINAL_SUBMIT:FN_V4_CERTIFICATE_SERIAL', 'DEF:dbo.SP_GENERATE_NEXT_ZED_INVOICE_NO:V4InvoiceManufacturingSequence', 'DEF:dbo.SP_MSME_PAYMENT_GATEWAY_DETAILS:OUTPUT, @ZedId = @ZedId') }
+    @{ File = '0052_invoice_numbers_by_sector.sql'; Dbs = @($Cons, $Surv); Markers = @('DEF:dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS:OUTPUT, @ZedId = @ZedId', 'DEF:dbo.SP_MSME_MANUAL_UPDATE_PAYMENT_GATEWAY_DETAILS_WITH_INFO:OUTPUT, @ZedId = @ZedId') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

@@ -11,12 +11,16 @@ namespace Zed.Core.Data;
 /// second set on the same instance (the V4 staging set next to an older one) carries a prefix, <c>Database:Prefix</c>
 /// (e.g. <c>ZEDV4_</c>: ZEDV4_ZEDCS_V2_LIVE, ZEDV4_ZED_CONSULTANT, ...; database\setup.ps1 -DatabasePrefix builds it).
 /// <see cref="SqlExecutor"/> maps the names in inline SQL with <see cref="Map(string)"/>; the procedures of a prefixed set
-/// were mapped when it was built. Same rules as database\ZedDatabaseNames.ps1. Never in Production: the live
-/// databases have their own names (<see cref="Problems"/>).
+/// were mapped when it was built. Same rules as database\ZedDatabaseNames.ps1. In Production only with
+/// <c>Database:AllowPrefixInProduction=true</c> (<see cref="Problems"/>): the production server
+/// https://zedv3.qci.org.in runs on the ZEDV4_ set, built under that prefix next to older ZED databases of the same
+/// SQL Server instance (docs/PRODUCTION.md).
 /// </summary>
 public static partial class ZedDatabaseNames
 {
     public const string PrefixSetting = "Database:Prefix";
+    /// <summary>Production on a prefixed set (the ZEDV4_ databases of https://zedv3.qci.org.in): set it to true on purpose.</summary>
+    public const string AllowInProductionSetting = "Database:AllowPrefixInProduction";
 
     /// <summary>The logical names, as the scripts and the code write them.</summary>
     public static readonly IReadOnlyList<string> Logical =
@@ -79,7 +83,8 @@ public static partial class ZedDatabaseNames
     {
         var prefix = config[PrefixSetting];
         if (string.IsNullOrWhiteSpace(prefix)) return [];
-        if (env.IsProduction()) return [$"{PrefixSetting} is set: the live databases have their own names, never a prefix"];
+        if (env.IsProduction() && !config.GetValue<bool>(AllowInProductionSetting))
+            return [$"{PrefixSetting} is set in Production: set {AllowInProductionSetting}=true when the production databases carry this prefix (docs/PRODUCTION.md)"];
         return PrefixPattern().IsMatch(prefix.Trim()) ? [] : [$"{PrefixSetting} '{prefix}': use letters, digits and _ only (at most 20, starting with a letter)"];
     }
 

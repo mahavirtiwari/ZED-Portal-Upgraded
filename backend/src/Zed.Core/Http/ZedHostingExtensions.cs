@@ -40,6 +40,12 @@ public static class ZedHostingExtensions
         services.AddZedAuthentication(authCookieName);
         services.AddZedDataProtection(config, applicationName: authCookieName);
         services.AddZedServices(config, defaultDatabase);
+        // Admin → Settings → Payment Gateway and Invoices: a saved CCAvenue account replaces the file's (read every 30 s).
+        // Portals only: the payments run there, the mobile API hosts take none.
+        services.AddSingleton<CcAvenueSettings>();
+        services.AddHostedService<CcAvenueSettingsRefresher>();
+        services.AddTransient<Microsoft.Extensions.Options.IOptions<CcAvenueOptions>>(sp =>
+            Microsoft.Extensions.Options.Options.Create(sp.GetRequiredService<CcAvenueSettings>().Current));
         return services;
     }
 

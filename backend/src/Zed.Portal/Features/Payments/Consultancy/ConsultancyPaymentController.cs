@@ -218,6 +218,9 @@ public sealed class ConsultancyPaymentController(
         }
 
         var expected = fee.Payable(tds);
+        // Admin → Settings → Payment Gateway and Invoices: online payments switched off (an amount of zero was recorded above).
+        if (!await PaymentSwitch.IsOnAsync(HttpContext.RequestServices.GetRequiredService<Zed.Core.Data.IPortalSettings>(), ct))
+            return this.Problem400(PaymentSwitch.OffMessage);
         var orderId = Guid.NewGuid().ToString();   // ConsultancyPayController.Complete used a GUID too
         var row = (await db.QueryProcMultipleAsync("SP_CONSULTANCY_MSME_PAYMENT_BASIC_DETAILS", choices.Args(orderId), ct))[0].FirstOrDefault();
         if (row is null) return this.Problem400("Payment is already done for this milestone.");

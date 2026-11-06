@@ -163,7 +163,7 @@ public sealed class ProductionHostingTests : IDisposable
     [Theory]
     [InlineData(ZedHostKind.Portal)]
     [InlineData(ZedHostKind.Mobile)]
-    public void A_database_prefix_is_for_test_environments_only(ZedHostKind kind)
+    public void A_database_prefix_in_production_needs_the_explicit_setting(ZedHostKind kind)
     {
         var s = StagingMain();
         s["Mobile:StorageRoot"] = folder;
@@ -177,6 +177,10 @@ public sealed class ProductionHostingTests : IDisposable
         live["Mobile:StorageRoot"] = folder;
         live["Database:Prefix"] = "ZEDV4_";
         Assert.Contains(Check(live, kind: kind), p => p.StartsWith("Database:Prefix is set"));
+
+        // https://zedv3.qci.org.in: production on the ZEDV4_ databases, allowed on purpose (docs/PRODUCTION.md).
+        live["Database:AllowPrefixInProduction"] = "true";
+        Assert.Empty(Check(live, kind: kind));
     }
 
     [Fact]
