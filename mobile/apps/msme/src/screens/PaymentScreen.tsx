@@ -116,7 +116,10 @@ export function PaymentScreen() {
   const onPaymentClick = async (request: PaymentTokenRequest) => {
     ui.showLoading();
     try {
-      if (Number(request.Amount) === 0) {
+      // An empty amount is not a zero one (Number('') is 0): never a free payment for an amount the app does not have.
+      const amount = request.Amount.trim() === '' ? NaN : Number(request.Amount);
+      if (!Number.isFinite(amount)) return ui.showAlert('The amount to pay could not be worked out. Go back and open the payment again.');
+      if (amount === 0) {
         const r = await app.api.submitZeroPaymentDetails(request);
         if (isSuccess(r)) {
           setSuccess(true);

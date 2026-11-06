@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
+import { AppErrorBoundary, AppStartError, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
 import { SaAppProvider, useSa } from './src/app/context';
 import { SaApp } from './src/app/SaApp';
@@ -75,19 +75,27 @@ const RETRY_INTERVAL_MS = 30_000;
 
 export default function App() {
   const [app, setApp] = useState<SaApp | null>(null);
+  // New in V4: the local database did not open (storage full, a damaged file): an error page with RETRY, not an endless spinner.
+  const [startFailed, setStartFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    SaApp.open(openDatabase).then(a => {
-      registerHandlers(a);
-      if (alive) setApp(a);
-      // New: Admin texts and the Basic Information form at start (the last answer is used offline).
-      a.refreshServerContent().catch(() => undefined);
-    });
+    setStartFailed(false);
+    SaApp.open(openDatabase)
+      .then(a => {
+        registerHandlers(a);
+        if (alive) setApp(a);
+        // New: Admin texts and the Basic Information form at start (the last answer is used offline).
+        a.refreshServerContent().catch(() => undefined);
+      })
+      .catch(() => {
+        if (alive) setStartFailed(true);
+      });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [attempt]);
 
   // Offline sync triggers: the connection returns, the app comes to the foreground, and a periodic retry.
   useEffect(() => {
@@ -107,9 +115,13 @@ export default function App() {
     <SafeAreaProvider>
       <UiHost>
         {app ? (
-          <SaAppProvider app={app}>
-            <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
-          </SaAppProvider>
+          <AppErrorBoundary>
+            <SaAppProvider app={app}>
+              <StackNavigator screens={SCREENS} initial={{ name: 'Splash' }} overlay={<SessionExpiryGate session={app.session} loginRoute="Login" />} />
+            </SaAppProvider>
+          </AppErrorBoundary>
+        ) : startFailed ? (
+          <AppStartError onRetry={() => setAttempt(n => n + 1)} />
         ) : (
           <View style={styles.loading}>
             <ActivityIndicator color={C.primary} />

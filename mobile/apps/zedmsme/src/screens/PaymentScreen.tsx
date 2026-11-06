@@ -37,6 +37,8 @@ const TDS_TEN = '10';
 // The disclaimer, instructions, joining reward notes and result messages are Admin texts (app.msme.certification.payment.*,
 // app.msme.payment.*), the legacy wording until the server's arrives.
 const PAYMENT_ERROR = 'Unknown error occurred while making the payment';
+const FEE_ERROR = 'The fee could not be loaded. Check your internet connection and try again.';
+const AMOUNT_ERROR = 'The amount to pay could not be worked out. Go back and open the payment again.';
 
 /** BigDecimal.toString of the server's amounts. */
 const num = (v: number | null | undefined) => (v == null ? '' : String(v));
@@ -86,20 +88,31 @@ export function PaymentScreen() {
   const type = useRoute<{ certificationType: CertificationType }>().params.certificationType;
   const [page, setPage] = useState(0);
   const [response, setResponse] = useState<PaymentDetailsResponse | null>(null);
+  // New in V4: the fee could not be loaded (no connection, a server error, no fee row): a message with BACK / RETRY
+  // instead of the disclaimer and an empty summary that led nowhere.
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean | null>(null);
   const zedId = app.user?.MsmeDetails?.ZedId ?? '';
 
+  const loadFee = async () => {
+    ui.showLoading();
+    setLoadError(null);
+    try {
+      const r = await app.api.getPaymentDetailsByType(type, zedId);
+      if (r?.WithOutCoupon?.[0] == null) {
+        setResponse(null);
+        setLoadError(r?.errorMessage?.trim() || FEE_ERROR);
+      } else setResponse(r);
+    } catch (e) {
+      setResponse(null);
+      setLoadError(e instanceof Error && e.message.trim() ? e.message : FEE_ERROR);
+    } finally {
+      ui.hideLoading();
+    }
+  };
+
   useEffect(() => {
-    (async () => {
-      ui.showLoading();
-      try {
-        setResponse(await app.api.getPaymentDetailsByType(type, zedId));
-      } catch (e) {
-        setResponse({ status: '0', errorMessage: e instanceof Error ? e.message : null });
-      } finally {
-        ui.hideLoading();
-      }
-    })();
+    void loadFee();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -117,7 +130,10 @@ export function PaymentScreen() {
   const onPaymentClick = async (request: PaymentTokenRequest) => {
     ui.showLoading();
     try {
-      if (Number(request.Amount) === 0) {
+      // An empty amount is not a zero one (Number('') is 0): never a free payment for an amount the app does not have.
+      const amount = request.Amount.trim() === '' ? NaN : Number(request.Amount);
+      if (!Number.isFinite(amount)) return ui.showAlert(AMOUNT_ERROR);
+      if (amount === 0) {
         const r = await app.api.submitZeroPaymentDetails(request);
         if (isSuccess(r)) {
           setSuccess(true);
@@ -152,7 +168,9 @@ export function PaymentScreen() {
   const title = page === 3 ? (success ? 'Success' : 'Failure') : 'Payment';
   return (
     <ScreenFrame title={title} backBar={{ zedId, onBack }} testID="payment">
-      {response == null ? null : page === 0 ? (
+      {loadError != null ? (
+        <FeeError message={loadError} onBack={() => nav.pop()} onRetry={() => void loadFee()} />
+      ) : response == null ? null : page === 0 ? (
         <TextPage title="Disclaimer" textKey="app.msme.certification.payment.disclaimer" onBack={onBack} onProceed={() => setPage(1)} />
       ) : page === 1 ? (
         <TextPage title="Instructions" textKey="app.msme.certification.payment.instructions" onBack={onBack} onProceed={() => setPage(2)} />
@@ -166,8 +184,21 @@ export function PaymentScreen() {
 }
 
 /** registration_footer of the payment pages. */
-function Footer({ onBack, proceedTitle, onProceed }: { onBack: () => void; proceedTitle: string; onProceed: () => void }) {
-  return <LegacyFooter onBack={onBack} proceedTitle={proceedTitle} onProceed={onProceed} backTestID="payment-back" proceedTestID="payment-proceed" />;
+function Footer({ onBack, proceedTitle, onProceed, proceedEnabled = true }: { onBack: () => void; proceedTitle: string; onProceed: () => void; proceedEnabled?: boolean }) {
+  return <LegacyFooter onBack={onBack} proceedTitle={proceedTitle} onProceed={onProceed} proceedEnabled={proceedEnabled} backTestID="payment-back" proceedTestID="payment-proceed" />;
+}
+
+/** The fee could not be loaded: the reason, BACK and RETRY. */
+function FeeError({ message, onBack, onRetry }: { message: string; onBack: () => void; onRetry: () => void }) {
+  return (
+    <View style={{ flex: 1 }} testID="payment-fee-error">
+      <View style={{ flex: 1, justifyContent: 'center', padding: dimens.padding4 }}>
+        <Text style={[textStyles.subheading, { textAlign: 'center' }]}>Payment</Text>
+        <Text style={[styles.body, { textAlign: 'center' }]}>{message}</Text>
+      </View>
+      <LegacyFooter onBack={onBack} proceedTitle="RETRY" onProceed={onRetry} backTestID="payment-back" proceedTestID="payment-retry" />
+    </View>
+  );
 }
 
 function TextPage({ title, textKey, onBack, onProceed }: { title: string; textKey: string; onBack: () => void; onProceed: () => void }) {
@@ -221,6 +252,10 @@ function DetailsPage({
 
   const prepare = (): PaymentTokenRequest | null => {
     if (details?.Id == null) return null;
+    if (due == null) {
+      ui.showAlert(AMOUNT_ERROR);
+      return null;
+    }
     const req: PaymentTokenRequest = { PaymentRefId: String(details.Id), ZedId: zedId, Certification: type, Amount: num(due), UseCoupon: details.Coupon != null ? YES : NO };
     if (gst == null) {
       ui.snackbar('GSTIN Applicable?');
@@ -307,6 +342,7 @@ function DetailsPage({
       <Footer
         onBack={onBack}
         proceedTitle={due == null || due === 0 ? 'PROCEED TO PAY' : `PROCEED TO PAY ${formatCurrency(due)}`}
+        proceedEnabled={due != null}
         onProceed={() => {
           const req = prepare();
           if (req) setSummaryOpen(req);

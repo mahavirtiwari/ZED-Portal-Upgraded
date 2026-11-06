@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, AppState, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { colors, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
+import { AppErrorBoundary, AppStartError, colors, openDatabase, SessionExpiryGate, StackNavigator, UiHost, watchConnectivity, type ScreenMap } from '@zed/shared';
 
 import { AppDrawerHost, AppDrawerOverlay } from './src/app/AppDrawer';
 import { MsmeAppProvider } from './src/app/context';
@@ -56,19 +56,27 @@ const RETRY_INTERVAL_MS = 30_000;
 
 export default function App() {
   const [app, setApp] = useState<MsmeApp | null>(null);
+  // New in V4: the local database did not open (storage full, a damaged file): an error page with RETRY, not an endless spinner.
+  const [startFailed, setStartFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
-    MsmeApp.open(openDatabase).then(a => {
-      registerHandlers(a);
-      if (alive) setApp(a);
-      // New: Admin texts and the Basic Information form at start (the last answer is used offline).
-      a.refreshServerContent().catch(() => undefined);
-    });
+    setStartFailed(false);
+    MsmeApp.open(openDatabase)
+      .then(a => {
+        registerHandlers(a);
+        if (alive) setApp(a);
+        // New: Admin texts and the Basic Information form at start (the last answer is used offline).
+        a.refreshServerContent().catch(() => undefined);
+      })
+      .catch(() => {
+        if (alive) setStartFailed(true);
+      });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [attempt]);
 
   // Offline sync triggers: the connection returns, the app comes to the foreground, and a periodic retry.
   useEffect(() => {
@@ -88,20 +96,24 @@ export default function App() {
     <SafeAreaProvider>
       <UiHost>
         {app ? (
-          <MsmeAppProvider app={app}>
-            <AppDrawerHost>
-              <StackNavigator
-                screens={SCREENS}
-                initial={{ name: 'Launcher' }}
-                overlay={
-                  <>
-                    <AppDrawerOverlay />
-                    <SessionExpiryGate session={app.session} loginRoute="Launcher" />
-                  </>
-                }
-              />
-            </AppDrawerHost>
-          </MsmeAppProvider>
+          <AppErrorBoundary>
+            <MsmeAppProvider app={app}>
+              <AppDrawerHost>
+                <StackNavigator
+                  screens={SCREENS}
+                  initial={{ name: 'Launcher' }}
+                  overlay={
+                    <>
+                      <AppDrawerOverlay />
+                      <SessionExpiryGate session={app.session} loginRoute="Launcher" />
+                    </>
+                  }
+                />
+              </AppDrawerHost>
+            </MsmeAppProvider>
+          </AppErrorBoundary>
+        ) : startFailed ? (
+          <AppStartError onRetry={() => setAttempt(n => n + 1)} />
         ) : (
           <View style={styles.loading}>
             <ActivityIndicator color={colors.appColor} />

@@ -5,7 +5,10 @@ import { useSa } from '../app/context';
 import { formatDateTime } from '../portfolio';
 import { C, Card, EmptyState, HeroHeader, images, ListRow, Page, SectionLabel, z, ZIcon, ZScroll, type IconName } from '../ui/zed';
 
-export const WEB_LOGIN = 'loginzed.msme.gov.in';
+/** The web portal of this build's environment (https://zedv3.qci.org.in in production), shown without https://. */
+export function webLogin(env: { baseUrl: string }): string {
+  return env.baseUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+}
 
 const ICONS: Record<string, IconName> = { allotment: 'clipboard', reminder: 'bell', report: 'document', certificate: 'shield', nc: 'flag', sentBack: 'sync' };
 
@@ -132,7 +135,7 @@ export function HelpScreen() {
           {me?.agencyMobile ? (
             <ListRow icon="phone" title={me.agencyMobile} subtitle="Mobile" onPress={() => Linking.openURL('tel:' + me.agencyMobile).catch(() => undefined)} testID="help-mobile" />
           ) : null}
-          <ListRow icon="document" title={WEB_LOGIN} subtitle="ZED portal (web)" onPress={() => Linking.openURL('https://' + WEB_LOGIN).catch(() => undefined)} last testID="help-web" />
+          <ListRow icon="document" title={webLogin(app.environment)} subtitle="ZED portal (web)" onPress={() => Linking.openURL(app.environment.baseUrl).catch(() => undefined)} last testID="help-web" />
         </Card>
         <SectionLabel label="Frequently asked" />
         <Card style={{ paddingVertical: 4 }}>
@@ -179,7 +182,7 @@ export function AboutScreen() {
               : 'As Co-consultant you work on the parameters allotted to you in each milestone, sync them, and make the final submission of your work.'}
           </Text>
         </Card>
-        <Text style={st.footer}>{`Web login: ${WEB_LOGIN}`}</Text>
+        <Text style={st.footer}>{`Web login: ${webLogin(app.environment)}`}</Text>
         <Text style={st.footer}>{`© ${new Date().getFullYear()} Quality Council of India · Ministry of MSME`}</Text>
       </ZScroll>
     </Page>

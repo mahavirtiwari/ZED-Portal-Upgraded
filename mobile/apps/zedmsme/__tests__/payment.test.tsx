@@ -130,6 +130,47 @@ describe('CCAvenue checkout (PaymentActivity.makePayment)', () => {
     expect(has(r, 'gst-No')).toBe(true);
   });
 
+  it('the fee cannot be loaded: a message with BACK / RETRY, no disclaimer or summary; RETRY loads it', async () => {
+    const s = server();
+    const app = await signedInApp(s);
+    s.online = false;
+    const r = render(app);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(has(r, 'payment-fee-error')).toBe(true);
+    expect(has(r, 'gst-No')).toBe(false);
+    expect(r.root.findAll(n => n.props.testID === 'app.msme.certification.payment.disclaimer').length).toBe(0);
+
+    s.online = true;
+    await press(r, 'payment-retry');
+    expect(has(r, 'payment-fee-error')).toBe(false);
+    await press(r, 'payment-proceed'); // disclaimer
+    await press(r, 'payment-proceed'); // instructions
+    expect(has(r, 'gst-No')).toBe(true);
+  });
+
+  it('a fee row without the amount due never becomes a free (zero) payment', async () => {
+    const s = new FakeServer(req => {
+      if (req.url.endsWith('Msme/GetPaymentDetailsByType')) return { WithOutCoupon: [{ ...FEE, ApplicantContributionAfterSubsidy: null }], WithCoupon: [], CouponStatus: [{ IsCouponUsed: 1 }] };
+      return { status: '1' };
+    });
+    const app = await signedInApp(s);
+    const r = render(app);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await press(r, 'payment-proceed'); // disclaimer
+    await press(r, 'payment-proceed'); // instructions
+    await press(r, 'gst-No');
+    await press(r, 'tds-No');
+    expect(handler(r, 'payment-proceed').props.disabled).toBe(true);
+    await press(r, 'payment-proceed'); // even when pressed: no summary, no payment
+    expect(has(r, 'payment-confirm')).toBe(false);
+    expect(s.requests.some(q => /ZeroPayment|Pay\/GetToken/.test(q.url))).toBe(false);
+    expect(title(r)).toBe('Payment');
+  });
+
   it('isPaid: only a "Success" response (any case)', () => {
     expect(isPaid({ outcome: 'response', status: 'SUCCESS' })).toBe(true);
     expect(isPaid({ outcome: 'response', status: 'Aborted' })).toBe(false);
