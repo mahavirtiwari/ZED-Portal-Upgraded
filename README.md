@@ -4,9 +4,21 @@ New platform for the three linked ZED systems (Main, Consultancy, Surveillance),
 ASP.NET MVC 5 / .NET Framework / AngularJS code in `../ZEDCS main`, `../ZEDCS_CONSULTANCY` and
 `../ZEDCS_SURVEILLANCE`. The original folders are untouched.
 
+## Production
+
+Since 2026-11-06 **https://zedv3.qci.org.in is the production portal**:
+- **Server:** 20.219.21.200, IIS site `ZEDV4`.
+- **Databases:** the `ZEDV4_` set (`ZEDV4_ZEDCS_V2_LIVE`, `ZEDV4_ZED_CONSULTANT`, `ZEDV4_ZED_SURVEILLANCE` and the related
+  ones) on SQL Server 2025 Express `.\SQLEXPRESS`.
+- **Data:** the system starts with its own data. The old portal (loginzed.msme.gov.in) stays as it is, view-only;
+  nothing is deployed there.
+
+The switch-over steps, the settings and the update commands are in **`docs/PRODUCTION.md`** (summary under
+"Deployment" below).
+
 | Layer    | Old                                    | New                                              |
 |----------|----------------------------------------|--------------------------------------------------|
-| Database | SQL Server (3 databases)               | SQL Server 2022 Standard (Express for development), same 3 databases, compatibility level 160 |
+| Database | SQL Server (3 databases)               | Same 3 databases (compatibility level 160). Production: SQL Server 2025 Express on zedv3 (`ZEDV4_` names); Express for development |
 | Backend  | ASP.NET MVC 5, .NET Framework 4.8/4.5.2 | ASP.NET Core, .NET 10 (LTS)                      |
 | Frontend | Razor views + AngularJS 1.x + jQuery   | Angular 22 (standalone components, signals)     |
 
@@ -31,7 +43,9 @@ frontend/   Angular workspace
   projects/main              http://localhost:4200 (proxies /api to 5101)
   projects/consultancy       http://localhost:4201 (proxies /api to 5102)
   projects/surveillance      http://localhost:4202 (proxies /api to 5103)
-docs/       MIGRATION-PLAN.md, SECURITY-FINDINGS.md, MOBILE-API.md, JOBS.md
+docs/       PRODUCTION.md, MIGRATION-PLAN.md, SECURITY-FINDINGS.md, MOBILE-API.md, JOBS.md, CUTOVER.md (migration list)
+deploy/     Update-ZedFromGit.ps1 (updates), Set-ZedProductionSettings.ps1, Install-ZedIis.ps1, Invoke-ZedDatabaseScripts.ps1, ...
+mobile/     React Native apps (apps/zedmsme = ZED MSME, the applicant app) and tools/Build-ZedApk.ps1
 ```
 
 ## What is migrated so far
@@ -84,10 +98,27 @@ and `database/fixes/{main,consultancy,surveillance}` (preview by default; review
 
 Everything else is listed in `docs/MIGRATION-PLAN.md`.
 
+## Numbering and payments (since migrations 0051 and 0052)
+
+- **ZED IDs:** new units get `ZEDM000001`… (Manufacturing) or `ZEDS000001`… (Services). Each sector has its own counter,
+  and after 999999 the number grows to 7 digits. The sector comes only from Masters → Sectors (`Sectors.SectorType`);
+  registration refuses a sector without a type. Units registered before keep their `ZEDMSME…` IDs.
+- **Certificate numbers:** date_serial, for example `06112026_M000123` / `06112026_S000045` (old IDs:
+  `06112026_000123`).
+- **Invoices:** `ZEDM/2627/n` and `ZEDS/2627/n`, each with its own counter that restarts every financial year. Off by
+  default: no invoice number and no ERP posting until the Admin switches invoices on.
+- **Administration → Settings → Payment Gateway and Invoices** (main portal):
+  - Online payments On / Off: Off stops every new CCAvenue checkout.
+  - The CCAvenue account: keys stored encrypted and never shown again; it replaces the settings file's.
+  - Invoices On / Off.
+- **MSME KAWACH removed** (2026-11-06): the dashboard and app incentive card, its Admin link and card, its reports,
+  and the WASH / webinar certificates in My Documents.
+
 ## Prerequisites
 
-- SQL Server 2022 Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production: SQL Server 2022
-  **Standard** (ZEDCS_V2_LIVE is 76 GB, beyond Express; docs/MIGRATION-PLAN.md, "Database")
+- SQL Server Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production runs on SQL Server 2025
+  Express (50 GB per database). Bringing in the old portal's data later needs SQL Server **Standard**, because
+  ZEDCS_V2_LIVE is 76 GB (docs/MIGRATION-PLAN.md, "Database").
 - .NET SDK 10.0.x
 - Node.js 24 LTS, npm 11
 
@@ -96,21 +127,8 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 ```powershell
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
 .\database\setup.ps1          # the three ZED databases and the three referenced ones (05-07); KAWACH comes from the seed below
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0001_mobile_devices.sql   # new V4 tables (servers too)
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the consultancy app deployment
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_SURVEILLANCE -i database\migrations\0001_mobile_devices.sql   # mobile device tables for the surveillance app deployment
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0002_api_incentives_index.sql
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0003_mail_outbox.sql   # all three DBs (docs/JOBS.md)
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_CONSULTANT -i database\migrations\0003_mail_outbox.sql
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZED_SURVEILLANCE -i database\migrations\0003_mail_outbox.sql
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0004_job_runs.sql
-foreach ($db in 'ZEDCS_V2_LIVE','ZED_CONSULTANT','ZED_SURVEILLANCE') {   # all three DBs
-  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0005_password_hashes.sql      # docs/PASSWORDS.md
-  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0006_distributed_cache.sql    # only used with Cache:SqlServerTable
-  sqlcmd -S localhost\SQLEXPRESS -E -C -d $db -i database\migrations\0008_staff_password_reset.sql
-}
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0007_folder_rename.sql   # Jobs:FolderRename
-sqlcmd -S localhost\SQLEXPRESS -E -C -d ZEDCS_V2_LIVE -i database\migrations\0009_msme_password_reset.sql   # after 0008
+# Every migration (0001-0052), in order, on the right databases (safe to re-run):
+.\deploy\Invoke-ZedDatabaseScripts.ps1 -Server localhost\SQLEXPRESS -TrustServerCertificate -Apply -SkipFixes
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-registration-data.sql   # eligibility data, site URL, stand-ins for missing DBs
@@ -146,6 +164,7 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | Setting | Meaning (legacy equivalent) |
 |---|---|
 | `ConnectionStrings:Main/Consultancy/Surveillance` | `connString` app setting |
+| `Database:Prefix` / `Database:AllowPrefixInProduction` | The databases carry a prefix (`ZEDV4_` on zedv3); in Production the prefix is allowed only with `AllowPrefixInProduction=true` |
 | `Portal:PublicBaseUrl` | `BaseUrl`; used in e-mail links and logo |
 | `Portal:PathBase` (Consultancy, Surveillance) | The old IIS application path (`/Consultancy`, `/surveillance`); must match the build's base href. The XSRF cookie is scoped to it |
 | `ConnectionStrings:Consultancy/Surveillance` on the main API | Read-only connection (`ApplicationIntent=ReadOnly`, writes refused in code) for milestone and surveillance reports and certificates served from main. Use a login with only `EXECUTE` on the report procedures |
@@ -159,7 +178,7 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Udyam:AccessKey` | key that was hard-coded in `MsmeController` |
 | `Email:Profiles:{Default,Registration,Otp,Allocation}` | `fromAddress/Host/password` and the `Second`, `Otp`, `Third` variants |
 | `Email:RegistrationCc` | `ccAddress` |
-| `CcAvenue:MerchantId/AccessCode/WorkingKey/GatewayUrl` | `CcAvenueMerchantId`, `CcAvenueAccessCode`, `CcAvenueWorkingKey`, `CcAvenueLiveUrl`/`TestUrl` (web integration). Callbacks: `{PublicBaseUrl}/api/payments/ccavenue/response` (ZED), `.../surveillance-response`, `.../consultancy-response` (handholding; replaces `CcAvenueConsultancySuccessUrl/FailUrl`) |
+| `CcAvenue:MerchantId/AccessCode/WorkingKey/GatewayUrl` | A complete account saved in Administration → Settings → Payment Gateway and Invoices replaces these. The test gateway is refused in Production. Legacy: `CcAvenueMerchantId`, `CcAvenueAccessCode`, `CcAvenueWorkingKey`, `CcAvenueLiveUrl`/`TestUrl` (web integration). Callbacks: `{PublicBaseUrl}/api/payments/ccavenue/response` (ZED), `.../surveillance-response`, `.../consultancy-response` (handholding; replaces `CcAvenueConsultancySuccessUrl/FailUrl`) |
 | `UdyamiBharat:Enabled/TokenUrl/VerifyUrl/ClientId/ClientSecret/ReturnHosts` | Sign-in hand-over from the Udyami Bharat portal (`/Msme/ZedDashboard`). The old code used UBP's UAT gateway and had the secret in source: get production URLs and a new secret from UBP |
 | `CcAvenue:ReconciliationWorkingKey` | `CcAvenueWorkingKeyReconciliation`; CCAvenue keeps posting to `/Pay/UpdatePaymentReconciliationStatus` |
 | `ProteanGstin:Url/UserId/Password` | `ProteanApiUrl`, `ProteanUserId`, `ProteanPassword` (GSTIN verification) |
@@ -175,9 +194,9 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Consultancy:TuApp:LoginHours` (consultancy portal, main mobile host) | Default 12: how recently the allotted DFO must have signed in to the consultant app for the unit, for the TU calls and documents; 0 turns the check off |
 | `Consultancy:TuApp:SameIp` (consultancy portal) | Default false: also require the IP address of that sign-in |
 | `ConnectionStrings:Consultancy` (main mobile host) | ZED_CONSULTANT, opened read-only, for the TU document downloads |
-| `Email:RedirectAllTo` / `Email:AllowedRecipientDomains` (every host and Zed.Jobs) | **Test environments only** (staging runs on a copy of production data): all mail goes to the redirect address(es), or only to recipients in the allowed domains (comma separated), with the original recipients named at the top and in `X-Zed-Original-To/Cc/Bcc`, subject prefixed `[STAGING] `. Outside Production and Development one of them (or a mail pickup folder) is required; in Production both must be empty, or the host refuses to start |
-| `Portal:EnvironmentLabel` (every host) | **Test environments only**, e.g. `STAGING`: red ribbon on every page and title prefix in all three apps, mail subject prefix, `X-Robots-Tag: noindex, nofollow` and a disallow-all `robots.txt`. Must be empty in Production. Outside Production `Portal:PublicBaseUrl` / `Portal:LegacyBaseUrl` may not point at the live site |
-| `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Off unless `Enabled` is true |
+| `Email:RedirectAllTo` / `Email:AllowedRecipientDomains` (every host and Zed.Jobs) | **Test environments only, never on production (zedv3)**: all mail goes to the redirect address(es), or only to recipients in the allowed domains (comma separated), with the original recipients named at the top and in `X-Zed-Original-To/Cc/Bcc`. Outside Production and Development one of them (or a mail pickup folder) is required; in Production both must be empty, or the host refuses to start |
+| `Portal:EnvironmentLabel` (every host) | **Test environments only**: no visible label (no ribbon, title or subject prefix), only `X-Robots-Tag: noindex, nofollow` and a disallow-all `robots.txt`. Must be empty in Production. Outside Production `Portal:PublicBaseUrl` / `Portal:LegacyBaseUrl` may not point at the live site |
+| `Erp:Enabled/TenantId/ClientId/ClientSecret/CompanyBaseUrl` | the values hard-coded in `ErpIntegrationService.cs` (rotate the secret). Posting needs `Enabled` true **and** Invoices switched on in Administration → Settings → Payment Gateway and Invoices |
 
 ## Tests
 
@@ -186,15 +205,52 @@ dotnet test backend\Zed.slnx          # API tests: real pipeline, fake DB/SMTP/U
 cd frontend; npx ng test main --watch=false
 ```
 
-## Deployment outline
+## Deployment
 
-`deploy\Publish-Zed.ps1` builds the release package (tests, the three Angular builds into their APIs, the APIs,
-the mobile API and Zed.Jobs). `deploy\Install-ZedIis.ps1` (dry run, then `-Apply`) installs it at the old IIS
-addresses (`/`, `/Consultancy`, `/surveillance` and the three mobile service paths) with settings from a
-server-side copy of `deploy\settings.example.json`. `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks it.
-Hosts refuse to start with missing settings outside Development; `/api/health/ready` and `/health/ready`
-report database readiness. Migrations `database/migrations/0001`–`0009` and the reviewed `database/fixes`
-scripts go first (`deploy\Invoke-ZedDatabaseScripts.ps1` runs them in order; `database/security/` creates the
-least-privilege logins; `deploy\Compare-ZedDatabases.ps1` checks a database move). Runbook, rollback and decommission: `docs/CUTOVER.md`; staging (https://zedv3.qci.org.in): `docs/STAGING.md` and
-`deploy\settings.staging.example.json`; passwords: `docs/PASSWORDS.md`;
-jobs: `docs/JOBS.md`; mobile: `docs/MOBILE-API.md`.
+Production is https://zedv3.qci.org.in (docs/PRODUCTION.md). Run on the server from the repository folder, in an
+Administrator PowerShell.
+
+**Switching to production (once):**
+1. **Settings:** run the dry run, then the same with `-Apply`:
+   ```powershell
+   .\deploy\Set-ZedProductionSettings.ps1
+   ```
+   It makes the settings file and Zed.Jobs' environment Production ones and lists what is left by hand (above all
+   QCI's live CCAvenue account in the `Main` section).
+2. **Update:** see below.
+3. **In SSMS**, each as a preview first, then with `@Mode = 'APPLY'`:
+   - `database\production\01_portal_address.sql`: QR codes and links point at zedv3.
+   - `database\production\02_remove_test_data.sql`: removes the test units and keeps the Admin setup; it takes a
+     backup first.
+4. **Administration → Settings → Payment Gateway and Invoices:** switch Online payments off until the live account
+   works.
+
+**Every update:** the dry run first, then the same with `-Apply`. It takes file and database backups, runs the
+migrations, installs, smoke-tests, and rolls back on its own when the test fails:
+```powershell
+.\deploy\Update-ZedFromGit.ps1 -Ref <commit> -IncludeMobile -IncludeJobs
+```
+
+**ZED MSME app (APK).** Add `-Production` for the Play Store, with the upload keystore:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App zedmsme -Ref <commit>
+```
+The apps' production address is https://zedv3.qci.org.in. The apps already in the store point at the old portal, so
+each app needs a new store release.
+
+**Building blocks:**
+- `deploy\Publish-Zed.ps1` builds a release package.
+- `deploy\Install-ZedIis.ps1` installs it, with a dry run first and a rollback file.
+- `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks the installed sites.
+- `deploy\Invoke-ZedDatabaseScripts.ps1` runs `database/migrations` 0001–0052 in order (safe to re-run) and the
+  reviewed `database/fixes`.
+
+The hosts refuse to start when a setting is missing outside Development. `/api/health/ready` and `/health/ready` report
+database readiness.
+
+**More:**
+- passwords: `docs/PASSWORDS.md`
+- jobs: `docs/JOBS.md`
+- mobile: `docs/MOBILE-API.md`
+- how the server was built: `docs/STAGING.md`
+- the planned move of the old portal's data: `docs/CUTOVER.md`
