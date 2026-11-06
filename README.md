@@ -45,7 +45,12 @@ frontend/   Angular workspace
   projects/surveillance      http://localhost:4202 (proxies /api to 5103)
 docs/       PRODUCTION.md, MIGRATION-PLAN.md, SECURITY-FINDINGS.md, MOBILE-API.md, JOBS.md, CUTOVER.md (migration list)
 deploy/     Update-ZedFromGit.ps1 (updates), Set-ZedProductionSettings.ps1, Install-ZedIis.ps1, Invoke-ZedDatabaseScripts.ps1, ...
-mobile/     React Native apps (apps/zedmsme = ZED MSME, the applicant app) and tools/Build-ZedApk.ps1
+mobile/     React Native apps and tools/Build-ZedApk.ps1:
+  apps/zedmsme               ZED MSME, the applicant app
+  apps/assessor              ZED SA, the site assessment app
+  apps/consultant            ZED Consultancy, the handholding app
+  apps/msme                  ZED Surveillance, the Bronze surveillance app (not the applicant app)
+  packages/shared            @zed/shared: API client, local database, sync queue, shared screens
 ```
 
 ## What is migrated so far
@@ -114,6 +119,25 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 - **MSME KAWACH removed** (2026-11-06): the dashboard and app incentive card, its Admin link and card, its reports,
   and the WASH / webinar certificates in My Documents.
 
+## Production safeguards (audit of 2026-11-06)
+
+- **Payments:** in Production a saved CCAvenue *test* account is ignored (the settings file's account is used, and the
+  Payment Gateway page says why), and the hosts refuse to start with the CCAvenue test gateway or test service.
+- **Addresses:** `Portal:PublicBaseUrl` may never be the old portal; the mobile hosts refuse to start without their
+  own https address (the apps' mail and document links). Contact ZED defaults to https://zed.msme.gov.in/contact-us.
+- **Sign-in limit:** 10 attempts a minute per address, counted across all login endpoints together; signed-in users
+  have their own limit per endpoint, so people behind one office address do not block each other.
+- **Mobile API:** the old anonymous hotel self-assessment actions are gone (404).
+- **Web texts:** when the Admin texts cannot be loaded, the pledge and the payment disclaimer / instructions show
+  "This text could not be loaded. Try again", and their buttons stay off until the text shows.
+- **Apps:** "The app could not start" with RETRY when the phone's local database does not open, and the same page
+  (instead of a crash) when a screen fails. ZED MSME shows BACK / RETRY when the fee cannot be loaded, and a missing
+  amount is never paid as zero (also in ZED Surveillance). ZED SA and ZED Consultancy Help link to zedv3.
+- **Staff:** resetting a sub-user's password asks for confirmation.
+- **Database scripts:** `02_remove_test_data.sql` cleans all three databases in one transaction after backing all
+  three up (or changes none); migration 0041 no longer re-creates procedures that later migrations edited.
+- **Rollback:** a failed update puts back the files **and** the app pools' and Zed.Jobs' environment settings.
+
 ## Prerequisites
 
 - SQL Server Express for development (instance `localhost\SQLEXPRESS`), `sqlcmd`. Production runs on SQL Server 2025
@@ -165,7 +189,8 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 |---|---|
 | `ConnectionStrings:Main/Consultancy/Surveillance` | `connString` app setting |
 | `Database:Prefix` / `Database:AllowPrefixInProduction` | The databases carry a prefix (`ZEDV4_` on zedv3); in Production the prefix is allowed only with `AllowPrefixInProduction=true` |
-| `Portal:PublicBaseUrl` | `BaseUrl`; used in e-mail links and logo |
+| `Portal:PublicBaseUrl` | `BaseUrl`; used in e-mail links and logo. Never the old portal; on the mobile hosts the https address of this system (https://zedv3.qci.org.in), or they refuse to start |
+| `Portal:ContactUrl` (portals) | Contact ZED link until the Admin sets it under Links; default https://zed.msme.gov.in/contact-us |
 | `Portal:PathBase` (Consultancy, Surveillance) | The old IIS application path (`/Consultancy`, `/surveillance`); must match the build's base href. The XSRF cookie is scoped to it |
 | `ConnectionStrings:Consultancy/Surveillance` on the main API | Read-only connection (`ApplicationIntent=ReadOnly`, writes refused in code) for milestone and surveillance reports and certificates served from main. Use a login with only `EXECUTE` on the report procedures |
 | `Consultancy:SharedStorageRoot` (Consultancy) | Extra folder searched for technology-upgradation files uploaded through main (normally main's `Portal:StorageRoot`) |
@@ -178,7 +203,7 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Udyam:AccessKey` | key that was hard-coded in `MsmeController` |
 | `Email:Profiles:{Default,Registration,Otp,Allocation}` | `fromAddress/Host/password` and the `Second`, `Otp`, `Third` variants |
 | `Email:RegistrationCc` | `ccAddress` |
-| `CcAvenue:MerchantId/AccessCode/WorkingKey/GatewayUrl` | A complete account saved in Administration → Settings → Payment Gateway and Invoices replaces these. The test gateway is refused in Production. Legacy: `CcAvenueMerchantId`, `CcAvenueAccessCode`, `CcAvenueWorkingKey`, `CcAvenueLiveUrl`/`TestUrl` (web integration). Callbacks: `{PublicBaseUrl}/api/payments/ccavenue/response` (ZED), `.../surveillance-response`, `.../consultancy-response` (handholding; replaces `CcAvenueConsultancySuccessUrl/FailUrl`) |
+| `CcAvenue:MerchantId/AccessCode/WorkingKey/GatewayUrl` | A complete account saved in Administration → Settings → Payment Gateway and Invoices replaces these. The test gateway is refused in Production, and so is a saved test account. `CcAvenue:MobileServiceUrl` (the apps' payments) may not be the test service in Production either. Legacy: `CcAvenueMerchantId`, `CcAvenueAccessCode`, `CcAvenueWorkingKey`, `CcAvenueLiveUrl`/`TestUrl` (web integration). Callbacks: `{PublicBaseUrl}/api/payments/ccavenue/response` (ZED), `.../surveillance-response`, `.../consultancy-response` (handholding; replaces `CcAvenueConsultancySuccessUrl/FailUrl`) |
 | `UdyamiBharat:Enabled/TokenUrl/VerifyUrl/ClientId/ClientSecret/ReturnHosts` | Sign-in hand-over from the Udyami Bharat portal (`/Msme/ZedDashboard`). The old code used UBP's UAT gateway and had the secret in source: get production URLs and a new secret from UBP |
 | `CcAvenue:ReconciliationWorkingKey` | `CcAvenueWorkingKeyReconciliation`; CCAvenue keeps posting to `/Pay/UpdatePaymentReconciliationStatus` |
 | `ProteanGstin:Url/UserId/Password` | `ProteanApiUrl`, `ProteanUserId`, `ProteanPassword` (GSTIN verification) |
@@ -203,6 +228,8 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 ```powershell
 dotnet test backend\Zed.slnx          # API tests: real pipeline, fake DB/SMTP/Udyam
 cd frontend; npx ng test main --watch=false
+# Mobile, in each of mobile\apps\zedmsme, apps\msme, apps\assessor, apps\consultant and packages\shared:
+npx tsc --noEmit -p .; npx jest
 ```
 
 ## Deployment
@@ -233,12 +260,22 @@ environment settings):
 .\deploy\Update-ZedFromGit.ps1 -Ref <commit> -IncludeMobile -IncludeJobs
 ```
 
-**ZED MSME app (APK).** Add `-Production` for the Play Store, with the upload keystore:
+The web update covers the three portals (Main, Consultancy, Surveillance); `-IncludeMobile` adds the server side the
+apps talk to, `-IncludeJobs` Zed.Jobs.
+
+**The apps (APKs),** from the same folder. Without `-Production` the APK is signed with this machine's debug key, for
+installing on phones directly:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App zedmsme -Ref <commit>
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App zedmsme -Ref <commit>      # ZED MSME (applicant)
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App assessor -Ref <commit>     # ZED SA (assessment)
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App consultant -Ref <commit>   # ZED Consultancy
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App msme -Ref <commit>         # ZED Surveillance (Bronze)
+powershell -ExecutionPolicy Bypass -File .\mobile\tools\Build-ZedApk.ps1 -App all -Ref <commit>          # all four
 ```
-The apps' production address is https://zedv3.qci.org.in. The apps already in the store point at the old portal, so
-each app needs a new store release.
+The APKs go to `E:\Releases\apk`. For the Play Store add `-Production` and set `ZED_UPLOAD_STORE_FILE`,
+`ZED_UPLOAD_STORE_PASSWORD`, `ZED_UPLOAD_KEY_ALIAS` and `ZED_UPLOAD_KEY_PASSWORD` in the same window first (the script
+refuses a Play Store APK without them). The apps' production address is https://zedv3.qci.org.in. The apps already in
+the store point at the old portal, so each app needs a new store release.
 
 **Building blocks:**
 - `deploy\Publish-Zed.ps1` builds a release package.
