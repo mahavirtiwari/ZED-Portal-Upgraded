@@ -22,7 +22,10 @@
 --   3. clean the three databases (and restart the counters) in ONE transaction: all three or none.
 -- Afterwards: move the units' files aside (the storage folders named in docs/PRODUCTION.md), they belong to the removed
 -- units. Run it once more: every count should be 0.
-SET NOCOUNT ON;
+-- The options SQL Server needs to delete from tables with filtered or computed-column indexes (V4MailOutbox): sqlcmd
+-- connects with QUOTED_IDENTIFIER off unless -I is given; SSMS has them on.
+SET NOCOUNT ON; SET QUOTED_IDENTIFIER ON; SET ANSI_NULLS ON; SET ANSI_PADDING ON; SET ANSI_WARNINGS ON; SET ARITHABORT ON;
+SET CONCAT_NULL_YIELDS_NULL ON; SET NUMERIC_ROUNDABORT OFF;
 DECLARE @Mode varchar(10) = 'PREVIEW';                   -- PREVIEW (default) or APPLY
 DECLARE @Confirm varchar(40) = NULL;                     -- 'DELETE ALL UNITS' for APPLY
 DECLARE @ExpectedServerName sysname = NULL;              -- must equal SELECT @@SERVERNAME on this server

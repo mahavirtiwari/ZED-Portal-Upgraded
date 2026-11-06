@@ -337,7 +337,7 @@ function Backup-Databases([string]$Folder) {
         Write-Ok "$db backed up"
         $files += $file
     }
-    return ,$files
+    return $files   # the caller wraps it in @(): a flat list of the backup files
 }
 
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
