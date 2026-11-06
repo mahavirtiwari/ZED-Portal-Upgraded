@@ -20,9 +20,6 @@ import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { isAnyCertificationCompleted } from '../models';
 
-const KAWACH_MARKET = 'market://details?id=com.qci.msme.kawach';
-const KAWACH_WEB = 'https://play.google.com/store/apps/details?id=com.qci.msme.kawach';
-
 /**
  * The incentives that open the incentives page once a level is certified (GradedIncentivesActivity for all of them):
  * title, description, the legacy logo and how many leading characters of the description are in the coupon blue.
@@ -79,20 +76,7 @@ export function IncentivesScreen() {
         {/* fragment_my_incentives: BACK only, no ZED ID. */}
         <BackBar onBack={() => nav.pop()} />
         <ScrollView contentContainerStyle={{ padding: dimens.padding2 }}>
-          <Incentive
-            title="MSME KAWACH"
-            logo={images.kawach_logo}
-            detail={
-              <>
-                {'WASH Certification on Safety & Hygiene\n\n'}
-                <Text style={{ fontWeight: 'bold', color: colors.couponBorder }}>Free </Text>
-                <Text style={{ textDecorationLine: 'line-through' }}>₹ 5,750 + Taxes</Text>, 100% Subsidized
-              </>
-            }
-            right={icons.ic_incentive_arrow_enabled}
-            onPress={() => open(KAWACH_MARKET, KAWACH_WEB)}
-            testID="incentive-kawach"
-          />
+          {/* MSME KAWACH was removed (2026-11-06). */}
           <Incentive
             title="Joining Reward"
             logo={images.reward}

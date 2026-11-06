@@ -14,8 +14,6 @@ const CERTIFICATES: [keyof CertificateLinks, string][] = [
   ['Silver', 'Silver Certificate'],
   ['Gold', 'Gold Certificate'],
   ['ZEDX', 'ZED-X Certificate'],
-  ['Wash', 'WASH Certificate'],
-  ['Webinar', 'Webinar Participation Certificate'],
 ];
 
 /** MyDocumentsActivity: the guidelines and the unit's certificates (GetMyDocuments); payment receipts are not listed. */

@@ -17,7 +17,6 @@ export const images = {
   ic_zed_gear_grey: require('./images/ic_zed_gear_grey.png'),
   ic_registration_success: require('./images/ic_registration_success.png'),
   pledge_text: require('./images/pledge_text.png'),
-  kawach_logo: require('./images/kawach_logo.png'),
   reward: require('./images/reward.png'),
   financial_assistance_logo: require('./images/financial_assistance_logo.png'),
   handholding_logo: require('./images/handholding_logo.png'),

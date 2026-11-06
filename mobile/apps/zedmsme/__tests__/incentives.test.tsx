@@ -127,7 +127,9 @@ describe('My Incentives (MyIncentivesFragment)', () => {
     status.financialAssistanceStatus = 0;
     status.bronze!.status = 1;
     let r = render(app, 'Incentives');
-    expect(pressable(r, 'incentive-kawach').props.disabled).toBe(false);
+    // MSME KAWACH was removed: the list starts with the joining reward.
+    expect(r.root.findAll((n) => n.props.testID === 'incentive-kawach')).toHaveLength(0);
+    expect(pressable(r, 'incentive-joining-reward').props.disabled).toBe(false);
     expect(pressable(r, 'incentive-financial-assistance').props.disabled).toBe(true);
     expect(pressable(r, 'incentive-graded-0').props.disabled).toBe(true);
 

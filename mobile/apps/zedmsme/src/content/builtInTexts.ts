@@ -34,7 +34,7 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   // Registration: e-mail OTP sent (Main)
   "app.msme.registration.otpSent": "OTP is successfully sent to {{Email}}, if not received, please check your junk/spam.",
   // Registration: success (Main)
-  "app.msme.registration.success": "<p>Congratulations! You can now avail:</p><ul><li>Joining reward of Rs. 10,000/- for ZED Certification</li><li><b>“MSME KAWACH”</b>, a COVID-19 Support initiative of Ministry of MSME, free of cost.”</li></ul><p>What next?</p><ul><li>Check your email for Pledge Certificate and ZED ID/Password.</li><li>If you did not receive any email, please check in Spam/Junk folder.</li><li>Use the received ZED ID and Password to login again.</li></ul>",
+  "app.msme.registration.success": "<p>Congratulations! You can now avail:</p><ul><li>Joining reward of Rs. 10,000/- for ZED Certification</li></ul><p>What next?</p><ul><li>Check your email for Pledge Certificate and ZED ID/Password.</li><li>If you did not receive any email, please check in Spam/Junk folder.</li><li>Use the received ZED ID and Password to login again.</li></ul>",
   // Dashboard: ZED certification steps (MainAndSurveillance)
   "app.msme.dashboard.certificationSteps": "<ol><li><b>Basic Information &amp; Document Upload</b><br>Provide Processes &amp; Systems information</li><li><b>Desktop Verification</b><br>Desktop verification of documents uploaded. Bronze level applicants will receive certification after this step.</li><li><b>Remote/Onsite Assessment</b><br>Applicable only for Silver &amp; Gold Certification.</li><li><b>Certification</b><br>After conforming to relevant requirements, download your Certificate and Report from your dashboard.</li><li><b>Avail Incentives</b><br>Various incentives will be unlocked and available under \"My Incentives\"</li></ol>",
   // My Certifications: Bronze level information (MainAndSurveillance)
@@ -46,7 +46,7 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   // Dashboard: My Certifications information (Main)
   "app.msme.dashboard.info.myCertifications": "<p>Please read the complete instructions and requirements before applying for any Certification Level. These are available under \"My Documents\".</p>",
   // Dashboard: My Incentives information (Main)
-  "app.msme.dashboard.info.myIncentives": "<p>MSME KAWACH and Joining Reward incentives are available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under \"My Documents\".</p>",
+  "app.msme.dashboard.info.myIncentives": "<p>The Joining Reward incentive is available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under \"My Documents\".</p>",
   // My Incentives: how to avail the joining reward (Main)
   "app.msme.incentives.joiningReward.availInfo": "<p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p>",
   // Assessment: undertaking of compliances (Main)

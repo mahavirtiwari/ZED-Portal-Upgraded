@@ -166,8 +166,6 @@ export type CertificateLinks = {
   Gold?: string | null;
   /** New in V4: ZED-X's certificate once certified. */
   ZEDX?: string | null;
-  Wash?: string | null;
-  Webinar?: string | null;
 };
 /** New in V4: a level the Admin has enabled (portal api/public/levels; Administration → Certification Levels). */
 export type PublicLevel = {
