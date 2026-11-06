@@ -25,11 +25,11 @@ describe('PortalLinksService', () => {
   it('uses the addresses the Admin set and leaves out the links switched off', async () => {
     await create({
       captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '', contactUrl: 'https://zed.example.org/contact',
-      links: { contact: 'https://zed.example.org/contact', ministry: 'https://msme.example.org/', kawach: null },
+      links: { contact: 'https://zed.example.org/contact', ministry: 'https://msme.example.org/', appStore: null },
     });
     expect(links.url('contact')).toBe('https://zed.example.org/contact');
     expect(links.url('ministry')).toBe('https://msme.example.org/');
-    expect(links.url('kawach')).toBeNull();
+    expect(links.url('appStore')).toBeNull();
     expect(links.url('playStore')).toBe(PORTAL_LINK_DEFAULTS.playStore);
   });
 

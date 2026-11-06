@@ -149,25 +149,6 @@
                 <div class="panel-body">
                   <div>
                     <div class="panel-incen-box">
-                      <!-- MSME KAWACH: the Admin can switch it off (Admin → Links). -->
-                      @if (links.url('kawach'); as u) {
-                        @if (card('KAWACH'); as b) {
-                          <div class="item">
-                            <div class="panel panel-default panel-incen-block">
-                              <div class="panel-heading">
-                                <img src="/Images/Dashboard/wash.png" [alt]="b.title" />
-                                <a [href]="u" target="_blank" rel="noopener" class="btn btn-sm btn-primary">Avail</a>
-                              </div>
-                              <div class="panel-body">
-                                <h4>{{ b.title }}</h4>
-                                <p>{{ b.details }}</p>
-                                @if (b.highlight) { <p class="mt-3"><span class="clr-spot"><b>{{ b.highlight }}</b></span></p> }
-                              </div>
-                            </div>
-                          </div>
-                        }
-                      }
-
                       @if (card('JOINING_REWARD'); as b) {
                         <div class="item">
                           <div class="panel panel-default panel-incen-block">

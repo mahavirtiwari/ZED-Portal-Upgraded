@@ -48,7 +48,8 @@ public sealed class ReportsTests : IDisposable
         var state = await _host.SignInAsync("STATE1");
         Assert.Equal(2, (await state.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
         var super = await _host.SignInAsync("SUPER1");
-        Assert.Equal(43, (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
+        // 43 before MSME KAWACH was removed (its five reports).
+        Assert.Equal(38, (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
     }
 
     [Theory]

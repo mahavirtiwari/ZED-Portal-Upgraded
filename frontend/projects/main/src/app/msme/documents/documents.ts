@@ -24,7 +24,7 @@ export class DocumentsPage {
   protected readonly guidelines = computed(() => this.docs()?.Guidelines ?? []);
   protected readonly invoices = computed(() => this.docs()?.Invoices ?? []);
 
-  /** Pledge always; only the highest of Bronze/Silver/Gold; WASH and webinar when issued (as before). */
+  /** Pledge always; only the highest of Bronze/Silver/Gold; ZED-X. (MSME KAWACH's WASH and webinar certificates were removed.) */
   protected readonly certificates = computed<CertificateItem[]>(() => {
     const c = this.docs()?.Certificates?.[0];
     // V4: the pledge certificate is drawn when asked for, so it is always there (its page has DOWNLOAD PDF).
@@ -34,8 +34,6 @@ export class DocumentsPage {
     else if (c.Silver) items.push({ label: 'Silver Certificate', url: c.Silver });
     else if (c.Bronze) items.push({ label: 'Bronze Certificate', url: c.Bronze });
     if (c.ZEDX) items.push({ label: 'ZED-X (Export) Certificate', url: c.ZEDX });
-    if (c.Wash) items.push({ label: 'WASH Certificate', url: c.Wash });
-    if (c.Webinar) items.push({ label: 'Webinar Participation Certificate', url: c.Webinar });
     return items;
   });
 

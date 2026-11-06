@@ -9,9 +9,9 @@ describe('DashboardCardsPage', () => {
   let http: HttpTestingController;
   let el: HTMLElement;
   const api = '/api/staff/schemes/incentive-master/dashboard';
-  const cards = (kawachShown: boolean) => ({
+  const cards = (handholdingShown: boolean) => ({
     builtIn: [
-      { id: 2, card: 'KAWACH', title: 'MSME KAWACH', highlight: 'Free', details: 'WASH Certification', active: kawachShown },
+      { id: 2, card: 'HANDHOLDING', title: 'Handholding Support', highlight: 'Rs. 2,00,000/-', details: 'for improving systems', active: handholdingShown },
       { id: 3, card: 'JOINING_REWARD', title: 'Joining Reward', highlight: 'Rs. 10,000/-', details: 'Limited purpose reward', active: true },
     ],
     incentives: [
@@ -47,7 +47,7 @@ describe('DashboardCardsPage', () => {
 
   it('lists the built-in cards and the incentives on the main dashboard', () => {
     expect(el.querySelector('#dc-builtin-h')!.textContent).toContain('2 of 2 shown');
-    expect(builtIn('MSME KAWACH').querySelector('.status-badge')!.textContent!.trim()).toBe('Shown');
+    expect(builtIn('Handholding Support').querySelector('.status-badge')!.textContent!.trim()).toBe('Shown');
     const card = el.querySelector('.dc-inc') as HTMLElement;
     expect(card.querySelector('h6')!.textContent).toContain('Export Booster');
     expect(card.textContent).toContain('State Government: ASSAM');
@@ -90,15 +90,15 @@ describe('DashboardCardsPage', () => {
   });
 
   it('hides a built-in card and edits another', async () => {
-    button(builtIn('MSME KAWACH'), 'Hide').click();
+    button(builtIn('Handholding Support'), 'Hide').click();
     await settle();
-    const hide = http.expectOne((r) => r.method === 'PUT' && r.url === `${api}/KAWACH`);
-    expect(hide.request.body).toEqual({ title: 'MSME KAWACH', highlight: 'Free', details: 'WASH Certification', active: false });
+    const hide = http.expectOne((r) => r.method === 'PUT' && r.url === `${api}/HANDHOLDING`);
+    expect(hide.request.body).toEqual({ title: 'Handholding Support', highlight: 'Rs. 2,00,000/-', details: 'for improving systems', active: false });
     hide.flush({ message: 'Card saved. It is hidden from the MSME dashboard.' });
     await settle();
     http.expectOne(api).flush(cards(false));
     await settle();
-    expect(builtIn('MSME KAWACH').classList).toContain('is-off');
+    expect(builtIn('Handholding Support').classList).toContain('is-off');
     expect(el.querySelector('.alert-success')!.textContent).toContain('hidden from the MSME dashboard');
 
     button(builtIn('Joining Reward'), 'Edit').click();

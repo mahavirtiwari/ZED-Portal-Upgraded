@@ -45,11 +45,6 @@ public static class ReportCatalog
         (UserRole.SuperAdmin, "List Of ZED Financial Support Recertification Records", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS_APPLIED_FOR_RECERTIFICATION"),
         (UserRole.SuperAdmin, "ZED BASIC INFO YEAR 2022-2023", "SP_DYNAMIC_REPORT_ZED_BASIC_INFO_2022_2023"),
         (UserRole.SuperAdmin, "ZED BASIC INFO YEAR 2024-2025", "SP_DYNAMIC_REPORT_ZED_BASIC_INFO_2024_2025"),
-        (UserRole.SuperAdmin, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH"),
-        (UserRole.SuperAdmin, "List of KAWACH Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME_KAWACH"),
-        (UserRole.SuperAdmin, "List Of KAWACH Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_KAWACH"),
-        (UserRole.SuperAdmin, "List Of KAWACH Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_KAWACH"),
-        (UserRole.SuperAdmin, "List of KAWACH Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_KAWACH"),
         (UserRole.SuperAdmin, "List of Certified Candidates in Zed Monitoring", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_CANDIDATES_ZED_MONITORING"),
         (UserRole.SuperAdmin, "List of Units with Same Udyam and Address", "SP_DYNAMIC_REPORT_LIST_OF_DUPLICATE_UDYAM_PADDRESS"),
         (UserRole.SuperAdmin, "ESG Checklist", "SP_DYNAMIC_REPORT_ESG_CHECK_LIST"),
@@ -70,7 +65,6 @@ public static class ReportCatalog
         (UserRole.CitizenFeedback, "List of ZED Payment Received who paid through paymentGateway", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_PAID"),
         (UserRole.CitizenFeedback, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME"),
         (UserRole.CitizenFeedback, "List Of ZED Financial Support", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS_WITH_DATES"),
-        (UserRole.CitizenFeedback, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH"),
         (UserRole.CitizenFeedback, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY"),
         (UserRole.CitizenFeedback, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY"),
         (UserRole.CitizenFeedback, "Master Report", "SP_DYNAMIC_REPORT_LIST_OF_UNITS_STATUS_MINISTRY"),
@@ -87,8 +81,6 @@ public static class ReportCatalog
 
         (UserRole.Ministry, "List Of ZED Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
         (UserRole.Ministry, "List of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME"),
-        (UserRole.Ministry, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH"),
-        (UserRole.Ministry, "List of KAWACH Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME_KAWACH"),
 
         (UserRole.Agency, "List Of ZED Cases In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME"),
         (UserRole.Agency, "List Of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME"),
@@ -151,14 +143,11 @@ public static class ReportCatalog
         (UserRole.CitizenFeedback, "List of ZED Payment Received", "SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Rejected MSME", "SP_DYNAMIC_REPORT_LIST_OF_REJECTED_MSME", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Financial Support", "SP_DYNAMIC_REPORT_LIST_OF_FINANCIAL_SUPPORT_ZEDIDS", null, null),
-        (UserRole.CitizenFeedback, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Assessement Agencies", "SP_DYNAMIC_REPORT_LIST_OF_ASSESSMENT_AGENCIES_MINISTRY", null, null),
         (UserRole.CitizenFeedback, "List Of ZED Asssessors", "SP_DYNAMIC_REPORT_LIST_OF_ZED_ASSESSORS_MINISTRY", null, null),
 
         (UserRole.Ministry, "List Of Surveillance Inprogress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
         (UserRole.Ministry, "List of Surveillance Completed", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),
-        (UserRole.Ministry, "List Of KAWACH Registered Msme", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME_KAWACH", null, null),
-        (UserRole.Ministry, "List of KAWACH Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME_KAWACH", null, null),
 
         (UserRole.Agency, "List Of ZED Cases In-Progress", "SP_DYNAMIC_REPORT_LIST_OF_REGISTERED_MSME", null, null),
         (UserRole.Agency, "List Of ZED Certified MSME", "SP_DYNAMIC_REPORT_LIST_OF_CERTIFIED_MSME", null, null),

@@ -4,7 +4,7 @@ import { Observable } from 'rxjs';
 
 /**
  * Rows of SP_MSME_GET_MY_DOCUMENTS with its column names. File columns hold `/api/msme/files/...`
- * links (or null when there is no file); Wash and Webinar link to the KAWACH portal.
+ * links (or null when there is no file).
  */
 export interface Guideline {
   DocumentName: string;
@@ -21,8 +21,6 @@ export interface CertificateLinks {
   Gold: string | null;
   /** V4: ZED-X (a separate track, shown besides the highest of Bronze/Silver/Gold). */
   ZEDX?: string | null;
-  Wash: string | null;
-  Webinar: string | null;
 }
 
 export interface Invoice {

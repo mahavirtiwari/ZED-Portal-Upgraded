@@ -159,6 +159,13 @@ public sealed partial class MsmeController
         var access = await HttpContext.RequestServices.GetRequiredService<Zed.Core.Content.IDocumentAccessStore>().AllAsync(ct);
         sets = Zed.Core.Content.MsmeGuidelines.ForMsme(sets, access, videoAsPath: true);
         if (sets.Count > 1) await ZedXAppStatus.AddCertificateAsync(db, zedId, sets[1].FirstOrDefault(), log, ct);
+        // MSME KAWACH was removed (2026-11-06): no WASH or webinar certificate in the app's My Documents.
+        if (sets.Count > 1)
+            foreach (var row in sets[1])
+            {
+                row.Remove("Wash");
+                row.Remove("Webinar");
+            }
         return LegacyContent(LegacyResults.DataSetJson(sets, ["Guidelines", "Certificates", "PaymentReceipts"]));
     }
 }

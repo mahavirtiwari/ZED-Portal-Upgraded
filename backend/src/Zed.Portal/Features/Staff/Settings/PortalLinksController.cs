@@ -9,7 +9,7 @@ namespace Zed.Portal.Features.Staff.Settings;
 
 /// <summary>
 /// Admin → Links (new in V4): the links to pages outside the portal (<see cref="PortalLinks.All"/>: Contact ZED, the
-/// Ministry's logo, the app stores, MSME KAWACH, the LGD Directory) - where each goes and whether the pages show it
+/// Ministry's logo, the app stores, the LGD Directory) - where each goes and whether the pages show it
 /// (enabled unless the Admin switches it off). Per system, in its own database (dbo.V4Settings, migration 0011); an empty
 /// address goes back to the default.
 /// </summary>

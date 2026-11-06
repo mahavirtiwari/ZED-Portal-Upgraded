@@ -26,7 +26,6 @@ export const PORTAL_LINK_DEFAULTS = {
   ministry: 'https://msme.gov.in/',
   playStore: 'https://play.google.com/store/apps/details?id=com.qci.zed.msme',
   appStore: 'https://apps.apple.com/in/app/zed-msme/id1631537071',
-  kawach: 'https://msmekawach.org.in/Msme/login',
   lgd: 'https://lgdirectory.gov.in/downloadDirectory.do',
 } as const;
 

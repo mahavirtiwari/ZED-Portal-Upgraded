@@ -119,7 +119,6 @@ public static partial class ContentCatalogue
             <p>Congratulations! You can now avail:</p>
             <ul>
               <li>Joining reward of Rs. 10,000/- for ZED Certification</li>
-              <li><b>“MSME KAWACH”</b>, a COVID-19 Support initiative of Ministry of MSME, free of cost.”</li>
             </ul>
             <p>What next?</p>
             <ul>
@@ -160,7 +159,7 @@ public static partial class ContentCatalogue
         App("app.msme.dashboard.info.myCertifications", "Dashboard: My Certifications information", MsmeApp, Main,
             "<p>Please read the complete instructions and requirements before applying for any Certification Level. These are available under \"My Documents\".</p>"),
         App("app.msme.dashboard.info.myIncentives", "Dashboard: My Incentives information", MsmeApp, Main,
-            "<p>MSME KAWACH and Joining Reward incentives are available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under \"My Documents\".</p>"),
+            "<p>The Joining Reward incentive is available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under \"My Documents\".</p>"),
         App("app.msme.incentives.joiningReward.availInfo", "My Incentives: how to avail the joining reward", MsmeApp, Main,
             "<p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p>"),
 

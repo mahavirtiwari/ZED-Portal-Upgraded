@@ -67,7 +67,6 @@ export interface IncentiveCard {
 /** The built-in cards' wording before V4 (until the server answers, or before migration 0026). */
 const BUILT_IN_DEFAULTS: Record<string, BuiltInCard> = Object.fromEntries(
   ([
-    ['KAWACH', 'MSME KAWACH', 'Free (₹ 5,750 + Taxes, 100% Subsidized)', 'WASH Certification on Safety & Hygiene'],
     ['JOINING_REWARD', 'Joining Reward', 'Rs. 10,000/-', 'Limited purpose reward, linked with ZED Certification Levels'],
     ['FINANCIAL_ASSISTANCE', 'Financial Assistance', '75% of Subsidy (Max. Rs. 50,000/-)', 'For System Certification or Product Certification or Product Testing'],
     ['HANDHOLDING', 'Handholding Support', 'Cost: Rs. 2,00,000/- (Subsidy as per MSME size)', 'for improving systems and processes'],

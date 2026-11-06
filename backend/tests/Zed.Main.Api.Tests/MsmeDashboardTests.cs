@@ -58,7 +58,7 @@ public sealed class MsmeDashboardTests : IDisposable
     public async Task Dashboard_incentive_cards_are_the_admins_with_safe_links()
     {
         _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql] = _ =>
-            [new { Card = "KAWACH", Title = "MSME KAWACH", Highlight = "Free", Details = "WASH", Active = false }];
+            [new { Card = "HANDHOLDING", Title = "Handholding Support", Highlight = "Rs. 2,00,000/-", Details = "Systems", Active = false }];
         _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeDashboardController.IncentiveCardsSql] = _ =>
         [
             new { Id = 57L, Title = "Scheme B", Highlight = "Rs. 5,000/-", Details = "D", Department = "MoMSME", ContactPerson = "Officer", Email = "o@msme.gov.in",
@@ -66,8 +66,10 @@ public sealed class MsmeDashboardTests : IDisposable
         ];
         var client = await SignedInAsync();
         var json = await client.GetFromJsonAsync<JsonElement>("/api/msme/dashboard/incentives");
-        var kawach = json.GetProperty("builtIn")[0];
-        Assert.Equal(("KAWACH", false), (kawach.GetProperty("card").GetString(), kawach.GetProperty("active").GetBoolean()));
+        var builtIn = json.GetProperty("builtIn")[0];
+        Assert.Equal(("HANDHOLDING", false), (builtIn.GetProperty("card").GetString(), builtIn.GetProperty("active").GetBoolean()));
+        // MSME KAWACH was removed: its row (migration 0026) is never read.
+        Assert.Contains("DashboardCard <> 'KAWACH'", Zed.Portal.Features.Msme.MsmeDashboardController.BuiltInCardsSql);
         var card = json.GetProperty("incentives")[0];
         Assert.Equal(JsonValueKind.Null, card.GetProperty("webLink").ValueKind);
         Assert.Equal("https://youtu.be/x", card.GetProperty("videoLink").GetString());

@@ -11,8 +11,8 @@ describe('LinksPage', () => {
   const contact: PortalLink = {
     key: 'contact', name: 'Contact ZED', shownOn: 'The MSME menu.', url: null, defaultUrl: 'https://zed.example.org/contact-us', enabled: true,
   };
-  const kawach: PortalLink = {
-    key: 'kawach', name: 'MSME KAWACH', shownOn: 'The MSME dashboard.', url: 'https://kawach.example.org/login', defaultUrl: 'https://kawach.example.org/', enabled: false,
+  const lgd: PortalLink = {
+    key: 'lgd', name: 'LGD Directory', shownOn: 'Admin → Masters → LG Directory.', url: 'https://lgd.example.org/download', defaultUrl: 'https://lgd.example.org/', enabled: false,
   };
 
   async function settle() {
@@ -46,15 +46,15 @@ describe('LinksPage', () => {
   afterEach(() => http.verify());
 
   it('lists every link with its switch and switches one off, keeping the address', async () => {
-    await create([contact, kawach]);
+    await create([contact, lgd]);
     expect(el.querySelectorAll('.link-card').length).toBe(2);
     expect(stats()).toEqual(['2 Links', '1/2 Enabled', '1 Own address', '1 Switched off']);
     expect(chip('contact')).toBe('Default address');
-    expect(chip('kawach')).toBe('Own address');
+    expect(chip('lgd')).toBe('Own address');
     expect(badge('contact')).toBe('Enabled');
-    expect(badge('kawach')).toBe('Disabled');
-    expect(toggle('kawach').checked).toBe(false);
-    expect(address('kawach').value).toBe('https://kawach.example.org/login');
+    expect(badge('lgd')).toBe('Disabled');
+    expect(toggle('lgd').checked).toBe(false);
+    expect(address('lgd').value).toBe('https://lgd.example.org/download');
     expect(address('contact').placeholder).toBe(contact.defaultUrl);
     expect(saveButton('contact').disabled).toBe(true);
 
@@ -65,7 +65,7 @@ describe('LinksPage', () => {
     expect(card('contact').querySelector('.form-actions')!.textContent).toContain('Not saved yet.');
     expect(card('contact').classList).toContain('is-dirty');
     expect(stats()[1]).toBe('1/2 Enabled');
-    expect(saveButton('kawach').disabled).toBe(true);
+    expect(saveButton('lgd').disabled).toBe(true);
 
     card('contact').dispatchEvent(new Event('submit'));
     await settle();
@@ -73,7 +73,7 @@ describe('LinksPage', () => {
     expect(put.request.body).toEqual({ url: '', enabled: false });
     put.flush({ message: 'Contact ZED saved.' });
     await settle();
-    http.expectOne(api).flush({ links: [{ ...contact, enabled: false }, kawach] });
+    http.expectOne(api).flush({ links: [{ ...contact, enabled: false }, lgd] });
     await settle();
     expect(badge('contact')).toBe('Disabled');
     expect(card('contact').querySelector('.alert-success')!.textContent).toContain('Contact ZED saved.');
@@ -107,19 +107,19 @@ describe('LinksPage', () => {
   });
 
   it('checks the address and undoes changes', async () => {
-    await create([kawach]);
-    address('kawach').value = 'kawach login';
-    address('kawach').dispatchEvent(new Event('input'));
+    await create([lgd]);
+    address('lgd').value = 'lgd download';
+    address('lgd').dispatchEvent(new Event('input'));
     await settle();
-    card('kawach').dispatchEvent(new Event('submit'));
+    card('lgd').dispatchEvent(new Event('submit'));
     await settle();
-    expect(card('kawach').querySelector('.help-block')!.textContent).toContain('is not a web address');
+    expect(card('lgd').querySelector('.help-block')!.textContent).toContain('is not a web address');
     http.expectNone((r) => r.method === 'PUT');
 
-    (Array.from(card('kawach').querySelectorAll('button')).find((b) => b.textContent!.trim() === 'CANCEL') as HTMLButtonElement).click();
+    (Array.from(card('lgd').querySelectorAll('button')).find((b) => b.textContent!.trim() === 'CANCEL') as HTMLButtonElement).click();
     await settle();
-    expect(address('kawach').value).toBe('https://kawach.example.org/login');
-    expect(card('kawach').querySelector('.help-block')).toBeNull();
-    expect(saveButton('kawach').disabled).toBe(true);
+    expect(address('lgd').value).toBe('https://lgd.example.org/download');
+    expect(card('lgd').querySelector('.help-block')).toBeNull();
+    expect(saveButton('lgd').disabled).toBe(true);
   });
 });

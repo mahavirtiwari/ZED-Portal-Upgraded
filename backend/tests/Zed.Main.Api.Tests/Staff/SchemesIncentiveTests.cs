@@ -367,14 +367,16 @@ public sealed class SchemesIncentiveTests : IDisposable
         Assert.Equal(57L, Assert.Single(cards.Incentives).Id);
 
         Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/NOPE", new { title = "x", details = "y", active = true })).StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/KAWACH", new { title = " ", details = "y", active = true })).StatusCode);
+        // MSME KAWACH was removed: its card can no longer be edited.
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/KAWACH", new { title = "x", details = "y", active = true })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/HANDHOLDING", new { title = " ", details = "y", active = true })).StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == IncentiveMasterController.BuiltInUpdateSql);
 
-        var r = await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/kawach", new { title = " MSME KAWACH ", highlight = "", details = "WASH", active = false });
+        var r = await admin.PutAsJsonAsync("/api/staff/schemes/incentive-master/dashboard/handholding", new { title = " Handholding Support ", highlight = "", details = "Systems", active = false });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Contains("hidden from the MSME dashboard", await r.Content.ReadAsStringAsync());
         var update = Assert.Single(_host.Sql.Calls, c => c.Name == IncentiveMasterController.BuiltInUpdateSql);
-        Assert.Equal(("KAWACH", "MSME KAWACH", null, "False"),
+        Assert.Equal(("HANDHOLDING", "Handholding Support", null, "False"),
             (FakeSql.Arg(update.Args, "Card"), FakeSql.Arg(update.Args, "Title"), FakeSql.Arg(update.Args, "Highlight"), FakeSql.Arg(update.Args, "Active")));
     }
 }

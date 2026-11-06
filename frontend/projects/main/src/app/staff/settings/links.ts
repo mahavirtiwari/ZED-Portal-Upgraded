@@ -187,7 +187,7 @@ export class LinkCard {
 
 /**
  * Admin → Links (new in V4): the links of the portal's pages to pages outside it (Contact ZED, the Ministry's logo, the
- * app stores, MSME KAWACH, the LGD Directory): each switched on or off, and where it goes. An empty address goes back to
+ * app stores, the LGD Directory): each switched on or off, and where it goes. An empty address goes back to
  * the default. V4 layout: the counts (links, enabled, own address, switched off), a card per link with where it shows,
  * whether it uses its own or the default address and an Open button to test it, and its own Save once changed.
  */

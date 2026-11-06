@@ -111,7 +111,6 @@ describe('DashboardPage', () => {
     const titles = () => [...el.querySelectorAll('.panel-incen-block h4')].map((h) => h.textContent!.trim());
     await render({ BronzeStatus: 6 }, {}, 0, {
       builtIn: [
-        { card: 'KAWACH', title: 'MSME KAWACH', highlight: 'Free', details: 'WASH', active: false },
         { card: 'JOINING_REWARD', title: 'Welcome Reward', highlight: 'Rs. 12,000/-', details: 'For new units', active: true },
       ],
       incentives: [
@@ -120,7 +119,7 @@ describe('DashboardPage', () => {
           applicableForBronze: false, applicableForSilver: true, applicableForGold: false },
       ],
     });
-    // KAWACH hidden; Joining Reward with the Admin's wording; the others as before V4; the incentive before the stakeholder cards.
+    // Joining Reward with the Admin's wording; the others as before V4; the incentive before the stakeholder cards.
     expect(titles()).toEqual(['Welcome Reward', 'Financial Assistance', 'Handholding Support', 'Technology Upgradation', 'Export Booster',
       'Ministry of MSME', 'States/UTs', 'Financial Institutions', 'Other Incentives']);
     expect(el.textContent).toContain('Rs. 12,000/-');

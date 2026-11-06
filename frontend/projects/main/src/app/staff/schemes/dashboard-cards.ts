@@ -8,7 +8,6 @@ import { GROUP_CARD } from './incentive-master';
 
 /** The pictures of the built-in cards on the MSME dashboard. */
 export const BUILT_IN_CARD_IMAGES: Record<string, string> = {
-  KAWACH: '/Images/Dashboard/wash.png',
   JOINING_REWARD: '/Images/Dashboard/reward.png',
   FINANCIAL_ASSISTANCE: '/Images/Dashboard/financial.png',
   HANDHOLDING: '/Images/Dashboard/handholding.png',
@@ -17,7 +16,6 @@ export const BUILT_IN_CARD_IMAGES: Record<string, string> = {
 
 /** What each built-in card's button does (the portal's own, not editable here). */
 const BUILT_IN_ACTION: Record<string, string> = {
-  KAWACH: 'Avail opens MSME KAWACH (Admin → Links).',
   JOINING_REWARD: 'Avail / View opens the joining reward of the unit.',
   FINANCIAL_ASSISTANCE: 'Avail opens the Financial Assistance application once the unit is eligible.',
   HANDHOLDING: 'Avail / View opens Handholding Support once the unit is certified.',
@@ -38,7 +36,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
 
 /**
  * Admin → Incentives → Main Dashboard Cards (new in V4): the cards of "My Incentives" on every MSME's dashboard. The
- * built-in cards (MSME KAWACH, Joining Reward, Financial Assistance, Handholding Support, Technology Upgradation) keep
+ * built-in cards (Joining Reward, Financial Assistance, Handholding Support, Technology Upgradation) keep
  * their buttons; the Admin changes their wording and shows or hides them. Below them, the incentives of the stakeholder
  * groups whose "Where it appears" is Main dashboard (edited on their own page). V4 layout: the counts, then the cards in
  * their dashboard order drawn as MSMEs see them, each with its Show / Hide and Edit; a level filter on the incentive
@@ -92,12 +90,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                 </div>
                 <div class="pv-body">
                   <h6>{{ b.title }}</h6>
-                  @if (b.card === 'KAWACH') {
-                    <p>{{ b.details }}</p>
-                    @if (b.highlight) { <p class="mt-2"><span class="clr-spot">{{ b.highlight }}</span></p> }
-                  } @else {
-                    <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
-                  }
+                  <p>@if (b.highlight) { <span class="clr-spot">{{ b.highlight }}</span> } {{ b.details }}</p>
                 </div>
               </div>
               <small class="muted dc-action">{{ action(b.card) }}</small>
@@ -210,12 +203,7 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
                       </div>
                       <div class="pv-body">
                         <h6>{{ e.form.title.trim() || 'Card title' }}</h6>
-                        @if (e.card === 'KAWACH') {
-                          <p>{{ e.form.details }}</p>
-                          @if (e.form.highlight.trim()) { <p class="mt-2"><span class="clr-spot">{{ e.form.highlight }}</span></p> }
-                        } @else {
-                          <p>@if (e.form.highlight.trim()) { <span class="clr-spot">{{ e.form.highlight }}</span> } {{ e.form.details }}</p>
-                        }
+                        <p>@if (e.form.highlight.trim()) { <span class="clr-spot">{{ e.form.highlight }}</span> } {{ e.form.details }}</p>
                       </div>
                     </div>
                     <small class="muted d-block mt-2">{{ e.form.active ? action(e.card) : 'Hidden: MSMEs do not see this card.' }}</small>

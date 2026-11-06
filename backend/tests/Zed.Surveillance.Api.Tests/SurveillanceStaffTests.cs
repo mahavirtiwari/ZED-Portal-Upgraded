@@ -188,8 +188,10 @@ public sealed class SurveillanceStaffTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await cf.GetAsync("/api/staff/dashboard/registered-msme")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await cf.GetAsync("/api/staff/dashboard/financial-support")).StatusCode);
         var names = (await cf.GetFromJsonAsync<JsonElement>("/api/staff/reports")).EnumerateArray().Select(e => e.GetProperty("name").GetString()).ToList();
-        Assert.Equal(8, names.Count);
+        // 8 before MSME KAWACH was removed (its "List Of KAWACH Registered Msme").
+        Assert.Equal(7, names.Count);
         Assert.Contains("List Of Surveillance Inprogress", names);
+        Assert.DoesNotContain(names, n => n!.Contains("KAWACH"));
     }
 
     [Fact]

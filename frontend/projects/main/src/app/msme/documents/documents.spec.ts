@@ -48,8 +48,6 @@ describe('DocumentsPage', () => {
           Bronze: '/api/msme/files/Certificates/DA/ZEDMSME000001/Bronze.pdf',
           Silver: '/api/msme/files/Certificates/SA/ZEDMSME000001/Silver.pdf',
           Gold: null,
-          Wash: 'https://msmekawach.org.in/Certificates/DA/K1/Bronze.pdf',
-          Webinar: null,
         },
       ],
       Invoices: [
@@ -67,7 +65,6 @@ describe('DocumentsPage', () => {
       // The pledge certificate page (drawn when opened, never stored).
       { text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' },
       { text: 'Silver Certificate', href: '/api/msme/files/Certificates/SA/ZEDMSME000001/Silver.pdf', target: '_blank' },
-      { text: 'WASH Certificate', href: 'https://msmekawach.org.in/Certificates/DA/K1/Bronze.pdf', target: '_blank' },
       { text: 'HANDHOLDING - Silver milestone 2 Invoice', href: '/api/msme/files/ReceiptInvoice/I1_ZEDMSME000001_Invoice.pdf', target: '_blank' },
       { text: 'ZED - Bronze Assessment Receipt', href: null, target: null },
     ]);

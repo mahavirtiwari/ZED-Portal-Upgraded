@@ -22,7 +22,7 @@ public sealed class PortalLinksTests : IDisposable
         _host.Sql.Queries[Settings] = _ =>
         [
             new { SettingKey = PortalLinks.ContactUrlKey, SettingValue = "https://zed.qci.org.in/contact-us" },
-            new { SettingKey = "Portal.KawachEnabled", SettingValue = "0" },
+            new { SettingKey = "Portal.AppStoreEnabled", SettingValue = "0" },
             new { SettingKey = "Portal.PlayStoreUrl", SettingValue = "https://play.google.com/store/apps/details?id=x.y" },
         ];
         var config = (await (await _host.CreateBrowserAsync()).GetFromJsonAsync<SessionController.ClientConfig>("/api/config"))!;
@@ -31,7 +31,8 @@ public sealed class PortalLinksTests : IDisposable
         Assert.Equal("https://zed.qci.org.in/contact-us", config.Links["contact"]);
         Assert.Equal("https://msme.gov.in/", config.Links["ministry"]);
         Assert.Equal("https://play.google.com/store/apps/details?id=x.y", config.Links["playStore"]);
-        Assert.Null(config.Links["kawach"]);
+        Assert.Null(config.Links["appStore"]);
+        Assert.False(config.Links.ContainsKey("kawach"));
     }
 
     [Fact]
@@ -46,7 +47,7 @@ public sealed class PortalLinksTests : IDisposable
 
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var links = (await admin.GetFromJsonAsync<PortalLinksController.LinksResponse>(Url))!.Links;
-        Assert.Equal(["contact", "ministry", "playStore", "appStore", "kawach", "lgd"], links.Select(l => l.Key));
+        Assert.Equal(["contact", "ministry", "playStore", "appStore", "lgd"], links.Select(l => l.Key));
         Assert.Equal(new PortalLinksController.LinkItem("contact", "Contact ZED", PortalLinks.All[0].ShownOn, null, "https://zed-staging.qci.org.in/contact-us", true), links[0]);
         Assert.All(links, l => Assert.True(l.Enabled));
 

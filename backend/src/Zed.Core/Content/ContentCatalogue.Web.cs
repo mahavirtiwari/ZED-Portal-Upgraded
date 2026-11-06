@@ -256,7 +256,7 @@ public static partial class ContentCatalogue
             """),
         Web("msme.dashboard.info.myIncentives", "Dashboard: My Incentives information", Dashboard, Main, """
             <ul>
-              <li><p>MSME KAWACH and Joining Reward incentives are available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under "My Documents".</p></li>
+              <li><p>The Joining Reward incentive is available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under "My Documents".</p></li>
             </ul>
             """),
         Web("msme.dashboard.joiningReward.availInfo", "Dashboard: how to avail the joining reward", Dashboard, Main, """

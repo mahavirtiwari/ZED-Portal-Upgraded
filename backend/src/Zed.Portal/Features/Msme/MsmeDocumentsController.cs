@@ -50,11 +50,10 @@ public static class MsmeMyDocuments
     ];
 
     /// <summary>
-    /// WASH and webinar certificates live on the KAWACH portal, which publishes them itself. The
-    /// procedure returns those public URLs; they are passed through only for that host.
+    /// WASH and webinar certificates of MSME KAWACH (the procedure's Wash and Webinar columns, links to the KAWACH
+    /// portal): not offered since MSME KAWACH was removed (2026-11-06), so they are taken out of the answer.
     /// </summary>
-    private static readonly string[] KawachColumns = ["Wash", "Webinar"];
-    public const string KawachHost = "msmekawach.org.in";
+    internal static readonly string[] KawachColumns = ["Wash", "Webinar"];
 
     public static Task<ResultSets> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         db.QueryProcMultipleAsync(Procedure, new { ZedId = zedId }, ct);
@@ -102,10 +101,10 @@ public static class MsmeMyDocuments
                         ? MsmeFilePaths.ToApiUrl(path)
                         : null;
 
+        // The WASH and webinar certificates of MSME KAWACH are not offered (removed 2026-11-06).
         foreach (var row in result[SetNames[1]])
             foreach (var column in KawachColumns)
-                if (row.ContainsKey(column))
-                    row[column] = IsKawachUrl(row.Text(column)) ? row.Text(column) : null;
+                row.Remove(column);
         return result;
     }
 
@@ -117,7 +116,4 @@ public static class MsmeMyDocuments
         return ok ? path : null;
     }
 
-    private static bool IsKawachUrl(string value) =>
-        Uri.TryCreate(value, UriKind.Absolute, out var u) && u.Scheme == Uri.UriSchemeHttps &&
-        string.Equals(u.Host, KawachHost, StringComparison.OrdinalIgnoreCase);
 }

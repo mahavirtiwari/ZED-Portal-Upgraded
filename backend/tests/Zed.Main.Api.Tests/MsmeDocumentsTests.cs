@@ -95,8 +95,9 @@ public sealed class MsmeDocumentsTests : IDisposable
         Assert.Equal($"/api/msme/files/Certifications/{Me}/Pledge.pdf", cert.GetProperty("Pledge").GetString());
         Assert.Equal($"/api/msme/files/Certifications/DA/{Me}/Bronze.pdf", cert.GetProperty("Bronze").GetString());
         Assert.Equal(JsonValueKind.Null, cert.GetProperty("Silver").ValueKind);
-        Assert.Equal("https://msmekawach.org.in/Certificates/DA/KAWACH01/Bronze.pdf", cert.GetProperty("Wash").GetString());
-        Assert.Equal(JsonValueKind.Null, cert.GetProperty("Webinar").ValueKind);
+        // MSME KAWACH was removed: no WASH or webinar certificate, whatever the procedure returns.
+        Assert.False(cert.TryGetProperty("Wash", out _));
+        Assert.False(cert.TryGetProperty("Webinar", out _));
 
         Assert.Equal($"/api/msme/files/PDFs/SA/{Me}/Bronze_Payment_Receipt.pdf", json.GetProperty("PaymentReceipts")[0].GetProperty("BronzeReceipt").GetString());
 
