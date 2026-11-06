@@ -120,7 +120,7 @@ describe('environments', () => {
     expect(apiBase(ENVIRONMENTS.staging, 'surveillancemobileapi/surveillance/')).toBe(
       'https://zedv3.qci.org.in/surveillancemobileapi/surveillance/',
     );
-    expect(apiBase(ENVIRONMENTS.production, '/Pay')).toBe('https://loginzed.msme.gov.in/Pay/');
+    expect(apiBase(ENVIRONMENTS.production, '/Pay')).toBe('https://zedv3.qci.org.in/Pay/');
     expect(environmentByName('nonsense')).toBe(ENVIRONMENTS.production);
   });
 });

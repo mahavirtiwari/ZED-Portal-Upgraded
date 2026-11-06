@@ -14,9 +14,9 @@ export type Environment = {
 };
 
 export const ENVIRONMENTS: Record<EnvironmentName, Environment> = {
-  // BuildConfig.BASE_URI of the legacy store builds.
-  production: { name: 'production', baseUrl: 'https://loginzed.msme.gov.in' },
-  // V4 staging (docs/STAGING.md).
+  // The production server since 2026-11-06 (docs/PRODUCTION.md). The legacy store builds had https://loginzed.msme.gov.in.
+  production: { name: 'production', baseUrl: 'https://zedv3.qci.org.in' },
+  // Debug builds: the same server.
   staging: { name: 'staging', baseUrl: 'https://zedv3.qci.org.in' },
   // V4 MobileApi run on the developer PC (launch profile "surveillance", port 5106), reached from the
   // Android emulator through 10.0.2.2. Cleartext is allowed for this host in debug builds only.

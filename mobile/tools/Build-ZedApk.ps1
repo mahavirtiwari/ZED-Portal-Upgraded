@@ -8,7 +8,7 @@
   (com.qci.zed.bronzesurveillance; the workspace is called "msme" but it is not the applicant app); assessor = ZED SA
   (site assessment); consultant = ZED Consultancy (handholding); all = the four.
 
-  By default the APK talks to the TEST server (https://zedv3.qci.org.in) and is signed with the Android debug key of
+  By default the APK talks to the ZED server (https://zedv3.qci.org.in, production since 2026-11-06) and is signed with the Android debug key of
   this machine: for testers, not for the Play Store. A phone that has a test APK signed on another machine must
   uninstall it first.
 
@@ -22,10 +22,10 @@
   system drive. A log is written to <Output>\logs.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App zedmsme
-  # ZED MSME (the applicant app) for the test server, from the latest main.
+  # ZED MSME (the applicant app), from the latest main, signed with the debug key (to install on phones directly).
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App msme
-  # ZED Surveillance (Bronze) for the test server.
+  # ZED Surveillance (Bronze), signed with the debug key.
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App all -Ref 520e94d
 .EXAMPLE
@@ -105,7 +105,7 @@ try {
         if (-not (Test-Path $env:ZED_UPLOAD_STORE_FILE)) { throw "Production build: the keystore file $env:ZED_UPLOAD_STORE_FILE does not exist." }
         Write-Host 'Building for the LIVE server, signed with the upload keystore.' -ForegroundColor Yellow
     } else {
-        Write-Host 'Building for the TEST server (https://zedv3.qci.org.in), signed with the debug key of this machine.'
+        Write-Host 'Building for https://zedv3.qci.org.in, signed with the debug key of this machine (to install directly, not for the Play Store).'
     }
 
     # --- Code: a checkout of its own, updated to the branch or -Ref
