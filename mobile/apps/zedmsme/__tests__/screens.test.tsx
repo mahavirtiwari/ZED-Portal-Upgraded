@@ -92,6 +92,40 @@ describe('EvidencesActivity', () => {
     expect(handler(r, 'final-submit', 'onPress').props.disabled).toBe(true);
   });
 
+  it('Documents Upload offers to change Basic Information until the final submit (2026-11-07)', async () => {
+    const app = await signedInApp();
+    const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!;
+    details.finalSubmitDone = false;
+    const r = render(app, 'Evidences', { certificationType: 'Bronze' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => handler(r, 'edit-basic-info', 'onPress').props.onPress());
+    expect(byTestId(r, 'evidences').length).toBeGreaterThan(0);
+    expect(r.root.findAll(n => n.props.route?.name === 'BasicInformation' && n.props.route?.params?.edit === true).length).toBeGreaterThan(0);
+  });
+
+  it('a certificate evidence asks "Certificate Available" first: photos only after Yes, none for No (2026-11-07)', async () => {
+    const app = await signedInApp();
+    const ev = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!.parameters![0]!.requirements![0]!.evidences![0]!;
+    ev.validationRequired = true;
+    ev.photos = [];
+    ev.available = null;
+    ev.status = Status.IN_PROGRESS;
+    const r = render(app, 'Evidences', { certificationType: 'Bronze' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const rows = r.root.findAll(n => typeof n.props.testID === 'string' && /^evidence-/.test(n.props.testID) && typeof n.props.onPress === 'function' && !n.props.testID.endsWith('-upload'));
+    await act(async () => rows[0]!.props.onPress());
+    expect(byTestId(r, 'evidence-dialog').length + r.root.findAll(n => n.props.testID === 'evidence-dialog').length).toBeGreaterThan(0);
+    expect(r.root.findAll(n => n.props.testID === 'evidence-photos')).toHaveLength(0);
+    await act(async () => handler(r, 'available-yes', 'onPress').props.onPress());
+    expect(r.root.findAll(n => n.props.testID === 'evidence-photos').length).toBeGreaterThan(0);
+    await act(async () => handler(r, 'available-no', 'onPress').props.onPress());
+    expect(r.root.findAll(n => n.props.testID === 'evidence-photos')).toHaveLength(0);
+  });
+
   it('offline: shows the red offline note and the legacy reminder instead of UPLOAD', async () => {
     (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: false });
     const app = await signedInApp();

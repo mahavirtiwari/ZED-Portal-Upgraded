@@ -107,12 +107,20 @@ export function EsgChecklistScreen() {
               <Text style={[textStyles.subheading, { marginTop: 10, marginBottom: 20 }]}>{section.section_title}</Text>
               {section.fields.map(field =>
                 field.type === 'single_choice' ? (
-                  <View key={field.id}>
-                    <SingleChoice label={field.question} options={field.options ?? []} value={answers[field.id] ?? null} onChange={v => set(field.id, v)} testID={`esg-${field.id}`} />
+                  // 2026-11-07: the options on one line, and a follow-up question ("If yes, ...") inside the same box,
+                  // linked to its question, shown when the answer asks for it.
+                  <SingleChoice
+                    key={field.id}
+                    compact
+                    label={field.question}
+                    options={field.options ?? []}
+                    value={answers[field.id] ?? null}
+                    onChange={v => set(field.id, v)}
+                    testID={`esg-${field.id}`}>
                     {(field.dependent_fields ?? []).map(dep =>
                       answers[field.id] === dep.selected_option ? <Dependent key={dep.id} field={dep} value={answers[dep.id]} onChange={v => set(dep.id, v)} /> : null,
                     )}
-                  </View>
+                  </SingleChoice>
                 ) : field.type === 'text' ? (
                   <TextFieldBox key={field.id} label={field.question} value={answers[field.id] ?? ''} onChange={v => set(field.id, v)} testID={`esg-${field.id}`} />
                 ) : null,
@@ -126,11 +134,18 @@ export function EsgChecklistScreen() {
   );
 }
 
+/** A follow-up question inside its question's box, linked by a teal bar on the left. */
 function Dependent({ field, value, onChange }: { field: EsgField; value?: string; onChange: (v: string) => void }) {
-  if (field.type === 'text_box') return <TextFieldBox label={field.question} value={value ?? ''} onChange={onChange} testID={`esg-${field.id}`} />;
-  if (field.type === 'single_choice')
-    return <SingleChoice label={field.question} options={field.options ?? []} value={value ?? null} onChange={onChange} testID={`esg-${field.id}`} />;
-  return null;
+  return (
+    <View style={styles.linked} testID={`esg-${field.id}-linked`}>
+      <FieldLabel label={field.question} />
+      {field.type === 'text_box' ? (
+        <TextInput value={value ?? ''} onChangeText={onChange} style={styles.edit} multiline placeholder="Type your answer" testID={`esg-${field.id}`} />
+      ) : field.type === 'single_choice' ? (
+        <SingleChoice compact options={field.options ?? []} value={value ?? null} onChange={onChange} style={styles.innerChoice} testID={`esg-${field.id}`} />
+      ) : null}
+    </View>
+  );
 }
 
 /** text_field.xml: label and a plain 50 dp EditText inside the grey box (padding 16, margin 10). */
@@ -145,5 +160,19 @@ function TextFieldBox({ label, value, onChange, testID }: { label: string; value
 
 const styles = StyleSheet.create({
   container: { margin: dimens.padding2, padding: dimens.padding1 },
-  edit: { height: 50, padding: 5, fontSize: dimens.textSize, color: colors.black, ...shapes.greyRectangle, borderRadius: 0, backgroundColor: 'transparent' },
+  // A visible box (2026-11-07: the field had no border and looked like plain text).
+  edit: {
+    minHeight: 56,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: dimens.textSize,
+    color: colors.black,
+    borderWidth: 1,
+    borderColor: '#9A9A9A',
+    borderRadius: 6,
+    backgroundColor: colors.white,
+    textAlignVertical: 'top',
+  },
+  linked: { marginTop: dimens.padding3, borderLeftWidth: 3, borderLeftColor: colors.appColor, paddingLeft: dimens.padding3 },
+  innerChoice: { margin: 0, padding: 0, borderWidth: 0 },
 });

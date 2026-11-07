@@ -121,6 +121,23 @@ describe('Basic Information from the definition', () => {
     expect(byTestId(r, 'field-cf_gst')).toHaveLength(1);
   });
 
+  it('the utilization unit follows the capacity unit and cannot be chosen on its own (2026-11-07)', async () => {
+    const { app } = await signedInApp();
+    const b = info(app);
+    b.monthlyUtilizationUnits = 'Litre';
+    const r = render(app, 'BasicInformation', { certificationType: 'Bronze' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    const picker = (id: string) => r.root.findAll(n => n.props.testID === id && typeof n.props.onChange === 'function' && 'items' in n.props)[0]!;
+    // The utilization picker is locked to the capacity's unit.
+    expect(picker('util-units').props.locked).toBe(true);
+    // Choosing Meter for the capacity sets both.
+    act(() => picker('capacity-units').props.onChange('Meter'));
+    expect(b.monthlyManufacturingCapacityUnits).toBe('Meter');
+    expect(b.monthlyUtilizationUnits).toBe('Meter');
+  });
+
   it('requires the custom field, then submits customFields and formVersion and leaves the disabled field out', async () => {
     const { app, server } = await signedInApp();
     await app.refreshServerContent();

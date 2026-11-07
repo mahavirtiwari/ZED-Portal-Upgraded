@@ -147,6 +147,15 @@ export function EvidencesScreen() {
       <View style={{ flex: 1, padding: dimens.padding1 }}>
         <FlatList
           style={{ flex: 1 }}
+          // New (2026-11-07): Basic Information can be changed until the final submit (the server accepts it again).
+          ListHeaderComponent={
+            details && !details.finalSubmitDone ? (
+              <Pressable style={styles.editBasic} onPress={() => nav.push('BasicInformation', { certificationType: type, edit: true })} testID="edit-basic-info">
+                <Text style={styles.editBasicText}>Need to change your Basic Information?</Text>
+                <Text style={styles.editBasicLink}>EDIT</Text>
+              </Pressable>
+            ) : undefined
+          }
           data={evidences}
           keyExtractor={(e, i) => `${e.id}-${i}`}
           renderItem={({ item, index }) => (
@@ -254,22 +263,6 @@ function EvidenceDialog({ evidence, onClose, onDone }: { evidence: Evidence; onC
 
   return (
     <ZedDialog visible title={evidence.label ?? ''} onClose={onClose} cancelable={false} testID="evidence-dialog">
-      {available !== false ? (
-        <PhotosField
-          label="Attach photos (max. 5 photos)"
-          photos={photos}
-          maxPhotos={MAX_EVIDENCES}
-          allowPick={evidence.validationRequired ?? false}
-          onChange={list => {
-            setPhotos(list);
-            evidence.photos = list;
-            app.persist();
-          }}
-          capturer={capturer}
-          store={app.photos}
-          testID="evidence-photos"
-        />
-      ) : null}
       {showAvailability ? (
         <View style={[shapes.greyOutlineRectangle, styles.available]}>
           <Text style={[textStyles.defaultLabel, { fontWeight: 'normal', flex: 1 }]}>Certificate Available</Text>
@@ -292,6 +285,23 @@ function EvidenceDialog({ evidence, onClose, onDone }: { evidence: Evidence; onC
           />
         </View>
       ) : null}
+      {/* 2026-11-07: the photos are asked for after "Certificate Available: Yes" (none for No). */}
+      {(showAvailability ? available === true : available !== false) ? (
+        <PhotosField
+          label="Attach photos (max. 5 photos)"
+          photos={photos}
+          maxPhotos={MAX_EVIDENCES}
+          allowPick={evidence.validationRequired ?? false}
+          onChange={list => {
+            setPhotos(list);
+            evidence.photos = list;
+            app.persist();
+          }}
+          capturer={capturer}
+          store={app.photos}
+          testID="evidence-photos"
+        />
+      ) : null}
       <ZedButton
         title="Done"
         small
@@ -308,6 +318,18 @@ function EvidenceDialog({ evidence, onClose, onDone }: { evidence: Evidence; onC
 }
 
 const styles = StyleSheet.create({
+  editBasic: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: dimens.padding1,
+    padding: dimens.padding3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.appColor,
+    backgroundColor: colors.appColor3,
+  },
+  editBasicText: { flex: 1, color: colors.black, fontSize: 14 },
+  editBasicLink: { color: colors.appColorDark, fontWeight: 'bold', fontSize: 14, marginLeft: dimens.padding2 },
   row: { ...shapes.lightGreyOutlineFilled, margin: dimens.padding1, padding: 2 },
   rowLabel: { flexDirection: 'row', alignItems: 'center', padding: dimens.padding2 },
   rowText: { flex: 1, marginHorizontal: dimens.padding1, marginBottom: 0 },

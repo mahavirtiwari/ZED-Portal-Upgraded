@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   colors,
   dimens,
@@ -25,7 +25,6 @@ import {
 } from '@zed/shared';
 import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest, VerifyGstinResponse } from '../api';
 import { icons } from '../assets/icons';
-import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
 import { levelName, NO, YES, type CertificationType } from '../models';
@@ -97,6 +96,7 @@ export function PaymentScreen() {
   // instead of the disclaimer and an empty summary that led nowhere.
   const [loadError, setLoadError] = useState<string | null>(null);
   const [success, setSuccess] = useState<boolean | null>(null);
+  const [receipt, setReceipt] = useState<Receipt | null>(null);
   const zedId = app.user?.MsmeDetails?.ZedId ?? '';
 
   const loadFee = async () => {
@@ -141,6 +141,7 @@ export function PaymentScreen() {
       if (amount === 0) {
         const r = await app.api.submitZeroPaymentDetails(request);
         if (isSuccess(r)) {
+          setReceipt({ amount: '0', orderId: null, at: new Date() });
           setSuccess(true);
           setPage(3);
         } else ui.showAlert(r.errorMessage ?? 'Error occurred while while processing request, please try again');
@@ -154,6 +155,7 @@ export function PaymentScreen() {
         else if (result.outcome === 'error') ui.showAlert(result.error?.trim() ? result.error : PAYMENT_ERROR);
         else if (!result.status && result.description) ui.showAlert(result.description);
         else {
+          setReceipt({ amount: request.Amount, orderId: r.orderId ?? null, at: new Date() });
           setSuccess(isPaid(result));
           setPage(3);
         }
@@ -194,7 +196,7 @@ export function PaymentScreen() {
       ) : page === 2 ? (
         <DetailsPage type={type} response={response} zedId={zedId} onBack={onBack} onPay={onPaymentClick} />
       ) : (
-        <ResultPage type={type} success={!!success} onDashboard={() => void backToDashboard(false)} onStart={() => void backToDashboard(true)} onRetry={() => setPage(2)} />
+        <ResultPage type={type} success={!!success} receipt={receipt} onDashboard={() => void backToDashboard(false)} onStart={() => void backToDashboard(true)} onRetry={() => setPage(2)} />
       )}
     </ScreenFrame>
   );
@@ -463,40 +465,103 @@ function SummaryRows({ summary }: { summary: Summary }) {
 }
 
 /** PaymentResultFragment */
-function ResultPage({ type, success, onDashboard, onStart, onRetry }: { type: CertificationType; success: boolean; onDashboard: () => void; onStart: () => void; onRetry: () => void }) {
+/** The level's colour on the result page (2026-11-07 redesign). */
+function levelColour(type: CertificationType): string {
+  const t = String(type).toLowerCase();
+  if (t.startsWith('bronze')) return colors.bronze;
+  if (t.startsWith('silver')) return '#9EA3A7';
+  if (t.startsWith('gold')) return colors.gold;
+  return colors.appColorDark;
+}
+
+type Receipt = { amount: string; orderId: string | null; at: Date };
+
+/** Redesigned 2026-11-07: a check mark, the level, what was paid, the next step and two clear buttons. */
+function ResultPage({
+  type,
+  success,
+  receipt,
+  onDashboard,
+  onStart,
+  onRetry,
+}: {
+  type: CertificationType;
+  success: boolean;
+  receipt: Receipt | null;
+  onDashboard: () => void;
+  onStart: () => void;
+  onRetry: () => void;
+}) {
   const text = useAppText(success ? 'app.msme.payment.success' : 'app.msme.payment.failure', { Certification: levelName(type) });
-  // The built-in wording keeps the legacy look (paragraphs, the quoted certification in bold); the Admin's HTML is shown as written.
-  const message = text && !text.fromServer ? htmlToPlain(text.html).replace(/\n/g, '\n\n') : '';
-  const q1 = message.indexOf('"');
-  const q2 = message.lastIndexOf('"');
+  const message = text ? htmlToPlain(text.html).trim() : '';
+  const tint = levelColour(type);
+  const level = levelName(type);
   return (
-    <ScrollView contentContainerStyle={{ padding: dimens.padding4 }}>
-      <View style={[shapes.greyRectangle, { margin: dimens.padding3, padding: dimens.padding4 }]}>
-        <Image source={success ? images.ic_payment_success : images.ic_payment_failure} style={{ width: 256, height: 180, alignSelf: 'center' }} resizeMode="contain" />
-        <Text style={{ textAlign: 'center', fontSize: dimens.textSize3, color: colors.black }}>{success ? 'Payment Successful!' : 'Error'}</Text>
-        {text?.fromServer ? (
-          <HtmlText html={text.html} style={styles.centered} testID="payment-result-message" />
-        ) : success && q1 >= 0 ? (
-          <Text style={styles.centered}>
-            {message.substring(0, q1)}
-            <Text style={{ fontWeight: 'bold' }}>{message.substring(q1, q2)}</Text>
-            {message.substring(q2)}
+    <View style={{ flex: 1, backgroundColor: colors.white }} testID={success ? 'payment-success' : 'payment-failure'}>
+      <ScrollView contentContainerStyle={styles.result}>
+        <View style={[styles.badgeOuter, { backgroundColor: success ? colors.appColor3 : colors.ncBackground }]}>
+          <View style={[styles.badgeInner, { backgroundColor: success ? colors.appColor : colors.ncRed }]}>
+            <Text style={styles.badgeMark}>{success ? '✓' : '!'}</Text>
+          </View>
+        </View>
+        <Text style={styles.resultTitle}>{success ? 'Payment successful' : 'Payment not completed'}</Text>
+        <Text style={[styles.levelChip, { color: tint, borderColor: tint }]}>{`${level} Certification`}</Text>
+        {success && receipt ? (
+          <View style={styles.receipt} testID="payment-receipt">
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Amount paid</Text>
+              <Text style={styles.receiptValue}>{`${RS} ${receipt.amount}`}</Text>
+            </View>
+            {receipt.orderId ? (
+              <View style={styles.receiptRow}>
+                <Text style={styles.receiptLabel}>Order ID</Text>
+                <Text style={styles.receiptValue}>{receipt.orderId}</Text>
+              </View>
+            ) : null}
+            <View style={styles.receiptRow}>
+              <Text style={styles.receiptLabel}>Date</Text>
+              <Text style={styles.receiptValue}>{receipt.at.toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
+            </View>
+          </View>
+        ) : null}
+        {message ? (
+          <Text style={styles.resultText} testID="payment-result-message">
+            {message}
           </Text>
-        ) : (
-          <Text style={styles.centered}>{message}</Text>
-        )}
+        ) : null}
+        {success ? <Text style={styles.nextStep}>{`Next: Basic Information and document upload for your ${level} certification.`}</Text> : null}
+      </ScrollView>
+      <View style={styles.resultButtons}>
+        {success ? <ZedButton title={`Start ${level} Certification`} onPress={onStart} testID="payment-start" /> : null}
+        {!success ? <ZedButton title="Retry Payment" onPress={onRetry} testID="payment-retry-pay" /> : null}
+        <ZedButton
+          title="Back to Dashboard"
+          style={styles.outlineButton}
+          textStyle={{ color: colors.appColorDark }}
+          onPress={onDashboard}
+          testID="payment-dashboard"
+        />
       </View>
-      {success ? <ZedButton title="Start Certification Process" small style={{ alignSelf: 'center' }} onPress={onStart} /> : null}
-      {!success ? (
-        <ZedButton title="Retry Payment" small style={{ alignSelf: 'center', backgroundColor: colors.lightGrey }} textStyle={{ color: colors.textColor }} onPress={onRetry} />
-      ) : null}
-      <ZedButton title="back to dashboard" small style={{ alignSelf: 'center', backgroundColor: colors.lightGrey }} textStyle={{ color: colors.textColor }} onPress={onDashboard} />
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   body: { paddingBottom: dimens.padding4, fontSize: dimens.textSize, color: colors.black },
+  result: { alignItems: 'center', padding: dimens.padding4, paddingTop: 36 },
+  badgeOuter: { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
+  badgeInner: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
+  badgeMark: { color: colors.white, fontSize: 32, fontWeight: 'bold' },
+  resultTitle: { fontSize: 22, fontWeight: 'bold', color: colors.black, marginTop: dimens.padding4 },
+  levelChip: { marginTop: dimens.padding2, borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 3, fontWeight: 'bold', overflow: 'hidden' },
+  receipt: { alignSelf: 'stretch', backgroundColor: colors.lightGrey2, borderRadius: 10, padding: dimens.padding3, marginTop: dimens.padding4 },
+  receiptRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3 },
+  receiptLabel: { color: colors.labelColor, fontSize: 14 },
+  receiptValue: { color: colors.black, fontSize: 14, fontWeight: 'bold' },
+  resultText: { fontSize: 15, color: colors.darkGrey2, textAlign: 'center', marginTop: dimens.padding4, lineHeight: 22 },
+  nextStep: { fontSize: 14, color: colors.appColorDark, textAlign: 'center', marginTop: dimens.padding3, fontWeight: 'bold' },
+  resultButtons: { padding: dimens.padding4, gap: dimens.padding2, backgroundColor: colors.white },
+  outlineButton: { backgroundColor: colors.white, borderWidth: 1.5, borderColor: colors.appColor },
   coupon: {
     margin: dimens.padding2,
     padding: dimens.padding2,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { PhotoStore } from '../../db/photoStore';
 import type { Capturer } from '../../photo/usePhotoCapture';
@@ -50,10 +50,17 @@ export function PhotosField({
 }) {
   const ui = useUi();
   const [hidden, setHidden] = useState<string | null>(null);
+  // Fixed 2026-11-07: one capture at a time. The camera can take a few seconds to open; taps meanwhile queued more
+  // captures, and the camera opened again later by itself.
+  const busy = useRef(false);
+  const [opening, setOpening] = useState(false);
   const pdfAdded = photos.some(p => p.isPdf);
   const anyPhoto = photos.some(p => !p.isPdf);
 
   const add = async (source: PhotoSource, replace: PhotoData | null = null) => {
+    if (busy.current) return;
+    busy.current = true;
+    setOpening(true);
     if (replace) setHidden(replace.photoId);
     try {
       const photo = await capturer.capture(source, { replacePhotoId: replace?.photoId ?? null, askName });
@@ -67,15 +74,24 @@ export function PhotosField({
       onChange([...list, photo]);
     } finally {
       setHidden(null);
+      busy.current = false;
+      setOpening(false);
     }
   };
 
   const onAdd = async () => {
+    if (busy.current) return;
     if (!allowPick) return add('camera');
     const options = anyPhoto
       ? ['Take Photo', 'Pick Photo from Gallery', 'Cancel']
       : ['Take Photo', 'Pick Photo from Gallery', 'Pick PDF from Gallery', 'Cancel'];
-    const i = await ui.pickItem(null, options);
+    // 2026-11-07 (design approved): a bottom sheet with an icon and a hint per option.
+    const i = await ui.pickItem('Add document', options, {
+      subtitle: 'Choose how to add this evidence',
+      icons: anyPhoto ? ['camera', 'gallery', null] : ['camera', 'gallery', 'pdf', null],
+      hints: anyPhoto ? ['Use the camera now', 'JPG or PNG', null] : ['Use the camera now', 'JPG or PNG', 'One PDF file', null],
+      cancelIndex: options.length - 1,
+    });
     if (i === 0) return add('camera');
     if (i === 1) return add('gallery');
     if (i === 2 && options.length === 4) return add('pdf');
@@ -115,7 +131,13 @@ export function PhotosField({
             </View>
           ))}
         {photos.length < maxPhotos && !pdfAdded ? (
-          <ZedIconButton title={buttonTitle} icon="add" onPress={onAdd} testID={testID ? `${testID}-add` : undefined} />
+          <ZedIconButton
+            title={opening ? 'Opening…' : buttonTitle}
+            icon="add"
+            onPress={onAdd}
+            disabled={opening}
+            testID={testID ? `${testID}-add` : undefined}
+          />
         ) : null}
       </View>
     </FieldBox>

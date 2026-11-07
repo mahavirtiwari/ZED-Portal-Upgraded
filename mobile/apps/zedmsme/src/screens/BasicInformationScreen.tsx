@@ -67,7 +67,9 @@ export function BasicInformationScreen() {
   const app = useMsme();
   const nav = useNavigation();
   const ui = useUi();
-  const type = useRoute<{ certificationType: CertificationType }>().params.certificationType;
+  const { certificationType: type, edit } = useRoute<{ certificationType: CertificationType; edit?: boolean }>().params;
+  // Opened from Documents Upload to change it (2026-11-07): back there afterwards; the ESG checklist is already answered.
+  const next = () => (edit ? (nav.pop(), ui.toast('Basic Information updated.', { long: true })) : nav.replace('EsgChecklist', { certificationType: type }));
   const capturer = useScreenCapture('toast');
   const def = useBasicInfoForm(app);
 
@@ -124,6 +126,9 @@ export function BasicInformationScreen() {
   };
 
   const onProceed = async () => {
+    // The utilization is in the capacity's unit (2026-11-07), also for an answer saved before the rule.
+    if (info.monthlyManufacturingCapacityUnits && info.monthlyUtilizationUnits !== info.monthlyManufacturingCapacityUnits)
+      info.monthlyUtilizationUnits = info.monthlyManufacturingCapacityUnits;
     const e = validateBasicInformation(def, info);
     setErrors(e);
     if (e.size > 0) {
@@ -150,7 +155,7 @@ export function BasicInformationScreen() {
         ui.hideLoading();
       }
       if (isSuccess(r)) {
-        nav.replace('EsgChecklist', { certificationType: type });
+        next();
         await app.persist();
       } else if (r.errorMessage) {
         ui.toast(r.errorMessage, { long: true });
@@ -160,7 +165,7 @@ export function BasicInformationScreen() {
     } else {
       // Offline: as before the checklist opens; new, the basic information is queued for when the network returns.
       await queueBasicInfo(app, type);
-      nav.replace('EsgChecklist', { certificationType: type });
+      next();
       syncNow(app).catch(() => undefined);
     }
   };
@@ -248,18 +253,27 @@ export function BasicInformationScreen() {
         );
         break;
       case 'monthlyManufacturingCapacityUnits':
-      case 'monthlyUtilizationUnits':
+      case 'monthlyUtilizationUnits': {
+        // New (2026-11-07): the utilization is in the capacity's unit: choosing the capacity unit sets both, and the
+        // utilization unit cannot be chosen on its own.
+        const utilization = f.key === 'monthlyUtilizationUnits';
         control = (
           <SelectionPicker
             label={f.label}
             items={f.options?.length ? f.options : CAPACITY_UNITS}
-            value={str(f.key)}
-            onChange={v => setValue(f.key, v)}
+            value={utilization ? str('monthlyManufacturingCapacityUnits') || str(f.key) : str(f.key)}
+            onChange={v => {
+              setValue(f.key, v);
+              if (!utilization) setValue('monthlyUtilizationUnits', v);
+            }}
+            locked={utilization}
+            lockedNote="The utilization is in the same unit as the manufacturing capacity."
             error={error}
-            testID={f.key === 'monthlyUtilizationUnits' ? 'util-units' : 'capacity-units'}
+            testID={utilization ? 'util-units' : 'capacity-units'}
           />
         );
         break;
+      }
       case 'monthlyManufacturingCapacityValue':
       case 'monthlyUtilizationValue':
         control = (

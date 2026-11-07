@@ -262,6 +262,8 @@ export function SingleChoice({
   onChange,
   testID,
   style,
+  compact = false,
+  children,
 }: {
   label?: string | null;
   options: string[];
@@ -269,15 +271,27 @@ export function SingleChoice({
   onChange: (v: string) => void;
   testID?: string;
   style?: StyleProp<ViewStyle>;
+  /** New (2026-11-07): the options on one line (Yes / No / Not Applicable). */
+  compact?: boolean;
+  /** New (2026-11-07): follow-up questions shown inside the same box, linked to this one. */
+  children?: React.ReactNode;
 }) {
   return (
     <FieldBox style={[{ margin: 10 }, style]} testID={testID}>
       <FieldLabel label={label} />
-      <View style={[styles.dashed, styles.row, { flexWrap: 'wrap' }]}>
+      <View style={[styles.dashed, styles.row, compact ? styles.compactRow : { flexWrap: 'wrap' }]}>
         {options.map(o => (
-          <RadioButton key={o} label={o} selected={value === o} onPress={() => onChange(o)} style={{ marginRight: 25 }} testID={testID ? `${testID}-${o}` : undefined} />
+          <RadioButton
+            key={o}
+            label={o}
+            selected={value === o}
+            onPress={() => onChange(o)}
+            style={compact ? styles.compactOption : { marginRight: 25 }}
+            testID={testID ? `${testID}-${o}` : undefined}
+          />
         ))}
       </View>
+      {children}
     </FieldBox>
   );
 }
@@ -337,6 +351,8 @@ export function SelectionPicker({
   onChange,
   error,
   testID,
+  locked = false,
+  lockedNote,
 }: {
   label?: string | null;
   items: string[];
@@ -344,6 +360,9 @@ export function SelectionPicker({
   onChange: (v: string) => void;
   error?: string | null;
   testID?: string;
+  /** New (2026-11-07): the value follows another field and cannot be chosen here. */
+  locked?: boolean;
+  lockedNote?: string;
 }) {
   const ui = useUi();
   return (
@@ -353,9 +372,15 @@ export function SelectionPicker({
         value={value}
         error={error}
         testID={testID}
-        right={<Image source={dropDown} style={styles.dropDown} />}
+        right={locked ? null : <Image source={dropDown} style={styles.dropDown} />}
         onPress={async () => {
-          const i = await ui.pickOne('Pick', items);
+          if (locked) {
+            if (lockedNote) ui.toast(lockedNote);
+            return;
+          }
+          // 2026-11-07 (design approved): titled with the field, the current value shown chosen.
+          const field = (label ?? '').replace(/\*/g, '').trim();
+          const i = await ui.pickOne('Select one', items, { subtitle: field || null, selected: items.indexOf(value) });
           if (i == null) return;
           // prepareFieldValue: OK without a choice keeps the field as it was only if nothing was chosen before.
           if (i >= 0) onChange(items[i]!);
@@ -555,15 +580,21 @@ export function ZedIconButton({
   onPress,
   style,
   testID,
+  disabled = false,
 }: {
   title: string;
   icon: 'add' | 'sync';
   onPress: () => void;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  disabled?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} testID={testID} style={({ pressed }) => [styles.iconTextButton, pressed && { opacity: 0.85 }, style]}>
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      testID={testID}
+      style={({ pressed }) => [styles.iconTextButton, pressed && { opacity: 0.85 }, disabled && { opacity: 0.6 }, style]}>
       <Icon icon={icon === 'add' ? sharedIcons.ic_baseline_add_24 : sharedIcons.ic_sync_black_24dp} size={18} tint={colors.white} />
       <Text style={[styles.buttonText, { marginLeft: 8 }]}>{title.toUpperCase()}</Text>
     </Pressable>
@@ -630,6 +661,8 @@ export { REQUIRED };
 const dropDown = require('../assets/ic_arrow_drop_down_black_18dp.png');
 
 const styles = StyleSheet.create({
+  compactRow: { flexWrap: 'nowrap', justifyContent: 'space-between' },
+  compactOption: { flexShrink: 1, marginRight: 6 },
   box: { ...shapes.greyOutlineRectangle, margin: dimens.padding1, padding: dimens.padding2 },
   labelRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
   labelText: { flexShrink: 1 },

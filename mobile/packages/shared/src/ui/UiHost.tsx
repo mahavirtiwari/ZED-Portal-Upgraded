@@ -15,6 +15,38 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, dimens } from './theme';
+import { Icon, type IconDefinition } from './components/Icon';
+import { sharedIcons } from './sharedIcons';
+
+export type SheetIcon = 'camera' | 'gallery' | 'pdf';
+
+/** Icons of the bottom sheet's options (2026-11-07). Material Design paths. */
+const SHEET_ICONS: Record<SheetIcon, IconDefinition> = {
+  camera: {
+    viewBox: [0, 0, 24, 24],
+    paths: [
+      { d: 'M12,15.2A3.2,3.2 0,1 1,12 8.8a3.2,3.2 0,0 1,0 6.4z', fill: '#000000' },
+      {
+        d: 'M9,2L7.17,4H4c-1.1,0 -2,0.9 -2,2v12c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2V6c0,-1.1 -0.9,-2 -2,-2h-3.17L15,2H9zM12,17c-2.76,0 -5,-2.24 -5,-5s2.24,-5 5,-5 5,2.24 5,5 -2.24,5 -5,5z',
+        fill: '#000000',
+      },
+    ],
+  },
+  gallery: {
+    viewBox: [0, 0, 24, 24],
+    paths: [{ d: 'M21,19V5c0,-1.1 -0.9,-2 -2,-2H5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2zM8.5,13.5l2.5,3.01L14.5,12l4.5,6H5l3.5,-4.5z', fill: '#000000' }],
+  },
+  pdf: sharedIcons.ic_baseline_picture_as_pdf_18,
+};
+
+/** pickItem as a bottom sheet (2026-11-07): a line under the title, and per option an icon and a hint; the cancel option is a button. */
+export type SheetOptions = {
+  subtitle?: string;
+  icons?: Array<SheetIcon | null>;
+  hints?: Array<string | null>;
+  /** The option drawn as the Cancel button at the bottom (it resolves its index, as before). */
+  cancelIndex?: number;
+};
 
 /**
  * The legacy BaseActivity/BaseFragment helpers as one provider: the "Please Wait" loading overlay (touches blocked),
@@ -41,9 +73,12 @@ export type Ui = {
   /** BaseActivity.showAlert(title?, message, onOk): OK button, not cancelable. */
   showAlert(message: string | null, title?: string | null, onOk?: () => void): void;
   /** AlertDialog.setItems: resolves the chosen index, or null when dismissed. */
-  pickItem(title: string | null, items: string[]): Promise<number | null>;
-  /** SelectionPickerInputHelper dialog: items + OK/Cancel; resolves the item index, -1 for OK without choice, null for cancel. */
-  pickOne(title: string, items: string[]): Promise<number | null>;
+  pickItem(title: string | null, items: string[], sheet?: SheetOptions): Promise<number | null>;
+  /**
+   * SelectionPickerInputHelper dialog: items + OK/Cancel; resolves the item index, -1 for OK without choice, null for cancel.
+   * 2026-11-07: a line under the title (the field) and the current choice shown selected.
+   */
+  pickOne(title: string, items: string[], options?: { subtitle?: string | null; selected?: number }): Promise<number | null>;
   /** MultiSelectionInputHelper dialog: resolves the checked indexes in click order, or null for Cancel. */
   pickMany(title: string, items: string[], checked: number[]): Promise<number[] | null>;
   /**
@@ -62,8 +97,8 @@ export function useUi(): Ui {
 }
 
 type ItemsDialog =
-  | { kind: 'items'; title: string | null; items: string[]; resolve: (i: number | null) => void }
-  | { kind: 'one'; title: string; items: string[]; resolve: (i: number | null) => void }
+  | { kind: 'items'; title: string | null; items: string[]; sheet?: SheetOptions; resolve: (i: number | null) => void }
+  | { kind: 'one'; title: string; items: string[]; subtitle?: string | null; selected?: number; resolve: (i: number | null) => void }
   | { kind: 'many'; title: string; items: string[]; checked: number[]; resolve: (i: number[] | null) => void };
 
 export function UiHost({ children }: { children: React.ReactNode }) {
@@ -108,11 +143,11 @@ export function UiHost({ children }: { children: React.ReactNode }) {
       showAlert(message, title, onOk) {
         Alert.alert(title ?? '', message ?? '', [{ text: 'OK', onPress: onOk }], { cancelable: false });
       },
-      pickItem(title, items) {
-        return new Promise(resolve => setDialog({ kind: 'items', title, items, resolve }));
+      pickItem(title, items, sheet) {
+        return new Promise(resolve => setDialog({ kind: 'items', title, items, sheet, resolve }));
       },
-      pickOne(title, items) {
-        return new Promise(resolve => setDialog({ kind: 'one', title, items, resolve }));
+      pickOne(title, items, options) {
+        return new Promise(resolve => setDialog({ kind: 'one', title, items, subtitle: options?.subtitle, selected: options?.selected, resolve }));
       },
       pickMany(title, items, checked) {
         return new Promise(resolve => setDialog({ kind: 'many', title, items, checked: [...checked], resolve }));
@@ -166,8 +201,10 @@ export function UiHost({ children }: { children: React.ReactNode }) {
 
 function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => void }) {
   const [checked, setChecked] = useState<number[]>(dialog.kind === 'many' ? dialog.checked : []);
-  const [, setChosen] = useState<number>(-1);
-  const chosenRef = useRef(-1);
+  const initial = dialog.kind === 'one' && dialog.selected != null && dialog.selected >= 0 ? dialog.selected : -1;
+  const [chosen, setChosen] = useState<number>(initial);
+  const chosenRef = useRef(initial);
+  const insets = useSafeAreaInsets();
 
   const dismiss = useCallback(() => {
     close();
@@ -175,11 +212,55 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
     else dialog.resolve(null);
   }, [close, dialog]);
 
+  if (dialog.kind === 'items' && dialog.sheet) {
+    const { sheet } = dialog;
+    const choose = (i: number) => {
+      close();
+      dialog.resolve(i);
+    };
+    return (
+      <Modal transparent animationType="slide" visible onRequestClose={dismiss}>
+        <Pressable style={styles.sheetScrim} onPress={dismiss}>
+          <Pressable style={[styles.sheet, { paddingBottom: 16 + insets.bottom }]} onPress={() => undefined} testID="pick-sheet">
+            <View style={styles.grab} />
+            {dialog.title ? <Text style={styles.sheetTitle}>{dialog.title}</Text> : null}
+            {sheet.subtitle ? <Text style={styles.sheetSubtitle}>{sheet.subtitle}</Text> : null}
+            {dialog.items.map((item, i) => {
+              if (i === sheet.cancelIndex) return null;
+              const icon = sheet.icons?.[i];
+              const hint = sheet.hints?.[i];
+              return (
+                <Pressable key={i} style={styles.sheetRow} onPress={() => choose(i)} testID={`pick-item-${i}`} android_ripple={{ color: '#E3F3F4' }}>
+                  {icon ? (
+                    <View style={[styles.sheetIcon, icon === 'pdf' && styles.sheetIconPdf]}>
+                      <Icon icon={SHEET_ICONS[icon]} size={22} tint={icon === 'pdf' ? '#A32D2D' : colors.appColorDark} />
+                    </View>
+                  ) : null}
+                  <View style={styles.fill}>
+                    <Text style={styles.sheetLabel}>{item}</Text>
+                    {hint ? <Text style={styles.sheetHint}>{hint}</Text> : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+            {sheet.cancelIndex != null && dialog.items[sheet.cancelIndex] != null ? (
+              <Pressable style={styles.sheetCancel} onPress={() => choose(sheet.cancelIndex!)} testID={`pick-item-${sheet.cancelIndex}`}>
+                <Text style={styles.sheetCancelText}>{dialog.items[sheet.cancelIndex]}</Text>
+              </Pressable>
+            ) : null}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    );
+  }
+
+  const one = dialog.kind === 'one';
   return (
     <Modal transparent animationType="fade" visible onRequestClose={dismiss}>
       <Pressable style={styles.scrim} onPress={dismiss}>
-        <Pressable style={styles.dialog} onPress={() => undefined}>
-          {dialog.title ? <Text style={styles.dialogTitle}>{dialog.title}</Text> : null}
+        <Pressable style={[styles.dialog, one && styles.dialogRound]} onPress={() => undefined}>
+          {dialog.title ? <Text style={[styles.dialogTitle, one && styles.dialogTitleOne]}>{dialog.title}</Text> : null}
+          {dialog.kind === 'one' && dialog.subtitle ? <Text style={styles.dialogSubtitle}>{dialog.subtitle}</Text> : null}
           <ScrollView style={{ maxHeight: 420 }}>
             {dialog.items.map((item, i) => {
               if (dialog.kind === 'many') {
@@ -192,6 +273,24 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
                     testID={`pick-item-${i}`}>
                     <View style={[styles.checkbox, on && styles.checkboxOn]}>{on ? <Text style={styles.tick}>✓</Text> : null}</View>
                     <Text style={styles.itemText}>{item}</Text>
+                  </Pressable>
+                );
+              }
+              if (one) {
+                // A tap marks the choice and OK confirms it (as before); now a radio row, tinted when chosen.
+                const on = chosen === i;
+                return (
+                  <Pressable
+                    key={i}
+                    style={[styles.itemRow, styles.oneRow, on && styles.oneRowOn]}
+                    testID={`pick-item-${i}`}
+                    accessibilityState={{ selected: on }}
+                    onPress={() => {
+                      chosenRef.current = i;
+                      setChosen(i);
+                    }}>
+                    <View style={[styles.radio, on && styles.radioOn]}>{on ? <View style={styles.radioDot} /> : null}</View>
+                    <Text style={[styles.itemText, on && styles.oneTextOn]}>{item}</Text>
                   </Pressable>
                 );
               }
@@ -218,13 +317,13 @@ function ItemsDialogView({ dialog, close }: { dialog: ItemsDialog; close: () => 
                 <Text style={styles.buttonText}>CANCEL</Text>
               </Pressable>
               <Pressable
-                style={styles.button}
+                style={[styles.button, one && styles.buttonFilled]}
                 onPress={() => {
                   close();
                   if (dialog.kind === 'many') dialog.resolve(checked);
                   else dialog.resolve(chosenRef.current);
                 }}>
-                <Text style={styles.buttonText}>OK</Text>
+                <Text style={[styles.buttonText, one && styles.buttonFilledText]}>OK</Text>
               </Pressable>
             </View>
           )}
@@ -303,4 +402,36 @@ const styles = StyleSheet.create({
   buttons: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 8, paddingTop: 8 },
   button: { paddingHorizontal: 12, paddingVertical: 10, marginLeft: 8 },
   buttonText: { color: colors.appColor, fontWeight: '500', fontSize: 14 },
+  // The single-choice "Pick" dialog (2026-11-07).
+  dialogRound: { borderRadius: 16 },
+  dialogTitleOne: { fontSize: 18, paddingHorizontal: 20, paddingBottom: 2 },
+  dialogSubtitle: { fontSize: 13, color: '#5F5E5A', paddingHorizontal: 20, paddingBottom: 8 },
+  oneRow: { paddingHorizontal: 20 },
+  oneRowOn: { backgroundColor: '#E3F3F4' },
+  oneTextOn: { color: '#1F5C61', fontWeight: '600' },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: '#888780', marginRight: 14, alignItems: 'center', justifyContent: 'center' },
+  radioOn: { borderColor: colors.appColor },
+  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.appColor },
+  buttonFilled: { backgroundColor: colors.appColor, borderRadius: 18, paddingHorizontal: 22 },
+  buttonFilledText: { color: colors.white },
+  // The bottom sheet (pickItem with sheet options).
+  sheetScrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: colors.white, borderTopLeftRadius: 18, borderTopRightRadius: 18, paddingHorizontal: 16, paddingTop: 10, elevation: 24 },
+  grab: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#D3D1C7', alignSelf: 'center', marginBottom: 12 },
+  sheetTitle: { fontSize: 17, fontWeight: '600', color: '#2C2C2A' },
+  sheetSubtitle: { fontSize: 13, color: '#5F5E5A', marginTop: 2, marginBottom: 6 },
+  sheetRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#E5E5E0',
+  },
+  sheetIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E3F3F4', alignItems: 'center', justifyContent: 'center', marginRight: 14 },
+  sheetIconPdf: { backgroundColor: '#FCEBEB' },
+  sheetLabel: { fontSize: 15, fontWeight: '500', color: '#2C2C2A' },
+  sheetHint: { fontSize: 12, color: '#5F5E5A', marginTop: 1 },
+  sheetCancel: { marginTop: 14, borderWidth: 1, borderColor: colors.appColor, borderRadius: 22, paddingVertical: 11, alignItems: 'center' },
+  sheetCancelText: { color: colors.appColorDark, fontSize: 15, fontWeight: '600' },
 });

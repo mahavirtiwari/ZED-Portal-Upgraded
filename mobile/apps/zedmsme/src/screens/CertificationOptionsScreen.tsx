@@ -81,6 +81,8 @@ export function CertificationOptionsScreen() {
             ? { uri: app.api.levelLogoUrl(zedxLogo) }
             : images.zedx;
   const name = levelName(type, zedxLevel(app.levels)?.name);
+  // Redesigned 2026-11-07: the steps in the level's colour.
+  const tint = type === 'Bronze' ? colors.bronze : type === 'Silver' ? '#8E9499' : type === 'Gold' ? '#B89A3E' : colors.appColorDark;
 
   return (
     <ScreenFrame title={type === 'ZEDX' ? `${name} Certification` : certificationLabel(type)} onMenu={openDrawer} headerRight={<SyncAllButton />}>
@@ -98,6 +100,8 @@ export function CertificationOptionsScreen() {
           />
           <ClickableOption
             label="Basic Information & Document Upload"
+            description="Fill in your unit's details and upload the documents."
+            tint={tint}
             left={icons.ic_basic_info_doc_upload}
             right={icons.ic_forward_arrow}
             onPress={onBasicInfo}
@@ -117,6 +121,8 @@ export function CertificationOptionsScreen() {
           {showCertificate ? (
             <ClickableOption
               label="Certificate Download"
+              description={`Your ${name} certificate.`}
+              tint={tint}
               left={icons.ic_basic_info_doc_upload}
               right={icons.ic_download}
               // The certificate's address is no public file in V4: downloaded with the sign-in token (Msme/AppDocument).
@@ -126,11 +132,13 @@ export function CertificationOptionsScreen() {
           ) : null}
           {showReport ? (
             // The legacy option has no click listener.
-            <ClickableOption label="Download Report" left={icons.ic_basic_info_doc_upload} right={icons.ic_download} testID="option-report" />
+            <ClickableOption label="Download Report" description="Your assessment report." tint={tint} left={icons.ic_basic_info_doc_upload} right={icons.ic_download} testID="option-report" />
           ) : null}
           {showIncentives ? (
             <ClickableOption
               label="Incentives"
+              description="Incentives you can apply for."
+              tint={tint}
               left={icons.ic_incentives}
               right={icons.ic_external_link}
               onPress={() => open(details!.incentives!)}
@@ -140,6 +148,8 @@ export function CertificationOptionsScreen() {
           {showRemote ? (
             <ClickableOption
               label="Remote Assessment"
+              description="Join your remote assessment."
+              tint={tint}
               right={sharedIcons.ic_forward_arrow}
               onPress={() => nav.push('RemoteAssessmentInitial', { certificationType: type })}
               testID="option-remote"
