@@ -96,14 +96,22 @@
               <div class="panel panel-default panel-black"><div class="panel-body">Plant Location</div></div>
               <div class="panel-units" role="radiogroup" aria-label="Plant location">
                 @for (p of lookup()?.plants ?? []; track $index) {
-                  <label class="panel-item" [class.panel-selected]="plantIndex() === $index">
+                  <label class="panel-item" [class.panel-selected]="plantIndex() === $index" [class.panel-unavailable]="registeredZedId(p) !== null">
                     <div class="panel panel-default">
                       <div class="panel-body">
-                        <div class="unit-isselected">
-                          <input type="radio" class="option-input yes radio" name="plant" [value]="$index" [attr.aria-label]="p['UnitName']"
-                                 [checked]="plantIndex() === $index" (change)="plantIndex.set($index)" />
-                          <span>{{ plantIndex() === $index ? 'Selected' : 'Select this Unit' }}</span>
-                        </div>
+                        @if (registeredZedId(p); as registered) {
+                          <div class="unit-unavailable" [attr.data-plant-registered]="$index">
+                            Already registered{{ registered ? ': ' + registered : '' }}. Log in with its ZED ID.
+                          </div>
+                        } @else if (registeredZedId(p) === '') {
+                          <div class="unit-unavailable" [attr.data-plant-registered]="$index">Already registered. Log in with its ZED ID.</div>
+                        } @else {
+                          <div class="unit-isselected">
+                            <input type="radio" class="option-input yes radio" name="plant" [value]="$index" [attr.aria-label]="p['UnitName']"
+                                   [checked]="plantIndex() === $index" (change)="plantIndex.set($index)" />
+                            <span>{{ plantIndex() === $index ? 'Selected' : 'Select this Unit' }}</span>
+                          </div>
+                        }
                         <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ p['UnitName'] }}</p></div>
                         <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ plantAddress(p) }}</p></div>
                       </div>
@@ -123,15 +131,19 @@
               </div>
               <div class="panel-units" role="radiogroup" aria-label="Plant activity">
                 @for (a of lookup()?.activities ?? []; track $index) {
-                  <label class="panel-item" [class.panel-selected]="activityIndex() === $index">
+                  <label class="panel-item" [class.panel-selected]="activityIndex() === $index" [class.panel-unavailable]="notEligible(a) !== null">
                     <div class="panel panel-default">
                       <div class="panel-body">
-                        <div class="unit-isselected">
-                          <input type="radio" class="option-input yes radio" name="activity" [value]="$index" [attr.aria-label]="a['Activity'] + ' ' + a['Five_DigitActivity']"
-                                 [disabled]="plantIndex() === null"
-                                 [checked]="activityIndex() === $index" (change)="activityIndex.set($index)" />
-                          <span>{{ activityIndex() === $index ? 'Selected' : 'Select this Activity' }}</span>
-                        </div>
+                        @if (notEligible(a); as reason) {
+                          <div class="unit-unavailable" [attr.data-activity-not-eligible]="$index">{{ reason }}</div>
+                        } @else {
+                          <div class="unit-isselected">
+                            <input type="radio" class="option-input yes radio" name="activity" [value]="$index" [attr.aria-label]="a['Activity'] + ' ' + a['Five_DigitActivity']"
+                                   [disabled]="plantIndex() === null"
+                                   [checked]="activityIndex() === $index" (change)="activityIndex.set($index)" />
+                            <span>{{ activityIndex() === $index ? 'Selected' : 'Select this Activity' }}</span>
+                          </div>
+                        }
                         <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ a['Activity'] }}</p></div>
                         <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ a['Two_DigitActivity'] }}</p></div>
                         <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ a['Four_DigitActivity'] }}</p></div>

@@ -363,3 +363,8 @@ label.panel-item {
 
 .pledge-failed { margin-top: 12px; }
 .pledge-retry { padding: 0; vertical-align: baseline; border: 0; }
+
+/* New (2026-11-07): a registered plant or an activity the scheme does not cover, greyed out with the reason. */
+.panel-unavailable { opacity: 0.65; cursor: not-allowed; }
+.panel-unavailable .panel { background: #f2f2f2; }
+.unit-unavailable { background: #fbe5ad; color: #5a4300; font-weight: 600; border-radius: 4px; padding: 6px 10px; margin-bottom: 8px; }

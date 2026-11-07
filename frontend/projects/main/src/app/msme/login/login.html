@@ -34,17 +34,62 @@
         </div>
       </form>
     } @else {
-      <form class="login-form mt-3" (ngSubmit)="forgotPassword()" novalidate>
-        <h2>Reset Password</h2>
-        <div class="mb-3">
-          <label for="resetUserId" class="visually-hidden">ZED ID</label>
-          <input id="resetUserId" name="resetUserId" class="form-control" placeholder="ZED ID" [(ngModel)]="resetUserId" required maxlength="100" />
+      <!-- New (2026-11-07): find the account by ZED ID, PAN or e-mail, choose the unit, the link goes to its registered e-mail. -->
+      @if (sentTo() !== null) {
+        <div class="login-form mt-3 forgot-sent" data-testid="reset-link-sent">
+          <h2>Link sent</h2>
+          <p>A reset link and your full ZED ID have been sent to</p>
+          <p class="masked-email" data-testid="masked-email">{{ sentTo() }}</p>
+          <p class="text-muted small">No access to this e-mail? Please contact the ZED team.</p>
+          <div class="register-btn">
+            <button type="button" class="btn btn-primary" (click)="switchMode('login')">LOGIN</button>
+          </div>
         </div>
-        <div class="register-btn">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">RESET PASSWORD</button>
-          <button type="button" class="btn btn-dark" (click)="switchMode('login')">LOGIN</button>
-        </div>
-      </form>
+      } @else if (units(); as list) {
+        <form class="login-form mt-3" (ngSubmit)="sendResetLink()" novalidate>
+          <h2>Select your unit</h2>
+          <div role="radiogroup" aria-label="Your units">
+            @for (u of list; track u.ref) {
+              <label class="found-unit" [class.found-unit-selected]="chosenRef() === u.ref">
+                <input type="radio" name="foundUnit" [value]="u.ref" [checked]="chosenRef() === u.ref" (change)="chosenRef.set(u.ref)" />
+                <span>
+                  <strong>{{ u.unitName }}</strong>
+                  @if (u.district || u.state) { <small class="d-block">{{ placeOf(u) }}</small> }
+                  <small class="d-block zed-id">{{ u.zedId }}</small>
+                </span>
+              </label>
+            }
+          </div>
+          <div class="register-btn mt-3">
+            <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">SEND RESET LINK</button>
+            <button type="button" class="btn btn-dark" (click)="units.set(null)">BACK</button>
+          </div>
+        </form>
+      } @else {
+        <form class="login-form mt-3" (ngSubmit)="findAccounts()" novalidate>
+          <h2>Forgot Password</h2>
+          <p class="mb-2">Find your account by</p>
+          <div class="find-by mb-3" role="radiogroup" aria-label="Find your account by">
+            @for (m of findModes; track m.key) {
+              <button type="button" class="find-by-option" [class.active]="findBy() === m.key" [attr.aria-pressed]="findBy() === m.key"
+                      (click)="chooseFindBy(m.key)">{{ m.title }}</button>
+            }
+          </div>
+          <label for="findValue">{{ findMode().label }}</label>
+          <div class="mb-1">
+            <input id="findValue" name="findValue" class="form-control" [placeholder]="findMode().placeholder" [(ngModel)]="findValue"
+                   [attr.type]="findBy() === 'email' ? 'email' : 'text'" required maxlength="100" />
+          </div>
+          <p class="text-muted small mb-3">{{ findMode().hint }}</p>
+          <div class="mb-3">
+            <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
+          </div>
+          <div class="register-btn">
+            <button type="submit" class="btn btn-primary" [disabled]="busy()">FIND MY ACCOUNT</button>
+            <button type="button" class="btn btn-dark" (click)="switchMode('login')">LOGIN</button>
+          </div>
+        </form>
+      }
     }
 
     @if (success()) {

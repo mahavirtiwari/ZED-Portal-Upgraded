@@ -115,12 +115,14 @@ public sealed class MsmeAppRegistrationController(
         await store.MarkCaptchaAsync(ClientIp, ct);
         Audit("Udyam lookup", regNo);
         var basic = lookup.BasicDetails;
+        // Registered plants and activities the scheme does not cover come marked, to be greyed out with the reason.
+        var (plants, activities) = await registration.MarkChoicesAsync(regNo, lookup, ct);
         return LegacyJson(new
         {
             status = "1",
             BasicDetails = LookupShown.Where(basic.ContainsKey).ToDictionary(k => k, k => basic[k]),
-            lookup.Plants,
-            lookup.Activities,
+            Plants = plants,
+            Activities = activities,
         });
     }
 
@@ -288,20 +290,56 @@ public sealed class MsmeAppRegistrationController(
         return Success();
     }
 
-    private static int FindActivity(UdyamLookup lookup, JsonObject? chosen)
+    /// <summary>
+    /// New (2026-11-07): the app's "Forgot password" by ZED ID, PAN or e-mail (<see cref="MsmeAccountFinder"/>):
+    /// <c>{status, Units: [{Ref, UnitName, District, State, ZedId (partly hidden)}]}</c>. The reset rate limit (the app
+    /// has no captcha); the list never carries an e-mail address or a full ZED ID.
+    /// </summary>
+    [HttpPost("/Msme/FindAccounts")]
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
+    public async Task<IActionResult> FindAccounts(string? by, string? value, [FromServices] MsmeAccountFinder finder, CancellationToken ct)
     {
-        if (Field(chosen, "ActivityDetail_Id") is { Length: > 0 } id)
-        {
-            var byId = lookup.Activities.FindIndex(a => Same(a.GetValueOrDefault("ActivityDetail_Id"), id));
-            if (byId >= 0) return byId;
-        }
+        var (units, error) = await finder.FindAsync(by, value, ct);
+        Audit(error is null ? $"forgot password: {units.Count} unit(s) found by {by}" : $"forgot password: {error}", by);
+        return error is null ? LegacyJson(new { status = "1", Units = units }) : Fail(error);
+    }
+
+    /// <summary>The reset link for the unit picked from <see cref="FindAccounts"/>: <c>{status, MaskedEmail}</c>.</summary>
+    [HttpPost("/Msme/SendResetLink")]
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
+    public async Task<IActionResult> SendResetLink(string? reference, [FromServices] MsmeAccountFinder finder,
+        [FromServices] MsmePasswordResets resets, CancellationToken ct)
+    {
+        if (finder.ZedIdOf(reference) is not { } zedId) return Fail("This list has expired. Please search again.");
+        var (masked, error) = await resets.SendForChosenUnitAsync(zedId, ClientIp, ct);
+        return masked is null ? Fail(error ?? MsmeAccountFinder.NotSent) : LegacyJson(new { status = "1", MaskedEmail = masked });
+    }
+
+    /// <summary>
+    /// The chosen activity in the server's Udyam record: by its NIC codes (what the eligibility check and the ZED ID use),
+    /// the ActivityDetail_Id only choosing between activities with the same codes. Udyam can give several activities the
+    /// same ActivityDetail_Id; finding by the id alone took the first of them, another NIC code than the one the user
+    /// chose (and checked at the activity step), and refused an eligible plant with "not applicable".
+    /// </summary>
+    internal static int FindActivity(UdyamLookup lookup, JsonObject? chosen)
+    {
         var two = Field(chosen, "Two_DigitActivity");
         var four = Field(chosen, "Four_DigitActivity");
         var five = Field(chosen, "Five_DigitActivity");
+        var id = Field(chosen, "ActivityDetail_Id");
         if (two is null) return -1;
-        return lookup.Activities.FindIndex(a => Same(a.GetValueOrDefault("Two_DigitActivity"), two)
-            && (four is null || Same(a.GetValueOrDefault("Four_DigitActivity"), four))
-            && (five is null || Same(a.GetValueOrDefault("Five_DigitActivity"), five)));
+        var matches = lookup.Activities
+            .Select((a, i) => (a, i))
+            .Where(x => Same(x.a.GetValueOrDefault("Two_DigitActivity"), two)
+                && (four is null || Same(x.a.GetValueOrDefault("Four_DigitActivity"), four))
+                && (five is null || Same(x.a.GetValueOrDefault("Five_DigitActivity"), five)))
+            .Select(x => x.i)
+            .ToList();
+        if (matches.Count == 0) return -1;
+        if (id is { Length: > 0 })
+            foreach (var i in matches)
+                if (Same(lookup.Activities[i].GetValueOrDefault("ActivityDetail_Id"), id)) return i;
+        return matches[0];
     }
 
     private async Task<bool> CaptchaPassedAsync(CancellationToken ct)

@@ -1,0 +1,14 @@
+.find-by { display: flex; gap: 8px; }
+.find-by-option {
+  flex: 1; padding: 8px 0; border: 1px solid #d6d6d6; border-radius: 6px; background: #fff; color: #3a3c3e; font-weight: 500;
+}
+.find-by-option.active { border: 2px solid #45a5ad; background: rgba(69, 165, 173, 0.12); color: #368289; font-weight: 700; }
+.found-unit {
+  display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px;
+  margin-bottom: 8px; cursor: pointer;
+}
+.found-unit input { margin-top: 4px; }
+.found-unit-selected { border: 2px solid #45a5ad; background: rgba(69, 165, 173, 0.08); }
+.found-unit .zed-id { color: #368289; letter-spacing: 1px; }
+.forgot-sent { text-align: center; }
+.masked-email { font-size: 1.15rem; font-weight: 700; color: #368289; }

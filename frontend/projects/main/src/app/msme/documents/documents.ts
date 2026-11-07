@@ -21,7 +21,8 @@ export class DocumentsPage {
   protected readonly error = signal('');
   private readonly docs = signal<MyDocuments | null>(null);
 
-  protected readonly guidelines = computed(() => this.docs()?.Guidelines ?? []);
+  /** Only the guidelines that can be opened: a document whose file is not on the server (no path, no video) is left out. */
+  protected readonly guidelines = computed(() => (this.docs()?.Guidelines ?? []).filter((g) => !!g.VideoUrl || !!g.DocumentPath));
   protected readonly invoices = computed(() => this.docs()?.Invoices ?? []);
 
   /** Pledge always; only the highest of Bronze/Silver/Gold; ZED-X. (MSME KAWACH's WASH and webinar certificates were removed.) */

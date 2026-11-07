@@ -206,6 +206,72 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
     }
 
     [Fact]
+    public async Task The_lookup_marks_registered_plants_and_activities_the_scheme_does_not_cover()
+    {
+        _host.Udyam.Result = _host.Udyam.Result with
+        {
+            Plants =
+            [
+                new() { ["PlantIdNo"] = "P1", ["UnitName"] = "Acme Unit 1", ["PAddress"] = "Plot 4" },
+                new() { ["PlantIdNo"] = "P2", ["UnitName"] = "Acme Unit 2", ["PAddress"] = "Plot 9" },
+            ],
+            Activities =
+            [
+                new() { ["Activity"] = "Manufacturing", ["Two_DigitActivity"] = "10-Manufacture of food products", ["Four_DigitActivity"] = "1020", ["Five_DigitActivity"] = "10202" },
+                new() { ["Activity"] = "Trading", ["Two_DigitActivity"] = "46-Wholesale trade", ["Four_DigitActivity"] = "4630", ["Five_DigitActivity"] = "46309" },
+            ],
+        };
+        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = c => FakeSql.Sets(
+            FakeSql.Arg(c, "PlantIdNo") == "P1" ? new object[] { new { ZedId = "ZEDM000123", PlantIdNo = "P1" } } : [],
+            (FakeSql.Arg(c, "TwoDigitActivity") ?? "").StartsWith("10") ? new object[] { new { SectorCode = "10", SectorType = "Manufacturing" } } : [],
+            [new { EmailCountStatus = "1", ErrorMessage = "Invalid Email" }]);
+
+        var app = _host.CreateClient();
+        var r = await app.PostAsJsonAsync("/Msme/LookupUdyam", new { udyamNumber = Udyam, mobileNo = "9999999999" });
+        using var doc = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+        var plants = doc.RootElement.GetProperty("Plants");
+        Assert.Equal("ZEDM•••123", plants[0].GetProperty(MsmeRegistrationService.PlantRegisteredKey).GetString());
+        Assert.False(plants[1].TryGetProperty(MsmeRegistrationService.PlantRegisteredKey, out _));
+        var activities = doc.RootElement.GetProperty("Activities");
+        Assert.False(activities[0].TryGetProperty(MsmeRegistrationService.ActivityRefusedKey, out _));
+        Assert.Equal(MsmeRegistrationService.NotApplicable, activities[1].GetProperty(MsmeRegistrationService.ActivityRefusedKey).GetString());
+    }
+
+    [Fact]
+    public async Task Activities_sharing_an_ActivityDetail_Id_register_the_one_the_user_chose()
+    {
+        // Udyam gave both activities the same ActivityDetail_Id; only "10" (food products) is in Masters -> Sectors.
+        _host.Udyam.Result = _host.Udyam.Result with
+        {
+            Activities =
+            [
+                new() { ["Activity"] = "Trading", ["Two_DigitActivity"] = "46-Wholesale trade", ["Four_DigitActivity"] = "4630", ["Five_DigitActivity"] = "46309", ["ActivityDetail_Id"] = "0" },
+                new() { ["Activity"] = "Manufacturing", ["Two_DigitActivity"] = "10-Manufacture of food products", ["Four_DigitActivity"] = "1020", ["Five_DigitActivity"] = "10202", ["ActivityDetail_Id"] = "0" },
+            ],
+        };
+        _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = c =>
+            FakeSql.Sets([], (FakeSql.Arg(c, "TwoDigitActivity") ?? "").StartsWith("10") ? new object[] { new { SectorCode = "10", SectorType = "Manufacturing" } } : [],
+                [new { EmailCountStatus = "0", ErrorMessage = "" }]);
+        var app = _host.CreateClient();
+        Assert.Equal("1", (await Answer(await Post(app, "ValidateCaptcha", new { token = "t" }))).Status);
+        Assert.Equal("1", (await Answer(await Post(app, "ValidatePlantAndActivity",
+            new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "10-Manufacture of food products" }))).Status);
+        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge }))).Status);
+        var otp = OtpInMail().Match(_host.Email.Sent.Last(m => m.To == Pledge).HtmlBody).Groups[1].Value;
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
+
+        var body = (Dictionary<string, object>)RegistrationBody();
+        body["ActivityDetails"] = new Dictionary<string, object>
+        {
+            ["Activity"] = "Manufacturing", ["Two_DigitActivity"] = "10-Manufacture of food products", ["Four_DigitActivity"] = "1020",
+            ["Five_DigitActivity"] = "10202", ["ActivityDetail_Id"] = "0",
+        };
+        Assert.Equal("1", (await Answer(await Post(app, "FinalSubmit", body))).Status);
+        var insert = Assert.Single(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
+        Assert.Equal("10-Manufacture of food products", FakeSql.Arg(insert.Args, "TwoDigitActivity"));
+    }
+
+    [Fact]
     public async Task Registered_plants_ineligible_activities_and_uam_registrations_are_refused()
     {
         var app = _host.CreateClient();

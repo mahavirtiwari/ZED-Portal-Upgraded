@@ -1,5 +1,5 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, computed, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, CurrentUser, MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
@@ -13,6 +13,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
   selector: 'zed-msme-login',
   imports: [FormsModule, RouterLink, Recaptcha, LoginShell, ContentTextComponent],
   templateUrl: './login.html',
+  styleUrl: './login.scss',
 })
 export class LoginPage {
   private readonly http = inject(HttpClient);
@@ -33,8 +34,16 @@ export class LoginPage {
 
   protected userId = '';
   protected password = '';
-  protected resetUserId = '';
   private captchaToken = '';
+
+  // Forgot password (2026-11-07): by ZED ID, PAN or e-mail; the units found; the e-mail the link went to (partly hidden).
+  protected readonly findModes = FIND_MODES;
+  protected readonly findBy = signal<FindBy>('zedid');
+  protected readonly findMode = computed(() => FIND_MODES.find((m) => m.key === this.findBy())!);
+  protected findValue = '';
+  protected readonly units = signal<FoundUnit[] | null>(null);
+  protected readonly chosenRef = signal<string | null>(null);
+  protected readonly sentTo = signal<string | null>(null);
 
   constructor() {
     // e.g. "Password changed. Please login…" passed by the change-password page.
@@ -55,6 +64,21 @@ export class LoginPage {
     this.mode.set(mode);
     this.error.set('');
     this.success.set('');
+    this.units.set(null);
+    this.chosenRef.set(null);
+    this.sentTo.set(null);
+    this.findValue = '';
+    this.captchaToken = '';
+  }
+
+  protected chooseFindBy(by: FindBy): void {
+    this.findBy.set(by);
+    this.findValue = '';
+    this.error.set('');
+  }
+
+  protected placeOf(u: FoundUnit): string {
+    return [u.district, u.state].filter((x) => !!x).join(', ');
   }
 
   protected async login(): Promise<void> {
@@ -89,19 +113,45 @@ export class LoginPage {
     }
   }
 
-  protected async forgotPassword(): Promise<void> {
+  protected async findAccounts(): Promise<void> {
     this.error.set('');
     this.success.set('');
-    if (!this.resetUserId.trim()) {
-      this.error.set('Please enter your ZED ID.');
+    if (!this.findValue.trim()) {
+      this.error.set(`Please enter ${this.findMode().label.toLowerCase()}.`);
+      return;
+    }
+    if (!this.captchaToken) {
+      this.error.set('Please complete the verification.');
       return;
     }
     this.busy.set(true);
     try {
       const res = await firstValueFrom(
-        this.http.post<MessageResponse>('/api/msme/auth/forgot-password', { userId: this.resetUserId.trim() }),
+        this.http.post<{ units: FoundUnit[] }>('/api/msme/auth/forgot-password/find', {
+          by: this.findBy(),
+          value: this.findValue.trim(),
+          captchaToken: this.captchaToken,
+        }),
       );
-      this.success.set(res.message);
+      this.units.set(res.units);
+      this.chosenRef.set(res.units.length === 1 ? res.units[0].ref : null);
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.captchaToken = '';
+      this.captcha()?.reset();
+      this.busy.set(false);
+    }
+  }
+
+  protected async sendResetLink(): Promise<void> {
+    const ref = this.chosenRef();
+    if (!ref) return;
+    this.error.set('');
+    this.busy.set(true);
+    try {
+      const res = await firstValueFrom(this.http.post<{ message: string; maskedEmail: string }>('/api/msme/auth/forgot-password/send', { ref }));
+      this.sentTo.set(res.maskedEmail);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {
@@ -109,3 +159,20 @@ export class LoginPage {
     }
   }
 }
+
+type FindBy = 'zedid' | 'pan' | 'email';
+
+/** A unit found by ZED ID, PAN or e-mail: the ZED ID partly hidden (ZEDM•••123), no e-mail address. */
+interface FoundUnit {
+  ref: string;
+  unitName: string;
+  district: string;
+  state: string;
+  zedId: string;
+}
+
+const FIND_MODES: ReadonlyArray<{ key: FindBy; title: string; label: string; placeholder: string; hint: string }> = [
+  { key: 'zedid', title: 'ZED ID', label: 'Your ZED ID', placeholder: 'ZEDM000123', hint: 'The unit with this ZED ID is shown next.' },
+  { key: 'pan', title: 'PAN', label: 'PAN of the enterprise', placeholder: 'ABCDE1234F', hint: 'The units registered with this PAN are listed next.' },
+  { key: 'email', title: 'E-mail', label: 'Registered e-mail address', placeholder: 'name@example.com', hint: 'The units registered with this e-mail are listed next.' },
+];

@@ -52,6 +52,29 @@ public sealed class MsmePasswordResets(
     }
 
     /// <summary>
+    /// "Forgot password" for a unit the applicant picked from <see cref="MsmeAccountFinder"/>'s list: a reset link (and the
+    /// full ZED ID, in the mail) to the unit's registered e-mail. Returns that e-mail partly hidden, or the message to show.
+    /// </summary>
+    public async Task<(string? MaskedEmail, string? Error)> SendForChosenUnitAsync(string zedId, string? ip, CancellationToken ct)
+    {
+        var account = await PasswordResetTokens.FindMsmeAccountAsync(db, Clean(zedId), ct);
+        if (account is null) { Audit("chosen unit: no MSME account", zedId, ip); return (null, MsmeAccountFinder.NotSent); }
+        if (!account.IsActive) { Audit("chosen unit: account inactive", account.ZedId, ip); return (null, "This login is inactive. Please contact the ZED team."); }
+        if (account.MailAddress is not { } to) { Audit("chosen unit: no valid e-mail address", account.ZedId, ip); return (null, MsmeAccountFinder.NoEmail); }
+
+        var o = Options;
+        var token = PasswordResetTokens.NewToken();
+        if (!await PasswordResetTokens.CreateAsync(db, account.ZedId, token, o.ValidMinutes, o.MaxRequestsPerHour, requestedBy: null, ip, ct))
+        {
+            Audit($"chosen unit: refused (more than {o.MaxRequestsPerHour} requests in an hour)", account.ZedId, ip);
+            return (null, "Too many reset requests for this unit. Please try again after an hour.");
+        }
+        await SendLinkAsync(account, to, token, "MSME Reset Password Details - " + account.ZedId, ct);
+        Audit("chosen unit: link sent", account.ZedId, ip);
+        return (MsmeAccountFinder.MaskEmail(to), null);
+    }
+
+    /// <summary>
     /// Staff "Resend Details": a reset link to the unit's registered e-mail, sent on behalf of <paramref name="actorId"/>
     /// (who never sees the password). Returns an error message, or null when sent.
     /// </summary>

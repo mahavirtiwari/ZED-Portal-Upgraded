@@ -114,6 +114,17 @@ if ($portals -and (-not [string]$portals.Portal__ContactUrl -or [string]$portals
     Set-Value $portals 'Portals' 'Portal__ContactUrl' 'https://zed.msme.gov.in/contact-us'
 }
 
+# The apps' sign-in token: the mobile hosts issue it, the portals read it (documents, reports, certification status of the
+# ZED MSME app). Without a shared key each host can read only its own tokens, and the portal answers the app's document
+# downloads with 401, which signs the app out ("Your sign-in has expired"). A new random key when there is none; never shown.
+if (-not [string]$common.Mobile__AppTokenKey) {
+    $bytes = New-Object byte[] 32
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+    $common | Add-Member -NotePropertyName 'Mobile__AppTokenKey' -NotePropertyValue ([Convert]::ToBase64String($bytes)) -Force
+    $script:changes++
+    Write-Host '    set    Common.Mobile__AppTokenKey = (a new random key, not shown; the apps sign in again once)'
+}
+
 # ---------------------------------------------------------------- what is left by hand
 Write-Step 'Still to do by hand'
 $blocking = 0

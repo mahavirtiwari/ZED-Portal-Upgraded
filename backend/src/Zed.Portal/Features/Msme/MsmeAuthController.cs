@@ -124,6 +124,41 @@ public sealed class MsmeAuthController(
         return new MessageResponse(ForgotPasswordAnswer);
     }
 
+    public sealed record FindAccountsRequest(string? By, string? Value, string? CaptchaToken);
+    public sealed record FindAccountsResponse(IReadOnlyList<MsmeAccountFinder.FoundUnit> Units);
+    public sealed record SendResetLinkRequest(string? Ref);
+    public sealed record SendResetLinkResponse(string Message, string MaskedEmail);
+
+    /// <summary>
+    /// New (2026-11-07): "Forgot password" by ZED ID, PAN or e-mail. The units found, each with an opaque reference, the
+    /// unit name, district, state and a partly hidden ZED ID (<see cref="MsmeAccountFinder"/>). Captcha and the reset rate
+    /// limit, as the list says which PANs and e-mail addresses are registered.
+    /// </summary>
+    [HttpPost("forgot-password/find")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
+    public async Task<ActionResult<FindAccountsResponse>> FindAccounts(FindAccountsRequest req, [FromServices] MsmeAccountFinder finder, CancellationToken ct)
+    {
+        if (!await captcha.VerifyAsync(req.CaptchaToken, HttpContext.Connection.RemoteIpAddress?.ToString(), ct))
+            return this.Problem400("Invalid Captcha.");
+        var (units, error) = await finder.FindAsync(req.By, req.Value, ct);
+        return error is null ? new FindAccountsResponse(units) : this.Problem400(error);
+    }
+
+    /// <summary>The reset link for the unit picked from the list, to its registered e-mail (shown partly hidden).</summary>
+    [HttpPost("forgot-password/send")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitPolicies.PasswordReset)]
+    public async Task<ActionResult<SendResetLinkResponse>> SendResetLink(SendResetLinkRequest req, [FromServices] MsmeAccountFinder finder,
+        [FromServices] MsmePasswordResets resets, CancellationToken ct)
+    {
+        if (finder.ZedIdOf(req.Ref) is not { } zedId) return this.Problem400("This list has expired. Please search again.");
+        var (masked, error) = await resets.SendForChosenUnitAsync(zedId, HttpContext.Connection.RemoteIpAddress?.ToString(), ct);
+        return masked is null
+            ? this.Problem400(error ?? MsmeAccountFinder.NotSent)
+            : new SendResetLinkResponse($"A reset link and your ZED ID have been sent to {masked}.", masked);
+    }
+
     public sealed record TokenRequest(string? Token);
 
     /// <summary>Whether a link can still be used (the reset page asks before showing the form). The token travels in the body.</summary>

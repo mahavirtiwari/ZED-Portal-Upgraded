@@ -57,6 +57,18 @@ export class RegisterPage {
   // Step 2
   protected readonly plantIndex = signal<number | null>(null);
   protected readonly activityIndex = signal<number | null>(null);
+  /** New (2026-11-07): the server marks a registered plant with its ZED ID (partly hidden); null when it is free. */
+  protected registeredZedId(plant: UdyamRow): string | null {
+    const v = plant['V4RegisteredZedId'];
+    return typeof v === 'string' ? v : null;
+  }
+
+  /** New (2026-11-07): why an activity cannot be registered (the scheme does not cover it); null when it can. */
+  protected notEligible(activity: UdyamRow): string | null {
+    const v = activity['V4NotEligible'];
+    return typeof v === 'string' && v.trim() ? v : null;
+  }
+
   protected readonly selectedPlant = computed(() => this.pick(this.lookup()?.plants, this.plantIndex()));
   protected readonly selectedActivity = computed(() => this.pick(this.lookup()?.activities, this.activityIndex()));
 

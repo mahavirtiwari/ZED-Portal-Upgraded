@@ -55,6 +55,63 @@ public sealed class MsmeRegistrationService(
         return null;
     }
 
+    /// <summary>Set on a plant of the shown Udyam record when it is registered already: its ZED ID, partly hidden.</summary>
+    public const string PlantRegisteredKey = "V4RegisteredZedId";
+    /// <summary>Set on an activity of the shown Udyam record when it cannot be registered: the reason.</summary>
+    public const string ActivityRefusedKey = "V4NotEligible";
+
+    /// <summary>
+    /// New (2026-11-07): copies of the Udyam record's plants and activities for the plant / activity choice (web and app),
+    /// marked with <see cref="PlantRegisteredKey"/> and <see cref="ActivityRefusedKey"/>, so that a registered plant or an
+    /// activity the scheme does not cover is greyed out with the reason before the applicant goes on (the checks at
+    /// each step stay). The same procedure as <see cref="CheckEligibilityAsync"/>, once per plant and per activity.
+    /// </summary>
+    public async Task<(List<Dictionary<string, string>> Plants, List<Dictionary<string, string>> Activities)> MarkChoicesAsync(
+        string regNo, UdyamLookup lookup, CancellationToken ct)
+    {
+        var plants = new List<Dictionary<string, string>>();
+        foreach (var p in lookup.Plants)
+        {
+            var copy = new Dictionary<string, string>(p);
+            if (p.GetValueOrDefault("PlantIdNo") is { Length: > 0 } plantId)
+            {
+                var sets = await db.QueryProcMultipleAsync("SP_MSME_VALIDATE_UDYAM_DETAILS", new
+                {
+                    UdyogAadharNo = regNo, PlantIdNo = plantId, TwoDigitActivity = (string?)null, IpAddress = (string?)null, EmailId = (string?)null,
+                }, ct);
+                if (sets[0].FirstOrDefault() is { } registered)
+                    copy[PlantRegisteredKey] = registered.Text("ZedId") is { Length: > 0 } z ? MsmeAccountFinder.MaskZedId(z) : "";
+            }
+            plants.Add(copy);
+        }
+
+        var reasons = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        var activities = new List<Dictionary<string, string>>();
+        foreach (var a in lookup.Activities)
+        {
+            var copy = new Dictionary<string, string>(a);
+            var two = a.GetValueOrDefault("Two_DigitActivity") ?? "";
+            if (!reasons.TryGetValue(two, out var reason))
+            {
+                if (two.Trim().Length == 0) reason = NotApplicable;
+                else
+                {
+                    var sets = await db.QueryProcMultipleAsync("SP_MSME_VALIDATE_UDYAM_DETAILS", new
+                    {
+                        UdyogAadharNo = regNo, PlantIdNo = (string?)null, TwoDigitActivity = two, IpAddress = (string?)null, EmailId = (string?)null,
+                    }, ct);
+                    reason = sets.Count < 2 || sets[1].Count == 0 ? NotApplicable
+                        : !sets[1].Any(r => r.Text("SectorType") is "Manufacturing" or "Services") ? SectorTypeMissing
+                        : null;
+                }
+                reasons[two] = reason;
+            }
+            if (reason is not null) copy[ActivityRefusedKey] = reason;
+            activities.Add(copy);
+        }
+        return (plants, activities);
+    }
+
     /// <summary>The chosen plant and activity of a session, checked as <see cref="CheckEligibilityAsync"/>.</summary>
     public Task<string?> CheckEligibilityAsync(RegistrationSession s, string? emailId, string? ip, CancellationToken ct) =>
         CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),

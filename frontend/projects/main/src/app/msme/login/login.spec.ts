@@ -46,6 +46,40 @@ describe('LoginPage', () => {
     expect(el.querySelector('.login-bottom-newuser [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
   });
 
+  it('forgot password: finds the units of a PAN, sends the link for the chosen one and shows the hidden e-mail', async () => {
+    const buttons = () => Array.from(el.querySelectorAll('button')) as HTMLButtonElement[];
+    buttons().find((b) => b.textContent?.includes('FORGOT PASSWORD'))!.click();
+    await settle();
+    for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '' });
+    await settle();
+    buttons().find((b) => b.textContent?.trim() === 'PAN')!.click();
+    await settle();
+    type('#findValue', 'abcde1234f');
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const find = http.expectOne('/api/msme/auth/forgot-password/find');
+    expect(find.request.body).toEqual({ by: 'pan', value: 'abcde1234f', captchaToken: 'disabled' });
+    find.flush({
+      units: [
+        { ref: 'r1', unitName: 'Acme Foods Unit 1', district: 'East Delhi', state: 'Delhi', zedId: 'ZEDM•••123' },
+        { ref: 'r2', unitName: 'Acme Foods Unit 2', district: 'Kanpur', state: 'Uttar Pradesh', zedId: 'ZEDM•••456' },
+      ],
+    });
+    await settle();
+    expect(el.textContent).toContain('Acme Foods Unit 2');
+    expect(el.textContent).toContain('Kanpur, Uttar Pradesh');
+    const radios = el.querySelectorAll('input[name="foundUnit"]');
+    (radios[1] as HTMLInputElement).click();
+    await settle();
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const send = http.expectOne('/api/msme/auth/forgot-password/send');
+    expect(send.request.body).toEqual({ ref: 'r2' });
+    send.flush({ message: 'sent', maskedEmail: 'ra•••••@gm•••.com' });
+    await settle();
+    expect(el.querySelector('[data-testid="masked-email"]')!.textContent).toContain('ra•••••@gm•••.com');
+  });
+
   it('signs in and opens the dashboard', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     type('#userId', ' ZEDMSME000001 ');

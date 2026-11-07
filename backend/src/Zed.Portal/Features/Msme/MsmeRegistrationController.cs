@@ -61,7 +61,9 @@ public sealed partial class MsmeRegistrationController(
 
         var session = new RegistrationSession { RegistrationNo = regNo, MobileNo = mobile, Lookup = lookup };
         await sessions.SaveAsync(session, ct);
-        return new LookupResponse(session.Id, lookup.BasicDetails, lookup.Plants, lookup.Activities);
+        // Registered plants and activities the scheme does not cover come marked, to be greyed out with the reason.
+        var (plants, activities) = await registration.MarkChoicesAsync(regNo, lookup, ct);
+        return new LookupResponse(session.Id, lookup.BasicDetails, plants, activities);
     }
 
     internal const string UdyamUnavailable = "Unexpected error occured. Please try after some time.";
