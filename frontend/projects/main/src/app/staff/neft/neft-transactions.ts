@@ -2,12 +2,13 @@ import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { apiErrorMessage } from '@zed/shared';
+import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { NeftApi, NeftList, NeftTransaction } from './neft.api';
 import { TuApi } from '../consultancy/technology/tu.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { AdminPortalService, NEFT_PORTALS, PORTAL_API_BASE, PortalSwitchComponent } from '../admin-portal';
 
 interface ApprovalForm {
   transaction: NeftTransaction;
@@ -39,7 +40,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-neft-transactions',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, PagerComponent, ListSearchComponent, PortalSwitchComponent],
   templateUrl: './neft-transactions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
@@ -56,14 +57,21 @@ export class NeftTransactionsPage {
    * Consultancy: the rows are Technology Upgradation reimbursements, one per technology, with the old page's columns,
    * "View Details" (the TU verification page) and "Visit Report" (the TU report).
    */
-  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy';
+  private readonly portals = inject(AdminPortalService);
+  /** The NEFT Admin on the main portal (2026-11-07): one login for financial assistance and Technology Upgradation. */
+  protected readonly neftAdmin = inject(STAFF_SYSTEM) === 'main' && !!inject(AuthService).currentUser()?.isNeftAdmin;
+  protected readonly neftPortals = NEFT_PORTALS;
+  protected readonly neftLabels = { main: 'Financial Assistance', consultancy: 'Technology Upgradation' };
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy' || (this.neftAdmin && this.portals.effective(NEFT_PORTALS) === 'consultancy');
 
   protected tuLink(t: NeftTransaction): string[] {
     return ['/staff/consultancy/technology/verification', t.ZedId, t.CertificationType ?? ''];
   }
 
   protected reportLink(t: NeftTransaction): string {
-    return this.tu.reportUrl(t.ZedId, t.CertificationType ?? '');
+    const url = this.tu.reportUrl(t.ZedId, t.CertificationType ?? '');
+    // The NEFT Admin on main opens the Consultancy portal's report (its sign-in there came with the switch).
+    return this.neftAdmin && url.startsWith('/api/') ? PORTAL_API_BASE.consultancy + url : url;
   }
 
   private readonly api = inject(NeftApi);

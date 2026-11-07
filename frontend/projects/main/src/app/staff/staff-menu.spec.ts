@@ -102,7 +102,7 @@ describe('staff menu', () => {
       menuEntries(menuFor(roleId, [], system)).map((e: StaffMenuEntry) => ('group' in e ? `${e.group} (${e.items.length})` : e.item.label));
 
     it('groups the long menus into a few drop-downs (V4)', () => {
-      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (4)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
         'Masters (6)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (5)', 'User Management', 'Administration (10)',
       ]);

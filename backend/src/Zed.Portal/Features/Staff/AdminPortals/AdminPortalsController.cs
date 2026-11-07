@@ -26,6 +26,12 @@ namespace Zed.Portal.Features.Staff.AdminPortals;
 /// while the account is still an active Admin on main. The session here carries main's session stamp: blocking the Admin,
 /// or a new password, on main ends it too (SessionStamps). Main's logout expires this portal's cookie in the browser.
 /// </para>
+/// <para>
+/// One NEFT Admin (2026-11-07): the NEFT Admin (an MSME DFO of every state, see Neft/NeftAdminsController) signs in on main
+/// for the financial assistance reimbursements and is handed over the same way to the Consultancy portal for the Technology
+/// Upgradation ones (OtpType "NeftHandoff:Consultancy"), as the NEFT Admin there, while it is still an active NEFT Admin
+/// on main.
+/// </para>
 /// </summary>
 [ApiController]
 [Route("api/staff/admin-portals")]
@@ -34,6 +40,7 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromMinutes(2);
     public const string TypePrefix = "AdminHandoff:";
+    public const string NeftTypePrefix = "NeftHandoff:";
 
     public sealed record Portal(string Key, string Name);
 
@@ -63,7 +70,7 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
 
     /// <summary>POST api/staff/admin-portals/{portal}/handoff (main): a one-time pass to sign in on that portal's API.</summary>
     [HttpPost("{portal}/handoff")]
-    [StaffRoles(UserRole.Admin)]
+    [StaffRoles(UserRole.Admin, UserRole.StateCoordinator)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<ActionResult<HandoffIssued>> Issue(string portal, CancellationToken ct)
     {
@@ -71,8 +78,11 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         var user = ZedUser.FromPrincipal(User)!;
         if (user.ActingUserId is not null)
             return Problem(title: "Only the Admin's own login can open the other portals.", statusCode: StatusCodes.Status403Forbidden);
+        // An MSME DFO: only the NEFT Admin, only to the Consultancy portal (its Technology Upgradation reimbursements).
+        var neft = user.RoleId == (int)UserRole.StateCoordinator;
+        if (neft && (!IsNeftAdmin(user.StateCode) || system != PortalSystem.Consultancy)) return NotFound();
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        await db.ExecuteSqlAsync(InsertSql, new { OtpType = TypePrefix + system, user.UserId, Hash = Hash(token), UserName = Cut(user.UserName, 500) }, ct);
+        await db.ExecuteSqlAsync(InsertSql, new { OtpType = (neft ? NeftTypePrefix : TypePrefix) + system, user.UserId, Hash = Hash(token), UserName = Cut(user.UserName, 500) }, ct);
         log.LogInformation("Admin {UserId} handed over to the {Portal} portal", user.UserId, KeyOf(system));
         return new HandoffIssued(token);
     }
@@ -90,6 +100,13 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
     /// <summary>The account must still be an active Admin on main when its pass is used (read through the read-only connection).</summary>
     internal const string ActiveAdminSql =
         "SELECT TOP (1) UserId FROM dbo.Users WHERE UserId = @UserId AND RoleId = @RoleId AND IsActive = 1;";
+
+    /// <summary>The NEFT Admin must still be an active NEFT Admin (MSME DFO of every state) on main.</summary>
+    internal const string ActiveNeftAdminSql =
+        "SELECT TOP (1) UserId FROM dbo.Users WHERE UserId = @UserId AND RoleId = 6 AND StateCode = 'ALL' AND IsActive = 1;";
+
+    private static bool IsNeftAdmin(string? stateCode) =>
+        string.Equals(stateCode?.Trim(), Neft.NeftController.AllStates, StringComparison.OrdinalIgnoreCase);
 
     public sealed record ActiveAdminRow(string? UserId);
 
@@ -126,20 +143,31 @@ public sealed class AdminPortalsController(ISqlExecutor db, PortalHost host, ILo
         foreach (var old in Taken.Where(t => t.Value < now).Select(t => t.Key).ToList()) Taken.TryRemove(old, out _);
         var row = (await main.QuerySqlAsync<HandoffRow>(FindSql, new { OtpType = TypePrefix + host.System, Hash = hash, Seconds = (int)Lifetime.TotalSeconds }, ct))
             .FirstOrDefault();
+        var neft = false;
+        if (row is null && host.System == PortalSystem.Consultancy)
+        {
+            row = (await main.QuerySqlAsync<HandoffRow>(FindSql, new { OtpType = NeftTypePrefix + host.System, Hash = hash, Seconds = (int)Lifetime.TotalSeconds }, ct))
+                .FirstOrDefault();
+            neft = row is not null;
+        }
         if (row?.UserId is not { Length: > 0 } userId || !Taken.TryAdd(hash, now + Lifetime + Lifetime) || !await TakeEverywhereAsync(hash, ct))
         {
             log.LogWarning("Admin hand-over refused on the {Portal} host: unknown, expired or used pass", KeyOf(host.System));
             return Problem(title: "The sign-in from the main portal has expired. Please open this portal again from the main Admin.", statusCode: StatusCodes.Status400BadRequest);
         }
         // The pass was issued up to two minutes ago: the Admin may have been blocked or changed since.
-        var admin = await main.QuerySqlAsync<ActiveAdminRow>(ActiveAdminSql, new { UserId = userId, RoleId = (int)UserRole.Admin }, ct);
+        var admin = neft
+            ? await main.QuerySqlAsync<ActiveAdminRow>(ActiveNeftAdminSql, new { UserId = userId }, ct)
+            : await main.QuerySqlAsync<ActiveAdminRow>(ActiveAdminSql, new { UserId = userId, RoleId = (int)UserRole.Admin }, ct);
         if (admin.Count == 0)
         {
             log.LogWarning("Admin hand-over refused on the {Portal} host: {UserId} is no longer an active Admin on main", KeyOf(host.System), userId);
             return Problem(title: "The sign-in from the main portal is not valid. Please open this portal again from the main Admin.", statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var user = new ZedUser(userId, row.UserName ?? userId, (int)UserRole.Admin, null, null, null, null, SubRoles: []);
+        var user = neft
+            ? new ZedUser(userId, row.UserName ?? userId, (int)UserRole.StateCoordinator, null, null, Neft.NeftController.AllStates, null, SubRoles: SubRoles.All)
+            : new ZedUser(userId, row.UserName ?? userId, (int)UserRole.Admin, null, null, null, null, SubRoles: []);
         // The session ends with the Admin's main sessions (M12): its stamp is main's Users.SessionStamp, read through the
         // same read-only connection (SessionStampValidator).
         await HttpContext.SignInZedUserAsync(user, stampOnMain: true);

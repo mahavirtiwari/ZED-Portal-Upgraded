@@ -42,6 +42,12 @@ function incentivesOfType(type: unknown): string {
 }
 
 const MAIN_STAFF_CHILDREN: Routes = [
+  // The NEFT Admin's Technology Upgradation rows (2026-11-07): the Consultancy portal's TU page, its API reached through the switch.
+  {
+    path: 'consultancy/technology/verification/:zedId/:level',
+    title: 'ZED | Technology Upgradation',
+    loadComponent: () => import('./staff/consultancy/technology/tu-verification').then((m) => m.TuVerificationPage),
+  },
   // New in V4: the documents and videos the Admin gave to this account type (Admin → Documents/Videos).
   { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
   // V4: an MSME's pledge certificate (the API checks that the user may see one of its records).

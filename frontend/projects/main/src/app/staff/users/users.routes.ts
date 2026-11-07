@@ -68,6 +68,14 @@ const MAIN_USERS_ROUTES: Routes = [
     canActivate: [masterAdmin],
     loadComponent: () => import('./password-reset-link').then((m) => m.PasswordResetLinkPage),
   },
+  // The Master Admin's NEFT Admins (2026-11-07; main portal: the API answers only there).
+  {
+    path: 'neft-admins',
+    title: 'ZED | NEFT Admins',
+    canActivate: [masterAdmin],
+    data: { mode: 'neft' },
+    loadComponent: () => import('../user-management/accounts').then((m) => m.AccountsPage),
+  },
 ];
 
 /** Surveillance: agencies and assessors are mastered in main; this portal only views and blocks them. */

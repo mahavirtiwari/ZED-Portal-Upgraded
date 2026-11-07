@@ -20,6 +20,8 @@ export const ALL_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surv
 export const BANNER_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
 /** The portals whose app has a site tour (Admin → Site Tour Sections): the site assessor app, the consultant app's milestone 1. */
 export const SITE_TOUR_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
+/** The NEFT Admin's portals: financial assistance (main) and Technology Upgradation (Consultancy). */
+export const NEFT_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
 
 /**
  * The APIs of the screens with the portal switch, and the portals that have them: while the Admin has chosen one of
@@ -36,6 +38,9 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/accounts', portals: ALL_PORTALS },
   { prefix: '/api/staff/fees', portals: ALL_PORTALS },
   { prefix: '/api/staff/masters/page-settings', portals: BANNER_PORTALS },
+  // One NEFT Admin (2026-11-07): financial assistance on main, Technology Upgradation on the Consultancy portal.
+  { prefix: '/api/staff/neft', portals: NEFT_PORTALS },
+  { prefix: '/api/staff/consultancy/tu', portals: ['consultancy'] },
 ];
 
 /** Sends one request to a given portal's API, whatever the switch says (e.g. the Sectors list of every portal). */
@@ -156,10 +161,10 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
   template: `
     @if (service.enabled) {
       <div class="portal-switch" role="group" aria-label="Portal">
-        <span class="ps-label">Portal</span>
+        <span class="ps-label">{{ title() }}</span>
         @for (p of shown(); track p.key) {
           <button type="button" class="ps-tab" [class.on]="p.key === selected()" [attr.aria-pressed]="p.key === selected()"
-                  (click)="choose(p.key)">{{ p.name }}</button>
+                  (click)="choose(p.key)">{{ labels()?.[p.key] ?? p.name }}</button>
         }
       </div>
     }
@@ -175,6 +180,9 @@ export class PortalSwitchComponent {
   protected readonly service = inject(AdminPortalService);
   private readonly router = inject(Router);
   readonly portals = input<readonly AdminPortal[]>(ALL_PORTALS);
+  /** Other names for the portals' tabs (the NEFT Admin's: Financial Assistance, Technology Upgradation). */
+  readonly labels = input<Partial<Record<AdminPortal, string>> | null>(null);
+  readonly title = input('Portal');
   /** Recreate the page after a change (default); false: the page reloads its data itself on (changed). */
   readonly reload = input(true);
   /** After the switch changed. */

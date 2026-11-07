@@ -281,9 +281,7 @@ public static class TuCoordinatorScope
             .Where(r => SchemeRows.Same(r.Text("ZedId"), app.ZedId) && SchemeRows.Same(r.Text("CertificationType"), app.Certification))
             .ToList();
         if (rows.Count == 0) return false;
-        var allStates = (config.GetSection("Neft:AllStatesUserIds").Get<string[]>() ?? [])
-            .Any(u => string.Equals(u?.Trim(), user.UserId, StringComparison.OrdinalIgnoreCase));
-        if (allStates) return true;
+        if (NeftController.SeesAllStates(config, user.UserId, user.StateCode)) return true;
         var state = NeftController.NormaliseState(user.StateCode);
         return state is not null && rows.Any(r => NeftController.NormaliseState(r.Text("StateId")) == state || NeftController.NormaliseState(r.Text("PStateId")) == state);
     }

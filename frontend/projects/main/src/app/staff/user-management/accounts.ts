@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
@@ -54,6 +55,8 @@ interface AccountForm {
 }
 
 const API = '/api/staff/accounts';
+/** The Master Admin's NEFT Admins (2026-11-07): this page's `data.mode` 'neft' (Neft/NeftAdminsController). */
+const NEFT_API = '/api/staff/neft-admins';
 
 /** What each login type opens (the staff menu's roles), shown on its card in the pop-up. */
 const typeHints: Readonly<Record<number, string>> = {
@@ -78,15 +81,22 @@ const typeHints: Readonly<Record<number, string>> = {
   template: `
     <div class="page-head">
       <div>
-        <h3 class="registration-title">User Management</h3>
-        <p class="page-sub">Master Admin, Ministry, MSME DFO and dashboard logins; the password is generated and e-mailed to the user.</p>
+        @if (neft) {
+          <h3 class="registration-title">NEFT Admins</h3>
+          <p class="page-sub">The national NEFT desk: one login for the NEFT reimbursements of every state, financial assistance and Technology Upgradation. The password is generated and e-mailed to the user.</p>
+        } @else {
+          <h3 class="registration-title">User Management</h3>
+          <p class="page-sub">Master Admin, Ministry, MSME DFO and dashboard logins; the password is generated and e-mailed to the user.</p>
+        }
       </div>
       <div class="page-actions">
-        <button type="button" class="btn btn-primary" (click)="add()">+ Add Login</button>
+        <button type="button" class="btn btn-primary" (click)="add()">{{ neft ? '+ Add NEFT Admin' : '+ Add Login' }}</button>
       </div>
     </div>
     <!-- One Admin (V4): the portal whose settings these are (each portal has its own logins). -->
-    <zed-portal-switch />
+    @if (!neft) {
+      <zed-portal-switch />
+    }
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
@@ -400,6 +410,9 @@ const typeHints: Readonly<Record<number, string>> = {
 })
 export class AccountsPage {
   private readonly http = inject(HttpClient);
+  /** The Master Admin's NEFT Admins page (route data mode 'neft'): the same list and pop-up, its own API. */
+  protected readonly neft = inject(ActivatedRoute, { optional: true })?.snapshot.data['mode'] === 'neft';
+  private readonly api = this.neft ? NEFT_API : API;
 
   protected readonly types = signal<AccountType[]>([]);
   protected readonly states = signal<{ code: string; name: string }[]>([]);
@@ -494,6 +507,7 @@ export class AccountsPage {
   }
 
   protected stateName(code: string | null): string {
+    if (code === 'ALL') return 'All states';
     return code ? (this.states().find((s) => s.code === code)?.name ?? code) : '';
   }
 
@@ -501,7 +515,8 @@ export class AccountsPage {
     this.editing.set(null);
     this.formError.set('');
     this.form.set({
-      userId: '', roleId: this.filter() || null, userName: '', email: '', mobileNo: '', stateCode: '', sectorActivity: 'Both', levels: this.allLevels(), states: [],
+      // One login type (the NEFT Admins page): chosen already.
+      userId: '', roleId: this.filter() || (this.types().length === 1 ? this.types()[0].roleId : null), userName: '', email: '', mobileNo: '', stateCode: '', sectorActivity: 'Both', levels: this.allLevels(), states: [],
     });
   }
 
@@ -541,7 +556,7 @@ export class AccountsPage {
       ...(scope ? { sectorActivity, levels, states: scope.hasStateScope ? states : [] } : {}),
     };
     await this.run(
-      () => (id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(API, body)),
+      () => (id ? this.http.put<MessageResponse>(`${this.api}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(this.api, body)),
       true,
     );
   }
@@ -551,7 +566,7 @@ export class AccountsPage {
     const question = action === 'block' ? `Block the login ${who}? The user can no longer sign in.`
       : action === 'reset-password' ? `Reset the password of ${who}? A new password is e-mailed to the user.` : null;
     if (question && !window.confirm(question)) return;
-    await this.run(() => this.http.post<MessageResponse>(`${API}/${encodeURIComponent(a.userId)}/${action}`, null), false);
+    await this.run(() => this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(a.userId)}/${action}`, null), false);
   }
 
   private async run(call: () => Observable<MessageResponse>, fromForm: boolean): Promise<void> {
@@ -574,7 +589,7 @@ export class AccountsPage {
   private async load(): Promise<void> {
     this.busy.set(true);
     try {
-      const r = await firstValueFrom(this.http.get<AccountsResponse>(API));
+      const r = await firstValueFrom(this.http.get<AccountsResponse>(this.api));
       this.types.set(r.types);
       this.states.set(r.states);
       this.accounts.set(r.accounts);

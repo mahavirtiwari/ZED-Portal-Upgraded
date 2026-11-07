@@ -13,6 +13,8 @@ export interface CurrentUser {
   unitName?: string | null;
   /** Agency/assessor sub-roles: DesktopVerification, SiteVerification, FinancialVerification. */
   subRoles?: string[];
+  /** The NEFT Admin (MSME DFO of every state): its NEFT pages switch between financial assistance and TU (2026-11-07). */
+  isNeftAdmin?: boolean;
   /** A sub-user working as the owner above (userId, userName and role are the owner's): its own ID and name. */
   actingUserId?: string | null;
   actingUserName?: string | null;

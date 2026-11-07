@@ -110,6 +110,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Assessment Completed', legacyPath: '/Assessment/Completed', route: '/staff/assessment/completed', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Rejected Certification', legacyPath: '/Assessment/Rejected', route: '/staff/assessment/rejected', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Password Reset Link', route: '/staff/users/password-reset', roles: [R.MasterAdmin], group: 'Agencies' },
+  // One NEFT Admin for financial assistance and Technology Upgradation, assigned by the Master Admin (2026-11-07).
+  { label: 'NEFT Admins', route: '/staff/users/neft-admins', roles: [R.MasterAdmin], group: 'Agencies' },
   { label: 'ZED ID History', legacyPath: '/Msme/History', route: '/staff/history', roles: [R.MasterAdmin], group: 'Assessment' },
 
   // Assessment workflow

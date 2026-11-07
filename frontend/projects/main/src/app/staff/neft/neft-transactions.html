@@ -1,9 +1,13 @@
 <div class="page-head">
   <div>
     <h3 class="registration-title">{{ title }}</h3>
-    <p class="page-sub">{{ consultancy ? 'Technology upgradation' : 'Financial assistance' }} reimbursements of the units in your state, paid by NEFT.</p>
+    <p class="page-sub">{{ consultancy ? 'Technology upgradation' : 'Financial assistance' }} reimbursements of the units {{ neftAdmin ? 'of every state' : 'in your state' }}, paid by NEFT.</p>
   </div>
 </div>
+@if (neftAdmin) {
+  <!-- One NEFT Admin (2026-11-07): financial assistance here, Technology Upgradation on the Consultancy portal. -->
+  <zed-portal-switch title="Reimbursements" [portals]="neftPortals" [labels]="neftLabels" />
+}
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 }

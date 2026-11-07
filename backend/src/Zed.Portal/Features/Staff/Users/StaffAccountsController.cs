@@ -82,7 +82,8 @@ public sealed class StaffAccountsController(
     {
         var rows = await db.QuerySqlAsync<AccountRow>(
             "SELECT UserId, UserName, RoleId, Email, MobileNo, StateCode, IsActive, CreatedBy, CreatedDate FROM Users " +
-            "WHERE RoleId IN @Roles ORDER BY RoleId, UserId;", new { Roles = MyRoles }, ct);
+            // NEFT Admins (state ALL) are managed by the Master Admin (Neft/NeftAdminsController, 2026-11-07).
+            "WHERE RoleId IN @Roles AND NOT (RoleId = 6 AND ISNULL(StateCode, '') = 'ALL') ORDER BY RoleId, UserId;", new { Roles = MyRoles }, ct);
         var scopes = await ScopesAsync(ct);
         return new AccountsResponse(Mine, States, rows.Select(r => WithScope(r, scopes)).ToList()) { Levels = LevelOptions };
     }
@@ -249,7 +250,8 @@ public sealed class StaffAccountsController(
         if (!StaffUserRules.IsUserId(userId)) return null;
         var rows = await db.QuerySqlAsync<AccountRow>(
             "SELECT TOP (1) UserId, UserName, RoleId, Email, MobileNo, StateCode, IsActive, CreatedBy, CreatedDate FROM Users " +
-            "WHERE UserId = @UserId AND RoleId IN @Roles ORDER BY CASE WHEN IsActive = 1 THEN 0 ELSE 1 END, Id DESC;", new { UserId = userId, Roles = MyRoles }, ct);
+            "WHERE UserId = @UserId AND RoleId IN @Roles AND NOT (RoleId = 6 AND ISNULL(StateCode, '') = 'ALL') ORDER BY CASE WHEN IsActive = 1 THEN 0 ELSE 1 END, Id DESC;",
+            new { UserId = userId, Roles = MyRoles }, ct);
         return rows.Count > 0 ? rows[0] : null;
     }
 

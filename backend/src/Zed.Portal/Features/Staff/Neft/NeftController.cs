@@ -225,12 +225,22 @@ public sealed partial class NeftController(
         return rows.Where(r => NormaliseState(r.Text("StateId")) == state || NormaliseState(r.Text("PStateId")) == state);
     }
 
-    private bool SeesAllStates() => SeesAllStates(config, UserId);
+    private bool SeesAllStates() => SeesAllStates(config, UserId, CurrentUser.StateCode);
 
-    /// <summary>The national NEFT desk: user ids under <c>Neft:AllStatesUserIds</c> see every state (also in the reports).</summary>
-    public static bool SeesAllStates(IConfiguration config, string userId) =>
-        (config.GetSection("Neft:AllStatesUserIds").Get<string[]>() ?? [])
-        .Any(u => string.Equals(u?.Trim(), userId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>
+    /// Users.StateCode of a NEFT Admin: the national NEFT desk, created by the Admin in User Management (2026-11-07) as an
+    /// MSME DFO with every state.
+    /// </summary>
+    public const string AllStates = "ALL";
+
+    /// <summary>
+    /// The national NEFT desk sees every state (also in the reports): a NEFT Admin (StateCode <see cref="AllStates"/>), or a
+    /// user id listed under <c>Neft:AllStatesUserIds</c> (the setting of before).
+    /// </summary>
+    public static bool SeesAllStates(IConfiguration config, string userId, string? stateCode = null) =>
+        string.Equals(stateCode?.Trim(), AllStates, StringComparison.OrdinalIgnoreCase)
+        || (config.GetSection("Neft:AllStatesUserIds").Get<string[]>() ?? [])
+            .Any(u => string.Equals(u?.Trim(), userId, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>State codes are LGD numbers ("9", "09"); compare them as numbers.</summary>
     public static string? NormaliseState(string? code) =>

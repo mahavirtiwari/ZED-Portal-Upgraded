@@ -53,7 +53,7 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
         // A State Coordinator's reports (the transactions with their bank details) list every state; keep the coordinator's
         // own state's units, as the NEFT pages do (Neft:AllStatesUserIds see all). A sheet without a ZedId column is left out.
         HashSet<string>? units = null;
-        if (RoleId == (int)UserRole.StateCoordinator && !Neft.NeftController.SeesAllStates(config, UserId))
+        if (RoleId == (int)UserRole.StateCoordinator && !Neft.NeftController.SeesAllStates(config, UserId, CurrentUser.StateCode))
         {
             units = Neft.NeftController.NormaliseState(CurrentUser.StateCode) is { } state
                 ? (await db.QuerySqlAsync<ZedRow>(StateUnitsSql, new { State = int.Parse(state, System.Globalization.CultureInfo.InvariantCulture) }, ct))
