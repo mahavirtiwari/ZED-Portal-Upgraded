@@ -9,6 +9,8 @@ export type ProfileRow = Record<string, string | number | null>;
 export interface ProfileResponse {
   msme: ProfileRow;
   basicInfo: ProfileRow;
+  /** The registered (pledge) e-mail: ZED mails and password links go there. */
+  registeredEmail: string | null;
 }
 
 /** An activity of the MSME's Udyam record, with the Ministry service's column names. */
@@ -35,5 +37,15 @@ export class ProfileApi {
 
   updateActivity(fiveDigitActivity: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/activity`, { fiveDigitActivity });
+  }
+
+  /** Change of the registered e-mail, step 1: an OTP to the new address. */
+  sendEmailOtp(email: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/email/otp`, { email });
+  }
+
+  /** Step 2: the OTP makes it the registered e-mail. */
+  verifyEmailOtp(otp: string): Observable<{ message: string; email: string }> {
+    return this.http.post<{ message: string; email: string }>(`${this.base}/email/verify`, { otp });
   }
 }

@@ -56,6 +56,7 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.PasswordReset.StaffPasswordResets>();
         services.AddScoped<Features.Msme.MsmePasswordResets>();
         services.AddScoped<Features.Msme.MsmeAccountFinder>();
+        services.AddScoped<Features.Msme.MsmeProfileService>();
 
         // Sub-users (operation admins of MasterAdmins, sub-users of agencies): checked on every request.
         services.AddMemoryCache();

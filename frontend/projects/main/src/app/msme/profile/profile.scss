@@ -19,3 +19,23 @@ label.panel-item {
   justify-content: center;
   z-index: 2000;
 }
+
+// 2026-11-07 redesign: cards for enterprise, contact, unit and activity.
+.profile-v2 {
+  .pcard { background: #fff; border: 1px solid #e3e6e8; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; }
+  .pcard-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .pcard-head h3 { font-size: 1.05rem; font-weight: 700; color: #2d6f75; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .pcard-head h3 img { width: 22px; height: 22px; }
+  .id-chip { background: rgba(69, 165, 173, 0.13); color: #2d6f75; border-radius: 14px; padding: 2px 12px; font-weight: 600; letter-spacing: 0.5px; }
+  .pgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px 24px; margin: 0; }
+  .pgrid dt { color: #7a7d80; font-weight: 500; font-size: 0.85rem; }
+  .pgrid dt small { font-weight: 400; }
+  .pgrid dd { margin: 0; font-weight: 600; color: #232527; word-break: break-word; }
+  .more { margin-top: 10px; font-weight: 600; }
+  .unit-name { font-weight: 700; font-size: 1.05rem; margin-bottom: 4px; }
+  .email-change { margin-top: 14px; background: #f5fafa; border: 1px dashed #45a5ad; border-radius: 10px; padding: 12px 14px; }
+  .email-change h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+  .email-change .otp { letter-spacing: 4px; width: 160px; }
+  .activity-option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .activity-option.panel-selected { border: 2px solid #45a5ad; background: rgba(69, 165, 173, 0.08); }
+}

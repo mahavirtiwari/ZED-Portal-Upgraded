@@ -42,6 +42,10 @@ public interface IMsmeEditHistory
 
     /// <summary>The changes of a ZED ID (and of its _DEL / _D_ copies), newest first.</summary>
     Task<(IReadOnlyList<MsmeEditRow> Rows, int Total)> ListAsync(string zedId, int pageNo, int pageSize, CancellationToken ct = default);
+
+    /// <summary>As <see cref="ListAsync(string, int, int, CancellationToken)"/>, only the changes whose Action is LIKE <paramref name="actionLike"/>.</summary>
+    Task<(IReadOnlyList<MsmeEditRow> Rows, int Total)> ListAsync(string zedId, int pageNo, int pageSize, string? actionLike, CancellationToken ct = default) =>
+        actionLike is null ? ListAsync(zedId, pageNo, pageSize, ct) : Task.FromResult<(IReadOnlyList<MsmeEditRow>, int)>(([], 0));
 }
 
 public sealed class SqlMsmeEditHistory(ISqlExecutor db, IServiceProvider services, ILogger<SqlMsmeEditHistory> log) : IMsmeEditHistory
@@ -52,9 +56,9 @@ public sealed class SqlMsmeEditHistory(ISqlExecutor db, IServiceProvider service
 
     internal const string ListSql =
         "SELECT Id, At, Channel, ZedId, Action, Path, Result, Message, Data, IpAddress, DeviceId FROM ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory " +
-        "WHERE ZedId = @ZedId ORDER BY Id DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;";
+        "WHERE ZedId = @ZedId AND (@Like IS NULL OR Action LIKE @Like) ORDER BY Id DESC OFFSET @Skip ROWS FETCH NEXT @Take ROWS ONLY;";
 
-    internal const string CountSql = "SELECT COUNT(*) FROM ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory WHERE ZedId = @ZedId;";
+    internal const string CountSql = "SELECT COUNT(*) FROM ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory WHERE ZedId = @ZedId AND (@Like IS NULL OR Action LIKE @Like);";
 
     public async Task RecordAsync(MsmeEdit e, CancellationToken ct = default)
     {
@@ -74,12 +78,15 @@ public sealed class SqlMsmeEditHistory(ISqlExecutor db, IServiceProvider service
         }
     }
 
-    public async Task<(IReadOnlyList<MsmeEditRow> Rows, int Total)> ListAsync(string zedId, int pageNo, int pageSize, CancellationToken ct = default)
+    public Task<(IReadOnlyList<MsmeEditRow> Rows, int Total)> ListAsync(string zedId, int pageNo, int pageSize, CancellationToken ct = default) =>
+        ListAsync(zedId, pageNo, pageSize, null, ct);
+
+    public async Task<(IReadOnlyList<MsmeEditRow> Rows, int Total)> ListAsync(string zedId, int pageNo, int pageSize, string? actionLike, CancellationToken ct = default)
     {
         try
         {
-            var rows = await db.QuerySqlAsync<MsmeEditRow>(ListSql, new { ZedId = zedId, Skip = (Math.Max(pageNo, 1) - 1) * pageSize, Take = pageSize }, ct);
-            var total = await db.QuerySqlAsync<int>(CountSql, new { ZedId = zedId }, ct);
+            var rows = await db.QuerySqlAsync<MsmeEditRow>(ListSql, new { ZedId = zedId, Like = actionLike, Skip = (Math.Max(pageNo, 1) - 1) * pageSize, Take = pageSize }, ct);
+            var total = await db.QuerySqlAsync<int>(CountSql, new { ZedId = zedId, Like = actionLike }, ct);
             return (rows, total.Count > 0 ? total[0] : rows.Count);
         }
         catch (SqlException ex)

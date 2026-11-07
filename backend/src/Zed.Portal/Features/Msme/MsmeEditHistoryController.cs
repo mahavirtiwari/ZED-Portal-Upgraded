@@ -18,11 +18,21 @@ public static class MsmeEditHistoryResponses
 
     public static readonly int[] PageSizes = [10, 20, 50, 100];
 
-    public static async Task<EditHistoryResponse> PageAsync(IMsmeEditHistory history, string zedId, int pageNo, int pageSize, CancellationToken ct)
+    /// <summary>The filters of the page (2026-11-07): kind -> Action LIKE pattern.</summary>
+    public static readonly IReadOnlyDictionary<string, string> Kinds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        ["profile"] = "Profile:%",
+        ["password"] = "%password%",
+        ["certification"] = "%certification%",
+        ["payment"] = "%payment%",
+    };
+
+    public static async Task<EditHistoryResponse> PageAsync(IMsmeEditHistory history, string zedId, int pageNo, int pageSize, CancellationToken ct, string? kind = null)
     {
         var size = PageSizes.Contains(pageSize) ? pageSize : 10;
         var page = Math.Max(pageNo, 1);
-        var (rows, total) = await history.ListAsync(zedId, page, size, ct);
+        var like = kind is not null && Kinds.TryGetValue(kind, out var k) ? k : null;
+        var (rows, total) = await history.ListAsync(zedId, page, size, like, ct);
         // At is stored in UTC; marked as such so the browser shows local time.
         return new(total, page, size, rows.Select(r => new EditItem(r.Id, DateTime.SpecifyKind(r.At, DateTimeKind.Utc), r.Channel, r.Action,
             r.Result, r.Message, r.Data, r.IpAddress, r.DeviceId)).ToList());
@@ -34,8 +44,8 @@ public static class MsmeEditHistoryResponses
 public sealed class MsmeEditHistoryController(IMsmeEditHistory history) : MsmeApiController
 {
     [HttpGet]
-    public Task<MsmeEditHistoryResponses.EditHistoryResponse> Get(int pageNo = 1, int pageSize = 10, CancellationToken ct = default) =>
-        MsmeEditHistoryResponses.PageAsync(history, ZedId, pageNo, pageSize, ct);
+    public Task<MsmeEditHistoryResponses.EditHistoryResponse> Get(int pageNo = 1, int pageSize = 10, string? kind = null, CancellationToken ct = default) =>
+        MsmeEditHistoryResponses.PageAsync(history, ZedId, pageNo, pageSize, ct, kind);
 }
 
 /// <summary>An applicant's change history for the overseeing staff, on all three portals (the table is in ZEDCS_V2_LIVE).</summary>
@@ -45,10 +55,10 @@ public sealed class MsmeEditHistoryController(IMsmeEditHistory history) : MsmeAp
 public sealed class StaffMsmeEditHistoryController(IMsmeEditHistory history, ILogger<StaffMsmeEditHistoryController> log) : StaffApiController
 {
     [HttpGet("{zedId}")]
-    public async Task<ActionResult<MsmeEditHistoryResponses.EditHistoryResponse>> Get(string zedId, int pageNo = 1, int pageSize = 10, CancellationToken ct = default)
+    public async Task<ActionResult<MsmeEditHistoryResponses.EditHistoryResponse>> Get(string zedId, int pageNo = 1, int pageSize = 10, string? kind = null, CancellationToken ct = default)
     {
         if (!DashboardFilters.IsZedId(zedId)) return this.Problem400("Please enter a valid ZED ID.");
         log.LogInformation("{UserId} viewed the change history of {ZedId}", UserId, zedId);
-        return await MsmeEditHistoryResponses.PageAsync(history, zedId.Trim(), pageNo, pageSize, ct);
+        return await MsmeEditHistoryResponses.PageAsync(history, zedId.Trim(), pageNo, pageSize, ct, kind);
     }
 }

@@ -65,8 +65,12 @@ describe('ProfilePage', () => {
     expect(text).toContain('ZEDMSME000001');
     expect(text).toContain('UDYAM-UP-29-0003915');
     expect(text).toContain('Acme Castings');
-    expect(text).toContain('12');
     expect(text).toContain('Plot 4, KANPUR NAGAR, UTTAR PRADESH, 208022');
+    // The rest of the Udyam details (here the employees, 12) under "Show all details".
+    expect(text).not.toContain('Total Employee');
+    button('Show all details')!.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('12');
     expect(text).toContain('24311');
     expect(el.querySelector('.loadingdiv')).toBeNull();
   });

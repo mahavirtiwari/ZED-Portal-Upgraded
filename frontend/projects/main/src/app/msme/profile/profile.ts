@@ -1,3 +1,4 @@
+import { FormsModule } from '@angular/forms';
 import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -19,7 +20,7 @@ const BASIC_INFO: InfoRow[] = [
   { label: 'Organisation Type:', source: 'basicInfo', field: 'OrganisationTypeName' },
   { label: 'Social Category:', source: 'basicInfo', field: 'SocialCategoryName' },
   { label: 'Gender:', source: 'basicInfo', field: 'Gender' },
-  { label: 'Email Id:', source: 'basicInfo', field: 'EmailId' },
+  { label: 'E-mail (Udyam):', source: 'basicInfo', field: 'EmailId' },
   { label: 'Mobile No.:', source: 'basicInfo', field: 'MobileNo' },
   { label: 'Physically Handicapped:', source: 'basicInfo', field: 'PH' },
   { label: 'PanNo:', source: 'basicInfo', field: 'PanNo' },
@@ -37,6 +38,8 @@ const BASIC_INFO: InfoRow[] = [
   { label: 'Applied Date:', source: 'basicInfo', field: 'AppliedDate' },
 ];
 
+const MAIN_FIELDS = ['EnterpriseName', 'UdyogAadharNo', 'OwnerName', 'EnterpriseTypee', 'PanNo', 'Address', 'DistrictName', 'StateName'];
+
 /**
  * MSME "View Profile". Port of Views/Msme/ViewProfile.cshtml: basic information, selected unit and
  * unit activity, with "Edit Activity" choosing another activity of the MSME's own Udyam record.
@@ -44,7 +47,7 @@ const BASIC_INFO: InfoRow[] = [
 @Component({
   selector: 'zed-msme-profile',
   host: { class: 'd-block' },
-  imports: [AlertDialog],
+  imports: [AlertDialog, FormsModule],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
@@ -52,6 +55,16 @@ export class ProfilePage {
   private readonly api = inject(ProfileApi);
 
   protected readonly rows = BASIC_INFO;
+  /** The main details first; "Show all details" adds the rest (2026-11-07 redesign). */
+  protected readonly showAll = signal(false);
+  protected readonly shownRows = computed(() =>
+    this.showAll() ? BASIC_INFO.filter((r) => r.field !== 'ZedId') : BASIC_INFO.filter((r) => MAIN_FIELDS.includes(r.field)),
+  );
+  protected readonly registeredEmail = signal('');
+  /** Change of the registered e-mail: enter the new address, then the OTP sent to it. */
+  protected readonly emailStep = signal<'idle' | 'enter' | 'otp'>('idle');
+  protected newEmail = '';
+  protected emailOtp = '';
   protected readonly msme = signal<ProfileRow>({});
   protected readonly basicInfo = signal<ProfileRow>({});
   protected readonly busy = signal(false);
@@ -63,6 +76,41 @@ export class ProfilePage {
   protected readonly selected = signal('');
   /** UPDATE is only offered once a different activity is chosen (as before). */
   protected readonly changed = computed(() => !!this.selected() && this.selected() !== this.text(this.msme(), 'FiveDigitActivity'));
+
+  protected startEmailChange(): void {
+    this.newEmail = '';
+    this.emailOtp = '';
+    this.emailStep.set('enter');
+  }
+
+  protected cancelEmailChange(): void {
+    this.emailStep.set('idle');
+  }
+
+  protected async sendEmailOtp(): Promise<void> {
+    const email = this.newEmail.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 100) {
+      this.alert.set(errorAlert('Please enter a valid e-mail address.'));
+      return;
+    }
+    const res = await this.call(this.api.sendEmailOtp(email));
+    if (!res) return;
+    this.newEmail = email;
+    this.emailOtp = '';
+    this.emailStep.set('otp');
+  }
+
+  protected async verifyEmailOtp(): Promise<void> {
+    if (!/^[0-9]{6}$/.test(this.emailOtp.trim())) {
+      this.alert.set(errorAlert('Please enter the 6-digit OTP.'));
+      return;
+    }
+    const res = await this.call(this.api.verifyEmailOtp(this.emailOtp.trim()));
+    if (!res) return;
+    this.registeredEmail.set(res.email);
+    this.emailStep.set('idle');
+    this.alert.set(successAlert('Your registered e-mail has been changed.'));
+  }
 
   protected readonly unitAddress = computed(() => {
     const m = this.msme();
@@ -108,6 +156,7 @@ export class ProfilePage {
     if (!res) return;
     this.msme.set(res.msme ?? {});
     this.basicInfo.set(res.basicInfo ?? {});
+    this.registeredEmail.set(res.registeredEmail ?? '');
   }
 
   /** Runs a request with the loading overlay; shows the API message in the pop-up on failure. */

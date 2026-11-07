@@ -1,0 +1,14 @@
+@* New in V4 (2026-11-07): notice to the previous registered e-mail that the unit's e-mail was changed. *@
+<EmailLayout PublicBaseUrl="@PublicBaseUrl">
+    <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
+    <p style="font-size: 13px; margin-bottom: 0;">The registered e-mail of ZED ID <b>@ZedId</b> was changed to <b>@NewEmail</b> on @ChangedOn. ZED mails and password links now go to that address.</p>
+    <p style="font-size: 13px; margin-bottom: 0;">If you did not make this change, please contact us at once at zed.support@qcin.org.</p>
+    <p style="font-size: 13px; margin-bottom: 20px;">Thanks and Regards,<br>ZED Team</p>
+</EmailLayout>
+
+@code {
+    [Parameter, EditorRequired] public string ZedId { get; set; } = "";
+    [Parameter, EditorRequired] public string NewEmail { get; set; } = "";
+    [Parameter, EditorRequired] public string ChangedOn { get; set; } = "";
+    [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
+}

@@ -1,75 +1,115 @@
-<!-- As the live page (Views/Msme/ViewProfile.cshtml): one panel, the basic information as label / value rows, then the
-     unit and its activity. -->
-<div class="container form-page view-profile" id="zed_user_form">
+<!-- Redesigned (2026-11-07): the enterprise (from Udyam), contact with the change of the registered e-mail (OTP to the new
+     address), the selected unit (plant) and its NIC activity with Edit Activity. -->
+<div class="container form-page view-profile profile-v2" id="zed_user_form">
   <div class="row mt-3 justify-content-center">
-    <div class="col-sm-9">
-      <div class="panel panel-default panel-design">
-        <div class="panel-body">
-          <div class="col-sm-12">
-            <h3 class="registration-title">Basic Information</h3>
-            <table class="table">
-              <tbody>
-                @for (r of rows; track r.field; let first = $first) {
-                  <tr>
-                    <td [attr.width]="first ? '35%' : null"><p>{{ r.label }}</p></td>
-                    <td><p>{{ value(r) }}</p></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
+    <div class="col-lg-10">
+      <h2 class="registration-title mb-3">Enterprise Profile</h2>
 
-          <div class="col-sm-12">
-            <h3 class="registration-title">Selected Unit</h3>
-            <div class="unit-selection"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /><p>{{ text(msme(), 'PUnitName') }}</p></div>
-            <div class="unit-selection"><img src="/Images/svgicons/mapicon.svg" alt="" /><p>{{ unitAddress() }}</p></div>
-          </div>
-
-          @if (!editMode()) {
-            <div class="col-sm-12">
-              <h3 class="registration-title">Selected Unit Activity
-                <button type="button" class="float-end btn btn-primary" [disabled]="busy()" (click)="editActivity()">Edit Activity</button>
-              </h3>
-              <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ text(msme(), 'Activity') }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'TwoDigitActivity') }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'FourDigitActivity') }}</p></div>
-              <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ text(msme(), 'FiveDigitActivity') }}</p></div>
-            </div>
-          } @else {
-            <div class="col-sm-12">
-              <h3 class="registration-title">Selected Unit Activity</h3>
-              <div class="panel-units" role="radiogroup" aria-label="Unit activity">
-                @for (a of activities(); track $index) {
-                  <label class="panel-item" [class.panel-selected]="selected() === a.Five_DigitActivity">
-                    <div class="panel panel-default">
-                      <div class="panel-body">
-                        <div class="unit-isselected">
-                          <input type="radio" class="option-input yes radio" name="Activity" [value]="a.Five_DigitActivity"
-                                 [checked]="selected() === a.Five_DigitActivity" (change)="selected.set(a.Five_DigitActivity)" />
-                          <span>{{ selected() === a.Five_DigitActivity ? 'Selected' : 'Select this Activity' }}</span>
-                        </div>
-                        <div class="unit-selection"><img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ a.Activity }}</p></div>
-                        <div class="unit-selection"><img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" /><p>{{ a.Two_DigitActivity }}</p></div>
-                        <div class="unit-selection"><img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" /><p>{{ a.Four_DigitActivity }}</p></div>
-                        <div class="unit-selection"><img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" /><p>{{ a.Five_DigitActivity }}</p></div>
-                      </div>
-                    </div>
-                  </label>
-                }
-              </div>
-              @if (!selected()) {
-                <span class="help-block">This is required.</span>
-              }
-              <div class="col-sm-12 text-center mt-3">
-                <button type="button" class="btn btn-warning" (click)="cancelEdit()">CANCEL</button>
-                @if (changed()) {
-                  <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">UPDATE</button>
-                }
-              </div>
-            </div>
+      <section class="pcard" aria-labelledby="enterpriseTitle">
+        <header class="pcard-head">
+          <h3 id="enterpriseTitle"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /> Enterprise (from Udyam)</h3>
+          <span class="id-chip">{{ text(msme(), 'ZedId') }}</span>
+        </header>
+        <dl class="pgrid">
+          @for (r of shownRows(); track r.field) {
+            <div><dt>{{ r.label }}</dt><dd>{{ value(r) || '—' }}</dd></div>
           }
-        </div>
-      </div>
+        </dl>
+        <button type="button" class="btn btn-link p-0 more" (click)="showAll.set(!showAll())" [attr.aria-expanded]="showAll()">
+          {{ showAll() ? 'Show fewer details' : 'Show all details' }}
+        </button>
+      </section>
+
+      <section class="pcard" aria-labelledby="contactTitle">
+        <header class="pcard-head"><h3 id="contactTitle">Contact</h3></header>
+        <dl class="pgrid">
+          <div>
+            <dt>Registered e-mail <small>(ZED mails and password links)</small></dt>
+            <dd class="d-flex align-items-center gap-2 flex-wrap">
+              <span data-testid="registered-email">{{ registeredEmail() || '—' }}</span>
+              @if (emailStep() === 'idle') {
+                <button type="button" class="btn btn-outline-primary btn-sm" (click)="startEmailChange()">Change</button>
+              }
+            </dd>
+          </div>
+          <div><dt>Mobile</dt><dd>{{ text(basicInfo(), 'MobileNo') || '—' }}</dd></div>
+        </dl>
+
+        @if (emailStep() !== 'idle') {
+          <div class="email-change" data-testid="email-change">
+            <h4>Change e-mail</h4>
+            @if (emailStep() === 'enter') {
+              <form class="d-flex gap-2 flex-wrap align-items-start" (ngSubmit)="sendEmailOtp()" novalidate>
+                <div class="flex-grow-1">
+                  <label for="newEmail" class="visually-hidden">New e-mail address</label>
+                  <input id="newEmail" name="newEmail" type="email" class="form-control" placeholder="New e-mail address" maxlength="100"
+                         [(ngModel)]="newEmail" />
+                </div>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">SEND OTP</button>
+                <button type="button" class="btn btn-default" (click)="cancelEmailChange()">CANCEL</button>
+              </form>
+            } @else {
+              <p class="mb-2">An OTP has been sent to <b>{{ newEmail }}</b>. It is valid for 10 minutes.</p>
+              <form class="d-flex gap-2 flex-wrap align-items-start" (ngSubmit)="verifyEmailOtp()" novalidate>
+                <div>
+                  <label for="emailOtp" class="visually-hidden">OTP</label>
+                  <input id="emailOtp" name="emailOtp" class="form-control otp" inputmode="numeric" maxlength="6" placeholder="6-digit OTP"
+                         [(ngModel)]="emailOtp" />
+                </div>
+                <button type="submit" class="btn btn-primary" [disabled]="busy()">VERIFY AND CHANGE</button>
+                <button type="button" class="btn btn-link" (click)="sendEmailOtp()" [disabled]="busy()">Resend OTP</button>
+                <button type="button" class="btn btn-default" (click)="cancelEmailChange()">CANCEL</button>
+              </form>
+            }
+            <p class="text-muted small mb-0 mt-2">The e-mail changes only after the OTP is verified; the old address gets a notice.</p>
+          </div>
+        }
+      </section>
+
+      <section class="pcard" aria-labelledby="unitTitle">
+        <header class="pcard-head"><h3 id="unitTitle"><img src="/Images/svgicons/mapicon.svg" alt="" /> Selected unit (plant)</h3></header>
+        <p class="unit-name">{{ text(msme(), 'PUnitName') }}</p>
+        <p class="mb-0">{{ unitAddress() }}</p>
+      </section>
+
+      <section class="pcard" aria-labelledby="activityTitle">
+        <header class="pcard-head">
+          <h3 id="activityTitle"><img src="/Images/svgicons/manufacturing.svg" alt="" /> Unit activity (NIC)</h3>
+          @if (!editMode()) {
+            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy()" (click)="editActivity()">Edit Activity</button>
+          }
+        </header>
+        @if (!editMode()) {
+          <dl class="pgrid">
+            <div><dt>Activity</dt><dd>{{ text(msme(), 'Activity') || '—' }}</dd></div>
+            <div><dt>2-digit</dt><dd>{{ text(msme(), 'TwoDigitActivity') || '—' }}</dd></div>
+            <div><dt>4-digit</dt><dd>{{ text(msme(), 'FourDigitActivity') || '—' }}</dd></div>
+            <div><dt>5-digit</dt><dd>{{ text(msme(), 'FiveDigitActivity') || '—' }}</dd></div>
+          </dl>
+        } @else {
+          <div class="panel-units" role="radiogroup" aria-label="Unit activity">
+            @for (a of activities(); track $index) {
+              <label class="panel-item activity-option" [class.panel-selected]="selected() === a.Five_DigitActivity">
+                <input type="radio" class="option-input yes radio" name="Activity" [value]="a.Five_DigitActivity"
+                       [checked]="selected() === a.Five_DigitActivity" (change)="selected.set(a.Five_DigitActivity)" />
+                <span>
+                  <b>{{ a.Two_DigitActivity }}</b>
+                  <small class="d-block">{{ a.Activity }} · {{ a.Four_DigitActivity }} · {{ a.Five_DigitActivity }}</small>
+                </span>
+              </label>
+            }
+          </div>
+          @if (!selected()) {
+            <span class="help-block">This is required.</span>
+          }
+          <div class="text-center mt-3">
+            <button type="button" class="btn btn-warning" (click)="cancelEdit()">CANCEL</button>
+            @if (changed()) {
+              <button type="button" class="btn btn-primary ms-2" [disabled]="busy()" (click)="updateActivity()">UPDATE</button>
+            }
+          </div>
+        }
+      </section>
     </div>
   </div>
 </div>

@@ -59,49 +59,64 @@ export function submittedValues(data: string | null): string[] {
   selector: 'zed-edit-history-table',
   imports: [DatePipe, PagerComponent],
   template: `
+    <div class="eh-filters" role="group" aria-label="Show changes">
+      @for (k of kinds; track k.key) {
+        <button type="button" class="eh-chip" [class.active]="kind() === k.key" [attr.aria-pressed]="kind() === k.key" (click)="setKind(k.key)">{{ k.label }}</button>
+      }
+    </div>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    <div class="table-responsive">
-      <table class="table table-zed table-bordered">
-        <thead>
-          <tr>
-            <th class="text-center" style="width: 70px">S.No</th><th class="text-center" style="width: 150px">Date &amp; Time</th><th>Change</th><th class="text-center" style="width: 120px">Where</th><th class="text-center" style="width: 160px">Result</th><th>Details</th>
-          </tr>
-        </thead>
-        <tbody>
-          @for (r of rows(); track r.id) {
-            <tr>
-              <td class="text-center">{{ (pager.pageNo() - 1) * pager.pageSize() + $index + 1 }}</td>
-              <td class="text-center text-nowrap">{{ r.at | date: 'dd-MM-yyyy HH:mm' }}</td>
-              <td>{{ r.action }}</td>
-              <td class="text-center">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}@if (showOrigin() && r.ipAddress) {<br /><small class="text-muted">IP {{ r.ipAddress }}</small>}</td>
-              <td class="text-center">
-                <span class="status-badge" [class.is-success]="r.result === 'Success'" [class.is-rejected]="r.result !== 'Success'">{{ r.result === 'Success' ? 'Saved' : 'Not saved' }}</span>
-                @if (r.message) { <small class="d-block mt-1">{{ r.message }}</small> }
-              </td>
-              <td>
-                @if (r.data) {
-                  <button type="button" class="btn btn-outline-primary btn-sm" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
-                    {{ open() === r.id ? 'Hide' : 'View' }}
-                  </button>
-                  @if (open() === r.id) {
-                    <ul class="list-unstyled small mb-0 mt-2 values">
-                      @for (v of values(r); track $index) { <li>{{ v }}</li> } @empty { <li class="text-muted">No values</li> }
-                    </ul>
-                  }
-                }
-              </td>
-            </tr>
-          } @empty {
-            @if (!loading()) { <tr><td colspan="6" style="padding: 0"><div class="no-data">No changes recorded yet</div></td></tr> }
+    <div class="timeline">
+      @for (r of rows(); track r.id; let i = $index) {
+        @if (i === 0 || dayOf(rows()[i - 1].at) !== dayOf(r.at)) {
+          <div class="eh-day">{{ r.at | date: 'd MMMM y' }}</div>
+        }
+        <div class="eh-item">
+          <span class="eh-dot" aria-hidden="true"></span>
+          <div class="eh-head">
+            <span class="eh-title">{{ title(r.action) }}</span>
+            <span class="eh-meta">
+              <span class="eh-where">{{ r.channel === 'Mobile' ? 'MSME app' : 'Web' }}</span>
+              <span class="status-badge" [class.is-success]="r.result === 'Success'" [class.is-rejected]="r.result !== 'Success'">{{ r.result === 'Success' ? 'Saved' : 'Not saved' }}</span>
+              <span class="eh-time">{{ r.at | date: 'HH:mm' }}</span>
+            </span>
+          </div>
+          @if (r.message) { <div class="eh-message">{{ r.message }}</div> }
+          @if (showOrigin() && r.ipAddress) { <div class="eh-message text-muted">IP {{ r.ipAddress }}</div> }
+          @if (values(r).length) {
+            <button type="button" class="btn btn-link btn-sm p-0" [attr.aria-expanded]="open() === r.id" (click)="open.set(open() === r.id ? null : r.id)">
+              {{ open() === r.id ? 'Hide details' : 'Show details' }}
+            </button>
+            @if (open() === r.id) {
+              <ul class="list-unstyled small mb-0 mt-1 values">
+                @for (v of values(r); track $index) { <li>{{ v }}</li> }
+              </ul>
+            }
           }
-        </tbody>
-      </table>
+        </div>
+      } @empty {
+        @if (!loading()) { <div class="no-data">No changes recorded yet</div> }
+      }
     </div>
     <zed-pager [pager]="pager" />
   `,
-  styles: `.values { max-width: 420px; word-break: break-word; }`,
+  styles: `
+    .eh-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .eh-chip { border: 1px solid #ccd2d5; background: #fff; border-radius: 16px; padding: 3px 14px; font-weight: 500; color: #3a3c3e; }
+    .eh-chip.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .timeline { border-left: 2px solid #d6e9eb; margin-left: 8px; padding-left: 20px; }
+    .eh-day { color: #7a7d80; font-weight: 600; margin: 14px 0 6px -20px; padding-left: 0; background: #fff; position: relative; left: -10px; }
+    .eh-item { position: relative; border: 1px solid #e3e6e8; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; background: #fff; }
+    .eh-dot { position: absolute; left: -28px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: #45a5ad; border: 3px solid #fff; box-shadow: 0 0 0 1px #45a5ad; }
+    .eh-head { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .eh-title { font-weight: 700; color: #232527; }
+    .eh-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .eh-where { background: #eef2f3; border-radius: 10px; padding: 1px 10px; font-size: 0.85rem; }
+    .eh-time { color: #7a7d80; font-size: 0.9rem; }
+    .eh-message { font-size: 0.9rem; margin-top: 2px; }
+    .values { max-width: 520px; word-break: break-word; background: #f7f8f9; border-radius: 6px; padding: 6px 10px; }
+  `,
 })
 export class EditHistoryTable {
   /** The API that pages the history (api/msme/edit-history or api/staff/msme-edit-history/{zedId}). */
@@ -127,14 +142,42 @@ export class EditHistoryTable {
   }
 
   protected values(r: EditItem): string[] {
-    return submittedValues(r.data);
+    // Secrets are masked (***) by the server; they are not listed at all (2026-11-07).
+    return submittedValues(r.data).filter((v) => !v.endsWith(': ***'));
+  }
+
+  /** The filters (server side, all pages): Action LIKE ... (MsmeEditHistoryResponses.Kinds). */
+  protected readonly kinds = [
+    { key: '', label: 'All' },
+    { key: 'profile', label: 'Profile' },
+    { key: 'password', label: 'Password' },
+    { key: 'certification', label: 'Certification' },
+    { key: 'payment', label: 'Payments' },
+  ];
+  protected readonly kind = signal('');
+
+  protected setKind(kind: string): void {
+    this.kind.set(kind);
+    this.pager.reset();
+    void this.load();
+  }
+
+  /** "App: password changed" -> "Password changed" (where it was made has its own chip). */
+  protected title(action: string): string {
+    const t = action.replace(/^(App|Web)\s*:\s*/i, '').trim();
+    return t ? t.charAt(0).toUpperCase() + t.slice(1) : action;
+  }
+
+  protected dayOf(at: string): string {
+    return new Date(at).toDateString();
   }
 
   private async load(): Promise<void> {
     this.loading.set(true);
     this.error.set('');
     try {
-      const params = new HttpParams().set('pageNo', this.pager.pageNo()).set('pageSize', this.pager.pageSize());
+      let params = new HttpParams().set('pageNo', this.pager.pageNo()).set('pageSize', this.pager.pageSize());
+      if (this.kind()) params = params.set('kind', this.kind());
       const r = await firstValueFrom(this.http.get<EditHistoryResponse>(this.url(), { params }));
       this.rows.set(r.rows);
       this.pager.total.set(r.total);

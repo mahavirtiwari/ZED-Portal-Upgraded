@@ -35,7 +35,7 @@ describe('EditHistoryPage', () => {
     expect(req.request.params.get('pageNo')).toBe('1');
     req.flush({ total: 25, pageNo: 1, pageSize: 10, rows: [row(9), row(8, { channel: 'Mobile', action: 'App: photos submitted', result: 'Failed', message: 'Please try again.' })] });
     await settle();
-    const text = el.querySelector('tbody')!.textContent!;
+    const text = el.querySelector('.timeline')!.textContent!;
     expect(text).toContain('Financial assistance: document uploaded');
     expect(text).toContain('MSME app');
     expect(text).toContain('Not saved');
@@ -43,7 +43,7 @@ describe('EditHistoryPage', () => {
     // The applicant does not see the IP address column note.
     expect(text).not.toContain('203.0.113.9');
 
-    (el.querySelector('tbody button') as HTMLButtonElement).click();
+    (el.querySelector('.timeline button') as HTMLButtonElement).click();
     await settle();
     expect(el.querySelector('.values')!.textContent).toContain('Type: Invoice Copy');
     expect(el.querySelector('.values')!.textContent).toContain('File: invoice.pdf (1 KB)');
