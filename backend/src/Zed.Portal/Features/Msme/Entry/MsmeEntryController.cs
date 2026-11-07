@@ -558,7 +558,7 @@ public sealed partial class MsmeEntryController(
     {
         if (string.IsNullOrWhiteSpace(name) || name.Contains('/') || name.Contains('\\')) return null;
         return MsmeFilePaths.Normalise(MsmeEntry.Relative(ZedId, level, folder, name)) is { } relative
-            ? MsmeFilePaths.Resolve(MsmeEntry.StorageRoot(env, portal, config), relative) : null;
+            ? MsmeFilePaths.ResolveAppFile(MsmeEntry.StorageRoot(env, portal, config), relative) : null;
     }
 
     private string FileUrl(string level, string folder, string name) =>
@@ -585,7 +585,7 @@ public sealed partial class MsmeEntryController(
         var at = normalized.IndexOf("Photos/", StringComparison.OrdinalIgnoreCase);
         if (at < 0) return false;
         var full = MsmeFilePaths.Normalise("mobileapi/" + normalized[at..]) is { } relative
-            ? MsmeFilePaths.Resolve(MsmeEntry.StorageRoot(env, portal, config), relative) : null;
+            ? MsmeFilePaths.ResolveAppFile(MsmeEntry.StorageRoot(env, portal, config), relative) : null;
         if (full is null) return false;
         // The procedure names every file .jpg; a document sent as a PDF is {PhotoId}.pdf.
         return System.IO.File.Exists(full) ||

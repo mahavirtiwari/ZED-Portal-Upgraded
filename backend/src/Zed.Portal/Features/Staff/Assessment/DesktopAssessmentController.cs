@@ -146,6 +146,25 @@ public sealed class DesktopAssessmentController(
     [HttpGet]
     public async Task<ActionResult<DaDetailsResponse>> Get(string zedId, string certification, CancellationToken ct)
     {
+        try
+        {
+            return await Details(zedId, certification, ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // 2026-11-07: the page answered a bare 500 for the first V4 unit and the cause was only in the server's event
+            // log. The error is logged with the record, and the Master / Super Admin see its text on the page.
+            log.LogError(ex, "Desktop assessment details of {ZedId} {Certification} could not be read for {UserId}", zedId, certification, UserId);
+            var detail = IsRole(UserRole.MasterAdmin) || IsRole(UserRole.SuperAdmin)
+                ? $" ({ex.GetType().Name}: {(ex.Message.Length > 400 ? ex.Message[..400] : ex.Message)})"
+                : "";
+            return Problem(title: "Assessment details could not be loaded. Please try again later." + detail,
+                statusCode: StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private async Task<ActionResult<DaDetailsResponse>> Details(string zedId, string certification, CancellationToken ct)
+    {
         var level = AssessmentInput.Level(certification);
         if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
 
@@ -247,7 +266,7 @@ public sealed class DesktopAssessmentController(
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
 
         var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
-            .SelectMany(root => DaFiles.StorageCandidates(requested, zedId, host.System).Select(c => MsmeFilePaths.Resolve(root, c)))
+            .SelectMany(root => DaFiles.StorageCandidates(requested, zedId, host.System).SelectMany(MsmeFilePaths.AppLayoutCandidates).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {

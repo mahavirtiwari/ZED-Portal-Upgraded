@@ -319,7 +319,7 @@ public sealed class RemoteAssessmentController(
 
         // The page's own photos are under the storage root; the apps' (selfie, site tour) under the assessment root.
         var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
-            .SelectMany(root => RemoteFiles.StorageCandidates(requested).Select(c => MsmeFilePaths.Resolve(root, c)))
+            .SelectMany(root => RemoteFiles.StorageCandidates(requested).SelectMany(MsmeFilePaths.AppLayoutCandidates).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {

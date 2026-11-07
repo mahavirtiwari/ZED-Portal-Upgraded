@@ -132,9 +132,11 @@ public static class CheckpointAnswers
             var evidences = await db.QuerySqlAsync<EvidenceRow>(EvidenceSql(master), args, ct);
             return rows.Select(r => ToCheckpoint(r, evidences)).ToList();
         }
-        catch (DbException ex)
+        catch (Exception ex) when (ex is DbException or System.Data.DataException or InvalidCastException or FormatException)
         {
-            log.LogWarning(ex, "Checkpoint answers not read (are migrations 0034 and 0039 applied?); the requirement conformance is used");
+            // DataException / InvalidCast: a column Dapper could not map (2026-11-07: a mapping error no longer fails the page).
+            log.LogWarning(ex, "Checkpoint answers of {ZedId} {Level} not read (are migrations 0034 and 0039 applied?); the requirement conformance is used",
+                zedId, level);
             return [];
         }
     }

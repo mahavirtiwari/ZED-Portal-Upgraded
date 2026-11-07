@@ -94,11 +94,16 @@
                                 <li [class]="stepClass(level, rule)"><span class="dot"></span></li>
                               }
                             </ol>
+                            <div class="lv-steps-labels" aria-hidden="true">
+                              @for (rule of steps(level); track $index) {
+                                <span [class.on]="stepClass(level, rule) !== ''">{{ rule.label }}</span>
+                              }
+                            </div>
                           </div>
                           <div class="lv-actions">
                             @if (paid(level)) {
                               <a class="btn btn-outline-primary btn-sm" [routerLink]="['/msme/certification', level]">VIEW DETAILS</a>
-                              <a class="btn btn-primary btn-sm lv-go" [routerLink]="['/msme/certification', level]" [attr.aria-label]="level + ' details'">→</a>
+                              <a class="btn btn-primary btn-sm" [routerLink]="['/msme/certification', level]" [attr.aria-label]="'Continue ' + levelName(level)">{{ status(level) === completed(level) ? 'CERTIFICATE' : 'CONTINUE' }}</a>
                             } @else {
                               <button type="button" class="btn btn-outline-primary btn-sm" (click)="open({ kind: 'apply-info', level })">VIEW DETAILS</button>
                               <button type="button" class="btn btn-primary btn-sm apply-btn" (click)="apply(level)">APPLY</button>

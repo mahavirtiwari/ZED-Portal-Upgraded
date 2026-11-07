@@ -20,7 +20,7 @@ const analytics = (view: 'registered' | 'certified' = 'registered', more: object
   districtOptions: [],
   boundState: null,
   generatedAt: '2026-10-27T10:00:00+05:30',
-  statusCards: { BronzeTotal: 12, BronzePending: 3, SaGoldCompleted: 7, GoldRejected: null },
+  statusCards: { BronzeTotal: 12, BronzePending: 3, SaGoldCompleted: 7, GoldRejected: null, ZedxTotal: 4, SaZedxPending: 1 },
   ...more,
 });
 
@@ -86,7 +86,8 @@ describe('StaffDashboardPage', () => {
     expect(el.querySelector('[data-field="SaGoldCompleted"]')!.textContent).toBe('7');
     expect(el.querySelector('[data-field="GoldRejected"]')!.textContent).toBe('0');
     expect(el.querySelector('[data-field="FaRejected"]')).toBeNull();
-    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
+    expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
+    expect(el.querySelector('.an-status [data-field="ZedxTotal"]')!.textContent).toBe('4');
     // Each status with its share of the level's applications in brackets (3 of 12 pending = 25%).
     const pending = el.querySelector('.an-status .app-card .app-stats li')!;
     expect([text(pending.querySelector('.app-label')), text(pending.querySelector('.app-value')), text(pending.querySelector('.app-share'))]).toEqual(['Assessment Pending', '3', '(25%)']);

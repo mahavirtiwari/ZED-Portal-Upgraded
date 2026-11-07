@@ -228,6 +228,38 @@ public static class MsmeFilePaths
         return string.Equals(assessment, main, StringComparison.OrdinalIgnoreCase) ? [main] : [assessment, main];
     }
 
+    /// <summary>The mobile apps' folders at the start of an app file's path (<c>mobileapi/Photos/…</c>).</summary>
+    private static readonly string[] AppFolders = ["mobileapi", "surveillancemobileapi"];
+
+    /// <summary>
+    /// An app file's path as given (<c>mobileapi/Photos/…</c>, for a root that holds the mobileapi folder), then without its app
+    /// folder (<c>Photos/…</c>, for a root that is the app's folder itself). 2026-11-07: the live settings point
+    /// Portal:AssessmentStorageRoot and the main mobile host's Mobile:StorageRoot at the same folder, so the app writes
+    /// <c>{root}\Photos\…</c> while the web looked only in <c>{root}\mobileapi\Photos\…</c> and showed no app documents.
+    /// </summary>
+    public static IEnumerable<string> AppLayoutCandidates(string relative)
+    {
+        yield return relative;
+        var i = relative.IndexOf('/');
+        if (i > 0 && i < relative.Length - 1 && AppFolders.Contains(relative[..i], StringComparer.OrdinalIgnoreCase))
+            yield return relative[(i + 1)..];
+    }
+
+    /// <summary>
+    /// Full path of an app file under <paramref name="root"/>: where it is stored in either layout (<see cref="AppLayoutCandidates"/>),
+    /// else where the app's server writes it (<c>{root}\Photos</c> when that folder exists, otherwise the path as given).
+    /// Null when the path would leave the root.
+    /// </summary>
+    public static string? ResolveAppFile(string root, string relative)
+    {
+        var candidates = AppLayoutCandidates(relative).ToList();
+        foreach (var c in candidates)
+            if (Resolve(root, c) is { } p && File.Exists(p)) return p;
+        var flat = candidates.Count > 1 ? candidates[1] : null;
+        var useFlat = flat is not null && Resolve(root, flat.Split('/')[0]) is { } folder && Directory.Exists(folder);
+        return Resolve(root, useFlat ? flat! : relative);
+    }
+
     /// <summary>The stored file of a normalised relative path (either certificate folder), or null when it is not there.</summary>
     public static string? Find(string storageRoot, string relative) =>
         StorageCandidates(relative).Select(c => Resolve(storageRoot, c)).FirstOrDefault(p => p is not null && File.Exists(p));

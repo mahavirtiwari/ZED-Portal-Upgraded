@@ -67,7 +67,7 @@ BEGIN
     FROM dbo.Msme M
     INNER JOIN dbo.MsmeBasicInformation B ON B.ZedId = M.ZedId
     WHERE M.ZedId IS NOT NULL
-      AND (@IncludeTestUnits = 1 OR ISNULL(B.UdyogAadharNo, '') NOT IN ('UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915', 'UDYAM-UP-16-0001476'))
+      AND (@IncludeTestUnits = 1 OR ISNULL(B.UdyogAadharNo, '') NOT IN ('UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915'))
       AND (@State IS NULL OR M.PStateName = @State)
       AND (@District IS NULL OR M.PDistrictName = @District)
       AND (@Size IS NULL OR M.EnterpriseTypee = @Size)
@@ -136,7 +136,7 @@ BEGIN
     INSERT #C (ZedId, Level, CertDate)
     SELECT A.ZedId, A.Certification, MIN(A.CertificationStatusDate)
     FROM #A A
-    WHERE (A.Certification = 'Bronze' AND A.CertificationStatus = 6) OR (A.Certification IN ('Silver', 'Gold') AND A.CertificationStatus = 16)
+    WHERE (A.Certification = 'Bronze' AND A.CertificationStatus = 6) OR (A.Certification IN ('Silver', 'Gold', 'ZEDX') AND A.CertificationStatus = 16)
     GROUP BY A.ZedId, A.Certification;
     CREATE CLUSTERED INDEX IX_C ON #C (ZedId);
 
@@ -244,7 +244,13 @@ BEGIN
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND HasSaCert = 0 THEN 1 ELSE 0 END), 0) AS SaGoldPending,
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus IN (14, 15, 17) THEN 1 ELSE 0 END), 0) AS GoldNcRaised,
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND HasSaCert = 1 THEN 1 ELSE 0 END), 0) AS SaGoldCompleted,
-            ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS GoldRejected
+            ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS GoldRejected,
+            -- ZED-X (2026-11-07): Gold's flow and rules.
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' THEN 1 ELSE 0 END), 0) AS ZedxTotal,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND HasSaCert = 0 THEN 1 ELSE 0 END), 0) AS SaZedxPending,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus IN (14, 15, 17) THEN 1 ELSE 0 END), 0) AS ZedxNcRaised,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND HasSaCert = 1 THEN 1 ELSE 0 END), 0) AS SaZedxCompleted,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS ZedxRejected
         FROM Mine WHERE rn = 1;
     END
     ELSE
@@ -272,7 +278,13 @@ BEGIN
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus IN (2, 3, 5, 6, 8, 9, 13) THEN 1 ELSE 0 END), 0) AS SaGoldPending,
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus IN (14, 15, 17) THEN 1 ELSE 0 END), 0) AS GoldNcRaised,
             ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus = 16 THEN 1 ELSE 0 END), 0) AS SaGoldCompleted,
-            ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS GoldRejected
+            ISNULL(SUM(CASE WHEN Certification = 'Gold' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS GoldRejected,
+            -- ZED-X (2026-11-07): Gold's flow and rules.
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus <> 1 THEN 1 ELSE 0 END), 0) AS ZedxTotal,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus IN (2, 3, 5, 6, 8, 9, 13) THEN 1 ELSE 0 END), 0) AS SaZedxPending,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus IN (14, 15, 17) THEN 1 ELSE 0 END), 0) AS ZedxNcRaised,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus = 16 THEN 1 ELSE 0 END), 0) AS SaZedxCompleted,
+            ISNULL(SUM(CASE WHEN Certification = 'ZEDX' AND CertificationStatus = 99 THEN 1 ELSE 0 END), 0) AS ZedxRejected
         FROM Deduped WHERE rn = 1;
     END
 

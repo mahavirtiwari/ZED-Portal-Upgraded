@@ -380,4 +380,36 @@ public sealed class MsmeFilePathsTests
         Assert.Null(MsmeFilePaths.Resolve(root, "../zed-root-other/x.pdf"));
         Assert.Null(MsmeFilePaths.Resolve(root, Path.Combine(Path.GetTempPath(), "x.pdf")));
     }
+
+    [Fact]
+    public void App_files_are_found_with_or_without_the_app_folder_and_written_where_the_app_writes()
+    {
+        Assert.Equal(["mobileapi/Photos/Z1/Bronze/Evidences/1.pdf", "Photos/Z1/Bronze/Evidences/1.pdf"],
+            MsmeFilePaths.AppLayoutCandidates("mobileapi/Photos/Z1/Bronze/Evidences/1.pdf"));
+        Assert.Equal(["Uploads/DA/Z1/x.pdf"], MsmeFilePaths.AppLayoutCandidates("Uploads/DA/Z1/x.pdf"));
+
+        var root = Path.Combine(Path.GetTempPath(), "zed-app-layout-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            const string rel = "mobileapi/Photos/Z1/Bronze/Evidences/1.pdf";
+            // Nothing stored and no Photos folder: the path as given.
+            Directory.CreateDirectory(root);
+            Assert.Equal(Path.Combine(root, "mobileapi", "Photos", "Z1", "Bronze", "Evidences", "1.pdf"), MsmeFilePaths.ResolveAppFile(root, rel));
+            // The root is the app's own folder (the live layout): written and found under {root}\Photos.
+            var flat = Path.Combine(root, "Photos", "Z1", "Bronze", "Evidences", "1.pdf");
+            Directory.CreateDirectory(Path.GetDirectoryName(flat)!);
+            Assert.Equal(flat, MsmeFilePaths.ResolveAppFile(root, rel));
+            File.WriteAllText(flat, "%PDF");
+            Assert.Equal(flat, MsmeFilePaths.ResolveAppFile(root, rel));
+            // A file already stored with the app folder is kept where it is.
+            var nested = Path.Combine(root, "mobileapi", "Photos", "Z1", "Bronze", "Evidences", "2.pdf");
+            Directory.CreateDirectory(Path.GetDirectoryName(nested)!);
+            File.WriteAllText(nested, "%PDF");
+            Assert.Equal(nested, MsmeFilePaths.ResolveAppFile(root, "mobileapi/Photos/Z1/Bronze/Evidences/2.pdf"));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }

@@ -28,7 +28,6 @@ public sealed class MsmeEvidenceFilesController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    IConfiguration config,
     ILogger<MsmeEvidenceFilesController> log) : MsmeApiController
 {
     public const string StorageRootSetting = "Portal:AssessmentStorageRoot";
@@ -47,11 +46,12 @@ public sealed class MsmeEvidenceFilesController(
         var listed = await MsmeAssessment.ListFilesAsync(db, ZedId, RoleId, type, source ?? "", ct);
         if (listed is null || !listed.Contains(requested)) return NotFound();
 
-        var configured = config[StorageRootSetting];
-        var root = Path.GetFullPath(Path.Combine(env.ContentRootPath,
-            string.IsNullOrWhiteSpace(configured) ? portal.Value.StorageRoot : configured));
-        var fullPath = MsmeFilePaths.Resolve(root, requested);
-        if (fullPath is null || !System.IO.File.Exists(fullPath))
+        // The assessment root, then the portal's; under each the path as listed or without its app folder
+        // (MsmeFilePaths.AppLayoutCandidates: the app may write {root}\Photos, not {root}\mobileapi\Photos).
+        var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
+            .SelectMany(root => MsmeFilePaths.AppLayoutCandidates(requested).Select(c => MsmeFilePaths.Resolve(root, c)))
+            .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
+        if (fullPath is null)
         {
             log.LogInformation("Listed assessment file {Path} for {ZedId} is missing from storage", requested, ZedId);
             return NotFound();

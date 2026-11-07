@@ -498,7 +498,7 @@ public sealed class SiteReviewController(
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
 
         var fullPath = MsmeFilePaths.AppFileRoots(HttpContext.RequestServices, env, portal.Value)
-            .SelectMany(root => SiteReviewFiles.StorageCandidates(requested, zedId).Select(c => MsmeFilePaths.Resolve(root, c)))
+            .SelectMany(root => SiteReviewFiles.StorageCandidates(requested, zedId).SelectMany(MsmeFilePaths.AppLayoutCandidates).Select(c => MsmeFilePaths.Resolve(root, c)))
             .FirstOrDefault(p => p is not null && System.IO.File.Exists(p));
         if (fullPath is null)
         {

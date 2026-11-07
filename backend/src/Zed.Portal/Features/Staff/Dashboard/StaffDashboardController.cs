@@ -116,6 +116,8 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         "BronzeTotal", "BronzePending", "BronzeNcRaised", "BronzeCompleted", "BronzeRejected",
         "SilverTotal", "SaSilverPending", "SilverNcRaised", "SaSilverCompleted", "SilverRejected",
         "GoldTotal", "SaGoldPending", "GoldNcRaised", "SaGoldCompleted", "GoldRejected",
+        // ZED-X (2026-11-07; migration 0019).
+        "ZedxTotal", "SaZedxPending", "ZedxNcRaised", "SaZedxCompleted", "ZedxRejected",
     ];
 
     private static readonly string[] HandholdingLevels = ["Silver", "Gold"];

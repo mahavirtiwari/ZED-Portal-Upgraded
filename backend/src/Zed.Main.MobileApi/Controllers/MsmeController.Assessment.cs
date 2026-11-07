@@ -94,7 +94,8 @@ public sealed partial class MsmeController
         args.Add("EnergySources", string.Join(",", info.energySources ?? []));
         args.Add("ManufacturingCapacityUnits", info.monthlyManufacturingCapacityUnits);
         args.Add("ManufacturingCapacityValue", info.monthlyManufacturingCapacityValue);
-        args.Add("MonthlyUtilizationUnits", info.monthlyUtilizationUnits);
+        // New (2026-11-07): the utilization is in the capacity's unit (the app sets both from the capacity unit).
+        args.Add("MonthlyUtilizationUnits", string.IsNullOrWhiteSpace(info.monthlyManufacturingCapacityUnits) ? info.monthlyUtilizationUnits : info.monthlyManufacturingCapacityUnits);
         args.Add("MonthlyUtilizationValue", info.monthlyUtilizationValue);
         AddTable(args, "ProductPhotos", productPhotos, "DynamicPhotoList2");
         AddTable(args, "ProductDescriptionPhotos", descriptionPhotos, "DynamicPhotoList2");

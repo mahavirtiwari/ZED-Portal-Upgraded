@@ -41,6 +41,13 @@ const MAIN_CARDS: Card[] = [
       { label: 'NC Raised', field: 'GoldNcRaised' }, { label: 'Certified', field: 'SaGoldCompleted' }, { label: 'Rejected', field: 'GoldRejected' },
     ],
   },
+  {
+    // 2026-11-07: ZED-X was missing from the dashboard (its figures: migration 0019, Gold's rules).
+    css: 'panel-zedx', title: 'ZED-X CERTIFICATION', lines: [
+      { label: 'Total Application', field: 'ZedxTotal' }, { label: 'Assessment Pending', field: 'SaZedxPending' },
+      { label: 'NC Raised', field: 'ZedxNcRaised' }, { label: 'Certified', field: 'SaZedxCompleted' }, { label: 'Rejected', field: 'ZedxRejected' },
+    ],
+  },
 ];
 
 /**
@@ -283,6 +290,7 @@ export const CONSULTANT_TILES = [
     .panel-bronze { --accent: #a65f33; --accent2: #c98454; }
     .panel-silver { --accent: #6c7a80; --accent2: #929fa5; }
     .panel-gold { --accent: #9a7410; --accent2: #c39a2c; }
+    .panel-zedx { --accent: #2f7c83; --accent2: #45a5ad; }
     .panel-finance { --accent: #5b8a2c; --accent2: #7fae49; }
     .panel-empanel { --accent: #2f8a46; --accent2: #4fae66; }
     .panel-consultant { --accent: #2f7c83; --accent2: #45a5ad; }
@@ -350,8 +358,10 @@ export class StaffDashboardPage {
 
   /** "BRONZE CERTIFICATION", "Silver Level" -> "Bronze", "Silver"; other titles as they are. */
   protected levelName(card: Card): string {
-    const m = /^(\w+) (certification|surveillance|level)$/i.exec(card.title);
-    return m ? m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase() : card.title;
+    const m = /^([\w-]+) (certification|surveillance|level)$/i.exec(card.title);
+    if (!m) return card.title;
+    // "ZED-X" keeps its capitals.
+    return m[1].includes('-') ? m[1].toUpperCase() : m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
   }
 
   /** A milestone card's lines after the total: payment received and completed for milestones 1 to 3. */

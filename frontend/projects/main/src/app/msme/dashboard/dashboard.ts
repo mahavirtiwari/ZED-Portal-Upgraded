@@ -79,32 +79,34 @@ interface StepRule {
   doneAbove: number;
   currentFrom: number;
   currentTo: number;
+  /** Shown under the step's dot (2026-11-07). */
+  label: string;
 }
 
 const STEPS: Record<Level, StepRule[]> = {
   Bronze: [
-    { doneAbove: 1, currentFrom: 0, currentTo: 1 },
-    { doneAbove: 4, currentFrom: 1, currentTo: 4 },
-    { doneAbove: 5, currentFrom: 4, currentTo: 5 },
+    { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+    { doneAbove: 4, currentFrom: 1, currentTo: 4, label: 'Assessment' },
+    { doneAbove: 5, currentFrom: 4, currentTo: 5, label: 'Certified' },
   ],
   Silver: [
-    { doneAbove: 1, currentFrom: 0, currentTo: 1 },
-    { doneAbove: 5, currentFrom: 1, currentTo: 5 },
-    { doneAbove: 14, currentFrom: 6, currentTo: 14 },
-    { doneAbove: 15, currentFrom: 14, currentTo: 15 },
+    { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+    { doneAbove: 5, currentFrom: 1, currentTo: 5, label: 'Desktop' },
+    { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
+    { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
   ],
   Gold: [
-    { doneAbove: 1, currentFrom: 0, currentTo: 1 },
-    { doneAbove: 5, currentFrom: 1, currentTo: 5 },
-    { doneAbove: 14, currentFrom: 6, currentTo: 14 },
-    { doneAbove: 15, currentFrom: 14, currentTo: 15 },
+    { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+    { doneAbove: 5, currentFrom: 1, currentTo: 5, label: 'Desktop' },
+    { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
+    { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
   ],
   // ZED-X: desktop and site assessment, the statuses of the site levels.
   ZEDX: [
-    { doneAbove: 1, currentFrom: 0, currentTo: 1 },
-    { doneAbove: 5, currentFrom: 1, currentTo: 5 },
-    { doneAbove: 14, currentFrom: 6, currentTo: 14 },
-    { doneAbove: 15, currentFrom: 14, currentTo: 15 },
+    { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+    { doneAbove: 5, currentFrom: 1, currentTo: 5, label: 'Desktop' },
+    { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
+    { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
   ],
 };
 
@@ -168,8 +170,15 @@ const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16, ZEDX
     .lv-facts > div { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px solid #eef3f3; }
     .lv-facts dt { color: #5f6f70; font-weight: 600; }
     .lv-facts dd { margin: 0; color: #232527; overflow-wrap: anywhere; }
-    .lv-status { margin: auto 0 0; display: flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: #e8a33d; }
-    .lv-status.is-done { color: #1e7a3c; }
+    .lv-facts { min-height: 104px; }
+    .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
+      color: #a86a12; background: #fdf1dc; border-radius: 14px; padding: 3px 12px; }
+    .lv-status.is-done { color: #1e7a3c; background: #e3f4e8; }
+    .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: #7a8a8b; }
+    .lv-steps-labels span { flex: 1 1 0; text-align: center; }
+    .lv-steps-labels span:first-child { text-align: left; }
+    .lv-steps-labels span:last-child { text-align: right; }
+    .lv-steps-labels span.on { color: #1e7a3c; font-weight: 700; }
     .lv-status img { width: 12px; }
     /* The progress bar across the card, filled up to the step the level is at. */
     .lv-steps ol { position: relative; display: flex; justify-content: space-between; list-style: none; margin: 0; padding: 0; }
