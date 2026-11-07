@@ -299,8 +299,15 @@ export function RegistrationScreen() {
               <DarkHeading title="Plant Location" />
               {lookup.plants.map((p, i) => (
                 <View key={`plant-${i}`} testID={`plant-${i}`}>
-                  <OptionCard selected={plant === i} onPress={() => choosePlant(i)} testID={`plant-${i}-select`}>
-                    <RadioRow selected={plant === i} label="Select this Unit" />
+                  <OptionCard selected={plant === i} onPress={() => choosePlant(i)} disabled={registeredZedId(p) != null} testID={`plant-${i}-select`}>
+                    {registeredZedId(p) != null ? (
+                      <Unavailable
+                        text={`Already registered${registeredZedId(p) ? ': ' + registeredZedId(p) : ''}. Log in with its ZED ID.`}
+                        testID={`plant-${i}-registered`}
+                      />
+                    ) : (
+                      <RadioRow selected={plant === i} label="Select this Unit" />
+                    )}
                     {text(p, 'UnitName') ? <IconRow icon={icons.ic_plant_name} text={text(p, 'UnitName')} /> : null}
                     {plantAddress(p) ? <IconRow icon={icons.ic_location_teal} text={plantAddress(p)} /> : null}
                   </OptionCard>
@@ -317,8 +324,12 @@ export function RegistrationScreen() {
                     </Note>
                     {lookup.activities.map((a, i) => (
                       <View key={`activity-${i}`} testID={`activity-${i}`}>
-                        <OptionCard selected={activity === i} onPress={() => setActivity(i)} testID={`activity-${i}-select`}>
-                          <RadioRow selected={activity === i} label="Select this Activity" />
+                        <OptionCard selected={activity === i} onPress={() => setActivity(i)} disabled={notEligible(a) != null} testID={`activity-${i}-select`}>
+                          {notEligible(a) != null ? (
+                            <Unavailable text={notEligible(a)!} testID={`activity-${i}-not-eligible`} />
+                          ) : (
+                            <RadioRow selected={activity === i} label="Select this Activity" />
+                          )}
                           <ActivityRows activity={a} />
                         </OptionCard>
                       </View>
@@ -414,6 +425,27 @@ function RegInput({
       ) : helper ? (
         <Text style={styles.helper}>{helper}</Text>
       ) : null}
+    </View>
+  );
+}
+
+/** New (2026-11-07): the server marks a registered plant with its ZED ID (partly hidden) when it looks the record up. */
+function registeredZedId(plant: UdyamRecord): string | null {
+  const v = (plant as Record<string, unknown>).V4RegisteredZedId;
+  return typeof v === 'string' ? v : null;
+}
+
+/** New (2026-11-07): the reason an activity cannot be registered (the scheme does not cover it), from the server. */
+function notEligible(activity: UdyamRecord): string | null {
+  const v = (activity as Record<string, unknown>).V4NotEligible;
+  return typeof v === 'string' && v.trim() ? v : null;
+}
+
+/** Why a plant or an activity cannot be chosen, in place of its radio button. */
+function Unavailable({ text: message, testID }: { text: string; testID?: string }) {
+  return (
+    <View style={styles.unavailable} testID={testID}>
+      <Text style={styles.unavailableText}>{message}</Text>
     </View>
   );
 }
@@ -751,17 +783,20 @@ const styles = StyleSheet.create({
   welcome: { fontSize: dimens.textSize2, fontWeight: 'bold', color: colors.black, marginBottom: dimens.padding4 },
   welcomeText: { color: colors.black, fontSize: dimens.textSize, lineHeight: 23 },
   linkBox: { padding: dimens.padding3, marginTop: dimens.padding4 },
+  unavailable: { backgroundColor: colors.yellow, borderRadius: 4, paddingVertical: dimens.padding1, paddingHorizontal: dimens.padding2, margin: dimens.padding1 },
+  unavailableText: { color: colors.darkGrey, fontSize: 14, fontWeight: 'bold' },
   linkBoxText: { padding: dimens.padding2 },
   link: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center', // the address and its icon centred together in the bar
     backgroundColor: colors.appColorSecondary,
     borderRadius: 5,
     paddingVertical: dimens.padding1,
     paddingLeft: dimens.padding2,
     paddingRight: dimens.padding1,
   },
-  linkText: { flex: 1, color: colors.black, fontSize: dimens.textSize },
+  linkText: { flexShrink: 1, color: colors.black, fontSize: dimens.textSize, textAlign: 'center', marginRight: dimens.padding1 },
   select: { fontSize: dimens.textSize3, fontWeight: 'bold', color: colors.black, marginVertical: dimens.padding2, lineHeight: 30 },
   activityNote: { backgroundColor: colors.activitySelectTextBackground, marginTop: dimens.padding3 },
   enterprise: { ...shapes.greyRectangle, padding: dimens.padding2, marginVertical: dimens.padding1 },

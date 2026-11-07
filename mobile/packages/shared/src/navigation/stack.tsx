@@ -107,7 +107,11 @@ export function StackNavigator({
         const top = route.key === topKey;
         return (
           <RouteContext.Provider key={route.key} value={route}>
-            <View style={[StyleSheet.absoluteFill, !top && styles.hidden]} pointerEvents={top ? 'auto' : 'none'}>
+            <View
+              style={[StyleSheet.absoluteFill, !top && styles.hidden]}
+              pointerEvents={top ? 'auto' : 'none'}
+              importantForAccessibility={top ? 'auto' : 'no-hide-descendants'}
+              accessibilityElementsHidden={!top}>
               <Screen route={route} />
             </View>
           </RouteContext.Provider>
@@ -161,4 +165,7 @@ export function useBackHandler(handler: () => boolean) {
   }, [ctx, r]);
 }
 
-const styles = StyleSheet.create({ hidden: { display: 'none' } });
+// A screen under the top one stays laid out, invisible and untouchable. Not display: 'none': on Android (new
+// architecture) a screen shown again after display: 'none' could keep its old touch areas, above all after the keyboard
+// had resized the window, so its buttons stopped answering (ZED MSME: Forgot Password worked once, then not after Back).
+const styles = StyleSheet.create({ hidden: { opacity: 0 } });

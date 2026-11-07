@@ -6,6 +6,7 @@ import {
   dimens,
   errorOf,
   HtmlText,
+  Icon,
   isNetworkAvailable,
   isNetworkError,
   isSuccess,
@@ -21,6 +22,7 @@ import {
   ZedButton,
   zedDevice,
 } from '@zed/shared';
+import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { updateCertificationDetails, type LoginResponse } from '../models';
@@ -207,7 +209,12 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
         />
       </View>
       <View style={styles.loginRow}>
-        <Pressable style={styles.forgot} onPress={() => nav.push('ForgotPassword')} testID="forgot-password">
+        <Pressable
+          style={({ pressed }) => [styles.forgot, pressed && styles.forgotPressed]}
+          onPress={() => nav.push('ForgotPassword')}
+          accessibilityRole="button"
+          testID="forgot-password">
+          <Icon icon={icons.ic_key_teal} size={18} />
           <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
         </Pressable>
         <ZedButton title="Login" onPress={login} style={{ flex: 1 }} testID="login-button" />
@@ -264,8 +271,20 @@ const styles = StyleSheet.create({
   label: { alignSelf: 'stretch' },
   input: { alignSelf: 'stretch', marginHorizontal: dimens.padding1 },
   loginRow: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch' },
-  forgot: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: dimens.padding2 },
-  forgotText: { color: colors.black, fontSize: 14, fontWeight: 'bold' },
+  // Highlighted (2026-11-07): an outlined teal button with a key icon beside the solid LOGIN button.
+  forgot: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.appColor,
+    borderRadius: 5,
+    paddingVertical: dimens.padding2,
+    marginRight: dimens.padding2,
+  },
+  forgotPressed: { backgroundColor: colors.appColor3 },
+  forgotText: { color: colors.appColorDark, fontSize: 13, fontWeight: 'bold', marginLeft: 6 },
   divider: { alignSelf: 'stretch', marginHorizontal: dimens.padding1 },
   newUser: { alignSelf: 'stretch', padding: dimens.padding3, borderRadius: dimens.padding2, overflow: 'hidden', backgroundColor: colors.appColor },
   newUserBackground: { borderRadius: dimens.padding2, overflow: 'hidden' },

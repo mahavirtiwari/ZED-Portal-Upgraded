@@ -43,6 +43,8 @@ export async function openDocument(app: MsmeApp, ui: Ui, path: string, name: str
     // New in V4: a refused sign-in ends the session as on the app's other calls (shared http.ts): the login page with
     // "Your sign-in has expired. Please sign in again." (SessionExpiryGate), not "Unknown error".
     if (isSignInRefused(e)) app.session.expire(SESSION_EXPIRED_MESSAGE);
+    // New (2026-11-07): a document whose file is not on the server yet says so.
+    else if (/HTTP 404/.test(e instanceof Error ? e.message : String(e))) ui.toast('This document is not available yet.', { long: true });
     else ui.toast('Unknown error occurred while downloading file', { long: true });
   } finally {
     ui.hideLoading();

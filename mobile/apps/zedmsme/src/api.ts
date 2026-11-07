@@ -110,6 +110,11 @@ export type PaymentDetailsResponse = BaseServiceResponse & {
   CouponStatus?: Array<{ IsCouponUsed?: number | null }> | null;
 };
 
+/** A unit found by findAccounts: the ZED ID is partly hidden (ZEDM•••123); no e-mail address. */
+export type FoundUnit = { Ref: string; UnitName: string; District: string; State: string; ZedId: string };
+export type FindAccountsResponse = BaseServiceResponse & { Units?: FoundUnit[] | null };
+export type SendResetLinkResponse = BaseServiceResponse & { MaskedEmail?: string | null };
+
 export type PaymentTokenRequest = {
   PaymentRefId: string;
   ZedId: string;
@@ -453,6 +458,16 @@ export class MsmeApi {
 
   resetPassword(userName: string) {
     return this.http.postJson<BaseServiceResponse>(this.msme + 'ResetPassword', this.req(userName, {}));
+  }
+
+  /** New (2026-11-07): "Forgot password" by ZED ID, PAN or e-mail on the portal: the units found, each with an opaque Ref. */
+  findAccounts(by: 'zedid' | 'pan' | 'email', value: string) {
+    return this.http.postJson<FindAccountsResponse>(this.portalMsme + 'FindAccounts', { by, value });
+  }
+
+  /** The reset link for the unit picked from findAccounts; the answer names the e-mail, partly hidden. */
+  sendResetLink(reference: string) {
+    return this.http.postJson<SendResetLinkResponse>(this.portalMsme + 'SendResetLink', { reference });
   }
 
   // ----- Remote assessment (mobileapi/RA/) -----

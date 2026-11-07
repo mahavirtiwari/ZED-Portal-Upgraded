@@ -193,7 +193,8 @@ const styles = StyleSheet.create({
   drawerHeader: { padding: dimens.padding3 },
   drawerTop: { flexDirection: 'row', alignItems: 'center' },
   banner: { flex: 1, height: 64, marginLeft: dimens.padding2 },
-  bannerLarge: { flex: 1, aspectRatio: 512 / 497, marginLeft: dimens.padding2 },
+  // ZED MSME's round logo: 120 high (it filled the drawer's width before, 2026-11-07).
+  bannerLarge: { flex: 1, height: 120, marginLeft: dimens.padding2 },
   drawerItem: { flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: 16, marginHorizontal: 8, borderRadius: 4 },
   drawerItemChecked: { backgroundColor: 'rgba(69,165,173,0.12)' },
   drawerItemText: { marginLeft: 32, fontSize: 14, fontWeight: '500', color: 'rgba(0,0,0,0.87)' },

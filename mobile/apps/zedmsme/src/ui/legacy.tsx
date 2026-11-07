@@ -152,20 +152,29 @@ export function OptionCard({
   onPress,
   children,
   testID,
+  disabled = false,
 }: {
   selected: boolean;
   onPress: () => void;
   children: React.ReactNode;
   testID?: string;
+  /** New (2026-11-07): greyed out and not selectable (a registered plant, an activity the scheme does not cover). */
+  disabled?: boolean;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.optionCard, selected && styles.optionCardSelected]} testID={testID} accessibilityState={{ selected }}>
+    <Pressable
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
+      style={[styles.optionCard, selected && styles.optionCardSelected, disabled && styles.optionCardDisabled]}
+      testID={testID}
+      accessibilityState={{ selected, disabled }}>
       {children}
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  optionCardDisabled: { backgroundColor: colors.lightGrey, opacity: 0.6 },
   pageStatus: { margin: dimens.padding1, padding: dimens.padding1, justifyContent: 'center' },
   registrationStatus: { marginHorizontal: 48, marginVertical: dimens.padding4 },
   track: { position: 'absolute', left: 16, right: 16, height: 2, backgroundColor: colors.progressBarColor },

@@ -45,8 +45,9 @@ export function DashboardScreen() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    // prepareViews: after login the Enterprise Profile opens on top (with Proceed).
-    if (route.params?.fromLogin) nav.push('MyAccount', { showProceed: true, hideHeaderMenu: true });
+    // Changed (2026-11-07): login opens the Dashboard itself; the Enterprise Profile is in the menu (View Profile). The
+    // legacy app opened the profile on top first, with Proceed.
+    void route.params?.fromLogin;
   }, [nav, route.params?.fromLogin]);
 
   // New (the code base's refresh was switched off): the statuses are asked again whenever the dashboard shows, so that

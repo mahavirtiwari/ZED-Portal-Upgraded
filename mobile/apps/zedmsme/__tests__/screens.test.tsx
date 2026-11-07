@@ -129,9 +129,9 @@ describe('Login (LoginFragment)', () => {
       await handler(r, 'login-button', 'onPress').props.onPress();
     });
     expect(app.loginId).toBe(ZED_ID);
-    // The Dashboard, with the Enterprise Profile on top (fromLogin).
+    // The Dashboard itself (2026-11-07: no Enterprise Profile on top any more; it is in the menu).
     expect(byTestId(r, 'dashboard')).toHaveLength(1);
-    expect(byTestId(r, 'my-account')).toHaveLength(1);
+    expect(byTestId(r, 'my-account')).toHaveLength(0);
     (NetInfo.fetch as jest.Mock).mockResolvedValue({ isConnected: true });
   });
 });
@@ -150,6 +150,20 @@ describe('ZED MSME applicant screens', () => {
     expect(byTestId(r, 'forgot-password')).toHaveLength(1);
     await press(r, 'register-now');
     expect(byTestId(r, 'registration-page-0')).toHaveLength(1);
+  });
+
+  it('Forgot Password opens again after going back to the login', async () => {
+    const { app } = await makeApp(new FakeServer());
+    const r = render(app, 'Launcher');
+    act(() => {
+      jest.advanceTimersByTime(2500);
+    });
+    for (let i = 0; i < 3; i++) {
+      await press(r, 'forgot-password');
+      expect(byTestId(r, 'forgot-password-screen')).toHaveLength(1);
+      await press(r, 'footer-back');
+      expect(byTestId(r, 'forgot-password-screen')).toHaveLength(0);
+    }
   });
 
   it('registers with the Udyam record the server looked up, an OTP-verified e-mail and the pledge', async () => {
@@ -206,6 +220,69 @@ describe('ZED MSME applicant screens', () => {
       ActivityDetails: { Two_DigitActivity: '24' },
     });
     expect(byTestId(r, 'registration-success')).toHaveLength(1);
+  });
+
+  it('greys out a registered plant and an activity the scheme does not cover, with the reason', async () => {
+    const server = new FakeServer(req => {
+      if (req.url.endsWith('Msme/LookupUdyam'))
+        return {
+          status: '1',
+          BasicDetails: { UdyogAadharNo: 'UDYAM-UP-29-0003915', EnterpriseName: 'Acme Foods', EnterpriseType: 'Micro', OwnerName: 'A Kumar' },
+          Plants: [
+            { PlantIdNo: 'P1', UnitName: 'Acme Unit 1', PAddress: 'Plot 4', V4RegisteredZedId: 'ZEDM•••123' },
+            { PlantIdNo: 'P2', UnitName: 'Acme Unit 2', PAddress: 'Plot 9' },
+          ],
+          Activities: [
+            { Activity: 'Trading', Two_DigitActivity: '46-Wholesale trade', V4NotEligible: 'Currently this scheme is not applicable for the selected plant activity.' },
+            { Activity: 'Manufacturing', Two_DigitActivity: '10-Manufacture of food products' },
+          ],
+        };
+      return { status: '1' };
+    });
+    const { app } = await makeApp(server);
+    const r = render(app, 'Registration');
+    await press(r, 'footer-proceed');
+    type(r, 'udyam-number', 'UDYAM-UP-29-0003915');
+    type(r, 'udyam-mobile', '9999999999');
+    await press(r, 'footer-proceed');
+
+    expect(texts(r)).toContain('Already registered: ZEDM•••123. Log in with its ZED ID.');
+    expect(handler(r, 'plant-0-select', 'onPress').props.disabled).toBe(true);
+    await press(r, 'plant-1-select');
+    expect(texts(r)).toContain('Currently this scheme is not applicable for the selected plant activity.');
+    expect(handler(r, 'activity-0-select', 'onPress').props.disabled).toBe(true);
+    await press(r, 'activity-1-select');
+    await press(r, 'footer-proceed');
+    expect(server.last('Msme/ValidatePlantAndActivity')!.json).toEqual({ UdyogAadharNo: 'UDYAM-UP-29-0003915', PlantIdNo: 'P2', TwoDigitActivity: '10-Manufacture of food products' });
+  });
+
+  it('Forgot Password finds the units of a PAN and shows the partly hidden e-mail the link went to', async () => {
+    const server = new FakeServer(req => {
+      if (req.url.endsWith('Msme/FindAccounts'))
+        return {
+          status: '1',
+          Units: [
+            { Ref: 'r1', UnitName: 'Acme Foods Unit 1', District: 'East Delhi', State: 'Delhi', ZedId: 'ZEDM•••123' },
+            { Ref: 'r2', UnitName: 'Acme Foods Unit 2', District: 'Kanpur', State: 'Uttar Pradesh', ZedId: 'ZEDM•••456' },
+          ],
+        };
+      if (req.url.endsWith('Msme/SendResetLink')) return { status: '1', MaskedEmail: 'ra•••••@gm•••.com' };
+      return { status: '1' };
+    });
+    const { app } = await makeApp(server);
+    const r = render(app, 'ForgotPassword');
+    await press(r, 'find-by-pan');
+    type(r, 'forgot-zed-id', 'abcde1234f');
+    await press(r, 'footer-proceed');
+    expect(server.last('Msme/FindAccounts')!.json).toEqual({ by: 'pan', value: 'abcde1234f' });
+    expect(texts(r)).toContain('Acme Foods Unit 2');
+    expect(texts(r)).toContain('ZEDM•••456');
+    expect(handler(r, 'footer-proceed', 'onPress').props.disabled).toBe(true);
+    await act(async () => r.root.findAll(n => n.props.testID === 'found-unit' && typeof n.props.onPress === 'function')[1]!.props.onPress());
+    await press(r, 'footer-proceed');
+    expect(server.last('Msme/SendResetLink')!.json).toEqual({ reference: 'r2' });
+    expect(byTestId(r, 'reset-link-sent')).toHaveLength(1);
+    expect(texts(r)).toContain('ra•••••@gm•••.com');
   });
 
   it('My Certifications shows Bronze, Silver and Gold and the pledge certificate', async () => {
