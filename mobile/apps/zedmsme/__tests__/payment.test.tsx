@@ -171,6 +171,45 @@ describe('CCAvenue checkout (PaymentActivity.makePayment)', () => {
     expect(title(r)).toBe('Payment');
   });
 
+  it('checks the GSTIN and TAN formats as the web, verifies the GSTIN and asks for the PAN when it does not match', async () => {
+    const s = new FakeServer(req => {
+      if (req.url.endsWith('Msme/GetPaymentDetailsByType'))
+        return { WithOutCoupon: [{ ...FEE, Tds75: 200, NetPaybleTds75: 2160 }], WithCoupon: [], CouponStatus: [{ IsCouponUsed: 1 }] };
+      if (req.url.endsWith('Msme/AppVerifyGstin')) return { status: '1', errorMessage: 'GSTIN is Active', PanMatches: false, GstinPan: 'ABCDE1234F', UdyamPan: 'ZZZZZ9999Z' };
+      if (req.url.endsWith('Msme/AppCorrectPan')) return { status: '1', errorMessage: 'PAN updated successfully.' };
+      return { status: '1' };
+    });
+    const app = await signedInApp(s);
+    const r = render(app);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await press(r, 'payment-proceed'); // disclaimer
+    await press(r, 'payment-proceed'); // instructions
+    const type = (id: string, v: string) => act(() => r.root.findAll(n => n.props.testID === id && typeof n.props.onChangeText === 'function')[0]!.props.onChangeText(v));
+    const texts = () => r.root.findAll(n => (n.type as unknown) === 'Text').map(n => [n.props.children].flat().join(''));
+    await press(r, 'gst-Yes');
+    type('gstin', 'Hdhdjdkkdkdjdkd');
+    await press(r, 'tds-Yes');
+    await act(async () => r.root.findAll(n => n.props.label === '10%' && typeof n.props.onPress === 'function')[0]!.props.onPress());
+    type('tan', 'Hdhdjdkdkdkkxkx');
+    await press(r, 'payment-proceed');
+    expect(texts()).toContain('Please enter valid GSTIN.');
+    expect(s.last('Msme/AppVerifyGstin')).toBeUndefined();
+
+    type('gstin', '09abcde1234f1z5');
+    await press(r, 'payment-proceed');
+    expect(texts()).toContain('Please enter valid TAN Number.');
+    type('tan', 'abcd12345e');
+    await press(r, 'payment-proceed');
+    expect(s.last('Msme/AppVerifyGstin')!.json).toEqual({ certification: 'Bronze', gstin: '09ABCDE1234F1Z5' });
+    expect(texts()).toContain('PAN Mismatch Detected');
+    await act(() => r.root.findAll(n => n.props.testID === 'corrected-pan' && typeof n.props.onChangeText === 'function')[0]!.props.onChangeText('abcde1234f'));
+    await press(r, 'pan-save');
+    expect(s.last('Msme/AppCorrectPan')!.json).toEqual({ certification: 'Bronze', gstin: '09ABCDE1234F1Z5', pan: 'ABCDE1234F' });
+    expect(has(r, 'payment-confirm')).toBe(true);
+  });
+
   it('isPaid: only a "Success" response (any case)', () => {
     expect(isPaid({ outcome: 'response', status: 'SUCCESS' })).toBe(true);
     expect(isPaid({ outcome: 'response', status: 'Aborted' })).toBe(false);

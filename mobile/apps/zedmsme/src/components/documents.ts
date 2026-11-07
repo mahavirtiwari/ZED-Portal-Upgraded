@@ -1,5 +1,5 @@
 import { Linking } from 'react-native';
-import { isNetworkAvailable, SESSION_EXPIRED_MESSAGE, zedDevice, type Ui } from '@zed/shared';
+import { isNetworkAvailable, zedDevice, type Ui } from '@zed/shared';
 import type { MsmeApp } from '../app/MsmeApp';
 
 const FILE = /\.(pdf|jpe?g|png|docx?|xlsx?|pptx?|csv|txt)$/i;
@@ -40,9 +40,10 @@ export async function openDocument(app: MsmeApp, ui: Ui, path: string, name: str
     else if (IMAGE.test(fileName)) zedDevice().openImage(local);
     else ui.showAlert('This document can be opened from My Documents on the ZED portal.');
   } catch (e) {
-    // New in V4: a refused sign-in ends the session as on the app's other calls (shared http.ts): the login page with
-    // "Your sign-in has expired. Please sign in again." (SessionExpiryGate), not "Unknown error".
-    if (isSignInRefused(e)) app.session.expire(SESSION_EXPIRED_MESSAGE);
+    // Changed 2026-11-07: a refused download no longer signs the user out. The portal refuses the token when its
+    // Mobile:AppTokenKey differs from the mobile host's (a server setting, docs/MOBILE-API.md), which is not the user's
+    // sign-in expiring; a really expired sign-in still ends the session on the app's other calls (shared http.ts).
+    if (isSignInRefused(e)) ui.showAlert('This document could not be opened right now. Please try again later.');
     // New (2026-11-07): a document whose file is not on the server yet says so.
     else if (/HTTP 404/.test(e instanceof Error ? e.message : String(e))) ui.toast('This document is not available yet.', { long: true });
     else ui.toast('Unknown error occurred while downloading file', { long: true });

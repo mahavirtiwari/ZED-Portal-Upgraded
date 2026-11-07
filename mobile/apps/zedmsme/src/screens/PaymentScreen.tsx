@@ -21,14 +21,16 @@ import {
   HtmlText,
   htmlToPlain,
   useAppText,
+  type BaseServiceResponse,
 } from '@zed/shared';
-import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest } from '../api';
+import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest, VerifyGstinResponse } from '../api';
 import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from '../app/context';
 import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
 import { levelName, NO, YES, type CertificationType } from '../models';
 import { Footer as LegacyFooter } from '../ui/legacy';
+import { refreshStatus, useCertificationClick } from './DashboardScreen';
 
 const RS = '₹';
 const TDS_TWO = '2';
@@ -37,6 +39,9 @@ const TDS_TEN = '10';
 // The disclaimer, instructions, joining reward notes and result messages are Admin texts (app.msme.certification.payment.*,
 // app.msme.payment.*), the legacy wording until the server's arrives.
 const PAYMENT_ERROR = 'Unknown error occurred while making the payment';
+// The web payment page's formats (payment-step.ts).
+const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
+const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
 const FEE_ERROR = 'The fee could not be loaded. Check your internet connection and try again.';
 const AMOUNT_ERROR = 'The amount to pay could not be worked out. Go back and open the payment again.';
 
@@ -160,9 +165,21 @@ export function PaymentScreen() {
     }
   };
 
-  const backToDashboard = (startCertification: boolean) => {
+  const startCertification = useCertificationClick();
+  const backToDashboard = async (start: boolean) => {
+    if (!start) return nav.reset([{ name: 'Dashboard' }]);
+    // Fixed 2026-11-07: "Start Certification Process" opens the paid level's steps (Basic Information & Document
+    // Upload ...) with the fresh status, the Dashboard under it; it used to land on the Dashboard only.
+    ui.showLoading();
+    try {
+      await refreshStatus(app);
+    } catch {
+      // the steps open with the status on the phone
+    } finally {
+      ui.hideLoading();
+    }
     nav.reset([{ name: 'Dashboard' }]);
-    void startCertification; // the legacy dashboard ignored the type after payment (status refresh is disabled)
+    await startCertification(type);
   };
 
   const title = page === 3 ? (success ? 'Success' : 'Failure') : 'Payment';
@@ -177,7 +194,7 @@ export function PaymentScreen() {
       ) : page === 2 ? (
         <DetailsPage type={type} response={response} zedId={zedId} onBack={onBack} onPay={onPaymentClick} />
       ) : (
-        <ResultPage type={type} success={!!success} onDashboard={() => backToDashboard(false)} onStart={() => backToDashboard(true)} onRetry={() => setPage(2)} />
+        <ResultPage type={type} success={!!success} onDashboard={() => void backToDashboard(false)} onStart={() => void backToDashboard(true)} onRetry={() => setPage(2)} />
       )}
     </ScreenFrame>
   );
@@ -246,6 +263,9 @@ function DetailsPage({
   const [tan, setTan] = useState('');
   const [tanError, setTanError] = useState<string | undefined>();
   const [summaryOpen, setSummaryOpen] = useState<PaymentTokenRequest | null>(null);
+  const [panMismatch, setPanMismatch] = useState<{ request: PaymentTokenRequest; gstinPan: string } | null>(null);
+  const [correctedPan, setCorrectedPan] = useState('');
+  const api = useMsme().api;
   const showCoupon = couponUsed != null && couponUsed !== 1 && withCoupon?.Coupon != null;
   const summary = details ? paymentSummary(details, tdsDeductible === YES ? tds : null, type) : null;
   const due = summary?.due;
@@ -266,8 +286,12 @@ function DetailsPage({
         setGstError('Required');
         return null;
       }
+      if (!GSTIN.test(gstNum.trim())) {
+        setGstError('Please enter valid GSTIN.');
+        return null;
+      }
       setGstError(undefined);
-      req.UnitGstin = gstNum;
+      req.UnitGstin = gstNum.trim().toUpperCase();
     } else req.Gst = NO;
     if (tdsDeductible == null) {
       ui.snackbar('TDS Deductible?');
@@ -283,8 +307,12 @@ function DetailsPage({
         setTanError('Required');
         return null;
       }
+      if (!TAN.test(tan.trim())) {
+        setTanError('Please enter valid TAN Number.');
+        return null;
+      }
       setTanError(undefined);
-      req.Tan = tan;
+      req.Tan = tan.trim().toUpperCase();
     } else req.TdsDeductible = NO;
     return req;
   };
@@ -297,7 +325,7 @@ function DetailsPage({
           <YesNo singleRow label="GSTIN Applicable?" value={gst} onChange={setGst} testID="gst" />
           {gst === YES ? (
             <View style={{ marginHorizontal: dimens.padding1 }}>
-              <OutlinedInput value={gstNum} onChangeText={t => (setGstNum(t), t.trim() && setGstError(undefined))} placeholder="Enter Unit GSTIN (required)" error={gstError} />
+              <OutlinedInput value={gstNum} onChangeText={t => (setGstNum(t), t.trim() && setGstError(undefined))} placeholder="Enter Unit GSTIN (required)" error={gstError} autoCapitalize="characters" testID="gstin" />
             </View>
           ) : null}
           <YesNo singleRow label="TDS Deductible?" value={tdsDeductible} onChange={v => (setTdsDeductible(v), v !== YES && setTds(null))} testID="tds" />
@@ -308,7 +336,7 @@ function DetailsPage({
                 <RadioButton label="10%" selected={tds === TDS_TEN} onPress={() => setTds(TDS_TEN)} style={{ flex: 1 }} tinted />
               </View>
               <View style={{ marginHorizontal: dimens.padding1 }}>
-                <OutlinedInput value={tan} onChangeText={t => (setTan(t), t.trim() && setTanError(undefined))} placeholder="TAN Number" error={tanError} />
+                <OutlinedInput value={tan} onChangeText={t => (setTan(t), t.trim() && setTanError(undefined))} placeholder="TAN Number" error={tanError} autoCapitalize="characters" testID="tan" />
               </View>
             </>
           ) : null}
@@ -343,11 +371,64 @@ function DetailsPage({
         onBack={onBack}
         proceedTitle={due == null || due === 0 ? 'PROCEED TO PAY' : `PROCEED TO PAY ${formatCurrency(due)}`}
         proceedEnabled={due != null}
-        onProceed={() => {
+        onProceed={async () => {
           const req = prepare();
-          if (req) setSummaryOpen(req);
+          if (!req) return;
+          // As the web: a GSTIN is verified first; a GSTIN whose PAN is not the Udyam PAN asks for the PAN correction.
+          if (req.Gst === YES && req.UnitGstin) {
+            ui.showLoading();
+            let g: VerifyGstinResponse;
+            try {
+              g = await api.verifyGstin(type, req.UnitGstin);
+            } catch (e) {
+              g = { status: '0', errorMessage: e instanceof Error ? e.message : null };
+            } finally {
+              ui.hideLoading();
+            }
+            if (!isSuccess(g)) return ui.showAlert(g.errorMessage?.trim() || 'Please enter valid GSTIN.');
+            if (g.PanMatches === false) {
+              setCorrectedPan('');
+              setPanMismatch({ request: req, gstinPan: g.GstinPan ?? '' });
+              return;
+            }
+          }
+          setSummaryOpen(req);
         }}
       />
+      {panMismatch ? (
+        <ZedDialog visible title="PAN Mismatch Detected" cancelable={false} onClose={() => setPanMismatch(null)}>
+          <Text style={styles.body}>PAN registered in your Udyam portal is not matching with given GSTIN Number.</Text>
+          <Text style={textStyles.defaultLabel}>Please enter the correct PAN number:</Text>
+          <OutlinedInput value={correctedPan} onChangeText={setCorrectedPan} placeholder="Enter Correct PAN" autoCapitalize="characters" maxLength={10} testID="corrected-pan" />
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: dimens.padding3 }}>
+            <ZedButton title="Cancel" small style={{ backgroundColor: colors.labelColor, marginRight: dimens.padding2 }} onPress={() => setPanMismatch(null)} testID="pan-cancel" />
+            <ZedButton
+              title="Save & Proceed"
+              small
+              testID="pan-save"
+              onPress={async () => {
+                const pan = correctedPan.trim().toUpperCase();
+                if (pan.length !== 10) return ui.showAlert('Please enter a valid 10-character PAN.');
+                if (pan !== panMismatch.gstinPan.toUpperCase()) return ui.showAlert('Please enter the correct PAN associated with that GSTIN.');
+                ui.showLoading();
+                let r: BaseServiceResponse;
+                try {
+                  r = await api.correctPan(type, panMismatch.request.UnitGstin ?? '', pan);
+                } catch (e) {
+                  r = { status: '0', errorMessage: e instanceof Error ? e.message : null };
+                } finally {
+                  ui.hideLoading();
+                }
+                if (!isSuccess(r)) return ui.showAlert(r.errorMessage?.trim() || 'Failed to update PAN. Please try again.');
+                const request = panMismatch.request;
+                setPanMismatch(null);
+                ui.toast('PAN updated successfully. Proceeding...');
+                setSummaryOpen(request);
+              }}
+            />
+          </View>
+        </ZedDialog>
+      ) : null}
       {summaryOpen && details ? (
         <ZedDialog visible title="Summary" cancelable={false} onClose={() => setSummaryOpen(null)}>
           <SummaryRows summary={paymentSummary(details, tdsDeductible === YES ? tds : null, type)} />

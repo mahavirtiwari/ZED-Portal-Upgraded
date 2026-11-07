@@ -68,7 +68,7 @@ const press = (r: ReactTestRenderer.ReactTestRenderer, id: string) =>
 describe('document download (Msme/AppDocument)', () => {
   afterEach(() => jest.restoreAllMocks());
 
-  it('a 401 (sign-in token not accepted) ends the session like the other calls: login page with the server text', async () => {
+  it('a 401 on a download says the document cannot be opened and keeps the user signed in (2026-11-07)', async () => {
     const app = await signedInApp();
     jest.spyOn(zedDevice(), 'downloadFile').mockRejectedValue(new Error('HTTP 401'));
     const toast = jest.spyOn(ToastAndroid, 'show').mockImplementation(() => undefined);
@@ -76,10 +76,11 @@ describe('document download (Msme/AppDocument)', () => {
     const r = await myDocuments(app);
 
     await press(r, 'certificate-Bronze');
-    expect(app.session.expiredMessage).toBe(SESSION_EXPIRED_MESSAGE);
-    expect(app.session.appToken).toBeNull();
-    expect(byTestId(r, 'login-zed-id')).toHaveLength(1);
-    expect(alert).toHaveBeenCalledWith('', SESSION_EXPIRED_MESSAGE, expect.anything(), expect.anything());
+    expect(app.session.expiredMessage).toBeNull();
+    expect(app.session.appToken).toBe('h1.token');
+    expect(byTestId(r, 'login-zed-id')).toHaveLength(0);
+    expect(alert.mock.calls.some(c => c.join(' ').includes('This document could not be opened right now.'))).toBe(true);
+    expect(alert.mock.calls.some(c => c.join(' ').includes(SESSION_EXPIRED_MESSAGE))).toBe(false);
     expect(toast).not.toHaveBeenCalledWith(UNKNOWN_ERROR, expect.anything());
   });
 

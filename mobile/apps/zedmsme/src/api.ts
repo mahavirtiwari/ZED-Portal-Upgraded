@@ -110,6 +110,14 @@ export type PaymentDetailsResponse = BaseServiceResponse & {
   CouponStatus?: Array<{ IsCouponUsed?: number | null }> | null;
 };
 
+export type ProfileRow = Record<string, string | number | null | undefined>;
+export type AppProfileResponse = BaseServiceResponse & { Msme?: ProfileRow | null; BasicInfo?: ProfileRow | null; RegisteredEmail?: string | null };
+export type UdyamActivity = { Activity: string; Two_DigitActivity: string; Four_DigitActivity: string; Five_DigitActivity: string };
+export type EditHistoryRow = { Id: number; At: string; Channel: string; Action: string; Result: string; Message?: string | null; Data?: string | null };
+export type EditHistoryResponse = BaseServiceResponse & { Total?: number; PageNo?: number; PageSize?: number; Rows?: EditHistoryRow[] | null };
+
+export type VerifyGstinResponse = BaseServiceResponse & { PanMatches?: boolean; GstinPan?: string | null; UdyamPan?: string | null };
+
 /** A unit found by findAccounts: the ZED ID is partly hidden (ZEDM•••123); no e-mail address. */
 export type FoundUnit = { Ref: string; UnitName: string; District: string; State: string; ZedId: string };
 export type FindAccountsResponse = BaseServiceResponse & { Units?: FoundUnit[] | null };
@@ -458,6 +466,57 @@ export class MsmeApi {
 
   resetPassword(userName: string) {
     return this.http.postJson<BaseServiceResponse>(this.msme + 'ResetPassword', this.req(userName, {}));
+  }
+
+  // ----- Enterprise Profile and Edit History, as on the web (portal Msme/App*, sign-in token; 2026-11-07) -----
+
+  getProfile() {
+    return this.http.getJson<AppProfileResponse>(this.portalMsme + 'AppProfile');
+  }
+
+  getProfileActivities() {
+    return this.http.getJson<BaseServiceResponse & { Activities?: UdyamActivity[] | null }>(this.portalMsme + 'AppActivities');
+  }
+
+  updateProfileActivity(fiveDigitActivity: string) {
+    return this.http.postJson<BaseServiceResponse>(this.portalMsme + 'AppActivity', { fiveDigitActivity });
+  }
+
+  sendEmailOtp(email: string) {
+    return this.http.postJson<BaseServiceResponse & { SentTo?: string }>(this.portalMsme + 'AppEmailOtp', { email });
+  }
+
+  verifyEmailOtp(otp: string) {
+    return this.http.postJson<BaseServiceResponse & { Email?: string }>(this.portalMsme + 'AppEmailVerify', { otp });
+  }
+
+  getEditHistory(pageNo: number, pageSize = 20) {
+    return this.http.getJson<EditHistoryResponse>(this.portalMsme + `AppEditHistory?pageNo=${pageNo}&pageSize=${pageSize}`);
+  }
+
+  /**
+   * New (2026-11-07): the Contact ZED page the web portal links to (Admin -> Links, else the portal's setting), from the
+   * portal's public /api/config; the ZED contact page when it cannot be read.
+   */
+  async contactUrl(): Promise<string> {
+    const fallback = 'https://zed.msme.gov.in/contact-us';
+    try {
+      const c = await this.http.getJson<{ contactUrl?: string | null; links?: { contact?: string | null } | null }>(this.site + 'api/config');
+      const url = c.links?.contact || c.contactUrl;
+      return url && /^https:\/\//i.test(url) ? url : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  /** New (2026-11-07): the payment page's GSTIN check, as the web's (format, Protean, PAN of the GSTIN vs the Udyam PAN). */
+  verifyGstin(certification: string, gstin: string) {
+    return this.http.postJson<VerifyGstinResponse>(this.portalMsme + 'AppVerifyGstin', { certification, gstin });
+  }
+
+  /** "PAN Mismatch Detected": the Udyam PAN becomes the PAN of the verified GSTIN. */
+  correctPan(certification: string, gstin: string, pan: string) {
+    return this.http.postJson<BaseServiceResponse>(this.portalMsme + 'AppCorrectPan', { certification, gstin, pan });
   }
 
   /** New (2026-11-07): "Forgot password" by ZED ID, PAN or e-mail on the portal: the units found, each with an opaque Ref. */

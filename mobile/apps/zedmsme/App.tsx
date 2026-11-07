@@ -23,6 +23,7 @@ import {
   NonConformancesScreen,
 } from './src/screens/NonConformanceScreens';
 import { PaymentScreen } from './src/screens/PaymentScreen';
+import { EditHistoryScreen } from './src/screens/EditHistoryScreen';
 import { PendingUploadsScreen } from './src/screens/PendingUploadsScreen';
 import { FinancialAssistanceScreen } from './src/screens/FinancialAssistanceScreen';
 import { IncentivesScreen } from './src/screens/IncentivesScreen';
@@ -54,6 +55,7 @@ export const SCREENS: ScreenMap = {
   RemoteAssessmentInitial: RemoteAssessmentInitialScreen,
   RemoteAssessmentDetails: RemoteAssessmentDetailsScreen,
   Payment: PaymentScreen,
+  EditHistory: EditHistoryScreen,
   PendingUploads: PendingUploadsScreen,
 };
 

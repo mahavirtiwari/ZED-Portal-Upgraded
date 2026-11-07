@@ -5,7 +5,7 @@ import { icons } from '../assets/icons';
 import { images } from '../assets/images';
 import { useMsme } from './context';
 
-export type DrawerKey = 'dashboard' | 'documents' | 'profile' | 'incentives' | 'pending' | 'password';
+export type DrawerKey = 'dashboard' | 'documents' | 'profile' | 'incentives' | 'pending' | 'history' | 'password';
 
 type DrawerState = { open: boolean; checked: DrawerKey };
 const DrawerContext = createContext<{ open: (checked: DrawerKey) => void; state: DrawerState; close: () => void } | null>(null);
@@ -34,20 +34,20 @@ export function useOpenDrawer(checked: DrawerKey) {
 }
 
 /**
- * The pending uploads item in the style of the other menu icons (ic_nav_*: the light grey rounded square, a dark grey
- * glyph): ic_upload scaled into the square.
+ * The Edit History item (2026-11-07) in the style of the other menu icons (ic_nav_*: the light grey rounded square, a dark
+ * grey glyph): Material "history" centred in the square.
  */
-const navPendingUploads: IconDefinition = {
+const navEditHistory: IconDefinition = {
   width: 42,
   height: 42,
   viewBox: [0, 0, 42, 42],
   paths: [
     { d: 'M0 8c0-4.42 3.58-8 8-8h26c4.42 0 8 3.58 8 8v26c0 4.42-3.58 8-8 8h-26c-4.42 0-8-3.58-8-8z', fill: colors.lightGrey },
     {
-      d: 'M22.125 15.825V25.5h-2.25V15.825l-4.5 4.5L13.8 18.75l6.42 -6.42C20.445 12.105 20.67 12 21 12c0.345 0 0.57 0.105 0.795 0.345L28.2 18.75L26.625 20.325l-4.5 -4.5z',
+      d: 'M13 3a9 9 0 0 0-9 9H1l3.89 3.89l0.07 0.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7s-3.13 7-7 7c-1.93 0-3.68-0.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54l0.72-1.21l-3.5-2.08V8H12z',
       fill: colors.darkGrey2,
+      transform: 'translate(8 9)',
     },
-    { d: 'M28.875 30H13.125v-2.25h15.75V30z', fill: colors.darkGrey2 },
   ],
 };
 
@@ -96,15 +96,20 @@ function AppDrawer({ open, checked, onClose }: { open: boolean; checked: DrawerK
         // item2 and item4 (hidden in the Bronze surveillance build).
         { key: 'documents', title: 'My Documents', icon: icons.ic_my_documents, onPress: () => nav.push('MyDocuments') },
         { key: 'profile', title: 'View Profile', icon: icons.ic_nav_my_account, onPress: () => nav.push('MyAccount') },
+        // New (2026-11-07): the unit's changes, as the web's Edit History. (Pending Uploads left the menu: sending is automatic.)
+        { key: 'history', title: 'Edit History', icon: navEditHistory, onPress: () => nav.push('EditHistory') },
         { key: 'incentives', title: 'Incentives', icon: icons.ic_incentives, onPress: () => nav.push('Incentives') },
-        // New: what is waiting to be sent (the legacy app had no such list).
-        { key: 'pending', title: 'Pending Uploads', icon: navPendingUploads, onPress: () => nav.push('PendingUploads') },
         // item5: Utils.composeEmail(arrayOf("zed@qcin.org"), "")
         {
           key: 'contact',
           title: 'Contact ZED',
           icon: icons.ic_nav_contact_zed,
-          onPress: () => Linking.openURL('mailto:zed@qcin.org').catch(() => ui.toast('No suitable application found to perform this action')),
+          // As the web's Contact ZED: the contact page (it was a mail to zed@qcin.org in the legacy app).
+          onPress: () =>
+            app.api
+              .contactUrl()
+              .then(url => Linking.openURL(url))
+              .catch(() => ui.toast('No suitable application found to perform this action')),
         },
         // The profile's Change Password, also here.
         { key: 'password', title: 'Change Password', icon: icons.ic_change_pwd, onPress: () => nav.push('ChangePassword') },

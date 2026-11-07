@@ -285,6 +285,52 @@ describe('ZED MSME applicant screens', () => {
     expect(texts(r)).toContain('ra•••••@gm•••.com');
   });
 
+  it('Enterprise Profile shows the web sections and changes the e-mail only after the OTP; Edit History lists the changes', async () => {
+    const server = new FakeServer(req => {
+      if (req.url.endsWith('Msme/AppProfile'))
+        return {
+          status: '1',
+          Msme: { ZedId: 'ZEDM000001', PUnitName: 'Pump Engineers', PAddress: 'New Ashok Nagar', PDistrictName: 'EAST', PStateName: 'DELHI', PPin: '110092', TwoDigitActivity: '10-Food', FiveDigitActivity: '10202' },
+          BasicInfo: { EnterpriseName: 'Pump Enterprise Private Limited', UdyogAadharNo: 'UDYAM-UP-16-0001476', Address: 'Basti', TotalEmp: '12' },
+          RegisteredEmail: 'old@acme.test',
+        };
+      if (req.url.endsWith('Msme/AppEmailOtp')) return { status: '1', SentTo: 'new@acme.test' };
+      if (req.url.endsWith('Msme/AppEmailVerify')) return { status: '1', Email: 'new@acme.test' };
+      if (req.url.includes('Msme/AppEditHistory'))
+        return { status: '1', Total: 1, Rows: [{ Id: 1, At: '2026-11-07T01:28:00Z', Channel: 'Mobile', Action: 'App: password changed', Result: 'Success', Data: '{"req":{"userName":"ZEDM000001","newPassword":"***"}}' }] };
+      return { status: '1' };
+    });
+    const app = await signedInApp(server);
+    const r = render(app, 'MyAccount');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(texts(r)).toContain('Pump Enterprise Private Limited');
+    expect(texts(r)).toContain('Pump Engineers');
+    expect(texts(r)).toContain('New Ashok Nagar, EAST, DELHI, 110092');
+    expect(texts(r)).not.toContain('12');
+    await press(r, 'profile-show-all');
+    expect(texts(r)).toContain('12');
+
+    await press(r, 'email-change');
+    type(r, 'new-email', 'new@acme.test');
+    await press(r, 'email-send-otp');
+    expect(server.last('Msme/AppEmailOtp')!.json).toEqual({ email: 'new@acme.test' });
+    expect(texts(r)).toContain('old@acme.test');
+    type(r, 'email-otp', '123456');
+    await press(r, 'email-verify');
+    expect(server.last('Msme/AppEmailVerify')!.json).toEqual({ otp: '123456' });
+    expect(texts(r)).toContain('new@acme.test');
+
+    const h = render(app, 'EditHistory');
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(texts(h)).toContain('Password changed');
+    await press(h, 'history-item');
+    expect(texts(h).join(' ')).not.toContain('***');
+  });
+
   it('My Certifications shows Bronze, Silver and Gold and the pledge certificate', async () => {
     const app = await signedInApp();
     const r = render(app, 'MyCertifications');
