@@ -12,3 +12,41 @@
 .found-unit .zed-id { color: #368289; letter-spacing: 1px; }
 .forgot-sent { text-align: center; }
 .masked-email { font-size: 1.15rem; font-weight: 700; color: #368289; }
+
+/* 2026-11-07 redesign (option A). */
+.login-login .login-form h2, .login-login h2 { font-size: 24px; font-weight: 700; color: #1d2b2c; margin: 0; }
+.ml-heading { font-size: 26px !important; }
+.ml-lead { color: #5f6b6c; font-size: 14px; margin: 4px 0 18px; }
+.login-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+.login-form .form-control { height: 46px; border-radius: 10px; border-color: #cfd9da; }
+.login-form .form-control:focus { border-color: #45a5ad; box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); }
+.in-field { position: relative; }
+.in-field .form-control { padding-left: 40px; }
+.in-field .form-control.has-toggle { padding-right: 64px; }
+.in-icon { position: absolute; left: 12px; top: 23px; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; z-index: 1; }
+.in-icon svg { width: 18px; height: 18px; fill: #368289; display: block; }
+.in-toggle {
+  position: absolute; right: 6px; top: 23px; transform: translateY(-50%); border: 0; background: none; color: #2f7c83;
+  font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px; z-index: 1;
+}
+.in-toggle:hover { background: #e3f3f4; }
+.ml-login {
+  width: 100%; height: 46px; border-radius: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;
+  background: #45a5ad; border-color: #45a5ad; color: #fff;
+}
+.ml-login:hover { background: #368289; border-color: #368289; }
+.ml-forgot { display: block; margin: 12px auto 0; border: 0; background: none; color: #2f7c83; font-weight: 600; font-size: 14px; }
+.ml-forgot:hover { text-decoration: underline; }
+.register-btn { display: flex; gap: 10px; flex-wrap: wrap; }
+.login-login .register-btn .btn { flex: 1 1 140px; height: 44px; border-radius: 10px; font-weight: 600; }
+.login-login .register-btn .btn.btn-primary { background: #45a5ad; border-color: #45a5ad; }
+.login-login .register-btn .btn.ml-secondary { background: #fff; border: 1px solid #45a5ad; color: #2f7c83; }
+.ml-or { display: flex; align-items: center; gap: 10px; margin: 22px 0 14px; color: #8a9596; font-size: 13px; }
+.ml-or::before, .ml-or::after { content: ''; flex: 1; height: 1px; background: #e5e9e9; }
+.ml-new { background: #e3f3f4; border: 1px solid #b9dfe2; border-radius: 14px; padding: 16px 18px; color: #1f5c61; font-size: 14px; }
+.ml-new h2 { font-size: 17px !important; color: #1f5c61 !important; margin: 0 0 6px !important; }
+.ml-register {
+  display: block; width: 100%; margin-top: 12px; height: 42px; line-height: 28px; border-radius: 10px; font-weight: 600;
+  background: #fff; border: 1px solid #45a5ad; color: #2f7c83;
+}
+.ml-register:hover { background: #45a5ad; color: #fff; }

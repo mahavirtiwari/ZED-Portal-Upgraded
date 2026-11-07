@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Dashboard;
 
@@ -172,8 +173,13 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         }
 
         var ownOnly = IsRole(UserRole.Agency) || IsRole(UserRole.DesktopAssessor);
+        // A Master Admin / Ministry login with a scope (migration 0057) sees its category, levels and states only.
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        var scopeSector = scope.OneSector;
+        var scopeLevels = Users.LoginScope.Join(scope.Levels);
+        var scopeStates = Users.LoginScope.Join(scope.StateCodes);
         var key = string.Join('|', "dash-analytics", host.System, viewValue, stateName, districtName, cert, genderValue, sizeValue, social, fromDate, toDate,
-            ownOnly ? RoleId + ":" + UserId : "all");
+            ownOnly ? RoleId + ":" + UserId : "all", scopeSector, scopeLevels, scopeStates);
         if (!fresh && cache.TryGetValue(key, out AnalyticsResponse? hit) && hit is not null) return hit;
 
         var sets = await db.QueryProcMultipleAsync("SP_V4_DASHBOARD_ANALYTICS", new
@@ -183,6 +189,7 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
             From = fromDate?.ToDateTime(TimeOnly.MinValue), To = toDate?.ToDateTime(TimeOnly.MinValue),
             UserId, RoleId = RoleId.ToString(),
             IncludeTestUnits = portal.Value.DashboardCountsTestUnits ?? !env.IsProduction(),
+            ScopeSector = scopeSector, ScopeLevels = scopeLevels, ScopeStates = scopeStates,
         }, ct);
         static List<CountItem> Items(IReadOnlyList<IDictionary<string, object?>> rows) =>
             rows.Select(r => new CountItem(r.Text("Label") ?? "", DashboardFilters.Int(r, "Total"))).ToList();

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Assessment;
 
@@ -48,7 +49,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
             PortalSystem.Surveillance => ["TimeDuration", "SurveillanceNo", "AutoAllocationDate"],
             _ => ["TimeDuration", "UdyamStatus"],
         };
-        return new ListResponse(AllotmentLists.Pick(sets[0], [.. AllotmentLists.ListFields, .. extra]));
+        // A Master Admin with a scope sees only its units and levels (migration 0057).
+        return new ListResponse(AllotmentLists.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), [.. AllotmentLists.ListFields, .. extra]));
     }
 
     /// <summary>Agencies that may be given this record (GetCb), filtered as the old pop-up did.</summary>

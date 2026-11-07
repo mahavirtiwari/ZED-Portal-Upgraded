@@ -31,7 +31,12 @@ CREATE OR ALTER PROCEDURE dbo.SP_V4_DASHBOARD_ANALYTICS
     @UserId         varchar(100) = NULL,
     @RoleId         varchar(10)  = NULL,
     -- 1 on the test server: the four test Udyam numbers below are counted too (PortalOptions.DashboardCountsTestUnits).
-    @IncludeTestUnits bit        = 0
+    @IncludeTestUnits bit        = 0,
+    -- The scope of a Master Admin / Ministry login (migration 0057; NULL = no limit): Manufacturing or Services, the level
+    -- codes and the plant state codes, comma-separated.
+    @ScopeSector    varchar(20)  = NULL,
+    @ScopeLevels    varchar(200) = NULL,
+    @ScopeStates    varchar(1000) = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -46,6 +51,16 @@ BEGIN
     DECLARE @ByDone bit = CASE WHEN @View = 'certified' THEN 1 ELSE 0 END;
 
     -- Units with the unit filters.
+    IF @ScopeSector NOT IN ('Manufacturing', 'Services') SET @ScopeSector = NULL;
+    IF @ScopeLevels = '' SET @ScopeLevels = NULL;
+    IF @ScopeStates = '' SET @ScopeStates = NULL;
+    -- A unit's category for the scope: the type of its NIC sector (Masters -> Sectors, migration 0025, read here only when
+    -- the column exists), else its Udyam activity, as Zed.Portal UserSectorActivity.UnitCategory.
+    CREATE TABLE #SectorTypes (SectorCode varchar(20) NOT NULL PRIMARY KEY, SectorType varchar(20) NOT NULL);
+    IF @ScopeSector IS NOT NULL AND COL_LENGTH('dbo.Sectors', 'SectorType') IS NOT NULL
+        INSERT #SectorTypes EXEC sp_executesql N'SELECT LTRIM(RTRIM(SectorCode)), MAX(SectorType) FROM dbo.Sectors
+            WHERE SectorType IN (''Manufacturing'', ''Services'') AND NULLIF(LTRIM(RTRIM(SectorCode)), '''') IS NOT NULL GROUP BY LTRIM(RTRIM(SectorCode));';
+
     CREATE TABLE #U
     (
         ZedId varchar(50) NOT NULL, CreatedDate datetime NULL, StateName varchar(100) NOT NULL, DistrictName varchar(100) NOT NULL,
@@ -64,6 +79,11 @@ BEGIN
     WHERE M.ZedId IS NOT NULL
       AND (@IncludeTestUnits = 1 OR ISNULL(B.UdyogAadharNo, '') NOT IN ('UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915'))
       AND (@State IS NULL OR M.PStateName = @State)
+      AND (@ScopeStates IS NULL OR CHARINDEX(',' + CAST(M.PStateId AS varchar(12)) + ',', ',' + @ScopeStates + ',') > 0)
+      AND (@ScopeSector IS NULL OR ISNULL(
+            (SELECT T.SectorType FROM #SectorTypes T WHERE T.SectorCode = LEFT(LTRIM(M.TwoDigitActivity), 2)),
+            CASE WHEN NULLIF(LTRIM(RTRIM(M.Activity)), '') IS NULL THEN @ScopeSector
+                 WHEN LTRIM(M.Activity) LIKE 'Manuf%' THEN 'Manufacturing' ELSE 'Services' END) = @ScopeSector)
       AND (@District IS NULL OR M.PDistrictName = @District)
       AND (@Size IS NULL OR M.EnterpriseTypee = @Size)
       AND (@SocialCategory IS NULL OR B.SocialCategoryName = @SocialCategory)
@@ -121,6 +141,11 @@ BEGIN
         DELETE FROM #A
         WHERE NOT ((@RoleId = '2' AND CertificationBodyUserId = @UserId)
                    OR (@RoleId = '3' AND (DesktopAssessorId = @UserId OR SiteAssessorId = @UserId)));
+    -- The scope's levels (surveillance and milestone names count as their level).
+    IF @ScopeLevels IS NOT NULL
+        DELETE A FROM #A A
+        WHERE ',' + @ScopeLevels + ',' NOT LIKE '%,' + CASE WHEN A.Certification LIKE 'Bronze%' THEN 'Bronze' WHEN A.Certification LIKE 'Silver%' THEN 'Silver'
+              WHEN A.Certification LIKE 'Gold%' THEN 'Gold' WHEN A.Certification LIKE 'ZEDX%' THEN 'ZEDX' ELSE ISNULL(A.Certification, '') END + ',%';
     CREATE CLUSTERED INDEX IX_A ON #A (ZedId);
 
     -- Milestone payments of the units (MsmePaymentInfo), one row per unit, level and milestone.

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Dashboard;
 
@@ -92,7 +93,7 @@ public sealed class RegisteredMsmeController(
         var baseColumns = ColumnsFor(host.System);
         var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) ? [.. baseColumns, .. AdminColumns] : baseColumns;
         var total = sets[1].FirstOrDefault();
-        return new ListResponse(DashboardFilters.Pick(sets[0], columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
+        return new ListResponse(DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
     }
 
     /// <summary>

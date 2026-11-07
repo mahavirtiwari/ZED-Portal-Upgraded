@@ -61,8 +61,14 @@ public static class PortalSetup
         // Sub-users (operation admins of MasterAdmins, sub-users of agencies): checked on every request.
         services.AddMemoryCache();
         services.AddScoped<Features.Staff.SubUsers.SubUserStore>();
+        // The scope of Master Admin and Ministry logins (migration 0057).
+        services.AddScoped<Features.Staff.Users.LoginScopes>();
+        services.AddScoped<Features.Staff.Users.ScopedUnits>();
         services.AddScoped<Features.Staff.SubUsers.SubUserAccessFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.SubUsers.SubUserAccessFilter>());
+        // Master Admin / Ministry logins with a scope: units outside it answer 404 (migration 0057).
+        services.AddScoped<Features.Staff.Users.ScopeAccessFilter>();
+        services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.ScopeAccessFilter>());
         return builder;
     }
 }

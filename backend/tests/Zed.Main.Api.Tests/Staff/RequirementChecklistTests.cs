@@ -108,6 +108,29 @@ public sealed class RequirementChecklistTests : IDisposable
         Assert.Equal([("1", "1", "sample_20261030_abcd1234.pdf"), ("2", "2", null), ("3", "1", null)], links);
     }
 
+    [Fact]
+    public async Task A_requirement_keeps_its_video_tutorial_and_a_bad_link_is_refused()
+    {
+        _host.Sql.Queries[QuestionnaireController.VideoSql] = _ => [new QuestionnaireController.RequirementVideo("1", "https://youtu.be/abc123")];
+        var admin = await Admin();
+        var body = await admin.GetFromJsonAsync<JsonElement>(Base);
+        Assert.Equal("https://youtu.be/abc123", body.GetProperty("requirements")[0].GetProperty("videoUrl").GetString());
+        Assert.Equal(JsonValueKind.Null, body.GetProperty("requirements")[1].GetProperty("videoUrl").ValueKind);
+
+        var saved = await admin.PutAsJsonAsync(Base + "/11/checklist", new { videoUrl = " https://www.youtube.com/watch?v=xyz ", checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
+        Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
+        var video = Assert.Single(Calls(QuestionnaireController.VideoUpdateSql));
+        Assert.Equal(("1", "https://www.youtube.com/watch?v=xyz"), (FakeSql.Arg(video.Args, "RequirementCode"), FakeSql.Arg(video.Args, "VideoUrl")));
+
+        foreach (var bad in new[] { "javascript:alert(1)", "youtube.com/watch", "https://x.com/a b", "https://" + new string('a', 500) + ".com" })
+        {
+            var r = await admin.PutAsJsonAsync(Base + "/11/checklist", new { videoUrl = bad, checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+            Assert.Contains("video link", await r.ProblemTitle());
+        }
+        Assert.Single(Calls(QuestionnaireController.VideoUpdateSql));
+    }
+
     [Theory]
     [InlineData("purpose", "Purpose can be up to 500 characters.")]
     [InlineData("action", "Checkpoint 1: each action needed can be up to 100 characters.")]

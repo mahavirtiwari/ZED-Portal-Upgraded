@@ -5,6 +5,7 @@ using Zed.Core.Data;
 using Zed.Core.Finance;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Dashboard;
 
@@ -59,7 +60,7 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
     {
         if (!MayUseFailedTransactions) return Forbid();
         if (Filters(state, certification, size, gender) is not { } f) return this.Problem400("Invalid filter.");
-        return DashboardFilters.Pick(await LoadFailed(f, ct),
+        return DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, await LoadFailed(f, ct), ct),
             host.System == PortalSystem.Consultancy ? [.. FailedColumns, ConsultancyFailedMilestone] : FailedColumns);
     }
 
@@ -75,7 +76,7 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
             Status = "0", State = f.State, UserId, RoleId = RoleId.ToString(), CertificationType = f.Certification,
             Gender = f.Gender, MsmeSize = f.Size,
         }, ct);
-        return DashboardFilters.Pick(sets[0],
+        return DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct),
             host.System == PortalSystem.Consultancy ? [.. ReceivedColumns, ConsultancyReceivedMilestone] : ReceivedColumns);
     }
 

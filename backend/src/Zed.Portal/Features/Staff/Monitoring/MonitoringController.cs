@@ -3,6 +3,7 @@ using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
 using static Zed.Portal.Features.Staff.SiteAssessment.AssessmentInputs;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Monitoring;
 
@@ -111,7 +112,7 @@ public sealed class MonitoringController(ISqlExecutor db, PortalHost host, ILogg
             _ => Fields,
         };
         return new ListResponse(
-            Pick(sets[0], master ? fields.Concat(MasterAdminFields) : fields),
+            Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), master ? fields.Concat(MasterAdminFields) : fields),
             Pick(sets[1].Take(1), CountFields).FirstOrDefault() ?? CountFields.ToDictionary(f => f, _ => (object?)0),
             master);
     }

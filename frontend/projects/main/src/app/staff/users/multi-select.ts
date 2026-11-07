@@ -80,7 +80,7 @@ export interface MultiSelectOption {
     }
     .options.wide { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
     .option {
-      display: flex; gap: 8px; align-items: center; height: 100%; font-size: 13px; cursor: pointer; margin: 0;
+      display: flex; gap: 8px; align-items: center; width: 100%; height: 100%; box-sizing: border-box; font-size: 13px; cursor: pointer; margin: 0;
       padding: 6px 10px; border: 1px solid #e3e8e9; border-radius: 8px; color: #343a40; transition: background-color .12s, border-color .12s;
     }
     .option:hover { background: #f5fafa; border-color: #b9dfe2; }

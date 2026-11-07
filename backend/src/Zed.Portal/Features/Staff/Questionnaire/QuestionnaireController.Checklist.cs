@@ -22,6 +22,8 @@ public sealed partial class QuestionnaireController
     public const int PurposeMax = 500;
     public const int ActionMax = 100;
     public const int MaxActions = 20;
+    /// <summary>The video tutorial's address (dbo.Requirements.VideoUrl, migration 0056).</summary>
+    public const int VideoUrlMax = 500;
     public const long MaxSampleBytes = 2 * 1024 * 1024;
     internal const string SamplesFolder = "Uploads/EvidenceSamples";
 
@@ -31,7 +33,9 @@ public sealed partial class QuestionnaireController
     public sealed record ChecklistPoint(string? OptionCode, string? Text, List<ChecklistEvidence>? Evidences, List<string?>? Actions);
 
     /// <param name="GeneralEvidences">Evidences of the whole requirement (added before V4, no checkpoint): kept or removed.</param>
-    public sealed record ChecklistRequest(string? Purpose, string? Benefits, List<ChecklistPoint>? Checkpoints, List<ChecklistEvidence>? GeneralEvidences = null);
+    /// <param name="VideoUrl">New (2026-11-07): the requirement's video tutorial, an http(s) address; empty = none.</param>
+    public sealed record ChecklistRequest(string? Purpose, string? Benefits, List<ChecklistPoint>? Checkpoints, List<ChecklistEvidence>? GeneralEvidences = null,
+        string? VideoUrl = null);
 
     internal const string RequirementExtrasSql =
         "SELECT RequirementCode, Purpose, Benefits FROM dbo.Requirements WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
@@ -44,7 +48,17 @@ public sealed partial class QuestionnaireController
     public sealed record OptionExtra(string? RequirementCode, string? OptionCode, string? ActionsNeeded);
     public sealed record EvidenceExtra(string? RequirementCode, string? EvidenceCode, string? OptionCode, string? SampleFile);
 
-    internal sealed record Extras(IReadOnlyList<RequirementExtra> Requirements, IReadOnlyList<OptionExtra> Options, IReadOnlyList<EvidenceExtra> Evidences);
+    internal sealed record Extras(IReadOnlyList<RequirementExtra> Requirements, IReadOnlyList<OptionExtra> Options, IReadOnlyList<EvidenceExtra> Evidences)
+    {
+        /// <summary>The requirements' video tutorials (migration 0056); empty before it.</summary>
+        public IReadOnlyList<RequirementVideo> Videos { get; init; } = [];
+    }
+
+    internal const string VideoSql = "SELECT RequirementCode, VideoUrl FROM dbo.Requirements WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
+    internal const string VideoUpdateSql =
+        "UPDATE dbo.Requirements SET VideoUrl = @VideoUrl WHERE SectionType = @SectionType AND SectionCode = @SectionCode AND RequirementCode = @RequirementCode;";
+
+    public sealed record RequirementVideo(string? RequirementCode, string? VideoUrl);
 
     /// <summary>The 0034 columns of the parameter's rows, or null when the migration is not applied yet.</summary>
     internal async Task<Extras?> ExtrasAsync(Section section, CancellationToken ct)
@@ -53,12 +67,29 @@ public sealed partial class QuestionnaireController
         try
         {
             return new Extras(await db.QuerySqlAsync<RequirementExtra>(RequirementExtrasSql, args, ct),
-                await db.QuerySqlAsync<OptionExtra>(OptionExtrasSql, args, ct), await db.QuerySqlAsync<EvidenceExtra>(EvidenceExtrasSql, args, ct));
+                await db.QuerySqlAsync<OptionExtra>(OptionExtrasSql, args, ct), await db.QuerySqlAsync<EvidenceExtra>(EvidenceExtrasSql, args, ct))
+            {
+                Videos = await VideosAsync(args, ct),
+            };
         }
         catch (DbException ex)
         {
             log.LogWarning(ex, "Requirement checkpoints not readable (is migration 0034 applied?)");
             return null;
+        }
+    }
+
+    /// <summary>The video tutorials; none (and a warning) before migration 0056, so the rest of the page still works.</summary>
+    private async Task<IReadOnlyList<RequirementVideo>> VideosAsync(object args, CancellationToken ct)
+    {
+        try
+        {
+            return await db.QuerySqlAsync<RequirementVideo>(VideoSql, args, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Requirement videos not readable (is migration 0056 applied?)");
+            return [];
         }
     }
 
@@ -68,6 +99,7 @@ public sealed partial class QuestionnaireController
     {
         var code = Trim(r.RequirementCode);
         var req = extras.Requirements.FirstOrDefault(x => Trim(x.RequirementCode) == code);
+        var video = extras.Videos.FirstOrDefault(x => Trim(x.RequirementCode) == code);
         Evidence With(Evidence e)
         {
             var x = extras.Evidences.FirstOrDefault(v => Trim(v.RequirementCode) == code && Trim(v.EvidenceCode) == Trim(e.EvidenceCode));
@@ -77,6 +109,7 @@ public sealed partial class QuestionnaireController
         {
             Purpose = Trim(req?.Purpose) is { Length: > 0 } p ? p : null,
             Benefits = Trim(req?.Benefits) is { Length: > 0 } b ? b : null,
+            VideoUrl = Trim(video?.VideoUrl) is { Length: > 0 } v ? v : null,
             Points = r.Points.Select(p => p with
             {
                 Actions = SplitActions(extras.Options.FirstOrDefault(o => Trim(o.RequirementCode) == code && Trim(o.OptionCode) == Trim(p.OptionCode))?.ActionsNeeded),
@@ -128,12 +161,27 @@ public sealed partial class QuestionnaireController
 
     internal sealed record EvidenceIn(string Name, bool Mandatory, string? SampleFile, string? HelpText, bool ValidationRequired);
     internal sealed record PointIn(string? OptionCode, string Text, List<EvidenceIn> Evidences, List<string> Actions);
-    internal sealed record ChecklistIn(string? Purpose, string? Benefits, List<PointIn> Points, List<EvidenceIn> General);
+    internal sealed record ChecklistIn(string? Purpose, string? Benefits, List<PointIn> Points, List<EvidenceIn> General, string? VideoUrl = null);
+
+    /// <summary>A video tutorial's address: http or https, absolute, no spaces; null when empty, false when not valid.</summary>
+    internal static bool TryVideoUrl(string? value, out string? url)
+    {
+        url = null;
+        var v = Trim(value);
+        if (v.Length == 0) return true;
+        if (v.Length > VideoUrlMax || v.Any(char.IsWhiteSpace)) return false;
+        if (!Uri.TryCreate(v, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp) || string.IsNullOrEmpty(uri.Host))
+            return false;
+        url = v;
+        return true;
+    }
 
     internal static (ChecklistIn? Input, string? Error) ValidateChecklist(ChecklistRequest req)
     {
         if (!StaffUserRules.TryText(req.Purpose, PurposeMax, false, true, out var purpose)) return (null, $"Purpose can be up to {PurposeMax} characters.");
         if (!StaffUserRules.TryText(req.Benefits, PurposeMax, false, true, out var benefits)) return (null, $"Benefits can be up to {PurposeMax} characters.");
+        if (!TryVideoUrl(req.VideoUrl, out var video))
+            return (null, $"The video link must be a web address starting with https:// (up to {VideoUrlMax} characters), e.g. a YouTube link.");
         var points = new List<PointIn>();
         foreach (var p in req.Checkpoints ?? [])
         {
@@ -159,7 +207,7 @@ public sealed partial class QuestionnaireController
         if (gError is not null) return (null, gError);
         var all = points.SelectMany(p => p.Evidences).Concat(general!).ToList();
         if (all.Count(e => e.Mandatory) > MaxEvidences || all.Count(e => !e.Mandatory) > MaxEvidences) return (null, $"At most {MaxEvidences} evidences of each kind (mandatory, not mandatory).");
-        return (new ChecklistIn(purpose, benefits, points, general!), null);
+        return (new ChecklistIn(purpose, benefits, points, general!, video), null);
     }
 
     private static (List<EvidenceIn>? Evidences, string? Error) ValidateChecklistEvidences(List<ChecklistEvidence>? evidences, string where)
@@ -263,6 +311,7 @@ public sealed partial class QuestionnaireController
     private async Task SaveExtrasAsync(Section section, string code, ChecklistIn input, CancellationToken ct)
     {
         await db.ExecuteSqlAsync(PurposeSql, new { input.Purpose, input.Benefits, SectionType = section.Type, SectionCode = section.Code, RequirementCode = code }, ct);
+        await SaveVideoAsync(section, code, input.VideoUrl, ct);
         foreach (var x in input.Points)
             await db.ExecuteSqlAsync(ActionsSql, new { ActionsNeeded = JoinActions(x.Actions), SectionType = section.Type, SectionCode = section.Code, RequirementCode = code, x.OptionCode }, ct);
 
@@ -294,6 +343,19 @@ public sealed partial class QuestionnaireController
                 OptionCode = point, evidence.SampleFile, SectionType = section.Type, SectionCode = section.Code, RequirementCode = code,
                 EvidenceCode = (i + 1).ToString(CultureInfo.InvariantCulture),
             }, ct);
+        }
+    }
+
+    /// <summary>The video tutorial (migration 0056). Before it, a link given is refused rather than lost; none is fine.</summary>
+    private async Task SaveVideoAsync(Section section, string code, string? videoUrl, CancellationToken ct)
+    {
+        try
+        {
+            await db.ExecuteSqlAsync(VideoUpdateSql, new { VideoUrl = videoUrl, SectionType = section.Type, SectionCode = section.Code, RequirementCode = code }, ct);
+        }
+        catch (DbException ex) when (videoUrl is null)
+        {
+            log.LogWarning(ex, "Requirement video not saved (is migration 0056 applied?)");
         }
     }
 

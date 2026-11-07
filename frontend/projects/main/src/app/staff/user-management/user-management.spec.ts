@@ -79,6 +79,54 @@ describe('User management', () => {
       expect(el.querySelector('.alert-success')!.textContent).toContain('DFOUP02 created');
     });
 
+    it('gives a Master Admin its category, levels and states, and lists them under the login (2026-11-07)', async () => {
+      const scoped = {
+        ...list,
+        types: [{ roleId: 7, label: 'Master Admin', needsState: false, hasScope: true, hasStateScope: true }, { roleId: 8, label: 'Ministry', needsState: false, hasScope: true }],
+        states: [{ code: '9', name: 'UTTAR PRADESH' }, { code: '7', name: 'DELHI' }],
+        levels: [{ code: 'Bronze', name: 'Bronze' }, { code: 'Silver', name: 'Silver' }, { code: 'Gold', name: 'Gold' }, { code: 'ZEDX', name: 'ZED-X' }],
+        accounts: [{ userId: 'MASTER2', userName: 'Master North', roleId: 7, email: 'm@zed.test', mobileNo: '9999999999', stateCode: null, isActive: true,
+          sectorActivity: 'Manufacturing', levels: ['Bronze', 'Silver'], states: ['9', '7'] }],
+      };
+      await create(AccountsPage);
+      http.expectOne('/api/staff/accounts').flush(scoped);
+      await settle();
+      expect(el.querySelector('.acc-scope')!.textContent).toBe('Manufacturing · Bronze, Silver · 2 states');
+
+      button('+ Add Login').click();
+      await settle();
+      (el.querySelector('#acc-type-8') as HTMLInputElement).click();
+      await settle();
+      // Ministry: category and levels, no states.
+      expect(el.querySelector('.acc-scope-box')).not.toBeNull();
+      expect(el.querySelector('.acc-scope-states')).toBeNull();
+      (el.querySelector('#acc-type-7') as HTMLInputElement).click();
+      await settle();
+      expect(el.querySelector('.acc-scope-states zed-multi-select')).not.toBeNull();
+      [...el.querySelectorAll('.acc-seg-btn')].find((b) => b.textContent!.trim() === 'Services')!.dispatchEvent(new Event('click'));
+      (el.querySelector('input[name="acc-level-Bronze"]') as HTMLInputElement).click();
+      (el.querySelector('input[name="acc-level-Silver"]') as HTMLInputElement).click();
+      await settle();
+      const delhi = [...el.querySelectorAll('.acc-scope-states label')].find((l) => l.textContent!.trim() === 'DELHI')!;
+      (delhi.querySelector('input') as HTMLInputElement).click();
+      type('#acc-id', 'MASTER07');
+      type('#acc-name', 'Master Services');
+      type('#acc-email', 's@zed.test');
+      type('#acc-mobile', '9876543210');
+      await settle();
+      submit();
+      await settle();
+      const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/accounts');
+      expect(post.request.body).toEqual({
+        userId: 'MASTER07', roleId: 7, userName: 'Master Services', email: 's@zed.test', mobileNo: '9876543210', stateCode: null,
+        sectorActivity: 'Services', levels: ['Gold', 'ZEDX'], states: ['7'],
+      });
+      post.flush({ message: 'Master Admin login MASTER07 created.' });
+      await settle();
+      http.expectOne('/api/staff/accounts').flush(scoped);
+      await settle();
+    });
+
     it('blocks a login after asking and shows refusals', async () => {
       await create(AccountsPage);
       http.expectOne('/api/staff/accounts').flush(list);

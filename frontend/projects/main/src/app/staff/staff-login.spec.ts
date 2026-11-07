@@ -71,6 +71,32 @@ describe('StaffLoginPage (session expired)', () => {
   });
 });
 
+describe('StaffLoginPage (2026-11-07 design)', () => {
+  it('shows the brand panel with the levels, the welcome heading, and shows or hides the password', async () => {
+    TestBed.configureTestingModule({
+      imports: [StaffLoginPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+    });
+    const fixture = TestBed.createComponent(StaffLoginPage);
+    const http = TestBed.inject(HttpTestingController);
+    const el: HTMLElement = fixture.nativeElement;
+    await settle(fixture);
+    for (const r of http.match(() => true)) r.flush(null);
+    expect(el.querySelector('.login-title')!.textContent).toBe('Welcome back');
+    expect([...el.querySelectorAll('.brand-chip')].map((c) => c.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
+    const password = el.querySelector('#password') as HTMLInputElement;
+    const toggle = el.querySelector('.toggle') as HTMLButtonElement;
+    expect(password.type).toBe('password');
+    toggle.click();
+    await settle(fixture);
+    expect(password.type).toBe('text');
+    expect(toggle.getAttribute('aria-label')).toBe('Hide password');
+    toggle.click();
+    await settle(fixture);
+    expect(password.type).toBe('password');
+  });
+});
+
 describe('FeesHostPage', () => {
   it('shows the handholding fees per milestone, on the same page, when the Admin chose the Consultancy portal', async () => {
     sessionStorage.setItem('zed.adminPortal', 'consultancy');

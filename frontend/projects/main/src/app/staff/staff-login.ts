@@ -19,28 +19,34 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
   imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
     <zed-staff-login-shell>
-      <div class="text-center"><img src="Images/header/user.png" width="100" alt="" /></div>
-      <h1 class="text-center fw-bold" style="font-size: 32px">User Login</h1>
-      @if (systemName) {
-        <p class="text-center text-muted mb-3">{{ systemName }}</p>
-      }
+      <h1 class="login-title">Welcome back</h1>
+      <p class="login-sub">Sign in with your ZED user ID{{ systemName ? ' · ' + systemName : '' }}</p>
       @if (expired) {
         <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
       }
       <form class="login-form zed-user-form" (ngSubmit)="login()" novalidate>
         <div class="mb-3">
           <label for="userId">User ID</label>
-          <input id="userId" name="userId" class="form-control" placeholder="Username" autocomplete="username" [(ngModel)]="userId" required maxlength="100" />
+          <div class="field">
+            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2.2c-3.3 0-9 1.7-9 5V21h18v-1.8c0-3.3-5.7-5-9-5Z" /></svg></span>
+            <input id="userId" name="userId" class="form-control" placeholder="Username" autocomplete="username" [(ngModel)]="userId" required maxlength="100" />
+          </div>
         </div>
         <div class="mb-3">
           <label for="password">Password</label>
-          <input id="password" name="password" type="password" class="form-control" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
+          <div class="field">
+            <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
+            <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" class="form-control has-toggle" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
+            <button type="button" class="toggle" (click)="showPassword.set(!showPassword())" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword()">
+              {{ showPassword() ? 'Hide' : 'Show' }}
+            </button>
+          </div>
         </div>
         <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
         <div class="d-grid col-12">
           <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
         </div>
-        <p class="text-center mt-3 mb-0"><a routerLink="/forgot-password">Forgot password?</a></p>
+        <p class="login-links"><a routerLink="/forgot-password">Forgot password?</a></p>
         @if (error()) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
         }
@@ -54,8 +60,27 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     </zed-staff-login-shell>
   `,
   styles: `
-    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
-    .btn-primary, .btn-primary:hover { color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 14px; text-transform: uppercase; }
+    .login-title { font-size: 28px; font-weight: 700; color: #1d2b2c; margin: 0; }
+    .login-sub { color: #5f6b6c; font-size: 14px; margin: 4px 0 22px; }
+    .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+    .field { position: relative; }
+    .in-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
+    .in-icon svg { width: 18px; height: 18px; fill: #368289; display: block; }
+    .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; }
+    .field .form-control:focus { border-color: #45a5ad; box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); }
+    .field .form-control.has-toggle { padding-right: 64px; }
+    .toggle {
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #2f7c83;
+      font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px;
+    }
+    .toggle:hover { background: #e3f3f4; }
+    .btn-primary, .btn-primary:hover {
+      color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase; height: 46px; border-radius: 10px;
+    }
+    .btn-primary:hover { background-color: #368289; border-color: #368289; }
+    .login-links { text-align: center; margin: 16px 0 0; }
+    .login-links a { color: #2f7c83; font-weight: 600; }
   `,
 })
 export class StaffLoginPage {
@@ -66,6 +91,7 @@ export class StaffLoginPage {
   private readonly query = inject(ActivatedRoute).snapshot.queryParamMap;
 
   protected readonly busy = signal(false);
+  protected readonly showPassword = signal(false);
   protected readonly error = signal('');
   /** Opened because the session ended (sessionExpiryInterceptor): say so, and go back to that page after signing in. */
   protected readonly expired = this.query.has(EXPIRED_PARAM);

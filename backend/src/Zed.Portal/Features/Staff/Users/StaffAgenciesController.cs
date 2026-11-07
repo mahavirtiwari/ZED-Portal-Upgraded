@@ -68,7 +68,11 @@ public sealed class StaffAgenciesController(
     public sealed record Sector(string SectorCode, string SectorName);
     public sealed record CodeName(string Code, string Name);
     public sealed record AgencyOptions(
-        IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<OrgPartner> OrgPartners, IReadOnlyList<CodeName>? TuStates = null);
+        IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<OrgPartner> OrgPartners, IReadOnlyList<CodeName>? TuStates = null)
+    {
+        /// <summary>The Master Admin's own category when its login is limited to one (migration 0057); the agency must match it.</summary>
+        public string? ScopeSector { get; init; }
+    }
 
     /// <summary>
     /// Choices of the agency form (SP_MASTER_GET_SECTORS: sectors and organising partners not yet linked to an agency).
@@ -78,9 +82,15 @@ public sealed class StaffAgenciesController(
     public async Task<AgencyOptions> Options(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_MASTER_GET_SECTORS", null, ct);
-        return host.IsConsultancy()
-            ? new AgencyOptions(StaffUserRules.States, Sectors(sets), [], ConsultancyUsers.TuStates.Select(s => new CodeName(s.Key, s.Value)).ToList())
-            : new AgencyOptions(StaffUserRules.States, Sectors(sets), Partners(sets[1]));
+        // A Master Admin with a scope (migration 0057) is offered its own states and category only.
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        IReadOnlyList<string> states = scope.StateCodes.Count == 0
+            ? StaffUserRules.States
+            : StaffUserRules.States.Where(st => scope.StateNames.Contains(st, StringComparer.OrdinalIgnoreCase)).ToList();
+        var options = host.IsConsultancy()
+            ? new AgencyOptions(states, Sectors(sets), [], ConsultancyUsers.TuStates.Select(s => new CodeName(s.Key, s.Value)).ToList())
+            : new AgencyOptions(states, Sectors(sets), Partners(sets[1]));
+        return options with { ScopeSector = host.IsConsultancy() ? null : scope.OneSector };
     }
 
     /// <summary>Consultancy: districts of a Technology Upgradation state (Districts table).</summary>
@@ -134,6 +144,7 @@ public sealed class StaffAgenciesController(
         var (values, error) = Validate(req, Sectors(sets), host.IsConsultancy() ? [] : Partners(sets[1]).Select(p => p.UserId), existing: null);
         if (error is not null) return this.Problem400(error);
         if (ActivityError(req, out var activity) is { } activityError) return this.Problem400(activityError);
+        if (await ScopeErrorAsync(req, activity, ct) is { } scopeError) return this.Problem400(scopeError);
         var (tuState, tuDistricts, tuError) = await TuPreferenceAsync(req, ct);
         if (tuError is not null) return this.Problem400(tuError);
 
@@ -196,6 +207,7 @@ public sealed class StaffAgenciesController(
         if (host.IsConsultancy() && ConsultancyUsers.AgencyUpdateError(agency, values!.SiteVerification, values.FinancialVerification) is { } roleError)
             return this.Problem400(roleError);
         if (ActivityError(req, out var activity) is { } activityError) return this.Problem400(activityError);
+        if (await ScopeErrorAsync(req, activity, ct) is { } scopeError) return this.Problem400(scopeError);
 
         await db.ExecuteProcAsync("SP_UPDATE_USER", Parameters(values!, agency.UserId, null, tuState, tuDistricts), ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, agency.UserId, activity, log, ct);
@@ -213,6 +225,27 @@ public sealed class StaffAgenciesController(
         if (host.IsConsultancy()) return null;
         activity = UserSectorActivity.Canonical(req.SectorActivity);
         return activity is null ? "Please select whether the agency assesses Manufacturing, Services or Both." : null;
+    }
+
+    /// <summary>
+    /// A Master Admin with a scope (migration 0057) creates agencies inside it: the same category (Manufacturing or Services,
+    /// not Both) and states among its own.
+    /// </summary>
+    private async Task<string?> ScopeErrorAsync(AgencyRequest req, string? activity, CancellationToken ct)
+    {
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        if (!scope.IsLimited) return null;
+        if (scope.OneSector is { } one && !host.IsConsultancy() && activity != one)
+            return $"Your login covers {one} MSMEs only, so the agency can assess {one} only.";
+        if (scope.StateCodes.Count > 0)
+        {
+            var names = scope.StateNames;
+            var chosen = req.States ?? [];
+            if (chosen.Count == 0) return "Please select the agency's states (from the states of your login).";
+            var outside = chosen.Where(st => !names.Contains(st?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)).ToList();
+            if (outside.Count > 0) return "These states are outside your login's scope: " + string.Join(", ", outside) + ".";
+        }
+        return null;
     }
 
     public sealed record ReasonRequest(string? Reason);

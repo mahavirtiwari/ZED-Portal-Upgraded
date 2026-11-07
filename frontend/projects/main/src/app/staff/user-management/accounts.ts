@@ -5,12 +5,20 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
+import { MultiSelect } from '../users/multi-select';
 
 interface AccountType {
   roleId: number;
   label: string;
   needsState: boolean;
+  /** Master Admin and Ministry (2026-11-07): MSME category and certification levels. */
+  hasScope?: boolean;
+  /** Master Admin: also the applicable states. */
+  hasStateScope?: boolean;
 }
+
+type SectorScope = 'Manufacturing' | 'Services' | 'Both';
+const SECTOR_SCOPES: SectorScope[] = ['Manufacturing', 'Services', 'Both'];
 
 interface Account {
   userId: string;
@@ -20,12 +28,17 @@ interface Account {
   mobileNo: string | null;
   stateCode: string | null;
   isActive: boolean | null;
+  /** The scope (migration 0057); null / empty = no limit. */
+  sectorActivity?: string | null;
+  levels?: string[];
+  states?: string[];
 }
 
 interface AccountsResponse {
   types: AccountType[];
   states: { code: string; name: string }[];
   accounts: Account[];
+  levels?: { code: string; name: string }[];
 }
 
 interface AccountForm {
@@ -35,6 +48,9 @@ interface AccountForm {
   email: string;
   mobileNo: string;
   stateCode: string;
+  sectorActivity: SectorScope;
+  levels: string[];
+  states: string[];
 }
 
 const API = '/api/staff/accounts';
@@ -58,7 +74,7 @@ const typeHints: Readonly<Record<number, string>> = {
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule, PagerComponent, PortalSwitchComponent],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect],
   template: `
     <div class="page-head">
       <div>
@@ -125,6 +141,7 @@ const typeHints: Readonly<Record<number, string>> = {
                 <td class="text-center acc-type-cell" data-label="Login Type">
                   <span class="zed-chip">{{ typeLabel(a.roleId) }}</span>
                   @if (stateName(a.stateCode); as s) { <span class="acc-state">{{ s }}</span> }
+                  @if (scopeText(a); as sc) { <span class="acc-state acc-scope" title="Scope of this login">{{ sc }}</span> }
                 </td>
                 <td class="acc-contact" data-label="Contact">
                   @if (a.mobileNo) {
@@ -226,6 +243,43 @@ const typeHints: Readonly<Record<number, string>> = {
                     </div>
                   }
                 </div>
+                @if (scopeType(); as st) {
+                  <!-- 2026-11-07 (design approved): what the login works with; the users it creates stay within it. -->
+                  <section class="acc-scope-box" aria-labelledby="acc-scope-head">
+                    <div class="acc-scope-top">
+                      <h4 class="acc-section m-0" id="acc-scope-head">Scope of this login</h4>
+                      <small class="muted">It sees only these MSMEs, and the users it creates stay within them.</small>
+                    </div>
+                    <div class="acc-scope-row">
+                      <span class="acc-scope-label" id="acc-sector-head">MSME category</span>
+                      <div class="acc-seg" role="radiogroup" aria-labelledby="acc-sector-head">
+                        @for (o of sectorScopes; track o) {
+                          <button type="button" class="acc-seg-btn" [class.on]="f.sectorActivity === o" role="radio" [attr.aria-checked]="f.sectorActivity === o"
+                                  (click)="patch('sectorActivity', o)">{{ o }}</button>
+                        }
+                      </div>
+                    </div>
+                    <div class="acc-scope-row">
+                      <span class="acc-scope-label" id="acc-levels-head">Certification levels</span>
+                      <div class="acc-levels" role="group" aria-labelledby="acc-levels-head">
+                        @for (l of levels(); track l.code) {
+                          <label class="acc-level" [class.on]="f.levels.includes(l.code)">
+                            <input type="checkbox" class="form-check-input" [name]="'acc-level-' + l.code" [checked]="f.levels.includes(l.code)" (change)="toggleLevel(l.code)" />
+                            {{ l.name }}
+                          </label>
+                        }
+                      </div>
+                    </div>
+                    @if (st.hasStateScope) {
+                      <div class="acc-scope-row acc-scope-states">
+                        <span class="acc-scope-label">Applicable states<small class="muted d-block">None selected = every state</small></span>
+                        <zed-multi-select label="Applicable states" inputId="acc-states" [options]="stateOptions()" [value]="f.states"
+                                          (valueChange)="patch('states', $event)" />
+                      </div>
+                    }
+                    <p class="acc-scope-note">Both, every level and every state = no limit.</p>
+                  </section>
+                }
                 @if (!editing()) {
                   <p class="acc-mail-note mt-3 mb-0">A password is generated and e-mailed to the user.</p>
                 }
@@ -325,6 +379,23 @@ const typeHints: Readonly<Record<number, string>> = {
       .acc-types { grid-template-columns: minmax(0, 1fr); }
     }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    /* The scope of a Master Admin / Ministry login. */
+    .acc-scope { color: #2f7c83; }
+    .acc-scope-box { margin-top: 16px; border: 1px solid #b9dfe2; background: #f5fafa; border-radius: 12px; padding: 14px 16px; }
+    .acc-scope-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+    .acc-scope-top h4 { color: #1f5c61; }
+    .acc-scope-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
+    .acc-scope-label { font-weight: 700; font-size: 13.5px; color: #23474a; padding-top: 6px; }
+    .acc-seg { display: inline-flex; justify-self: start; width: max-content; max-width: 100%; border: 1px solid #45a5ad; border-radius: 10px; overflow: hidden; }
+    .acc-seg-btn { border: 0; background: #fff; color: #2f7c83; font-weight: 600; font-size: 13.5px; padding: 7px 16px; }
+    .acc-seg-btn + .acc-seg-btn { border-left: 1px solid #b9dfe2; }
+    .acc-seg-btn.on { background: #45a5ad; color: #fff; }
+    .acc-levels { display: flex; flex-wrap: wrap; gap: 8px; }
+    .acc-level { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cfd9da; border-radius: 10px; padding: 6px 12px; font-size: 13.5px; background: #fff; cursor: pointer; margin: 0; }
+    .acc-level.on { border-color: #45a5ad; background: #e4f3f4; color: #1f5c61; font-weight: 600; }
+    .acc-level .form-check-input { margin: 0; float: none; }
+    .acc-scope-note { font-size: 12.5px; color: #5f6f70; margin: 10px 0 0; }
+    @media (max-width: 640px) { .acc-scope-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
   `,
 })
 export class AccountsPage {
@@ -360,6 +431,14 @@ export class AccountsPage {
   protected readonly form = signal<AccountForm | null>(null);
   protected readonly editing = signal<string | null>(null);
   protected readonly needsState = computed(() => this.types().find((t) => t.roleId === this.form()?.roleId)?.needsState ?? false);
+  /** The chosen login type when it has a scope (Master Admin, Ministry). */
+  protected readonly scopeType = computed(() => {
+    const t = this.types().find((x) => x.roleId === this.form()?.roleId);
+    return t?.hasScope ? t : null;
+  });
+  protected readonly levels = signal<{ code: string; name: string }[]>([]);
+  protected readonly stateOptions = computed(() => this.states().map((st) => ({ value: st.code, label: st.name })));
+  protected readonly sectorScopes = SECTOR_SCOPES;
   protected readonly busy = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -395,6 +474,25 @@ export class AccountsPage {
     this.search.set('');
   }
 
+  /** The scope under a Master Admin / Ministry login in the list ("Manufacturing · Bronze, Silver · 3 states"); empty = no limit. */
+  protected scopeText(a: Account): string {
+    const parts: string[] = [];
+    if (a.sectorActivity === 'Manufacturing' || a.sectorActivity === 'Services') parts.push(a.sectorActivity);
+    if (a.levels?.length) parts.push(a.levels.map((l) => this.levels().find((x) => x.code === l)?.name ?? l).join(', '));
+    if (a.states?.length) parts.push(a.states.length === 1 ? this.stateName(a.states[0]) : `${a.states.length} states`);
+    return parts.join(' · ');
+  }
+
+  protected toggleLevel(code: string): void {
+    const f = this.form();
+    if (!f) return;
+    this.patch('levels', f.levels.includes(code) ? f.levels.filter((l) => l !== code) : [...f.levels, code]);
+  }
+
+  private allLevels(): string[] {
+    return this.levels().map((l) => l.code);
+  }
+
   protected stateName(code: string | null): string {
     return code ? (this.states().find((s) => s.code === code)?.name ?? code) : '';
   }
@@ -402,13 +500,19 @@ export class AccountsPage {
   protected add(): void {
     this.editing.set(null);
     this.formError.set('');
-    this.form.set({ userId: '', roleId: this.filter() || null, userName: '', email: '', mobileNo: '', stateCode: '' });
+    this.form.set({
+      userId: '', roleId: this.filter() || null, userName: '', email: '', mobileNo: '', stateCode: '', sectorActivity: 'Both', levels: this.allLevels(), states: [],
+    });
   }
 
   protected edit(a: Account): void {
     this.editing.set(a.userId);
     this.formError.set('');
-    this.form.set({ userId: a.userId, roleId: a.roleId, userName: a.userName ?? '', email: a.email ?? '', mobileNo: a.mobileNo ?? '', stateCode: a.stateCode ?? '' });
+    const sector: SectorScope = a.sectorActivity === 'Manufacturing' || a.sectorActivity === 'Services' ? a.sectorActivity : 'Both';
+    this.form.set({
+      userId: a.userId, roleId: a.roleId, userName: a.userName ?? '', email: a.email ?? '', mobileNo: a.mobileNo ?? '', stateCode: a.stateCode ?? '',
+      sectorActivity: sector, levels: a.levels?.length ? [...a.levels] : this.allLevels(), states: [...(a.states ?? [])],
+    });
   }
 
   protected close(): void {
@@ -424,7 +528,18 @@ export class AccountsPage {
     const f = this.form();
     if (!f) return;
     const id = this.editing();
-    const body = { ...f, stateCode: this.needsState() ? f.stateCode : null };
+    const scope = this.scopeType();
+    if (scope && this.levels().length && !f.levels.length) {
+      this.formError.set('Please choose at least one certification level.');
+      return;
+    }
+    const { sectorActivity, levels, states, ...details } = f;
+    const body = {
+      ...details,
+      stateCode: this.needsState() ? f.stateCode : null,
+      // Master Admin / Ministry: the scope (Master Admin also its states).
+      ...(scope ? { sectorActivity, levels, states: scope.hasStateScope ? states : [] } : {}),
+    };
     await this.run(
       () => (id ? this.http.put<MessageResponse>(`${API}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(API, body)),
       true,
@@ -463,6 +578,7 @@ export class AccountsPage {
       this.types.set(r.types);
       this.states.set(r.states);
       this.accounts.set(r.accounts);
+      this.levels.set(r.levels ?? []);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

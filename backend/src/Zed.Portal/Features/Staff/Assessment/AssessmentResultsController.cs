@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Assessment;
 
@@ -95,7 +96,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
         var size2 = pageSize is 10 or 20 or 50 or 100 or 200 ? pageSize.Value : 20;
 
         // Main's paginated procedure has @Gender but its condition is commented out (and main's pages had no Gender filter).
-        if (host.System != PortalSystem.Main)
+        if (host.System != PortalSystem.Main || (await HttpContext.LoginScopeAsync(ct)).IsLimited)
             return await FromMonitoringList(status, s, c, z, g, text is null ? null : by ?? "Zed Id", text, page, size2, ct);
 
         var sets = await db.QueryProcMultipleAsync("SP_MONITORING_GET_LIST_PAGINATION", new
@@ -138,7 +139,7 @@ public sealed class AssessmentResultsController(ISqlExecutor db, PortalHost host
             Gender = gender,
         }, ct);
 
-        IEnumerable<IDictionary<string, object?>> rows = sets[0];
+        IEnumerable<IDictionary<string, object?>> rows = await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct);
         if (search is not null && host.System == PortalSystem.Surveillance)
         {
             // As the old SearchText: any column of the row (case-insensitive here).

@@ -46,6 +46,8 @@ export interface AgencyOptions {
   orgPartners: OrgPartner[];
   /** Consultancy: states a Consultant Organisation can prefer for Technology Upgradation (LGD code). */
   tuStates?: CodeName[] | null;
+  /** The Master Admin's own category when its login is limited to one (migration 0057): the agency must match it. */
+  scopeSector?: SectorActivity | null;
 }
 
 export interface District {

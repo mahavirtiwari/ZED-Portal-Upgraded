@@ -43,12 +43,12 @@ describe('LoginPage', () => {
   afterEach(() => http.verify());
 
   it('shows the new-user eligibility from the Texts', () => {
-    expect(el.querySelector('.login-bottom-newuser [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
+    expect(el.querySelector('.ml-new [data-key="msme.login.newUserEligibility"]')).not.toBeNull();
   });
 
   it('forgot password: finds the units of a PAN, sends the link for the chosen one and shows the hidden e-mail', async () => {
     const buttons = () => Array.from(el.querySelectorAll('button')) as HTMLButtonElement[];
-    buttons().find((b) => b.textContent?.includes('FORGOT PASSWORD'))!.click();
+    buttons().find((b) => b.textContent?.includes('Forgot password'))!.click();
     await settle();
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '' });
     await settle();

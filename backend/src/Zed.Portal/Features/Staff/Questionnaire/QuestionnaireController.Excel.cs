@@ -167,7 +167,7 @@ public sealed partial class QuestionnaireController
         }).ToList();
         var updated = new PointIn(old?.OptionCode, row.Cell(4), evidences, actions);
         var points = old is null ? [.. input.Points, updated] : input.Points.Select(p => p == old ? updated : p).ToList();
-        var full = new ChecklistIn(Text(2) ?? input.Purpose, Text(3) ?? input.Benefits, points, input.General);
+        var full = new ChecklistIn(Text(2) ?? input.Purpose, Text(3) ?? input.Benefits, points, input.General, input.VideoUrl);
         var (_, error) = ValidateChecklist(ToRequest(full));
         if (error is not null) return error;
         await UpdateChecklistAsync(section, requirement, full, ct);
@@ -179,7 +179,7 @@ public sealed partial class QuestionnaireController
         EvidenceIn In(Evidence e) => new(e.EvidenceName, IsMandatory(r, e), e.SampleFile, e.HelpText, e.ValidationRequired);
         return new ChecklistIn(r.Purpose, r.Benefits,
             r.Points.Select(p => new PointIn(Trim(p.OptionCode), p.Name, EvidencesOf(r, Trim(p.OptionCode)).Select(In).ToList(), [.. p.Actions ?? []])).ToList(),
-            EvidencesOf(r, null).Select(In).ToList());
+            EvidencesOf(r, null).Select(In).ToList(), r.VideoUrl);
     }
 
     private static ChecklistRequest ToRequest(ChecklistIn c)
@@ -187,6 +187,6 @@ public sealed partial class QuestionnaireController
         static ChecklistEvidence Out(EvidenceIn e) => new(e.Name, e.Mandatory, e.SampleFile, e.HelpText, e.ValidationRequired);
         return new ChecklistRequest(c.Purpose, c.Benefits,
             c.Points.Select(p => new ChecklistPoint(p.OptionCode, p.Text, p.Evidences.Select(Out).ToList(), [.. p.Actions])).ToList(),
-            c.General.Select(Out).ToList());
+            c.General.Select(Out).ToList(), c.VideoUrl);
     }
 }

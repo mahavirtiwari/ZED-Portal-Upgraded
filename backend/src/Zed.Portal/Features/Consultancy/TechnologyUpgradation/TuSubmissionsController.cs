@@ -7,6 +7,7 @@ using Zed.Core.Http;
 using Zed.Core.Security;
 using Zed.Portal.Features.Staff.Schemes;
 using Zed.Portal.Templates;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Consultancy.TechnologyUpgradation;
 
@@ -61,7 +62,7 @@ public sealed class TuSubmissionsController(
         // The procedure scopes by the user's role: master admin all, CO CertificationBodyUserId, DFO FinancialAssessorId.
         var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
             new { UserId, Status = status, CertificationType = (string?)null, ZedId = (string?)null }, ct);
-        var rows = sets[0].Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
+        var rows = (await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
         var counts = sets[1].FirstOrDefault() is { } c ? SchemeRows.Pick(c, ["New", "InProgress", "Qc", "Approved", "Rejected"]) : null;
         return new SubmissionsResponse(rows, counts);
     }

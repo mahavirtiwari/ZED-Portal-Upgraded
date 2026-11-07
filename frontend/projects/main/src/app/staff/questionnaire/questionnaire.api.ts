@@ -40,6 +40,8 @@ export interface Requirement {
   canRemove: boolean;
   purpose?: string | null;
   benefits?: string | null;
+  /** The video tutorial's link (migration 0056), null = none. */
+  videoUrl?: string | null;
 }
 
 export interface RequirementsResponse {
@@ -70,6 +72,8 @@ export interface ChecklistPoint {
 export interface ChecklistRequest {
   purpose: string;
   benefits: string;
+  /** The video tutorial's link; empty = none. */
+  videoUrl: string;
   checkpoints: ChecklistPoint[];
   /** Evidences of the whole requirement (added before checkpoints): kept or removed. */
   generalEvidences: ChecklistEvidence[];

@@ -1,37 +1,37 @@
 <zed-login-shell>
   <div class="login-login">
     @if (mode() === 'login') {
-      <form class="login-form mt-3" (ngSubmit)="login()" novalidate>
-        <h2>Registered User</h2>
+      <!-- 2026-11-07 redesign (option A): icons in the fields, Show / Hide, a full-width LOGIN and Forgot as a link. -->
+      <form class="login-form" (ngSubmit)="login()" novalidate>
+        <h2 class="ml-heading">Registered user</h2>
+        <p class="ml-lead">Sign in with your ZED ID</p>
         @if (expired()) {
           <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
         }
 
         <label for="userId">ZED ID</label>
-        <div class="mb-3">
+        <div class="mb-3 in-field">
+          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2.2c-3.3 0-9 1.7-9 5V21h18v-1.8c0-3.3-5.7-5-9-5Z" /></svg></span>
           <input id="userId" name="userId" class="form-control" placeholder="ZED ID" autocomplete="username"
                  [(ngModel)]="userId" required maxlength="100" />
         </div>
 
         <label for="password">Password</label>
-        <div class="mb-3 position-relative">
-          <input id="password" name="password" class="form-control" placeholder="Password" autocomplete="current-password"
+        <div class="mb-3 in-field">
+          <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
+          <input id="password" name="password" class="form-control has-toggle" placeholder="Password" autocomplete="current-password"
                  [type]="showPassword() ? 'text' : 'password'" [(ngModel)]="password" required maxlength="50" />
-          <button type="button" class="field-icon toggle-password btn btn-link p-0"
-                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
-                  (click)="showPassword.set(!showPassword())">
-            <img [src]="showPassword() ? '/Images/svgicons/eye-off.svg' : '/Images/svgicons/eye.svg'" alt="" />
-          </button>
+          <button type="button" class="in-toggle toggle-password"
+                  [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword()"
+                  (click)="showPassword.set(!showPassword())">{{ showPassword() ? 'Hide' : 'Show' }}</button>
         </div>
 
         <div class="mb-3">
           <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
         </div>
 
-        <div class="register-btn">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">LOGIN</button>
-          <button type="button" class="btn btn-dark" (click)="switchMode('reset')">FORGOT PASSWORD?</button>
-        </div>
+        <button type="submit" class="btn btn-primary ml-login" [disabled]="busy()">LOGIN</button>
+        <button type="button" class="ml-forgot" (click)="switchMode('reset')">Forgot password or ZED ID?</button>
       </form>
     } @else {
       <!-- New (2026-11-07): find the account by ZED ID, PAN or e-mail, choose the unit, the link goes to its registered e-mail. -->
@@ -62,7 +62,7 @@
           </div>
           <div class="register-btn mt-3">
             <button type="submit" class="btn btn-primary" [disabled]="busy() || !chosenRef()">SEND RESET LINK</button>
-            <button type="button" class="btn btn-dark" (click)="units.set(null)">BACK</button>
+            <button type="button" class="btn ml-secondary" (click)="units.set(null)">BACK</button>
           </div>
         </form>
       } @else {
@@ -86,7 +86,7 @@
           </div>
           <div class="register-btn">
             <button type="submit" class="btn btn-primary" [disabled]="busy()">FIND MY ACCOUNT</button>
-            <button type="button" class="btn btn-dark" (click)="switchMode('login')">LOGIN</button>
+            <button type="button" class="btn ml-secondary" (click)="switchMode('login')">LOGIN</button>
           </div>
         </form>
       }
@@ -106,12 +106,10 @@
     }
   </div>
 
-  <div class="line-icon"></div>
-  <div class="login-register">
-    <div class="login-bottom-newuser">
-      <h2>New User</h2>
-      <zed-text key="msme.login.newUserEligibility" />
-      <a routerLink="/msme/register" class="btn btn-white btn-block">REGISTER NOW</a>
-    </div>
+  <div class="ml-or"><span>New to ZED?</span></div>
+  <div class="ml-new">
+    <h2>New user</h2>
+    <zed-text key="msme.login.newUserEligibility" />
+    <a routerLink="/msme/register" class="btn ml-register">REGISTER NOW</a>
   </div>
 </zed-login-shell>

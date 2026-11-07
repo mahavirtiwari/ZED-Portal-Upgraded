@@ -3,6 +3,7 @@ using Microsoft.Data.SqlClient;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Portal.Features.Staff.Reports;
 
@@ -63,8 +64,10 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
         var sheets = new List<XlsxSheet>();
         for (var i = 0; i < sets.Count; i++)
         {
-            var rows = units is null ? sets[i]
+            IReadOnlyList<IDictionary<string, object?>> rows = units is null ? sets[i]
                 : sets[i].Where(r => r.TryGetValue("ZedId", out var z) && z is not null && units.Contains(z.ToString()!.Trim())).ToList();
+            // A Ministry login with a scope (migration 0057): its units and levels only.
+            rows = await ScopeFilter.ApplyAsync(HttpContext, rows, ct, "ZedId", "Certification", "CertificationType", "CertificationLevel");
             var columns = rows.FirstOrDefault()?.Keys.Where(k => !ResultSets.SensitiveColumns.Contains(k)).ToList() ?? [];
             sheets.Add(new XlsxSheet(i == 0 ? "Table" : "Table" + i, columns,
                 rows.Select(r => (IReadOnlyList<object?>)columns.Select(c => r.TryGetValue(c, out var v) ? v : null).ToList())));

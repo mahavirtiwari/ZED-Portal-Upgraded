@@ -83,7 +83,8 @@ export class AgencyFormPage {
   protected readonly districts = signal<MultiSelectOption[]>([]);
 
   protected model: AgencyRequest = emptyAgency();
-  protected readonly activities = SECTOR_ACTIVITIES;
+  /** Manufacturing / Services / Both; a Master Admin limited to one category is offered that one only (migration 0057). */
+  protected activities = SECTOR_ACTIVITIES;
   protected readonly activityHelp: Record<SectorActivity, string> = {
     Manufacturing: 'Manufacturing MSMEs only.',
     Services: 'Service MSMEs only.',
@@ -115,6 +116,11 @@ export class AgencyFormPage {
         options.sectors.map((s) => ({ value: s.sectorCode, label: `${s.sectorCode}-${s.sectorName}` })).sort((a, b) => a.label.localeCompare(b.label)),
       );
       this.tuStates.set(options.tuStates ?? []);
+      if (options.scopeSector) {
+        const only = options.scopeSector;
+        this.activities = SECTOR_ACTIVITIES.filter((x) => x.value === only);
+        if (!this.userId) this.model.sectorActivity = only;
+      }
       if (this.userId) {
         const a = await firstValueFrom(this.api.agency(this.userId));
         this.model = {
