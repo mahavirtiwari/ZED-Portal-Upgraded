@@ -151,6 +151,9 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
     {
         var invalid = false;
         var viewValue = DashboardFilters.Pick(view, ["registered", "certified"], ref invalid) ?? "registered";
+        // A Dashboard Admin opens only the tabs the Admin gave it (2026-11-07).
+        if (!DashboardScreens.Has(CurrentUser, host.System, "dash-" + viewValue))
+            return Problem(title: "You do not have access to this dashboard tab.", statusCode: StatusCodes.Status403Forbidden);
         var stateName = DashboardFilters.Pick(state, DashboardFilters.StateNames, ref invalid);
         // Consultancy (handholding) has Silver and Gold only.
         var cert = DashboardFilters.Pick(certification, host.System == PortalSystem.Consultancy ? HandholdingLevels : DashboardFilters.Certifications, ref invalid);

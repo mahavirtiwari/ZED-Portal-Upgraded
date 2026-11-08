@@ -102,6 +102,7 @@ public sealed partial class NeftController(
     {
         if (!Enum.TryParse<NeftList>(list ?? "new", ignoreCase: true, out var which) || !Enum.IsDefined(which))
             return this.Problem400("Invalid list.");
+        if (!CoordinatorAreas.HasList(CurrentUser, host.System)) return Forbid();
 
         var rows = await LoadAsync(which == NeftList.Approved ? "1" : "0", ct);
         var selected = rows.Where(r => which switch
@@ -142,6 +143,7 @@ public sealed partial class NeftController(
     [HttpPost("transactions/{id:int}/approve")]
     public async Task<ActionResult<MessageResponse>> Approve(int id, ApproveRequest req, CancellationToken ct)
     {
+        if (!CoordinatorAreas.HasList(CurrentUser, host.System)) return Forbid();
         if (!DateOnly.TryParseExact(req.DateOfReceiptOfPayment?.Trim(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var paidOn) ||
             paidOn > DateOnly.FromDateTime(DateTime.Now) || paidOn.Year < 2020)
             return this.Problem400("Please enter a valid date of receipt of payment (not in the future).");
@@ -216,13 +218,14 @@ public sealed partial class NeftController(
     {
         var rows = (await db.QueryProcMultipleAsync("SP_NEFT_TRANSACTIONS_BY_STATUS", new { Status = status }, ct))[0];
         if (SeesAllStates()) return rows;
-        var state = NormaliseState(CurrentUser.StateCode);
-        if (state is null)
+        // Its states, districts and category (2026-11-07; before, its one state).
+        var area = await CoordinatorAreas.ForAsync(HttpContext, config, db, CurrentUser, ct);
+        if (area.States.Count == 0)
         {
-            log.LogWarning("State coordinator {UserId} has no StateCode; NEFT list is empty", UserId);
+            log.LogWarning("State coordinator {UserId} has no state; NEFT list is empty", UserId);
             return [];
         }
-        return rows.Where(r => NormaliseState(r.Text("StateId")) == state || NormaliseState(r.Text("PStateId")) == state);
+        return rows.Where(area.Contains);
     }
 
     private bool SeesAllStates() => SeesAllStates(config, UserId, CurrentUser.StateCode);

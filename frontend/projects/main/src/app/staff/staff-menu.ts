@@ -32,6 +32,8 @@ export interface StaffMenuItem {
   subRoles?: SubRole[];
   /** At least one of these sub-roles is required. */
   anySubRole?: SubRole[];
+  /** Shown only to a user whose screens (permissionRoutes) do not include this route (2026-11-07). */
+  onlyWithout?: string;
   /**
    * Drop-down this entry belongs to in the menu bar (the old layout grouped the long menus the same way, e.g.
    * MasterAdmin's "Assessment"); the drop-down stands where its first entry is. Inside a `menu`, it is a heading.
@@ -98,6 +100,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
   { label: 'Reports', legacyPath: '/DynamicReports/Index', route: '/staff/reports', roles: [R.SuperAdmin, R.CitizenFeedback, R.Ministry, R.Agency, R.StateCoordinator] },
   // New in V4: the dashboard logins' customer (ZED ID) history across the three systems.
   // Customer History is reached from Registered MSMEs (each ZED ID links to its history), 2026-10-27.
+  // A Dashboard Admin given History without Registered MSMEs (2026-11-07) still needs a way in; the menu shows it only then.
+  { label: 'Customer History', route: '/staff/history', roles: [R.SuperAdmin], onlyWithout: '/staff/registered-msme' },
 
   // Master admin: agencies, assessors and allocation
   // The live "Assessment" drop-down (Frontend/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
@@ -355,6 +359,7 @@ export function menuFor(
       i.roles.includes(roleId) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&
       (!i.anySubRole || i.anySubRole.some((s) => subRoles.includes(s))) &&
-      (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))),
+      (!permissionRoutes || (!!i.route && permissionRoutes.some((r) => i.route === r || i.route!.startsWith(r + '/')))) &&
+      (!i.onlyWithout || (!!permissionRoutes && !permissionRoutes.includes(i.onlyWithout))),
   );
 }

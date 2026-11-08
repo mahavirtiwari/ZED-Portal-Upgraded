@@ -67,6 +67,9 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.SubUsers.SubUserAccessFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.SubUsers.SubUserAccessFilter>());
         // Master Admin / Ministry logins with a scope: units outside it answer 404 (migration 0057).
+        // Dashboard Admins: only the screens the Admin ticked (migration 0058).
+        services.AddScoped<Features.Staff.Users.DashboardScreenFilter>();
+        services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.DashboardScreenFilter>());
         services.AddScoped<Features.Staff.Users.ScopeAccessFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.Users.ScopeAccessFilter>());
         return builder;

@@ -4,6 +4,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { DashboardPortalSwitchComponent } from './dashboard-portal-switch';
 
 export interface StaffDocument {
   id: number;
@@ -20,8 +21,10 @@ export interface StaffDocument {
  */
 @Component({
   selector: 'zed-staff-role-documents',
-  imports: [FormsModule, DatePipe],
+  imports: [FormsModule, DatePipe, DashboardPortalSwitchComponent],
   template: `
+    <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
+    <zed-dashboard-portal-switch [screens]="['documents']" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">Documents</h3>

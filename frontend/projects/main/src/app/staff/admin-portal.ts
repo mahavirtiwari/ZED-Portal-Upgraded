@@ -2,6 +2,7 @@ import { HttpBackend, HttpClient, HttpContextToken, HttpErrorResponse, HttpInter
 import { Component, Injectable, computed, inject, input, output, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, firstValueFrom, from, switchMap, throwError } from 'rxjs';
+import { AuthService, CurrentUser } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
 
 export type AdminPortal = 'main' | 'consultancy' | 'surveillance';
@@ -43,6 +44,52 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/consultancy/tu', portals: ['consultancy'] },
 ];
 
+/**
+ * One Dashboard Admin (2026-11-07): its screens' APIs and the screens (Zed.Core DashboardScreens keys) they belong to. Its
+ * calls go to the portal chosen on the page, among the portals where the Admin ticked that screen (the most specific
+ * prefix first).
+ */
+export const DASHBOARD_APIS: readonly { prefix: string; screens: readonly string[] }[] = [
+  { prefix: '/api/staff/dashboard/registered-msme', screens: ['registered-msme'] },
+  { prefix: '/api/staff/dashboard/failed-transactions', screens: ['failed-transactions'] },
+  { prefix: '/api/staff/dashboard/financial-support', screens: ['financial-support'] },
+  { prefix: '/api/staff/dashboard', screens: ['dash-registered', 'dash-certified'] },
+  { prefix: '/api/staff/schemes/incentives/submissions', screens: ['incentive-submissions'] },
+  { prefix: '/api/staff/reports', screens: ['reports'] },
+  { prefix: '/api/staff/history', screens: ['history'] },
+  { prefix: '/api/staff/documents', screens: ['documents'] },
+  ...['/api/staff/msme-profile', '/api/staff/msme-edit-history', '/api/staff/assessment/da', '/api/staff/site-review', '/api/staff/app-form-values',
+    '/api/staff/certification-documents'].map((prefix) => ({ prefix, screens: ['registered-msme', 'history'] })),
+];
+
+/** The screens each portal offers (as Zed.Core DashboardScreens). */
+const SCREEN_PORTALS: Readonly<Record<string, readonly AdminPortal[]>> = {
+  'financial-support': ['main', 'surveillance'],
+  'incentive-submissions': ['main'],
+};
+
+/**
+ * The NEFT portals of a user on main (2026-11-07): the NEFT Admin both; an MSME DFO those of its NEFT lists ("main:neft",
+ * "consultancy:neft"); null for others.
+ */
+export function neftPortals(user: CurrentUser | null | undefined): AdminPortal[] | null {
+  if (PORTAL_SYSTEM !== 'main' || user?.roleId !== 6) return null;
+  if (user.isNeftAdmin || !user.screens) return [...NEFT_PORTALS];
+  return NEFT_PORTALS.filter((p) => user.screens!.includes(`${p}:neft`));
+}
+
+/** A Dashboard Admin (Users.RoleId 10) on the main portal: it opens the other portals' screens from here. */
+export function isDashboardAdmin(user: CurrentUser | null | undefined): boolean {
+  return PORTAL_SYSTEM === 'main' && user?.roleId === 10;
+}
+
+/** The portals where a Dashboard Admin has one of these screens (every portal that offers them when it has every screen). */
+export function dashboardPortals(user: CurrentUser | null | undefined, screens: readonly string[]): AdminPortal[] {
+  return ALL_PORTALS.filter((p) =>
+    screens.some((s) => (SCREEN_PORTALS[s] ?? ALL_PORTALS).includes(p) && (!user?.screens || user.screens.includes(`${p}:${s}`))),
+  );
+}
+
 /** Sends one request to a given portal's API, whatever the switch says (e.g. the Sectors list of every portal). */
 export const ADMIN_PORTAL = new HttpContextToken<AdminPortal | null>(() => null);
 
@@ -80,7 +127,8 @@ export class AdminPortalService {
    */
   effective(portals: readonly AdminPortal[] = ALL_PORTALS): AdminPortal {
     if (!this.enabled) return PORTAL_SYSTEM as AdminPortal;
-    return portals.includes(this.current()) ? this.current() : 'main';
+    // A screen not on main (a Dashboard Admin's): its first portal.
+    return portals.includes(this.current()) ? this.current() : portals.includes('main') || !portals.length ? 'main' : portals[0];
   }
 
   select(portal: AdminPortal): void {
@@ -121,10 +169,18 @@ function mainXsrf(): string {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
-function targetOf(req: HttpRequest<unknown>, service: AdminPortalService): AdminPortal {
+function targetOf(req: HttpRequest<unknown>, service: AdminPortalService, user: CurrentUser | null): AdminPortal {
   const explicit = req.context.get(ADMIN_PORTAL);
   if (explicit) return explicit;
   const path = req.url.split('?')[0];
+  const neft = neftPortals(user);
+  if (neft && (path === '/api/staff/neft' || path.startsWith('/api/staff/neft/') || path.startsWith('/api/staff/consultancy/tu'))) {
+    return path.startsWith('/api/staff/consultancy/tu') ? 'consultancy' : service.effective(neft);
+  }
+  if (isDashboardAdmin(user)) {
+    const screen = DASHBOARD_APIS.find((a) => path === a.prefix || path.startsWith(a.prefix + '/'));
+    if (screen) return service.effective(dashboardPortals(user, screen.screens));
+  }
   const api = SWITCHED_APIS.find((a) => path === a.prefix || path.startsWith(a.prefix + '/'));
   return api ? service.effective(api.portals) : 'main';
 }
@@ -136,7 +192,7 @@ function targetOf(req: HttpRequest<unknown>, service: AdminPortalService): Admin
 export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
   const service = inject(AdminPortalService);
   if (!service.enabled || !req.url.startsWith('/api/')) return next(req);
-  const portal = targetOf(req, service);
+  const portal = targetOf(req, service, inject(AuthService).currentUser());
   if (portal === 'main') return next(req);
   const send = (fresh: boolean): Observable<never> =>
     from(service.connect(portal, fresh)).pipe(

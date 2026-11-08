@@ -4,6 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { IncentiveFilter, IncentivesApi, Row, STATES } from './incentives.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 
 /**
  * "API Incentives Submitted" for the super admin. Port of Views/Incentive/Submissions.cshtml
@@ -11,8 +12,10 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
  */
 @Component({
   selector: 'zed-staff-incentive-submissions',
-  imports: [FormsModule, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, PagerComponent, ListSearchComponent, DashboardPortalSwitchComponent],
   template: `
+    <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
+    <zed-dashboard-portal-switch [screens]="['incentive-submissions']" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">API Incentives Submitted</h3>

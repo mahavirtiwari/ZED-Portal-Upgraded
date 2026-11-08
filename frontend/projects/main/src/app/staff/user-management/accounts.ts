@@ -16,6 +16,31 @@ interface AccountType {
   hasScope?: boolean;
   /** Master Admin: also the applicable states. */
   hasStateScope?: boolean;
+  /** Dashboard Admin (2026-11-07): the screens the Admin ticks per portal. */
+  hasScreens?: boolean;
+  /** False where existing logins are only listed (a Dashboard Admin is added on the main portal). */
+  canAdd?: boolean;
+  /** False for the MSME DFO (category, states and districts; no levels). */
+  hasLevels?: boolean;
+  /** MSME DFO (2026-11-07): the districts among its states, and its NEFT lists. */
+  hasDistricts?: boolean;
+  hasNeftLists?: boolean;
+}
+
+interface StateDistricts {
+  stateCode: string;
+  stateName: string;
+  districts: { code: string; name: string }[];
+}
+
+/** A screen a Dashboard Admin can be given on a portal (Zed.Core DashboardScreens). */
+interface ScreenOption {
+  portal: string;
+  portalName: string;
+  key: string;
+  label: string;
+  group: string;
+  hint: string | null;
 }
 
 type SectorScope = 'Manufacturing' | 'Services' | 'Both';
@@ -33,6 +58,10 @@ interface Account {
   sectorActivity?: string | null;
   levels?: string[];
   states?: string[];
+  /** Dashboard Admin: the ticked "{portal}:{key}" screens; null = every screen. */
+  screens?: string[] | null;
+  /** MSME DFO: district codes among its states. */
+  districts?: string[];
 }
 
 interface AccountsResponse {
@@ -40,6 +69,7 @@ interface AccountsResponse {
   states: { code: string; name: string }[];
   accounts: Account[];
   levels?: { code: string; name: string }[];
+  screens?: ScreenOption[];
 }
 
 interface AccountForm {
@@ -52,6 +82,10 @@ interface AccountForm {
   sectorActivity: SectorScope;
   levels: string[];
   states: string[];
+  screens: string[];
+  /** MSME DFO: district codes, and its NEFT lists ('main' Financial Assistance, 'consultancy' Handholding). */
+  districts: string[];
+  neftLists: string[];
 }
 
 const API = '/api/staff/accounts';
@@ -62,8 +96,8 @@ const NEFT_API = '/api/staff/neft-admins';
 const typeHints: Readonly<Record<number, string>> = {
   7: 'Agencies, assessors and the assessment work.',
   8: 'The Ministry of MSME: dashboards and reports.',
-  6: 'One state: its NEFT transactions and reports.',
-  10: 'Dashboards, reports and failed transactions.',
+  6: 'Financial Assistance and Handholding NEFT of its states and districts.',
+  10: 'Dashboards and the screens you tick below, on the three portals.',
   11: 'Dashboards, financial support and reports.',
   17: 'Dashboards: registered MSMEs and their history.',
 };
@@ -216,7 +250,7 @@ const typeHints: Readonly<Record<number, string>> = {
                   </div>
                 } @else {
                   <div class="acc-types" role="radiogroup" aria-labelledby="acc-type-head">
-                    @for (t of types(); track t.roleId) {
+                    @for (t of addableTypes(); track t.roleId) {
                       <label class="choice-card" [class.active]="f.roleId === t.roleId" [for]="'acc-type-' + t.roleId">
                         <input type="radio" class="form-check-input" name="roleId" [id]="'acc-type-' + t.roleId" [value]="t.roleId"
                                [checked]="f.roleId === t.roleId" (change)="patch('roleId', t.roleId)" />
@@ -253,6 +287,36 @@ const typeHints: Readonly<Record<number, string>> = {
                     </div>
                   }
                 </div>
+                @if (screensType()) {
+                  <!-- 2026-11-07 (design approved): the Dashboard Admin's screens, per portal. -->
+                  <section class="acc-scope-box acc-screens" aria-labelledby="acc-screens-head">
+                    <div class="acc-scope-top">
+                      <h4 class="acc-section m-0" id="acc-screens-head">Screens this login can open</h4>
+                      <span class="acc-screens-links">
+                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(true)">Select all</button> ·
+                        <button type="button" class="btn btn-link p-0" (click)="setAllScreens(false)">Clear</button>
+                      </span>
+                    </div>
+                    @for (p of screenPortals(); track p.portal) {
+                      <div class="acc-screen-portal">
+                        @if (screenPortals().length > 1) { <h5 class="acc-portal-name">{{ p.name }}</h5> }
+                        @for (g of p.groups; track g.name) {
+                          <p class="acc-screen-group">{{ g.name }}</p>
+                          <div class="acc-screen-grid">
+                            @for (o of g.options; track o.key) {
+                              <label class="acc-screen" [class.on]="f.screens.includes(o.portal + ':' + o.key)">
+                                <input type="checkbox" class="form-check-input" [name]="'acc-screen-' + o.portal + '-' + o.key"
+                                       [checked]="f.screens.includes(o.portal + ':' + o.key)" (change)="toggleScreen(o.portal + ':' + o.key)" />
+                                <span>{{ o.label }}@if (o.hint) { <small>{{ o.hint }}</small> }</span>
+                              </label>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                    <p class="acc-scope-note">It signs in on the main portal and opens the other portals' screens from there. A change applies at the user's next sign-in.</p>
+                  </section>
+                }
                 @if (scopeType(); as st) {
                   <!-- 2026-11-07 (design approved): what the login works with; the users it creates stay within it. -->
                   <section class="acc-scope-box" aria-labelledby="acc-scope-head">
@@ -269,6 +333,20 @@ const typeHints: Readonly<Record<number, string>> = {
                         }
                       </div>
                     </div>
+                    @if (st.hasNeftLists) {
+                      <div class="acc-scope-row">
+                        <span class="acc-scope-label" id="acc-lists-head">NEFT lists</span>
+                        <div class="acc-levels" role="group" aria-labelledby="acc-lists-head">
+                          @for (l of neftListOptions; track l.key) {
+                            <label class="acc-level" [class.on]="f.neftLists.includes(l.key)">
+                              <input type="checkbox" class="form-check-input" [name]="'acc-list-' + l.key" [checked]="f.neftLists.includes(l.key)" (change)="toggleNeftList(l.key)" />
+                              {{ l.label }}
+                            </label>
+                          }
+                        </div>
+                      </div>
+                    }
+                    @if (st.hasLevels !== false) {
                     <div class="acc-scope-row">
                       <span class="acc-scope-label" id="acc-levels-head">Certification levels</span>
                       <div class="acc-levels" role="group" aria-labelledby="acc-levels-head">
@@ -280,14 +358,32 @@ const typeHints: Readonly<Record<number, string>> = {
                         }
                       </div>
                     </div>
+                    }
                     @if (st.hasStateScope) {
                       <div class="acc-scope-row acc-scope-states">
-                        <span class="acc-scope-label">Applicable states<small class="muted d-block">None selected = every state</small></span>
+                        <span class="acc-scope-label">{{ st.hasDistricts ? 'States' : 'Applicable states' }}
+                          <small class="muted d-block">{{ st.hasDistricts ? 'At least one' : 'None selected = every state' }}</small></span>
                         <zed-multi-select label="Applicable states" inputId="acc-states" [options]="stateOptions()" [value]="f.states"
-                                          (valueChange)="patch('states', $event)" />
+                                          (valueChange)="setStates($event)" />
                       </div>
                     }
-                    <p class="acc-scope-note">Both, every level and every state = no limit.</p>
+                    @if (st.hasDistricts && f.states.length) {
+                      <div class="acc-scope-row acc-scope-districts">
+                        <span class="acc-scope-label">Districts<small class="muted d-block">None selected = every district of the states</small></span>
+                        <div>
+                          @for (g of districtGroups(); track g.stateCode) {
+                            @if (f.states.includes(g.stateCode)) {
+                              <p class="acc-screen-group">{{ g.stateName }}</p>
+                              <zed-multi-select [label]="'Districts of ' + g.stateName" [options]="districtOptions(g)" [value]="f.districts"
+                                                (valueChange)="setDistricts(g, $event)" />
+                            }
+                          } @empty {
+                            <small class="muted">Loading the districts…</small>
+                          }
+                        </div>
+                      </div>
+                    }
+                    <p class="acc-scope-note">{{ st.hasDistricts ? 'One login: Financial Assistance on ZED Certification, Technology Upgradation on Handholding (a switch on its NEFT pages).' : 'Both, every level and every state = no limit.' }}</p>
                   </section>
                 }
                 @if (!editing()) {
@@ -406,6 +502,17 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-level .form-check-input { margin: 0; float: none; }
     .acc-scope-note { font-size: 12.5px; color: #5f6f70; margin: 10px 0 0; }
     @media (max-width: 640px) { .acc-scope-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+    /* The Dashboard Admin's screens. */
+    .acc-screens-links { font-size: 13px; color: #8a9899; }
+    .acc-screens-links .btn-link { font-size: 13px; font-weight: 600; color: #2f7c83; text-decoration: none; }
+    .acc-screen-portal + .acc-screen-portal { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #b9dfe2; }
+    .acc-portal-name { font-size: 14px; font-weight: 700; color: #1f5c61; margin: 8px 0 0; }
+    .acc-screen-group { font-size: 11.5px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 6px; }
+    .acc-screen-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+    .acc-screen { display: flex; gap: 8px; align-items: flex-start; border: 1px solid #cfd9da; border-radius: 10px; padding: 7px 10px; font-size: 13.5px; background: #fff; cursor: pointer; margin: 0; }
+    .acc-screen.on { border-color: #45a5ad; background: #e4f3f4; color: #1f5c61; font-weight: 600; }
+    .acc-screen .form-check-input { margin: 3px 0 0; float: none; flex: none; }
+    .acc-screen small { display: block; font-weight: 400; color: #5f6f70; font-size: 12px; }
   `,
 })
 export class AccountsPage {
@@ -450,6 +557,28 @@ export class AccountsPage {
     return t?.hasScope ? t : null;
   });
   protected readonly levels = signal<{ code: string; name: string }[]>([]);
+  protected readonly screenOptions = signal<ScreenOption[]>([]);
+  /** The districts of the states chosen for an MSME DFO. */
+  protected readonly districtGroups = signal<StateDistricts[]>([]);
+  protected readonly neftListOptions = [
+    { key: 'main', label: 'Financial Assistance' },
+    { key: 'consultancy', label: 'Handholding (Technology Upgradation)' },
+  ];
+  /** The login types the pop-up offers for a new login (a Dashboard Admin only on the main portal). */
+  protected readonly addableTypes = computed(() => (this.editing() ? this.types() : this.types().filter((t) => t.canAdd !== false)));
+  protected readonly screensType = computed(() => !!this.types().find((x) => x.roleId === this.form()?.roleId)?.hasScreens);
+  /** The screens by portal, then by group (Dashboard tabs, Modules, Privacy). */
+  protected readonly screenPortals = computed(() => {
+    const byPortal = new Map<string, { portal: string; name: string; groups: { name: string; options: ScreenOption[] }[] }>();
+    for (const o of this.screenOptions()) {
+      const p = byPortal.get(o.portal) ?? { portal: o.portal, name: o.portalName, groups: [] };
+      byPortal.set(o.portal, p);
+      let g = p.groups.find((x) => x.name === o.group);
+      if (!g) p.groups.push((g = { name: o.group, options: [] }));
+      g.options.push(o);
+    }
+    return [...byPortal.values()];
+  });
   protected readonly stateOptions = computed(() => this.states().map((st) => ({ value: st.code, label: st.name })));
   protected readonly sectorScopes = SECTOR_SCOPES;
   protected readonly busy = signal(false);
@@ -496,6 +625,57 @@ export class AccountsPage {
     return parts.join(' · ');
   }
 
+  protected toggleNeftList(key: string): void {
+    const f = this.form();
+    if (!f) return;
+    this.patch('neftLists', f.neftLists.includes(key) ? f.neftLists.filter((x) => x !== key) : [...f.neftLists, key]);
+  }
+
+  /** The states changed: the districts of the states no longer chosen are dropped, and the new states' are loaded. */
+  protected setStates(states: string[]): void {
+    const f = this.form();
+    if (!f) return;
+    const kept = this.districtGroups().filter((g) => states.includes(g.stateCode)).flatMap((g) => g.districts.map((d) => d.code));
+    this.form.set({ ...f, states, districts: f.districts.filter((d) => kept.includes(d)) });
+    void this.loadDistricts(states);
+  }
+
+  protected districtOptions(g: StateDistricts): { value: string; label: string }[] {
+    return g.districts.map((d) => ({ value: d.code, label: d.name }));
+  }
+
+  /** One state's multi-select changed: its districts replaced, the other states' kept. */
+  protected setDistricts(g: StateDistricts, value: string[]): void {
+    const f = this.form();
+    if (!f) return;
+    const mine = new Set(g.districts.map((d) => d.code));
+    this.patch('districts', [...f.districts.filter((d) => !mine.has(d)), ...value.filter((d) => mine.has(d))]);
+  }
+
+  private async loadDistricts(states: string[]): Promise<void> {
+    if (!this.types().find((t) => t.roleId === this.form()?.roleId)?.hasDistricts || !states.length) return;
+    try {
+      this.districtGroups.set(await firstValueFrom(this.http.get<StateDistricts[]>(`${API}/districts`, { params: { states: states.join(',') } })));
+    } catch (err) {
+      this.formError.set(apiErrorMessage(err));
+    }
+  }
+
+  protected toggleScreen(key: string): void {
+    const f = this.form();
+    if (!f) return;
+    this.patch('screens', f.screens.includes(key) ? f.screens.filter((x) => x !== key) : [...f.screens, key]);
+  }
+
+  /** Every screen (not the privacy option), or none. */
+  protected setAllScreens(on: boolean): void {
+    this.patch('screens', on ? this.defaultScreens() : []);
+  }
+
+  private defaultScreens(): string[] {
+    return this.screenOptions().filter((o) => o.key !== 'hide-names').map((o) => `${o.portal}:${o.key}`);
+  }
+
   protected toggleLevel(code: string): void {
     const f = this.form();
     if (!f) return;
@@ -516,7 +696,8 @@ export class AccountsPage {
     this.formError.set('');
     this.form.set({
       // One login type (the NEFT Admins page): chosen already.
-      userId: '', roleId: this.filter() || (this.types().length === 1 ? this.types()[0].roleId : null), userName: '', email: '', mobileNo: '', stateCode: '', sectorActivity: 'Both', levels: this.allLevels(), states: [],
+      userId: '', roleId: this.filter() || (this.addableTypes().length === 1 ? this.addableTypes()[0].roleId : null), userName: '', email: '', mobileNo: '', stateCode: '', sectorActivity: 'Both', levels: this.allLevels(), states: [],
+      screens: this.defaultScreens(), districts: [], neftLists: ['main', 'consultancy'],
     });
   }
 
@@ -527,7 +708,12 @@ export class AccountsPage {
     this.form.set({
       userId: a.userId, roleId: a.roleId, userName: a.userName ?? '', email: a.email ?? '', mobileNo: a.mobileNo ?? '', stateCode: a.stateCode ?? '',
       sectorActivity: sector, levels: a.levels?.length ? [...a.levels] : this.allLevels(), states: [...(a.states ?? [])],
+      // Not set yet (a Super Admin of before): every screen.
+      screens: a.screens ? [...a.screens] : this.defaultScreens(),
+      districts: [...(a.districts ?? [])],
+      neftLists: a.roleId === 6 ? (a.screens?.filter((x) => x.endsWith(':neft')).map((x) => x.split(':')[0]) ?? ['main']) : [],
     });
+    void this.loadDistricts(a.states ?? []);
   }
 
   protected close(): void {
@@ -548,12 +734,27 @@ export class AccountsPage {
       this.formError.set('Please choose at least one certification level.');
       return;
     }
-    const { sectorActivity, levels, states, ...details } = f;
+    if (this.screensType() && !f.screens.some((x) => !x.endsWith(':hide-names'))) {
+      this.formError.set('Please tick at least one screen for the Dashboard Admin.');
+      return;
+    }
+    const dfo = this.types().find((t) => t.roleId === f.roleId)?.hasDistricts;
+    if (dfo && !f.states.length) {
+      this.formError.set("Please choose the MSME DFO's states.");
+      return;
+    }
+    if (dfo && !f.neftLists.length) {
+      this.formError.set('Please tick Financial Assistance and / or Handholding.');
+      return;
+    }
+    const { sectorActivity, levels, states, screens, districts, neftLists, ...details } = f;
     const body = {
       ...details,
       stateCode: this.needsState() ? f.stateCode : null,
       // Master Admin / Ministry: the scope (Master Admin also its states).
       ...(scope ? { sectorActivity, levels, states: scope.hasStateScope ? states : [] } : {}),
+      ...(this.screensType() ? { screens } : {}),
+      ...(dfo ? { districts, neftLists } : {}),
     };
     await this.run(
       () => (id ? this.http.put<MessageResponse>(`${this.api}/${encodeURIComponent(id)}`, body) : this.http.post<MessageResponse>(this.api, body)),
@@ -594,6 +795,7 @@ export class AccountsPage {
       this.states.set(r.states);
       this.accounts.set(r.accounts);
       this.levels.set(r.levels ?? []);
+      this.screenOptions.set(r.screens ?? []);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
     } finally {

@@ -96,7 +96,8 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
             new { UserId = userId, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), RoleId = roleId.ToString() }, ct);
 
         var user = new ZedUser(userId, row.Text("UserName"), roleId, row.Text("Email"), row.Text("MobileNo"),
-            row.Text("StateCode"), row.Text("DistrictCode"), SubRoles: subRoles);
+            row.Text("StateCode"), row.Text("DistrictCode"), SubRoles: subRoles,
+            Screens: roleId is (int)UserRole.SuperAdmin or (int)UserRole.StateCoordinator ? await Users.DashboardAdmins.ScreensAsync(db, userId, log, ct) : null);
         await HttpContext.SignInZedUserAsync(user);
         return CurrentUserResponse.From(user);
     }

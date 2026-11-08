@@ -87,7 +87,9 @@ public sealed class ReportsTests : IDisposable
         // The procedure lists every state's financial-assistance transactions with their bank details.
         _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS"] = _ => FakeSql.Sets(
             [new { ZedId = "ZEDMSME000009", AccountNo = "111" }, new { ZedId = "ZEDMSME000027", AccountNo = "222" }]);
-        _host.Sql.Queries[ReportsController.StateUnitsSql] = args => FakeSql.Arg(args, "State") == "9" ? [new { ZedId = "ZEDMSME000009" }] : [];
+        _host.Sql.Queries[ReportsController.AreaUnitsSql] = _ =>
+            [new { ZedId = "ZEDMSME000009", StateId = (int?)9, PStateId = (int?)null, PLgDistrictCode = "162", PDistrictName = "LUCKNOW", Activity = (string?)null, TwoDigitActivity = (string?)null },
+             new { ZedId = "ZEDMSME000027", StateId = (int?)27, PStateId = (int?)null, PLgDistrictCode = "500", PDistrictName = "PUNE", Activity = (string?)null, TwoDigitActivity = (string?)null }];
         var id = ReportCatalog.IdOf("SP_DYNAMIC_REPORT_LIST_OF_NEW_TRANSACTIONS");
 
         var own = await (await _host.SignInAsync("STATE9")).GetByteArrayAsync($"/api/staff/reports/{id}/download");

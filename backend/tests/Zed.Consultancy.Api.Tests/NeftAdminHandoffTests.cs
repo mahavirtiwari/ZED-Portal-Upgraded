@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
 using Zed.Main.Api.Tests;
 using Zed.Portal.Features.Staff.AdminPortals;
+using Zed.Portal.Features.Staff.Users;
 
 namespace Zed.Consultancy.Api.Tests;
 
@@ -15,19 +16,26 @@ public sealed class NeftAdminHandoffTests : IDisposable
 {
     private const string Token = "NeftAdminPass0123456789-_AbCdEfGhIjKlMnOpQr";
     private const string BlockedToken = "NeftBlockedPass0123456789-_AbCdEfGhIjKlMnO";
+    private const string DfoToken = "DfoHandholdingPass0123456789-_AbCdEfGhIjKlM";
     private readonly TestHost _host = new();
     private readonly FakeSql _main = new();
     private readonly WebApplicationFactory<Program> _app;
 
     public NeftAdminHandoffTests()
     {
-        var passes = new Dictionary<string, string> { [Token] = "NEFTADMIN1", [BlockedToken] = "NEFTOLD" };
+        var passes = new Dictionary<string, string> { [Token] = "NEFTADMIN1", [BlockedToken] = "NEFTOLD", [DfoToken] = "DFO_UP" };
         _main.Queries[AdminPortalsController.FindSql] = args =>
             FakeSql.Arg(args, "OtpType") == "NeftHandoff:Consultancy" && passes.FirstOrDefault(p => AdminPortalsController.Hash(p.Key) == FakeSql.Arg(args, "Hash")).Value is { } userId
                 ? [new AdminPortalsController.HandoffRow(userId, "NEFT Desk")]
                 : [];
         _main.Queries[AdminPortalsController.ActiveNeftAdminSql] = args =>
             FakeSql.Arg(args, "UserId") == "NEFTADMIN1" ? [new AdminPortalsController.ActiveAdminRow("NEFTADMIN1")] : [];
+        // An MSME DFO of Uttar Pradesh with both NEFT lists (2026-11-07).
+        _main.Queries[AdminPortalsController.ActiveDfoSql] = args =>
+            FakeSql.Arg(args, "UserId") == "DFO_UP" ? [new AdminPortalsController.ActiveDfoRow("DFO_UP", "9", "main:neft,consultancy:neft")] : [];
+        _main.Queries[LoginScopes.Sql] = args => FakeSql.Arg(args, "UserId") == "DFO_UP"
+            ? [new { SectorActivity = (string?)null, ScopeLevels = (string?)null, ScopeStates = "9", ScopeDistricts = (string?)null }]
+            : [];
         // TU reimbursements of two states.
         _host.Sql.Procs["SP_NEFT_TRANSACTIONS_BY_STATUS"] = _ => FakeSql.Sets(
             [new { TransactionId = 1, ZedId = "ZEDM1", StateId = 9, PStateId = (int?)null, VerificationStatus = 4 },
@@ -52,6 +60,19 @@ public sealed class NeftAdminHandoffTests : IDisposable
         Assert.True(me.GetProperty("isNeftAdmin").GetBoolean());
         var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=new");
         Assert.Equal(["ZEDM1", "ZEDM2"], list.GetProperty("transactions").EnumerateArray().Select(t => t.GetProperty("ZedId").GetString()));
+    }
+
+    [Fact]
+    public async Task An_MSME_DFO_with_the_Handholding_list_is_signed_in_here_and_sees_its_states_TU_reimbursements()
+    {
+        var client = await StaffTestSignIn.BrowserAsync(_app, null, 0);
+        var r = await client.PostAsJsonAsync("/api/staff/admin-portals/handoff", new { token = DfoToken });
+        Assert.True(r.IsSuccessStatusCode, await r.Content.ReadAsStringAsync());
+        var me = await client.GetFromJsonAsync<JsonElement>("/api/auth/me");
+        Assert.Equal(6, me.GetProperty("roleId").GetInt32());
+        Assert.False(me.GetProperty("isNeftAdmin").GetBoolean());
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/neft/transactions?list=new");
+        Assert.Equal(["ZEDM1"], list.GetProperty("transactions").EnumerateArray().Select(t => t.GetProperty("ZedId").GetString()));
     }
 
     [Fact]

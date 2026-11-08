@@ -427,7 +427,7 @@ public sealed partial class TuVerificationController(
         !NoScreenshotTypes.Contains(photoType?.Trim() ?? "", StringComparer.OrdinalIgnoreCase);
 
     private Task<bool> ScopeAsync(TuApplication app, CancellationToken ct) =>
-        RoleId == (int)UserRole.StateCoordinator ? TuCoordinatorScope.InScopeAsync(db, config, CurrentUser, app.Fa, ct) : Task.FromResult(false);
+        RoleId == (int)UserRole.StateCoordinator ? TuCoordinatorScope.InScopeAsync(HttpContext, db, config, CurrentUser, app.Fa, ct) : Task.FromResult(false);
 
     private async Task<(TuApplication? App, bool Scope)> ViewableAsync(string zedId, string certification, CancellationToken ct)
     {

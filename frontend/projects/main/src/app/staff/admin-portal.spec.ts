@@ -3,7 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
-import { AdminPortal, AdminPortalService, PortalSwitchComponent, adminPortalInterceptor } from './admin-portal';
+import { AdminPortal, AdminPortalService, PortalSwitchComponent, adminPortalInterceptor, dashboardPortals, neftPortals } from './admin-portal';
+import { AuthService, CurrentUser } from '@zed/shared';
 
 const flushTicks = () => new Promise((r) => setTimeout(r));
 
@@ -90,6 +91,75 @@ describe('One Admin: portal switch and calls to the chosen portal', () => {
 class Host {
   last: AdminPortal | null = null;
 }
+
+describe('One Dashboard Admin (2026-11-07)', () => {
+  const user = (screens: string[] | null): CurrentUser => ({ userId: 'DASH1', userName: 'Dash', roleId: 10, role: 'SuperAdmin', screens });
+
+  it('lists the portals where a screen was ticked (every portal offering it when every screen was given)', () => {
+    const u = user(['main:reports', 'surveillance:reports', 'consultancy:history', 'main:hide-names']);
+    expect(dashboardPortals(u, ['reports'])).toEqual(['main', 'surveillance']);
+    expect(dashboardPortals(u, ['history'])).toEqual(['consultancy']);
+    expect(dashboardPortals(u, ['failed-transactions'])).toEqual([]);
+    expect(dashboardPortals(user(null), ['financial-support'])).toEqual(['main', 'surveillance']);
+    expect(dashboardPortals(user(null), ['incentive-submissions'])).toEqual(['main']);
+  });
+
+  it("sends a screen's calls to its ticked portal, even when the switch names another", async () => {
+    sessionStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(withInterceptors([adminPortalInterceptor])), provideHttpClientTesting()] });
+    TestBed.inject(AuthService).setUser(user(['consultancy:history', 'main:reports']));
+    const http = TestBed.inject(HttpClient);
+    const backend = TestBed.inject(HttpTestingController);
+    // Reports on main (the only portal where it was ticked).
+    const reports = firstValueFrom(http.get('/api/staff/reports'));
+    backend.expectOne('/api/staff/reports').flush([]);
+    await reports;
+    // History only on Consultancy: handed over there.
+    const history = firstValueFrom(http.get('/api/staff/history/ZEDM1'));
+    await flushTicks();
+    backend.expectOne('/api/staff/admin-portals/consultancy/handoff').flush({ token: 'pass' });
+    await flushTicks();
+    backend.expectOne('/Consultancy/api/staff/admin-portals/handoff').flush({ userName: 'Dash', xsrfToken: 'x' });
+    await flushTicks();
+    backend.expectOne('/Consultancy/api/staff/history/ZEDM1').flush({});
+    await history;
+    backend.verify();
+  });
+});
+
+describe('One MSME DFO for Financial Assistance and Handholding (2026-11-07)', () => {
+  const dfo = (screens: string[] | null, isNeftAdmin = false): CurrentUser =>
+    ({ userId: 'DFO1', userName: 'DFO', roleId: 6, role: 'StateCoordinator', screens, isNeftAdmin });
+
+  it('offers the NEFT lists it was given (the NEFT Admin both)', () => {
+    expect(neftPortals(dfo(['main:neft', 'consultancy:neft']))).toEqual(['main', 'consultancy']);
+    expect(neftPortals(dfo(['consultancy:neft']))).toEqual(['consultancy']);
+    expect(neftPortals(dfo(['main:neft']))).toEqual(['main']);
+    expect(neftPortals(dfo(null, true))).toEqual(['main', 'consultancy']);
+    expect(neftPortals({ ...dfo(null), roleId: 10 })).toBeNull();
+  });
+
+  it('sends the NEFT list of a DFO with Handholding only to the Consultancy portal', async () => {
+    sessionStorage.clear();
+    TestBed.configureTestingModule({ providers: [provideHttpClient(withInterceptors([adminPortalInterceptor])), provideHttpClientTesting()] });
+    TestBed.inject(AuthService).setUser(dfo(['consultancy:neft']));
+    const http = TestBed.inject(HttpClient);
+    const backend = TestBed.inject(HttpTestingController);
+    const list = firstValueFrom(http.get('/api/staff/neft/transactions', { params: { list: 'new' } }));
+    await flushTicks();
+    backend.expectOne('/api/staff/admin-portals/consultancy/handoff').flush({ token: 'pass' });
+    await flushTicks();
+    backend.expectOne('/Consultancy/api/staff/admin-portals/handoff').flush({ userName: 'DFO', xsrfToken: 'x' });
+    await flushTicks();
+    backend.expectOne((r) => r.url === '/Consultancy/api/staff/neft/transactions').flush({ transactions: [] });
+    await list;
+    // Other screens stay on main.
+    const other = firstValueFrom(http.get('/api/staff/reports'));
+    backend.expectOne('/api/staff/reports').flush([]);
+    await other;
+    backend.verify();
+  });
+});
 
 describe('PortalSwitchComponent', () => {
   it('offers the portals that have the screen and remembers the choice', async () => {

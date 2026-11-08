@@ -272,7 +272,7 @@ public sealed class TuStorage(IWebHostEnvironment env, Microsoft.Extensions.Opti
 /// </summary>
 public static class TuCoordinatorScope
 {
-    public static async Task<bool> InScopeAsync(ISqlExecutor db, IConfiguration config, ZedUser user, FaApplication app, CancellationToken ct)
+    public static async Task<bool> InScopeAsync(HttpContext http, ISqlExecutor db, IConfiguration config, ZedUser user, FaApplication app, CancellationToken ct)
     {
         if (user.RoleId != (int)UserRole.StateCoordinator) return false;
         var list = app.Status switch { FaStatus.Approved => "0", FaStatus.Reimbursed => "1", _ => null };
@@ -282,7 +282,8 @@ public static class TuCoordinatorScope
             .ToList();
         if (rows.Count == 0) return false;
         if (NeftController.SeesAllStates(config, user.UserId, user.StateCode)) return true;
-        var state = NeftController.NormaliseState(user.StateCode);
-        return state is not null && rows.Any(r => NeftController.NormaliseState(r.Text("StateId")) == state || NeftController.NormaliseState(r.Text("PStateId")) == state);
+        // Its states, districts and category (2026-11-07).
+        var area = await CoordinatorAreas.ForAsync(http, config, db, user, ct);
+        return rows.Any(area.Contains);
     }
 }

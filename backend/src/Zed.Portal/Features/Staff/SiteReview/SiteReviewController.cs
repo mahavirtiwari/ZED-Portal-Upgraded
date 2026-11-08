@@ -249,7 +249,7 @@ public sealed class SiteReviewController(
         if (da[0].FirstOrDefault() is not { } main || !string.Equals(main.Text("ZedId").Trim(), zedId, StringComparison.OrdinalIgnoreCase)) return NotFound();
 
         var moved = main.Text("PhotosPath").Length > 0;
-        var qc = user.RoleId == (int)UserRole.QC;
+        var qc = DashboardScreens.HidesNames(user, HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
         var msme = Pick(main, MsmeFields);
         if (!qc)
         {

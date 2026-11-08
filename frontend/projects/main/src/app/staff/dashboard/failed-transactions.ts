@@ -6,6 +6,7 @@ import { DashboardApi, ListFilter, Row, UpdatePaymentRequest } from './dashboard
 import { ClientPager, flag, text } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
+import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 
 export const PG_TYPES = [
   { value: 'Unified Payments', label: 'UPI' },
@@ -27,7 +28,7 @@ function today(): string {
  */
 @Component({
   selector: 'zed-staff-failed-transactions',
-  imports: [FormsModule, ListFiltersBar, PagerComponent],
+  imports: [FormsModule, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
   templateUrl: './failed-transactions.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

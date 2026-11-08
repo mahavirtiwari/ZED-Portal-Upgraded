@@ -52,13 +52,18 @@ public sealed record CurrentUserResponse(
     /// <summary>For a sub-user, <c>UserId</c>/<c>UserName</c> are the owner's and the <c>Acting…</c> fields its own.</summary>
     public static CurrentUserResponse From(ZedUser u) =>
         new(u.UserId, u.UserName, u.RoleId, u.RoleName, u.Email, u.MobileNo, u.UnitName, u.SubRoles ?? [],
-            u.ActingUserId, u.ActingUserName, u.PermissionRoutes)
+            u.ActingUserId, u.ActingUserName, u.PermissionRoutes ?? DashboardScreens.Routes(u))
         {
+            Screens = DashboardScreens.IsLimited(u) || (u.RoleId == (int)UserRole.StateCoordinator && u.Screens is not null)
+                ? DashboardScreens.Parse(u.Screens)!.Order(StringComparer.Ordinal).ToList() : null,
             IsNeftAdmin = u.RoleId == (int)UserRole.StateCoordinator && string.Equals(u.StateCode?.Trim(), "ALL", StringComparison.OrdinalIgnoreCase),
         };
 
     /// <summary>The NEFT Admin (2026-11-07): an MSME DFO of every state, the national NEFT desk (financial assistance and TU).</summary>
     public bool IsNeftAdmin { get; init; }
+
+    /// <summary>A Dashboard Admin's ticked screens, "{portal}:{key}" (2026-11-07); null = every screen.</summary>
+    public IReadOnlyList<string>? Screens { get; init; }
 }
 
 public static class PasswordPolicy

@@ -1,6 +1,6 @@
 import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { apiErrorMessage } from '@zed/shared';
+import { apiErrorMessage, AuthService } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CHART_COLORS, ChartItem, ColumnChart, DonutChart, GroupedColumnChart, LEVEL_COLORS, RankList, TrendPoint, formatCount } from './charts';
 import { Analytics, AnalyticsFilter, AnalyticsView, CountItem, DashboardApi, Row } from './dashboard.api';
@@ -107,8 +107,8 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
         <div class="filter">
           <label class="form-label" for="an-dateby">Date of</label>
           <select id="an-dateby" class="form-select" [ngModel]="view()" (ngModelChange)="setView($event)">
-            <option value="registered">Registration</option>
-            <option value="certified">{{ words.completedDate }}</option>
+            @if (views.includes('registered')) { <option value="registered">Registration</option> }
+            @if (views.includes('certified')) { <option value="certified">{{ words.completedDate }}</option> }
           </select>
         </div>
         <div class="filter an-date">
@@ -215,7 +215,19 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
 })
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
-  protected readonly words = ANALYTICS_WORDS[inject(STAFF_SYSTEM)];
+  private readonly system = inject(STAFF_SYSTEM);
+  protected readonly words = ANALYTICS_WORDS[this.system];
+  /**
+   * The views (dashboard tabs) of the user: a Dashboard Admin those the Admin ticked on this portal (2026-11-07; the server
+   * checks them too), everybody else both.
+   */
+  protected readonly views: AnalyticsView[] = (() => {
+    const user = inject(AuthService).currentUser();
+    const all: AnalyticsView[] = ['registered', 'certified'];
+    if (user?.roleId !== 10 || !user.screens) return all;
+    const mine = all.filter((v) => user.screens!.includes(`${this.system}:dash-${v}`));
+    return mine.length ? mine : all;
+  })();
 
   protected readonly states = STATE_NAMES;
   protected readonly sizes = SIZES;
@@ -223,7 +235,7 @@ export class StaffAnalytics {
   protected readonly socialCategories = ['General', 'OBC', 'SC', 'ST'];
   protected readonly today = new Date().toISOString().slice(0, 10);
 
-  protected readonly view = signal<AnalyticsView>('registered');
+  protected readonly view = signal<AnalyticsView>(this.views[0]);
   protected readonly filter = signal<Omit<AnalyticsFilter, 'view'>>({});
   /** Read by the page (Updated time in its head). */
   readonly data = signal<Analytics | null>(null);
@@ -302,7 +314,7 @@ export class StaffAnalytics {
 
   reset(): void {
     this.filter.set({});
-    this.view.set('registered');
+    this.view.set(this.views[0]);
     void this.load();
   }
 

@@ -3,6 +3,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ListSearchComponent, searchRows } from '../pager';
+import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 
 export interface ReportItem {
   id: string;
@@ -29,8 +30,10 @@ async function blobError(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-staff-reports',
-  imports: [ListSearchComponent],
+  imports: [ListSearchComponent, DashboardPortalSwitchComponent],
   template: `
+    <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
+    <zed-dashboard-portal-switch [screens]="['reports']" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">Reports</h3>

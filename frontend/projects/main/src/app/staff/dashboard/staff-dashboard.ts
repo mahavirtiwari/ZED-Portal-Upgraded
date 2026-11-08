@@ -8,6 +8,7 @@ import { PortalSystem } from '../../portal-system';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
 import { exportElement } from './export';
+import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
 
 interface Card {
   css: string;
@@ -120,8 +121,11 @@ export const CONSULTANT_TILES = [
  */
 @Component({
   selector: 'zed-staff-dashboard',
-  imports: [StaffAnalytics, NgTemplateOutlet, DatePipe, DecimalPipe],
+  providers: [dashboardSystemProvider(['dash-registered', 'dash-certified'])],
+  imports: [StaffAnalytics, NgTemplateOutlet, DatePipe, DecimalPipe, DashboardPortalSwitchComponent],
   template: `
+    <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
+    <zed-dashboard-portal-switch [screens]="['dash-registered', 'dash-certified']" />
     <div class="dash-export" #exportArea>
     <div class="page-head">
       <div>

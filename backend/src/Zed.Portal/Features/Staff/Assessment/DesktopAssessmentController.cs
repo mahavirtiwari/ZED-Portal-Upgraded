@@ -180,7 +180,7 @@ public sealed class DesktopAssessmentController(
 
         var moved = main.Text("PhotosPath").Length > 0;
         var msme = Pick(main, MsmeFields);
-        if (user.RoleId != (int)UserRole.QC)
+        if (!DashboardScreens.HidesNames(user, host.System))
         {
             foreach (var f in StaffNameFields) msme[f] = Value(main, f);
             msme["AgencyName"] ??= Value(main, "UserName");

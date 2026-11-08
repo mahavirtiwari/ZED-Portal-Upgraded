@@ -5,6 +5,7 @@ import { DashboardApi, ListFilter, Row } from './dashboard.api';
 import { ClientPager } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
+import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 
 /**
  * Financial support per unit (SuperAdmin, CitizenFeedback). Port of Views/Dashboard/FinancialSupport.cshtml.
@@ -12,8 +13,10 @@ import { ListFiltersBar } from './list-controls';
  */
 @Component({
   selector: 'zed-staff-financial-support',
-  imports: [ListFiltersBar, PagerComponent],
+  imports: [ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
   template: `
+    <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
+    <zed-dashboard-portal-switch [screens]="['financial-support']" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">Financial Support</h3>

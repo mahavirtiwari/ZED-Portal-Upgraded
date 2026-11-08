@@ -16,6 +16,9 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
 {
     public static readonly LoginScope None = new(null, [], []);
 
+    /// <summary>An MSME DFO's districts among its states (dbo.Users.ScopeDistricts, migration 0059); empty = every district.</summary>
+    public IReadOnlyList<string> Districts { get; init; } = [];
+
     public const string Manufacturing = "Manufacturing";
     public const string Services = "Services";
 
@@ -79,16 +82,22 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
 }
 
 /// <summary>Reads the scope of a login (dbo.Users, migration 0057), kept for a minute; an edit forgets it at once.</summary>
-public sealed class LoginScopes(ISqlExecutor db, IMemoryCache cache, ILogger<LoginScopes> log)
+public sealed class LoginScopes(ISqlExecutor db, IMemoryCache cache, ILogger<LoginScopes> log, IServiceProvider services)
 {
     private static readonly TimeSpan Keep = TimeSpan.FromMinutes(1);
 
-    internal const string Sql = "SELECT TOP (1) SectorActivity, ScopeLevels, ScopeStates FROM dbo.Users WHERE UserId = @UserId ORDER BY CASE WHEN IsActive = 1 THEN 0 ELSE 1 END;";
+    internal const string Sql = "SELECT TOP (1) SectorActivity, ScopeLevels, ScopeStates, ScopeDistricts FROM dbo.Users WHERE UserId = @UserId ORDER BY CASE WHEN IsActive = 1 THEN 0 ELSE 1 END;";
 
-    private sealed record Row(string? SectorActivity, string? ScopeLevels, string? ScopeStates);
+    private sealed record Row(string? SectorActivity, string? ScopeLevels, string? ScopeStates, string? ScopeDistricts = null);
 
     /// <summary>The roles that can have a scope.</summary>
-    public static bool CanHaveScope(int roleId) => roleId is (int)Zed.Core.Security.UserRole.MasterAdmin or (int)Zed.Core.Security.UserRole.Ministry;
+    public static bool CanHaveScope(int roleId) =>
+        roleId is (int)Zed.Core.Security.UserRole.MasterAdmin or (int)Zed.Core.Security.UserRole.Ministry or (int)Zed.Core.Security.UserRole.SuperAdmin
+            or (int)Zed.Core.Security.UserRole.StateCoordinator;
+
+    /// <summary>Master Admin, Dashboard Admin and MSME DFO: also the plant states.</summary>
+    public static bool HasStateScope(int roleId) =>
+        roleId is (int)Zed.Core.Security.UserRole.MasterAdmin or (int)Zed.Core.Security.UserRole.SuperAdmin or (int)Zed.Core.Security.UserRole.StateCoordinator;
 
     public async Task<LoginScope> ForAsync(string userId, int roleId, CancellationToken ct)
     {
@@ -99,10 +108,17 @@ public sealed class LoginScopes(ISqlExecutor db, IMemoryCache cache, ILogger<Log
         try
         {
             var row = (await db.QuerySqlAsync<Row>(Sql, new { UserId = userId }, ct)).FirstOrDefault();
+            // A Dashboard Admin of main handed over to this portal: its scope is main's (read-only connection).
+            if (row is null && roleId is (int)Zed.Core.Security.UserRole.SuperAdmin or (int)Zed.Core.Security.UserRole.StateCoordinator
+                && Documents.SystemDatabases.Open(services, Zed.Core.Http.PortalSystem.Main) is { } main && !ReferenceEquals(main, db))
+                row = (await main.QuerySqlAsync<Row>(Sql, new { UserId = userId }, ct)).FirstOrDefault();
             scope = row is null ? LoginScope.None : new LoginScope(
                 row.SectorActivity?.Trim() is { Length: > 0 } s ? s : null,
                 LoginScope.Split(row.ScopeLevels),
-                roleId == (int)Zed.Core.Security.UserRole.MasterAdmin ? LoginScope.Split(row.ScopeStates) : []);
+                HasStateScope(roleId) ? LoginScope.Split(row.ScopeStates) : [])
+            {
+                Districts = roleId == (int)Zed.Core.Security.UserRole.StateCoordinator ? LoginScope.Split(row.ScopeDistricts) : [],
+            };
         }
         catch (DbException ex)
         {

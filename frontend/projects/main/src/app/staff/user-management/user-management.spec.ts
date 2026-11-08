@@ -40,13 +40,13 @@ describe('User management', () => {
     const list = {
       types: [
         { roleId: 7, label: 'Master Admin', needsState: false },
-        { roleId: 6, label: 'MSME DFO', needsState: true },
+        { roleId: 6, label: 'MSME DFO', needsState: false, hasScope: true, hasStateScope: true, hasLevels: false, hasDistricts: true, hasNeftLists: true },
       ],
       states: [{ code: '9', name: 'UTTAR PRADESH' }],
       accounts: [{ userId: 'DFO9', userName: 'DFO Lucknow', roleId: 6, email: 'dfo@zed.test', mobileNo: '9999999999', stateCode: '9', isActive: true }],
     };
 
-    it('lists the logins and creates an MSME DFO with its state', async () => {
+    it('lists the logins and creates an MSME DFO with its states, districts and NEFT lists (2026-11-07)', async () => {
       await create(AccountsPage);
       http.expectOne('/api/staff/accounts').flush(list);
       await settle();
@@ -57,20 +57,40 @@ describe('User management', () => {
       await settle();
       expect(el.querySelector('#acc-state')).toBeNull();
       expect([...el.querySelectorAll('.modal .choice-card')].map((c) => c.querySelector('strong')!.textContent)).toEqual(['Master Admin', 'MSME DFO']);
-      expect(el.querySelector('label[for="acc-type-6"]')!.textContent).toContain('One state: its NEFT transactions and reports.');
+      expect(el.querySelector('label[for="acc-type-6"]')!.textContent).toContain('Financial Assistance and Handholding NEFT of its states and districts.');
       (el.querySelector('#acc-type-6') as HTMLInputElement).click();
       await settle();
       expect(el.querySelector('label[for="acc-type-6"]')!.classList).toContain('active');
+      // Category, states, districts and both NEFT lists; no certification levels.
+      expect(el.querySelector('input[name="acc-level-Bronze"]')).toBeNull();
+      expect((el.querySelector('input[name="acc-list-main"]') as HTMLInputElement).checked).toBe(true);
+      expect((el.querySelector('input[name="acc-list-consultancy"]') as HTMLInputElement).checked).toBe(true);
+      expect(el.querySelector('.acc-scope-districts')).toBeNull();
       type('#acc-id', 'DFOUP02');
       type('#acc-name', 'DFO Agra');
       type('#acc-email', 'agra@zed.test');
       type('#acc-mobile', '9876543210');
-      type('#acc-state', '9');
+      // No state yet: refused before any call.
+      submit();
+      await settle();
+      expect(el.querySelector('.modal')!.textContent).toContain("Please choose the MSME DFO's states.");
+      const up = [...el.querySelectorAll('.acc-scope-states label')].find((l) => l.textContent!.trim() === 'UTTAR PRADESH')!;
+      (up.querySelector('input') as HTMLInputElement).click();
+      await settle();
+      http.expectOne((r) => r.url === '/api/staff/accounts/districts' && r.params.get('states') === '9').flush([
+        { stateCode: '9', stateName: 'UTTAR PRADESH', districts: [{ code: '162', name: 'LUCKNOW' }, { code: '164', name: 'KANPUR NAGAR' }] },
+      ]);
+      await settle();
+      const agra = [...el.querySelectorAll('.acc-scope-districts label')].find((l) => l.textContent!.trim() === 'LUCKNOW')!;
+      (agra.querySelector('input') as HTMLInputElement).click();
       await settle();
       submit();
       await settle();
       const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/accounts');
-      expect(post.request.body).toEqual({ userId: 'DFOUP02', roleId: 6, userName: 'DFO Agra', email: 'agra@zed.test', mobileNo: '9876543210', stateCode: '9' });
+      expect(post.request.body).toMatchObject({
+        userId: 'DFOUP02', roleId: 6, userName: 'DFO Agra', email: 'agra@zed.test', mobileNo: '9876543210', stateCode: null,
+        sectorActivity: 'Both', states: ['9'], districts: ['162'], neftLists: ['main', 'consultancy'],
+      });
       post.flush({ message: 'MSME DFO login DFOUP02 created.' });
       await settle();
       http.expectOne('/api/staff/accounts').flush(list);
@@ -127,6 +147,46 @@ describe('User management', () => {
       await settle();
     });
 
+    it('creates one Dashboard Admin with the screens ticked per portal (2026-11-07)', async () => {
+      const dash = {
+        ...list,
+        types: [{ roleId: 10, label: 'Dashboard Admin', needsState: false, hasScope: true, hasStateScope: true, hasScreens: true }],
+        states: [{ code: '9', name: 'UTTAR PRADESH' }],
+        levels: [{ code: 'Bronze', name: 'Bronze' }],
+        screens: [
+          { portal: 'main', portalName: 'ZED Certification', key: 'dash-registered', label: 'ZED Dashboard', group: 'Dashboard tabs', hint: null },
+          { portal: 'main', portalName: 'ZED Certification', key: 'reports', label: 'Reports', group: 'Modules', hint: null },
+          { portal: 'main', portalName: 'ZED Certification', key: 'hide-names', label: 'Hide agency and assessor names', group: 'Privacy', hint: null },
+          { portal: 'consultancy', portalName: 'Handholding', key: 'history', label: 'MSME / Customer History', group: 'Modules', hint: null },
+        ],
+        accounts: [],
+      };
+      await create(AccountsPage);
+      http.expectOne('/api/staff/accounts').flush(dash);
+      await settle();
+      button('+ Add Login').click();
+      await settle();
+      // The only login type: chosen already; the screens by portal, every screen ticked but the privacy option.
+      expect([...el.querySelectorAll('.acc-portal-name')].map((h) => h.textContent)).toEqual(['ZED Certification', 'Handholding']);
+      expect([...el.querySelectorAll('.acc-screen.on')].length).toBe(3);
+      (el.querySelector('input[name="acc-screen-main-reports"]') as HTMLInputElement).click();
+      (el.querySelector('input[name="acc-screen-main-hide-names"]') as HTMLInputElement).click();
+      type('#acc-id', 'DASH01');
+      type('#acc-name', 'Dashboard Desk');
+      type('#acc-email', 'd@zed.test');
+      type('#acc-mobile', '9876543210');
+      await settle();
+      submit();
+      await settle();
+      const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/accounts');
+      expect(post.request.body.roleId).toBe(10);
+      expect(post.request.body.screens).toEqual(['main:dash-registered', 'consultancy:history', 'main:hide-names']);
+      post.flush({ message: 'Dashboard Admin login DASH01 created.' });
+      await settle();
+      http.expectOne('/api/staff/accounts').flush(dash);
+      await settle();
+    });
+
     it('blocks a login after asking and shows refusals', async () => {
       await create(AccountsPage);
       http.expectOne('/api/staff/accounts').flush(list);
@@ -170,7 +230,9 @@ describe('User management', () => {
       button('+ Add Login').click();
       await settle();
       expect((el.querySelector('#acc-type-6') as HTMLInputElement).checked).toBe(true);
-      expect(el.querySelector('#acc-state')).not.toBeNull();
+      // An MSME DFO has states (several), not one state.
+      expect(el.querySelector('#acc-state')).toBeNull();
+      expect(el.querySelector('.acc-scope-states zed-multi-select')).not.toBeNull();
       button('CANCEL').click();
       await settle();
 
@@ -178,7 +240,7 @@ describe('User management', () => {
       await settle();
       expect(el.querySelector('.modal .choice-card')).toBeNull();
       expect(el.querySelector('.acc-type-fixed')!.textContent).toContain('MSME DFO');
-      expect((el.querySelector('#acc-state') as HTMLSelectElement).value).toBe('9');
+      expect(el.querySelector('.acc-scope-states zed-multi-select')).not.toBeNull();
       button('CANCEL').click();
       await settle();
 

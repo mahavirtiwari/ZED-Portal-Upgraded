@@ -151,7 +151,7 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 ```powershell
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
 .\database\setup.ps1          # the three ZED databases and the three referenced ones (05-07); KAWACH comes from the seed below
-# Every migration (0001-0057), in order, on the right databases (safe to re-run):
+# Every migration (0001-0059), in order, on the right databases (safe to re-run):
 .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server localhost\SQLEXPRESS -TrustServerCertificate -Apply -SkipFixes
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql
@@ -281,7 +281,7 @@ the store point at the old portal, so each app needs a new store release.
 - `deploy\Publish-Zed.ps1` builds a release package.
 - `deploy\Install-ZedIis.ps1` installs it, with a dry run first and a rollback file.
 - `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks the installed sites.
-- `deploy\Invoke-ZedDatabaseScripts.ps1` runs `database/migrations` 0001–0057 in order (safe to re-run) and the
+- `deploy\Invoke-ZedDatabaseScripts.ps1` runs `database/migrations` 0001–0059 in order (safe to re-run) and the
   reviewed `database/fixes`.
 
 The hosts refuse to start when a setting is missing outside Development. `/api/health/ready` and `/health/ready` report

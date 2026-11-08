@@ -17,11 +17,27 @@ namespace Zed.Portal.Features.Staff.Reports;
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfiguration config, ILogger<ReportsController> log) : StaffApiController
 {
-    /// <summary>The units of a state (Msme.StateId or the plant's PStateId), for a State Coordinator's reports.</summary>
-    internal const string StateUnitsSql =
-        "SELECT DISTINCT ZedId FROM dbo.Msme WHERE ZedId IS NOT NULL AND (StateId = @State OR PStateId = @State)";
+    /// <summary>The units of an MSME DFO's states, with what its districts and category are checked on.</summary>
+    internal const string AreaUnitsSql =
+        "SELECT ZedId, StateId, PStateId, PLgDistrictCode, PDistrictName, Activity, TwoDigitActivity FROM dbo.Msme " +
+        "WHERE ZedId IS NOT NULL AND (StateId IN @States OR PStateId IN @States)";
 
-    private sealed class ZedRow { public string? ZedId { get; init; } }
+    private sealed class UnitRow
+    {
+        public string? ZedId { get; init; }
+        public int? StateId { get; init; }
+        public int? PStateId { get; init; }
+        public string? PLgDistrictCode { get; init; }
+        public string? PDistrictName { get; init; }
+        public string? Activity { get; init; }
+        public string? TwoDigitActivity { get; init; }
+
+        public IDictionary<string, object?> AsRow() => new Dictionary<string, object?>
+        {
+            ["StateId"] = StateId, ["PStateId"] = PStateId, ["PLgDistrictCode"] = PLgDistrictCode, ["PDistrictName"] = PDistrictName,
+            ["Activity"] = Activity, ["TwoDigitActivity"] = TwoDigitActivity,
+        };
+    }
 
     public sealed record ReportItem(string Id, string Name);
 
@@ -55,10 +71,11 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
         HashSet<string>? units = null;
         if (RoleId == (int)UserRole.StateCoordinator && !Neft.NeftController.SeesAllStates(config, UserId, CurrentUser.StateCode))
         {
-            units = Neft.NeftController.NormaliseState(CurrentUser.StateCode) is { } state
-                ? (await db.QuerySqlAsync<ZedRow>(StateUnitsSql, new { State = int.Parse(state, System.Globalization.CultureInfo.InvariantCulture) }, ct))
-                    .Select(r => r.ZedId!.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase)
-                : [];
+            // Its states, districts and category (2026-11-07).
+            var area = await Neft.CoordinatorAreas.ForAsync(HttpContext, config, db, CurrentUser, ct);
+            units = area.States.Count == 0 ? []
+                : (await db.QuerySqlAsync<UnitRow>(AreaUnitsSql, new { States = area.States.Select(st => int.Parse(st, System.Globalization.CultureInfo.InvariantCulture)).ToArray() }, ct))
+                    .Where(u => area.Contains(u.AsRow())).Select(u => u.ZedId!.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
         var sheets = new List<XlsxSheet>();

@@ -15,6 +15,8 @@ export interface CurrentUser {
   subRoles?: string[];
   /** The NEFT Admin (MSME DFO of every state): its NEFT pages switch between financial assistance and TU (2026-11-07). */
   isNeftAdmin?: boolean;
+  /** A Dashboard Admin's ticked screens, "{portal}:{key}" (2026-11-07); null/absent = every screen. */
+  screens?: string[] | null;
   /** A sub-user working as the owner above (userId, userName and role are the owner's): its own ID and name. */
   actingUserId?: string | null;
   actingUserName?: string | null;

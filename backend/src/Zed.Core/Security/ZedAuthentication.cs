@@ -37,6 +37,8 @@ public static class ZedClaims
     public const string SessionStampSource = "zed:stamp_db";
     /// <summary>A sub-user's own stamp (its password and permissions, SubUserStore.SessionStamp), checked by SubUserAccessFilter.</summary>
     public const string ActingStamp = "zed:acting_stamp";
+    /// <summary>A Dashboard Admin's ticked screens (dbo.Users.ScreenAccess, <see cref="DashboardScreens"/>); absent = every screen.</summary>
+    public const string Screens = "zed:screens";
 }
 
 /// <summary>
@@ -55,7 +57,7 @@ public sealed record ZedUser(
     string UserId, string UserName, int RoleId, string? Email, string? MobileNo,
     string? StateCode, string? DistrictCode, string? UnitName = null, IReadOnlyList<string>? SubRoles = null,
     string? ActingUserId = null, string? ActingUserName = null, IReadOnlyList<string>? PermissionRoutes = null,
-    string? ActingStamp = null)
+    string? ActingStamp = null, string? Screens = null)
 {
     public bool HasSubRole(string subRole) => SubRoles?.Contains(subRole) == true;
 
@@ -87,6 +89,8 @@ public sealed record ZedUser(
         Add(ZedClaims.ActingUserName, ActingUserName);
         foreach (var route in PermissionRoutes ?? []) claims.Add(new Claim(ZedClaims.PermissionRoute, route));
         Add(ZedClaims.ActingStamp, ActingStamp);
+        // Kept even when empty: "" = no screen ticked, absent = every screen.
+        if (Screens is not null) claims.Add(new Claim(ZedClaims.Screens, Screens));
         return new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
     }
 
@@ -102,7 +106,7 @@ public sealed record ZedUser(
             principal.FindAll(ZedClaims.SubRole).Select(c => c.Value).ToList(),
             Get(ZedClaims.ActingUserId), Get(ZedClaims.ActingUserName),
             Get(ZedClaims.ActingUserId) is null ? null : principal.FindAll(ZedClaims.PermissionRoute).Select(c => c.Value).ToList(),
-            Get(ZedClaims.ActingStamp));
+            Get(ZedClaims.ActingStamp), principal.FindFirst(ZedClaims.Screens)?.Value);
     }
 }
 

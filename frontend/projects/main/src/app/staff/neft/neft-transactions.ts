@@ -8,7 +8,7 @@ import { NeftApi, NeftList, NeftTransaction } from './neft.api';
 import { TuApi } from '../consultancy/technology/tu.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
-import { AdminPortalService, NEFT_PORTALS, PORTAL_API_BASE, PortalSwitchComponent } from '../admin-portal';
+import { AdminPortalService, NEFT_PORTALS, PORTAL_API_BASE, PortalSwitchComponent, neftPortals } from '../admin-portal';
 
 interface ApprovalForm {
   transaction: NeftTransaction;
@@ -59,10 +59,13 @@ export class NeftTransactionsPage {
    */
   private readonly portals = inject(AdminPortalService);
   /** The NEFT Admin on the main portal (2026-11-07): one login for financial assistance and Technology Upgradation. */
-  protected readonly neftAdmin = inject(STAFF_SYSTEM) === 'main' && !!inject(AuthService).currentUser()?.isNeftAdmin;
-  protected readonly neftPortals = NEFT_PORTALS;
+  private readonly myNeftPortals = inject(STAFF_SYSTEM) === 'main' ? neftPortals(inject(AuthService).currentUser()) : null;
+  /** The NEFT Admin, or an MSME DFO with the Handholding list: one login, a switch between the two (2026-11-07). */
+  protected readonly neftAdmin = !!this.myNeftPortals?.includes('consultancy');
+  protected readonly allStates = !!inject(AuthService).currentUser()?.isNeftAdmin;
+  protected readonly neftPortals = this.myNeftPortals ?? NEFT_PORTALS;
   protected readonly neftLabels = { main: 'Financial Assistance', consultancy: 'Technology Upgradation' };
-  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy' || (this.neftAdmin && this.portals.effective(NEFT_PORTALS) === 'consultancy');
+  protected readonly consultancy = inject(STAFF_SYSTEM) === 'consultancy' || (this.neftAdmin && this.portals.effective(this.neftPortals) === 'consultancy');
 
   protected tuLink(t: NeftTransaction): string[] {
     return ['/staff/consultancy/technology/verification', t.ZedId, t.CertificationType ?? ''];

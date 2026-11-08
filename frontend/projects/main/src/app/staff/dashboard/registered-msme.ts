@@ -12,6 +12,7 @@ import { PORTAL_SYSTEM } from '../../portal-system';
 import { PORTAL_LABELS } from '../../portal-labels';
 import { staffProfileLink } from '../msme-profile/msme-profile';
 import { PagerComponent, ServerPager } from '../pager';
+import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -20,7 +21,8 @@ import { PagerComponent, ServerPager } from '../pager';
  */
 @Component({
   selector: 'zed-staff-registered-msme',
-  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent],
+  providers: [dashboardSystemProvider(['registered-msme'])],
+  imports: [FormsModule, DatePipe, RouterLink, ListFiltersBar, PagerComponent, DashboardPortalSwitchComponent],
   templateUrl: './registered-msme.html',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }

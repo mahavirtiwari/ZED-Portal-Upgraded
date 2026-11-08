@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
 
 export interface HistoryRow {
   Source_DB: string | null;
@@ -83,7 +84,7 @@ export function buildTimeline(rows: HistoryRow[]): TimelineGroup[] {
  */
 @Component({
   selector: 'zed-staff-zed-history',
-  imports: [FormsModule, DatePipe, LowerCasePipe],
+  imports: [FormsModule, DatePipe, LowerCasePipe, DashboardPortalSwitchComponent],
   templateUrl: './zed-history.html',
   styleUrl: './zed-history.css',
 })

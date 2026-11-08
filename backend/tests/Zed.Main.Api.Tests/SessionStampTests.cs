@@ -92,7 +92,7 @@ public sealed class SessionStampTests : IDisposable
         {
             () => admin.PostAsync("/api/staff/accounts/DFO9/block", null),
             () => admin.PostAsync("/api/staff/accounts/DFO9/unblock", null),
-            () => admin.PutAsJsonAsync("/api/staff/accounts/DFO9", new { userName = "DFO Kanpur", email = "dfo@zed.test", mobileNo = "9876543210", stateCode = "9" }),
+            () => admin.PutAsJsonAsync("/api/staff/accounts/DFO9", new { userName = "DFO Kanpur", email = "dfo@zed.test", mobileNo = "9876543210", sectorActivity = "Both", states = new[] { "9" }, neftLists = new[] { "main" } }),
             () => admin.PostAsync("/api/staff/accounts/DFO9/reset-password", null),
         })
         {
