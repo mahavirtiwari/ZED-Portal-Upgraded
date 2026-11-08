@@ -4,6 +4,7 @@ import { AuthService, ClientConfigService } from '@zed/shared';
 import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
 import { Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
+import { onStates } from '../../msme/shared/states';
 
 /**
  * The system this build serves (PORTAL_SYSTEM), injectable so the assessment and monitoring pages can be tested
@@ -16,16 +17,9 @@ export function milestoneReportUrl(zedId: string, certification: string, milesto
   return withApiBase(`/api/staff/certification-documents/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}/report?milestone=${milestone}`);
 }
 
-/** State filter of the old list pages (LG state codes). */
-export const STATES: readonly (readonly [code: string, name: string])[] = [
-  ['35', 'ANDAMAN AND NICOBAR ISLANDS'], ['28', 'ANDHRA PRADESH'], ['12', 'ARUNACHAL PRADESH'], ['18', 'ASSAM'], ['10', 'BIHAR'],
-  ['4', 'CHANDIGARH'], ['22', 'CHHATTISGARH'], ['7', 'DELHI'], ['30', 'GOA'], ['24', 'GUJARAT'], ['6', 'HARYANA'],
-  ['2', 'HIMACHAL PRADESH'], ['1', 'JAMMU AND KASHMIR'], ['20', 'JHARKHAND'], ['29', 'KARNATAKA'], ['32', 'KERALA'], ['37', 'LADAKH'],
-  ['31', 'LAKSHADWEEP'], ['23', 'MADHYA PRADESH'], ['27', 'MAHARASHTRA'], ['14', 'MANIPUR'], ['17', 'MEGHALAYA'], ['15', 'MIZORAM'],
-  ['13', 'NAGALAND'], ['21', 'ODISHA'], ['34', 'PUDUCHERRY'], ['3', 'PUNJAB'], ['8', 'RAJASTHAN'], ['11', 'SIKKIM'], ['33', 'TAMIL NADU'],
-  ['36', 'TELANGANA'], ['38', 'THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU'], ['16', 'TRIPURA'], ['9', 'UTTAR PRADESH'],
-  ['5', 'UTTARAKHAND'], ['19', 'WEST BENGAL'],
-];
+/** State filter of the old list pages (LG state codes): the LG Directory masters (2026-11-08). */
+export const STATES: (readonly [code: string, name: string])[] = [];
+onStates((list) => STATES.splice(0, STATES.length, ...list.map((s) => [s.code, s.name] as const)));
 
 
 /** Text of a column ('' when empty). */

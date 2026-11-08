@@ -373,6 +373,8 @@ public sealed partial class ConsultancySAController(
             response.siteTourSections = sections.Select((t, i) => SiteTourSectionInfo.Of(t, i + 1, counts[t.Id])).ToList();
         }
         else response.siteTourSections = [];
+        // Handholding uses main's questionnaire, and so its videos.
+        await AppRequirementVideos.FillAsync(db, "ZEDCS_V2_LIVE.dbo", certification, response.allottedParameters, null, ct);
         return new UnitAnswer(response, null);
     }
 

@@ -55,6 +55,9 @@ public sealed class StaffAgenciesController(
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = ((int)UserRole.Agency).ToString() }, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
         var levels = host.IsConsultancy() ? new Dictionary<string, AgencyLevels.Row>() : await AgencyLevels.ListAsync(db, log, ct);
+        IReadOnlyList<AgencyLevels.Level> addedLevels = [];
+        var addedByUser = new Dictionary<string, Dictionary<string, AgencyLevels.AddedRow>>(StringComparer.OrdinalIgnoreCase);
+        if (!host.IsConsultancy()) (addedLevels, addedByUser) = await AgencyLevels.AddedAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
@@ -72,6 +75,24 @@ public sealed class StaffAgenciesController(
                 {
                     ["Bronze"] = l?.ReasonForRejectionForBA, ["Silver"] = l?.ReasonForBlockSilver, ["Gold"] = l?.ReasonForBlockGold, ["ZEDX"] = l?.ReasonForBlockZedx,
                 };
+                // Every level, the added ones too (2026-11-08, generic levels): code, name, allowed, reason.
+                var own = addedByUser.GetValueOrDefault(r.Text("UserId").Trim());
+                var reasons = (Dictionary<string, string?>)row["LevelReasons"]!;
+                List<AgencyLevels.AgencyLevel> all =
+                [
+                    new("Bronze", AgencyLevels.All[0].Name, StaffUserRules.Bool(r, "AllowBronzeAssessments"), l?.ReasonForRejectionForBA),
+                    new("Silver", AgencyLevels.All[1].Name, l?.AllowSilverAssessments != false, l?.ReasonForBlockSilver),
+                    new("Gold", AgencyLevels.All[2].Name, l?.AllowGoldAssessments != false, l?.ReasonForBlockGold),
+                    new("ZEDX", AgencyLevels.All[3].Name, l?.AllowZedxAssessments != false, l?.ReasonForBlockZedx),
+                ];
+                foreach (var level in addedLevels)
+                {
+                    var v = own?.GetValueOrDefault(level.Code);
+                    row[level.Column!] = v?.Allow != false;
+                    reasons[level.Code] = v?.Reason;
+                    all.Add(new(level.Code, level.Name, v?.Allow != false, v?.Reason));
+                }
+                row["Levels"] = all;
             }
             return row;
         }).ToList();

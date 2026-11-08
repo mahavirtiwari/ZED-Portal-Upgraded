@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { FaApi, FaCounts, FaFilter, FaStatus, FaSubmission, UserOption } from './fa.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { levelCodes, levelName } from '../../msme/shared/levels';
 
 type Dialog =
   | { kind: 'allot'; row: FaSubmission; options: UserOption[]; choice: string }
@@ -70,14 +71,16 @@ export class FaSubmissionsPage {
   protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
   protected readonly counts = signal<FaCounts>(NO_COUNTS);
   /** Filters (2026-11-08): level, agency (master admin) and registered-on dates; the tab counts follow them. */
-  protected readonly levels = ['Bronze', 'Silver', 'Gold'];
+  /** Every level of Administration → Certification Levels (the Admin's too, 2026-11-08). */
+  protected readonly levels = computed(() => levelCodes());
+  protected readonly levelName = levelName;
   protected readonly filter = signal<FaFilter>(NO_FILTER);
   protected readonly agencyOptions = signal<UserOption[]>([]);
   protected readonly filtering = computed(() => Object.values(this.filter()).some((v) => !!v));
   protected readonly filterSummary = computed(() => {
     const f = this.filter();
     const agency = this.agencyOptions().find((a) => a.userId === f.agency)?.userName ?? f.agency;
-    return [f.level, agency, f.from || f.to ? `registered ${f.from || '…'} to ${f.to || '…'}` : ''].filter((x) => !!x).join(' · ');
+    return [levelName(f.level), agency, f.from || f.to ? `registered ${f.from || '…'} to ${f.to || '…'}` : ''].filter((x) => !!x).join(' · ');
   });
   protected readonly loading = signal(false);
   protected readonly error = signal('');

@@ -259,7 +259,7 @@
               <div class="col-sm-12" [attr.data-requirement]="t(r, 'RequirementId')">
                 <div class="panel panel-default m-0">
                   <div class="panel-body border-left" style="position: relative">
-                    <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div>
+                    <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div><zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" />
                     <div class="label-highlight3">
                       @for (op of optionsOf(r); track $index) {
                         <div>{{ t(op, 'OptionName') }}<ul>@for (so of subOptionsOf(op); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>

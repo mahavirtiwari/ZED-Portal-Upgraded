@@ -1,5 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Http;
 
@@ -29,14 +30,24 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
     /// so the surveillance types are accepted and mapped the same way (SP_ASSESSMENT_SA_DETAILS has no
     /// surveillance branch of its own).
     /// </summary>
-    internal static readonly IReadOnlyDictionary<string, string> CertificationTypes =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    /// 2026-11-08: every site level of Administration → Certification Levels (Silver, Gold, ZED-X and the site levels the Admin added).
+    internal static IReadOnlyDictionary<string, string> CertificationTypes
+    {
+        get
         {
-            ["Silver"] = "Silver", ["Gold"] = "Gold", ["ZEDX"] = "ZEDX",
-            ["SilverSurveillance"] = "Silver", ["GoldSurveillance"] = "Gold", ["ZEDXSurveillance"] = "ZEDX",
-            ["SilverMilestone1"] = "SilverMilestone1", ["SilverMilestone2"] = "SilverMilestone2", ["SilverMilestone3"] = "SilverMilestone3",
-            ["GoldMilestone1"] = "GoldMilestone1", ["GoldMilestone2"] = "GoldMilestone2", ["GoldMilestone3"] = "GoldMilestone3",
-        };
+            var types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["SilverMilestone1"] = "SilverMilestone1", ["SilverMilestone2"] = "SilverMilestone2", ["SilverMilestone3"] = "SilverMilestone3",
+                ["GoldMilestone1"] = "GoldMilestone1", ["GoldMilestone2"] = "GoldMilestone2", ["GoldMilestone3"] = "GoldMilestone3",
+            };
+            foreach (var level in Zed.Core.Data.LevelRegistry.Codes.Where(c => !Zed.Core.Data.LevelRegistry.IsDesktop(c)))
+            {
+                types[level] = level;
+                types[level + "Surveillance"] = level;
+            }
+            return types;
+        }
+    }
 
     // ----- columns the page shows (the legacy actions sent every result set with SELECT * rows:
     // assessor and agency names and IDs, meeting participants, attendance, latitude/longitude, ...) -----
@@ -109,7 +120,11 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
         IReadOnlyList<Evidence> Evidences,
         IReadOnlyList<Photo> Photos,
         IReadOnlyList<Photo> SurveillancePhotos,
-        Bullets? Bullets);
+        Bullets? Bullets)
+    {
+        /// <summary>The Admin's video for the requirement (2026-11-08).</summary>
+        public string? VideoUrl { get; init; }
+    }
 
     public sealed record Section(
         string? SectionCode, string? SectionName, string? IButton, string? IsAssessmentExcempted, int? NcCount,
@@ -150,9 +165,19 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
             return Problem(title: "No site assessment details are available for this certification yet.", statusCode: StatusCodes.Status404NotFound);
 
         var milestone = type.Contains("Milestone", StringComparison.Ordinal);
-        return milestone
+        var response = milestone
             ? Milestone(type, zedId, msme, assessment, da, sa)
             : Assessment(type, zedId, msme, assessment, da, sa);
+        // The Admin's requirement videos (2026-11-08; handholding uses this questionnaire too).
+        var level = type.Split("Milestone")[0].Replace("Surveillance", "", StringComparison.Ordinal);
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, null, ct);
+        return videos.Count == 0 ? response : response with
+        {
+            Sections = response.Sections.Select(s => s with
+            {
+                Requirements = s.Requirements.Select(q => q with { VideoUrl = videos.For(s.SectionCode, q.RequirementCode) }).ToList(),
+            }).ToList(),
+        };
     }
 
     /// <summary>Silver/Gold: tabs Basic Info, Site Tour, Parameters.</summary>

@@ -18,8 +18,8 @@ namespace Zed.Portal.Features.Staff.Dashboard;
 [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin, UserRole.Admin, UserRole.Ministry, UserRole.Agency, UserRole.DesktopAssessor,
     UserRole.CitizenFeedback, UserRole.QC)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, IOptions<PortalOptions> portal, IHostEnvironment env)
-    : StaffApiController
+public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, IOptions<PortalOptions> portal, IHostEnvironment env,
+    ILogger<StaffDashboardController> log) : StaffApiController
 {
     /// <summary>Columns shown on the four cards of Views/Dashboard/Index.cshtml.</summary>
     public static readonly string[] SummaryColumns =
@@ -110,7 +110,62 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         string View, AnalyticsTotals Totals, IReadOnlyList<CountItem> Sizes, IReadOnlyList<CountItem> Genders,
         IReadOnlyList<CountItem> SocialCategories, IReadOnlyList<TrendItem> Months, IReadOnlyList<CountItem> States,
         IReadOnlyList<CountItem> Districts, IReadOnlyList<CountItem> Activities, IReadOnlyList<string> DistrictOptions,
-        string? BoundState, DateTimeOffset GeneratedAt, Dictionary<string, object?> StatusCards, IReadOnlyList<TrendItem> Years);
+        string? BoundState, DateTimeOffset GeneratedAt, Dictionary<string, object?> StatusCards, IReadOnlyList<TrendItem> Years)
+    {
+        /// <summary>
+        /// 2026-11-08 (generic levels): the levels the Admin added (not Bronze, Silver, Gold or ZED-X, which have their fields
+        /// above), counted on the main portal over all their applications (an agency or assessor: its own allotments); the
+        /// other filters do not apply to them.
+        /// </summary>
+        public IReadOnlyList<LevelCount> OtherLevels { get; init; } = [];
+    }
+
+    /// <param name="Total">Applications (certification rows) of the level.</param>
+    /// <param name="Pending">Neither certified nor rejected, without an open NC.</param>
+    /// <param name="NcRaised">An NC open (status 4 or 14).</param>
+    /// <param name="Certified">Certified (16; a desktop level 6 with its certificate number).</param>
+    /// <param name="Rejected">Rejected (99, or the legacy rejection's ZedId_D rows).</param>
+    public sealed record LevelCount(string Code, string Name, int Total, int Pending, int NcRaised, int Certified, int Rejected);
+
+    public sealed class LevelCountRow
+    {
+        public string? Code { get; init; }
+        public int Total { get; init; }
+        public int NcRaised { get; init; }
+        public int Certified { get; init; }
+        public int Rejected { get; init; }
+    }
+
+    /// <summary>Counts of the levels beyond the built-in four (<see cref="AnalyticsResponse.OtherLevels"/>).</summary>
+    internal const string OtherLevelsSql =
+        "SELECT LTRIM(RTRIM(Certification)) AS Code, COUNT(*) AS Total, " +
+        "SUM(CASE WHEN CertificationStatus IN (4, 14) AND ZedId NOT LIKE '%[_]D%' THEN 1 ELSE 0 END) AS NcRaised, " +
+        "SUM(CASE WHEN ZedId NOT LIKE '%[_]D%' AND (CertificationStatus = 16 OR (CertificationStatus = 6 AND DaCertificateNo IS NOT NULL)) THEN 1 ELSE 0 END) AS Certified, " +
+        "SUM(CASE WHEN CertificationStatus = 99 OR ZedId LIKE '%[_]D%' THEN 1 ELSE 0 END) AS Rejected " +
+        "FROM dbo.MsmeCertifications WHERE Certification NOT IN ('Bronze', 'Silver', 'Gold', 'ZEDX') " +
+        "AND (@OwnUserId IS NULL OR CertificationBodyUserId = @OwnUserId OR DesktopAssessorId = @OwnUserId) GROUP BY LTRIM(RTRIM(Certification));";
+
+    private async Task<IReadOnlyList<LevelCount>> OtherLevelsAsync(bool ownOnly, CancellationToken ct)
+    {
+        var added = LevelRegistry.All.Where(l => !Zed.Portal.Features.CertLevels.CertificationLevelsController.IsBuiltIn(l.Code)).ToList();
+        if (host.System != PortalSystem.Main || added.Count == 0) return [];
+        IReadOnlyList<LevelCountRow> rows;
+        try { rows = await db.QuerySqlAsync<LevelCountRow>(OtherLevelsSql, new { OwnUserId = ownOnly ? UserId : null }, ct); }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Counts of the added levels not read");
+            rows = [];
+        }
+        return added.Select(l =>
+        {
+            var r = rows.FirstOrDefault(x => string.Equals(x.Code, l.Code, StringComparison.OrdinalIgnoreCase));
+            var total = r?.Total ?? 0;
+            var nc = r?.NcRaised ?? 0;
+            var certified = r?.Certified ?? 0;
+            var rejected = r?.Rejected ?? 0;
+            return new LevelCount(l.Code, l.Name, total, Math.Max(0, total - nc - certified - rejected), nc, certified, rejected);
+        }).ToList();
+    }
 
     /// <summary>The status cards of the ZED Certification tab, with the filters (the main cards without Financial Assistance).</summary>
     public static readonly string[] StatusCardColumns =
@@ -207,7 +262,10 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
                 DashboardFilters.Int(totals, "Zedx")),
             Items(sets[1]), Items(sets[2]), Items(sets[3]), Trend(sets[4], "Month"), Items(sets[5]), Items(sets[6]), Items(sets[7]),
             sets[8].Select(r => r.Text("Label") ?? "").Where(l => l.Length > 0).ToList(),
-            bound, DateTimeOffset.Now, DashboardFilters.Pick(sets[9].FirstOrDefault(), CardColumns), Trend(sets[10], "Year"));
+            bound, DateTimeOffset.Now, DashboardFilters.Pick(sets[9].FirstOrDefault(), CardColumns), Trend(sets[10], "Year"))
+        {
+            OtherLevels = await OtherLevelsAsync(ownOnly, ct),
+        };
         cache.Set(key, result, AnalyticsCacheTime);
         return result;
     }

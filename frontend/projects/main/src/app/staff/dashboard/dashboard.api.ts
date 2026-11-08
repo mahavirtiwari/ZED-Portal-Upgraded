@@ -72,6 +72,11 @@ export interface Analytics {
   /** A state-bound Ministry user's state: the State filter is fixed to it. */
   boundState: string | null;
   generatedAt: string;
+  /**
+   * 2026-11-08: the levels the Admin added (not Bronze / Silver / Gold / ZED-X), all their applications (main portal; an agency
+   * or assessor: its own allotments). Drawn as status cards like ZED-X's.
+   */
+  otherLevels?: { code: string; name: string | null; total: number; pending: number; ncRaised: number; certified: number; rejected: number }[];
   /** The status cards (BronzeTotal, SaSilverPending, ...) with the filters; dates are application dates. */
   statusCards: Row;
 }

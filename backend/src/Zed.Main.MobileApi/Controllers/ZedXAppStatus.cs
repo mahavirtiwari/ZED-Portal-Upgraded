@@ -8,6 +8,7 @@ namespace Zed.Main.MobileApi.Controllers;
 /// return fixed columns for Bronze, Silver and Gold; these are ZED-X's under the same names (ZEDXStatus, ZEDXStatusOfNc,
 /// ZEDXStatusOfNc1..5, Nc1StatusTextZEDX..Nc5, ZEDXSelfieStatus), computed as the procedure computes Gold's: 4 certified
 /// (status &gt; 15), 3 site assessment (&gt; 8), 2 submitted (&gt;= 2), 1 paid (Msme.IsZEDXPaymentDone), 0 otherwise.
+/// 2026-11-08 (generic levels): every other V4 level (Zed.Core.Data.LevelRegistry) the same way under its own code.
 /// </summary>
 internal static class ZedXAppStatus
 {
@@ -46,8 +47,82 @@ internal static class ZedXAppStatus
         }
     }
 
-    /// <summary>Adds ZED-X's columns to a status row of SP_APP_MSME_STATUS (left as it is when they cannot be read).</summary>
+    /// <summary>
+    /// Adds ZED-X's columns to a status row of SP_APP_MSME_STATUS (left as it is when they cannot be read), and since
+    /// 2026-11-08 those of every other V4 level (the levels the Admin added) under the same names ({Code}Status, ...).
+    /// </summary>
     public static async Task MergeAsync(ISqlExecutor db, string? zedId, IDictionary<string, object?> row, ILogger log, CancellationToken ct)
+    {
+        await MergeZedXAsync(db, zedId, row, log, ct);
+        foreach (var level in LevelRegistry.V4Codes.Where(c => c != Level))
+            await MergeLevelAsync(db, zedId, level, row, log, ct);
+    }
+
+    /// <summary>The columns of a V4 level other than ZED-X, under fixed names (the level's code is letters and digits).</summary>
+    public sealed record LevelRow(string? Code, int Status, int StatusOfNc, int StatusOfNc1, int StatusOfNc2, int StatusOfNc3, int StatusOfNc4,
+        int StatusOfNc5, int SelfieStatus, string? Nc1StatusText, string? Nc2StatusText, string? Nc3StatusText, string? Nc4StatusText,
+        string? Nc5StatusText, string? CertificatePath);
+
+    /// <summary>
+    /// The same as <see cref="Sql"/> for another V4 level: a site level as Gold (4 certified, 3 site assessment, 2 submitted,
+    /// 1 paid), a desktop level as Bronze (3 certified or rejected, 2 submitted, 1 paid); certificate as My Documents lists it.
+    /// </summary>
+    internal static string LevelSql(string level)
+    {
+        var desktop = LevelRegistry.IsDesktop(level);
+        string NcTextOf(int n) =>
+            $"(SELECT TOP 1 h.Descrip FROM dbo.MsmeHistory h WHERE h.ZedId = m.ZedId AND h.StatusType IN ('Nc{n}Raised', 'Nc{n}Submitted') " +
+            $"AND h.CertificationType = @Level ORDER BY h.Id DESC) AS Nc{n}StatusText";
+        return "SELECT @Level AS Code, " +
+            (desktop
+                ? "CASE WHEN c.CertificationStatus >= 6 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 "
+                : "CASE WHEN c.CertificationStatus > 15 THEN 4 WHEN c.CertificationStatus > 8 THEN 3 WHEN c.CertificationStatus >= 2 THEN 2 ") +
+            $"WHEN m.[Is{level}PaymentDone] = 1 THEN 1 ELSE 0 END AS Status, ISNULL(c.NcCount, 0) AS StatusOfNc, " +
+            "ISNULL(c.Nc1Status, 0) AS StatusOfNc1, ISNULL(c.Nc2Status, 0) AS StatusOfNc2, ISNULL(c.Nc3Status, 0) AS StatusOfNc3, " +
+            "ISNULL(c.Nc4Status, 0) AS StatusOfNc4, ISNULL(c.Nc5Status, 0) AS StatusOfNc5, ISNULL(c.IsSaSelfieSubmitted, 0) AS SelfieStatus, " +
+            string.Join(", ", Enumerable.Range(1, 5).Select(NcTextOf)) + ", " +
+            (desktop
+                ? $"CASE WHEN c.CertificationStatus = 6 AND c.DaCertificateNo IS NOT NULL THEN 'Certificates/DA/' + m.ZedId + '/{level}.pdf' END AS CertificatePath "
+                : $"CASE WHEN c.CertificationStatus = 16 AND c.SaCertificateNo IS NOT NULL THEN 'Certificates/SA/' + m.ZedId + '/{level}.pdf' END AS CertificatePath ") +
+            "FROM dbo.Msme m LEFT JOIN dbo.MsmeCertifications c ON c.ZedId = m.ZedId AND c.Certification = @Level WHERE m.ZedId = @ZedId;";
+    }
+
+    /// <summary>Another V4 level's row for the unit, or null (unknown unit, or its column not added yet).</summary>
+    public static async Task<LevelRow?> ReadLevelAsync(ISqlExecutor db, string? zedId, string level, ILogger log, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(zedId) || !LevelRegistry.IsV4(level)) return null;
+        try
+        {
+            return (await db.QuerySqlAsync<LevelRow>(LevelSql(LevelRegistry.Canonical(level)!), new { ZedId = zedId, Level = LevelRegistry.Canonical(level) }, ct))
+                .FirstOrDefault();
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "{Level} app status not read for {ZedId} (is its column there yet?)", level, zedId);
+            return null;
+        }
+    }
+
+    private static async Task MergeLevelAsync(ISqlExecutor db, string? zedId, string level, IDictionary<string, object?> row, ILogger log, CancellationToken ct)
+    {
+        if (await ReadLevelAsync(db, zedId, level, log, ct) is not { } r) return;
+        row[level + "Status"] = r.Status;
+        row[level + "StatusOfNc"] = r.StatusOfNc;
+        row[level + "StatusOfNc1"] = r.StatusOfNc1;
+        row[level + "StatusOfNc2"] = r.StatusOfNc2;
+        row[level + "StatusOfNc3"] = r.StatusOfNc3;
+        row[level + "StatusOfNc4"] = r.StatusOfNc4;
+        row[level + "StatusOfNc5"] = r.StatusOfNc5;
+        row[level + "SelfieStatus"] = r.SelfieStatus;
+        row["Nc1StatusText" + level] = r.Nc1StatusText;
+        row["Nc2StatusText" + level] = r.Nc2StatusText;
+        row["Nc3StatusText" + level] = r.Nc3StatusText;
+        row["Nc4StatusText" + level] = r.Nc4StatusText;
+        row["Nc5StatusText" + level] = r.Nc5StatusText;
+        row[level + "CertificatePath"] = r.CertificatePath;
+    }
+
+    private static async Task MergeZedXAsync(ISqlExecutor db, string? zedId, IDictionary<string, object?> row, ILogger log, CancellationToken ct)
     {
         if (await ReadAsync(db, zedId, log, ct) is not { } r) return;
         row["ZEDXStatus"] = r.ZEDXStatus;
@@ -74,5 +149,8 @@ internal static class ZedXAppStatus
     {
         if (certificates is null) return;
         certificates["ZEDX"] = (await ReadAsync(db, zedId, log, ct))?.ZEDXCertificatePath;
+        // 2026-11-08: every other V4 level's certificate too, under its code.
+        foreach (var level in LevelRegistry.V4Codes.Where(c => c != Level))
+            certificates[level] = (await ReadLevelAsync(db, zedId, level, log, ct))?.CertificatePath;
     }
 }

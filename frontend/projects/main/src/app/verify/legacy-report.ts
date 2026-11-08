@@ -2,6 +2,7 @@ import { Component, InjectionToken, OnInit, inject, input, signal } from '@angul
 import { Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { PORTAL_API_BASE } from '../staff/admin-portal';
+import { canonicalLevelCode } from '../msme/shared/levels';
 
 /** Leaves the Angular app for a file address (replaced in tests). */
 export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', {
@@ -9,7 +10,11 @@ export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', 
   factory: () => (url: string) => location.replace(url),
 });
 
-const LEVELS = ['Bronze', 'Silver', 'Gold'];
+/** The old e-mails' levels; 2026-11-08: every level of Administration → Certification Levels (consultancy: Silver and Gold). */
+const levelOf = (value: string, system: LegacyReportSystem): string | undefined => {
+  const code = canonicalLevelCode(value) ?? undefined;
+  return system === 'consultancy' && code !== 'Silver' && code !== 'Gold' && code !== 'Bronze' ? undefined : code;
+};
 const MSME_ROLE = 5;
 
 /** Which application's report page the old link named (route data `system`). */
@@ -55,9 +60,9 @@ export class LegacyReportRedirect implements OnInit {
   }
 
   private async go(): Promise<void> {
-    const level = LEVELS.find((l) => l.toLowerCase() === this.certification().trim().toLowerCase());
-    const id = this.id().trim();
     const system = this.system() ?? 'main';
+    const level = levelOf(this.certification().trim(), system);
+    const id = this.id().trim();
     const milestone = String(this.milestone() ?? '').trim();
     const milestoneOk = system !== 'consultancy' || (/^[1-3]$/.test(milestone) && level !== 'Bronze');
     if (!level || !/^[A-Za-z0-9_]{1,50}$/.test(id) || !milestoneOk) {

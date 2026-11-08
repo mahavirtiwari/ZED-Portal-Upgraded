@@ -28,6 +28,8 @@ interface EmailTemplateDetails {
   bodyHtml: string;
   /** The body is the standard e-mail (nothing of the Admin's saved). */
   standardBody: boolean;
+  /** Database mails: the procedure's last mail (2026-11-08), what {{StandardBody}} looks like. */
+  example?: { subject: string | null; bodyHtml: string | null; createdAt: string | null } | null;
 }
 
 interface Editing {
@@ -36,6 +38,7 @@ interface Editing {
   subject: string;
   body: string;
   standardBody: boolean;
+  example?: EmailTemplateDetails['example'];
 }
 
 /** A {{Field}} as the server reads it (EmailPlaceholders in Zed.Core): spaces allowed inside the braces. */
@@ -257,6 +260,13 @@ const standardBodySample =
                     <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
                   </div>
                   <small class="muted d-block mt-1">Fields shown with sample values: [Name] stands for the unit's value.</small>
+                  @if (e.item.database) {
+                    <small class="muted d-block" data-db-example>
+                      @if (e.example?.createdAt) { {{ braces('StandardBody') }} shows the procedure's last mail, of {{ e.example!.createdAt | date: 'dd-MM-yyyy HH:mm' }}. }
+                      @else { This procedure has sent no mail yet, so {{ braces('StandardBody') }} is shown as a box. }
+                      {{ braces('To') }} is the recipient and {{ braces('ZedId') }} the ZED ID the mail names.
+                    </small>
+                  }
                 </div>
               </div>
               @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
@@ -399,7 +409,9 @@ export class EmailTemplatesPage {
    * is sandboxed.
    */
   protected readonly previewHtml = computed<SafeHtml>(() =>
-    this.sanitizer.bypassSecurityTrustHtml(fillSampleFields(this.preview(), this.baseUrl, { StandardBody: standardBodySample })),
+    this.sanitizer.bypassSecurityTrustHtml(
+      fillSampleFields(this.preview(), this.baseUrl, { StandardBody: this.editing()?.example?.bodyHtml || standardBodySample }),
+    ),
   );
   /** Where a field chip goes: the subject or the text, whichever was last in focus. */
   protected target: 'subject' | 'body' = 'body';
@@ -447,7 +459,7 @@ export class EmailTemplatesPage {
     this.modalError.set('');
     try {
       const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`));
-      this.editing.set({ item: d.item, enabled: d.item.enabled, subject: d.item.subject ?? '', body: d.bodyHtml, standardBody: d.standardBody });
+      this.editing.set({ item: d.item, enabled: d.item.enabled, subject: d.item.subject ?? '', body: d.bodyHtml, standardBody: d.standardBody, example: d.example ?? null });
       this.preview.set(d.bodyHtml);
       this.target = 'body';
       this.placed = { subject: false, body: false };

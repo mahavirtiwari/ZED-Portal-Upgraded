@@ -49,8 +49,8 @@ public static class DashboardScreens
         new("reports", "Reports", "Modules", null, All, ["/api/staff/reports"], ["/staff/reports"]),
         new("history", "MSME / Customer History", "Modules", null, All,
             ["/api/staff/history", .. UnitDetailApis], ["/staff/history", "/staff/msme-profile"]),
-        // Main and Consultancy have staff documents (Admin → Documents/Videos); Surveillance has none.
-        new("documents", "Documents", "Modules", null, [PortalSystem.Main, PortalSystem.Consultancy], ["/api/staff/documents"], ["/staff/documents"]),
+        // Staff documents (Admin → Documents/Videos), on every portal since 2026-11-08.
+        new("documents", "Documents", "Modules", null, All, ["/api/staff/documents"], ["/staff/documents"]),
         new(Edits, "Can make changes", "Permissions", "Resend login details, deactivate an MSME, edit a profile, update a failed payment", All, [], []),
         new(HideNames, "Hide agency and assessor names", "Privacy", "As the QC login did", All, [], []),
     ];

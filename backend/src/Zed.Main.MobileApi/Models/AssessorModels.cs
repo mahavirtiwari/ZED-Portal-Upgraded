@@ -81,6 +81,9 @@ public sealed class AllottedParameters
 public sealed class RequirementDetails
 {
     public int id { get; set; }
+    /// <summary>V4 (2026-11-08): the Admin's video for the requirement (Questionnaire → Requirements); absent when none.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? videoUrl { get; set; }
     public string? code { get; set; }
     public List<OptionInfo>? options { get; set; }
     public string? answerCode { get; set; }

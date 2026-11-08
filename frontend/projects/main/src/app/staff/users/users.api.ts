@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { allLevels, levelName } from '../../msme/shared/levels';
 
 /** Row of SP_GET_USERS_BY_ROLE (RoleId 2) as returned by api/staff/users/agencies (legacy column names). */
 export interface AgencyRow {
@@ -28,17 +29,59 @@ export interface AgencyRow {
   LevelReasons?: Partial<Record<AgencyLevel, string | null>>;
   /** Main (V4): Manufacturing, Services or Both; null when not set yet. */
   SectorActivity?: SectorActivity | null;
+  /** 2026-11-08: the levels the Admin added, Allow{Code}Assessments (NULL / missing = allowed). */
+  [column: string]: unknown;
 }
 
-/** The certification levels an agency may be allotted (Agencies -> Agency level allocation, 2026-11-08). */
-export type AgencyLevel = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+/**
+ * The certification levels an agency may be allotted (Agencies -> Agency level allocation, 2026-11-08): Bronze, Silver,
+ * Gold, ZEDX and the levels the Admin adds (Administration → Certification Levels).
+ */
+export type AgencyLevel = string;
 
-export const AGENCY_LEVELS: { code: AgencyLevel; name: string; field: keyof AgencyRow }[] = [
+export interface AgencyLevelInfo {
+  code: AgencyLevel;
+  name: string;
+  /** The row's column: Users.Allow{Code}Assessments (ZED-X's hand-made AllowZedxAssessments). */
+  field: string;
+}
+
+/** The column of a level on the agency rows (Users.Allow{Code}Assessments; NULL = allowed). */
+export function agencyLevelField(code: string): string {
+  return code.toUpperCase() === 'ZEDX' ? 'AllowZedxAssessments' : `Allow${code}Assessments`;
+}
+
+/** The built-in levels (before the levels arrive). */
+export const AGENCY_LEVELS: AgencyLevelInfo[] = [
   { code: 'Bronze', name: 'Bronze', field: 'AllowBronzeAssessments' },
   { code: 'Silver', name: 'Silver', field: 'AllowSilverAssessments' },
   { code: 'Gold', name: 'Gold', field: 'AllowGoldAssessments' },
   { code: 'ZEDX', name: 'ZED-X', field: 'AllowZedxAssessments' },
 ];
+
+/**
+ * Every level an agency may be allotted, in the Admin's order (api/public/levels/all, disabled levels too), and any level
+ * the server's rows carry a reason for.
+ */
+export function agencyLevels(rows: readonly AgencyRow[] = []): AgencyLevelInfo[] {
+  const list: AgencyLevelInfo[] = allLevels().map((l) => ({ code: l.code, name: levelName(l.code) || l.name, field: agencyLevelField(l.code) }));
+  const known = new Set(list.map((l) => l.code.toLowerCase()));
+  for (const r of rows) {
+    for (const code of Object.keys(r.LevelReasons ?? {})) {
+      if (known.has(code.toLowerCase())) continue;
+      known.add(code.toLowerCase());
+      list.push({ code, name: levelName(code), field: agencyLevelField(code) });
+    }
+  }
+  return list;
+}
+
+/** A row's value by column, any case (SQL column names are case-insensitive). */
+export function rowValue(row: Record<string, unknown>, column: string): unknown {
+  if (column in row) return row[column];
+  const key = Object.keys(row).find((k) => k.toLowerCase() === column.toLowerCase());
+  return key ? row[key] : undefined;
+}
 
 export interface Sector {
   sectorCode: string;

@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SiteAssessmentApi, SiteAssessmentData, SitePhoto, SiteRequirement, SiteSection, canonicalSiteAssessment } from './site-assessment.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
+import { RequirementVideo } from '../shared/requirement-video';
 
 export type SiteTab = 'basic' | 'tour' | 'parameters';
 
@@ -155,7 +156,7 @@ export const MILESTONE_INFO: readonly InfoSection[] = [
  */
 @Component({
   selector: 'zed-msme-site-assessment',
-  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary],
+  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary, RequirementVideo],
   templateUrl: './site-assessment.html',
   styleUrls: ['../shared/msme-page.scss', './site-assessment.scss'],
   host: { '(document:keydown.escape)': 'closePreview()' },

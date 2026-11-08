@@ -140,7 +140,7 @@ public sealed class DesktopAssessmentEmails(
             ("MSME ZED ID", zedId),
             ("Unit Name", row.Text("EnterpriseName")),
             ("Unit Address", row.Text("Address")),
-            ("Mode of Assessment", certification == "Bronze" ? "Desktop Verification" : "Desktop or/and Remote/Site Verification"));
+            ("Mode of Assessment", Zed.Core.Data.LevelRegistry.IsDesktop(certification) ? "Desktop Verification" : "Desktop or/and Remote/Site Verification"));
         P(sb, "Please log-in to your account in order to Accept or Reject this allocation within 48 hrs.");
         Button(sb, StaffLogin, "Click here to Login");
         P(sb, "In case of any query, please mail us at: zed.support@qcin.org. Please mention your Agency ID in all your correspondence.");
@@ -211,7 +211,7 @@ public sealed class DesktopAssessmentEmails(
         };
         if (attempt is not null)
         {
-            var days = certification == "Bronze" ? 30 : 60;
+            var days = Zed.Core.Data.LevelRegistry.IsDesktop(certification) ? 30 : 60;
             P(sb, $"Note: This is your {attempt} attempt out of total 5 attempts to close your Non-conformance(s). All the Non-Conformances (all 5 attempts) " +
                   $"must be closed within a period of {days} days from the date of first Non-Conformance raised. In case you are unable to close the " +
                   $"Non-conformance(s) in these 5 attempts or within {days} days, your application for the applied Certification shall stand as Rejected " +

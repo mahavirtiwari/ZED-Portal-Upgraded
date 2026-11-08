@@ -15,8 +15,8 @@ public static partial class AssessmentInput
     public static bool IsId(string? value) => value is not null && IdPattern().IsMatch(value);
 
     /// <summary>Certification levels of a desktop assessment (MsmeCertifications.Certification).</summary>
-    /// <remarks>ZEDX = ZED-X (migrations 0028 / 0029), a site level like Silver and Gold.</remarks>
-    public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
+    /// <remarks>Every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry; ZEDX = ZED-X; 2026-11-08 also the levels the Admin adds).</remarks>
+    public static string[] Levels => [.. Zed.Core.Data.LevelRegistry.Codes];
 
     /// <summary>"bronze" → "Bronze"; null when not a level.</summary>
     public static string? Level(string? value) =>

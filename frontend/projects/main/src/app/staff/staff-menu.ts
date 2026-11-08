@@ -1,6 +1,7 @@
 import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
 import { INCENTIVE_GROUPS } from './schemes/incentives.api';
+import { allLevels, isLegacyLevel, levelName } from '../msme/shared/levels';
 
 /** Users.RoleId values of the staff roles (legacy UserRoleEnum). */
 export const StaffRole = {
@@ -44,6 +45,11 @@ export interface StaffMenuItem {
    * entry's `group`, if any, becomes a heading inside it.
    */
   menu?: string;
+  /**
+   * 2026-11-08: a placeholder the menu expands into one entry per certification level (Administration → Certification
+   * Levels, api/public/levels/all, disabled levels too): `{level}` in the label and route is the level's name and code.
+   */
+  perLevel?: boolean;
 }
 
 /** A heading (or none) inside a drop-down, with its links. */
@@ -149,11 +155,11 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the regions of the additional subsidy, and the states and districts from the LG Directory.
   { label: 'Subsidy Regions', route: '/staff/masters/regions', roles: [R.Admin], menu: 'Masters' },
   { label: 'LG Directory', route: '/staff/masters/lgd', roles: [R.Admin], menu: 'Masters' },
-  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
-    label: level, legacyPath: `/Questionaire/Index?SectionType=${level}`, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
-  })),
-  // New in V4: the ZED-X level (Administration → Certification Levels); its parameters are NIC sector-wise.
-  { label: 'ZED-X', route: '/staff/masters/parameters/ZEDX', roles: [R.Admin], menu: 'Questionnaire' },
+  // A questionnaire per level: Bronze, Silver, Gold, ZED-X (NIC sector-wise) and the levels the Admin adds (2026-11-08).
+  {
+    label: '{level}', legacyPath: '/Questionaire/Index?SectionType={level}', route: '/staff/masters/parameters/{level}', roles: [R.Admin],
+    menu: 'Questionnaire', perLevel: true,
+  },
   // New in V4: the ESG checklist of the MSME app's assessment (before, a fixed file).
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
   { label: 'Categories', legacyPath: '/Category/list', route: '/staff/masters/categories', roles: [R.Admin], menu: 'Technology Upgradation' },
@@ -265,10 +271,7 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
-  ...(['Bronze', 'Silver', 'Gold'] as const).map((level) => ({
-    label: level, route: `/staff/masters/parameters/${level}`, roles: [R.Admin as number], menu: 'Questionnaire',
-  })),
-  { label: 'ZED-X', route: '/staff/masters/parameters/ZEDX', roles: [R.Admin], menu: 'Questionnaire' },
+  { label: '{level}', route: '/staff/masters/parameters/{level}', roles: [R.Admin], menu: 'Questionnaire', perLevel: true },
   // New in V4: the ESG checklist of the surveillance app's assessment (before, a fixed file).
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
@@ -313,6 +316,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   // New in V4: the owners' own logins (sub-users work as their owner on the screens it gives them).
   { label: 'Operation Admins', route: '/staff/sub-users', roles: [R.MasterAdmin] },
   { label: 'Sub-Users', route: '/staff/sub-users', roles: [R.Agency] },
+  // 2026-11-08: the documents and videos the Admin gives to Surveillance accounts.
+  { label: 'Documents', route: '/staff/documents', roles: [R.MasterAdmin, R.Agency, R.DesktopAssessor, R.Ministry, R.SuperAdmin] },
 ];
 
 export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
@@ -356,6 +361,27 @@ export function homeFor(roleId: number, system: PortalSystem = PORTAL_SYSTEM): s
 }
 
 /**
+ * The menu with its per-level placeholders expanded: one entry per level, in the Admin's order (the old portal's
+ * questionnaire address for Bronze, Silver and Gold). Reads the levels' signal, so a computed menu follows them.
+ */
+export function expandLevels(items: readonly StaffMenuItem[]): StaffMenuItem[] {
+  return items.flatMap((i) =>
+    !i.perLevel
+      ? [i]
+      : allLevels().map((l) => {
+          const { perLevel: _, legacyPath, ...item } = i;
+          return {
+            ...item,
+            label: i.label.replace('{level}', levelName(l.code) || l.name),
+            route: i.route?.replace('{level}', l.code),
+            // The old portal had the pages of Bronze, Silver and Gold only.
+            ...(legacyPath && isLegacyLevel(l.code) ? { legacyPath: legacyPath.replace('{level}', l.code) } : {}),
+          };
+        }),
+  );
+}
+
+/**
  * The menu of a role. A sub-user (operation admin, agency sub-user) gets its owner's menu limited to the screens its owner
  * gave it (`permissionRoutes`, from the sign-in); the API checks them again.
  */
@@ -365,7 +391,7 @@ export function menuFor(
   system: PortalSystem = PORTAL_SYSTEM,
   permissionRoutes?: readonly string[] | null,
 ): StaffMenuItem[] {
-  return MENUS[system].filter(
+  return expandLevels(MENUS[system]).filter(
     (i) =>
       i.roles.includes(roleId) &&
       (i.subRoles ?? []).every((s) => subRoles.includes(s)) &&

@@ -20,16 +20,17 @@ GO
 -- 2026-11-08: the conversion runs on every run (not once), so a Citizen Feedback or QC login created afterwards (e.g. by
 -- the old portal during a parallel run) also becomes a Dashboard Admin; the marker only records the first run.
 BEGIN
-    DECLARE @portal varchar(20) = CASE DB_NAME() WHEN N'ZED_CONSULTANT' THEN 'consultancy' WHEN N'ZED_SURVEILLANCE' THEN 'surveillance' ELSE 'main' END;
+    -- (LIKE: a database name with a prefix, as the check copies have, is the same portal.)
+    DECLARE @portal varchar(20) = CASE WHEN DB_NAME() LIKE N'%ZED[_]CONSULTANT' THEN 'consultancy' WHEN DB_NAME() LIKE N'%ZED[_]SURVEILLANCE' THEN 'surveillance' ELSE 'main' END;
     -- The screens each old type had on this portal (its menu).
     DECLARE @feedback varchar(400) = CASE @portal
         WHEN 'main'         THEN 'dash-registered,dash-certified,registered-msme,financial-support,reports,history,documents'
         WHEN 'consultancy'  THEN 'dash-registered,dash-certified,history,documents'
-        ELSE                     'dash-registered,dash-certified,registered-msme,financial-support,reports' END;
+        ELSE                     'dash-registered,dash-certified,registered-msme,financial-support,reports,documents' END;
     DECLARE @qc varchar(400) = CASE @portal
         WHEN 'main' THEN 'dash-registered,dash-certified,registered-msme,history,documents,hide-names'
         WHEN 'consultancy' THEN 'dash-registered,dash-certified,history,documents,hide-names'
-        ELSE             'dash-registered,dash-certified,history,hide-names' END;
+        ELSE             'dash-registered,dash-certified,history,documents,hide-names' END;
 
     -- "{portal}:" before each key.
     UPDATE dbo.Users SET RoleId = 10, ScreenAccess = @portal + ':' + REPLACE(@feedback, ',', ',' + @portal + ':') WHERE RoleId = 11;

@@ -10,6 +10,7 @@ import { num, text } from '../../assessment/assessment-shared';
 import { isZedId } from '../../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../../assessment/checkpoint-dialog';
 import { BulletType, MilestoneBullet, MilestoneDetails, MilestoneMeeting, MilestonePhoto, MilestonesApi, Row, milestoneLevel } from './milestones.api';
+import { RequirementVideo } from '../../../msme/shared/requirement-video';
 
 /** Tabs of the old consultancy SaDetails page. */
 export const MILESTONE_TABS: Record<number, string> = {
@@ -161,7 +162,7 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog],
+  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog, RequirementVideo],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `

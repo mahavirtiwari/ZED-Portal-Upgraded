@@ -23,7 +23,7 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
     public const string Services = "Services";
 
     /// <summary>The level codes a scope can name (dbo.SectionTypes codes; ZED-X is "ZEDX").</summary>
-    public static readonly string[] AllLevels = ["Bronze", "Silver", "Gold", "ZEDX"];
+    public static string[] AllLevels => [.. Zed.Core.Data.LevelRegistry.Codes];
 
     /// <summary>Manufacturing or Services; null when both.</summary>
     public string? OneSector => Sector is Manufacturing or Services ? Sector : null;
@@ -72,7 +72,7 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
     public static string? BaseLevel(string? certification)
     {
         var c = certification?.Trim() ?? "";
-        return AllLevels.FirstOrDefault(l => c.StartsWith(l, StringComparison.OrdinalIgnoreCase));
+        return AllLevels.OrderByDescending(l => l.Length).FirstOrDefault(l => c.StartsWith(l, StringComparison.OrdinalIgnoreCase));
     }
 
     public static IReadOnlyList<string> Split(string? stored) =>

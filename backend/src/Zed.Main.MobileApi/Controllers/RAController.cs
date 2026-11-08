@@ -35,8 +35,8 @@ public sealed class RAController(
     internal const string ErrorText = "An error has occurred, please try again later.";
 
     /// <summary>Certifications a remote assessment can be for; used in upload paths.</summary>
-    internal static readonly IReadOnlySet<string> Certifications =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold", "ZEDX" };
+    /// 2026-11-08: every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry).
+    internal static IReadOnlySet<string> Certifications => new HashSet<string>(LevelRegistry.Codes, StringComparer.OrdinalIgnoreCase);
 
     [HttpPost]
     [LoginAudit(LoginChannels.Mobile, "Remote assessment app")]

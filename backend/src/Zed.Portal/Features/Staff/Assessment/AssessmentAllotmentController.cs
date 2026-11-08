@@ -92,8 +92,9 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
     {
         var rows = (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0];
         // Bronze surveillance goes only to agencies allowed for it (the old Allot page filtered on AllowBronzeSurveillance).
-        var column = level != "Bronze" ? "SiteVerification"
-            : host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification";
+        // 2026-11-08: a V4 level assessed at the desktop only goes to desktop-verification agencies, as Bronze.
+        var column = level == "Bronze" ? (host.System == PortalSystem.Surveillance ? "AllowBronzeSurveillance" : "DesktopVerification")
+            : Zed.Core.Data.LevelRegistry.IsDesktop(level) ? "DesktopVerification" : "SiteVerification";
         // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
         var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);

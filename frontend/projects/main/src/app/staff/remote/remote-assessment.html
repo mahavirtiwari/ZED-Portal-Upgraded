@@ -507,7 +507,7 @@
               <table class="table table-bordered table-zed requirement">
                 <tbody>
                   <tr>
-                    <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                    <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                     <td colspan="2">
                       @for (o of optionsOf(r); track $index) {
                         <div>
@@ -656,7 +656,7 @@
                 <table class="table table-bordered table-zed requirement nc-requirement">
                   <tbody>
                     <tr>
-                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                       <td colspan="2">
                         @for (o of ncOptionsOf(r); track $index) {
                           <div>
@@ -892,7 +892,7 @@
               <tbody>
                 @for (r of ncRequirements(); track t(r, 'Id')) {
                   <tr>
-                    <th class="text-center" style="width: 60px">{{ t(r, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                    <th class="text-center" style="width: 60px">{{ t(r, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                     <td style="width: 50%">
                       @for (o of optionsOf(r); track $index) {
                         <div>

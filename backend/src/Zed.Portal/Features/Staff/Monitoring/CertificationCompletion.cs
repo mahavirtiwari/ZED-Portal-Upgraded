@@ -43,8 +43,9 @@ public sealed class CertificationCompletion(
 
     public sealed record Outcome(bool CertificateIssued, bool MailSent);
 
-    /// <summary>Bronze is certified by the desktop assessment, Silver/Gold by the site assessment.</summary>
-    private static bool IsSiteLevel(string certification) => !string.Equals(certification, "Bronze", StringComparison.OrdinalIgnoreCase);
+    /// <summary>Bronze is certified by the desktop assessment, Silver/Gold by the site assessment.
+    /// 2026-11-08: a V4 level assessed at the desktop only is certified by the desktop assessment too.</summary>
+    private static bool IsSiteLevel(string certification) => !Zed.Core.Data.LevelRegistry.IsDesktop(certification);
 
     private static string DetailsProcedure(string certification) =>
         IsSiteLevel(certification) ? "SP_RA_GET_CERTIFICATE_DETAILS" : "SP_DA_GET_CERTIFICATE_DETAILS";

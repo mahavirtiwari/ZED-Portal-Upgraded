@@ -1,4 +1,4 @@
--- Run on ZEDCS_V2_LIVE and ZED_CONSULTANT (the systems whose Admin manages My Documents). Additive and safe to re-run.
+-- Run on ZEDCS_V2_LIVE, ZED_CONSULTANT and (2026-11-08, its staff's Documents page) ZED_SURVEILLANCE. Additive and safe to re-run.
 -- Admin → Masters → Documents/Videos (Zed.Core/Content/DocumentAccess.cs): new columns of the existing dbo.MyDocuments:
 --   Description      the line shown under the document's name;
 --   VideoUrl         the address of a video (the document is then a link; DocumentPath stays empty);

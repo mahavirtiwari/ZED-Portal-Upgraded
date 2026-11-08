@@ -30,10 +30,11 @@ public static class SiteEvidenceChecks
         "MsmeEvidences",
         $"""
         OUTER APPLY (SELECT TOP 1 e.OptionCode FROM {master}.Evidences e
-            WHERE e.Id = X.EvidenceId
-               OR (e.SectionType = X.SectionType AND LTRIM(RTRIM(e.SectionCode)) = X.Sc AND LTRIM(RTRIM(e.RequirementCode)) = X.Rc
-                   AND e.EvidenceCode = X.EvidenceCode AND e.EvidenceName = X.EvidenceName)
-            ORDER BY CASE WHEN e.Id = X.EvidenceId THEN 0 ELSE 1 END) m
+            WHERE e.SectionType = X.SectionType AND LTRIM(RTRIM(e.SectionCode)) = X.Sc AND LTRIM(RTRIM(e.RequirementCode)) = X.Rc
+              AND (e.Id = X.EvidenceId OR e.EvidenceName = X.EvidenceName)
+            ORDER BY CASE WHEN e.Id = X.EvidenceId AND e.EvidenceName = X.EvidenceName THEN 0
+                          WHEN e.EvidenceCode = X.EvidenceCode AND e.EvidenceName = X.EvidenceName THEN 1
+                          WHEN e.Id = X.EvidenceId THEN 2 ELSE 3 END) m
         WHERE NULLIF(LTRIM(RTRIM(X.EvidenceName)), '') IS NOT NULL
         ORDER BY R.RequirementRowId, TRY_CAST(X.EvidenceCode AS int), X.Id;
         """);

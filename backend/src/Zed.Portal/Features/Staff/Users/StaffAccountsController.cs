@@ -181,8 +181,9 @@ public sealed class StaffAccountsController(
 
     public sealed record ScopeRow(string UserId, string? SectorActivity, string? ScopeLevels, string? ScopeStates, string? ScopeDistricts = null);
 
-    private static readonly IReadOnlyList<LevelOption> AllLevelOptions =
-        [new("Bronze", "Bronze"), new("Silver", "Silver"), new("Gold", "Gold"), new("ZEDX", "ZED-X")];
+    /// <summary>Every level of Administration → Certification Levels (2026-11-08: also the levels the Admin adds).</summary>
+    private static IReadOnlyList<LevelOption> AllLevelOptions =>
+        [.. Zed.Core.Data.LevelRegistry.All.Select(l => new LevelOption(l.Code, l.Name))];
 
     /// <summary>This portal's levels: the Consultancy portal's handholding is for Silver and Gold (2026-11-07).</summary>
     private IReadOnlyList<LevelOption> LevelOptions =>
@@ -451,6 +452,6 @@ public sealed class StaffAccountsController(
                 [nameof(StaffLoginDetailsEmail.AccountType)] = label,
                 [nameof(StaffLoginDetailsEmail.Reset)] = reset,
                 [nameof(StaffLoginDetailsEmail.LoginUrl)] = mail.LoginUrl,
-            }), ct, copyOffice: false);
+            }), ct, copyOffice: false, key: EmailTemplateVariants.LoginDetails(reset, subUser: false));
     }
 }

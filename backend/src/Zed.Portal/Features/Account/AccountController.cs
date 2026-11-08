@@ -65,7 +65,7 @@ public sealed class AccountController(
 
         if (row.Text("Email") is { Length: > 0 } to)
         {
-            var html = await templates.RenderAsync<PasswordChangedEmail>(new Dictionary<string, object?>
+            var html = await templates.RenderAsync<PasswordChangedEmail>(EmailTemplateVariants.PasswordChanged(user.RoleId == (int)UserRole.Msme), new Dictionary<string, object?>
             {
                 [nameof(PasswordChangedEmail.UserName)] = row.Text("UserName"),
                 [nameof(PasswordChangedEmail.UserId)] = user.UserId,

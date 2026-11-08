@@ -1,4 +1,4 @@
-import { DecimalPipe, UpperCasePipe } from '@angular/common';
+import { UpperCasePipe } from '@angular/common';
 import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { ADMIN_PORTAL, AdminPortalService } from '../admin-portal';
@@ -61,12 +61,39 @@ const SCHEDULE_KEYS: readonly ScheduleKey[] = [
   'surveillanceReminderEveryMonths', 'surveillanceSuspendAfterMonths', 'surveillanceWithdrawAfterDays',
 ];
 
+/**
+ * 2026-11-08: what a level still needs before it can be switched on (built-in Bronze, Silver, Gold and ZED-X: all true).
+ * The server refuses to enable a level while questionnaire, fees, artwork or columns is false.
+ */
+export interface LevelReadiness {
+  /** The level has a parameter at least (Masters → Questionnaire). */
+  questionnaire: boolean;
+  parameterCount: number;
+  /** Masters → Payments has its fees (Micro, Small and Medium). */
+  fees: boolean;
+  /** The certificate and report background images are uploaded. */
+  artwork: boolean;
+  /** An active desktop agency may be allotted it (Agency level allocation; not needed to switch on). */
+  agencies: boolean;
+  /** The level's database columns exist (created when it was added, or by the next update). */
+  columns: boolean;
+  columnsMessage: string | null;
+}
+
 interface LevelItem {
   level: CertificationLevel;
   /** A number in the general format, for ZEDMSME129350 today. */
   sample: string;
   logoUrl: string | null;
+  /** 2026-11-08: the level's fees in Masters → Payments (with GST, before subsidy) by enterprise type. */
+  fees?: { type: string; total: number | null }[];
+  readiness?: LevelReadiness;
 }
+
+/** The built-in levels: ready by themselves, no checklist. */
+const BUILT_IN_LEVELS = ['bronze', 'silver', 'gold', 'zedx'];
+
+type ArtworkKind = 'certificate' | 'report';
 
 interface LevelsResponse {
   levels: LevelItem[];
@@ -151,7 +178,7 @@ const API = '/api/staff/settings/levels';
  */
 @Component({
   selector: 'zed-staff-certification-levels',
-  imports: [DecimalPipe, FormsModule, RouterLink, UpperCasePipe],
+  imports: [FormsModule, RouterLink, UpperCasePipe],
   template: `
     <div class="page-head">
       <div>
@@ -187,7 +214,11 @@ const API = '/api/staff/settings/levels';
             } @else {
               <span class="lv-logo lv-logo-none" aria-hidden="true">{{ l.name }}</span>
             }
-            <span class="status-badge" [class.is-active]="l.isEnabled" [class.is-inactive]="!l.isEnabled">{{ l.isEnabled ? 'Enabled' : 'Disabled' }}</span>
+            @if (!l.isEnabled && missing(i).length) {
+              <span class="status-badge is-inactive lv-until" data-off-until-ready>Off until ready</span>
+            } @else {
+              <span class="status-badge" [class.is-active]="l.isEnabled" [class.is-inactive]="!l.isEnabled">{{ l.isEnabled ? 'Enabled' : 'Disabled' }}</span>
+            }
           </div>
           <div class="lv-title">
             <h5>{{ l.name | uppercase }} CERTIFICATION</h5>
@@ -199,19 +230,92 @@ const API = '/api/staff/settings/levels';
             <div><dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd></div>
             <div><dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd></div>
             <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
-            @if (l.fee !== null) { <div><dt>Fee</dt><dd>₹ {{ l.fee | number: '1.0-0' }}</dd></div> }
+            <div><dt>Fees</dt><dd>
+              @if (i.fees?.length) { <span class="lv-fees" data-fees>{{ feeText(i) }}</span> }
+              @else { <a class="lv-fees-missing" routerLink="/staff/fees" data-fees-missing>Not set in Masters → Payments</a> }
+            </dd></div>
           </dl>
+          @if (checklist(i); as r) {
+            <!-- 2026-11-08: what a level the Admin added still needs before it can be switched on. -->
+            <section class="lv-ready" [attr.aria-label]="'What ' + l.name + ' needs'" data-checklist>
+              <div class="lv-ready-head"><span>Ready to switch on</span><span class="lv-ready-count">{{ doneCount(r) }} of 6</span></div>
+              <ul>
+                <li class="ok" data-check="settings">
+                  <span class="ck" aria-hidden="true">✓</span>
+                  <span class="ck-text">Name, logo, validity, certificate number</span>
+                </li>
+                <li [class.ok]="r.questionnaire" data-check="questionnaire">
+                  <span class="ck" aria-hidden="true">{{ r.questionnaire ? '✓' : '!' }}</span>
+                  <span class="ck-text">Questionnaire ({{ r.parameterCount }} parameter{{ r.parameterCount === 1 ? '' : 's' }})
+                    @if (!r.questionnaire) { <em class="ck-hint">missing</em> }</span>
+                  <a class="ck-link" [routerLink]="['/staff/masters/parameters', l.code]">{{ r.questionnaire ? 'Open' : 'Add' }} →</a>
+                </li>
+                <li [class.ok]="r.fees" data-check="fees">
+                  <span class="ck" aria-hidden="true">{{ r.fees ? '✓' : '!' }}</span>
+                  <span class="ck-text">Fees in Masters → Payments @if (!r.fees) { <em class="ck-hint">missing</em> }</span>
+                  <a class="ck-link" routerLink="/staff/fees" [queryParams]="{ level: l.code }">{{ r.fees ? 'Open' : 'Set' }} →</a>
+                </li>
+                <li [class.ok]="r.artwork" data-check="artwork">
+                  <span class="ck" aria-hidden="true">{{ r.artwork ? '✓' : '!' }}</span>
+                  <span class="ck-text">Certificate and report artwork @if (!r.artwork) { <em class="ck-hint">upload</em> }</span>
+                  <span class="ck-art">
+                    @for (k of artworkKinds; track k.key) {
+                      <label class="btn btn-outline-primary btn-sm ck-upload" [class.disabled]="busy()">
+                        {{ k.label }}
+                        <input type="file" class="visually-hidden" accept="image/png,image/jpeg" [attr.data-artwork]="k.key"
+                               [attr.aria-label]="'Upload the ' + k.key + ' artwork of ' + l.name" [disabled]="busy()" (change)="uploadArtwork(l.code, k.key, $event)" />
+                      </label>
+                      <button type="button" class="btn btn-link btn-sm p-0" [attr.data-view-artwork]="k.key" [disabled]="busy()" (click)="viewArtwork(l, k.key)">View</button>
+                    }
+                  </span>
+                </li>
+                <li [class.ok]="r.agencies" data-check="agencies">
+                  <span class="ck" aria-hidden="true">{{ r.agencies ? '✓' : '!' }}</span>
+                  <span class="ck-text">Agencies allowed (Agency level allocation) @if (!r.agencies) { <em class="ck-hint">none yet</em> }</span>
+                  <a class="ck-link" routerLink="/staff/users/bronze-agencies" title="The Master Admin's Agency Level Allocation">Open →</a>
+                </li>
+                <li [class.ok]="r.columns" data-check="columns">
+                  <span class="ck" aria-hidden="true">{{ r.columns ? '✓' : '!' }}</span>
+                  <span class="ck-text">Database columns
+                    @if (!r.columns) { <em class="ck-hint" data-columns-message>{{ r.columnsMessage || 'Ready after the next update' }}</em> }</span>
+                </li>
+              </ul>
+            </section>
+          }
           <div class="lv-actions">
             <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="busy() || !stored()" (click)="edit(i)">Edit</button>
             <button type="button" class="btn btn-sm" [class.btn-outline-danger]="l.isEnabled" [class.btn-outline-primary]="!l.isEnabled"
-                    [disabled]="busy() || !stored()" [attr.aria-label]="(l.isEnabled ? 'Disable ' : 'Enable ') + l.name" (click)="toggle(l)">{{ l.isEnabled ? 'Disable' : 'Enable' }}</button>
+                    [disabled]="busy() || !stored()" [attr.aria-label]="(l.isEnabled ? 'Disable ' : 'Enable ') + l.name"
+                    [attr.title]="!l.isEnabled && missing(i).length ? 'Missing: ' + listText(missing(i)) : null" (click)="toggle(l)">{{ l.isEnabled ? 'Disable' : 'Enable' }}</button>
             <a class="btn btn-link btn-sm ms-auto" [routerLink]="['/staff/masters/parameters', l.code]">Questionnaire →</a>
           </div>
+          @if (!l.isEnabled && missing(i).length) {
+            <p class="lv-why" data-why>To enable {{ l.name }}, add {{ listText(missing(i)) }}.</p>
+          }
         </article>
       }
     </div>
     <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> The fees charged are set in Masters → Payments; the questionnaire of each level in the Questionnaire menu.</p>
 
+    @if (artwork(); as a) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lv-art-title">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <div class="modal-title w-100 d-flex justify-content-between align-items-center">
+                <h3 class="registration-title m-0" id="lv-art-title">{{ a.name }}: {{ a.kind }} artwork</h3>
+                <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="closeArtwork()"><img src="Images/svgicons/close.svg" alt="" /></button>
+              </div>
+            </div>
+            <div class="modal-body text-center">
+              @if (a.url) { <img class="lv-art-preview" [src]="a.url" [alt]="a.name + ' ' + a.kind + ' artwork'" /> }
+              @else { <p class="muted m-0" data-no-artwork>{{ a.message }}</p> }
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lv-edit-title">
         <div class="modal-dialog modal-xl modal-dialog-scrollable lv-dialog">
@@ -257,16 +361,21 @@ const API = '/api/staff/settings/levels';
                             <small class="muted d-block w-100">PNG or JPG, up to 1 MB.</small>
                           </div>
                         }
-                        <label for="lv-fee">Fee shown (₹)</label>
-                        <div>
-                          <input id="lv-fee" name="fee" type="number" min="0" class="form-control lv-short" [(ngModel)]="e.fee" />
-                          <small class="muted d-block">For the box; the amounts charged are in Masters → Payments.</small>
+                        <span class="label-like">Fees</span>
+                        <div data-edit-fees>
+                          @if (feesOf(e.code); as f) { <span>{{ f }}</span> } @else { <span class="lv-fees-missing">Not set yet</span> }
+                          <small class="muted d-block">With GST, before subsidy. Each MSME sees its own fee on the box.
+                            <a routerLink="/staff/fees" (click)="editing.set(null)">Edit in Masters → Payments</a></small>
                         </div>
                         <span class="label-like">Shown to MSMEs</span>
                         <div class="form-check form-switch lv-switch">
                           <input class="form-check-input" type="checkbox" role="switch" id="lv-enabled" name="isEnabled" [(ngModel)]="e.isEnabled" />
                           <label class="form-check-label" for="lv-enabled">{{ e.isEnabled ? 'Enabled' : 'Disabled' }}</label>
                         </div>
+                        @if (!e.isNew && missingOf(e.code).length) {
+                          <span></span>
+                          <small class="lv-why d-block">Off until ready: add {{ listText(missingOf(e.code)) }} first.</small>
+                        }
                       </div>
                     </div>
 
@@ -399,7 +508,7 @@ const API = '/api/staff/settings/levels';
                         @if (logoOf(e.code); as url) { <img class="pv-logo" [src]="url" alt="" /> } @else { <span class="pv-logo pv-logo-none">{{ e.name || '?' }}</span> }
                       </div>
                       @if (e.description) { <p class="pv-desc">{{ e.description }}</p> }
-                      @if (e.fee) { <div class="pv-fee">₹ {{ e.fee | number: '1.0-0' }}</div> }
+                      @if (feesOf(e.code); as f) { <div class="pv-fee">{{ f }}</div> }
                     </div>
                     <small class="muted d-block mt-1">{{ e.isEnabled ? 'Shown on the MSME dashboard.' : 'Hidden from MSMEs until enabled.' }}</small>
 
@@ -439,6 +548,8 @@ const API = '/api/staff/settings/levels';
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  // The readiness checklist's rules are in their own file (the per-file style budget, 2026-11-08).
+  styleUrl: './certification-levels-checklist.scss',
   styles: `
     .lv-builtin { margin-top: 4px; font-size: 12px; color: #8a6100; background: #fff4d6; border-radius: 6px; padding: 4px 8px; }
     .page-head { align-items: center; }
@@ -519,6 +630,8 @@ const API = '/api/staff/settings/levels';
     .pv-logo-none { display: inline-flex; align-items: center; justify-content: center; width: 52px; border-radius: 26px; font-size: 10px; font-weight: 800;
       background: linear-gradient(135deg, #2e858c, #23474a); color: #fff; overflow: hidden; }
     .pv-desc { font-size: 12px; color: #3b4b4c; margin: 0; padding: 0 12px 10px; }
+    .lv-fees { font-size: 13px; }
+    .lv-fees-missing { color: #a15c00; font-size: 13px; }
     .pv-fee { font-size: 12px; font-weight: 700; color: #23474a; padding: 0 12px 10px; }
     .pv-numbers { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; font-size: 12.5px; }
     .pv-numbers dt { color: #5f6f70; font-weight: 600; }
@@ -542,6 +655,105 @@ const API = '/api/staff/settings/levels';
 })
 export class CertificationLevelsPage {
   /** Bronze, Silver and Gold: numbered by the legacy procedures (the format fields do not apply to them). */
+  /** "Micro ₹ 10,000 · Small ₹ 20,000 · Medium ₹ 30,000" from Masters → Payments (2026-11-08). */
+  protected feeText(i: LevelItem): string {
+    return (i.fees ?? [])
+      .filter((f) => f.total !== null)
+      .map((f) => `${f.type} ₹ ${Math.round(f.total!).toLocaleString('en-IN')}`)
+      .join(' · ');
+  }
+
+  protected feesOf(code: string | null | undefined): string | null {
+    const item = this.levels().find((i) => i.level.code === code);
+    return item && item.fees?.length ? this.feeText(item) || null : null;
+  }
+
+  protected readonly artworkKinds: readonly { key: ArtworkKind; label: string }[] = [
+    { key: 'certificate', label: 'Certificate' },
+    { key: 'report', label: 'Report' },
+  ];
+  /** The artwork shown in the preview pop-up. */
+  protected readonly artwork = signal<{ name: string; kind: ArtworkKind; url: string | null; message: string } | null>(null);
+
+  /** The checklist of a level the Admin added; none for the built-in levels (ready by themselves) or an older server. */
+  protected checklist(i: LevelItem): LevelReadiness | null {
+    return i.readiness && !BUILT_IN_LEVELS.includes(i.level.code.toLowerCase()) ? i.readiness : null;
+  }
+
+  protected doneCount(r: LevelReadiness): number {
+    return 1 + [r.questionnaire, r.fees, r.artwork, r.agencies, r.columns].filter(Boolean).length;
+  }
+
+  /** What the server wants before it enables the level (CertificationLevelsController: questionnaire, fees, artwork, columns). */
+  protected missing(i: LevelItem): string[] {
+    const r = this.checklist(i);
+    if (!r) return [];
+    return [
+      !r.questionnaire && 'the questionnaire',
+      !r.fees && 'the fees in Masters → Payments',
+      !r.artwork && 'the certificate and report artwork',
+      !r.columns && `the database columns (${r.columnsMessage || 'ready after the next update'})`,
+    ].filter((m): m is string => !!m);
+  }
+
+  protected missingOf(code: string): string[] {
+    const item = this.levels().find((i) => i.level.code === code);
+    return item ? this.missing(item) : [];
+  }
+
+  /** "a, b and c". */
+  protected listText(items: readonly string[]): string {
+    return items.length > 1 ? `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}` : (items[0] ?? '');
+  }
+
+  /** Uploads the background image of the level's certificate or report (JPG / PNG, up to 2 MB). */
+  protected async uploadArtwork(code: string, kind: ArtworkKind, event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0] ?? null;
+    input.value = '';
+    if (!file) return;
+    this.error.set('');
+    this.success.set('');
+    if (file.size > 2 * 1024 * 1024 || !/\.(png|jpe?g)$/i.test(file.name)) {
+      this.error.set('Please choose a JPG or PNG image of up to 2 MB.');
+      return;
+    }
+    this.busy.set(true);
+    try {
+      const form = new FormData();
+      form.append('file', file, file.name);
+      const r = await firstValueFrom(this.http.post<MessageResponse>(`${API}/${encodeURIComponent(code)}/artwork`, form, { params: { kind } }));
+      this.success.set(r.message);
+      await this.load();
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** Shows the level's certificate or report artwork (the server's image, read as the Admin). */
+  protected async viewArtwork(l: CertificationLevel, kind: ArtworkKind): Promise<void> {
+    this.closeArtwork();
+    this.busy.set(true);
+    try {
+      const blob = await firstValueFrom(this.http.get(`${API}/${encodeURIComponent(l.code)}/artwork`, { params: { kind }, responseType: 'blob' }));
+      const url = typeof URL.createObjectURL === 'function' ? URL.createObjectURL(blob) : null;
+      this.artwork.set({ name: l.name, kind, url, message: url ? '' : 'The image cannot be shown in this browser.' });
+    } catch (err) {
+      const notFound = err instanceof HttpErrorResponse && err.status === 404;
+      this.artwork.set({ name: l.name, kind, url: null, message: notFound ? `No ${kind} artwork uploaded yet.` : apiErrorMessage(err) });
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected closeArtwork(): void {
+    const url = this.artwork()?.url;
+    if (url && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url);
+    this.artwork.set(null);
+  }
+
   protected builtIn(code: string | null | undefined): boolean {
     return code === 'Bronze' || code === 'Silver' || code === 'Gold';
   }

@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { splitCertification } from '../shared/levels';
 
 /** Rows keep the procedure's column names (SectionCode, EvidenceName, ...); file columns hold api URLs. */
 export type Row = Record<string, string | number | boolean | null>;
@@ -57,10 +58,16 @@ export const ASSESSMENT_TYPES = [
   'Bronze', 'Silver', 'Gold', 'ZEDX', 'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance', 'ZEDXSurveillance',
 ] as const;
 
-/** Canonical spelling of a certification type from the URL, or null when these pages do not exist for it. */
+/**
+ * Canonical spelling of a certification type from the URL, or null when these pages do not exist for it: a level (the
+ * Admin's levels too, 2026-11-08) or its surveillance.
+ */
 export function assessmentType(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();
-  return ASSESSMENT_TYPES.find((t) => t.toLowerCase() === v) ?? null;
+  const known = ASSESSMENT_TYPES.find((t) => t.toLowerCase() === v);
+  if (known) return known;
+  const split = splitCertification(value);
+  return split && (split.suffix === '' || split.suffix === 'Surveillance') ? split.level + split.suffix : null;
 }
 
 /** Client for api/msme/assessment (Zed.Main.Api MsmeAssessmentReportController). Read-only. */

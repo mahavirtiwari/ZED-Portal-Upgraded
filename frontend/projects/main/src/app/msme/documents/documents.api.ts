@@ -21,6 +21,8 @@ export interface CertificateLinks {
   Gold: string | null;
   /** V4: ZED-X (a separate track, shown besides the highest of Bronze/Silver/Gold). */
   ZEDX?: string | null;
+  /** 2026-11-08: the levels the Admin added, by code, as ZED-X. */
+  [level: string]: string | null | undefined;
 }
 
 export interface Invoice {

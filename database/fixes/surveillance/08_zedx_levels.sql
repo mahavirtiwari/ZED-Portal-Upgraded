@@ -1,5 +1,9 @@
 -- database\fixes\surveillance\08_zedx_levels.sql  (ZED_SURVEILLANCE)
 -- ZED-X surveillance (level code ZEDX, migrations 0028-0033): the surveillance procedures that name Silver / Gold.
+-- 2026-11-08 (generic levels, migration 0066): every V4 site level, not only ZEDX. Where this script said ZEDX it now asks
+-- dbo.FN_V4_LEVEL_MODE(level) (0066: 'Site' / 'Desktop' for any level of main's SectionTypes that is not Bronze / Silver /
+-- Gold, ZEDX always 'Site', NULL otherwise). ZED-X behaves exactly as with the first version; a database where the first
+-- (ZED-X-only) version was applied is brought to the generic code by the optional edits (Expect -1). Needs migration 0066.
 -- =====================================================================================================================
 -- REVIEW BEFORE RUNNING ON PRODUCTION. THE LIVE DEFINITION MAY DIFFER FROM THE LOCAL COPY THIS SCRIPT WAS BUILT AND
 -- TESTED AGAINST: DIFF FIRST. Run it as it is (PREVIEW: prints the change, changes nothing), compare with the live
@@ -44,6 +48,7 @@ GO
 -- For every edit:
 --   - Find occurs Expect times (outside places that already hold Repl): the edit is made.
 --   - Find does not occur and Repl does: the edit is already in place (a second run changes nothing).
+--   - Expect -1 (2026-11-08): an optional edit; Find not there (and Repl not there) is skipped, else every place changes.
 --   - anything else: the live definition differs from the reviewed one. An error is raised and, because the
 --     calls run in one transaction, nothing at all is changed. Diff the live definition and adapt the edit.
 -- ---------------------------------------------------------------------------------------------------------
@@ -214,7 +219,12 @@ BEGIN
             PRINT CONCAT(@prefix, N' edit ', @seq, N' (', @note, N'): already in place.');
             CONTINUE;
         END
-        IF @fm <> @expect
+        IF @fm = 0 AND @expect = -1
+        BEGIN
+            PRINT CONCAT(@prefix, N' edit ', @seq, N' (', @note, N'): not present (optional edit); skipped.');
+            CONTINUE;
+        END
+        IF @fm <> @expect AND @expect <> -1
         BEGIN
             RAISERROR('%s edit %d: the reviewed code occurs %d time(s), %d expected (fixed code: %d). The live definition differs from the reviewed one. Nothing changed: diff it and adapt the edit.',
                 16, 1, @Procedure, @seq, @fm, @expect, @rm);
@@ -301,23 +311,44 @@ GO
 -- ---------------------------------------------------------------------------------------------------------
 -- The edits (reviewed against the local copy of the definitions).
 -- ---------------------------------------------------------------------------------------------------------
+-- Each change comes in two edits (2026-11-08, generic levels): first the optional one (Expect -1) that turns the ZED-X-only
+-- code of this script's first version (where it was applied) into the generic code, then the one that turns the reviewed
+-- legacy code into the same generic code. Whichever state a procedure is in, the second run finds everything in place.
 INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
-(N'dbo.SP_APP_MSME_GET_NC_DETAILS_BY_TYPE', N'ZED-X products of a surveillance NC as Gold',
+(N'dbo.SP_APP_MSME_GET_NC_DETAILS_BY_TYPE', N'V4 site levels: products of a surveillance NC as Gold (from the ZED-X-only version)',
+ N'IF @CertificationType IN (''Gold'', ''ZEDX'')',
+ N'IF (@CertificationType = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', -1),
+(N'dbo.SP_APP_MSME_GET_NC_DETAILS_BY_TYPE', N'V4 site levels: products of a surveillance NC as Gold',
  N'IF @CertificationType=''Gold''',
- N'IF @CertificationType IN (''Gold'', ''ZEDX'')   -- V4: ZED-X as Gold', 1),
-(N'dbo.SP_APP_MSME_INSERT_PRODUCT_INFO', N'ZED-X product NC answers as Gold',
+ N'IF (@CertificationType = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', 1),
+(N'dbo.SP_APP_MSME_INSERT_PRODUCT_INFO', N'V4 site levels: product NC answers as Gold (from the ZED-X-only version)',
+ N'IF @CertificationType IN (''Gold'', ''ZEDX'')',
+ N'IF (@CertificationType = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', -1),
+(N'dbo.SP_APP_MSME_INSERT_PRODUCT_INFO', N'V4 site levels: product NC answers as Gold',
  N'IF @CertificationType=''Gold''',
- N'IF @CertificationType IN (''Gold'', ''ZEDX'')   -- V4: ZED-X as Gold', 1),
-(N'dbo.SP_ASSESSMENT_DA_DETAILS', N'ZED-X surveillance products as Gold',
+ N'IF (@CertificationType = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', 1),
+(N'dbo.SP_ASSESSMENT_DA_DETAILS', N'V4 site levels: surveillance products as Gold (from the ZED-X-only version)',
+ N'IF @Certification IN (''Gold'', ''ZEDX'')',
+ N'IF (@Certification = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@Certification) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', -1),
+(N'dbo.SP_ASSESSMENT_DA_DETAILS', N'V4 site levels: surveillance products as Gold',
  N'IF @Certification=''Gold''',
- N'IF @Certification IN (''Gold'', ''ZEDX'')   -- V4: ZED-X as Gold', 1),
-(N'dbo.SP_REPORT_GET_DETAILS', N'ZED-X report photos as Gold',
+ N'IF (@Certification = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@Certification) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', 1),
+(N'dbo.SP_REPORT_GET_DETAILS', N'V4 site levels: report photos as Gold (from the ZED-X-only version)',
+ N'ELSE IF @Certification IN (''Gold'', ''ZEDX'')',
+ N'ELSE IF (@Certification = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@Certification) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', -1),
+(N'dbo.SP_REPORT_GET_DETAILS', N'V4 site levels: report photos as Gold',
  N'ELSE IF @Certification=''Gold''',
- N'ELSE IF @Certification IN (''Gold'', ''ZEDX'')   -- V4: ZED-X as Gold', 1),
-(N'dbo.SP_MONITORING_RA_FINAL_SUBMIT', N'ZED-X keeps its own latest certification',
+ N'ELSE IF (@Certification = ''Gold'' OR dbo.FN_V4_LEVEL_MODE(@Certification) = ''Site'')   -- V4: ZED-X and every V4 site level as Gold', 1),
+(N'dbo.SP_MONITORING_RA_FINAL_SUBMIT', N'V4 levels keep their own latest certification (from the ZED-X-only version)',
+ N'ELSE IF @CertificationType=''ZEDX'' BEGIN Update MsmeCertifications set QrCodeSeqNo=@QrCodeSeqNo where ZedId=@ZedId and Certification=@CertificationType END',
+ N'ELSE IF dbo.FN_V4_LEVEL_MODE(@CertificationType) IS NOT NULL   -- V4: ZED-X and every V4 level, a separate track
+		BEGIN
+			Update MsmeCertifications set QrCodeSeqNo=@QrCodeSeqNo where ZedId=@ZedId and Certification=@CertificationType
+		END', -1),
+(N'dbo.SP_MONITORING_RA_FINAL_SUBMIT', N'V4 levels keep their own latest certification',
  N'END ELSE BEGIN Update MsmeCertifications set QrCodeSeqNo=@QrCodeSeqNo where ZedId=@ZedId and Certification=@CertificationType UPDATE MsmeBasicInformation SET LastestCertification=''Gold'' WHERE ZedId=@ZedId END',
  N'END
-		ELSE IF @CertificationType=''ZEDX''   -- V4: a separate track
+		ELSE IF dbo.FN_V4_LEVEL_MODE(@CertificationType) IS NOT NULL   -- V4: ZED-X and every V4 level, a separate track
 		BEGIN
 			Update MsmeCertifications set QrCodeSeqNo=@QrCodeSeqNo where ZedId=@ZedId and Certification=@CertificationType
 		END
@@ -326,21 +357,32 @@ INSERT #V4_EDITS (ProcName, Note, Find, Repl, Expect) VALUES
 		Update MsmeCertifications set QrCodeSeqNo=@QrCodeSeqNo where ZedId=@ZedId and Certification=@CertificationType
 		UPDATE MsmeBasicInformation SET LastestCertification=''Gold'' WHERE ZedId=@ZedId
 		END', 1),
-(N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', N'ZED-X send back as a site level',
+(N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', N'V4 site levels: send back as a site level (from the ZED-X-only version)',
+ N'Certification in (''Silver'',''Gold'',''ZEDX'')',
+ N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', -1),
+(N'dbo.SP_MONITORING_SEND_BACK_TO_ASSESSOR', N'V4 site levels: send back as a site level',
  N'Certification in (''Silver'',''Gold'')',
- N'Certification in (''Silver'',''Gold'',''ZEDX'')', 2),
-(N'dbo.SP_MONITORING_REJECT_FINAL_SUBMIT', N'ZED-X re-certification after an NC5 rejection, as Silver / Gold',
+ N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', 2),
+(N'dbo.SP_MONITORING_REJECT_FINAL_SUBMIT', N'V4 site levels: re-certification after an NC5 rejection, as Silver / Gold (from the ZED-X-only version)',
+ N'IF @CertificationType IN (''Silver'', ''Gold'', ''ZEDX'')',
+ N'IF (@CertificationType IN (''Silver'', ''Gold'') OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level', -1),
+(N'dbo.SP_MONITORING_REJECT_FINAL_SUBMIT', N'V4 site levels: re-certification after an NC5 rejection, as Silver / Gold',
  N'IF @CertificationType IN (''Silver'', ''Gold'')',
- N'IF @CertificationType IN (''Silver'', ''Gold'', ''ZEDX'')', 1),
-(N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'ZED-X surveillance past its NC closure date rejected as Silver / Gold',
+ N'IF (@CertificationType IN (''Silver'', ''Gold'') OR dbo.FN_V4_LEVEL_MODE(@CertificationType) = ''Site'')   -- V4: ZED-X and every V4 site level', 1),
+(N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'V4 site levels: surveillance past its NC closure date rejected as Silver / Gold (from the ZED-X-only version)',
+ N'Certification in (''Silver'',''Gold'',''ZEDX'')',
+ N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', -1),
+(N'dbo.SP_ASSESSMENT_DA_AUTO_REJECT', N'V4 site levels: surveillance past its NC closure date rejected as Silver / Gold',
  N'Certification in (''Silver'',''Gold'')',
- N'Certification in (''Silver'',''Gold'',''ZEDX'')', 2);
+ N'(Certification in (''Silver'',''Gold'') OR dbo.FN_V4_LEVEL_MODE(Certification) = ''Site'')', 2);
 GO
 
 DECLARE @Mode varchar(10) = 'PREVIEW';   -- PREVIEW: print only. APPLY: alter the procedures (all or none).
 DECLARE @PrintDefinitions bit = 0;       -- 1: PREVIEW also prints each new definition in full.
 SET XACT_ABORT ON;
 BEGIN TRY
+    IF OBJECT_ID(N'dbo.FN_V4_LEVEL_MODE', N'FN') IS NULL
+        THROW 50014, 'dbo.FN_V4_LEVEL_MODE is missing: run migration 0066 on this database first.', 1;
     BEGIN TRANSACTION;
     DECLARE @procs TABLE (n int IDENTITY(1, 1) PRIMARY KEY, ProcName nvarchar(300) NOT NULL);
     INSERT @procs (ProcName) SELECT ProcName FROM #V4_EDITS GROUP BY ProcName ORDER BY MIN(Seq);

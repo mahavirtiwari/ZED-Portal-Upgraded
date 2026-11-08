@@ -185,8 +185,10 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var layout = CertificateComposer.LoadLayout(Path.Combine(folder, desktop ? "DaCertification.json" : "SaCertification.json"));
         var template = (desktop ? "Da" : "Sa") + level + ".jpg";
         // Surveillance keeps its own Bronze and Gold backgrounds ("Surveillance ... Completed on :"); its Silver is main's.
+        // 2026-11-08: a V4 level's background uploaded by the Admin (LevelArtwork) comes before the bundled one.
         var templatePath = Path.Combine(folder, template);
-        if (!File.Exists(templatePath)) templatePath = Path.Combine(_storage.AssetsFolder, template);
+        if (!surveillance || !File.Exists(templatePath))
+            templatePath = LevelArtwork.CertificateTemplate(_storage.Root, _storage.AssetsFolder, level, desktop) ?? Path.Combine(_storage.AssetsFolder, template);
 
         // Same fonts and alignment as the GDI+ code: DrawString at a point without a format is left aligned;
         // the address box is centred and top aligned, the NIC box centred and bottom aligned.
@@ -346,7 +348,8 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         var assets = _storage.AssetsFolder;
         using var cover = Image(ConsultancyAssets, $"ReportCover{number}.jpg");
         using var header = Image(ConsultancyAssets, "ReportHeader.jpg");
-        using var existing = DocumentLevels.Level(unit.Text("LastestCertification")) is { } latest ? Image(assets, $"Level{latest}.png") : null;
+        using var existing = DocumentLevels.Level(unit.Text("LastestCertification")) is { } latest && File.Exists(Path.Combine(assets, $"Level{latest}.png"))
+            ? Image(assets, $"Level{latest}.png") : null;
         using var desired = Image(assets, $"Level{level}.png");
         using var lastPage = Image(assets, "ReportLastPage.jpg");
         using var map = Map("Consultancy/", zedId, level);
@@ -365,9 +368,14 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         return path is null ? null : ReportPhotos.Downscale(path, 1000);
     }
 
-    /// <summary>The report's level badge: Level{Level}.png, or for a V4 level (ZED-X) the logo the Admin uploaded.</summary>
+    /// <summary>
+    /// The report's level badge: Level{Level}.png; for a V4 level (ZED-X) the report artwork the Admin uploaded (2026-11-08),
+    /// else the logo the Admin uploaded, else the bundled picture.
+    /// </summary>
     private async Task<SKImage> BadgeAsync(ISqlExecutor db, string level, CancellationToken ct)
     {
+        if (LevelArtwork.Uploaded(_storage.Root, level, LevelArtwork.Report) is { } artwork && SKImage.FromEncodedData(artwork) is { } own)
+            return own;
         if (!DocumentLevels.IsBuiltIn(level) &&
             await CertificationLevels.FindAsync(db, level, log, ct) is { LogoPath: { Length: > 0 } logo } && _storage.Find(logo) is { } path &&
             SKImage.FromEncodedData(path) is { } uploaded)

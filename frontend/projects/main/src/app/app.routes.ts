@@ -457,6 +457,8 @@ const CONSULTANCY_STAFF_CHILDREN: Routes = [
 /** Surveillance staff screens. */
 const SURVEILLANCE_STAFF_CHILDREN: Routes = [
   ...SYSTEM_COMMON_STAFF_CHILDREN,
+  // 2026-11-08: the documents and videos the Admin gave to this account type (Admin on main → Documents/Videos, Surveillance tick).
+  { path: 'documents', title: 'ZED | Documents', loadComponent: () => import('./staff/staff-documents').then((m) => m.StaffRoleDocumentsPage) },
   {
     path: 'financial-support',
     title: 'ZED | Financial Support',

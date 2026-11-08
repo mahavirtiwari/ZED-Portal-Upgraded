@@ -354,7 +354,7 @@ public sealed partial class MobilePaymentController(
 
         // A level already paid or applied for, as the web checkout: ZED-X on both paths (no procedure refuses it), the
         // others on the zero path (the zero procedure's own condition).
-        if (!m.Surveillance && (fee.Due <= 0 || cert == "ZEDX") && await Certifications.AlreadyPaidAsync(db, zedId, cert, log, ct))
+        if (!m.Surveillance && (fee.Due <= 0 || Certifications.IsV4(cert)) && await Certifications.AlreadyPaidAsync(db, zedId, cert, log, ct))
             return (null, "Payment is already done for this certification.");
 
         // Last, as it asks Protean: the GSTIN must be verified, as in the web checkout's GSTIN step.
@@ -390,8 +390,8 @@ public sealed partial class MobilePaymentController(
     /// A recorded certification payment: Is{Level}PaymentDone for Bronze / Silver / Gold (the zero procedure sets it), the
     /// level's MsmePaymentInfo row for ZED-X. The level comes from <see cref="Certifications.Applicable"/> only.
     /// </summary>
-    internal static string RecordedSql(string level) => level == "ZEDX"
-        ? "SELECT ZedId FROM MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = 'ZEDX'"
+    internal static string RecordedSql(string level) => Certifications.IsV4(level)
+        ? $"SELECT ZedId FROM MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = '{level}'"
         : $"SELECT ZedId FROM Msme WHERE ZedId = @ZedId AND Is{level}PaymentDone = 1";
 
     /// <summary>SP_SURVEILLANCE_MSME_GET_PAYMENT_STATUS: 1 while the level is certified and its surveillance fee is unpaid.</summary>

@@ -76,13 +76,20 @@ public sealed class MsmeStatus : ServiceResponse
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public CertificationDetails? zedx { get; set; }
 
+    /// <summary>
+    /// 2026-11-08 (generic levels): every V4 level (ZED-X and the levels the Admin added) whose columns are in the row, with
+    /// its code, name and assessment mode; left out of the JSON when there is none (the login of apps that do not know them).
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public List<AppLevelStatus>? levels { get; set; }
+
     public string? latestCertification { get; set; }
     public string? dateOfAvail { get; set; }
     public string? joiningRewardAmount { get; set; }
     public bool isCouponUsed { get; set; }
 }
 
-public sealed class CertificationDetails
+public class CertificationDetails
 {
     public int status { get; set; }
     public int ncStatus { get; set; }
@@ -172,4 +179,13 @@ public sealed class PlantDetails
     public string? UnitName { get; set; }
     public string? UnitIdNo { get; set; }
     public bool ZedCertified { get; set; }
+}
+
+/// <summary>A V4 level in the app's status (2026-11-08): <see cref="CertificationDetails"/> with the level's code, name and mode.</summary>
+public sealed class AppLevelStatus : CertificationDetails
+{
+    public string code { get; set; } = "";
+    public string name { get; set; } = "";
+    /// <summary>"Desktop" or "Site".</summary>
+    public string assessmentMode { get; set; } = "Site";
 }

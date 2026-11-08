@@ -132,7 +132,7 @@ public sealed class MsmePasswordResets(
         {
             try
             {
-                var html = await templates.RenderAsync<PasswordChangedEmail>(new Dictionary<string, object?>
+                var html = await templates.RenderAsync<PasswordChangedEmail>(EmailTemplateVariants.PasswordChangedMsme, new Dictionary<string, object?>
                 {
                     [nameof(PasswordChangedEmail.UserName)] = account.EnterpriseName,
                     [nameof(PasswordChangedEmail.UserId)] = account.ZedId,

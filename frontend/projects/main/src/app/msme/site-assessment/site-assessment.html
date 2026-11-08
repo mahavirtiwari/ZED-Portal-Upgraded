@@ -234,7 +234,7 @@
               @for (r of s.requirements; track $index) {
                 <div class="panel panel-default panel-info sa-requirement">
                   <div class="panel-body border-left sa-relative">
-                    <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div>
+                    <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div><zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" />
                     <div class="label-highlight3 m-t-2">
                       <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
                     </div>
@@ -421,7 +421,7 @@
                 <div class="col-sm-12">
                   <div class="panel panel-default m-0">
                     <div class="panel-body border-left sa-relative">
-                      <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div>
+                      <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div><zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" />
                       <div class="label-highlight3">
                         <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
                       </div>

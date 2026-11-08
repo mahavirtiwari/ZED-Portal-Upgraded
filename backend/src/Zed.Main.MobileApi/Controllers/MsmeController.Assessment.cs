@@ -22,11 +22,9 @@ public sealed partial class MsmeController
     {
         if (VersionCheck(version) is { } update) return update;
         var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_GET_QUESTIONS_BY_TYPE", new { ZedId = userName, CertificationType = certificationType }, ct);
-        return LegacyJson(new ParametersResponse
-        {
-            status = "1",
-            parameters = BuildParameters(sets, 0, withEvidences: true, withAssessorRemarks: false),
-        });
+        var parameters = BuildParameters(sets, 0, withEvidences: true, withAssessorRemarks: false);
+        await AppRequirementVideos.FillAsync(db, "dbo", certificationType, parameters, log, ct);
+        return LegacyJson(new ParametersResponse { status = "1", parameters = parameters });
     }
 
     /// <summary>
@@ -355,11 +353,13 @@ public sealed partial class MsmeController
         var error = await TryExecuteAsync("SP_APP_MSME_FINAL_SUBMIT", args, ct);
         if (error is not null) return Fail(error);
         log.LogInformation("App final submit for {ZedId} {Certification}", request.userName, request.certificationType);
-        // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only: ZED-X's, by the unit's kind (migration 0031).
-        if (string.Equals(request.certificationType?.Trim(), ZedXAppStatus.Level, StringComparison.OrdinalIgnoreCase))
+        // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only: ZED-X's, by the unit's kind (migration 0031);
+        // 2026-11-08: every V4 level's (the procedure reads the level's own agency column since migration 0065).
+        if (LevelRegistry.IsV4(request.certificationType?.Trim()))
         {
-            var allot = await TryExecuteAsync("SP_V4_AUTO_ALLOT_AGENCY", new { ZedId = request.userName, CertificationType = ZedXAppStatus.Level }, ct);
-            if (allot is not null) log.LogError("ZED-X auto-allotment of {ZedId} failed: {Error} (is migration 0031 applied?)", request.userName, allot);
+            var level = LevelRegistry.Canonical(request.certificationType!.Trim())!;
+            var allot = await TryExecuteAsync("SP_V4_AUTO_ALLOT_AGENCY", new { ZedId = request.userName, CertificationType = level }, ct);
+            if (allot is not null) log.LogError("{Level} auto-allotment of {ZedId} failed: {Error} (is migration 0031 applied?)", level, request.userName, allot);
         }
 
         await SendSubmissionMailAsync(request.userName ?? "", request.certificationType ?? "", ct);

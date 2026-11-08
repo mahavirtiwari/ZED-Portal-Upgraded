@@ -6,7 +6,7 @@ import { CHART_COLORS, ChartItem, DonutChart, GroupedColumnChart, LEVEL_COLORS, 
 import { Analytics, AnalyticsFilter, AnalyticsView, CountItem, DashboardApi, Row } from './dashboard.api';
 import { CERTIFICATIONS, SIZES, STATE_NAMES } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
-import { levelName } from '../../msme/shared/levels';
+import { levelCodes, levelName } from '../../msme/shared/levels';
 import { STAFF_SYSTEM } from '../staff-menu';
 
 const GENDER_LABELS: Record<string, string> = { male: 'Male', female: 'Female', others: 'Others' };
@@ -34,7 +34,7 @@ interface AnalyticsWords {
 export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
   main: {
     kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified', 'ZED-X certified'],
-    // 2026-11-08: ZED-X too (the figures count its certifications).
+    // 2026-11-08: ZED-X too (the figures count its certifications); the page lists every level (levelCodes()).
     certifications: [...CERTIFICATIONS, 'ZEDX'], certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
   },
   consultancy: {
@@ -90,7 +90,7 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
           <label class="form-label" for="an-cert">{{ words.certLabel }}</label>
           <select id="an-cert" class="form-select" [ngModel]="filter().certification ?? ''" (ngModelChange)="set('certification', $event)">
             <option value="">All</option>
-            @for (c of certifications; track c) { <option [value]="c">{{ levelName(c) }}</option> }
+            @for (c of certifications(); track c) { <option [value]="c">{{ levelName(c) }}</option> }
           </select>
         </div>
         <div class="filter an-range">
@@ -265,7 +265,8 @@ export class StaffAnalytics {
 
   protected readonly states = STATE_NAMES;
   protected readonly sizes = SIZES;
-  protected readonly certifications = this.words.certifications;
+  /** Main: every level (Administration → Certification Levels, the Admin's too; 2026-11-08); elsewhere the portal's own. */
+  protected readonly certifications = computed(() => (this.system === 'main' ? levelCodes() : this.words.certifications));
   protected readonly levelName = levelName;
   protected readonly socialCategories = ['General', 'OBC', 'SC', 'ST'];
   protected readonly today = new Date().toISOString().slice(0, 10);
@@ -289,6 +290,8 @@ export class StaffAnalytics {
   readonly data = signal<Analytics | null>(null);
   /** The status cards' counts with the filters (the page draws the cards inside the ZED Certification tab). */
   readonly statusCards = output<Row>();
+  /** The added levels of the last answer (their status cards, 2026-11-08). */
+  readonly otherLevels = signal<NonNullable<Analytics['otherLevels']>>([]);
   readonly loading = signal(false);
   protected readonly error = signal('');
   private request = 0;
@@ -376,7 +379,16 @@ export class StaffAnalytics {
       const d = await firstValueFrom(this.api.analytics({ view: this.view(), ...this.filter() }, fresh));
       if (id !== this.request) return;
       this.data.set(d);
-      this.statusCards.emit(d.statusCards ?? {});
+      // Added levels' counts under the same kind of names as ZED-X's (PLATINUMTotal, SaPLATINUMPending, ...).
+      const extra: Row = {};
+      for (const l of d.otherLevels ?? []) {
+        Object.assign(extra, {
+          [`${l.code}Total`]: l.total, [`Sa${l.code}Pending`]: l.pending, [`${l.code}NcRaised`]: l.ncRaised,
+          [`Sa${l.code}Completed`]: l.certified, [`${l.code}Rejected`]: l.rejected,
+        });
+      }
+      this.statusCards.emit({ ...(d.statusCards ?? {}), ...extra });
+      this.otherLevels.set(d.otherLevels ?? []);
       if (d.boundState && this.filter().state !== d.boundState) this.filter.update((f) => ({ ...f, state: d.boundState! }));
     } catch (err) {
       if (id === this.request) this.error.set(apiErrorMessage(err));

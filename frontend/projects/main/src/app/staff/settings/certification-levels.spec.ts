@@ -24,7 +24,9 @@ describe('CertificationLevelsPage', () => {
         surveillanceReminders: 2, surveillanceReminderEveryMonths: 1, surveillanceSuspendAfterMonths: 1, surveillanceWithdrawAfterDays: 64,
         surveillanceAutoApply: true, surveillanceSuspendRounds: 0, surveillanceScheduleFrom: '9999-12-31T00:00:00',
       }), sample: '29102026_129350', logoUrl: '/Images/Dashboard/bronze.png' },
-      { level: level('ZEDX', 'ZED-X', { isEnabled: zedxEnabled, fee: 75000, description: 'Open to every MSME' }), sample: '29102026_129350', logoUrl: null },
+      { level: level('ZEDX', 'ZED-X', { isEnabled: zedxEnabled, fee: 75000, description: 'Open to every MSME' }), sample: '29102026_129350', logoUrl: null,
+        fees: [{ type: 'Micro', total: 75000 }, { type: 'Small', total: 90000 }],
+        readiness: { questionnaire: true, parameterCount: 8, fees: true, artwork: true, agencies: true, columns: true, columnsMessage: null } },
     ],
   });
 
@@ -262,5 +264,134 @@ describe('CertificationLevelsPage (one Admin)', () => {
     expect(message).toContain('ZED-X is enabled');
     expect(message).toContain('Not saved on the Surveillance portal: The levels cannot be saved');
     http.verify();
+  });
+});
+
+describe('CertificationLevelsPage (a level the Admin added)', () => {
+  let fixture: ComponentFixture<CertificationLevelsPage>;
+  let http: HttpTestingController;
+  let el: HTMLElement;
+  const api = '/api/staff/settings/levels';
+  const ready = { questionnaire: true, parameterCount: 0, fees: true, artwork: true, agencies: true, columns: true, columnsMessage: null };
+  const lv = (code: string, name: string, orderNo: number, isEnabled: boolean) => ({
+    code, name, orderNo, description: null, comment: null, logoPath: null, isEnabled, assessmentMode: 'Site', validityMonths: 36,
+    surveillanceEnabled: true, firstSurveillanceMonths: 12, certNoFormat: '{ZEDNO}', certNoFormatManufacturing: null, certNoFormatService: null, fee: null,
+    updatedBy: null, updatedOn: null,
+  }) as CertificationLevel;
+  const platinum = (readiness: object, isEnabled = false) => ({
+    stored: true, tokens: ['{ZEDID}', '{ZEDNO}'],
+    levels: [
+      { level: lv('Gold', 'Gold', 30, true), sample: '1', logoUrl: null, readiness: { ...ready, parameterCount: 20 } },
+      { level: lv('PLATINUM', 'Platinum', 50, isEnabled), sample: '1', logoUrl: null, readiness: { ...ready, ...readiness } },
+    ],
+  });
+  const notReady = { questionnaire: false, parameterCount: 0, fees: false, artwork: false, agencies: false, columns: false, columnsMessage: 'Ready after the next update' };
+
+  async function settle() {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+  const box = (name: string) => [...el.querySelectorAll('.lv-box')].find((b) => b.getAttribute('aria-label') === name) as HTMLElement;
+  const row = (key: string) => box('Platinum').querySelector(`[data-check="${key}"]`) as HTMLElement;
+
+  async function open(readiness: object) {
+    await TestBed.configureTestingModule({
+      imports: [CertificationLevelsPage],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting(), { provide: AdminPortalService, useValue: { enabled: false } }],
+    }).compileComponents();
+    fixture = TestBed.createComponent(CertificationLevelsPage);
+    http = TestBed.inject(HttpTestingController);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne(api).flush(platinum(readiness));
+    await settle();
+  }
+
+  afterEach(() => http.verify());
+
+  it('shows the checklist of what the level still needs, "Off until ready", and none for the built-in levels', async () => {
+    await open(notReady);
+    expect(box('Gold').querySelector('[data-checklist]')).toBeNull();
+    const list = box('Platinum').querySelector('[data-checklist]') as HTMLElement;
+    expect(list.querySelector('.lv-ready-count')!.textContent).toBe('1 of 6');
+    expect(row('settings').classList).toContain('ok');
+    for (const key of ['questionnaire', 'fees', 'artwork', 'agencies', 'columns']) expect(row(key).classList).not.toContain('ok');
+    expect(row('questionnaire').textContent).toContain('Questionnaire (0 parameters)');
+    expect(row('questionnaire').textContent).toContain('missing');
+    expect(row('questionnaire').querySelector('a')!.getAttribute('href')).toBe('/staff/masters/parameters/PLATINUM');
+    expect(row('fees').querySelector('a')!.getAttribute('href')).toBe('/staff/fees?level=PLATINUM');
+    expect(row('artwork').textContent).toContain('upload');
+    expect(row('agencies').querySelector('a')!.getAttribute('href')).toBe('/staff/users/bronze-agencies');
+    expect(row('columns').querySelector('[data-columns-message]')!.textContent).toContain('Ready after the next update');
+    expect(box('Platinum').querySelector('[data-off-until-ready]')!.textContent).toContain('Off until ready');
+    const why = box('Platinum').querySelector('[data-why]')!.textContent!;
+    expect(why).toContain('the questionnaire');
+    expect(why).toContain('the certificate and report artwork');
+    expect(why).not.toContain('agenc');
+    const enable = box('Platinum').querySelector('button[aria-label="Enable Platinum"]') as HTMLButtonElement;
+    expect(enable.getAttribute('title')).toContain('Missing: the questionnaire');
+  });
+
+  it('uploads the certificate artwork as a file and reloads the checklist', async () => {
+    await open(notReady);
+    const input = box('Platinum').querySelector('input[data-artwork="certificate"]') as HTMLInputElement;
+    const file = new File(['jpg'], 'platinum-certificate.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    input.dispatchEvent(new Event('change'));
+    await settle();
+    const post = http.expectOne((r) => r.method === 'POST' && r.url === `${api}/PLATINUM/artwork`);
+    expect(post.request.params.get('kind')).toBe('certificate');
+    expect(post.request.body instanceof FormData).toBe(true);
+    expect(((post.request.body as FormData).get('file') as File).name).toBe('platinum-certificate.jpg');
+    post.flush({ message: 'The certificate artwork of Platinum is saved.' });
+    await settle();
+    http.expectOne(api).flush(platinum({ ...notReady, artwork: true }));
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('certificate artwork of Platinum is saved');
+    expect(row('artwork').classList).toContain('ok');
+
+    // Too large: refused before sending.
+    const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.png', { type: 'image/png' });
+    const report = box('Platinum').querySelector('input[data-artwork="report"]') as HTMLInputElement;
+    Object.defineProperty(report, 'files', { value: [big], configurable: true });
+    report.dispatchEvent(new Event('change'));
+    await settle();
+    http.expectNone((r) => r.method === 'POST');
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('JPG or PNG image of up to 2 MB');
+  });
+
+  it('shows the artwork from the server, or says there is none', async () => {
+    await open(notReady);
+    (box('Platinum').querySelector('button[data-view-artwork="report"]') as HTMLButtonElement).click();
+    await settle();
+    const get = http.expectOne((r) => r.method === 'GET' && r.url === `${api}/PLATINUM/artwork`);
+    expect(get.request.params.get('kind')).toBe('report');
+    expect(get.request.responseType).toBe('blob');
+    get.flush(new Blob(['x']), { status: 404, statusText: 'Not Found' });
+    await settle();
+    expect(el.querySelector('[data-no-artwork]')!.textContent).toContain('No report artwork uploaded yet.');
+  });
+
+  it("asks the server to enable it and shows the server's refusal", async () => {
+    await open(notReady);
+    (box('Platinum').querySelector('button[aria-label="Enable Platinum"]') as HTMLButtonElement).click();
+    await settle();
+    const put = http.expectOne(`${api}/PLATINUM/enabled`);
+    expect(put.request.body).toEqual({ enabled: true });
+    put.flush({ title: 'Platinum cannot be enabled yet: it has no questionnaire, no fees and no certificate artwork.' }, { status: 400, statusText: 'Bad Request' });
+    await settle();
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('Platinum cannot be enabled yet: it has no questionnaire');
+    expect(box('Platinum').querySelector('[data-off-until-ready]')).not.toBeNull();
+  });
+
+  it('shows a ready level as all done, without "Off until ready"', async () => {
+    await open({ parameterCount: 12 });
+    expect(box('Platinum').querySelector('.lv-ready-count')!.textContent).toBe('6 of 6');
+    expect(row('questionnaire').textContent).toContain('Questionnaire (12 parameters)');
+    expect(box('Platinum').querySelector('[data-off-until-ready]')).toBeNull();
+    expect(box('Platinum').querySelector('[data-why]')).toBeNull();
+    expect(box('Platinum').querySelector('.status-badge')!.textContent).toContain('Disabled');
   });
 });

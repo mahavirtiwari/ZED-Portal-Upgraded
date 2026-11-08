@@ -22,9 +22,55 @@ namespace Zed.Portal.Features.CertLevels;
 [StaffRoles(UserRole.Admin)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 public sealed partial class CertificationLevelsController(
-    ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<CertificationLevelsController> log) : StaffApiController
+    ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, PortalHost host, ILogger<CertificationLevelsController> log) : StaffApiController
 {
-    public sealed record LevelItem(CertificationLevel Level, string Sample, string? LogoUrl);
+    /// <param name="Fees">2026-11-08: the level's fees in Masters → Payments (with GST, before subsidy) by enterprise type.</param>
+    /// <param name="Readiness">2026-11-08 (generic levels): what a V4 level still needs before it can be enabled.</param>
+    public sealed record LevelItem(CertificationLevel Level, string Sample, string? LogoUrl)
+    {
+        public IReadOnlyList<LevelFee> Fees { get; init; } = [];
+        public LevelReadiness Readiness { get; init; } = LevelReadiness.Complete(0);
+    }
+
+    /// <summary>The checklist of a level (Administration → Certification Levels). Bronze, Silver, Gold and ZED-X: all true.</summary>
+    /// <param name="Questionnaire">The level has at least one parameter (dbo.Sections of its code).</param>
+    /// <param name="Fees">Masters → Payments has its Micro, Small and Medium fees (dbo.AssessmentFee).</param>
+    /// <param name="Artwork">The certificate background and the report picture are there (<see cref="LevelArtwork"/>).</param>
+    /// <param name="Agencies">At least one active desktop-verification agency may be allotted the level (Users.Allow{Code}Assessments).</param>
+    /// <param name="Columns">The level's columns exist (Msme.Is{Code}PaymentDone, IsSur{Code}PaymentDone, Users.Allow{Code}Assessments,
+    /// ReasonForBlock{Code}; ZED_SURVEILLANCE Msme.Is{Code}PaymentDone).</param>
+    /// <param name="ColumnsMessage">Why <paramref name="Columns"/> is false.</param>
+    public sealed record LevelReadiness(bool Questionnaire, int ParameterCount, bool Fees, bool Artwork, bool Agencies, bool Columns, string? ColumnsMessage)
+    {
+        public static LevelReadiness Complete(int parameterCount) => new(true, parameterCount, true, true, true, true, null);
+
+        /// <summary>What keeps the level from being enabled (agencies are not required: the Master Admin can allot by hand).</summary>
+        public IReadOnlyList<string> Missing()
+        {
+            var missing = new List<string>();
+            if (!Questionnaire) missing.Add("its questionnaire (Questionnaire menu)");
+            if (!Fees) missing.Add("its Micro, Small and Medium fees (Masters → Payments)");
+            if (!Artwork) missing.Add("its certificate and report artwork");
+            if (!Columns) missing.Add("its database columns (" + (ColumnsMessage ?? ColumnsPending) + ")");
+            return missing;
+        }
+    }
+
+    public const string ColumnsPending = "Ready after the next update";
+
+    public sealed record LevelFee(string Type, decimal? Total);
+
+    public sealed class FeeRow
+    {
+        public string? Certification { get; init; }
+        public string? Type { get; init; }
+        public decimal? Total { get; init; }
+    }
+
+    /// <summary>The Micro / Small / Medium fee with GST of each level (one value per type; the categories differ only in subsidy).</summary>
+    internal const string FeesSql =
+        "SELECT LTRIM(RTRIM(Certification)) AS Certification, LTRIM(RTRIM(EnterpriseTypee)) AS Type, MAX(Total) AS Total FROM dbo.AssessmentFee " +
+        "WHERE EnterpriseTypee IN ('Micro', 'Small', 'Medium') GROUP BY LTRIM(RTRIM(Certification)), LTRIM(RTRIM(EnterpriseTypee));";
 
     public sealed record LevelsResponse(IReadOnlyList<LevelItem> Levels, IReadOnlyList<string> Tokens, bool Stored);
 
@@ -33,7 +79,117 @@ public sealed partial class CertificationLevelsController(
     {
         var levels = await CertificationLevels.AllAsync(db, log, ct);
         var stored = !ReferenceEquals(levels, CertificationLevels.BuiltIn);
-        return new LevelsResponse(levels.Select(Item).ToList(), CertificateNumbers.Tokens, stored);
+        IReadOnlyList<FeeRow> fees;
+        try { fees = await db.QuerySqlAsync<FeeRow>(FeesSql, null, ct); }
+        catch (System.Data.Common.DbException ex) { log.LogWarning(ex, "Fees of the levels not readable"); fees = []; }
+        string[] order = ["Micro", "Small", "Medium"];
+        var parameters = await ParameterCountsAsync(ct);
+        var items = new List<LevelItem>();
+        foreach (var l in levels)
+        {
+            var levelFees = fees.Where(f => string.Equals(f.Certification, l.Code, StringComparison.OrdinalIgnoreCase) && f.Type is not null)
+                .OrderBy(f => Array.FindIndex(order, o => string.Equals(o, f.Type, StringComparison.OrdinalIgnoreCase)))
+                .Select(f => new LevelFee(f.Type!, f.Total)).ToList();
+            items.Add(Item(l) with { Fees = levelFees, Readiness = await ReadinessAsync(l, levelFees, parameters, ct) });
+        }
+        return new LevelsResponse(items, CertificateNumbers.Tokens, stored);
+    }
+
+    /// <summary>Bronze, Silver, Gold and ZED-X: their procedures, artwork and columns came with the portal.</summary>
+    public static bool IsBuiltIn(string code) => LevelRegistry.BuiltIn.Any(b => string.Equals(b.Code, code, StringComparison.OrdinalIgnoreCase));
+
+    public sealed class CountRow
+    {
+        public string? Code { get; init; }
+        public int Count { get; init; }
+    }
+
+    internal const string ParameterCountsSql =
+        "SELECT LTRIM(RTRIM(SectionType)) AS Code, COUNT(*) AS Count FROM dbo.Sections WHERE SectionType IS NOT NULL GROUP BY LTRIM(RTRIM(SectionType));";
+
+    private async Task<IReadOnlyList<CountRow>> ParameterCountsAsync(CancellationToken ct)
+    {
+        try { return await db.QuerySqlAsync<CountRow>(ParameterCountsSql, null, ct); }
+        catch (DbException ex) { log.LogWarning(ex, "Parameters of the levels not counted"); return []; }
+    }
+
+    /// <summary>Active agencies that do desktop verification and may be allotted the level (the column names the level; NULL = allowed).</summary>
+    internal static string AgenciesSql(string code) =>
+        "SELECT COUNT(*) FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND DesktopVerification = 1 " +
+        $"AND ISNULL([{LevelRegistry.AgencyColumn(code)}], 1) = 1;";
+
+    /// <summary>1 when the level's columns exist: main's four and ZED_SURVEILLANCE's payment flag (main), or the surveillance flag (Surveillance).</summary>
+    internal const string ColumnsSql =
+        "SELECT CASE WHEN COL_LENGTH('dbo.Msme', @Pay) IS NULL OR COL_LENGTH('dbo.Msme', @SurPay) IS NULL OR COL_LENGTH('dbo.Users', @Allow) IS NULL " +
+        "OR COL_LENGTH('dbo.Users', @Reason) IS NULL OR COL_LENGTH('ZED_SURVEILLANCE.dbo.Msme', @Pay) IS NULL THEN 0 ELSE 1 END;";
+
+    internal const string SurveillanceColumnsSql = "SELECT CASE WHEN COL_LENGTH('dbo.Msme', @Pay) IS NULL THEN 0 ELSE 1 END;";
+
+    private async Task<LevelReadiness> ReadinessAsync(CertificationLevel l, IReadOnlyList<LevelFee> fees, IReadOnlyList<CountRow> parameters, CancellationToken ct)
+    {
+        var count = parameters.Where(p => string.Equals(p.Code, l.Code, StringComparison.OrdinalIgnoreCase)).Sum(p => p.Count);
+        if (IsBuiltIn(l.Code) || !LevelRegistry.CodePattern().IsMatch(l.Code)) return LevelReadiness.Complete(count);
+        var hasFees = new[] { "Micro", "Small", "Medium" }.All(t => fees.Any(f => string.Equals(f.Type, t, StringComparison.OrdinalIgnoreCase)));
+        var artwork = LevelArtwork.Ready(MsmeFilePaths.Root(env, portal.Value), DocumentAssets, l);
+        var columns = await ColumnsExistAsync(l.Code, ct);
+        var agencies = false;
+        if (columns)
+        {
+            try
+            {
+                var sql = AgenciesSql(l.Code);
+                if (host.System != PortalSystem.Main) sql = sql.Replace("FROM dbo.Users", "FROM ZEDCS_V2_LIVE.dbo.Users");
+                agencies = (await db.QuerySqlAsync<int>(sql, null, ct)).FirstOrDefault() > 0;
+            }
+            catch (DbException ex) { log.LogWarning(ex, "Agencies of level {Code} not counted", l.Code); }
+        }
+        return new LevelReadiness(count > 0, count, hasFees, artwork, agencies, columns, columns ? null : ColumnsPending);
+    }
+
+    private async Task<bool> ColumnsExistAsync(string code, CancellationToken ct)
+    {
+        try
+        {
+            var args = new
+            {
+                Pay = $"Is{code}PaymentDone", SurPay = $"IsSur{code}PaymentDone",
+                Allow = LevelRegistry.AgencyColumn(code), Reason = LevelRegistry.AgencyReasonColumn(code),
+            };
+            return (await db.QuerySqlAsync<int>(host.System == PortalSystem.Main ? ColumnsSql : SurveillanceColumnsSql, args, ct)).FirstOrDefault() == 1;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Columns of level {Code} not checked", code);
+            return false;
+        }
+    }
+
+    internal static string DocumentAssets => Path.Combine(AppContext.BaseDirectory, "Assets", "Documents");
+
+    /// <summary>The checklist of one level (for the refusal to enable it).</summary>
+    private async Task<LevelReadiness> ReadinessAsync(CertificationLevel l, CancellationToken ct)
+    {
+        IReadOnlyList<FeeRow> fees;
+        try { fees = await db.QuerySqlAsync<FeeRow>(FeesSql, null, ct); }
+        catch (DbException ex) { log.LogWarning(ex, "Fees of the levels not readable"); fees = []; }
+        var levelFees = fees.Where(f => string.Equals(f.Certification, l.Code, StringComparison.OrdinalIgnoreCase) && f.Type is not null)
+            .Select(f => new LevelFee(f.Type!, f.Total)).ToList();
+        return await ReadinessAsync(l, levelFees, await ParameterCountsAsync(ct), ct);
+    }
+
+    /// <summary>Null when the level may be enabled; otherwise why not (V4 levels the Admin added need their checklist complete).</summary>
+    private async Task<string?> NotReadyAsync(CertificationLevel level, CancellationToken ct)
+    {
+        if (IsBuiltIn(level.Code)) return null;
+        var missing = (await ReadinessAsync(level, ct)).Missing();
+        return missing.Count == 0 ? null : $"{level.Name} cannot be enabled yet. It still needs {string.Join(", ", missing)}.";
+    }
+
+    /// <summary>The level registry of this host's level checks, read again after a change (main's table).</summary>
+    private async Task RefreshRegistryAsync(CancellationToken ct)
+    {
+        try { await LevelRegistry.RefreshAsync(db, host.System != PortalSystem.Main, ct); }
+        catch (Exception ex) when (ex is DbException or InvalidOperationException) { log.LogWarning(ex, "Certification levels not read again after a change"); }
     }
 
     internal static LevelItem Item(CertificationLevel l) =>
@@ -82,7 +238,9 @@ public sealed partial class CertificationLevelsController(
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
         if (Validate(req, level.Code) is { } problem) return this.Problem400(problem);
+        if (req.IsEnabled && !level.IsEnabled && await NotReadyAsync(level, ct) is { } notReady) return this.Problem400(notReady);
         if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
+        await RefreshRegistryAsync(ct);
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
         return new MessageResponse($"{req.Name!.Trim()} saved.");
     }
@@ -97,17 +255,20 @@ public sealed partial class CertificationLevelsController(
     public async Task<ActionResult<MessageResponse>> Switch(string code, SwitchRequest req, CancellationToken ct)
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
+        if (req.Enabled && await NotReadyAsync(level, ct) is { } notReady) return this.Problem400(notReady);
         if (!await RunAsync(SwitchSql, new { Code = level.Code, req.Enabled, UpdatedBy = Actor() }, ct)) return Unavailable();
+        await RefreshRegistryAsync(ct);
         log.LogWarning("Certification level {Code} {State} by {Actor}", level.Code, req.Enabled ? "enabled" : "disabled", UserId);
         return new MessageResponse(req.Enabled ? $"{level.Name} is enabled: MSMEs see it." : $"{level.Name} is disabled: MSMEs do not see it.");
     }
 
-    [GeneratedRegex("^[A-Za-z][A-Za-z0-9]{1,19}$")]
-    private static partial Regex CodePattern();
+    private static Regex CodePattern() => LevelRegistry.CodePattern();
 
     /// <summary>
     /// Adds a level. Its code is stored with its questionnaire, fees and certificates and cannot change; MSMEs can apply
-    /// once its questionnaire and fees are in place and it is enabled.
+    /// once its questionnaire and fees are in place and it is enabled. 2026-11-08 (generic levels): a new level is stored
+    /// disabled (it can be enabled once its checklist is complete); the portal adds its database columns
+    /// (<see cref="ColumnsDdl"/>; when its SQL login may not, migration 0065 does on the next update) and gives it a QR digit.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<MessageResponse>> Add(LevelRequest req, CancellationToken ct)
@@ -119,9 +280,72 @@ public sealed partial class CertificationLevelsController(
         if (ReferenceEquals(all, CertificationLevels.BuiltIn)) return Unavailable();
         if (all.Any(l => string.Equals(l.Code, code, StringComparison.OrdinalIgnoreCase) || string.Equals(l.Name, req.Name!.Trim(), StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A level with this code or name already exists.");
-        if (!await RunAsync(InsertSql, Args(code, req), ct)) return Unavailable();
+        if (!await RunAsync(InsertSql, Args(code, req with { IsEnabled = false }), ct)) return Unavailable();
         log.LogWarning("Certification level {Code} added by {Actor}", code, UserId);
-        return new MessageResponse($"{req.Name!.Trim()} added. Add its questionnaire (Questionnaire menu) and its fees (Masters → Payments) before enabling it.");
+        var columns = await AddColumnsAsync(code, ct);
+        await AssignQrDigitAsync(code, ct);
+        await RefreshRegistryAsync(ct);
+        return new MessageResponse($"{req.Name!.Trim()} added (disabled). Add its questionnaire (Questionnaire menu), its fees (Masters → Payments) " +
+            "and its certificate and report artwork before enabling it." +
+            (columns ? "" : $" Its database columns could not be added by the portal: {ColumnsPending.ToLowerInvariant()}."));
+    }
+
+    /// <summary>
+    /// The columns of a V4 level on legacy tables (as ZED-X's of migrations 0029, 0033 and 0060): main's Msme.Is{Code}PaymentDone
+    /// and IsSur{Code}PaymentDone, Users.Allow{Code}Assessments and ReasonForBlock{Code}; ZED_SURVEILLANCE's Msme.Is{Code}PaymentDone.
+    /// The code is checked (letters and digits) before it names a column. Each statement is safe to run again.
+    /// </summary>
+    internal static IReadOnlyList<string> ColumnsDdl(string code, PortalSystem system)
+    {
+        if (!LevelRegistry.CodePattern().IsMatch(code)) throw new ArgumentException("Invalid level code.", nameof(code));
+        static string Col(string table, string column, string type) =>
+            $"IF COL_LENGTH('{table}', '{column}') IS NULL ALTER TABLE {table} ADD [{column}] {type} NULL;";
+        var pay = $"Is{code}PaymentDone";
+        if (system != PortalSystem.Main) return [Col("dbo.Msme", pay, "bit")];
+        return
+        [
+            Col("dbo.Msme", pay, "bit") + " " + Col("dbo.Msme", $"IsSur{code}PaymentDone", "bit") + " " +
+            Col("dbo.Users", LevelRegistry.AgencyColumn(code), "bit") + " " + Col("dbo.Users", LevelRegistry.AgencyReasonColumn(code), "nvarchar(2000)"),
+            Col("ZED_SURVEILLANCE.dbo.Msme", pay, "bit"),
+        ];
+    }
+
+    /// <summary>Runs <see cref="ColumnsDdl"/>; false when the portal's SQL login may not alter the tables (the level stays added).</summary>
+    private async Task<bool> AddColumnsAsync(string code, CancellationToken ct)
+    {
+        var ok = true;
+        foreach (var ddl in ColumnsDdl(code, host.System))
+        {
+            try { await db.ExecuteSqlAsync(ddl, null, ct); }
+            catch (DbException ex)
+            {
+                // 229 / 262 / 297 / 1088: no ALTER permission. Migration 0065 adds the columns on the next update.
+                log.LogWarning(ex, "Columns of the new level {Code} not added by the portal; migration 0065 adds them on the next update", code);
+                ok = false;
+            }
+        }
+        return ok;
+    }
+
+    /// <summary>
+    /// The level's QR digit (SectionTypes.QrDigit, migration 0065): the first of 6-9, A-Z that no level has. Main only;
+    /// skipped before the migration (which gives every V4 level one).
+    /// </summary>
+    internal const string QrDigitSql =
+        "IF COL_LENGTH('dbo.SectionTypes', 'QrDigit') IS NOT NULL " +
+        "EXEC sp_executesql N'UPDATE dbo.SectionTypes SET QrDigit = (SELECT TOP (1) d.Digit FROM (VALUES " +
+        "(1, ''6''), (2, ''7''), (3, ''8''), (4, ''9''), (5, ''A''), (6, ''B''), (7, ''C''), (8, ''D''), (9, ''E''), (10, ''F''), (11, ''G''), (12, ''H''), " +
+        "(13, ''I''), (14, ''J''), (15, ''K''), (16, ''L''), (17, ''M''), (18, ''N''), (19, ''O''), (20, ''P''), (21, ''Q''), (22, ''R''), (23, ''S''), " +
+        "(24, ''T''), (25, ''U''), (26, ''V''), (27, ''W''), (28, ''X''), (29, ''Y''), (30, ''Z'')) d(n, Digit) " +
+        "WHERE NOT EXISTS (SELECT 1 FROM dbo.SectionTypes s WHERE s.QrDigit = d.Digit) ORDER BY d.n) " +
+        "WHERE SectionType = @Code AND IsCertificationLevel = 1 AND QrDigit IS NULL AND SectionType NOT IN (''Bronze'', ''Silver'', ''Gold'', ''ZEDX'');', " +
+        "N'@Code varchar(50)', @Code = @Code;";
+
+    private async Task AssignQrDigitAsync(string code, CancellationToken ct)
+    {
+        if (host.System != PortalSystem.Main) return;
+        try { await db.ExecuteSqlAsync(QrDigitSql, new { Code = code }, ct); }
+        catch (DbException ex) { log.LogWarning(ex, "QR digit of the new level {Code} not set; migration 0065 sets it", code); }
     }
 
     public const long LogoMaxBytes = 1024 * 1024;
@@ -148,8 +372,86 @@ public sealed partial class CertificationLevelsController(
             await file!.CopyToAsync(fs, ct);
         System.IO.File.Move(temp, full, overwrite: true);
         if (!await RunAsync(LogoSql, new { Code = level.Code, LogoPath = relative, UpdatedBy = Actor() }, ct)) return Unavailable();
+        await RefreshRegistryAsync(ct);
         log.LogInformation("Logo of certification level {Code} uploaded by {Actor}", level.Code, UserId);
         return new MessageResponse("Logo saved.");
+    }
+
+    public const long ArtworkMaxBytes = 2 * 1024 * 1024;
+
+    /// <summary>
+    /// The certificate background (kind=certificate) or the report's level picture (kind=report) of a V4 level, PNG or JPG up
+    /// to 2 MB, saved as <see cref="LevelArtwork"/>. The certificate background must have the size of the built-in ones of
+    /// the level's assessment mode (the texts are placed in pixels: Silver / Gold's for site levels, Bronze's for desktop).
+    /// </summary>
+    [HttpPost("{code}/artwork")]
+    [RequestSizeLimit(ArtworkMaxBytes + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = ArtworkMaxBytes + 64 * 1024)]
+    public async Task<ActionResult<MessageResponse>> Artwork(string code, [FromQuery] string? kind, IFormFile? file, CancellationToken ct)
+    {
+        if (await StoredAsync(code, ct) is not { } level) return NotFound();
+        if (LevelArtwork.Kind(kind) is not { } k) return this.Problem400("Please choose the certificate or the report artwork.");
+        if (LevelRegistry.IsLegacy(level.Code)) return this.Problem400($"{level.Name} uses the portal's own artwork.");
+        var (type, error) = await MasterUploads.CheckAsync(file, LogoTypes, ArtworkMaxBytes, ct);
+        if (type is null) return this.Problem400(error!);
+        byte[] content;
+        await using (var input = file!.OpenReadStream())
+        using (var ms = new MemoryStream())
+        {
+            await input.CopyToAsync(ms, ct);
+            content = ms.ToArray();
+        }
+        var size = ImageSize(content);
+        if (size is null) return this.Problem400("The picture could not be read. Please upload a valid PNG or JPG file.");
+        if (k == LevelArtwork.Certificate)
+        {
+            var desktop = level.AssessmentMode == CertificationLevels.Desktop;
+            if (ImageSize(LevelArtwork.SizeReference(DocumentAssets, desktop)) is { } expected && expected != size.Value)
+                return this.Problem400($"The certificate background must be {expected.Width} x {expected.Height} pixels (as the built-in " +
+                    $"{(desktop ? "desktop" : "site")} certificates); this picture is {size.Value.Width} x {size.Value.Height}.");
+        }
+        var root = MsmeFilePaths.Root(env, portal.Value);
+        var relative = LevelArtwork.Relative(level.Code, k, type.Extension);
+        var full = MsmeFilePaths.Resolve(root, relative) ?? throw new InvalidOperationException("Invalid artwork path.");
+        Directory.CreateDirectory(Path.GetDirectoryName(full)!);
+        var temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        await System.IO.File.WriteAllBytesAsync(temp, content, ct);
+        System.IO.File.Move(temp, full, overwrite: true);
+        // The other picture type of the same kind would be found first: remove it.
+        foreach (var other in new[] { ".jpg", ".png" }.Where(e => e != type.Extension))
+            if (MsmeFilePaths.Resolve(root, LevelArtwork.Relative(level.Code, k, other)) is { } old && System.IO.File.Exists(old)) System.IO.File.Delete(old);
+        log.LogInformation("{Kind} artwork of certification level {Code} uploaded by {Actor}", k, level.Code, UserId);
+        return new MessageResponse(k == LevelArtwork.Certificate ? "Certificate artwork saved." : "Report artwork saved.");
+    }
+
+    /// <summary>The artwork in force (uploaded, else bundled) for the page's preview.</summary>
+    [HttpGet("{code}/artwork")]
+    public async Task<IActionResult> GetArtwork(string code, [FromQuery] string? kind, CancellationToken ct)
+    {
+        if (await StoredAsync(code, ct) is not { } level) return NotFound();
+        if (LevelArtwork.Kind(kind) is not { } k) return this.Problem400("Please choose the certificate or the report artwork.");
+        var root = MsmeFilePaths.Root(env, portal.Value);
+        var path = k == LevelArtwork.Certificate
+            ? LevelArtwork.CertificateTemplate(root, DocumentAssets, level.Code, level.AssessmentMode == CertificationLevels.Desktop)
+            : LevelArtwork.Uploaded(root, level.Code, LevelArtwork.Report) ?? LevelArtwork.BundledReport(DocumentAssets, level.Code);
+        if (path is null) return NotFound();
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.CacheControl = "private, no-store";
+        return PhysicalFile(path, path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png" : "image/jpeg");
+    }
+
+    private static (int Width, int Height)? ImageSize(byte[] content)
+    {
+        using var data = SkiaSharp.SKData.CreateCopy(content);
+        using var codec = SkiaSharp.SKCodec.Create(data);
+        return codec is null ? null : (codec.Info.Width, codec.Info.Height);
+    }
+
+    private static (int Width, int Height)? ImageSize(string path)
+    {
+        if (!System.IO.File.Exists(path)) return null;
+        using var codec = SkiaSharp.SKCodec.Create(path);
+        return codec is null ? null : (codec.Info.Width, codec.Info.Height);
     }
 
     private static string? Validate(LevelRequest r, string code)
@@ -258,9 +560,28 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     [HttpGet]
     public async Task<IReadOnlyList<PublicLevel>> Enabled(CancellationToken ct) =>
         (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
-            .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, l.Fee,
+            // Fee: none since 2026-11-08 (the dashboard shows the unit's own fee from Masters → Payments, api/msme/dashboard/level-fees).
+            .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, null,
                 SurveillanceOf(l)))
             .ToList();
+
+    /// <param name="AssessmentMode">"Desktop" or "Site".</param>
+    public sealed record LevelSummary(string Code, string Name, bool IsEnabled, string AssessmentMode, string? LogoUrl, int OrderNo);
+
+    /// <summary>
+    /// Every level, enabled or not, by order number (2026-11-08): for the staff filters, menus and tables that also list
+    /// disabled levels with old records. Before migration 0028 (or when the table cannot be read): the built-in four.
+    /// </summary>
+    [HttpGet("all")]
+    public async Task<IReadOnlyList<LevelSummary>> All(CancellationToken ct)
+    {
+        var levels = await CertificationLevels.AllAsync(db, log, ct);
+        if (ReferenceEquals(levels, CertificationLevels.BuiltIn))
+            return LevelRegistry.All.Select(l => new LevelSummary(l.Code, l.Name, l.IsEnabled, l.AssessmentMode,
+                CertificationLevelsController.LogoUrl(new CertificationLevel(l.Code, l.Name, l.OrderNo, null, null, null, l.IsEnabled, l.AssessmentMode,
+                    36, false, null, CertificateNumbers.Default, null, null, null)), l.OrderNo)).ToList();
+        return levels.Select(l => new LevelSummary(l.Code, l.Name, l.IsEnabled, l.AssessmentMode, CertificationLevelsController.LogoUrl(l), l.OrderNo)).ToList();
+    }
 
     internal static PublicSurveillance? SurveillanceOf(CertificationLevel l)
     {

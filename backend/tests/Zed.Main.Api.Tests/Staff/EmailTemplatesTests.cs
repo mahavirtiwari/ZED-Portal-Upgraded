@@ -62,7 +62,8 @@ public sealed class EmailTemplatesTests : IDisposable
         var allot = database.Single(d => d.Key == "db:SP_SEND_MAIL_AUTO_ALLOT_AGENCY");
         Assert.True(allot.Enabled);
         Assert.Equal("Allotted: {{StandardSubject}}", allot.Subject);
-        Assert.Equal(["StandardSubject", "StandardBody"], allot.Placeholders);
+        // 2026-11-08: a database mail offers its recipients and the ZED ID it names.
+        Assert.Equal(["To", "ZedId", "StandardSubject", "StandardBody"], allot.Placeholders);
         Assert.DoesNotContain(items, i => i.Key == "db:SP_SEND_AUTO_MAIL_TO_MSME_FOR_CO_ACCEPT_QC");
         Assert.True(items.All(i => i.Customised == (i.Key is "ContactQueryEmail" or "db:SP_SEND_MAIL_AUTO_ALLOT_AGENCY")));
     }

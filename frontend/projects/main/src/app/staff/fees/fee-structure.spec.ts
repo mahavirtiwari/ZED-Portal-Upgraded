@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { FeeStructurePage } from './fee-structure';
+import { setAllLevels } from '../../msme/shared/levels';
 import { FeeRow, FeesResponse } from './fees.api';
 
 function row(id: number, certification: string, category: number, pct: number, fee: number, coupon: number | null = null): FeeRow {
@@ -229,6 +231,82 @@ describe('FeeStructurePage', () => {
     http.expectOne('/api/staff/fees/Micro').flush(micro);
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('Fees added');
+  });
+});
+
+describe('FeeStructurePage with a level the Admin added', () => {
+  let fixture: ComponentFixture<FeeStructurePage>;
+  let http: HttpTestingController;
+  let el: HTMLElement;
+
+  async function settle() {
+    fixture.detectChanges();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  async function open(query: Record<string, string> = {}) {
+    setAllLevels([
+      { code: 'Bronze', name: 'Bronze', isEnabled: true, assessmentMode: 'Desktop', logoUrl: null, orderNo: 10 },
+      { code: 'Silver', name: 'Silver', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 20 },
+      { code: 'Gold', name: 'Gold', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 30 },
+      { code: 'ZEDX', name: 'ZED-X', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 40 },
+      { code: 'PLATINUM', name: 'Platinum', isEnabled: false, assessmentMode: 'Site', logoUrl: null, orderNo: 50 },
+    ]);
+    await TestBed.configureTestingModule({
+      imports: [FeeStructurePage],
+      providers: [provideHttpClient(), provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } }],
+    }).compileComponents();
+    fixture = TestBed.createComponent(FeeStructurePage);
+    http = TestBed.inject(HttpTestingController);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+  }
+
+  afterEach(() => {
+    http.verify();
+    setAllLevels(null);
+  });
+
+  it('has a tab for it, disabled levels too, and adds its fees', async () => {
+    await open();
+    expect([...el.querySelectorAll('nav[aria-label="Certification level"] button')].map((b) => b.getAttribute('data-level')))
+      .toEqual(['Bronze', 'Silver', 'Gold', 'ZEDX', 'PLATINUM']);
+    const card = el.querySelector('button[data-level="PLATINUM"]') as HTMLButtonElement;
+    expect(card.textContent).toContain('Platinum');
+    expect(card.textContent).toContain('No fee set for Micro');
+    card.click();
+    await settle();
+    expect(el.querySelector('h3')!.textContent).toContain('Fee Structure — Platinum');
+    const add = el.querySelector('section[aria-labelledby="fs-add"]')!;
+    expect(add.textContent).toContain('No fees are set for Micro Platinum');
+    const typeIn = async (selector: string, value: string) => {
+      const input = el.querySelector(selector) as HTMLInputElement;
+      input.value = value;
+      input.dispatchEvent(new Event('input'));
+      await settle();
+    };
+    await typeIn('#fs-add-fee', '60000');
+    await typeIn('#fs-add-general', '50');
+    ([...add.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Add Fees') as HTMLButtonElement).click();
+    await settle();
+    const req = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/fees/Micro/add');
+    expect(req.request.body).toEqual(expect.objectContaining({ certification: 'PLATINUM', assessmentFee: 60000, generalShare: 50 }));
+    req.flush({ message: 'Fees added for Micro, Small, Medium Platinum.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+    expect(el.querySelector('.alert-success')!.textContent).toContain('Fees added');
+  });
+
+  it('opens on the level the checklist named (?level=), even without fees', async () => {
+    await open({ level: 'PLATINUM' });
+    expect(el.querySelector('button[data-level="PLATINUM"]')!.getAttribute('aria-pressed')).toBe('true');
+    expect(el.querySelector('section[aria-labelledby="fs-add"]')!.textContent).toContain('No fees are set for Micro Platinum');
   });
 });
 

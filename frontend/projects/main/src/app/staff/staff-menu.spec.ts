@@ -1,4 +1,5 @@
 import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
+import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
   const labels = (roleId: number, subRoles: string[]) => menuFor(roleId, subRoles).map((i) => i.label);
@@ -115,7 +116,7 @@ describe('staff menu', () => {
         'Main Dashboard Cards /staff/incentives/dashboard-cards',
       ]);
       expect(bar(StaffRole.MasterAdmin, 'consultancy')).toEqual(['Allot Consultancy', 'Consultancy Monitoring (6)', 'Technology Upgradation', 'Documents', 'Operation Admins']);
-      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)', 'Operation Admins']);
+      expect(bar(StaffRole.MasterAdmin, 'surveillance')).toEqual(['Allot Surveillance', 'Surveillance Monitoring (7)', 'Operation Admins', 'Documents']);
     });
 
     it('puts the headings of a menu inside its drop-down', () => {
@@ -133,7 +134,7 @@ describe('staff menu', () => {
         menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification', 'SiteVerification', 'FinancialVerification'], system)).map((e: StaffMenuEntry) =>
           'group' in e ? `${e.group} (${e.items.length})` : e.item.label);
       expect(agency('main')).toEqual(['Reports', 'Assessment (3)', 'Assessors', 'Allotment (2)', 'Financial Assistance', 'Documents', 'Sub-Users']);
-      expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Sub-Users']);
+      expect(agency('surveillance')).toEqual(['Surveillance (3)', 'Assessors', 'Allotment (2)', 'Reports', 'Sub-Users', 'Documents']);
       expect(agency('consultancy')).toEqual(['Consultancy (3)', 'Consultants/Experts', 'Reports', 'Technology Upgradation', 'Documents', 'Sub-Users']);
       // An agency with only desktop verification has one allotment screen: a link, not a drop-down.
       expect(menuEntries(menuFor(StaffRole.Agency, ['DesktopVerification'], 'main')).some((e) => 'item' in e && e.item.label === 'DA Allotment')).toBe(true);
@@ -164,5 +165,36 @@ describe('staff menu', () => {
     expect([has(StaffRole.SuperAdmin, 'surveillance', 'Customer History'), has(StaffRole.CitizenFeedback, 'surveillance', 'Customer History'), has(StaffRole.QC, 'surveillance', 'Customer History')])
       .toEqual([false, false, true]);
     expect(has(StaffRole.Ministry, 'main', 'Customer History')).toBe(false);
+  });
+
+  describe('questionnaire menu (2026-11-08: one entry per level of Administration → Certification Levels)', () => {
+    afterEach(() => setAllLevels(null));
+    const questionnaire = (system: 'main' | 'surveillance') =>
+      menuFor(StaffRole.Admin, [], system).filter((i) => i.menu === 'Questionnaire').map((i) => `${i.label} ${i.route}${i.legacyPath ? ' ' + i.legacyPath : ''}`);
+
+    it('lists the built-in levels until the levels arrive', () => {
+      expect(questionnaire('main')).toEqual([
+        'Bronze /staff/masters/parameters/Bronze /Questionaire/Index?SectionType=Bronze',
+        'Silver /staff/masters/parameters/Silver /Questionaire/Index?SectionType=Silver',
+        'Gold /staff/masters/parameters/Gold /Questionaire/Index?SectionType=Gold',
+        'ZED-X /staff/masters/parameters/ZEDX',
+        'ESG Checklist /staff/settings/esg-checklist',
+      ]);
+    });
+
+    it('adds a level the Admin added (PLATINUM), disabled ones too, in the Admin\'s order, on main and surveillance', () => {
+      setAllLevels([
+        { code: 'Bronze', name: 'Bronze', isEnabled: true, assessmentMode: 'Desktop', logoUrl: null, orderNo: 10 },
+        { code: 'Silver', name: 'Silver', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 20 },
+        { code: 'Gold', name: 'Gold', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 30 },
+        { code: 'PLATINUM', name: 'Platinum', isEnabled: false, assessmentMode: 'Site', logoUrl: null, orderNo: 35 },
+        { code: 'ZEDX', name: 'ZED-X (Export)', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 40 },
+      ]);
+      expect(questionnaire('main').map((l) => l.split(' /')[0])).toEqual(['Bronze', 'Silver', 'Gold', 'Platinum', 'ZED-X (Export)', 'ESG Checklist']);
+      expect(questionnaire('main')[3]).toBe('Platinum /staff/masters/parameters/PLATINUM');
+      expect(questionnaire('surveillance')).toContain('Platinum /staff/masters/parameters/PLATINUM');
+      // A sub-user given the level's questionnaire sees it.
+      expect(menuFor(StaffRole.Admin, [], 'main', ['/staff/masters/parameters/PLATINUM']).map((i) => i.label)).toEqual(['Platinum']);
+    });
   });
 });

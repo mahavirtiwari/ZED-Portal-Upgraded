@@ -170,6 +170,6 @@ public sealed class NeftAdminsController(
                 [nameof(StaffLoginDetailsEmail.AccountType)] = Label,
                 [nameof(StaffLoginDetailsEmail.Reset)] = reset,
                 [nameof(StaffLoginDetailsEmail.LoginUrl)] = mail.LoginUrl,
-            }), ct, copyOffice: false);
+            }), ct, copyOffice: false, key: EmailTemplateVariants.LoginDetails(reset, subUser: false));
     }
 }

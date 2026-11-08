@@ -15,7 +15,8 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// <see cref="DocumentRoles"/>); the Admin sees them all. Before V4 the documents went to the MSMEs only.
 /// </summary>
 [Route("api/staff/documents")]
-[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
+// 2026-11-08: Surveillance too (its staff's Documents page; the main Admin manages it with the Surveillance tick).
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.Admin, UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.StateCoordinator, UserRole.Ministry,
     UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.QC)]
 public sealed class StaffRoleDocumentsController(

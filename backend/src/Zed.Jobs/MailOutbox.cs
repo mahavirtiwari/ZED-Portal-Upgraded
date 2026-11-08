@@ -241,15 +241,20 @@ public sealed class MailOutboxSender(IJobDatabases databases, IEmailSender email
         if (template is { Enabled: true })
         {
             var raw = new Dictionary<string, string> { [EmailPlaceholders.StandardSubject] = subject, [EmailPlaceholders.StandardBody] = body };
-            var none = new Dictionary<string, object?>();
-            if (!string.IsNullOrWhiteSpace(template.Subject)) subject = EmailPlaceholders.Fill(template.Subject, none, html: false, raw);
-            if (!string.IsNullOrWhiteSpace(template.BodyHtml)) body = EmailPlaceholders.Fill(template.BodyHtml, none, html: true, raw);
+            // 2026-11-08: {{To}} and {{ZedId}} (the first ZED ID the procedure's subject or text names).
+            var fields = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase) { ["To"] = to, ["ZedId"] = ZedIdIn(subject + " " + (mail.Body ?? "")) };
+            if (!string.IsNullOrWhiteSpace(template.Subject)) subject = EmailPlaceholders.Fill(template.Subject, fields, html: false, raw);
+            if (!string.IsNullOrWhiteSpace(template.BodyHtml)) body = EmailPlaceholders.Fill(template.BodyHtml, fields, html: true, raw);
         }
         return new EmailMessage(to, subject, body, profile,
             Cc: string.IsNullOrWhiteSpace(mail.CopyRecipients) || ReferenceEquals(to, mail.CopyRecipients) ? null : [mail.CopyRecipients],
             Bcc: Bcc(string.IsNullOrWhiteSpace(mail.BlindCopyRecipients) || ReferenceEquals(to, mail.BlindCopyRecipients) ? null : mail.BlindCopyRecipients,
                 settings?.GetValueOrDefault(EmailAddresses.DbMailBcc)));
     }
+
+    /// <summary>The first ZED ID in a text (ZEDMSME000123, ZEDXMSME…, UC3250522285 …), or "".</summary>
+    internal static string ZedIdIn(string text) =>
+        System.Text.RegularExpressions.Regex.Match(text, @"\b(ZED[A-Z]*\d{3,}|UC\d{6,})\b", System.Text.RegularExpressions.RegexOptions.None, TimeSpan.FromMilliseconds(200)) is { Success: true } m ? m.Value : "";
 
     private static IReadOnlyList<string>? Bcc(params string?[] lists)
     {

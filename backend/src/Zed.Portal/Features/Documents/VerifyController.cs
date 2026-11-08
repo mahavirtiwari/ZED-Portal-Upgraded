@@ -28,9 +28,17 @@ public sealed partial class VerifyController(ISqlExecutor db) : ControllerBase
         ["xc"] = "ZEDX",
     };
 
-    /// <summary>The code of a level in the verification address (Gold: GC, ZEDX: XC).</summary>
+    /// <summary>
+    /// The code of a level in the verification address (Gold: GC, ZEDX: XC). 2026-11-08: another V4 level is named by its own
+    /// code (/Verify/PLATINUM/...), which <see cref="Get"/> resolves through the level registry; an unknown level stays GC.
+    /// </summary>
     public static string CodeOf(string level) =>
-        Types.FirstOrDefault(t => string.Equals(t.Value, level, StringComparison.OrdinalIgnoreCase)).Key?.ToUpperInvariant() ?? "GC";
+        Types.FirstOrDefault(t => string.Equals(t.Value, level, StringComparison.OrdinalIgnoreCase)).Key?.ToUpperInvariant()
+        ?? (LevelRegistry.IsV4(level) ? LevelRegistry.Canonical(level)!.ToUpperInvariant() : "GC");
+
+    /// <summary>The certification of a verification address type: PC, BC, SC, GC, XC, or a V4 level's code.</summary>
+    internal static string? TypeOf(string? type) =>
+        Types.TryGetValue(type ?? "", out var known) ? known : LevelRegistry.IsV4(type) ? LevelRegistry.Canonical(type) : null;
 
     private static readonly string[] PledgeFields = ["EnterpriseName", "Address", "UdyogAadharNo", "DateOfPledge", "CertificateNo"];
 
@@ -48,7 +56,7 @@ public sealed partial class VerifyController(ISqlExecutor db) : ControllerBase
     [HttpGet("{type}/{code}")]
     public async Task<ActionResult<VerifyResponse>> Get(string type, string code, CancellationToken ct)
     {
-        if (!Types.TryGetValue(type ?? "", out var certification) || !CodePattern().IsMatch(code ?? ""))
+        if (TypeOf(type) is not { } certification || !CodePattern().IsMatch(code ?? ""))
             return this.Problem400("Invalid verification link.");
 
         var sets = await db.QueryProcMultipleAsync("SP_VERIFY_QR_CODE",

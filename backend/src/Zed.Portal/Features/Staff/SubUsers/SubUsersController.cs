@@ -159,6 +159,6 @@ public sealed class SubUsersController(
                 [nameof(StaffLoginDetailsEmail.WorksFor)] = $"{CurrentUser.UserName} ({UserId})",
                 [nameof(StaffLoginDetailsEmail.Reset)] = reset,
                 [nameof(StaffLoginDetailsEmail.LoginUrl)] = mail.LoginUrl,
-            }), ct, copyOffice: false);
+            }), ct, copyOffice: false, key: EmailTemplateVariants.LoginDetails(reset, subUser: true));
     }
 }

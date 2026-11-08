@@ -27,7 +27,8 @@ namespace Zed.Portal.Features.Staff.Masters;
 /// </para>
 /// </summary>
 [Route("api/staff/masters")]
-[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy)]
+// 2026-11-08: Surveillance too (its staff's Documents page; the main Admin manages it with the Surveillance tick).
+[PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.Admin)]
 public sealed class StaffDocumentsController(
     ISqlExecutor db,
@@ -199,6 +200,8 @@ public sealed class StaffDocumentsController(
     public sealed record PageSettingsResponse(bool HasBanner, string? FileName, string? UpdatedOn, string? ImageUrl);
 
     /// <summary>Current home page banner (SP_MASTER_GET_HOME_PAGE_SETTINGS 'HomePageBanner').</summary>
+    // The home page banner and page settings: main and consultancy only (Surveillance has no public pages).
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy)]
     [HttpGet("page-settings")]
     public async Task<PageSettingsResponse> PageSettings(CancellationToken ct)
     {
@@ -210,6 +213,8 @@ public sealed class StaffDocumentsController(
             stored ? "/api/staff/masters/page-settings/banner?v=" + Uri.EscapeDataString(Path.GetFileNameWithoutExtension(path!)) : null);
     }
 
+    // The home page banner and page settings: main and consultancy only (Surveillance has no public pages).
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy)]
     [HttpGet("page-settings/banner")]
     public async Task<IActionResult> Banner(CancellationToken ct)
     {
@@ -218,6 +223,8 @@ public sealed class StaffDocumentsController(
     }
 
     /// <summary>Replaces the banner: the PNG is stored as Images/HomePage/Banner_{time}_{random}.png and recorded (SP_MASTER_INSERT_HOME_PAGE_SETTINGS).</summary>
+    // The home page banner and page settings: main and consultancy only (Surveillance has no public pages).
+    [SystemOnly(PortalSystem.Main, PortalSystem.Consultancy)]
     [HttpPost("page-settings/banner")]
     [RequestSizeLimit(MasterUploads.BannerMaxBytes + 64 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = MasterUploads.BannerMaxBytes + 64 * 1024)]

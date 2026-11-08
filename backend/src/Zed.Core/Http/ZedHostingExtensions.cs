@@ -71,6 +71,9 @@ public static class ZedHostingExtensions
 
         ZedDatabaseNames.Configure(config);
         services.AddSingleton<ISqlExecutor>(_ => new SqlExecutor(config.RequireConnectionString(defaultDatabase)));
+        // The certification levels for every level check and list (main's dbo.SectionTypes; 2026-11-08, generic levels).
+        services.AddHostedService(sp => new LevelRegistryRefresher(sp.GetRequiredService<IServiceScopeFactory>(), config,
+            sp.GetRequiredService<ILogger<LevelRegistryRefresher>>(), fromOtherDatabase: defaultDatabase != ZedDatabases.Main));
 
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));
         services.AddHttpClient<RecaptchaVerifier>();

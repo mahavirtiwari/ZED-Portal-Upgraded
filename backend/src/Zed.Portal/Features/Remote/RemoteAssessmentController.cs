@@ -85,7 +85,7 @@ public sealed class RemoteAssessmentController(
     /// The record is checked again inside the lock.
     /// </summary>
     private static readonly SemaphoreSlim FinalSubmits = new(1, 1);
-    public static readonly string[] Levels = ["Silver", "Gold", "ZEDX"];
+    public static string[] Levels => Staff.SiteAssessment.AssessmentInputs.SiteLevels;
 
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
@@ -235,9 +235,11 @@ public sealed class RemoteAssessmentController(
         }).ToList();
 
         var requirementPhotos = sa[7];
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
         var requirements = da[4].Select(r =>
         {
             var d = Pick(r, RequirementFields);
+            d["VideoUrl"] = videos.For(r.Text("SectionCode"), r.Text("RequirementCode"));
             var requirementId = r.Text("RequirementId");
             d["RemotePhotos"] = requirementId.Length == 0 ? [] : Photos(requirementPhotos.Where(x => x.Text("RequirementId") == requirementId));
             return d;

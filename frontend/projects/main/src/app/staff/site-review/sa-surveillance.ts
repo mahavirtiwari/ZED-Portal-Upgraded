@@ -3,6 +3,7 @@ import { DETAILS_STYLES, text } from '../assessment/assessment-shared';
 import { ReviewActionsBar } from '../monitoring/review-actions';
 import { RemarksKind, ReviewActions } from '../monitoring/review.api';
 import { Row, SaDetails, SaMeeting, SaOriginal, SaPhoto } from './site-review.api';
+import { RequirementVideo } from '../../msme/shared/requirement-video';
 
 /** An "Edit Remarks" request for the parent's remarks pop-up. */
 export interface SurveillanceRemarks {
@@ -29,7 +30,7 @@ interface Block<T> {
  */
 @Component({
   selector: 'zed-sa-surveillance-tab',
-  imports: [ReviewActionsBar],
+  imports: [ReviewActionsBar, RequirementVideo],
   templateUrl: './sa-surveillance.html',
   styles: [DETAILS_STYLES, `
     .surveillance-assessment { width: 200px; overflow: auto; vertical-align: middle !important; text-align: center; background-color: #f9cc53; }

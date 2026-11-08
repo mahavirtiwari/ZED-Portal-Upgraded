@@ -362,7 +362,7 @@
                     <tbody>
                       @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
                         <tr>
-                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                           <td style="width: 35%">
                             @for (o of optionsOf(r, d.options); track $index) {
                               <div>
@@ -614,7 +614,7 @@
                     <tbody>
                       @for (r of requirementsOf(s, rd?.requirements); track t(r, 'Id')) {
                         <tr>
-                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                           <td style="width: 35%">
                             @for (o of optionsOf(r, rd?.options); track $index) {
                               <div>
@@ -882,7 +882,7 @@
                 @for (s of sr.sections; track t(s, 'Id')) {
                   @for (r of noRows(requirementsOf(s, sr.requirements), 'Conformance'); track t(r, 'Id')) {
                     <tr>
-                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                       <td style="width: 50%">
                         @for (o of optionsOf(r, sr.options); track $index) {
                           <div>{{ t(o, 'OptionName') }}<ul>@for (so of subOptionsOf(o, sr.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>

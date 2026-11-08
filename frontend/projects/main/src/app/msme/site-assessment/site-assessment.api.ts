@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { isV4Level, levelMode, splitCertification } from '../shared/levels';
 
 /** Rows keep the procedure's column names (EnterpriseName, SaDomesticCustomers, TurnOver, ...). */
 export type Row = Record<string, string | number | boolean | null>;
@@ -43,6 +44,8 @@ export interface SiteBullets {
 
 export interface SiteRequirement {
   requirementCode: string | null;
+  /** The Admin's video for the requirement (2026-11-08). */
+  videoUrl?: string | null;
   /** Milestone answers (SaConformance, BaselineRemarks, ...); empty for Silver/Gold. */
   milestone: Row;
   options: SiteOption[];
@@ -91,10 +94,17 @@ export const SITE_ASSESSMENT_TYPES = [
   'GoldMilestone1', 'GoldMilestone2', 'GoldMilestone3',
 ] as const;
 
-/** Canonical spelling of a certification type from the URL, or null when the page does not exist for it. */
+/**
+ * Canonical spelling of a certification type from the URL, or null when the page does not exist for it: also a site level
+ * the Admin added (2026-11-08, desktop and site assessment) or its surveillance.
+ */
 export function canonicalSiteAssessment(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();
-  return SITE_ASSESSMENT_TYPES.find((t) => t.toLowerCase() === v) ?? null;
+  const known = SITE_ASSESSMENT_TYPES.find((t) => t.toLowerCase() === v);
+  if (known) return known;
+  const split = splitCertification(value);
+  if (!split || !isV4Level(split.level) || levelMode(split.level) !== 'Site') return null;
+  return split.suffix === '' || split.suffix === 'Surveillance' ? split.level + split.suffix : null;
 }
 
 /** Client for api/msme/site-assessment (Zed.Main.Api MsmeSiteAssessmentController). */

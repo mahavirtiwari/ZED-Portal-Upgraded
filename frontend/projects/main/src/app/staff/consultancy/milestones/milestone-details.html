@@ -276,7 +276,7 @@
                   @for (r of requirementsOf(s); track $index) {
                     <div class="requirement" [attr.data-requirement]="t(r, 'Id')">
                       <div class="requirement-head">
-                        <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div>
+                        <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div><zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" />
                         <div class="label-highlight3">
                           @for (o of optionsOf(r); track $index) {
                             <div>

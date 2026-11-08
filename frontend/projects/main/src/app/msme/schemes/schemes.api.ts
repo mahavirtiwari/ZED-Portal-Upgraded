@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
+import { onStates } from '../shared/states';
 
 export type Row = Record<string, string | number | boolean | null>;
 
@@ -222,13 +223,6 @@ export function inr(amount: unknown): string {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/** The 38 states/UTs of the incentive filters (Msme.StateId codes). */
-export const STATES: ReadonlyArray<readonly [string, string]> = [
-  ['35', 'ANDAMAN AND NICOBAR ISLANDS'], ['28', 'ANDHRA PRADESH'], ['12', 'ARUNACHAL PRADESH'], ['18', 'ASSAM'], ['10', 'BIHAR'],
-  ['4', 'CHANDIGARH'], ['22', 'CHHATTISGARH'], ['7', 'DELHI'], ['30', 'GOA'], ['24', 'GUJARAT'], ['6', 'HARYANA'],
-  ['2', 'HIMACHAL PRADESH'], ['1', 'JAMMU AND KASHMIR'], ['20', 'JHARKHAND'], ['29', 'KARNATAKA'], ['32', 'KERALA'], ['37', 'LADAKH'],
-  ['31', 'LAKSHADWEEP'], ['23', 'MADHYA PRADESH'], ['27', 'MAHARASHTRA'], ['14', 'MANIPUR'], ['17', 'MEGHALAYA'], ['15', 'MIZORAM'],
-  ['13', 'NAGALAND'], ['21', 'ODISHA'], ['34', 'PUDUCHERRY'], ['3', 'PUNJAB'], ['8', 'RAJASTHAN'], ['11', 'SIKKIM'], ['33', 'TAMIL NADU'],
-  ['36', 'TELANGANA'], ['38', 'THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU'], ['16', 'TRIPURA'], ['9', 'UTTAR PRADESH'],
-  ['5', 'UTTARAKHAND'], ['19', 'WEST BENGAL'],
-];
+/** The states/UTs of the incentive filters (Msme.StateId codes): the LG Directory masters (2026-11-08). */
+export const STATES: (readonly [string, string])[] = [];
+onStates((list) => STATES.splice(0, STATES.length, ...list.map((s) => [s.code, s.name] as const)));

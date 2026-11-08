@@ -70,14 +70,18 @@ describe('DocumentsAdminPage', () => {
     const onCons = (r: { url: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }, url: string) =>
       r.url === url && r.context.get(ADMIN_PORTAL) === 'consultancy';
     const consRoles = [{ key: 'msme', label: 'MSME Enterprises' }, { key: 'consultant', label: 'Consultants' }];
+    // The Surveillance portal's list is read too (2026-11-08): empty here.
+    const noSurv = () => http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === 'surveillance')
+      .flush({ documents: [], roles: [{ key: 'msme', label: 'MSME Enterprises' }] });
     const video = (id: number, name: string, roles: string[]) => ({ ...doc(id, name, { roles }), fileName: null, downloadUrl: null, videoUrl: 'https://youtu.be/x' });
     http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null)
       .flush({ documents: [doc(4, 'ZED Guidelines'), video(5, 'How to apply', ['msme', 'assessor'])], roles });
     await settle(fixture);
     http.expectOne((r) => onCons(r, '/api/staff/masters/documents'))
       .flush({ documents: [doc(40, 'zed guidelines'), doc(41, 'Milestone checklist', { roles: ['consultant'] })], roles: consRoles });
+    noSurv();
     await settle(fixture);
-    const tick = (name: string) => [...el.querySelectorAll('.doc-item')].find((i) => i.textContent!.includes(name))!.querySelector('.shown-on input') as HTMLInputElement;
+    const tick = (name: string) => [...el.querySelectorAll('.doc-item')].find((i) => i.textContent!.includes(name))!.querySelector('.shown-on label:not([data-surveillance-tick]) input') as HTMLInputElement;
     expect(tick('ZED Guidelines').checked).toBe(true);
     expect(tick('How to apply').checked).toBe(false);
     expect(el.querySelector('#doc-cons-h')!.textContent).toContain('Only on the Consultancy portal');
@@ -94,6 +98,7 @@ describe('DocumentsAdminPage', () => {
     http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null).flush({ documents: [doc(4, 'ZED Guidelines')], roles });
     await settle(fixture);
     http.expectOne((r) => onCons(r, '/api/staff/masters/documents')).flush({ documents: [doc(40, 'zed guidelines')], roles: consRoles });
+    noSurv();
     await settle(fixture);
     expect(el.querySelector('.alert-success')!.textContent).toContain('shown on the Consultancy portal too');
 
@@ -107,9 +112,39 @@ describe('DocumentsAdminPage', () => {
     http.expectOne((r) => r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === null).flush({ documents: [doc(4, 'ZED Guidelines')], roles });
     await settle(fixture);
     http.expectOne((r) => onCons(r, '/api/staff/masters/documents')).flush({ documents: [], roles: consRoles });
+    noSurv();
     await settle(fixture);
     http.verify();
     vi.restoreAllMocks();
+  });
+
+  it('shows a document on the surveillance portal with its tick, with the roles that portal has', async () => {
+    const { fixture, http, el } = await setup(DocumentsAdminPage);
+    const at = (portal: string | null) => (r: { url: string; context: { get: (t: typeof ADMIN_PORTAL) => string | null } }) =>
+      r.url === '/api/staff/masters/documents' && r.context.get(ADMIN_PORTAL) === portal;
+    const survRoles = [{ key: 'msme', label: 'MSME Enterprises' }, { key: 'agency', label: 'Surveillance Agencies' }];
+    const loadAll = (surv: unknown[]) => {
+      http.expectOne(at(null)).flush({ documents: [{ ...doc(5, 'Surveillance guide', { roles: ['msme', 'agency', 'coordinator'] }), fileName: null, downloadUrl: null, videoUrl: 'https://youtu.be/s' }], roles });
+      return settle(fixture).then(() => {
+        http.expectOne(at('consultancy')).flush({ documents: [], roles: [{ key: 'msme', label: 'MSME Enterprises' }] });
+        http.expectOne(at('surveillance')).flush({ documents: surv, roles: survRoles });
+        return settle(fixture);
+      });
+    };
+    await loadAll([doc(70, 'Only there')]);
+    expect(el.querySelector('#doc-surv-h')!.textContent).toContain('Only on the Surveillance portal');
+    const tick = el.querySelector('[data-surveillance-tick] input') as HTMLInputElement;
+    expect(tick.checked).toBe(false);
+
+    tick.click();
+    await settle(fixture);
+    const add = http.expectOne((r) => r.method === 'POST' && at('surveillance')(r));
+    expect((add.request.body as FormData).get('roles')).toBe('msme,agency');
+    add.flush({ message: 'Document saved.' });
+    await settle(fixture);
+    await loadAll([]);
+    expect(el.querySelector('.alert-success')!.textContent).toContain('shown on the Surveillance portal too');
+    http.verify();
   });
 
   it('uploads a file with its description and the roles ticked, and refuses other file types', async () => {

@@ -8,6 +8,7 @@ import { levelName } from '../shared/levels';
 import { EntryField } from './entry-field';
 import { CellValue, FormValues, emptyRow, initialValues, isShown, missing, sortedFields, toRequest } from './entry-form';
 import { EntryApi, EntryEvidence, EntryNc, EntryState, FormField, isWebEntryLevel } from './entry.api';
+import { RequirementVideo } from '../shared/requirement-video';
 
 type Tab = 'basic' | 'documents' | 'nc' | 'submit';
 
@@ -22,7 +23,7 @@ const MAX_ROWS = 20;
  */
 @Component({
   selector: 'zed-msme-entry',
-  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent],
+  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent, RequirementVideo],
   templateUrl: './entry-page.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `

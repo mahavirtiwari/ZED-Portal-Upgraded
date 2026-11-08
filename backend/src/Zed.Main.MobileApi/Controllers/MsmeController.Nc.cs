@@ -42,6 +42,7 @@ public sealed partial class MsmeController
             });
         }
         if (sets[2].Count > 0) res.parameters = BuildParameters(sets, 2, withEvidences: false, withAssessorRemarks: true);
+        await AppRequirementVideos.FillAsync(db, "dbo", certificationType, res.parameters, log, ct);
         return LegacyJson(res);
     }
 

@@ -11,6 +11,7 @@ import { AppFormValuesPanel } from './app-form-values';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from './checkpoint-dialog';
 import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
+import { RequirementVideo } from '../../msme/shared/requirement-video';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -45,7 +46,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed:
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog],
+  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },

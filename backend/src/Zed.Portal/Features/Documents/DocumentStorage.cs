@@ -26,7 +26,8 @@ public static class DocumentLevels
     /// <summary>"bronze" → "Bronze"; null for anything else (surveillance and milestones are other systems).</summary>
     public static string? Level(string? certification) => AssessmentInput.Level(certification);
 
-    public static bool IsDesktop(string level) => level == "Bronze";
+    /// <summary>Assessed at the desktop only: Bronze, and a V4 level whose assessment mode is Desktop (2026-11-08, generic levels).</summary>
+    public static bool IsDesktop(string level) => Zed.Core.Data.LevelRegistry.IsDesktop(level);
 
     /// <summary>Bronze, Silver and Gold have their own artwork and texts; V4 levels (ZED-X) take theirs from the Admin.</summary>
     public static bool IsBuiltIn(string level) => level is "Bronze" or "Silver" or "Gold";

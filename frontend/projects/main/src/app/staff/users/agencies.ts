@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { AGENCY_LEVELS, AgencyLevel, AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
+import { AgencyLevel, AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi, agencyLevels, rowValue } from './users.api';
 import { LABELS } from '../../portal-labels';
 import { PagedView, PagerComponent } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
@@ -124,7 +124,8 @@ export class AgenciesPage {
     this.mode === 'levels'
       ? 'Choose which certification levels each agency can be allotted. Disabling asks for a reason, and the agency gets an e-mail.'
       : `The ${this.labels.agencies.toLowerCase()} of the portal, with their SPOC and ${this.labels.assessors.toLowerCase()}.`;
-  protected readonly levels = AGENCY_LEVELS;
+  /** Every level (Administration → Certification Levels, the Admin's too; 2026-11-08), and any the server's rows name. */
+  protected readonly levels = computed(() => agencyLevels(this.agencies()));
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
 
@@ -148,7 +149,7 @@ export class AgenciesPage {
   });
   /** Levels page: per level, the agencies that may and may not be allotted it. */
   protected readonly levelStats = computed(() =>
-    this.levels.map((l) => {
+    this.levels().map((l) => {
       const on = this.agencies().filter((a) => this.allowed(a, l.code)).length;
       return { ...l, on, off: this.agencies().length - on };
     }),
@@ -192,17 +193,18 @@ export class AgenciesPage {
   }
 
   protected active(a: AgencyRow): boolean {
-    return this.mode === 'levels' ? this.levels.every((l) => this.allowed(a, l.code)) : a.IsActive;
+    return this.mode === 'levels' ? this.levels().every((l) => this.allowed(a, l.code)) : a.IsActive;
   }
 
   /** May this agency be allotted the level (not set = yes)? */
   protected allowed(a: AgencyRow, level: AgencyLevel): boolean {
-    const field = this.levels.find((l) => l.code === level)!.field;
-    return a[field] !== false;
+    const field = this.levels().find((l) => l.code === level)?.field;
+    return !field || rowValue(a, field) !== false;
   }
 
   protected reason(a: AgencyRow, level: AgencyLevel): string | null {
-    return a.LevelReasons?.[level] || null;
+    const reasons = a.LevelReasons ?? {};
+    return (rowValue(reasons, level) as string | null | undefined) || null;
   }
 
   /** A level switch: disabling asks for a reason; enabling asks to confirm. */

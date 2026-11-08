@@ -243,7 +243,8 @@ public static class SaAppData
     public const string Closed = "closed";
 
     /// <summary>The site assessment levels (RemoteAssessmentController.Levels); Bronze has no site assessment.</summary>
-    public const string SiteLevels = "'Silver', 'Gold', 'ZEDX'";
+    /// 2026-11-08: every site level of Administration → Certification Levels (codes are letters and digits).
+    public static string SiteLevels => string.Join(", ", LevelRegistry.Codes.Where(c => !LevelRegistry.IsDesktop(c)).Select(c => $"'{c}'"));
 
     /// <summary>
     /// One row per certification of the assessor (lead or co-assessor), with the unit, the team, the unit's representative and
@@ -283,7 +284,7 @@ public static class SaAppData
     /// The dashboard: the unit's own certification rows (no copies) from the allotment (status 8) on; finished ones (above 15)
     /// while their status date (else the assessment date) is after @Since.
     /// </summary>
-    public const string AssessmentsSql = "SELECT TOP (500)" + Select + """
+    public static string AssessmentsSql => "SELECT TOP (500)" + Select + """
 
         WHERE C.Certification IN (
         """ + SiteLevels + """
@@ -293,7 +294,7 @@ public static class SaAppData
         """;
 
     /// <summary>Reports: every record from the closing meeting (status 13) on, rejected and reset copies included, newest first.</summary>
-    public const string ReportsSql = "SELECT TOP (200)" + Select + """
+    public static string ReportsSql => "SELECT TOP (200)" + Select + """
 
         WHERE C.Certification IN (
         """ + SiteLevels + """
@@ -408,7 +409,7 @@ public static class SaAppData
     }
 
     public static string LevelName(string? level) =>
-        string.Equals(level?.Trim(), "ZEDX", StringComparison.OrdinalIgnoreCase) ? "ZED-X" : level?.Trim() ?? "";
+        LevelRegistry.Find(level?.Trim()) is { } known ? known.Name : level?.Trim() ?? "";
 
     /// <summary>
     /// The app's stage of a certification row. 8: allotted; 9: the lead allotted the parameters, started once the open meeting

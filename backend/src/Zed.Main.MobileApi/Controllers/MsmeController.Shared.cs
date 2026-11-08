@@ -28,13 +28,14 @@ public sealed partial class MsmeController
     /// Certification values that may appear as a folder name (Photos/{ZedId}/{Certification}/...).
     /// The old code joined any request value into the path.
     /// </summary>
-    internal static readonly IReadOnlySet<string> PathCertifications = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "Bronze", "Silver", "Gold", "ZEDX",
-        "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance",
-        "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
-        "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
-    };
+    /// 2026-11-08: every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry; codes are letters and digits).
+    internal static IReadOnlySet<string> PathCertifications => new HashSet<string>(
+        [
+            .. LevelRegistry.Codes,
+            "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance",
+            "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
+            "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
+        ], StringComparer.OrdinalIgnoreCase);
 
     private MobileStorage Storage => HttpContext.RequestServices.GetRequiredService<MobileStorage>();
 
@@ -73,22 +74,16 @@ public sealed partial class MsmeController
     /// <summary>Null when the level is not Bronze/Silver/Gold/ZED-X or the ZED ID is unknown.</summary>
     private async Task<LevelStage?> StageAsync(string? zedId, string? certificationType, CancellationToken ct)
     {
-        var level = certificationType?.Trim().ToLowerInvariant() switch
-        {
-            "bronze" => "Bronze",
-            "silver" => "Silver",
-            "gold" => "Gold",
-            "zedx" => ZedXAppStatus.Level,
-            _ => null,
-        };
+        // 2026-11-08: every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry).
+        var level = LevelRegistry.Canonical(certificationType?.Trim());
         if (level is null || string.IsNullOrWhiteSpace(zedId)) return null;
         var row = (await db.QueryProcMultipleAsync("SP_APP_MSME_STATUS", new { ZedId = zedId }, ct)).FirstRow(0);
-        // ZED-X's columns are not in the procedure (V4, migrations 0028-0031).
-        if (level == ZedXAppStatus.Level && row.Count > 0) await ZedXAppStatus.MergeAsync(db, zedId, row, log, ct);
+        // ZED-X's columns (every V4 level's) are not in the procedure (V4, migrations 0028-0031).
+        if (LevelRegistry.IsV4(level) && row.Count > 0) await ZedXAppStatus.MergeAsync(db, zedId, row, log, ct);
         // The status columns are NULL when there is no Msme row for the ZED ID.
         if (!row.TryGetValue(level + "Status", out var status) || status is null or DBNull) return null;
         var nc = row.Int(level + "StatusOfNc");
-        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, level == "Bronze");
+        return new LevelStage(row.Int(level + "Status"), nc, nc is >= 1 and <= 5 ? row.Int($"{level}StatusOfNc{nc}") : 0, LevelRegistry.IsDesktop(level));
     }
 
     private ContentResult StageRefused(string action, string? zedId, string? certificationType, LevelStage? stage)

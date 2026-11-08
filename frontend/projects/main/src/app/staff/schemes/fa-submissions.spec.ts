@@ -142,7 +142,7 @@ describe('FaSubmissionsPage', () => {
     await settle();
     expect(el.querySelector('[data-filter-summary]')).toBeNull();
     expect([...el.querySelectorAll('#fa-agency option')].map((o) => o.textContent!.trim())).toEqual(['All agencies', 'Agency One (AG1)']);
-    expect([...el.querySelectorAll('#fa-level option')].map((o) => o.textContent!.trim())).toEqual(['All levels', 'Bronze', 'Silver', 'Gold']);
+    expect([...el.querySelectorAll('#fa-level option')].map((o) => o.textContent!.trim())).toEqual(['All levels', 'Bronze', 'Silver', 'Gold', 'ZED-X']);
 
     const select = (id: string, value: string) => {
       const s = el.querySelector(id) as HTMLSelectElement;

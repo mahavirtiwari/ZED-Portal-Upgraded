@@ -111,7 +111,7 @@
             <h5>{{ sec.code }}. {{ sec.name }}</h5>
             @for (req of sec.requirements; track req.code) {
               <div class="doc-req">
-                <div class="req-name">{{ req.code }} {{ req.name }}</div>
+                <div class="req-name">{{ req.code }} {{ req.name }}<zed-requirement-video [url]="req.videoUrl" [code]="req.code" /></div>
                 @for (e of req.evidences; track e.id) {
                   <div class="doc-row" [attr.data-evidence]="e.id">
                     <div class="doc-name">

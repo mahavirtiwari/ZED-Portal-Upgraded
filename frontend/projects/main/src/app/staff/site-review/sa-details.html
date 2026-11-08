@@ -435,7 +435,7 @@
             @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
               <div class="panel panel-default m-0 mt-3">
                 <div class="panel-body border-left" style="position: relative">
-                  <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div>
+                  <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div><zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" />
                   <div class="label-highlight3">
                     @for (o of optionsOf(r, d.options); track $index) {
                       <div>{{ t(o, 'OptionName') }}<ul>@for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>
@@ -645,7 +645,7 @@
                 <tbody>
                   @for (r of requirementsOf(s, rd?.requirements); track $index) {
                     <tr>
-                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</th>
+                      <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
                       <td style="width: 35%">
                         @for (o of optionsOf(r, rd?.options); track $index) {
                           <div>{{ t(o, 'OptionName') }}<ul>@for (so of subOptionsOf(o, rd?.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>

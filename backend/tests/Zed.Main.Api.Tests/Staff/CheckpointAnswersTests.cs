@@ -88,8 +88,11 @@ public sealed class CheckpointAnswersTests
     [Fact]
     public void The_questionnaire_is_read_from_main_for_handholding()
     {
-        Assert.Contains("LEFT JOIN ZEDCS_V2_LIVE.dbo.Options m", CheckpointSql("ZEDCS_V2_LIVE.dbo"));
-        Assert.Contains("LEFT JOIN dbo.Options m", CheckpointSql("dbo"));
+        Assert.Contains("FROM ZEDCS_V2_LIVE.dbo.Options o", CheckpointSql("ZEDCS_V2_LIVE.dbo"));
+        Assert.Contains("FROM dbo.Options o", CheckpointSql("dbo"));
+        // 2026-11-08: the questionnaire's checkpoint only within the unit's requirement (surveillance copies main's ids).
+        Assert.Contains("o.SectionType = X.SectionType AND LTRIM(RTRIM(o.SectionCode)) = X.Sc AND LTRIM(RTRIM(o.RequirementCode)) = X.Rc", CheckpointSql("dbo"));
+        Assert.Contains("e.SectionType = X.SectionType AND LTRIM(RTRIM(e.SectionCode)) = X.Sc", EvidenceSql("dbo"));
         Assert.Contains("ZEDCS_V2_LIVE.dbo.Evidences", EvidenceSql("ZEDCS_V2_LIVE.dbo"));
     }
 }

@@ -25,13 +25,15 @@ public sealed class StaffUserMail(
 
     /// <summary>Renders and sends; false (logged, without the body) when sending fails.</summary>
     /// <param name="copyOffice">Copy to the office mailbox (Email Settings), as the legacy user mails did.</param>
-    public async Task<bool> SendAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters, CancellationToken ct, bool copyOffice = true)
+    /// <param name="key">The Email Templates entry when the template has several (EmailTemplateVariants); null = the class name.</param>
+    public async Task<bool> SendAsync<TTemplate>(string to, string subject, Dictionary<string, object?> parameters, CancellationToken ct, bool copyOffice = true,
+        string? key = null)
         where TTemplate : IComponent
     {
         try
         {
             parameters["PublicBaseUrl"] = PublicBaseUrl;
-            var html = await templates.RenderAsync<TTemplate>(parameters);
+            var html = await templates.RenderAsync<TTemplate>(key ?? typeof(TTemplate).Name, parameters);
             var cc = copyOffice ? await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct) : null;
             await email.SendAsync(new EmailMessage(to, subject, html, EmailProfiles.Login, cc), ct);
             return true;

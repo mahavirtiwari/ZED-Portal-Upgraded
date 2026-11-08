@@ -21,11 +21,14 @@ public static class LevelSurveillance
 
     public sealed record StatusRow(int? Round, string? Phase, bool Paid);
 
-    /// <summary>The level comes from <see cref="Certifications.Applicable"/> only, so it can name the payment column.</summary>
+    /// <summary>The level comes from <see cref="Certifications.Applicable"/> only, so it can name the payment column.
+    /// 2026-11-08: a V4 level assessed at the desktop only is certified at status 6 with its DaCertificateNo (as Bronze).</summary>
     internal static string StatusSql(string level) =>
-        $"SELECT TOP 1 C.EnableSurveillance1 AS Round, C.CertificationPhase AS Phase, CAST(ISNULL(M.IsSur{level}PaymentDone, 0) AS bit) AS Paid " +
+        $"SELECT TOP 1 C.EnableSurveillance1 AS Round, C.CertificationPhase AS Phase, CAST(ISNULL(M.[IsSur{level}PaymentDone], 0) AS bit) AS Paid " +
         "FROM dbo.MsmeCertifications C JOIN dbo.Msme M ON M.ZedId = C.ZedId " +
-        "WHERE C.ZedId = @ZedId AND C.Certification = @Level AND C.CertificationStatus = 16 AND C.SaCertificateNo IS NOT NULL ORDER BY C.Id DESC;";
+        (LevelRegistry.IsDesktop(level)
+            ? "WHERE C.ZedId = @ZedId AND C.Certification = @Level AND C.CertificationStatus = 6 AND C.DaCertificateNo IS NOT NULL ORDER BY C.Id DESC;"
+            : "WHERE C.ZedId = @ZedId AND C.Certification = @Level AND C.CertificationStatus = 16 AND C.SaCertificateNo IS NOT NULL ORDER BY C.Id DESC;");
 
     /// <summary>The surveillance box: 1 once a round is open on a live certificate (as {Level}DashboardSurStatus), else 0.</summary>
     public static int DashboardStatus(StatusRow? r) =>

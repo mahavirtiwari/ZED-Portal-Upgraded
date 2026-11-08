@@ -1,5 +1,6 @@
-import { Component, input, output } from '@angular/core';
-import { GENDERS, LIST_CERTIFICATIONS, SIZES, STATES } from './dashboard-filters';
+import { Component, computed, input, output } from '@angular/core';
+import { GENDERS, SIZES, STATES } from './dashboard-filters';
+import { levelOptions } from '../../msme/shared/levels';
 import { ListFilter } from './dashboard.api';
 
 /**
@@ -21,7 +22,7 @@ import { ListFilter } from './dashboard.api';
         <label class="form-label" for="f-cert">Certification Level</label>
         <select class="form-select" id="f-cert" (change)="set('certification', $event)">
           <option value="">Show All</option>
-          @for (c of certifications; track c.value) { <option [value]="c.value" [selected]="filter().certification === c.value">{{ c.label }}</option> }
+          @for (c of certifications(); track c.value) { <option [value]="c.value" [selected]="filter().certification === c.value">{{ c.label }}</option> }
         </select>
       </div>
       <div class="filter">
@@ -47,7 +48,8 @@ export class ListFiltersBar {
   readonly filterChange = output<ListFilter>();
 
   protected readonly states = STATES;
-  protected readonly certifications = LIST_CERTIFICATIONS;
+  /** Every level, the Admin's too (Administration → Certification Levels, 2026-11-08). */
+  protected readonly certifications = computed(() => levelOptions());
   protected readonly sizes = SIZES;
   protected readonly genders = GENDERS;
 

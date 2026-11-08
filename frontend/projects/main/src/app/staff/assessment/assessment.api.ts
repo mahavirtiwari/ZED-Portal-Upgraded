@@ -4,6 +4,7 @@ import { MessageResponse } from '@zed/shared';
 import { Observable } from 'rxjs';
 import { ReviewActions } from '../monitoring/review.api';
 import type { Checkpoint, CheckpointSaveRequest } from './checkpoint-dialog';
+import { canonicalLevelCode } from '../../msme/shared/levels';
 
 /** Rows keep the procedures' column names (ZedId, PUnitName, CertificationStatus, ...). */
 export type Row = Record<string, unknown>;
@@ -123,12 +124,12 @@ export interface FinalSubmitCheck {
 
 export type OpenedType = 'Evidence' | 'SiteExteriorPhoto' | 'ProductPhoto' | 'ProductDescriptionPhoto';
 
-/** Levels a desktop assessment is opened with (MsmeCertifications.Certification). */
-export const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
-
+/**
+ * The level a desktop assessment is opened with (MsmeCertifications.Certification): every level of Administration →
+ * Certification Levels (2026-11-08: the Admin's too), as stored.
+ */
 export function canonicalLevel(value: string | null | undefined): string | null {
-  const v = (value ?? '').toLowerCase();
-  return LEVELS.find((l) => l.toLowerCase() === v) ?? null;
+  return canonicalLevelCode(value);
 }
 
 /** ZED IDs, including rejected copies (ZEDMSME000123_D_45). */

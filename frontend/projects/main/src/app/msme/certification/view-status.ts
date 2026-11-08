@@ -3,10 +3,8 @@ import { RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CertificationSteps } from './certification-steps';
-import { CertificationApi, CertificationData, canonicalCertification, incentiveUrl } from './certification.api';
+import { CertificationApi, CertificationData, canonicalCertification, certificationKind, incentiveUrl } from './certification.api';
 
-/** The old status page only had the Bronze and Silver/Gold timelines. */
-const LEVELS = ['Bronze', 'Silver', 'Gold'];
 
 /**
  * Status timeline of one certification of the signed-in MSME. Port of Views/Msme/ViewStatus.cshtml.
@@ -54,7 +52,7 @@ const LEVELS = ['Bronze', 'Silver', 'Gold'];
   styles: `.status-page { max-width: 960px; margin: 24px auto 0; }`,
 })
 export class ViewStatusPage {
-  /** Route parameter :certification (Bronze, Silver or Gold). */
+  /** Route parameter :certification (Bronze, Silver, Gold or a V4 level). */
   readonly certification = input.required<string>();
 
   private readonly api = inject(CertificationApi);
@@ -67,8 +65,10 @@ export class ViewStatusPage {
   private readonly legacyUrl = signal('');
 
   protected readonly type = computed(() => {
+    // The old status page had the Bronze and Silver/Gold timelines: a level's own (ZED-X and the Admin's levels as
+    // Silver / Gold), not its surveillance or a milestone.
     const t = canonicalCertification(this.certification());
-    return t && LEVELS.includes(t) ? t : null;
+    return t && ['bronze', 'silverGold'].includes(certificationKind(t)) ? t : null;
   });
 
   protected readonly incentiveUrl = computed(() => incentiveUrl(this.data()));

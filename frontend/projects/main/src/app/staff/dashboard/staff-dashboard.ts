@@ -1,5 +1,5 @@
 import { DatePipe, DecimalPipe, NgTemplateOutlet } from '@angular/common';
-import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
+import { Component, ElementRef, computed, inject, signal, viewChild } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DashboardApi, Row } from './dashboard.api';
@@ -9,6 +9,7 @@ import { STAFF_SYSTEM } from '../staff-menu';
 import { StaffAnalytics } from './analytics';
 import { exportElement } from './export';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
+import { levelName as adminLevelName } from '../../msme/shared/levels';
 
 interface Card {
   css: string;
@@ -17,6 +18,8 @@ interface Card {
   lines: { label: string; field: string }[];
   /** Consultancy's Silver and Gold handholding: drawn as three milestones. */
   milestones?: true;
+  /** A level the Admin added: its name as the Admin wrote it (2026-11-08). */
+  name?: string;
 }
 
 /**
@@ -168,7 +171,7 @@ export const CONSULTANT_TILES = [
     <ng-template #statusCards>
       <!-- Per level the total in the band, the share of each status as a bar, then the statuses (Consultancy: milestones). -->
       <div class="app-grid">
-        @for (card of cards; track card.title) {
+        @for (card of cardList(); track card.title) {
           @if (card.milestones) {
             <div class="app-card" [class]="card.css + ' ms-card'">
               <div class="app-band">
@@ -305,7 +308,17 @@ export class StaffDashboardPage {
   private readonly api = inject(DashboardApi);
 
   protected readonly system = inject(STAFF_SYSTEM);
-  protected readonly cards = DASHBOARD_CARDS[this.system];
+  private readonly fixedCards = DASHBOARD_CARDS[this.system];
+  /** The fixed cards, then (main portal) one card per level the Admin added, as ZED-X's (2026-11-08). */
+  protected readonly cardList = computed<Card[]>(() => [
+    ...this.fixedCards,
+    ...(this.system === 'main' ? (this.analytics()?.otherLevels() ?? []) : []).map((l): Card => ({
+      css: 'panel-zedx', title: `${l.code} CERTIFICATION`, name: l.name || adminLevelName(l.code), lines: [
+        { label: 'Total Application', field: `${l.code}Total` }, { label: 'Assessment Pending', field: `Sa${l.code}Pending` },
+        { label: 'NC Raised', field: `${l.code}NcRaised` }, { label: 'Certified', field: `Sa${l.code}Completed` }, { label: 'Rejected', field: `${l.code}Rejected` },
+      ],
+    })),
+  ]);
   /** The figures section, whose Clear filters, Updated time and Refresh sit in the page head. */
   protected readonly analytics = viewChild<StaffAnalytics>('figures');
   private readonly exportArea = viewChild<ElementRef<HTMLElement>>('exportArea');
@@ -362,6 +375,7 @@ export class StaffDashboardPage {
 
   /** "BRONZE CERTIFICATION", "Silver Level" -> "Bronze", "Silver"; other titles as they are. */
   protected levelName(card: Card): string {
+    if (card.name) return card.name;
     const m = /^([\w-]+) (certification|surveillance|level)$/i.exec(card.title);
     if (!m) return card.title;
     // "ZED-X" keeps its capitals.

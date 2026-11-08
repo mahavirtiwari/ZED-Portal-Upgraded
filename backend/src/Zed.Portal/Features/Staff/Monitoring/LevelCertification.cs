@@ -24,6 +24,11 @@ public static partial class LevelCertification
         "UPDATE dbo.MsmeCertifications SET SaCertificateNo = @CertificateNo, FirstSurveDueDate = @FirstSurveDueDate " +
         "WHERE ZedId = @ZedId AND Certification = @Level AND CertificationStatus = 16 AND SaCertificateNo = @ProcedureNo;";
 
+    /// <summary>2026-11-08: the same for a V4 level assessed at the desktop only (status 6, DaCertificateNo; fix main/14).</summary>
+    internal static readonly string DesktopRowSql = RowSql.Replace("SELECT SaCertificateNo,", "SELECT DaCertificateNo AS SaCertificateNo,").Replace("CertificationStatus = 16", "CertificationStatus = 6");
+
+    internal static readonly string DesktopUpdateSql = UpdateSql.Replace("SaCertificateNo", "DaCertificateNo").Replace("CertificationStatus = 16", "CertificationStatus = 6");
+
     public sealed record Row(string? SaCertificateNo, DateTime? CertificationStatusDate);
 
     /// <summary>The number SP_MONITORING_RA_FINAL_SUBMIT writes: ddMMyyyy_{ZED ID digits}.</summary>
@@ -34,7 +39,8 @@ public static partial class LevelCertification
     public static async Task<string?> ApplyAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)
     {
         if (DocumentLevels.IsBuiltIn(level)) return null;
-        var row = (await db.QuerySqlAsync<Row>(RowSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault();
+        var desktop = DocumentLevels.IsDesktop(level);
+        var row = (await db.QuerySqlAsync<Row>(desktop ? DesktopRowSql : RowSql, new { ZedId = zedId, Level = level }, ct)).FirstOrDefault();
         if (row?.SaCertificateNo is not { Length: > 0 } current || !ProcedureNumber().IsMatch(current)) return row?.SaCertificateNo;
         var settings = await CertificationLevels.FindAsync(db, level, log, ct);
         if (settings is null) return current;
@@ -43,7 +49,7 @@ public static partial class LevelCertification
         var category = await UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var number = CertificateNumbers.Format(CertificateNumbers.FormatFor(settings, category), date, zedId, level, category);
         DateTime? surveillance = settings.SurveillanceEnabled ? date.AddMonths(settings.Schedule.FirstDueMonths) : null;
-        await db.ExecuteSqlAsync(UpdateSql, new
+        await db.ExecuteSqlAsync(desktop ? DesktopUpdateSql : UpdateSql, new
         {
             ZedId = zedId,
             Level = level,

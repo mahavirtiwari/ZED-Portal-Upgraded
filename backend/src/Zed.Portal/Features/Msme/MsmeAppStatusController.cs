@@ -17,7 +17,7 @@ namespace Zed.Portal.Features.Msme;
 public sealed class MsmeAppStatusController(ISqlExecutor db, AppTokens tokens) : LegacyMobileController
 {
     /// <summary>The levels whose cards have VIEW DETAILS.</summary>
-    private static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
+    private static string[] Levels => [.. Zed.Core.Data.LevelRegistry.Codes];
 
     [HttpGet("/Msme/AppCertificationStatus")]
     public async Task<IActionResult> AppCertificationStatus(string? certification, CancellationToken ct)

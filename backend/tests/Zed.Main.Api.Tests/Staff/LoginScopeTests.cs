@@ -41,7 +41,8 @@ public sealed class LoginScopeTests : IDisposable
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var list = await admin.GetFromJsonAsync<JsonElement>("/api/staff/accounts");
-        Assert.Equal(["Bronze", "Silver", "Gold", "ZEDX"], list.GetProperty("levels").EnumerateArray().Select(l => l.GetProperty("code").GetString()));
+        // Every level of Administration → Certification Levels (2026-11-08: also the one the tests added, AddedLevel).
+        Assert.Equal(["Bronze", "Silver", "Gold", "ZEDX", AddedLevel.Code], list.GetProperty("levels").EnumerateArray().Select(l => l.GetProperty("code").GetString()));
         var master = list.GetProperty("types").EnumerateArray().First(t => t.GetProperty("roleId").GetInt32() == 7);
         Assert.True(master.GetProperty("hasStateScope").GetBoolean());
         var ministry = list.GetProperty("types").EnumerateArray().First(t => t.GetProperty("roleId").GetInt32() == 8);
@@ -70,7 +71,7 @@ public sealed class LoginScopeTests : IDisposable
         var r = await admin.PutAsJsonAsync("/api/staff/accounts/MASTER2", new
         {
             roleId = 7, userName = "Master North", email = "m@zed.test", mobileNo = "9876543210",
-            sectorActivity = "Both", levels = new[] { "Bronze", "Silver", "Gold", "ZEDX" }, states = Array.Empty<string>(),
+            sectorActivity = "Both", levels = new[] { "Bronze", "Silver", "Gold", "ZEDX", AddedLevel.Code }, states = Array.Empty<string>(),
         });
         r.EnsureSuccessStatusCode();
         var save = Assert.Single(Calls(StaffAccountsController.SaveScopeSql));

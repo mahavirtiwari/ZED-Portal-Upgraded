@@ -2,16 +2,18 @@ import { HttpClient } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { PortalLinksService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { levelName } from '../msme/shared/levels';
+import { canonicalLevelCode, isV4Level, levelName } from '../msme/shared/levels';
 
 /** GET /api/verify/{type}/{code}. */
 export interface VerifyResponse {
-  certification: 'Pledge' | 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+  /** Pledge, Bronze, Silver, Gold, ZEDX or a level the Admin added (2026-11-08). */
+  certification: string;
   details: Record<string, string | null>;
 }
 
-/** Route types of the QR codes (Verify/PC|BC|SC|GC/{code}; V4: XC for ZED-X). */
+/** Route types of the QR codes (Verify/PC|BC|SC|GC/{code}; V4: XC for ZED-X; a level the Admin added: its code). */
 const TYPES = ['pc', 'bc', 'sc', 'gc', 'xc'];
+const isType = (type: string) => TYPES.includes(type) || isV4Level(canonicalLevelCode(type));
 
 interface Line {
   label: string;
@@ -127,7 +129,7 @@ export class VerifyPage {
     const request = ++this.request;
     this.result.set(null);
     this.error.set('');
-    if (!TYPES.includes(type) || !/^[A-Za-z0-9]{1,50}$/.test(code)) {
+    if (!isType(type) || !/^[A-Za-z0-9]{1,50}$/.test(code)) {
       this.error.set('Invalid verification link.');
       return;
     }

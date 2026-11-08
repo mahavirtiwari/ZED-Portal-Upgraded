@@ -42,7 +42,9 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
         "Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status FROM MsmeCertifications " +
         "WHERE ZedId = @ZedId AND Certification = @Certification AND SiteAssessorId IS NOT NULL AND SaCertificateNo IS NULL";
 
-    private static readonly IReadOnlySet<string> SiteLevels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Silver", "Gold", "ZEDX" };
+    /// <summary>2026-11-08: every site level of Administration → Certification Levels.</summary>
+    private static IReadOnlySet<string> SiteLevels =>
+        new HashSet<string>(LevelRegistry.Codes.Where(c => !LevelRegistry.IsDesktop(c)), StringComparer.OrdinalIgnoreCase);
 
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]

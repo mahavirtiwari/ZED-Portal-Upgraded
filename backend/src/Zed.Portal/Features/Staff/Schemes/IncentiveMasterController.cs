@@ -35,16 +35,8 @@ public sealed partial class IncentiveMasterController(
 {
     public const long MaxDocumentBytes = 2 * 1024 * 1024;
 
-    /// <summary>Incentive types of the legacy menu: Ministry of MSME, other, financial institutions, and one per state.</summary>
-    public static readonly string[] Types =
-    [
-        "Common", "Other", "Financial",
-        "ANDAMAN AND NICOBAR ISLANDS", "ANDHRA PRADESH", "ARUNACHAL PRADESH", "ASSAM", "BIHAR", "CHANDIGARH", "CHHATTISGARH", "DELHI",
-        "GOA", "GUJARAT", "HARYANA", "HIMACHAL PRADESH", "JAMMU AND KASHMIR", "JHARKHAND", "KARNATAKA", "KERALA", "LADAKH",
-        "LAKSHADWEEP", "MADHYA PRADESH", "MAHARASHTRA", "MANIPUR", "MEGHALAYA", "MIZORAM", "NAGALAND", "ODISHA", "PUDUCHERRY",
-        "PUNJAB", "RAJASTHAN", "SIKKIM", "TAMIL NADU", "TELANGANA", "THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU", "TRIPURA",
-        "UTTAR PRADESH", "UTTARAKHAND", "WEST BENGAL",
-    ];
+    /// <summary>Incentive types of the legacy menu: Ministry of MSME, other, financial institutions, and one per state (LG Directory masters).</summary>
+    public static string[] Types => ["Common", "Other", "Financial", .. Masters.StateMaster.All.Select(s => s.Name)];
 
     public static readonly string[] Columns =
     [

@@ -188,9 +188,11 @@ public sealed class MilestoneReviewController(
         bool RequirementEditable(IDictionary<string, object?> r) => ctx.CanEdit && CanTouchSection(ctx, own, r.Text("SectionCode"));
 
         var reqPhotos = sa[7];
+        var videos = await RequirementVideos.LoadAsync(db, Master, level, log, ct);
         var requirements = da[4].Select(r =>
         {
             var d = Pick(r, RequirementFields);
+            d["VideoUrl"] = videos.For(r.Text("SectionCode"), r.Text("RequirementCode"));
             d["Editable"] = RequirementEditable(r);
             d["Photos"] = Photos(reqPhotos.Where(p => SameText(p, "RequirementId", r, "RequirementId")), z, level, "src", "Photo");
             return d;

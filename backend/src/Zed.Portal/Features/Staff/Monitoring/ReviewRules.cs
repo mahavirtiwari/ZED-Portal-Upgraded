@@ -49,6 +49,8 @@ public static class ReviewRules
     public static ReviewActions For(ZedUser user, CertificationRecord r, ReviewStage stage)
     {
         var bronze = string.Equals(r.Certification, "Bronze", StringComparison.OrdinalIgnoreCase);
+        // 2026-11-08: a V4 level assessed at the desktop only has no site stage either.
+        var desktopOnly = Zed.Core.Data.LevelRegistry.IsDesktop(r.Certification);
         var auto = r.IsAutoReject == true;
         var agency = IsAllottedAgency(user, r) &&
                      user.HasSubRole(stage == ReviewStage.Desktop ? SubRoles.DesktopVerification : SubRoles.SiteVerification);
@@ -63,7 +65,7 @@ public static class ReviewRules
             return ReviewActions.None;
         }
 
-        if (bronze) return ReviewActions.None;
+        if (desktopOnly) return ReviewActions.None;
         if (r.Status == SiteQualityCheck)
             return agency ? new ReviewActions(true, true, true, false) : ReviewActions.None;
         if (r.Status == SiteRejected && r.Nc == RejectedNcCount)

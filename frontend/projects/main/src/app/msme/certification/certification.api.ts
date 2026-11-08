@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { splitCertification } from '../shared/levels';
 
 /** Rows keep the procedure's column names (EnterpriseName, BronzeStatus, Nc1Raised, ...). */
 export type Row = Record<string, string | number | boolean | null>;
@@ -15,13 +16,13 @@ export interface CertificationData {
   status: Row;
 }
 
-/** ZEDX is ZED-X (migrations 0028 / 0029): desktop and site assessment, as Silver and Gold. */
-export type Level = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+/** A level's code: Bronze, Silver, Gold, ZEDX (ZED-X) or a level the Admin added (2026-11-08), which works as ZED-X does. */
+export type Level = string;
 
 /** Which branch of the old page applies: certification, surveillance or handholding milestone. */
 export type CertificationKind = 'bronze' | 'silverGold' | 'surveillance' | 'milestone';
 
-/** The values the API accepts (same list as MsmeCertificationController.CertificationTypes). */
+/** The built-in values the API accepts (MsmeCertificationController.CertificationTypes); every level's own and surveillance too. */
 export const CERTIFICATION_TYPES = [
   'Bronze', 'Silver', 'Gold', 'ZEDX',
   'BronzeSurveillance', 'SilverSurveillance', 'GoldSurveillance', 'ZEDXSurveillance',
@@ -29,23 +30,29 @@ export const CERTIFICATION_TYPES = [
   'GoldMilestone1', 'GoldMilestone2', 'GoldMilestone3',
 ] as const;
 
-/** Canonical spelling of a certification type from the URL, or null when it is not one. */
+/**
+ * Canonical spelling of a certification type from the URL, or null when it is not one: a level (the Admin's levels too,
+ * Administration → Certification Levels) or its surveillance; the handholding milestones of Silver and Gold.
+ */
 export function canonicalCertification(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();
-  return CERTIFICATION_TYPES.find((t) => t.toLowerCase() === v) ?? null;
+  const known = CERTIFICATION_TYPES.find((t) => t.toLowerCase() === v);
+  if (known) return known;
+  const split = splitCertification(value);
+  if (!split || split.suffix.startsWith('Milestone')) return null;
+  return split.level + split.suffix;
 }
 
 export function certificationKind(certification: string): CertificationKind {
-  if (certification === 'Bronze') return 'bronze';
-  if (certification === 'Silver' || certification === 'Gold' || certification === 'ZEDX') return 'silverGold';
   if (certification.endsWith('Surveillance')) return 'surveillance';
-  return 'milestone';
+  if (/Milestone\d$/.test(certification)) return 'milestone';
+  if (certification === 'Bronze') return 'bronze';
+  return 'silverGold';
 }
 
-/** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze"; "ZEDXSurveillance" → "ZEDX". */
+/** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze"; "ZEDXSurveillance" → "ZEDX"; "PLATINUMSurveillance" → "PLATINUM". */
 export function certificationLevel(certification: string): Level {
-  if (certification.startsWith('ZEDX')) return 'ZEDX';
-  return certification.startsWith('Gold') ? 'Gold' : certification.startsWith('Silver') ? 'Silver' : 'Bronze';
+  return certification.replace(/(Surveillance|Milestone\d)$/, '') || 'Bronze';
 }
 
 /** "GoldMilestone3" → 3; 0 for other types. */

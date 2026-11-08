@@ -14,7 +14,7 @@ import {
   milestoneNumber,
 } from './certification.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
-import { levelName } from '../shared/levels';
+import { levelMode, levelName } from '../shared/levels';
 import { isWebEntryLevel } from '../entry/entry.api';
 
 /** One box in the "Actions" column. */
@@ -71,7 +71,7 @@ export class CertificationDetailsPage {
   protected readonly heading = computed(() => {
     switch (this.kind()) {
       case 'surveillance':
-        return `${this.level()} Surveillance`;
+        return `${levelName(this.level())} Surveillance`;
       case 'milestone':
         return `Handholding Support: Milestone ${this.milestone()}`;
       default:
@@ -88,7 +88,7 @@ export class CertificationDetailsPage {
   protected readonly showAppBanner = computed(() =>
     ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
   );
-  /** V4: ZED-X is entered on the web (the MSME app has no ZED-X). */
+  /** V4: ZED-X and the levels the Admin added are entered on the web (the MSME app has no ZED-X). */
   protected readonly webEntry = computed(() => isWebEntryLevel(this.type()));
 
 
@@ -122,7 +122,10 @@ export class CertificationDetailsPage {
         list.push(this.webEntry()
           ? { icon: 'basicInfo', label: 'Basic Information & Documents Upload', enabled: true, route: basicInfoRoute }
           : { icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
-        list.push({ icon: 'basicInfo', label: 'View Onsite/Remote Assessment Information', enabled: has('ScheduledOn'), route: siteRoute });
+        // A level the Admin added with desktop assessment only has no site visit (2026-11-08).
+        if (levelMode(this.level()) !== 'Desktop') {
+          list.push({ icon: 'basicInfo', label: 'View Onsite/Remote Assessment Information', enabled: has('ScheduledOn'), route: siteRoute });
+        }
         if (ncRaised) list.push(nc);
         break;
       case 'surveillance':

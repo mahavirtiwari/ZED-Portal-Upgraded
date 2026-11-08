@@ -11,9 +11,9 @@
            0001 all three | 0002 ZEDCS_V2_LIVE | 0004 ZEDCS_V2_LIVE | 0005 all three |
            0006 all three (only with -IncludeDistributedCache) | 0007 ZEDCS_V2_LIVE | 0008 all three | 0009 ZEDCS_V2_LIVE | 0010 ZED_CONSULTANT |
            0011 all three | 0012 all three | 0013 all three |
-           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 ZEDCS_V2_LIVE, ZED_CONSULTANT | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
+           0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 all three | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
            0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE | 0043 ZEDCS_V2_LIVE, ZED_SURVEILLANCE |
-           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE | 0051 ZEDCS_V2_LIVE | 0052 ZED_CONSULTANT, ZED_SURVEILLANCE (after 0051) | 0053 ZEDCS_V2_LIVE | 0054 ZEDCS_V2_LIVE (after 0051) | 0055 all three | 0056 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0057 all three | 0058 all three | 0059 all three | 0060 ZEDCS_V2_LIVE | 0061 all three | 0062 ZEDCS_V2_LIVE | 0063 ZEDCS_V2_LIVE (after 0031, 0060)
+           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE | 0051 ZEDCS_V2_LIVE | 0052 ZED_CONSULTANT, ZED_SURVEILLANCE (after 0051) | 0053 ZEDCS_V2_LIVE | 0054 ZEDCS_V2_LIVE (after 0051) | 0055 all three | 0056 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0057 all three | 0058 all three | 0059 all three | 0060 ZEDCS_V2_LIVE | 0061 all three | 0062 ZEDCS_V2_LIVE | 0063 ZEDCS_V2_LIVE (after 0031, 0060) | 0064 all three (after 0015) | 0065 ZEDCS_V2_LIVE (after 0063) | 0066 ZED_SURVEILLANCE (after 0065)
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -128,7 +128,7 @@ $Migrations = @(
     @{ File = '0020_dashboard_analytics_consultancy.sql'; Dbs = @($Cons); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0021_dashboard_analytics_surveillance.sql'; Dbs = @($Surv); Markers = @('P:dbo.SP_V4_DASHBOARD_ANALYTICS') }
     @{ File = '0022_esg_checklist.sql';         Dbs = @($Main, $Surv); Markers = @('U:dbo.V4EsgChecklist') }
-    @{ File = '0023_document_access.sql';       Dbs = @($Main, $Cons); Markers = @('COL:dbo.MyDocuments.AccessRoles', 'COL:dbo.MyDocuments.VideoUrl', 'COL:dbo.MyDocuments.Description') }
+    @{ File = '0023_document_access.sql';       Dbs = @($Main, $Cons, $Surv); Markers = @('COL:dbo.MyDocuments.AccessRoles', 'COL:dbo.MyDocuments.VideoUrl', 'COL:dbo.MyDocuments.Description') }
     @{ File = '0024_special_regions.sql';       Dbs = @($Main);  Markers = @('COL:dbo.Districts.SubsidyAspirational', 'COL:dbo.States.SubsidyNer') }
     @{ File = '0025_sector_activity.sql';       Dbs = $Zed;      Markers = @('COL:dbo.Sectors.SectorType', 'C:dbo.CK_Sectors_SectorType') }
     @{ File = '0026_incentive_dashboard.sql';   Dbs = @($Main);  Markers = @('COL:dbo.Incentives.DisplayOn', 'COL:dbo.Incentives.CardHighlight', 'COL:dbo.Incentives.DashboardCard', 'C:dbo.CK_Incentives_DisplayOn') }
@@ -173,6 +173,9 @@ $Migrations = @(
     @{ File = '0061_user_block_history.sql';     Dbs = @($Main, $Cons, $Surv); Markers = @('U:dbo.UserBlockHistory') }
     @{ File = '0062_fa_round_robin.sql';         Dbs = @($Main); Markers = @('COL:dbo.FinancialAssistance.RejectedAgencies') }
     @{ File = '0063_auto_allotment_agency_levels.sql'; Dbs = @($Main); Markers = @('DEF:dbo.SP_V4_AUTO_ALLOT_AGENCY:AllowZedxAssessments', 'DEF:dbo.SP_MSME_AUTO_ALLOT_AGENCY_ROUND_ROBIN_SILVER_GOLD:AllowSilverAssessments') }
+    @{ File = '0064_email_template_variants.sql'; Dbs = @($Main, $Cons, $Surv); Markers = @('EP:dbo.V4EmailTemplates:V4_0064_Variants') }
+    @{ File = '0065_generic_certification_levels.sql'; Dbs = @($Main); Markers = @('COL:dbo.SectionTypes.QrDigit', 'FN:dbo.FN_V4_LEVEL_MODE', 'FN:dbo.FN_V4_LEVEL_QR_DIGIT', 'DEF:dbo.SP_V4_CERTIFICATION_PAID:V4_0065', 'DEF:dbo.SP_V4_AUTO_ALLOT_AGENCY:V4_0065') }
+    @{ File = '0066_generic_certification_levels_surveillance.sql'; Dbs = @($Surv); Markers = @('DEF:dbo.FN_V4_LEVEL_MODE:V4_0066') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

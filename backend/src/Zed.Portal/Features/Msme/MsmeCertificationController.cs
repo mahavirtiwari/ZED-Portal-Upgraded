@@ -19,14 +19,14 @@ public sealed class MsmeCertificationController(ISqlExecutor db) : MsmeApiContro
     /// basic information and NC pages), in the spelling the procedures compare against.
     /// SP_MSME_GET_DETAILS also knows "Techupgrade", which only the technology upgradation module uses.
     /// </summary>
-    internal static readonly IReadOnlyDictionary<string, string> CertificationTypes =
-        new[]
-        {
-            "Bronze", "Silver", "Gold", "ZEDX",
-            "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance", "ZEDXSurveillance",
-            "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
-            "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
-        }.ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);
+    /// 2026-11-08: every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry) and its surveillance.
+    internal static IReadOnlyDictionary<string, string> CertificationTypes =>
+        Zed.Core.Data.LevelRegistry.Codes.Concat(Zed.Core.Data.LevelRegistry.Codes.Select(c => c + "Surveillance"))
+            .Concat(
+            [
+                "SilverMilestone1", "SilverMilestone2", "SilverMilestone3",
+                "GoldMilestone1", "GoldMilestone2", "GoldMilestone3",
+            ]).Distinct(StringComparer.OrdinalIgnoreCase).ToDictionary(t => t, t => t, StringComparer.OrdinalIgnoreCase);
 
     // Only the columns the two pages show. The legacy action sent every result set with SELECT * rows
     // (payment details, agency e-mail addresses, ...).

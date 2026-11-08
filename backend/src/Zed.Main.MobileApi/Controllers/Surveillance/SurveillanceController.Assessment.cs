@@ -26,11 +26,9 @@ public sealed partial class SurveillanceController
 
         var sets = await db.QueryProcMultipleAsync("SP_APP_SURVEILLANCE_GET_QUESTIONS_BY_TYPE",
             new { ZedId = zedId, CertificationType = certificationType }, ct);
-        return LegacyJson(new ParametersResponse
-        {
-            status = "1",
-            parameters = BuildParameters(sets, 0, withEvidences: true, withAssessorRemarks: false),
-        });
+        var parameters = BuildParameters(sets, 0, withEvidences: true, withAssessorRemarks: false);
+        await AppRequirementVideos.FillAsync(db, "dbo", certificationType, parameters, null, ct);
+        return LegacyJson(new ParametersResponse { status = "1", parameters = parameters });
     }
 
     /// <summary>SP_APP_SURVEILLANCE_INSERT_BASIC_INFO (deletes and re-inserts products and photos): only before final submit.</summary>

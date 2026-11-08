@@ -13,13 +13,68 @@ public static class AgencyLevels
 {
     public sealed record Level(string Code, string Name, string? Column, string? ReasonColumn);
 
-    public static readonly IReadOnlyList<Level> All =
+    public static readonly IReadOnlyList<Level> Fixed =
     [
         new("Bronze", "Bronze", null, null),
         new("Silver", "Silver", "AllowSilverAssessments", "ReasonForBlockSilver"),
         new("Gold", "Gold", "AllowGoldAssessments", "ReasonForBlockGold"),
         new("ZEDX", "ZED-X", "AllowZedxAssessments", "ReasonForBlockZedx"),
     ];
+
+    /// <summary>
+    /// The four above, then every other level of Administration → Certification Levels (2026-11-08, generic levels) with its
+    /// columns Users.Allow{Code}Assessments / ReasonForBlock{Code} (added with the level, or by migration 0065).
+    /// </summary>
+    public static IReadOnlyList<Level> All =>
+    [
+        .. Fixed.Select(f => LevelRegistry.Find(f.Code) is { } r ? f with { Name = r.Name } : f),
+        .. LevelRegistry.All.Where(r => !Fixed.Any(f => string.Equals(f.Code, r.Code, StringComparison.OrdinalIgnoreCase)))
+            .Select(r => new Level(r.Code, r.Name, LevelRegistry.AgencyColumn(r.Code), LevelRegistry.AgencyReasonColumn(r.Code))),
+    ];
+
+    /// <summary>The levels beyond the four (their columns are read one level at a time: a missing column leaves the level out).</summary>
+    public static IReadOnlyList<Level> Added => [.. All.Where(l => !Fixed.Any(f => string.Equals(f.Code, l.Code, StringComparison.OrdinalIgnoreCase)))];
+
+    /// <summary>One added level's columns of every agency (the column names come from the registry, whose codes are letters and digits).</summary>
+    internal static string AddedSql(Level level) =>
+        $"SELECT UserId, CAST([{level.Column}] AS bit) AS Allow, [{level.ReasonColumn}] AS Reason FROM dbo.Users WHERE RoleId = 2;";
+
+    public sealed class AddedRow
+    {
+        public string? UserId { get; init; }
+        public bool? Allow { get; init; }
+        public string? Reason { get; init; }
+    }
+
+    /// <summary>A level of an agency in the list (2026-11-08): <paramref name="Allow"/> false when disabled for it.</summary>
+    public sealed record AgencyLevel(string Code, string Name, bool Allow, string? Reason);
+
+    /// <summary>
+    /// The added levels whose columns exist, with each agency's values (UserId → code → (allow, reason)).
+    /// </summary>
+    public static async Task<(IReadOnlyList<Level> Levels, Dictionary<string, Dictionary<string, AddedRow>> ByUser)> AddedAsync(
+        ISqlExecutor db, ILogger log, CancellationToken ct)
+    {
+        var levels = new List<Level>();
+        var byUser = new Dictionary<string, Dictionary<string, AddedRow>>(StringComparer.OrdinalIgnoreCase);
+        foreach (var level in Added)
+        {
+            IReadOnlyList<AddedRow> rows;
+            try { rows = await db.QuerySqlAsync<AddedRow>(AddedSql(level), null, ct); }
+            catch (DbException ex)
+            {
+                log.LogWarning(ex, "Agency columns of level {Level} not read (added by the next update)", level.Code);
+                continue;
+            }
+            levels.Add(level);
+            foreach (var r in rows.Where(r => r.UserId is not null))
+            {
+                if (!byUser.TryGetValue(r.UserId!.Trim(), out var map)) byUser[r.UserId.Trim()] = map = new(StringComparer.OrdinalIgnoreCase);
+                map[level.Code] = r;
+            }
+        }
+        return (levels, byUser);
+    }
 
     public static Level? Find(string? code) =>
         All.FirstOrDefault(l => string.Equals(l.Code, code?.Trim().Replace("-", ""), StringComparison.OrdinalIgnoreCase));

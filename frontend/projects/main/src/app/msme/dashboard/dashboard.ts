@@ -6,7 +6,7 @@ import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/s
 import { firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
-import { levelLogo, levelName } from '../shared/levels';
+import { isLegacyLevel, levelLogo, levelName } from '../shared/levels';
 import { isWebEntryLevel } from '../entry/entry.api';
 
 type Row = Record<string, string | number | boolean | null>;
@@ -17,9 +17,11 @@ interface DashboardData {
   certStatus: Row;
 }
 
-/** ZEDX is ZED-X (Administration → Certification Levels), shown once the Admin enables it. */
-type Level = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
-const KNOWN_LEVELS: readonly Level[] = ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+/**
+ * A level's code: Bronze, Silver, Gold, ZEDX (ZED-X) or a level the Admin added (2026-11-08, Administration → Certification
+ * Levels), shown once the Admin enables it. The levels other than Bronze, Silver and Gold work as ZED-X does.
+ */
+type Level = string;
 
 /** A level as the Admin set it (api/public/levels: enabled ones only). */
 interface PublicLevel {
@@ -83,7 +85,22 @@ interface StepRule {
   label: string;
 }
 
-const STEPS: Record<Level, StepRule[]> = {
+/** Desktop and site assessment: the statuses of the site levels (Silver, Gold, ZED-X and the Admin's site levels). */
+const SITE_STEPS: StepRule[] = [
+  { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+  { doneAbove: 5, currentFrom: 1, currentTo: 5, label: 'Desktop' },
+  { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
+  { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
+];
+
+/** A level the Admin added with desktop assessment only: the site levels' statuses without the site visit. */
+const DESKTOP_V4_STEPS: StepRule[] = [
+  { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
+  { doneAbove: 14, currentFrom: 1, currentTo: 14, label: 'Desktop' },
+  { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
+];
+
+const STEPS: Record<string, StepRule[]> = {
   Bronze: [
     { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
     { doneAbove: 4, currentFrom: 1, currentTo: 4, label: 'Assessment' },
@@ -101,17 +118,10 @@ const STEPS: Record<Level, StepRule[]> = {
     { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
     { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
   ],
-  // ZED-X: desktop and site assessment, the statuses of the site levels.
-  ZEDX: [
-    { doneAbove: 1, currentFrom: 0, currentTo: 1, label: 'Details' },
-    { doneAbove: 5, currentFrom: 1, currentTo: 5, label: 'Desktop' },
-    { doneAbove: 14, currentFrom: 6, currentTo: 14, label: 'Site visit' },
-    { doneAbove: 15, currentFrom: 14, currentTo: 15, label: 'Certified' },
-  ],
 };
 
-/** Status code meaning "certified" per level (MsmeCertifications.CertificationStatus). */
-const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16, ZEDX: 16 };
+/** Status code meaning "certified" per level (MsmeCertifications.CertificationStatus): 6 for Bronze, 16 for the others (as ZED-X). */
+const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
 
 /**
  * MSME dashboard. Port of Views/Msme/Dashboard.cshtml: unit summary, certification cards,
@@ -163,6 +173,8 @@ const COMPLETED: Record<Level, number> = { Bronze: 6, Silver: 16, Gold: 16, ZEDX
       box-shadow: 0 4px 14px rgba(16, 61, 64, 0.08); margin: 0; }
     .lv-card > .lv-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; border: 0; }
     .lv-card > .lv-head h5 { margin: 0; min-width: 0; font-size: 12.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    /* A level the Admin added (2026-11-08): ZED-X's colour, the Admin's logo. */
+    .lv-card.panel-added > .lv-head { background: #3F8F96; }
     .lv-body { display: flex; flex-direction: column; gap: 12px; padding: 16px; flex: 1 1 auto; }
     .lv-logo { align-self: center; }
     .lv-logo img { width: 96px; height: 96px; object-fit: contain; }
@@ -241,8 +253,11 @@ export class DashboardPage {
   protected readonly cert = computed(() => this.data()?.certStatus ?? {});
   /** The levels the Admin has enabled (Administration → Certification Levels); the three until the server answers. */
   protected readonly publicLevels = signal<PublicLevel[]>([]);
+  /** What this unit would pay for each level (after subsidy, with GST), by level code. */
+  protected readonly levelFees = signal<Record<string, number | null>>({});
+  /** Every enabled level, those the Admin added too (2026-11-08); a code with a level code's shape only. */
   protected readonly levels = computed<Level[]>(() => {
-    const enabled = this.publicLevels().map((l) => l.code).filter((c): c is Level => (KNOWN_LEVELS as readonly string[]).includes(c));
+    const enabled = this.publicLevels().map((l) => l.code).filter((c) => /^[A-Za-z][A-Za-z0-9]{1,19}$/.test(c ?? ''));
     return enabled.length ? enabled : ['Bronze', 'Silver', 'Gold'];
   });
   /** "Bronze, Silver, Gold or ZED-X" for the panel's line. */
@@ -276,6 +291,8 @@ export class DashboardPage {
     void this.load();
     void this.loadIncentiveCards();
     firstValueFrom(this.http.get<PublicLevel[]>('/api/public/levels')).then((l) => this.publicLevels.set(l)).catch(() => undefined);
+    // The unit's own fee of each level, from Masters → Payments (2026-11-08).
+    firstValueFrom(this.http.get<Record<string, number | null>>('/api/msme/dashboard/level-fees')).then((f) => this.levelFees.set(f ?? {})).catch(() => undefined);
   }
 
   /** What pages show for a level ("ZED-X" for ZEDX). */
@@ -352,7 +369,7 @@ export class DashboardPage {
   protected readonly entType = computed(() => String(this.msme()['EnterpriseType'] ?? ''));
 
   protected completed(level: Level): number {
-    return COMPLETED[level];
+    return completedStatus(level);
   }
 
   protected months(n: number): string {
@@ -371,7 +388,8 @@ export class DashboardPage {
         value: s.count && s.count > 1 ? `${s.count}, after ${s.firstDueMonths} months, then every ${s.intervalMonths}` : `after ${this.months(s.firstDueMonths)}`,
       });
     }
-    if (l.fee) rows.push({ label: 'Fee', value: `₹ ${l.fee.toLocaleString('en-IN')}` });
+    const fee = this.levelFees()[level];
+    if (typeof fee === 'number') rows.push({ label: 'Your fee', value: fee > 0 ? `₹ ${Math.round(fee).toLocaleString('en-IN')} (incl. GST, after subsidy)` : 'Nil (fully subsidised)' });
     return rows;
   }
 
@@ -386,7 +404,12 @@ export class DashboardPage {
     return this.num(`${level}Status`);
   }
 
-  /** ZED-X: basic information and documents are entered on the web (the MSME app has no ZED-X). */
+  /** A level the Admin added (not Bronze, Silver, Gold or ZED-X): no colours of its own on the page. */
+  protected addedLevel(level: Level): boolean {
+    return !isLegacyLevel(level) && level !== 'ZEDX';
+  }
+
+  /** ZED-X and the levels the Admin added: basic information and documents are entered on the web (the MSME app has no ZED-X). */
   protected webEntry(level: Level): boolean {
     return isWebEntryLevel(level);
   }
@@ -398,8 +421,8 @@ export class DashboardPage {
   protected statusLabel(level: Level): string {
     const s = this.status(level);
     if (s === 0) return 'Get started';
-    if (s === COMPLETED[level]) return 'Completed';
-    return s > 0 && s < COMPLETED[level] ? 'In-progress' : '';
+    if (s === completedStatus(level)) return 'Completed';
+    return s > 0 && s < completedStatus(level) ? 'In-progress' : '';
   }
 
   protected stepClass(level: Level, rule: StepRule): string {
@@ -409,8 +432,10 @@ export class DashboardPage {
     return '';
   }
 
+  /** Bronze, Silver and Gold their own; ZED-X and the Admin's levels by their assessment (desktop, or desktop and site). */
   protected steps(level: Level): StepRule[] {
-    return STEPS[level];
+    if (isLegacyLevel(level)) return STEPS[level] ?? SITE_STEPS;
+    return this.publicLevels().find((l) => l.code === level)?.assessmentMode === 'Desktop' ? DESKTOP_V4_STEPS : SITE_STEPS;
   }
 
   /**
@@ -418,13 +443,17 @@ export class DashboardPage {
    * (same conditions as the old page).
    */
   protected levelDisabled(level: Level): boolean {
-    const b = this.status('Bronze'), s = this.status('Silver'), g = this.status('Gold'), x = this.status('ZEDX');
-    // Two certifications never run at once: ZED-X and Bronze/Silver/Gold exclude each other while one of them is in
-    // progress. ZED-X is the highest level: once certified it closes the three, as Gold does Bronze and Silver. The server
-    // checks the same (Certifications.BlockedBy).
+    const b = this.status('Bronze'), s = this.status('Silver'), g = this.status('Gold');
+    // Two certifications never run at once: ZED-X (and every level the Admin added, 2026-11-08) and Bronze/Silver/Gold
+    // exclude each other while one of them is in progress. ZED-X is the highest level: once certified it closes the three,
+    // as Gold does Bronze and Silver; so does a level the Admin added. The server checks the same (Certifications.BlockedBy).
     const inProgress = (l: Level, v: number) => v > 0 && (l === 'Bronze' ? v < 6 || v === 7 : v < 16 || v === 17);
-    if (level === 'ZEDX') return x < 1 && (inProgress('Bronze', b) || inProgress('Silver', s) || inProgress('Gold', g));
-    if (this.status(level) < 1 && x > 0) return true;
+    const v4 = this.levels().filter((l) => !isLegacyLevel(l));
+    if (!isLegacyLevel(level)) {
+      return this.status(level) < 1
+        && [...['Bronze', 'Silver', 'Gold'], ...v4.filter((l) => l !== level)].some((l) => inProgress(l, this.status(l)));
+    }
+    if (this.status(level) < 1 && v4.some((l) => this.status(l) > 0)) return true;
     switch (level) {
       case 'Bronze':
         return (b < 1 && s > 0 && (s <= 16 || s === 17)) || (b < 1 && g > 0 && g <= 16) || g === 16 || s === 16 || g === 17;
@@ -432,11 +461,16 @@ export class DashboardPage {
         return (s < 1 && b > 0 && (b < 6 || b === 7)) || (s < 1 && g > 0 && g <= 16) || g === 16 || g === 17;
       case 'Gold':
         return (g < 1 && s > 0 && (s < 16 || s === 17)) || (g < 1 && b > 0 && (b < 6 || b === 7));
+      default:
+        return false;
     }
   }
 
   protected surveillanceVisible(level: Level): boolean {
-    // ZED-X: the API gives ZEDXDashboardSurStatus / IsSurZEDXPaymentDone (Admin's schedule, migration 0032).
+    // ZED-X: the API gives ZEDXDashboardSurStatus / IsSurZEDXPaymentDone (Admin's schedule, migration 0032); the levels the
+    // Admin added the same ({CODE}DashboardSurStatus), and none until the API gives it.
+    const v = this.msme()[`${level}DashboardSurStatus`];
+    if (!isLegacyLevel(level) && level !== 'ZEDX') return v !== null && v !== undefined && Number(v) !== 0;
     return !this.is(this.msme(), `${level}DashboardSurStatus`, 0);
   }
 

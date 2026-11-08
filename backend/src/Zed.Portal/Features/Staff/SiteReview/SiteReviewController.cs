@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -50,7 +51,7 @@ public sealed class SiteReviewController(
     private static readonly FileExtensionContentTypeProvider ContentTypes = new();
 
     /// <summary>Levels with a site assessment.</summary>
-    private static readonly string[] SiteLevels = ["Silver", "Gold", "ZEDX"];
+    private static string[] SiteLevels => SiteAssessment.AssessmentInputs.SiteLevels;
 
     private static readonly string[] MsmeFields =
     [
@@ -284,9 +285,11 @@ public sealed class SiteReviewController(
             .ToList();
 
         var evidencePhotos = sa[7];
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
         var requirements = da[4].Select(r =>
         {
             var d = Pick(r, RequirementFields);
+            d["VideoUrl"] = videos.For(r.Text("SectionCode"), r.Text("RequirementCode"));
             d["Photos"] = Photos(evidencePhotos.Where(p => SameText(p, "RequirementId", r, "RequirementId")), zedId, level);
             return d;
         }).ToList();
@@ -351,6 +354,12 @@ public sealed class SiteReviewController(
             surveillance ? SurveillanceOf(main, sa, qc) : null);
     }
 
+    private static List<Dictionary<string, object?>> WithVideos(List<Dictionary<string, object?>> rows, RequirementVideos.Map videos)
+    {
+        videos.AttachTo(rows);
+        return rows;
+    }
+
     private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
     {
         var nc = await db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS_NC",
@@ -361,7 +370,7 @@ public sealed class SiteReviewController(
             NcProducts(nc[0], zedId, level),
             NcProducts(nc[8], zedId, level),
             Pick(nc[1], SectionFields),
-            Pick(nc[2], NcRequirementFields),
+            WithVideos(Pick(nc[2], NcRequirementFields), await RequirementVideos.LoadAsync(db, "dbo", level, log, ct)),
             Pick(nc[3], OptionFields),
             Pick(nc[4], SubOptionFields),
             nc[5].Select(e =>
@@ -429,6 +438,7 @@ public sealed class SiteReviewController(
         var msme = Pick(main, OriginalMsmeFields);
         msme["AgencyName"] ??= Value(main, "UserName");
         var evidencePhotos = sa[7];
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
         return new OriginalResponse(
             mainId, level, msme,
             da[1].Select(p => Pick(p, ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks"]))
@@ -438,6 +448,7 @@ public sealed class SiteReviewController(
             da[4].Select(r =>
             {
                 var d = Pick(r, OriginalRequirementFields);
+                d["VideoUrl"] = videos.For(r.Text("SectionCode"), r.Text("RequirementCode"));
                 d["Photos"] = Photos(evidencePhotos.Where(p => SameText(p, "RequirementId", r, "RequirementId")), zedId, level);
                 return d;
             }).ToList(),

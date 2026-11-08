@@ -17,7 +17,8 @@ describe('DashboardPage', () => {
   }
 
   async function render(certStatus: Record<string, unknown>, msme: Record<string, unknown> = {}, reCertification = 0,
-                        incentives: object = { builtIn: [], incentives: [] }, levels: object[] = [], basic: Record<string, unknown> = {}) {
+                        incentives: object = { builtIn: [], incentives: [] }, levels: object[] = [], basic: Record<string, unknown> = {},
+                        levelFees: Record<string, number | null> = {}) {
     fixture = TestBed.createComponent(DashboardPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;
@@ -30,6 +31,7 @@ describe('DashboardPage', () => {
     });
     for (const r of http.match('/api/msme/dashboard/incentives')) r.flush(incentives);
     for (const r of http.match('/api/public/levels')) r.flush(levels);
+    for (const r of http.match('/api/msme/dashboard/level-fees')) r.flush(levelFees);
     await settle();
   }
 
@@ -70,7 +72,7 @@ describe('DashboardPage', () => {
       level('Bronze', 'Bronze', { assessmentMode: 'Desktop', surveillance: { firstDueMonths: 15, count: null, intervalMonths: null } }),
       level('Silver', 'Silver'), level('Gold', 'Gold'),
       level('ZEDX', 'ZED-X (Export)', { validityMonths: 60, fee: 75000, surveillance: { firstDueMonths: 15, count: 2, intervalMonths: 12 } }),
-    ]);
+    ], {}, { ZEDX: 75000 });
     const band = el.querySelector('.unit-band') as HTMLElement;
     expect(band.querySelector('h4')!.textContent).toBe('Acme Castings');
     expect([...band.querySelectorAll('.id-tag')].map((t) => [t.querySelector('i')!.textContent, t.lastChild!.textContent]))
@@ -82,7 +84,7 @@ describe('DashboardPage', () => {
     const facts = (code: string) => [...card(code).querySelectorAll('.lv-facts > div')].map((d) => `${d.querySelector('dt')!.textContent}: ${d.querySelector('dd')!.textContent}`);
     expect(facts('bronze')).toEqual(['Valid for: 3 years', 'Surveillance: after 15 months']);
     expect(facts('silver')).toEqual(['Valid for: 3 years', 'Surveillance: after 1 year']);
-    expect(facts('zedx')).toEqual(['Valid for: 5 years', 'Surveillance: 2, after 15 months, then every 12', 'Fee: ₹ 75,000']);
+    expect(facts('zedx')).toEqual(['Valid for: 5 years', 'Surveillance: 2, after 15 months, then every 12', 'Your fee: ₹ 75,000 (incl. GST, after subsidy)']);
 
     // Bronze at status 3: the first step done, the second in hand, so the bar is half filled.
     const bar = (code: string) => (card(code).querySelector('.lv-steps') as HTMLElement).style.getPropertyValue('--fill');
@@ -170,6 +172,56 @@ describe('DashboardPage', () => {
     // ZED-X certified: the highest level, the three stay closed.
     await render({ ZEDXStatus: 16 }, { IsZEDXPaymentDone: 1 }, 0, undefined, levels);
     for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).toContain('plant-activity-disabled');
+  });
+
+  it('shows a level the Admin added (PLATINUM) as ZED-X: its card, apply and pay, details on the web, greyed out while another level runs', async () => {
+    const lv = (code: string, name: string, more: object = {}) => ({ code, name, description: null, comment: null, logoUrl: null,
+      assessmentMode: 'Site', validityMonths: 36, fee: null, ...more });
+    const levels = [lv('Bronze', 'Bronze'), lv('Silver', 'Silver'), lv('Gold', 'Gold'),
+      lv('PLATINUM', 'Platinum', { comment: 'Platinum: beyond Gold.', logoUrl: '/api/public/levels/PLATINUM/logo', assessmentMode: 'Desktop' })];
+    await render({ PLATINUMStatus: 0 }, {}, 0, undefined, levels, {}, { PLATINUM: 50000 });
+    const p = card('platinum');
+    expect(p).not.toBeNull();
+    expect(p.classList).toContain('panel-added');
+    expect(p.querySelector('h5')!.textContent).toContain('PLATINUM CERTIFICATION');
+    expect(p.querySelector('.inner2 img')!.getAttribute('src')).toBe('/api/public/levels/PLATINUM/logo');
+    expect(p.textContent).toContain('Get started');
+    expect(p.textContent).toContain('₹ 50,000');
+    // Desktop assessment only: details, desktop, certified.
+    expect([...p.querySelectorAll('.lv-steps-labels span')].map((x) => x.textContent!.trim())).toEqual(['Details', 'Desktop', 'Certified']);
+    expect(el.textContent).toContain('Apply for Bronze, Silver, Gold or Platinum Certifications.');
+    (p.querySelector('.panel-heading button') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('.modal-content')!.textContent).toContain('Platinum Certification');
+    expect(el.querySelector('.modal-content')!.textContent).toContain('beyond Gold');
+    (el.querySelector('.modal-content button[aria-label="Close"], .modal-content .close, .modal-header button') as HTMLElement)?.click();
+    await settle();
+
+    // APPLY: disclaimer, instructions, then the payment of PLATINUM.
+    (p.querySelector('.apply-btn') as HTMLElement).click();
+    await settle();
+    button('ACCEPT & PROCEED').click();
+    await settle();
+    button('ACCEPT & PROCEED').click();
+    await settle();
+    http.expectOne('/api/msme/payments/PLATINUM/options').flush({
+      certification: 'PLATINUM', withReward: null, rewardAvailable: false, udyamPan: 'ABCDE1234F',
+      withoutReward: { Total: 59000, ApplicantContributionAfterSubsidy: 59000, NetPaybleTds15: 58000, NetPaybleTds75: 57000, SubsidyLabel: '' },
+    });
+    await settle();
+    expect(el.textContent).toContain('Payment Options');
+    fixture.destroy();
+
+    // Paid: basic information and documents on the web, as ZED-X.
+    await render({ PLATINUMStatus: 1 }, { IsPLATINUMPaymentDone: 1 }, 0, undefined, levels);
+    expect(card('platinum').querySelector('a[href="/msme/entry/PLATINUM"]')!.textContent).toContain('ENTER DETAILS');
+    // While it runs, Bronze, Silver and Gold are greyed out.
+    for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).toContain('plant-activity-disabled');
+    fixture.destroy();
+
+    // Bronze in progress greys it out.
+    await render({ BronzeStatus: 3, PLATINUMStatus: 0 }, { IsBronzePaymentDone: 1 }, 0, undefined, levels);
+    expect(card('platinum').classList).toContain('plant-activity-disabled');
   });
 
   it('marks a certified level as completed and unlocks the incentives', async () => {

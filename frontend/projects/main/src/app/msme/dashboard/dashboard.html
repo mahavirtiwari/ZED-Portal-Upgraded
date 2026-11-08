@@ -71,7 +71,7 @@
                 <div class="panel-body">
                   <div class="level-grid" [style.--levels]="levels().length">
                     @for (level of levels(); track level) {
-                      <article class="lv-card panel-{{ level.toLowerCase() }}" [class.plant-activity-disabled]="levelDisabled(level)">
+                      <article class="lv-card panel-{{ level.toLowerCase() }}" [class.panel-added]="addedLevel(level)" [class.plant-activity-disabled]="levelDisabled(level)">
                         <div class="panel-heading lv-head">
                           <h5>{{ levelName(level).toUpperCase() }} CERTIFICATION</h5>
                           <button type="button" class="btn btn-link p-0" [attr.aria-label]="'About ' + levelName(level)" (click)="open({ kind: 'info', topic: level })">
@@ -119,7 +119,7 @@
                             <div class="lv-extra">
                               @if (surveillancePaid(level)) {
                                 <a [routerLink]="['/msme/certification', level + 'Surveillance']">SURVEILLANCE</a>
-                                <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="level + ' surveillance details'">→</a>
+                                <a [routerLink]="['/msme/certification', level + 'Surveillance']" [attr.aria-label]="levelName(level) + ' surveillance details'">→</a>
                               } @else {
                                 <a [routerLink]="['/msme/surveillance-payment', level]">SURVEILLANCE</a>
                                 <a [routerLink]="['/msme/surveillance-payment', level]" class="btn btn-primary btn-sm">APPLY</a>
@@ -383,9 +383,10 @@
                 @case ('Bronze') { <zed-text key="msme.dashboard.levelInfo.bronze" /> }
                 @case ('Silver') { <zed-text key="msme.dashboard.levelInfo.silver" /> }
                 @case ('Gold') { <zed-text key="msme.dashboard.levelInfo.gold" /> }
-                @case ('ZEDX') { <p class="level-comment">{{ levelComment('ZEDX') }}</p> }
                 @case ('My') { <zed-text key="msme.dashboard.info.myCertifications" /> }
                 @case ('MyIncentives') { <zed-text key="msme.dashboard.info.myIncentives" /> }
+                <!-- ZED-X and the levels the Admin added: the information text the Admin wrote. -->
+                @default { <p class="level-comment">{{ levelComment(m.topic) }}</p> }
               }
             }
             @case ('joining') {

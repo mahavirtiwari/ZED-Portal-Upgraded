@@ -60,8 +60,8 @@ public sealed partial class SAController(
         "SELECT SiteAssessorId, CoAssessorId FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
 
     /// <summary>Certifications that site assessments are done for; used in upload paths.</summary>
-    internal static readonly IReadOnlySet<string> Certifications =
-        new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Bronze", "Silver", "Gold", "ZEDX" };
+    /// 2026-11-08: every level of Administration → Certification Levels (Zed.Core.Data.LevelRegistry).
+    internal static IReadOnlySet<string> Certifications => new HashSet<string>(LevelRegistry.Codes, StringComparer.OrdinalIgnoreCase);
 
     private enum Role { LeadOrCo, Lead, Co }
 
@@ -291,6 +291,7 @@ public sealed partial class SAController(
         if (response.allottedParameters is not null)
         {
             await AttachCheckpointsAsync(response.allottedParameters, zedId, response.certificationType, ct);
+            await AppRequirementVideos.FillAsync(db, "dbo", response.certificationType, response.allottedParameters, log, ct);
             await AttachListedEvidencesAsync(response.allottedParameters, zedId, response.certificationType, ct);
         }
         if (!string.IsNullOrEmpty(zedId) && !string.IsNullOrEmpty(response.certificationType))

@@ -118,7 +118,7 @@
             @if (mode === 'levels') {
               <td data-label="Levels it can be allotted">
                 <div class="lv-row">
-                  @for (l of levels; track l.code) {
+                  @for (l of levels(); track l.code) {
                     <button type="button" class="lv" [class.on]="allowed(a, l.code)" [class.off]="!allowed(a, l.code)" [disabled]="saving()"
                             [attr.data-level]="l.code" [attr.aria-pressed]="allowed(a, l.code)"
                             [title]="allowed(a, l.code) ? 'Click to disable ' + l.name + ' assessments' : 'Click to enable ' + l.name + ' assessments'"
@@ -129,7 +129,7 @@
                   }
                 </div>
                 <div class="lv-reasons">
-                  @for (l of levels; track l.code) {
+                  @for (l of levels(); track l.code) {
                     @if (!allowed(a, l.code) && reason(a, l.code)) {
                       <span>{{ l.name }} off: “{{ reason(a, l.code) }}”</span>
                     }

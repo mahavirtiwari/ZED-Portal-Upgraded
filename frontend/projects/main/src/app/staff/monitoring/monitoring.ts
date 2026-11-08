@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService, ClientConfigService, apiErrorMessage } from '@zed/shared';
@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
 import { ClientPager, PagerComponent } from '../pager';
-import { levelName } from '../../msme/shared/levels';
+import { levelCodes, levelName } from '../../msme/shared/levels';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -53,7 +53,8 @@ export class MonitoringPage {
     : `Follow the ${this.surveillance ? 'surveillance assessments' : 'assessments'} by stage; choose a certification level, then a stage.`;
 
   // V4: ZED-X is assessed on the main portal only.
-  protected readonly levels = this.consultancy ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+  /** Consultancy: the handholding levels; else every level (Administration → Certification Levels, the Admin's too; 2026-11-08). */
+  protected readonly levels = computed(() => (this.consultancy ? ['Silver', 'Gold'] : levelCodes()));
   protected readonly levelName = levelName;
   protected readonly tabs: readonly { status: number; label: string; count: keyof MonitoringCounts }[] = this.consultancy
     ? [

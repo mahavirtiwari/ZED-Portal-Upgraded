@@ -20,7 +20,8 @@ namespace Zed.Portal.Features.Staff.Settings;
 [Route("api/staff/settings/email-templates")]
 [StaffRoles(UserRole.Admin)]
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
-public sealed partial class EmailTemplatesController(IEmailTemplateStore store, IHtmlTemplateRenderer renderer, PortalHost host, ILogger<EmailTemplatesController> log)
+public sealed partial class EmailTemplatesController(
+    IEmailTemplateStore store, IHtmlTemplateRenderer renderer, PortalHost host, Zed.Core.Data.ISqlExecutor db, ILogger<EmailTemplatesController> log)
     : StaffApiController
 {
     public const string DbPrefix = "db:";
@@ -125,8 +126,40 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     private static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
     {
         ["StaffBronzeAssessmentEmail"] = "Agency level allocation (a level enabled or disabled)",
-        ["StaffLoginDetailsEmail"] = "Login details (new staff login, NEFT Admin, MSME DFO, Dashboard Admin, sub-user)",
+        ["StaffLoginDetailsEmail"] = "Login details: new login (staff, NEFT Admin, MSME DFO, Dashboard Admin)",
+        ["PasswordChangedEmail"] = "Password changed: staff",
     };
+
+    /// <summary>
+    /// The cases of a template that are their own entries (2026-11-08, <see cref="Templates.EmailTemplateVariants"/>): key, name,
+    /// the Razor template, and its portals (null = those of the template).
+    /// </summary>
+    private static readonly (string Key, string Name, Type Component, PortalSystem[]? Systems)[] Variants =
+    [
+        (Templates.EmailTemplateVariants.LoginDetailsReset, "Login details: new password or link sent again", typeof(Templates.StaffLoginDetailsEmail), null),
+        (Templates.EmailTemplateVariants.LoginDetailsSubUser, "Login details: sub-user", typeof(Templates.StaffLoginDetailsEmail), null),
+        (Templates.EmailTemplateVariants.PasswordChangedMsme, "Password changed: MSME", typeof(Templates.PasswordChangedEmail), MainOnly),
+    ];
+
+    /// <summary>
+    /// The fields a database mail offers (2026-11-08): its recipients, and the ZED ID its subject or text names. The rest of
+    /// the text is the procedure's own ({{StandardBody}}).
+    /// </summary>
+    public static readonly string[] DbPlaceholders = ["To", "ZedId"];
+
+    /// <summary>The last mail of a database procedure, for the editor (what {{StandardBody}} looks like).</summary>
+    public sealed record ExampleMail(string? Subject, string? BodyHtml, DateTime? CreatedAt);
+
+    internal const string ExampleSql =
+        "SELECT TOP (1) Subject, Body, BodyFormat, CreatedAt FROM dbo.V4MailOutbox WHERE Source = @Source ORDER BY Id DESC;";
+
+    private sealed class ExampleRow
+    {
+        public string? Subject { get; init; }
+        public string? Body { get; init; }
+        public string? BodyFormat { get; init; }
+        public DateTime? CreatedAt { get; init; }
+    }
 
     /// <summary>Fields never offered in a subject: a password or a one-time link must not be in a subject line.</summary>
     private static readonly HashSet<string> NotInSubject = new(StringComparer.OrdinalIgnoreCase) { "Password", "SetPasswordUrl", "ResetUrl" };
@@ -137,7 +170,11 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     public sealed record TemplateItem(string Key, string Name, string Group, bool Database, bool Enabled, bool Customised, string? Subject,
         IReadOnlyList<string> Placeholders, string? UpdatedBy, DateTime? UpdatedOn);
 
-    public sealed record TemplateDetails(TemplateItem Item, string BodyHtml, bool StandardBody);
+    public sealed record TemplateDetails(TemplateItem Item, string BodyHtml, bool StandardBody)
+    {
+        /// <summary>Database mails: the procedure's last mail (2026-11-08); null when none was sent yet.</summary>
+        public ExampleMail? Example { get; init; }
+    }
 
     public sealed record TemplateRequest(bool Enabled, string? Subject, string? BodyHtml);
 
@@ -154,7 +191,28 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
         if (Catalogue().FirstOrDefault(c => c.Key == key) is not { } c) return NotFound();
         var saved = await store.GetAsync(key, ct);
         var custom = saved?.BodyHtml is { Length: > 0 };
-        return new TemplateDetails(Item(c, saved), custom ? saved!.BodyHtml! : await DefaultBodyAsync(c), !custom);
+        return new TemplateDetails(Item(c, saved), custom ? saved!.BodyHtml! : await DefaultBodyAsync(c), !custom)
+        {
+            Example = c.Database ? await ExampleAsync(c.Key[DbPrefix.Length..], ct) : null,
+        };
+    }
+
+    private async Task<ExampleMail?> ExampleAsync(string procedure, CancellationToken ct)
+    {
+        try
+        {
+            if ((await db.QuerySqlAsync<ExampleRow>(ExampleSql, new { Source = procedure }, ct)).FirstOrDefault() is not { } r) return null;
+            var html = string.Equals(r.BodyFormat, "HTML", StringComparison.OrdinalIgnoreCase)
+                ? r.Body
+                : "<pre style=\"font-family: inherit; white-space: pre-wrap\">" + System.Net.WebUtility.HtmlEncode(r.Body ?? "") + "</pre>";
+            // Shown in the editor's preview frame: scripts are taken out as for an edit.
+            return new ExampleMail(r.Subject, html is null ? null : ScriptPattern().Replace(html, "<!-- -->"), r.CreatedAt);
+        }
+        catch (Microsoft.Data.SqlClient.SqlException ex)
+        {
+            log.LogInformation(ex, "No example of the database mail {Procedure}", procedure);
+            return null;
+        }
     }
 
     [HttpPut("{key}")]
@@ -206,9 +264,14 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
             .Select(t => new Entry(t.Name, DisplayNames.GetValueOrDefault(t.Name) ?? Words(t.Name.EndsWith("Email", StringComparison.Ordinal) ? t.Name[..^5] : t.Name), GroupOf(t.Name), false,
                 // A list (e.g. payment lines) cannot be a {{field}}.
                 Parameters(t).Where(p => p.PropertyType == typeof(string) || !typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType)).Select(p => p.Name).ToArray(), t))
-            .Concat(OtherMails.Where(m => m.Systems.Contains(host.System)).Select(m => new Entry(m.Key, m.Name, m.Group, false, m.Placeholders, null)));
+            .Concat(OtherMails.Where(m => m.Systems.Contains(host.System)).Select(m => new Entry(m.Key, m.Name, m.Group, false, m.Placeholders, null)))
+            .Concat(Variants
+                .Where(v => (v.Systems ?? TemplateSystems.GetValueOrDefault(v.Component.Name) ?? [host.System]).Contains(host.System))
+                .Select(v => new Entry(v.Key, v.Name, GroupOf(v.Component.Name), false,
+                    Parameters(v.Component).Where(p => p.PropertyType == typeof(string) || !typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType)).Select(p => p.Name).ToArray(),
+                    v.Component)));
         var database = DbMailers.GetValueOrDefault(host.System, []).Select(p =>
-            new Entry(DbPrefix + p, Words(p.Replace("SP_", "", StringComparison.Ordinal).Replace('_', ' ').ToLowerInvariant()), "Database mails", true, [], null));
+            new Entry(DbPrefix + p, Words(p.Replace("SP_", "", StringComparison.Ordinal).Replace('_', ' ').ToLowerInvariant()), "Database mails", true, DbPlaceholders, null));
         return portal.OrderBy(e => e.Group).ThenBy(e => e.Name).Concat(database).ToList();
     }
 

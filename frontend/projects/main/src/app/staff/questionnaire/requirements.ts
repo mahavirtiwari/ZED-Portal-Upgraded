@@ -5,6 +5,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ChecklistEvidence, ChecklistRequest, Evidence, Point, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
 import { ExcelToolsComponent } from '../excel-tools';
+import { levelName } from '../../msme/shared/levels';
 import { ListSearchComponent, searchRows } from '../pager';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 
@@ -450,8 +451,8 @@ export class RequirementsPage {
       actions: rows.reduce((n, q) => n + this.actionsOf(q), 0),
     };
   });
-  /** The level as the menu names it ("ZED-X" for ZEDX). */
-  protected readonly levelLabel = computed(() => (this.sectionType.toUpperCase() === 'ZEDX' ? 'ZED-X' : this.sectionType));
+  /** The level as the menu names it: the Admin's name (Administration → Certification Levels; "ZED-X" for ZEDX). */
+  protected readonly levelLabel = computed(() => (this.sectionType.toUpperCase() === 'ZEDX' ? levelName('ZEDX') : levelName(this.sectionType)));
   protected readonly form = signal<RequirementForm | null>(null);
   /** The requirement shown on the right (the first one until another is chosen). */
   private readonly selectedId = signal<number | null>(null);

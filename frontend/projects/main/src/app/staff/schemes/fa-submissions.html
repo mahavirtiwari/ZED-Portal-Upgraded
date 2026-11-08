@@ -10,7 +10,7 @@
       <label class="form-label" for="fa-level">Certification level</label>
       <select id="fa-level" class="form-select" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
         <option value="">All levels</option>
-        @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+        @for (l of levels(); track l) { <option [value]="l">{{ levelName(l) }}</option> }
       </select>
     </div>
     @if (isAdmin()) {

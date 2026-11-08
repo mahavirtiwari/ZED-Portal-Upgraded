@@ -238,7 +238,8 @@ public sealed class SurveillanceStaffTests : IDisposable
         Assert.Contains(_host.Sql.Calls, c => c.Name == "SP_MASTER_GET_SECTIONS");
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/categories")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/technologies")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/documents")).StatusCode);
+        // 2026-11-08: Surveillance staff documents are managed from main through the Surveillance tick; no banner here.
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/page-settings")).StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name.Contains("CATEGOR", StringComparison.Ordinal) || c.Name.Contains("TECHNOLOG", StringComparison.Ordinal));
 
         var master = await SurveillanceLogin.SignInAsync(_host, "MASTER1");

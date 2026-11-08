@@ -197,8 +197,10 @@ public sealed class DesktopAssessmentController(
 
         // NC rounds exist only for Bronze desktop verification (Silver/Gold NCs are raised at the site assessment).
         var ncCount = Math.Clamp(record.Nc, 0, 5);
+        // The Admin's requirement videos (2026-11-08).
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
         var rounds = bronze && ncCount > 0
-            ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, ct)))
+            ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, videos, ct)))
             : [];
 
         var status = record.Status;
@@ -214,7 +216,7 @@ public sealed class DesktopAssessmentController(
             Products(da[1], zedId, level, moved, system),
             Pick(da[2], RawMaterialFields),
             Pick(da[3], SectionFields),
-            Pick(da[4], RequirementFields),
+            WithVideos(Pick(da[4], RequirementFields), videos),
             Pick(da[5], OptionFields),
             Pick(da[6], SubOptionFields),
             evidences,
@@ -232,7 +234,13 @@ public sealed class DesktopAssessmentController(
         { Checkpoints = checkpoints };
     }
 
-    private async Task<NcRound> Round(string zedId, string level, int n, bool moved, CancellationToken ct)
+    private static List<Dictionary<string, object?>> WithVideos(List<Dictionary<string, object?>> rows, RequirementVideos.Map videos)
+    {
+        videos.AttachTo(rows);
+        return rows;
+    }
+
+    private async Task<NcRound> Round(string zedId, string level, int n, bool moved, RequirementVideos.Map videos, CancellationToken ct)
     {
         var nc = await db.QueryProcMultipleAsync("SP_ASSESSMENT_DA_DETAILS_NC",
             new { UserId, RoleId = RoleText, ZedId = zedId, Certification = level, NcCount = n }, ct);
@@ -241,7 +249,7 @@ public sealed class DesktopAssessmentController(
             Products(nc[0], zedId, level, moved, host.System),
             Products(nc[8], zedId, level, moved, host.System),
             Pick(nc[1], SectionFields),
-            Pick(nc[2], RequirementFields),
+            WithVideos(Pick(nc[2], RequirementFields), videos),
             Pick(nc[3], OptionFields),
             Pick(nc[4], SubOptionFields),
             Evidences(nc[5], zedId, level, moved, host.System),

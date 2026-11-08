@@ -14,9 +14,10 @@ public static class MsmeEntry
 {
     /// <summary>
     /// Levels whose basic information and documents are entered on the web. Bronze, Silver and Gold are entered in the
-    /// MSME app (its source is not in the repository, so it cannot offer ZED-X).
+    /// MSME app (its source is not in the repository, so it cannot offer ZED-X). 2026-11-08: every V4 level (ZED-X and the
+    /// levels the Admin added; Zed.Core.Data.LevelRegistry).
     /// </summary>
-    public static readonly IReadOnlyList<string> Levels = ["ZEDX"];
+    public static IReadOnlyList<string> Levels => Zed.Core.Data.LevelRegistry.V4Codes;
 
     public const string SiteExteriorFolder = "SiteExteriorPhotos";
     public const string BasicInfoFolder = "BasicInfo";
@@ -102,7 +103,11 @@ public sealed record EntryRawMaterial(string? RawMaterialName, string? RawMateri
 
 public sealed record EntryEvidence(int Id, string Code, string Name, string? Help, bool Required, bool Uploaded, string? Url);
 
-public sealed record EntryRequirement(string Code, string Name, IReadOnlyList<EntryEvidence> Evidences);
+public sealed record EntryRequirement(string Code, string Name, IReadOnlyList<EntryEvidence> Evidences)
+{
+    /// <summary>The Admin's video for the requirement (Questionnaire → Requirements, 2026-11-08).</summary>
+    public string? VideoUrl { get; init; }
+}
 
 public sealed record EntrySection(string Code, string Name, IReadOnlyList<EntryRequirement> Requirements);
 

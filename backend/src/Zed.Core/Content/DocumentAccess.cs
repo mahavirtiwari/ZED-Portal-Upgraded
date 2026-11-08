@@ -45,6 +45,12 @@ public static class DocumentRoles
             new("masteradmin", "Master Admin"), new("agency", "Consultant Organisations"), new("assessor", "Consultants / Experts"),
             new("coordinator", "MSME DFO"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
         ],
+        // 2026-11-08: Surveillance (no MSME DFO there; its MSMEs see the guidelines in the surveillance app).
+        PortalSystem.Surveillance =>
+        [
+            new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new("agency", "Surveillance Agencies"), new("assessor", "Surveillance Assessors"),
+            new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
+        ],
         _ =>
         [
             new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new("agency", "Assessment Agencies"), new("assessor", "Assessors"),

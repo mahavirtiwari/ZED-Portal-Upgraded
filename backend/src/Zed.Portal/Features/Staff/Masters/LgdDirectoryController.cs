@@ -137,7 +137,11 @@ public sealed class LgdDirectoryController(ISqlExecutor db, ILogger<LgdDirectory
         }
         if (applied == 0) return new MessageResponse("Nothing to change: the masters already have these.");
         // V4 one Admin: the Consultancy and Surveillance portals keep their own copy of the states and districts.
-        return new MessageResponse($"{applied} change(s) applied to the states and districts.{await DistrictCopies.CopyAsync(db, log, ct)}");
+        var copied = await DistrictCopies.CopyAsync(db, log, ct);
+        // The drop-downs and checks of this portal at once; the other portals read the copies within minutes.
+        try { await StateMaster.RefreshAsync(db, ct); }
+        catch (Exception ex) when (ex is not OperationCanceledException) { log.LogWarning(ex, "States not re-read after the LGD import"); }
+        return new MessageResponse($"{applied} change(s) applied to the states and districts.{copied}");
     }
 
     private static string? Invalid(Change c)

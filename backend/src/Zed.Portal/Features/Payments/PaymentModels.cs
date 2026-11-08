@@ -14,13 +14,16 @@ public static partial class Certifications
         Paid.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
-    /// The levels an MSME applies and pays for: the three and ZED-X (code ZEDX; migrations 0028 / 0029); also their
-    /// surveillance (<see cref="CanonicalSurveillance"/>).
+    /// The levels an MSME applies and pays for: the three, ZED-X (code ZEDX; migrations 0028 / 0029) and, since 2026-11-08,
+    /// every level the Admin added (Zed.Core.Data.LevelRegistry); also their surveillance (<see cref="CanonicalSurveillance"/>).
     /// </summary>
-    public static readonly string[] Applicable = [.. Paid, "ZEDX"];
+    public static string[] Applicable => [.. LevelRegistry.Codes];
 
     public static string? CanonicalApplicable(string? value) =>
-        Applicable.FirstOrDefault(c => string.Equals(c, value, StringComparison.OrdinalIgnoreCase));
+        value is not null && value.Trim().Length == value.Length ? LevelRegistry.Canonical(value) : null;
+
+    /// <summary>A V4 level (not Bronze / Silver / Gold): ZED-X and the levels the Admin added.</summary>
+    public static bool IsV4(string? level) => LevelRegistry.IsV4(level);
 
     /// <summary>
     /// The levels whose surveillance is paid on the dashboard: the three, and ZED-X (migrations 0032 / 0033; its schedule
@@ -32,9 +35,10 @@ public static partial class Certifications
     public static async Task<string?> OpenForApplyingAsync(ISqlExecutor db, string? value, ILogger log, CancellationToken ct) =>
         CanonicalApplicable(value) is { } code && (await CertLevels.CertificationLevels.FindAsync(db, code, log, ct))?.IsEnabled == true ? code : null;
 
-    /// <summary>A level started and not yet certified (the old dashboard's conditions: Bronze 1–5 or 7, the others 1–15 or 17).</summary>
+    /// <summary>A level started and not yet certified (the old dashboard's conditions: Bronze 1–5 or 7, the others 1–15 or 17).
+    /// 2026-11-08: a V4 level assessed at the desktop only follows Bronze's numbers.</summary>
     public static bool InProgress(string level, int status) =>
-        level == "Bronze" ? status > 0 && (status < 6 || status == 7) : status > 0 && (status < 16 || status == 17);
+        LevelRegistry.IsDesktop(level) ? status > 0 && (status < 6 || status == 7) : status > 0 && (status < 16 || status == 17);
 
     /// <summary>
     /// The level that keeps <paramref name="cert"/> from being applied for. Two certifications never run at once: ZED-X and
@@ -47,9 +51,13 @@ public static partial class Certifications
     {
         int S(string l) => statuses.TryGetValue(l, out var s) ? s : 0;
         if (S(cert) >= 1) return null;   // already applied: the checkout refuses it (AlreadyPaidAsync, the payment procedures)
-        return cert == "ZEDX"
-            ? Paid.FirstOrDefault(l => InProgress(l, S(l)))
-            : S("ZEDX") > 0 ? "ZEDX" : null;   // ZED-X in progress or certified
+        // 2026-11-08: every V4 level as ZED-X. A V4 level waits for the three and for another V4 level in progress; the three
+        // are closed by a V4 level in progress or certified.
+        if (IsV4(cert))
+            return Paid.FirstOrDefault(l => InProgress(l, S(l)))
+                ?? statuses.Keys.Where(l => IsV4(l) && !string.Equals(l, cert, StringComparison.OrdinalIgnoreCase)).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1)
+                    .FirstOrDefault(l => InProgress(l, S(l)));
+        return statuses.Keys.Where(IsV4).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1).FirstOrDefault(l => S(l) > 0);
     }
 
     /// <summary>
@@ -61,27 +69,23 @@ public static partial class Certifications
         var sets = await db.QueryProcMultipleAsync("SP_MSME_GET_DETAILS", new { ZedId = zedId, CertificationType = (string?)null }, ct);
         var row = sets[2].FirstOrDefault();
         var statuses = Paid.ToDictionary(l => l, l => int.TryParse(row?.Text(l + "Status"), out var s) ? s : 0);
-        try
+        // Every V4 level (ZED-X and the levels the Admin added): its certification row or payment flag.
+        foreach (var level in LevelRegistry.V4Codes)
         {
-            var zedx = (await db.QuerySqlAsync<Msme.MsmeDashboardController.ZedXRow>(Msme.MsmeDashboardController.ZedXSql, new { ZedId = zedId }, ct))
-                .FirstOrDefault();
-            statuses["ZEDX"] = zedx is null ? 0 : zedx.Status ?? zedx.PaymentDone;
-        }
-        catch (System.Data.Common.DbException ex)
-        {
-            log.LogWarning(ex, "ZED-X status not read (is migration 0029 applied?)");
-            statuses["ZEDX"] = 0;
+            var s = await V4LevelStatus.ReadAsync(db, zedId, level, log, ct);
+            statuses[level] = s.Status ?? s.PaymentDone;
         }
         return BlockedBy(cert, statuses) switch
         {
             null => null,
             var other when InProgress(other, statuses[other]) =>
                 $"{LevelName(cert)} certification cannot be applied for while your {LevelName(other)} certification is in progress.",
-            _ => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at ZED-X, the highest level.",
+            LevelRegistry.ZedX => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at ZED-X, the highest level.",
+            var other => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at {LevelName(other)}.",
         };
     }
 
-    private static string LevelName(string level) => level == "ZEDX" ? "ZED-X" : level;
+    private static string LevelName(string level) => LevelRegistry.NameOf(level);
 
     /// <summary>
     /// The level is already paid or applied for: no new payment of it may be recorded. The legacy zero-amount procedure
@@ -90,10 +94,10 @@ public static partial class Certifications
     /// row of the unit. Not Msme.IsZEDXPaymentDone: SP_V4_CERTIFICATION_PAID sets it only after a recorded payment, and the
     /// legacy rejection (which renames the rows to ZedId_D) leaves it set, so it would refuse a rejected unit's new
     /// application. For the three this is the zero procedure's own condition.
-    /// </summary>
-    internal static string PaidSql(string level) => level == "ZEDX"
-        ? "SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = 'ZEDX') " +
-          "OR EXISTS (SELECT 1 FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = 'ZEDX');"
+    /// 2026-11-08: every V4 level as ZED-X (its code is letters and digits, from the registry).
+    internal static string PaidSql(string level) => IsV4(level)
+        ? $"SELECT 1 WHERE EXISTS (SELECT 1 FROM dbo.MsmePaymentInfo WHERE ZedId = @ZedId AND Certification = '{level}') " +
+          $"OR EXISTS (SELECT 1 FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = '{level}');"
         : $"SELECT 1 FROM dbo.Msme M WHERE M.ZedId = @ZedId AND ISNULL(M.Is{level}PaymentDone, 0) = 1;";
 
     /// <summary>

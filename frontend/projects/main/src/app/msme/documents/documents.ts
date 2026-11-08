@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DocumentsApi, Invoice, MyDocuments } from './documents.api';
+import { levelName } from '../shared/levels';
 
 interface CertificateItem {
   label: string;
@@ -34,7 +35,10 @@ export class DocumentsPage {
     if (c.Gold) items.push({ label: 'Gold Certificate', url: c.Gold });
     else if (c.Silver) items.push({ label: 'Silver Certificate', url: c.Silver });
     else if (c.Bronze) items.push({ label: 'Bronze Certificate', url: c.Bronze });
-    if (c.ZEDX) items.push({ label: 'ZED-X (Export) Certificate', url: c.ZEDX });
+    // ZED-X and the levels the Admin added (2026-11-08): a separate track each, besides the highest of Bronze/Silver/Gold.
+    for (const [code, url] of Object.entries(c)) {
+      if (url && typeof url === 'string' && !['Pledge', 'Bronze', 'Silver', 'Gold'].includes(code)) items.push({ label: `${levelName(code)} Certificate`, url });
+    }
     return items;
   });
 

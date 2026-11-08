@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ClientPager, PagerComponent } from '../pager';
 import { STATES, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Row } from './assessment.api';
+import { levelOptions } from '../../msme/shared/levels';
 
 /**
  * Desktop assessor: records with an open non-conformance round (DA status 4, site assessment status 14).
@@ -41,10 +42,7 @@ import { AssessmentApi, ListFilter, Row } from './assessment.api';
           <label class="form-label" for="ncLevel">Certification Level</label>
           <select class="form-select" id="ncLevel" [(ngModel)]="filter.certification" (ngModelChange)="load()">
             <option value="">Show All</option>
-            <option value="Bronze">Bronze</option>
-            <option value="Silver">Silver</option>
-            <option value="Gold">Gold</option>
-            <option value="ZEDX">ZED-X</option>
+            @for (l of levels(); track l.value) { <option [value]="l.value">{{ l.label }}</option> }
           </select>
         </div>
         <div class="filter">
@@ -139,6 +137,8 @@ export class NonConformancesPage {
   private readonly api = inject(AssessmentApi);
   protected readonly legacy = useLegacyPortal();
   protected readonly states = STATES;
+  /** Every level, the Admin's too (Administration → Certification Levels, 2026-11-08). */
+  protected readonly levels = computed(() => levelOptions());
   protected readonly t = text;
   protected readonly f = flag;
   protected readonly n = num;

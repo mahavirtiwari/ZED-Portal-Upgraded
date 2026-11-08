@@ -11,15 +11,8 @@ namespace Zed.Portal.Features.Staff.Users;
 /// </summary>
 public static partial class StaffUserRules
 {
-    /// <summary>"Applicable States" list of CertificationBodies.cshtml / Assessor.cshtml (AgencyUserStates.States).</summary>
-    public static readonly string[] States =
-    [
-        "ANDAMAN AND NICOBAR ISLANDS", "ANDHRA PRADESH", "ARUNACHAL PRADESH", "ASSAM", "BIHAR", "CHANDIGARH",
-        "CHHATTISGARH", "DELHI", "GOA", "GUJARAT", "HARYANA", "HIMACHAL PRADESH", "JAMMU AND KASHMIR", "JHARKHAND",
-        "KARNATAKA", "KERALA", "LADAKH", "LAKSHADWEEP", "MADHYA PRADESH", "MAHARASHTRA", "MANIPUR", "MEGHALAYA",
-        "MIZORAM", "NAGALAND", "ODISHA", "PUDUCHERRY", "PUNJAB", "RAJASTHAN", "SIKKIM", "TAMIL NADU", "TELANGANA",
-        "THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU", "TRIPURA", "UTTAR PRADESH", "UTTARAKHAND", "WEST BENGAL",
-    ];
+    /// <summary>"Applicable States" of agencies and assessors (AgencyUserStates.States, by name): the LG Directory masters.</summary>
+    public static string[] States => Masters.StateMaster.All.Select(s => s.Name).ToArray();
 
     public const string AssessorTypeAssessor = "Assessor";
     public const string AssessorTypeBronze = "BronzeAssessor";

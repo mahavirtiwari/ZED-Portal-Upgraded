@@ -9,6 +9,7 @@ import { RemarksTarget, ReviewActionsBar, ReviewRemarksDialog } from '../monitor
 import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
 import { SaSurveillanceTab, SurveillanceRemarks } from './sa-surveillance';
 import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
+import { RequirementVideo } from '../../msme/shared/requirement-video';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -39,7 +40,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab],
+  imports: [RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },

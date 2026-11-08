@@ -62,15 +62,28 @@ public static class CheckpointAnswers
         """;
 
     /// <param name="master">The questionnaire's schema: "dbo" (main, surveillance) or "ZEDCS_V2_LIVE.dbo" (handholding).</param>
+    /// <remarks>
+    /// The questionnaire's checkpoint is looked for within the unit's requirement only, by id and text first (2026-11-08):
+    /// surveillance copies a unit's rows from main with main's ids, which are not the ids of surveillance's own questionnaire,
+    /// and the Admin's edits renumber and re-create rows on both. An id that points into another requirement is never used.
+    /// </remarks>
     public static string CheckpointSql(string master) => Rows(
         "CAST(X.Id AS bigint) AS Id, LTRIM(RTRIM(X.OptionCode)) AS OptionCode, X.OptionName, m.ActionsNeeded, " +
         "X.DaAnswer, X.DaActions, X.DaRemarks, X.SaAnswer, X.SaActions, X.SaRemarks, X.HhAnswer, X.HhActions, X.HhRemarks, X.HhReview1, X.HhReview2",
         "MsmeOptions",
-        $"LEFT JOIN {master}.Options m ON m.Id = X.OptionId ORDER BY R.RequirementRowId, TRY_CAST(X.OptionCode AS int), X.OptionCode;");
+        $"""
+        OUTER APPLY (SELECT TOP 1 o.ActionsNeeded FROM {master}.Options o
+            WHERE o.SectionType = X.SectionType AND LTRIM(RTRIM(o.SectionCode)) = X.Sc AND LTRIM(RTRIM(o.RequirementCode)) = X.Rc
+              AND (o.Id = X.OptionId OR o.OptionName = X.OptionName OR LTRIM(RTRIM(o.OptionCode)) = LTRIM(RTRIM(X.OptionCode)))
+            ORDER BY CASE WHEN o.Id = X.OptionId AND o.OptionName = X.OptionName THEN 0 WHEN o.OptionName = X.OptionName THEN 1
+                          WHEN o.Id = X.OptionId THEN 2 ELSE 3 END) m
+        ORDER BY R.RequirementRowId, TRY_CAST(X.OptionCode AS int), X.OptionCode;
+        """);
 
     /// <summary>
-    /// The unit's evidences that belong to a checkpoint. The Admin's edit renumbers the questionnaire's evidences, so an
-    /// evidence is found by its id, else by its requirement, number and name.
+    /// The unit's evidences that belong to a checkpoint. The Admin's edit renumbers the questionnaire's evidences, and
+    /// surveillance's copies carry main's ids (the second surveillance id + 100), so an evidence is looked for within its
+    /// requirement: id and name, then number and name, then id, then name.
     /// </summary>
     public static string EvidenceSql(string master) => Rows(
         "CAST(X.Id AS bigint) AS Id, LTRIM(RTRIM(m.OptionCode)) AS OptionCode, X.EvidenceName, CAST(ISNULL(X.EvidenceType, 0) AS bit) AS Mandatory, " +
@@ -78,10 +91,11 @@ public static class CheckpointAnswers
         "MsmeEvidences",
         $"""
         CROSS APPLY (SELECT TOP 1 e.OptionCode FROM {master}.Evidences e
-            WHERE e.Id = X.EvidenceId
-               OR (e.SectionType = X.SectionType AND LTRIM(RTRIM(e.SectionCode)) = X.Sc AND LTRIM(RTRIM(e.RequirementCode)) = X.Rc
-                   AND e.EvidenceCode = X.EvidenceCode AND e.EvidenceName = X.EvidenceName)
-            ORDER BY CASE WHEN e.Id = X.EvidenceId THEN 0 ELSE 1 END) m
+            WHERE e.SectionType = X.SectionType AND LTRIM(RTRIM(e.SectionCode)) = X.Sc AND LTRIM(RTRIM(e.RequirementCode)) = X.Rc
+              AND (e.Id = X.EvidenceId OR e.EvidenceName = X.EvidenceName)
+            ORDER BY CASE WHEN e.Id = X.EvidenceId AND e.EvidenceName = X.EvidenceName THEN 0
+                          WHEN e.EvidenceCode = X.EvidenceCode AND e.EvidenceName = X.EvidenceName THEN 1
+                          WHEN e.Id = X.EvidenceId THEN 2 ELSE 3 END) m
         WHERE NULLIF(LTRIM(RTRIM(m.OptionCode)), '') IS NOT NULL
         ORDER BY R.RequirementRowId, TRY_CAST(X.EvidenceCode AS int);
         """);

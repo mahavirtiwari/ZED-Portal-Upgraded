@@ -16,10 +16,10 @@ internal static partial class AssessmentInputs
     public static bool IsId(string? value) => value is not null && IdPattern().IsMatch(value);
 
     /// <summary>Certification levels with a site assessment (the SA branch of SP_ASSESSMENT_ALLOT_LIST excludes Bronze).</summary>
-    public static readonly string[] SiteLevels = ["Silver", "Gold", "ZEDX"];
+    public static string[] SiteLevels => [.. Zed.Core.Data.LevelRegistry.Codes.Where(c => !Zed.Core.Data.LevelRegistry.IsDesktop(c))];
 
     /// <summary>Levels on the monitoring screen.</summary>
-    public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
+    public static string[] Levels => [.. Zed.Core.Data.LevelRegistry.Codes];
 
     /// <summary>Canonical spelling ("silver" → "Silver") or null when not one of <paramref name="allowed"/>.</summary>
     public static string? Level(string? value, string[] allowed) =>

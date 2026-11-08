@@ -42,7 +42,8 @@ interface DocumentIcon {
  * <p>One Admin (V4, main portal): the Consultancy portal's documents are managed here too. A document is matched by its
  * name and kind (file or video); its "Consultancy" tick copies it there (the file is downloaded here and uploaded there,
  * with the roles the Consultancy portal has) or, unticked, removes it there. Adding can publish on both; editing updates
- * both. Documents only the Consultancy portal has are listed below the library.</p>
+ * both. Documents only the Consultancy portal has are listed below the library. 2026-11-08: the Surveillance portal the
+ * same way (its "Surveillance" tick), for its staff's Documents page.</p>
  */
 @Component({
   selector: 'zed-staff-documents',
@@ -108,14 +109,22 @@ interface DocumentIcon {
               <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span>
             </div>
             @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
-            @if (cons()) {
+            @if (cons() || surv()) {
               <div class="shown-on" role="group" [attr.aria-label]="'Shown on, ' + d.documentName">
                 <span class="shown-label">Shown on</span>
                 <span class="portal-tick on" title="This list is the ZED Certification portal's">ZED Certification ✓</span>
-                <label class="portal-tick" [class.on]="!!twinOf(d)">
-                  <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show ' + d.documentName + ' on the Consultancy portal'" />
-                  Consultancy
-                </label>
+                @if (cons()) {
+                  <label class="portal-tick" [class.on]="!!twinOf(d)">
+                    <input type="checkbox" [checked]="!!twinOf(d)" [disabled]="saving()" (change)="toggleConsultancy(d)" [attr.aria-label]="'Show ' + d.documentName + ' on the Consultancy portal'" />
+                    Consultancy
+                  </label>
+                }
+                @if (surv()) {
+                  <label class="portal-tick" [class.on]="!!twinOf(d, 'surveillance')" data-surveillance-tick>
+                    <input type="checkbox" [checked]="!!twinOf(d, 'surveillance')" [disabled]="saving()" (change)="toggleOther(d, 'surveillance')" [attr.aria-label]="'Show ' + d.documentName + ' on the Surveillance portal'" />
+                    Surveillance
+                  </label>
+                }
               </div>
             }
             <div class="doc-chips">
@@ -163,6 +172,33 @@ interface DocumentIcon {
               }
               <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d)">Show on ZED Certification too</button>
               <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFromConsultancy(d)">Remove</button>
+            </div>
+          </div>
+        }
+      </section>
+    }
+
+    @if (survError()) {
+      <div class="alert alert-warning mt-3" role="status">Surveillance portal: {{ survError() }} Its documents are not shown here.</div>
+    }
+    @if (survOnly().length) {
+      <section class="zed-card mt-3" aria-labelledby="doc-surv-h" data-surveillance-only>
+        <h5 class="doc-h" id="doc-surv-h">Only on the Surveillance portal <span class="zed-chip">{{ survOnly().length }}</span></h5>
+        @for (d of survOnly(); track d.id) {
+          <div class="doc-item">
+            <div class="doc-item-main">
+              <div class="doc-title"><strong>{{ d.documentName }}</strong> <span class="kind-badge" [class.video]="!!d.videoUrl">{{ d.videoUrl ? 'Video' : 'File' }}</span></div>
+              @if (d.description) { <p class="doc-desc">{{ d.description }}</p> }
+              <div class="doc-chips">@for (k of d.roles; track k) { <span class="doc-chip">{{ otherRoleLabel(k, 'surveillance') }}</span> }</div>
+            </div>
+            <div class="row-actions">
+              @if (d.videoUrl) {
+                <a class="btn btn-sm btn-outline-primary" [href]="d.videoUrl" target="_blank" rel="noopener noreferrer">Watch</a>
+              } @else if (d.downloadUrl) {
+                <a class="btn btn-sm btn-outline-primary" [href]="survBase + d.downloadUrl" target="_blank" rel="noopener">Download</a>
+              }
+              <button type="button" class="btn btn-sm btn-outline-primary" [disabled]="saving()" (click)="copyToMain(d, 'surveillance')">Show on ZED Certification too</button>
+              <button type="button" class="btn btn-sm btn-outline-danger" [disabled]="saving()" (click)="removeFrom(d, 'surveillance')">Remove</button>
             </div>
           </div>
         }
@@ -232,9 +268,14 @@ interface DocumentIcon {
               }
             </div>
             <div class="modal-footer">
-              @if (cons()) {
-                <label class="also-cons me-auto"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> Also show on the Consultancy portal</label>
-              }
+              <span class="me-auto d-flex flex-wrap gap-3">
+                @if (cons()) {
+                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoConsultancy" /> Also show on the Consultancy portal</label>
+                }
+                @if (surv()) {
+                  <label class="also-cons"><input type="checkbox" class="form-check-input" [(ngModel)]="alsoSurveillance" data-also-surveillance /> Also show on the Surveillance portal</label>
+                }
+              </span>
               <button type="button" class="btn btn-default" (click)="adding.set(false)">Cancel</button>
               <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="save()">Upload</button>
             </div>
@@ -468,6 +509,12 @@ export class DocumentsAdminPage {
   protected readonly consBase = PORTAL_API_BASE.consultancy;
   /** The add pop-up's "Also show on the Consultancy portal". */
   protected alsoConsultancy = false;
+  /** 2026-11-08: the Surveillance portal's documents (its staff's Documents page), managed the same way. */
+  protected readonly surv = signal<{ documents: DocumentRow[]; roles: DocumentRole[] } | null>(null);
+  protected readonly survError = signal('');
+  protected readonly survBase = PORTAL_API_BASE.surveillance;
+  protected alsoSurveillance = false;
+  protected readonly survOnly = computed(() => (this.surv()?.documents ?? []).filter((c) => !this.documents().some((d) => same(d, c))));
   private readonly portals = inject(AdminPortalService);
   protected readonly consOnly = computed(() => (this.cons()?.documents ?? []).filter((c) => !this.documents().some((d) => same(d, c))));
 
@@ -484,22 +531,36 @@ export class DocumentsAdminPage {
       this.error.set(apiErrorMessage(err));
     }
     if (!this.portals.enabled) return;
-    try {
-      this.cons.set(await firstValueFrom(this.api.documents('consultancy')));
-      this.consError.set('');
-    } catch (err) {
-      this.cons.set(null);
-      this.consError.set(apiErrorMessage(err));
-    }
+    await Promise.all((['consultancy', 'surveillance'] as const).map(async (p) => {
+      try {
+        this.store(p).set(await firstValueFrom(this.api.documents(p)));
+        this.storeError(p).set('');
+      } catch (err) {
+        this.store(p).set(null);
+        this.storeError(p).set(apiErrorMessage(err));
+      }
+    }));
   }
 
-  /** The Consultancy portal's copy of a main document (same name and kind). */
-  protected twinOf(d: DocumentRow): DocumentRow | undefined {
-    return this.cons()?.documents.find((c) => same(d, c));
+  private store(p: OtherPortal) {
+    return p === 'consultancy' ? this.cons : this.surv;
+  }
+
+  private storeError(p: OtherPortal) {
+    return p === 'consultancy' ? this.consError : this.survError;
+  }
+
+  /** The other portal's copy of a main document (same name and kind). */
+  protected twinOf(d: DocumentRow, p: OtherPortal = 'consultancy'): DocumentRow | undefined {
+    return this.store(p)()?.documents.find((c) => same(d, c));
   }
 
   protected consRoleLabel(key: string): string {
-    return this.cons()?.roles.find((r) => r.key === key)?.label ?? key;
+    return this.otherRoleLabel(key, 'consultancy');
+  }
+
+  protected otherRoleLabel(key: string, p: OtherPortal): string {
+    return this.store(p)()?.roles.find((r) => r.key === key)?.label ?? key;
   }
 
   /** The roles of a document that the target portal has (in its order). */
@@ -510,7 +571,7 @@ export class DocumentsAdminPage {
   }
 
   /** Copies a document to the other portal: a video as its link, a file downloaded here and uploaded there. */
-  private async copy(d: DocumentRow, from: 'main' | 'consultancy', to: 'main' | 'consultancy', roles: string[]): Promise<void> {
+  private async copy(d: DocumentRow, from: 'main' | OtherPortal, to: 'main' | OtherPortal, roles: string[]): Promise<void> {
     let file: File | null = null;
     if (!d.videoUrl) {
       if (!d.downloadUrl) throw new Error('Its file is missing.');
@@ -522,35 +583,45 @@ export class DocumentsAdminPage {
     }, to === 'main' ? undefined : to));
   }
 
-  protected async toggleConsultancy(d: DocumentRow): Promise<void> {
-    const twin = this.twinOf(d);
+  protected toggleConsultancy(d: DocumentRow): Promise<void> {
+    return this.toggleOther(d, 'consultancy');
+  }
+
+  /** The "Consultancy" / "Surveillance" tick: copies the document there, or removes it there. */
+  protected async toggleOther(d: DocumentRow, p: OtherPortal): Promise<void> {
+    const name = PORTAL_NAMES[p];
+    const twin = this.twinOf(d, p);
     if (twin) {
-      if (!window.confirm(`Remove "${d.documentName}" from the Consultancy portal? It stays on ZED Certification.`)) {
-        this.cons.set({ ...this.cons()! });
+      if (!window.confirm(`Remove "${d.documentName}" from the ${name} portal? It stays on ZED Certification.`)) {
+        this.store(p).set({ ...this.store(p)()! });
         return;
       }
       await this.run(async () => {
-        await firstValueFrom(this.api.deleteDocument(twin.id, 'consultancy'));
-        return `"${d.documentName}" removed from the Consultancy portal.`;
+        await firstValueFrom(this.api.deleteDocument(twin.id, p));
+        return `"${d.documentName}" removed from the ${name} portal.`;
       });
       return;
     }
     await this.run(async () => {
-      await this.copy(d, 'main', 'consultancy', this.rolesFor(d.roles, this.cons()!.roles, 'Consultancy'));
-      return `"${d.documentName}" is now shown on the Consultancy portal too.`;
+      await this.copy(d, 'main', p, this.rolesFor(d.roles, this.store(p)()!.roles, name));
+      return `"${d.documentName}" is now shown on the ${name} portal too.`;
     });
   }
 
-  protected async copyToMain(d: DocumentRow): Promise<void> {
+  protected async copyToMain(d: DocumentRow, from: OtherPortal = 'consultancy'): Promise<void> {
     await this.run(async () => {
-      await this.copy(d, 'consultancy', 'main', this.rolesFor(d.roles, this.roles(), 'ZED Certification'));
+      await this.copy(d, from, 'main', this.rolesFor(d.roles, this.roles(), 'ZED Certification'));
       return `"${d.documentName}" is now shown on the ZED Certification portal too.`;
     });
   }
 
-  protected async removeFromConsultancy(d: DocumentRow): Promise<void> {
-    if (!window.confirm(`Remove "${d.documentName}" from the Consultancy portal? No one there will see it any more.`)) return;
-    await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id, 'consultancy'))).message);
+  protected removeFromConsultancy(d: DocumentRow): Promise<void> {
+    return this.removeFrom(d, 'consultancy');
+  }
+
+  protected async removeFrom(d: DocumentRow, p: OtherPortal): Promise<void> {
+    if (!window.confirm(`Remove "${d.documentName}" from the ${PORTAL_NAMES[p]} portal? No one there will see it any more.`)) return;
+    await this.run(async () => (await firstValueFrom(this.api.deleteDocument(d.id, p))).message);
   }
 
   protected roleLabel(key: string): string {
@@ -646,15 +717,21 @@ export class DocumentsAdminPage {
         file: video ? null : this.file, videoUrl: video ? this.videoUrl.trim() : null,
       };
       const r = await firstValueFrom(this.api.addDocument(doc));
-      if (this.alsoConsultancy && this.cons()) {
+      const also: OtherPortal[] = [
+        ...(this.alsoConsultancy && this.cons() ? (['consultancy'] as const) : []),
+        ...(this.alsoSurveillance && this.surv() ? (['surveillance'] as const) : []),
+      ];
+      for (const p of also) {
+        const name = PORTAL_NAMES[p];
         try {
-          await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.cons()!.roles, 'Consultancy') }, 'consultancy'));
-          r.message += ' Also shown on the Consultancy portal.';
+          await firstValueFrom(this.api.addDocument({ ...doc, roles: this.rolesFor(doc.roles, this.store(p)()!.roles, name) }, p));
+          r.message += ` Also shown on the ${name} portal.`;
         } catch (err) {
-          r.message += ` Not added on the Consultancy portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+          r.message += ` Not added on the ${name} portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
         }
       }
       this.alsoConsultancy = false;
+      this.alsoSurveillance = false;
       this.documentName = '';
       this.description = '';
       this.videoUrl = '';
@@ -674,18 +751,24 @@ export class DocumentsAdminPage {
 
   protected async saveEdit(e: DocumentEdit): Promise<void> {
     const before = this.documents().find((d) => d.id === e.id);
-    const twin = before ? this.twinOf(before) : undefined;
+    const twins = (['consultancy', 'surveillance'] as const)
+      .map((p) => ({ p, twin: before ? this.twinOf(before, p) : undefined }))
+      .filter((t): t is { p: OtherPortal; twin: DocumentRow } => !!t.twin);
     await this.run(async () => {
       const update = { documentName: e.documentName.trim(), description: e.description.trim(), videoUrl: e.videoUrl?.trim() ?? null, roles: this.ordered(e.roles) };
       const r = await firstValueFrom(this.api.updateDocument(e.id, update));
       this.editing.set(null);
-      if (!twin) return r.message;
-      try {
-        await firstValueFrom(this.api.updateDocument(twin.id, { ...update, roles: this.rolesFor(update.roles, this.cons()!.roles, 'Consultancy') }, 'consultancy'));
-        return r.message + ' Updated on the Consultancy portal too.';
-      } catch (err) {
-        return r.message + ` Not updated on the Consultancy portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+      let message = r.message;
+      for (const { p, twin } of twins) {
+        const name = PORTAL_NAMES[p];
+        try {
+          await firstValueFrom(this.api.updateDocument(twin.id, { ...update, roles: this.rolesFor(update.roles, this.store(p)()!.roles, name) }, p));
+          message += ` Updated on the ${name} portal too.`;
+        } catch (err) {
+          message += ` Not updated on the ${name} portal: ${err instanceof Error && !('status' in err) ? err.message : apiErrorMessage(err)}`;
+        }
       }
+      return message;
     }, this.editError);
   }
 
@@ -711,6 +794,10 @@ export class DocumentsAdminPage {
     }
   }
 }
+
+/** The portals whose documents the main Admin also manages here (Surveillance since 2026-11-08). */
+type OtherPortal = 'consultancy' | 'surveillance';
+const PORTAL_NAMES: Record<OtherPortal, string> = { consultancy: 'Consultancy', surveillance: 'Surveillance' };
 
 /** The same document on two portals: same name (any case) and kind (file or video link). */
 function same(a: DocumentRow, b: DocumentRow): boolean {

@@ -294,6 +294,7 @@ public abstract class SurveillanceControllerBase : LegacyMobileController
             });
         }
         if (sets.Count > 2 && sets[2].Count > 0) res.parameters = BuildParameters(sets, 2, withEvidences: false, withAssessorRemarks: true);
+        await AppRequirementVideos.FillAsync(Db, "dbo", certificationType, res.parameters, null, ct);
         return LegacyJson(res);
     }
 

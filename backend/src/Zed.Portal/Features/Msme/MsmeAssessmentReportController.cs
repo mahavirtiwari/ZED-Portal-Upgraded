@@ -164,8 +164,9 @@ public static class MsmeAssessment
     /// surveillance, which the procedures route to ZED_SURVEILLANCE). Handholding milestones used the
     /// site assessment page instead and are not accepted here.
     /// </summary>
-    private static readonly string[] Types =
-        ["Bronze", "Silver", "Gold", "ZEDX", "BronzeSurveillance", "SilverSurveillance", "GoldSurveillance", "ZEDXSurveillance"];
+    /// 2026-11-08: every level of Administration → Certification Levels and its surveillance.
+    private static string[] Types =>
+        [.. Zed.Core.Data.LevelRegistry.Codes, .. Zed.Core.Data.LevelRegistry.Codes.Select(c => c + "Surveillance")];
 
     public static bool TryCertification(string? value, out string type)
     {

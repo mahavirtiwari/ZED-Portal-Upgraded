@@ -5,6 +5,7 @@ using System.Text.Json.Nodes;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Zed.Core.Assessment;
 using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Forms;
@@ -446,7 +447,7 @@ public sealed partial class MsmeEntryController(
             return new EntryMessage($"Your answers to NC {stage.NcCount} are submitted. The assessor will review them.");
         }
 
-        // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only; ZED-X's by the unit's kind (migration 0031).
+        // SP_APP_MSME_FINAL_SUBMIT allots an agency for Bronze, Silver and Gold only; ZED-X's (every V4 level's, 0065) by the unit's kind (migration 0031).
         try
         {
             await db.ExecuteProcAsync("SP_V4_AUTO_ALLOT_AGENCY", new { ZedId, CertificationType = level }, ct);
@@ -475,6 +476,7 @@ public sealed partial class MsmeEntryController(
     private async Task<IReadOnlyList<EntrySection>> SectionsAsync(string level, HashSet<int> synced, CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_APP_MSME_GET_QUESTIONS_BY_TYPE", new { ZedId, CertificationType = level }, ct);
+        var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
         static bool Same(IDictionary<string, object?> r, string column, string value) =>
             string.Equals(r.Text(column).Trim(), value, StringComparison.OrdinalIgnoreCase);
         return sets[0].Select(s =>
@@ -494,7 +496,7 @@ public sealed partial class MsmeEntryController(
                         return new EntryEvidence(id, e.Text("EvidenceCode").Trim(), e.Text("EvidenceName"),
                             e.Text("EvidenceHelpText") is { Length: > 0 } h ? h : null, required, uploaded,
                             uploaded ? FileUrl(level, MsmeEntry.EvidencesFolder, $"{id}.pdf") : null);
-                    }).ToList());
+                    }).ToList()) { VideoUrl = videos.For(section, requirement) };
             }).ToList());
         }).ToList();
     }
@@ -604,7 +606,7 @@ public sealed partial class MsmeEntryController(
             {
                 [nameof(MsmeWebSubmissionEmail.EnterpriseName)] = row.Text("EnterpriseName"),
                 [nameof(MsmeWebSubmissionEmail.ZedId)] = ZedId,
-                [nameof(MsmeWebSubmissionEmail.Certification)] = level == "ZEDX" ? "ZED-X" : level,
+                [nameof(MsmeWebSubmissionEmail.Certification)] = Zed.Core.Data.LevelRegistry.NameOf(level),
                 [nameof(MsmeWebSubmissionEmail.NcCount)] = ncCount,
                 [nameof(MsmeWebSubmissionEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });

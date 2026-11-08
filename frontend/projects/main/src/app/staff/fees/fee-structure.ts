@@ -4,14 +4,13 @@ import { AdminPortalService, PortalSwitchComponent } from '../admin-portal';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
+import { ActivatedRoute } from '@angular/router';
+import { levelCodes, levelName } from '../../msme/shared/levels';
 import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
 
-const LEVELS = ['Bronze', 'Silver', 'Gold', 'ZEDX'] as const;
 /** Consultancy's handholding milestones (AssessmentFee.MileStone); one fee each per handholding level. */
 const MILESTONES = ['1', '2', '3'] as const;
 const HANDHOLDING_LEVELS: readonly string[] = ['Silver', 'Gold'];
-/** The name shown for a level's code (ZEDX is ZED-X, migration 0028). */
-export const LEVEL_NAMES: Record<string, string> = { ZEDX: 'ZED-X' };
 
 /**
  * AssessmentFee.SpecialCategory, the same on the three portals (migration 0041): the payment charges a unit the category it
@@ -472,7 +471,7 @@ interface SharePreview {
     .seg button.active { background: #45a5ad; color: #fff; }
 
     /* A card per level: picks the level shown below. */
-    .lv-cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .lv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
     .lv-cards.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     /* Consultancy: the payment schedule, the level switch and the level's total. */
     .schedule .sched-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -593,12 +592,25 @@ export class FeeStructurePage {
   /** The special categories, in their order (the Add fees form's additional shares). */
   protected readonly specialCategories = CATEGORY_ORDER.filter((id) => id !== 0).map((id) => ({ id, ...CATEGORIES[id] }));
   private readonly api = inject(FeesApi);
-  private readonly units: readonly string[] = this.consultancy ? MILESTONES : LEVELS;
+  /**
+   * The cards: Consultancy's milestones; elsewhere every level of Administration → Certification Levels (2026-11-08: the
+   * Admin's too, disabled ones included, so their fees can be added before they are enabled) and any level with fee rows.
+   */
+  private readonly units = computed<readonly string[]>(() => {
+    if (this.consultancy) return MILESTONES;
+    const codes = levelCodes();
+    const known = new Set(codes.map((c) => c.toLowerCase()));
+    const extra = this.levelFees().map((l) => l.certification).filter((c) => !!c && !known.has(c.toLowerCase()) && (known.add(c.toLowerCase()), true));
+    return [...codes, ...extra];
+  });
 
   /** Consultancy's fee page offered Micro, Small and Medium only; main also has the Recertification fee. */
   protected readonly types: readonly string[] = this.consultancy ? ENTERPRISE_TYPES.filter((t) => t !== 'Rejected')
     : this.portal === 'main' ? MAIN_ENTERPRISE_TYPES : ENTERPRISE_TYPES;
-  protected readonly level = signal<string>(this.consultancy ? '1' : 'Bronze');
+  /** The level the address names (?level=, from Administration → Certification Levels' checklist), kept on the first load even without fees. */
+  private readonly askedLevel = this.consultancy ? null : (inject(ActivatedRoute, { optional: true })?.snapshot.queryParamMap.get('level') ?? null);
+  private keepLevel = !!this.askedLevel;
+  protected readonly level = signal<string>(this.consultancy ? '1' : (this.askedLevel || 'Bronze'));
   protected readonly type = signal<string>('Micro');
   /** Rejected and Recertification: the full fee, no subsidy, no joining reward. */
   protected readonly rejected = computed(() => isFullFee(this.type()));
@@ -621,7 +633,7 @@ export class FeeStructurePage {
 
   /** One card per level (milestone), with the saved amounts of the type's General unit (no joining reward). */
   protected readonly summary = computed<LevelSummary[]>(() =>
-    this.units.map((code) => {
+    this.units().map((code) => {
       const f = this.levelFees().find((l) => l.certification === code
         && (!this.consultancy || (l.level ?? '').toLowerCase() === this.hhLevel().toLowerCase()));
       const general = this.rows().find((r) => this.inUnit(r, code) && (r.specialCategory ?? 0) === 0 && !r.isCouponRow);
@@ -712,7 +724,7 @@ export class FeeStructurePage {
   }
 
   protected levelName(code: string): string {
-    return this.consultancy ? `Milestone ${code}` : LEVEL_NAMES[code] ?? code;
+    return this.consultancy ? `Milestone ${code}` : levelName(code);
   }
 
   /** Whether a row belongs to a level (Consultancy: to a milestone of the handholding level shown; not a pay-all row). */
@@ -857,9 +869,11 @@ export class FeeStructurePage {
       this.schedule.set(res.schedule ?? null);
       this.sched = { payAll: !!res.schedule?.payAllAtMilestone1, from: res.schedule?.from ?? '' };
       this.schedChanged.set(false);
-      if (!res.levels.some((l) => l.certification === this.level()) && res.levels.length && this.units.includes(res.levels[0].certification)) {
+      if (!res.levels.some((l) => l.certification === this.level()) && res.levels.length && this.units().includes(res.levels[0].certification)
+        && !this.keepLevel) {
         this.level.set(res.levels[0].certification);
       }
+      this.keepLevel = false;
       this.resetInputs();
       this.loaded.set(true);
     } catch (err) {

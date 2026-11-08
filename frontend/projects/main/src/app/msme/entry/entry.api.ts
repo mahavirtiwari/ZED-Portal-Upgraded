@@ -1,14 +1,15 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { isV4Level } from '../shared/levels';
 
 /**
- * Levels whose basic information and documents are entered on the web (MsmeEntry.Levels on the server). Bronze, Silver
- * and Gold are entered in the MSME app.
+ * Levels whose basic information and documents are entered on the web (MsmeEntry.Levels on the server): ZED-X and every
+ * level the Admin adds (2026-11-08, any V4 level). Bronze, Silver and Gold are entered in the MSME app. Not a surveillance
+ * or milestone type.
  */
-export const WEB_ENTRY_LEVELS: readonly string[] = ['ZEDX'];
-
-export const isWebEntryLevel = (level: string | null | undefined): boolean => !!level && WEB_ENTRY_LEVELS.includes(level);
+export const isWebEntryLevel = (level: string | null | undefined): boolean =>
+  isV4Level(level) && !/(Surveillance|Milestone\d)$/i.test(level ?? '');
 
 /** A field of the Admin's form (Admin → App Forms), as the app gets it (AppForms.ToAppJson). */
 export interface FormField {
@@ -73,7 +74,8 @@ export interface EntryEvidence {
 export interface EntrySection {
   code: string;
   name: string;
-  requirements: { code: string; name: string; evidences: EntryEvidence[] }[];
+  /** videoUrl: the Admin's video for the requirement (2026-11-08). */
+  requirements: { code: string; name: string; evidences: EntryEvidence[]; videoUrl?: string | null }[];
 }
 
 export interface EntryState {

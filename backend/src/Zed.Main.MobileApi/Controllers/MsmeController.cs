@@ -162,12 +162,27 @@ public sealed partial class MsmeController(
         ZEDXStatus = st.ContainsKey("ZEDXStatus") ? st.Int("ZEDXStatus") : null,
         ZEDXStatusOfNc = st.ContainsKey("ZEDXStatus") ? st.Int("ZEDXStatusOfNc") : null,
         zedx = st.ContainsKey("ZEDXStatus") ? Level(st, "ZEDX") : null,
+        levels = LevelRegistry.All.Where(l => !LevelRegistry.IsLegacy(l.Code) && st.ContainsKey(l.Code + "Status"))
+            .Select(l => AppLevel(st, l)).ToList() is { Count: > 0 } v4 ? v4 : null,
         financialAssistanceStatus = st.Int("FinancialAssistanceStatus"),
         latestCertification = st.Text("latestCertification"),
         dateOfAvail = st.Text("dateOfAvail"),
         joiningRewardAmount = st.Text("joiningRewardAmount"),
         isCouponUsed = st.Bool("isCouponUsed"),
     };
+
+    private static AppLevelStatus AppLevel(IDictionary<string, object?> st, LevelRegistry.Entry level)
+    {
+        var d = Level(st, level.Code);
+        return new AppLevelStatus
+        {
+            code = level.Code, name = level.Name, assessmentMode = level.AssessmentMode,
+            status = d.status, ncStatus = d.ncStatus, nc1Status = d.nc1Status, nc2Status = d.nc2Status, nc3Status = d.nc3Status,
+            nc4Status = d.nc4Status, nc5Status = d.nc5Status, nc1StatusText = d.nc1StatusText, nc2StatusText = d.nc2StatusText,
+            nc3StatusText = d.nc3StatusText, nc4StatusText = d.nc4StatusText, nc5StatusText = d.nc5StatusText,
+            certificate = d.certificate, report = d.report, incentives = d.incentives,
+        };
+    }
 
     private static CertificationDetails Level(IDictionary<string, object?> st, string level) => new()
     {

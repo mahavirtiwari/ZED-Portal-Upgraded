@@ -10,6 +10,7 @@ import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
 import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
+import { RequirementVideo } from '../../msme/shared/requirement-video';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -102,7 +103,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog],
+  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',

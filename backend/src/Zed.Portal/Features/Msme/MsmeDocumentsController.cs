@@ -35,14 +35,15 @@ public static class MsmeMyDocuments
 
     private static readonly string[] SetNames = ["Guidelines", "Certificates", "PaymentReceipts", "Invoices"];
 
-    private static readonly (int Set, string Column, MsmeFileScope Scope)[] FileColumns =
+    /// <summary>2026-11-08: the certificate of every V4 level (ZED-X and the levels the Admin added) as ZEDX's.</summary>
+    private static (int Set, string Column, MsmeFileScope Scope)[] FileColumns =>
     [
         (0, "DocumentPath", MsmeFileScope.Public),
         (1, "Pledge", MsmeFileScope.Own),
         (1, "Bronze", MsmeFileScope.Own),
         (1, "Silver", MsmeFileScope.Own),
         (1, "Gold", MsmeFileScope.Own),
-        (1, "ZEDX", MsmeFileScope.Own),
+        .. Zed.Core.Data.LevelRegistry.V4Codes.Select(c => (1, c, MsmeFileScope.Own)),
         (2, "BronzeReceipt", MsmeFileScope.Own),
         (2, "SilverReceipt", MsmeFileScope.Own),
         (2, "GoldReceipt", MsmeFileScope.Own),
@@ -58,13 +59,18 @@ public static class MsmeMyDocuments
     public static Task<ResultSets> LoadAsync(ISqlExecutor db, string zedId, CancellationToken ct) =>
         db.QueryProcMultipleAsync(Procedure, new { ZedId = zedId }, ct);
 
-    /// <summary>ZED-X's certificate (V4 level; the procedure lists Bronze, Silver and Gold only): Certificates/SA/{ZedId}/ZEDX.pdf once certified.</summary>
+    /// <summary>
+    /// The certificates of V4 levels (ZED-X and, since 2026-11-08, the levels the Admin added; the procedure lists Bronze,
+    /// Silver and Gold only): Certificates/SA/{ZedId}/{Level}.pdf once certified (a desktop level: status 6 with its desktop
+    /// number, Certificates/DA/...).
+    /// </summary>
     internal const string V4CertificatesSql =
-        "SELECT Certification FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = 'ZEDX' AND CertificationStatus = 16 AND SaCertificateNo IS NOT NULL;";
+        "SELECT Certification FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification NOT IN ('Bronze', 'Silver', 'Gold') " +
+        "AND ((CertificationStatus = 16 AND SaCertificateNo IS NOT NULL) OR (CertificationStatus = 6 AND DaCertificateNo IS NOT NULL));";
 
     public sealed record V4Certificate(string Certification);
 
-    /// <summary>Adds the ZEDX column to the certificates row (null when not certified), as the procedure's Gold column.</summary>
+    /// <summary>Adds a column per V4 level (ZEDX, ...) to the certificates row (null when not certified), as the procedure's Gold column.</summary>
     public static async Task AddV4LevelsAsync(ISqlExecutor db, ResultSets sets, string zedId, CancellationToken ct)
     {
         if (sets[1].FirstOrDefault() is not { } row) return;
@@ -77,7 +83,9 @@ public static class MsmeMyDocuments
         {
             certified = [];
         }
-        row["ZEDX"] = certified.Count > 0 ? $"Certificates/SA/{zedId}/ZEDX.pdf" : null;
+        foreach (var level in Zed.Core.Data.LevelRegistry.V4Codes)
+            row[level] = certified.Any(c => string.Equals(c.Certification?.Trim(), level, StringComparison.OrdinalIgnoreCase))
+                ? Documents.DocumentLevels.CertificatePath(zedId, level) : null;
     }
 
     /// <summary>The files the procedure lists for this ZED ID that pass the path checks (pass sets already through <see cref="MsmeGuidelines.ForMsme"/>).</summary>

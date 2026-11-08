@@ -44,7 +44,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// <summary>The types charged the full fee: no subsidy, no joining reward (one row per level).</summary>
     public static bool IsFullFee(string type) => type is "Rejected" or "Recertification";
     /// <summary>The levels with fee rows (ZEDX = ZED-X, migration 0028; a level shows once it has rows).</summary>
-    public static readonly string[] Levels = ["Bronze", "Silver", "Gold", "ZEDX"];
+    public static string[] Levels => [.. Zed.Core.Data.LevelRegistry.Codes];
 
     /// <param name="Level">Consultancy: the handholding level (Silver, Gold) of the milestone in <paramref name="Certification"/>.</param>
     public sealed record LevelFee(string Certification, decimal? AssessmentFee, decimal? Coupon, bool HasCouponRows, string? Level = null);
@@ -211,7 +211,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     }
 
     private string GroupName(string group, IReadOnlyList<string>? levels = null) =>
-        ByMilestone ? (levels is { Count: > 0 } ? string.Join(" and ", levels) + " " : "") + "milestone " + group : group == "ZEDX" ? "ZED-X" : group;
+        ByMilestone ? (levels is { Count: > 0 } ? string.Join(" and ", levels) + " " : "") + "milestone " + group : Zed.Core.Data.LevelRegistry.NameOf(group);
 
     /// <summary>Consultancy's handholding levels (the order the page lists them in).</summary>
     public static readonly string[] HandholdingLevels = ["Silver", "Gold"];
