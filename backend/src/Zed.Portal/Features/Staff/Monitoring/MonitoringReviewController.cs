@@ -171,7 +171,8 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         // Silver/Gold desktop verification only moves on to the site assessment (the old code mailed Bronze only).
         if (desktop && level != "Bronze") return new MessageResponse("Desktop verification completed.");
         // V4 levels (ZED-X): the certificate number and first surveillance date from Administration → Certification Levels.
-        if (!desktop) await LevelCertification.ApplyAsync(db, zedId, level!, log, ct);
+        // 2026-11-08: also a V4 level completed at the desktop (ApplyAsync leaves Bronze, Silver and Gold alone).
+        await LevelCertification.ApplyAsync(db, zedId, level!, log, ct);
 
         var outcome = await CertificationCompletion.Create(HttpContext.RequestServices).CertifyAsync(zedId, level!, ct);
         return new MessageResponse(

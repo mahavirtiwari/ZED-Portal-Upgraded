@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
-import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor } from './staff-menu';
+import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor, staffRoleName } from './staff-menu';
 
 /** A heading with more screens than this is a chooser (e.g. the incentives of every state), not a list. */
 const LIST_LIMIT = 8;
@@ -148,7 +148,7 @@ export class StaffHomePage {
   });
   protected readonly singles = computed(() => this.entries().flatMap((e) => ('item' in e ? [e.item] : [])));
   protected readonly groups = computed(() => this.entries().flatMap((e) => ('group' in e ? [e] : [])));
-  protected readonly roleName = computed(() => (this.user()?.role ?? '').replace(/([a-z])([A-Z])/g, '$1 $2'));
+  protected readonly roleName = computed(() => staffRoleName(this.user()));
   protected readonly subRoleText = computed(() => {
     const subs = this.user()?.subRoles ?? [];
     return subs.length && subs.length < 3 ? ' · ' + subs.map((s) => s.replace('Verification', ' Verification')).join(', ') : '';

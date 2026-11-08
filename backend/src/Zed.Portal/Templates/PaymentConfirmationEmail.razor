@@ -26,7 +26,10 @@
         </table>
     }
     <p style="font-size: 13px; margin-bottom: 0;">Please download the ZED MSME Mobile Application to proceed to the next step, i.e. Basic Information and Document Upload (the same can also be downloaded directly from Google Play Store):</p>
-    <a href="https://play.google.com/store/apps/details?id=com.qci.zed.msme" target="_blank" style="display: block; margin: 10px auto; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Download ZED MSME App</a>
+    @if (!string.IsNullOrEmpty(AppUrl))
+    {
+    <a href="@AppUrl" target="_blank" style="display: block; margin: 10px auto; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Download ZED MSME App</a>
+    }
     <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org. Please mention your ZED ID in all your future correspondence.</p>
     <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
     <p style="font-size: 13px; margin-bottom: 20px;">ZED Team</p>
@@ -37,5 +40,7 @@
     [Parameter, EditorRequired] public string Certification { get; set; } = "";
     [Parameter] public string CertOrReCert { get; set; } = "Certification";
     [Parameter] public IReadOnlyList<SummaryLine> Lines { get; set; } = [];
+    /// <summary>The ZED MSME app on Google Play as Admin → Links has it (2026-11-08); empty = switched off, no button.</summary>
+    [Parameter] public string? AppUrl { get; set; }
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 }

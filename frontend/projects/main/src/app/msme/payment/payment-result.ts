@@ -1,3 +1,4 @@
+import { ContentTextComponent } from '../../content/content-text';
 import { Component, computed, inject, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
@@ -9,7 +10,7 @@ import { levelName } from '../shared/levels';
  */
 @Component({
   selector: 'zed-payment-result',
-  imports: [RouterLink],
+  imports: [RouterLink, ContentTextComponent],
   template: `
     <!-- As Views/Pay/success.cshtml / failure.cshtml: a grey jumbotron in a centred column, the button in the step footer. -->
     <div class="container">
@@ -31,7 +32,7 @@ import { levelName } from '../shared/levels';
                   <div>
                     <p>You can now start the <strong>{{ certificationLabel() }}</strong> from the ZED MSME Mobile Application</p>
                     @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
-                    <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
+                    <img src="/api/public/links/playStore/qr" width="80" height="80" alt="QR code for the ZED MSME app" />
                   </div>
                 </div>
               }
@@ -40,7 +41,7 @@ import { levelName } from '../shared/levels';
             <div class="jumbotron text-center">
               <img src="/Images/payment/payment-error.png" alt="" width="150" />
               <h2>Payment Failed</h2>
-              <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p>
+              <zed-text key="msme.payment.failed"><p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p></zed-text>
               @if (message()) {
                 <p><b>Error Message</b>: <span>{{ message() }}</span></p>
               }

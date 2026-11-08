@@ -99,7 +99,7 @@ describe('surveillance agencies and assessors', () => {
     expect(cells[3].textContent).toContain('Spoc');
     expect(cells[4].textContent!.trim()).toBe('2');
     const actions = [...cells[5].querySelectorAll('button')].map((b) => b.textContent!.trim());
-    expect(actions).toEqual(['Block', 'Bronze Surveillance', 'Reset Link']);
+    expect(actions).toEqual(['Block', 'Bronze Surveillance', 'History', 'Reset Link']);
   });
 
   it('shows the old assessor columns with the Bronze surveillance switch in Actions', async () => {

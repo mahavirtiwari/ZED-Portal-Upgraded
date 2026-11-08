@@ -38,6 +38,7 @@ public sealed class FinancialSupportController(ISqlExecutor db) : StaffApiContro
         {
             State = stateCode, UserId, CertificationType = cert, RoleId = RoleId.ToString(), Gender = genderValue, MsmeSize = sizeValue,
         }, ct);
-        return DashboardFilters.Pick(sets[0], Columns);
+        // A scoped login (Master Admin / Ministry / Dashboard Admin, migration 0057): its units only (2026-11-08).
+        return DashboardFilters.Pick(await Users.ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), Columns);
     }
 }

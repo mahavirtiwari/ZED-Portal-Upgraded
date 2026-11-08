@@ -94,6 +94,7 @@ public sealed partial class PaymentsDashboardController(ISqlExecutor db, PortalH
     /// </summary>
     [HttpPost("failed-transactions/update-payment")]
     [StaffRoles(UserRole.SuperAdmin, UserRole.MasterAdmin)]
+    [Users.DashboardEdit]
     public async Task<ActionResult<MessageResponse>> UpdatePayment(UpdatePaymentRequest req, CancellationToken ct)
     {
         if (!MayUseFailedTransactions) return Forbid();

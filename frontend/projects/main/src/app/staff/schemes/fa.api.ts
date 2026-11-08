@@ -115,8 +115,11 @@ export class FaApi {
     return this.http.get<FaSubmissions>(`${BASE}/submissions`, { params });
   }
 
-  agencies(zedId: string): Observable<UserOption[]> {
-    return this.http.get<UserOption[]>(`${BASE}/agencies`, { params: new HttpParams().set('zedId', zedId) });
+  /** With the level: not the agencies disabled for it (Agency level allocation). */
+  agencies(zedId: string, certification?: string): Observable<UserOption[]> {
+    let params = new HttpParams().set('zedId', zedId);
+    if (certification) params = params.set('certification', certification);
+    return this.http.get<UserOption[]>(`${BASE}/agencies`, { params });
   }
 
   allot(zedId: string, certification: string, agencyUserId: string): Observable<MessageResponse> {

@@ -242,7 +242,7 @@
             <input type="checkbox" class="form-check-input" id="confirmSubmit" [disabled]="!readyToSubmit()" [checked]="confirmed()"
                    (change)="confirmed.set($any($event.target).checked)" />
             <label class="form-check-label" for="confirmSubmit">
-              I confirm that the information and documents are correct. They cannot be changed after the final submit.
+              <zed-text key="msme.entry.finalSubmit.confirm" [inline]="true">I confirm that the information and documents are correct. They cannot be changed after the final submit.</zed-text>
             </label>
           </div>
           <div class="stepper-footer-sec">

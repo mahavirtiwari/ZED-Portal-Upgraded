@@ -198,6 +198,21 @@ public sealed class SurveillanceUsersController(
     [HttpPost("assessors/{userId}/unblock")]
     public Task<ActionResult<MessageResponse>> UnblockAssessor(string userId, CancellationToken ct) => UnblockAsync(userId, UserRole.DesktopAssessor, ct);
 
+    /// <summary>Every block and unblock of the login on Surveillance, latest first (2026-11-08).</summary>
+    [HttpGet("agencies/{userId}/history")]
+    [StaffRoles(UserRole.MasterAdmin)]
+    public Task<ActionResult<IReadOnlyList<UserBlockHistory.Entry>>> AgencyHistory(string userId, CancellationToken ct) => HistoryAsync(userId, UserRole.Agency, ct);
+
+    [HttpGet("assessors/{userId}/history")]
+    public Task<ActionResult<IReadOnlyList<UserBlockHistory.Entry>>> AssessorHistory(string userId, CancellationToken ct) => HistoryAsync(userId, UserRole.DesktopAssessor, ct);
+
+    private async Task<ActionResult<IReadOnlyList<UserBlockHistory.Entry>>> HistoryAsync(string userId, UserRole role, CancellationToken ct)
+    {
+        var user = await FindAsync(userId, role, ct);
+        if (user is null) return NotFound();
+        return (await UserBlockHistory.ListAsync(db, user.UserId, log, ct)).ToList();
+    }
+
     [HttpPost("agencies/{userId}/password-reset")]
     [StaffRoles(UserRole.MasterAdmin)]
     public Task<ActionResult<MessageResponse>> AgencyPasswordReset(string userId, [FromServices] StaffPasswordResets resets, CancellationToken ct) =>

@@ -198,9 +198,10 @@ public sealed partial class NeftController(
             var mailer = new SchemeMailer(db, email, templates, portal, emailOptions, log);
             var details = await mailer.DetailsAsync(zedId, certification, ct);
             await mailer.SendAsync<StaffNeftReimbursementEmail>(details?.Text("EmailId"),
-                $"Reimbursement towards the Certification Cost for Financial Assistance on {details?.Text("CategoryOfCertificate")} - {zedId}",
+                $"Reimbursement towards the Certification Cost for {(host.System == PortalSystem.Consultancy ? "Technology Upgradation" : "Financial Assistance")} on {details?.Text("CategoryOfCertificate")} - {zedId}",
                 new()
                 {
+                    [nameof(StaffNeftReimbursementEmail.Scheme)] = host.System == PortalSystem.Consultancy ? "Technology Upgradation" : "Financial Assistance",
                     [nameof(StaffNeftReimbursementEmail.ZedId)] = zedId,
                     [nameof(StaffNeftReimbursementEmail.UnitName)] = details?.Text("EnterpriseName") ?? "",
                     [nameof(StaffNeftReimbursementEmail.CategoryOfCertificate)] = details?.Text("CategoryOfCertificate") ?? "",

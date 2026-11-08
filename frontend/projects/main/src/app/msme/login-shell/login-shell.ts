@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, map, of } from 'rxjs';
 import { PortalLinksService } from '@zed/shared';
+import { PublicLevels } from '../shared/levels';
 
 /** The live portal's banner (Banner_20220428033601.png, resized), shown until an Admin uploads one in Home Page Settings. */
 export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
@@ -34,7 +35,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
             <p class="ml-title">MSME Sustainable (ZED) Certification</p>
             <p class="ml-sub">For manufacturing and service MSMEs — on the web and the ZED MSME app</p>
             <div class="ml-levels">
-              @for (l of levels; track l) {
+              @for (l of levels(); track l) {
                 <span class="ml-chip">{{ l }}</span>
               }
             </div>
@@ -116,7 +117,9 @@ export class LoginShell {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
   protected readonly year = new Date().getFullYear();
-  protected readonly levels = ['Bronze', 'Silver', 'Gold', 'ZED-X'];
+  /** The enabled levels as the Admin named them (Certification Levels; built-in until they arrive). */
+  private readonly publicLevels = inject(PublicLevels);
+  protected readonly levels = computed(() => this.publicLevels.names() ?? ['Bronze', 'Silver', 'Gold', 'ZED-X']);
   protected readonly banner = toSignal(
     inject(HttpClient)
       .get<{ imageUrl: string | null }>('/api/msme/auth/banner')

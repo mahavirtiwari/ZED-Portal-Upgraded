@@ -255,6 +255,10 @@ public sealed class SurveillanceStaffTests : IDisposable
         Assert.True(problem.GetProperty("adminOnMainPortal").GetBoolean());
         Assert.Contains("main portal", problem.GetProperty("title").GetString());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_UPDATE_LOGIN");
+        // The Dashboard Admin too (2026-11-08): it opens this portal's screens from main.
+        var dash = await (await _host.CreateBrowserAsync()).PostAsJsonAsync("/api/staff/auth/login", new { userId = "SUPER1", password = "Right#Pass1" });
+        Assert.Equal(HttpStatusCode.BadRequest, dash.StatusCode);
+        Assert.Contains("Dashboard Admins", (await dash.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("title").GetString());
         // Other roles still sign in here.
         Assert.Equal(HttpStatusCode.OK, (await (await _host.CreateBrowserAsync()).PostAsJsonAsync("/api/staff/auth/login", new { userId = "MASTER1", password = "Right#Pass1" })).StatusCode);
     }

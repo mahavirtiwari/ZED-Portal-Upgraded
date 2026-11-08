@@ -144,7 +144,7 @@ and evidence are reachable only through V4's checked endpoints (closes #9, #34).
    Without an environment variable its mail outbox sends nothing (it logs why); the other jobs run.
    **Daily status report:** set its recipients in Admin → Settings → Email Settings ("Daily status report") if it is
    wanted; without them Zed.Jobs does not send it (the old procedure's fixed recipients are outside addresses).
-7. Decide `StaffPasswordReset:ExcludedRoles` (default MasterAdmin 7 and SuperAdmin 10, who get their reset link from
+7. Decide `StaffPasswordReset:ExcludedRoles` (default MasterAdmin 7, who get their reset link from
    another MasterAdmin; add 1 for Admin if wanted).
 8. Consultant app TU calls: set `Consultancy:TuApp:LoginHours` (default 12) and `Consultancy:TuApp:SameIp` (default
    false) to the same values on the consultancy portal and on the **main** mobile host, which also needs

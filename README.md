@@ -151,7 +151,7 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 ```powershell
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
 .\database\setup.ps1          # the three ZED databases and the three referenced ones (05-07); KAWACH comes from the seed below
-# Every migration (0001-0062), in order, on the right databases (safe to re-run):
+# Every migration (0001-0063), in order, on the right databases (safe to re-run):
 .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server localhost\SQLEXPRESS -TrustServerCertificate -Apply -SkipFixes
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql
@@ -214,7 +214,7 @@ dotnet user-secrets set "Email:Profiles:Default:Host" "..."   # also From, UserN
 | `Cache:SqlServerTable` | Optional, e.g. `dbo.V4Cache` (migration 0006): shared cache for more than one server |
 | `Jobs:Schedules` (Zed.Jobs) | The former SQL Agent jobs, filled from the Agent export with `tools/jobs/Convert-AgentJobs.ps1` and checked with `Zed.Jobs --check` (docs/JOBS.md) |
 | `Jobs:FolderRename` (Zed.Jobs) | Renames the folders of rejected units to their archived ZED ID (replaces SP_JOB_TO_CREATE_RENAMING_BATCH_FILES, no xp_cmdshell). Migration 0007; Report mode first; docs/JOBS.md |
-| `StaffPasswordReset:Enabled/ValidMinutes/MaxRequestsPerHour/ExcludedRoles/MainPortalUrl` | Staff "Forgot password?" and administrator reset links (migration 0008, docs/PASSWORDS.md). ExcludedRoles (default 7,10) get their link from another MasterAdmin |
+| `StaffPasswordReset:Enabled/ValidMinutes/MaxRequestsPerHour/ExcludedRoles/MainPortalUrl` | Staff "Forgot password?" and administrator reset links (migration 0008, docs/PASSWORDS.md). ExcludedRoles (default 7) get their link from another MasterAdmin |
 | `MsmePasswordReset:ValidMinutes/MaxRequestsPerHour` (main portal and MSME app) | MSME reset links (migration 0009, docs/PASSWORDS.md): 60 minutes, 3 per ZED ID and hour |
 | `Consultancy:TuApp:LoginHours` (consultancy portal, main mobile host) | Default 12: how recently the allotted DFO must have signed in to the consultant app for the unit, for the TU calls and documents; 0 turns the check off |
 | `Consultancy:TuApp:SameIp` (consultancy portal) | Default false: also require the IP address of that sign-in |
@@ -281,7 +281,7 @@ the store point at the old portal, so each app needs a new store release.
 - `deploy\Publish-Zed.ps1` builds a release package.
 - `deploy\Install-ZedIis.ps1` installs it, with a dry run first and a rollback file.
 - `deploy\Test-ZedDeployment.ps1 -BaseUrl …` checks the installed sites.
-- `deploy\Invoke-ZedDatabaseScripts.ps1` runs `database/migrations` 0001–0062 in order (safe to re-run) and the
+- `deploy\Invoke-ZedDatabaseScripts.ps1` runs `database/migrations` 0001–0063 in order (safe to re-run) and the
   reviewed `database/fixes`.
 
 The hosts refuse to start when a setting is missing outside Development. `/api/health/ready` and `/health/ready` report

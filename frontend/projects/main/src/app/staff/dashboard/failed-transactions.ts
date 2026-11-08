@@ -1,12 +1,14 @@
 import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { apiErrorMessage } from '@zed/shared';
+import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DashboardApi, ListFilter, Row, UpdatePaymentRequest } from './dashboard.api';
 import { ClientPager, flag, text } from './dashboard-filters';
 import { PagerComponent } from '../pager';
 import { ListFiltersBar } from './list-controls';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { AdminPortal, AdminPortalService, dashboardPortals, dashboardSetting, isDashboardAdmin } from '../admin-portal';
+import { STAFF_SYSTEM } from '../staff-menu';
 
 export const PG_TYPES = [
   { value: 'Unified Payments', label: 'UPI' },
@@ -40,6 +42,14 @@ function today(): string {
 })
 export class FailedTransactionsPage {
   private readonly api = inject(DashboardApi);
+  private readonly auth = inject(AuthService);
+  private readonly portals = inject(AdminPortalService);
+  private readonly system = inject(STAFF_SYSTEM);
+  /** The portal whose failed transactions are shown (a Dashboard Admin's switch). */
+  private get portal(): AdminPortal {
+    const user = this.auth.currentUser();
+    return isDashboardAdmin(user) ? this.portals.effective(dashboardPortals(user, ['failed-transactions'])) : this.system;
+  }
 
   protected readonly pager = new ClientPager<Row>();
   protected readonly filter = signal<ListFilter>({});
@@ -90,6 +100,9 @@ export class FailedTransactionsPage {
 
   /** Same condition as the old page: hidden for coupon payments and when the procedure disallows it. */
   protected canUpdate(row: Row): boolean {
+    // A Dashboard Admin needs "Can make changes" on this portal (2026-11-08).
+    const user = this.auth.currentUser();
+    if (user?.roleId === 10 && !dashboardSetting(user, this.portal, 'edits')) return false;
     return !(flag(row, 'IsCouponUsed') && text(row, 'UseCoupon') === 'Yes') && Number(row['AllowManualUpdate']) !== 0;
   }
 

@@ -51,6 +51,47 @@ public static class MobileApps
 
 public enum DeviceCheck { Known, Unknown, Missing, NoBinding }
 
+/// <summary>
+/// Whether a staff app user is blocked (dbo.Users.IsActive = 0 on every row of the user id; 2026-11-08), kept for a minute per
+/// user. A user with no row, or an error, is not treated as blocked (the call's own checks apply).
+/// </summary>
+public static class ActiveStaffUsers
+{
+    internal const string Sql = "SELECT MAX(CASE WHEN ISNULL(IsActive, 0) = 1 THEN 1 ELSE 0 END) AS Active, COUNT(*) AS Rows FROM dbo.Users WHERE UserId = @UserId;";
+    private static readonly TimeSpan Keep = TimeSpan.FromMinutes(1);
+    private static readonly ConcurrentDictionary<string, (bool Blocked, DateTime Until)> Cache = new(StringComparer.OrdinalIgnoreCase);
+
+    private sealed class Row
+    {
+        public int? Active { get; init; }
+        public int Rows { get; init; }
+    }
+
+    public static async Task<bool> IsBlockedAsync(HttpContext http, string userId)
+    {
+        var now = DateTime.UtcNow;
+        if (Cache.TryGetValue(userId, out var kept) && kept.Until > now) return kept.Blocked;
+        var blocked = false;
+        if (http.RequestServices.GetService(typeof(ISqlExecutor)) is ISqlExecutor db)
+        {
+            try
+            {
+                var row = (await db.QuerySqlAsync<Row>(Sql, new { UserId = userId }, http.RequestAborted)).FirstOrDefault();
+                blocked = row is { Rows: > 0, Active: 0 };
+            }
+            catch (Exception ex) when (ex is System.Data.Common.DbException or InvalidOperationException)
+            {
+                blocked = false;
+            }
+        }
+        Cache[userId] = (blocked, now + Keep);
+        return blocked;
+    }
+
+    /// <summary>For tests.</summary>
+    public static void Forget() => Cache.Clear();
+}
+
 /// <summary>A phone registered for a user of an app (dbo.MobileDeviceBindings).</summary>
 public sealed record RegisteredDevice(string DeviceId, string? Model, string? OsVersion, DateTime? FirstSeenAt, DateTime? LastLoginAt, DateTime? LastSeenAt, string? LastIp);
 
@@ -236,6 +277,15 @@ public sealed class DeviceBoundAttribute(string app, params string[] userFields)
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var http = context.HttpContext;
+        // 2026-11-08: a staff user (assessor, consultant) blocked by the Master Admin or the agency is signed out of the app on
+        // its next call, whatever the token mode (the installed apps' old write calls are not refused by a Monitor token).
+        if (!MobileApps.ActsAsUnit(App)
+            && FindUser(context, await LegacyRequestValues.GetAsync(http)) is { Length: > 0 } staff
+            && await ActiveStaffUsers.IsBlockedAsync(http, staff))
+        {
+            context.Result = LegacyResults.Json(ServiceResponse.Fail(AppTokens.ExpiredMessage));
+            return;
+        }
         var options = http.RequestServices.GetService(typeof(IOptions<MobileOptions>)) as IOptions<MobileOptions>;
         var tokens = http.RequestServices.GetService(typeof(AppTokens)) as AppTokens;
         var mode = options?.Value.DeviceBinding ?? DeviceBindingMode.Off;

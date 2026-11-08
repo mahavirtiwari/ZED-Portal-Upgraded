@@ -1,4 +1,4 @@
--- Run on ZEDCS_V2_LIVE and ZED_CONSULTANT. Safe to re-run.
+-- Run on ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE (2026-11-08: Surveillance blocks too). Safe to re-run.
 --
 -- Block history (2026-11-08, at the Master Admin's request; Assessors / Consultants -> Block, Unblock, History): every block
 -- and unblock of a staff login, with its reason, who did it and when. There is no legacy table for it, so a history table
@@ -10,8 +10,8 @@ SET ANSI_NULLS ON;
 SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
 GO
-IF DB_NAME() NOT IN (N'ZEDCS_V2_LIVE', N'ZED_CONSULTANT')
-    THROW 50061, '0061 runs on ZEDCS_V2_LIVE and ZED_CONSULTANT.', 1;
+IF DB_NAME() NOT IN (N'ZEDCS_V2_LIVE', N'ZED_CONSULTANT', N'ZED_SURVEILLANCE')
+    THROW 50061, '0061 runs on ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE.', 1;
 GO
 IF OBJECT_ID(N'dbo.UserBlockHistory', N'U') IS NULL
 BEGIN

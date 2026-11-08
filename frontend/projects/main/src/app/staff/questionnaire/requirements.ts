@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { ChecklistEvidence, ChecklistRequest, Evidence, Point, QuestionnaireApi, Requirement, RequirementsResponse } from './questionnaire.api';
 import { ExcelToolsComponent } from '../excel-tools';
 import { ListSearchComponent, searchRows } from '../pager';
+import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 
 export const PURPOSE_MAX = 500;
 export const ACTION_MAX = 100;
@@ -56,8 +57,9 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
  */
 @Component({
   selector: 'zed-staff-requirements',
-  imports: [FormsModule, RouterLink, ListSearchComponent, ExcelToolsComponent],
+  imports: [FormsModule, RouterLink, ListSearchComponent, ExcelToolsComponent, PortalSwitchComponent],
   template: `
+    <zed-portal-switch [portals]="questionnairePortals" title="Questionnaire of" />
     <nav class="crumbs" aria-label="Breadcrumb">
       <a [routerLink]="['/staff/masters/parameters', sectionType]">Questionnaire</a>
       <span aria-hidden="true">›</span>
@@ -420,6 +422,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
   `,
 })
 export class RequirementsPage {
+  protected readonly questionnairePortals = QUESTIONNAIRE_PORTALS;
   protected readonly api = inject(QuestionnaireApi);
   private readonly route = inject(ActivatedRoute).snapshot.paramMap;
 

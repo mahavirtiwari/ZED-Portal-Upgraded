@@ -126,6 +126,7 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
     /// </summary>
     [HttpPut("{zedId}")]
     [StaffRoles(UserRole.SuperAdmin)]
+    [Users.DashboardEdit]
     [SystemOnly(PortalSystem.Main)]
     public async Task<ActionResult<MessageResponse>> Update(string zedId, UpdateRequest req, CancellationToken ct)
     {

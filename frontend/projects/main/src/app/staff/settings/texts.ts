@@ -52,7 +52,7 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     <div class="page-head">
       <div>
         <h3 class="registration-title">Texts</h3>
-        <p class="page-sub">Disclaimers, instructions, undertakings and pledges of the website and the apps. A change shows within a few minutes.</p>
+        <p class="page-sub">Disclaimers, instructions, undertakings and pledges of the website and the apps. A change shows on the website within a minute (on a page opened or reloaded after it) and in the apps when they are next opened or brought back to the front.</p>
       </div>
     </div>
     <!-- One Admin (V4): the texts of the portal chosen here (each portal keeps its own). -->

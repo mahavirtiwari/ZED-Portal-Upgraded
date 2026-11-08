@@ -6,6 +6,7 @@ import { CHART_COLORS, ChartItem, DonutChart, GroupedColumnChart, LEVEL_COLORS, 
 import { Analytics, AnalyticsFilter, AnalyticsView, CountItem, DashboardApi, Row } from './dashboard.api';
 import { CERTIFICATIONS, SIZES, STATE_NAMES } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
+import { levelName } from '../../msme/shared/levels';
 import { STAFF_SYSTEM } from '../staff-menu';
 
 const GENDER_LABELS: Record<string, string> = { male: 'Male', female: 'Female', others: 'Others' };
@@ -33,7 +34,8 @@ interface AnalyticsWords {
 export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
   main: {
     kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified', 'ZED-X certified'],
-    certifications: CERTIFICATIONS, certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
+    // 2026-11-08: ZED-X too (the figures count its certifications).
+    certifications: [...CERTIFICATIONS, 'ZEDX'], certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
   },
   consultancy: {
     kpis: ['Registered units', 'Handholding completed', 'Applications', 'Silver applications', 'Gold applications'],
@@ -88,7 +90,7 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
           <label class="form-label" for="an-cert">{{ words.certLabel }}</label>
           <select id="an-cert" class="form-select" [ngModel]="filter().certification ?? ''" (ngModelChange)="set('certification', $event)">
             <option value="">All</option>
-            @for (c of certifications; track c) { <option [value]="c">{{ c }}</option> }
+            @for (c of certifications; track c) { <option [value]="c">{{ levelName(c) }}</option> }
           </select>
         </div>
         <div class="filter an-range">
@@ -264,6 +266,7 @@ export class StaffAnalytics {
   protected readonly states = STATE_NAMES;
   protected readonly sizes = SIZES;
   protected readonly certifications = this.words.certifications;
+  protected readonly levelName = levelName;
   protected readonly socialCategories = ['General', 'OBC', 'SC', 'ST'];
   protected readonly today = new Date().toISOString().slice(0, 10);
 

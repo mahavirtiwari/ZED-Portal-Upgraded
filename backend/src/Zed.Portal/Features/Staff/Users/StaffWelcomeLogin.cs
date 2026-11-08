@@ -16,8 +16,8 @@ public sealed record StaffWelcomeLogin(string? Password, string? SetPasswordUrl)
 {
     public const int ValidHours = StaffPasswordResets.SetPasswordValidMinutes / 60;
 
-    /// <summary>The roles whose welcome mail keeps the password.</summary>
-    public static bool KeepsPassword(int roleId) => roleId is (int)UserRole.MasterAdmin or (int)UserRole.SuperAdmin;
+    /// <summary>The roles whose welcome mail keeps the password (2026-11-08: the Dashboard Admin gets a set-password link).</summary>
+    public static bool KeepsPassword(int roleId) => roleId is (int)UserRole.MasterAdmin;
 
     public static async Task<StaffWelcomeLogin> ForAsync(HttpContext http, string userId, int roleId, string password, string createdBy, CancellationToken ct)
     {

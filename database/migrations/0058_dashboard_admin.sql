@@ -17,18 +17,19 @@ IF DB_NAME() NOT IN (N'ZEDCS_V2_LIVE', N'ZED_CONSULTANT', N'ZED_SURVEILLANCE')
 GO
 IF COL_LENGTH('dbo.Users', 'ScreenAccess') IS NULL ALTER TABLE dbo.Users ADD ScreenAccess varchar(2000) NULL;
 GO
-IF NOT EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0
-               AND major_id = OBJECT_ID(N'dbo.Users') AND name = N'V4_0058_DashboardAdmins')
+-- 2026-11-08: the conversion runs on every run (not once), so a Citizen Feedback or QC login created afterwards (e.g. by
+-- the old portal during a parallel run) also becomes a Dashboard Admin; the marker only records the first run.
 BEGIN
     DECLARE @portal varchar(20) = CASE DB_NAME() WHEN N'ZED_CONSULTANT' THEN 'consultancy' WHEN N'ZED_SURVEILLANCE' THEN 'surveillance' ELSE 'main' END;
     -- The screens each old type had on this portal (its menu).
     DECLARE @feedback varchar(400) = CASE @portal
         WHEN 'main'         THEN 'dash-registered,dash-certified,registered-msme,financial-support,reports,history,documents'
         WHEN 'consultancy'  THEN 'dash-registered,dash-certified,history,documents'
-        ELSE                     'dash-registered,dash-certified,registered-msme,financial-support,reports,documents' END;
+        ELSE                     'dash-registered,dash-certified,registered-msme,financial-support,reports' END;
     DECLARE @qc varchar(400) = CASE @portal
         WHEN 'main' THEN 'dash-registered,dash-certified,registered-msme,history,documents,hide-names'
-        ELSE             'dash-registered,dash-certified,history,documents,hide-names' END;
+        WHEN 'consultancy' THEN 'dash-registered,dash-certified,history,documents,hide-names'
+        ELSE             'dash-registered,dash-certified,history,hide-names' END;
 
     -- "{portal}:" before each key.
     UPDATE dbo.Users SET RoleId = 10, ScreenAccess = @portal + ':' + REPLACE(@feedback, ',', ',' + @portal + ':') WHERE RoleId = 11;
@@ -36,7 +37,18 @@ BEGIN
     UPDATE dbo.Users SET RoleId = 10, ScreenAccess = @portal + ':' + REPLACE(@qc, ',', ',' + @portal + ':') WHERE RoleId = 17;
     PRINT CONCAT(DB_NAME(), N': ', @@ROWCOUNT, N' QC login(s) became Dashboard Admins.');
 
-    EXEC sys.sp_addextendedproperty @name = N'V4_0058_DashboardAdmins', @value = N'2026-11-07',
-        @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'Users';
+    -- Documents/Videos given to the old Citizen Feedback / QC audiences go to the Dashboard Admins (2026-11-08).
+    IF COL_LENGTH('dbo.MyDocuments', 'AccessRoles') IS NOT NULL
+        EXEC sp_executesql N'
+            UPDATE d SET AccessRoles = SUBSTRING(x.v, 2, LEN(x.v) - 2)
+            FROM dbo.MyDocuments d
+            CROSS APPLY (SELECT REPLACE(REPLACE(REPLACE('','' + REPLACE(d.AccessRoles, '' '', '''') + '','',
+                '',citizenfeedback,'', '',superadmin,''), '',qc,'', '',superadmin,''), '',superadmin,superadmin,'', '',superadmin,'') AS v) x
+            WHERE '','' + REPLACE(d.AccessRoles, '' '', '''') + '','' LIKE ''%,citizenfeedback,%'' OR '','' + REPLACE(d.AccessRoles, '' '', '''') + '','' LIKE ''%,qc,%'';';
+
+    IF NOT EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0
+                   AND major_id = OBJECT_ID(N'dbo.Users') AND name = N'V4_0058_DashboardAdmins')
+        EXEC sys.sp_addextendedproperty @name = N'V4_0058_DashboardAdmins', @value = N'2026-11-07',
+            @level0type = N'SCHEMA', @level0name = N'dbo', @level1type = N'TABLE', @level1name = N'Users';
 END
 GO

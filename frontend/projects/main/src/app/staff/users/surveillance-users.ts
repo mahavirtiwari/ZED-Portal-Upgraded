@@ -6,7 +6,8 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { CodeName, RESET_CONFIRM, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
+import { BlockHistoryEntry, CodeName, RESET_CONFIRM, SurveillanceAgency, SurveillanceAssessor, SurveillanceUsersApi } from './users.api';
+import { DatePipe } from '@angular/common';
 import { PagedView, PagerComponent } from '../pager';
 
 interface BronzeDialog {
@@ -37,7 +38,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, DatePipe],
   template: `
     <div class="page-head">
       <div>
@@ -111,6 +112,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                         <button type="button" class="btn btn-primary" [disabled]="busy()" (click)="unblock('agencies', a.userId)">UnBlock</button>
                       }
                       <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="openBronze(a)">Bronze Surveillance</button>
+                      <button type="button" class="btn btn-default" [disabled]="busy()" (click)="openHistory('agencies', a.userId)">History</button>
                       @if (a.isActive) {
                         <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset('agencies', a.userId)">Reset Link</button>
                       }
@@ -178,6 +180,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                       @if (s.isActive) {
                         <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset('assessors', s.userId)">Reset Link</button>
                       }
+                      <button type="button" class="btn btn-default" [disabled]="busy()" (click)="openHistory('assessors', s.userId)">History</button>
                       @if (showsMobile) {
                         <button type="button" class="btn btn-outline-primary" [attr.aria-label]="'Registered mobile of ' + s.userId" (click)="mobileOf.set(s.userId)">Mobile</button>
                       }
@@ -261,6 +264,31 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
       <div class="modal-backdrop show"></div>
     }
 
+    @if (history(); as h) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="history-title">
+        <div class="modal-dialog modal-popup sv-dialog"><div class="modal-content">
+          <div class="modal-header">
+            <h3 class="registration-title m-0" id="history-title">History – {{ h.userId }}</h3>
+            <button type="button" class="btn-close" aria-label="Close" (click)="history.set(null)"></button>
+          </div>
+          <div class="modal-body">
+            @if (h.entries === null) { <p class="muted">Loading…</p> } @else {
+              <ol class="sv-history">
+                @for (e of h.entries; track $index) {
+                  <li [class.is-blocked]="e.action === 'Blocked'">
+                    <strong>{{ e.action }}</strong>
+                    <span class="muted d-block">{{ e.actionDate | date: 'dd MMM yyyy, h:mm a' }}{{ e.actionBy ? ' · by ' + e.actionBy : '' }}</span>
+                    @if (e.reason) { <span class="d-block">“{{ e.reason }}”</span> }
+                  </li>
+                } @empty { <li class="sv-history-empty">No block or unblock recorded yet.</li> }
+              </ol>
+            }
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-default" (click)="history.set(null)">Close</button></div>
+        </div></div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
     @if (block(); as b) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="block-title">
         <div class="modal-dialog modal-popup sv-dialog"><div class="modal-content">
@@ -329,6 +357,12 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
     .form-grid > .top { align-self: start; padding-top: 8px; }
 
     .sv-dialog-who { margin: 0 0 12px; overflow-wrap: anywhere; }
+    .sv-history { list-style: none; margin: 0; padding: 0; }
+    .sv-history li { position: relative; padding: 8px 0 8px 22px; border-bottom: 1px solid #eef1f2; }
+    .sv-history li::before { content: ''; position: absolute; left: 4px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #1e7a3c; }
+    .sv-history li.is-blocked::before { background: #a8303a; }
+    .sv-history .sv-history-empty { padding-left: 0; color: #5f6f70; }
+    .sv-history .sv-history-empty::before { display: none; }
     .sv-block-note { margin: 0 0 10px; font-size: 13px; color: #5f6f70; }
     .toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; cursor: pointer; }
     .toggle-card.active { border-color: #45a5ad; background: #f4fafa; }
@@ -385,6 +419,19 @@ export class SurveillanceUsersPage {
   protected readonly busy = signal(false);
   protected readonly bronze = signal<BronzeDialog | null>(null);
   protected readonly block = signal<BlockDialog | null>(null);
+  /** Block history pop-up (2026-11-08). */
+  protected readonly history = signal<{ userId: string; entries: BlockHistoryEntry[] | null } | null>(null);
+
+  protected async openHistory(kind: 'agencies' | 'assessors', userId: string): Promise<void> {
+    this.history.set({ userId, entries: null });
+    try {
+      const entries = await firstValueFrom(this.api.history(kind, userId));
+      if (this.history()?.userId === userId) this.history.set({ userId, entries });
+    } catch (err) {
+      this.history.set(null);
+      this.error.set(apiErrorMessage(err));
+    }
+  }
   /** The assessor whose registered mobile is shown in the pop-up. */
   protected readonly mobileOf = signal<string | null>(null);
 

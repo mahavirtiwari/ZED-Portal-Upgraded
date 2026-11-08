@@ -28,6 +28,8 @@
 </EmailLayout>
 
 @code {
+    /// <summary>For the Admin's own text (Email Templates).</summary>
+    [Parameter] public string? ZedId { get; set; }
     [Parameter] public string? AgencyName { get; set; }
     [Parameter] public string? SpocName { get; set; }
     [Parameter] public string? AgencyEmail { get; set; }

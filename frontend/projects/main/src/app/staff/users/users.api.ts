@@ -400,6 +400,11 @@ export class SurveillanceUsersApi {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/staff/surveillance-users';
 
+  /** Every block and unblock of a Surveillance login, latest first (2026-11-08). */
+  history(kind: 'agencies' | 'assessors', userId: string): Observable<BlockHistoryEntry[]> {
+    return this.http.get<BlockHistoryEntry[]>(`${this.base}/${kind}/${encodeURIComponent(userId)}/history`);
+  }
+
   states(): Observable<CodeName[]> {
     return this.http.get<CodeName[]>(`${this.base}/states`);
   }

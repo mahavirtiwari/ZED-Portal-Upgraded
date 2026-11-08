@@ -202,7 +202,7 @@ export class LinkCard {
       </div>
     </div>
     <!-- One Admin (V4): the links of the portal chosen here (each portal keeps its own). -->
-    <zed-portal-switch />
+    <zed-portal-switch [portals]="['main']" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

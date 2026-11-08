@@ -18,6 +18,11 @@ public sealed record DashboardScreen(string Key, string Label, string Group, str
 public static class DashboardScreens
 {
     public const string HideNames = "hide-names";
+    /// <summary>
+    /// The Super Admin's changes (2026-11-08): resend an MSME's login details, deactivate an MSME, edit an MSME's profile, update a
+    /// failed payment. Not a screen: a permission, ticked per portal (the old Citizen Feedback and QC logins did not have them).
+    /// </summary>
+    public const string Edits = "edits";
     private static readonly PortalSystem[] All = [PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance];
 
     /// <summary>The pages a unit's details open from (registered MSMEs, history).</summary>
@@ -44,7 +49,9 @@ public static class DashboardScreens
         new("reports", "Reports", "Modules", null, All, ["/api/staff/reports"], ["/staff/reports"]),
         new("history", "MSME / Customer History", "Modules", null, All,
             ["/api/staff/history", .. UnitDetailApis], ["/staff/history", "/staff/msme-profile"]),
-        new("documents", "Documents", "Modules", null, All, ["/api/staff/documents"], ["/staff/documents"]),
+        // Main and Consultancy have staff documents (Admin → Documents/Videos); Surveillance has none.
+        new("documents", "Documents", "Modules", null, [PortalSystem.Main, PortalSystem.Consultancy], ["/api/staff/documents"], ["/staff/documents"]),
+        new(Edits, "Can make changes", "Permissions", "Resend login details, deactivate an MSME, edit a profile, update a failed payment", All, [], []),
         new(HideNames, "Hide agency and assessor names", "Privacy", "As the QC login did", All, [], []),
     ];
 
@@ -62,6 +69,12 @@ public static class DashboardScreens
 
     public static bool Has(ZedUser user, PortalSystem system, string key) =>
         !IsLimited(user) || Parse(user.Screens)!.Contains(KeyOf(system) + ":" + key);
+
+    /// <summary>A permission or privacy setting, not a screen (it opens nothing by itself).</summary>
+    public static bool IsSetting(string key) => key is HideNames or Edits;
+
+    /// <summary>A Dashboard Admin's changes (<see cref="Edits"/>): every Dashboard Admin with every screen (NULL), else ticked.</summary>
+    public static bool MayEdit(ZedUser user, PortalSystem system) => user.RoleId == (int)UserRole.SuperAdmin && Has(user, system, Edits);
 
     /// <summary>The old QC login, or a Dashboard Admin the Admin set to hide them.</summary>
     public static bool HidesNames(ZedUser user, PortalSystem system) =>
@@ -92,7 +105,7 @@ public static class DashboardScreens
 
     /// <summary>Whether a limited Dashboard Admin has anything on a portal (it is handed over there only then).</summary>
     public static bool HasAny(ZedUser user, PortalSystem system) =>
-        !IsLimited(user) || Parse(user.Screens)!.Any(g => g.StartsWith(KeyOf(system) + ":", StringComparison.OrdinalIgnoreCase) && !g.EndsWith(":" + HideNames, StringComparison.OrdinalIgnoreCase));
+        !IsLimited(user) || Parse(user.Screens)!.Any(g => g.StartsWith(KeyOf(system) + ":", StringComparison.OrdinalIgnoreCase) && !IsSetting(g[(g.IndexOf(':') + 1)..]));
 
     private static bool Under(string path, string prefix) =>
         path.Equals(prefix, StringComparison.OrdinalIgnoreCase) || path.StartsWith(prefix + "/", StringComparison.OrdinalIgnoreCase);

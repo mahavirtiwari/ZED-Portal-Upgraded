@@ -261,7 +261,7 @@ databases only, then delete `E:\ZedStaging\SqlData`.
    password) or in the MSME app (basic information, photos, ESG checklist, financial assistance, NC replies, final
    submit, password) is kept in `ZEDCS_V2_LIVE.dbo.V4MsmeEditHistory` (migration 0014) with the submitted values
    (passwords, OTPs and tokens masked; files as name and size), IP address and device. The MSME sees it under its name →
-   Edit History; MasterAdmin, SuperAdmin, Ministry, CitizenFeedback and QC see it in the MSME profile on all three portals.
+   Edit History; MasterAdmin, Ministry and the Dashboard Admin (role 10) see it in the MSME profile on all three portals.
 2. Build the package on the build machine: `deploy\Publish-Zed.ps1` (tests run first). Copy it to the server
    (`E:\Releases\zed-<version>`); it includes the `deploy\` scripts and the settings templates.
 3. Install from the package folder, dry run first, then the same with `-Apply`:

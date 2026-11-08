@@ -318,6 +318,17 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, consultancy: CONSULTANCY_MENU, surveillance: SURVEILLANCE_MENU };
 
 /** The system of this build for the staff pages that differ per portal (a token, so specs can render each variant). */
+/**
+ * The role as people say it (2026-11-08): Dashboard Admin (RoleId 10), NEFT Admin or MSME DFO (RoleId 6), otherwise the role
+ * name with spaces ("MasterAdmin" -> "Master Admin").
+ */
+export function staffRoleName(user: { roleId: number; role?: string | null; isNeftAdmin?: boolean } | null | undefined): string {
+  if (!user) return '';
+  if (user.roleId === 10) return 'Dashboard Admin';
+  if (user.roleId === 6) return user.isNeftAdmin ? 'NEFT Admin' : 'MSME DFO';
+  return (user.role ?? '').replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
 export const STAFF_SYSTEM = new InjectionToken<PortalSystem>('STAFF_SYSTEM', { providedIn: 'root', factory: () => PORTAL_SYSTEM });
 
 /** The menu of this build. */

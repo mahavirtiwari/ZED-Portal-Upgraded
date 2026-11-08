@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
-import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } from './staff-menu';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
@@ -176,7 +176,7 @@ export class StaffLayout {
   protected readonly menuOpen = signal(false);
   protected readonly userMenuOpen = signal(false);
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
-  protected readonly roleName = computed(() => (this.user()?.role ?? '').replace(/([a-z])([A-Z])/g, '$1 $2'));
+  protected readonly roleName = computed(() => staffRoleName(this.user()));
   protected readonly portalName =
     PORTAL_SYSTEM === 'consultancy' ? 'ZED Handholding' : PORTAL_SYSTEM === 'surveillance' ? 'ZED Surveillance' : 'ZED Certification';
 

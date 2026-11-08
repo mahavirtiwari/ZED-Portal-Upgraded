@@ -107,11 +107,13 @@ public sealed class LoginScopes(ISqlExecutor db, IMemoryCache cache, ILogger<Log
         LoginScope scope;
         try
         {
-            var row = (await db.QuerySqlAsync<Row>(Sql, new { UserId = userId }, ct)).FirstOrDefault();
-            // A Dashboard Admin of main handed over to this portal: its scope is main's (read-only connection).
-            if (row is null && roleId is (int)Zed.Core.Security.UserRole.SuperAdmin or (int)Zed.Core.Security.UserRole.StateCoordinator
+            // Dashboard Admin and MSME DFO are kept on main (2026-11-08: main first, so a copy of the row in this portal's
+            // database cannot narrow or widen a handed-over login); a login of this portal only (an old DFO) has its own row.
+            Row? row = null;
+            if (roleId is (int)Zed.Core.Security.UserRole.SuperAdmin or (int)Zed.Core.Security.UserRole.StateCoordinator
                 && Documents.SystemDatabases.Open(services, Zed.Core.Http.PortalSystem.Main) is { } main && !ReferenceEquals(main, db))
                 row = (await main.QuerySqlAsync<Row>(Sql, new { UserId = userId }, ct)).FirstOrDefault();
+            row ??= (await db.QuerySqlAsync<Row>(Sql, new { UserId = userId }, ct)).FirstOrDefault();
             scope = row is null ? LoginScope.None : new LoginScope(
                 row.SectorActivity?.Trim() is { Length: > 0 } s ? s : null,
                 LoginScope.Split(row.ScopeLevels),

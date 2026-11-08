@@ -213,7 +213,7 @@
               </div>
             </div>
             @if (d.kind === 'disable-level') {
-              <p class="muted mb-2">{{ d.agency.UserName }} won't be allotted new {{ d.level?.name }} assessments. Work already allotted continues.</p>
+              <zed-text key="staff.users.agencyLevel.disableNote" [values]="{ Agency: d.agency.UserName, Level: d.level?.name }" box="muted mb-2"><p class="muted mb-2">{{ d.agency.UserName }} won't be allotted new {{ d.level?.name }} assessments. Work already allotted continues.</p></zed-text>
             }
             @if (d.kind === 'mobile') {
               <div class="form-grid">

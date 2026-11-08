@@ -1,7 +1,7 @@
 @* Port of _FaApprovedReimbursementTemplate.cshtml (NeftController.UpdateStatus): to the MSME. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
-    <p style="font-size: 13px; margin-bottom: 0;">The reimbursement details towards the certification cost for Financial Assistance on <span>@CategoryOfCertificate</span> are as follows:</p>
+    <p style="font-size: 13px; margin-bottom: 0;">The reimbursement details towards the certification cost for @Scheme on <span>@CategoryOfCertificate</span> are as follows:</p>
     <StaffSchemeDetailTable Rows="@Rows" />
     <p style="font-size: 13px; margin-bottom: 0;">In case of any query, please mail us at: zed.support@qcin.org.</p>
     <p style="font-size: 13px; margin-bottom: 0px;">Thanks and Regards,</p>
@@ -11,6 +11,8 @@
 @code {
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";
     [Parameter] public string UnitName { get; set; } = "";
+    /// <summary>Financial Assistance (main) or Technology Upgradation (Consultancy).</summary>
+    [Parameter] public string Scheme { get; set; } = "Financial Assistance";
     [Parameter] public string CategoryOfCertificate { get; set; } = "";
     [Parameter] public string Certification { get; set; } = "";
     [Parameter] public string Amount { get; set; } = "";

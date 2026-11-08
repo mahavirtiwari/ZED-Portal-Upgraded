@@ -324,7 +324,8 @@ public sealed class SiteReviewController(
             (Is(record.SiteAssessorId, user.UserId) || Is(record.CoAssessorId, user.UserId)));
 
         return new SaDetailsResponse(
-            zedId, level, user.RoleName, msme,
+            // A Dashboard Admin set to hide names reads as the old QC login (the page hides the names and the original).
+            zedId, level, qc ? nameof(UserRole.QC) : user.RoleName, msme,
             // Surveillance onsite (meeting link) rows: SurLatitude/SurLongitude of the first site tour photo.
             da[9].FirstOrDefault() is { } ll ? Pick(ll, ["Latitude", "Longitude", "SaLatitude", "SaLongitude", "SurLatitude", "SurLongitude"]) : null,
             daPhotos.Where(p => p.Type == "Selfie").Select(p => p.Photo).ToList(),
@@ -394,6 +395,8 @@ public sealed class SiteReviewController(
     public async Task<ActionResult<OriginalResponse>> Original(string zedId, string certification, CancellationToken ct)
     {
         if (host.System != PortalSystem.Surveillance) return NotFound();
+        // The original certification shows its agency and assessors: not for a login that hides names (as the QC login).
+        if (DashboardScreens.HidesNames(CurrentUser, host.System)) return NotFound();
         var level = SiteLevel(certification);
         if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);

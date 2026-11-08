@@ -21,6 +21,7 @@ public sealed class PaymentCompletion(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     EmailAddresses addresses,
+    IPortalSettings settings,
     ILogger<PaymentCompletion> log)
 {
     /// <param name="postToErp">The legacy zero-amount path did not post to the ERP; the gateway path did.</param>
@@ -51,6 +52,7 @@ public sealed class PaymentCompletion(
                     [nameof(PaymentConfirmationEmail.CertOrReCert)] = certOrReCert,
                     [nameof(PaymentConfirmationEmail.Lines)] = lines,
                     [nameof(PaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+                    [nameof(PaymentConfirmationEmail.AppUrl)] = (await PortalLinks.ForPagesAsync(settings, portal.Value, ct)).GetValueOrDefault("playStore"),
                 });
                 var cc = await addresses.CopyAsync(EmailAddresses.RegistrationCc, ct);
                 await email.SendAsync(new EmailMessage(to, $"ZED {certOrReCert} Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);

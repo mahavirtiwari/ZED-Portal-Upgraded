@@ -9,6 +9,7 @@ import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 import { ClientPager, PagerComponent } from '../pager';
 import { ExcelToolsComponent } from '../excel-tools';
 import { PORTAL_SYSTEM } from '../../portal-system';
+import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 
 /** Which parameters the list shows (the buttons beside the search box). */
 type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsultancy' | 'sectors';
@@ -24,8 +25,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
  */
 @Component({
   selector: 'zed-staff-parameters',
-  imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent],
+  imports: [FormsModule, PagerComponent, MultiSelect, ExcelToolsComponent, PortalSwitchComponent],
   template: `
+    <!-- 2026-11-08: the Admin edits Surveillance's questionnaire from here too. -->
+    <zed-portal-switch [portals]="questionnairePortals" title="Questionnaire of" />
     <div class="page-head">
       <div>
         <h3 class="registration-title">Parameters ({{ levelName() }})</h3>
@@ -302,6 +305,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
   `,
 })
 export class ParametersPage {
+  protected readonly questionnairePortals = QUESTIONNAIRE_PORTALS;
   private readonly api = inject(MastersApi);
   private readonly legacyUrl = signal('');
 

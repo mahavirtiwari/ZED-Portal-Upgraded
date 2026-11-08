@@ -77,6 +77,7 @@ public sealed class SiteAllotmentEmails(
 
             await SendTemplateAsync<SurveillanceSiteAllotmentUnitEmail>(row.Text("EmailId"), subject, new()
             {
+                [nameof(SurveillanceSiteAllotmentUnitEmail.ZedId)] = zedId,
                 [nameof(SurveillanceSiteAllotmentUnitEmail.AgencyName)] = row.Text("AgencyName"),
                 [nameof(SurveillanceSiteAllotmentUnitEmail.SpocName)] = row.Text("SpocName"),
                 [nameof(SurveillanceSiteAllotmentUnitEmail.AgencyEmail)] = row.Text("AgencyEmailId"),

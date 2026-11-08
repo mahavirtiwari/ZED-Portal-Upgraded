@@ -17,8 +17,13 @@ export const ADMIN_PORTALS: readonly { key: AdminPortal; name: string }[] = [
 export const PORTAL_API_BASE: Record<AdminPortal, string> = { main: '', consultancy: '/Consultancy', surveillance: '/surveillance' };
 
 export const ALL_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
-/** The portals that have the home page banner (Upload Image). */
-export const BANNER_PORTALS: readonly AdminPortal[] = ['main', 'consultancy'];
+/**
+ * The portals that have the home page banner (Upload Image). 2026-11-08: main only (the Consultancy build has no MSME login
+ * page, so its banner was shown nowhere).
+ */
+export const BANNER_PORTALS: readonly AdminPortal[] = ['main'];
+/** The portals with their own questionnaire (parameters, requirements, checkpoints): ZED Certification and Surveillance. */
+export const QUESTIONNAIRE_PORTALS: readonly AdminPortal[] = ['main', 'surveillance'];
 /** The portals whose app has a site tour (Admin → Site Tour Sections): the site assessor app, the consultant app's milestone 1. */
 export const SITE_TOUR_PORTALS: readonly AdminPortal[] = ['main', 'consultancy', 'surveillance'];
 /** The NEFT Admin's portals: financial assistance (main) and Technology Upgradation (Consultancy). */
@@ -35,7 +40,10 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/site-tour-sections', portals: SITE_TOUR_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
-  { prefix: '/api/staff/settings/links', portals: ALL_PORTALS },
+  // Links (contact, app stores): main only (2026-11-08: the Consultancy and Surveillance builds have no page that shows them).
+  { prefix: '/api/staff/settings/links', portals: ['main'] },
+  { prefix: '/api/staff/masters/parameters', portals: QUESTIONNAIRE_PORTALS },
+  { prefix: '/api/staff/questionnaire', portals: QUESTIONNAIRE_PORTALS },
   { prefix: '/api/staff/accounts', portals: ALL_PORTALS },
   { prefix: '/api/staff/fees', portals: ALL_PORTALS },
   { prefix: '/api/staff/masters/page-settings', portals: BANNER_PORTALS },
@@ -76,6 +84,16 @@ export function neftPortals(user: CurrentUser | null | undefined): AdminPortal[]
   if (PORTAL_SYSTEM !== 'main' || user?.roleId !== 6) return null;
   if (user.isNeftAdmin || !user.screens) return [...NEFT_PORTALS];
   return NEFT_PORTALS.filter((p) => user.screens!.includes(`${p}:neft`));
+}
+
+/**
+ * A Dashboard Admin's permission or setting on a portal (2026-11-08): 'edits' (Can make changes) or 'hide-names'. A Dashboard
+ * Admin with every screen (no list) has the changes and shows names; other roles: false.
+ */
+export function dashboardSetting(user: CurrentUser | null | undefined, portal: AdminPortal, key: 'edits' | 'hide-names'): boolean {
+  if (user?.roleId !== 10) return false;
+  if (!user.screens) return key === 'edits';
+  return user.screens.includes(`${portal}:${key}`);
 }
 
 /** A Dashboard Admin (Users.RoleId 10) on the main portal: it opens the other portals' screens from here. */
@@ -215,7 +233,7 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
 @Component({
   selector: 'zed-portal-switch',
   template: `
-    @if (service.enabled) {
+    @if (service.enabled && shown().length > 1) {
       <div class="portal-switch" role="group" aria-label="Portal">
         <span class="ps-label">{{ title() }}</span>
         @for (p of shown(); track p.key) {

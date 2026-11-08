@@ -292,6 +292,11 @@ const API = '/api/staff/settings/levels';
                         <div>
                           <input id="lv-format" name="certNoFormat" class="form-control lv-mono" maxlength="100" [(ngModel)]="e.certNoFormat" />
                           <small class="muted d-block">e.g. <code>{{ preview(e.certNoFormat, e.code, null) }}</code></small>
+                          @if (builtIn(e.code)) {
+                            <!-- 2026-11-08: the legacy procedures number Bronze, Silver and Gold certificates and set their first surveillance. -->
+                            <small class="lv-builtin d-block" data-builtin-note>Bronze, Silver and Gold certificates keep the number the certification gives them (date_ZED number) and
+                              their usual first surveillance date; these formats apply to ZED-X and the levels you add.</small>
+                          }
                         </div>
                         <label for="lv-format-m">Manufacturing units</label>
                         <div>
@@ -435,6 +440,7 @@ const API = '/api/staff/settings/levels';
     }
   `,
   styles: `
+    .lv-builtin { margin-top: 4px; font-size: 12px; color: #8a6100; background: #fff4d6; border-radius: 6px; padding: 4px 8px; }
     .page-head { align-items: center; }
     .lv-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #5f6f70; font-size: 14px; margin: -4px 0 14px; }
     .lv-summary strong { color: #23474a; }
@@ -535,6 +541,10 @@ const API = '/api/staff/settings/levels';
   `,
 })
 export class CertificationLevelsPage {
+  /** Bronze, Silver and Gold: numbered by the legacy procedures (the format fields do not apply to them). */
+  protected builtIn(code: string | null | undefined): boolean {
+    return code === 'Bronze' || code === 'Silver' || code === 'Gold';
+  }
   private readonly portals = inject(AdminPortalService);
   private readonly http = inject(HttpClient);
 

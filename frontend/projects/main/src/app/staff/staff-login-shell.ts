@@ -1,7 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { PortalLinksService } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { PORTAL_LABELS } from '../portal-labels';
+import { PublicLevels } from '../msme/shared/levels';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password). 2026-11-07 redesign (approved): a white
@@ -30,7 +31,7 @@ import { PORTAL_LABELS } from '../portal-labels';
             <p class="brand-title">Zero Defect Zero Effect</p>
             <p class="brand-sub">{{ portalName }} — staff, agency and assessor portal</p>
             <div class="brand-levels">
-              @for (l of levels; track l) {
+              @for (l of levels(); track l) {
                 <span class="brand-chip">{{ l }}</span>
               }
             </div>
@@ -117,8 +118,10 @@ export class StaffLoginShell {
   protected readonly links = inject(PortalLinksService);
   protected readonly year = new Date().getFullYear();
   protected readonly portalName = PORTAL_LABELS.portalName;
-  /** The levels this portal works with (Consultancy: handholding of Silver and Gold). */
-  protected readonly levels = PORTAL_SYSTEM === 'consultancy' ? ['Silver', 'Gold'] : ['Bronze', 'Silver', 'Gold', 'ZED-X'];
+  private readonly publicLevels = inject(PublicLevels);
+  /** Consultancy: handholding of Silver and Gold; otherwise the enabled levels as the Admin named them. */
+  protected readonly levels = computed(() =>
+    PORTAL_SYSTEM === 'consultancy' ? ['Silver', 'Gold'] : (this.publicLevels.names() ?? ['Bronze', 'Silver', 'Gold', 'ZED-X']));
   protected readonly points =
     PORTAL_SYSTEM === 'consultancy'
       ? ['Handholding milestones and reviews', 'Dashboards and reports', 'Secure sign-in for authorised users']

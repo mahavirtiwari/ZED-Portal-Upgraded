@@ -44,21 +44,24 @@ public sealed class ReportsController(ISqlExecutor db, PortalHost host, IConfigu
     [HttpGet]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
     public IEnumerable<ReportItem> List() =>
-        ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).Select(r => new ReportItem(r.Id, r.Name));
+        // An MSME DFO without this portal's NEFT list has none of its reports (2026-11-08).
+        MayUseReports() ? ReportCatalog.For(host.System, RoleId, CurrentUser.SubRoles ?? []).Select(r => new ReportItem(r.Id, r.Name)) : [];
+
+    private bool MayUseReports() => RoleId != (int)UserRole.StateCoordinator || Neft.CoordinatorAreas.HasList(CurrentUser, host.System);
 
     /// <summary>Runs an allow-listed report with the signed-in user's RoleId/UserId and returns it as .xlsx.</summary>
     [HttpGet("{id}/download")]
     [StaffRoles(UserRole.SuperAdmin, UserRole.CitizenFeedback, UserRole.Ministry, UserRole.Agency, UserRole.StateCoordinator)]
     public async Task<IActionResult> Download(string id, CancellationToken ct)
     {
-        if (ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report) return NotFound();
+        if (!MayUseReports() || ReportCatalog.Find(host.System, RoleId, CurrentUser.SubRoles ?? [], id) is not { } report) return NotFound();
 
         ResultSets sets;
         try
         {
             // Same parameters as the legacy action; UlbCode was always empty. The procedures branch on RoleId
             // and filter by Userid (agency allotments, Ministry state), so both come from the sign-in cookie.
-            sets = await db.QueryProcMultipleAsync(report.Procedure, new { RoleId = RoleId.ToString(), Userid = UserId, UlbCode = (string?)null }, ct);
+            sets = await db.QueryProcMultipleAsync(report.Procedure, new { RoleId = (report.RunAsRole ?? RoleId).ToString(), Userid = UserId, UlbCode = (string?)null }, ct);
         }
         catch (SqlException ex) when (ex.Number == 2812)
         {

@@ -159,7 +159,7 @@ export class FaSubmissionsPage {
   // ----- dialogs -----
 
   protected async openAllot(row: FaSubmission): Promise<void> {
-    await this.openWithOptions(row, 'allot', () => this.api.agencies(row.ZedId));
+    await this.openWithOptions(row, 'allot', () => this.api.agencies(row.ZedId, row.CertificationType));
   }
 
   protected async openAccept(row: FaSubmission): Promise<void> {

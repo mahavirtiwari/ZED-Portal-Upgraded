@@ -131,10 +131,10 @@ public sealed class FinancialAssistanceController(
     /// <summary>GET api/staff/schemes/fa/agencies?zedId= — agencies with FinancialVerification the unit can be allotted to.</summary>
     [HttpGet("agencies")]
     [StaffRoles(UserRole.MasterAdmin)]
-    public async Task<ActionResult<IReadOnlyList<Option>>> Agencies([FromQuery] string? zedId, CancellationToken ct)
+    public async Task<ActionResult<IReadOnlyList<Option>>> Agencies([FromQuery] string? zedId, [FromQuery] string? certification, CancellationToken ct)
     {
         if (!SchemeRows.IsZedId(zedId)) return this.Problem400("Invalid ZED ID.");
-        return (await AgencyOptions(zedId!, ct)).ToList();
+        return (await AgencyOptions(zedId!, FaApplications.Canonical(certification), ct)).ToList();
     }
 
     public sealed record AllotRequest(string? ZedId, string? Certification, string? AgencyUserId);
@@ -154,7 +154,7 @@ public sealed class FinancialAssistanceController(
             if (app is null) return NotFound();
             if (app.Status != FaStatus.New) return this.Problem400("This application can no longer be allotted.");
 
-            var agency = (await AgencyOptions(zedId, ct)).FirstOrDefault(a => SchemeRows.Same(a.UserId, req.AgencyUserId));
+            var agency = (await AgencyOptions(zedId, cert, ct)).FirstOrDefault(a => SchemeRows.Same(a.UserId, req.AgencyUserId));
             if (agency is null) return this.Problem400("Please select assessment agency.");
 
             if (await Exec("SP_FINANCIAL_ASSISTANCE_ALLOT_TO_AGENCY",
@@ -273,11 +273,15 @@ public sealed class FinancialAssistanceController(
         return null;
     }
 
-    private async Task<IEnumerable<Option>> AgencyOptions(string zedId, CancellationToken ct) =>
-        (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0]
-        .Where(r => IsTrue(r, "FinancialVerification"))
+    /// <summary>With the level (2026-11-08): not the agencies the Master Admin disabled for it (Agency level allocation).</summary>
+    private async Task<IEnumerable<Option>> AgencyOptions(string zedId, string? certification, CancellationToken ct)
+    {
+        var disabled = certification is null ? [] : await AgencyLevels.DisabledAsync(db, certification, log, ct);
+        return (await db.QueryProcMultipleAsync("SP_ASSESSMENT_AGENCIES_TO_ALLOT", new { ZedId = zedId }, ct))[0]
+        .Where(r => IsTrue(r, "FinancialVerification") && !disabled.Contains(r.Text("UserId").Trim()))
         .Select(r => new Option(r.Text("UserId"), r.Text("UserName")))
         .Where(o => o.UserId.Length > 0);
+    }
 
     private async Task<IEnumerable<Option>> AssessorOptions(CancellationToken ct) =>
         (await db.QueryProcMultipleAsync("SP_ASSESSMENT_ASSESSORS_TO_ALLOT", new { UserId, RoleId = RoleId.ToString() }, ct))[0]

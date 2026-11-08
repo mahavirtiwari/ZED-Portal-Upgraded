@@ -1,3 +1,4 @@
+import { ContentTextComponent } from '../../content/content-text';
 import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -21,7 +22,7 @@ const MAX_ROWS = 20;
  */
 @Component({
   selector: 'zed-msme-entry',
-  imports: [RouterLink, EntryField, AlertDialog],
+  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent],
   templateUrl: './entry-page.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `

@@ -31,6 +31,24 @@ public static class DashboardAdmins
 }
 
 /// <summary>
+/// On a Super Admin's change (resend, deactivate, edit profile, update payment): a Dashboard Admin needs "Can make changes"
+/// (<see cref="DashboardScreens.Edits"/>) on this portal; other roles the action allows are not affected.
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class DashboardEditAttribute : Attribute, IAuthorizationFilter
+{
+    public const string NoAccess = "You do not have permission to make changes. Please ask the Admin.";
+
+    public void OnAuthorization(AuthorizationFilterContext context)
+    {
+        if (ZedUser.FromPrincipal(context.HttpContext.User) is not { RoleId: (int)UserRole.SuperAdmin } user) return;
+        var system = context.HttpContext.RequestServices.GetRequiredService<PortalHost>().System;
+        if (!DashboardScreens.MayEdit(user, system))
+            context.Result = new ObjectResult(new ProblemDetails { Title = NoAccess, Status = StatusCodes.Status403Forbidden }) { StatusCode = StatusCodes.Status403Forbidden };
+    }
+}
+
+/// <summary>
 /// Global filter: a Dashboard Admin with ticked screens (<see cref="DashboardScreens.IsLimited"/>) calls only the staff APIs of
 /// those screens on this portal; anything else answers 403, as for a screen of another role.
 /// </summary>

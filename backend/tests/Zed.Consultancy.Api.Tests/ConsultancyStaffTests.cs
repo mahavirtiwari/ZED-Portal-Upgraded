@@ -33,7 +33,8 @@ internal static class ConsultancyLogin
     {
         // One Admin: the Admin works here through the main portal's hand-over, which issues the same cookie as this test
         // sign-in; a password sign-in of the Admin is refused here (AdminSignIn test below).
-        if (Users.TryGetValue(userId, out var role) && role == 1)
+        // The Dashboard Admin (role 10) likewise signs in on main and opens this portal from there (2026-11-08).
+        if (Users.TryGetValue(userId, out var role) && role is 1 or 10)
             return await StaffTestSignIn.BrowserAsync(host.WithTestSignIn(), userId.ToUpperInvariant(), role);
         var client = await host.CreateBrowserAsync();
         (await client.PostAsJsonAsync("/api/staff/auth/login", new { userId, password = "Right#Pass1" })).EnsureSuccessStatusCode();

@@ -34,20 +34,21 @@ public static class DocumentRoles
 
     public sealed record RoleOption(string Key, string Label);
 
-    /// <summary>The roles of a system, in the order the page lists them.</summary>
+    /// <summary>
+    /// The roles of a system, in the order the page lists them. 2026-11-08: one "Dashboard Admins" (migration 0058 moved the
+    /// old Citizen Feedback and QC audiences to it); their keys stay readable for any left-over login.
+    /// </summary>
     public static IReadOnlyList<RoleOption> For(PortalSystem system) => system switch
     {
         PortalSystem.Consultancy =>
         [
             new("masteradmin", "Master Admin"), new("agency", "Consultant Organisations"), new("assessor", "Consultants / Experts"),
-            new("coordinator", "State Coordinators"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard - Super Admin"),
-            new("citizenfeedback", "Dashboard - Citizen Feedback"), new("qc", "Dashboard - QC"),
+            new("coordinator", "MSME DFO"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
         ],
         _ =>
         [
             new(Msme, "MSME Enterprises"), new("masteradmin", "Master Admin"), new("agency", "Assessment Agencies"), new("assessor", "Assessors"),
-            new("coordinator", "MSME DFO / State"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard - Super Admin"),
-            new("citizenfeedback", "Dashboard - Citizen Feedback"), new("qc", "Dashboard - QC"),
+            new("coordinator", "MSME DFO / NEFT Admin"), new("ministry", "Ministry of MSME"), new("superadmin", "Dashboard Admins"),
         ],
     };
 

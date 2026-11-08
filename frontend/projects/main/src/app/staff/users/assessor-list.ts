@@ -1,3 +1,4 @@
+import { ContentTextComponent } from '../../content/content-text';
 import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -43,7 +44,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
  */
 @Component({
   selector: 'zed-staff-assessor-list',
-  imports: [FormsModule, RouterLink, PagerComponent, DatePipe],
+  imports: [FormsModule, RouterLink, PagerComponent, DatePipe, ContentTextComponent],
   template: `
     <div class="page-head">
       <div>
@@ -220,8 +221,9 @@ export function assessorTypeLabel(type: string | null | undefined): string {
             @if (d.kind === 'block') {
               <form (ngSubmit)="block()" novalidate>
                 <div class="modal-body">
-                  <p class="muted">{{ d.row.UserName }} ({{ d.row.UserId }}) can't sign in on the web or the app, and can't be allotted or carry out
-                    any {{ consultancy ? 'consultancy' : 'assessment' }} until unblocked.</p>
+                  <p class="muted"><strong>{{ d.row.UserName }} ({{ d.row.UserId }})</strong></p>
+                  <zed-text key="staff.users.assessorBlock.note" box="muted"><p class="muted">The login can't sign in on the web or the app, and can't be allotted or carry out
+                    any {{ consultancy ? 'consultancy' : 'assessment' }} until unblocked.</p></zed-text>
                   @if (d.open) {
                     <div class="alert alert-warning py-2" role="status" data-open-warning>
                       {{ d.open }} {{ consultancy ? 'case' : 'assessment' }}{{ d.open === 1 ? '' : 's' }} allotted to this {{ consultancy ? 'consultant' : labels.assessor.toLowerCase() }}

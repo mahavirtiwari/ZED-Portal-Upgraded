@@ -86,7 +86,7 @@ Blocking still has to be done on both sides (see LIVE-HARDENING).
 - **MSMEs:** *Forgot password* on the MSME login (web) or in the app. The link sets a new password and its hash.
 - **Staff, agencies, assessors and consultants:** *Forgot password?* on the staff login of their portal, or a reset link
   sent by their administrator (see "Staff password reset" below). Both set a new password and its hash. MasterAdmin
-  and SuperAdmin accounts get their link from another MasterAdmin.
+  accounts get their link from another MasterAdmin.
 
 ## Staff password reset
 
@@ -105,7 +105,7 @@ each portal resets the accounts of its own Users table (Consultancy keeps its ow
   changed" mail follows.
 - **Limits:** 5 requests per 15 minutes per address, and `StaffPasswordReset:MaxRequestsPerHour` (3) self-service links
   per account and hour (more requests get the same answer and send nothing).
-- **Excluded roles:** `StaffPasswordReset:ExcludedRoles` (default `7,10`, MasterAdmin and SuperAdmin) cannot reset with
+- **Excluded roles:** `StaffPasswordReset:ExcludedRoles` (default `7`, MasterAdmin; the Dashboard Admin, RoleId 10, resets like other staff since 2026-11-08) cannot reset with
   their e-mail account alone. Another MasterAdmin sends them a link (menu *Password Reset Link*). Add `1` to exclude
   Admin accounts too.
 - **Links sent by an administrator:** *Reset Link* in the user screens (MasterAdmin: agencies, assessors/consultants;
@@ -142,7 +142,7 @@ kept every code in clear (`Users.PwdCode`, `ForgotPwdLinks`), never expired them
 calls them.
 
 - **Where links are sent:** "Forgot password" on the MSME login, the staff "Resend Details" (Registered MSMEs,
-  SuperAdmin) and the MSME app's `Msme/ResetPassword`. The mail goes to the unit's pledge e-mail (`Users.Email` when
+  Dashboard Admin with "Can make changes") and the MSME app's `Msme/ResetPassword`. The mail goes to the unit's pledge e-mail (`Users.Email` when
   there is none), with `{PublicBaseUrl}/msme/reset-password#token=…`.
 - **The link:** 256-bit token in the URL fragment, only its SHA-256 stored in `dbo.V4PasswordResets`, works once for
   `MsmePasswordReset:ValidMinutes` (60), replaced by a newer link. An MSME link cannot be used on the staff reset and
@@ -174,7 +174,7 @@ A different value ends the session: the cookie is removed and the API answers 40
   an account locked by wrong passwords ("ACCOUNT LOCKED" from the login procedure, staff and MSME);
 - an edit of a staff login (User Management, assessor) and of an agency (its verification types are its sub-roles; its
   assessors' sessions end too, as the procedure copies them);
-- an MSME deactivated by the SuperAdmin.
+- an MSME deactivated by the Dashboard Admin.
 
 On main the copy of the account in ZED_SURVEILLANCE gets a new value too (main's procedures maintain agencies and
 assessors there). The Admin's sessions on the Consultancy and Surveillance portals (the hand-over from main) compare

@@ -1,3 +1,4 @@
+import { ContentTextComponent } from '../../content/content-text';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -31,7 +32,7 @@ interface Dialog {
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent],
   templateUrl: './agencies.html',
   styles: `
     .ag-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }

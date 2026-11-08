@@ -31,7 +31,7 @@
     @case ('udyam') {
       <section class="reg-card reg-narrow">
         <h3 class="registration-title">Udyam Registration Validation</h3>
-        <p class="reg-lead">Enter the Udyam Registration Number and mobile number exactly as given at the time of Udyam Registration.</p>
+        <zed-text key="msme.registration.udyamNote" box="reg-lead"><p class="reg-lead">Enter the Udyam Registration Number and mobile number exactly as given at the time of Udyam Registration.</p></zed-text>
         <form (ngSubmit)="submitUdyam()" novalidate>
           <div class="reg-fields">
             <div class="reg-field">
@@ -255,10 +255,10 @@
           @if (result()?.unitName) { <p class="muted mb-0">{{ result()?.unitName }}</p> }
         </div>
         @if (result() && !result()!.emailSent) {
-          <div class="alert alert-warning">
+          <zed-text key="msme.registration.emailNotSent" box="alert alert-warning"><div class="alert alert-warning">
             We could not send the confirmation email right now. Your registration is complete; please note your ZED ID
             and use “Forgot Password” on the login page if you do not receive your password.
-          </div>
+          </div></zed-text>
         }
         <div class="label-highlight reg-success-next">
           <zed-text key="msme.registration.success" />
@@ -267,19 +267,19 @@
         <!-- The ZED MSME app: scan a code with the phone's camera, or tap a badge. -->
         <section class="reg-app" aria-labelledby="reg-app-h">
           <h4 id="reg-app-h">Get the ZED MSME mobile app</h4>
-          <p class="muted">Scan with your phone's camera to install the app, then sign in with your ZED ID.</p>
+          <zed-text key="msme.registration.appDownload" box="muted"><p class="muted">Scan with your phone's camera to install the app, then sign in with your ZED ID.</p></zed-text>
           <div class="reg-app-codes">
             <!-- Admin → Links: each store can be switched off. -->
             @if (links.url('playStore'); as u) {
               <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
-                <img class="reg-qr" src="/Images/qr-zed-msme-android.svg" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
+                <img class="reg-qr" src="/api/public/links/playStore/qr" width="132" height="132" alt="QR code: ZED MSME on Google Play" />
                 <img src="/Images/google-play.png" width="130" alt="Get it on Google Play" />
                 <span>Android</span>
               </a>
             }
             @if (links.url('appStore'); as u) {
               <a class="reg-app-code" [href]="u" target="_blank" rel="noopener">
-                <img class="reg-qr" src="/Images/qr-zed-msme-ios.svg" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
+                <img class="reg-qr" src="/api/public/links/appStore/qr" width="132" height="132" alt="QR code: ZED MSME on the App Store" />
                 <img src="/Images/app-store.png" width="130" alt="Download on the App Store" />
                 <span>iPhone</span>
               </a>
@@ -333,7 +333,7 @@
         <div class="modal-body reg-otp-box">
           <div class="reg-modal-icon" aria-hidden="true"><img src="/Images/svgicons/email.svg" alt="" /></div>
           <h3 class="reg-modal-title" id="otpTitle">Enter OTP</h3>
-          <p class="reg-otp-sent">OTP is successfully sent to <strong>{{ email }}</strong>, if not received, please check your junk/spam.</p>
+          <zed-text key="msme.registration.otpSent" [values]="{ Email: email }" box="reg-otp-sent"><p class="reg-otp-sent">OTP is successfully sent to <strong>{{ email }}</strong>, if not received, please check your junk/spam.</p></zed-text>
           <input name="otp" class="form-control reg-otp-input" maxlength="6" inputmode="numeric" autocomplete="one-time-code"
                  placeholder="••••••" aria-label="OTP" [(ngModel)]="otp" required />
           @if (resendIn() > 0) {

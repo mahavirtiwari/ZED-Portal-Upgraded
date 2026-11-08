@@ -52,6 +52,7 @@ public sealed class ConsultancyAllotmentEmails(
             };
 
             var unit = Dates();
+            unit[nameof(ConsultancyCoAllotmentUnitEmail.ZedId)] = zedId;
             unit[nameof(ConsultancyCoAllotmentUnitEmail.AgencyName)] = row.Text("AgencyName");
             unit[nameof(ConsultancyCoAllotmentUnitEmail.SpocName)] = row.Text("SpocName");
             unit[nameof(ConsultancyCoAllotmentUnitEmail.AgencyEmail)] = row.Text("AgencyEmailId");

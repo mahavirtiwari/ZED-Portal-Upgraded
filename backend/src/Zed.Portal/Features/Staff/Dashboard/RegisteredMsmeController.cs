@@ -91,7 +91,9 @@ public sealed class RegisteredMsmeController(
         var sets = await db.QueryProcMultipleAsync("SP_DASHBOARD_REGISTERED_MSME", parameters, ct);
 
         var baseColumns = ColumnsFor(host.System);
-        var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) ? [.. baseColumns, .. AdminColumns] : baseColumns;
+        // Agency and Udyam columns: not for a Dashboard Admin set to hide agency and assessor names (the old QC login's rule).
+        var columns = IsRole(UserRole.SuperAdmin, UserRole.MasterAdmin) && !DashboardScreens.HidesNames(CurrentUser, host.System)
+            ? [.. baseColumns, .. AdminColumns] : baseColumns;
         var total = sets[1].FirstOrDefault();
         return new ListResponse(DashboardFilters.Pick(await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct), columns), DashboardFilters.Int(total, "TotalCounts"), pageNo, pageSize);
     }
@@ -103,6 +105,7 @@ public sealed class RegisteredMsmeController(
     /// </summary>
     [HttpPost("{zedId}/resend")]
     [StaffRoles(UserRole.SuperAdmin)]
+    [Users.DashboardEdit]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<ActionResult<MessageResponse>> Resend(string zedId, [FromServices] Msme.MsmePasswordResets resets, CancellationToken ct)
     {
@@ -123,6 +126,7 @@ public sealed class RegisteredMsmeController(
     /// </summary>
     [HttpPost("{zedId}/disable")]
     [StaffRoles(UserRole.SuperAdmin)]
+    [Users.DashboardEdit]
     public async Task<ActionResult<MessageResponse>> Disable(string zedId, DisableRequest req, CancellationToken ct)
     {
         if (!DashboardFilters.IsZedId(zedId)) return this.Problem400("Invalid ZED ID.");

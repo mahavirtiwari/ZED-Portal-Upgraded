@@ -47,7 +47,8 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
             "SP_SEND_MAIL_AUTO_ALLOT_CONSULTING_ORGANISATION_TU",
         ],
         [PortalSystem.Surveillance] =
-        ["SP_SEND_AUTO_MAIL_FOR_AUTO_ALLOT_AGENCY", "SP_SEND_AUTO_MAIL_TO", "SP_SEND_MAIL_AUTO_REJECT_NC_FROM_PARTIAL_REJECTION"],
+        // The second procedure's name has a space in it (as in the database; the outbox records it so).
+        ["SP_SEND_AUTO_MAIL_FOR_AUTO_ALLOT_AGENCY", "SP_SEND_AUTO_MAIL_TO UNIT_FOR_ASSESSOR_ALLOCATION", "SP_SEND_MAIL_AUTO_REJECT_NC_FROM_PARTIAL_REJECTION"],
     };
 
     /// <summary>
@@ -70,6 +71,65 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     ];
 
     private const string General = "MSME and general", Staff = "Staff and agencies", App = "MSME app";
+
+    private static readonly PortalSystem[] MainOnly = [PortalSystem.Main];
+
+    /// <summary>
+    /// The portals whose host sends each Razor template (2026-11-08; the others are every portal). An edit is read from the
+    /// sending host's database, so a template is listed only there: e.g. the handholding and surveillance payment mails are
+    /// sent by the main host (the MSME pays on main) and edited under ZED Certification.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, PortalSystem[]> TemplateSystems = new Dictionary<string, PortalSystem[]>
+    {
+        ["ConsultancyCoAllotmentUnitEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyCoAllotmentConsultantEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyCoAllotmentRejectionEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyMilestoneReportEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyMilestoneRejectionEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyTuAllotAgencyEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyTuAllotDfoEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyTuAllotDfoMsmeEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyTuAgencyRejectedEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyTuRejectedEmail"] = [PortalSystem.Consultancy],
+        ["ConsultancyPaymentConfirmationEmail"] = MainOnly,
+        ["ConsultancyAllocationEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
+        ["SurveillanceSiteAllotmentUnitEmail"] = [PortalSystem.Surveillance],
+        ["SurveillanceSiteAllotmentAssessorEmail"] = [PortalSystem.Surveillance],
+        ["StaffPasswordResetMainPortalEmail"] = [PortalSystem.Surveillance],
+        ["SurveillancePaymentConfirmationEmail"] = MainOnly,
+        ["ContactQueryEmail"] = MainOnly,
+        ["EmailChangeOtpEmail"] = MainOnly,
+        ["EmailChangedEmail"] = MainOnly,
+        ["RegistrationOtpEmail"] = MainOnly,
+        ["ResetPasswordEmail"] = MainOnly,
+        ["PledgeCertificateEmail"] = MainOnly,
+        ["PanCorrectedEmail"] = MainOnly,
+        ["PaymentConfirmationEmail"] = MainOnly,
+        ["MsmeWebSubmissionEmail"] = MainOnly,
+        ["MsmeSchemeFaSubmittedEmail"] = MainOnly,
+        ["MsmeSchemeTuSubmittedEmail"] = MainOnly,
+        ["StaffBronzeAssessmentEmail"] = MainOnly,
+        ["StaffSchemeFaAllotAgencyEmail"] = MainOnly,
+        ["StaffSchemeFaAllotAssessorEmail"] = MainOnly,
+        ["StaffSchemeFaAgencyRejectedEmail"] = MainOnly,
+        ["StaffSchemeFaApprovedEmail"] = MainOnly,
+        ["StaffSchemeFaRejectedEmail"] = MainOnly,
+        ["StaffMonitoringCertificateEmail"] = [PortalSystem.Main, PortalSystem.Surveillance],
+        ["StaffMonitoringRejectionEmail"] = [PortalSystem.Main, PortalSystem.Surveillance],
+        ["StaffAgencyRegisteredEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
+        ["StaffAssessorRegisteredEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
+        ["StaffNeftReimbursementEmail"] = [PortalSystem.Main, PortalSystem.Consultancy],
+    };
+
+    /// <summary>Names clearer than the class names (2026-11-08).</summary>
+    private static readonly IReadOnlyDictionary<string, string> DisplayNames = new Dictionary<string, string>
+    {
+        ["StaffBronzeAssessmentEmail"] = "Agency level allocation (a level enabled or disabled)",
+        ["StaffLoginDetailsEmail"] = "Login details (new staff login, NEFT Admin, MSME DFO, Dashboard Admin, sub-user)",
+    };
+
+    /// <summary>Fields never offered in a subject: a password or a one-time link must not be in a subject line.</summary>
+    private static readonly HashSet<string> NotInSubject = new(StringComparer.OrdinalIgnoreCase) { "Password", "SetPasswordUrl", "ResetUrl" };
 
     /// <summary>Razor components that are parts of other e-mails, not e-mails.</summary>
     private static readonly HashSet<string> NotEmails = ["EmailLayout", "StaffSchemeDetailTable", "ConsultancyCoAllotmentDates", "StaffSetPasswordNote", "_Imports"];
@@ -106,6 +166,8 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
         var known = c.Placeholders.Concat([EmailPlaceholders.StandardBody, EmailPlaceholders.StandardSubject]).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var unknown = EmailPlaceholders.Used(req.Subject).Concat(EmailPlaceholders.Used(req.BodyHtml)).FirstOrDefault(p => !known.Contains(p));
         if (unknown is not null) return this.Problem400($"{{{{{unknown}}}}} is not a field of this e-mail.");
+        if (EmailPlaceholders.Used(req.Subject).FirstOrDefault(NotInSubject.Contains) is { } secret)
+            return this.Problem400($"{{{{{secret}}}}} cannot be used in the subject.");
         if (req.BodyHtml is { } body && ScriptPattern().IsMatch(body)) return this.Problem400("Scripts are not allowed in e-mails.");
 
         // The standard body as it was offered is not stored: only a changed body is.
@@ -140,8 +202,10 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     {
         var portal = typeof(EmailTemplatesController).Assembly.GetTypes()
             .Where(t => t.Namespace == "Zed.Portal.Templates" && typeof(IComponent).IsAssignableFrom(t) && !t.IsAbstract && !NotEmails.Contains(t.Name))
-            .Select(t => new Entry(t.Name, Words(t.Name.EndsWith("Email", StringComparison.Ordinal) ? t.Name[..^5] : t.Name), GroupOf(t.Name), false,
-                Parameters(t).Select(p => p.Name).ToArray(), t))
+            .Where(t => !TemplateSystems.TryGetValue(t.Name, out var systems) || systems.Contains(host.System))
+            .Select(t => new Entry(t.Name, DisplayNames.GetValueOrDefault(t.Name) ?? Words(t.Name.EndsWith("Email", StringComparison.Ordinal) ? t.Name[..^5] : t.Name), GroupOf(t.Name), false,
+                // A list (e.g. payment lines) cannot be a {{field}}.
+                Parameters(t).Where(p => p.PropertyType == typeof(string) || !typeof(System.Collections.IEnumerable).IsAssignableFrom(p.PropertyType)).Select(p => p.Name).ToArray(), t))
             .Concat(OtherMails.Where(m => m.Systems.Contains(host.System)).Select(m => new Entry(m.Key, m.Name, m.Group, false, m.Placeholders, null)));
         var database = DbMailers.GetValueOrDefault(host.System, []).Select(p =>
             new Entry(DbPrefix + p, Words(p.Replace("SP_", "", StringComparison.Ordinal).Replace('_', ' ').ToLowerInvariant()), "Database mails", true, [], null));
@@ -161,6 +225,11 @@ public sealed partial class EmailTemplatesController(IEmailTemplateStore store, 
     private async Task<string> DefaultBodyAsync(Entry c)
     {
         if (c.Component is null || renderer is not HtmlTemplateRenderer html) return "{{" + EmailPlaceholders.StandardBody + "}}";
+        // A template with variants (yes/no, a number, a list, or a password vs a set-password link) starts from {{StandardBody}}:
+        // drawn with placeholders it would keep one variant only, and a saved edit would lose the others (2026-11-08).
+        var parameters = Parameters(c.Component).ToList();
+        if (parameters.Any(p => p.PropertyType != typeof(string)) || parameters.Any(p => p.Name == "SetPasswordUrl"))
+            return "{{" + EmailPlaceholders.StandardBody + "}}";
         var values = new Dictionary<string, object?>();
         foreach (var p in Parameters(c.Component))
             values[p.Name] = p.PropertyType == typeof(string) ? "{{" + p.Name + "}}" : p.PropertyType.IsValueType ? Activator.CreateInstance(p.PropertyType) : null;

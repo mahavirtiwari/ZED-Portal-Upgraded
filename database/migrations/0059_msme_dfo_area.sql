@@ -22,11 +22,12 @@ IF COL_LENGTH('dbo.Users', 'ScopeStates') IS NOT NULL AND COL_LENGTH('dbo.Users'
    AND NOT EXISTS (SELECT 1 FROM sys.extended_properties WHERE class = 1 AND minor_id = 0
                    AND major_id = OBJECT_ID(N'dbo.Users') AND name = N'V4_0059_MsmeDfoArea')
 BEGIN
-    DECLARE @portal varchar(20) = CASE DB_NAME() WHEN N'ZED_CONSULTANT' THEN 'consultancy' WHEN N'ZED_SURVEILLANCE' THEN 'surveillance' ELSE 'main' END;
+    -- NEFT lists exist on main and Consultancy only (2026-11-08: none is given on Surveillance).
+    DECLARE @portal varchar(20) = CASE DB_NAME() WHEN N'ZED_CONSULTANT' THEN 'consultancy' WHEN N'ZED_SURVEILLANCE' THEN NULL ELSE 'main' END;
     EXEC sp_executesql N'
         UPDATE dbo.Users
         SET ScopeStates = ISNULL(ScopeStates, NULLIF(LTRIM(RTRIM(StateCode)), '''')),
-            ScreenAccess = ISNULL(ScreenAccess, @portal + '':neft'')
+            ScreenAccess = CASE WHEN @portal IS NULL THEN ScreenAccess ELSE ISNULL(ScreenAccess, @portal + '':neft'') END
         WHERE RoleId = 6 AND ISNULL(StateCode, '''') <> ''ALL'';
         PRINT CONCAT(DB_NAME(), N'': '', @@ROWCOUNT, N'' MSME DFO login(s) given their state and NEFT list.'');', N'@portal varchar(20)', @portal = @portal;
     EXEC sys.sp_addextendedproperty @name = N'V4_0059_MsmeDfoArea', @value = N'2026-11-07',

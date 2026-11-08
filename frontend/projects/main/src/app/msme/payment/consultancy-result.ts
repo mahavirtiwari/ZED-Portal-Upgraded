@@ -1,3 +1,4 @@
+import { ContentTextComponent } from '../../content/content-text';
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
@@ -7,7 +8,7 @@ import { RouterLink } from '@angular/router';
  */
 @Component({
   selector: 'zed-consultancy-result',
-  imports: [RouterLink],
+  imports: [RouterLink, ContentTextComponent],
   template: `
     <div class="container form-page">
       <div class="result-page zed-payment-success">
@@ -35,7 +36,7 @@ import { RouterLink } from '@angular/router';
           <div class="zed-card result-card text-center">
             <img src="/Images/payment/payment-error.png" alt="" width="150" />
             <h2>Payment Failed</h2>
-            <p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p>
+            <zed-text key="msme.payment.failed"><p>There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support&#64;qcin.org</p></zed-text>
             @if (message()) {
               <p><b>Error Message</b>: <span>{{ message() }}</span></p>
             }

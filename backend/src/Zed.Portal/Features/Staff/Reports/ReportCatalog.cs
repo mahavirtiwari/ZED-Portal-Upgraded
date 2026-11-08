@@ -3,7 +3,11 @@ using Zed.Core.Security;
 
 namespace Zed.Portal.Features.Staff.Reports;
 
-public sealed record ReportDefinition(string Id, string Name, string Procedure);
+public sealed record ReportDefinition(string Id, string Name, string Procedure)
+{
+    /// <summary>The RoleId the procedure gets when not the user's own (a Dashboard Admin's Citizen Feedback reports).</summary>
+    public int? RunAsRole { get; init; }
+}
 
 /// <summary>
 /// The only reports that can be run: the per-role list of Views/DynamicReports/Index.cshtml.
@@ -160,9 +164,20 @@ public static class ReportCatalog
         if (system == PortalSystem.Main) return For(roleId);
         var entries = system == PortalSystem.Consultancy ? ConsultancyEntries : SurveillanceEntries;
         return entries
-            .Where(e => (int)e.Role == roleId && (e.SubRole is null || subRoles.Contains(e.SubRole)) && (e.NotSubRole is null || !subRoles.Contains(e.NotSubRole)))
-            .Select(e => new ReportDefinition(IdOf(e.Procedure), e.Name, e.Procedure)).ToList();
+            .Where(e => Covers(roleId, e.Role) && (e.SubRole is null || subRoles.Contains(e.SubRole)) && (e.NotSubRole is null || !subRoles.Contains(e.NotSubRole)))
+            .Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id).ToList();
     }
+
+    /// <summary>
+    /// A Dashboard Admin (RoleId 10) has the old Super Admin's and Citizen Feedback's reports (2026-11-08: migration 0058 made
+    /// the Citizen Feedback and QC logins Dashboard Admins); other roles their own. A Citizen Feedback report a Dashboard Admin
+    /// runs gets RoleId 11, as for the old login.
+    /// </summary>
+    private static ReportDefinition Definition(int roleId, UserRole entryRole, string name, string procedure) =>
+        new(IdOf(procedure), name, procedure) { RunAsRole = (int)entryRole != roleId ? (int)entryRole : null };
+
+    private static bool Covers(int roleId, UserRole entryRole) =>
+        (int)entryRole == roleId || (roleId == (int)UserRole.SuperAdmin && entryRole == UserRole.CitizenFeedback);
 
     public static ReportDefinition? Find(PortalSystem system, int roleId, IReadOnlyCollection<string> subRoles, string id) =>
         For(system, roleId, subRoles).FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.Ordinal));
@@ -183,7 +198,7 @@ public static class ReportCatalog
         procedure.Replace("SP_DYNAMIC_REPORT_", "", StringComparison.Ordinal).Replace('_', '-').ToLowerInvariant();
 
     public static IReadOnlyList<ReportDefinition> For(int roleId) =>
-        Entries.Where(e => (int)e.Role == roleId).Select(e => new ReportDefinition(IdOf(e.Procedure), e.Name, e.Procedure)).ToList();
+        Entries.Where(e => Covers(roleId, e.Role)).Select(e => Definition(roleId, e.Role, e.Name, e.Procedure)).DistinctBy(r => r.Id).ToList();
 
     public static ReportDefinition? Find(int roleId, string id) =>
         For(roleId).FirstOrDefault(r => string.Equals(r.Id, id, StringComparison.Ordinal));

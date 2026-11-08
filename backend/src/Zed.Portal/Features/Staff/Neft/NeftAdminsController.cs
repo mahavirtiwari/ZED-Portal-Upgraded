@@ -68,6 +68,7 @@ public sealed class NeftAdminsController(
         var userId = req.UserId?.Trim() ?? "";
         if (userId.Length < 4 || !StaffUserRules.IsUserId(userId)) return this.Problem400("Please enter a User ID of 4 to 50 letters and digits.");
         if (Validate(req, out var name, out var mail, out var mobile) is { } error) return this.Problem400(error);
+        if (await RefusedAsync(null, ct) is { } refused) return refused;
         if (await HttpContext.RequestServices.GetRequiredService<SubUserStore>().IdTakenAsync(userId, ct))
             return this.Problem400("This User ID is already in use. Please choose another.");
 
@@ -123,9 +124,24 @@ public sealed class NeftAdminsController(
     private async Task<NeftAdminRow?> FindAsync(string userId, CancellationToken ct) =>
         StaffUserRules.IsUserId(userId) ? (await db.QuerySqlAsync<NeftAdminRow>(FindSql, new { UserId = userId }, ct)).FirstOrDefault() : null;
 
+    /// <summary>
+    /// 2026-11-08: one active NEFT Admin (it sees every state), and only a Master Admin with no limit to states, a category or
+    /// levels may create or unblock it.
+    /// </summary>
+    private async Task<ObjectResult?> RefusedAsync(string? except, CancellationToken ct)
+    {
+        if ((await HttpContext.LoginScopeAsync(ct)).IsLimited)
+            return this.Problem400("A Master Admin limited to some states, a category or levels cannot add the NEFT Admin, which sees every state.");
+        var active = (await db.QuerySqlAsync<NeftAdminRow>(ListSql, null, ct))
+            .FirstOrDefault(a => a.IsActive == true && !string.Equals(a.UserId, except, StringComparison.OrdinalIgnoreCase));
+        return active is null ? null
+            : this.Problem400($"{active.UserId} is already the NEFT Admin. Please block that login first: there is one NEFT Admin.");
+    }
+
     private async Task<ActionResult<MessageResponse>> SetActiveAsync(string userId, bool active, CancellationToken ct)
     {
         if (await FindAsync(userId, ct) is not { } row) return NotFound();
+        if (active && await RefusedAsync(row.UserId, ct) is { } refused) return refused;
         await db.ExecuteSqlAsync("UPDATE Users SET IsActive = @IsActive WHERE UserId = @UserId AND RoleId = 6 AND StateCode = 'ALL';",
             new { IsActive = active, row.UserId }, ct);
         log.LogInformation("NEFT Admin {UserId} {Action} by {Actor}", row.UserId, active ? "unblocked" : "blocked", UserId);

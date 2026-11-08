@@ -9,7 +9,7 @@ public static partial class ContentCatalogue
         PublicPages = "Public pages";
 
     private const string StaffAssessment = "Staff: Assessment", StaffMonitoring = "Staff: Monitoring", StaffConsultancy = "Staff: Consultancy",
-        StaffSurveillance = "Staff: Surveillance", StaffSchemes = "Staff: Schemes (FA)";
+        StaffSurveillance = "Staff: Surveillance", StaffSchemes = "Staff: Schemes (FA)", StaffUsers = "Staff: User management";
 
     private const string FairConfirm = "I confirm that I have verified the information provided by the unit against each requirement in a fair and unbiased manner.";
     private const string ConfirmProceed = "I confirm the above and agree to proceed with the information provided.";
@@ -178,6 +178,10 @@ public static partial class ContentCatalogue
         Web("msme.tu.confirm.checkbox", "Technology Upgradation: confirm and proceed check box", Schemes, Main, ConfirmProceed),
         Web("msme.schemes.declaration.checkbox", "Schemes: declaration check box", Schemes, Main,
             "I hereby declare that the particulars given in the application are correct. In case any of the statement/information/documents furnished in the application/documents is later found to be wrong or incorrect or misleading, I do hereby bind myself and my unit to pay to the Government on demand the full amount received as reimbursement in respect of the above mentioned activity, within seven days of the demand being raised."),
+        Web("msme.entry.finalSubmit.confirm", "Basic Information and documents: final submit check box", Schemes, Main,
+            "I confirm that the information and documents are correct. They cannot be changed after the final submit."),
+        Web("msme.payment.failed", "Payment: failed", CertificationPayment, Main,
+            "There seems to be a problem with the payment, please try again and if this issue repeats, contact us at zed.support@qcin.org"),
         Web("msme.fa.eligibleAmountNote", "Financial Assistance: eligible amount note", Schemes, Main,
             "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
 
@@ -214,6 +218,15 @@ public static partial class ContentCatalogue
             <p>socially responsible with safe and high quality products. We will give back, in</p>
             <p>every way we can, to our people, our community and to our planet.</p>
             """),
+        // 2026-11-08: notices of the registration steps and pop-ups.
+        Web("msme.registration.udyamNote", "Registration: Udyam check instruction", Registration, Main,
+            "Enter the Udyam Registration Number and mobile number exactly as given at the time of Udyam Registration."),
+        Web("msme.registration.otpSent", "Registration: e-mail OTP sent", Registration, Main,
+            "OTP is successfully sent to <strong>{{Email}}</strong>, if not received, please check your junk/spam.", "Email"),
+        Web("msme.registration.emailNotSent", "Registration: confirmation e-mail not sent", Registration, Main,
+            "We could not send the confirmation email right now. Your registration is complete; please note your ZED ID and use \u201cForgot Password\u201d on the login page if you do not receive your password."),
+        Web("msme.registration.appDownload", "Registration: the MSME app", Registration, Main,
+            "Scan with your phone's camera to install the app, then sign in with your ZED ID."),
         Web("msme.registration.success", "Registration: success", Registration, Main, """
             <strong>Congratulations! You can now avail:</strong>
             <ul>
@@ -349,6 +362,11 @@ public static partial class ContentCatalogue
         Web("staff.consultancy.tuVerification.dataCorrect.checkbox", "Technology Upgradation verification: check box", StaffConsultancy, Consultancy, DataCorrect),
 
         // staff/schemes (main build)
+        // 2026-11-08: User Management notices.
+        Web("staff.users.assessorBlock.note", "Assessors: block notice", StaffUsers, All,
+            "The login can't sign in on the web or the app, and can't be allotted or carry out any work until unblocked."),
+        Web("staff.users.agencyLevel.disableNote", "Agency level allocation: disable notice", StaffUsers, Main,
+            "{{Agency}} won't be allotted new {{Level}} assessments. Work already allotted continues.", "Agency", "Level"),
         Web("staff.schemes.faVerification.dataCorrect.checkbox", "Financial Assistance verification: check box", StaffSchemes, Main, DataCorrect),
     ];
 }

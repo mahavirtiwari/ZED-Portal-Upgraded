@@ -5,7 +5,11 @@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
-    @if (IsOrganisation)
+    @if (!Consultancy)
+    {
+        <p style="font-size: 13px; margin-bottom: 0;">You have been Blocked as @(IsOrganisation ? "an Assessment Agency" : "an Assessor") under the "MSME Sustainable (ZED) Certification" Scheme. You cannot sign in or carry out any assessment until you are unblocked.</p>
+    }
+    else if (IsOrganisation)
     {
         <p style="font-size: 13px; margin-bottom: 0;">You have been Blocked for conducting Handholding Support under the "MSME Sustainable (ZED) Certification" Scheme.</p>
     }
@@ -38,6 +42,8 @@
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
     /// <summary>A Consultant Organisation (RoleId 2); otherwise a Consultant/Expert.</summary>
     [Parameter] public bool IsOrganisation { get; set; }
+    /// <summary>Handholding wording (Consultancy); otherwise the agency / assessor of ZED Certification or Surveillance.</summary>
+    [Parameter] public bool Consultancy { get; set; }
     [Parameter] public string? Reason { get; set; }
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 }

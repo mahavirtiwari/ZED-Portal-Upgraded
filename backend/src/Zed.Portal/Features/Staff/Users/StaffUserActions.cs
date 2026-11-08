@@ -32,15 +32,18 @@ internal static class StaffUserActions
         // M12: the user's open sessions end too (on main also those of the Surveillance portal, which the procedure blocks as well).
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
-        if (host.IsConsultancy() && StaffUserRules.IsEmail(user.Row.Text("Email")))
+        // 2026-11-08: on every portal (before, Consultancy only; an unblock was mailed everywhere).
+        if (StaffUserRules.IsEmail(user.Row.Text("Email")))
         {
             var organisation = user.Row.Text("RoleId") == "2";
+            var who = host.IsConsultancy() ? (organisation ? "Consultant Organisation" : "Consultant/Expert") : (organisation ? "Assessment Agency" : "Assessor");
             await mail.SendAsync<StaffAccountBlockedEmail>(user.Row.Text("Email"),
-                (organisation ? "Consultant Organisation" : "Consultant/Expert") + " Login Details for “MSME Sustainable (ZED) Certification” - " + user.UserId, new()
+                who + " Login Details for “MSME Sustainable (ZED) Certification” - " + user.UserId, new()
                 {
                     [nameof(StaffAccountBlockedEmail.UserName)] = user.Row.Text("UserName"),
                     [nameof(StaffAccountBlockedEmail.UserId)] = user.UserId,
                     [nameof(StaffAccountBlockedEmail.IsOrganisation)] = organisation,
+                    [nameof(StaffAccountBlockedEmail.Consultancy)] = host.IsConsultancy(),
                     [nameof(StaffAccountBlockedEmail.Reason)] = reason,
                 }, ct);
         }

@@ -334,6 +334,11 @@ public sealed class UsersTests : IDisposable
         var block = Call("SP_BLOCK_UNBLOCK_USER");
         Assert.Equal("False", UsersMastersLogin.Arg(block.Args, "IsActive"));
         Assert.Equal("Complaint", UsersMastersLogin.Arg(block.Args, "ReasonForRejection"));
+        // The agency is told it is blocked (2026-11-08: on every portal, before only on some), without a password.
+        var blocked = Assert.Single(_host.Email.Sent);
+        Assert.Contains("Blocked as an Assessment Agency", blocked.HtmlBody);
+        Assert.DoesNotContain("agencypw", blocked.HtmlBody);
+        _host.Email.Sent.Clear();
 
         Agency1["IsActive"] = false;
         try

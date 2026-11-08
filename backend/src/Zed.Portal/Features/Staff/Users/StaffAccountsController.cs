@@ -160,7 +160,7 @@ public sealed class StaffAccountsController(
             if (!offered.Contains(key)) return (null, "Please choose the screens from the list.");
             if (!chosen.Contains(key)) chosen.Add(key);
         }
-        if (!chosen.Any(c => !c.EndsWith(":" + DashboardScreens.HideNames, StringComparison.Ordinal)))
+        if (!chosen.Any(c => !DashboardScreens.IsSetting(c[(c.IndexOf(':') + 1)..])))
             return (null, "Please tick at least one screen for the Dashboard Admin.");
         return (string.Join(',', chosen), null);
     }

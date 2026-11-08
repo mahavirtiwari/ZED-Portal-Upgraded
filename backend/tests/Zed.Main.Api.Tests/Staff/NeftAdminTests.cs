@@ -54,7 +54,16 @@ public sealed class NeftAdminTests : IDisposable
         Assert.Equal("NEFT Admin", list.GetProperty("types")[0].GetProperty("label").GetString());
         Assert.Equal("NEFTADMIN1", list.GetProperty("accounts")[0].GetProperty("userId").GetString());
 
-        var r = await master.PostAsJsonAsync("/api/staff/neft-admins", new { userId = "NEFTDESK2", userName = "NEFT Desk 2", email = "n2@zed.test", mobileNo = "9876543210" });
+        // One NEFT Admin (2026-11-08): a second is refused while NEFTADMIN1 is active ...
+        var body = new { userId = "NEFTDESK2", userName = "NEFT Desk 2", email = "n2@zed.test", mobileNo = "9876543210" };
+        var second = await master.PostAsJsonAsync("/api/staff/neft-admins", body);
+        Assert.Equal("NEFTADMIN1 is already the NEFT Admin. Please block that login first: there is one NEFT Admin.", await second.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == NeftAdminsController.InsertSql);
+
+        // ... and taken once it is blocked.
+        _host.Sql.Queries[NeftAdminsController.ListSql] = _ =>
+            [new { UserId = "NEFTADMIN1", UserName = "NEFT Desk", RoleId = 6, Email = "d@zed.test", MobileNo = "9999999999", StateCode = "ALL", IsActive = (bool?)false, CreatedBy = "MASTER1", CreatedDate = (DateTime?)null }];
+        var r = await master.PostAsJsonAsync("/api/staff/neft-admins", body);
         Assert.True(r.IsSuccessStatusCode, await r.Content.ReadAsStringAsync());
         var insert = Assert.Single(_host.Sql.Calls, c => c.Name == NeftAdminsController.InsertSql);
         Assert.Equal(("NEFTDESK2", "MASTER1"), (FakeSql.Arg(insert.Args, "UserId"), FakeSql.Arg(insert.Args, "CreatedBy")));

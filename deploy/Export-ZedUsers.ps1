@@ -44,12 +44,12 @@ function Get-RoleName([int]$RoleId, [string]$Portal) {
         3  { if ($Portal -eq 'Handholding') { 'Consultant / Expert' } else { 'Assessor' } }
         4  { 'Site Assessor (old)' }
         5  { 'MSME' }
-        6  { 'MSME DFO (State Coordinator)' }
+        6  { 'MSME DFO' }
         7  { 'Master Admin' }
         8  { 'Ministry' }
-        10 { 'Dashboard - Super Admin' }
-        11 { 'Dashboard - Citizen Feedback' }
-        17 { 'Dashboard - QC' }
+        10 { 'Dashboard Admin' }
+        11 { 'Dashboard - Citizen Feedback (old; becomes Dashboard Admin on the next database update)' }
+        17 { 'Dashboard - QC (old; becomes Dashboard Admin on the next database update)' }
         default { "Other (role $RoleId)" }
     }
 }
@@ -86,7 +86,8 @@ foreach ($portal in $Portals.Keys) {
     # Only the columns this database has (verification types, scope and agency columns came with later migrations).
     $cols = (Invoke-Query $db "SELECT name FROM sys.columns WHERE object_id = OBJECT_ID('dbo.Users');").Rows | ForEach-Object { $_.name }
     $optional = @('StateCode', 'DistrictCode', 'DesktopVerification', 'SiteVerification', 'FinancialVerification', 'AssessorType',
-                  'SectorActivity', 'ScopeLevels', 'ScopeStates', 'SpocName') | Where-Object { $cols -contains $_ }
+                  'SectorActivity', 'ScopeLevels', 'ScopeStates', 'ScopeDistricts', 'ScreenAccess', 'AllowBronzeAssessments',
+                  'AllowSilverAssessments', 'AllowGoldAssessments', 'AllowZedxAssessments', 'SpocName') | Where-Object { $cols -contains $_ }
     $select = (@('UserId', 'UserName', 'RoleId', 'IsActive', 'Email', 'MobileNo', 'CreatedBy', 'CreatedDate') + $optional | ForEach-Object { "[$_]" }) -join ', '
     $where = if ($IncludeMsme) { '' } else { 'WHERE ISNULL(RoleId, 0) <> 5' }
     $users = Invoke-Query $db "SELECT $select FROM dbo.Users $where ORDER BY RoleId, UserId;"
@@ -98,8 +99,8 @@ foreach ($portal in $Portals.Keys) {
             Portal                = $portal
             UserId                = Get-Column $r 'UserId'
             Name                  = Get-Column $r 'UserName'
-            # A coordinator without a state is the national NEFT desk (it sees every state when its ID is in Neft:AllStatesUserIds).
-            Role                  = if ($role -eq 6 -and -not (Get-Column $r 'StateCode')) { 'NEFT Admin (national desk, needs Neft:AllStatesUserIds)' } else { Get-RoleName $role $portal }
+            # The NEFT Admin has state 'ALL' (2026-11-07); an MSME DFO without a state sees nothing.
+            Role                  = if ($role -eq 6 -and (Get-Column $r 'StateCode') -eq 'ALL') { 'NEFT Admin' } elseif ($role -eq 6 -and -not (Get-Column $r 'StateCode')) { 'MSME DFO (no state set)' } else { Get-RoleName $role $portal }
             RoleId                = $role
             Status                = if ((Get-Column $r 'IsActive') -eq $true) { 'Active' } else { 'Blocked' }
             Email                 = Get-Column $r 'Email'
@@ -113,6 +114,11 @@ foreach ($portal in $Portals.Keys) {
             ScopeCategory         = Get-Column $r 'SectorActivity'
             ScopeLevels           = Get-Column $r 'ScopeLevels'
             ScopeStates           = Get-Column $r 'ScopeStates'
+            ScopeDistricts        = Get-Column $r 'ScopeDistricts'
+            # Dashboard Admin: its ticked screens; MSME DFO: its NEFT lists (empty = every screen / its own portal's list).
+            ScreensOrNeftLists    = Get-Column $r 'ScreenAccess'
+            # Agency level allocation (agencies): the levels it is disabled for.
+            LevelsDisabled        = if ($role -eq 2) { (@('Bronze', 'Silver', 'Gold', 'Zedx') | Where-Object { (Get-Column $r "Allow$($_)Assessments") -eq $false }) -join ', ' } else { $null }
         }
     }
     $usersFile = Join-Path $OutDir "users-$file.csv"

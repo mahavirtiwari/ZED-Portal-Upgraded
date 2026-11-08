@@ -623,7 +623,9 @@ public sealed partial class SAController(
     public const string EvidenceNeedUpdate = "Please update the ZED SA app to answer the evidences listed for this requirement.";
 
     /// <summary>SA/SubmitSiteTour: a photo's section is not one of the unit's (<see cref="SiteTourSections"/>).</summary>
-    public const string UnknownSiteTourSection = "Unknown site tour section. Please update the ZED SA app.";
+    /// 2026-11-08: worded for the usual cause, a section the Admin changed after the app read the sections.
+    public const string UnknownSiteTourSection =
+        "This site tour section has been changed. Please open the assessment again (sign in again if needed), choose the section and send the photo again.";
 
     /// <summary>SA/SubmitSiteTour: the section would have more photos than its maximum.</summary>
     public static string TooManySiteTourPhotos(SiteTourSection s) =>

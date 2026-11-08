@@ -32,7 +32,8 @@ public static class AgencyLevels
     internal static string SaveSql(Level level) =>
         $"UPDATE dbo.Users SET {level.Column} = @Allow, {level.ReasonColumn} = @Reason WHERE UserId = @UserId AND RoleId = 2;";
 
-    internal static string DisabledSql(Level level) => $"SELECT UserId FROM dbo.Users WHERE RoleId = 2 AND {level.Column} = 0;";
+    /// <summary>Bronze: the legacy AllowBronzeAssessments (2026-11-08: so the financial assistance round robin sees it too).</summary>
+    internal static string DisabledSql(Level level) => $"SELECT UserId FROM dbo.Users WHERE RoleId = 2 AND {level.Column ?? "AllowBronzeAssessments"} = 0;";
 
     public sealed class Row
     {
@@ -69,7 +70,7 @@ public static class AgencyLevels
     /// <summary>The agencies a level (Silver, Gold or ZED-X) was disabled for; none before migration 0060.</summary>
     public static async Task<HashSet<string>> DisabledAsync(ISqlExecutor db, string level, ILogger log, CancellationToken ct)
     {
-        if (Find(level) is not { Column: not null } l) return new(StringComparer.OrdinalIgnoreCase);
+        if (Find(level) is not { } l) return new(StringComparer.OrdinalIgnoreCase);
         try
         {
             return (await db.QuerySqlAsync<IdRow>(DisabledSql(l), null, ct)).Select(u => u.UserId?.Trim()).OfType<string>()

@@ -129,7 +129,7 @@ public static partial class ContentCatalogue
             """),
 
         // MSME app: dashboard
-        App("app.msme.dashboard.certificationSteps", "Dashboard: ZED certification steps", MsmeApp, MainAndSurveillance, """
+        App("app.msme.dashboard.certificationSteps", "Dashboard: ZED certification steps", MsmeApp, Main, """
             <ol>
               <li><b>Basic Information &amp; Document Upload</b><br>Provide Processes &amp; Systems information</li>
               <li><b>Desktop Verification</b><br>Desktop verification of documents uploaded. Bronze level applicants will receive certification after this step.</li>
@@ -138,19 +138,19 @@ public static partial class ContentCatalogue
               <li><b>Avail Incentives</b><br>Various incentives will be unlocked and available under "My Incentives"</li>
             </ol>
             """),
-        App("app.msme.dashboard.levelInfo.bronze", "My Certifications: Bronze level information", MsmeApp, MainAndSurveillance, """
+        App("app.msme.dashboard.levelInfo.bronze", "My Certifications: Bronze level information", MsmeApp, Main, """
             <ul>
               <li>This level has 5 parameters, which need to be conformed to, for achieving a Certification.</li>
               <li>The certification cost is Rs. 10,000/- inclusive of taxes, subsidy, as applicable.</li>
             </ul>
             """),
-        App("app.msme.dashboard.levelInfo.silver", "My Certifications: Silver level information", MsmeApp, MainAndSurveillance, """
+        App("app.msme.dashboard.levelInfo.silver", "My Certifications: Silver level information", MsmeApp, Main, """
             <ul>
               <li>This level has 14 parameters, which need to be conformed to, for achieving a Certification.</li>
               <li>The certification cost is Rs. 40,000/- inclusive of taxes; subsidy, as applicable.</li>
             </ul>
             """),
-        App("app.msme.dashboard.levelInfo.gold", "My Certifications: Gold level information", MsmeApp, MainAndSurveillance, """
+        App("app.msme.dashboard.levelInfo.gold", "My Certifications: Gold level information", MsmeApp, Main, """
             <ul>
               <li>This level has 20 parameters, which need to be conformed to, for achieving a Certification.</li>
               <li>The certification cost is Rs. 90,000/- inclusive of taxes; subsidy, as applicable.</li>
@@ -169,8 +169,13 @@ public static partial class ContentCatalogue
             <p>I/We understand that the ZED Certification is voluntary and recognize the authority of the Ministry of MSME, Government of India, in issuance of any Certificate.</p>
             <p>By proceeding I/We certify that my/our Enterprise/Unit complies with &amp; fulfils all relevant &amp; applicable regulatory &amp; statutory norms/licenses pertaining to the functioning of this manufacturing unit. If not, then efforts will be taken to fulfil those regulatory/statutory requirements by me/us. If at any stage the Enterprise/Unit is found to be non-compliant with any relevant/applicable regulatory &amp; statutory norms, the competent authority will have the right to recall/withdraw any or all reports or Certifications awarded.</p>
             """),
-        App("app.msme.assessment.requirementsAccepted.checkbox", "Assessment: certification requirements read (checkbox)", MsmeApp, MainAndSurveillance,
+        App("app.msme.assessment.requirementsAccepted.checkbox", "Assessment: certification requirements read (checkbox)", MsmeApp, Main,
             "I have read the certification requirements and are following all the requirements to the fullest extent possible."),
+        // 2026-11-08: the applicant's facilitator question on Documents Upload (Yes opens Facilitator Details).
+        App("app.msme.evidences.facilitator.question", "Evidences: ZED Facilitator question", MsmeApp, Main,
+            "Were you assisted by a ZED Facilitator?"),
+        App("app.msme.fa.eligibleAmountNote", "Financial Assistance: eligible amount note", MsmeApp, Main,
+            "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
         App("app.msme.evidences.finalSubmit.confirm", "Evidences: final submit confirmation", MsmeApp, MainAndSurveillance,
             "I confirm that all information and documents/photos submitted pertain to the selected unit only."),
         App("app.msme.certification.readOnly", "Certification: read-only message", MsmeApp, MainAndSurveillance,
@@ -193,8 +198,6 @@ public static partial class ContentCatalogue
             "You can only login 2 days prior to your allocated Site Assessment date"),
 
         // Consultant app (ZEDConsultant)
-        App("app.consultant.siteTour.pickInstruction", "Site tour: pick a photo", ConsultantApp, Consultancy,
-            "Simply tap on any photo from the list to pick as evidence"),
         App("app.consultant.siteTour.tourInstruction", "Site tour: capture photos", ConsultantApp, Consultancy,
             "Here you can capture Site Photos which can later be used as evidences"),
         App("app.consultant.login.windowNote", "Login: two days before the site assessment", ConsultantApp, Consultancy,

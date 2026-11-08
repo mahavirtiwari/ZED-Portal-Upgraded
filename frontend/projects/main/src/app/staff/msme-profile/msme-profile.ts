@@ -6,6 +6,7 @@ import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { EditHistoryTable } from '../../msme/edit-history/edit-history';
 import { PORTAL_SYSTEM } from '../../portal-system';
+import { dashboardSetting } from '../admin-portal';
 
 export type ProfileRow = Record<string, string | number | boolean | null>;
 
@@ -99,7 +100,7 @@ export class StaffMsmeProfilePage {
   protected readonly editHistoryUrl = `/api/staff/msme-edit-history/${encodeURIComponent(this.zedId)}`;
 
   /** EDIT PROFILE: SuperAdmin only, and only the main portal's procedure updates the unit. */
-  protected readonly canEdit = this.roleId === 10 && PORTAL_SYSTEM === 'main';
+  protected readonly canEdit = this.roleId === 10 && PORTAL_SYSTEM === 'main' && dashboardSetting(inject(AuthService).currentUser(), 'main', 'edits');
   protected readonly editing = signal(false);
   protected readonly saving = signal(false);
   protected form: StaffMsmeProfileUpdate = emptyForm();

@@ -13,6 +13,7 @@ import { PORTAL_LABELS } from '../../portal-labels';
 import { staffProfileLink } from '../msme-profile/msme-profile';
 import { PagerComponent, ServerPager } from '../pager';
 import { DashboardPortalSwitchComponent, dashboardSystemProvider } from '../dashboard-portal-switch';
+import { dashboardSetting } from '../admin-portal';
 
 /**
  * Registered MSMEs. Port of Views/Dashboard/RegisteredMsme.cshtml (paged by the procedure). SuperAdmin also
@@ -36,7 +37,9 @@ export class RegisteredMsmePage {
   private readonly api = inject(DashboardApi);
   private readonly user = inject(AuthService).currentUser;
 
-  protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin);
+  /** Resend / In-active (main): a Dashboard Admin with "Can make changes" (2026-11-08). */
+  protected readonly isSuperAdmin = computed(() => this.user()?.roleId === StaffRole.SuperAdmin && dashboardSetting(this.user(), 'main', 'edits'));
+  private readonly hidesNames = computed(() => dashboardSetting(this.user(), PORTAL_SYSTEM, 'hide-names'));
   /**
    * The customer (ZED ID) history merged in (V4, 2026-10-27): each ZED ID links to its history, for the logins that see
    * it (api/staff/history: SuperAdmin, Citizen Feedback, QC; MasterAdmin has no list here).
@@ -44,7 +47,8 @@ export class RegisteredMsmePage {
   protected readonly seesHistory = computed(() =>
     ([StaffRole.SuperAdmin, StaffRole.CitizenFeedback, StaffRole.QC] as number[]).includes(this.user()?.roleId ?? 0));
   /** Agency / Udyam column: SuperAdmin, and MasterAdmin on Consultancy and Surveillance (the API sends it to both). */
-  protected readonly showsAgency = computed(() => this.isSuperAdmin() || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));
+  protected readonly showsAgency = computed(() =>
+    (this.user()?.roleId === StaffRole.SuperAdmin && !this.hidesNames()) || (!this.main && this.user()?.roleId === StaffRole.MasterAdmin));
   protected readonly main = PORTAL_SYSTEM === 'main';
   protected readonly consultancy = PORTAL_SYSTEM === 'consultancy';
   protected readonly surveillance = PORTAL_SYSTEM === 'surveillance';

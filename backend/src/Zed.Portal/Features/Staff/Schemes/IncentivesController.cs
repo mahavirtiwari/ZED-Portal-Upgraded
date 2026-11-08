@@ -62,7 +62,8 @@ public sealed partial class IncentivesController(
             State = state?.ToString(CultureInfo.InvariantCulture), CertificationType = cert, MsmeSize = size,
             Sector = string.IsNullOrEmpty(sector) ? null : sector, Gender = sex,
         }, ct);
-        return sets[0].Select(r => SchemeRows.Pick(r, SubmissionColumns)).ToList();
+        // A scoped login: its units only (2026-11-08).
+        return (await Users.ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Select(r => SchemeRows.Pick(r, SubmissionColumns)).ToList();
     }
 
     // ----- upload -----

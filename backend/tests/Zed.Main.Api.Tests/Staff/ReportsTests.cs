@@ -48,8 +48,13 @@ public sealed class ReportsTests : IDisposable
         var state = await _host.SignInAsync("STATE1");
         Assert.Equal(2, (await state.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
         var super = await _host.SignInAsync("SUPER1");
-        // 43 before MSME KAWACH was removed (its five reports).
-        Assert.Equal(38, (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
+        // 43 before MSME KAWACH was removed (its five reports); 2026-11-08 the Dashboard Admin also has Citizen Feedback's 12.
+        Assert.Equal(50, (await super.GetFromJsonAsync<JsonElement>("/api/staff/reports")).GetArrayLength());
+
+        // A Citizen Feedback report runs as the old Citizen Feedback login (RoleId 11).
+        _host.Sql.Procs["SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_PAID"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000001" }]);
+        (await super.GetAsync("/api/staff/reports/list-of-payment-received-paid/download")).EnsureSuccessStatusCode();
+        Assert.Equal("11", FakeSql.Arg(_host.LastCall("SP_DYNAMIC_REPORT_LIST_OF_PAYMENT_RECEIVED_PAID").Args, "RoleId"));
     }
 
     [Theory]

@@ -97,17 +97,18 @@ public sealed class StaffAccountsTests : IDisposable
     }
 
     [Theory]
-    [InlineData(7, "MASTER09")]
-    [InlineData(10, "SUPER09")]
-    public async Task Master_Admin_and_Super_Admin_logins_still_get_the_password(int roleId, string userId)
+    [InlineData(7, "MASTER09", true)]
+    // 2026-11-08: only Master Admin logins keep the generated password; the Dashboard Admin gets the 24-hour link.
+    [InlineData(10, "SUPER09", false)]
+    public async Task Only_Master_Admin_logins_still_get_the_password(int roleId, string userId, bool password)
     {
         var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         (await admin.PostAsJsonAsync("/api/staff/accounts", new { userId, roleId, userName = "New Admin", email = "new@zed.test", mobileNo = "9876543210", screens = new[] { "main:reports" } })).EnsureSuccessStatusCode();
         var mail = Assert.Single(_host.Email.Sent);
-        Assert.Contains(">Password<", mail.HtmlBody);
-        Assert.DoesNotContain("reset-password#token=", mail.HtmlBody);
-        Assert.Empty(resets.Rows);
+        Assert.Equal(password, mail.HtmlBody.Contains(">Password<"));
+        Assert.Equal(!password, mail.HtmlBody.Contains("reset-password#token="));
+        Assert.Equal(password ? 0 : 1, resets.Rows.Count);
     }
 
     [Fact]

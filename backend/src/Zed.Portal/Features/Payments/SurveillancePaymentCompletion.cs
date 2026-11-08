@@ -33,6 +33,7 @@ public sealed class SurveillancePaymentCompletion(
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
     IOptions<EmailOptions> emailOptions,
+    IPortalSettings settings,
     ILogger<SurveillancePaymentCompletion> log)
 {
     public const string ModuleName = "SURVEILLANCE";
@@ -65,6 +66,7 @@ public sealed class SurveillancePaymentCompletion(
                     [nameof(SurveillancePaymentConfirmationEmail.Certification)] = certification,
                     [nameof(SurveillancePaymentConfirmationEmail.Lines)] = lines,
                     [nameof(SurveillancePaymentConfirmationEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
+                    [nameof(SurveillancePaymentConfirmationEmail.AppUrl)] = (await PortalLinks.ForPagesAsync(settings, portal.Value, ct)).GetValueOrDefault("playStore"),
                 });
                 var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } cca ? new[] { cca } : null;
                 await email.SendAsync(new EmailMessage(to, $"ZED Surveillance Assessment fee Payment Confirmation Details - {zedId}", html, EmailProfiles.Payment, cc), ct);

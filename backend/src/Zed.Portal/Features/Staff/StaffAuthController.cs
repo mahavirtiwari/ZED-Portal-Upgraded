@@ -151,12 +151,15 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
     /// </summary>
     private ObjectResult? AdminOnMain(int roleId)
     {
-        if (roleId != (int)UserRole.Admin || HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main) return null;
-        log.LogInformation("Admin sign-in on the {System} portal sent to the main portal", HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
+        // 2026-11-08: the Dashboard Admin too (its screens and scope are kept on main; it opens this portal from there).
+        if (roleId is not ((int)UserRole.Admin or (int)UserRole.SuperAdmin) || HttpContext.RequestServices.GetRequiredService<PortalHost>().System == PortalSystem.Main) return null;
+        log.LogInformation("Role {RoleId} sign-in on the {System} portal sent to the main portal", roleId, HttpContext.RequestServices.GetRequiredService<PortalHost>().System);
         var problem = new ProblemDetails
         {
             Status = StatusCodes.Status400BadRequest,
-            Title = "The Admin of every portal now signs in on the main portal and chooses this portal there.",
+            Title = roleId == (int)UserRole.Admin
+                ? "The Admin of every portal now signs in on the main portal and chooses this portal there."
+                : "Dashboard Admins now sign in on the main portal and open this portal's screens there.",
         };
         problem.Extensions["adminOnMainPortal"] = true;
         return new ObjectResult(problem) { StatusCode = StatusCodes.Status400BadRequest };
