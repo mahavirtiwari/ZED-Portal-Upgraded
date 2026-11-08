@@ -139,6 +139,8 @@ export type RequirementDetails = {
   listedEvidences?: ListedEvidence[] | null;
   /** V4: the site's answer for each listed evidence, sent with the parameter. */
   evidenceChecks?: Array<{ id: number; available: string | null; photoIds: string[] }> | null;
+  /** 2026-11-08: the Admin's video for the requirement (SA/Login); absent when none. */
+  videoUrl?: string | null;
 };
 
 /** An evidence the Admin lists for a requirement (SA/Login); `checkpoint` is the option code of the checkpoint it belongs to. */
@@ -311,6 +313,23 @@ export function normalizeDetails(d: AssessmentDetails): AssessmentDetails {
   d.attendanceData ??= { attendanceList: [] };
   d.attendanceData.attendanceList ??= [];
   return d;
+}
+
+/**
+ * 2026-11-08: the Admin's requirement videos of a fresh SA/Login answer copied onto the assessment kept on the phone (which
+ * is not replaced while in progress): set, changed or removed for each requirement the server sent; the answers stay.
+ */
+export function mergeRequirementVideos(d: AssessmentDetails, fresh: AssessmentDetails | null | undefined) {
+  if (!fresh || d === fresh) return;
+  const videos = new Map<string, string | null>();
+  for (const p of fresh.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r) videos.set(String(r.id), r.videoUrl ?? null);
+  for (const p of d.allottedParameters ?? [])
+    for (const r of p?.requirements ?? []) {
+      if (!r || !videos.has(String(r.id))) continue;
+      const v = videos.get(String(r.id));
+      if (v) r.videoUrl = v;
+      else delete r.videoUrl;
+    }
 }
 
 export const isSaBasicInfoSubmitted = (d: AssessmentDetails) => d.isBasicInfoSubmitted || d.saBasicInformation?.status === Status.SUBMITTED;

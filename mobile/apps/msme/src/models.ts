@@ -127,6 +127,8 @@ export type Requirement = {
   photos?: PhotoData[] | null;
   assessorRemarks?: string | null;
   msmeRemarks?: string | null;
+  /** 2026-11-08: the Admin's video for the requirement (GetParametersByType / GetNcDetailsByType); absent when none. */
+  videoUrl?: string | null;
 };
 
 export type Element = {
@@ -503,6 +505,13 @@ export function normalizeNcDetails(nc: NcDetails): NcDetails {
 export function evidencesOf(c: CertificationDetails | null): Evidence[] {
   const out: Evidence[] = [];
   for (const e of c?.parameters ?? []) for (const r of e.requirements ?? []) out.push(...(r.evidences ?? []));
+  return out;
+}
+
+/** The requirement each evidence of evidencesOf belongs to (for the requirement's video next to the evidence). */
+export function evidenceRequirements(c: CertificationDetails | null): Map<Evidence, Requirement> {
+  const out = new Map<Evidence, Requirement>();
+  for (const e of c?.parameters ?? []) for (const r of e.requirements ?? []) for (const ev of r.evidences ?? []) out.set(ev, r);
   return out;
 }
 

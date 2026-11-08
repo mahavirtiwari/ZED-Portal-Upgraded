@@ -161,6 +161,8 @@ export type RequirementDetails = {
   technologyInterventionRationale?: string | null;
   /** Progress review */
   isProposedActivityCompleted?: string | null;
+  /** 2026-11-08: the Admin's video for the requirement (SA/Login); absent when none. */
+  videoUrl?: string | null;
 };
 
 const blank = (s: string | null | undefined) => s == null || s.trim() === '';
@@ -432,6 +434,32 @@ export function rememberPlanBase(d: AssessmentDetails): void {
   for (const p of [...(d.allottedParameters ?? []), ...(d.handholdingActionPlanData?.parameters ?? [])]) {
     for (const r of p?.requirements ?? []) if (r) r.plannedActivitiesBase = [...(r.plannedActivities ?? [])];
   }
+}
+
+/**
+ * 2026-11-08: the Admin's requirement videos of a fresh SA/Login answer copied onto the consultancy kept on the phone (not
+ * replaced while in progress), in the allotted parameters and the screens' copies of them: set, changed or removed for each
+ * requirement the server sent; the answers stay.
+ */
+export function mergeRequirementVideos(d: AssessmentDetails, fresh: AssessmentDetails | null | undefined): void {
+  if (!fresh || d === fresh) return;
+  const videos = new Map<string, string | null>();
+  for (const p of fresh.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r) videos.set(String(r.id), r.videoUrl ?? null);
+  const lists = [
+    d.allottedParameters,
+    d.baselineDiagnosticStudyData?.parameters,
+    d.handholdingActionPlanData?.parameters,
+    d.suggestionForTechnologyIntervention?.parameters,
+    d.progressReview?.parameters,
+  ];
+  for (const list of lists)
+    for (const p of list ?? [])
+      for (const r of p?.requirements ?? []) {
+        if (!r || !videos.has(String(r.id))) continue;
+        const v = videos.get(String(r.id));
+        if (v) r.videoUrl = v;
+        else delete r.videoUrl;
+      }
 }
 
 export function normalizeDetails(d: AssessmentDetails): AssessmentDetails {

@@ -1,6 +1,6 @@
 import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
-import { isFourthMilestone, normalizeDetails, rememberPlanBase, type AssessmentDetails } from '../models';
+import { isFourthMilestone, mergeRequirementVideos, normalizeDetails, rememberPlanBase, type AssessmentDetails } from '../models';
 import type { AssessmentSummary } from '../portfolio';
 
 export const LOGIN_SUCCESSFUL = 'Login Successful.';
@@ -89,6 +89,8 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     if (loginResp.isBasicInfoSubmitted) d.isBasicInfoSubmitted = true;
     // V4: the unit's site tour sections as the Admin has them now.
     if (loginResp.siteTourSections) d.siteTourSections = loginResp.siteTourSections;
+    // 2026-11-08: the Admin's requirement videos as the server has them now (also for a consultancy already on the phone).
+    mergeRequirementVideos(d, loginResp);
     await app.update();
     return { kind: 'proceed', userType: Number(loginResp.userType ?? 0), allottedParamsAvailable: available };
   }

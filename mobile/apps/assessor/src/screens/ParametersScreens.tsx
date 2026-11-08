@@ -20,6 +20,7 @@ import {
   type PhotoInformation,
   type RequirementDetails,
 } from '../models';
+import { RequirementVideoButton, requirementVideoUrl } from '../components/RequirementVideoButton';
 import { Badge, C, Card, CharCounter, ConformanceChoice, EmptyState, Field, HeroHeader, Page, ProgressBar, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type Tone } from '../ui/zed';
 import {
   ANSWERS,
@@ -183,14 +184,17 @@ function ParameterGroup({ p, expanded, onToggle, onOpen, testID }: { p: Allotted
         ? reqs.map((q, j) => {
             const st = STATUS[statusOf(q)];
             const title = q.questionDescription?.trim() || (q.options ?? []).find(o => o?.label?.trim())?.label || `Requirement ${j + 1}`;
+            const clause = `${p.parameterCode ? p.parameterCode + '.' : ''}${j + 1}`;
             return (
               <Pressable key={`${q.id}-${j}`} style={styles.reqRow} onPress={onOpen} testID={`${testID}-req-${j}`}>
                 <View style={styles.flex}>
-                  <Text style={styles.clause}>{`${p.parameterCode ? p.parameterCode + '.' : ''}${j + 1}`}</Text>
+                  <Text style={styles.clause}>{clause}</Text>
                   <Text style={styles.reqTitle} numberOfLines={1}>
                     {title}
                   </Text>
                 </View>
+                {/* 2026-11-08: the Admin's video for the requirement. */}
+                <RequirementVideoButton url={q.videoUrl} code={clause} style={styles.reqVideo} />
                 <Badge label={st.label} tone={st.tone} small testID={`${testID}-req-${j}-status`} />
                 <ZIcon name="chevron-right" size={18} color={C.tMuted} />
               </Pressable>
@@ -566,7 +570,13 @@ function QuestionView({
             {parameterCode ? <Badge label={`Parameter ${parameterCode}`} tone="primary" /> : <View />}
             <Text style={styles.qCount} testID="q-count">{`${position + 1} of ${count} requirement(s)`}</Text>
           </View>
-          {question.questionDescription?.trim() ? <Text style={styles.qText}>{question.questionDescription.trim()}</Text> : null}
+          {question.questionDescription?.trim() || requirementVideoUrl(question.videoUrl) ? (
+            <View style={styles.qTitleRow}>
+              <Text style={[styles.qText, styles.qTitle]}>{question.questionDescription?.trim() ?? ''}</Text>
+              {/* 2026-11-08: the Admin's video for the requirement. */}
+              <RequirementVideoButton url={question.videoUrl} code={`${parameterCode ? parameterCode + '.' : ''}${position + 1}`} style={styles.qVideo} />
+            </View>
+          ) : null}
           {!checkpointMode
             ? options.map((o, i) => (
                 <View key={i} style={styles.optionRow}>
@@ -927,6 +937,10 @@ const styles = StyleSheet.create({
   reqRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.surface, borderRadius: 10, borderWidth: 1, borderColor: C.border, paddingLeft: 12, paddingRight: 8, paddingVertical: 10, marginBottom: 6 },
   clause: { fontSize: 11, fontWeight: '600', color: C.tMuted, letterSpacing: 0.5 },
   reqTitle: { fontSize: 13, color: C.tPrimary, marginTop: 3, marginRight: 8 },
+  reqVideo: { marginLeft: 0, marginRight: 8 },
+  qTitleRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  qTitle: { flex: 1, flexShrink: 1 },
+  qVideo: { marginTop: 8 },
   legend: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.primaryBg, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, marginTop: 10, marginBottom: 12 },
   legendDot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
   legendGap: { marginLeft: 16 },

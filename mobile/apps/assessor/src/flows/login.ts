@@ -1,7 +1,7 @@
 import { isNetworkError, takeAppToken } from '@zed/shared';
 import type { SaApp } from '../app/SaApp';
 import { PREFS } from '../db/stores';
-import { normalizeDetails, setAllParametersToCompleted, Status, type AssessmentDetails, type RequirementDetails } from '../models';
+import { mergeRequirementVideos, normalizeDetails, setAllParametersToCompleted, Status, type AssessmentDetails, type RequirementDetails } from '../models';
 import type { AssessmentSummary } from '../portfolio';
 
 export const LOGIN_SUCCESSFUL = 'Login Successful.';
@@ -107,6 +107,8 @@ async function proceedWith(app: SaApp, loginResp: AssessmentDetails | null, inpu
     const listed = new Map<string, RequirementDetails['listedEvidences']>();
     for (const p of loginResp.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r?.listedEvidences) listed.set(String(r.id), r.listedEvidences);
     for (const p of d.allottedParameters ?? []) for (const r of p?.requirements ?? []) if (r && listed.has(String(r.id))) r.listedEvidences = listed.get(String(r.id));
+    // 2026-11-08: the Admin's requirement videos as the server has them now (also for an assessment already on the phone).
+    mergeRequirementVideos(d, loginResp);
     await app.update();
     return { kind: 'proceed', userType: Number(loginResp.userType ?? 0), allottedParamsAvailable: available };
   }

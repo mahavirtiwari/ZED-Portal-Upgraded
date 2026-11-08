@@ -21,6 +21,7 @@ import type { EsgField, EsgResponse } from '../api';
 import { useMsme } from '../app/context';
 import { areAllFieldsFilled, buildEsgJson, toSubmitRequest } from '../esg';
 import { certificationDetailsOf, certificationLabel, Status, type CertificationType } from '../models';
+import { useLevelName } from '../levels';
 
 /** ESGCheckListActivity: the dynamic checklist from GetEsgChecklist (needs the network, as before). */
 export function EsgChecklistScreen() {
@@ -28,6 +29,7 @@ export function EsgChecklistScreen() {
   const nav = useNavigation();
   const ui = useUi();
   const type = useRoute<{ certificationType: CertificationType }>().params.certificationType;
+  const levelTitle = useLevelName(type);
   const [esg, setEsg] = useState<EsgResponse | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
@@ -93,7 +95,7 @@ export function EsgChecklistScreen() {
 
   return (
     <ScreenFrame
-      title={certificationLabel(type)}
+      title={certificationLabel(type, levelTitle)}
       backBar={{
         zedId: app.user?.MsmeDetails?.ZedId,
         onBack: () =>

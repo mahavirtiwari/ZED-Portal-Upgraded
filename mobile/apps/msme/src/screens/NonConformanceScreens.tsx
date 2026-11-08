@@ -211,7 +211,7 @@ export function NcDetailsScreen() {
             if (requirementStatus(r) !== Status.SUBMITTED) anyUnsubmitted = true;
             return (
               <View key={r.id}>
-                <OptionsList options={r.options ?? []} major={major} requirementIndex={Number(r.code) - 1} />
+                <OptionsList options={r.options ?? []} major={major} requirementIndex={Number(r.code) - 1} videoUrl={r.videoUrl} code={r.code} />
                 <NcOption
                   label="View NC"
                   submitted={requirementStatus(r) === Status.SUBMITTED}
@@ -464,7 +464,13 @@ export function NcRequirementScreen() {
 
   return (
     <NcFormFrame title={`${elementCode}. ${elementName}`} testID="nc-requirement">
-      <OptionsList options={requirement.options ?? []} major={elementCode} requirementIndex={Number(requirement.code) - 1} />
+      <OptionsList
+        options={requirement.options ?? []}
+        major={elementCode}
+        requirementIndex={Number(requirement.code) - 1}
+        videoUrl={requirement.videoUrl}
+        code={requirement.code}
+      />
       <StaticText label="Assessor Remarks" value={requirement.assessorRemarks ?? ''} onViewMore={t => ui.alert('Assessor Remarks', t, [{ text: 'OK' }], false)} />
       <TextField label="MSME Remarks" value={remarks} onChange={v => (setRemarks(v), setError(undefined))} multiline error={error} testID="nc-remarks" />
       <PhotosField

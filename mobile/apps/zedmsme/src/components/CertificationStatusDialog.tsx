@@ -32,8 +32,15 @@ export type CertificationStatus = { applicationReceived: string | null; steps: S
 
 const text = (v: string | null | undefined) => (v != null && String(v).trim() !== '' ? String(v).trim() : null);
 
-/** Views/Msme/ViewStatus.cshtml: Bronze has no assessment step, Silver, Gold and ZED-X have Remote/Onsite Assessment. */
-export function certificationStatus(level: CertificationType, f: Record<string, string | null | undefined>): CertificationStatus {
+/**
+ * Views/Msme/ViewStatus.cshtml: Bronze has no assessment step, Silver, Gold and ZED-X have Remote/Onsite Assessment.
+ * 2026-11-08: a level the Admin added has Bronze's steps when assessed at the desktop only (`desktop`), else Gold's.
+ */
+export function certificationStatus(
+  level: CertificationType,
+  f: Record<string, string | null | undefined>,
+  desktop: boolean = level === 'Bronze',
+): CertificationStatus {
   const line = (who: StatusLine['who'], key: string): StatusLine[] => {
     const t = text(f[key]);
     return t ? [{ who, text: t }] : [];
@@ -61,10 +68,12 @@ export function certificationStatus(level: CertificationType, f: Record<string, 
   const steps: StatusStep[] = [
     step('Basic Information and Document Upload', !!applicationReceived, { lines: line('YOU', 'BasicInfoStatus') }),
   ];
-  if (level === 'Bronze') {
+  if (desktop) {
+    // A desktop level the Admin added may come with either field (the portal page's own for Bronze).
+    const verification = level === 'Bronze' || text(f.BronzeDesktopVerification) ? 'BronzeDesktopVerification' : 'DesktopVerification';
     steps.push(
-      step('Desktop Verification', !!text(f.BronzeDesktopVerification), {
-        lines: line('ZED', 'BronzeDesktopVerification'),
+      step('Desktop Verification', !!text(f[verification]), {
+        lines: line('ZED', verification),
         nc: nc(),
         after: [...line('ZED', 'NcClosed'), ...line('ZED', 'CompletedOn')],
       }),
@@ -99,15 +108,18 @@ function Line({ line }: { line: StatusLine }) {
 
 export function CertificationStatusDialog({
   level,
+  name,
   status,
   onClose,
 }: {
   level: CertificationType;
+  /** The level's name as the Admin set it (ZED-X and the levels the Admin added). */
+  name?: string | null;
   status: CertificationStatus;
   onClose: () => void;
 }) {
   return (
-    <ZedDialog visible title={certificationLabel(level)} onClose={onClose} testID="status-dialog">
+    <ZedDialog visible title={certificationLabel(level, name)} onClose={onClose} testID="status-dialog">
       {status.applicationReceived ? (
         <Note tone="green" testID="status-received">
           <Text style={styles.line}>

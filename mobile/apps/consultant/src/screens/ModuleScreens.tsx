@@ -27,6 +27,7 @@ import {
   type ParametersModule,
   type RequirementDetails,
 } from '../models';
+import { RequirementVideoButton } from '../components/RequirementVideoButton';
 import { promptComment, REQUIRED, usePresentPhotos } from '../ui/inputs';
 import { Badge, C, Card, CharCounter, Field, HeroHeader, Page, SectionLabel, Strip, z, ZButton, ZIcon, ZScroll, type IconName, type Tone } from '../ui/zed';
 
@@ -600,7 +601,11 @@ function RequirementPage({
       <ZScroll contentContainerStyle={z.screenPad} keyboardShouldPersistTaps="handled">
         <Card testID="req-card">
           <View style={z.rowBetween}>
-            <Text style={styles.reqLabel}>{`Requirement ${index + 1}`}</Text>
+            <View style={styles.reqHead}>
+              <Text style={[styles.reqLabel, styles.reqLabelText]}>{`Requirement ${index + 1}`}</Text>
+              {/* 2026-11-08: the Admin's video for the requirement. */}
+              <RequirementVideoButton url={r.videoUrl} code={r.code ?? String(index + 1)} />
+            </View>
             {count > 0 ? <Text style={z.muted} testID="req-count">{`${index + 1} of ${count}`}</Text> : null}
           </View>
           {(r.options ?? []).map((o, i) =>
@@ -719,6 +724,8 @@ const styles = StyleSheet.create({
   grey: { backgroundColor: C.muted, borderColor: C.muted },
   // requirement (10 / 11e / 12 / 08e)
   reqLabel: { fontSize: 13, fontWeight: '700', color: C.primaryDark },
+  reqHead: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginRight: 8 },
+  reqLabelText: { flexShrink: 1 },
   optionRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 10 },
   optionDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.primary, marginTop: 8, marginRight: 10 },
   optionText: { flex: 1, fontSize: 15, color: C.tPrimary, lineHeight: 22 },

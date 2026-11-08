@@ -27,7 +27,8 @@ import type { PaymentDetails, PaymentDetailsResponse, PaymentTokenRequest, Verif
 import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { checkoutOrder, isPaid, startCheckout } from '../ccavenue';
-import { levelName, NO, YES, type CertificationType } from '../models';
+import { NO, YES, type CertificationType } from '../models';
+import { useLevelName } from '../levels';
 import { Footer as LegacyFooter } from '../ui/legacy';
 import { refreshStatus, useCertificationClick } from './DashboardScreen';
 
@@ -492,10 +493,11 @@ function ResultPage({
   onStart: () => void;
   onRetry: () => void;
 }) {
-  const text = useAppText(success ? 'app.msme.payment.success' : 'app.msme.payment.failure', { Certification: levelName(type) });
+  // ZED-X and the levels the Admin added with the Admin's name (2026-11-08).
+  const level = useLevelName(type);
+  const text = useAppText(success ? 'app.msme.payment.success' : 'app.msme.payment.failure', { Certification: level });
   const message = text ? htmlToPlain(text.html).trim() : '';
   const tint = levelColour(type);
-  const level = levelName(type);
   return (
     <View style={{ flex: 1, backgroundColor: colors.white }} testID={success ? 'payment-success' : 'payment-failure'}>
       <ScrollView contentContainerStyle={styles.result}>

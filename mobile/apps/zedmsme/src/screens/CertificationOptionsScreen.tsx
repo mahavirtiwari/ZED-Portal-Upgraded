@@ -29,11 +29,12 @@ import {
   isSurveillanceNcActive,
   parsedSurveillanceDate,
   certificationLabel,
-  levelName,
+  isDesktopLevel,
+  isLegacyLevel,
   Status,
   type CertificationType,
 } from '../models';
-import { zedxLevel } from '../levels';
+import { levelDisplayName, v4LevelImage } from '../levels';
 
 /** CertificationOptionsFragment */
 export function CertificationOptionsScreen() {
@@ -70,7 +71,7 @@ export function CertificationOptionsScreen() {
   // Only the surveillance round's NC replies (status "3"): status "1", the surveillance itself, is the desktop
   // assessor's data entry in the ZED Surveillance app.
   const showSurveillanceNc = details ? isSurveillanceNcActive(details) : false;
-  const zedxLogo = type === 'ZEDX' ? zedxLevel(app.levels)?.logoUrl : null;
+  // ZED-X and (2026-11-08) the levels the Admin added: the Admin's logo and name.
   const image =
     type === 'Bronze'
       ? images.bronze
@@ -78,15 +79,13 @@ export function CertificationOptionsScreen() {
         ? images.silver
         : type === 'Gold'
           ? images.gold
-          : zedxLogo
-            ? { uri: app.api.levelLogoUrl(zedxLogo) }
-            : images.zedx;
-  const name = levelName(type, zedxLevel(app.levels)?.name);
+          : v4LevelImage(type, app.levels, url => app.api.levelLogoUrl(url));
+  const name = levelDisplayName(type, app.levels, status);
   // Redesigned 2026-11-07: the steps in the level's colour.
   const tint = type === 'Bronze' ? colors.bronze : type === 'Silver' ? '#8E9499' : type === 'Gold' ? '#B89A3E' : colors.appColorDark;
 
   return (
-    <ScreenFrame title={type === 'ZEDX' ? `${name} Certification` : certificationLabel(type)} onMenu={openDrawer} headerRight={<SyncAllButton />}>
+    <ScreenFrame title={!isLegacyLevel(type) ? `${name} Certification` : certificationLabel(type)} onMenu={openDrawer} headerRight={<SyncAllButton />}>
       <View style={{ flex: 1, backgroundColor: colors.white }}>
         <BackBar zedId={app.user?.MsmeDetails?.ZedId} onBack={() => nav.pop()} />
         <ScrollView contentContainerStyle={{ margin: dimens.padding1 }}>
@@ -96,7 +95,7 @@ export function CertificationOptionsScreen() {
             showTitle={false}
             image={image}
             action="gone"
-            state={{ ...certificationCardState(details, type === 'Bronze', false), overlay: false }}
+            state={{ ...certificationCardState(details, isDesktopLevel(type, status), false), overlay: false }}
             testID="options-card"
           />
           <ClickableOption

@@ -55,6 +55,14 @@ export const LEVELS: Record<string, { label: string; fg: string; bg: string }> =
 
 export const levelOf = (certification: string | null | undefined) => LEVELS[(certification ?? '').trim().toLowerCase()] ?? null;
 
+/** 2026-11-08 (generic levels): a level the Admin added (e.g. PLATINUM) has ZED-X's tint and its own name (else its code). */
+export const levelBadgeOf = (certification: string | null | undefined, name?: string | null) => {
+  const known = levelOf(certification);
+  if (known) return known;
+  const label = name?.trim() || certification?.trim();
+  return label ? { ...LEVELS.zedx!, label } : null;
+};
+
 export const images = {
   zedLogo: require('../assets/images/zed_logo.png'),
   zedMark: require('../assets/images/zed_mark.png'),
@@ -471,8 +479,8 @@ export function Badge({ label, tone = 'neutral', small, testID }: { label: strin
   );
 }
 
-export function LevelBadge({ certification, small }: { certification: string | null | undefined; small?: boolean }) {
-  const lv = levelOf(certification);
+export function LevelBadge({ certification, name, small }: { certification: string | null | undefined; name?: string | null; small?: boolean }) {
+  const lv = levelBadgeOf(certification, name);
   if (!lv) return null;
   return (
     <View style={[s.badge, small && s.badgeSmall, { backgroundColor: lv.bg }]} testID="level-badge">

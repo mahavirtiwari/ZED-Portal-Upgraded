@@ -18,16 +18,16 @@ import {
 import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { openDocument } from '../components/documents';
-import { certificationDetailsOf, levelName, type CertificationType } from '../models';
-import { zedxLevel } from '../levels';
+import { RequirementVideoButton, requirementVideoUrl } from '../components/RequirementVideoButton';
+import { certificationDetailsOf, type CertificationType } from '../models';
+import { useLevelName } from '../levels';
 import { EnterpriseCard } from './DashboardScreen';
 
 type Params = { certificationType: CertificationType };
 
-/** "Bronze Certification", or the ZED-X level's own name. */
+/** "Bronze Certification", or the own name of ZED-X or of a level the Admin added. */
 function useTitle(type: CertificationType): string {
-  const app = useMsme();
-  return `${levelName(type, type === 'ZEDX' ? zedxLevel(app.levels)?.name : undefined)} Certification`;
+  return `${useLevelName(type)} Certification`;
 }
 
 /**
@@ -120,14 +120,18 @@ export function CertificationRequirementsScreen() {
               {(parameter.requirements ?? []).map((requirement, r) =>
                 (requirement.options ?? []).map((option, o) => (
                   <View key={`${requirement.id}-${o}`} style={styles.option}>
-                    <View style={styles.optionBox}>
-                      <Text style={styles.optionText}>{option.label}</Text>
-                      {(option.subOptions ?? []).map((s, j) => (
-                        <View key={`${s.id}-${j}`} style={styles.subRow}>
-                          <Text style={styles.optionText}>•</Text>
-                          <Text style={[styles.optionText, styles.subText]}>{s.label}</Text>
-                        </View>
-                      ))}
+                    <View style={[styles.optionBox, o === 0 && requirementVideoUrl(requirement.videoUrl) ? styles.optionBoxWithVideo : null]}>
+                      <View style={styles.optionBody}>
+                        <Text style={styles.optionText}>{option.label}</Text>
+                        {(option.subOptions ?? []).map((s, j) => (
+                          <View key={`${s.id}-${j}`} style={styles.subRow}>
+                            <Text style={styles.optionText}>•</Text>
+                            <Text style={[styles.optionText, styles.subText]}>{s.label}</Text>
+                          </View>
+                        ))}
+                      </View>
+                      {/* 2026-11-08: the Admin's video for the requirement, on its first option. */}
+                      {o === 0 ? <RequirementVideoButton url={requirement.videoUrl} code={requirement.code} style={styles.video} /> : null}
                     </View>
                     <Text style={styles.badge}>{`${major}.${r + 1}`}</Text>
                   </View>
@@ -176,6 +180,9 @@ const styles = StyleSheet.create({
   body: { fontSize: dimens.textSize, color: colors.black, lineHeight: 24, padding: dimens.padding2 },
   option: { paddingBottom: dimens.padding1 },
   optionBox: { ...shapes.greyOutlineRectangle, marginTop: dimens.padding3, marginHorizontal: dimens.padding1, padding: dimens.padding1 },
+  optionBoxWithVideo: { flexDirection: 'row', alignItems: 'flex-start' },
+  optionBody: { flexShrink: 1, flexGrow: 1 },
+  video: { marginTop: dimens.padding1, marginRight: dimens.padding1 },
   optionText: { padding: dimens.padding1, fontSize: dimens.textSize, color: colors.black },
   subRow: { flexDirection: 'row', paddingLeft: dimens.padding2 },
   subText: { flexShrink: 1 },

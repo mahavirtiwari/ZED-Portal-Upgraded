@@ -26,7 +26,7 @@ import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { SyncAllButton } from '../components/SyncAllButton';
 import { certificationDetailsOf, levelName, normalizeElements, plantAddress, updateCertificationDetails, type CertificationType, type MsmeDetails } from '../models';
-import { showZedx, zedxLevel } from '../levels';
+import { addedLevels, showZedx, zedxLevel } from '../levels';
 
 /** DashboardActivity */
 export function DashboardScreen() {
@@ -224,10 +224,20 @@ export function ZedGearDivider() {
   );
 }
 
-/** "Bronze, Silver or Gold", with ZED-X once its card is shown (My Certifications). */
+/**
+ * "Bronze, Silver or Gold", with ZED-X once its card is shown (My Certifications), and (2026-11-08) the levels the Admin
+ * added whose cards are shown: "Bronze, Silver, Gold, ZED-X or Platinum".
+ */
 export function levelsText(app: Pick<ReturnType<typeof useMsme>, 'levels' | 'user'>): string {
-  if (!showZedx(app.levels, app.user?.MsmeDetails?.msmeStatus)) return 'Bronze, Silver or Gold';
-  return `Bronze, Silver, Gold or ${levelName('ZEDX', zedxLevel(app.levels)?.name)}`;
+  const status = app.user?.MsmeDetails?.msmeStatus;
+  const names = [
+    'Bronze',
+    'Silver',
+    'Gold',
+    ...(showZedx(app.levels, status) ? [levelName('ZEDX', zedxLevel(app.levels)?.name)] : []),
+    ...addedLevels(app.levels, status).map(l => l.name),
+  ];
+  return `${names.slice(0, -1).join(', ')} or ${names[names.length - 1]}`;
 }
 
 /** DashboardActivity.startRefresh: GetMsmeStatus, taken into the stored data (updateCertificationDetails). */

@@ -179,6 +179,8 @@ export type CertificateLinks = {
   Gold?: string | null;
   /** New in V4: ZED-X's certificate once certified. */
   ZEDX?: string | null;
+  /** 2026-11-08 (generic levels): the certificate of every level the Admin added, under its code (e.g. PLATINUM). */
+  [code: string]: string | null | undefined;
 };
 /** New in V4: a level the Admin has enabled (portal api/public/levels; Administration → Certification Levels). */
 export type PublicLevel = {
@@ -190,6 +192,44 @@ export type PublicLevel = {
   logoUrl?: string | null;
   validityMonths?: number | null;
   fee?: number | null;
+  /** "Desktop" (Bronze's statuses) or "Site" (Gold's). */
+  assessmentMode?: string | null;
+};
+
+/**
+ * New in V4: a built-in incentive card as the Admin set it (Admin → Incentives → Main Dashboard Cards); `card` is
+ * JOINING_REWARD, FINANCIAL_ASSISTANCE, HANDHOLDING, TECHNOLOGY_UPGRADATION or another code.
+ */
+export type PublicBuiltInIncentiveCard = {
+  card: string;
+  title?: string | null;
+  highlight?: string | null;
+  /** Simple HTML. */
+  details?: string | null;
+  active: boolean;
+};
+/** New in V4: an incentive the Admin shows on the dashboard (one extra card each, in the server's order). */
+export type PublicIncentive = {
+  id: number;
+  title?: string | null;
+  highlight?: string | null;
+  /** Simple HTML. */
+  details?: string | null;
+  department?: string | null;
+  contactPerson?: string | null;
+  email?: string | null;
+  mobileNo?: string | null;
+  /** http(s) only (filtered by the server). */
+  webLink?: string | null;
+  videoLink?: string | null;
+  applicableForBronze?: boolean;
+  applicableForSilver?: boolean;
+  applicableForGold?: boolean;
+};
+/** New in V4: portal api/public/incentive-cards (no sign-in). Both lists are empty when the portal cannot answer. */
+export type PublicIncentiveCards = {
+  builtIn: PublicBuiltInIncentiveCard[];
+  incentives: PublicIncentive[];
 };
 
 export type DocumentsResponse = BaseServiceResponse & {
@@ -230,6 +270,11 @@ export class MsmeApi {
   /** New in V4 (docs/mobile/ZEDX-MSME-APP.md): the levels the Admin has enabled, with name, description and logo. */
   getPublicLevels() {
     return this.http.getJson<PublicLevel[]>(this.site + 'api/public/levels');
+  }
+
+  /** New in V4: the incentive cards the Admin manages (Admin → Incentives → Main Dashboard Cards), no sign-in. */
+  getPublicIncentiveCards() {
+    return this.http.getJson<PublicIncentiveCards>(this.site + 'api/public/incentive-cards');
   }
 
   /** The full address of a level's logo (`logoUrl` is relative to the portal). */

@@ -8,7 +8,7 @@ import { openAssessment, signIn } from '../src/flows/login';
 import { saveOpenMeetingOffline } from '../src/flows/submissions';
 import { bulletsOf, bulletText, initialChecks, listedProblem } from '../src/listedEvidence';
 import { decodeTourComment, encodeTourComment, sectionsOf, tourCounts, tourShortfall, withSection } from '../src/siteTour';
-import { counts, formatRange, matches, progressOf, type AssessmentSummary } from '../src/portfolio';
+import { counts, formatRange, levelFilters, matches, progressOf, type AssessmentSummary } from '../src/portfolio';
 import { FakeServer, makeApp } from './helpers/harness';
 import { allocationAnswer, loginAnswer, SA_ID, ZED_ID } from './helpers/fixtures';
 
@@ -185,6 +185,38 @@ describe('portfolio helpers', () => {
     expect(matches(unit(), '', 'Gold')).toBe(false);
     expect(formatRange('2026-05-04', '2026-05-05')).toBe('04 – 05 May 2026');
     expect(formatRange('04/29/2026 09:00:00 AM', '2026-05-02')).toBe('29 Apr – 02 May 2026');
+  });
+});
+
+describe('level filters (2026-11-08, generic levels)', () => {
+  it('adds a chip for a level the Admin added among the allotted units, labelled with its server name', () => {
+    expect(levelFilters([]).map(f => f.label)).toEqual(['All', 'Bronze', 'Silver', 'Gold', 'ZED-X']);
+    const units = [unit(), unit({ zedId: 'ZEDRNSA0003', certificationType: 'PLATINUM', levelName: 'Platinum' }), unit({ zedId: 'ZEDRNSA0004', certificationType: 'DIAMOND' })];
+    expect(levelFilters(units)).toEqual([
+      { code: 'All', label: 'All' },
+      { code: 'Bronze', label: 'Bronze' },
+      { code: 'Silver', label: 'Silver' },
+      { code: 'Gold', label: 'Gold' },
+      { code: 'ZEDX', label: 'ZED-X' },
+      { code: 'PLATINUM', label: 'Platinum' },
+      { code: 'DIAMOND', label: 'DIAMOND' },
+    ]);
+    expect(levelFilters([unit({ certificationType: 'zedx' })]).map(f => f.code)).toEqual(['All', 'Bronze', 'Silver', 'Gold', 'ZEDX']);
+    expect(matches(units[1]!, '', 'PLATINUM')).toBe(true);
+    expect(matches(units[0]!, '', 'PLATINUM')).toBe(false);
+  });
+
+  it('My assessments shows the PLATINUM chip from the allotments and filters by it', async () => {
+    const platinum = unit({ zedId: 'ZEDRNSA0003', enterpriseName: 'Platinum Unit', certificationType: 'PLATINUM', levelName: 'Platinum' });
+    const { app } = await makeApp(server({ SignIn: signInAnswer({ assessments: [unit(), platinum] }) }));
+    await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
+    const r = render(app, 'Home', { tab: 'assessments' });
+    await act(async () => undefined);
+    expect(byTestId(r, 'filter-platinum')).toHaveLength(1);
+    expect(texts(r)).toEqual(expect.arrayContaining(['Platinum', 'ZED-X']));
+    await act(async () => r.root.findAll(n => n.props.testID === 'filter-platinum' && typeof n.props.onPress === 'function')[0]!.props.onPress());
+    expect(byTestId(r, 'assessment-ZEDRNSA0003')).toHaveLength(1);
+    expect(byTestId(r, 'assessment-' + ZED_ID)).toHaveLength(0);
   });
 });
 

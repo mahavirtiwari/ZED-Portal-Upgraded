@@ -221,6 +221,31 @@ export function formatRange(from: string | null | undefined, to: string | null |
 /** "Pune, Maharashtra" */
 export const placeOf = (a: { district?: string | null; state?: string | null }) => [a.district, a.state].filter(x => !!x && x.trim()).join(', ');
 
+/** The fixed level chips of My assessments (codes); ZEDX is shown as ZED-X. */
+export const BUILT_IN_LEVEL_FILTERS = ['Bronze', 'Silver', 'Gold', 'ZEDX'];
+
+/**
+ * The level chips of My assessments (2026-11-08, generic levels): All, Bronze, Silver, Gold and ZED-X, then every other
+ * level code among the assessor's allotted units (a level the Admin added, e.g. PLATINUM), in the order they come. Each is
+ * labelled with the server's level name of the allotment when known, else ZED-X / the code.
+ */
+export function levelFilters(assessments: AssessmentSummary[]): { code: string; label: string }[] {
+  const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+  const nameOf = (code: string) => assessments.find(a => same(a.certificationType?.trim() ?? '', code) && a.levelName?.trim())?.levelName?.trim();
+  const codes = [...BUILT_IN_LEVEL_FILTERS];
+  for (const a of assessments) {
+    const code = a.certificationType?.trim();
+    if (code && !codes.some(c => same(c, code))) codes.push(code);
+  }
+  return [
+    { code: 'All', label: 'All' },
+    ...codes.map(code => ({
+      code,
+      label: code === 'ZEDX' ? nameOf(code) || 'ZED-X' : BUILT_IN_LEVEL_FILTERS.includes(code) ? code : nameOf(code) || code,
+    })),
+  ];
+}
+
 /** Search of the assessment list: organisation, ZED ID or level. */
 export function matches(a: AssessmentSummary, query: string, level: string): boolean {
   if (level !== 'All' && a.certificationType.trim().toLowerCase() !== level.toLowerCase()) return false;

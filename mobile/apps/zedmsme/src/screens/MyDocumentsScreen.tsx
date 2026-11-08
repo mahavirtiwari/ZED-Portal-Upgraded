@@ -1,14 +1,16 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, dimens, errorOf, Icon, isSuccess, ScreenFrame, textStyles, useNavigation, useUi } from '@zed/shared';
-import type { CertificateLinks, DocumentsResponse, GuidelineDocument } from '../api';
+import type { DocumentsResponse, GuidelineDocument } from '../api';
 import { icons } from '../assets/icons';
 import { useOpenDrawer } from '../app/AppDrawer';
 import { useMsme } from '../app/context';
 import { openDocument } from '../components/documents';
+import { levelDisplayName } from '../levels';
+import { isLegacyLevel, sameLevel } from '../models';
 
 /** The certificate rows of My Documents, in order, each shown only when its link is there. */
-const CERTIFICATES: [keyof CertificateLinks, string][] = [
+const CERTIFICATES: [string, string][] = [
   ['Pledge', 'Pledge Certificate'],
   ['Bronze', 'Bronze Certificate'],
   ['Silver', 'Silver Certificate'],
@@ -46,7 +48,13 @@ export function MyDocumentsScreen() {
 
   const guidelines = [...(answer?.Guidelines ?? [])].sort((a, b) => Number(a.OrderNo ?? 0) - Number(b.OrderNo ?? 0));
   const certificates = answer?.Certificates?.[0] ?? null;
-  const certificateRows = CERTIFICATES.filter(([key]) => !!certificates?.[key]?.trim());
+  // 2026-11-08 (generic levels): then the certificate of every level the Admin added (its code's column), with its name.
+  const certificateRows: [string, string][] = [
+    ...CERTIFICATES.filter(([key]) => !!certificates?.[key]?.trim()),
+    ...Object.keys(certificates ?? {})
+      .filter(key => !CERTIFICATES.some(([fixed]) => sameLevel(String(fixed), key)) && !isLegacyLevel(key) && !!certificates?.[key]?.trim?.())
+      .map((key): [string, string] => [key, `${levelDisplayName(key, app.levels, app.user?.MsmeDetails?.msmeStatus)} Certificate`]),
+  ];
 
   return (
     <ScreenFrame title="My Documents" onMenu={openDrawer} backBar={{ zedId: app.user?.MsmeDetails?.ZedId, onBack: () => nav.pop() }} testID="my-documents">

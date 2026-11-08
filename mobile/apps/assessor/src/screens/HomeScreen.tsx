@@ -11,6 +11,7 @@ import {
   formatRange,
   keyOf,
   labelOf,
+  levelFilters,
   matches,
   memberRole,
   nameOf,
@@ -241,12 +242,12 @@ function AssessmentCard({
   return (
     <Card style={st.caseCard} testID={`assessment-${id}`}>
       <View style={z.rowBetween}>
-        {hideId ? <LevelBadge certification={a.certificationType} small /> : <Text style={z.idText}>{id}</Text>}
+        {hideId ? <LevelBadge certification={a.certificationType} name={a.levelName} small /> : <Text style={z.idText}>{id}</Text>}
         <Badge label={status} tone={toneOf(stageOf(a, d))} small testID={`status-${id}`} />
       </View>
       <View style={[z.rowCenter, { marginTop: 6, flexWrap: 'wrap', gap: 8 }]}>
         <Text style={z.h2}>{nameOf(a)}</Text>
-        {hideId ? null : <LevelBadge certification={a.certificationType} small />}
+        {hideId ? null : <LevelBadge certification={a.certificationType} name={a.levelName} small />}
       </View>
       {placeOf(a) ? (
         <View style={[z.rowCenter, st.meta]}>
@@ -336,15 +337,14 @@ function TeamList({ team }: { team: TeamMember[] }) {
 
 // ------------------------------------------------------------------ 06 Assessment list
 
-/** 2026-11-08: ZED-X too (the server serves its site assessments). Codes; ZEDX is shown as ZED-X. */
-const LEVEL_FILTERS = ['All', 'Bronze', 'Silver', 'Gold', 'ZEDX'];
-
 function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) {
   const app = useSa();
   const [query, setQuery] = useState('');
   const [level, setLevel] = useState('All');
   const list = app.assessments;
   const shown = useMemo(() => list.filter(a => matches(a, query, level)), [list, query, level]);
+  // 2026-11-08: ZED-X too, and every level the Admin added that the allotted units have (labelled with its name).
+  const filters = useMemo(() => levelFilters(list), [list]);
   return (
     <View style={{ flex: 1 }}>
       <PlainHeader title="My assessments" testID="list-header" />
@@ -363,8 +363,8 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
           />
         </View>
         <View style={st.filters}>
-          {LEVEL_FILTERS.map(l => (
-            <Chip key={l} label={l === 'ZEDX' ? 'ZED-X' : l} active={level === l} onPress={() => setLevel(l)} testID={`filter-${l.toLowerCase()}`} />
+          {filters.map(l => (
+            <Chip key={l.code} label={l.label} active={level === l.code} onPress={() => setLevel(l.code)} testID={`filter-${l.code.toLowerCase()}`} />
           ))}
         </View>
         {shown.map(a => (
@@ -431,7 +431,7 @@ function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl
             </View>
             <Text style={[z.h2, { marginTop: 6 }]}>{r.enterpriseName || r.baseZedId || r.zedId}</Text>
             <View style={{ flexDirection: 'row', marginTop: 4 }}>
-              <LevelBadge certification={r.certificationType} small />
+              <LevelBadge certification={r.certificationType} name={r.levelName} small />
             </View>
             {r.assessmentDate ? (
               <View style={[z.rowCenter, st.meta]}>

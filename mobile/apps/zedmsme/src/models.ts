@@ -7,12 +7,31 @@ import { parseLegacyDate, type BaseServiceResponse, type PhotoData } from '@zed/
 import { BUILT_IN_BASIC_INFO, validateBasicInformation } from './forms';
 
 /** ZEDX is ZED-X (Administration → Certification Levels): shown once the Admin enables it, with Gold's four steps. */
-export type CertificationType = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+export type BuiltInLevel = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+
+/**
+ * A level code: one of the built-in four, or (2026-11-08, generic levels) a level the Admin added in Administration →
+ * Certification Levels (e.g. PLATINUM), which works as ZED-X does. `string & {}` keeps the built-in codes as hints.
+ */
+export type CertificationType = BuiltInLevel | (string & {});
 
 export const ZEDX: CertificationType = 'ZEDX';
 
-/** The level's name on screen: "ZED-X" for ZEDX (the Admin's name when the server gives one). */
-export const levelName = (type: CertificationType, adminName?: string | null) => (type === 'ZEDX' ? adminName?.trim() || 'ZED-X' : type);
+/** Bronze, Silver or Gold: the levels of the legacy app, with their own fields in the status (any case). */
+export const isLegacyLevel = (type: string | null | undefined): boolean => ['bronze', 'silver', 'gold'].includes(String(type ?? '').toLowerCase());
+
+/** ZED-X or a level the Admin added (a V4 level): every level other than Bronze, Silver and Gold. */
+export const isV4Level = (type: string | null | undefined): boolean => !!type && !isLegacyLevel(type);
+
+/** The same level code, whatever its case. */
+export const sameLevel = (a: string | null | undefined, b: string | null | undefined): boolean => !!a && !!b && a.toLowerCase() === b.toLowerCase();
+
+/**
+ * The level's name on screen: "ZED-X" for ZEDX and the code of a level the Admin added (the Admin's name when the server
+ * gives one); Bronze, Silver and Gold as they are.
+ */
+export const levelName = (type: CertificationType, adminName?: string | null): string =>
+  isLegacyLevel(type) ? type : adminName?.trim() || (sameLevel(type, 'ZEDX') ? 'ZED-X' : type);
 
 export enum Status {
   TO_START = 'TO_START',
@@ -133,6 +152,8 @@ export type Requirement = {
   photos?: PhotoData[] | null;
   assessorRemarks?: string | null;
   msmeRemarks?: string | null;
+  /** 2026-11-08: the Admin's video for the requirement (GetParametersByType / GetNcDetailsByType); absent when none. */
+  videoUrl?: string | null;
 };
 
 export type Element = {
@@ -335,11 +356,24 @@ export type MsmeStatus = BaseServiceResponse & {
   gold?: CertificationDetails | null;
   /** New in V4: ZED-X; left out by servers that cannot read it (GetMsmeStatus, Login). */
   zedx?: CertificationDetails | null;
+  /**
+   * 2026-11-08 (generic levels): every V4 level (ZED-X and the levels the Admin added), with its code, name and mode; left
+   * out when there is none. ZED-X's own work stays in `zedx`; the added levels keep theirs here, by code.
+   */
+  levels?: AppLevelStatus[] | null;
   financialAssistanceStatus: number;
   latestCertification?: string | null;
   dateOfAvail?: string | null;
   joiningRewardAmount?: string | null;
   isCouponUsed?: boolean | null;
+};
+
+/** A V4 level in the status (MsmeStatus.levels): its details with the level's code, name and assessment mode. */
+export type AppLevelStatus = CertificationDetails & {
+  code: string;
+  name?: string | null;
+  /** "Desktop" (statuses as Bronze's) or "Site" (as Gold's). */
+  assessmentMode?: string | null;
 };
 
 export type MsmeDetails = {
@@ -371,7 +405,30 @@ export function associatedIdOf(user: LoginResponse | null): string | null {
 
 export function certificationDetailsOf(status: MsmeStatus | null | undefined, type: CertificationType): CertificationDetails | null {
   if (!status) return null;
-  return (type === 'Bronze' ? status.bronze : type === 'Silver' ? status.silver : type === 'Gold' ? status.gold : status.zedx) ?? null;
+  if (type === 'Bronze') return status.bronze ?? null;
+  if (type === 'Silver') return status.silver ?? null;
+  if (type === 'Gold') return status.gold ?? null;
+  if (type === 'ZEDX') return status.zedx ?? null;
+  // 2026-11-08: a level the Admin added, by its code (ZED-X keeps its own `zedx`).
+  return (status.levels ?? []).find(l => !sameLevel(l.code, 'ZEDX') && sameLevel(l.code, type)) ?? null;
+}
+
+/** The V4 level codes of the status other than ZED-X (the levels the Admin added), in the server's order. */
+export const addedLevelCodes = (status: MsmeStatus | null | undefined): string[] =>
+  (status?.levels ?? []).map(l => l?.code).filter((c): c is string => isV4Level(c) && !sameLevel(c, 'ZEDX'));
+
+/** Every level the app keeps work for: Bronze, Silver, Gold, ZED-X and the levels the Admin added. */
+export const allLevelCodes = (status: MsmeStatus | null | undefined): CertificationType[] => ['Bronze', 'Silver', 'Gold', 'ZEDX', ...addedLevelCodes(status)];
+
+/**
+ * The level is assessed at the desktop only: Bronze, and a level the Admin added with the Desktop mode (its statuses are
+ * Bronze's: 3 certified). Silver, Gold and ZED-X have the site assessment (4 certified).
+ */
+export function isDesktopLevel(type: CertificationType, status: MsmeStatus | null | undefined, modeHint?: string | null): boolean {
+  if (sameLevel(type, 'Bronze')) return true;
+  if (isLegacyLevel(type) || sameLevel(type, 'ZEDX')) return false;
+  const mode = (status?.levels ?? []).find(l => sameLevel(l.code, type))?.assessmentMode ?? modeHint;
+  return String(mode ?? '').toLowerCase() === 'desktop';
 }
 
 /** CertificationDetails.updateStatus: only the server's fields are taken; local work stays. */
@@ -408,6 +465,20 @@ export function updateCertificationDetails(local: MsmeStatus, server: MsmeStatus
       local.zedx = server.zedx;
     }
   }
+  // 2026-11-08: the V4 levels by code; a level new to this phone is taken over whole, a known one only its statuses.
+  for (const level of server.levels ?? []) {
+    if (!level?.code) continue;
+    local.levels ??= [];
+    const known = local.levels.find(l => sameLevel(l.code, level.code));
+    if (known) {
+      updateStatus(known, level);
+      known.name = level.name ?? known.name;
+      known.assessmentMode = level.assessmentMode ?? known.assessmentMode;
+    } else {
+      normalizeCertification(level);
+      local.levels.push(level);
+    }
+  }
   local.financialAssistanceStatus = server.financialAssistanceStatus ?? 0;
   local.latestCertification = server.latestCertification;
   local.dateOfAvail = server.dateOfAvail;
@@ -429,7 +500,11 @@ export function updateMsmeSurveillanceStatus(details: MsmeDetails, status: MsmeS
 }
 
 export const isAnyCertificationCompleted = (s: MsmeStatus) =>
-  s.bronze?.status === 3 || s.silver?.status === 4 || s.gold?.status === 4 || s.zedx?.status === 4;
+  s.bronze?.status === 3 ||
+  s.silver?.status === 4 ||
+  s.gold?.status === 4 ||
+  s.zedx?.status === 4 ||
+  addedLevelCodes(s).some(code => certificationDetailsOf(s, code)?.status === (isDesktopLevel(code, s) ? 3 : 4));
 
 export const anyActiveNc = (c: CertificationDetails) =>
   c.nc1Status !== 0 || c.nc2Status !== 0 || c.nc3Status !== 0 || c.nc4Status !== 0 || c.nc5Status !== 0;
@@ -513,6 +588,7 @@ export function normalizeStatus(s: MsmeStatus | null | undefined) {
   normalizeCertification(s.silver);
   normalizeCertification(s.gold);
   normalizeCertification(s.zedx);
+  for (const level of s.levels ?? []) normalizeCertification(level);
 }
 
 /** Fills what Gson's defaults would have filled (also for data saved by the legacy app). */
@@ -542,7 +618,14 @@ export function evidencesOf(c: CertificationDetails | null): Evidence[] {
   return out;
 }
 
-export function certificationLabel(type: CertificationType): string {
+/** The requirement each evidence of evidencesOf belongs to (for the requirement's video next to the evidence). */
+export function evidenceRequirements(c: CertificationDetails | null): Map<Evidence, Requirement> {
+  const out = new Map<Evidence, Requirement>();
+  for (const e of c?.parameters ?? []) for (const r of e.requirements ?? []) for (const ev of r.evidences ?? []) out.set(ev, r);
+  return out;
+}
+
+export function certificationLabel(type: CertificationType, adminName?: string | null): string {
   // R.string.Bronze_Certification / Silver_Certification / Gold_Certification ("Bronze Surveillance" in the surveillance build)
-  return `${levelName(type)} Certification`;
+  return `${levelName(type, adminName)} Certification`;
 }

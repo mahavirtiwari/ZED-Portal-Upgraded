@@ -16,7 +16,7 @@ import {
   type Environment,
   type SqlDb,
 } from '@zed/shared';
-import { MsmeApi, type PublicLevel } from '../api';
+import { MsmeApi, type PublicIncentiveCards, type PublicLevel } from '../api';
 import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { BUILT_IN_BASIC_INFO, MSME_BASIC_INFO } from '../forms';
 import { associatedIdOf, normalizeLoginResponse, type LoginResponse } from '../models';
@@ -26,6 +26,19 @@ export const LOGIN_DB_NAME = 'QCI_MSME_DB';
 export const MEDIA_DB_NAME = 'ZED_MSME_Media_DB';
 /** KeyValueStore key of the enabled levels (api/public/levels). */
 const LEVELS_KEY = 'publicLevels';
+/** KeyValueStore key of the Admin's incentive cards (api/public/incentive-cards). */
+const INCENTIVE_CARDS_KEY = 'publicIncentiveCards';
+/** The incentive cards are asked again when My Incentives opens, at most this often. */
+const INCENTIVE_CARDS_REFRESH_MS = 5 * 60 * 1000;
+
+/** The answer when it has the two lists and at least one card; otherwise null (the portal could not answer). */
+function usableIncentiveCards(value: unknown): PublicIncentiveCards | null {
+  const v = value as Partial<PublicIncentiveCards> | null | undefined;
+  if (!v || typeof v !== 'object') return null;
+  const builtIn = Array.isArray(v.builtIn) ? v.builtIn.filter(c => c && typeof c.card === 'string') : [];
+  const incentives = Array.isArray(v.incentives) ? v.incentives.filter(i => i && typeof i === 'object') : [];
+  return builtIn.length || incentives.length ? { builtIn, incentives } : null;
+}
 
 export type MsmeAppDeps = {
   loginDb: SqlDb;
@@ -61,6 +74,12 @@ export class MsmeApp {
    * answered once on this phone.
    */
   private _levels: PublicLevel[] | null = null;
+  /**
+   * New in V4: the incentive cards the Admin manages (api/public/incentive-cards), kept for offline use; null until the
+   * server has answered once on this phone (My Incentives then shows its built-in cards).
+   */
+  private _incentiveCards: PublicIncentiveCards | null = null;
+  private incentiveCardsAt = 0;
   private _user: LoginResponse | null = null;
   private _loginId: string | null = null;
   private listeners = new Set<() => void>();
@@ -104,6 +123,29 @@ export class MsmeApp {
     await this.texts.load();
     await this.forms.load([MSME_BASIC_INFO]);
     this._levels = await this.cache.get<PublicLevel[]>(LEVELS_KEY).catch(() => null);
+    this._incentiveCards = usableIncentiveCards(await this.cache.get<PublicIncentiveCards>(INCENTIVE_CARDS_KEY).catch(() => null));
+  }
+
+  get incentiveCards(): PublicIncentiveCards | null {
+    return this._incentiveCards;
+  }
+
+  /**
+   * The Admin's incentive cards from the server (when My Incentives opens; not again within a few minutes of an answer).
+   * A failure or an empty answer keeps the last answer without a message.
+   */
+  async refreshIncentiveCards(force = false): Promise<void> {
+    if (!force && this.incentiveCardsAt && Date.now() - this.incentiveCardsAt < INCENTIVE_CARDS_REFRESH_MS) return;
+    try {
+      const cards = usableIncentiveCards(await this.api.getPublicIncentiveCards());
+      if (!cards) return;
+      this.incentiveCardsAt = Date.now();
+      this._incentiveCards = cards;
+      this.touch();
+      await this.cache.set(INCENTIVE_CARDS_KEY, cards);
+    } catch {
+      // offline or an older server: the last answer stays
+    }
   }
 
   get levels(): PublicLevel[] | null {

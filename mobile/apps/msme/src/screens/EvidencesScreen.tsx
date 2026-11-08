@@ -32,8 +32,10 @@ import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { useOnline } from '../app/online';
 import { useScreenCapture } from '../components/capture';
+import { RequirementVideoButton } from '../components/RequirementVideoButton';
 import {
   certificationDetailsOf,
+  evidenceRequirements,
   evidencesOf,
   NO,
   preFinalSubmitIsValid,
@@ -41,6 +43,7 @@ import {
   YES,
   type CertificationType,
   type Evidence,
+  type Requirement,
   type EvidenceFinalSubmitData,
 } from '../models';
 import { queueEvidence } from '../sync/queue';
@@ -62,6 +65,7 @@ export function EvidencesScreen() {
   const type = useRoute<{ certificationType: CertificationType }>().params.certificationType;
   const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, type);
   const evidences = useMemo(() => evidencesOf(details), [details]);
+  const requirementOf = useMemo(() => evidenceRequirements(details), [details]);
   const [selected, setSelected] = useState<Evidence | null>(null);
   const [facilitator, setFacilitator] = useState<string | null>(null);
   const [silver, setSilver] = useState<string | null>(null);
@@ -217,6 +221,7 @@ export function EvidencesScreen() {
           renderItem={({ item, index }) => (
             <EvidenceRow
               evidence={item}
+              requirement={requirementOf.get(item)}
               online={online}
               testID={`evidence-${index}`}
               onPress={() => {
@@ -297,6 +302,7 @@ export function EvidencesScreen() {
 /** evidences_list_row via EvidenceListAdapter */
 function EvidenceRow({
   evidence,
+  requirement,
   online,
   onPress,
   onLongPress,
@@ -304,6 +310,8 @@ function EvidenceRow({
   testID,
 }: {
   evidence: Evidence;
+  /** The requirement of the evidence: its Admin video (2026-11-08) is shown next to the evidence. */
+  requirement?: Requirement;
   online: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -319,6 +327,7 @@ function EvidenceRow({
         <Text style={[textStyles.defaultLabel, styles.rowText]} testID={testID ? `${testID}-label` : undefined}>
           {evidence.label}
         </Text>
+        <RequirementVideoButton url={requirement?.videoUrl} code={requirement?.code} style={styles.rowVideo} />
         <Icon icon={icons.ic_evidence_open} />
       </View>
       {evidence.status === Status.COMPLETED ? (
@@ -449,7 +458,8 @@ export { YES };
 const styles = StyleSheet.create({
   row: { ...shapes.lightGreyOutlineFilled, margin: dimens.padding1, padding: 2 },
   rowLabel: { flexDirection: 'row', alignItems: 'center', padding: dimens.padding2 },
-  rowText: { flex: 1, marginHorizontal: dimens.padding1, marginBottom: 0 },
+  rowText: { flex: 1, flexShrink: 1, marginHorizontal: dimens.padding1, marginBottom: 0 },
+  rowVideo: { marginLeft: 0, marginRight: dimens.padding1 },
   note: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.yellow },
   noteText: { flex: 1, fontSize: dimens.textSize14, padding: dimens.padding2, color: colors.black },
   upload: {

@@ -6,7 +6,7 @@
  */
 import { isNetworkAvailable, isSuccess, type BaseServiceResponse, type HandlerResult, type SyncJob } from '@zed/shared';
 import type { MsmeApp } from '../app/MsmeApp';
-import { Status, type CertificationType } from '../models';
+import { allLevelCodes, Status, type CertificationType } from '../models';
 import {
   activeNc,
   certification,
@@ -108,7 +108,10 @@ export const queueNcRequirement = (app: MsmeApp, cert: CertificationType, requir
  */
 export async function queueOutstanding(app: MsmeApp): Promise<number> {
   let n = 0;
-  for (const cert of ['Bronze', 'Silver', 'Gold', 'ZEDX'] as CertificationType[]) {
+  // Bronze, Silver, Gold, ZED-X and (2026-11-08) the levels the Admin added that the unit's status lists.
+  const unit = app.user?.MsmeDetails;
+  const certs = [...new Set([...allLevelCodes(unit?.msmeStatus), ...allLevelCodes(unit?.msmeSurveillanceStatus)])] as CertificationType[];
+  for (const cert of certs) {
     const details = certification(app, cert);
     if (!details) continue;
     for (const e of details.parameters ?? [])
