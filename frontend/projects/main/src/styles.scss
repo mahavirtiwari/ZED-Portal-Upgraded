@@ -28,6 +28,22 @@ body {
   @include meta.load-css('styles/legacy-login');
 }
 
+// Sign-in pages, 2026-11-08 (option A): one teal for buttons and links (#23656b, contrast 6.4:1 with white text), the light
+// teal only as an accent, soft fields, and no browser autofill blue.
+.zed-login {
+  .btn-primary, .btn-primary:focus, .btn-primary:disabled { background-color: #23656b; border-color: #23656b; color: #fff; }
+  .btn-primary:hover { background-color: #174a4e; border-color: #174a4e; filter: none; }
+  .form-control { background-color: #f7fafa; border-color: #d3dfe1; color: #1b2a2c; }
+  .form-control:focus { background-color: #fff; }
+  input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0 1000px #f7fafa inset;
+    -webkit-text-fill-color: #1b2a2c;
+    caret-color: #1b2a2c;
+    transition: background-color 9999s ease-out 0s;
+  }
+  a { color: #23656b; }
+}
+
 // .btn-default came from Bootstrap 3; the old site restyled it in site.css.
 .btn-default,
 .btn-default:hover {

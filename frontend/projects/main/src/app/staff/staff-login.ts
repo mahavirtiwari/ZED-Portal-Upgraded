@@ -65,22 +65,22 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
     .field { position: relative; }
     .in-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
-    .in-icon svg { width: 18px; height: 18px; fill: #368289; display: block; }
+    .in-icon svg { width: 18px; height: 18px; fill: #23656b; display: block; }
     .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; }
-    .field .form-control:focus { border-color: #45a5ad; box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); }
+    .field .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
     .field .form-control.has-toggle { padding-right: 64px; }
     .toggle {
-      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #2f7c83;
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #23656b;
       font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px;
     }
-    .toggle:hover { background: #e3f3f4; }
+    .toggle:hover { background: #e6f2f3; }
     .btn-primary, .btn-primary:hover {
-      color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 15px; font-weight: 600; letter-spacing: 0.5px;
-      text-transform: uppercase; height: 46px; border-radius: 10px;
+      color: #fff; background-color: #23656b; border-color: #23656b; font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
+      text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     }
-    .btn-primary:hover { background-color: #368289; border-color: #368289; }
+    .btn-primary:hover, .btn-primary:focus-visible { background-color: #174a4e; border-color: #174a4e; filter: none; }
     .login-links { text-align: center; margin: 16px 0 0; }
-    .login-links a { color: #2f7c83; font-weight: 600; }
+    .login-links a { color: #23656b; font-weight: 600; }
   `,
 })
 export class StaffLoginPage {

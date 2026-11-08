@@ -228,7 +228,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         if (!StaffUserRules.TryText(req.SectionCode, 50, true, false, out var code)) return this.Problem400("Parameter Code required (up to 50 characters).");
         if (!StaffUserRules.TryText(req.SectionName, 200, true, false, out var name)) return this.Problem400("Parameter Name required (up to 200 characters).");
         if (!StaffUserRules.TryText(req.Description, 1990, false, true, out var description)) return this.Problem400("The description can be up to 1990 characters.");
-        if ((await LoadParametersAsync(type, ct)).Any(p => string.Equals(p.SectionCode, code, StringComparison.OrdinalIgnoreCase)))
+        // Trimmed (2026-11-08): SQL compares "1" and "1 " as the same code, and a duplicate breaks SP_ASSESSMENT_DA_DETAILS.
+        if ((await LoadParametersAsync(type, ct)).Any(p => string.Equals(p.SectionCode?.Trim(), code?.Trim(), StringComparison.OrdinalIgnoreCase)))
             return this.Problem400("A parameter with this code already exists.");
         var (sectors, sectorsError) = await NicSectorsAsync(req.NicSectors, ct);
         if (sectorsError is not null) return this.Problem400(sectorsError);

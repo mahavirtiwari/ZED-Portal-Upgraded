@@ -59,7 +59,8 @@ export function tokenFromFragment(fragment: string | null): string {
   `,
   styles: `
     .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
-    .btn-primary, .btn-primary:hover { color: #fff; background-color: #45a5ad; border-color: #45a5ad; font-size: 14px; text-transform: uppercase; }
+    .btn-primary, .btn-primary:hover { color: #fff; background-color: #23656b; border-color: #23656b; font-size: 14px; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-primary:hover { background-color: #174a4e; border-color: #174a4e; filter: none; }
   `,
 })
 export class StaffResetPasswordPage implements OnInit {
