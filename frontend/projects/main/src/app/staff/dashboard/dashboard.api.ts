@@ -56,7 +56,8 @@ export interface CountItem {
 /** api/staff/dashboard/analytics (main portal): the Power BI pages' figures. */
 export interface Analytics {
   view: AnalyticsView;
-  totals: { registered: number; certified: number; bronze: number; silver: number; gold: number };
+  /** zedx: ZED-X certifications (main portal). */
+  totals: { registered: number; certified: number; bronze: number; silver: number; gold: number; zedx?: number };
   sizes: CountItem[];
   genders: CountItem[];
   socialCategories: CountItem[];

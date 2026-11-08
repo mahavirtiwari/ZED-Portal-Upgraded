@@ -102,7 +102,8 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
     /// <summary>A month (yyyy-MM) or a year: registrations and certifications, each by its own date.</summary>
     public sealed record TrendItem(string Period, int Registered, int Certified);
 
-    public sealed record AnalyticsTotals(int Registered, int Certified, int Bronze, int Silver, int Gold);
+    /// <summary>Zedx: ZED-X certifications (main portal; 0 elsewhere and before migration 0019's update of 2026-11-08).</summary>
+    public sealed record AnalyticsTotals(int Registered, int Certified, int Bronze, int Silver, int Gold, int Zedx = 0);
 
     /// <summary>The figures of the "ZED Dashboard" (registered) or "ZED Certification" (certified) view.</summary>
     public sealed record AnalyticsResponse(
@@ -202,7 +203,8 @@ public sealed class StaffDashboardController(ISqlExecutor db, PortalHost host, I
         var result = new AnalyticsResponse(
             viewValue,
             new AnalyticsTotals(DashboardFilters.Int(totals, "Registered"), DashboardFilters.Int(totals, "Certified"),
-                DashboardFilters.Int(totals, "Bronze"), DashboardFilters.Int(totals, "Silver"), DashboardFilters.Int(totals, "Gold")),
+                DashboardFilters.Int(totals, "Bronze"), DashboardFilters.Int(totals, "Silver"), DashboardFilters.Int(totals, "Gold"),
+                DashboardFilters.Int(totals, "Zedx")),
             Items(sets[1]), Items(sets[2]), Items(sets[3]), Trend(sets[4], "Month"), Items(sets[5]), Items(sets[6]), Items(sets[7]),
             sets[8].Select(r => r.Text("Label") ?? "").Where(l => l.Length > 0).ToList(),
             bound, DateTimeOffset.Now, DashboardFilters.Pick(sets[9].FirstOrDefault(), CardColumns), Trend(sets[10], "Year"));

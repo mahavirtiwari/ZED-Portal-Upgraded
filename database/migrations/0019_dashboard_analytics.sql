@@ -192,14 +192,17 @@ BEGIN
         SELECT (SELECT COUNT(*) FROM #U) AS Registered, COUNT(*) AS Certified,
                SUM(CASE WHEN Level = 'Bronze' THEN 1 ELSE 0 END) AS Bronze,
                SUM(CASE WHEN Level = 'Silver' THEN 1 ELSE 0 END) AS Silver,
-               SUM(CASE WHEN Level = 'Gold' THEN 1 ELSE 0 END) AS Gold
+               SUM(CASE WHEN Level = 'Gold' THEN 1 ELSE 0 END) AS Gold,
+               -- 2026-11-08: ZED-X too (the dashboard's top tiles).
+               SUM(CASE WHEN Level = 'ZEDX' THEN 1 ELSE 0 END) AS Zedx
         FROM #S;
     ELSE
         SELECT (SELECT COUNT(*) FROM #S) AS Registered,
                (SELECT COUNT(*) FROM #C C WHERE EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Certified,
                (SELECT COUNT(*) FROM #C C WHERE C.Level = 'Bronze' AND EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Bronze,
                (SELECT COUNT(*) FROM #C C WHERE C.Level = 'Silver' AND EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Silver,
-               (SELECT COUNT(*) FROM #C C WHERE C.Level = 'Gold' AND EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Gold;
+               (SELECT COUNT(*) FROM #C C WHERE C.Level = 'Gold' AND EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Gold,
+               (SELECT COUNT(*) FROM #C C WHERE C.Level = 'ZEDX' AND EXISTS (SELECT 1 FROM #S S WHERE S.ZedId = C.ZedId)) AS Zedx;
 
     -- 1-3: splits.
     SELECT Size AS Label, COUNT(*) AS Total FROM #S GROUP BY Size ORDER BY Total DESC;

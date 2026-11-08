@@ -2,7 +2,7 @@ import { Component, computed, inject, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage, AuthService } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { CHART_COLORS, ChartItem, ColumnChart, DonutChart, GroupedColumnChart, LEVEL_COLORS, RankList, TrendPoint, formatCount } from './charts';
+import { CHART_COLORS, ChartItem, DonutChart, GroupedColumnChart, LEVEL_COLORS, RankList, TrendPoint, formatCount } from './charts';
 import { Analytics, AnalyticsFilter, AnalyticsView, CountItem, DashboardApi, Row } from './dashboard.api';
 import { CERTIFICATIONS, SIZES, STATE_NAMES } from './dashboard-filters';
 import { PortalSystem } from '../../portal-system';
@@ -19,7 +19,8 @@ type FilterKey = Exclude<keyof AnalyticsFilter, 'view'>;
  * Surveillance; Consultancy's level figures are applications (there is no Bronze handholding).
  */
 interface AnalyticsWords {
-  kpis: [string, string, string, string, string];
+  /** Registered, completed, Bronze, Silver, Gold and (main only) ZED-X. */
+  kpis: string[];
   certifications: readonly string[];
   /** The certification filter's caption and the "Date of" choice for the completion date. */
   certLabel: string;
@@ -31,7 +32,7 @@ interface AnalyticsWords {
 
 export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
   main: {
-    kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified'],
+    kpis: ['Registered units', 'Certified units', 'Bronze certified', 'Silver certified', 'Gold certified', 'ZED-X certified'],
     certifications: CERTIFICATIONS, certLabel: 'Certification', completedDate: 'Certification', completed: 'Certified', completedShort: 'Certified',
   },
   consultancy: {
@@ -55,10 +56,19 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
  */
 @Component({
   selector: 'zed-staff-analytics',
-  imports: [FormsModule, ColumnChart, DonutChart, GroupedColumnChart, RankList],
+  imports: [FormsModule, DonutChart, GroupedColumnChart, RankList],
   template: `
     <section class="an" [class.is-busy]="loading()" aria-label="ZED figures">
 
+      <!-- V4 2026-11-08: the date basis as tabs; four filters in one row, the others under More filters; chips for what is set. -->
+      @if (views.length > 1) {
+        <div class="an-basis" role="tablist" aria-label="Count by">
+          @for (v of views; track v) {
+            <button type="button" role="tab" class="an-basis-tab" [attr.data-view]="v" [class.active]="view() === v" [attr.aria-selected]="view() === v"
+                    (click)="setView(v)">{{ v === 'registered' ? 'By registration date' : 'By ' + words.completedDate.toLowerCase() + ' date' }}</button>
+          }
+        </div>
+      }
       <div class="filter-bar an-filters">
         <div class="filter">
           <label class="form-label" for="an-state">State</label>
@@ -81,6 +91,21 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
             @for (c of certifications; track c) { <option [value]="c">{{ c }}</option> }
           </select>
         </div>
+        <div class="filter an-range">
+          <span class="form-label" id="an-range-label">{{ view() === 'registered' ? 'Registered' : words.completedShort }} between</span>
+          <div class="an-range-inputs" role="group" aria-labelledby="an-range-label">
+            <input id="an-from" type="date" class="form-control" aria-label="From" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)" />
+            <span class="an-range-to">to</span>
+            <input id="an-to" type="date" class="form-control" aria-label="To" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
+          </div>
+        </div>
+        <div class="filter an-more-btn">
+          <button type="button" class="btn btn-outline-primary" [attr.aria-expanded]="moreOpen()" aria-controls="an-more" (click)="moreOpen.set(!moreOpen())">
+            More filters{{ moreCount() ? ' (' + moreCount() + ')' : '' }} <span aria-hidden="true">{{ moreOpen() ? '▴' : '▾' }}</span>
+          </button>
+        </div>
+      </div>
+      <div class="filter-bar an-filters an-more" id="an-more" [hidden]="!moreOpen()">
         <div class="filter">
           <label class="form-label" for="an-gender">Gender</label>
           <select id="an-gender" class="form-select" [ngModel]="filter().gender ?? ''" (ngModelChange)="set('gender', $event)">
@@ -104,29 +129,25 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
             @for (s of socialCategories; track s) { <option [value]="s">{{ s }}</option> }
           </select>
         </div>
-        <div class="filter">
-          <label class="form-label" for="an-dateby">Date of</label>
-          <select id="an-dateby" class="form-select" [ngModel]="view()" (ngModelChange)="setView($event)">
-            @if (views.includes('registered')) { <option value="registered">Registration</option> }
-            @if (views.includes('certified')) { <option value="certified">{{ words.completedDate }}</option> }
-          </select>
-        </div>
-        <div class="filter an-date">
-          <label class="form-label" for="an-from">From</label>
-          <input id="an-from" type="date" class="form-control" [max]="filter().to || today" [ngModel]="filter().from ?? ''" (ngModelChange)="set('from', $event)" />
-        </div>
-        <div class="filter an-date">
-          <label class="form-label" for="an-to">To</label>
-          <input id="an-to" type="date" class="form-control" [min]="filter().from || ''" [max]="today" [ngModel]="filter().to ?? ''" (ngModelChange)="set('to', $event)" />
-        </div>
       </div>
+      @if (chips().length) {
+        <div class="an-chips" aria-label="Filters set">
+          @for (c of chips(); track c.key) {
+            <span class="an-chip">{{ c.label }}
+              @if (c.key !== 'state' || !data()?.boundState) {
+                <button type="button" [attr.aria-label]="'Remove ' + c.label" (click)="set(c.key, '')">×</button>
+              }
+            </span>
+          }
+        </div>
+      }
 
       @if (error()) {
         <div class="alert alert-danger" role="alert">{{ error() }} <button type="button" class="btn btn-link p-0 ms-1" (click)="load()">Try again</button></div>
       }
 
       @if (data(); as d) {
-        <div class="an-kpis">
+        <div class="an-kpis" [style.--n]="kpis().length">
           @for (k of kpis(); track k.label) {
             <div class="an-kpi" [style.--accent]="k.color">
               <span class="an-kpi-value">{{ k.value }}</span>
@@ -145,7 +166,7 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
       @if (data(); as d) {
         <div class="an-grid an-grid-3 an-splits">
           <div class="an-card"><h5>MSME Size</h5><zed-donut-chart [items]="categorical(d.sizes)" ariaLabel="Units by MSME size" /></div>
-          <div class="an-card"><h5>Gender</h5><zed-column-chart class="an-gender" [items]="genders()" ariaLabel="Units by gender of the owner" [compact]="true" /></div>
+          <div class="an-card"><h5>Gender</h5><zed-donut-chart [items]="genders()" ariaLabel="Units by gender of the owner" /></div>
           <div class="an-card"><h5>Social Category</h5><zed-donut-chart [items]="categorical(d.socialCategories)" ariaLabel="Units by social category" /></div>
         </div>
 
@@ -165,9 +186,9 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
         </div>
 
         <div class="an-grid an-grid-3">
-          <div class="an-rank"><zed-rank-list heading="State" color="#a58a0c" [valueHeading]="unitWord()" [items]="ranked(d.states)" /></div>
-          <div class="an-rank"><zed-rank-list heading="District" color="#33393b" [valueHeading]="unitWord()" [items]="ranked(d.districts)" /></div>
-          <div class="an-rank"><zed-rank-list heading="Sector (two-digit activity)" color="#007f86" [valueHeading]="unitWord()" [items]="ranked(d.activities)" /></div>
+          <div class="an-rank"><zed-rank-list heading="State" [valueHeading]="unitWord()" [items]="ranked(d.states)" /></div>
+          <div class="an-rank"><zed-rank-list heading="District" [valueHeading]="unitWord()" [items]="ranked(d.districts)" /></div>
+          <div class="an-rank"><zed-rank-list heading="Sector (two-digit activity)" [valueHeading]="unitWord()" [items]="ranked(d.activities)" /></div>
         </div>
       } @else if (loading()) {
         <div class="an-loading" role="status">Loading the figures…</div>
@@ -178,16 +199,29 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an { position: relative; background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; padding: 16px 18px 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(16,61,64,.05); }
     .an.is-busy .an-kpis, .an.is-busy .an-grid { opacity: .55; transition: opacity .15s; }
     .an-status.is-hidden { display: none; }
-    /* All filters on one line on a wide screen. */
-    /* Nine filters on two lines: five, then four (fewer per line on smaller screens). */
-    .an-filters { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 16px; margin-bottom: 16px; }
+    /* The date basis as tabs; State, District, Certification, the date range and More filters in one row. */
+    .an-basis { display: inline-flex; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
+    .an-basis-tab { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; }
+    .an-basis-tab + .an-basis-tab { border-left: 1px solid #cbd9da; }
+    .an-basis-tab.active { background: #45a5ad; color: #fff; }
+    .an-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.7fr) auto; gap: 12px 16px; margin-bottom: 12px; align-items: end; }
+    .an-more { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid #e4ecec; border-radius: 10px; }
+    .an-more[hidden] { display: none; }
+    .an-range-inputs { display: flex; align-items: center; gap: 6px; }
+    .an-range-inputs .form-control { min-width: 0; padding-right: 8px; }
+    .an-range-to { font-size: 13px; color: #5f6f70; }
+    .an-more-btn .btn { white-space: nowrap; }
+    .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 14px; }
+    .an-chip { display: inline-flex; align-items: center; gap: 4px; background: #eef6f6; color: #23474a; border: 1px solid #d3e6e7; border-radius: 999px;
+      padding: 2px 4px 2px 10px; font-size: 12px; font-weight: 600; }
+    .an-chip button { border: 0; background: none; color: #2f7c83; font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; }
     .an-status { margin-bottom: 18px; }
     .an-status h5 { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 12px; }
     .an-status h5 small { font-weight: 500; font-size: 12px; margin-left: 6px; }
     .an-filters .filter { max-width: none; min-width: 0; }
     .an-filters .form-select, .an-filters .form-control { padding-left: 10px; padding-right: 28px; }
     .an-filters .an-date .form-control { padding-right: 8px; }
-    .an-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .an-kpis { display: grid; grid-template-columns: repeat(var(--n, 5), minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
     .an-kpi { --accent: #00909a; display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 12px; background: #f7fafa; border: 1px solid #e4ecec; }
     .an-kpi-value { font-size: 28px; font-weight: 700; color: var(--accent); line-height: 1.15; font-variant-numeric: tabular-nums; }
     .an-kpi-label { font-size: 13px; font-weight: 600; color: #3b4b4c; }
@@ -201,17 +235,15 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an-grid-3 .an-card { display: flex; flex-direction: column; }
     .an-grid-3 .an-card > zed-donut-chart, .an-grid-3 .an-card > zed-column-chart { flex: 1 1 auto; }
     .an-grid-3 .an-card > zed-column-chart { display: flex; flex-direction: column; justify-content: flex-end; }
-    /* The gender columns as tall as the donuts beside them. */
-    .an-gender { --h: 330px; }
     .an-rank { min-width: 0; }
     .an-card h5 small { font-weight: 500; font-size: 12px; margin-left: 6px; }
     .an-loading { padding: 40px; text-align: center; color: #6b7f80; }
     @media (max-width: 1199.98px) { .an-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 1199.98px) { .an-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
     @media (max-width: 991.98px) { .an-trend { grid-template-columns: 1fr; } .an-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 1199.98px) { .an-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+    @media (max-width: 1199.98px) { .an-filters { grid-template-columns: repeat(3, minmax(0, 1fr)); } .an-range { grid-column: span 2; } }
     @media (max-width: 767.98px) { .an-grid-3 { grid-template-columns: 1fr; } .an-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 479.98px) { .an-filters { grid-template-columns: 1fr; } }`,
+    @media (max-width: 479.98px) { .an-filters { grid-template-columns: 1fr; } .an-range { grid-column: auto; } .an-basis { display: flex; } .an-basis-tab { flex: 1 1 0; } }`,
 })
 export class StaffAnalytics {
   private readonly api = inject(DashboardApi);
@@ -236,6 +268,19 @@ export class StaffAnalytics {
   protected readonly today = new Date().toISOString().slice(0, 10);
 
   protected readonly view = signal<AnalyticsView>(this.views[0]);
+  /** More filters (gender, size, social category) open. */
+  protected readonly moreOpen = signal(false);
+  protected readonly moreCount = computed(() => (['gender', 'size', 'socialCategory'] as const).filter((k) => !!this.filter()[k]).length);
+  /** The filters that are set, as removable chips. */
+  protected readonly chips = computed(() => {
+    const f = this.filter();
+    const names: [FilterKey, string][] = [['state', 'State'], ['district', 'District'], ['certification', this.words.certLabel], ['gender', 'Gender'],
+      ['size', 'Size'], ['socialCategory', 'Social category'], ['from', 'From'], ['to', 'To']];
+    return names.filter(([k]) => !!f[k]).map(([key, name]) => {
+      const v = f[key]!;
+      return { key, label: `${name}: ${key === 'gender' ? (GENDER_LABELS[v.toLowerCase()] ?? v) : v}` };
+    });
+  });
   protected readonly filter = signal<Omit<AnalyticsFilter, 'view'>>({});
   /** Read by the page (Updated time in its head). */
   readonly data = signal<Analytics | null>(null);
@@ -259,6 +304,7 @@ export class StaffAnalytics {
       { label: k[2], value: formatCount(t.bronze), color: this.words.certifications.includes('Bronze') ? LEVEL_COLORS['Bronze'] : '#6250d6' },
       { label: k[3], value: formatCount(t.silver), color: LEVEL_COLORS['Silver'] },
       { label: k[4], value: formatCount(t.gold), color: LEVEL_COLORS['Gold'] },
+      ...(k[5] ? [{ label: k[5], value: formatCount(t.zedx ?? 0), color: '#2f7c83' }] : []),
     ];
   });
 
@@ -278,7 +324,7 @@ export class StaffAnalytics {
   );
 
   protected readonly genders = computed<ChartItem[]>(() =>
-    (this.data()?.genders ?? []).map((g) => ({ label: GENDER_LABELS[g.label.toLowerCase()] ?? g.label, value: g.total })),
+    (this.data()?.genders ?? []).map((g, i) => ({ label: GENDER_LABELS[g.label.toLowerCase()] ?? g.label, value: g.total, color: CHART_COLORS[i] ?? '#9aa9ab' })),
   );
 
   constructor() {

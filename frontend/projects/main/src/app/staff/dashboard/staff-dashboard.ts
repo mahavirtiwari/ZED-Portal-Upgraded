@@ -215,7 +215,7 @@ export const CONSULTANT_TILES = [
                 @for (line of card.lines.slice(1); track line.field) {
                   <li [class]="'is-' + statusKind(line.label)">
                     <span class="app-dot" aria-hidden="true"></span>
-                    <span class="app-label">{{ line.label }}</span>
+                    <span class="app-label" [title]="line.label">{{ line.label }}</span>
                     <span class="app-figure"><span class="app-value" [attr.data-field]="line.field">{{ value(line.field) }}</span>
                       <span class="app-share">({{ share(card, line.field) | number: '1.0-1' }}%)</span></span>
                   </li>
@@ -250,10 +250,10 @@ export const CONSULTANT_TILES = [
     .app-bar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; background: #eef3f3; margin-bottom: 14px; }
     .app-seg { height: 100%; min-width: 0; }
     .app-stats { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .app-stats li { display: grid; grid-template-columns: 10px 1fr; grid-template-rows: auto auto; column-gap: 8px; align-items: center; }
+    .app-stats li { display: grid; grid-template-columns: 10px minmax(0, 1fr); grid-template-rows: 30px auto; column-gap: 8px; row-gap: 2px; align-items: start; }
     .app-stats li, .ms-list li { padding: 10px 12px; border-radius: 10px; background: #f7fafa; border: 1px solid #edf2f2; }
-    .app-dot { width: 10px; height: 10px; border-radius: 50%; grid-row: 1; }
-    .app-label { font-size: 12px; color: #5f6f70; grid-row: 1; }
+    .app-dot { width: 10px; height: 10px; border-radius: 50%; grid-row: 1; margin-top: 2px; }
+    .app-label { font-size: 12px; line-height: 15px; color: #5f6f70; grid-row: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .app-figure { grid-column: 2; }
     .app-figure, .ms-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; }
     .app-value { font-size: 18px; font-weight: 700; color: #232527; font-variant-numeric: tabular-nums; }

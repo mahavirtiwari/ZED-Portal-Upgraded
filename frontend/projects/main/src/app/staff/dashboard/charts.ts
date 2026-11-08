@@ -169,8 +169,8 @@ export class DonutChart {
 export type RankSort = 'high' | 'low' | 'name';
 
 /**
- * A ranked list with a coloured header: rank (by count), name, a bar in proportion to the largest, the number. Every
- * row, in a scroll; the header's choice sorts by count (highest or lowest first) or by name.
+ * A ranked list: rank (by count), name, a bar in proportion to the largest, the number; the header's choice sorts by count
+ * (highest or lowest first) or by name. V4 2026-11-08: one header style for every list, the first ten rows and Show all.
  */
 @Component({
   selector: 'zed-rank-list',
@@ -189,7 +189,7 @@ export type RankSort = 'high' | 'low' | 'name';
       </div>
       <div class="rk-cols"><span>#</span><span>{{ heading() }}</span><span>{{ valueHeading() }}</span></div>
       <ol class="rk-list">
-        @for (it of sorted(); track it.label) {
+        @for (it of shown(); track it.label) {
           <li [title]="it.label + ': ' + format(it.value)">
             <span class="rk-rank">{{ it.rank }}</span>
             <span class="rk-body">
@@ -202,20 +202,27 @@ export type RankSort = 'high' | 'low' | 'name';
           <li class="rk-empty">No data</li>
         }
       </ol>
+      @if (sorted().length > limit) {
+        <button type="button" class="rk-more" [attr.aria-expanded]="all()" (click)="all.set(!all())">
+          {{ all() ? 'Show top ' + limit : 'Show all ' + sorted().length }} <span aria-hidden="true">{{ all() ? '▴' : '▾' }}</span>
+        </button>
+      }
     </div>
   `,
   styles: `
-    .rk { --head: #23474a; border-radius: 10px; overflow: hidden; border: 1px solid #e4ecec; }
-    .rk-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 12px; background: var(--head); color: #fff; }
-    .rk-title { font-size: 14px; font-weight: 700; letter-spacing: .3px; }
-    .rk-title small { font-weight: 500; opacity: .85; }
-    .rk-sort select { font-size: 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 6px; background: rgba(255,255,255,.15); color: #fff;
-      padding: 3px 6px; cursor: pointer; }
+    .rk { --head: #2f7c83; border-radius: 12px; overflow: hidden; border: 1px solid #e4ecec; background: #fff; }
+    .rk-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px 10px; border-top: 3px solid var(--head); }
+    .rk-title { font-size: 15px; font-weight: 700; color: #23474a; }
+    .rk-title small { font-weight: 500; color: #6b7f80; }
+    .rk-sort select { font-size: 12px; border: 1px solid #cbd9da; border-radius: 6px; background: #fff; color: #23474a; padding: 3px 6px; cursor: pointer; }
     .rk-sort select option { color: #232527; }
     .rk-cols { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; padding: 6px 12px; font-size: 11px; font-weight: 700; color: #6b7f80;
       text-transform: uppercase; letter-spacing: .3px; background: #f7fafa; border-bottom: 1px solid #e4ecec; }
     .rk-cols span:first-child { text-align: right; }
-    .rk-list { list-style: none; margin: 0; padding: 0 12px; height: 380px; overflow-y: auto; }
+    .rk-list { list-style: none; margin: 0; padding: 0 12px; }
+    .rk-more { display: block; width: 100%; border: 0; border-top: 1px solid #eef3f3; background: #f7fafa; color: #2f7c83; font-size: 13px; font-weight: 600;
+      padding: 8px; cursor: pointer; }
+    .rk-more:hover { background: #eef6f6; }
     .rk-list li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #eef3f3; }
     .rk-rank { font-size: 12px; font-weight: 700; color: #6b7f80; text-align: right; font-variant-numeric: tabular-nums; }
     .rk-body { min-width: 0; }
@@ -229,9 +236,13 @@ export class RankList {
   readonly items = input.required<ChartItem[]>();
   readonly heading = input('');
   readonly valueHeading = input('Units');
-  /** The header's colour (and the bars'). */
-  readonly color = input('#23474a');
+  /** The accent (header line and bars). */
+  readonly color = input('#2f7c83');
   protected readonly sort = signal<RankSort>('high');
+  /** The first ten rows; Show all for the rest (no scroll inside the card). */
+  protected readonly limit = 10;
+  protected readonly all = signal(false);
+  protected readonly shown = computed(() => (this.all() ? this.sorted() : this.sorted().slice(0, this.limit)));
   private readonly max = computed(() => Math.max(1, ...this.items().map((i) => i.value)));
   /** Rows with their rank by count (1 = most), in the chosen order. */
   protected readonly sorted = computed(() => {
@@ -275,7 +286,7 @@ export interface TrendPoint {
                [attr.aria-label]="describe(it)">
             @for (v of it.values; track $index; let i = $index) {
               <div class="gc-col">
-                <span class="gc-value">{{ short(v) }}</span>
+                <span class="gc-value" [class.is-hidden]="p !== items().length - 1 && hover() !== p">{{ short(v) }}</span>
                 <span class="gc-bar" [style.height.%]="height(v)" [style.background]="colors()[i]" [class.is-dim]="hover() >= 0 && hover() !== p"></span>
               </div>
             }
@@ -306,6 +317,7 @@ export interface TrendPoint {
     .gc-group:focus-visible { outline: 2px solid #23474a; outline-offset: 2px; border-radius: 4px; }
     .gc-col { height: 100%; flex: 1 1 0; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; min-width: 0; }
     .gc-value { font-size: 10.5px; font-weight: 600; color: #23474a; margin-bottom: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .gc-value.is-hidden { visibility: hidden; }
     .gc-bar { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; transition: opacity .15s; }
     .gc-bar.is-dim { opacity: .45; }
     .gc-axis { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 10px; margin-top: 6px; }

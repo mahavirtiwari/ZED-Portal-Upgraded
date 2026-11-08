@@ -8,7 +8,7 @@ import { STAFF_SYSTEM } from '../staff-menu';
 
 const analytics = (view: 'registered' | 'certified' = 'registered', more: object = {}) => ({
   view,
-  totals: { registered: 724287, certified: 512808, bronze: 500112, silver: 7735, gold: 4961 },
+  totals: { registered: 724287, certified: 512808, bronze: 500112, silver: 7735, gold: 4961, zedx: 64 },
   sizes: [{ label: 'Micro', total: 666594 }, { label: 'Small', total: 50485 }, { label: 'Medium', total: 7207 }],
   genders: [{ label: 'male', total: 574614 }, { label: 'female', total: 141933 }, { label: 'OTHERS', total: 7739 }],
   socialCategories: [{ label: 'General', total: 378031 }, { label: 'OBC', total: 297002 }],
@@ -77,7 +77,7 @@ describe('StaffDashboardPage', () => {
     await settle();
     expect(el.querySelector('#registered')).toBeNull();
     expect([...el.querySelectorAll('.an-kpi')].map((k) => `${text(k.querySelector('.an-kpi-label'))}: ${text(k.querySelector('.an-kpi-value'))}`))
-      .toEqual(['Registered units: 7,24,287', 'Certified units: 5,12,808', 'Bronze certified: 5,00,112', 'Silver certified: 7,735', 'Gold certified: 4,961']);
+      .toEqual(['Registered units: 7,24,287', 'Certified units: 5,12,808', 'Bronze certified: 5,00,112', 'Silver certified: 7,735', 'Gold certified: 4,961', 'ZED-X certified: 64']);
 
     // The status cards (no Financial Assistance), after the filters and the totals.
     expect(text(el.querySelector('.an-status h5'))).toBe('Applications under your charge');
@@ -103,9 +103,15 @@ describe('StaffDashboardPage', () => {
     expect([...trend[0].querySelectorAll('.gc-label')].map(text)).toEqual(['Dec 25', 'Jan 26']);
     expect([...trend[0].querySelectorAll('.gc-legend li')].map(text)).toEqual(['Registered', 'Certified']);
     expect([...trend[1].querySelectorAll('.gc-label')].map(text)).toEqual(['2025', '2026']);
-    expect([...trend[1].querySelectorAll('.gc-value')].map(text)).toEqual(['4.0L', '3.0L', '8.8K', '6.1K']);
+    // Values on the latest period only (the others on hover).
+    expect([...trend[1].querySelectorAll('.gc-value:not(.is-hidden)')].map(text)).toEqual(['8.8K', '6.1K']);
     expect(el.querySelector('.an-kpi-note')).toBeNull();
-    expect([...el.querySelectorAll('.an-grid-3 .cc-label')].map(text)).toEqual(['Male', 'Female', 'Others']);
+    // Gender as a donut, as MSME size and social category; Gender, size and social category under More filters.
+    expect([...el.querySelectorAll('.an-splits .an-card')[1].querySelectorAll('.dn-label')].map(text)).toEqual(['Male', 'Female', 'Others']);
+    expect((el.querySelector('#an-more') as HTMLElement).hidden).toBe(true);
+    (el.querySelector('.an-more-btn button') as HTMLButtonElement).click();
+    await settle();
+    expect((el.querySelector('#an-more') as HTMLElement).hidden).toBe(false);
     expect([...(el.querySelector('#an-gender') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Male', 'Female', 'Others']);
     const top = el.querySelector('.rk-list li')!;
     expect([text(top.querySelector('.rk-rank')), text(top.querySelector('.rk-label')), text(top.querySelector('.rk-value'))]).toEqual(['1', 'GUJARAT', '1,46,518']);
@@ -162,7 +168,10 @@ describe('StaffDashboardPage', () => {
     silver.flush(analytics());
     await settle();
 
-    await choose('#an-dateby', 'certified');
+    // The date basis as tabs.
+    expect([...el.querySelectorAll('.an-basis-tab')].map(text)).toEqual(['By registration date', 'By certification date']);
+    (el.querySelector('.an-basis-tab[data-view="certified"]') as HTMLButtonElement).click();
+    await settle();
     const cert = analyticsCall();
     expect([cert.request.params.get('view'), cert.request.params.get('state'), cert.request.params.get('certification')]).toEqual(['certified', 'BIHAR', 'Silver']);
     cert.flush(analytics('certified'));
@@ -204,7 +213,7 @@ describe('StaffDashboardPage', () => {
     expect(el.querySelector('.page-sub')).toBeNull();
     expect([...el.querySelectorAll('.an-kpi-label')].map(text))
       .toEqual(['Registered units', 'Surveillance completed', 'Bronze completed', 'Silver completed', 'Gold completed']);
-    expect([...(el.querySelector('#an-dateby') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['Registration', 'Surveillance completion']);
+    expect([...el.querySelectorAll('.an-basis-tab')].map(text)).toEqual(['By registration date', 'By surveillance completion date']);
     expect([...el.querySelectorAll('.an-trend .an-card')[0].querySelectorAll('.gc-legend li')].map(text)).toEqual(['Registered', 'Surveillance completed']);
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Bronze', 'Silver', 'Gold']);
     // Bronze surveillance has no NC Raised.
@@ -227,7 +236,7 @@ describe('StaffDashboardPage', () => {
     expect([...el.querySelectorAll('.an-kpi')].map((k) => `${text(k.querySelector('.an-kpi-label'))}: ${text(k.querySelector('.an-kpi-value'))}`))
       .toEqual(['Registered units: 300', 'Handholding completed: 12', 'Applications: 80', 'Silver applications: 60', 'Gold applications: 20']);
     expect([...(el.querySelector('#an-cert') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['All', 'Silver', 'Gold']);
-    expect([...(el.querySelector('#an-dateby') as HTMLSelectElement).options].map((o) => o.textContent!.trim())).toEqual(['Registration', 'Handholding completion']);
+    expect([...el.querySelectorAll('.an-basis-tab')].map(text)).toEqual(['By registration date', 'By handholding completion date']);
     expect([...el.querySelectorAll('.an-status .app-level')].map(text)).toEqual(['Silver', 'Gold', 'Technology Intervention']);
 
     // The milestones: payments received and completed, each as a share of the level's applications.
