@@ -3,79 +3,120 @@
   padding-bottom: 60px;
 }
 
-// The old page's stepper (site.css .stepper): 25px grey dots with a white ring, joined by a 2px line; the current
-// step ringed in orange, the done ones replaced by the ticked icon.
+// V4 (2026-11-08): a labelled stepper (number in a circle, a tick when done, the current step in teal), joined by a line.
 .zed-stepper {
   display: flex;
   width: 100%;
-  max-width: 432px;
+  max-width: 760px;
   list-style: none;
   padding: 0;
-  margin: 0 auto 46px;
+  margin: 0 auto 24px;
 
   li {
     position: relative;
     flex: 1 1 0;
-    height: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
 
-    &::after {
+    // The line to the next step, from this circle's edge to the next one's.
+    &:not(:last-child)::after {
       content: '';
       position: absolute;
-      top: 12px;
-      left: 25px;
-      right: 0;
+      top: 15px;
+      left: calc(50% + 20px);
+      right: calc(-50% + 20px);
       height: 2px;
-      background: #f1f1f1;
+      background: #dfe9ea;
     }
-    &:last-child {
-      flex: 0 0 25px;
-      &::after { display: none; }
-    }
+    &.done:not(:last-child)::after { background: #9ccfac; }
   }
 
   .round-tab {
-    position: absolute;
-    left: 0;
-    top: 0;
-    z-index: 1;
-    width: 25px;
-    height: 25px;
-    border-radius: 25px;
-    background: #f1f1f1;
-    border: 4px solid #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    background: #fff;
+    color: #5f6f70;
+    border: 2px solid #cbd9da;
   }
-  li.current .round-tab { border-color: #ffb243; }
-  li.done .round-tab {
-    background: transparent;
-    border: 0;
-    width: 38px;
-    top: -3px;
-    img { width: 100%; }
-  }
+  li.current .round-tab { background: #45a5ad; border-color: #45a5ad; color: #fff; box-shadow: 0 0 0 4px rgba(69, 165, 173, 0.18); }
+  li.done .round-tab { background: #e8f5ec; border-color: #9ccfac; color: #1e7a3c; }
+  .step-label { font-size: 13px; font-weight: 600; color: #5f6f70; line-height: 1.3; }
+  li.current .step-label { color: #23474a; }
 }
 
-// As on the old page: dark title bars, a grey details box, and plant / activity boxes without card shadows.
-.panel-black {
-  background: #232527;
-  color: #fff;
-  border: 0;
-  box-shadow: none;
-  border-radius: 4px;
-  margin-bottom: 10px;
+// Each step in one card; the narrow steps (welcome, Udyam check) centred.
+.reg-card {
+  background: #fff;
+  border: 1px solid #dfe9ea;
+  border-radius: 12px;
+  padding: 20px 24px 0;
+  box-shadow: 0 1px 2px rgba(35, 71, 74, 0.05);
+  .registration-title { margin-top: 0; }
 }
-.panel-grey {
-  background: #f0f0f0;
-  border: 0;
-  box-shadow: none;
-  border-radius: 4px;
+.reg-narrow { max-width: 860px; margin: 0 auto; }
+.reg-lead { color: #5f6f70; margin-bottom: 16px; }
+
+.reg-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px; }
+.reg-field {
+  text-align: left;
+  .input-title { display: block; font-weight: 600; color: #23474a; margin-bottom: 6px; }
+  .form-control { max-width: none; width: 100%; }
+  .input-sub-title { font-size: 13px; color: #5f6f70; margin: 6px 0 0; }
 }
-.panel-black .panel-body,
-.panel-grey .panel-body {
-  padding: 8px 15px;
+.reg-captcha { display: flex; justify-content: center; margin: 18px 0 4px; }
+
+// The footer of every step: BACK on the left, the step in the middle, the main button on the right.
+.reg-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 20px -24px 0;
+  padding: 14px 24px;
+  border-top: 1px solid #eef1f2;
+  background: #f8fbfb;
+  border-radius: 0 0 12px 12px;
+  .btn { min-width: 140px; margin: 0; }
 }
+.reg-footer-step { font-size: 13px; color: #5f6f70; }
+
+// Unit and activity: the enterprise beside the two choices.
+.reg-plant { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 20px; margin-top: 12px; align-items: start; }
+.reg-side { border: 1px solid #dfe9ea; border-radius: 10px; overflow: hidden; position: sticky; top: 12px; }
+.reg-side-head { background: #eef6f6; color: #23474a; font-weight: 700; padding: 10px 14px; }
+.reg-side-body { padding: 12px 14px; background: #fafcfc; }
+.reg-section-title { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; color: #23474a; margin: 0 0 10px; }
+.reg-section-n { width: 24px; height: 24px; border-radius: 50%; background: #45a5ad; color: #fff; font-size: 13px; display: inline-flex; align-items: center; justify-content: center; }
+.reg-plant-note { text-align: left; padding: 8px 12px; margin-bottom: 4px; p { margin: 0; } }
+
+// Summary: four cards of one height.
+.reg-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 8px 0 16px; }
+.reg-sum-card { border: 1px solid #dfe9ea; border-radius: 10px; padding: 12px 14px; background: #fafcfc; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
+.reg-sum-head { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #5f6f70;
+  text-transform: uppercase; letter-spacing: .3px; margin-bottom: 8px; img { width: 18px; } }
+
+@media (max-width: 991.98px) {
+  .reg-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .reg-plant { grid-template-columns: minmax(0, 1fr); }
+  .reg-side { position: static; }
+}
+@media (max-width: 575.98px) {
+  .reg-card { padding: 16px 14px 0; }
+  .reg-footer { margin: 16px -14px 0; padding: 12px 14px; flex-wrap: wrap; .btn { min-width: 0; flex: 1 1 0; } }
+  .reg-footer-step { order: -1; flex: 1 1 100%; text-align: center; }
+  .reg-fields, .reg-summary { grid-template-columns: minmax(0, 1fr); }
+  .zed-stepper .step-label { font-size: 11px; }
+}
+
 // Plant and activity cards three to a row across the whole width (the old 250px cards left a gap on the right);
 // two on tablets, one on phones. Cards in a row share its height.
 .plant-activity .panel-units {
@@ -104,10 +145,11 @@
   box-shadow: none;
 }
 .plant-activity {
-  border: 1px solid #dfe1e4;
-  padding: 10px;
   margin-bottom: 20px;
 }
+.panel-units .panel-item > .panel { border: 1px solid #dfe9ea !important; border-radius: 10px; background: #fff; transition: border-color .15s, box-shadow .15s; }
+.panel-units .panel-item:hover > .panel { border-color: #45a5ad !important; }
+.panel-units .panel-item.panel-selected > .panel { border-color: #45a5ad !important; box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.18); background: #f6fbfb; }
 .unit-isselected {
   display: flex;
   align-items: center;
@@ -122,12 +164,6 @@ label.panel-item {
 .plant-activity-disabled {
   opacity: 0.5;
   pointer-events: none;
-}
-
-.summary-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 // The old page faded the pledge text in phrase by phrase (one per second).
@@ -164,116 +200,12 @@ label.panel-item {
   background-color: rgba(179, 224, 121, 0.2);
 }
 
-// The Enter Email ID and Enter OTP pop-ups, as on the old page: title and close icon in the header, a green note,
-// uppercase labels, and one wide PROCEED (e-mail) or Cancel / Submit (OTP).
-.reg-modal {
-  border-radius: 12px;
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background: #fff;
-    border-bottom: 0;
-    padding: 20px 16px 8px;
-  }
-  .modal-header .registration-title {
-    font-size: 24px;
-    font-weight: 600;
-    color: #232527;
-  }
-  .modal-body {
-    padding-top: 16px;
-  }
-  .modal-footer {
-    border-top: 0;
-    padding-top: 0;
-  }
-  // The old site.css caps every input at 280px (.zed-legacy input); here the e-mail and OTP boxes span the pop-up.
-  .form-control {
-    max-width: none;
-  }
-}
-
-.reg-modal-proceed {
-  min-width: 160px;
-  padding: 8px 24px;
-}
-
-.reg-modal-close {
-  border: 0;
-  background: transparent;
-  padding: 4px;
-  line-height: 0;
-}
-
-.reg-modal-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #8d8f90;
-  margin-bottom: 4px;
-}
-
-// The OTP pop-up's content: centred in a bordered box, at most 390px wide.
-.reg-otp-box {
-  border: 1px solid #dfe1e4;
-  border-radius: 4px;
-  padding: 16px 16px 40px;
-  text-align: center;
-
-  > * {
-    max-width: 390px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-  > img {
-    display: block;
-    margin-bottom: 8px;
-  }
-  .form-control {
-    border-color: #232527;
-    border-radius: 2px;
-  }
-}
-
-.reg-otp-resend-off,
-.reg-otp-resend {
-  display: block;
-  margin: 4px auto 8px;
-  font-size: 18px;
-}
-.reg-otp-resend-off { color: #dc3545; }
-.reg-otp-resend { color: #45a5ad; padding: 0; text-decoration: none; }
-
-.reg-otp-timer {
-  background-color: rgba(69, 165, 173, 0.2);
-}
-
-.reg-modal-actions {
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-  margin-top: 20px;
-
-  .btn {
-    min-width: 162px;
-    text-transform: none;
-    font-size: 16px;
-  }
-}
-
-// BACK / Cancel are grey on the old page (the V4 skin draws btn-default as a white outline elsewhere).
-.stepper-footer-sec .btn.btn-default,
-.reg-modal-actions .btn.btn-default {
+// BACK is grey on the old page (the V4 skin draws btn-default as a white outline elsewhere).
+.reg-footer .btn.btn-default,
+.stepper-footer-sec .btn.btn-default {
   background-color: #8d8f90 !important;
   border-color: #8d8f90 !important;
   color: #fff !important;
-}
-
-// The old pop-ups were about 620px wide.
-.modal-dialog.reg-dialog {
-  max-width: 620px;
 }
 
 // The small labels of the details box (Name of Entrepreneur, Gender, Udyam Number, …) were a light grey on the grey

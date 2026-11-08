@@ -1,0 +1,75 @@
+// The Enter Email ID and Enter OTP pop-ups (V4 2026-11-08): a compact centred card with an icon, the title, the note,
+// the field(s) and two equal buttons; the OTP field drawn as six boxes.
+.modal-dialog.reg-dialog { max-width: 440px; }
+.reg-modal {
+  position: relative;
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  .modal-body { padding: 28px 28px 24px; text-align: center; }
+  .form-control { max-width: none; }
+}
+.reg-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  color: #5f6f70;
+  font-size: 20px;
+  line-height: 1;
+  padding: 4px;
+  &:hover { color: #23474a; }
+  img { width: 16px; height: 16px; }
+}
+.reg-modal-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #eef6f6;
+  color: #2f7c83;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  img { width: 28px; height: 28px; }
+}
+.reg-modal-title { font-size: 20px; font-weight: 700; color: #232527; margin: 0 0 8px; }
+:host ::ng-deep .reg-modal-note { text-align: left; font-size: 13px; padding: 8px 12px; margin-bottom: 14px; }
+.reg-modal-label { display: block; font-size: 13px; font-weight: 600; color: #4a5556; margin-bottom: 4px; }
+.reg-otp-sent { font-size: 14px; color: #5f6f70; margin: 0 0 16px; overflow-wrap: anywhere; strong { color: #232527; } }
+// One field, six boxes: monospace digits spaced to sit in the boxes drawn behind them.
+.reg-otp-input {
+  width: 300px !important;
+  max-width: 100%;
+  height: 52px;
+  margin: 0 auto;
+  padding: 0 0 0 16px;
+  border: 0 !important;
+  box-shadow: none !important;
+  font: 700 24px/52px SFMono-Regular, Consolas, monospace;
+  letter-spacing: 35.5px;
+  text-align: left;
+  color: #23474a;
+  border-radius: 8px;
+  --otp-line: #cbd9da;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 2px, #fff 2px 46px, transparent 46px 50px) 0 2px / 300px 48px no-repeat,
+    repeating-linear-gradient(90deg, var(--otp-line) 0 48px, transparent 48px 50px) 0 0 / 300px 52px no-repeat;
+  &::placeholder { color: #b8c6c7; }
+  &:focus { outline: none; --otp-line: #45a5ad; }
+}
+.reg-otp-timer { font-size: 13px; color: #5f6f70; margin: 12px 0 0; }
+.reg-otp-resend { display: inline-block; margin: 8px 0 0; padding: 0; color: #2f7c83; font-weight: 600; text-decoration: none; }
+.reg-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+  &.one { grid-template-columns: 1fr; }
+  .btn { text-transform: none; font-size: 16px; margin: 0; padding: 9px 12px; }
+}
+.reg-modal-actions .btn-outline-secondary { border: 1px solid #cbd9da !important; background: #fff !important; color: #23474a !important; &:hover { background: #eef6f6 !important; } }
+

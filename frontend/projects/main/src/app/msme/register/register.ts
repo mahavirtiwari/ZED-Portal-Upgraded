@@ -23,7 +23,7 @@ const STEP_NUMBER: Record<Step, number> = { welcome: 0, udyam: 1, plant: 2, summ
   selector: 'zed-msme-register',
   imports: [FormsModule, RouterLink, Recaptcha, PublicLayout, ContentTextComponent, AlertDialog],
   templateUrl: './register.html',
-  styleUrl: './register.scss',
+  styleUrls: ['./register.scss', './register-modals.scss'],
 })
 export class RegisterPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
@@ -35,6 +35,13 @@ export class RegisterPage {
 
   protected readonly step = signal<Step>('welcome');
   protected readonly stepNumber = computed(() => STEP_NUMBER[this.step()]);
+  /** The stepper's labels (V4 2026-11-08). */
+  protected readonly steps = [
+    { n: 1, label: 'Udyam check' },
+    { n: 2, label: 'Unit and activity' },
+    { n: 3, label: 'Summary' },
+    { n: 4, label: 'Pledge' },
+  ];
   protected readonly modal = signal<'email' | 'otp' | null>(null);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
