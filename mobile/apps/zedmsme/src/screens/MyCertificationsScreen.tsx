@@ -12,6 +12,8 @@ import {
   parseLegacyDate,
   ScreenFrame,
   shapes,
+  htmlToPlain,
+  useAppText,
   useFocusEffect,
   useNavigation,
   useUi,
@@ -72,10 +74,23 @@ export function levelCards(
   status: MsmeStatus | null | undefined,
   logoUrl: (url: string) => string,
 ): LevelCard[] {
-  if (!showZedx(levels, status)) return LEVELS;
+  // 2026-11-08: Bronze / Silver / Gold with the Admin's name and logo (Certification Levels), and not a level the Admin disabled
+  // unless the unit has started it. A list without any of the three (an older answer) leaves them as they are.
+  const listsBuiltIn = !!levels?.some(l => LEVELS.some(b => b.type.toLowerCase() === l.code.toLowerCase()));
+  const builtIn = LEVELS.flatMap(card => {
+    const admin = levels?.find(l => l.code.toLowerCase() === card.type.toLowerCase());
+    const started = (certificationDetailsOf(status, card.type)?.status ?? 0) > 0;
+    if (listsBuiltIn && !admin && !started) return [];
+    return [{
+      ...card,
+      title: admin?.name ? `${admin.name} CERTIFICATION`.toUpperCase() : card.title,
+      image: admin?.logoUrl ? { uri: logoUrl(admin.logoUrl) } : card.image,
+    }];
+  });
+  if (!showZedx(levels, status)) return builtIn;
   const zedx = zedxLevel(levels);
   return [
-    ...LEVELS,
+    ...builtIn,
     {
       type: 'ZEDX',
       title: `${levelName('ZEDX', zedx?.name)} CERTIFICATION`.toUpperCase(),
@@ -163,9 +178,14 @@ export function MyCertificationsScreen() {
   );
 }
 
-/** dialog_certification_info: the level's title and its two bullet lines. */
+/**
+ * dialog_certification_info: the level's title and its bullet lines. 2026-11-08: Bronze / Silver / Gold from the Admin texts
+ * app.msme.dashboard.levelInfo.* (the built-in lines until they arrive; none when the Admin hid the text).
+ */
 function CertificationInfoDialog({ type, zedx, onClose }: { type: CertificationType; zedx: PublicLevel | null; onClose: () => void }) {
-  const { title, lines } = levelInfo(type, zedx);
+  const adminText = useAppText(`app.msme.dashboard.levelInfo.${type.toLowerCase()}`);
+  const { title, lines: builtInLines } = levelInfo(type, zedx);
+  const lines = type === 'ZEDX' ? builtInLines : adminText ? textLines(adminText.html) : [];
   return (
     <ZedDialog visible title={title} onClose={onClose} testID="certification-info">
       {lines.map(line => (
@@ -176,6 +196,14 @@ function CertificationInfoDialog({ type, zedx, onClose }: { type: CertificationT
       ))}
     </ZedDialog>
   );
+}
+
+/** An Admin text's bullet points (its <li>s), or the whole text as one line. */
+export function textLines(html: string): string[] {
+  const items = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)].map(m => htmlToPlain(m[1] ?? '').trim()).filter(l => l.length > 0);
+  if (items.length > 0) return items;
+  const plain = htmlToPlain(html).trim();
+  return plain ? [plain] : [];
 }
 
 /** The info dialog's title and lines: the built-in ones, or ZED-X's description and comment as the Admin wrote them. */

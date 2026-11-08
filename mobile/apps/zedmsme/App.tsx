@@ -63,6 +63,8 @@ export const SCREENS: ScreenMap = {
 };
 
 /** Retry of queued sends whose back-off has passed, while the app is open. */
+/** How often, at most, the Admin's texts and forms are read again when the app comes to the front. */
+const CONTENT_REFRESH_MS = 5 * 60_000;
 const RETRY_INTERVAL_MS = 30_000;
 
 export default function App() {
@@ -94,7 +96,18 @@ export default function App() {
     if (!app) return;
     const run = () => syncNow(app).catch(() => undefined);
     const unwatch = watchConnectivity(() => undefined, run);
-    const sub = AppState.addEventListener('change', s => s === 'active' && run());
+    // 2026-11-08: the Admin's texts and forms again when the app comes back (at most every five minutes), not only at start.
+    let refreshedAt = Date.now();
+    const refreshContent = () => {
+      if (Date.now() - refreshedAt < CONTENT_REFRESH_MS) return;
+      refreshedAt = Date.now();
+      app.refreshServerContent().catch(() => undefined);
+    };
+    const sub = AppState.addEventListener('change', s => {
+      if (s !== 'active') return;
+      run();
+      refreshContent();
+    });
     const timer = setInterval(run, RETRY_INTERVAL_MS);
     return () => {
       unwatch();

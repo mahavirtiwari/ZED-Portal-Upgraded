@@ -65,11 +65,20 @@ describe('ZED-X in the ZED MSME app', () => {
 
   it('adds a fourth card with the Admin logo, or the built-in badge without one', () => {
     expect(levelCards(null, status(0, 0, 0), logo).map(c => c.type)).toEqual(['Bronze', 'Silver', 'Gold']);
-    const cards = levelCards(ENABLED, status(0, 0, 0), logo);
+    const all: PublicLevel[] = [...ENABLED, { code: 'Silver', name: 'Silver' }, { code: 'Gold', name: 'Gold' }];
+    const cards = levelCards(all, status(0, 0, 0), logo);
     expect(cards.map(c => c.type)).toEqual(['Bronze', 'Silver', 'Gold', 'ZEDX']);
     expect(cards[3]).toMatchObject({ title: 'ZED-X CERTIFICATION', color: ZEDX_COLOR, image: { uri: 'https://zedv3.qci.org.in/api/public/levels/ZEDX/logo?v=1' } });
     const noLogo = levelCards([{ code: 'ZEDX', name: 'ZED-X' }], status(0, 0, 0), logo)[3]!;
     expect((noLogo.image as { uri?: string }).uri).toBeUndefined();
+  });
+
+  it('Bronze, Silver and Gold follow the Admin: its names and logos, and a disabled level only once started (2026-11-08)', () => {
+    const levels: PublicLevel[] = [{ code: 'Bronze', name: 'Bronze Plus', logoUrl: '/api/public/levels/Bronze/logo?v=2' }, { code: 'Gold', name: 'Gold' }];
+    // Silver disabled: gone while not started, kept once the unit has started it.
+    expect(levelCards(levels, status(0, 0, 0), logo).map(c => c.type)).toEqual(['Bronze', 'Gold']);
+    expect(levelCards(levels, status(0, 2, 0), logo).map(c => c.type)).toEqual(['Bronze', 'Silver', 'Gold']);
+    expect(levelCards(levels, status(0, 0, 0), logo)[0]).toMatchObject({ title: 'BRONZE PLUS CERTIFICATION', image: { uri: 'https://zedv3.qci.org.in/api/public/levels/Bronze/logo?v=2' } });
   });
 
   it('ZED-X may be applied for unless Bronze, Silver or Gold is in progress', () => {

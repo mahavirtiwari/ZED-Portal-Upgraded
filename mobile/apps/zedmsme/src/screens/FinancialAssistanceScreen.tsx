@@ -289,7 +289,7 @@ function Details({
     refresh();
   };
   return (
-    <Page page={3} footer={<Footer onBack={onBack} onProceed={onProceed} proceedEnabled={declared} />}>
+    <Page page={3} footer={<Footer onBack={onBack} onProceed={onProceed} proceedEnabled={declared || !declaration} />}>
       <ThreeSteps current={1} />
       <DarkHeading title="Certification Details" />
       <View style={styles.outline}>
@@ -336,7 +336,7 @@ function Details({
       </View>
       {/* confirmation_checkbox on select_plant_activity_background */}
       <View style={styles.declaration}>
-        <CheckBox label={declaration ? htmlToPlain(declaration.html) : ''} checked={declared} onChange={onDeclare} testID="fa-declare" />
+        {declaration ? <CheckBox label={htmlToPlain(declaration.html)} checked={declared} onChange={onDeclare} testID="fa-declare" /> : null}
       </View>
     </Page>
   );
@@ -450,6 +450,8 @@ function ExpenditureDialog({
   onClose: () => void;
   onDone: (i: ExpenditureInfo) => void;
 }) {
+  // 2026-11-08: Admin text (it was fixed wording here; the website already had it as a text).
+  const eligibleNote = useAppText('app.msme.fa.eligibleAmountNote');
   const app = useMsme();
   const ui = useUi();
   const capturer = useScreenCapture('snackbar');
@@ -468,7 +470,7 @@ function ExpenditureDialog({
       <Field label="Invoice/Bill No." value={e.InvoiceNo} onChange={set('InvoiceNo')} testID="fa-invoice-no" />
       <DateField label="Invoice/Bill Date" value={e.InvoiceBillDate} onChange={set('InvoiceBillDate')} testID="fa-invoice-date" />
       <Field label="Description of Expenses" value={e.DescriptionOfExpenses} onChange={set('DescriptionOfExpenses')} testID="fa-description" />
-      <Text style={styles.note}>Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only</Text>
+      {eligibleNote ? <Text style={styles.note}>{htmlToPlain(eligibleNote.html)}</Text> : null}
       <Field
         label="Amount Paid (Rs.)"
         value={e.AmountPaid}

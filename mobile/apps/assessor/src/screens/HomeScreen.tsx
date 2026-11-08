@@ -336,7 +336,8 @@ function TeamList({ team }: { team: TeamMember[] }) {
 
 // ------------------------------------------------------------------ 06 Assessment list
 
-const LEVEL_FILTERS = ['All', 'Bronze', 'Silver', 'Gold'];
+/** 2026-11-08: ZED-X too (the server serves its site assessments). Codes; ZEDX is shown as ZED-X. */
+const LEVEL_FILTERS = ['All', 'Bronze', 'Silver', 'Gold', 'ZEDX'];
 
 function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) {
   const app = useSa();
@@ -363,7 +364,7 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
         </View>
         <View style={st.filters}>
           {LEVEL_FILTERS.map(l => (
-            <Chip key={l} label={l} active={level === l} onPress={() => setLevel(l)} testID={`filter-${l.toLowerCase()}`} />
+            <Chip key={l} label={l === 'ZEDX' ? 'ZED-X' : l} active={level === l} onPress={() => setLevel(l)} testID={`filter-${l.toLowerCase()}`} />
           ))}
         </View>
         {shown.map(a => (

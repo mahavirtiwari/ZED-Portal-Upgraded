@@ -35,13 +35,13 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.registration.otpSent": "OTP is successfully sent to {{Email}}, if not received, please check your junk/spam.",
   // Registration: success (Main)
   "app.msme.registration.success": "<p>Congratulations! You can now avail:</p><ul><li>Joining reward of Rs. 10,000/- for ZED Certification</li></ul><p>What next?</p><ul><li>Check your email for Pledge Certificate and ZED ID/Password.</li><li>If you did not receive any email, please check in Spam/Junk folder.</li><li>Use the received ZED ID and Password to login again.</li></ul>",
-  // Dashboard: ZED certification steps (MainAndSurveillance)
+  // Dashboard: ZED certification steps (Main)
   "app.msme.dashboard.certificationSteps": "<ol><li><b>Basic Information &amp; Document Upload</b><br>Provide Processes &amp; Systems information</li><li><b>Desktop Verification</b><br>Desktop verification of documents uploaded. Bronze level applicants will receive certification after this step.</li><li><b>Remote/Onsite Assessment</b><br>Applicable only for Silver &amp; Gold Certification.</li><li><b>Certification</b><br>After conforming to relevant requirements, download your Certificate and Report from your dashboard.</li><li><b>Avail Incentives</b><br>Various incentives will be unlocked and available under \"My Incentives\"</li></ol>",
-  // My Certifications: Bronze level information (MainAndSurveillance)
+  // My Certifications: Bronze level information (Main)
   "app.msme.dashboard.levelInfo.bronze": "<ul><li>This level has 5 parameters, which need to be conformed to, for achieving a Certification.</li><li>The certification cost is Rs. 10,000/- inclusive of taxes, subsidy, as applicable.</li></ul>",
-  // My Certifications: Silver level information (MainAndSurveillance)
+  // My Certifications: Silver level information (Main)
   "app.msme.dashboard.levelInfo.silver": "<ul><li>This level has 14 parameters, which need to be conformed to, for achieving a Certification.</li><li>The certification cost is Rs. 40,000/- inclusive of taxes; subsidy, as applicable.</li></ul>",
-  // My Certifications: Gold level information (MainAndSurveillance)
+  // My Certifications: Gold level information (Main)
   "app.msme.dashboard.levelInfo.gold": "<ul><li>This level has 20 parameters, which need to be conformed to, for achieving a Certification.</li><li>The certification cost is Rs. 90,000/- inclusive of taxes; subsidy, as applicable.</li></ul>",
   // Dashboard: My Certifications information (Main)
   "app.msme.dashboard.info.myCertifications": "<p>Please read the complete instructions and requirements before applying for any Certification Level. These are available under \"My Documents\".</p>",
@@ -51,8 +51,12 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.incentives.joiningReward.availInfo": "<p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p>",
   // Assessment: undertaking of compliances (Main)
   "app.msme.assessment.complianceUndertaking": "<p>I/We understand that the ZED Certification is voluntary and recognize the authority of the Ministry of MSME, Government of India, in issuance of any Certificate.</p><p>By proceeding I/We certify that my/our Enterprise/Unit complies with &amp; fulfils all relevant &amp; applicable regulatory &amp; statutory norms/licenses pertaining to the functioning of this manufacturing unit. If not, then efforts will be taken to fulfil those regulatory/statutory requirements by me/us. If at any stage the Enterprise/Unit is found to be non-compliant with any relevant/applicable regulatory &amp; statutory norms, the competent authority will have the right to recall/withdraw any or all reports or Certifications awarded.</p>",
-  // Assessment: certification requirements read (checkbox) (MainAndSurveillance)
+  // Assessment: certification requirements read (checkbox) (Main)
   "app.msme.assessment.requirementsAccepted.checkbox": "I have read the certification requirements and are following all the requirements to the fullest extent possible.",
+  // Evidences: ZED Facilitator question (Main)
+  "app.msme.evidences.facilitator.question": "Were you assisted by a ZED Facilitator?",
+  // Financial Assistance: eligible amount note (Main)
+  "app.msme.fa.eligibleAmountNote": "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only",
   // Evidences: final submit confirmation (MainAndSurveillance)
   "app.msme.evidences.finalSubmit.confirm": "I confirm that all information and documents/photos submitted pertain to the selected unit only.",
   // Certification: read-only message (MainAndSurveillance)

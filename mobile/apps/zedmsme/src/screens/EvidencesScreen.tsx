@@ -52,11 +52,12 @@ export function EvidencesScreen() {
   const evidences = useMemo(() => evidencesOf(details), [details]);
   const [selected, setSelected] = useState<Evidence | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  const confirmText = useAppText('app.msme.evidences.finalSubmit.confirm');
   // 2026-11-08: "Were you assisted by a ZED Facilitator?" (as in the old app); Yes opens Facilitator Details.
   const facilitatorDone = details?.facilitatorAssistanceData?.isSubmitted === true;
   const [assisted, setAssisted] = useState<'yes' | 'no' | null>(facilitatorDone ? 'yes' : null);
   const [facilitatorOpen, setFacilitatorOpen] = useState(false);
-  const canFinalSubmit = confirmed && (assisted === 'no' || (assisted === 'yes' && facilitatorDone));
+  const canFinalSubmit = (confirmed || !confirmText) && (assisted === 'no' || (assisted === 'yes' && facilitatorDone));
   const answer = (value: 'yes' | 'no') => {
     // A changed answer asks for the confirmation again.
     setConfirmed(false);
@@ -65,7 +66,7 @@ export function EvidencesScreen() {
   };
   const [, rerender] = useState(0);
   const refresh = () => rerender(x => x + 1);
-  const confirmText = useAppText('app.msme.evidences.finalSubmit.confirm');
+  const facilitatorQuestion = useAppText('app.msme.evidences.facilitator.question');
 
   // updateFinalSubmitState (also onResume)
   const finalSubmitVisible = evidences.every(e => e.available === false || e.status === Status.SUBMITTED);
@@ -188,7 +189,7 @@ export function EvidencesScreen() {
         {finalSubmitVisible ? (
           <ScrollView style={{ flexGrow: 0, maxHeight: '60%' }} keyboardShouldPersistTaps="handled">
             <View style={[shapes.greyOutlineRectangle, styles.assisted]} testID="facilitator-question">
-              <Text style={styles.assistedText}>Were you assisted by a ZED Facilitator?</Text>
+              <Text style={styles.assistedText}>{facilitatorQuestion ? htmlToPlain(facilitatorQuestion.html) : 'Were you assisted by a ZED Facilitator?'}</Text>
               <RadioButton label="Yes" selected={assisted === 'yes'} onPress={() => answer('yes')} style={{ margin: dimens.padding1 }} testID="facilitator-yes" />
               <RadioButton label="No" selected={assisted === 'no'} onPress={() => answer('no')} style={{ margin: dimens.padding1 }} testID="facilitator-no" />
             </View>
@@ -197,12 +198,8 @@ export function EvidencesScreen() {
                 Facilitator: {details?.facilitatorAssistanceData?.email ?? ''} · {details?.facilitatorAssistanceData?.mobileNumber ?? ''}
               </Text>
             ) : null}
-            <CheckBox
-              label={confirmText ? htmlToPlain(confirmText.html) : ''}
-              checked={confirmed}
-              onChange={setConfirmed}
-              testID="confirm"
-            />
+            {/* Switched off by the Admin (Admin → Texts): no confirmation to tick. */}
+            {confirmText ? <CheckBox label={htmlToPlain(confirmText.html)} checked={confirmed} onChange={setConfirmed} testID="confirm" /> : null}
             <ZedButton title="Final Submit" disabled={!canFinalSubmit} onPress={finalSubmit} testID="final-submit" />
           </ScrollView>
         ) : null}

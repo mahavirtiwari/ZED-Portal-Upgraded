@@ -48,12 +48,15 @@ export function ComplianceScreen() {
       <ScrollView contentContainerStyle={styles.page}>
         <Text style={styles.heading}>Undertaking of Compliances</Text>
         {msme ? <EnterpriseCard details={msme} /> : null}
-        <View style={styles.section}>
-          <Text style={styles.sectionHead}>Undertaking of Compliances</Text>
-          <Text style={styles.body} testID="compliance-text">
-            {undertaking ? htmlToPlain(undertaking.html) : ''}
-          </Text>
-        </View>
+        {/* The Admin may switch the undertaking off (Admin → Texts): then no empty box. */}
+        {undertaking ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionHead}>Undertaking of Compliances</Text>
+            <Text style={styles.body} testID="compliance-text">
+              {htmlToPlain(undertaking.html)}
+            </Text>
+          </View>
+        ) : null}
         <ZedButton
           title="Accept & Proceed"
           onPress={() => nav.replace('CertificationRequirements', { certificationType: type })}
@@ -137,16 +140,14 @@ export function CertificationRequirementsScreen() {
           <Text style={styles.pdfText}>Open PDF</Text>
           <Icon icon={icons.ic_external_link} />
         </Pressable>
-        <CheckBox
-          label={checkboxText ? htmlToPlain(checkboxText.html) : ''}
-          checked={accepted}
-          onChange={setAccepted}
-          testID="requirements-accept"
-        />
+        {/* Switched off by the Admin: no check box to tick. */}
+        {checkboxText ? (
+          <CheckBox label={htmlToPlain(checkboxText.html)} checked={accepted} onChange={setAccepted} testID="requirements-accept" />
+        ) : null}
         <ZedButton
           title="Submit"
           onPress={() => {
-            if (!accepted) {
+            if (checkboxText && !accepted) {
               ui.toast('Please read and accept the terms');
               return;
             }
