@@ -106,7 +106,7 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // Master admin: agencies, assessors and allocation
   // The live "Assessment" drop-down (Frontend/Shared/_Layout.cshtml, MasterAdmin), its labels and order; then the V4 additions.
   { label: 'Assessment Agencies', legacyPath: '/User/AssessmentAgencies', route: '/staff/users/agencies', roles: [R.MasterAdmin], group: 'Agencies' },
-  { label: 'Bronze Agencies', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Agencies' },
+  { label: 'Agency Level Allocation', legacyPath: '/User/BronzeAssessmentAgencies', route: '/staff/users/bronze-agencies', roles: [R.MasterAdmin], group: 'Agencies' },
   { label: 'Assessors', legacyPath: '/User/AssessorList', route: '/staff/users/assessors', roles: [R.MasterAdmin], group: 'Agencies' },
   { label: 'Payment Received', legacyPath: '/Dashboard/PaymentReceived', route: '/staff/payments-received', roles: [R.MasterAdmin], group: 'Assessment' },
   { label: 'Allot Assessment', legacyPath: '/Assessment/Allot', route: '/staff/assessment/allot', roles: [R.MasterAdmin], group: 'Assessment' },

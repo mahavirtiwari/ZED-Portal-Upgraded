@@ -54,12 +54,25 @@ public sealed class StaffAgenciesController(
     {
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = ((int)UserRole.Agency).ToString() }, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
+        var levels = host.IsConsultancy() ? new Dictionary<string, AgencyLevels.Row>() : await AgencyLevels.ListAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["AllowBronzeAssessments"] = StaffUserRules.Bool(r, "AllowBronzeAssessments");
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
+            if (!host.IsConsultancy())
+            {
+                // The levels it may be allotted (2026-11-08): NULL = allowed.
+                var l = levels.GetValueOrDefault(r.Text("UserId").Trim());
+                row["AllowSilverAssessments"] = l?.AllowSilverAssessments != false;
+                row["AllowGoldAssessments"] = l?.AllowGoldAssessments != false;
+                row["AllowZedxAssessments"] = l?.AllowZedxAssessments != false;
+                row["LevelReasons"] = new Dictionary<string, string?>
+                {
+                    ["Bronze"] = l?.ReasonForRejectionForBA, ["Silver"] = l?.ReasonForBlockSilver, ["Gold"] = l?.ReasonForBlockGold, ["ZEDX"] = l?.ReasonForBlockZedx,
+                };
+            }
             return row;
         }).ToList();
     }
@@ -280,31 +293,57 @@ public sealed class StaffAgenciesController(
 
     public sealed record BronzeRequest(bool Allow, string? Reason);
 
-    /// <summary>Enables or disables Bronze assessments for an agency (SP_BLOCK_UNBLOCK_BRONZE_AGENCY) and informs it by e-mail.</summary>
+    /// <summary>Enables or disables Bronze assessments for an agency (legacy route; see <see cref="LevelAssessments"/>).</summary>
     [HttpPost("{userId}/bronze-assessments")]
-    public async Task<ActionResult<MessageResponse>> BronzeAssessments(string userId, BronzeRequest req, CancellationToken ct)
+    public Task<ActionResult<MessageResponse>> BronzeAssessments(string userId, BronzeRequest req, CancellationToken ct) =>
+        LevelAssessments(userId, new LevelRequest("Bronze", req.Allow, req.Reason), ct);
+
+    public sealed record LevelRequest(string? Level, bool Allow, string? Reason);
+
+    /// <summary>
+    /// Enables or disables one certification level (Bronze, Silver, Gold, ZED-X) for an agency's allotment (2026-11-08; before,
+    /// Bronze only) and informs it by e-mail. Work already allotted is not changed.
+    /// </summary>
+    [HttpPost("{userId}/level-assessments")]
+    public async Task<ActionResult<MessageResponse>> LevelAssessments(string userId, LevelRequest req, CancellationToken ct)
     {
-        // Bronze assessments do not exist on Consultancy (and SP_BLOCK_UNBLOCK_BRONZE_AGENCY is not in ZED_CONSULTANT).
+        // Certification levels are allotted on main (SP_BLOCK_UNBLOCK_BRONZE_AGENCY is not in ZED_CONSULTANT).
         if (host.IsConsultancy()) return NotFound();
+        if (AgencyLevels.Find(req.Level) is not { } level) return this.Problem400("Please choose a valid certification level.");
         var agency = await FindAsync(userId, ct);
         if (agency is null) return NotFound();
         string? reason = null;
         if (!req.Allow && !StaffUserRules.TryText(req.Reason, 2000, required: true, multiline: true, out reason))
-            return this.Problem400("Please enter the reason for disabling Bronze assessments (up to 2000 characters).");
+            return this.Problem400($"Please enter the reason for disabling {level.Name} assessments (up to 2000 characters).");
 
-        var sets = await db.QueryProcMultipleAsync("SP_BLOCK_UNBLOCK_BRONZE_AGENCY",
-            new { AllowBronzeAssessments = req.Allow, UserId = agency.UserId, ReasonForBlock = reason ?? "" }, ct);
-        var status = sets[0].FirstOrDefault();
-        if (status?.Text("StatusCode") != "200")
-            return this.Problem400("The Bronze assessment setting could not be changed. Please try again.");
-        log.LogInformation("Bronze assessments {State} for agency {UserId} by {Actor}", req.Allow ? "enabled" : "disabled", agency.UserId, UserId);
+        if (level.Column is null)
+        {
+            var sets = await db.QueryProcMultipleAsync("SP_BLOCK_UNBLOCK_BRONZE_AGENCY",
+                new { AllowBronzeAssessments = req.Allow, UserId = agency.UserId, ReasonForBlock = reason ?? "" }, ct);
+            if (sets[0].FirstOrDefault()?.Text("StatusCode") != "200")
+                return this.Problem400("The Bronze assessment setting could not be changed. Please try again.");
+        }
+        else
+        {
+            try
+            {
+                await db.ExecuteSqlAsync(AgencyLevels.SaveSql(level), new { Allow = req.Allow, Reason = req.Allow ? null : reason, UserId = agency.UserId }, ct);
+            }
+            catch (System.Data.Common.DbException ex)
+            {
+                log.LogError(ex, "{Level} assessments not saved for agency {UserId} (is migration 0060 applied?)", level.Name, agency.UserId);
+                return this.Problem400($"The {level.Name} assessment setting could not be changed. Please try again.");
+            }
+        }
+        log.LogInformation("{Level} assessments {State} for agency {UserId} by {Actor}", level.Name, req.Allow ? "enabled" : "disabled", agency.UserId, UserId);
 
         var r = agency.Row;
         if (StaffUserRules.IsEmail(r.Text("Email")))
             await Mail.SendAsync<StaffBronzeAssessmentEmail>(r.Text("Email"),
-                "“MSME Sustainable (ZED) Certification” - Allocation of Bronze Assessment " + (req.Allow ? "Enabled: " : "Disabled: ") + agency.UserId, new()
+                $"“MSME Sustainable (ZED) Certification” - Allocation of {level.Name} Assessment " + (req.Allow ? "Enabled: " : "Disabled: ") + agency.UserId, new()
                 {
                     [nameof(StaffBronzeAssessmentEmail.Allowed)] = req.Allow,
+                    [nameof(StaffBronzeAssessmentEmail.Level)] = level.Name,
                     [nameof(StaffBronzeAssessmentEmail.UserName)] = r.Text("UserName"),
                     [nameof(StaffBronzeAssessmentEmail.UserId)] = agency.UserId,
                     [nameof(StaffBronzeAssessmentEmail.Reason)] = reason,
@@ -313,7 +352,7 @@ public sealed class StaffAgenciesController(
                     [nameof(StaffBronzeAssessmentEmail.EmailId)] = r.Text("Email"),
                     [nameof(StaffBronzeAssessmentEmail.LoginUrl)] = Mail.LoginUrl,
                 }, ct);
-        return new MessageResponse(req.Allow ? "Bronze assessments enabled successfully." : "Bronze assessments disabled successfully.");
+        return new MessageResponse($"{level.Name} assessments " + (req.Allow ? "enabled successfully." : "disabled successfully."));
     }
 
     public sealed record MobileRequest(string? MobileNo);

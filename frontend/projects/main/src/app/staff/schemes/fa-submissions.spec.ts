@@ -19,6 +19,7 @@ describe('FaSubmissionsPage', () => {
   }
 
   const counts = { New: 2, InProgress: 1, Qc: 0, Approved: 4, Rejected: 0 };
+  const NO = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejected: 0 };
   const row = (id: number, extra: Record<string, unknown> = {}) => ({
     Id: id, ZedId: `ZEDMSME0000${id}`, EnterpriseName: `Unit ${id}`, CertificationType: 'Bronze', UnitAddress: 'Kanpur',
     CertificationBodyUserId: null, CertificationBodyName: null, FinancialAssessorId: null, FaAssessorName: null, ReasonForRejection: null,
@@ -133,5 +134,60 @@ describe('FaSubmissionsPage', () => {
     expect(tab('FA ALLOTMENT').length).toBe(0);
     expect(button('ASSESS').length).toBe(1);
     expect(el.querySelector('thead')!.textContent).not.toContain('Assessor Details');
+  });
+
+  it('filters by level, agency and registered-on dates, with the tab counts of the filtered lists (2026-11-08)', async () => {
+    await create(StaffRole.MasterAdmin);
+    expectList('1').flush({ rows: [row(11), row(12)], counts, agencies: [{ userId: 'AG1', userName: 'Agency One' }] });
+    await settle();
+    expect(el.querySelector('[data-filter-summary]')).toBeNull();
+    expect([...el.querySelectorAll('#fa-agency option')].map((o) => o.textContent!.trim())).toEqual(['All agencies', 'Agency One (AG1)']);
+    expect([...el.querySelectorAll('#fa-level option')].map((o) => o.textContent!.trim())).toEqual(['All levels', 'Bronze', 'Silver', 'Gold']);
+
+    const select = (id: string, value: string) => {
+      const s = el.querySelector(id) as HTMLSelectElement;
+      s.value = value;
+      s.dispatchEvent(new Event('change'));
+    };
+    select('#fa-level', 'Silver');
+    await settle();
+    let req = expectList('1');
+    expect(req.request.params.get('level')).toBe('Silver');
+    expect(req.request.params.has('agency')).toBe(false);
+    req.flush({ rows: [row(11, { CertificationType: 'Silver' })], counts: { New: 1, InProgress: 0, Qc: 0, Approved: 2, Rejected: 0 } });
+    await settle();
+    expect(el.textContent).toContain('FA ALLOTMENT 1');
+    expect(el.textContent).toContain('APPROVED 2');
+
+    select('#fa-agency', 'AG1');
+    await settle();
+    req = expectList('1');
+    expect([req.request.params.get('level'), req.request.params.get('agency')]).toEqual(['Silver', 'AG1']);
+    req.flush({ rows: [], counts: NO });
+    await settle();
+    const from = el.querySelector('#fa-from') as HTMLInputElement;
+    from.value = '2026-10-01';
+    from.dispatchEvent(new Event('input'));
+    await settle();
+    req = expectList('1');
+    expect(req.request.params.get('from')).toBe('2026-10-01');
+    req.flush({ rows: [], counts: NO });
+    await settle();
+    expect(el.querySelector('[data-filter-summary]')!.textContent).toContain('Silver · Agency One · registered 2026-10-01 to …');
+
+    // Changing tab keeps the filters.
+    tab('APPROVED')[0].click();
+    await settle();
+    req = expectList('4');
+    expect(req.request.params.get('agency')).toBe('AG1');
+    req.flush({ rows: [], counts: NO });
+    await settle();
+
+    button('Clear filters')[0].click();
+    await settle();
+    req = expectList('4');
+    expect(req.request.params.keys()).toEqual(['status']);
+    req.flush({ rows: [], counts });
+    await settle();
   });
 });

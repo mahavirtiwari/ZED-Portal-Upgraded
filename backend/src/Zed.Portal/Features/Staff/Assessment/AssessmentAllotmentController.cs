@@ -97,7 +97,9 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         // V4: only agencies that assess the unit's kind (Manufacturing / Services; not set = no limit).
         var category = await Users.UserSectorActivity.UnitCategoryAsync(db, zedId, log, ct);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.Agency, log, ct);
-        return rows.Where(r => AllotmentLists.Flag(r, column))
+        // V4 (2026-11-08): not the agencies the Master Admin disabled this level for (Silver, Gold, ZED-X; Bronze is in the procedure).
+        var disabled = host.System == PortalSystem.Main ? await Users.AgencyLevels.DisabledAsync(db, level, log, ct) : [];
+        return rows.Where(r => AllotmentLists.Flag(r, column) && !disabled.Contains(r.Text("UserId").Trim()))
             .Select(r => new Person(r.Text("UserId"), r.Text("UserName"), activities.GetValueOrDefault(r.Text("UserId"))))
             .Where(p => Users.UserSectorActivity.Serves(p.SectorActivity, category));
     }

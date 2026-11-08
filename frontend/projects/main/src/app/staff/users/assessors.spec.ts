@@ -318,6 +318,77 @@ describe('MyAssessorsPage (consultancy)', () => {
 });
 
 describe('AssessorListPage', () => {
+  it('blocks an assessor with a reason, unblocks one and shows the history (2026-11-08)', async () => {
+    await TestBed.configureTestingModule({
+      imports: [AssessorListPage],
+      providers: [
+        provideHttpClient(), provideHttpClientTesting(), provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(AssessorListPage);
+    const http = TestBed.inject(HttpTestingController);
+    await settle(fixture);
+    const list = [
+      { RowNumber: 1, Id: 1, UserId: 'ZEDDA01', UserName: 'Desk One', IsActive: true, IdStatus: 'Active' },
+      { RowNumber: 2, Id: 2, UserId: 'ZEDSA02', UserName: 'Site Two', IsActive: false, IdStatus: 'Blocked', BlockReason: 'Report quality complaints', BlockedOn: '2026-11-06T15:42:00' },
+    ];
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
+    await settle(fixture);
+    const el: HTMLElement = fixture.nativeElement;
+    const rowButton = (row: number, label: string) =>
+      [...el.querySelectorAll('tbody tr')[row].querySelectorAll('button')].find((b) => b.textContent!.trim() === label) as HTMLButtonElement;
+    expect(el.querySelectorAll('tbody tr')[1].querySelector('[data-block-note]')!.textContent!.replace(/\s+/g, ' ')).toContain('“Report quality complaints” · 06 Nov 2026');
+    expect(rowButton(0, 'Unblock')).toBeUndefined();
+    expect(rowButton(1, 'Block')).toBeUndefined();
+
+    // Block: the open assessments, then a reason.
+    rowButton(0, 'Block').click();
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/ZEDDA01/open-assessments').flush({ count: 2 });
+    await settle(fixture);
+    expect(el.querySelector('[data-open-warning]')!.textContent).toContain('2 assessments allotted to this assessor are still open');
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(el.querySelector('.modal')!.textContent).toContain('Please enter the reason for blocking.');
+    const reason = el.querySelector('#as-block-reason') as HTMLTextAreaElement;
+    reason.value = 'Certificate expired';
+    reason.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const block = http.expectOne('/api/staff/users/assessors/ZEDDA01/block');
+    expect(block.request.body).toEqual({ reason: 'Certificate expired' });
+    block.flush({ message: 'User Blocked successful' });
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
+    await settle(fixture);
+    expect(el.querySelector('.modal')).toBeNull();
+
+    // Unblock after confirming.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    rowButton(1, 'Unblock').click();
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/ZEDSA02/unblock').flush({ message: 'User UnBlocked successful' });
+    await settle(fixture);
+    http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
+    await settle(fixture);
+
+    // History.
+    rowButton(1, 'History').click();
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/ZEDSA02/history').flush([
+      { action: 'Blocked', reason: 'Report quality complaints', actionBy: 'MASTER1', actionByRole: 7, actionDate: '2026-11-06T15:42:00' },
+      { action: 'Unblocked', reason: null, actionBy: 'ZEDV4AG01', actionByRole: 2, actionDate: '2026-09-12T11:05:00' },
+    ]);
+    await settle(fixture);
+    const items = [...el.querySelectorAll('.as-history li')].map((li) => li.textContent!.replace(/\s+/g, ' ').trim());
+    expect(items[0]).toMatch(/^Blocked\s*06 Nov 2026, 3:42 PM · by MASTER1 \(Master Admin\)\s*“Report quality complaints”$/);
+    expect(items[1]).toMatch(/^Unblocked\s*12 Sept? 2026, 11:05 AM · by ZEDV4AG01 \(agency\)$/);
+    http.verify();
+    vi.restoreAllMocks();
+  });
+
   it('passes the agency and type filters and pages the result', async () => {
     await TestBed.configureTestingModule({
       imports: [AssessorListPage],

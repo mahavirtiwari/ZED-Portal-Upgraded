@@ -12,6 +12,10 @@ namespace Zed.Portal.Features.Staff.Users;
 /// </summary>
 internal static class StaffUserActions
 {
+    private static int? RoleOf(ManagedUser user) => int.TryParse(user.Row.Text("RoleId"), out var r) ? r : null;
+
+    private static int? ActorRole(ControllerBase c) => ZedUser.FromPrincipal(c.User)?.RoleId;
+
     /// <summary>
     /// SP_BLOCK_UNBLOCK_USER on Main (Users.IsActive and ReasonForRejection, in ZEDCS and ZED_SURVEILLANCE). On Consultancy,
     /// whose database has no such procedure, the legacy inline UPDATE (<see cref="ConsultancyUsers.SetActiveAsync"/>) and,
@@ -24,6 +28,7 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, false, reason, ct))
             return c.Problem400("The user could not be blocked. Please try again.");
         log.LogInformation("User {UserId} blocked by {Actor}", user.UserId, actor);
+        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Blocked, reason, actor, ActorRole(c), log, ct);
         // M12: the user's open sessions end too (on main also those of the Surveillance portal, which the procedure blocks as well).
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
@@ -49,6 +54,7 @@ internal static class StaffUserActions
         if (!await SetActiveAsync(db, host, user, true, "", ct))
             return c.Problem400("The user could not be unblocked. Please try again.");
         log.LogInformation("User {UserId} unblocked by {Actor}", user.UserId, actor);
+        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Unblocked, null, actor, ActorRole(c), log, ct);
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
         if (StaffUserRules.IsEmail(user.Row.Text("Email")))

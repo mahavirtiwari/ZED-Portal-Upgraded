@@ -235,6 +235,25 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
     }
 
     [Fact]
+    public async Task Master_admin_cannot_allot_a_level_the_agency_was_disabled_for()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets([
+            new { UserId = "AGENCYA", UserName = "Gold allowed", SiteVerification = true },
+            new { UserId = "AGENCYOFF", UserName = "Gold disabled", SiteVerification = true },
+        ]);
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.AgencyLevels.DisabledSql(Zed.Portal.Features.Staff.Users.AgencyLevels.Find("Gold")!)] = _ =>
+            [new { UserId = "AGENCYOFF" }];
+        _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = _ => FakeSql.Sets([new { ZedId = "ZEDMSME000001", Certification = "Gold", CertificationStatus = 2 }]);
+        var client = await DaTestUsers.SignInAsync(_host, "MADMIN");
+
+        var agencies = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/allot/agencies?zedId=ZEDMSME000001&certification=Gold");
+        Assert.Equal(["AGENCYA"], agencies.EnumerateArray().Select(a => a.GetProperty("userId").GetString()));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/assessment/allot",
+            new { zedId = "ZEDMSME000001", certification = "Gold", agencyUserId = "AGENCYOFF" })).StatusCode);
+        Assert.Empty(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+    }
+
+    [Fact]
     public async Task Master_admin_allots_only_to_an_agency_eligible_for_the_level()
     {
         var client = await DaTestUsers.SignInAsync(_host, "MADMIN");

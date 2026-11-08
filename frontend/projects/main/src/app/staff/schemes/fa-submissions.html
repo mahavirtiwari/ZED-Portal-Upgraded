@@ -1,8 +1,44 @@
 <div class="page-head">
   <div>
     <h3 class="registration-title">Financial Assistance</h3>
-    <p class="page-sub">Financial assistance applications: allotment to agencies and assessors, and their verification.</p>
+    <p class="page-sub">Financial assistance applications: allotted to agencies by round robin as they are submitted (the Master Admin can re-allot), then to assessors, and their verification.</p>
   </div>
+</div>
+<div class="zed-card fa-filters" data-filters>
+  <div class="fa-filter-grid" [style.grid-template-columns]="isAdmin() ? null : 'minmax(0, 1fr) minmax(0, 1.7fr)'">
+    <div>
+      <label class="form-label" for="fa-level">Certification level</label>
+      <select id="fa-level" class="form-select" [ngModel]="filter().level" (ngModelChange)="setFilter('level', $event)">
+        <option value="">All levels</option>
+        @for (l of levels; track l) { <option [value]="l">{{ l }}</option> }
+      </select>
+    </div>
+    @if (isAdmin()) {
+      <div>
+        <label class="form-label" for="fa-agency">Agency</label>
+        <select id="fa-agency" class="form-select" [ngModel]="filter().agency" (ngModelChange)="setFilter('agency', $event)">
+          <option value="">All agencies</option>
+          @for (a of agencyOptions(); track a.userId) { <option [value]="a.userId">{{ a.userName }} ({{ a.userId }})</option> }
+        </select>
+      </div>
+    }
+    <div>
+      <span class="form-label d-block" id="fa-dates-label">Registered on</span>
+      <div class="fa-dates" role="group" aria-labelledby="fa-dates-label">
+        <input type="date" id="fa-from" class="form-control" aria-label="Registered from" [max]="filter().to || null"
+               [ngModel]="filter().from" (ngModelChange)="setFilter('from', $event)" />
+        <span class="to">to</span>
+        <input type="date" id="fa-to" class="form-control" aria-label="Registered to" [min]="filter().from || null"
+               [ngModel]="filter().to" (ngModelChange)="setFilter('to', $event)" />
+      </div>
+    </div>
+  </div>
+  @if (filtering()) {
+    <div class="fa-filter-foot">
+      <span data-filter-summary>Showing {{ filterSummary() }} · {{ rows().length }} application{{ rows().length === 1 ? '' : 's' }} in this list</span>
+      <button type="button" class="btn btn-outline-primary btn-sm" (click)="clearFilters()">Clear filters</button>
+    </div>
+  }
 </div>
 @if (!isAssessor()) {
   <div class="status-tabs" role="group" aria-label="Application status">
@@ -80,7 +116,9 @@
           <td class="text-center">{{ s.CertificationType }}</td>
           <td class="text-center">{{ s.RegisteredDate }}</td>
           <td class="cell-lines"><strong>{{ s.ZedId }}</strong><strong>{{ s.EnterpriseName }}</strong><span>{{ s.UnitAddress }}</span></td>
-          <td class="cell-lines"><strong>{{ s.CertificationBodyName }}</strong><span>{{ s.CertificationBodyUserId }}</span></td>
+          <td class="cell-lines"><strong>{{ s.CertificationBodyName }}</strong><span>{{ s.CertificationBodyUserId }}</span>
+            @if (s.CertificationBodyUserId && s.AllotmentType === 'RoundRobin') { <span><span class="zed-chip is-auto" title="Allotted by round robin">Auto</span></span> }
+          </td>
           @if (!isAssessor()) {
             <td class="cell-lines"><strong>{{ assessorName(s) }}</strong><span>{{ s.FinancialAssessorId }}</span></td>
           }

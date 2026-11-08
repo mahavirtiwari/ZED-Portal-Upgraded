@@ -369,6 +369,49 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
+    public async Task Disabling_gold_assessments_saves_the_level_and_mails_the_reason()
+    {
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var noReason = await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/level-assessments", new { level = "Gold", allow = false, reason = "" });
+        Assert.Equal("Please enter the reason for disabling Gold assessments (up to 2000 characters).", await noReason.ProblemTitle());
+        var badLevel = await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/level-assessments", new { level = "Platinum", allow = false, reason = "x" });
+        Assert.Equal(HttpStatusCode.BadRequest, badLevel.StatusCode);
+
+        var r = await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/level-assessments", new { level = "Gold", allow = false, reason = "Pending re-empanelment" });
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var save = _host.Sql.Calls.Single(c => c.Name == AgencyLevels.SaveSql(AgencyLevels.Find("Gold")!));
+        Assert.Contains("SET AllowGoldAssessments = @Allow, ReasonForBlockGold = @Reason", save.Name);
+        Assert.Equal(("False", "Pending re-empanelment", "ZEDAA0001"),
+            (UsersMastersLogin.Arg(save.Args, "Allow"), UsersMastersLogin.Arg(save.Args, "Reason"), UsersMastersLogin.Arg(save.Args, "UserId")));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_BLOCK_UNBLOCK_BRONZE_AGENCY");
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.Contains("Allocation of Gold Assessment Disabled", mail.Subject);
+        Assert.Contains("disabled for Gold assessments", mail.HtmlBody);
+        Assert.Contains("Pending re-empanelment", mail.HtmlBody);
+
+        // ZED-X back on: no reason needed; the reason is cleared.
+        (await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/level-assessments", new { level = "ZEDX", allow = true })).EnsureSuccessStatusCode();
+        var zedx = _host.Sql.Calls.Single(c => c.Name == AgencyLevels.SaveSql(AgencyLevels.Find("ZEDX")!));
+        Assert.Equal(("True", null), (UsersMastersLogin.Arg(zedx.Args, "Allow"), UsersMastersLogin.Arg(zedx.Args, "Reason")));
+    }
+
+    [Fact]
+    public async Task The_agency_list_carries_each_levels_switch_and_reason()
+    {
+        _host.Sql.Queries[AgencyLevels.ListSql] = _ =>
+            [new { UserId = "ZEDAA0001", ReasonForRejectionForBA = (string?)null, AllowSilverAssessments = (bool?)null, AllowGoldAssessments = (bool?)false,
+                   AllowZedxAssessments = (bool?)true, ReasonForBlockSilver = (string?)null, ReasonForBlockGold = "Pending", ReasonForBlockZedx = (string?)null }];
+        _host.Sql.Procs["SP_GET_USERS_BY_ROLE"] = _ => FakeSql.Sets([Agency1]);
+        var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var list = await client.GetFromJsonAsync<JsonElement>("/api/staff/users/agencies");
+        var row = list.EnumerateArray().First(a => a.GetProperty("UserId").GetString() == "ZEDAA0001");
+        Assert.True(row.GetProperty("AllowSilverAssessments").GetBoolean());
+        Assert.False(row.GetProperty("AllowGoldAssessments").GetBoolean());
+        Assert.True(row.GetProperty("AllowZedxAssessments").GetBoolean());
+        Assert.Equal("Pending", row.GetProperty("LevelReasons").GetProperty("Gold").GetString());
+    }
+
+    [Fact]
     public async Task Reset_mobile_changes_only_the_mobile_number()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
@@ -432,6 +475,50 @@ public sealed class UsersTests : IDisposable
         Assert.Equal("XXXXXXXX9012", details.GetProperty("idProofNumberMasked").GetString());
         Assert.DoesNotContain("assessorpw", details.GetRawText());
         Assert.Equal(HttpStatusCode.Forbidden, (await master.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0002", new { })).StatusCode);
+    }
+
+    [Fact]
+    public async Task Master_admin_blocks_and_unblocks_an_assessor_and_each_is_kept_in_the_history()
+    {
+        _host.Sql.Queries[StaffAssessorsController.OpenAssessmentsSql] = args => UsersMastersLogin.Arg(args, "UserId") == "ZEDAS0001" ? [2] : [0];
+        _host.Sql.Queries[UserBlockHistory.ListSql] = _ =>
+            [new UserBlockHistory.Entry("Blocked", "Certificate expired", "MASTER1", 7, new DateTime(2026, 11, 6, 15, 42, 0))];
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        Assert.Equal(2, (await master.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors/ZEDAS0001/open-assessments")).GetProperty("count").GetInt32());
+
+        (await master.PostAsJsonAsync("/api/staff/users/assessors/ZEDAS0001/block", new { reason = "Certificate expired" })).EnsureSuccessStatusCode();
+        var blocked = _host.Sql.Calls.Single(c => c.Name == UserBlockHistory.InsertSql);
+        Assert.Equal(("ZEDAS0001", "3", "Blocked", "Certificate expired", "MASTER1", "7"),
+            (UsersMastersLogin.Arg(blocked.Args, "UserId"), UsersMastersLogin.Arg(blocked.Args, "RoleId"), UsersMastersLogin.Arg(blocked.Args, "Action"),
+             UsersMastersLogin.Arg(blocked.Args, "Reason"), UsersMastersLogin.Arg(blocked.Args, "ActionBy"), UsersMastersLogin.Arg(blocked.Args, "ActionByRole")));
+
+        _users["ZEDAS0001"]["IsActive"] = false;
+        try
+        {
+            (await master.PostAsync("/api/staff/users/assessors/ZEDAS0001/unblock", null)).EnsureSuccessStatusCode();
+        }
+        finally { _users["ZEDAS0001"]["IsActive"] = true; }
+        var unblocked = _host.Sql.Calls.Where(c => c.Name == UserBlockHistory.InsertSql).Last();
+        Assert.Equal(("Unblocked", null), (UsersMastersLogin.Arg(unblocked.Args, "Action"), UsersMastersLogin.Arg(unblocked.Args, "Reason")));
+
+        var history = await master.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors/ZEDAS0001/history");
+        Assert.Equal("Certificate expired", Assert.Single(history.EnumerateArray()).GetProperty("reason").GetString());
+        // An agency sees only its own assessors' history.
+        var other = await UsersMastersLogin.SignInAsync(_host, "AGENCY2");
+        Assert.Equal(HttpStatusCode.NotFound, (await other.GetAsync("/api/staff/users/assessors/ZEDAS0001/history")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_master_admins_assessor_list_shows_the_reason_and_date_of_a_block()
+    {
+        _host.Sql.Procs["SP_GET_ASSESSORS"] = _ => FakeSql.Sets([_users["ZEDAS0001"], _users["ZEDAS0003"]]);
+        _host.Sql.Queries[UserBlockHistory.LatestBlocksSql] = _ =>
+            [new { UserId = "ZEDAS0003", Reason = "Absent", ActionDate = (DateTime?)new DateTime(2026, 11, 6) },
+             new { UserId = "ZEDAS0001", Reason = "Old", ActionDate = (DateTime?)new DateTime(2026, 1, 1) }];
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var rows = (await master.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors")).EnumerateArray().ToList();
+        Assert.False(rows[0].TryGetProperty("BlockReason", out _));
+        Assert.Equal("Absent", rows[1].GetProperty("BlockReason").GetString());
     }
 
     [Fact]

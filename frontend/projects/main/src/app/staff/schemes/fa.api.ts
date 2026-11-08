@@ -24,6 +24,8 @@ export interface FaSubmission {
   CategoryOfCertificate: string | null;
   NameOfCertficate: string | null;
   CertificationAgency: string | null;
+  /** 'RoundRobin' or 'Manual' (2026-11-08); null for older allotments. */
+  AllotmentType?: string | null;
 }
 
 export interface FaCounts {
@@ -37,6 +39,16 @@ export interface FaCounts {
 export interface FaSubmissions {
   rows: FaSubmission[];
   counts: FaCounts | null;
+  /** Master admin: the agencies of the Agency filter. */
+  agencies?: UserOption[] | null;
+}
+
+/** The filters above the list (2026-11-08, as on Assessment Monitoring); empty = no filter. */
+export interface FaFilter {
+  level: string;
+  agency: string;
+  from: string;
+  to: string;
 }
 
 export interface UserOption {
@@ -97,8 +109,10 @@ const BASE = '/api/staff/schemes/fa';
 export class FaApi {
   private readonly http = inject(HttpClient);
 
-  submissions(status: number): Observable<FaSubmissions> {
-    return this.http.get<FaSubmissions>(`${BASE}/submissions`, { params: new HttpParams().set('status', status) });
+  submissions(status: number, filter?: FaFilter): Observable<FaSubmissions> {
+    let params = new HttpParams().set('status', status);
+    for (const [key, value] of Object.entries(filter ?? {})) if (value) params = params.set(key, value);
+    return this.http.get<FaSubmissions>(`${BASE}/submissions`, { params });
   }
 
   agencies(zedId: string): Observable<UserOption[]> {

@@ -39,22 +39,91 @@ public sealed class FinancialAssistanceController(
         "Id", "ZedId", "EnterpriseName", "UnitAddress", "CertificationType", "RegisteredDate", "UamNumber",
         "CertificationBodyUserId", "CertificationBodyName", "FinancialAssessorId", "FaAssessorName", "FinAssessorName",
         "ReasonForRejection", "VerificationDate", "CategoryOfCertificate", "NameOfCertficate", "CertificationAgency",
+        // How the agency got it: 'RoundRobin' or 'Manual' (migration 0062).
+        "AllotmentType",
     ];
 
     public sealed record SubmissionsResponse(
-        IReadOnlyList<Dictionary<string, object?>> Rows, Dictionary<string, object?>? Counts);
+        IReadOnlyList<Dictionary<string, object?>> Rows, Dictionary<string, object?>? Counts)
+    {
+        /// <summary>Master admin: the agencies of the Agency filter (2026-11-08).</summary>
+        public IReadOnlyList<Option>? Agencies { get; init; }
+    }
 
-    /// <summary>GET api/staff/schemes/fa/submissions?status=1..6 — SP_FINANCIAL_ASSISTANCE_GET_LIST for the signed-in user.</summary>
+    /// <summary>The filters above the list (2026-11-08, as on Assessment Monitoring).</summary>
+    public sealed record SubmissionFilter(string? Level, string? Agency, DateOnly? From, DateOnly? To)
+    {
+        public bool Any => Level is not null || Agency is not null || From is not null || To is not null;
+
+        public bool Matches(IDictionary<string, object?> r)
+        {
+            if (Level is not null && !string.Equals(r.Text("CertificationType").Trim(), Level, StringComparison.OrdinalIgnoreCase)) return false;
+            if (Agency is not null && !string.Equals(r.Text("CertificationBodyUserId").Trim(), Agency, StringComparison.OrdinalIgnoreCase)) return false;
+            if (From is null && To is null) return true;
+            var on = RegisteredOn(r.TryGetValue("RegisteredDate", out var v) ? v : null);
+            return on is not null && (From is null || on >= From) && (To is null || on <= To);
+        }
+
+        private static DateOnly? RegisteredOn(object? value) => value switch
+        {
+            DateTime d => DateOnly.FromDateTime(d),
+            DateTimeOffset d => DateOnly.FromDateTime(d.Date),
+            string s when DateTime.TryParse(s, System.Globalization.CultureInfo.GetCultureInfo("en-IN"), System.Globalization.DateTimeStyles.None, out var d) => DateOnly.FromDateTime(d),
+            _ => null,
+        };
+    }
+
+    private static readonly (int Status, string Key)[] CountKeys =
+        [(FaStatus.New, "New"), (FaStatus.InProgress, "InProgress"), (FaStatus.Qc, "Qc"), (FaStatus.Approved, "Approved"), (FaStatus.Rejected, "Rejected")];
+
+    internal const string FaAgenciesSql =
+        "SELECT UserId, UserName FROM dbo.Users WHERE RoleId = 2 AND FinancialVerification = 1 ORDER BY UserName;";
+
+    /// <summary>
+    /// GET api/staff/schemes/fa/submissions?status=1..6 — SP_FINANCIAL_ASSISTANCE_GET_LIST for the signed-in user. Optional filters
+    /// (2026-11-08): level (Bronze, Silver, Gold, ZEDX), agency (its user id), from / to (registered on, yyyy-MM-dd); with a filter
+    /// the tab counts are those of the filtered lists.
+    /// </summary>
     [HttpGet("submissions")]
-    public async Task<ActionResult<SubmissionsResponse>> Submissions([FromQuery] int status, CancellationToken ct)
+    public async Task<ActionResult<SubmissionsResponse>> Submissions([FromQuery] int status, [FromQuery] string? level, [FromQuery] string? agency,
+        [FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct)
     {
         if (status is < FaStatus.New or > FaStatus.Reimbursed) return this.Problem400("Invalid status.");
+        var lv = string.IsNullOrWhiteSpace(level) ? null : FaApplications.Canonical(level);
+        if (!string.IsNullOrWhiteSpace(level) && lv is null) return this.Problem400("Invalid certification level.");
+        if (agency is not null && agency.Trim().Length is 0 or > 50) agency = null;
+        if (from is not null && to is not null && from > to) return this.Problem400("The 'from' date is after the 'to' date.");
+        var filter = new SubmissionFilter(lv, agency?.Trim(), from, to);
+
         // The procedure scopes by the user: master admin all, agency CertificationBodyUserId, assessor FinancialAssessorId.
         var sets = await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
             new { UserId, Status = status, CertificationType = (string?)null, ZedId = (string?)null }, ct);
-        var rows = (await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
+        var rows = (await ScopeFilter.ApplyAsync(HttpContext, sets[0], ct)).Where(filter.Matches).Select(r => SchemeRows.Pick(r, ListColumns)).ToList();
         var counts = sets[1].FirstOrDefault() is { } c ? SchemeRows.Pick(c, ["New", "InProgress", "Qc", "Approved", "Rejected"]) : null;
-        return new SubmissionsResponse(rows, counts);
+        if (filter.Any)
+        {
+            // The counts of the filtered lists, one list at a time.
+            counts = [];
+            foreach (var (s, key) in CountKeys)
+            {
+                var list = s == status ? null : (await db.QueryProcMultipleAsync("SP_FINANCIAL_ASSISTANCE_GET_LIST",
+                    new { UserId, Status = s, CertificationType = (string?)null, ZedId = (string?)null }, ct))[0];
+                counts[key] = list is null ? rows.Count : (await ScopeFilter.ApplyAsync(HttpContext, list, ct)).Count(filter.Matches);
+            }
+        }
+        IReadOnlyList<Option>? agencies = null;
+        if (RoleId == (int)UserRole.MasterAdmin)
+        {
+            try
+            {
+                agencies = (await db.QuerySqlAsync<Option>(FaAgenciesSql, null, ct)).ToList();
+            }
+            catch (System.Data.Common.DbException ex)
+            {
+                log.LogWarning(ex, "Agencies of the FA filter not read");
+            }
+        }
+        return new SubmissionsResponse(rows, counts) { Agencies = agencies };
     }
 
     public sealed record Option(string UserId, string UserName);
@@ -92,6 +161,7 @@ public sealed class FinancialAssistanceController(
                     new { ZedId = zedId, Certification = cert, CertificationBodyUserId = agency.UserId }, zedId, ct) is { } failed)
                 return failed;
             await SchemeRows.AuditAsync(db, log, zedId, cert, $"Financial assistance allotted to agency {agency.UserId} by {UserId}", ct);
+            await HttpContext.RequestServices.GetRequiredService<FaAutoAllotment>().MarkAsync(zedId, cert, agency.UserId, FaAutoAllotment.Manual, ct);
 
             var mailer = Mailer();
             var d = await mailer.DetailsAsync(zedId, cert, ct);
@@ -153,7 +223,7 @@ public sealed class FinancialAssistanceController(
 
     public sealed record RejectRequest(string? ZedId, string? Certification, string? Reason);
 
-    /// <summary>POST api/staff/schemes/fa/reject — the allotted agency returns the allotment (the master admin re-allots).</summary>
+    /// <summary>POST api/staff/schemes/fa/reject — the allotted agency returns the allotment (the next agency of the round robin gets it).</summary>
     [HttpPost("reject")]
     [StaffRoles(UserRole.Agency)]
     public async Task<ActionResult<MessageResponse>> Reject(RejectRequest req, CancellationToken ct)
@@ -172,6 +242,9 @@ public sealed class FinancialAssistanceController(
                     new { ZedId = zedId, Certification = cert, ReasonForRejection = reason }, zedId, ct) is { } failed)
                 return failed;
             await SchemeRows.AuditAsync(db, log, zedId, cert, $"Financial assistance allotment rejected by agency {UserId}: {reason}", ct);
+            // 2026-11-08: it goes to the next agency of the round robin (not again to this one); none left = the Master Admin's list.
+            var auto = HttpContext.RequestServices.GetRequiredService<FaAutoAllotment>();
+            await auto.RecordRejectionAsync(zedId, cert, UserId, ct);
 
             var mailer = Mailer();
             var d = await mailer.DetailsAsync(zedId, cert, ct);
@@ -185,6 +258,7 @@ public sealed class FinancialAssistanceController(
                     [nameof(StaffSchemeFaAgencyRejectedEmail.AgencyUserId)] = UserId,
                     [nameof(StaffSchemeFaAgencyRejectedEmail.Reason)] = reason,
                 }, ct);
+            await auto.AllotAsync(zedId, cert, ct);
         }
         return new MessageResponse("Application rejected.");
     }

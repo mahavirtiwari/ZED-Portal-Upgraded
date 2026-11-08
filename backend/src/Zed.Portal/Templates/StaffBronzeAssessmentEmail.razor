@@ -1,14 +1,14 @@
-@* Port of _BlockOrUnblockBronzeAssessmentTemplate.cshtml. *@
+@* Port of _BlockOrUnblockBronzeAssessmentTemplate.cshtml; also Silver, Gold and ZED-X (2026-11-08). *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, </p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
     @if (Allowed)
     {
-        <p style="font-size: 13px; margin-bottom: 0;">Your account has been enabled for Bronze assessments under the "MSME Sustainable (ZED) Certification" Scheme.<br /></p>
+        <p style="font-size: 13px; margin-bottom: 0;">Your account has been enabled for @Level assessments under the "MSME Sustainable (ZED) Certification" Scheme.<br /></p>
     }
     else
     {
-        <p style="font-size: 13px; margin-bottom: 0;">Your account has been temporarily disabled for Bronze assessments under the "MSME Sustainable (ZED) Certification" Scheme.<br /></p>
+        <p style="font-size: 13px; margin-bottom: 0;">Your account has been temporarily disabled for @Level assessments under the "MSME Sustainable (ZED) Certification" Scheme.<br /></p>
     }
     <table style="width: 100%; table-layout: fixed; font-size: 13px; padding: 15px; background: #F0F0F0;" cellpadding="0" cellspacing="0" border="0">
         <tbody bgcolor="#ffffff">
@@ -55,6 +55,8 @@
 
 @code {
     [Parameter] public bool Allowed { get; set; }
+    /// <summary>Bronze, Silver, Gold or ZED-X.</summary>
+    [Parameter] public string Level { get; set; } = "Bronze";
     [Parameter, EditorRequired] public string UserName { get; set; } = "";
     [Parameter, EditorRequired] public string UserId { get; set; } = "";
     [Parameter] public string? Reason { get; set; }

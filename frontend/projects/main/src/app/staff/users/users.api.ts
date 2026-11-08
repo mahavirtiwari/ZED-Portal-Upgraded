@@ -21,9 +21,24 @@ export interface AgencyRow {
   NoOfUsers: number | null;
   NoOfBronzeAssessors: number | null;
   AllowBronzeAssessments: boolean;
+  /** Main (2026-11-08): the other levels it may be allotted, and why a level was disabled. */
+  AllowSilverAssessments?: boolean;
+  AllowGoldAssessments?: boolean;
+  AllowZedxAssessments?: boolean;
+  LevelReasons?: Partial<Record<AgencyLevel, string | null>>;
   /** Main (V4): Manufacturing, Services or Both; null when not set yet. */
   SectorActivity?: SectorActivity | null;
 }
+
+/** The certification levels an agency may be allotted (Agencies -> Agency level allocation, 2026-11-08). */
+export type AgencyLevel = 'Bronze' | 'Silver' | 'Gold' | 'ZEDX';
+
+export const AGENCY_LEVELS: { code: AgencyLevel; name: string; field: keyof AgencyRow }[] = [
+  { code: 'Bronze', name: 'Bronze', field: 'AllowBronzeAssessments' },
+  { code: 'Silver', name: 'Silver', field: 'AllowSilverAssessments' },
+  { code: 'Gold', name: 'Gold', field: 'AllowGoldAssessments' },
+  { code: 'ZEDX', name: 'ZED-X', field: 'AllowZedxAssessments' },
+];
 
 export interface Sector {
   sectorCode: string;
@@ -128,6 +143,18 @@ export interface AssessorRow {
   SectorActivity?: SectorActivity | null;
   AgencyUserId: string | null;
   AgencyUserName: string | null;
+  /** Blocked: the reason and date of its latest block (2026-11-08). */
+  BlockReason?: string | null;
+  BlockedOn?: string | null;
+}
+
+/** One block or unblock of a login (2026-11-08). */
+export interface BlockHistoryEntry {
+  action: 'Blocked' | 'Unblocked';
+  reason: string | null;
+  actionBy: string | null;
+  actionByRole: number | null;
+  actionDate: string | null;
 }
 
 /** Row of SP_GET_USERS_BY_ROLE (RoleId 3): the signed-in agency's assessors. ID proof numbers are masked. */
@@ -257,7 +284,12 @@ export class UsersApi {
   }
 
   bronzeAssessments(userId: string, allow: boolean, reason: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/agencies/${encodeURIComponent(userId)}/bronze-assessments`, { allow, reason });
+    return this.levelAssessments(userId, 'Bronze', allow, reason);
+  }
+
+  /** Enables or disables one level's allotment for an agency (a reason when disabling). */
+  levelAssessments(userId: string, level: AgencyLevel, allow: boolean, reason: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/agencies/${encodeURIComponent(userId)}/level-assessments`, { level, allow, reason });
   }
 
   allAssessors(agencyId: string, type: string): Observable<AssessorRow[]> {
@@ -302,6 +334,16 @@ export class UsersApi {
 
   unblock(kind: ManagedKind, userId: string): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, null);
+  }
+
+  /** Every block and unblock of an assessor / consultant, latest first. */
+  assessorHistory(userId: string): Observable<BlockHistoryEntry[]> {
+    return this.http.get<BlockHistoryEntry[]>(`${this.base}/assessors/${encodeURIComponent(userId)}/history`);
+  }
+
+  /** Its assessments not certified yet (null when not known). */
+  assessorOpenAssessments(userId: string): Observable<{ count: number | null }> {
+    return this.http.get<{ count: number | null }>(`${this.base}/assessors/${encodeURIComponent(userId)}/open-assessments`);
   }
 
   resetMobile(kind: ManagedKind, userId: string, mobileNo: string): Observable<MessageResponse> {

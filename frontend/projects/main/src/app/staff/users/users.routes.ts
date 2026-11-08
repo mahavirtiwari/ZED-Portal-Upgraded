@@ -21,9 +21,9 @@ const MAIN_USERS_ROUTES: Routes = [
   },
   {
     path: 'bronze-agencies',
-    title: 'ZED | Bronze Assessment Agencies',
+    title: 'ZED | Agency Level Allocation',
     canActivate: [masterAdmin],
-    data: { mode: 'bronze' },
+    data: { mode: 'levels' },
     loadComponent: () => import('./agencies').then((m) => m.AgenciesPage),
   },
   {

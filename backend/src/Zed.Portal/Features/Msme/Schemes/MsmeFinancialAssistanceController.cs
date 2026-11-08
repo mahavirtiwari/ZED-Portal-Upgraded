@@ -186,6 +186,10 @@ public sealed class MsmeFinancialAssistanceController(
                 [nameof(MsmeSchemeFaSubmittedEmail.CategoryOfCertificate)] = category,
             }, ct);
 
+        // 2026-11-08: allotted to an agency by round robin at once (none eligible = the Master Admin allots it).
+        using (await SchemeLocks.EnterAsync(ct))
+            await HttpContext.RequestServices.GetRequiredService<Staff.Schemes.FaAutoAllotment>().AllotAsync(ZedId, certification, ct);
+
         return new SubmitResponse("Application for Financial Assistance submitted successfully!", amount, eligible);
     }
 

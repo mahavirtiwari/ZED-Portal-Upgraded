@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
@@ -5,12 +6,17 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { LABELS } from '../../portal-labels';
 import { STAFF_SYSTEM } from '../staff-menu';
-import { AssessorRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
+import { AssessorRow, BlockHistoryEntry, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { ClientPager, PagerComponent } from '../pager';
 
 /** Which assessors the list shows: the status tiles, the type tabs and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
 type SectorFilter = '' | SectorActivity | 'none';
+
+/** Block (a reason; the open assessments it leaves) or the block history (2026-11-08). */
+type Dialog =
+  | { kind: 'block'; row: AssessorRow; reason: string; open: number | null }
+  | { kind: 'history'; row: AssessorRow; entries: BlockHistoryEntry[] | null };
 
 /** Two letters for the round badge beside a name (first and last word). */
 export function initialsOf(name: string | null | undefined): string {
@@ -37,7 +43,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
  */
 @Component({
   selector: 'zed-staff-assessor-list',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, DatePipe],
   template: `
     <div class="page-head">
       <div>
@@ -159,14 +165,26 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                     <div>Milestone 1: <strong>0</strong></div><div>Milestone 2: <strong>0</strong></div><div>Milestone 3: <strong>0</strong></div>
                   </td>
                 }
-                <td class="text-center as-status-cell"><span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span></td>
+                <td class="text-center as-status-cell">
+                  <span class="status-badge" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
+                  @if (!s.IsActive && (s.BlockReason || s.BlockedOn)) {
+                    <small class="as-block-note" data-block-note>
+                      @if (s.BlockReason) { “{{ s.BlockReason }}” }
+                      @if (s.BlockedOn) { <span class="text-nowrap">· {{ s.BlockedOn | date: 'dd MMM yyyy' }}</span> }
+                    </small>
+                  }
+                </td>
                 <td class="text-center as-actions-cell">
                   <div class="row-actions justify-content-center">
                     <a [routerLink]="['/staff/users/assessors', s.UserId]" class="btn btn-outline-primary">View</a>
                     <!-- V4 addition (not on the old consultancy list): Reset Link. -->
                     @if (s.IsActive) {
                       <button type="button" class="btn btn-default" [disabled]="busy()" (click)="sendReset(s)">Reset Link</button>
+                      <button type="button" class="btn btn-outline-danger" [disabled]="busy()" (click)="openBlock(s)">Block</button>
+                    } @else {
+                      <button type="button" class="btn btn-outline-success" [disabled]="busy()" (click)="unblock(s)">Unblock</button>
                     }
+                    <button type="button" class="btn btn-default" [disabled]="busy()" (click)="openHistory(s)"><i class="fa fa-history" aria-hidden="true"></i> History</button>
                   </div>
                 </td>
               </tr>
@@ -189,6 +207,62 @@ export function assessorTypeLabel(type: string | null | undefined): string {
       </div>
       <zed-pager [pager]="pager" />
     </div>
+    @if (dialog(); as d) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="as-dialog-title" (click)="close()">
+        <div class="modal-dialog modal-popup" (click)="$event.stopPropagation()">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="registration-title m-0" id="as-dialog-title">
+                {{ d.kind === 'block' ? 'Block ' + (consultancy ? 'Consultant' : labels.assessor) : 'History: ' + d.row.UserName + ' (' + d.row.UserId + ')' }}
+              </h3>
+              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+            </div>
+            @if (d.kind === 'block') {
+              <form (ngSubmit)="block()" novalidate>
+                <div class="modal-body">
+                  <p class="muted">{{ d.row.UserName }} ({{ d.row.UserId }}) can't sign in on the web or the app, and can't be allotted or carry out
+                    any {{ consultancy ? 'consultancy' : 'assessment' }} until unblocked.</p>
+                  @if (d.open) {
+                    <div class="alert alert-warning py-2" role="status" data-open-warning>
+                      {{ d.open }} {{ consultancy ? 'case' : 'assessment' }}{{ d.open === 1 ? '' : 's' }} allotted to this {{ consultancy ? 'consultant' : labels.assessor.toLowerCase() }}
+                      {{ d.open === 1 ? 'is' : 'are' }} still open. The {{ consultancy ? 'organisation' : labels.agency.toLowerCase() }} will need to re-allot {{ d.open === 1 ? 'it' : 'them' }}.
+                    </div>
+                  }
+                  <label class="form-label" for="as-block-reason">Reason<span class="req">*</span></label>
+                  <textarea id="as-block-reason" name="reason" class="form-control" rows="3" maxlength="2000" [(ngModel)]="d.reason"
+                            placeholder="Why the login is blocked"></textarea>
+                  @if (dialogError()) { <span class="help-block" role="alert">{{ dialogError() }}</span> }
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
+                  <button type="submit" class="btn btn-danger" [disabled]="busy()">Block</button>
+                </div>
+              </form>
+            } @else {
+              <div class="modal-body">
+                @if (d.entries === null) {
+                  <p class="muted">Loading…</p>
+                } @else {
+                  <ol class="as-history">
+                    @for (e of d.entries; track $index) {
+                      <li [class.is-blocked]="e.action === 'Blocked'">
+                        <strong>{{ e.action }}</strong>
+                        <span class="muted d-block">{{ e.actionDate | date: 'dd MMM yyyy, h:mm a' }}{{ e.actionBy ? ' · by ' + e.actionBy + roleName(e.actionByRole) : '' }}</span>
+                        @if (e.reason) { <span class="d-block">“{{ e.reason }}”</span> }
+                      </li>
+                    } @empty {
+                      <li class="as-history-empty">No block or unblock recorded yet.</li>
+                    }
+                  </ol>
+                }
+              </div>
+              <div class="modal-footer"><button type="button" class="btn btn-default" (click)="close()">Close</button></div>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
     }
@@ -278,6 +352,13 @@ export function assessorTypeLabel(type: string | null | undefined): string {
       .as-actions-cell .row-actions { flex-wrap: wrap; justify-content: flex-start !important; }
     }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+    .as-block-note { display: block; margin-top: 4px; font-size: 12px; color: #6b5a5a; overflow-wrap: anywhere; }
+    .as-history { list-style: none; margin: 0; padding: 0; }
+    .as-history li { position: relative; padding: 8px 0 8px 22px; border-bottom: 1px solid #eef1f2; font-size: 14px; }
+    .as-history li::before { content: ''; position: absolute; left: 4px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: #1e7a3c; }
+    .as-history li.is-blocked::before { background: #a8303a; }
+    .as-history li.as-history-empty { padding-left: 0; color: #5f6f70; }
+    .as-history li.as-history-empty::before { display: none; }
   `,
 })
 export class AssessorListPage {
@@ -304,6 +385,8 @@ export class AssessorListPage {
   protected readonly error = signal('');
   protected readonly success = signal('');
   protected readonly busy = signal(false);
+  protected readonly dialog = signal<Dialog | null>(null);
+  protected readonly dialogError = signal('');
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
 
@@ -404,6 +487,71 @@ export class AssessorListPage {
       this.success.set((await firstValueFrom(this.api.passwordReset('assessors', s.UserId))).message);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  protected async openBlock(s: AssessorRow): Promise<void> {
+    this.success.set('');
+    this.dialogError.set('');
+    this.dialog.set({ kind: 'block', row: s, reason: '', open: null });
+    try {
+      const open = (await firstValueFrom(this.api.assessorOpenAssessments(s.UserId))).count;
+      const d = this.dialog();
+      if (d?.kind === 'block' && d.row === s) this.dialog.set({ ...d, open });
+    } catch {
+      /* the warning is optional */
+    }
+  }
+
+  protected async block(): Promise<void> {
+    const d = this.dialog();
+    if (d?.kind !== 'block') return;
+    if (!d.reason.trim()) {
+      this.dialogError.set('Please enter the reason for blocking.');
+      return;
+    }
+    if (await this.act(this.api.block('assessors', d.row.UserId, d.reason.trim()), true)) this.dialog.set(null);
+  }
+
+  protected async unblock(s: AssessorRow): Promise<void> {
+    if (!window.confirm(`Are you sure that you want to unblock ${s.UserName} (${s.UserId})?`)) return;
+    await this.act(this.api.unblock('assessors', s.UserId), false);
+  }
+
+  protected async openHistory(s: AssessorRow): Promise<void> {
+    this.dialogError.set('');
+    this.dialog.set({ kind: 'history', row: s, entries: null });
+    try {
+      const entries = await firstValueFrom(this.api.assessorHistory(s.UserId));
+      const d = this.dialog();
+      if (d?.kind === 'history' && d.row === s) this.dialog.set({ ...d, entries });
+    } catch (err) {
+      this.dialog.set(null);
+      this.error.set(apiErrorMessage(err));
+    }
+  }
+
+  protected close(): void {
+    if (!this.busy()) this.dialog.set(null);
+  }
+
+  protected roleName(role: number | null): string {
+    return role === 7 ? ' (Master Admin)' : role === 2 ? (this.consultancy ? ' (organisation)' : ' (agency)') : role === 1 ? ' (Admin)' : '';
+  }
+
+  private async act(call: ReturnType<UsersApi['unblock']>, inDialog: boolean): Promise<boolean> {
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      this.success.set((await firstValueFrom(call)).message);
+      await this.load();
+      return true;
+    } catch (err) {
+      (inDialog ? this.dialogError : this.error).set(apiErrorMessage(err));
+      return false;
     } finally {
       this.busy.set(false);
     }

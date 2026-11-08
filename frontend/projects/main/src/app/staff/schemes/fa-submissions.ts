@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
-import { FaApi, FaCounts, FaStatus, FaSubmission, UserOption } from './fa.api';
+import { FaApi, FaCounts, FaFilter, FaStatus, FaSubmission, UserOption } from './fa.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 
 type Dialog =
@@ -13,6 +13,7 @@ type Dialog =
   | { kind: 'reject'; row: FaSubmission; reason: string };
 
 const NO_COUNTS: FaCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejected: 0 };
+const NO_FILTER: FaFilter = { level: '', agency: '', from: '', to: '' };
 
 /**
  * Financial assistance applications for the master admin, agencies and financial assessors. Port of
@@ -32,6 +33,16 @@ const NO_COUNTS: FaCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
     /* Several values in one cell, one per line. */
     .cell-lines > * { display: block; }
     .cell-lines > * + * { margin-top: 4px; }
+    .zed-chip.is-auto { background: #e7f3f4; color: #2f6f75; margin: 0; }
+    /* Filters above the tabs (2026-11-08, as on Assessment Monitoring). */
+    .fa-filters { padding: 14px 16px; margin-bottom: 14px; }
+    .fa-filter-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1.7fr); gap: 12px; align-items: end; }
+    .fa-filter-grid .form-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-bottom: 4px; }
+    .fa-dates { display: flex; gap: 6px; align-items: center; }
+    .fa-dates .form-control { min-width: 0; }
+    .fa-dates .to { font-size: 13px; color: #5f6f70; }
+    .fa-filter-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #5f6f70; }
+    @media (max-width: 767.98px) { .fa-filter-grid { grid-template-columns: minmax(0, 1fr); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -58,6 +69,16 @@ export class FaSubmissionsPage {
   protected readonly search = signal('');
   protected readonly view = new PagedView(() => searchRows(this.rows(), this.search()));
   protected readonly counts = signal<FaCounts>(NO_COUNTS);
+  /** Filters (2026-11-08): level, agency (master admin) and registered-on dates; the tab counts follow them. */
+  protected readonly levels = ['Bronze', 'Silver', 'Gold'];
+  protected readonly filter = signal<FaFilter>(NO_FILTER);
+  protected readonly agencyOptions = signal<UserOption[]>([]);
+  protected readonly filtering = computed(() => Object.values(this.filter()).some((v) => !!v));
+  protected readonly filterSummary = computed(() => {
+    const f = this.filter();
+    const agency = this.agencyOptions().find((a) => a.userId === f.agency)?.userName ?? f.agency;
+    return [f.level, agency, f.from || f.to ? `registered ${f.from || '…'} to ${f.to || '…'}` : ''].filter((x) => !!x).join(' · ');
+  });
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   protected readonly success = signal('');
@@ -84,15 +105,31 @@ export class FaSubmissionsPage {
     this.loading.set(true);
     this.error.set('');
     try {
-      const data = await firstValueFrom(this.api.submissions(status));
+      const data = await firstValueFrom(this.api.submissions(status, this.filter()));
       this.rows.set(data.rows ?? []);
       this.counts.set(data.counts ?? NO_COUNTS);
+      if (data.agencies) this.agencyOptions.set(data.agencies);
     } catch (err) {
       this.error.set(apiErrorMessage(err));
       this.rows.set([]);
     } finally {
       this.loading.set(false);
     }
+  }
+
+  protected setFilter(key: keyof FaFilter, value: string): void {
+    const f = { ...this.filter(), [key]: value ?? '' };
+    if (f.from && f.to && f.from > f.to) {
+      this.error.set("The 'from' date is after the 'to' date.");
+      return;
+    }
+    this.filter.set(f);
+    void this.load(this.status());
+  }
+
+  protected clearFilters(): void {
+    this.filter.set(NO_FILTER);
+    void this.load(this.status());
   }
 
   // ----- what each role may do with a row (mirrors the old page; the API decides) -----

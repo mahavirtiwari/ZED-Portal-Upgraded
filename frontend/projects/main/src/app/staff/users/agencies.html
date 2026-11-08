@@ -18,10 +18,19 @@
 }
 
 <div class="ag-stats">
-  <div class="stat"><span class="stat-value" data-stat="total">{{ stats().total }}</span><span class="stat-label">{{ consultancy ? 'Organisations' : 'Agencies' }}</span></div>
-  <div class="stat"><span class="stat-value is-on" data-stat="on">{{ stats().on }}</span><span class="stat-label">{{ mode === 'bronze' ? 'Bronze enabled' : 'Active' }}</span></div>
-  <div class="stat"><span class="stat-value is-off" data-stat="off">{{ stats().off }}</span><span class="stat-label">{{ mode === 'bronze' ? 'Bronze disabled' : 'In-Active' }}</span></div>
-  <div class="stat"><span class="stat-value" data-stat="assessors">{{ stats().assessors }}</span><span class="stat-label">{{ mode === 'bronze' ? 'Bronze assessors' : labels.assessors }}</span></div>
+  @if (mode === 'levels') {
+    @for (s of levelStats(); track s.code) {
+      <div class="stat" [attr.data-stat]="'level-' + s.code">
+        <span class="stat-value is-on">{{ s.on }}<span class="lv-stat-sub" [class.none]="!s.off">· {{ s.off }} off</span></span>
+        <span class="stat-label">{{ s.name }} enabled</span>
+      </div>
+    }
+  } @else {
+    <div class="stat"><span class="stat-value" data-stat="total">{{ stats().total }}</span><span class="stat-label">{{ consultancy ? 'Organisations' : 'Agencies' }}</span></div>
+    <div class="stat"><span class="stat-value is-on" data-stat="on">{{ stats().on }}</span><span class="stat-label">Active</span></div>
+    <div class="stat"><span class="stat-value is-off" data-stat="off">{{ stats().off }}</span><span class="stat-label">In-Active</span></div>
+    <div class="stat"><span class="stat-value" data-stat="assessors">{{ stats().assessors }}</span><span class="stat-label">{{ labels.assessors }}</span></div>
+  }
 </div>
 
 <div class="zed-card list-card">
@@ -61,10 +70,16 @@
           } @else {
             <th>Agency and SPOC</th>
             <th class="col-cat">Category and sector type</th>
-            <th class="text-center col-count">{{ mode === 'bronze' ? 'Bronze Assessors' : labels.assessors }}</th>
+            @if (mode === 'levels') {
+              <th class="col-levels">Levels it can be allotted <small class="fw-normal">(click to change)</small></th>
+            } @else {
+              <th class="text-center col-count">{{ labels.assessors }}</th>
+            }
           }
-          <th class="text-center col-status">Status</th>
-          <th class="text-center col-actions">Actions</th>
+          @if (mode === 'all') {
+            <th class="text-center col-status">Status</th>
+            <th class="text-center col-actions">Actions</th>
+          }
         </tr>
       </thead>
       <tbody>
@@ -91,7 +106,7 @@
               <td data-label="Category and sector type">
                 <div class="chips">
                   @for (c of categories(a); track c) { <span class="zed-chip">{{ c }}</span> }
-                  @if (mode === 'all' && a.AllowBronzeAssessments) { <span class="zed-chip is-bronze" title="Bronze assessments enabled">Bronze</span> }
+                  @if (mode === 'levels' && !a.IsActive) { <span class="zed-chip is-unset">{{ a.IdStatus || 'Blocked' }}</span> }
                   @if (a.SectorActivity) {
                     <span class="zed-chip is-sector" title="Sector type">{{ a.SectorActivity }}</span>
                   } @else {
@@ -100,15 +115,34 @@
                 </div>
               </td>
             }
-            <td class="text-center half" [attr.data-label]="consultancy ? 'No. of Consultant' : mode === 'bronze' ? 'Bronze Assessors' : labels.assessors">
-              <span class="count">{{ mode === 'bronze' ? (a.NoOfBronzeAssessors ?? 0) : (a.NoOfUsers ?? 0) }}</span>
+            @if (mode === 'levels') {
+              <td data-label="Levels it can be allotted">
+                <div class="lv-row">
+                  @for (l of levels; track l.code) {
+                    <button type="button" class="lv" [class.on]="allowed(a, l.code)" [class.off]="!allowed(a, l.code)" [disabled]="saving()"
+                            [attr.data-level]="l.code" [attr.aria-pressed]="allowed(a, l.code)"
+                            [title]="allowed(a, l.code) ? 'Click to disable ' + l.name + ' assessments' : 'Click to enable ' + l.name + ' assessments'"
+                            (click)="toggleLevel(a, l)">
+                      <i class="fa" [class.fa-check]="allowed(a, l.code)" [class.fa-times]="!allowed(a, l.code)" aria-hidden="true"></i>
+                      {{ l.name }}
+                    </button>
+                  }
+                </div>
+                <div class="lv-reasons">
+                  @for (l of levels; track l.code) {
+                    @if (!allowed(a, l.code) && reason(a, l.code)) {
+                      <span>{{ l.name }} off: “{{ reason(a, l.code) }}”</span>
+                    }
+                  }
+                </div>
+              </td>
+            } @else {
+            <td class="text-center half" [attr.data-label]="consultancy ? 'No. of Consultant' : labels.assessors">
+              <span class="count">{{ a.NoOfUsers ?? 0 }}</span>
             </td>
             <td class="text-center half" data-label="Status">
               <div class="status-stack">
                 <span class="status-badge" [class.is-active]="a.IsActive" [class.is-rejected]="!a.IsActive">{{ a.IdStatus }}</span>
-                @if (mode === 'bronze') {
-                  <span class="status-badge" [class.is-info]="a.AllowBronzeAssessments" [class.is-inactive]="!a.AllowBronzeAssessments">{{ a.AllowBronzeAssessments ? 'Bronze enabled' : 'Bronze disabled' }}</span>
-                }
               </div>
             </td>
             <td class="text-center">
@@ -124,20 +158,15 @@
                   } @else {
                     <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="unblock(a)">UnBlock</button>
                   }
-                } @else {
-                  @if (a.AllowBronzeAssessments) {
-                    <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('disable-bronze', a)">Disable Bronze Assessments</button>
-                  } @else {
-                    <button type="button" class="btn btn-primary" [disabled]="saving()" (click)="enableBronze(a)">Enable Bronze Assessments</button>
-                  }
                 }
               </div>
             </td>
+            }
           </tr>
         } @empty {
           @if (!loading()) {
             <tr class="empty-row">
-              <td [attr.colspan]="consultancy ? 4 : 5" style="padding: 0">
+              <td [attr.colspan]="consultancy ? 4 : mode === 'levels' ? 3 : 5" style="padding: 0">
                 <div class="no-data">
                   @if (filtering()) {
                     No {{ consultancy ? 'organisation' : 'agency' }} matches the search or filter.
@@ -167,7 +196,7 @@
             <h3 class="registration-title m-0" id="agency-dialog-title">
               @switch (d.kind) {
                 @case ('block') { Reason for Block the {{ consultancy ? 'Consultant Organisation' : 'Agency' }} }
-                @case ('disable-bronze') { Reason for Disabling Bronze Assessments }
+                @case ('disable-level') { Disable {{ d.level?.name }} Assessments }
                 @case ('mobile') { SPOC Mobile Number }
               }
             </h3>
@@ -183,15 +212,18 @@
                 <span class="ag-id">{{ d.agency.UserId }}</span>
               </div>
             </div>
+            @if (d.kind === 'disable-level') {
+              <p class="muted mb-2">{{ d.agency.UserName }} won't be allotted new {{ d.level?.name }} assessments. Work already allotted continues.</p>
+            }
             @if (d.kind === 'mobile') {
               <div class="form-grid">
                 <label for="dialog-mobile">Mobile Number<span class="req">*</span></label>
                 <input id="dialog-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
               </div>
             } @else {
-              <label class="visually-hidden" for="dialog-reason">Reason</label>
+              <label [class.visually-hidden]="d.kind !== 'disable-level'" class="form-label" for="dialog-reason">Reason<span class="req">*</span></label>
               <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"
-                        [placeholder]="d.kind === 'block' ? 'Why the account is blocked' : 'Why Bronze assessments are disabled'"></textarea>
+                        [placeholder]="d.kind === 'block' ? 'Why the account is blocked' : 'Why ' + d.level?.name + ' assessments are disabled'"></textarea>
             }
             @if (dialogError()) {
               <span class="help-block" role="alert">{{ dialogError() }}</span>
@@ -202,7 +234,7 @@
             <button type="submit" class="btn" [class.btn-danger]="d.kind !== 'mobile'" [class.btn-primary]="d.kind === 'mobile'" [disabled]="saving()">
               @switch (d.kind) {
                 @case ('block') { Block }
-                @case ('disable-bronze') { Disable Bronze Assessments }
+                @case ('disable-level') { Disable {{ d.level?.name }} }
                 @case ('mobile') { Update }
               }
             </button>

@@ -61,11 +61,13 @@ public sealed class StaffAssessorsController(
         if (!string.IsNullOrEmpty(type) && !VerificationTypes.Contains(type)) return this.Problem400("Invalid assessor type.");
         var sets = await db.QueryProcMultipleAsync("SP_GET_ASSESSORS", new { UserId, AssessorType = type ?? "", CertificationBodyUserId = agencyId ?? "" }, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
+        var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, AllColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
+            AddBlock(row, blocks);
             return row;
         }).ToList();
     }
@@ -76,12 +78,14 @@ public sealed class StaffAssessorsController(
     public async Task<IReadOnlyList<Dictionary<string, object?>>> Mine(CancellationToken ct)
     {
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = Assessor }, ct);
+        var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, OwnColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
+            AddBlock(row, blocks);
             if (host.IsConsultancy())
             {
                 // SP_GET_USERS_BY_ROLE returns consultants and technical experts together (UserType column).
@@ -93,6 +97,49 @@ public sealed class StaffAssessorsController(
             row["PhotoPath"] = StaffUserRules.PhotoUrl(r.Text("PhotoPath"));
             return row;
         }).ToList();
+    }
+
+    /// <summary>A blocked assessor: the reason and date of its latest block (2026-11-08).</summary>
+    private static void AddBlock(Dictionary<string, object?> row, Dictionary<string, UserBlockHistory.LatestRow> blocks)
+    {
+        if (row["IsActive"] is true || !blocks.TryGetValue(row.Text("UserId").Trim(), out var b)) return;
+        row["BlockReason"] = b.Reason;
+        row["BlockedOn"] = b.ActionDate;
+    }
+
+    /// <summary>Every block and unblock of the assessor, latest first (MasterAdmin, or the agency that manages it).</summary>
+    [HttpGet("{userId}/history")]
+    [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
+    public async Task<ActionResult<IReadOnlyList<UserBlockHistory.Entry>>> History(string userId, CancellationToken ct)
+    {
+        var a = await FindAsync(userId, ct);
+        if (a is null) return NotFound();
+        return (await UserBlockHistory.ListAsync(db, a.UserId, log, ct)).ToList();
+    }
+
+    /// <summary>Assessments allotted to the assessor that are not certified yet (Bronze below 6, Silver / Gold / ZED-X below 16).</summary>
+    internal const string OpenAssessmentsSql =
+        "SELECT COUNT(*) FROM dbo.MsmeCertifications WHERE (DesktopAssessorId = @UserId OR SiteAssessorId = @UserId) AND CertificationStatus > 0 " +
+        "AND ((Certification = 'Bronze' AND CertificationStatus < 6) OR (Certification <> 'Bronze' AND CertificationStatus < 16));";
+
+    public sealed record OpenAssessments(int? Count);
+
+    /// <summary>For the Block pop-up: how many open assessments the agency will have to re-allot (null when not known).</summary>
+    [HttpGet("{userId}/open-assessments")]
+    [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
+    public async Task<ActionResult<OpenAssessments>> Open(string userId, CancellationToken ct)
+    {
+        var a = await FindAsync(userId, ct);
+        if (a is null) return NotFound();
+        try
+        {
+            return new OpenAssessments((await db.QuerySqlAsync<int>(OpenAssessmentsSql, new { a.UserId }, ct)).FirstOrDefault());
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Open assessments of {UserId} not counted", a.UserId);
+            return new OpenAssessments(null);
+        }
     }
 
     public sealed record Sector(string SectorCode, string SectorName);

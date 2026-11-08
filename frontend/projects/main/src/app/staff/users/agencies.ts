@@ -3,21 +3,23 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
-import { AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
+import { AGENCY_LEVELS, AgencyLevel, AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { LABELS } from '../../portal-labels';
 import { PagedView, PagerComponent } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
 
-type Mode = 'all' | 'bronze';
-/** Which agencies the list shows: active / in-active (Bronze page: Bronze assessments enabled / disabled). */
+/** 'levels': Agency level allocation (2026-11-08; before, the Bronze Assessment Agencies page). */
+type Mode = 'all' | 'levels';
+/** Which agencies the list shows: active / in-active (levels page: every level on / any level off). */
 type StatusFilter = 'all' | 'on' | 'off';
 /** Main: the sector type filter ('none' = not set yet). */
 type SectorFilter = 'all' | SectorActivity | 'none';
 
 interface Dialog {
-  kind: 'block' | 'disable-bronze' | 'mobile';
+  kind: 'block' | 'disable-level' | 'mobile';
   agency: AgencyRow;
   text: string;
+  level?: { code: AgencyLevel; name: string };
 }
 
 /**
@@ -72,6 +74,18 @@ interface Dialog {
     .chips { display: flex; flex-wrap: wrap; gap: 4px; }
     .chips .zed-chip { margin: 0; }
     .zed-chip.is-bronze { background: #f6ece0; color: #7a4a14; }
+    .lv-stat-sub { font-size: 12px; color: #a8303a; margin-left: 6px; font-weight: 600; }
+    .lv-stat-sub.none { color: #8a9899; font-weight: 400; }
+    .lv-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .lv { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid; background: #fff; }
+    .lv.on { background: #e8f5ec; color: #1e7a3c; border-color: #9ccfac; }
+    .lv.on:hover { background: #d8eedf; }
+    .lv.off { background: #fbeaec; color: #a8303a; border-color: #e5a9b0; }
+    .lv.off:hover { background: #f6dade; }
+    .lv:disabled { opacity: .6; cursor: default; }
+    .lv-reasons { margin-top: 6px; font-size: 12px; color: #5f6f70; }
+    .lv-reasons span { display: block; overflow-wrap: anywhere; }
+    .col-levels { width: 420px; }
     .zed-chip.is-sector { background: #f1f0fb; color: #3f3a7a; }
     .zed-chip.is-unset { background: #fff4d6; color: #8a6100; }
     .count { font-size: 18px; font-weight: 700; color: #23474a; }
@@ -101,14 +115,15 @@ interface Dialog {
 export class AgenciesPage {
   private readonly api = inject(UsersApi);
 
-  protected readonly mode: Mode = inject(ActivatedRoute).snapshot.data['mode'] === 'bronze' ? 'bronze' : 'all';
+  protected readonly mode: Mode = ['bronze', 'levels'].includes(inject(ActivatedRoute).snapshot.data['mode']) ? 'levels' : 'all';
   private readonly system = inject(STAFF_SYSTEM);
   protected readonly labels = LABELS[this.system];
-  protected readonly title = this.mode === 'bronze' ? 'Bronze Assessment Agencies' : this.labels.agencies;
+  protected readonly title = this.mode === 'levels' ? 'Agency Level Allocation' : this.labels.agencies;
   protected readonly subtitle =
-    this.mode === 'bronze'
-      ? 'Agencies allowed to take up Bronze assessments; disabling asks for a reason.'
+    this.mode === 'levels'
+      ? 'Choose which certification levels each agency can be allotted. Disabling asks for a reason, and the agency gets an e-mail.'
       : `The ${this.labels.agencies.toLowerCase()} of the portal, with their SPOC and ${this.labels.assessors.toLowerCase()}.`;
+  protected readonly levels = AGENCY_LEVELS;
   /** Consultancy's list has no Category column and calls the agency a Consultant Organisation. */
   protected readonly consultancy = this.system === 'consultancy';
 
@@ -127,12 +142,19 @@ export class AgenciesPage {
   protected readonly stats = computed(() => {
     const list = this.agencies();
     const on = list.filter((a) => this.active(a)).length;
-    const assessors = list.reduce((n, a) => n + ((this.mode === 'bronze' ? a.NoOfBronzeAssessors : a.NoOfUsers) ?? 0), 0);
+    const assessors = list.reduce((n, a) => n + (a.NoOfUsers ?? 0), 0);
     return { total: list.length, on, off: list.length - on, assessors };
   });
+  /** Levels page: per level, the agencies that may and may not be allotted it. */
+  protected readonly levelStats = computed(() =>
+    this.levels.map((l) => {
+      const on = this.agencies().filter((a) => this.allowed(a, l.code)).length;
+      return { ...l, on, off: this.agencies().length - on };
+    }),
+  );
   protected readonly statusFilters: { key: StatusFilter; label: string }[] =
-    this.mode === 'bronze'
-      ? [{ key: 'all', label: 'All' }, { key: 'on', label: 'Bronze enabled' }, { key: 'off', label: 'Bronze disabled' }]
+    this.mode === 'levels'
+      ? [{ key: 'all', label: 'All' }, { key: 'off', label: 'Any level off' }, { key: 'on', label: 'All levels on' }]
       : [{ key: 'all', label: 'All' }, { key: 'on', label: 'Active' }, { key: 'off', label: 'In-Active' }];
   protected readonly sectorFilters: { key: SectorFilter; label: string }[] = [
     { key: 'all', label: 'All' }, ...SECTOR_ACTIVITIES.map((a) => ({ key: a.value, label: a.label })), { key: 'none', label: 'Not set' },
@@ -169,7 +191,29 @@ export class AgenciesPage {
   }
 
   protected active(a: AgencyRow): boolean {
-    return this.mode === 'bronze' ? a.AllowBronzeAssessments : a.IsActive;
+    return this.mode === 'levels' ? this.levels.every((l) => this.allowed(a, l.code)) : a.IsActive;
+  }
+
+  /** May this agency be allotted the level (not set = yes)? */
+  protected allowed(a: AgencyRow, level: AgencyLevel): boolean {
+    const field = this.levels.find((l) => l.code === level)!.field;
+    return a[field] !== false;
+  }
+
+  protected reason(a: AgencyRow, level: AgencyLevel): string | null {
+    return a.LevelReasons?.[level] || null;
+  }
+
+  /** A level switch: disabling asks for a reason; enabling asks to confirm. */
+  protected async toggleLevel(a: AgencyRow, level: { code: AgencyLevel; name: string }): Promise<void> {
+    if (this.allowed(a, level.code)) {
+      this.success.set('');
+      this.dialogError.set('');
+      this.dialog.set({ kind: 'disable-level', agency: a, text: '', level: { code: level.code, name: level.name } });
+      return;
+    }
+    if (!window.confirm(`Are you sure that you want to enable ${level.name} assessments for ${a.UserName}?`)) return;
+    await this.run(this.api.levelAssessments(a.UserId, level.code, true, ''), false);
   }
 
   /** Up to two letters of the name for the row's badge (without Pvt, Ltd and the like). */
@@ -222,8 +266,8 @@ export class AgenciesPage {
     const call =
       d.kind === 'block'
         ? this.api.block('agencies', id, text)
-        : d.kind === 'disable-bronze'
-          ? this.api.bronzeAssessments(id, false, text)
+        : d.kind === 'disable-level'
+          ? this.api.levelAssessments(id, d.level!.code, false, text)
           : this.api.resetMobile('agencies', id, text);
     if (await this.run(call, true)) this.dialog.set(null);
   }
@@ -237,11 +281,6 @@ export class AgenciesPage {
   protected async sendReset(a: AgencyRow): Promise<void> {
     if (!window.confirm(RESET_CONFIRM)) return;
     await this.run(this.api.passwordReset('agencies', a.UserId), false);
-  }
-
-  protected async enableBronze(a: AgencyRow): Promise<void> {
-    if (!window.confirm('Are you sure that you want to Enable Bronze Assessments?')) return;
-    await this.run(this.api.bronzeAssessments(a.UserId, true, ''), false);
   }
 
   private async run(call: Observable<MessageResponse>, inDialog: boolean): Promise<boolean> {

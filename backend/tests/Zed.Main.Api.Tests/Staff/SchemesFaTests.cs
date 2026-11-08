@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Zed.Core.Data;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Zed.Main.Api.Tests.Staff;
 
@@ -199,6 +200,35 @@ public sealed class SchemesFaTests : IDisposable
     }
 
     [Fact]
+    public async Task Submissions_filter_by_level_agency_and_registered_date_and_count_each_filtered_list()
+    {
+        // Each list: a Silver application of AGENCY1 registered on 5 Oct 2026, and a Bronze one of AGENCY2 on 20 Oct.
+        _host.Sql.Procs["SP_FINANCIAL_ASSISTANCE_GET_LIST"] = args => FakeSql.Sets(
+            [new { Id = 1, ZedId = "ZEDMSME000001", CertificationType = "Silver", CertificationBodyUserId = "AGENCY1", RegisteredDate = new DateTime(2026, 10, 5) },
+             new { Id = 2, ZedId = "ZEDMSME000002", CertificationType = "Bronze", CertificationBodyUserId = "AGENCY2", RegisteredDate = new DateTime(2026, 10, 20) }],
+            [new { New = 2, InProgress = 2, Qc = 2, Approved = 2, Rejected = 2 }]);
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Schemes.FinancialAssistanceController.FaAgenciesSql] = _ =>
+            [new { UserId = "AGENCY1", UserName = "Agency One" }, new { UserId = "AGENCY2", UserName = "Agency Two" }];
+        var client = await SignIn("MADMIN");
+
+        var all = await client.GetFromJsonAsync<JsonElement>("/api/staff/schemes/fa/submissions?status=1");
+        Assert.Equal(2, all.GetProperty("rows").GetArrayLength());
+        Assert.Equal(2, all.GetProperty("agencies").GetArrayLength());
+        Assert.Single(CallsTo("SP_FINANCIAL_ASSISTANCE_GET_LIST"));
+
+        var silver = await client.GetFromJsonAsync<JsonElement>("/api/staff/schemes/fa/submissions?status=1&level=silver&agency=AGENCY1");
+        Assert.Equal("ZEDMSME000001", Assert.Single(silver.GetProperty("rows").EnumerateArray()).GetProperty("ZedId").GetString());
+        // Every tab counts its filtered list (one call per other list).
+        foreach (var key in new[] { "New", "InProgress", "Qc", "Approved", "Rejected" })
+            Assert.Equal(1, silver.GetProperty("counts").GetProperty(key).GetInt32());
+
+        var dates = await client.GetFromJsonAsync<JsonElement>("/api/staff/schemes/fa/submissions?status=1&from=2026-10-10&to=2026-10-31");
+        Assert.Equal("ZEDMSME000002", Assert.Single(dates.GetProperty("rows").EnumerateArray()).GetProperty("ZedId").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/staff/schemes/fa/submissions?status=1&level=Platinum")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/staff/schemes/fa/submissions?status=1&from=2026-10-31&to=2026-10-01")).StatusCode);
+    }
+
+    [Fact]
     public async Task Master_admin_allots_a_new_application_to_an_offered_agency_and_the_agency_is_mailed()
     {
         var admin = await SignIn("MADMIN");
@@ -279,6 +309,68 @@ public sealed class SchemesFaTests : IDisposable
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("zed@qcin.org", mail.To);
         Assert.Contains("Not our &lt;sector&gt;", mail.HtmlBody);
+    }
+
+    [Fact]
+    public async Task A_rejected_application_goes_to_the_next_agency_of_the_round_robin_and_not_back()
+    {
+        // AGENCY1 (Users.Id 10) returns it; AGENCY2 (Id 20) is next; AGENCY3 (Id 30) serves services only, the unit is manufacturing.
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets(
+        [
+            new { UserId = "AGENCY1", UserName = "Agency One", FinancialVerification = true },
+            new { UserId = "AGENCY2", UserName = "Agency Two", FinancialVerification = true },
+            new { UserId = "AGENCY3", UserName = "Agency Three", FinancialVerification = true },
+        ]);
+        _host.Sql.Procs["SP_FINANCIAL_ASSESSMENT_REJECT_UNIT_FOR_VERIFICATION"] = args =>
+        {
+            _fa["ReasonForRejection"] = FakeSql.Arg(args, "ReasonForRejection");
+            return FakeSql.Sets();
+        };
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment.AgencyIdsSql] = _ =>
+            [new { UserId = "AGENCY2", Id = 20L }, new { UserId = "AGENCY3", Id = 30L }];
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.UserSectorActivity.UnitSql] = _ => [new { Activity = "Manufacturing", TwoDigitActivity = "24 - Metals" }];
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.UserSectorActivity.ByRoleSql] = _ =>
+            [new { UserId = "AGENCY3", SectorActivity = "Services" }];
+        At(1, agency: "AGENCY1");
+        var agency = await SignIn("AGENCY1");
+
+        (await agency.PostAsJsonAsync("/api/staff/schemes/fa/reject", new { zedId = Zed, certification = "Bronze", reason = "Busy" })).EnsureSuccessStatusCode();
+        var rejection = _host.Sql.Calls.Single(c => c.Name == global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment.RecordRejectionSql);
+        Assert.Equal("AGENCY1", FakeSql.Arg(rejection.Args, "Agency"));
+        var allot = Assert.Single(CallsTo("SP_FINANCIAL_ASSISTANCE_ALLOT_TO_AGENCY"));
+        Assert.Equal("AGENCY2", FakeSql.Arg(allot, "CertificationBodyUserId"));
+        var mark = _host.Sql.Calls.Single(c => c.Name == global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment.MarkSql);
+        Assert.Equal(("RoundRobin", "AGENCY2"), (FakeSql.Arg(mark.Args, "AllotmentType"), FakeSql.Arg(mark.Args, "Agency")));
+        // The team is told of the rejection, and AGENCY2 of its allotment.
+        Assert.Equal(2, _host.Email.Sent.Count);
+    }
+
+    [Fact]
+    public async Task The_round_robin_continues_after_the_last_agency_and_wraps_around()
+    {
+        _host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets(
+        [
+            new { UserId = "AGENCY1", UserName = "Agency One", FinancialVerification = true },
+            new { UserId = "AGENCY2", UserName = "Agency Two", FinancialVerification = true },
+        ]);
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment.AgencyIdsSql] = _ =>
+            [new { UserId = "AGENCY1", Id = 10L }, new { UserId = "AGENCY2", Id = 20L }];
+        var last = "AGENCY2";
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment.LastSql] = _ => [new { CertificationBodyUserId = last }];
+        _host.Sql.Queries["SELECT UserId, Id FROM dbo.Users WHERE UserId = @UserId"] = args =>
+            [new { UserId = FakeSql.Arg(args, "UserId"), Id = FakeSql.Arg(args, "UserId") == "AGENCY1" ? 10L : 20L }];
+        At(1);
+        using var scope = _host.Services.CreateScope();
+        var auto = scope.ServiceProvider.GetRequiredService<global::Zed.Portal.Features.Staff.Schemes.FaAutoAllotment>();
+
+        // After AGENCY2 (the last one) comes AGENCY1 again.
+        Assert.Equal("AGENCY1", await auto.AllotAsync(Zed, "Bronze", default));
+        At(1);
+        last = "AGENCY1";
+        Assert.Equal("AGENCY2", await auto.AllotAsync(Zed, "Bronze", default));
+        // Already with an agency (not rejected): left alone.
+        At(1, agency: "AGENCY2");
+        Assert.Null(await auto.AllotAsync(Zed, "Bronze", default));
     }
 
     // ----- verification -----

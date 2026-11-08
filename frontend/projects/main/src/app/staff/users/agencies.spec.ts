@@ -149,24 +149,61 @@ describe('AgenciesPage', () => {
     expect(el.querySelector('.alert-danger')!.textContent).toContain('This user is not blocked.');
   });
 
-  it('switches Bronze assessments in bronze mode and has no add or edit', async () => {
-    await create('bronze');
-    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001', { AllowBronzeAssessments: false })]);
+  it('switches each level of an agency on the Agency Level Allocation page and has no add or edit (2026-11-08)', async () => {
+    await create('levels');
+    http.expectOne('/api/staff/users/agencies').flush([
+      agency('ZEDAA0001', { AllowBronzeAssessments: false, AllowGoldAssessments: false, LevelReasons: { Gold: 'Pending re-empanelment' } }),
+      agency('ZEDAA0002', { AllowSilverAssessments: true, AllowGoldAssessments: true, AllowZedxAssessments: true }),
+    ]);
     await settle();
-    expect(el.querySelector('h3')!.textContent).toContain('Bronze Assessment Agencies');
+    expect(el.querySelector('h3')!.textContent).toContain('Agency Level Allocation');
     expect(el.textContent).not.toContain('+ Add New');
     expect(el.textContent).not.toContain('Edit');
-    // The count column (agency, category, count) shows the Bronze assessors.
-    expect(el.querySelector('tbody td:nth-child(3)')!.textContent).toContain('2');
-    expect(el.querySelector('tbody tr')!.textContent).toContain('Bronze disabled');
+    // Per level: enabled and off.
+    expect(el.querySelector('[data-stat="level-Gold"]')!.textContent!.replace(/\s+/g, ' ')).toContain('1· 1 off');
+    expect(el.querySelector('[data-stat="level-Silver"]')!.textContent!.replace(/\s+/g, ' ')).toContain('2· 0 off');
+    const first = el.querySelector('tbody tr')!;
+    const lv = (code: string) => first.querySelector(`button[data-level="${code}"]`) as HTMLButtonElement;
+    expect(lv('Bronze').classList).toContain('off');
+    expect(lv('Silver').classList).toContain('on');
+    expect(lv('Gold').classList).toContain('off');
+    expect(first.textContent).toContain('Gold off: “Pending re-empanelment”');
 
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
-    button('Enable Bronze Assessments')!.click();
+    // "Any level off": only the first agency.
+    [...el.querySelectorAll('[data-filter="status"] button')].find((b) => b.textContent!.trim() === 'Any level off')!.dispatchEvent(new Event('click'));
     await settle();
-    const req = http.expectOne('/api/staff/users/agencies/ZEDAA0001/bronze-assessments');
-    expect(req.request.body).toEqual({ allow: true, reason: '' });
-    req.flush({ message: 'Bronze assessments enabled successfully.' });
+    expect(el.querySelectorAll('tbody tr').length).toBe(1);
+
+    // Enabling asks to confirm.
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    lv('Bronze').click();
+    await settle();
+    const enable = http.expectOne('/api/staff/users/agencies/ZEDAA0001/level-assessments');
+    expect(enable.request.body).toEqual({ level: 'Bronze', allow: true, reason: '' });
+    enable.flush({ message: 'Bronze assessments enabled successfully.' });
+    await settle();
+    http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001', { AllowGoldAssessments: false })]);
+    await settle();
+
+    // Disabling asks for a reason.
+    (el.querySelector('tbody tr button[data-level="ZEDX"]') as HTMLButtonElement).click();
+    await settle();
+    expect(el.querySelector('#agency-dialog-title')!.textContent).toContain('Disable ZED-X Assessments');
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.modal')!.textContent).toContain('This is required.');
+    const reason = el.querySelector('#dialog-reason') as HTMLTextAreaElement;
+    reason.value = 'Assessor shortage';
+    reason.dispatchEvent(new Event('input'));
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const disable = http.expectOne('/api/staff/users/agencies/ZEDAA0001/level-assessments');
+    expect(disable.request.body).toEqual({ level: 'ZEDX', allow: false, reason: 'Assessor shortage' });
+    disable.flush({ message: 'ZED-X assessments disabled successfully.' });
     await settle();
     http.expectOne('/api/staff/users/agencies').flush([]);
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
   });
 });

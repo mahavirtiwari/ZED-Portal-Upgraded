@@ -63,6 +63,9 @@ public static class PortalSetup
         services.AddScoped<Features.Staff.SubUsers.SubUserStore>();
         // The scope of Master Admin and Ministry logins (migration 0057).
         services.AddScoped<Features.Staff.Users.LoginScopes>();
+        // Financial assistance: round-robin allotment to agencies (2026-11-08), and its sweep on the main portal.
+        services.AddScoped<Features.Staff.Schemes.FaAutoAllotment>();
+        if (system == PortalSystem.Main) services.AddHostedService<Features.Staff.Schemes.FaAutoAllotmentSweep>();
         services.AddScoped<Features.Staff.Users.ScopedUnits>();
         services.AddScoped<Features.Staff.SubUsers.SubUserAccessFilter>();
         services.Configure<Microsoft.AspNetCore.Mvc.MvcOptions>(o => o.Filters.AddService<Features.Staff.SubUsers.SubUserAccessFilter>());
