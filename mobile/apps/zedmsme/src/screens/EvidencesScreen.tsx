@@ -11,6 +11,7 @@ import {
   PhotosField,
   RadioButton,
   ScreenFrame,
+  TextField,
   shapes,
   textStyles,
   UNKNOWN_ERROR,
@@ -51,6 +52,17 @@ export function EvidencesScreen() {
   const evidences = useMemo(() => evidencesOf(details), [details]);
   const [selected, setSelected] = useState<Evidence | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  // 2026-11-08: "Were you assisted by a ZED Facilitator?" (as in the old app); Yes opens Facilitator Details.
+  const facilitatorDone = details?.facilitatorAssistanceData?.isSubmitted === true;
+  const [assisted, setAssisted] = useState<'yes' | 'no' | null>(facilitatorDone ? 'yes' : null);
+  const [facilitatorOpen, setFacilitatorOpen] = useState(false);
+  const canFinalSubmit = confirmed && (assisted === 'no' || (assisted === 'yes' && facilitatorDone));
+  const answer = (value: 'yes' | 'no') => {
+    // A changed answer asks for the confirmation again.
+    setConfirmed(false);
+    setAssisted(value);
+    if (value === 'yes' && !facilitatorDone) setFacilitatorOpen(true);
+  };
   const [, rerender] = useState(0);
   const refresh = () => rerender(x => x + 1);
   const confirmText = useAppText('app.msme.evidences.finalSubmit.confirm');
@@ -117,9 +129,9 @@ export function EvidencesScreen() {
   };
 
   /**
-   * ZED MSME: the applicant's final submit is the confirmation alone. The Bronze surveillance build asked the desktop
-   * assessor three more questions (financial support availed, Silver upgrade, handholding; SubmitFinancialAssistanceDetails),
-   * which the main system does not serve.
+   * ZED MSME: the facilitator question (above; Yes = SubmitFacilitatorDetails first) and the confirmation, then FinalSubmit.
+   * The Bronze surveillance build's other questions (financial support availed, Silver upgrade, handholding;
+   * SubmitFinancialAssistanceDetails) were the desktop assessor's, which the main system does not serve.
    */
   const finalSubmit = async () => {
     if (!app.loginId) return;
@@ -175,16 +187,36 @@ export function EvidencesScreen() {
         />
         {finalSubmitVisible ? (
           <ScrollView style={{ flexGrow: 0, maxHeight: '60%' }} keyboardShouldPersistTaps="handled">
+            <View style={[shapes.greyOutlineRectangle, styles.assisted]} testID="facilitator-question">
+              <Text style={styles.assistedText}>Were you assisted by a ZED Facilitator?</Text>
+              <RadioButton label="Yes" selected={assisted === 'yes'} onPress={() => answer('yes')} style={{ margin: dimens.padding1 }} testID="facilitator-yes" />
+              <RadioButton label="No" selected={assisted === 'no'} onPress={() => answer('no')} style={{ margin: dimens.padding1 }} testID="facilitator-no" />
+            </View>
+            {assisted === 'yes' && facilitatorDone ? (
+              <Text style={styles.facilitatorNote} testID="facilitator-saved">
+                Facilitator: {details?.facilitatorAssistanceData?.email ?? ''} · {details?.facilitatorAssistanceData?.mobileNumber ?? ''}
+              </Text>
+            ) : null}
             <CheckBox
               label={confirmText ? htmlToPlain(confirmText.html) : ''}
               checked={confirmed}
               onChange={setConfirmed}
               testID="confirm"
             />
-            <ZedButton title="Final Submit" disabled={!confirmed} onPress={finalSubmit} testID="final-submit" />
+            <ZedButton title="Final Submit" disabled={!canFinalSubmit} onPress={finalSubmit} testID="final-submit" />
           </ScrollView>
         ) : null}
       </View>
+      {facilitatorOpen ? (
+        <FacilitatorDialog
+          type={type}
+          onClose={saved => {
+            setFacilitatorOpen(false);
+            if (!saved) setAssisted(null);
+            refresh();
+          }}
+        />
+      ) : null}
       {selected ? (
         <EvidenceDialog
           evidence={selected}
@@ -243,6 +275,56 @@ function EvidenceRow({
         </View>
       ) : null}
     </Pressable>
+  );
+}
+
+/**
+ * FacilitatorDetailsFragment ("Facilitator Details"): phone number and e-mail of the ZED Facilitator, checked by the server
+ * (SubmitFacilitatorDetails); kept on the level once accepted. Closing without a success leaves the question unanswered.
+ */
+function FacilitatorDialog({ type, onClose }: { type: CertificationType; onClose: (saved: boolean) => void }) {
+  const app = useMsme();
+  const ui = useUi();
+  const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, type);
+  const [phone, setPhone] = useState(details?.facilitatorAssistanceData?.mobileNumber ?? '');
+  const [email, setEmail] = useState(details?.facilitatorAssistanceData?.email ?? '');
+  const [errors, setErrors] = useState<{ phone?: string; email?: string }>({});
+
+  const done = async () => {
+    const e: { phone?: string; email?: string } = {};
+    if (!/^[6-9]\d{9}$/.test(phone.trim())) e.phone = 'Please enter a valid 10 digit mobile number';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'Please enter a valid e-mail';
+    setErrors(e);
+    if (e.phone || e.email || !app.loginId) return;
+    if (!(await isNetworkAvailable())) {
+      ui.toast('Please connect to the Internet to submit the facilitator details.', { long: true });
+      return;
+    }
+    ui.showLoading();
+    let r: BaseServiceResponse;
+    try {
+      r = await app.api.submitFacilitatorDetails(app.loginId, type, phone.trim(), email.trim());
+    } catch (err) {
+      r = { status: '0', errorMessage: err instanceof Error ? err.message : null };
+    } finally {
+      ui.hideLoading();
+    }
+    if (isSuccess(r)) {
+      if (details) details.facilitatorAssistanceData = { mobileNumber: phone.trim(), email: email.trim(), isSubmitted: true };
+      await app.persist();
+      ui.toast('Facilitator details added successfully', { long: true });
+      onClose(true);
+    } else {
+      ui.showAlert(r.errorMessage?.trim() ? r.errorMessage : UNKNOWN_ERROR);
+    }
+  };
+
+  return (
+    <ZedDialog visible title="Facilitator Details" onClose={() => onClose(false)} testID="facilitator-dialog">
+      <TextField label="Phone Number" value={phone} onChange={setPhone} numeric maxLength={10} error={errors.phone} testID="facilitator-phone" />
+      <TextField label="Email" value={email} onChange={setEmail} autoCapitalize="none" maxLength={100} error={errors.email} testID="facilitator-email" />
+      <ZedButton title="Done" small onPress={done} testID="facilitator-done" />
+    </ZedDialog>
   );
 }
 
@@ -346,4 +428,7 @@ const styles = StyleSheet.create({
   },
   uploadText: { color: colors.white, fontWeight: 'bold', fontSize: 14, marginLeft: 6 },
   available: { flexDirection: 'row', alignItems: 'center', margin: dimens.padding1, paddingHorizontal: dimens.padding2 },
+  assisted: { flexDirection: 'row', alignItems: 'center', margin: dimens.padding1, paddingHorizontal: dimens.padding2, flexWrap: 'wrap' },
+  assistedText: { flex: 1, minWidth: 160, fontSize: dimens.textSize, color: colors.black, paddingVertical: dimens.padding2 },
+  facilitatorNote: { marginHorizontal: dimens.padding2, marginBottom: dimens.padding1, fontSize: dimens.textSize14, color: colors.appColorDark },
 });

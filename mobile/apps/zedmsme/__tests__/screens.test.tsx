@@ -75,7 +75,77 @@ describe('CertificationOptionsFragment', () => {
   });
 });
 
+describe('Undertaking of Compliances and Certification Requirements (restored 2026-11-08)', () => {
+  it('come before Basic Information the first time: ACCEPT & PROCEED, then the requirements, the tick and SUBMIT', async () => {
+    const app = await signedInApp();
+    const c = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!;
+    c.status = 1;
+    c.basicInformation!.status = Status.IN_PROGRESS;
+    c.parameters![0]!.requirements![0]!.options = [{ id: 'o1', label: 'Roles & Responsibilities at all levels are clearly defined', subOptions: [] }] as never;
+    const r = render(app, 'CertificationOptions', { certificationType: 'Bronze' });
+    await act(async () => handler(r, 'option-basic-info', 'onPress').props.onPress());
+    expect(byTestId(r, 'compliance')).toHaveLength(1);
+    expect(texts(r)).toEqual(expect.arrayContaining(['Undertaking of Compliances', 'Bronze Certification']));
+    expect(texts(r).some(t => t.includes('the ZED Certification is voluntary'))).toBe(true);
+
+    await act(async () => handler(r, 'compliance-accept', 'onPress').props.onPress());
+    expect(byTestId(r, 'requirements')).toHaveLength(1);
+    expect(byTestId(r, 'compliance')).toHaveLength(0);
+    expect(texts(r)).toContain('Certification Requirements');
+    expect(texts(r).some(t => /^1\. /.test(t))).toBe(true);
+    expect(texts(r)).toEqual(expect.arrayContaining(['1.1', 'Roles & Responsibilities at all levels are clearly defined']));
+
+    // SUBMIT needs the tick.
+    await act(async () => handler(r, 'requirements-submit', 'onPress').props.onPress());
+    expect(byTestId(r, 'requirements')).toHaveLength(1);
+    await act(async () => handler(r, 'requirements-accept', 'onPress').props.onPress());
+    await act(async () => handler(r, 'requirements-submit', 'onPress').props.onPress());
+    expect(byTestId(r, 'requirements')).toHaveLength(0);
+    expect(r.root.findAll(n => n.props.route?.name === 'BasicInformation').length).toBeGreaterThan(0);
+  });
+});
+
 describe('EvidencesActivity', () => {
+  it('asks "Were you assisted by a ZED Facilitator?": No allows FINAL SUBMIT; Yes sends the facilitator first (2026-11-08)', async () => {
+    const server = new FakeServer();
+    const app = await signedInApp(server);
+    const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!;
+    details.finalSubmitDone = false;
+    details.parameters![0]!.requirements![0]!.evidences![0]!.status = Status.SUBMITTED;
+    const r = render(app, 'Evidences', { certificationType: 'Bronze' });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(byTestId(r, 'facilitator-question')).toHaveLength(1);
+    expect(texts(r)).toContain('Were you assisted by a ZED Facilitator?');
+    await act(async () => handler(r, 'confirm', 'onPress').props.onPress());
+    expect(handler(r, 'final-submit', 'onPress').props.disabled).toBe(true); // no answer yet
+
+    await act(async () => handler(r, 'facilitator-no', 'onPress').props.onPress());
+    expect(handler(r, 'final-submit', 'onPress').props.disabled).toBe(true); // a changed answer unticks the confirmation
+    await act(async () => handler(r, 'confirm', 'onPress').props.onPress());
+    expect(handler(r, 'final-submit', 'onPress').props.disabled).toBe(false);
+
+    // Yes: Facilitator Details; a refused facilitator keeps FINAL SUBMIT off.
+    await act(async () => handler(r, 'facilitator-yes', 'onPress').props.onPress());
+    expect(r.root.findAll(n => n.props.testID === 'facilitator-dialog').length).toBeGreaterThan(0);
+    await act(async () => handler(r, 'facilitator-phone', 'onChangeText').props.onChangeText('9876543210'));
+    await act(async () => handler(r, 'facilitator-email', 'onChangeText').props.onChangeText('facilitator@zed.test'));
+    server.responder = () => ({ status: '0', errorMessage: 'INVALID FACILITATOR DETAILS.' });
+    await act(async () => handler(r, 'facilitator-done', 'onPress').props.onPress());
+    const sent = server.last('SubmitFacilitatorDetails')!;
+    expect(sent.fields).toMatchObject({ certificationType: 'Bronze', phoneNumber: '9876543210', email: 'facilitator@zed.test' });
+    expect(details.facilitatorAssistanceData?.isSubmitted ?? false).toBe(false);
+
+    server.responder = () => ({ status: '1', errorMessage: 'FACILITATOR DETAILS ADDED SUCCESSFULLY' });
+    await act(async () => handler(r, 'facilitator-done', 'onPress').props.onPress());
+    expect(details.facilitatorAssistanceData).toMatchObject({ mobileNumber: '9876543210', email: 'facilitator@zed.test', isSubmitted: true });
+    expect(r.root.findAll(n => n.props.testID === 'facilitator-dialog')).toHaveLength(0);
+    expect(byTestId(r, 'facilitator-saved')).toHaveLength(1);
+    await act(async () => handler(r, 'confirm', 'onPress').props.onPress());
+    expect(handler(r, 'final-submit', 'onPress').props.disabled).toBe(false);
+  });
+
   it('lists the evidences with their state and keeps final submit hidden until all are sent or not available', async () => {
     const app = await signedInApp();
     const r = render(app, 'Evidences', { certificationType: 'Bronze' });

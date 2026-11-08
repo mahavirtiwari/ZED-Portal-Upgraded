@@ -57,7 +57,8 @@ export function CertificationOptionsScreen() {
       if (details.finalSubmitDone) alert(READ_ONLY_MESSAGE);
       else nav.push('Evidences', { certificationType: type });
     } else {
-      nav.push('BasicInformation', { certificationType: type });
+      // 2026-11-08: first the undertaking of compliances and the certification requirements, as in the old app.
+      nav.push('Compliance', { certificationType: type });
     }
   };
 

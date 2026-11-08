@@ -387,6 +387,21 @@ export class MsmeApi {
     ]);
   }
 
+  /**
+   * @Multipart SubmitFacilitatorDetails (restored 2026-11-08): the ZED Facilitator who assisted the unit, checked by the server
+   * against the trained facilitators (SP_INSERT_FACILITATOR_DETAILS); the selfie is optional. Before FinalSubmit, whose
+   * agency allotment uses the facilitator.
+   */
+  submitFacilitatorDetails(username: string, certificationType: string, phoneNumber: string, email: string) {
+    return this.http.postMultipart<BaseServiceResponse>(this.msme + 'SubmitFacilitatorDetails', [
+      { name: 'userName', value: username },
+      { name: 'certificationType', value: certificationType },
+      { name: 'phoneNumber', value: phoneNumber },
+      { name: 'email', value: email },
+      ...contextFields(this.ctx()),
+    ]);
+  }
+
   /** SubmitPhotos: userName, certificationType and `files` named photoId + extension. */
   submitPhotos(username: string, certificationType: string, photos: PhotoData[]) {
     return this.http.postMultipart<BaseServiceResponse>(this.msme + 'SubmitPhotos', [

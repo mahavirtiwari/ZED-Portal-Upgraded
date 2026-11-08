@@ -9,6 +9,7 @@ import { MsmeApp } from './src/app/MsmeApp';
 import { registerHandlers, syncNow } from './src/sync/queue';
 import { BasicInformationScreen } from './src/screens/BasicInformationScreen';
 import { CertificationOptionsScreen } from './src/screens/CertificationOptionsScreen';
+import { CertificationRequirementsScreen, ComplianceScreen } from './src/screens/CertificationTermsScreens';
 import { DashboardScreen } from './src/screens/DashboardScreen';
 import { EsgChecklistScreen } from './src/screens/EsgChecklistScreen';
 import { EvidencesScreen } from './src/screens/EvidencesScreen';
@@ -44,6 +45,8 @@ export const SCREENS: ScreenMap = {
   MyAccount: MyAccountScreen,
   MyCertifications: MyCertificationsScreen,
   CertificationOptions: CertificationOptionsScreen,
+  Compliance: ComplianceScreen,
+  CertificationRequirements: CertificationRequirementsScreen,
   BasicInformation: BasicInformationScreen,
   EsgChecklist: EsgChecklistScreen,
   Evidences: EvidencesScreen,
