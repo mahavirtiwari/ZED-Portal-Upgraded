@@ -30,8 +30,10 @@
           <zed-recaptcha label="Verification" (token)="onCaptcha($event)" />
         </div>
 
-        <button type="submit" class="btn btn-primary ml-login" [disabled]="busy()">LOGIN</button>
-        <button type="button" class="ml-forgot" (click)="switchMode('reset')">Forgot password or ZED ID?</button>
+        <div class="ml-actions">
+          <button type="submit" class="btn btn-primary ml-login" [disabled]="busy()">LOGIN</button>
+          <button type="button" class="ml-forgot" (click)="switchMode('reset')">Forgot password or ZED ID?</button>
+        </div>
       </form>
     } @else {
       <!-- New (2026-11-07): find the account by ZED ID, PAN or e-mail, choose the unit, the link goes to its registered e-mail. -->

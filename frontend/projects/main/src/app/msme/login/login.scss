@@ -30,12 +30,13 @@
   font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px; z-index: 1;
 }
 .in-toggle:hover { background: #e6f2f3; }
+.ml-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .ml-login {
-  width: 100%; height: 48px; border-radius: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
+  flex: 0 0 auto; min-width: 160px; padding: 0 28px; height: 48px; border-radius: 10px; font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
   display: flex; align-items: center; justify-content: center; background: #23656b; border-color: #23656b; color: #fff;
 }
 .ml-login:hover, .ml-login:focus-visible { background: #174a4e; border-color: #174a4e; color: #fff; }
-.ml-forgot { display: block; margin: 14px auto 0; border: 0; background: none; color: #23656b; font-weight: 600; font-size: 14px; }
+.ml-forgot { margin: 0; padding: 0; white-space: nowrap; border: 0; background: none; color: #23656b; font-weight: 600; font-size: 14px; }
 .ml-forgot:hover { text-decoration: underline; }
 .register-btn { display: flex; gap: 10px; flex-wrap: wrap; }
 .login-login .register-btn .btn { flex: 1 1 140px; height: 44px; border-radius: 10px; font-weight: 600; }

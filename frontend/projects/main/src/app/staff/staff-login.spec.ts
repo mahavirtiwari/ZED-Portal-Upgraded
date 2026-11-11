@@ -82,7 +82,7 @@ describe('StaffLoginPage (2026-11-07 design)', () => {
     const el: HTMLElement = fixture.nativeElement;
     await settle(fixture);
     for (const r of http.match(() => true)) r.flush(null);
-    expect(el.querySelector('.login-title')!.textContent).toBe('Welcome back');
+    expect(el.querySelector('.login-title')!.textContent).toBe('Welcome');
     expect([...el.querySelectorAll('.brand-chip')].map((c) => c.textContent!.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
     const password = el.querySelector('#password') as HTMLInputElement;
     const toggle = el.querySelector('.toggle') as HTMLButtonElement;

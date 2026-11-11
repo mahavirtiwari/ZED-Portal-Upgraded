@@ -19,7 +19,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
   imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
     <zed-staff-login-shell>
-      <h1 class="login-title">Welcome back</h1>
+      <h1 class="login-title">Welcome</h1>
       <p class="login-sub">Sign in with your ZED user ID{{ systemName ? ' · ' + systemName : '' }}</p>
       @if (expired) {
         <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
@@ -43,10 +43,11 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
           </div>
         </div>
         <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-        <div class="d-grid col-12">
+        <!-- 2026-11-12: the button and the link on one line. -->
+        <div class="login-actions">
           <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
+          <a routerLink="/forgot-password">Forgot password?</a>
         </div>
-        <p class="login-links"><a routerLink="/forgot-password">Forgot password?</a></p>
         @if (error()) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
         }
@@ -79,8 +80,9 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
       text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     }
     .btn-primary:hover, .btn-primary:focus-visible { background-color: #174a4e; border-color: #174a4e; filter: none; }
-    .login-links { text-align: center; margin: 16px 0 0; }
-    .login-links a { color: #23656b; font-weight: 600; }
+    .login-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .login-actions .btn-primary { flex: 0 0 auto; min-width: 170px; padding: 0 28px; }
+    .login-actions a { color: #23656b; font-weight: 600; white-space: nowrap; }
   `,
 })
 export class StaffLoginPage {

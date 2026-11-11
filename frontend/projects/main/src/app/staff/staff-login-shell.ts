@@ -6,7 +6,7 @@ import { PublicLevels } from '../msme/shared/levels';
 
 /**
  * Frame of the staff sign-in pages (login, forgot password, set a new password). 2026-11-08 redesign (option A, approved):
- * the whole screen in two halves — a teal half (ministry logo on a white chip, the ZED mark, the portal, its levels and what
+ * the whole screen in two halves — a teal half (the ministry's white logo, the ZED mark, the portal, its levels and what
  * it is for) and a white half with the page's form, the ZED logo above it and a one-line footer under it. No separate
  * header bar. On a phone the teal half becomes a short band above the form.
  */
@@ -20,9 +20,9 @@ import { PublicLevels } from '../msme/shared/levels';
         <span class="ring ring-2" aria-hidden="true"></span>
         <div class="zl-ministry">
           @if (links.url('ministry'); as u) {
-            <a [href]="u" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            <a [href]="u" target="_blank" rel="noopener"><img src="Images/header/ministry-white.png" alt="Ministry of MSME" /></a>
           } @else {
-            <img src="Images/header/ministry.png" alt="Ministry of MSME" />
+            <img src="Images/header/ministry-white.png" alt="Ministry of MSME" />
           }
         </div>
         <div class="zl-hero-body">
@@ -45,8 +45,7 @@ import { PublicLevels } from '../msme/shared/levels';
         <div class="zl-side-top"><img src="Images/header/zed-logo.png" alt="ZED" class="zl-zed" /></div>
         <div class="zl-form"><ng-content /></div>
         <footer class="zl-foot">
-          <small>ZED © {{ year }} All Rights Reserved · Version 4.0.0</small>
-          <img src="Images/footer/footer-icon.png" alt="QCI" />
+          <small>ZED © {{ year }} All Rights Reserved</small>
         </footer>
       </main>
     </div>
@@ -61,8 +60,9 @@ import { PublicLevels } from '../msme/shared/levels';
     .ring { position: absolute; border: 2px solid rgba(255, 255, 255, 0.1); border-radius: 50%; pointer-events: none; }
     .ring-1 { width: 520px; height: 520px; right: -220px; bottom: -240px; }
     .ring-2 { width: 320px; height: 320px; right: -110px; bottom: -130px; }
-    .zl-ministry { align-self: flex-start; background: #fff; border-radius: 12px; padding: 8px 14px; position: relative; }
-    .zl-ministry img { width: 210px; display: block; }
+    /* The ministry's white logo straight on the teal, as the old sign-in page (2026-11-12). */
+    .zl-ministry { align-self: flex-start; position: relative; }
+    .zl-ministry img { width: 240px; display: block; }
     .zl-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; position: relative; padding: 28px 0; }
     .brand-mark { width: 92px; height: 92px; border-radius: 50%; background: #fff; display: flex; align-items: center; justify-content: center; }
     .brand-mark img { width: 74px; }
@@ -81,14 +81,13 @@ import { PublicLevels } from '../msme/shared/levels';
     }
     .zl-side { display: flex; flex-direction: column; padding: 24px 40px 16px; min-width: 0; }
     .zl-side-top { display: flex; justify-content: flex-end; }
-    .zl-zed { height: 52px; }
+    .zl-zed { height: 88px; }
     /* min-width 0: a long sentence (Forgot Password) wraps instead of widening the form. */
     .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 420px; margin: 0 auto; padding: 24px 0; min-width: 0; }
     .zl-foot {
       display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
     }
-    .zl-foot img { height: 28px; }
     @media (max-width: 900px) {
       .zl-page { grid-template-columns: 1fr; }
       .zl-hero { padding: 16px 20px 18px; }

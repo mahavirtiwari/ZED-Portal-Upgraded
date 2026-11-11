@@ -10,7 +10,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
 
 /**
  * Frame of the MSME login pages (login, forgot password, reset password). 2026-11-08 redesign (option A, approved): the
- * whole screen in two halves — a teal half (ministry logo on a white chip, the Admin's banner in a white frame, the scheme,
+ * whole screen in two halves — a teal half (the ministry's white logo, the Admin's banner in a white frame, the scheme,
  * its levels and three benefits) and a white half with the page's form, the ZED logo above it and a one-line footer under
  * it. No separate header bar. On a phone the banner becomes a short picture in the teal band above the form.
  */
@@ -22,9 +22,9 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       <aside class="ml-hero" aria-label="About ZED certification">
         <div class="ml-ministry">
           @if (links.url('ministry'); as u) {
-            <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>
+            <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry-white.png" alt="Ministry of MSME" /></a>
           } @else {
-            <img src="/Images/header/ministry.png" alt="Ministry of MSME" />
+            <img src="/Images/header/ministry-white.png" alt="Ministry of MSME" />
           }
         </div>
         <div class="ml-photo-frame">
@@ -51,8 +51,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
           <ng-content />
         </section>
         <footer class="ml-footer">
-          <small>ZED © {{ year }} All Rights Reserved · Version 4.0.0</small>
-          <img src="/Images/footer/footer-icon.png" alt="QCI" />
+          <small>ZED © {{ year }} All Rights Reserved</small>
         </footer>
       </main>
     </div>
@@ -64,8 +63,9 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       color: #fff; padding: 28px 40px 32px; display: flex; flex-direction: column; min-width: 0;
       background: linear-gradient(160deg, #174a4e 0%, #23656b 48%, #2f8a92 100%);
     }
-    .ml-ministry { align-self: flex-start; background: #fff; border-radius: 12px; padding: 8px 14px; }
-    .ml-ministry img { width: 210px; display: block; }
+    /* The ministry's white logo straight on the teal, as the old sign-in page (2026-11-12). */
+    .ml-ministry { align-self: flex-start; position: relative; }
+    .ml-ministry img { width: 240px; display: block; }
     /* The whole banner (the Admin's banners are composed pictures with their own slogan): contained, not cropped. */
     .ml-photo-frame {
       flex: 1 1 auto; min-height: 260px; margin: 22px 0 20px; background: #fff; border-radius: 18px; overflow: hidden;
@@ -83,13 +83,12 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
     }
     .ml-side { display: flex; flex-direction: column; padding: 24px 40px 16px; min-width: 0; }
     .ml-side-top { display: flex; justify-content: flex-end; }
-    .ml-zed { height: 52px; }
+    .ml-zed { height: 88px; }
     .ml-card { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 440px; margin: 0 auto; padding: 20px 0; min-width: 0; }
     .ml-footer {
       display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
     }
-    .ml-footer img { height: 28px; }
     @media (max-width: 900px) {
       .ml-page { grid-template-columns: 1fr; }
       .ml-hero { padding: 16px 20px 18px; }
