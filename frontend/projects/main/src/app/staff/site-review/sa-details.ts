@@ -10,6 +10,7 @@ import { NO_REVIEW, RemarksKind } from '../monitoring/review.api';
 import { SaSurveillanceTab, SurveillanceRemarks } from './sa-surveillance';
 import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
+import { ParameterNav } from '../../msme/shared/parameter-status';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -79,6 +80,14 @@ export class SaDetailsPage {
   protected readonly isAdmin = computed(() => this.data()?.role === 'MasterAdmin');
   /** NC tabs of the old page: NC n when NcCount > n - 1. */
   protected readonly ncTabs = computed(() => (this.data()?.ncRounds ?? []).map((r) => r.ncCount).filter((nc) => num(this.msme(), 'NcCount') > nc - 1));
+  /** Parameters tab: the parameter list (status from the site conformance) and the selected parameter. */
+  protected readonly pn = new ParameterNav<Row, Row>({
+    sections: () => this.data()?.sections ?? [],
+    id: (s) => text(s, 'Id'),
+    requirements: (s) => this.requirementsOf(s, this.data()?.requirements),
+    conformance: (r) => r['SaConformance'],
+    exempted: (s) => text(s, 'IsAssessmentExcempted') === 'Yes',
+  });
 
   constructor() {
     effect(() => {

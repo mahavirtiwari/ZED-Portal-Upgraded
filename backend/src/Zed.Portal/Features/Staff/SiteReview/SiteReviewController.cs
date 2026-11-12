@@ -78,7 +78,7 @@ public sealed class SiteReviewController(
     private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "iButton", "IsAssessmentExcempted", "OfiComments"];
     private static readonly string[] SectionAssessorFields = ["AllotedAssessorId", "AllotedAssessorName", "AssessorRank"];
     private static readonly string[] RequirementFields =
-        ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "UpdatedDate", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
+        ["Id", "SectionCode", "RequirementCode", "RequirementId", "RequirementName", "Conformance", "AssessorRemarks", "UpdatedDate", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
     private static readonly string[] NcRequirementFields = ["Id", "SectionCode", "RequirementCode", "SaConformance", "SaAssessorRemarks", "MsmeComments", "PreviousAssessorRemarks"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
@@ -195,7 +195,7 @@ public sealed class SiteReviewController(
     ];
 
     private static readonly string[] OriginalRequirementFields =
-        ["Id", "SectionCode", "RequirementCode", "RequirementId", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
+        ["Id", "SectionCode", "RequirementCode", "RequirementId", "RequirementName", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
 
     /// <summary>
     /// Main's sections as the surveillance page lists them: SurveMandatories (main's Sections master, sent with

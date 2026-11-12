@@ -257,132 +257,171 @@
       <!-- ================================================= parameters -->
       @if (tab() === 9) {
         <div class="tab-pane fade show active" role="tabpanel">
-          <div id="accordion">
-            @for (s of d.sections; track $index) {
-              <div class="param-section" [id]="'heading' + t(s, 'SectionCode')">
-                <div class="section-toggle" [class.open]="isOpen(s)" role="button" tabindex="0" [attr.aria-expanded]="isOpen(s)" [attr.aria-controls]="'collapse' + t(s, 'SectionCode')"
-                     (click)="toggle(s)" (keydown.enter)="toggle(s)" (keydown.space)="$event.preventDefault(); toggle(s)">
-                  <span>{{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}</span>
-                  @if (t(s, 'iButton')) {
-                    <span class="z-tooltip" (click)="$event.stopPropagation()">
-                      <img src="Images/svgicons/info.svg" alt="Information" />
-                      <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+          @let cur = pn.active();
+          <div class="zp-layout">
+            <nav class="zp-nav" aria-labelledby="msParamNavTitle">
+              <div class="zp-nav-head" id="msParamNavTitle">Parameters · {{ pn.complete() }} of {{ d.sections.length }} complete</div>
+              <div class="zp-nav-list">
+                @for (s of d.sections; track $index) {
+                  @let st = pn.chip(s);
+                  @let pg = pn.progress(s);
+                  <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="pn.select(s)">
+                    <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                    <span class="zp-nav-body">
+                      <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
+                      <span class="zp-nav-meta">{{ pn.exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
                     </span>
-                  }
-                </div>
+                    <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                  </button>
+                }
               </div>
-              @if (isOpen(s)) {
-                <div class="section-body" [id]="'collapse' + t(s, 'SectionCode')" role="region" [attr.aria-labelledby]="'heading' + t(s, 'SectionCode')">
+            </nav>
+
+            <div class="zp-main">
+              @if (cur; as s) {
+                @let sst = pn.status(s);
+                @let isExempted = pn.exempted(s);
+                <div class="zp-section" [attr.data-section]="t(s, 'SectionCode')">
+                  <div class="zp-head">
+                    <div class="zp-head-title">
+                      <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                      <h5>{{ t(s, 'SectionName') }}</h5>
+                      @if (t(s, 'iButton')) {
+                        <span class="zp-info" tabindex="0">
+                          <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                          <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                        </span>
+                      }
+                      @if (isExempted) { <span class="zp-tag">Exempted</span> }
+                    </div>
+                    <div class="zp-head-status">
+                      <span class="zp-label">Conformance</span>
+                      <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                    </div>
+                  </div>
+
                   @for (r of requirementsOf(s); track $index) {
-                    <div class="requirement" [attr.data-requirement]="t(r, 'Id')">
-                      <div class="requirement-head">
-                        <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div><zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" />
-                        <div class="label-highlight3">
+                    @let rst = pn.requirementStatus(r);
+                    <article class="zp-req requirement" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
+                      <div class="zp-req-title">
+                        <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
+                        <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                        <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [compact]="true" />
+                        <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                      </div>
+
+                      <div class="zp-req-body">
+                        <div class="zp-block zp-checkpoints">
+                          <div class="zp-block-head">Checkpoints</div>
                           @for (o of optionsOf(r); track $index) {
-                            <div>
-                              {{ t(o, 'OptionName') }}
-                              @for (a of answersOf(r, o); track a.label) { <span class="cp-chip" [attr.data-v]="a.value">{{ a.label }}: {{ a.value }}</span> }
-                              <ul>
-                                @for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
-                              </ul>
+                            <div class="zp-cp">
+                              <div class="zp-cp-text">
+                                {{ t(o, 'OptionName') }}
+                                @if (subOptionsOf(o).length) {
+                                  <ul>@for (so of subOptionsOf(o); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
+                                }
+                              </div>
+                              <div class="zp-cp-answer">
+                                @for (a of answersOf(r, o); track a.label) { <span class="cp-chip" [attr.data-v]="a.value">{{ a.label }}: {{ a.value }}</span> }
+                              </div>
                             </div>
+                          } @empty {
+                            <div class="zp-block-empty">No checkpoints.</div>
                           }
                           @if (checkpointsToAnswer(r).length) {
-                            <button type="button" class="btn btn-primary btn-sm answer-checkpoints" [disabled]="busy()" (click)="openCheckpoints(s, r)">ANSWER CHECKPOINTS</button>
+                            <div class="zp-block-body">
+                              <button type="button" class="btn btn-primary btn-sm zp-btn answer-checkpoints" [disabled]="busy()" (click)="openCheckpoints(s, r)">ANSWER CHECKPOINTS</button>
+                            </div>
                           }
                         </div>
-                      </div>
-                      <div class="milestone-border">
-                        @let exempted = t(s, 'IsAssessmentExcempted') === 'Yes';
+
                         <!-- Milestone 1 : Basic Diagnostic Study -->
-                        <table class="table table-bordered table-zed ms-table">
-                          <tr>
-                            <td rowspan="3" class="milestone-1"><p>Milestone 1 : Basic Diagnostic Study</p></td>
-                            <td class="p-0">
-                              @if (!exempted) { <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, 1) }" /> }
-                            </td>
-                          </tr>
-                          <tr>
-                            <td>
-                              @if (!exempted) {
-                                <div class="answer-grid">
-                                  <div class="payment-option-block">
-                                    <p class="sub-heading">Conformance</p>
-                                    <div class="readonly-input">
-                                      <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Conformance" />
-                                      <span class="answer">{{ t(r, 'SaConformance') }}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'BaselineDiagnostic', label: 'GAPS IDENTIFIED' }" />
-                                <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'BaselineRemarks', label: 'REMARKS, IF ANY' }" />
-                              }
-                            </td>
-                          </tr>
-                        </table>
+                        <div class="zp-block zp-milestone milestone-1">
+                          <div class="zp-block-head">Milestone 1 : Basic Diagnostic Study</div>
+                          <div class="zp-block-body">
+                            @if (!isExempted) {
+                              <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, 1) }" />
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'BaselineDiagnostic', label: 'GAPS IDENTIFIED' }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'BaselineRemarks', label: 'REMARKS, IF ANY' }" />
+                            } @else {
+                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                            }
+                          </div>
+                        </div>
 
                         <!-- Milestone 1 : Handholding Action Plan -->
-                        <table class="table table-bordered table-zed ms-table">
-                          <tr><td rowspan="3" class="milestone-1"><p>Milestone 1 : Handholding Action Plan</p></td></tr>
-                          <tr>
-                            <td>
-                              @if (!exempted) {
-                                <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: 'PLANNED ACTIVIES' }" />
-                                <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'EstimatedTimeInDays', label: 'ESTIMATED TIME (IN DAYS)' }" />
-                                <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'HActionPlanRemarks', label: 'REMARKS, IF ANY' }" />
-                              }
-                            </td>
-                          </tr>
-                        </table>
+                        <div class="zp-block zp-milestone milestone-1">
+                          <div class="zp-block-head">Milestone 1 : Handholding Action Plan</div>
+                          <div class="zp-block-body">
+                            @if (!isExempted) {
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'HandholdingActionPlan', label: 'PLANNED ACTIVIES' }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'EstimatedTimeInDays', label: 'ESTIMATED TIME (IN DAYS)' }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'HActionPlanRemarks', label: 'REMARKS, IF ANY' }" />
+                            } @else {
+                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                            }
+                          </div>
+                        </div>
 
                         <!-- Milestone 1 : Technology Intervention -->
-                        <table class="table table-bordered table-zed ms-table">
-                          <tr><td rowspan="3" class="milestone-1"><p>Milestone 1 : Technology Intervention</p></td></tr>
-                          <tr>
-                            <td>
-                              @if (!exempted) {
-                                <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'TechnologyIntervention', label: 'SUGGESTED TECHNOLOGY INTERVENTION' }" />
-                                <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'Intervention', label: 'RATIONALE FOR TECHNOLOGY INTERVENTION' }" />
-                                <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'InterventionRemarks', label: 'REMARKS, IF ANY' }" />
-                              }
-                            </td>
-                          </tr>
-                        </table>
+                        <div class="zp-block zp-milestone milestone-1">
+                          <div class="zp-block-head">Milestone 1 : Technology Intervention</div>
+                          <div class="zp-block-body">
+                            @if (!isExempted) {
+                              <ng-container [ngTemplateOutlet]="bullets" [ngTemplateOutletContext]="{ r, type: 'TechnologyIntervention', label: 'SUGGESTED TECHNOLOGY INTERVENTION' }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'Intervention', label: 'RATIONALE FOR TECHNOLOGY INTERVENTION' }" />
+                              <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: 'InterventionRemarks', label: 'REMARKS, IF ANY' }" />
+                            } @else {
+                              <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                            }
+                          </div>
+                        </div>
 
                         @for (pr of progressReviews; track pr.milestone) {
                           @if (n(s, 'NcCount') >= pr.milestone) {
-                            <table class="table table-bordered table-zed ms-table">
-                              <tr>
-                                <td rowspan="3" [class]="'milestone-' + pr.milestone"><p>Milestone {{ pr.milestone }} : {{ pr.title }}</p></td>
-                                <td class="p-0">
-                                  @if (!exempted) { <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, pr.milestone) }" /> }
-                                </td>
-                              </tr>
-                              <tr>
-                                <td>
-                                  @if (!exempted) {
-                                    <div class="answer-grid">
-                                      <div class="payment-option-block">
-                                        <p class="sub-heading">Is Proposed Activity Completed</p>
-                                        <div class="readonly-input">
-                                          <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Is Proposed Activity Completed" />
-                                          <span class="answer">{{ t(r, pr.completed) }}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: pr.field, label: 'REMARKS, IF ANY' }" />
-                                  }
-                                </td>
-                              </tr>
-                            </table>
+                            <div [class]="'zp-block zp-milestone milestone-' + pr.milestone">
+                              <div class="zp-block-head">Milestone {{ pr.milestone }} : {{ pr.title }}</div>
+                              <div class="zp-block-body">
+                                @if (!isExempted) {
+                                  <ng-container [ngTemplateOutlet]="evidence" [ngTemplateOutletContext]="{ $implicit: photosOf(r, pr.milestone) }" />
+                                  <div class="zp-row my-2">
+                                    <span class="zp-label m-0">Is proposed activity completed</span>
+                                    @if (t(r, pr.completed)) { <span class="zp-chip" [attr.data-v]="t(r, pr.completed)">{{ t(r, pr.completed) }}</span> } @else { <span class="zp-chip">Not given</span> }
+                                  </div>
+                                  <ng-container [ngTemplateOutlet]="field" [ngTemplateOutletContext]="{ r, f: pr.field, label: 'REMARKS, IF ANY' }" />
+                                } @else {
+                                  <span class="zp-muted">Exempted from Remote/Site Assessment</span>
+                                }
+                              </div>
+                            </div>
                           }
                         }
                       </div>
-                    </div>
+
+                      <div class="zp-foot">
+                        <div class="zp-conf">
+                          <div class="zp-label">Conformance (basic diagnostic study)</div>
+                          <div class="zp-row">
+                            @if (isExempted) {
+                              <span class="zp-chip" data-v="Exempt">Exempt</span>
+                            } @else if (t(r, 'SaConformance')) {
+                              <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span>
+                            } @else {
+                              <span class="zp-chip">Not given</span>
+                            }
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="zp-muted">No requirements in this parameter.</p>
                   }
                 </div>
+              } @else {
+                <p class="zp-muted">No parameters.</p>
               }
-            }
+            </div>
           </div>
         </div>
       }
@@ -470,7 +509,7 @@
               @if (pp.url) { <img [src]="pp.url" alt="" height="60" /> }
               <span class="muted">Generated at {{ pp.createdDate }}</span>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" [disabled]="!pp.url" (click)="openImage(pp.url)">VIEW</button>
+            <button type="button" class="btn btn-outline-primary btn-sm zp-btn" [disabled]="!pp.url" (click)="openImage(pp.url)">VIEW</button>
           </div>
         </td>
       </tr>
@@ -503,7 +542,7 @@
           @if (isEditing({ kind: 'newBullet', requirementId: r['Id'], type })) {
             <ng-container [ngTemplateOutlet]="editor" />
           } @else {
-            <input type="button" value="Add More" class="btn btn-outline-primary btn-sm" (click)="startEdit({ kind: 'newBullet', requirementId: r['Id'], type }, '')" />
+            <input type="button" value="Add More" class="btn btn-outline-primary btn-sm zp-btn" (click)="startEdit({ kind: 'newBullet', requirementId: r['Id'], type }, '')" />
           }
         </li>
       }
@@ -520,7 +559,7 @@
     } @else {
       <div class="value-box">{{ t(r, f) }}</div>
       @if (canEditField(r, f)) {
-        <input type="button" value="EDIT" class="btn btn-outline-primary btn-sm mt-2" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
+        <input type="button" value="EDIT" class="btn btn-outline-primary btn-sm zp-btn mt-2" [attr.aria-label]="'Edit ' + fieldInfo[f].label" (click)="startEdit({ kind: 'field', id: r['Id'], field: f }, r[f])" />
       }
     }
   </div>

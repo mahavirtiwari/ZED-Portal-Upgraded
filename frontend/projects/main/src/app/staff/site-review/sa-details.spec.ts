@@ -205,6 +205,44 @@ describe('SaDetailsPage', () => {
     await settle();
   });
 
+  it('lists the parameters with their site status and shows the selected one as requirement cards', async () => {
+    await open(details({
+      sections: [
+        { Id: 41, SectionCode: '1', SectionName: 'Leadership', IsAssessmentExcempted: 'No', OfiComments: 'Improve docs' },
+        { Id: 42, SectionCode: '2', SectionName: 'Safety', IsAssessmentExcempted: 'No' },
+        { Id: 43, SectionCode: '3', SectionName: 'Swachh', IsAssessmentExcempted: 'Yes' },
+      ],
+      requirements: [
+        { Id: 11, SectionCode: '1', RequirementCode: '2', Conformance: 'Yes', AssessorRemarks: 'Desk ok', SaConformance: 'Yes', SaAssessorRemarks: 'Seen on site', Photos: [photo(FILES + 'r/1.jpg', 'Policy board')] },
+        { Id: 12, SectionCode: '2', RequirementCode: '1', SaConformance: 'No', Photos: [] },
+        { Id: 13, SectionCode: '2', RequirementCode: '2', SaConformance: null, Photos: [] },
+        { Id: 14, SectionCode: '3', RequirementCode: '1', SaConformance: null, Photos: [] },
+      ],
+      evidences: [{ Id: 31, SectionCode: '1', RequirementCode: '2', EvidenceName: 'Policy', SyncedDate: 'Apr 01, 2024', FileUrl: FILES + 'e/1.pdf' }],
+    }));
+    tab('Parameters');
+    await settle();
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav .zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Yes', 'No', 'Exempt']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['1 of 1 requirements', '1 of 2 requirements', 'Exempted']);
+    expect(el.querySelector('.zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 3 complete');
+
+    const card = el.querySelector('.zp-main .zp-req')!;
+    expect(card.querySelector('.zp-code')!.textContent!.trim()).toBe('1.2');
+    expect(card.querySelector('.zp-checkpoints')!.textContent).toContain('Has a quality policy');
+    expect(card.querySelector<HTMLAnchorElement>('.zp-ev-table a')!.getAttribute('href')).toBe(FILES + 'e/1.pdf');
+    expect(card.querySelector('.zp-site-photos img')!.getAttribute('src')).toBe(FILES + 'r/1.jpg');
+    expect(card.querySelector('.zp-foot .zp-conf.zp-da .zp-chip')!.textContent!.trim()).toBe('Yes');
+    expect(card.querySelector('.zp-foot .zp-conf.zp-sa .zp-chip')!.textContent!.trim()).toBe('Yes');
+    expect(card.querySelector('.zp-foot .zp-remarks.zp-sa')!.textContent).toContain('Seen on site');
+
+    items[1].click();
+    await settle();
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Safety');
+    expect(Array.from(el.querySelectorAll('.zp-main .zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['2.1', '2.2']);
+    expect(el.querySelector('.zp-main')!.textContent).not.toContain('Has a quality policy');
+  });
+
   it('does not call the API for Bronze or a malformed ZED ID', async () => {
     fixture.componentRef.setInput('zedId', 'ZEDMSME000001');
     fixture.componentRef.setInput('certification', 'Bronze');
@@ -252,6 +290,12 @@ describe('SaDetailsPage (surveillance)', () => {
     await settle();
   };
   const panels = () => Array.from(el.querySelectorAll('.panel-black')).map((p) => p.textContent!.replace(/\s+/g, ' ').trim());
+  /** Parameters tab: the names in the parameter list, and picking one. */
+  const parameters = () => Array.from(el.querySelectorAll('.zp-nav-item')).map((i) => i.querySelector('.zp-num')!.textContent!.trim() + '. ' + i.querySelector('.zp-nav-name')!.textContent!.trim());
+  const pick = async (name: string) => {
+    Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav-item')).find((i) => i.querySelector('.zp-nav-name')!.textContent!.trim() === name)!.click();
+    await settle();
+  };
   const edits = () => Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).filter((b) => b.value === 'Edit Remarks');
   /** Table rows as "header value" lines. */
   const rows = () => Array.from(el.querySelectorAll('tr')).map((r) => Array.from(r.children).map((c) => c.textContent!.trim()).join(' ')).join(' | ');
@@ -348,15 +392,14 @@ describe('SaDetailsPage (surveillance)', () => {
     expect(el.querySelector('tr.site-assessment')).toBeNull();
     expect(el.querySelector('tr.surveillance-assessment')!.textContent).toContain('Msme Representative Selfie');
 
-    // Parameters: main's sections with SurveMandatories only, collapsed until opened.
+    // Parameters: main's sections with SurveMandatories only; the first is shown, its status from the surveillance's result.
     await tab('Parameters');
-    expect(panels()).toEqual(['1. Leadership']);
-    expect(el.textContent).not.toContain('Has a quality policy');
-    await panel('Leadership');
+    expect(parameters()).toEqual(['1. Leadership']);
+    expect(el.querySelector('.zp-nav-item .zp-chip')!.textContent!.trim()).toBe('No');
     expect(el.textContent).toContain('Has a quality policy');
     expect(el.querySelector('.onsite-result')).toBeNull();
     const result = el.querySelector('.surveillance-result')!.textContent!.replace(/\s+/g, ' ');
-    expect(result).toContain('Surveillance Assessment');
+    expect(result).toContain('Surveillance conformance');
     expect(result).toContain('Policy outdated');
     edits()[0].click();
     await settle();
@@ -402,14 +445,15 @@ describe('SaDetailsPage (surveillance)', () => {
     expect(panels()).toEqual(['SURVEILLANCE CLOSE MEETING', 'CLOSE MEETING']);
 
     await tab('Parameters');
-    expect(panels()).toEqual(['1. Leadership', '2. Swachh Workplace']);
-    await panel('Leadership');
+    expect(parameters()).toEqual(['1. Leadership', '2. Swachh Workplace']);
     expect(el.querySelector('.onsite-result')!.textContent).toContain('Original remark');
     expect(el.querySelector('.surveillance-result')!.textContent).toContain('Policy outdated');
-    await panel('Swachh Workplace');
-    // Main's requirement without a surveillance result: only the original's table.
-    expect(el.querySelectorAll('.onsite-result').length).toBe(2);
-    expect(el.querySelectorAll('.surveillance-result').length).toBe(1);
+    await pick('Swachh Workplace');
+    // Main's requirement without a surveillance result: only the original's block; no surveillance result, so Pending.
+    expect(el.querySelectorAll('.onsite-result').length).toBe(1);
+    expect(el.querySelector('.onsite-result')!.textContent).toContain('Clean');
+    expect(el.querySelectorAll('.surveillance-result').length).toBe(0);
+    expect(Array.from(el.querySelectorAll('.zp-nav-item .zp-chip')).map((c) => c.textContent!.trim())).toEqual(['No', 'Pending']);
     expect(edits().length).toBe(0);
   });
 
@@ -417,7 +461,7 @@ describe('SaDetailsPage (surveillance)', () => {
     await open(surveillanceDetails({ role: 'QC', permissions: { review: NO_REVIEW, canWithdrawExemption: false, assessorOnCurrentPortal: false } }), null);
     http.expectNone(API + '/original');
     await tab('Parameters');
-    await panel('Leadership');
+    expect(parameters()).toEqual(['1. Leadership']);
     expect(el.querySelector('.surveillance-result')!.textContent).toContain('Policy outdated');
   });
 });

@@ -70,9 +70,9 @@ describe('MilestoneDetailsPage', () => {
     );
   }
 
-  /** Opens a section of the parameters accordion. */
+  /** Picks a parameter in the parameters list. */
   async function expand(section: string) {
-    Array.from(el.querySelectorAll<HTMLElement>('.section-toggle')).find((h) => h.textContent?.includes(section))!.click();
+    Array.from(el.querySelectorAll<HTMLElement>('.zp-nav-item')).find((h) => h.textContent?.includes(section))!.click();
     await settle();
   }
 
@@ -120,8 +120,8 @@ describe('MilestoneDetailsPage', () => {
   it('edits an allow-listed requirement field and reloads', async () => {
     await open(details());
     await tab('Parameters');
-    // The accordion starts closed.
-    expect(el.querySelector('[data-requirement]')).toBeNull();
+    // The first parameter is shown.
+    expect(el.querySelector('[data-requirement]')).not.toBeNull();
     await expand('Leadership');
     expect(el.textContent).toContain('Milestone 1 : Basic Diagnostic Study');
     // The requirement has no evidence: the old page's empty row.
@@ -142,6 +142,38 @@ describe('MilestoneDetailsPage', () => {
     http.expectOne(API).flush(details());
     await settle();
     expect(el.textContent).toContain('Updated.');
+  });
+
+  it('lists the parameters with their status and shows the selected one as requirement cards', async () => {
+    await open(details({
+      sections: [
+        { Id: 41, SectionCode: '1', SectionName: 'Leadership', NcCount: 1 },
+        { Id: 42, SectionCode: '2', SectionName: 'Safety', NcCount: 2 },
+        { Id: 43, SectionCode: '3', SectionName: 'Swachh', IsAssessmentExcempted: 'Yes' },
+      ],
+      requirements: [
+        { Id: 11, SectionCode: '1', RequirementCode: '1', SaConformance: 'Partial', Editable: true, Photos: [] },
+        { Id: 12, SectionCode: '2', RequirementCode: '1', SaConformance: 'Yes', Editable: true, Photos: [] },
+        { Id: 13, SectionCode: '2', RequirementCode: '2', SaConformance: 'Yes', Editable: true, Photos: [] },
+        { Id: 14, SectionCode: '3', RequirementCode: '1', SaConformance: null, Editable: true, Photos: [] },
+      ],
+    }));
+    await tab('Parameters');
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Partial', 'Yes', 'Exempt']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirements', '2 of 2 requirements', 'Exempted']);
+    expect(el.querySelector('.zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 3 complete');
+    expect(el.querySelector('.zp-main .zp-req .zp-foot .zp-chip')!.textContent!.trim()).toBe('Partial');
+    expect(Array.from(el.querySelectorAll('.zp-main .zp-milestone .zp-block-head')).map((h) => h.textContent!.trim())).toEqual([
+      'Milestone 1 : Basic Diagnostic Study', 'Milestone 1 : Handholding Action Plan', 'Milestone 1 : Technology Intervention',
+    ]);
+
+    items[1].click();
+    await settle();
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Safety');
+    expect(Array.from(el.querySelectorAll('.zp-main .zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['2.1', '2.2']);
+    // The section reached milestone 2: its progress review block is shown.
+    expect(el.querySelector('.zp-main')!.textContent).toContain('Milestone 2 :');
   });
 
   it('answers the baseline checkpoints of an editable parameter', async () => {

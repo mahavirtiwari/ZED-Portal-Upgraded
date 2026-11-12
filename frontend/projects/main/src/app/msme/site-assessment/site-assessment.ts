@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { Row, SiteAssessmentApi, SiteAssessmentData, SitePhoto, SiteRequirement, SiteSection, canonicalSiteAssessment } from './site-assessment.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
 import { RequirementVideo } from '../shared/requirement-video';
+import { ParameterNav } from '../shared/parameter-status';
 
 export type SiteTab = 'basic' | 'tour' | 'parameters';
 
@@ -182,6 +183,17 @@ export class SiteAssessmentPage {
   protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});
   protected readonly assessment = computed<Row>(() => this.data()?.assessment ?? {});
   protected readonly isMilestone = computed(() => this.data()?.kind === 'milestone');
+  /**
+   * Parameters tab: the parameter list and the selected parameter. Handholding milestones show the basic diagnostic
+   * conformance as status; the Silver / Gold report has no conformance for the unit, so it lists the parameters only.
+   */
+  protected readonly pn = new ParameterNav<SiteSection, SiteRequirement>({
+    sections: () => this.data()?.sections ?? [],
+    id: (s) => s.sectionCode ?? '',
+    requirements: (s) => s.requirements,
+    conformance: (r) => r.milestone?.['SaConformance'],
+    exempted: (s) => this.exempted(s),
+  });
 
   constructor() {
     effect(() => {

@@ -98,7 +98,7 @@ describe('DaDetailsPage', () => {
     tab('Parameters');
     await settle();
     // The requirement's Validate button is in the conformance block of its card.
-    el.querySelector<HTMLInputElement>('[data-requirement="11"] .conf-block input[type=button]')!.click();
+    el.querySelector<HTMLInputElement>('[data-requirement="11"] .zp-conf input[type=button]')!.click();
     await settle();
 
     el.querySelector<HTMLInputElement>('input[name=conformance][value=No]')!.click();
@@ -135,7 +135,7 @@ describe('DaDetailsPage', () => {
     await open(details({ checkpoints }));
     tab('Parameters');
     await settle();
-    el.querySelector<HTMLInputElement>('[data-requirement="11"] .conf-block input[type=button]')!.click();
+    el.querySelector<HTMLInputElement>('[data-requirement="11"] .zp-conf input[type=button]')!.click();
     await settle();
     // The checkpoint pop-up, not the old Yes / No one.
     expect(el.querySelector('#daConfRemarks')).toBeNull();
@@ -174,7 +174,7 @@ describe('DaDetailsPage', () => {
     await open(details());
     tab('Parameters');
     await settle();
-    Array.from(el.querySelectorAll<HTMLInputElement>('.ev-item input[type=button]')).find((b) => b.value === 'Validate')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('.zp-ev-row input[type=button]')).find((b) => b.value === 'Validate')!.click();
     await settle();
     el.querySelector<HTMLInputElement>('input[name=evVerified][value=Yes]')!.click();
     await settle();
@@ -205,7 +205,7 @@ describe('DaDetailsPage', () => {
     await open(details());
     tab('Parameters');
     await settle();
-    Array.from(el.querySelectorAll<HTMLInputElement>('.ev-item input[type=button]')).find((b) => b.value === 'Validate')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('.zp-ev-row input[type=button]')).find((b) => b.value === 'Validate')!.click();
     await settle();
     el.querySelector<HTMLInputElement>('input[name=evVerified][value=Yes]')!.click();
     await settle();
@@ -369,6 +369,8 @@ describe('DaDetailsPage', () => {
       evidences: [
         ...details().evidences,
         { Id: 32, SectionCode: '1', RequirementCode: '2', EvidenceName: '', ValidationRequired: true, Opened: false, FileUrl: BASE + '/files/x/6662.pdf', Screenshots: [] },
+        { Id: 33, SectionCode: '1', RequirementCode: '2', EvidenceName: 'GST', ValidationRequired: true, Opened: true, FileUrl: BASE + '/files/x/7.pdf', IsVerified: 'No',
+          SourceOfValidation: 'GST portal', AssessorRemarks: 'Expired', Screenshots: ['/s/1.pdf', '/s/2.pdf'] },
       ],
     }));
     tab('Parameters');
@@ -380,6 +382,20 @@ describe('DaDetailsPage', () => {
     const fresh = el.querySelector<HTMLAnchorElement>('a[href$="/6662.pdf"]')!;
     expect(fresh.querySelector('.pdf-chip')!.classList).not.toContain('opened');
     expect(fresh.textContent).toContain('View PDF');
+    // The evidences table: document | verified | source | screenshots | action.
+    const [policyRow, freshRow] = Array.from(el.querySelectorAll<HTMLTableRowElement>('.zp-ev-table tbody tr.zp-ev-row'));
+    expect(Array.from(el.querySelectorAll('.zp-ev-table thead th')).map((th) => th.textContent!.trim()).slice(0, 4)).toEqual(['Document', 'Verified', 'Source', 'Screenshots']);
+    expect(freshRow.querySelector('.zp-ev-verified')!.textContent!.trim()).toBe('Not checked');
+    expect(freshRow.querySelector('.zp-ev-source')!.textContent!.trim()).toBe('—');
+    expect(freshRow.querySelector('.zp-ev-shots')!.textContent!.trim()).toBe('—');
+    expect(policyRow.querySelector<HTMLInputElement>('.zp-ev-act input[type=button]')!.value).toBe('Validate');
+    expect(freshRow.querySelector('.zp-ev-act input')).toBeNull();
+    const gstRow = el.querySelectorAll<HTMLTableRowElement>('.zp-ev-table tbody tr.zp-ev-row')[2];
+    expect(gstRow.querySelector('.zp-ev-verified .zp-chip')!.getAttribute('data-v')).toBe('No');
+    expect(gstRow.querySelector('.zp-ev-source')!.textContent!.trim()).toBe('GST portal');
+    expect(gstRow.querySelector('.zp-ev-doc .zp-ev-remarks')!.textContent).toContain('Expired');
+    expect(Array.from(gstRow.querySelectorAll('.zp-ev-shots a')).map((x) => x.textContent!.replace('PDF', '').trim())).toEqual(['1', '2']);
+    expect(gstRow.querySelector<HTMLInputElement>('.zp-ev-act input')!.value).toBe('Edit');
     expect(el.querySelector('img[src*="pdf-icon"]')).toBeNull();
 
     // Opening an evidence still records it (the old SaveTimestamp) and reloads.
@@ -419,28 +435,33 @@ describe('DaDetailsPage', () => {
     }));
     tab('Parameters');
     await settle();
-    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.param-nav .pn-item'));
-    expect(items.map((i) => i.querySelector('.pnum')!.textContent!.trim())).toEqual(['1', '2', '3', '4']);
-    expect(items.map((i) => i.querySelector('.st-chip')!.textContent!.trim())).toEqual(['Pending', 'Yes', 'No', 'Partial']);
-    expect(items[1].querySelector('.exempt-tag')!.textContent).toContain('Exempted');
-    expect(items[0].querySelector('.exempt-tag')).toBeNull();
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav .zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-num')!.textContent!.trim())).toEqual(['1', '2', '3', '4']);
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Pending', 'Exempt', 'No', 'Partial']);
+    // Progress: requirements with a conformance out of all; an exempted parameter says so and counts as complete.
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['0 of 1 requirements', 'Exempted', '2 of 2 requirements', '1 of 2 requirements']);
+    expect(items.map((i) => i.querySelector<HTMLElement>('.zp-bar > span')!.style.width)).toEqual(['0%', '100%', '100%', '50%']);
+    expect(el.querySelector('.zp-nav .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 4 complete');
 
     // The first parameter is shown by default, one at a time.
     expect(items[0].classList).toContain('active');
-    expect(el.querySelectorAll('.param-main .req-card').length).toBe(1);
-    expect(el.querySelector('.param-main')!.textContent).toContain('Has a quality policy');
-    expect(el.querySelector('.pm-head .st-chip')!.textContent!.trim()).toBe('Pending');
+    expect(el.querySelectorAll('.zp-main .zp-req').length).toBe(1);
+    expect(el.querySelector('.zp-main')!.textContent).toContain('Has a quality policy');
+    expect(el.querySelector('.zp-head .zp-chip')!.textContent!.trim()).toBe('Pending');
 
     items[2].click();
     await settle();
-    const main = el.querySelector('.param-main')!;
-    expect(el.querySelectorAll('.param-nav .pn-item')[2].classList).toContain('active');
-    expect(main.querySelector('.pm-head h5')!.textContent).toContain('Occupational Safety');
-    expect(main.querySelector('.pm-head .st-chip')!.textContent!.trim()).toBe('No');
-    expect(Array.from(main.querySelectorAll('.req-card .req-code')).map((c) => c.textContent!.trim())).toEqual(['3.1', '3.2']);
+    const main = el.querySelector('.zp-main')!;
+    expect(el.querySelectorAll('.zp-nav .zp-nav-item')[2].classList).toContain('active');
+    expect(main.querySelector('.zp-head h5')!.textContent).toContain('Occupational Safety');
+    expect(main.querySelector('.zp-head .zp-chip')!.textContent!.trim()).toBe('No');
+    expect(Array.from(main.querySelectorAll('.zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['3.1', '3.2']);
     expect(main.textContent).toContain('Fire extinguishers placed');
     expect(main.textContent).not.toContain('Has a quality policy');
-    expect(Array.from(main.querySelectorAll('.conf-block .st-chip')).map((c) => c.textContent!.trim())).toEqual(['Yes', 'No']);
+    // Each card: status chip in the title row, conformance and assessor remarks in its footer.
+    expect(Array.from(main.querySelectorAll('.zp-req .zp-req-title .zp-req-status')).map((c) => c.textContent!.trim())).toEqual(['Yes', 'No']);
+    expect(Array.from(main.querySelectorAll('.zp-req .zp-foot .zp-conf .zp-chip')).map((c) => c.textContent!.trim())).toEqual(['Yes', 'No']);
+    expect(Array.from(main.querySelectorAll('.zp-req .zp-foot .zp-remarks .zp-row')).map((c) => c.textContent!.trim())).toEqual(['—', '—']);
   });
 
   it('marks a parameter Partial while only some checkpoints are answered', async () => {
@@ -451,9 +472,9 @@ describe('DaDetailsPage', () => {
     await open(details({ checkpoints }));
     tab('Parameters');
     await settle();
-    expect(el.querySelector('.pn-item .st-chip')!.textContent!.trim()).toBe('Partial');
-    const row = el.querySelector('.cp-block .cp-item')!;
-    expect(row.querySelector('.cp-answer .cp-chip')!.textContent!.trim()).toBe('Partial');
+    expect(el.querySelector('.zp-nav-item .zp-chip')!.textContent!.trim()).toBe('Partial');
+    const row = el.querySelector('.zp-checkpoints .zp-cp')!;
+    expect(row.querySelector('.zp-cp-answer .cp-chip')!.textContent!.trim()).toBe('Partial');
     expect(row.textContent).toContain('Write the policy');
     expect(row.textContent).toContain('Draft only');
   });

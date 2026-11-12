@@ -26,16 +26,5 @@
 @media (max-width: 991px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 575px) { .facts { grid-template-columns: minmax(0, 1fr); } .fact.wide { grid-column: auto; } }
 
-/* PDF chips (global .pdf-chip): links without underline; long evidence names wrap. */
-.pdf-link { text-decoration: none; display: inline-block; }
-.ev-item .pdf-chip { white-space: normal; text-align: left; }
 .nc-tag { font-weight: 700; color: #23656b; margin-right: 6px; }
 
-/* Status chips: Yes / No / Partial / Pending. */
-.st-chip { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 2px 9px; white-space: nowrap; background: #eef1f1; color: #5f6f70; }
-.st-chip[data-v='Yes'] { background: #e5f4ea; color: #1e6b3a; }
-.st-chip[data-v='No'] { background: #fdecea; color: #a3261b; }
-.st-chip[data-v='Partial'] { background: #fff3dc; color: #8a5200; }
-.st-chip.lg { font-size: 13px; padding: 5px 14px; border-radius: 8px; }
-.st-chip.sm { font-size: 10px; padding: 0 7px; }
-.exempt-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #23656b; border: 1px dashed #2f8a92; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 1px; }

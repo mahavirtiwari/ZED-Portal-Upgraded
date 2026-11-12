@@ -182,31 +182,42 @@ describe('SiteAssessmentPage', () => {
     await open('Silver', assessment(), '/api/msme/site-assessment/Silver');
     await tab('Parameters');
 
-    expect(text()).toContain('1. Leadership');
+    // The parameter list (no conformance in the unit's report: names and counts only) and the first parameter.
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-nav-name')!.textContent!.trim())).toEqual(['Leadership', 'Swachh Workplace']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['1 requirements', 'Exempted']);
+    expect(items[1].querySelector('.zp-chip')!.textContent!.trim()).toBe('Exempt');
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Leadership');
     expect(el.querySelector('.tooltiptext')!.textContent).toBe('About leadership');
-    expect(el.querySelector('.label-top')!.textContent).toBe('1.1');
+    expect(el.querySelector('.zp-code')!.textContent).toBe('1.1');
     expect(text()).toContain('Vision displayed In local language');
-    expect(text()).toContain('Exempted from assessment: Yes');
     expect(text()).toContain('Well maintained unit');
 
-    const evidence = Array.from(el.querySelectorAll<HTMLAnchorElement>('.label-highlight-assesor a'));
+    const evidence = Array.from(el.querySelectorAll<HTMLAnchorElement>('.zp-evidences a'));
     expect(evidence.map((a) => a.getAttribute('href'))).toEqual([`${PHOTOS}mobileapi/Photos/ZEDMSME000001/Silver/Evidences/E55.pdf`]);
     expect(text()).toContain('Vision board');
-    // The exempted section shows no SA evidences.
-    expect(text()).not.toContain('Hidden photo');
 
-    el.querySelector<HTMLButtonElement>('.label-highlight-msme button')!.click();
+    el.querySelector<HTMLButtonElement>('.zp-site-photos button')!.click();
     await settle();
     expect(el.querySelector<HTMLImageElement>('.modal .sa-preview img')!.getAttribute('src')).toBe(`${PHOTOS}mobileapi/SaPhotos/ZEDMSME000001/Silver/SiteTour/31.jpg`);
     el.querySelector<HTMLInputElement>('.modal-footer input')!.click();
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
 
-    el.querySelector<HTMLButtonElement>('.label-highlight-msme button')!.click();
+    el.querySelector<HTMLButtonElement>('.zp-site-photos button')!.click();
     await settle();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     await settle();
     expect(el.querySelector('.modal')).toBeNull();
+
+    // Selecting the exempted parameter: its note, and no SA evidences.
+    el.querySelectorAll<HTMLButtonElement>('.zp-nav-item')[1].click();
+    await settle();
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Swachh Workplace');
+    expect(text()).toContain('Exempted from assessment: Yes');
+    expect(text()).not.toContain('Hidden photo');
+    expect(el.querySelector('.zp-site-photos')).toBeNull();
+    expect(text()).not.toContain('Vision displayed In local language');
   });
 
   it('has no assessor or agency controls and only links photos through the API', async () => {
@@ -242,6 +253,11 @@ describe('SiteAssessmentPage', () => {
     expect(text()).toContain('Consultant tour');
 
     await tab('Parameters');
+    // Milestones: the parameter list shows the basic diagnostic conformance as status.
+    expect(el.querySelector('.zp-nav-item .zp-chip')!.textContent!.trim()).toBe('Partial');
+    expect(el.querySelector('.zp-nav-item .zp-nav-meta')!.textContent!.trim()).toBe('0 of 1 requirements');
+    expect(el.querySelector('.zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 0 of 1 complete');
+    expect(el.querySelector('.zp-req .zp-req-status')!.textContent!.trim()).toBe('Partial');
     expect(text()).toContain('Milestone 1 : Basic Diagnostic Study');
     expect(text()).toContain('Conformance Partially');
     expect(text()).toContain('GAPS IDENTIFIED Gap one');

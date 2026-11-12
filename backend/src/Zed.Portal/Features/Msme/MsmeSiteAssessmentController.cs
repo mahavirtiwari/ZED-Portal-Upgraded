@@ -124,6 +124,9 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
     {
         /// <summary>The Admin's video for the requirement (2026-11-08).</summary>
         public string? VideoUrl { get; init; }
+
+        /// <summary>The requirement's text, the card's title (2026-11-12).</summary>
+        public string? RequirementName { get; init; }
     }
 
     public sealed record Section(
@@ -217,7 +220,7 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
                 .ToList(),
             Photos(sa[7].Where(ph => Same(ph, "RequirementId", req, "RequirementId")), zedId),
             Photos(sa[14].Where(ph => Same(ph, "RequirementId", req, "RequirementId")), zedId),
-            null));
+            null) { RequirementName = Str(req, "RequirementName") });
 
         return new SiteAssessmentResponse(
             type, "assessment",
@@ -248,7 +251,8 @@ public sealed class MsmeSiteAssessmentController(ISqlExecutor db) : MsmeApiContr
             [],
             Photos(sa[7].Where(ph => Same(ph, "RequirementId", req, "RequirementId")), zedId),
             [],
-            new Bullets(BulletsOf(req, "BaselineDiagnostic"), BulletsOf(req, "HandholdingActionPlan"), BulletsOf(req, "TechnologyIntervention"))));
+            new Bullets(BulletsOf(req, "BaselineDiagnostic"), BulletsOf(req, "HandholdingActionPlan"), BulletsOf(req, "TechnologyIntervention")))
+            { RequirementName = Str(req, "RequirementName") });
 
         // Site exterior photos are listed per open meeting (one per milestone).
         var siteExterior = sa[1]

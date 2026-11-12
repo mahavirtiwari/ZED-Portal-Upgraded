@@ -11,6 +11,7 @@ import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveReq
 import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-review.api';
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
+import { ParameterNav } from '../../msme/shared/parameter-status';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -166,6 +167,15 @@ export class RemoteAssessmentPage {
   protected readonly canAssess = computed(() => (this.data()?.permissions.canAssess ?? false) && !this.nc());
   /** The NC tab: the lead assessor, once the MSME has submitted the round. */
   protected readonly canAssessNc = computed(() => (this.data()?.permissions.canAssess ?? false) && !!this.nc()?.submitted);
+  /** Parameters tab: the parameter list (status from the remote / site conformance) and the selected parameter. */
+  protected readonly pn = new ParameterNav<Row, Row>({
+    sections: () => this.data()?.sections ?? [],
+    id: (s) => text(s, 'Id'),
+    requirements: (s) => this.requirementsOf(s),
+    conformance: (r) => r['SaConformance'],
+    exempted: (s) => this.exempted(s),
+    answered: (r) => checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.site?.value),
+  });
   /** Surveillance: held on the agency's meeting link. */
   protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
   protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;

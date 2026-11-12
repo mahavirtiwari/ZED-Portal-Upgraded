@@ -5,8 +5,9 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CertificationApi, CertificationData } from '../certification/certification.api';
 import { AssessmentApi, AssessmentReport, NonConformanceReport, Row, assessmentType } from './assessment.api';
-import { FileItem, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
+import { FileItem, SectionView, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
 import { MsmeUnitSummary } from '../shared/unit-summary';
+import { ParameterNav } from '../shared/parameter-status';
 
 export type AssessmentMode = 'basic-info' | 'non-conformances';
 
@@ -58,6 +59,13 @@ export class AssessmentReportView {
   protected readonly selfies = computed(() => photosOfType(this.basic()?.photos ?? [], 'Selfie'));
   protected readonly exteriorPhotos = computed(() => photosOfType(this.basic()?.photos ?? [], 'SiteExteriorPhotos'));
   protected readonly sections = computed(() => (this.basic() ? basicInfoSections(this.basic()!) : []));
+  /** Parameters tab: the parameter list and the selected parameter (the unit's report has no conformance: no status). */
+  protected readonly pn = new ParameterNav<SectionView, SectionView['requirements'][number]>({
+    sections: () => this.sections(),
+    id: (s) => String(s.section['SectionCode'] ?? ''),
+    requirements: (s) => s.requirements,
+    conformance: () => null,
+  });
   protected readonly esg = computed(() => (this.basic()?.esgCheckList ?? []).filter((e) => e['CheckListType'] === 'ESG'));
   protected readonly social = computed(() => (this.basic()?.esgCheckList ?? []).filter((e) => e['CheckListType'] === 'SOCIAL/OHS'));
 

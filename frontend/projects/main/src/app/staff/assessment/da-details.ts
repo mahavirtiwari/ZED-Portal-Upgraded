@@ -12,6 +12,7 @@ import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveReq
 import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
+import { ParameterChip, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -40,8 +41,6 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed:
 /** A key fact of the assessment summary card (label above, value below; wide facts span two columns). */
 export interface SummaryFact { label: string; value: string; wide?: boolean }
 
-/** Conformance status of a requirement or a parameter (section), as shown by the status chips of the parameters tab. */
-export type ConformanceStatus = 'Yes' | 'No' | 'Partial' | 'Pending';
 
 /**
  * Desktop assessment review page. Port of Views/Assessment/DaDetails.cshtml for the desktop assessor
@@ -55,7 +54,7 @@ export type ConformanceStatus = 'Yes' | 'No' | 'Partial' | 'Pending';
   imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
-  styleUrls: ['./da-details.css', './da-details-params.css'],
+  styleUrl: './da-details.css',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class DaDetailsPage {
@@ -215,23 +214,31 @@ export class DaDetailsPage {
    * Status of a requirement row: its conformance when given; "Partial" while only some of its checkpoints are answered
    * (or one is answered Partial); "Pending" when nothing is answered yet.
    */
-  protected requirementStatus(r: Row): ConformanceStatus {
-    const conformance = text(r, 'Conformance');
-    if (conformance === 'Yes' || conformance === 'No') return conformance;
-    return checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.desktop?.value) ? 'Partial' : 'Pending';
+  protected requirementStatus(r: Row): ParameterStatus {
+    return requirementStatus(text(r, 'Conformance'), checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.desktop?.value));
   }
 
   /** Status of a parameter from its requirements: all Yes, any No, some answered (Partial) or nothing answered (Pending). */
-  protected sectionStatus(s: Row): ConformanceStatus {
-    const statuses = this.requirementsOf(s, this.data()?.requirements).map((r) => this.requirementStatus(r));
-    if (!statuses.length || statuses.every((v) => v === 'Pending')) return 'Pending';
-    if (statuses.includes('No')) return 'No';
-    return statuses.every((v) => v === 'Yes') ? 'Yes' : 'Partial';
+  protected sectionStatus(s: Row): ParameterStatus {
+    return parameterStatus(this.requirementsOf(s, this.data()?.requirements).map((r) => this.requirementStatus(r)));
   }
 
   protected exempted(s: Row): boolean {
     return text(s, 'IsAssessmentExcempted') === 'Yes';
   }
+
+  /** Requirements of a parameter with a conformance given (done) out of all its requirements. */
+  protected sectionProgress(s: Row): ParameterProgress {
+    return parameterProgress(this.requirementsOf(s, this.data()?.requirements).map((r) => r['Conformance']));
+  }
+
+  /** Chip of a parameter in the list: "Exempt" for an exempted parameter, else its status. */
+  protected navStatus(s: Row): ParameterChip {
+    return parameterChip(this.sectionStatus(s), this.exempted(s));
+  }
+
+  /** Parameters complete (every requirement decided: status Yes or No; exempted ones count as complete). */
+  protected readonly completeCount = computed(() => (this.data()?.sections ?? []).filter((s) => parameterComplete(this.sectionProgress(s), this.exempted(s))).length);
 
   protected selectSection(s: Row): void {
     this.selectedSection.set(text(s, 'Id'));

@@ -204,7 +204,8 @@ public static class MsmeAssessment
     private static readonly string[] ProductFields = ["Id", "ProductName", "Exported"];
     private static readonly string[] RawMaterialFields = ["RawMaterialName", "Percentage", "CountryName"];
     private static readonly string[] SectionFields = ["SectionCode", "SectionName", "iButton"];
-    private static readonly string[] RequirementFields = ["SectionCode", "RequirementCode"];
+    // RequirementName (2026-11-12): the requirement card's title.
+    private static readonly string[] RequirementFields = ["SectionCode", "RequirementCode", "RequirementName"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields = ["SectionCode", "RequirementCode", "EvidenceName", "GeneratedTime"];

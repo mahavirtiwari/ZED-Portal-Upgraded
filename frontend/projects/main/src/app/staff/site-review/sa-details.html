@@ -423,119 +423,190 @@
       <!-- ================================================= parameters -->
       @if (tab() === 6 && !surveillance) {
         <div class="tab-pane fade show active" role="tabpanel">
-          @for (s of d.sections; track t(s, 'Id')) {
-            <div class="panel panel-default panel-black">
-              <div class="panel-body">
-                {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
-                @if (t(s, 'iButton')) {
-                  <span class="z-tooltip" style="float: right"><img src="Images/svgicons/info.svg" alt="Information" /><span class="tooltiptext left">{{ t(s, 'iButton') }}</span></span>
+          @let cur = pn.active();
+          <div class="zp-layout">
+            <nav class="zp-nav" aria-labelledby="saParamNavTitle">
+              <div class="zp-nav-head" id="saParamNavTitle">Parameters · {{ pn.complete() }} of {{ d.sections.length }} complete</div>
+              <div class="zp-nav-list">
+                @for (s of d.sections; track t(s, 'Id')) {
+                  @let st = pn.chip(s);
+                  @let pg = pn.progress(s);
+                  <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="pn.select(s)">
+                    <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                    <span class="zp-nav-body">
+                      <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
+                      <span class="zp-nav-meta">{{ pn.exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pn.exempted(s) ? 100 : pg.percent"></span></span>
+                    </span>
+                    <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                  </button>
                 }
               </div>
-            </div>
-            @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
-              <div class="panel panel-default m-0 mt-3">
-                <div class="panel-body border-left" style="position: relative">
-                  <div class="label-top">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</div><zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" />
-                  <div class="label-highlight3">
-                    @for (o of optionsOf(r, d.options); track $index) {
-                      <div>{{ t(o, 'OptionName') }}<ul>@for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul></div>
-                    }
-                  </div>
-                </div>
-              </div>
-              <div class="req-results">
-                <table class="table table-zed m-0">
-                  <tr>
-                    <td rowspan="2" class="desktop-assessment"><p>Desktop</p></td>
-                    <td class="p-0">
-                      @if (evidencesOf(r, d.evidences).length === 0) { <p class="p-2">No Documents Uploaded</p> }
-                      <table class="table m-0">
-                        @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
-                          <tr>
-                            <td>
-                              {{ t(e, 'EvidenceName') }}
-                              <span class="ms-2">Generated at {{ t(e, 'SyncedDate') }}</span>
-                              @if (t(e, 'FileUrl')) { <a class="btn btn-outline-primary btn-sm pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener">VIEW</a> }
-                            </td>
-                          </tr>
-                        }
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      <p class="sub-heading">Conformance: {{ t(r, 'Conformance') }}</p>
-                      <div class="label-highlight label-highlight-assesor-remark">
-                        <div><strong>ASSESSOR REMARKS</strong><span class="pull-right">{{ t(r, 'UpdatedDate') }}</span></div>
-                        <span>{{ t(r, 'AssessorRemarks') }}</span>
-                      </div>
-                    </td>
-                  </tr>
-                </table>
-                <table class="table table-bordered table-zed">
-                  <tr>
-                    <td rowspan="2" class="site-assessment"><p>Site Assessment</p></td>
-                    <td class="p-0">
-                      @if (t(s, 'IsAssessmentExcempted') !== 'Yes') {
-                        @if (requirementPhotos(r).length === 0) { <p class="p-2">No Documents Uploaded</p> }
-                        <table class="table m-0">
-                          @for (pp of requirementPhotos(r); track $index) {
-                            <tr>
-                              <td>
-                                {{ pp.name }}
-                                @if (pp.url) { <button type="button" class="btn btn-link p-0 ms-2" (click)="openImage(pp.url)"><img [src]="pp.url" height="40" alt="Evidence photo" /></button> }
-                                <span class="ms-2">Generated at {{ pp.createdDate }}</span>
-                              </td>
-                            </tr>
-                          }
-                        </table>
+            </nav>
+
+            <div class="zp-main">
+              @if (cur; as s) {
+                @let sst = pn.status(s);
+                <div class="zp-section" [attr.data-section]="t(s, 'SectionCode')">
+                  <div class="zp-head">
+                    <div class="zp-head-title">
+                      <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                      <h5>{{ t(s, 'SectionName') }}</h5>
+                      @if (t(s, 'iButton')) {
+                        <span class="zp-info" tabindex="0">
+                          <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                          <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                        </span>
                       }
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>
-                      @if (t(s, 'IsAssessmentExcempted') !== 'Yes') {
-                        <p class="sub-heading">Conformance: {{ t(r, 'SaConformance') }}</p>
-                        <div class="label-highlight label-highlight-assesor-remark">
-                          <div><strong>ASSESSOR REMARKS</strong><span class="pull-right">{{ t(r, 'SaUpdatedDate') }}</span></div>
-                          <span>{{ t(r, 'SaAssessorRemarks') }}</span>
-                          @if (review().editRemarks) {
-                            <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('requirement', r['Id'], t(r, 'SaAssessorRemarks'))" />
+                      @if (pn.exempted(s)) { <span class="zp-tag">Exempted</span> }
+                    </div>
+                    <div class="zp-head-status">
+                      <span class="zp-label">Conformance</span>
+                      <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                    </div>
+                  </div>
+
+                  @if (t(s, 'IsAssessmentExcempted')) {
+                    <div class="zp-section-note">
+                      <span>Exempted from Remote/Site Assessment</span>
+                      @if (perms().canWithdrawExemption && t(s, 'IsAssessmentExcempted') === 'Yes') {
+                        <label class="radio-label">
+                          <input type="radio" class="option-input yes radio" [name]="'saExempt' + t(s, 'Id')" value="Yes" checked /> Yes&nbsp;
+                        </label>
+                        <label class="radio-label">
+                          <input type="radio" class="option-input no radio" [name]="'saExempt' + t(s, 'Id')" value="No" [disabled]="busy()" (change)="withdrawExemption(s)" /> No
+                        </label>
+                      } @else {
+                        <strong>{{ t(s, 'IsAssessmentExcempted') }}</strong>
+                      }
+                    </div>
+                  }
+
+                  @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
+                    @let rst = pn.requirementStatus(r);
+                    <article class="zp-req" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
+                      <div class="zp-req-title">
+                        <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
+                        <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                        <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(s, 'SectionCode') + '.' + t(r, 'RequirementCode')" [compact]="true" />
+                        <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                      </div>
+
+                      <div class="zp-req-body">
+                        <div class="zp-block zp-checkpoints">
+                          <div class="zp-block-head">Checkpoints</div>
+                          @for (o of optionsOf(r, d.options); track $index) {
+                            <div class="zp-cp">
+                              <div class="zp-cp-text">
+                                {{ t(o, 'OptionName') }}
+                                @if (subOptionsOf(o, d.subOptions).length) {
+                                  <ul>@for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
+                                }
+                              </div>
+                              <div class="zp-cp-answer"></div>
+                            </div>
+                          } @empty {
+                            <div class="zp-block-empty">No checkpoints.</div>
                           }
                         </div>
-                      }
-                    </td>
-                  </tr>
-                </table>
-              </div>
-            }
-            @if (t(s, 'IsAssessmentExcempted') !== 'Yes') {
-              <div class="label-highlight label-highlight-assesor-remark">
-                <div><strong>OFI COMMENTS</strong></div>
-                <span>{{ t(s, 'OfiComments') }}</span>
-                @if (review().editRemarks) {
-                  <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('ofi', s['Id'], t(s, 'OfiComments'))" />
-                }
-              </div>
-            }
-            @if (t(s, 'IsAssessmentExcempted')) {
-              <div class="panel panel-default panel-white m-0 mb-4">
-                <div class="panel-body d-flex justify-content-end align-items-center">
-                  <p class="sub-heading">Exempted from Remote/Site Assessment</p>
-                  @if (perms().canWithdrawExemption && t(s, 'IsAssessmentExcempted') === 'Yes') {
-                    <label class="radio-label ms-2">
-                      <input type="radio" class="option-input yes radio" [name]="'saExempt' + t(s, 'Id')" value="Yes" checked /> Yes&nbsp;
-                    </label>
-                    <label class="radio-label">
-                      <input type="radio" class="option-input no radio" [name]="'saExempt' + t(s, 'Id')" value="No" [disabled]="busy()" (change)="withdrawExemption(s)" /> No
-                    </label>
-                  } @else {
-                    <span class="ms-2"><strong>{{ t(s, 'IsAssessmentExcempted') }}</strong></span>
+
+                        <div class="zp-block zp-evidences">
+                          <div class="zp-block-head">Evidences (desktop assessment)</div>
+                          @if (evidencesOf(r, d.evidences).length) {
+                            <table class="zp-ev-table">
+                              <thead><tr><th>Document</th><th>Generated at</th></tr></thead>
+                              <tbody>
+                                @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
+                                  <tr class="zp-ev-row">
+                                    <td class="zp-ev-doc" data-label="Document">
+                                      @if (t(e, 'FileUrl')) {
+                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span></a>
+                                      } @else {
+                                        {{ t(e, 'EvidenceName') }}
+                                      }
+                                    </td>
+                                    <td data-label="Generated at">{{ t(e, 'SyncedDate') || '—' }}</td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
+                          } @else {
+                            <div class="zp-block-empty">No Documents Uploaded</div>
+                          }
+                        </div>
+
+                        @if (!pn.exempted(s)) {
+                          <div class="zp-block zp-site-photos">
+                            <div class="zp-block-head">Photos (site assessment)</div>
+                            @if (requirementPhotos(r).length) {
+                              <div class="zp-block-body zp-photos">
+                                @for (pp of requirementPhotos(r); track $index) {
+                                  <div class="zp-photo">
+                                    @if (pp.url) { <button type="button" class="btn btn-link p-0" (click)="openImage(pp.url)"><img [src]="pp.url" alt="Evidence photo" /></button> }
+                                    <span>{{ pp.name }}</span>
+                                    <span class="zp-muted">Generated at {{ pp.createdDate }}</span>
+                                  </div>
+                                }
+                              </div>
+                            } @else {
+                              <div class="zp-block-empty">No Documents Uploaded</div>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <div class="zp-foot">
+                        <div class="zp-conf zp-da">
+                          <div class="zp-label">Desktop conformance</div>
+                          <div class="zp-row">
+                            @if (t(r, 'Conformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'Conformance')">{{ t(r, 'Conformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                          </div>
+                        </div>
+                        <div class="zp-remarks zp-da">
+                          <div class="zp-label">Desktop assessor remarks @if (t(r, 'UpdatedDate')) { <span class="zp-muted">· {{ t(r, 'UpdatedDate') }}</span> }</div>
+                          <div class="zp-row"><span>{{ t(r, 'AssessorRemarks') || '—' }}</span></div>
+                        </div>
+                        @if (!pn.exempted(s)) {
+                          <div class="zp-conf zp-sa">
+                            <div class="zp-label">Site conformance</div>
+                            <div class="zp-row">
+                              @if (t(r, 'SaConformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'SaConformance')">{{ t(r, 'SaConformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                            </div>
+                          </div>
+                          <div class="zp-remarks zp-sa">
+                            <div class="zp-label">Site assessor remarks @if (t(r, 'SaUpdatedDate')) { <span class="zp-muted">· {{ t(r, 'SaUpdatedDate') }}</span> }</div>
+                            <div class="zp-row">
+                              <span>{{ t(r, 'SaAssessorRemarks') || '—' }}</span>
+                              @if (review().editRemarks) {
+                                <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm zp-btn" (click)="editRemarks('requirement', r['Id'], t(r, 'SaAssessorRemarks'))" />
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="zp-muted">No requirements in this parameter.</p>
+                  }
+
+                  @if (!pn.exempted(s)) {
+                    <div class="zp-block zp-ofi">
+                      <div class="zp-block-head">OFI comments</div>
+                      <div class="zp-block-body zp-row">
+                        <span>{{ t(s, 'OfiComments') || '—' }}</span>
+                        @if (review().editRemarks) {
+                          <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm zp-btn" (click)="editRemarks('ofi', s['Id'], t(s, 'OfiComments'))" />
+                        }
+                      </div>
+                    </div>
                   }
                 </div>
-              </div>
-            }
-          }
+              } @else {
+                <p class="zp-muted">No parameters.</p>
+              }
+            </div>
+          </div>
+
           @if (t(msme(), 'SaAssessorRemarks')) {
             <div class="alert alert-success mt-3">{{ t(msme(), 'SaAssessorRemarks') }}</div>
           }

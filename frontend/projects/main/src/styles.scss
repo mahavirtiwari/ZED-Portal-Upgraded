@@ -131,3 +131,6 @@ input[type='search'].form-control {
   background-size: 16px;
   padding-right: 36px;
 }
+
+// Parameters layout of the assessment pages (left parameter list, requirement cards): one look on every page, "zp-" classes.
+@include meta.load-css('styles/zed-parameters');

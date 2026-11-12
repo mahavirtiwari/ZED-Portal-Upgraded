@@ -92,8 +92,47 @@ describe('RemoteAssessmentPage', () => {
     await openTab('Parameters');
     expect(el.querySelector('.validate-requirement')).toBeNull();
     expect(el.querySelector('.final-submit')).toBeNull();
-    expect(el.querySelector('table.requirement img')).toBeNull(); // option text is not HTML
-    expect(el.querySelector('table.requirement')!.textContent).toContain('<img src=x onerror=alert(1)>');
+    expect(el.querySelector('.zp-req.requirement img')).toBeNull(); // option text is not HTML
+    expect(el.querySelector('.zp-req.requirement')!.textContent).toContain('<img src=x onerror=alert(1)>');
+  });
+
+  it('lists the parameters with their status and shows the selected one as requirement cards', async () => {
+    const data = details();
+    data.sections = [
+      { Id: 41, SectionCode: '1', SectionName: 'Leadership', IsAssessmentExcempted: 'No', OfiComments: 'Improve' },
+      { Id: 42, SectionCode: '2', SectionName: 'Safety', IsAssessmentExcempted: 'No', OfiComments: null },
+      { Id: 43, SectionCode: '3', SectionName: 'Swachh', IsAssessmentExcempted: 'Yes', OfiComments: null },
+    ];
+    data.requirements = [
+      { Id: 51, SectionCode: '1', RequirementCode: '1', Conformance: 'Yes', AssessorRemarks: 'Desk ok', SaConformance: 'Yes', SaAssessorRemarks: 'Seen', RemotePhotos: [] },
+      { Id: 52, SectionCode: '2', RequirementCode: '1', Conformance: 'No', SaConformance: null, RemotePhotos: [] },
+      { Id: 53, SectionCode: '2', RequirementCode: '2', Conformance: 'Yes', SaConformance: 'No', RemotePhotos: [] },
+      { Id: 54, SectionCode: '3', RequirementCode: '1', Conformance: 'Yes', SaConformance: null, RemotePhotos: [] },
+    ];
+    data.evidences = [{ Id: 91, SectionCode: '1', RequirementCode: '1', EvidenceName: 'Policy', IsVerified: 'Yes', FileUrl: BASE + '/files/e.pdf' }];
+    await create(data);
+    await openTab('Parameters');
+    const items = [...el.querySelectorAll<HTMLButtonElement>('.zp-nav-item')];
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Yes', 'No', 'Exempt']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['1 of 1 requirements', '1 of 2 requirements', 'Exempted']);
+    expect(el.querySelector('.zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Parameters · 2 of 3 complete');
+    const card = el.querySelector('.zp-main .zp-req')!;
+    expect(card.querySelector('.zp-ev-table a.evidence-file')!.textContent).toContain('Policy');
+    expect(card.querySelector('.zp-ev-verified .zp-chip')!.textContent!.trim()).toBe('Yes');
+    expect(card.querySelector('.zp-foot .zp-conf.zp-da .zp-chip')!.textContent!.trim()).toBe('Yes');
+    expect(card.querySelector('.zp-foot .zp-conf.zp-sa .validate-requirement')!.textContent!.trim()).toBe('Edit');
+    expect(el.querySelector('.zp-ofi .edit-ofi')!.textContent!.trim()).toBe('Edit');
+
+    items[1].click();
+    await settle(fixture);
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Safety');
+    expect([...el.querySelectorAll('.zp-main .zp-req .zp-code')].map((c) => c.textContent!.trim())).toEqual(['2.1', '2.2']);
+    items[2].click();
+    await settle(fixture);
+    // Exempted: no remote conformance, photos or OFI comments.
+    expect(el.querySelector('.validate-requirement')).toBeNull();
+    expect(el.querySelector('.zp-site-photos')).toBeNull();
+    expect(el.querySelector('.edit-ofi')).toBeNull();
   });
 
   it('records conformance and reloads', async () => {

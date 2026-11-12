@@ -136,6 +136,31 @@ describe('Assessment pages (MSME, read-only)', () => {
     expectReadOnly(el);
   });
 
+  it('parameters: the list of parameters and the selected one as requirement cards', async () => {
+    const data = assessment();
+    data.sections = [...data.sections, { SectionCode: '2', SectionName: 'Swachh Workplace', iButton: '' }];
+    data.requirements = [...data.requirements, { SectionCode: '2', RequirementCode: '1' }];
+    data.options = [...data.options, { SectionCode: '2', RequirementCode: '1', OptionCode: '1', OptionName: 'Work area is clean' }];
+    const { fixture, el, text } = await open(BasicInfoPage, 'Bronze', '/api/msme/assessment/Bronze/basic-info', data, 'Bronze');
+    tab(el, 'Parameters / Document Uploaded').click();
+    await settle(fixture);
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['2 requirements', '1 requirements']);
+    // The unit's report has no conformance: no status chips.
+    expect(el.querySelector('.zp-nav .zp-chip')).toBeNull();
+    expect(items[0].classList).toContain('active');
+    expect(text()).toContain('Has a quality policy');
+
+    items[1].click();
+    await settle(fixture);
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Swachh Workplace');
+    expect(Array.from(el.querySelectorAll('.zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['2.1']);
+    expect(text()).toContain('Work area is clean');
+    expect(text()).not.toContain('Has a quality policy');
+    expect(text()).toContain('No Documents necessary');
+    expectReadOnly(el);
+  });
+
   it('basic information: ESG checklist and parameters with their evidence documents', async () => {
     const { fixture, el, text } = await open(BasicInfoPage, 'Bronze', '/api/msme/assessment/Bronze/basic-info', assessment(), 'Bronze');
 
@@ -149,15 +174,18 @@ describe('Assessment pages (MSME, read-only)', () => {
 
     tab(el, 'Parameters / Document Uploaded').click();
     await settle(fixture);
-    expect(text()).toContain('1. Leadership');
-    expect(text()).toContain('1.1');
+    // The parameter list and the first parameter's requirement cards.
+    expect(Array.from(el.querySelectorAll('.zp-nav-item .zp-nav-name')).map((n) => n.textContent!.trim())).toEqual(['Leadership']);
+    expect(el.querySelector('.zp-nav-item .zp-nav-meta')!.textContent!.trim()).toBe('2 requirements');
+    expect(el.querySelector('.zp-head h5')!.textContent).toContain('Leadership');
+    expect(Array.from(el.querySelectorAll('.zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['1.1', '1.2']);
     expect(text()).toContain('Has a quality policy');
     expect(text()).toContain('Written and displayed');
     expect(text()).toContain('Generated at May 2, 2024');
     // Not generated yet, and a requirement without documents.
     expect(text()).toContain('No Documents uploaded');
     expect(text()).toContain('No Documents necessary');
-    const view = Array.from(el.querySelectorAll<HTMLAnchorElement>('a.btn-primary'));
+    const view = Array.from(el.querySelectorAll<HTMLAnchorElement>('.zp-ev-table a'));
     expect(view.map((a) => a.getAttribute('href'))).toEqual([F('Bronze', 'da', 'Photos/Z/B/Evidences/E1.pdf')]);
     expect(view[0].target).toBe('_blank');
 

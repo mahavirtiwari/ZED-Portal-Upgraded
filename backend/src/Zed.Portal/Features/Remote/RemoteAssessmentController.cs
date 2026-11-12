@@ -109,7 +109,7 @@ public sealed class RemoteAssessmentController(
         ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "IsSaVerified", "SaAssessorRemarks", "ProductDescOpenedTime"];
     private static readonly string[] RawMaterialFields = ["ModeOfAssessment", "RawMaterialName", "Percentage", "CountryName"];
     private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "iButton", "IsAssessmentExcempted", "OfiComments"];
-    private static readonly string[] RequirementFields = ["Id", "SectionCode", "RequirementCode", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks"];
+    private static readonly string[] RequirementFields = ["Id", "SectionCode", "RequirementCode", "RequirementName", "Conformance", "AssessorRemarks", "SaConformance", "SaAssessorRemarks"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields = ["Id", "SectionCode", "RequirementCode", "EvidenceName", "IsVerified", "AssessorRemarks"];

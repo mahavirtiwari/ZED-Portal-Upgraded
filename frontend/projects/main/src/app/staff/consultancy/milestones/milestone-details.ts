@@ -11,6 +11,7 @@ import { isZedId } from '../../assessment/assessment.api';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../../assessment/checkpoint-dialog';
 import { BulletType, MilestoneBullet, MilestoneDetails, MilestoneMeeting, MilestonePhoto, MilestonesApi, Row, milestoneLevel } from './milestones.api';
 import { RequirementVideo } from '../../../msme/shared/requirement-video';
+import { ParameterNav } from '../../../msme/shared/parameter-status';
 
 /** Tabs of the old consultancy SaDetails page. */
 export const MILESTONE_TABS: Record<number, string> = {
@@ -166,7 +167,6 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
-    .milestone-border { border-left: 4px solid #ad1616 !important; padding-left: 8px; margin-bottom: 12px; }
     .details { margin-bottom: 0; }
     .w-40 { width: 40%; }
     /* Section bars (the old page's black "panel-black" headings). */
@@ -190,21 +190,6 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
     .photo-file { display: flex; align-items: center; gap: 8px; flex: 1 1 220px; }
     .photo-file img { border-radius: 6px; }
     .selfie { border-radius: 6px; object-fit: cover; }
-    /* Parameters accordion: a tinted bar with + / - (the old page's black panel with the plus / minus icon). */
-    .param-section { margin-top: 12px; }
-    .section-toggle {
-      display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer;
-      background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; color: #23474a; font-size: 15px; font-weight: 700;
-    }
-    .section-toggle:hover, .section-toggle:focus-visible { border-color: #45a5ad; }
-    .section-toggle::after { content: '+'; font-size: 20px; line-height: 1; color: #2f7c83; margin-left: auto; }
-    .section-toggle.open { border-radius: 10px 10px 0 0; }
-    .section-toggle.open::after { content: '−'; }
-    .section-body { border: 1px solid #dfe9ea; border-top: 0; border-radius: 0 0 10px 10px; padding: 12px; }
-    .requirement + .requirement { margin-top: 16px; }
-    .requirement-head .label-highlight3 { border-radius: 0 8px 8px 8px; }
-    .answer-grid { display: grid; grid-template-columns: minmax(0, 360px); }
-    .answer { margin-top: 4px; }
     .add-more { list-style: none; margin-top: 6px; }
     .value-box { padding: 10px; min-height: 70px; background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; white-space: pre-wrap; }
     .meeting { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
@@ -247,8 +232,14 @@ export class MilestoneDetailsPage {
   protected readonly dialogText = signal('');
   protected readonly confirmed = signal(false);
   protected readonly dialogError = signal('');
-  /** Sections open in the parameters accordion (all closed at first, as on the old page). */
-  protected readonly openSections = signal<ReadonlySet<string>>(new Set());
+  /** Parameters tab: the parameter list (status from the basic diagnostic conformance) and the selected parameter. */
+  protected readonly pn = new ParameterNav<Row, Row>({
+    sections: () => this.data()?.sections ?? [],
+    id: (s) => text(s, 'SectionCode'),
+    requirements: (s) => this.requirementsOf(s),
+    conformance: (r) => r['SaConformance'],
+    exempted: (s) => text(s, 'IsAssessmentExcempted') === 'Yes',
+  });
   private meetingId: number | null = null;
 
   private request = 0;
@@ -277,18 +268,6 @@ export class MilestoneDetailsPage {
 
   protected allotmentsOf(section: Row): Row[] {
     return (this.data()?.allotments ?? []).filter((a) => text(a, 'SectionCode') === text(section, 'SectionCode'));
-  }
-
-  protected isOpen(section: Row): boolean {
-    return this.openSections().has(text(section, 'SectionCode'));
-  }
-
-  protected toggle(section: Row): void {
-    const code = text(section, 'SectionCode');
-    const open = new Set(this.openSections());
-    if (open.has(code)) open.delete(code);
-    else open.add(code);
-    this.openSections.set(open);
   }
 
   protected requirementsOf(section: Row): Row[] {
@@ -580,7 +559,7 @@ export class MilestoneDetailsPage {
       this.data.set(data);
       if (first) {
         this.tab.set(1);
-        this.openSections.set(new Set());
+        this.pn.selected.set(null);
       }
     } catch (err) {
       if (request !== this.request) return;

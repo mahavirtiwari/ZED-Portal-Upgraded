@@ -1,0 +1,112 @@
+// Parameters layout of the assessment pages (2026-11-12): desktop assessment, site assessment review, surveillance review,
+// site / remote assessment, handholding milestones and the MSME's own reports. Left: the parameter list with progress and
+// status; right: the selected parameter's teal header card and its requirement cards (title row, checkpoints, evidences
+// table, footer with conformance and remarks). Global (not a component style) so every page shares one look; every class
+// is prefixed "zp-".
+
+$zp-teal: #23656b;
+$zp-accent: #2f8a92;
+$zp-line: #dce7e8;
+$zp-soft-line: #e3ecee;
+$zp-row-line: #eef3f3;
+$zp-strip: #f6fafa;
+$zp-text: #1b2a2c;
+$zp-muted: #5f6f70;
+
+// ---- Layout ------------------------------------------------------------------------------------------------------
+.zp-layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+.zp-main { min-width: 0; font-size: 13px; color: $zp-text; }
+.zp-muted { color: $zp-muted; }
+.zp-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: $zp-muted; margin-bottom: 4px; }
+
+// ---- Parameter list ---------------------------------------------------------------------------------------------------
+.zp-nav { position: sticky; top: 80px; max-height: calc(100vh - 96px); display: flex; flex-direction: column; border: 1px solid $zp-line; border-radius: 10px; overflow: hidden; background: #fff; }
+.zp-nav-head { background: $zp-teal; color: #fff; font-size: 12px; font-weight: 700; padding: 10px 14px; }
+.zp-nav-list { padding: 6px; overflow-y: auto; }
+.zp-nav-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 0; border-radius: 7px; padding: 9px 10px; margin-bottom: 2px; color: $zp-text; }
+.zp-nav-item:hover { background: #f3f8f8; }
+.zp-nav-item.active { background: #e8f2f3; box-shadow: inset 3px 0 0 $zp-teal; }
+.zp-num { flex-shrink: 0; min-width: 26px; text-align: center; background: $zp-teal; color: #fff; font-size: 11px; font-weight: 700; border-radius: 5px; padding: 3px 6px; }
+.zp-nav-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.zp-nav-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.zp-nav-meta { font-size: 11px; color: $zp-muted; }
+.zp-bar { display: block; height: 3px; border-radius: 2px; background: $zp-soft-line; overflow: hidden; margin-top: 2px; }
+.zp-bar > span { display: block; height: 100%; background: $zp-accent; }
+
+// ---- Status chips (data-v = Yes / No / Partial / Pending / Exempt, or the classes of the same names) ---------------------
+.zp-chip { display: inline-block; font-size: 11px; font-weight: 700; line-height: 1.5; border-radius: 10px; padding: 1px 9px; white-space: nowrap; background: #eef1f1; color: $zp-muted; }
+.zp-chip[data-v='Yes'], .zp-chip.yes { background: #e5f4ea; color: #1e6b3a; }
+.zp-chip[data-v='No'], .zp-chip.no { background: #fdecea; color: #a3261b; }
+.zp-chip[data-v='Partial'], .zp-chip.partial { background: #fff3dc; color: #8a5200; }
+
+// ---- Selected parameter's header card -------------------------------------------------------------------------------
+.zp-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; margin-bottom: 12px; border-radius: 10px; color: #fff;
+  background: linear-gradient(135deg, #1d5a5f 0%, $zp-teal 45%, $zp-accent 100%); box-shadow: 0 4px 12px rgba(35, 101, 107, 0.18); }
+.zp-head-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.zp-head-title h5 { margin: 0; font-size: 15px; font-weight: 700; color: #fff; }
+.zp-head .zp-num { background: #fff; color: $zp-teal; font-size: 13px; padding: 4px 9px; }
+.zp-head-status { display: flex; align-items: center; gap: 8px; }
+.zp-head-status .zp-label { color: rgba(255, 255, 255, 0.8); margin: 0; }
+.zp-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; border: 1px dashed rgba(255, 255, 255, 0.7); border-radius: 6px; padding: 0 5px; }
+.zp-info { position: relative; display: inline-flex; }
+.zp-info-i { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #fff; color: $zp-teal; font: italic 700 12px/1 Georgia, serif; cursor: help; }
+.zp-info .tooltiptext { visibility: hidden; position: absolute; z-index: 30; top: 26px; left: 0; width: min(560px, 80vw); background: rgba(51, 51, 51, 0.95); color: #fff; font-size: 13px; font-weight: 400; line-height: 1.45; border-radius: 6px; padding: 10px 12px; }
+.zp-info:hover .tooltiptext, .zp-info:focus-within .tooltiptext { visibility: visible; }
+.zp-section-note { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 12px; font-size: 14px; }
+
+// ---- Requirement card ---------------------------------------------------------------------------------------------------
+.zp-req { background: #fff; border: 1px solid $zp-line; border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+.zp-req-title { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 0; }
+.zp-code { flex-shrink: 0; background: $zp-teal; color: #fff; font-size: 12px; font-weight: 700; border-radius: 5px; padding: 2px 8px; }
+.zp-req-text { flex: 1; min-width: 0; font-weight: 700; color: $zp-text; line-height: 1.4; }
+.zp-req-status { margin-left: auto; flex-shrink: 0; display: flex; gap: 6px; align-items: center; }
+.zp-req-body { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px 12px; }
+.zp-block { border: 1px solid $zp-line; border-radius: 8px; overflow: hidden; }
+.zp-block-head { background: $zp-strip; border-bottom: 1px solid $zp-soft-line; padding: 6px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: $zp-muted; }
+.zp-block-body { padding: 8px 12px; }
+.zp-block-empty { padding: 8px 12px; color: $zp-muted; }
+.zp-cp { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 8px 12px; border-bottom: 1px solid $zp-row-line; }
+.zp-cp:last-child { border-bottom: 0; }
+.zp-cp-text { line-height: 1.45; }
+.zp-cp-text ul { margin: 4px 0 0; padding-left: 18px; }
+.zp-cp-note { font-size: 12px; color: $zp-muted; margin-top: 2px; }
+.zp-cp-answer { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
+.zp-cp-answer .cp-chip { margin: 0; }
+.zp-ev-table { width: 100%; border-collapse: collapse; margin: 0; }
+.zp-ev-table th { text-align: left; padding: 6px 12px; border-bottom: 1px solid $zp-soft-line; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: $zp-muted; background: none; }
+.zp-ev-table td { padding: 8px 12px; border-bottom: 1px solid $zp-row-line; vertical-align: middle; background: none; }
+// The pages' own table rules (16px) must not enlarge the evidence table's text.
+.zp-block table.zp-ev-table td { font-size: 13px; line-height: 1.4; color: #1b2a2c; }
+.zp-ev-table tr:last-child td { border-bottom: 0; }
+.zp-ev-doc .pdf-chip { white-space: normal; text-align: left; }
+.zp-ev-remarks { font-size: 12px; color: $zp-muted; margin-top: 3px; }
+.zp-ev-table .pdf-link + .pdf-link { margin-left: 4px; }
+.zp-ev-act { text-align: right; white-space: nowrap; }
+.zp-photos { display: flex; flex-wrap: wrap; gap: 10px; }
+.zp-photo { display: flex; flex-direction: column; gap: 4px; font-size: 12px; max-width: 180px; }
+.zp-photo img { height: 90px; max-width: 180px; object-fit: cover; border-radius: 6px; border: 1px solid $zp-line; }
+.zp-foot { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 18px; background: $zp-strip; border-top: 1px solid $zp-soft-line; padding: 9px 12px; }
+.zp-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.pdf-link { text-decoration: none; display: inline-block; }
+
+// ---- Small action buttons of the parameters layout (primary actions keep their filled style) ---------------------------
+body .btn.zp-btn, body .btn.zp-btn.btn-primary, body .btn.zp-btn.btn-outline-primary, body .btn.zp-btn.btn-default {
+  height: 26px; padding: 0 10px; margin: 0; font-size: 12px; font-weight: 600; line-height: 24px; text-transform: none;
+  border: 1px solid #cfe0e2 !important; border-radius: 7px; background: #fff !important; color: $zp-teal !important; box-shadow: none; filter: none;
+}
+body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: #e6f2f3 !important; color: $zp-teal !important; }
+
+@media (max-width: 991px) {
+  .zp-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .zp-nav { position: static; max-height: none; border: 0; background: none; overflow: visible; }
+  .zp-nav-head { border-radius: 8px; margin-bottom: 6px; }
+  .zp-nav-list { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; }
+  .zp-nav-item { flex: 0 0 auto; width: 240px; margin: 0; border: 1px solid $zp-line; background: #fff; }
+}
+@media (max-width: 767px) {
+  .zp-ev-table thead { display: none; }
+  .zp-ev-table tr { display: block; padding: 6px 0; border-bottom: 1px solid $zp-row-line; }
+  .zp-ev-table td { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; border: 0; padding: 3px 12px; }
+  .zp-ev-table td[data-label]::before { content: attr(data-label); flex: 0 0 90px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: $zp-muted; }
+  .zp-foot { grid-template-columns: minmax(0, 1fr); }
+}

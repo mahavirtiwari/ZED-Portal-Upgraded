@@ -210,73 +210,101 @@
 
                           @case ('elements') {
                             <div class="tab-pane fade show active ar-pane-grey" role="tabpanel">
-                              <div class="row">
-                                @for (s of sections(); track $index) {
-                                  <div>
-                                    <div class="col-sm-12">
-                                      <div class="panel panel-default panel-black m-b-2 m-t-2">
-                                        <div class="panel-body">
-                                          <div class="info-block">
-                                            {{ s.section['SectionCode'] }}. {{ s.section['SectionName'] }}
-                                            <div class="z-tooltip">
-                                              <img src="/Images/svgicons/info.svg" alt="" />
+                              @let cur = pn.active();
+                              <div class="zp-layout">
+                                <nav class="zp-nav" aria-labelledby="arParamNavTitle">
+                                  <div class="zp-nav-head" id="arParamNavTitle">Parameters</div>
+                                  <div class="zp-nav-list">
+                                    @for (s of sections(); track $index) {
+                                      <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="s.section['SectionCode']" (click)="pn.select(s)">
+                                        <span class="zp-num">{{ s.section['SectionCode'] }}</span>
+                                        <span class="zp-nav-body">
+                                          <span class="zp-nav-name">{{ s.section['SectionName'] }}</span>
+                                          <span class="zp-nav-meta">{{ s.requirements.length }} requirements</span>
+                                        </span>
+                                      </button>
+                                    }
+                                  </div>
+                                </nav>
+
+                                <div class="zp-main">
+                                  @if (cur; as s) {
+                                    <div class="zp-section" [attr.data-section]="s.section['SectionCode']">
+                                      <div class="zp-head">
+                                        <div class="zp-head-title">
+                                          <span class="zp-num">{{ s.section['SectionCode'] }}</span>
+                                          <h5>{{ s.section['SectionName'] }}</h5>
+                                          @if (s.section['iButton']) {
+                                            <span class="zp-info" tabindex="0">
+                                              <span class="zp-info-i" role="img" aria-label="Information">i</span>
                                               <span class="tooltiptext">{{ s.section['iButton'] }}</span>
-                                            </div>
-                                          </div>
+                                            </span>
+                                          }
                                         </div>
                                       </div>
-                                    </div>
-                                    <div class="col-sm-12">
                                       @for (r of s.requirements; track $index) {
-                                        <div class="panel panel-default panel-info mb-4">
-                                          <div class="panel-body position-relative">
-                                            <div class="label-top">{{ s.section['SectionCode'] }}.{{ r.requirement['RequirementCode'] }}</div>
-                                            <div class="label-highlight3 m-t-2">
+                                        <article class="zp-req" [attr.data-requirement]="r.requirement['RequirementCode']">
+                                          <div class="zp-req-title">
+                                            <span class="zp-code">{{ s.section['SectionCode'] }}.{{ r.requirement['RequirementCode'] }}</span>
+                                            <span class="zp-req-text">{{ r.requirement['RequirementName'] || 'Requirement' }}</span>
+                                          </div>
+                                          <div class="zp-req-body">
+                                            <div class="zp-block zp-checkpoints">
+                                              <div class="zp-block-head">Checkpoints</div>
                                               @for (o of r.options; track $index) {
-                                                <div>
-                                                  <strong class="dash-text-clr">REQUIREMENT</strong><br />
-                                                  {{ o.option['OptionName'] }}
-                                                  <ul>
-                                                    @for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }
-                                                  </ul>
+                                                <div class="zp-cp">
+                                                  <div class="zp-cp-text">
+                                                    {{ o.option['OptionName'] }}
+                                                    @if (o.subOptions.length) {
+                                                      <ul>@for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }</ul>
+                                                    }
+                                                  </div>
+                                                  <div class="zp-cp-answer"></div>
                                                 </div>
+                                              } @empty {
+                                                <div class="zp-block-empty">No checkpoints.</div>
                                               }
                                             </div>
-                                            @if (r.evidences.length === 0) {
-                                              <div class="label-highlight4">No Documents necessary</div>
-                                            }
-                                            <div>
-                                              <table class="table table-zed">
-                                                <tbody>
-                                                  @for (e of r.evidences; track $index) {
-                                                    <tr>
-                                                      <td class="w-50 ar-va-inherit">{{ e['EvidenceName'] }}</td>
-                                                      <td>
-                                                        @if (!e['GeneratedTime']) {
-                                                          <div class="label-highlight4">No Documents uploaded</div>
-                                                        } @else {
-                                                          <div class="row-data">
-                                                            <div>
-                                                              <img src="/Images/svgicons/pdf-icon.svg" alt="" />
-                                                              <span>Generated at {{ e['GeneratedTime'] }}</span>
-                                                            </div>
-                                                            @if (e['FileUrl']) {
-                                                              <a class="btn btn-primary pull-right" [href]="e['FileUrl']" target="_blank" rel="noopener">VIEW</a>
-                                                            }
-                                                          </div>
-                                                        }
-                                                      </td>
-                                                    </tr>
-                                                  }
-                                                </tbody>
-                                              </table>
+                                            <div class="zp-block zp-evidences">
+                                              <div class="zp-block-head">Documents uploaded</div>
+                                              @if (r.evidences.length === 0) {
+                                                <div class="zp-block-empty">No Documents necessary</div>
+                                              } @else {
+                                                <table class="zp-ev-table">
+                                                  <thead><tr><th>Document</th><th>Generated at</th></tr></thead>
+                                                  <tbody>
+                                                    @for (e of r.evidences; track $index) {
+                                                      <tr class="zp-ev-row">
+                                                        <td class="zp-ev-doc" data-label="Document">
+                                                          @if (e['GeneratedTime'] && e['FileUrl']) {
+                                                            <a class="pdf-link" [href]="e['FileUrl']" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e['EvidenceName'] || 'View PDF' }}</span></a>
+                                                          } @else {
+                                                            {{ e['EvidenceName'] }}
+                                                          }
+                                                        </td>
+                                                        <td data-label="Generated at">
+                                                          @if (!e['GeneratedTime']) {
+                                                            <span class="zp-chip">No Documents uploaded</span>
+                                                          } @else {
+                                                            Generated at {{ e['GeneratedTime'] }}
+                                                          }
+                                                        </td>
+                                                      </tr>
+                                                    }
+                                                  </tbody>
+                                                </table>
+                                              }
                                             </div>
                                           </div>
-                                        </div>
+                                        </article>
+                                      } @empty {
+                                        <p class="zp-muted">No requirements in this parameter.</p>
                                       }
                                     </div>
-                                  </div>
-                                }
+                                  } @else {
+                                    <p class="zp-muted">No parameters.</p>
+                                  }
+                                </div>
                               </div>
                             </div>
                           }

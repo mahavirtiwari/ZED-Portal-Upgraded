@@ -4,6 +4,7 @@ import { ReviewActionsBar } from '../monitoring/review-actions';
 import { RemarksKind, ReviewActions } from '../monitoring/review.api';
 import { Row, SaDetails, SaMeeting, SaOriginal, SaPhoto } from './site-review.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
+import { ParameterNav } from '../../msme/shared/parameter-status';
 
 /** An "Edit Remarks" request for the parent's remarks pop-up. */
 export interface SurveillanceRemarks {
@@ -60,8 +61,6 @@ export class SaSurveillanceTab {
   protected readonly t = text;
   /** Accordion panels the user closed (they open expanded, as before). */
   private readonly closed = signal<ReadonlySet<string>>(new Set());
-  /** Parameter sections the user opened (they open collapsed, as before). */
-  private readonly opened = signal<ReadonlySet<string>>(new Set());
 
   /** The original certification's unit row, or the surveillance's when the original is not loaded. */
   protected readonly main = computed<Row>(() => this.original()?.msme ?? this.details().msme);
@@ -97,6 +96,15 @@ export class SaSurveillanceTab {
 
   private readonly skeleton = computed(() => this.original() ?? this.details());
 
+  /** Parameters tab: the parameter list (status from the surveillance's conformance) and the selected parameter. */
+  protected readonly pn = new ParameterNav<Row, Row>({
+    sections: () => this.sections(),
+    id: (s) => text(s, 'SectionCode'),
+    requirements: (s) => this.requirementsOf(s),
+    conformance: (r) => this.surveillanceOf(r)?.['SaConformance'],
+    exempted: (s) => text(s, 'IsAssessmentExcempted') === 'Yes',
+  });
+
   // ------------------------------------------------------------------ view helpers
 
   protected isClosed(key: string): boolean {
@@ -105,14 +113,6 @@ export class SaSurveillanceTab {
 
   protected togglePanel(key: string): void {
     this.closed.update((s) => flip(s, key));
-  }
-
-  protected isOpen(section: Row): boolean {
-    return this.opened().has(text(section, 'SectionCode'));
-  }
-
-  protected toggleSection(section: Row): void {
-    this.opened.update((s) => flip(s, text(section, 'SectionCode')));
   }
 
   protected requirementsOf(section: Row): Row[] {

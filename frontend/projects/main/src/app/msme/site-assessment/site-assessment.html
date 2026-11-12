@@ -213,98 +213,173 @@
         </div>
       </ng-template>
 
-      <ng-template #parametersTab>
-        <div class="row">
-          @for (s of d.sections; track $index) {
-            <div class="col-sm-12 sa-section">
-              <div class="panel panel-default panel-black m-b-2">
-                <div class="panel-body">
-                  <div class="info-block">
-                    {{ s.sectionCode }}. {{ s.sectionName }}
-                    <div class="z-tooltip">
-                      <img src="/Images/svgicons/info.svg" alt="" />
-                      <span class="tooltiptext">{{ s.iButton }}</span>
-                    </div>
-                    @if (s.isAssessmentExcempted) {
-                      <p>Exempted from assessment: {{ s.isAssessmentExcempted }}</p>
+      <!-- Parameter list and header card of the parameters layout (both kinds); the requirement cards come from `cards`. -->
+      <ng-template #parameterLayout let-cards="cards">
+        @let cur = pn.active();
+        @let withStatus = isMilestone();
+        <div class="zp-layout">
+          <nav class="zp-nav" aria-labelledby="msaParamNavTitle">
+            <div class="zp-nav-head" id="msaParamNavTitle">
+              @if (withStatus) { Parameters · {{ pn.complete() }} of {{ d.sections.length }} complete } @else { Parameters }
+            </div>
+            <div class="zp-nav-list">
+              @for (s of d.sections; track $index) {
+                @let pg = pn.progress(s);
+                <button type="button" class="zp-nav-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="s.sectionCode" (click)="pn.select(s)">
+                  <span class="zp-num">{{ s.sectionCode }}</span>
+                  <span class="zp-nav-body">
+                    <span class="zp-nav-name">{{ s.sectionName }}</span>
+                    @if (withStatus) {
+                      <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.done + ' of ' + pg.total + ' requirements' }}</span>
+                      <span class="zp-bar" aria-hidden="true"><span [style.width.%]="exempted(s) ? 100 : pg.percent"></span></span>
+                    } @else {
+                      <span class="zp-nav-meta">{{ exempted(s) ? 'Exempted' : pg.total + ' requirements' }}</span>
                     }
-                  </div>
-                </div>
-              </div>
-              @for (r of s.requirements; track $index) {
-                <div class="panel panel-default panel-info sa-requirement">
-                  <div class="panel-body border-left sa-relative">
-                    <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div><zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" />
-                    <div class="label-highlight3 m-t-2">
-                      <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
-                    </div>
-                    <div class="d-flex flex-column">
-                      <div class="label-highlight label-highlight-assesor">
-                        <div><strong>DA Evidences</strong></div>
-                        <div>
-                          <table class="table table-default table-zed">
-                            <tbody>
-                              @for (e of r.evidences; track $index) {
-                                <tr>
-                                  <td>
-                                    <div class="row-data">
-                                      <div>
-                                        <img src="/Images/svgicons/pdf-icon.svg" alt="" />
-                                        <span>{{ e.evidenceName }}</span>
-                                      </div>
-                                      @if (e.url) {
-                                        <a class="btn btn-outline-primary btn-sm pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
-                                      }
-                                    </div>
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                      <div class="label-highlight label-highlight-msme">
-                        <div><strong>SA Evidences</strong></div>
-                        <div>
-                          @if (!exempted(s)) {
-                            <table class="table table-default table-zed">
-                              <tbody>
-                                @for (pp of r.photos; track $index) {
-                                  <tr><td><ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp }" /></td></tr>
-                                }
-                              </tbody>
-                            </table>
-                          }
-                        </div>
-                      </div>
-                      @if (r.surveillancePhotos.length > 0) {
-                        <div class="label-highlight label-highlight-assesor-remark">
-                          <div><strong>Surveillance Evidences</strong></div>
-                          <div>
-                            @if (!exempted(s)) {
-                              <table class="table table-bordered table-striped">
-                                <tbody>
-                                  @for (pp of r.surveillancePhotos; track $index) {
-                                    <tr><td><ng-container *ngTemplateOutlet="photoRow; context: { $implicit: pp, small: true }" /></td></tr>
-                                  }
-                                </tbody>
-                              </table>
-                            }
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  </div>
-                </div>
+                  </span>
+                  @if (withStatus) {
+                    <span class="zp-chip" [attr.data-v]="pn.chip(s)">{{ pn.chip(s) }}</span>
+                  } @else if (exempted(s)) {
+                    <span class="zp-chip" data-v="Exempt">Exempt</span>
+                  }
+                </button>
               }
             </div>
-          }
-          <div class="col-sm-12 mt-3">
-            @if (assessment()['AssessorRemarks']) {
-              <div class="label-highlight3">{{ assessment()['AssessorRemarks'] }}</div>
+          </nav>
+
+          <div class="zp-main">
+            @if (cur; as s) {
+              <div class="zp-section" [attr.data-section]="s.sectionCode">
+                <div class="zp-head">
+                  <div class="zp-head-title">
+                    <span class="zp-num">{{ s.sectionCode }}</span>
+                    <h5>{{ s.sectionName }}</h5>
+                    @if (s.iButton) {
+                      <span class="zp-info" tabindex="0">
+                        <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                        <span class="tooltiptext left">{{ s.iButton }}</span>
+                      </span>
+                    }
+                    @if (exempted(s)) { <span class="zp-tag">Exempted</span> }
+                  </div>
+                  @if (withStatus) {
+                    <div class="zp-head-status">
+                      <span class="zp-label">Conformance</span>
+                      <span class="zp-chip" [attr.data-v]="pn.status(s)">{{ pn.status(s) }}</span>
+                    </div>
+                  }
+                </div>
+                @if (s.isAssessmentExcempted && !withStatus) {
+                  <div class="zp-section-note">Exempted from assessment: {{ s.isAssessmentExcempted }}</div>
+                }
+                @for (r of s.requirements; track $index) {
+                  <ng-container *ngTemplateOutlet="cards; context: { $implicit: r, section: s }" />
+                } @empty {
+                  <p class="zp-muted">No requirements in this parameter.</p>
+                }
+              </div>
+            } @else {
+              <p class="zp-muted">No parameters.</p>
             }
           </div>
         </div>
+      </ng-template>
+
+      <!-- Title row and checkpoints of a requirement card. -->
+      <ng-template #requirementTop let-r let-s="section" let-status="status">
+        <div class="zp-req-title">
+          <span class="zp-code">{{ s.sectionCode }}.{{ r.requirementCode }}</span>
+          <span class="zp-req-text">{{ r.requirementName || 'Requirement' }}</span>
+          <zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" [compact]="true" />
+          @if (status) { <span class="zp-chip zp-req-status" [attr.data-v]="status">{{ status }}</span> }
+        </div>
+      </ng-template>
+
+      <ng-template #checkpointsBlock let-r>
+        <div class="zp-block zp-checkpoints">
+          <div class="zp-block-head">Checkpoints</div>
+          @for (o of r.options; track $index) {
+            <div class="zp-cp">
+              <div class="zp-cp-text">
+                {{ o.optionName }}
+                @if (o.subOptions?.length) {
+                  <ul>@for (so of o.subOptions; track $index) { <li><span>{{ so }}</span></li> }</ul>
+                }
+              </div>
+              <div class="zp-cp-answer"></div>
+            </div>
+          } @empty {
+            <div class="zp-block-empty">No checkpoints.</div>
+          }
+        </div>
+      </ng-template>
+
+      <!-- A block of photos (name, thumbnail, time, VIEW). -->
+      <ng-template #photoBlock let-photos let-title="title" let-css="css" let-time="time">
+        <div [class]="'zp-block ' + css">
+          <div class="zp-block-head">{{ title }}</div>
+          @if (photos.length) {
+            <div class="zp-block-body zp-photos">
+              @for (pp of photos; track $index) {
+                <div class="zp-photo">
+                  @if (pp.src) {
+                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')"><img [src]="pp.src" alt="" /></button>
+                  }
+                  <span>{{ pp.name }}</span>
+                  @if (time) { <span class="zp-muted">Generated at {{ pp.createdDate }}</span> }
+                </div>
+              }
+            </div>
+          } @else {
+            <div class="zp-block-empty">No Documents Uploaded</div>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template #parametersTab>
+        <ng-container *ngTemplateOutlet="parameterLayout; context: { cards: assessmentCard }" />
+        <div class="mt-3">
+          @if (assessment()['AssessorRemarks']) {
+            <div class="label-highlight3">{{ assessment()['AssessorRemarks'] }}</div>
+          }
+        </div>
+      </ng-template>
+
+      <ng-template #assessmentCard let-r let-s="section">
+        <article class="zp-req" [attr.data-requirement]="r.requirementCode">
+          <ng-container *ngTemplateOutlet="requirementTop; context: { $implicit: r, section: s, status: null }" />
+          <div class="zp-req-body">
+            <ng-container *ngTemplateOutlet="checkpointsBlock; context: { $implicit: r }" />
+            <div class="zp-block zp-evidences">
+              <div class="zp-block-head">Evidences (desktop assessment)</div>
+              @if (r.evidences.length) {
+                <table class="zp-ev-table">
+                  <thead><tr><th>Document</th></tr></thead>
+                  <tbody>
+                    @for (e of r.evidences; track $index) {
+                      <tr class="zp-ev-row">
+                        <td class="zp-ev-doc" data-label="Document">
+                          @if (e.url) {
+                            <a class="pdf-link" [href]="e.url" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e.evidenceName || 'View PDF' }}</span></a>
+                          } @else {
+                            <span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ e.evidenceName }}</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else {
+                <div class="zp-block-empty">No Documents Uploaded</div>
+              }
+            </div>
+            @if (!exempted(s)) {
+              <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.photos, title: 'Photos (site assessment)', css: 'zp-site-photos', time: false }" />
+              @if (r.surveillancePhotos.length > 0) {
+                <ng-container *ngTemplateOutlet="photoBlock; context: { $implicit: r.surveillancePhotos, title: 'Photos (surveillance)', css: 'zp-sv-photos', time: false }" />
+              }
+            }
+          </div>
+        </article>
       </ng-template>
 
       <!-- ===================== Handholding milestones ===================== -->
@@ -402,156 +477,115 @@
       </ng-template>
 
       <ng-template #milestoneParametersTab>
-        <div class="row">
-          @for (s of d.sections; track $index) {
-            <div class="sa-section">
-              <div class="col-sm-12 mb-4">
-                <div class="panel panel-default panel-black">
-                  <div class="panel-body">
-                    {{ s.sectionCode }}. {{ s.sectionName }}
-                    <span class="z-tooltip sa-float-right">
-                      <img src="/Images/svgicons/info.svg" alt="" />
-                      <span class="tooltiptext left">{{ s.iButton }}</span>
-                    </span>
+        <ng-container *ngTemplateOutlet="parameterLayout; context: { cards: milestoneCard }" />
+      </ng-template>
+
+      <ng-template #milestoneCard let-r let-s="section">
+        @let status = pn.requirementStatus(r);
+        <article class="zp-req" [attr.data-requirement]="r.requirementCode" [attr.data-v]="status">
+          <ng-container *ngTemplateOutlet="requirementTop; context: { $implicit: r, section: s, status: status }" />
+          <div class="zp-req-body">
+            <ng-container *ngTemplateOutlet="checkpointsBlock; context: { $implicit: r }" />
+
+            <!-- Milestone 1 : Basic Diagnostic Study -->
+            <div class="zp-block zp-milestone milestone-1">
+              <div class="zp-block-head">Milestone 1 : Basic Diagnostic Study</div>
+              <div class="zp-block-body">
+                <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: r.photos, section: s }" />
+                @if (!exempted(s)) {
+                  <div class="zp-row my-2">
+                    <span class="zp-label m-0">Conformance</span>
+                    @if (r.milestone['SaConformance']) { <span class="zp-chip sa-answer" [attr.data-v]="pn.requirementStatus(r)">{{ r.milestone['SaConformance'] }}</span> } @else { <span class="zp-chip">Not given</span> }
                   </div>
-                </div>
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'GAPS IDENTIFIED', items: r.bullets?.baselineDiagnostic }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['BaselineRemarks'] }" />
+                }
               </div>
-
-              @for (r of s.requirements; track $index) {
-                <div class="col-sm-12">
-                  <div class="panel panel-default m-0">
-                    <div class="panel-body border-left sa-relative">
-                      <div class="label-top">{{ s.sectionCode }}.{{ r.requirementCode }}</div><zed-requirement-video [url]="r.videoUrl" [code]="s.sectionCode + '.' + r.requirementCode" />
-                      <div class="label-highlight3">
-                        <ng-container *ngTemplateOutlet="options; context: { $implicit: r }" />
-                      </div>
-                    </div>
-                  </div>
-                  <div class="sa-milestone-border">
-                    <!-- Milestone 1 : Basic Diagnostic Study -->
-                    <table class="table table-bordered table-zed sa-milestone-table">
-                      <tr>
-                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Basic Diagnostic Study</p></td>
-                        <td class="p-0">
-                          <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: r.photos, section: s }" />
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          @if (!exempted(s)) {
-                            <div class="col-sm-8 col-xs-24 p-0">
-                              <div class="payment-option-block">
-                                <p class="sub-heading">Conformance</p>
-                                <div class="readonly-input">
-                                  <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Conformance" />
-                                  <span class="sa-answer">{{ r.milestone['SaConformance'] }}</span>
-                                </div>
-                              </div>
-                            </div>
-                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'GAPS IDENTIFIED', items: r.bullets?.baselineDiagnostic }" />
-                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['BaselineRemarks'] }" />
-                          }
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Milestone 1 : Handholding Action Plan -->
-                    <table class="table table-bordered table-zed sa-milestone-table">
-                      <tr>
-                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Handholding Action Plan</p></td>
-                      </tr>
-                      <tr>
-                        <td>
-                          @if (!exempted(s)) {
-                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'PLANNED ACTIVIES', items: r.bullets?.handholdingActionPlan }" />
-                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'ESTIMATED TIME (IN DAYS)', value: r.milestone['EstimatedTimeInDays'] }" />
-                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['HActionPlanRemarks'] }" />
-                          }
-                        </td>
-                      </tr>
-                    </table>
-
-                    <!-- Milestone 1 : Technology Intervention -->
-                    <table class="table table-bordered table-zed sa-milestone-table">
-                      <tr>
-                        <td rowspan="3" class="milestone-1"><p>Milestone 1 : Technology Intervention</p></td>
-                      </tr>
-                      <tr>
-                        <td>
-                          @if (!exempted(s)) {
-                            <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'SUGGESTED TENCHNOLOGY INTERVENTION', items: r.bullets?.technologyIntervention }" />
-                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'RATIONALE FOR TENCHNOLOGY INTERVENTION', value: r.milestone['Intervention'], plain: true }" />
-                            <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['InterventionRemarks'] }" />
-                          }
-                        </td>
-                      </tr>
-                    </table>
-
-                    @if ((s.ncCount ?? 0) > 1) {
-                      <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 2 : Progress Review 1', css: 'site-assessment', photos: photosOf(r, 2), section: s, completed: r.milestone['IsProposedActivityCompleted'], remarks: r.milestone['ProgressReviewRemarks'] }" />
-                    }
-                    @if (s.ncCount === 3) {
-                      <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 3 : Progress Review 2', css: 'milestone-3', photos: photosOf(r, 3), section: s, completed: r.milestone['IsProposedActivityCompleted2'], remarks: r.milestone['ProgressReviewRemarks2'] }" />
-                    }
-                  </div>
-                </div>
-              }
             </div>
-          }
-        </div>
+
+            <!-- Milestone 1 : Handholding Action Plan -->
+            <div class="zp-block zp-milestone milestone-1">
+              <div class="zp-block-head">Milestone 1 : Handholding Action Plan</div>
+              <div class="zp-block-body">
+                @if (!exempted(s)) {
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'PLANNED ACTIVIES', items: r.bullets?.handholdingActionPlan }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'ESTIMATED TIME (IN DAYS)', value: r.milestone['EstimatedTimeInDays'] }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['HActionPlanRemarks'] }" />
+                } @else {
+                  <span class="zp-muted">Exempted from assessment</span>
+                }
+              </div>
+            </div>
+
+            <!-- Milestone 1 : Technology Intervention -->
+            <div class="zp-block zp-milestone milestone-1">
+              <div class="zp-block-head">Milestone 1 : Technology Intervention</div>
+              <div class="zp-block-body">
+                @if (!exempted(s)) {
+                  <ng-container *ngTemplateOutlet="bulletBlock; context: { title: 'SUGGESTED TENCHNOLOGY INTERVENTION', items: r.bullets?.technologyIntervention }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'RATIONALE FOR TENCHNOLOGY INTERVENTION', value: r.milestone['Intervention'], plain: true }" />
+                  <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: r.milestone['InterventionRemarks'] }" />
+                } @else {
+                  <span class="zp-muted">Exempted from assessment</span>
+                }
+              </div>
+            </div>
+
+            @if ((s.ncCount ?? 0) > 1) {
+              <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 2 : Progress Review 1', css: 'milestone-2', photos: photosOf(r, 2), section: s, completed: r.milestone['IsProposedActivityCompleted'], remarks: r.milestone['ProgressReviewRemarks'] }" />
+            }
+            @if (s.ncCount === 3) {
+              <ng-container *ngTemplateOutlet="progressReview; context: { title: 'Milestone 3 : Progress Review 2', css: 'milestone-3', photos: photosOf(r, 3), section: s, completed: r.milestone['IsProposedActivityCompleted2'], remarks: r.milestone['ProgressReviewRemarks2'] }" />
+            }
+          </div>
+          <div class="zp-foot">
+            <div class="zp-conf">
+              <div class="zp-label">Conformance (basic diagnostic study)</div>
+              <div class="zp-row">
+                @if (exempted(s)) {
+                  <span class="zp-chip" data-v="Exempt">Exempt</span>
+                } @else {
+                  <span class="zp-chip" [attr.data-v]="status">{{ status }}</span>
+                }
+              </div>
+            </div>
+          </div>
+        </article>
       </ng-template>
 
       <ng-template #progressReview let-title="title" let-css="css" let-photos="photos" let-s="section" let-completed="completed" let-remarks="remarks">
-        <table class="table table-bordered table-zed sa-milestone-table">
-          <tr>
-            <td rowspan="3" [class]="css"><p>{{ title }}</p></td>
-            <td class="p-0">
-              <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: photos, section: s }" />
-            </td>
-          </tr>
-          <tr>
-            <td>
-              @if (!exempted(s)) {
-                <div class="col-sm-16 col-xs-24 p-0">
-                  <div class="payment-option-block">
-                    <p class="sub-heading">Is Proposed Activity Completed</p>
-                    <div class="readonly-input">
-                      <input type="radio" class="option-input yes radio" value="Yes" disabled checked aria-label="Is Proposed Activity Completed" />
-                      <span class="sa-answer">{{ completed }}</span>
-                    </div>
-                  </div>
-                </div>
-                <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: remarks }" />
-              }
-            </td>
-          </tr>
-        </table>
+        <div [class]="'zp-block zp-milestone ' + css">
+          <div class="zp-block-head">{{ title }}</div>
+          <div class="zp-block-body">
+            <ng-container *ngTemplateOutlet="milestonePhotos; context: { $implicit: photos, section: s }" />
+            @if (!exempted(s)) {
+              <div class="zp-row my-2">
+                <span class="zp-label m-0">Is Proposed Activity Completed</span>
+                @if (completed) { <span class="zp-chip sa-answer" [attr.data-v]="completed">{{ completed }}</span> } @else { <span class="zp-chip">Not given</span> }
+              </div>
+              <ng-container *ngTemplateOutlet="textBlock; context: { title: 'REMARKS, IF ANY', value: remarks }" />
+            }
+          </div>
+        </div>
       </ng-template>
 
       <ng-template #milestonePhotos let-photos let-s="section">
         @if (!exempted(s)) {
-          <table class="table m-0">
-            @for (pp of photos; track $index) {
-              <tr>
-                <td class="sa-photo-cell">
-                  <div class="d-flex justify-content-between align-items-center">
-                    <p>{{ pp.name }}</p>
-                    <div class="row-data sa-w60">
-                      <div>
-                        @if (pp.src) {
-                          <img [src]="pp.src" alt="" />
-                        }
-                        <span>Generated at {{ pp.createdDate }}</span>
-                      </div>
-                      @if (pp.src) {
-                        <button type="button" class="btn btn-outline-primary btn-sm pull-right" (click)="openPreview(pp.src)">VIEW</button>
-                      }
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            }
-          </table>
+          @if (photos.length) {
+            <div class="zp-photos mb-2">
+              @for (pp of photos; track $index) {
+                <div class="zp-photo">
+                  @if (pp.src) {
+                    <button type="button" class="sa-image-button" (click)="openPreview(pp.src)" [attr.aria-label]="'View ' + (pp.name ?? 'photo')"><img [src]="pp.src" alt="" /></button>
+                  }
+                  <span>{{ pp.name }}</span>
+                  <span class="zp-muted">Generated at {{ pp.createdDate }}</span>
+                </div>
+              }
+            </div>
+          }
+        } @else {
+          <span class="zp-muted">Exempted from assessment</span>
         }
       </ng-template>
 
@@ -578,19 +612,6 @@
       </ng-template>
 
       <!-- ===================== shared pieces ===================== -->
-
-      <ng-template #options let-r>
-        @for (o of r.options; track $index) {
-          <div>
-            {{ o.optionName }}
-            <ul>
-              @for (so of o.subOptions; track $index) {
-                <li><span>{{ so }}</span></li>
-              }
-            </ul>
-          </div>
-        }
-      </ng-template>
 
       <ng-template #photoRow let-pp let-small="small">
         <div class="row-data">
