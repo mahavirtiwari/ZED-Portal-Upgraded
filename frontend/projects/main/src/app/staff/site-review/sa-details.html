@@ -303,7 +303,7 @@
                               <button type="button" class="btn btn-link p-0" (click)="openImage(p.photoUrl)"><img [src]="p.photoUrl" height="50" alt="Product" /></button><small>Product Photo</small><br />
                             }
                             @if (p.descriptionKind === 'pdf') {
-                              <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Product description (PDF)" /></a><small>Product Description Photo</small>
+                              <a [href]="p.descriptionUrl" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Product description</span></a><small>Product Description Photo</small>
                             } @else if (p.descriptionKind === 'image') {
                               <button type="button" class="btn btn-link p-0" (click)="openImage(p.descriptionUrl)"><img [src]="p.descriptionUrl" height="60" alt="Product description" /></button><small>Product Description Photo</small>
                             }
@@ -604,7 +604,7 @@
                                 </td>
                                 <td class="text-center" style="width: 180px">
                                   @if (o.descriptionKind === 'pdf') {
-                                    <a [href]="o.descriptionUrl" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                    <a [href]="o.descriptionUrl" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Product description</span></a>
                                   } @else if (o.descriptionKind === 'image') {
                                     <button type="button" class="btn btn-link p-0" (click)="openImage(o.descriptionUrl)"><img [src]="o.descriptionUrl" height="60" alt="Product description" /></button>
                                   }
@@ -664,7 +664,7 @@
                               <tr>
                                 <td>
                                   @if (t(e, 'SyncedDate')) { <span>NC{{ t(e, 'NcCount') }}</span> }
-                                  @if (t(e, 'FileUrl')) { <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a> }
+                                  @if (t(e, 'FileUrl')) { <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>View</span></a> }
                                 </td>
                               </tr>
                             }

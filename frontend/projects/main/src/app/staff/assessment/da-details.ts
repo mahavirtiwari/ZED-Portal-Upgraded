@@ -37,6 +37,12 @@ interface ValidationEdit { row: Row | null; verified: string; remarks: string }
 interface EvidenceEdit { evidence: Row; verified: string; source: string; remarks: string; files: File[] }
 interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed: boolean }
 
+/** A key fact of the assessment summary card (label above, value below; wide facts span two columns). */
+export interface SummaryFact { label: string; value: string; wide?: boolean }
+
+/** Conformance status of a requirement or a parameter (section), as shown by the status chips of the parameters tab. */
+export type ConformanceStatus = 'Yes' | 'No' | 'Partial' | 'Pending';
+
 /**
  * Desktop assessment review page. Port of Views/Assessment/DaDetails.cshtml for the desktop assessor
  * (validate photos, products, evidences and conformance, exemptions, final submit) and read-only for
@@ -49,6 +55,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; remarks: string; confirmed:
   imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
+  styleUrls: ['./da-details.css', './da-details-params.css'],
   host: { '(document:keydown.escape)': 'preview.set(null)' },
 })
 export class DaDetailsPage {
@@ -70,6 +77,8 @@ export class DaDetailsPage {
   protected readonly error = signal('');
   protected readonly notice = signal<{ ok: boolean; text: string } | null>(null);
   protected readonly tab = signal(1);
+  /** Parameter (section Id) shown in the parameters tab; the first one when none is picked. */
+  protected readonly selectedSection = signal<string | null>(null);
   protected readonly preview = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly modalError = signal('');
@@ -113,6 +122,40 @@ export class DaDetailsPage {
     const lat = Number(l?.['ZedLatitude']);
     const lng = Number(l?.['ZedLongitude']);
     return Number.isFinite(lat) && Number.isFinite(lng) && l?.['ZedLatitude'] ? `https://www.google.com/maps?q=${lat},${lng}` : '';
+  });
+
+  /** The key facts of the "Assessment Summary" card, in the order of the old two-column table. */
+  protected readonly summaryFacts = computed<SummaryFact[]>(() => {
+    const m = this.msme();
+    const v = (column: string) => text(m, column);
+    const pair = (a: string, b: string) => [v(a), v(b)].filter(Boolean).join(' - ');
+    const facts: SummaryFact[] = [
+      { label: 'ZED ID', value: v('ZedId') },
+      { label: 'Unit Name', value: v('PUnitName') },
+      { label: 'Udyam Registration Number', value: v('UdyogAadharNo') },
+      { label: 'Unit Address', value: v('PlantAddress'), wide: true },
+      { label: 'Document Submission Date', value: v('BasicInfoStatus') },
+      { label: 'Document Verification allocated on', value: v('DocVerifiAllot') },
+    ];
+    for (const i of [1, 2, 3, 4, 5]) {
+      if (v(`Nc${i}Raised`)) facts.push({ label: `Non-Conformance ${i} Raised On`, value: v(`Nc${i}Raised`) });
+      if (v(`Nc${i}Submitted`)) facts.push({ label: `Non-Conformance ${i} Submitted On`, value: v(`Nc${i}Submitted`) });
+    }
+    facts.push({ label: 'Document Verification Completed on', value: v('CompletedOn') }, { label: 'Certification', value: v('Certification') });
+    if (!this.isQc()) {
+      facts.push(
+        { label: 'Agency Name', value: pair('CertificationBodyUserId', 'AgencyName') },
+        { label: 'Desktop Assessor Name', value: pair('DesktopAssessorId', 'DesktopAssessorName') },
+      );
+    }
+    return facts;
+  });
+
+  /** The parameter shown in the parameters tab. */
+  protected readonly activeSection = computed<Row | null>(() => {
+    const sections = this.data()?.sections ?? [];
+    const id = this.selectedSection();
+    return sections.find((s) => text(s, 'Id') === id) ?? sections[0] ?? null;
   });
 
   protected readonly mapUrl = computed(() => {
@@ -168,6 +211,32 @@ export class DaDetailsPage {
     return (this.round(n)?.oldProducts ?? []).filter((o) => text(o, 'ProductParentId') === text(p, 'ProductParentId'));
   }
 
+  /**
+   * Status of a requirement row: its conformance when given; "Partial" while only some of its checkpoints are answered
+   * (or one is answered Partial); "Pending" when nothing is answered yet.
+   */
+  protected requirementStatus(r: Row): ConformanceStatus {
+    const conformance = text(r, 'Conformance');
+    if (conformance === 'Yes' || conformance === 'No') return conformance;
+    return checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.desktop?.value) ? 'Partial' : 'Pending';
+  }
+
+  /** Status of a parameter from its requirements: all Yes, any No, some answered (Partial) or nothing answered (Pending). */
+  protected sectionStatus(s: Row): ConformanceStatus {
+    const statuses = this.requirementsOf(s, this.data()?.requirements).map((r) => this.requirementStatus(r));
+    if (!statuses.length || statuses.every((v) => v === 'Pending')) return 'Pending';
+    if (statuses.includes('No')) return 'No';
+    return statuses.every((v) => v === 'Yes') ? 'Yes' : 'Partial';
+  }
+
+  protected exempted(s: Row): boolean {
+    return text(s, 'IsAssessmentExcempted') === 'Yes';
+  }
+
+  protected selectSection(s: Row): void {
+    this.selectedSection.set(text(s, 'Id'));
+  }
+
   protected screenshots(e: Row): string[] {
     const s = e['Screenshots'];
     return Array.isArray(s) ? (s as string[]) : [];
@@ -219,9 +288,19 @@ export class DaDetailsPage {
     await this.save(this.api.checkpoints(d.zedId, d.certification, e.requirement['Id'], body), () => this.checkpointEdit.set(null));
   }
 
+  /** The checkpoint of an option row of a requirement row (migration 0039), when the requirement has checkpoints. */
+  protected checkpointOf(r: Row, o: Row): Checkpoint | undefined {
+    return checkpointsOf(this.data()?.checkpoints, r['Id']).find((c) => c.optionCode === text(o, 'OptionCode').trim());
+  }
+
+  /** The requirement is answered checkpoint by checkpoint. */
+  protected hasCheckpoints(r: Row): boolean {
+    return checkpointsOf(this.data()?.checkpoints, r['Id']).length > 0;
+  }
+
   /** The desktop assessor's answer of a checkpoint (an option row of a requirement row), when given. */
   protected answerOf(r: Row, o: Row): CheckpointValue | null {
-    return checkpointsOf(this.data()?.checkpoints, r['Id']).find((c) => c.optionCode === text(o, 'OptionCode').trim())?.desktop?.value ?? null;
+    return this.checkpointOf(r, o)?.desktop?.value ?? null;
   }
 
   protected async saveConformance(): Promise<void> {

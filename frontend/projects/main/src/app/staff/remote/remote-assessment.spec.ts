@@ -252,8 +252,9 @@ describe('RemoteAssessmentPage', () => {
     data.evidences = [{ Id: 91, SectionCode: '1', RequirementCode: '1', EvidenceName: 'Policy', FileUrl: '/files/p.pdf' }];
     await create(data);
     await openTab('Basic Info');
-    const icons = () => [...el.querySelectorAll('a.product-description img')].map((i) => i.getAttribute('src'));
-    expect(icons()).toEqual(['Images/pdf-icon.png', 'Images/pdf-icon-blue.png']);
+    // 2026-11-12: a "PDF" chip (the old icon pictures did not exist), tinted once opened.
+    const chips = () => [...el.querySelectorAll('a.product-description .pdf-chip')].map((c) => c.classList.contains('opened'));
+    expect(chips()).toEqual([false, true]);
 
     // The legacy remote page never recorded product descriptions (its UpdateTimestamp2 did not exist): nothing is sent.
     const link = el.querySelector('a.product-description') as HTMLAnchorElement;

@@ -133,7 +133,15 @@ import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } fr
     </div>
   `,
   styles: `
-    :host { padding-top: 100px; color: #333; }
+    :host { color: #333; }
+    /* 2026-11-12 (approved): a slim header that scrolls away (about 60 px, smaller logos); only the menu stays at the top,
+       so it no longer covers the pages' own tabs and headings. Scroll targets keep clear of the menu. */
+    .zed-header { position: static; height: auto; padding: 6px 0; box-shadow: none; }
+    .header-top img { width: 170px; }
+    .zed-header .zedv2-logo { width: 58px !important; }
+    .zed-navbar { position: sticky; top: 6px; z-index: 99; padding: 0; }
+    .zed-navbar .nav-bar-sec { min-height: 62px; }
+    :host ::ng-deep .staff-page [id] { scroll-margin-top: 84px; }
     /* The pages sit on a light tint, so their cards, tables and forms stand out. */
     .staff-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #f2f6f6; border-top: 1px solid #e3eced; }
     /* Every page has the menu bar's width: a page's own container (fixed, fluid or none) lines up with it. */

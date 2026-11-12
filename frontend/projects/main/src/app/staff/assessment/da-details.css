@@ -1,0 +1,41 @@
+/* Desktop assessment details: summary card, light section bars and tables, parameters layout (list + requirement cards). */
+.muted { color: #5f6f70; }
+
+/* Data tables inside the page: light header instead of solid teal. */
+.table > thead > tr > th { --bs-table-bg: #e8f2f3; --bs-table-color: #1b3b3e; background-color: #e8f2f3 !important; color: #1b3b3e !important; border-color: #dce7e8 !important; }
+.table > :not(caption) > * > * { padding: 9px 11px; }
+
+/* Section headings: light bar with a teal left edge (was black). */
+.panel.panel-black { background: #e8f2f3; color: #1b3b3e; border: 0; border-left: 3px solid #23656b; border-radius: 6px; box-shadow: none; overflow: visible; }
+.panel-black .panel-body { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #1b3b3e; }
+.info-i { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; background: #2f8a92; color: #fff; font: italic 700 12px/1 Georgia, serif; cursor: help; }
+.z-tooltip:focus-within .tooltiptext { visibility: visible; }
+.z-tooltip .tooltiptext { font-weight: 400; z-index: 30; }
+
+/* Assessment summary: key facts in a responsive grid. */
+.summary { padding: 16px 18px; }
+.summary-title { font-size: 15px; font-weight: 700; color: #1b3b3e; margin: 0 0 12px; }
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 22px; margin: 0; }
+.fact { min-width: 0; }
+.fact.wide { grid-column: span 2; }
+.fact dt { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: #5f6f70; margin-bottom: 3px; }
+.fact dd { margin: 0; font-weight: 600; color: #1b2a2c; overflow-wrap: anywhere; }
+.fact .loc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.map-link { font-weight: 600; color: #23656b; border: 1px solid #cfe0e2; border-radius: 7px; padding: 1px 9px; text-decoration: none; }
+.map-link:hover { border-color: #23656b; }
+@media (max-width: 991px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 575px) { .facts { grid-template-columns: minmax(0, 1fr); } .fact.wide { grid-column: auto; } }
+
+/* PDF chips (global .pdf-chip): links without underline; long evidence names wrap. */
+.pdf-link { text-decoration: none; display: inline-block; }
+.ev-item .pdf-chip { white-space: normal; text-align: left; }
+.nc-tag { font-weight: 700; color: #23656b; margin-right: 6px; }
+
+/* Status chips: Yes / No / Partial / Pending. */
+.st-chip { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 2px 9px; white-space: nowrap; background: #eef1f1; color: #5f6f70; }
+.st-chip[data-v='Yes'] { background: #e5f4ea; color: #1e6b3a; }
+.st-chip[data-v='No'] { background: #fdecea; color: #a3261b; }
+.st-chip[data-v='Partial'] { background: #fff3dc; color: #8a5200; }
+.st-chip.lg { font-size: 13px; padding: 5px 14px; border-radius: 8px; }
+.st-chip.sm { font-size: 10px; padding: 0 7px; }
+.exempt-tag { display: inline-block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; color: #23656b; border: 1px dashed #2f8a92; border-radius: 6px; padding: 0 5px; margin-left: 4px; vertical-align: 1px; }

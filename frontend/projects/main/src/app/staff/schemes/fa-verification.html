@@ -149,7 +149,7 @@
           @if (doc.screenshots.length) {
             <span class="shots">
               @for (s of doc.screenshots; track s.id) {
-                <a [href]="s.url" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + s.fileName"><img src="Images/pdf-icon.png" height="25" alt="" /></a>
+                <a [href]="s.url" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + s.fileName"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Screenshot</span></a>
               }
             </span>
           }

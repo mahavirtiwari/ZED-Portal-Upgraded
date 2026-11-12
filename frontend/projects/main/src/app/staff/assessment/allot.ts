@@ -107,7 +107,7 @@ import { levelCodes, levelName } from '../../msme/shared/levels';
             <!-- Row colours of the old pages: main table-danger; surveillance and consultancy btn-danger. -->
             <tr [class.table-danger]="main && !!t(s, 'ReasonForRejection')" [class.btn-danger]="!main && !!t(s, 'ReasonForRejection')">
               <td class="text-center" [class.table-danger]="main && !!t(s, 'TimeDuration')" [class.btn-danger]="!main && !!t(s, 'TimeDuration')">
-                <div class="row-actions justify-content-center">
+                <div class="row-actions acts">
                   @if (legacy.profile(t(s, 'ZedId')); as href) {
                     <a [href]="href" class="btn btn-outline-primary">View Profile</a>
                   }
@@ -154,7 +154,7 @@ import { levelCodes, levelName } from '../../msme/shared/levels';
               <td class="unit" [class.table-warning]="main && t(s, 'UdyamStatus') === 'Duplicate'">
                 <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
                 <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
-                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
+                <div class="muted addr" [title]="t(s, 'UnitAddress')">{{ t(s, 'UnitAddress') }}</div>
               </td>
               <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
               <td>
@@ -212,7 +212,21 @@ import { levelCodes, levelName } from '../../msme/shared/levels';
       </div>
     }
   `,
-  styles: `.unit { min-width: 200px; } .reason { min-width: 180px; white-space: pre-wrap; }`,
+  styles: `
+    .unit { min-width: 200px; } .reason { min-width: 180px; white-space: pre-wrap; }
+    /* 2026-11-12 (approved): the row's buttons one under the other, all the same size; ALLOT filled, RE-ALLOT amber outlined
+       (the old stylesheet painted it blue under dark text). The unit's address in two lines, all of it on hover. */
+    .acts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; width: 160px; margin: 0 auto; }
+    .acts .btn { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600; border-radius: 8px; white-space: nowrap; }
+    .acts .btn-outline-primary { color: #23656b; border: 1px solid #23656b; background: #fff; }
+    .acts .btn-outline-primary:hover, .acts .btn-outline-primary:focus-visible { color: #174a4e; background: #e6f2f3; }
+    .acts .btn-primary { color: #fff; background: #23656b; border-color: #23656b; }
+    .acts .btn-primary:hover { background: #174a4e; border-color: #174a4e; filter: none; }
+    .acts .btn.re-allot { color: #8a5200 !important; background: #fff8ec !important; border: 1px solid #b26a00 !important; }
+    .acts .btn.re-allot:hover { background: #ffefd2 !important; }
+    .addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  `,
 })
 export class AllotPage {
   private readonly api = inject(AssessmentApi);

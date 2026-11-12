@@ -79,7 +79,8 @@ public sealed class DesktopAssessmentController(
         ["Id", "ProductName", "Exported", "IsVerified", "AssessorRemarks", "NcCount", "MsmeRemarks", "ProductParentId"];
     private static readonly string[] RawMaterialFields = ["ModeOfAssessment", "RawMaterialName", "Percentage", "CountryName"];
     private static readonly string[] SectionFields = ["Id", "SectionCode", "SectionName", "iButton", "ValidationRequired", "IsAssessmentExcempted"];
-    private static readonly string[] RequirementFields = ["Id", "SectionCode", "RequirementCode", "Conformance", "AssessorRemarks", "OpenedFlag", "MsmeComments"];
+    // RequirementName (2026-11-12): the requirement card's title on the redesigned Parameters tab.
+    private static readonly string[] RequirementFields = ["Id", "SectionCode", "RequirementCode", "RequirementName", "Conformance", "AssessorRemarks", "OpenedFlag", "MsmeComments"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields =

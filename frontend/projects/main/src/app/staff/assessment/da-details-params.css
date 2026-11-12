@@ -1,0 +1,52 @@
+/* Desktop assessment details, parameters tab: the parameter list (left, sticky) and the selected parameter's requirement cards. */
+/* Parameters tab: list on the left, the selected parameter on the right. */
+.params { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+.param-nav { position: sticky; top: 80px; max-height: calc(100vh - 96px); display: flex; flex-direction: column; border: 1px solid #dce7e8; border-radius: 10px; overflow: hidden; background: #fff; }
+.pn-head { background: #23656b; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.2px; padding: 10px 14px; }
+.pn-list { padding: 6px; overflow-y: auto; }
+.pn-item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: none; border: 0; border-left: 3px solid transparent; border-radius: 7px; padding: 9px 10px; margin-bottom: 2px; color: #1b2a2c; }
+.pn-item:hover { background: #f3f8f8; }
+.pn-item.active { background: #e8f2f3; border-left-color: #23656b; }
+.pnum { flex-shrink: 0; min-width: 26px; text-align: center; background: #23656b; color: #fff; font-size: 11px; font-weight: 700; border-radius: 4px; padding: 3px 6px; }
+.pnum.lg { font-size: 13px; padding: 5px 10px; }
+.pname { flex: 1; font-size: 13px; font-weight: 600; line-height: 1.3; }
+.param-main { min-width: 0; }
+.pm-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid #dce7e8; border-radius: 10px; padding: 14px 18px; margin-bottom: 12px; }
+.pm-title { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pm-title h5 { margin: 0; font-size: 17px; font-weight: 700; color: #1b3b3e; }
+.pm-status { display: flex; align-items: center; gap: 10px; }
+.pm-status .lbl, .blk-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: #5f6f70; }
+.blk-label { margin-bottom: 4px; }
+.req-card { background: #fff; border: 1px solid #dce7e8; border-left: 4px solid #c9d6d7; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; }
+.req-card[data-v='Yes'] { border-left-color: #2e8a4e; }
+.req-card[data-v='No'] { border-left-color: #c0392b; }
+.req-card[data-v='Partial'] { border-left-color: #d08a12; }
+.req-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.req-code { background: #2f8a92; color: #fff; font-size: 12px; font-weight: 700; border-radius: 4px; padding: 3px 8px; }
+.req-text { font-weight: 700; color: #1b2a2c; flex: 1; }
+.cp-block { background: #f3f8f8; border: 1px solid #dce7e8; border-radius: 7px; padding: 8px 12px; }
+.cp-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 7px 0; border-bottom: 1px solid #dce7e8; }
+.cp-item:last-child { border-bottom: 0; }
+.cp-text { flex: 1; font-size: 13px; line-height: 1.45; }
+.cp-text ul { margin: 4px 0 0; padding-left: 18px; }
+.cp-note { font-size: 12px; margin-top: 2px; }
+.cp-answer { flex-shrink: 0; }
+.cp-answer .cp-chip { margin: 0; font-size: 12px; padding: 2px 10px; }
+.cp-none { font-size: 11px; color: #5f6f70; font-style: italic; }
+.req-meta { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px 18px; margin-top: 12px; }
+.meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.meta-row .btn, .ev-item .btn { margin: 0; }
+.ev-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 6px 0; border-bottom: 1px dashed #dce7e8; }
+.ev-item:last-child { border-bottom: 0; }
+.ev-info { display: flex; flex-direction: column; font-size: 12px; }
+.ev-shots { display: flex; flex-wrap: wrap; gap: 6px; }
+
+@media (max-width: 991px) {
+  .params { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .param-nav { position: static; max-height: none; border: 0; background: none; overflow: visible; }
+  .pn-head { display: none; }
+  .pn-list { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; }
+  .pn-item { flex: 0 0 auto; width: auto; max-width: 260px; margin: 0; border: 1px solid #dce7e8; border-radius: 20px; background: #fff; padding: 6px 10px; }
+  .pn-item.active { border-color: #23656b; }
+  .req-meta { grid-template-columns: minmax(0, 1fr); }
+}

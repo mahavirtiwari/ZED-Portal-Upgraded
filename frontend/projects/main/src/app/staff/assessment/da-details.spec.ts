@@ -97,9 +97,8 @@ describe('DaDetailsPage', () => {
     await open(details());
     tab('Parameters');
     await settle();
-    // The requirement's Validate button is the last one in its row.
-    const buttons = Array.from(el.querySelectorAll<HTMLInputElement>('td.text-center input[type=button]'));
-    buttons[buttons.length - 1].click();
+    // The requirement's Validate button is in the conformance block of its card.
+    el.querySelector<HTMLInputElement>('[data-requirement="11"] .conf-block input[type=button]')!.click();
     await settle();
 
     el.querySelector<HTMLInputElement>('input[name=conformance][value=No]')!.click();
@@ -136,8 +135,7 @@ describe('DaDetailsPage', () => {
     await open(details({ checkpoints }));
     tab('Parameters');
     await settle();
-    const buttons = Array.from(el.querySelectorAll<HTMLInputElement>('td.text-center input[type=button]'));
-    buttons[buttons.length - 1].click();
+    el.querySelector<HTMLInputElement>('[data-requirement="11"] .conf-block input[type=button]')!.click();
     await settle();
     // The checkpoint pop-up, not the old Yes / No one.
     expect(el.querySelector('#daConfRemarks')).toBeNull();
@@ -176,7 +174,7 @@ describe('DaDetailsPage', () => {
     await open(details());
     tab('Parameters');
     await settle();
-    Array.from(el.querySelectorAll<HTMLInputElement>('table.table-striped input[type=button]')).find((b) => b.value === 'Validate')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('.ev-item input[type=button]')).find((b) => b.value === 'Validate')!.click();
     await settle();
     el.querySelector<HTMLInputElement>('input[name=evVerified][value=Yes]')!.click();
     await settle();
@@ -207,7 +205,7 @@ describe('DaDetailsPage', () => {
     await open(details());
     tab('Parameters');
     await settle();
-    Array.from(el.querySelectorAll<HTMLInputElement>('table.table-striped input[type=button]')).find((b) => b.value === 'Validate')!.click();
+    Array.from(el.querySelectorAll<HTMLInputElement>('.ev-item input[type=button]')).find((b) => b.value === 'Validate')!.click();
     await settle();
     el.querySelector<HTMLInputElement>('input[name=evVerified][value=Yes]')!.click();
     await settle();
@@ -327,6 +325,137 @@ describe('DaDetailsPage', () => {
     req.flush({ title: 'This action is not available for the assessment in its current status.' }, { status: 403, statusText: 'Forbidden' });
     await settle();
     expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('not available');
+  });
+
+  it('shows the assessment summary as a card of key facts with the location', async () => {
+    await open(details({ msme: { ...details().msme, PlantAddress: 'Plot 4, Industrial Area', Certification: 'Bronze' } }));
+    const factEls = Array.from(el.querySelectorAll('.summary .fact'));
+    const facts = new Map(factEls.map((f) => [f.querySelector('dt')!.textContent!.trim(), f.querySelector('dd')!.textContent!.replace(/\s+/g, ' ').trim()]));
+    expect(facts.get('ZED ID')).toBe('ZEDMSME000001');
+    expect(facts.get('Unit Name')).toBe('Unit 1');
+    expect(facts.get('Agency Name')).toBe('AGENCY1 - Agency One');
+    // Empty values show a dash.
+    expect(facts.get('Udyam Registration Number')).toBe('—');
+    expect(facts.get('Desktop Assessor Name')).toBe('—');
+    // The long address spans two columns; the location is one of the facts, with its map link.
+    expect(factEls.find((f) => f.querySelector('dt')!.textContent!.trim() === 'Unit Address')!.classList).toContain('wide');
+    expect(facts.get('Location')).toContain('28.6');
+    expect(facts.get('Location')).toContain('77.2');
+    const map = el.querySelector<HTMLAnchorElement>('.summary a.map-link')!;
+    expect(map.textContent!.trim()).toBe('Map');
+    expect(map.getAttribute('href')).toBe('https://www.google.com/maps?q=28.6,77.2');
+    expect(map.getAttribute('target')).toBe('_blank');
+    expect(el.querySelector('table.kv')).toBeNull();
+  });
+
+  it('numbers the basic information rows 1, 2, 3 in display order', async () => {
+    await open(details({ products: [{ ...details().products[0], DescriptionKind: 'pdf', DescriptionUrl: BASE + '/files/desc.pdf', DescriptionOpened: false }] }));
+    tab('Basic Information');
+    await settle();
+    for (const r of http.match((req) => req.url.startsWith('/api/staff/app-form-values'))) r.flush([]);
+    await settle();
+    const rows = Array.from(el.querySelectorAll<HTMLTableRowElement>('table.basic-info > tbody > tr'));
+    const numbers = rows.map((r) => r.cells[0].textContent!.trim()).filter(Boolean);
+    expect(numbers).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']);
+    // The product description PDF is a chip, not the missing pdf-icon image.
+    const chip = el.querySelector<HTMLAnchorElement>('a[href$="/files/desc.pdf"]')!;
+    expect(chip.querySelector('.pdf-chip .pdf-tag')!.textContent).toBe('PDF');
+    expect(chip.querySelector('.pdf-chip')!.classList).not.toContain('opened');
+    expect(el.querySelector('img[src*="pdf-icon"]')).toBeNull();
+  });
+
+  it('shows evidences as PDF chips, tinted once opened', async () => {
+    await open(details({
+      evidences: [
+        ...details().evidences,
+        { Id: 32, SectionCode: '1', RequirementCode: '2', EvidenceName: '', ValidationRequired: true, Opened: false, FileUrl: BASE + '/files/x/6662.pdf', Screenshots: [] },
+      ],
+    }));
+    tab('Parameters');
+    await settle();
+    const opened = el.querySelector<HTMLAnchorElement>('a[href$="Evidences/5551.pdf"]')!;
+    expect(opened.querySelector('.pdf-chip')!.classList).toContain('opened');
+    expect(opened.querySelector('.pdf-tag')!.textContent).toBe('PDF');
+    expect(opened.textContent).toContain('Policy');
+    const fresh = el.querySelector<HTMLAnchorElement>('a[href$="/6662.pdf"]')!;
+    expect(fresh.querySelector('.pdf-chip')!.classList).not.toContain('opened');
+    expect(fresh.textContent).toContain('View PDF');
+    expect(el.querySelector('img[src*="pdf-icon"]')).toBeNull();
+
+    // Opening an evidence still records it (the old SaveTimestamp) and reloads.
+    fresh.addEventListener('click', (ev) => ev.preventDefault());
+    fresh.click();
+    await settle();
+    const req = http.expectOne(BASE + '/opened');
+    expect(req.request.body).toEqual({ type: 'Evidence', id: 32 });
+    req.flush({ message: 'ok' });
+    await settle();
+    http.expectOne(BASE).flush(details());
+    await settle();
+  });
+
+  it('lists the parameters with their status and shows the selected one', async () => {
+    await open(details({
+      sections: [
+        { Id: 41, SectionCode: '1', SectionName: 'Leadership', ValidationRequired: 0, IsAssessmentExcempted: null },
+        { Id: 42, SectionCode: '2', SectionName: 'Swachh Workplace', ValidationRequired: 0, IsAssessmentExcempted: 'Yes' },
+        { Id: 43, SectionCode: '3', SectionName: 'Occupational Safety', ValidationRequired: 0, IsAssessmentExcempted: null },
+        { Id: 44, SectionCode: '4', SectionName: 'Quality Management', ValidationRequired: 0, IsAssessmentExcempted: null },
+      ],
+      requirements: [
+        { Id: 11, SectionCode: '1', RequirementCode: '2', Conformance: null, OpenedFlag: true },
+        { Id: 12, SectionCode: '2', RequirementCode: '1', Conformance: 'Yes' },
+        { Id: 13, SectionCode: '2', RequirementCode: '2', Conformance: 'Yes' },
+        { Id: 14, SectionCode: '3', RequirementCode: '1', Conformance: 'Yes' },
+        { Id: 15, SectionCode: '3', RequirementCode: '2', Conformance: 'No' },
+        { Id: 16, SectionCode: '4', RequirementCode: '1', Conformance: 'Yes' },
+        { Id: 17, SectionCode: '4', RequirementCode: '2', Conformance: null },
+      ],
+      options: [
+        ...details().options,
+        { SectionCode: '2', RequirementCode: '1', OptionCode: '1', OptionName: 'Work area is clean' },
+        { SectionCode: '3', RequirementCode: '1', OptionCode: '1', OptionName: 'Fire extinguishers placed' },
+      ],
+    }));
+    tab('Parameters');
+    await settle();
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.param-nav .pn-item'));
+    expect(items.map((i) => i.querySelector('.pnum')!.textContent!.trim())).toEqual(['1', '2', '3', '4']);
+    expect(items.map((i) => i.querySelector('.st-chip')!.textContent!.trim())).toEqual(['Pending', 'Yes', 'No', 'Partial']);
+    expect(items[1].querySelector('.exempt-tag')!.textContent).toContain('Exempted');
+    expect(items[0].querySelector('.exempt-tag')).toBeNull();
+
+    // The first parameter is shown by default, one at a time.
+    expect(items[0].classList).toContain('active');
+    expect(el.querySelectorAll('.param-main .req-card').length).toBe(1);
+    expect(el.querySelector('.param-main')!.textContent).toContain('Has a quality policy');
+    expect(el.querySelector('.pm-head .st-chip')!.textContent!.trim()).toBe('Pending');
+
+    items[2].click();
+    await settle();
+    const main = el.querySelector('.param-main')!;
+    expect(el.querySelectorAll('.param-nav .pn-item')[2].classList).toContain('active');
+    expect(main.querySelector('.pm-head h5')!.textContent).toContain('Occupational Safety');
+    expect(main.querySelector('.pm-head .st-chip')!.textContent!.trim()).toBe('No');
+    expect(Array.from(main.querySelectorAll('.req-card .req-code')).map((c) => c.textContent!.trim())).toEqual(['3.1', '3.2']);
+    expect(main.textContent).toContain('Fire extinguishers placed');
+    expect(main.textContent).not.toContain('Has a quality policy');
+    expect(Array.from(main.querySelectorAll('.conf-block .st-chip')).map((c) => c.textContent!.trim())).toEqual(['Yes', 'No']);
+  });
+
+  it('marks a parameter Partial while only some checkpoints are answered', async () => {
+    const checkpoints = [
+      { id: 501, requirementId: 11, optionCode: '1', text: 'Has a quality policy', actions: [], evidences: [],
+        desktop: { value: 'Partial' as const, actions: ['Write the policy'], remarks: 'Draft only' }, site: null, baseline: null, review1: null, review2: null },
+    ];
+    await open(details({ checkpoints }));
+    tab('Parameters');
+    await settle();
+    expect(el.querySelector('.pn-item .st-chip')!.textContent!.trim()).toBe('Partial');
+    const row = el.querySelector('.cp-block .cp-item')!;
+    expect(row.querySelector('.cp-answer .cp-chip')!.textContent!.trim()).toBe('Partial');
+    expect(row.textContent).toContain('Write the policy');
+    expect(row.textContent).toContain('Draft only');
   });
 
   it('explains a record that is not visible to the user', async () => {

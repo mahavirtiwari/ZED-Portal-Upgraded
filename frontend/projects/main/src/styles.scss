@@ -54,6 +54,16 @@ body {
   font-size: 14px;
 }
 
+// A PDF link (2026-11-12): a small red "PDF" tag with its name, tinted once opened (the old icon pictures did not exist).
+.pdf-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border: 1px solid #cfe0e2; border-radius: 7px;
+  background: #fff; color: #23656b; font-size: 13px; font-weight: 600; line-height: 1.3; white-space: nowrap; vertical-align: middle;
+  text-decoration: none;
+}
+.pdf-chip .pdf-tag { background: #c0392b; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; border-radius: 4px; padding: 1px 4px; }
+.pdf-chip.opened { background: #e6f2f3; }
+a:hover > .pdf-chip, a:focus-visible > .pdf-chip { border-color: #23656b; }
+
 // ZED teal primary buttons (Content/swachh.css loaded last in the MVC layout and set this).
 .btn-primary,
 .btn-primary:hover,

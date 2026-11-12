@@ -66,62 +66,47 @@
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.sitePhotos" box="alert alert-warning" />
           }
-          <div class="overview">
-            <div class="table-responsive">
-              <table class="table table-bordered table-zed kv">
-                <tbody>
-                  <tr><th>ZED ID</th><td>{{ t(msme(), 'ZedId') }}</td></tr>
-                  <tr><th>Unit Name</th><td>{{ t(msme(), 'PUnitName') }}</td></tr>
-                  <tr><th>Udyam Registration Number</th><td>{{ t(msme(), 'UdyogAadharNo') }}</td></tr>
-                  <tr><th>Unit Address</th><td>{{ t(msme(), 'PlantAddress') }}</td></tr>
-                  <tr><th>Document Submission Date</th><td>{{ t(msme(), 'BasicInfoStatus') }}</td></tr>
-                  <tr><th>Document Verification allocated on</th><td>{{ t(msme(), 'DocVerifiAllot') }}</td></tr>
-                  @for (i of [1, 2, 3, 4, 5]; track i) {
-                    @if (t(msme(), 'Nc' + i + 'Raised')) {
-                      <tr><th>Non-Conformance {{ i }} Raised On</th><td>{{ t(msme(), 'Nc' + i + 'Raised') }}</td></tr>
-                    }
-                    @if (t(msme(), 'Nc' + i + 'Submitted')) {
-                      <tr><th>Non-Conformance {{ i }} Submitted On</th><td>{{ t(msme(), 'Nc' + i + 'Submitted') }}</td></tr>
-                    }
-                  }
-                  <tr><th>Document Verification Completed on</th><td>{{ t(msme(), 'CompletedOn') }}</td></tr>
-                  <tr><th>Certification</th><td>{{ t(msme(), 'Certification') }}</td></tr>
-                  @if (!isQc()) {
-                    <tr><th>Agency Name</th><td>{{ t(msme(), 'CertificationBodyUserId') }} - {{ t(msme(), 'AgencyName') }}</td></tr>
-                    <tr><th>Desktop Assessor Name</th><td>{{ t(msme(), 'DesktopAssessorId') }} - {{ t(msme(), 'DesktopAssessorName') }}</td></tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            <div class="locations">
-              <div class="zed-card">
-                <div class="card-head">
-                  <h4>{{ surveillance() ? 'Surveillance Location' : 'Location' }}</h4>
-                  @if (mapUrl()) {
-                    <a class="btn btn-outline-primary btn-sm" [href]="mapUrl()" target="_blank" rel="noopener">Click here to view map</a>
-                  }
-                </div>
-                <dl class="coords">
-                  <dt>Latitude</dt><dd>{{ t(d.location, 'Latitude') }}</dd>
-                  <dt>Longitude</dt><dd>{{ t(d.location, 'Longitude') }}</dd>
-                </dl>
-              </div>
-              @if (surveillance(); as sv) {
-                <div class="zed-card">
-                  <div class="card-head">
-                    <h4>Zed Assessment Location</h4>
-                    @if (zedMapUrl()) {
-                      <a class="btn btn-outline-primary btn-sm" [href]="zedMapUrl()" target="_blank" rel="noopener">Click here to view map</a>
-                    }
-                  </div>
-                  <dl class="coords">
-                    <dt>Latitude</dt><dd>{{ t(sv.zedLocation, 'ZedLatitude') }}</dd>
-                    <dt>Longitude</dt><dd>{{ t(sv.zedLocation, 'ZedLongitude') }}</dd>
-                  </dl>
+          <section class="zed-card summary" aria-labelledby="daSummaryTitle">
+            <h4 class="summary-title" id="daSummaryTitle">Key facts</h4>
+            <dl class="facts">
+              @for (fc of summaryFacts(); track fc.label) {
+                <div class="fact" [class.wide]="fc.wide">
+                  <dt>{{ fc.label }}</dt>
+                  <dd>{{ fc.value || '—' }}</dd>
                 </div>
               }
-            </div>
-          </div>
+              <div class="fact">
+                <dt>{{ surveillance() ? 'Surveillance Location' : 'Location' }}</dt>
+                <dd class="loc">
+                  @if (t(d.location, 'Latitude') || t(d.location, 'Longitude')) {
+                    <span><span class="muted">Lat</span> {{ t(d.location, 'Latitude') || '—' }}</span>
+                    <span><span class="muted">Long</span> {{ t(d.location, 'Longitude') || '—' }}</span>
+                  } @else {
+                    <span>—</span>
+                  }
+                  @if (mapUrl()) {
+                    <a class="map-link" [href]="mapUrl()" target="_blank" rel="noopener">Map</a>
+                  }
+                </dd>
+              </div>
+              @if (surveillance(); as sv) {
+                <div class="fact">
+                  <dt>Zed Assessment Location</dt>
+                  <dd class="loc">
+                    @if (t(sv.zedLocation, 'ZedLatitude') || t(sv.zedLocation, 'ZedLongitude')) {
+                      <span><span class="muted">Lat</span> {{ t(sv.zedLocation, 'ZedLatitude') || '—' }}</span>
+                      <span><span class="muted">Long</span> {{ t(sv.zedLocation, 'ZedLongitude') || '—' }}</span>
+                    } @else {
+                      <span>—</span>
+                    }
+                    @if (zedMapUrl()) {
+                      <a class="map-link" [href]="zedMapUrl()" target="_blank" rel="noopener">Map</a>
+                    }
+                  </dd>
+                </div>
+              }
+            </dl>
+          </section>
         </div>
       }
 
@@ -132,7 +117,7 @@
             <zed-text key="staff.assessment.desktop.validateNote.productPhotos" box="alert alert-warning" />
           }
           <div class="table-responsive">
-          <table class="table table-bordered table-zed">
+          <table class="table table-bordered table-zed basic-info">
             <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 28%">Description</th><th>Responses</th></tr></thead>
             <tbody>
               <tr>
@@ -149,7 +134,7 @@
                 </td>
               </tr>
               <tr>
-                <td class="text-center">1</td>
+                <td class="text-center">2</td>
                 <td>Site Exterior Photos</td>
                 <td>
                   <div class="photo-grid">
@@ -174,9 +159,9 @@
                   </div>
                 </td>
               </tr>
-              <tr><td class="text-center">1</td><td>Whether 3rd Party Financial Audits are conducted?</td><td>{{ t(msme(), 'AuditsConducted') }}</td></tr>
+              <tr><td class="text-center">3</td><td>Whether 3rd Party Financial Audits are conducted?</td><td>{{ t(msme(), 'AuditsConducted') }}</td></tr>
               <tr>
-                <td class="text-center">2</td>
+                <td class="text-center">4</td>
                 <td>Product manufactured</td>
                 <td>
                   <table class="table table-striped inner">
@@ -195,8 +180,8 @@
                           </td>
                           <td>
                             @if (t(p, 'DescriptionKind') === 'pdf') {
-                              <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)">
-                                <img [src]="f(p, 'DescriptionOpened') ? 'Images/pdf-icon-blue.png' : 'Images/pdf-icon.png'" height="25" alt="Product description (PDF)" />
+                              <a class="pdf-link" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)">
+                                <span class="pdf-chip" [class.opened]="f(p, 'DescriptionOpened')"><span class="pdf-tag">PDF</span>View PDF</span>
                               </a>
                             } @else if (t(p, 'DescriptionKind') === 'image') {
                               <button type="button" class="btn btn-link p-0" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" /></button>
@@ -220,9 +205,9 @@
                   </table>
                 </td>
               </tr>
-              <tr><td class="text-center">3</td><td>Key Domestic Customers</td><td>{{ t(msme(), 'DomesticCustomers') }}</td></tr>
-              <tr><td class="text-center">4</td><td>Key International Customers</td><td>{{ t(msme(), 'InternationalCustomers') }}</td></tr>
-              <tr><td class="text-center">5</td><td>Whether Raw Material is Imported?</td><td>{{ t(msme(), 'RawMaterialImported') }}</td></tr>
+              <tr><td class="text-center">5</td><td>Key Domestic Customers</td><td>{{ t(msme(), 'DomesticCustomers') }}</td></tr>
+              <tr><td class="text-center">6</td><td>Key International Customers</td><td>{{ t(msme(), 'InternationalCustomers') }}</td></tr>
+              <tr><td class="text-center">7</td><td>Whether Raw Material is Imported?</td><td>{{ t(msme(), 'RawMaterialImported') }}</td></tr>
               @if (t(msme(), 'RawMaterialImported') === 'Yes') {
                 <tr>
                   <td class="text-center"></td>
@@ -239,10 +224,10 @@
                   </td>
                 </tr>
               }
-              <tr><td class="text-center">6</td><td>Processed Outsourced, if any?</td><td>{{ t(msme(), 'OutsourcedProcesses') }}</td></tr>
-              <tr><td class="text-center">7</td><td>Energy Source(s) Used</td><td>{{ t(msme(), 'EnergySources') }}</td></tr>
-              <tr><td class="text-center">8</td><td>monthly Manufacturing Capacity</td><td>{{ t(msme(), 'ManufacturingCapacityValue') }} {{ t(msme(), 'ManufacturingCapacityUnits') }}</td></tr>
-              <tr><td class="text-center">9</td><td>Monthly Utilization</td><td>{{ t(msme(), 'MonthlyUtilizationValue') }} {{ t(msme(), 'MonthlyUtilizationUnits') }}</td></tr>
+              <tr><td class="text-center">8</td><td>Processed Outsourced, if any?</td><td>{{ t(msme(), 'OutsourcedProcesses') }}</td></tr>
+              <tr><td class="text-center">9</td><td>Energy Source(s) Used</td><td>{{ t(msme(), 'EnergySources') }}</td></tr>
+              <tr><td class="text-center">10</td><td>monthly Manufacturing Capacity</td><td>{{ t(msme(), 'ManufacturingCapacityValue') }} {{ t(msme(), 'ManufacturingCapacityUnits') }}</td></tr>
+              <tr><td class="text-center">11</td><td>Monthly Utilization</td><td>{{ t(msme(), 'MonthlyUtilizationValue') }} {{ t(msme(), 'MonthlyUtilizationUnits') }}</td></tr>
             </tbody>
           </table>
           </div>
@@ -316,21 +301,47 @@
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.documents" box="alert alert-warning" />
           }
-          <div>
-            @for (s of d.sections; track t(s, 'Id')) {
-              <div class="section">
-                <div class="panel panel-default panel-black">
-                  <div class="panel-body">
-                    {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
-                    @if (t(s, 'iButton')) {
-                      <span class="z-tooltip" style="float: right">
-                        <img src="Images/svgicons/info.svg" alt="Information" />
-                        <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
-                      </span>
-                    }
+          @let cur = activeSection();
+          <div class="params">
+            <nav class="param-nav" aria-labelledby="daParamNavTitle">
+              <div class="pn-head" id="daParamNavTitle">Parameters and conformance status</div>
+              <div class="pn-list">
+                @for (s of d.sections; track t(s, 'Id')) {
+                  @let st = sectionStatus(s);
+                  <button type="button" class="pn-item" [class.active]="s === cur" [attr.aria-current]="s === cur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="selectSection(s)">
+                    <span class="pnum">{{ t(s, 'SectionCode') }}</span>
+                    <span class="pname">
+                      {{ t(s, 'SectionName') }}
+                      @if (exempted(s)) { <span class="exempt-tag">Exempted</span> }
+                    </span>
+                    <span class="st-chip" [attr.data-v]="st">{{ st }}</span>
+                  </button>
+                }
+              </div>
+            </nav>
+
+            <div class="param-main">
+              @if (cur; as s) {
+                @let sst = sectionStatus(s);
+                <div class="section" [attr.data-section]="t(s, 'SectionCode')">
+                  <div class="pm-head">
+                    <div class="pm-title">
+                      <span class="pnum lg">{{ t(s, 'SectionCode') }}</span>
+                      <h5>{{ t(s, 'SectionName') }}</h5>
+                      @if (t(s, 'iButton')) {
+                        <span class="z-tooltip" tabindex="0">
+                          <span class="info-i" role="img" aria-label="Information">i</span>
+                          <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                        </span>
+                      }
+                      @if (exempted(s)) { <span class="exempt-tag">Exempted</span> }
+                    </div>
+                    <div class="pm-status">
+                      <span class="lbl">Conformance status</span>
+                      <span class="st-chip lg" [attr.data-v]="sst">{{ sst }}</span>
+                    </div>
                   </div>
-                </div>
-                <div>
+
                   @if (n(s, 'ValidationRequired') > 0) {
                     <h5 class="exempt">
                       @if (canChange(0) && status() <= 3) {
@@ -354,88 +365,124 @@
                       }
                     </h5>
                   }
-                  <div class="table-responsive">
-                  <table class="table table-bordered table-zed">
-                    <thead>
-                      <tr><th class="text-center">Code</th><th>Requirement</th><th>Document Uploaded</th><th class="text-center">Conformance (Yes/No)</th><th>Assessor Remark</th></tr>
-                    </thead>
-                    <tbody>
-                      @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
-                        <tr>
-                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
-                          <td style="width: 35%">
-                            @for (o of optionsOf(r, d.options); track $index) {
-                              <div>
-                                {{ t(o, 'OptionName') }}
-                                @if (answerOf(r, o); as a) { <span class="cp-chip" [attr.data-v]="a">{{ a }}</span> }
+
+                  @for (r of requirementsOf(s, d.requirements); track t(r, 'Id')) {
+                    @let withCheckpoints = hasCheckpoints(r);
+                    <article class="req-card" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="requirementStatus(r)">
+                      <div class="req-top">
+                        <span class="req-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
+                        <span class="req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                        <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
+                      </div>
+
+                      <div class="cp-block">
+                        <div class="blk-label">Checkpoints</div>
+                        @for (o of optionsOf(r, d.options); track $index) {
+                          @let cp = checkpointOf(r, o);
+                          <div class="cp-item">
+                            <div class="cp-text">
+                              {{ t(o, 'OptionName') }}
+                              @if (subOptionsOf(o, d.subOptions).length) {
                                 <ul>
                                   @for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
                                 </ul>
-                              </div>
+                              }
+                              @if (cp?.desktop?.actions?.length) {
+                                <div class="cp-note"><span class="muted">Actions:</span> {{ cp?.desktop?.actions?.join(', ') }}</div>
+                              }
+                              @if (cp?.desktop?.remarks) {
+                                <div class="cp-note"><span class="muted">Remarks:</span> {{ cp?.desktop?.remarks }}</div>
+                              }
+                            </div>
+                            <div class="cp-answer">
+                              @if (answerOf(r, o); as a) {
+                                <span class="cp-chip" [attr.data-v]="a">{{ a }}</span>
+                              } @else if (withCheckpoints) {
+                                <span class="cp-none">Not answered</span>
+                              }
+                            </div>
+                          </div>
+                        } @empty {
+                          <div class="cp-item"><span class="muted">No checkpoints.</span></div>
+                        }
+                      </div>
+
+                      <div class="req-meta">
+                        <div class="meta-block ev-block">
+                          <div class="blk-label">Evidences</div>
+                          @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
+                            <div class="ev-item">
+                              @if (t(e, 'FileUrl')) {
+                                <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
+                                  <span class="pdf-chip" [class.opened]="f(e, 'Opened')"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span>
+                                </a>
+                              } @else {
+                                <span class="ev-name">{{ t(e, 'EvidenceName') }}</span>
+                              }
+                              @if (t(e, 'IsVerified') || t(e, 'SourceOfValidation') || t(e, 'AssessorRemarks')) {
+                                <div class="ev-info">
+                                  @if (t(e, 'IsVerified')) { <span><span class="muted">Verified:</span> <span class="st-chip sm" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span></span> }
+                                  @if (t(e, 'SourceOfValidation')) { <span><span class="muted">Source of Validation:</span> {{ t(e, 'SourceOfValidation') }}</span> }
+                                  @if (t(e, 'AssessorRemarks')) { <span><span class="muted">Remarks:</span> {{ t(e, 'AssessorRemarks') }}</span> }
+                                </div>
+                              }
+                              @if (t(e, 'IsVerified') && screenshots(e).length) {
+                                <div class="ev-shots">
+                                  @for (sc of screenshots(e); track sc) {
+                                    <a class="pdf-link" [href]="sc" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>Screenshot {{ $index + 1 }}</span></a>
+                                  }
+                                </div>
+                              }
+                              @if (canChange(0) && f(e, 'ValidationRequired') && f(e, 'Opened')) {
+                                <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(e, 'IsVerified')" [class.btn-outline-primary]="!!t(e, 'IsVerified')" (click)="editEvidence(e)" />
+                              }
+                            </div>
+                          } @empty {
+                            <span class="muted">No evidences.</span>
+                          }
+                        </div>
+                        <div class="meta-block conf-block">
+                          <div class="blk-label">Conformance (Yes/No)</div>
+                          <div class="meta-row">
+                            @if (t(r, 'Conformance')) {
+                              <span class="st-chip" [attr.data-v]="t(r, 'Conformance')">{{ t(r, 'Conformance') }}</span>
+                            } @else {
+                              <span class="muted">Not given</span>
                             }
-                          </td>
-                          <td style="padding: 0">
-                            <table class="table table-striped inner">
-                              <tbody>
-                                @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
-                                  <tr>
-                                    <td>
-                                      {{ t(e, 'EvidenceName') }}
-                                      @if (t(e, 'FileUrl')) {
-                                        <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
-                                          <img [src]="f(e, 'Opened') ? 'Images/pdf-icon-blue.png' : 'Images/pdf-icon.png'" height="25" alt="Evidence (PDF)" />
-                                        </a>
-                                      }
-                                      <br />
-                                      @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
-                                      @if (t(e, 'SourceOfValidation')) { <small><br /><strong>Source of Validation:</strong> {{ t(e, 'SourceOfValidation') }}</small> }
-                                      @if (t(e, 'AssessorRemarks')) { <small><br /><strong>Remarks:</strong> {{ t(e, 'AssessorRemarks') }}</small> }
-                                      @if (t(e, 'IsVerified')) {
-                                        <small>
-                                          <br />
-                                          @for (sc of screenshots(e); track sc) {
-                                            <a [href]="sc" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Screenshot" /></a>
-                                          }
-                                        </small>
-                                      }
-                                      @if (canChange(0) && f(e, 'ValidationRequired') && f(e, 'Opened')) {
-                                        <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(e, 'IsVerified')" [class.btn-outline-primary]="!!t(e, 'IsVerified')" (click)="editEvidence(e)" />
-                                      }
-                                    </td>
-                                  </tr>
-                                }
-                              </tbody>
-                            </table>
-                          </td>
-                          <td style="width: 60px" class="text-center">
-                            {{ t(r, 'Conformance') }}
                             @if (canChange(0) && (t(r, 'Conformance') || f(r, 'OpenedFlag'))) {
                               <input type="button" [value]="t(r, 'Conformance') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(r, 'Conformance')" [class.btn-outline-primary]="!!t(r, 'Conformance')" (click)="editConformance(r)" />
                             }
-                          </td>
-                          <td>
-                            {{ t(r, 'AssessorRemarks') }}
+                          </div>
+                        </div>
+                        <div class="meta-block remarks-block">
+                          <div class="blk-label">Assessor remarks</div>
+                          <div class="meta-row">
+                            <span>{{ t(r, 'AssessorRemarks') || '—' }}</span>
                             @if (review().editRemarks) {
                               <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('requirement', r)" />
                             }
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                  </div>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  } @empty {
+                    <p class="muted">No requirements in this parameter.</p>
+                  }
                 </div>
-              </div>
-            }
-            @if (t(msme(), 'AssessorRemarks')) {
-              <div class="final-remarks"><strong>Assessor Final Remarks:</strong> {{ t(msme(), 'AssessorRemarks') }}</div>
-            }
-            <div class="submit-bar">
-              @if (perms().canFinalSubmit && currentRound() === 0) {
-                <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="openFinalSubmit()" />
+              } @else {
+                <p class="muted">No parameters.</p>
               }
-              <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="desktop" [actions]="review()" (done)="reviewed($event)" />
             </div>
+          </div>
+
+          @if (t(msme(), 'AssessorRemarks')) {
+            <div class="final-remarks"><strong>Assessor Final Remarks:</strong> {{ t(msme(), 'AssessorRemarks') }}</div>
+          }
+          <div class="submit-bar">
+            @if (perms().canFinalSubmit && currentRound() === 0) {
+              <input type="button" value="Final Submit" class="btn btn-primary btn-md" [disabled]="busy()" (click)="openFinalSubmit()" />
+            }
+            <zed-review-actions [zedId]="d.zedId" [certification]="d.certification" stage="desktop" [actions]="review()" (done)="reviewed($event)" />
           </div>
         </div>
       }
@@ -541,7 +588,7 @@
                                 </td>
                                 <td class="text-center" style="width: 180px">
                                   @if (t(o, 'DescriptionKind') === 'pdf') {
-                                    <a [href]="t(o, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                    <a class="pdf-link" [href]="t(o, 'DescriptionUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>View PDF</span></a>
                                   } @else if (t(o, 'DescriptionKind') === 'image') {
                                     <button type="button" class="btn btn-link p-0" (click)="openImage(o['DescriptionUrl'])"><img [src]="t(o, 'DescriptionUrl')" height="60" alt="Product description" /></button>
                                   }
@@ -559,7 +606,7 @@
                                 </td>
                                 <td class="text-center" style="width: 180px">
                                   @if (t(p, 'DescriptionKind') === 'pdf') {
-                                    <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                                    <a class="pdf-link" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener" (click)="markOpened('ProductDescriptionPhoto', p)"><span class="pdf-chip" [class.opened]="f(p, 'DescriptionOpened')"><span class="pdf-tag">PDF</span>View PDF</span></a>
                                   } @else if (t(p, 'DescriptionKind') === 'image') {
                                     <button type="button" class="btn btn-link p-0" (click)="openImage(p['DescriptionUrl'], 'ProductDescriptionPhoto', p)"><img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" /></button>
                                   }
@@ -596,8 +643,8 @@
                     <div class="panel-body">
                       {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
                       @if (t(s, 'iButton')) {
-                        <span class="z-tooltip" style="float: right">
-                          <img src="Images/svgicons/info.svg" alt="Information" />
+                        <span class="z-tooltip" tabindex="0">
+                          <span class="info-i" role="img" aria-label="Information">i</span>
                           <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
                         </span>
                       }
@@ -632,9 +679,10 @@
                                 @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
                                   <tr>
                                     <td>
-                                      {{ t(e, 'EvidenceName') }}
                                       @if (t(e, 'FileUrl')) {
-                                        <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon-blue.png" height="25" alt="Evidence (PDF)" /></a>
+                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><span class="pdf-chip opened"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span></a>
+                                      } @else {
+                                        {{ t(e, 'EvidenceName') }}
                                       }
                                       <br />
                                       @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
@@ -646,10 +694,10 @@
                                 @for (e of evidencesOf(r, rd?.evidences); track t(e, 'Id')) {
                                   <tr>
                                     <td>
-                                      @if (t(e, 'SyncedDate')) { <span>NC{{ t(e, 'NcCount') }}</span> }
+                                      @if (t(e, 'SyncedDate')) { <span class="nc-tag">NC{{ t(e, 'NcCount') }}</span> }
                                       @if (t(e, 'FileUrl')) {
-                                        <a class="pull-right" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
-                                          <img [src]="f(e, 'Opened') ? 'Images/pdf-icon-blue.png' : 'Images/pdf-icon.png'" height="25" alt="Evidence (PDF)" />
+                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
+                                          <span class="pdf-chip" [class.opened]="f(e, 'Opened')"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span>
                                         </a>
                                       }
                                     </td>
@@ -864,7 +912,7 @@
                     <td>@if (t(p, 'PhotoUrl')) { <img [src]="t(p, 'PhotoUrl')" height="60" alt="Product" /> }</td>
                     <td>
                       @if (t(p, 'DescriptionKind') === 'pdf') {
-                        <a [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><img src="Images/pdf-icon.png" height="25" alt="Product description (PDF)" /></a>
+                        <a class="pdf-link" [href]="t(p, 'DescriptionUrl')" target="_blank" rel="noopener"><span class="pdf-chip"><span class="pdf-tag">PDF</span>View PDF</span></a>
                       } @else if (t(p, 'DescriptionKind') === 'image') {
                         <img [src]="t(p, 'DescriptionUrl')" height="60" alt="Product description" />
                       }

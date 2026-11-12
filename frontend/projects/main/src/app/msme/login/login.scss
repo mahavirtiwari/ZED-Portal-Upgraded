@@ -16,7 +16,7 @@
 /* 2026-11-07 redesign (option A). */
 .login-login .login-form h2, .login-login h2 { font-size: 24px; font-weight: 700; color: #1d2b2c; margin: 0; }
 .ml-heading { font-size: 26px !important; }
-.ml-lead { color: #5f6b6c; font-size: 14px; margin: 4px 0 18px; }
+.ml-lead { color: #5f6b6c; font-size: 14px; margin: 2px 0 14px; }
 .login-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
 .login-form .form-control { height: 46px; border-radius: 10px; border-color: #cfd9da; }
 .login-form .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
@@ -43,14 +43,16 @@
 .login-login .register-btn .btn { display: inline-flex; align-items: center; justify-content: center; }
 .login-login .register-btn .btn.btn-primary { background: #23656b; border-color: #23656b; }
 .login-login .register-btn .btn.ml-secondary { background: #fff; border: 1.5px solid #23656b; color: #23656b; }
-.ml-or { display: flex; align-items: center; gap: 10px; margin: 22px 0 14px; color: #8a9596; font-size: 13px; }
+.ml-or { display: flex; align-items: center; gap: 10px; margin: 16px 0 10px; color: #8a9596; font-size: 13px; }
 .ml-or::before, .ml-or::after { content: ''; flex: 1; height: 1px; background: #e5e9e9; }
-.ml-new { background: #f1f8f8; border: 1px solid #d3e7e9; border-radius: 14px; padding: 16px 18px; color: #41575a; font-size: 13px; line-height: 1.5; }
+.ml-new { background: #f1f8f8; border: 1px solid #d3e7e9; border-radius: 14px; padding: 12px 16px; color: #41575a; font-size: 13px; line-height: 1.45; }
 .ml-new h2 { font-size: 16px !important; font-weight: 700 !important; color: #1b2a2c !important; margin: 0 0 4px !important; }
 /* 2026-11-08: the text centred both ways (it sat high: 42 px with a 28 px line height). */
 .ml-register {
-  display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; height: 46px; padding: 0 16px;
+  display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; height: 44px; padding: 0 16px;
   border-radius: 10px; font-weight: 600; font-size: 15px; letter-spacing: 0.6px; line-height: 1;
-  background: #fff; border: 1.5px solid #23656b; color: #23656b;
+  /* 2026-11-12: filled with the teal gradient of the page's left panel (the solid teal is LOGIN's). */
+  background: linear-gradient(135deg, #1d5a5f 0%, #23656b 45%, #2f8a92 100%); border: 0; color: #fff;
+  box-shadow: 0 4px 12px rgba(35, 101, 107, 0.25);
 }
-.ml-register:hover, .ml-register:focus-visible { background: #23656b; color: #fff; }
+.ml-register:hover, .ml-register:focus-visible { background: linear-gradient(135deg, #174a4e 0%, #1d5a5f 50%, #23656b 100%); color: #fff; }

@@ -58,9 +58,10 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
   `,
   styles: `
     :host { font-family: 'Work Sans', sans-serif; background: #fff; }
-    .ml-page { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+    /* One screen, no scrolling (2026-11-12): the page is the window's height and the banner takes what is left. */
+    .ml-page { height: 100vh; min-height: 600px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
     .ml-hero {
-      color: #fff; padding: 28px 40px 32px; display: flex; flex-direction: column; min-width: 0;
+      color: #fff; padding: 22px 40px 24px; display: flex; flex-direction: column; min-width: 0; min-height: 0;
       background: linear-gradient(160deg, #174a4e 0%, #23656b 48%, #2f8a92 100%);
     }
     /* The ministry's white logo straight on the teal, as the old sign-in page (2026-11-12). */
@@ -68,10 +69,10 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
     .ml-ministry img { width: 240px; display: block; }
     /* The whole banner (the Admin's banners are composed pictures with their own slogan): contained, not cropped. */
     .ml-photo-frame {
-      flex: 1 1 auto; min-height: 260px; margin: 22px 0 20px; background: #fff; border-radius: 18px; overflow: hidden;
+      flex: 1 1 0; min-height: 0; margin: 18px 0 16px; background: #fff; border-radius: 18px; overflow: hidden;
       display: flex; align-items: center; justify-content: center; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
     }
-    .ml-photo { width: 100%; height: 100%; max-height: 520px; object-fit: contain; padding: 14px; }
+    .ml-photo { width: 100%; height: 100%; object-fit: contain; padding: 12px; }
     .ml-title { font-size: 26px; font-weight: 700; margin: 0; line-height: 1.2; }
     .ml-sub { font-size: 15px; color: #cfe9ec; margin: 6px 0 14px; }
     .ml-levels { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -81,16 +82,19 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%;
       background: rgba(255, 255, 255, 0.16); font-size: 11px; margin-right: 8px;
     }
-    .ml-side { display: flex; flex-direction: column; padding: 24px 40px 16px; min-width: 0; }
-    .ml-side-top { display: flex; justify-content: flex-end; }
+    .ml-side { position: relative; display: flex; flex-direction: column; padding: 16px 40px 12px; min-width: 0; min-height: 0; overflow-y: auto; }
+    /* The ZED logo in the corner, out of the form's height. */
+    .ml-side-top { position: absolute; top: 16px; right: 28px; }
     .ml-zed { height: 88px; }
-    .ml-card { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 440px; margin: 0 auto; padding: 20px 0; min-width: 0; }
+    .ml-card { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 440px; margin: 0 auto; padding: 8px 0; min-width: 0; }
     .ml-footer {
       display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
-      padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
+      padding-top: 10px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
     }
     @media (max-width: 900px) {
-      .ml-page { grid-template-columns: 1fr; }
+      .ml-page { grid-template-columns: 1fr; height: auto; }
+      .ml-side { overflow: visible; }
+      .ml-photo-frame { flex: none; }
       .ml-hero { padding: 16px 20px 18px; }
       .ml-ministry img { width: 160px; }
       .ml-photo-frame { min-height: 0; margin: 14px 0; }
