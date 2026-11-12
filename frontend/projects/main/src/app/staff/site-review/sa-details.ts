@@ -11,6 +11,7 @@ import { SaSurveillanceTab, SurveillanceRemarks } from './sa-surveillance';
 import { Row, SaDetails, SaEvidencePhoto, SaNcProduct, SaNcRound, SaOriginal, SaPhoto, SiteReviewApi, siteLevel } from './site-review.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterNav } from '../../msme/shared/parameter-status';
+import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 
 /** Tab ids of the old page (SaDetails.cshtml tabTitles). */
 export const SA_TAB_TITLES: Record<number, string> = {
@@ -80,6 +81,20 @@ export class SaDetailsPage {
   protected readonly isAdmin = computed(() => this.data()?.role === 'MasterAdmin');
   /** NC tabs of the old page: NC n when NcCount > n - 1. */
   protected readonly ncTabs = computed(() => (this.data()?.ncRounds ?? []).map((r) => r.ncCount).filter((nc) => num(this.msme(), 'NcCount') > nc - 1));
+  /** NC tab shown (tabs 8..12 are NC1..NC5), 0 elsewhere. */
+  protected readonly ncRoundNumber = computed(() => (this.tab() >= 8 && this.tab() <= 12 ? this.tab() - 7 : 0));
+  /** Parameters of the NC round shown that have requirements in that round. */
+  protected readonly ncSections = computed(() => {
+    const rd = this.round(this.ncRoundNumber());
+    return (rd?.sections ?? []).filter((s) => this.requirementsOf(s, rd?.requirements).length > 0);
+  });
+  /** NC tabs: the round's parameter list (status from the round's site conformance) and the selected parameter. */
+  protected readonly rn = new ParameterNav<Row, Row>({
+    sections: () => this.ncSections(),
+    id: (s) => text(s, 'SectionCode'),
+    requirements: (s) => this.requirementsOf(s, this.round(this.ncRoundNumber())?.requirements),
+    conformance: (r) => r['SaConformance'],
+  });
   /** Parameters tab: the parameter list (status from the site conformance) and the selected parameter. */
   protected readonly pn = new ParameterNav<Row, Row>({
     sections: () => this.data()?.sections ?? [],
@@ -128,6 +143,34 @@ export class SaDetailsPage {
 
   protected evidencePhotosOf(r: Row): SaEvidencePhoto[] {
     return (this.data()?.evidencePhotos ?? []).filter((p) => p.sectionCode === text(r, 'SectionCode') && p.requirementCode === text(r, 'RequirementCode'));
+  }
+
+  /**
+   * NC tabs: the requirement's conversation up to round `nc`, oldest first: per round the assessor's remark that raised it
+   * (NC1 with the site assessment's evidence photos) and the unit's reply (comments, the round's files), then the verdict.
+   */
+  protected ncThread(r: Row, nc: number): ThreadMessage[] {
+    const same = (x: Row) => text(x, 'SectionCode') === text(r, 'SectionCode') && text(x, 'RequirementCode') === text(r, 'RequirementCode');
+    const rows = this.evidencesOf(r, this.round(nc)?.evidences);
+    const out: ThreadMessage[] = [];
+    for (let k = 1; k <= nc; k++) {
+      const rk = k === nc ? r : this.round(k)?.requirements.find(same);
+      if (!rk) continue;
+      // The surveillance page showed no site assessment photos in the NC rounds.
+      const photos = k === 1 && !this.surveillance ? this.evidencePhotosOf(r).filter((p) => !!p.url).map((p) => ({ name: p.name ?? '', url: p.url ?? '' })) : [];
+      out.push(message('assessor', `NC${k} raised`, { text: text(rk, 'PreviousAssessorRemarks'), pictures: photos }));
+      const group = rows.filter((e) => {
+        const c = num(e, 'NcCount');
+        return c === k || (k === nc && (c < 1 || c > nc));
+      });
+      out.push(message('msme', `NC${k}`, {
+        date: group.map((e) => text(e, 'SyncedDate')).find(Boolean) ?? '',
+        text: text(rk, 'MsmeComments'),
+        all: group.map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl') })),
+      }));
+    }
+    if (text(r, 'SaConformance')) out.push(message('assessor', `NC${nc}`, { text: text(r, 'SaAssessorRemarks'), conformance: text(r, 'SaConformance') }));
+    return out.filter(hasContent);
   }
 
   protected oldProductsOf(p: SaNcProduct, nc: number): SaNcProduct[] {

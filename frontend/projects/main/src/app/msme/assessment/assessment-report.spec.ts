@@ -237,18 +237,28 @@ describe('Assessment pages (MSME, read-only)', () => {
     expect(text()).toContain('Policy document');
     expect(text()).toContain('Policy not signed (NC1)');
     expect(text()).toContain('Signed now');
-    const links = () => Array.from(el.querySelectorAll<HTMLAnchorElement>('a.btn-primary')).map((a) => a.getAttribute('href'));
+    const links = () => Array.from(el.querySelectorAll<HTMLAnchorElement>('a.zp-doc')).map((a) => a.getAttribute('href'));
     expect(links()).toEqual([
       F('Bronze', 'da', 'Photos/Z/B/Evidences/E1.pdf'), F('Bronze', 'da', 'Photos/Z/B/Evidences/E2.pdf'), F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1.pdf'),
     ]);
 
+    // The requirement's conversation: the assessor's NC with the documents it was raised on, then the unit's reply.
+    const messages = () => Array.from(el.querySelectorAll<HTMLElement>('.zp-round .zp-chat .zp-msg'));
+    expect(messages().map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme']);
+    expect(messages()[0].textContent).toContain('Policy not signed (NC1)');
+    expect(messages()[1].textContent).toContain('Signed now');
+    expect(messages()[1].querySelector('.zp-msg-meta')!.textContent).toContain('June 1');
+
     tab(el, 'NC2').click();
     await settle(fixture);
     expect(text()).toContain('Policy not signed (NC2)');
-    expect(text()).not.toContain('Policy document'); // names are not repeated from NC2 on
     expect(text()).toContain('No response yet');
-    // NC2 starts from NC1's reply; NC2 has not been answered, so its own documents are not listed.
-    expect(links()).toEqual([F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1.pdf')]);
+    // NC2 continues NC1's conversation; NC2 has not been answered, so its own documents are not listed.
+    expect(messages().map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme', 'assessor']);
+    expect(messages()[2].textContent).toContain('Policy not signed (NC2)');
+    expect(links()).toEqual([
+      F('Bronze', 'da', 'Photos/Z/B/Evidences/E1.pdf'), F('Bronze', 'da', 'Photos/Z/B/Evidences/E2.pdf'), F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1.pdf'),
+    ]);
     expect(el.querySelector('.label-highlight-assesor')).toBeTruthy();
     expectReadOnly(el);
   });
@@ -262,7 +272,7 @@ describe('Assessment pages (MSME, read-only)', () => {
     };
     const { fixture, el, text } = await open(NonConformancesPage, 'silver', '/api/msme/assessment/Silver/non-conformances', report, 'Silver');
 
-    expect(text()).toContain('Signed policy photo-');
+    expect(el.querySelector('.zp-chat .zp-pics img[alt="Signed policy photo-"]')).not.toBeNull();
     expect(text()).not.toContain('Policy document');
     const srcs = () => Array.from(el.querySelectorAll('img')).map((i) => i.getAttribute('src'));
     expect(srcs()).toContain(F('Silver', 'sa', 'SaPhotos/Z/S/Evidences/SA1.jpg'));
@@ -274,9 +284,48 @@ describe('Assessment pages (MSME, read-only)', () => {
     // NC2: the previous round's reply photos (same parent product) and its evidences.
     expect(srcs()).toContain(F('Silver', 'nc1', 'SaPhotos/Z/S/BasicInfo/R1.jpg'));
     expect(srcs()).toContain(F('Silver', 'nc2', 'SaPhotos/Z/S/BasicInfo/R2.jpg'));
-    expect(Array.from(el.querySelectorAll<HTMLAnchorElement>('a.btn-primary')).map((a) => a.getAttribute('href')))
+    expect(Array.from(el.querySelectorAll<HTMLAnchorElement>('a.zp-doc')).map((a) => a.getAttribute('href')))
       .toEqual([F('Silver', 'nc1', 'Photos/Z/B/Evidences/N1.pdf')]);
     expectReadOnly(el);
+  });
+
+  it('non-conformances: the round lists its parameters with the answered count and shows the selected one', async () => {
+    const r1 = round(1);
+    r1.sections = [...r1.sections, { SectionCode: '2', SectionName: 'Safety', iButton: '' }, { SectionCode: '3', SectionName: 'Quiet', iButton: '' }];
+    r1.requirements = [...r1.requirements, { SectionCode: '2', RequirementCode: '4', PreviousAssessorRemarks: 'No extinguisher', MsmeComments: null, MsmeUpdatedDate: null }];
+    const report: NonConformanceReport = { certification: 'Bronze', variant: 'da', ncCount: 1, assessment: assessment(), rounds: [r1], saEvidencePhotos: [] };
+    const { fixture, el, text } = await open(NonConformancesPage, 'Bronze', '/api/msme/assessment/Bronze/non-conformances', report, 'Bronze');
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-nav-name')!.textContent!.trim())).toEqual(['Leadership', 'Safety']);
+    expect(items.map((i) => i.querySelector('.zp-nav-meta')!.textContent!.trim())).toEqual(['1 of 1 answered', '0 of 1 answered']);
+    expect(el.querySelector('.zp-round .zp-req .zp-req-status')!.textContent!.trim()).toBe('Answered');
+    expect(el.querySelector('.zp-round .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('NC1 · 1 of 2 answered');
+    expect(el.querySelector('.zp-round .zp-chat .zp-msg.from-msme')!.textContent).toContain('Signed now');
+    items[1].click();
+    await settle(fixture);
+    expect(el.querySelector('.zp-round .zp-head h5')!.textContent).toContain('Safety');
+    expect(Array.from(el.querySelectorAll('.zp-round .zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['2.4']);
+    expect(text()).toContain('No extinguisher');
+    expect(el.querySelector('.zp-round .zp-req .zp-req-status')!.textContent!.trim()).toBe('No response yet');
+    expectReadOnly(el);
+  });
+
+  it('non-conformances: the conversation shows the assessor NC, then the unit reply with a picture and a PDF', async () => {
+    const r1 = round(1);
+    r1.evidences = [...r1.evidences, { SectionCode: '1', RequirementCode: '1', EvidenceName: 'Board photo', GeneratedTime: 'G1', FileUrl: F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1b.jpg') }];
+    const report: NonConformanceReport = { certification: 'Bronze', variant: 'da', ncCount: 1, assessment: assessment(), rounds: [r1], saEvidencePhotos: [] };
+    const { fixture, el } = await open(NonConformancesPage, 'Bronze', '/api/msme/assessment/Bronze/non-conformances', report, 'Bronze');
+    const messages = Array.from(el.querySelectorAll<HTMLElement>('.zp-round .zp-chat .zp-msg'));
+    expect(messages.map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme']);
+    expect(messages[0].querySelector('.zp-msg-meta')!.textContent).toContain('NC1');
+    expect(messages[0].textContent).toContain('Policy not signed (NC1)');
+    expect(messages[0].querySelector('.zp-av')!.textContent!.trim()).toBe('AS');
+    expect(messages[1].querySelector('.zp-av')!.textContent!.trim()).toBe('MS');
+    expect(messages[1].querySelector('.zp-pics img')!.getAttribute('src')).toBe(F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1b.jpg'));
+    expect(messages[1].querySelector<HTMLAnchorElement>('.zp-files a')!.getAttribute('href')).toBe(F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1.pdf'));
+    messages[1].querySelector<HTMLButtonElement>('.zp-pic')!.click();
+    await settle(fixture);
+    expect(el.querySelector('.preview-modal .modal-body img')!.getAttribute('src')).toBe(F('Bronze', 'nc1', 'Photos/Z/B/Evidences/N1b.jpg'));
   });
 
   it('refresh reloads the report', async () => {

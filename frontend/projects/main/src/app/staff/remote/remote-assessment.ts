@@ -12,6 +12,7 @@ import { SaNcProduct, SaNcRound, SiteReviewApi } from '../site-review/site-revie
 import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi, RemoteDetails, RemotePhoto, Row } from './remote.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterNav } from '../../msme/shared/parameter-status';
+import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -167,6 +168,16 @@ export class RemoteAssessmentPage {
   protected readonly canAssess = computed(() => (this.data()?.permissions.canAssess ?? false) && !this.nc());
   /** The NC tab: the lead assessor, once the MSME has submitted the round. */
   protected readonly canAssessNc = computed(() => (this.data()?.permissions.canAssess ?? false) && !!this.nc()?.submitted);
+  /** NC tab: the round's parameters that have requirements in it. */
+  protected readonly ncSections = computed(() => (this.ncRound()?.sections ?? []).filter((s) => this.ncRequirementsOf(s).length > 0));
+  /** NC tab: the round's parameter list (status from the round's site conformance) and the selected parameter. */
+  protected readonly rn = new ParameterNav<Row, Row>({
+    sections: () => this.ncSections(),
+    id: (s) => text(s, 'Id'),
+    requirements: (s) => this.ncRequirementsOf(s),
+    conformance: (r) => r['SaConformance'],
+    answered: (r) => checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.site?.value),
+  });
   /** Parameters tab: the parameter list (status from the remote / site conformance) and the selected parameter. */
   protected readonly pn = new ParameterNav<Row, Row>({
     sections: () => this.data()?.sections ?? [],
@@ -322,6 +333,21 @@ export class RemoteAssessmentPage {
 
   protected ncEvidencesOf(r: Row): Row[] {
     return (this.ncRound()?.evidences ?? []).filter((e) => RemoteAssessmentPage.same(e, r, 'SectionCode', 'RequirementCode'));
+  }
+
+  /** NC tab: the requirement's conversation: the remark that raised the NC, the unit's reply (comments, files), the verdict. */
+  protected ncThread(r: Row): ThreadMessage[] {
+    const round = `NC ${this.nc()?.round ?? ''}`.trim();
+    const files = this.ncEvidencesOf(r);
+    return [
+      message('assessor', round + ' raised', { text: text(r, 'PreviousAssessorRemarks') }),
+      message('msme', round, {
+        date: files.map((e) => text(e, 'SyncedDate')).find(Boolean) ?? '',
+        text: text(r, 'MsmeComments'),
+        all: files.map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl') })),
+      }),
+      message('assessor', round, text(r, 'SaConformance') ? { text: text(r, 'SaAssessorRemarks'), conformance: text(r, 'SaConformance') } : {}),
+    ].filter(hasContent);
   }
 
   /** The checkpoint answers of an NC requirement row: the site assessor's of this round. */

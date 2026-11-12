@@ -110,3 +110,27 @@ body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: #e6f2f3 !im
   .zp-ev-table td[data-label]::before { content: attr(data-label); flex: 0 0 90px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: $zp-muted; }
   .zp-foot { grid-template-columns: minmax(0, 1fr); }
 }
+.zp-foot.zp-plain { background: none; border-top: 0; }
+
+// 2026-11-12: a box with nothing in it but its "No checkpoints." / "No documents." line is left out (less clutter).
+.zp-block:has(> .zp-block-empty) { display: none; }
+
+// ---- NC rounds: the requirement's non-conformance conversation (assessor left, unit right, oldest first) ------------------
+.zp-chat { background: #fbfdfd; border: 1px solid $zp-soft-line; border-radius: 8px; overflow: hidden; }
+.zp-chat-list { display: flex; flex-direction: column; gap: 10px; padding: 10px 12px; }
+.zp-msg { display: flex; align-items: flex-start; gap: 8px; max-width: 86%; }
+.zp-msg.from-msme { flex-direction: row-reverse; align-self: flex-end; }
+.zp-av { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: $zp-teal; color: #fff; font-size: 11px; font-weight: 700; }
+.zp-msg.from-msme .zp-av { background: #f0e6d2; color: #7a4e00; }
+.zp-msg-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.zp-msg.from-msme .zp-msg-body { align-items: flex-end; }
+.zp-msg-meta { font-size: 11px; color: $zp-muted; }
+.zp-bubble { background: #fff; border: 1px solid $zp-line; border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
+.zp-msg.from-msme .zp-bubble { background: #e8f2f3; border-color: #cfe4e6; }
+.zp-msg-text { white-space: pre-line; }
+.zp-pics, .zp-files { display: flex; flex-wrap: wrap; gap: 6px; }
+.zp-pic { padding: 0; border: 0; background: none; line-height: 0; }
+.zp-pic img { width: 46px; height: 36px; object-fit: cover; border-radius: 5px; border: 1px solid $zp-line; }
+@media (max-width: 575px) {
+  .zp-msg { max-width: 100%; }
+}

@@ -421,104 +421,110 @@
                               </div>
                             }
 
-                            @for (s of r.sections; track $index) {
-                              <div class="col-sm-12 ar-pt20">
-                                <div class="panel panel-default panel-black m-b-2">
-                                  <div class="panel-body">
-                                    <div class="info-block">
-                                      {{ s.section['SectionCode'] }}. {{ s.section['SectionName'] }}
-                                      <div class="z-tooltip">
-                                        <img src="/Images/svgicons/info.svg" alt="" />
-                                        <span class="tooltiptext">{{ s.section['iButton'] }}</span>
-                                      </div>
-                                    </div>
+                            @let rcur = rn.active();
+                            <div class="col-sm-12 ar-pt20">
+                              <div class="zp-layout zp-round">
+                                <nav class="zp-nav" [attr.aria-labelledby]="'arNcNavTitle' + r.number">
+                                  <div class="zp-nav-head" [id]="'arNcNavTitle' + r.number">NC{{ r.number }} · {{ rn.complete() }} of {{ ncSections().length }} answered</div>
+                                  <div class="zp-nav-list">
+                                    @for (s of ncSections(); track $index) {
+                                      @let pg = rn.progress(s);
+                                      <button type="button" class="zp-nav-item" [class.active]="s === rcur" [attr.aria-current]="s === rcur ? 'true' : null" [attr.data-section]="s.section['SectionCode']" (click)="rn.select(s)">
+                                        <span class="zp-num">{{ s.section['SectionCode'] }}</span>
+                                        <span class="zp-nav-body">
+                                          <span class="zp-nav-name">{{ s.section['SectionName'] }}</span>
+                                          <span class="zp-nav-meta">{{ pg.done }} of {{ pg.total }} answered</span>
+                                          <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pg.percent"></span></span>
+                                        </span>
+                                      </button>
+                                    }
                                   </div>
-                                </div>
+                                </nav>
 
-                                @for (req of s.requirements; track $index) {
-                                  <div class="panel panel-default panel-info" [class.mb-4]="!siteVariant()">
-                                    <div class="panel-body border-left position-relative">
-                                      <div class="label-top">{{ s.section['SectionCode'] }}.{{ req.requirement['RequirementCode'] }}</div>
-                                      <div class="label-highlight3 m-t-2">
-                                        @for (o of req.options; track $index) {
-                                          <div>
-                                            <strong class="dash-text-clr">REQUIREMENT</strong><br />
-                                            {{ o.option['OptionName'] }}
-                                            <ul>
-                                              @for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }
-                                            </ul>
-                                          </div>
-                                        }
-                                      </div>
-                                      @if (req.previous.length === 0) {
-                                        <div class="label-highlight4">No Documents necessary</div>
-                                      }
-                                      <div>
-                                        <table class="table table-default table-zed">
-                                          <tbody>
-                                            @for (e of req.previous; track $index) {
-                                              <tr>
-                                                <td [class.w-50]="req.previousLabelWide" [class.w-25]="!req.previousLabelWide" class="ar-va-inherit">{{ e.label }}</td>
-                                                <td>
-                                                  <div class="row-data">
-                                                    <div>
-                                                      @if (e.isPdf || !e.url) {
-                                                        <img src="/Images/svgicons/pdf-icon.svg" alt="" />
-                                                      } @else {
-                                                        <img [src]="e.url" alt="" />
-                                                      }
-                                                      <span>Generated at {{ e.generatedTime }}</span>
-                                                    </div>
-                                                    @if (e.url) {
-                                                      <a class="btn btn-primary pull-right" [href]="e.url" target="_blank" rel="noopener">VIEW</a>
-                                                    }
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            }
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                      <div class="d-flex flex-column">
-                                        <div class="label-highlight label-highlight-assesor ar-w80">
-                                          <div><strong>ASSESSOR COMMENT</strong><span class="pull-right">{{ req.requirement['PreviousAssessorUpdatedDate'] }}</span></div>
-                                          <span>{{ req.requirement['PreviousAssessorRemarks'] }}</span>
-                                        </div>
-                                        <div class="label-highlight label-highlight-msme ms-auto ar-w80">
-                                          <div><strong>MSME RESPONSE</strong><span class="pull-right">{{ req.requirement['MsmeUpdatedDate'] }}</span></div>
-                                          <span>{{ req.requirement['MsmeComments'] }}</span>
-                                          @if (!req.responded) {
-                                            <div>No response yet</div>
-                                          } @else {
-                                            <div>
-                                              <table class="table table-default table-zed">
-                                                <tbody>
-                                                  @for (e of req.current; track $index) {
-                                                    <tr>
-                                                      <td>
-                                                        <div class="row-data">
-                                                          <div>
-                                                            <img src="/Images/svgicons/pdf-icon.svg" alt="" />
-                                                            <span>Generated at {{ e['GeneratedTime'] }}</span>
-                                                          </div>
-                                                          @if (e['FileUrl']) {
-                                                            <a class="btn btn-primary pull-right" [href]="e['FileUrl']" target="_blank" rel="noopener">VIEW</a>
-                                                          }
-                                                        </div>
-                                                      </td>
-                                                    </tr>
-                                                  }
-                                                </tbody>
-                                              </table>
-                                            </div>
+                                <div class="zp-main">
+                                  @if (rcur; as s) {
+                                    <div class="zp-section" [attr.data-section]="s.section['SectionCode']">
+                                      <div class="zp-head">
+                                        <div class="zp-head-title">
+                                          <span class="zp-num">{{ s.section['SectionCode'] }}</span>
+                                          <h5>{{ s.section['SectionName'] }}</h5>
+                                          @if (s.section['iButton']) {
+                                            <span class="zp-info" tabindex="0">
+                                              <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                                              <span class="tooltiptext">{{ s.section['iButton'] }}</span>
+                                            </span>
                                           }
                                         </div>
                                       </div>
+
+                                      @for (req of s.requirements; track $index) {
+                                        <article class="zp-req" [attr.data-requirement]="req.requirement['RequirementCode']">
+                                          <div class="zp-req-title">
+                                            <span class="zp-code">{{ s.section['SectionCode'] }}.{{ req.requirement['RequirementCode'] }}</span>
+                                            <span class="zp-req-text">{{ req.requirement['RequirementName'] || 'Requirement' }}</span>
+                                            @if (req.responded) { <span class="zp-chip zp-req-status" data-v="Yes">Answered</span> } @else { <span class="zp-chip zp-req-status">No response yet</span> }
+                                          </div>
+                                          <div class="zp-req-body">
+                                            <div class="zp-block zp-checkpoints">
+                                              <div class="zp-block-head">Checkpoints</div>
+                                              @for (o of req.options; track $index) {
+                                                <div class="zp-cp">
+                                                  <div class="zp-cp-text">
+                                                    {{ o.option['OptionName'] }}
+                                                    @if (o.subOptions.length) {
+                                                      <ul>@for (so of o.subOptions; track $index) { <li><span>{{ so['SubOptionName'] }}</span></li> }</ul>
+                                                    }
+                                                  </div>
+                                                  <div class="zp-cp-answer"></div>
+                                                </div>
+                                              } @empty {
+                                                <div class="zp-block-empty">No checkpoints.</div>
+                                              }
+                                            </div>
+
+                                            <div class="zp-chat">
+                                              <div class="zp-block-head">Non-conformance conversation</div>
+                                              <div class="zp-chat-list">
+                                                @for (m of ncThread(req); track $index) {
+                                                  <div class="zp-msg" [class.from-msme]="m.from === 'msme'" [attr.data-from]="m.from">
+                                                    <span class="zp-av" aria-hidden="true">{{ m.from === 'msme' ? 'MS' : 'AS' }}</span>
+                                                    <div class="zp-msg-body">
+                                                      <div class="zp-msg-meta">{{ m.from === 'msme' ? 'Applicant' : 'Assessor' }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
+                                                      <div class="zp-bubble">
+                                                        @if (m.text) { <div class="zp-msg-text">{{ m.text }}</div> }
+                                                        @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">Conformance: {{ m.conformance }}</span></div> }
+                                                        @if (m.pictures.length) {
+                                                          <div class="zp-pics">
+                                                            @for (p of m.pictures; track $index) {
+                                                              <button type="button" class="zp-pic" [attr.aria-label]="'View ' + (p.name || 'picture')" (click)="view({ url: p.url, isPdf: false, timeStamp: null, createdDate: null })"><img [src]="p.url" [alt]="p.name || 'Picture'" /></button>
+                                                            }
+                                                          </div>
+                                                        }
+                                                        @if (m.files.length) {
+                                                          <div class="zp-files">
+                                                            @for (fl of m.files; track $index) {
+                                                              <a class="pdf-link zp-doc" [href]="fl.url" target="_blank" rel="noopener"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || 'View PDF' }}</span></a>
+                                                            }
+                                                          </div>
+                                                        }
+                                                      </div>
+                                                    </div>
+                                                  </div>
+                                                } @empty {
+                                                  <div class="zp-muted">No messages yet.</div>
+                                                }
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </article>
+                                      }
                                     </div>
-                                  </div>
-                                }
+                                  } @else {
+                                    <p class="zp-muted">No parameter has a non-conformance in this round.</p>
+                                  }
+                                </div>
                               </div>
-                            }
+                            </div>
                           </div>
                         </div>
                       }

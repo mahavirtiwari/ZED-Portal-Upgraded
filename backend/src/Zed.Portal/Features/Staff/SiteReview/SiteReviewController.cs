@@ -79,7 +79,7 @@ public sealed class SiteReviewController(
     private static readonly string[] SectionAssessorFields = ["AllotedAssessorId", "AllotedAssessorName", "AssessorRank"];
     private static readonly string[] RequirementFields =
         ["Id", "SectionCode", "RequirementCode", "RequirementId", "RequirementName", "Conformance", "AssessorRemarks", "UpdatedDate", "SaConformance", "SaAssessorRemarks", "SaUpdatedDate"];
-    private static readonly string[] NcRequirementFields = ["Id", "SectionCode", "RequirementCode", "SaConformance", "SaAssessorRemarks", "MsmeComments", "PreviousAssessorRemarks"];
+    private static readonly string[] NcRequirementFields = ["Id", "SectionCode", "RequirementCode", "RequirementName", "SaConformance", "SaAssessorRemarks", "MsmeComments", "PreviousAssessorRemarks"];
     private static readonly string[] OptionFields = ["SectionCode", "RequirementCode", "OptionCode", "OptionName"];
     private static readonly string[] SubOptionFields = ["SectionCode", "RequirementCode", "OptionCode", "SubOptionCode", "SubOptionName"];
     private static readonly string[] EvidenceFields = ["Id", "SectionCode", "RequirementCode", "EvidenceName", "NcCount", "SyncedDate"];

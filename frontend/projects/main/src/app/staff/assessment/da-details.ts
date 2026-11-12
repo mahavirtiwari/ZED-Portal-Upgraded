@@ -12,7 +12,8 @@ import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveReq
 import { ASSESSMENT_SYSTEM, DETAILS_STYLES, flag, num, text } from './assessment-shared';
 import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, canonicalLevel, isZedId } from './assessment.api';
 import { RequirementVideo } from '../../msme/shared/requirement-video';
-import { ParameterChip, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
+import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
+import { ParameterChip, ParameterNav, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -157,6 +158,22 @@ export class DaDetailsPage {
     return sections.find((s) => text(s, 'Id') === id) ?? sections[0] ?? null;
   });
 
+  /** NC tab shown (tabs 4..8 are NC1..NC5), 0 elsewhere. */
+  protected readonly ncRoundNumber = computed(() => (this.tab() >= 4 && this.tab() <= 8 ? this.tab() - 3 : 0));
+  /** Parameters of the NC round shown that have requirements in that round. */
+  protected readonly ncSections = computed(() => {
+    const rd = this.round(this.ncRoundNumber());
+    return (rd?.sections ?? []).filter((s) => this.requirementsOf(s, rd?.requirements).length > 0);
+  });
+  /** NC tabs: the round's parameter list (status from the round's conformance) and the selected parameter. */
+  protected readonly rn = new ParameterNav<Row, Row>({
+    sections: () => this.ncSections(),
+    id: (s) => text(s, 'Id'),
+    requirements: (s) => this.requirementsOf(s, this.round(this.ncRoundNumber())?.requirements),
+    conformance: (r) => r['Conformance'],
+    answered: (r) => checkpointsOf(this.data()?.checkpoints, r['Id']).some((c) => c.desktop?.value),
+  });
+
   protected readonly mapUrl = computed(() => {
     const l = this.data()?.location;
     const lat = Number(l?.['Latitude']);
@@ -242,6 +259,49 @@ export class DaDetailsPage {
 
   protected selectSection(s: Row): void {
     this.selectedSection.set(text(s, 'Id'));
+  }
+
+  /** Responses of the round being shown (NcCount = the round) for a requirement: its conformance and remarks are answered there. */
+  protected currentRoundEvidences(r: Row, rd: NcRound | undefined, nc: number): Row[] {
+    return this.evidencesOf(r, rd?.evidences).filter((e) => num(e, 'NcCount') === nc);
+  }
+
+  /**
+   * NC tabs: the requirement's conversation up to round `nc`, oldest first: the desktop assessor's remark that raised NC1
+   * (with the documents it was raised on), then per round the unit's reply (comments, files) and the assessor's verdict.
+   */
+  protected ncThread(r: Row, rd: NcRound | undefined, nc: number): ThreadMessage[] {
+    const d = this.data();
+    if (!d) return [];
+    const same = (x: Row) => text(x, 'SectionCode') === text(r, 'SectionCode') && text(x, 'RequirementCode') === text(r, 'RequirementCode');
+    const desk = d.requirements.find(same);
+    const out: ThreadMessage[] = [
+      message('assessor', 'NC1 raised', {
+        text: text(desk, 'AssessorRemarks'),
+        conformance: text(desk, 'Conformance'),
+        all: this.evidencesOf(r, d.evidences).map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl'), opened: true })),
+      }),
+    ];
+    const rows = this.evidencesOf(r, rd?.evidences);
+    const rounds = [...new Set(rows.map((e) => num(e, 'NcCount')))].filter((k) => k > 0 && k <= nc).sort((a, b) => a - b);
+    for (const k of rounds) {
+      const group = rows.filter((e) => num(e, 'NcCount') === k);
+      const first = (column: string) => group.map((e) => text(e, column)).find(Boolean) ?? '';
+      out.push(message('msme', `NC${k}`, {
+        date: first('SyncedDate'),
+        text: first('RequirementMsmeRemarks'),
+        all: group.map((e) => ({ name: text(e, 'EvidenceName'), url: text(e, 'FileUrl'), opened: flag(e, 'Opened'), row: e })),
+      }));
+      const current = k === nc;
+      out.push(message('assessor', `NC${k}`, {
+        text: (current && text(r, 'AssessorRemarks')) || first('RequirementRemarks'),
+        conformance: (current && text(r, 'Conformance')) || first('Conformance'),
+      }));
+    }
+    if (!rounds.includes(nc) && text(r, 'Conformance')) {
+      out.push(message('assessor', `NC${nc}`, { text: text(r, 'AssessorRemarks'), conformance: text(r, 'Conformance') }));
+    }
+    return out.filter(hasContent);
   }
 
   protected screenshots(e: Row): string[] {

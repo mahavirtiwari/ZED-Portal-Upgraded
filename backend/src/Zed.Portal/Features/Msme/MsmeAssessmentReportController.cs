@@ -215,7 +215,7 @@ public static class MsmeAssessment
     private static readonly string[] RoundProductFields =
         ["Id", "ProductName", "ProductParentId", "PreviousAssessorRemarks", "PreviousAssessorUpdatedDate", "MsmeRemarks", "MsmeUpdatedDate"];
     private static readonly string[] RoundRequirementFields =
-        ["SectionCode", "RequirementCode", "PreviousAssessorRemarks", "PreviousAssessorUpdatedDate", "MsmeComments", "MsmeUpdatedDate"];
+        ["SectionCode", "RequirementCode", "RequirementName", "PreviousAssessorRemarks", "PreviousAssessorUpdatedDate", "MsmeComments", "MsmeUpdatedDate"];
     private static readonly string[] RoundPhotoFields = [.. PhotoFields, "MsmeRemarks"];
     private static readonly string[] RoundProductPhotoFields = ["ProductId", "ProductParentId", "TimeStamp", "CreatedDate"];
     private static readonly string[] SiteEvidenceFields = ["Name", "SectionCode", "RequirementCode", "GeneratedTime"];

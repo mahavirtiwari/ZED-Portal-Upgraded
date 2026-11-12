@@ -243,6 +243,59 @@ describe('SaDetailsPage', () => {
     expect(el.querySelector('.zp-main')!.textContent).not.toContain('Has a quality policy');
   });
 
+  it('shows an NC round as its parameter list and requirement cards', async () => {
+    const round = {
+      ncCount: 1, products: [], oldProducts: [], photos: [], options: [], subOptions: [], commentsId: 81, assessorComments: 'NC comments',
+      sections: [{ Id: 41, SectionCode: '1', SectionName: 'Leadership' }, { Id: 42, SectionCode: '2', SectionName: 'Safety' }, { Id: 43, SectionCode: '3', SectionName: 'Quiet' }],
+      requirements: [
+        { Id: 211, SectionCode: '1', RequirementCode: '2', SaConformance: null, PreviousAssessorRemarks: 'Policy not signed', MsmeComments: 'Signed now' },
+        { Id: 221, SectionCode: '2', RequirementCode: '1', SaConformance: 'Yes', SaAssessorRemarks: 'Fixed' },
+      ],
+      evidences: [
+        { Id: 1, SectionCode: '1', RequirementCode: '2', EvidenceName: 'Signed policy', NcCount: 1, SyncedDate: 'May 3', FileUrl: FILES + 'nc/1.pdf' },
+        { Id: 2, SectionCode: '1', RequirementCode: '2', EvidenceName: 'Notice board', NcCount: 1, SyncedDate: 'May 3', FileUrl: FILES + 'nc/2.jpg' },
+      ],
+    };
+    await open(details({
+      ncRounds: [round],
+      evidencePhotos: [{ sectionCode: '1', requirementCode: '2', requirementId: null, name: 'Unsigned policy', url: FILES + 'sa/9.jpg', createdDate: null }],
+    }));
+    tab('NC1');
+    await settle();
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item'));
+    expect(items.map((i) => i.querySelector('.zp-nav-name')!.textContent!.trim())).toEqual(['Leadership', 'Safety']);
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Pending', 'Yes']);
+    const card = el.querySelector('.zp-round .zp-req')!;
+    expect(el.querySelector('.zp-round .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('NC1 · 1 of 2 closed');
+    // The conversation: the assessor's NC with the site photo it was raised on, then the unit's reply with a picture and a PDF.
+    const messages = Array.from(card.querySelectorAll<HTMLElement>('.zp-chat .zp-msg'));
+    expect(messages.map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme']);
+    expect(messages[0].textContent).toContain('Policy not signed');
+    expect(messages[0].querySelector('.zp-pics img')!.getAttribute('src')).toBe(FILES + 'sa/9.jpg');
+    expect(messages[1].classList).toContain('from-msme');
+    expect(messages[1].textContent).toContain('Signed now');
+    expect(messages[1].querySelector('.zp-msg-meta')!.textContent).toContain('May 3');
+    expect(messages[1].querySelector('.zp-pics img')!.getAttribute('src')).toBe(FILES + 'nc/2.jpg');
+    expect(messages[1].querySelector<HTMLAnchorElement>('.zp-files a')!.getAttribute('href')).toBe(FILES + 'nc/1.pdf');
+    messages[1].querySelector<HTMLButtonElement>('.zp-pic')!.click();
+    await settle();
+    expect(el.querySelector('.modal img')!.getAttribute('src')).toBe(FILES + 'nc/2.jpg');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    await settle();
+    items[1].click();
+    await settle();
+    expect(el.querySelector('.zp-round .zp-head h5')!.textContent).toContain('Safety');
+    expect(el.querySelector('.zp-round .zp-req .zp-code')!.textContent!.trim()).toBe('2.1');
+    expect(el.querySelector('.zp-round .zp-foot .zp-remarks')!.textContent).toContain('Fixed');
+    // Decided: the verdict closes the conversation.
+    const verdict = el.querySelector('.zp-round .zp-chat .zp-msg:last-child')!;
+    expect(verdict.getAttribute('data-from')).toBe('assessor');
+    expect(verdict.textContent).toContain('Fixed');
+    expect(verdict.querySelector('.zp-chip')!.getAttribute('data-v')).toBe('Yes');
+    // Edit Remarks of the requirement, then the round's NC comments.
+    expect(Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).filter((b) => b.value === 'Edit Remarks').length).toBe(2);
+  });
+
   it('does not call the API for Bronze or a malformed ZED ID', async () => {
     fixture.componentRef.setInput('zedId', 'ZEDMSME000001');
     fixture.componentRef.setInput('certification', 'Bronze');

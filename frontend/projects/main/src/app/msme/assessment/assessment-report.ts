@@ -5,9 +5,10 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { CertificationApi, CertificationData } from '../certification/certification.api';
 import { AssessmentApi, AssessmentReport, NonConformanceReport, Row, assessmentType } from './assessment.api';
-import { FileItem, SectionView, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
+import { FileItem, NcRequirementView, NcSectionView, SectionView, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
 import { MsmeUnitSummary } from '../shared/unit-summary';
 import { ParameterNav } from '../shared/parameter-status';
+import { ThreadMessage, hasContent, message } from '../shared/nc-thread';
 
 export type AssessmentMode = 'basic-info' | 'non-conformances';
 
@@ -72,6 +73,18 @@ export class AssessmentReportView {
   protected readonly rounds = computed(() => (this.nc() ? nonConformanceRounds(this.nc()!) : []));
   protected readonly round = computed(() => this.rounds().find((r) => r.number === this.ncTab()) ?? null);
   protected readonly siteVariant = computed(() => this.nc()?.variant === 'sa');
+  /** NC tabs: the round's parameters that have requirements in it. */
+  protected readonly ncSections = computed(() => (this.round()?.sections ?? []).filter((s) => s.requirements.length > 0));
+  /**
+   * NC tabs: the round's parameter list and the selected parameter. The unit's report has no conformance of the round, so
+   * the progress counts the requirements the unit has answered.
+   */
+  protected readonly rn = new ParameterNav<NcSectionView, NcRequirementView>({
+    sections: () => this.ncSections(),
+    id: (s) => String(s.section['SectionCode'] ?? ''),
+    requirements: (s) => s.requirements,
+    conformance: (r) => (r.responded ? 'Yes' : null),
+  });
 
   protected readonly backLink = computed(() => ['/msme/certification', this.certification()]);
 
@@ -81,6 +94,39 @@ export class AssessmentReportView {
       const mode = this.mode();
       untracked(() => void this.load(type, mode));
     });
+  }
+
+  /**
+   * NC tabs: the requirement's conversation up to the round shown, oldest first: per round the assessor's comment that
+   * raised it (the first with the documents / photos it was raised on) and the unit's reply (comments and documents).
+   */
+  protected ncThread(req: NcRequirementView): ThreadMessage[] {
+    const shown = this.round()?.number ?? 0;
+    const same = (x: NcRequirementView) =>
+      String(x.requirement['SectionCode']) === String(req.requirement['SectionCode']) && String(x.requirement['RequirementCode']) === String(req.requirement['RequirementCode']);
+    const out: ThreadMessage[] = [];
+    let first = true;
+    for (const rv of this.rounds().filter((x) => x.number <= shown)) {
+      const rq = rv.sections.flatMap((x) => x.requirements).find(same);
+      if (!rq) continue;
+      // From NC2 on, what the NC was raised on is the previous reply's documents, already in the conversation.
+      const raisedOn = first ? rq.previous.filter((e) => !!e.url) : [];
+      first = false;
+      out.push(message('assessor', `NC${rv.number} raised`, {
+        date: this.value(rq.requirement['PreviousAssessorUpdatedDate']),
+        text: this.value(rq.requirement['PreviousAssessorRemarks']),
+        files: raisedOn.filter((e) => e.isPdf).map((e) => ({ name: e.label, url: e.url ?? '' })),
+        pictures: raisedOn.filter((e) => !e.isPdf).map((e) => ({ name: e.label, url: e.url ?? '' })),
+      }));
+      if (rq.responded) {
+        out.push(message('msme', `NC${rv.number}`, {
+          date: this.value(rq.requirement['MsmeUpdatedDate']),
+          text: this.value(rq.requirement['MsmeComments']),
+          all: rq.current.map((e) => ({ name: this.value(e['EvidenceName']), url: this.value(e['FileUrl']) })),
+        }));
+      }
+    }
+    return out.filter(hasContent);
   }
 
   protected refresh(): void {

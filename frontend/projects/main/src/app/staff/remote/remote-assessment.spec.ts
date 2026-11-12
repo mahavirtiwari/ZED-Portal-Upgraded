@@ -378,10 +378,16 @@ describe('RemoteAssessmentPage', () => {
     it('shows the MSME answers, validates the round rows and keeps the first assessment read-only', async () => {
       await createNc(ncDetails(true));
       expect(el.querySelector('table.nc-products')!.textContent).toContain('New label');
-      const requirement = el.querySelector('table.nc-requirement')!.textContent!;
+      const requirement = el.querySelector('.zp-req.nc-requirement')!.textContent!;
       expect(requirement).toContain('Policy not signed');
       expect(requirement).toContain('Policy signed');
       expect(el.querySelector('a.nc-evidence')!.getAttribute('href')).toBe('/files/nc1.pdf');
+      // The conversation: the assessor's NC, then the unit's reply with its files.
+      const messages = [...el.querySelectorAll<HTMLElement>('.nc-requirement .zp-chat .zp-msg')];
+      expect(messages.map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme']);
+      expect(messages[0].textContent).toContain('Policy not signed');
+      expect(messages[1].textContent).toContain('Policy signed');
+      expect(messages[1].querySelector('a.nc-evidence')).not.toBeNull();
 
       (el.querySelector('.nc-validate-product') as HTMLButtonElement).click();
       await settle(fixture);
@@ -406,6 +412,52 @@ describe('RemoteAssessmentPage', () => {
       await openTab('Parameters');
       expect(el.querySelector('.validate-requirement')).toBeNull();
       expect(el.querySelector('.final-submit')).toBeNull();
+    });
+
+    it('lists the round parameters with their status and shows the selected one', async () => {
+      await create(ncDetails(true));
+      http.expectOne(SITE).flush({
+        ncRounds: [{
+          ...round,
+          sections: [...round.sections, { Id: 43, SectionCode: '2', SectionName: 'Safety' }, { Id: 44, SectionCode: '3', SectionName: 'Quiet' }],
+          requirements: [...round.requirements, { Id: 53, SectionCode: '2', RequirementCode: '4', SaConformance: 'No', SaAssessorRemarks: 'Still open', MsmeComments: null }],
+        }],
+      });
+      await settle(fixture);
+      const items = [...el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item')];
+      expect(items.map((i) => i.querySelector('.zp-nav-name')!.textContent!.trim())).toEqual(['Leadership', 'Safety']);
+      expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Pending', 'No']);
+      expect(el.querySelector('.zp-round .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('NC 1 · 1 of 2 closed');
+      items[1].click();
+      await settle(fixture);
+      expect(el.querySelector('.zp-round .zp-head h5')!.textContent).toContain('Safety');
+      expect([...el.querySelectorAll('.zp-round .zp-req .zp-code')].map((c) => c.textContent!.trim())).toEqual(['2.4']);
+      expect(el.querySelector('.zp-round .zp-foot .zp-remarks')!.textContent).toContain('Still open');
+      expect(el.querySelector('.zp-round .zp-foot .nc-validate-requirement')!.textContent!.trim()).toBe('Edit');
+    });
+
+    it('shows the unit reply with a picture and a PDF after the assessor NC', async () => {
+      await create(ncDetails(true));
+      http.expectOne(SITE).flush({
+        ncRounds: [{
+          ...round,
+          requirements: [{ ...round.requirements[0], SaConformance: 'Yes', SaAssessorRemarks: 'Signed copy seen' }],
+          evidences: [...round.evidences, { Id: 94, SectionCode: '1', RequirementCode: '1', EvidenceName: 'Board', FileUrl: '/files/nc1-board.jpg', SyncedDate: 'June 2' }],
+        }],
+      });
+      await settle(fixture);
+      const messages = [...el.querySelectorAll<HTMLElement>('.nc-requirement .zp-chat .zp-msg')];
+      expect(messages.map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme', 'assessor']);
+      expect(messages[0].textContent).toContain('Policy not signed');
+      expect(messages[1].classList).toContain('from-msme');
+      expect(messages[1].querySelector('.zp-msg-meta')!.textContent).toContain('June 2');
+      expect(messages[1].querySelector('.zp-pics img')!.getAttribute('src')).toBe('/files/nc1-board.jpg');
+      expect(messages[1].querySelector('a.nc-evidence')!.getAttribute('href')).toBe('/files/nc1.pdf');
+      expect(messages[2].textContent).toContain('Signed copy seen');
+      expect(messages[2].querySelector('.zp-chip')!.getAttribute('data-v')).toBe('Yes');
+      messages[1].querySelector<HTMLButtonElement>('.zp-pic')!.click();
+      await settle(fixture);
+      expect(el.querySelector('.modal img')!.getAttribute('src')).toBe('/files/nc1-board.jpg');
     });
 
     it('final-submits the round and shows the server message', async () => {

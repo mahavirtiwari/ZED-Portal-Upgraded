@@ -659,96 +659,141 @@
               </div>
             }
 
-            <div>
-              @for (s of rd?.sections ?? []; track t(s, 'Id')) {
-                <div class="section">
-                  <div class="panel panel-default panel-black">
-                    <div class="panel-body">
-                      {{ t(s, 'SectionCode') }}. {{ t(s, 'SectionName') }}
-                      @if (t(s, 'iButton')) {
-                        <span class="z-tooltip" tabindex="0">
-                          <span class="info-i" role="img" aria-label="Information">i</span>
-                          <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
-                        </span>
-                      }
-                    </div>
-                  </div>
-                  <div class="table-responsive">
-                  <table class="table table-zed table-bordered">
-                    <thead>
-                      <tr>
-                        <th class="text-center">Code</th><th style="width: 35%">Requirement</th><th style="width: 20%">Document Uploaded</th>
-                        <th class="text-center" style="width: 10%">Conformance (Yes/No)</th><th style="width: 15%">MSME Comments</th><th style="width: 15%">Assessor Remark</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (r of requirementsOf(s, rd?.requirements); track t(r, 'Id')) {
-                        <tr>
-                          <th class="text-center" style="width: 60px">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}<zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" /></th>
-                          <td style="width: 35%">
-                            @for (o of optionsOf(r, rd?.options); track $index) {
-                              <div>
-                                {{ t(o, 'OptionName') }}
-                                @if (answerOf(r, o); as a) { <span class="cp-chip" [attr.data-v]="a">{{ a }}</span> }
-                                <ul>
-                                  @for (so of subOptionsOf(o, rd?.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
-                                </ul>
-                              </div>
-                            }
-                          </td>
-                          <td style="padding: 0" colspan="4">
-                            <table class="table table-striped table-bordered inner">
-                              <tbody>
-                                @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
-                                  <tr>
-                                    <td>
-                                      @if (t(e, 'FileUrl')) {
-                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener"><span class="pdf-chip opened"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span></a>
-                                      } @else {
-                                        {{ t(e, 'EvidenceName') }}
-                                      }
-                                      <br />
-                                      @if (t(e, 'IsVerified')) { <small><strong>Verified:</strong> {{ t(e, 'IsVerified') }}</small> }
-                                      @if (t(e, 'AssessorRemarks')) { <small><br /><strong>Remarks:</strong> {{ t(e, 'AssessorRemarks') }}</small> }
-                                    </td>
-                                    <td></td><td></td><td class="text-center"></td>
-                                  </tr>
-                                }
-                                @for (e of evidencesOf(r, rd?.evidences); track t(e, 'Id')) {
-                                  <tr>
-                                    <td>
-                                      @if (t(e, 'SyncedDate')) { <span class="nc-tag">NC{{ t(e, 'NcCount') }}</span> }
-                                      @if (t(e, 'FileUrl')) {
-                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
-                                          <span class="pdf-chip" [class.opened]="f(e, 'Opened')"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span>
-                                        </a>
-                                      }
-                                    </td>
-                                    <td style="width: 17%">
-                                      {{ t(e, 'Conformance') }}
-                                      @if (n(e, 'NcCount') === nc && canChange(nc) && (t(r, 'Conformance') || f(r, 'OpenedFlag'))) {
-                                        <input type="button" [value]="t(r, 'Conformance') ? 'Edit' : 'Validate'" class="btn btn-sm" [class.btn-primary]="!t(r, 'Conformance')" [class.btn-outline-primary]="!!t(r, 'Conformance')" (click)="editConformance(r)" />
-                                      }
-                                    </td>
-                                    <td style="width: 25%">{{ t(e, 'RequirementMsmeRemarks') }}</td>
-                                    <td style="width: 25%">
-                                      {{ t(e, 'RequirementRemarks') }}
-                                      @if (review().editRemarks && n(e, 'NcCount') === nc) {
-                                        <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm" (click)="editRemarks('requirement', r)" />
-                                      }
-                                    </td>
-                                  </tr>
-                                }
-                              </tbody>
-                            </table>
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                  </div>
+            @let rcur = rn.active();
+            <div class="zp-layout zp-round mt-3">
+              <nav class="zp-nav" [attr.aria-labelledby]="'daNcNavTitle' + nc">
+                <div class="zp-nav-head" [id]="'daNcNavTitle' + nc">NC{{ nc }} · {{ rn.complete() }} of {{ ncSections().length }} closed</div>
+                <div class="zp-nav-list">
+                  @for (s of ncSections(); track t(s, 'Id')) {
+                    @let st = rn.chip(s);
+                    @let pg = rn.progress(s);
+                    <button type="button" class="zp-nav-item" [class.active]="s === rcur" [attr.aria-current]="s === rcur ? 'true' : null" [attr.data-section]="t(s, 'SectionCode')" (click)="rn.select(s)">
+                      <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                      <span class="zp-nav-body">
+                        <span class="zp-nav-name">{{ t(s, 'SectionName') }}</span>
+                        <span class="zp-nav-meta">{{ pg.done }} of {{ pg.total }} requirements</span>
+                        <span class="zp-bar" aria-hidden="true"><span [style.width.%]="pg.percent"></span></span>
+                      </span>
+                      <span class="zp-chip" [attr.data-v]="st">{{ st }}</span>
+                    </button>
+                  }
                 </div>
-              }
+              </nav>
+
+              <div class="zp-main">
+                @if (rcur; as s) {
+                  @let sst = rn.status(s);
+                  <div class="zp-section" [attr.data-section]="t(s, 'SectionCode')">
+                    <div class="zp-head">
+                      <div class="zp-head-title">
+                        <span class="zp-num">{{ t(s, 'SectionCode') }}</span>
+                        <h5>{{ t(s, 'SectionName') }}</h5>
+                        @if (t(s, 'iButton')) {
+                          <span class="zp-info" tabindex="0">
+                            <span class="zp-info-i" role="img" aria-label="Information">i</span>
+                            <span class="tooltiptext left">{{ t(s, 'iButton') }}</span>
+                          </span>
+                        }
+                      </div>
+                      <div class="zp-head-status">
+                        <span class="zp-label">Conformance</span>
+                        <span class="zp-chip" [attr.data-v]="sst">{{ sst }}</span>
+                      </div>
+                    </div>
+
+                    @for (r of requirementsOf(s, rd?.requirements); track t(r, 'Id')) {
+                      @let rst = rn.requirementStatus(r);
+                      @let current = currentRoundEvidences(r, rd, nc);
+                      <article class="zp-req" [attr.data-requirement]="t(r, 'Id')" [attr.data-v]="rst">
+                        <div class="zp-req-title">
+                          <span class="zp-code">{{ t(s, 'SectionCode') }}.{{ t(r, 'RequirementCode') }}</span>
+                          <span class="zp-req-text">{{ t(r, 'RequirementName') || 'Requirement' }}</span>
+                          <zed-requirement-video [url]="t(r, 'VideoUrl')" [code]="t(r, 'RequirementCode')" [compact]="true" />
+                          <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
+                        </div>
+
+                        <div class="zp-req-body">
+                          <div class="zp-block zp-checkpoints">
+                            <div class="zp-block-head">Checkpoints</div>
+                            @for (o of optionsOf(r, rd?.options); track $index) {
+                              <div class="zp-cp">
+                                <div class="zp-cp-text">
+                                  {{ t(o, 'OptionName') }}
+                                  @if (subOptionsOf(o, rd?.subOptions).length) {
+                                    <ul>@for (so of subOptionsOf(o, rd?.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }</ul>
+                                  }
+                                </div>
+                                <div class="zp-cp-answer">
+                                  @if (answerOf(r, o); as a) { <span class="cp-chip" [attr.data-v]="a">{{ a }}</span> }
+                                </div>
+                              </div>
+                            } @empty {
+                              <div class="zp-block-empty">No checkpoints.</div>
+                            }
+                          </div>
+
+                          <div class="zp-chat">
+                            <div class="zp-block-head">Non-conformance conversation</div>
+                            <div class="zp-chat-list">
+                              @for (m of ncThread(r, rd, nc); track $index) {
+                                <div class="zp-msg" [class.from-msme]="m.from === 'msme'" [attr.data-from]="m.from">
+                                  <span class="zp-av" aria-hidden="true">{{ m.from === 'msme' ? 'MS' : 'AS' }}</span>
+                                  <div class="zp-msg-body">
+                                    <div class="zp-msg-meta">{{ m.from === 'msme' ? 'Applicant' : 'Assessor' }} · {{ m.round }}@if (m.date) { · {{ m.date }} }</div>
+                                    <div class="zp-bubble">
+                                      @if (m.text) { <div class="zp-msg-text">{{ m.text }}</div> }
+                                      @if (m.conformance) { <div><span class="zp-chip" [attr.data-v]="m.conformance">Conformance: {{ m.conformance }}</span></div> }
+                                      @if (m.pictures.length) {
+                                        <div class="zp-pics">
+                                          @for (p of m.pictures; track $index) {
+                                            <button type="button" class="zp-pic" [attr.aria-label]="'View ' + (p.name || 'picture')" (click)="openImage(p.url, p.row ? 'Evidence' : undefined, p.row)"><img [src]="p.url" [alt]="p.name || 'Picture'" /></button>
+                                          }
+                                        </div>
+                                      }
+                                      @if (m.files.length) {
+                                        <div class="zp-files">
+                                          @for (fl of m.files; track $index) {
+                                            <a class="pdf-link" [href]="fl.url" target="_blank" rel="noopener" (click)="fl.row && markOpened('Evidence', fl.row)"><span class="pdf-chip" [class.opened]="fl.opened"><span class="pdf-tag">PDF</span>{{ fl.name || 'View PDF' }}</span></a>
+                                          }
+                                        </div>
+                                      }
+                                    </div>
+                                  </div>
+                                </div>
+                              } @empty {
+                                <div class="zp-muted">No messages yet.</div>
+                              }
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="zp-foot">
+                          <div class="zp-conf">
+                            <div class="zp-label">NC{{ nc }} conformance</div>
+                            <div class="zp-row">
+                              @if (t(r, 'Conformance')) { <span class="zp-chip" [attr.data-v]="t(r, 'Conformance')">{{ t(r, 'Conformance') }}</span> } @else { <span class="zp-chip">Not given</span> }
+                              @if (current.length && canChange(nc) && (t(r, 'Conformance') || f(r, 'OpenedFlag'))) {
+                                <input type="button" [value]="t(r, 'Conformance') ? 'Edit' : 'Validate'" class="btn btn-sm zp-btn" [class.btn-primary]="!t(r, 'Conformance')" [class.btn-outline-primary]="!!t(r, 'Conformance')" (click)="editConformance(r)" />
+                              }
+                            </div>
+                          </div>
+                          <div class="zp-remarks">
+                            <div class="zp-label">Assessor remarks</div>
+                            <div class="zp-row">
+                              <span>{{ t(r, 'AssessorRemarks') || t(current[0], 'RequirementRemarks') || '—' }}</span>
+                              @if (review().editRemarks && current.length) {
+                                <input type="button" value="Edit Remarks" class="btn btn-outline-primary btn-sm zp-btn" (click)="editRemarks('requirement', r)" />
+                              }
+                            </div>
+                          </div>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="zp-muted">No non-conformance in this round.</p>
+                }
+              </div>
             </div>
             @if (rd?.assessorRemarks) {
               <div class="alert alert-success"><strong>Assessor Comments:</strong> {{ rd?.assessorRemarks }}</div>

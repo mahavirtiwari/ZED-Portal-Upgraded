@@ -464,6 +464,76 @@ describe('DaDetailsPage', () => {
     expect(Array.from(main.querySelectorAll('.zp-req .zp-foot .zp-remarks .zp-row')).map((c) => c.textContent!.trim())).toEqual(['—', '—']);
   });
 
+  it('shows an NC round as its parameter list and requirement cards', async () => {
+    const ncRound = {
+      ncCount: 1, products: [], oldProducts: [], photos: [], assessorRemarks: null, options: [], subOptions: [],
+      sections: [
+        { Id: 41, SectionCode: '1', SectionName: 'Leadership' },
+        { Id: 42, SectionCode: '2', SectionName: 'Safety' },
+        { Id: 43, SectionCode: '3', SectionName: 'No NC here' },
+      ],
+      requirements: [
+        { Id: 111, SectionCode: '1', RequirementCode: '2', RequirementName: 'Quality policy', Conformance: null, OpenedFlag: true, AssessorRemarks: null },
+        { Id: 121, SectionCode: '2', RequirementCode: '1', Conformance: 'Yes', AssessorRemarks: 'Now fine' },
+        { Id: 122, SectionCode: '2', RequirementCode: '3', Conformance: 'No', AssessorRemarks: 'Still missing' },
+      ],
+      evidences: [
+        { Id: 901, SectionCode: '1', RequirementCode: '2', EvidenceName: 'Policy v2', NcCount: 1, SyncedDate: 'May 2', FileUrl: BASE + '/files/nc/1.pdf', RequirementMsmeRemarks: 'Uploaded new policy', Opened: false },
+        { Id: 902, SectionCode: '1', RequirementCode: '2', EvidenceName: 'Board photo', NcCount: 1, SyncedDate: 'May 2', FileUrl: BASE + '/files/nc/2.jpg', RequirementMsmeRemarks: 'Uploaded new policy', Opened: false },
+      ],
+    };
+    await open(details({
+      msme: { ...details().msme, CertificationStatus: 4, NcCount: 1, SecNcCount: 1 },
+      requirements: [{ Id: 11, SectionCode: '1', RequirementCode: '2', Conformance: 'No', AssessorRemarks: 'Policy is not signed', OpenedFlag: true }],
+      ncRounds: [ncRound],
+    }));
+    tab('NC1');
+    await settle();
+    const items = Array.from(el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item'));
+    // Only the parameters with requirements in the round.
+    expect(items.map((i) => i.querySelector('.zp-nav-name')!.textContent!.trim())).toEqual(['Leadership', 'Safety']);
+    expect(items.map((i) => i.querySelector('.zp-chip')!.textContent!.trim())).toEqual(['Pending', 'No']);
+    expect(el.querySelector('.zp-round .zp-nav-head')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('NC1 · 1 of 2 closed');
+
+    const card = el.querySelector('.zp-round .zp-req')!;
+    expect(card.querySelector('.zp-req-text')!.textContent!.trim()).toBe('Quality policy');
+    // The conversation: the desktop assessor's NC (with the document it was raised on), then the unit's reply.
+    const messages = Array.from(card.querySelectorAll<HTMLElement>('.zp-chat .zp-msg'));
+    expect(messages.map((m) => m.getAttribute('data-from'))).toEqual(['assessor', 'msme']);
+    expect(messages[0].textContent).toContain('Policy is not signed');
+    expect(messages[0].querySelector<HTMLAnchorElement>('.zp-files a')!.getAttribute('href')).toContain('Evidences/5551.pdf');
+    expect(messages[1].classList).toContain('from-msme');
+    expect(messages[1].querySelector('.zp-msg-meta')!.textContent).toContain('NC1');
+    expect(messages[1].querySelector('.zp-msg-meta')!.textContent).toContain('May 2');
+    expect(messages[1].textContent).toContain('Uploaded new policy');
+    expect(messages[1].querySelector('.zp-pics img')!.getAttribute('src')).toBe(BASE + '/files/nc/2.jpg');
+    expect(messages[1].querySelector<HTMLAnchorElement>('.zp-files a')!.getAttribute('href')).toBe(BASE + '/files/nc/1.pdf');
+    // A picture opens in the preview and is recorded as opened, as before.
+    messages[1].querySelector<HTMLButtonElement>('.zp-pic')!.click();
+    await settle();
+    expect(el.querySelector<HTMLImageElement>('.preview-img')!.getAttribute('src')).toBe(BASE + '/files/nc/2.jpg');
+    http.expectOne(BASE + '/opened').flush({ message: 'ok' });
+    await settle();
+    http.expectOne(BASE).flush(details({ msme: { ...details().msme, CertificationStatus: 4, NcCount: 1, SecNcCount: 1 }, ncRounds: [ncRound] }));
+    await settle();
+    el.querySelector<HTMLButtonElement>('.modal .btn-close')!.click();
+    await settle();
+    // The round's conformance is answered in the footer (the response of this round is there).
+    expect(card.querySelector<HTMLInputElement>('.zp-foot .zp-conf input[type=button]')!.value).toBe('Validate');
+
+    el.querySelectorAll<HTMLButtonElement>('.zp-round .zp-nav-item')[1].click();
+    await settle();
+    expect(el.querySelector('.zp-round .zp-head h5')!.textContent).toContain('Safety');
+    expect(Array.from(el.querySelectorAll('.zp-round .zp-req .zp-code')).map((c) => c.textContent!.trim())).toEqual(['2.1', '2.3']);
+    expect(Array.from(el.querySelectorAll('.zp-round .zp-foot .zp-remarks .zp-row')).map((r) => r.textContent!.trim())).toEqual(['Now fine', 'Still missing']);
+    // Decided without a reply row: the assessor's verdict closes the conversation.
+    const verdict = el.querySelectorAll('.zp-round .zp-req')[1].querySelector('.zp-chat .zp-msg:last-child')!;
+    expect(verdict.textContent).toContain('Still missing');
+    expect(verdict.querySelector('.zp-chip')!.getAttribute('data-v')).toBe('No');
+    // No response of this round for these requirements: no buttons.
+    expect(el.querySelector('.zp-round .zp-foot input[type=button]')).toBeNull();
+  });
+
   it('marks a parameter Partial while only some checkpoints are answered', async () => {
     const checkpoints = [
       { id: 501, requirementId: 11, optionCode: '1', text: 'Has a quality policy', actions: [], evidences: [],
