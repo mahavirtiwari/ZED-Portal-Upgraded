@@ -633,6 +633,25 @@ public sealed class UsersTests : IDisposable
         Assert.Equal("ZEDAS0001 name", UsersMastersLogin.Arg(update.Args, "UserName"));
         Assert.Equal("123456789012", UsersMastersLogin.Arg(update.Args, "IdProofNumber"));
         Assert.Equal("3", UsersMastersLogin.Arg(update.Args, "RoleId"));
+        Assert.Equal(_users["ZEDAS0001"]["MobileNo"]?.ToString(), UsersMastersLogin.Arg(update.Args, "MobileNo"));
+    }
+
+    [Fact]
+    public async Task The_agency_changes_the_assessors_mobile_on_the_edit_page()
+    {
+        var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        object Body(string mobile) => new
+        {
+            address = "New address", pinCode = "560002", idProofType = "Aadhaar Card", idProofNumber = "", states = new[] { "KERALA" },
+            sectorActivity = "Manufacturing", mobileNo = mobile,
+        };
+        var r = await client.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0001", Body("12345"));
+        Assert.Equal("Please enter a valid 10 digit mobile number.", await r.ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_UPDATE_USER");
+
+        r = await client.PutAsJsonAsync("/api/staff/users/assessors/ZEDAS0001", Body(" 9123456780 "));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Equal("9123456780", UsersMastersLogin.Arg(Call("SP_UPDATE_USER").Args, "MobileNo"));
     }
 
     [Fact]

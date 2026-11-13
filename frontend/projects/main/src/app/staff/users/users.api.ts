@@ -291,6 +291,8 @@ export interface AssessorCreateRequest {
 }
 
 export interface AssessorUpdateRequest {
+  /** 2026-11-13: the mobile number is changed here (SP_UPDATE_USER, also on the ZED_SURVEILLANCE copy on main). */
+  mobileNo?: string;
   address: string;
   pinCode: string;
   idProofType: string;

@@ -299,13 +299,26 @@ describe('AssessorFormPage', () => {
     address.dispatchEvent(new Event('input', { bubbles: true }));
     await settle(fixture);
     expect(saveNote()).toBe('Not saved yet.');
+    // 2026-11-13: the mobile number is editable on the agency's edit page (checked before saving).
+    const mobile = el.querySelector('#mobileNo') as HTMLInputElement;
+    expect(mobile.readOnly).toBe(false);
+    mobile.value = '12345';
+    mobile.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle(fixture);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('10 digit mobile');
+    http.expectNone('/api/staff/users/assessors/ZEDAS0001');
+    mobile.value = '9123456780';
+    mobile.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle(fixture);
     expect(el.querySelector('.save-bar')!.classList).toContain('is-dirty');
 
     (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
     await settle(fixture);
     const req = http.expectOne('/api/staff/users/assessors/ZEDAS0001');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toMatchObject({ address: 'New Street', idProofType: 'Aadhaar Card', idProofNumber: '', sectorActivity: 'Manufacturing' });
+    expect(req.request.body).toMatchObject({ address: 'New Street', idProofType: 'Aadhaar Card', idProofNumber: '', sectorActivity: 'Manufacturing', mobileNo: '9123456780' });
     req.flush({ message: 'Updated.' });
     await settle(fixture);
     expect(el.querySelector('.alert-success')!.textContent).toContain('Updated.');
@@ -333,7 +346,7 @@ describe('MyAssessorsPage', () => {
 
   afterEach(() => http.verify());
 
-  it('hides UnBlock while the certificate is attached elsewhere and validates the mobile number', async () => {
+  it('hides UnBlock while the certificate is attached elsewhere and has no Mobile No button', async () => {
     http.expectOne('/api/staff/users/assessors/mine').flush([
       row('ZEDBA0001', { IsActive: false, IsCertAttached: 1 }),
       row('ZEDBA0002', { IsActive: false }),
@@ -346,27 +359,8 @@ describe('MyAssessorsPage', () => {
     expect(rows[0].textContent).toContain('attached to another active Bronze Assessor');
     expect(rows[1].textContent).not.toContain('attached to another');
 
-    ([...rows[0].querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Mobile No') as HTMLButtonElement).click();
-    await settle(fixture);
-    const input = el.querySelector('#assessor-mobile') as HTMLInputElement;
-    input.value = '12345';
-    input.dispatchEvent(new Event('input'));
-    await settle(fixture);
-    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
-    await settle(fixture);
-    expect(el.querySelector('.modal .help-block')!.textContent).toContain('10 digit');
-    http.expectNone('/api/staff/users/assessors/ZEDBA0001/mobile');
-
-    input.value = '9123456780';
-    input.dispatchEvent(new Event('input'));
-    await settle(fixture);
-    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
-    await settle(fixture);
-    const req = http.expectOne('/api/staff/users/assessors/ZEDBA0001/mobile');
-    expect(req.request.body).toEqual({ mobileNo: '9123456780' });
-    req.flush({ message: 'Mobile No updated successful' });
-    await settle(fixture);
-    http.expectOne('/api/staff/users/assessors/mine').flush([]);
+    // 2026-11-13: the mobile number is changed on the edit page, not from the list.
+    expect([...rows[0].querySelectorAll('button')].some((b) => b.textContent!.trim() === 'Mobile No')).toBe(false);
   });
 
   it('counts the assessors, filters them by status and search, and shows initials and chips', async () => {

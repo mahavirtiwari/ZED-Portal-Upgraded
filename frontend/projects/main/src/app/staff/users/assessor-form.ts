@@ -239,6 +239,11 @@ export class AssessorFormPage {
     return this.isNew && (this.typed || this.verifyOff);
   }
 
+  /** 2026-11-13: the agency changes an assessor's mobile number on its edit page (the list's Mobile No button left). */
+  protected get editsMobile(): boolean {
+    return !this.isNew && this.canEdit();
+  }
+
   protected get panValid(): boolean {
     return PAN_PATTERN.test(this.model.pan.trim());
   }
@@ -387,6 +392,10 @@ export class AssessorFormPage {
         return;
       }
     }
+    if (this.editsMobile && !MOBILE_PATTERN.test(m.mobileNo.trim())) {
+      this.error.set('Please enter a valid 10 digit mobile number.');
+      return;
+    }
     if (this.isNew && this.searches && !this.lookupDone) {
       this.error.set('Please SEARCH the certified professional first.');
       return;
@@ -418,6 +427,7 @@ export class AssessorFormPage {
           this.api.updateAssessor(this.userId!, {
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber, states: m.states,
             nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, reasonForRejection: m.reasonForRejection, sectorActivity: m.sectorActivity,
+            mobileNo: m.mobileNo.trim(),
           }),
         );
         this.success.set(r.message);

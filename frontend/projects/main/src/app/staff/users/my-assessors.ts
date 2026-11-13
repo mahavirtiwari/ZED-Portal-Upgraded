@@ -10,7 +10,7 @@ import { OwnAssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { PagedView, PagerComponent } from '../pager';
 
 interface Dialog {
-  kind: 'block' | 'mobile';
+  kind: 'block';
   assessor: OwnAssessorRow;
   text: string;
 }
@@ -21,7 +21,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
 /**
  * The signed-in agency's assessors. Port of Views/User/Assessors.cshtml: block (with reason), unblock
  * (on main not offered while the certificate is attached to another active Bronze Assessor; on consultancy always),
- * edit, and the mobile number change the old ResetMobileNo action provided without a page. V4 layout: + Add New in the
+ * edit (the mobile number too, since 2026-11-13: the Mobile No button left the list). V4 layout: + Add New in the
  * page head, tiles with all, active and blocked assessors (a click filters), a search box, a row per assessor with the
  * selfie or initials, the masked ID proof under the name, the type and sector type as chips, contact with icons, status
  * badges, a note where UnBlock is not offered, a card per assessor on phones, and an empty state that leads to Add.
@@ -33,7 +33,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ labels.assessors }}</h3>
-        <p class="page-sub">Your {{ labels.assessors.toLowerCase() }}: block or unblock, edit, change the mobile number or send a password reset link.</p>
+        <p class="page-sub">Your {{ labels.assessors.toLowerCase() }}: block or unblock, edit (also the mobile number) or send a password reset link.</p>
       </div>
       <div class="page-actions">
         <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add New</a>
@@ -129,8 +129,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   <td class="text-center ma-actions-cell">
                     <div class="row-actions justify-content-center">
                       <a [routerLink]="['/staff/users/assessors', u.UserId]" class="btn btn-outline-primary">Edit</a>
-                      <!-- V4 addition (not on the old consultancy list): Mobile No and Reset Link. -->
-                      <button type="button" class="btn btn-default" [disabled]="saving()" (click)="open('mobile', u)">Mobile No</button>
+                      <!-- V4 addition (not on the old consultancy list): Reset Link. The mobile is changed in Edit. -->
                       @if (u.IsActive) {
                         <button type="button" class="btn btn-default" [disabled]="saving()" (click)="sendReset(u)">Reset Link</button>
                         <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('block', u)">Block</button>
@@ -167,7 +166,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
           <div class="modal-content">
             <div class="modal-header">
               <div class="modal-title w-100 d-flex justify-content-between align-items-center">
-                <h3 class="registration-title m-0" id="assessor-dialog-title">{{ d.kind === 'block' ? 'Reason for Block the ' + (consultancy ? 'Consultant' : 'Assessor') : labels.assessor + ' Mobile Number' }}</h3>
+                <h3 class="registration-title m-0" id="assessor-dialog-title">Reason for Block the {{ consultancy ? 'Consultant' : 'Assessor' }}</h3>
                 <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="dialog.set(null)"><img src="Images/svgicons/close.svg" alt="" /></button>
               </div>
             </div>
@@ -177,22 +176,15 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                   <span class="ma-avatar" aria-hidden="true">{{ initials(d.assessor.UserName) }}</span>
                   <span class="ma-who"><span class="ma-name">{{ d.assessor.UserName }}</span><span class="ma-id">{{ d.assessor.UserId }}</span></span>
                 </div>
-                @if (d.kind === 'mobile') {
-                  <div class="form-grid">
-                    <label for="assessor-mobile">Mobile Number<span class="req">*</span></label>
-                    <input id="assessor-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
-                  </div>
-                } @else {
-                  <label class="form-label" for="assessor-reason">Reason<span class="req">*</span></label>
-                  <textarea id="assessor-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"></textarea>
-                }
+                <label class="form-label" for="assessor-reason">Reason<span class="req">*</span></label>
+                <textarea id="assessor-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"></textarea>
                 @if (dialogError()) {
                   <span class="help-block" role="alert">{{ dialogError() }}</span>
                 }
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-default" (click)="dialog.set(null)">Cancel</button>
-                <button type="submit" class="btn" [class.btn-danger]="d.kind === 'block'" [class.btn-primary]="d.kind !== 'block'" [disabled]="saving()">{{ d.kind === 'block' ? 'Block' : 'Update' }}</button>
+                <button type="submit" class="btn btn-danger" [disabled]="saving()">Block</button>
               </div>
             </form>
           </div>
@@ -353,18 +345,18 @@ export class MyAssessorsPage {
   protected open(kind: Dialog['kind'], assessor: OwnAssessorRow): void {
     this.success.set('');
     this.dialogError.set('');
-    this.dialog.set({ kind, assessor, text: kind === 'mobile' ? (assessor.MobileNo ?? '') : '' });
+    this.dialog.set({ kind, assessor, text: '' });
   }
 
   protected async submitDialog(): Promise<void> {
     const d = this.dialog();
     if (!d) return;
     const text = d.text.trim();
-    if (d.kind === 'mobile' ? !/^\d{10}$/.test(text) : !text) {
-      this.dialogError.set(d.kind === 'mobile' ? 'Please enter a valid 10 digit mobile number.' : 'This is required.');
+    if (!text) {
+      this.dialogError.set('This is required.');
       return;
     }
-    const call = d.kind === 'block' ? this.api.block('assessors', d.assessor.UserId, text) : this.api.resetMobile('assessors', d.assessor.UserId, text);
+    const call = this.api.block('assessors', d.assessor.UserId, text);
     if (await this.run(call, true)) this.dialog.set(null);
   }
 

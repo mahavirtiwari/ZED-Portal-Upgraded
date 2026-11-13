@@ -402,11 +402,12 @@ public sealed class StaffAssessorsController(
 
     public sealed record UpdateRequest(
         string? Address, string? PinCode, string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors,
-        List<string>? AreasOfKnowledge, string? ReasonForRejection, string? SectorActivity = null);
+        List<string>? AreasOfKnowledge, string? ReasonForRejection, string? SectorActivity = null, string? MobileNo = null);
 
     /// <summary>
-    /// Updates one of the agency's assessors (SP_UPDATE_USER RoleId 3). Name, e-mail and mobile stay as they are
-    /// (read-only on the old form too); an empty ID proof number keeps the stored one.
+    /// Updates one of the agency's assessors (SP_UPDATE_USER RoleId 3). Name and e-mail stay as they are (read-only on the
+    /// old form too); the mobile number may be changed here since 2026-11-13 (the list's Mobile No button left; on main the
+    /// procedure also writes it on the ZED_SURVEILLANCE copy), none keeps it; an empty ID proof number keeps the stored one.
     /// </summary>
     [HttpPut("{userId}")]
     [StaffRoles(UserRole.Agency)]
@@ -422,9 +423,16 @@ public sealed class StaffAssessorsController(
         if (activityError is not null) return this.Problem400(activityError);
 
         var r = a.Row;
+        var mobile = r.Text("MobileNo");
+        if (req.MobileNo is not null)
+        {
+            mobile = req.MobileNo.Trim();
+            if (!StaffUserRules.MobilePattern().IsMatch(mobile)) return this.Problem400("Please enter a valid 10 digit mobile number.");
+        }
         await db.ExecuteProcAsync("SP_UPDATE_USER", host.IsConsultancy()
-            ? ConsultancyParameters(values!, a.UserId, int.Parse(r.Text("RoleId")), r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"), null, null, null)
-            : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), r.Text("MobileNo"), null, null, null, null), ct);
+            ? ConsultancyParameters(values!, a.UserId, int.Parse(r.Text("RoleId")), r.Text("UserName"), r.Text("Email"), mobile, null, null, null)
+            : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), mobile, null, null, null, null), ct);
+        if (mobile != r.Text("MobileNo")) log.LogInformation("Mobile number of {UserId} changed by {Actor}", a.UserId, UserId);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, a.UserId, activity, log, ct);
         log.LogInformation("Assessor {UserId} updated by {Actor}", a.UserId, UserId);
         // M12: a staff user's edit ends its sessions; the next sign-in reads the account as it is now.
