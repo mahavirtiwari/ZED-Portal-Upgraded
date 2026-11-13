@@ -17,7 +17,7 @@ type StatusFilter = 'all' | 'on' | 'off';
 type SectorFilter = 'all' | SectorActivity | 'none';
 
 interface Dialog {
-  kind: 'block' | 'disable-level' | 'mobile';
+  kind: 'block' | 'disable-level';
   agency: AgencyRow;
   text: string;
   level?: { code: AgencyLevel; name: string };
@@ -77,8 +77,9 @@ interface Dialog {
     .zed-chip.is-bronze { background: #f6ece0; color: #7a4a14; }
     .lv-stat-sub { font-size: 12px; color: #a8303a; margin-left: 6px; font-weight: 600; }
     .lv-stat-sub.none { color: #8a9899; font-weight: 400; }
-    .lv-row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .lv { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid; background: #fff; }
+    /* 2026-11-13 (approved): the levels in two rows of two, the row button shape (30 px, rounded 8). */
+    .lv-row { display: inline-grid; grid-template-columns: repeat(2, minmax(110px, 1fr)); gap: 6px; }
+    .lv { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px; border-radius: 8px; padding: 0 12px; font-size: 13px; font-weight: 600; line-height: 1; white-space: nowrap; cursor: pointer; border: 1px solid; background: #fff; }
     .lv.on { background: #e8f5ec; color: #1e7a3c; border-color: #9ccfac; }
     .lv.on:hover { background: #d8eedf; }
     .lv.off { background: #fbeaec; color: #a8303a; border-color: #e5a9b0; }
@@ -250,7 +251,7 @@ export class AgenciesPage {
   protected open(kind: Dialog['kind'], agency: AgencyRow): void {
     this.success.set('');
     this.dialogError.set('');
-    this.dialog.set({ kind, agency, text: kind === 'mobile' ? (agency.MobileNo ?? '') : '' });
+    this.dialog.set({ kind, agency, text: '' });
   }
 
   protected close(): void {
@@ -261,17 +262,13 @@ export class AgenciesPage {
     const d = this.dialog();
     if (!d) return;
     const text = d.text.trim();
-    if (d.kind === 'mobile' ? !/^\d{10}$/.test(text) : !text) {
-      this.dialogError.set(d.kind === 'mobile' ? 'Please enter a valid 10 digit mobile number.' : 'This is required.');
+    if (!text) {
+      this.dialogError.set('This is required.');
       return;
     }
     const id = d.agency.UserId;
     const call =
-      d.kind === 'block'
-        ? this.api.block('agencies', id, text)
-        : d.kind === 'disable-level'
-          ? this.api.levelAssessments(id, d.level!.code, false, text)
-          : this.api.resetMobile('agencies', id, text);
+      d.kind === 'block' ? this.api.block('agencies', id, text) : this.api.levelAssessments(id, d.level!.code, false, text);
     if (await this.run(call, true)) this.dialog.set(null);
   }
 

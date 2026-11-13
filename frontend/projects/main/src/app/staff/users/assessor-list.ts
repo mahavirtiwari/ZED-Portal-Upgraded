@@ -134,7 +134,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                   </div>
                   @if (consultancy) {
                     <div class="as-contact as-contact-under">
-                      @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> }
+                      @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> } @else { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span> }
                       @if (s.Email) { <span class="as-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ s.Email }}</span> }
                       @if (s.Address) { <span class="as-address clamp-2" [title]="s.Address">{{ s.Address }}</span> }
                     </div>
@@ -150,10 +150,9 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                     }
                   </td>
                   <td class="as-contact" data-label="Contact">
-                    @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> }
+                    @if (s.MobileNo) { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>{{ s.MobileNo }}</span> } @else { <span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 1.5h2l1 3-1.5 1a8 8 0 0 0 4.5 4.5l1-1.5 3 1v2a1.5 1.5 0 0 1-1.5 1.5A11.5 11.5 0 0 1 3 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg><span class="no-mobile">Mobile not saved</span></span> }
                     @if (s.Email) { <span class="as-mail"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 3.5h12v9H2z M2 4l6 4.5L14 4"/></svg>{{ s.Email }}</span> }
                     @if (s.Address) { <span class="as-address clamp-2" [title]="s.Address">{{ s.Address }}</span> }
-                    @if (!s.MobileNo && !s.Email && !s.Address) { <span class="as-mail">No contact saved</span> }
                   </td>
                 }
                 <td class="as-agency-cell" [attr.data-label]="consultancy ? 'Consultant Organisation' : labels.agency">

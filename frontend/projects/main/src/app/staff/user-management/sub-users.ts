@@ -106,9 +106,8 @@ const API = '/api/staff/sub-users';
                   </div>
                 </td>
                 <td class="su-contact" data-label="Contact">
-                  @if (u.mobileNo) { <span>{{ u.mobileNo }}</span> }
+                  @if (u.mobileNo) { <span>{{ u.mobileNo }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
                   @if (u.email) { <span class="su-mail">{{ u.email }}</span> }
-                  @if (!u.mobileNo && !u.email) { <span class="su-mail">No contact saved</span> }
                 </td>
                 <td class="su-screens" data-label="Screens">
                   @if (hasAll(u)) {

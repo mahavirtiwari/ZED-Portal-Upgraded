@@ -48,6 +48,16 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 // Row buttons side by side, small.
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .row-actions .btn { padding: 4px 10px; font-size: 13px; border-radius: 6px; }
+// 2026-11-13 (approved): one shape for every row button in a table, whatever its colour (the old grey "default" buttons
+// were in capitals), and three or more of them in two equal columns instead of one long, uneven line.
+td .row-actions .btn:not(.btn-link), td.text-center > .btn:not(.btn-link) {
+  display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 12px; font-size: 13px;
+  font-weight: 600; line-height: 1; letter-spacing: 0; border-radius: 8px; text-transform: none !important; white-space: nowrap;
+}
+td .row-actions:has(> .btn ~ .btn ~ .btn) { display: inline-grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); }
+td .row-actions:has(> .btn ~ .btn ~ .btn) > .btn { width: 100%; }
+// A user without a mobile number in the lists' contact cells (2026-11-13).
+.no-mobile { color: #8a9899; font-style: italic; font-weight: 400; }
 // 2026-11-13 (option B): the other buttons a soft teal fill; the selected one (tabs, stage filters) solid teal.
 .btn.btn-outline-primary { color: #174a4e; border: 1px solid #d9eef0; background: #d9eef0; }
 .btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { background: #c5e5e8; color: #123b3e; border-color: #c5e5e8; }

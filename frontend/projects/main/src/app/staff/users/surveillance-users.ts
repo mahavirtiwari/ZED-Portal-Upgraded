@@ -100,7 +100,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                   </td>
                   <td class="sv-contact" data-label="Spoc Details">
                     <strong>{{ a.spocName }}</strong>
-                    @if (a.mobileNo) { <span>{{ a.mobileNo }}</span> }
+                    @if (a.mobileNo) { <span>{{ a.mobileNo }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
                     @if (a.email) { <span class="sv-mail">{{ a.email }}</span> }
                   </td>
                   <td class="text-center sv-count-cell" data-label="No. of Assessors"><span class="sv-count">{{ a.noOfUsers }}</span></td>
@@ -167,9 +167,8 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                     </div>
                   </td>
                   <td class="sv-contact" data-label="Contact">
-                    @if (s.mobileNo) { <span>{{ s.mobileNo }}</span> }
+                    @if (s.mobileNo) { <span>{{ s.mobileNo }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
                     @if (s.email) { <span class="sv-mail">{{ s.email }}</span> }
-                    @if (!s.mobileNo && !s.email) { <span class="sv-mail">No contact saved</span> }
                   </td>
                   <td class="text-center sv-actions-cell">
                     <div class="row-actions justify-content-center">

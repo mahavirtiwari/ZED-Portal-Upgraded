@@ -96,7 +96,7 @@
                   }
                   <small class="contact">
                     <span class="muted">SPOC</span> <strong>{{ a.SpocName || '—' }}</strong>
-                    @if (a.MobileNo) { <span class="muted">·</span> <span class="muted text-nowrap">{{ a.MobileNo }}</span> }
+                    <span class="muted">·</span> @if (a.MobileNo) { <span class="muted text-nowrap">{{ a.MobileNo }}</span> } @else { <span class="no-mobile">Mobile not saved</span> }
                   </small>
                   @if (a.Email) { <small class="muted">{{ a.Email }}</small> }
                 </div>
@@ -149,9 +149,9 @@
               <div class="row-actions justify-content-center">
                 @if (mode === 'all') {
                   <a [routerLink]="['/staff/users/agencies', a.UserId]" class="btn btn-outline-primary">Edit</a>
-                  <!-- V4 addition (not on the old consultancy list): Consultants, Mobile No and Reset Link. -->
+                  <!-- V4 addition (not on the old consultancy list): Consultants and Reset Link. The SPOC mobile is changed in Edit
+                       (2026-11-13: the Mobile No button left the list). -->
                   <a routerLink="/staff/users/assessors" [queryParams]="{ agencyId: a.UserId }" class="btn btn-outline-primary">{{ consultancy ? 'Consultants' : 'Assessors' }}</a>
-                  <button type="button" class="btn btn-default" [disabled]="saving()" (click)="open('mobile', a)">Mobile No</button>
                   @if (a.IsActive) {
                     <button type="button" class="btn btn-default" [disabled]="saving()" (click)="sendReset(a)">Reset Link</button>
                     <button type="button" class="btn btn-outline-danger" [disabled]="saving()" (click)="open('block', a)">Block</button>
@@ -197,7 +197,6 @@
               @switch (d.kind) {
                 @case ('block') { Reason for Block the {{ consultancy ? 'Consultant Organisation' : 'Agency' }} }
                 @case ('disable-level') { Disable {{ d.level?.name }} Assessments }
-                @case ('mobile') { SPOC Mobile Number }
               }
             </h3>
             <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="close()"><img src="Images/svgicons/close.svg" alt="" /></button>
@@ -215,27 +214,19 @@
             @if (d.kind === 'disable-level') {
               <zed-text key="staff.users.agencyLevel.disableNote" [values]="{ Agency: d.agency.UserName, Level: d.level?.name }" box="muted mb-2"><p class="muted mb-2">{{ d.agency.UserName }} won't be allotted new {{ d.level?.name }} assessments. Work already allotted continues.</p></zed-text>
             }
-            @if (d.kind === 'mobile') {
-              <div class="form-grid">
-                <label for="dialog-mobile">Mobile Number<span class="req">*</span></label>
-                <input id="dialog-mobile" name="text" class="form-control" maxlength="10" inputmode="numeric" [(ngModel)]="d.text" />
-              </div>
-            } @else {
-              <label [class.visually-hidden]="d.kind !== 'disable-level'" class="form-label" for="dialog-reason">Reason<span class="req">*</span></label>
-              <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"
-                        [placeholder]="d.kind === 'block' ? 'Why the account is blocked' : 'Why ' + d.level?.name + ' assessments are disabled'"></textarea>
-            }
+            <label [class.visually-hidden]="d.kind !== 'disable-level'" class="form-label" for="dialog-reason">Reason<span class="req">*</span></label>
+            <textarea id="dialog-reason" name="text" class="form-control" maxlength="2000" rows="4" [(ngModel)]="d.text"
+                      [placeholder]="d.kind === 'block' ? 'Why the account is blocked' : 'Why ' + d.level?.name + ' assessments are disabled'"></textarea>
             @if (dialogError()) {
               <span class="help-block" role="alert">{{ dialogError() }}</span>
             }
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-default" (click)="close()">Cancel</button>
-            <button type="submit" class="btn" [class.btn-danger]="d.kind !== 'mobile'" [class.btn-primary]="d.kind === 'mobile'" [disabled]="saving()">
+            <button type="submit" class="btn btn-danger" [disabled]="saving()">
               @switch (d.kind) {
                 @case ('block') { Block }
                 @case ('disable-level') { Disable {{ d.level?.name }} }
-                @case ('mobile') { Update }
               }
             </button>
           </div>
