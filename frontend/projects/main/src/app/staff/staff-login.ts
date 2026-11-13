@@ -45,7 +45,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
         <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
         <!-- 2026-11-12: the button and the link on one line. -->
         <div class="login-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Login</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Login<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3z" /></svg></button>
           <a routerLink="/forgot-password">Forgot password?</a>
         </div>
         @if (error()) {
@@ -67,7 +67,8 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     .field { position: relative; }
     .in-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
     .in-icon svg { width: 18px; height: 18px; fill: #23656b; display: block; }
-    .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; }
+    .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; background-color: #f7fafa; }
+    .field .form-control:focus { background-color: #fff; }
     .field .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
     .field .form-control.has-toggle { padding-right: 64px; }
     .toggle {
@@ -83,6 +84,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     .login-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
     .login-actions .btn-primary { flex: 0 0 auto; min-width: 170px; padding: 0 28px; }
     .login-actions a { color: #23656b; font-weight: 600; white-space: nowrap; }
+    .btn-primary .go { width: 18px; height: 18px; fill: currentColor; margin-left: 8px; }
   `,
 })
 export class StaffLoginPage {

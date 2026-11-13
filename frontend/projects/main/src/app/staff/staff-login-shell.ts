@@ -9,6 +9,7 @@ import { PublicLevels } from '../msme/shared/levels';
  * the whole screen in two halves — a teal half (the ministry's white logo, the ZED mark, the portal, its levels and what
  * it is for) and a white half with the page's form, the ZED logo above it and a one-line footer under it. No separate
  * header bar. On a phone the teal half becomes a short band above the form.
+ * 2026-11-13 (design 1, approved): the form in a card — a teal top edge, who signs in here, and a secure sign-in line.
  */
 @Component({
   selector: 'zed-staff-login-shell',
@@ -43,7 +44,13 @@ import { PublicLevels } from '../msme/shared/levels';
       </aside>
       <main class="zl-side">
         <div class="zl-side-top"><img src="Images/header/zed-logo.png" alt="ZED" class="zl-zed" /></div>
-        <div class="zl-form"><ng-content /></div>
+        <div class="zl-form">
+          <div class="zl-card">
+            <span class="zl-tag"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg>{{ audience }}</span>
+            <ng-content />
+            <p class="zl-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg>Secure sign-in for authorised users</p>
+          </div>
+        </div>
         <footer class="zl-foot">
           <small>ZED © {{ year }} All Rights Reserved</small>
         </footer>
@@ -83,7 +90,20 @@ import { PublicLevels } from '../msme/shared/levels';
     .zl-side-top { display: flex; justify-content: flex-end; }
     .zl-zed { height: 88px; }
     /* min-width 0: a long sentence (Forgot Password) wraps instead of widening the form. */
-    .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 420px; margin: 0 auto; padding: 24px 0; min-width: 0; }
+    .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 470px; margin: 0 auto; padding: 24px 0; min-width: 0; }
+    .zl-card {
+      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid #23656b; border-radius: 16px; padding: 26px 30px 16px;
+      box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08); min-width: 0;
+    }
+    .zl-tag {
+      display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 12px; border-radius: 14px;
+      background: #d9eef0; color: #174a4e; margin-bottom: 14px;
+    }
+    .zl-tag svg, .zl-secure svg { width: 13px; height: 13px; fill: currentColor; flex: none; }
+    .zl-secure {
+      display: flex; align-items: center; gap: 8px; margin: 20px 0 0; padding-top: 12px; border-top: 1px solid #e3ecee;
+      font-size: 12.5px; color: #6b7a7c;
+    }
     .zl-foot {
       display: flex; justify-content: space-between; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
@@ -101,6 +121,7 @@ import { PublicLevels } from '../msme/shared/levels';
       .zl-side { padding: 8px 20px 14px; }
       .zl-side-top { display: none; }
       .zl-form { padding: 16px 0 20px; }
+      .zl-card { padding: 20px 18px 12px; box-shadow: none; }
     }
   `,
 })
@@ -109,6 +130,8 @@ export class StaffLoginShell {
   protected readonly links = inject(PortalLinksService);
   protected readonly year = new Date().getFullYear();
   protected readonly portalName = PORTAL_LABELS.portalName;
+  /** Who signs in here (the card's tag). */
+  protected readonly audience = PORTAL_SYSTEM === 'consultancy' ? 'Staff · Organisation · Consultant' : 'Staff · Agency · Assessor';
   private readonly publicLevels = inject(PublicLevels);
   /** Consultancy: handholding of Silver and Gold; otherwise the enabled levels as the Admin named them. */
   protected readonly levels = computed(() =>

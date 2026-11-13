@@ -13,6 +13,8 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
  * whole screen in two halves — a teal half (the ministry's white logo, the Admin's banner in a white frame, the scheme,
  * its levels and three benefits) and a white half with the page's form, the ZED logo above it and a one-line footer under
  * it. No separate header bar. On a phone the banner becomes a short picture in the teal band above the form.
+ * 2026-11-13 (option A, approved): no white box — the banner blends into a pale-teal panel (its white background is
+ * multiplied away), larger and with less padding.
  */
 @Component({
   selector: 'zed-login-shell',
@@ -69,10 +71,13 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
     .ml-ministry img { width: 240px; display: block; }
     /* The whole banner (the Admin's banners are composed pictures with their own slogan): contained, not cropped. */
     .ml-photo-frame {
-      flex: 1 1 0; min-height: 0; margin: 18px 0 16px; background: #fff; border-radius: 18px; overflow: hidden;
-      display: flex; align-items: center; justify-content: center; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+      flex: 1 1 0; min-height: 0; margin: 18px 0 16px; background: #e6f3f4; border-radius: 18px; overflow: hidden; position: relative;
+      display: flex; align-items: center; justify-content: center; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.16);
     }
-    .ml-photo { width: 100%; height: 100%; object-fit: contain; padding: 12px; }
+    .ml-photo-frame::before, .ml-photo-frame::after { content: ''; position: absolute; border-radius: 50%; border: 2px solid #cfe7e9; pointer-events: none; }
+    .ml-photo-frame::before { width: 300px; height: 300px; right: -90px; top: -120px; }
+    .ml-photo-frame::after { width: 180px; height: 180px; left: -60px; bottom: -80px; }
+    .ml-photo { position: relative; width: 100%; height: 100%; object-fit: contain; padding: 4px; mix-blend-mode: multiply; }
     .ml-title { font-size: 26px; font-weight: 700; margin: 0; line-height: 1.2; }
     .ml-sub { font-size: 15px; color: #cfe9ec; margin: 6px 0 14px; }
     .ml-levels { display: flex; flex-wrap: wrap; gap: 8px; }

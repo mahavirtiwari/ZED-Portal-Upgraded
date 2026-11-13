@@ -56,3 +56,14 @@
   box-shadow: 0 4px 12px rgba(35, 101, 107, 0.25);
 }
 .ml-register:hover, .ml-register:focus-visible { background: linear-gradient(135deg, #174a4e 0%, #1d5a5f 50%, #23656b 100%); color: #fff; }
+
+/* 2026-11-13 (design 1, approved): the sign-in box in a card with a teal top edge; New user stays under it. */
+.login-login {
+  background: #fff; border: 1px solid #e3ecee; border-top: 4px solid #23656b; border-radius: 16px; padding: 20px 26px 18px;
+  box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08);
+}
+.login-form .form-control { background-color: #f7fafa; }
+.login-form .form-control:focus { background-color: #fff; }
+@media (max-width: 900px) {
+  .login-login { padding: 16px 16px 14px; box-shadow: none; }
+}
