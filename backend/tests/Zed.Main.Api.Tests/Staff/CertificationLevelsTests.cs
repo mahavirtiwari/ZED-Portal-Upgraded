@@ -186,11 +186,14 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync("/api/staff/masters/parameters/Platinum")).StatusCode);
 
         Assert.Contains("NIC sector 99", await (await admin.PostAsJsonAsync("/api/staff/masters/parameters/ZEDX",
-            new { sectionCode = "X2", sectionName = "Energy", nicSectors = new[] { "99" } })).ProblemTitle());
+            new { sectionCode = "2", sectionName = "Energy", nicSectors = new[] { "99" } })).ProblemTitle());
+        // 2026-11-13: a code with letters breaks the legacy procedures (CAST(SectionCode AS int)).
+        Assert.Equal("The parameter code must be a number, e.g. 1.", await (await admin.PostAsJsonAsync("/api/staff/masters/parameters/ZEDX",
+            new { sectionCode = "P2", sectionName = "Energy", nicSectors = new[] { "62" } })).ProblemTitle());
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/ZEDX",
-            new { sectionCode = "X2", sectionName = "Energy", nicSectors = new[] { "62", "24", "62" } })).StatusCode);
+            new { sectionCode = "02", sectionName = "Energy", nicSectors = new[] { "62", "24", "62" } })).StatusCode);
         var byCode = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.NicSectorsByCodeSql);
-        Assert.Equal(("ZEDX", "X2", "24,62"), (FakeSql.Arg(byCode.Args, "SectionType"), FakeSql.Arg(byCode.Args, "SectionCode"), FakeSql.Arg(byCode.Args, "NicSectors")));
+        Assert.Equal(("ZEDX", "2", "24,62"), (FakeSql.Arg(byCode.Args, "SectionType"), FakeSql.Arg(byCode.Args, "SectionCode"), FakeSql.Arg(byCode.Args, "NicSectors")));
 
         // No sectors chosen: all sectors (NULL).
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/7", new { sectionName = "Digital", nicSectors = Array.Empty<string>() })).StatusCode);
@@ -212,9 +215,9 @@ public sealed class CertificationLevelsTests : IDisposable
 
         // Legacy Sections.SurveMandatories: 'Yes' or NULL, as Gold's (the surveillance payment copies the 'Yes' ones).
         Assert.Equal(HttpStatusCode.OK, (await admin.PostAsJsonAsync("/api/staff/masters/parameters/ZEDX",
-            new { sectionCode = "X3", sectionName = "Water", inSurveillance = true })).StatusCode);
+            new { sectionCode = "3", sectionName = "Water", inSurveillance = true })).StatusCode);
         var add = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByCodeSql).Args;
-        Assert.Equal(("ZEDX", "X3", "Yes"), (FakeSql.Arg(add, "SectionType"), FakeSql.Arg(add, "SectionCode"), FakeSql.Arg(add, "SurveMandatories")));
+        Assert.Equal(("ZEDX", "3", "Yes"), (FakeSql.Arg(add, "SectionType"), FakeSql.Arg(add, "SectionCode"), FakeSql.Arg(add, "SurveMandatories")));
 
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/7", new { sectionName = "Digital", inSurveillance = false })).StatusCode);
         var off = Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByIdSql).Args;

@@ -624,7 +624,7 @@ describe('ParametersPage', () => {
     expect(el.querySelector('form.add-form')).toBeNull();
     ([...el.querySelectorAll('button')].find((b) => b.textContent!.includes('ADD PARAMETER')) as HTMLButtonElement).click();
     await settle(fixture);
-    (el.querySelector('#sectionCode') as HTMLInputElement).value = 'X3';
+    (el.querySelector('#sectionCode') as HTMLInputElement).value = '3';
     el.querySelector('#sectionCode')!.dispatchEvent(new Event('input'));
     (el.querySelector('#sectionName') as HTMLInputElement).value = 'Water';
     el.querySelector('#sectionName')!.dispatchEvent(new Event('input'));
@@ -635,7 +635,7 @@ describe('ParametersPage', () => {
     await settle(fixture);
     const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/masters/parameters/ZEDX');
     // A new parameter is assessed in surveillance and used in consultancy unless unticked.
-    expect(post.request.body).toEqual({ sectionCode: 'X3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true, inConsultancy: true });
+    expect(post.request.body).toEqual({ sectionCode: '3', sectionName: 'Water', description: '', nicSectors: ['24'], inSurveillance: true, inConsultancy: true });
     post.flush({ message: 'Parameter saved.' });
     await settle(fixture);
     expect(el.querySelector('form.add-form')).toBeNull();

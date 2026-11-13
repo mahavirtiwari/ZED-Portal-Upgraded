@@ -162,8 +162,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
                 <div class="form-grid">
                   <label for="sectionCode">Parameter Code<span class="req">*</span></label>
                   <div>
-                    <input id="sectionCode" name="sectionCode" class="form-control" maxlength="50" [(ngModel)]="code" />
+                    <!-- 2026-11-13: a number only (the legacy procedures sort parameters by CAST(SectionCode AS int)). -->
+                    <input id="sectionCode" name="sectionCode" class="form-control" maxlength="9" inputmode="numeric" placeholder="e.g. 1" [(ngModel)]="code" />
                     @if (submitted() && !code.trim()) { <span class="help-block">Parameter Code required.</span> }
+                    @else if (submitted() && !codeIsNumber()) { <span class="help-block">The parameter code must be a number, e.g. 1.</span> }
                   </div>
                   <label for="sectionName">Parameter Name<span class="req">*</span></label>
                   <div>
@@ -448,11 +450,16 @@ export class ParametersPage {
     this.adding.set(true);
   }
 
+  /** A parameter's code is a number (2026-11-13): "P1" breaks the legacy procedures and the ZED MSME app. */
+  protected codeIsNumber(): boolean {
+    return /^[0-9]{1,9}$/.test(this.code.trim());
+  }
+
   protected async add(): Promise<void> {
     this.submitted.set(true);
     this.addError.set('');
     this.success.set('');
-    if (!this.code.trim() || !this.name.trim()) {
+    if (!this.code.trim() || !this.name.trim() || !this.codeIsNumber()) {
       this.addError.set('Please enter valid data.');
       return;
     }

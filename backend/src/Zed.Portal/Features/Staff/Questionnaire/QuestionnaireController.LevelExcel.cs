@@ -21,7 +21,7 @@ public sealed partial class QuestionnaireController
     {
         var inner = RequirementSheet(new Section(type, "P", "")).Columns;
         return new SheetSpec($"{type} requirements", $"requirements-{type.ToLowerInvariant()}-all-parameters",
-            [new SheetColumn("Parameter", $"The parameter's code, e.g. P1 (as on the {type} Parameters page). The parameter must exist."), .. inner],
+            [new SheetColumn("Parameter", $"The parameter's code, e.g. 1 (as on the {type} Parameters page). The parameter must exist."), .. inner],
             3,
             "Rows are matched by Parameter + Requirement + Checkpoint: a new one is added, an existing one is updated. Nothing is deleted. " +
             "Each parameter's rows follow its own numbering (a new requirement after its last, a new checkpoint after the requirement's last). " +

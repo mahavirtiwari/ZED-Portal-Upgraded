@@ -38,7 +38,7 @@ public sealed partial class StaffMastersController
 
     internal static SheetSpec ParameterSheet(string level) => new($"{level} parameters", $"parameters-{level.ToLowerInvariant()}",
     [
-        new("Code", "The parameter code, e.g. P1 (up to 50 characters). Required."),
+        new("Code", "The parameter code: a number, e.g. 1. Required."),
         new("Name", "The parameter name (up to 200 characters). Required."),
         new("Description", "Shown with the parameter (up to 1990 characters). Optional."),
         new("NIC sectors", "Codes of the sectors it applies to, separated by commas, e.g. 10, 13. Empty = all sectors."),
@@ -268,6 +268,8 @@ public sealed partial class StaffMastersController
         return (current, row =>
         {
             if (!StaffUserRules.TryText(row.Cell(0), 50, true, false, out _)) row.Errors.Add("Code is required (up to 50 characters).");
+            // A new parameter's code is a number (2026-11-13); existing ones are matched as they are.
+            else if (row.Current is null && ParameterCode(row.Cell(0)) is null) row.Errors.Add("Code must be a number, e.g. 1.");
             if (!StaffUserRules.TryText(row.Cell(1), 200, true, false, out _)) row.Errors.Add("Name is required (up to 200 characters).");
             if (!StaffUserRules.TryText(row.Cell(2), 1990, false, true, out _)) row.Errors.Add("Description can be up to 1990 characters.");
             row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), sectors, "NIC sector", "Masters → Sectors");

@@ -185,10 +185,10 @@ public sealed class MasterSheetsTests : IDisposable
         Assert.Equal(1, check.GetProperty("unchanged").GetInt32());
 
         var r = await admin.PostAsync("/api/staff/masters/parameters/Bronze/excel/apply", Xlsx(["Code", "Name", "Description", "NIC sectors", "In surveillance", "In consultancy"],
-            Row("P2", "Safety", "", "10", "yes", "no"), Row("P3", "Quality", "", "", "maybe", "")));
+            Row("2", "Safety", "", "10", "yes", "no"), Row("3", "Quality", "", "", "maybe", ""), Row("P4", "Energy", "", "", "no", "")));
         var applied = await r.Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal((1, 1), (applied.GetProperty("added").GetInt32(), applied.GetProperty("failed").GetInt32()));
-        Assert.Equal(("Bronze", "P2"), (FakeSql.Arg(Assert.Single(Calls("SP_MASTER_INSERT_SECTION")).Args, "SectionType"), FakeSql.Arg(Calls("SP_MASTER_INSERT_SECTION")[0].Args, "SectionCode")));
+        Assert.Equal((1, 2), (applied.GetProperty("added").GetInt32(), applied.GetProperty("failed").GetInt32()));
+        Assert.Equal(("Bronze", "2"), (FakeSql.Arg(Assert.Single(Calls("SP_MASTER_INSERT_SECTION")).Args, "SectionType"), FakeSql.Arg(Calls("SP_MASTER_INSERT_SECTION")[0].Args, "SectionCode")));
         Assert.Equal("10", FakeSql.Arg(Assert.Single(Calls(StaffMastersController.NicSectorsByCodeSql)).Args, "NicSectors"));
         Assert.Equal("Yes", FakeSql.Arg(Assert.Single(Calls(StaffMastersController.SurveillanceByCodeSql)).Args, "SurveMandatories"));
         // Not used in consultancy (migration 0035); a parameter used there needs no write.

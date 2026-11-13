@@ -28,6 +28,14 @@ What the single Admin (main portal) sets, and where it shows. See also `USER-MAN
 - **Fees.** The "Fee shown" box was removed: the level card lists the Micro / Small / Medium fees of Masters → Payments, and
   each MSME's dashboard card shows its own fee (after subsidy, with GST; `api/msme/dashboard/level-fees`).
 
+## Parameters: the code is a number (2026-11-13)
+
+A parameter's code (Masters → Parameters of a level, and its Excel upload) must be a number: 1, 2, 3 … A code such as
+"P1" is refused ("The parameter code must be a number, e.g. 1."). The legacy procedures that the apps, the assessments
+and the reports run sort parameters by `CAST(SectionCode AS int)` in about 90 places, so one code with letters made the
+ZED MSME app's `GetParametersByType` answer HTTP 500 for the unit. Codes are stored without leading zeros (02 → 2).
+Existing parameters keep their codes; the Excel upload checks the rule for new rows only.
+
 ## Questionnaire → Requirements: requirement text
 
 Since 2026-11-13 every requirement has its text (`dbo.Requirements.RequirementName`, up to 2000 characters), required in

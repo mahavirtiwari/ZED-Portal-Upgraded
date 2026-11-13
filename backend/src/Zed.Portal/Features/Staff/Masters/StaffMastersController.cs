@@ -226,6 +226,8 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         var type = await SectionTypeAsync(sectionType, ct);
         if (type is null) return NotFound();
         if (!StaffUserRules.TryText(req.SectionCode, 50, true, false, out var code)) return this.Problem400("Parameter Code required (up to 50 characters).");
+        if (ParameterCode(code) is not { } number) return this.Problem400(ParameterCodeRule);
+        code = number;
         if (!StaffUserRules.TryText(req.SectionName, 200, true, false, out var name)) return this.Problem400("Parameter Name required (up to 200 characters).");
         if (!StaffUserRules.TryText(req.Description, 1990, false, true, out var description)) return this.Problem400("The description can be up to 1990 characters.");
         // Trimmed (2026-11-08): SQL compares "1" and "1 " as the same code, and a duplicate breaks SP_ASSESSMENT_DA_DETAILS.
@@ -278,6 +280,16 @@ public sealed partial class StaffMastersController(ISqlExecutor db, ILogger<Staf
         log.LogInformation("Parameter {Id} updated by {Actor}", id, UserId);
         return new MessageResponse("Parameter data updated." + (saved ? "" : NicSectorsNotSaved) + (consultancySaved ? "" : ConsultancyNotSaved));
     }
+
+    /// <summary>
+    /// 2026-11-13: a parameter's code is a number (1, 2 …). The legacy procedures the apps, assessments and reports run sort
+    /// by CAST(SectionCode AS int) in about 90 places, so a code such as "P1" breaks them (the ZED MSME app's
+    /// GetParametersByType answered HTTP 500). Stored without leading zeros; existing codes are not changed.
+    /// </summary>
+    internal const string ParameterCodeRule = "The parameter code must be a number, e.g. 1.";
+
+    internal static string? ParameterCode(string? text) =>
+        text?.Trim() is { Length: > 0 and <= 9 } t && t.All(char.IsAsciiDigit) ? int.Parse(t, System.Globalization.CultureInfo.InvariantCulture).ToString(System.Globalization.CultureInfo.InvariantCulture) : null;
 
     internal const string NicSectorsByCodeSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string NicSectorsByIdSql = "UPDATE dbo.Sections SET NicSectors = @NicSectors WHERE Id = @Id;";
