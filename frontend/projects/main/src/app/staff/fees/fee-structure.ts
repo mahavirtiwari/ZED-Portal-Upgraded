@@ -465,10 +465,10 @@ interface SharePreview {
     .fs-type { flex-direction: column; align-items: flex-start; gap: 4px; }
     .fs-type-label { font-size: 12px; font-weight: 600; color: #5f6f70; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
 
     /* A card per level: picks the level shown below. */
     .lv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }

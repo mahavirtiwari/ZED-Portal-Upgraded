@@ -243,10 +243,10 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .dc-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; color: #23474a; }
     .dc-step { flex: none; width: 24px; height: 24px; border-radius: 12px; display: inline-grid; place-items: center; background: #45a5ad; color: #fff; font-size: 12px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .seg-count { font-size: 12px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
 

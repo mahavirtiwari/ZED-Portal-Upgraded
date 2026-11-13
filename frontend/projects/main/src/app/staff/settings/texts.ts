@@ -230,10 +230,10 @@ type StatusFilter = 'all' | 'shown' | 'hidden' | 'changed';
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .seg-sm button { padding: 3px 10px; font-size: 12px; }
 
     .tx-table { min-width: 720px; margin-bottom: 8px; }

@@ -488,10 +488,10 @@ const TYPE_GLYPHS: Record<string, string> = {
     .type-name { font-size: 12px; font-weight: 600; color: #3b4b4c; line-height: 1.25; }
     .type-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 12px; padding: 2px 10px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .dialog-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 14px; }
     .side-settings { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
     .side-settings h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }

@@ -103,8 +103,8 @@ export function submittedValues(data: string | null): string[] {
   `,
   styles: `
     .eh-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-    .eh-chip { border: 1px solid #ccd2d5; background: #fff; border-radius: 16px; padding: 3px 14px; font-weight: 500; color: #3a3c3e; }
-    .eh-chip.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .eh-chip { border: 1px solid #d9eef0; background: #d9eef0; border-radius: 16px; padding: 3px 14px; font-weight: 500; color: #174a4e; }
+    .eh-chip.active { background: #23656b; border-color: #23656b; color: #fff; }
     .timeline { border-left: 2px solid #d6e9eb; margin-left: 8px; padding-left: 20px; }
     .eh-day { color: #7a7d80; font-weight: 600; margin: 14px 0 6px -20px; padding-left: 0; background: #fff; position: relative; left: -10px; }
     .eh-item { position: relative; border: 1px solid #e3e6e8; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; background: #fff; }

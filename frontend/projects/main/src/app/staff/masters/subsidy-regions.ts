@@ -226,16 +226,16 @@ type RegionFilter = 'all' | 'enabled' | 'disabled';
     .sr-chip { border: 1px solid #cbd9da; background: #fff; color: #23474a; border-radius: 14px; padding: 2px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
     .sr-chip:hover { border-color: #45a5ad; background: #eef6f6; }
     .sr-chip.is-off { color: #5f6f70; border-style: dashed; }
-    .sr-chip.is-on { background: #45a5ad; border-color: #45a5ad; color: #fff; border-style: solid; }
+    .sr-chip.is-on { background: #23656b; border-color: #23656b; color: #fff; border-style: solid; }
     .sr-chip-count { font-weight: 400; opacity: .8; margin-left: 2px; }
 
     .sr-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .sr-search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .seg-count { font-weight: 400; opacity: .85; margin-left: 2px; }
 
     .sr-table td { vertical-align: middle; overflow-wrap: anywhere; }

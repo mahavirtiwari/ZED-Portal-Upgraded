@@ -92,9 +92,9 @@ $zp-muted: #5f6f70;
 // ---- Small action buttons of the parameters layout (primary actions keep their filled style) ---------------------------
 body .btn.zp-btn, body .btn.zp-btn.btn-primary, body .btn.zp-btn.btn-outline-primary, body .btn.zp-btn.btn-default {
   height: 26px; padding: 0 10px; margin: 0; font-size: 12px; font-weight: 600; line-height: 24px; text-transform: none;
-  border: 1px solid #cfe0e2 !important; border-radius: 7px; background: #fff !important; color: $zp-teal !important; box-shadow: none; filter: none;
+  border: 1px solid #d9eef0 !important; border-radius: 7px; background: #d9eef0 !important; color: #174a4e !important; box-shadow: none; filter: none;
 }
-body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: #e6f2f3 !important; color: $zp-teal !important; }
+body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: #c5e5e8 !important; border-color: #c5e5e8 !important; color: #123b3e !important; }
 
 @media (max-width: 991px) {
   .zp-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }

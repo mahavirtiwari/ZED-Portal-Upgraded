@@ -246,8 +246,8 @@ export const adminPortalInterceptor: HttpInterceptorFn = (req, next) => {
   styles: `
     .portal-switch { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; }
     .ps-label { font-size: 12px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .05em; margin-right: 4px; }
-    .ps-tab { border: 1px solid #cfe1e2; border-radius: 18px; padding: 5px 14px; font-weight: 700; font-size: 13px; color: #2f7c83; background: #fff; }
-    .ps-tab.on { background: #45a5ad; color: #fff; border-color: #45a5ad; }
+    .ps-tab { border: 1px solid #d9eef0; border-radius: 18px; padding: 5px 14px; font-weight: 700; font-size: 13px; color: #174a4e; background: #d9eef0; }
+    .ps-tab.on { background: #23656b; color: #fff; border-color: #23656b; }
   `,
 })
 export class PortalSwitchComponent {

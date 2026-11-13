@@ -333,10 +333,10 @@ type Section = 'partners' | 'apis' | 'services';
     .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
 
     .ai-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .ai-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 20px; border: 1px solid #cbd9da; background: #fff;
-      color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; }
-    .ai-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .ai-tab.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .ai-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; }
+    .ai-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
+    .ai-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .ai-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
 

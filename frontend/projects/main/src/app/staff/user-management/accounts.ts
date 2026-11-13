@@ -417,10 +417,10 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
     .acc-list { padding: 16px; }
     .acc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #cbd9da; background: #fff;
-      color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .acc-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .acc-tab.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .acc-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
+    .acc-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .acc-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
     .acc-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
@@ -493,9 +493,9 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-scope-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
     .acc-scope-label { font-weight: 700; font-size: 13.5px; color: #23474a; padding-top: 6px; }
     .acc-seg { display: inline-flex; justify-self: start; width: max-content; max-width: 100%; border: 1px solid #45a5ad; border-radius: 10px; overflow: hidden; }
-    .acc-seg-btn { border: 0; background: #fff; color: #2f7c83; font-weight: 600; font-size: 13.5px; padding: 7px 16px; }
+    .acc-seg-btn { border: 0; background: #d9eef0; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 7px 16px; }
     .acc-seg-btn + .acc-seg-btn { border-left: 1px solid #b9dfe2; }
-    .acc-seg-btn.on { background: #45a5ad; color: #fff; }
+    .acc-seg-btn.on { background: #23656b; color: #fff; }
     .acc-levels { display: flex; flex-wrap: wrap; gap: 8px; }
     .acc-level { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cfd9da; border-radius: 10px; padding: 6px 12px; font-size: 13.5px; background: #fff; cursor: pointer; margin: 0; }
     .acc-level.on { border-color: #45a5ad; background: #e4f3f4; color: #1f5c61; font-weight: 600; }

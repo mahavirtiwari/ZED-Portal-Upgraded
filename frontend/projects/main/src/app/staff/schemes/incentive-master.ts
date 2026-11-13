@@ -194,10 +194,10 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .page-head { align-items: center; }
 
     .inc-groups { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 20px; border: 1px solid #cbd9da; background: #fff;
-      color: #2f7c83; font-weight: 600; font-size: 14px; text-decoration: none; }
-    .inc-group-tab:hover { background: #eef6f6; border-color: #45a5ad; color: #2f7c83; }
-    .inc-group-tab.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+      color: #174a4e; font-weight: 600; font-size: 14px; text-decoration: none; }
+    .inc-group-tab:hover { background: #c5e5e8; border-color: #45a5ad; color: #2f7c83; }
+    .inc-group-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
     .inc-group-cards { margin-left: auto; border-style: dashed; }
 
     .state-pick { display: flex; align-items: center; gap: 12px; max-width: 520px; margin-bottom: 16px; }
@@ -216,10 +216,10 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .inc-list-head .form-control { flex: 0 1 340px; min-width: 0; }
     .inc-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .seg-count { font-size: 12px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
     .lv-dot { display: inline-block; width: 9px; height: 9px; border-radius: 5px; }

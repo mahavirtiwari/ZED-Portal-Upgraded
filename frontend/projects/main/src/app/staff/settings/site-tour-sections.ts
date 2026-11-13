@@ -299,10 +299,10 @@ export function sectionId(title: string, taken: readonly string[]): string {
 
     /* The pop-up (as App Forms'). */
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .modal .section-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
     .section-dialog .form-grid > .label { display: block; text-align: left; white-space: normal; text-transform: none; padding: 0; font-size: 14px;
       font-weight: 600; color: #3b4b4c; background: none; border-radius: 0; }

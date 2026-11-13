@@ -257,7 +257,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
       background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer;
     }
     .level-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .level-tab.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .level-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
     .tab-note { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #fff4d6; color: #8a6100; }
 
     /* The level's counts. */
@@ -270,10 +270,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
 
     .param-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 8px; }
     .param-table td { vertical-align: top; overflow-wrap: anywhere; padding-top: 14px; padding-bottom: 14px; }

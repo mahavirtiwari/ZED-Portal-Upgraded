@@ -357,17 +357,17 @@ interface DocumentIcon {
     .doc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .doc-search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #eef6f6; }
-    .seg button.active { background: #45a5ad; color: #fff; }
+    .seg button:hover { background: #c5e5e8; }
+    .seg button.active { background: #23656b; color: #fff; }
     .role-filter { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid #eef3f3; }
     .role-filter-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-right: 4px; }
-    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 16px; border: 1px solid #cbd9da; background: #fff;
-      color: #2f7c83; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .role-pill:hover { background: #eef6f6; border-color: #45a5ad; }
+    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 16px; border: 1px solid #d9eef0; background: #d9eef0;
+      color: #174a4e; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .role-pill:hover { background: #c5e5e8; border-color: #45a5ad; }
     .role-pill.none:not(.active) { color: #8a9899; }
-    .role-pill.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .role-pill.active { background: #23656b; border-color: #23656b; color: #fff; }
     .pill-count { font-size: 11px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .role-pill.active .pill-count { background: rgba(255,255,255,.25); color: #fff; }
 

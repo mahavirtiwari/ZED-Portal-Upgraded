@@ -64,18 +64,24 @@ body {
 .pdf-chip.opened { background: #e6f2f3; }
 a:hover > .pdf-chip, a:focus-visible > .pdf-chip { border-color: #23656b; }
 
-// ZED teal primary buttons (Content/swachh.css loaded last in the MVC layout and set this).
+// ZED teal primary buttons. 2026-11-13 (option B, approved): every button filled — the main action solid teal, the others
+// a soft fill (teal, amber warning, red danger); the staff pages get the same from styles/v4-skin and v4-blocks.
 .btn-primary,
-.btn-primary:hover,
-.btn-primary:focus,
-.btn-primary:disabled {
+.btn-primary:focus {
   color: #fff;
-  background-color: #45a5ad;
-  border-color: #45a5ad;
+  background-color: #23656b;
+  border-color: #23656b;
 }
-.btn-primary:hover {
-  filter: brightness(0.95);
-}
+.btn-primary:hover { color: #fff; background-color: #174a4e; border-color: #174a4e; filter: none; }
+.btn-primary:disabled, .btn-primary.disabled { color: #fff; background-color: #9fc5c8; border-color: #9fc5c8; }
+.btn.btn-outline-primary { color: #174a4e; background: #d9eef0; border-color: #d9eef0; }
+.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: #123b3e; background: #c5e5e8; border-color: #c5e5e8; }
+.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { color: #fff; background: #23656b; border-color: #23656b; }
+.btn.btn-outline-danger { color: #8f1f15; background: #fde3e1; border-color: #fde3e1; }
+.btn.btn-outline-danger:hover { color: #7a1a11; background: #f9cfcb; border-color: #f9cfcb; }
+.btn.btn-outline-warning { color: #7a4700; background: #fff1d6; border-color: #fff1d6; }
+.btn.btn-outline-success { color: #1e6b3a; background: #dff2e5; border-color: #dff2e5; }
+.btn.btn-outline-secondary { color: #24393b; background: #e6eded; border-color: #e6eded; }
 
 // Search boxes: the old pages had a magnifier (Font Awesome "fa fa-search", which V4 does not load). The icon is
 // drawn from this inline SVG: in the old icon buttons, and inside search inputs that lost their button.

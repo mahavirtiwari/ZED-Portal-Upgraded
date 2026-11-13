@@ -79,8 +79,8 @@ function emptyAssessor(): AssessorModel {
     .af-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
     .af-chip::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #9fbfc1; background: #fff; box-sizing: border-box; }
     .af-chip:hover { background: #eef6f6; border-color: #45a5ad; }
-    .af-chip.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
-    .af-chip.active::before { border: 4px solid #fff; background: #45a5ad; }
+    .af-chip.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .af-chip.active::before { border: 4px solid #fff; background: #23656b; }
     .af-chip:has(input:focus-visible) { outline: 2px solid #2f7c83; outline-offset: 2px; }
     .af-chip.is-off { opacity: .5; cursor: not-allowed; background: #f4f6f6; }
     fieldset:disabled .af-chip { cursor: default; }

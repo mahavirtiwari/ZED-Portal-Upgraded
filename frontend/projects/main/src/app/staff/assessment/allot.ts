@@ -219,12 +219,12 @@ import { levelCodes, levelName } from '../../msme/shared/levels';
     .acts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; width: 160px; margin: 0 auto; }
     .acts .btn { width: 100%; height: 32px; padding: 0 10px; display: flex; align-items: center; justify-content: center;
       font-size: 13px; font-weight: 600; border-radius: 8px; white-space: nowrap; }
-    .acts .btn-outline-primary { color: #23656b; border: 1px solid #23656b; background: #fff; }
-    .acts .btn-outline-primary:hover, .acts .btn-outline-primary:focus-visible { color: #174a4e; background: #e6f2f3; }
+    .acts .btn-outline-primary { color: #174a4e; border: 1px solid #d9eef0; background: #d9eef0; }
+    .acts .btn-outline-primary:hover, .acts .btn-outline-primary:focus-visible { color: #123b3e; background: #c5e5e8; border-color: #c5e5e8; }
     .acts .btn-primary { color: #fff; background: #23656b; border-color: #23656b; }
     .acts .btn-primary:hover { background: #174a4e; border-color: #174a4e; filter: none; }
-    .acts .btn.re-allot { color: #8a5200 !important; background: #fff8ec !important; border: 1px solid #b26a00 !important; }
-    .acts .btn.re-allot:hover { background: #ffefd2 !important; }
+    .acts .btn.re-allot { color: #7a4700 !important; background: #fff1d6 !important; border: 1px solid #fff1d6 !important; }
+    .acts .btn.re-allot:hover { background: #ffe6b5 !important; border-color: #ffe6b5 !important; }
     .addr { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   `,
 })

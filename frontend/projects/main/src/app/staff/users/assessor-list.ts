@@ -282,10 +282,10 @@ export function assessorTypeLabel(type: string | null | undefined): string {
 
     .as-list { padding: 16px; }
     .as-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #cbd9da; background: #fff;
-      color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .as-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .as-tab.active { background: #45a5ad; border-color: #45a5ad; color: #fff; }
+    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .as-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
+    .as-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .as-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
     .as-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }

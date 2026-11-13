@@ -172,23 +172,24 @@ input[type='file'].form-control { padding: 6px 8px; }
 .btn:hover { box-shadow: 0 2px 6px rgba(16, 61, 64, 0.15); }
 .btn:focus-visible { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.3); }
 .btn-sm { border-radius: 6px; font-size: 13px; }
+// 2026-11-13 (option B, approved): every button filled. The main action solid teal (#23656b, 6.4:1 with white text).
 .btn-primary,
-.btn-primary:focus { background-color: $teal; border: 1px solid $teal; color: #fff; }
-.btn-primary:hover { background-color: #3b939a; border-color: #3b939a; color: #fff; filter: none; }
-.btn-primary:disabled, .btn-primary.disabled { background-color: #9ccdd1; border-color: #9ccdd1; }
+.btn-primary:focus { background-color: #23656b; border: 1px solid #23656b; color: #fff; }
+.btn-primary:hover { background-color: #174a4e; border-color: #174a4e; color: #fff; filter: none; }
+.btn-primary:disabled, .btn-primary.disabled { background-color: #9fc5c8; border-color: #9fc5c8; color: #fff; }
 // The old grey "default" button (BACK, CANCEL, RESET, BLOCK): a quiet outlined button.
 .btn.btn-default,
 .btn.btn-default:focus,
 input.btn-default {
-  background-color: #fff !important;
-  color: #3b4b4c !important;
-  border: 1px solid $input-line !important;
+  background-color: #e6eded !important;
+  color: #24393b !important;
+  border: 1px solid #e6eded !important;
 }
-.btn.btn-default:hover, input.btn-default:hover { background-color: $teal-tint !important; border-color: $teal !important; color: $teal-ink !important; }
+.btn.btn-default:hover, input.btn-default:hover { background-color: #d6e2e3 !important; border-color: #d6e2e3 !important; color: #17292b !important; }
 .btn.btn-danger { background-color: #d64550; border-color: #d64550; color: #fff; }
 .btn.btn-danger:hover { background-color: #c13a45; border-color: #c13a45; }
-.btn.btn-outline-danger { color: #c13a45; border: 1px solid #e8a3a9; background: #fff; }
-.btn.btn-outline-danger:hover { background: #fdecee; border-color: #d64550; color: #a8303a; }
+.btn.btn-outline-danger { color: #8f1f15; border: 1px solid #fde3e1; background: #fde3e1; }
+.btn.btn-outline-danger:hover { background: #f9cfcb; border-color: #f9cfcb; color: #7a1a11; }
 // Rows the old pages marked red (a reason for rejection, overdue): a soft red tint, not a solid red bar.
 .table > tbody > tr.btn-danger > *,
 .table > tbody > tr > td.btn-danger,

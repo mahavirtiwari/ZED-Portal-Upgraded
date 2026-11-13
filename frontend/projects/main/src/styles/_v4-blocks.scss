@@ -48,8 +48,17 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 // Row buttons side by side, small.
 .row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .row-actions .btn { padding: 4px 10px; font-size: 13px; border-radius: 6px; }
-.btn.btn-outline-primary { color: $teal-dark; border: 1px solid $teal; background: #fff; }
-.btn.btn-outline-primary:hover { background: $teal-tint; color: $teal-ink; border-color: $teal; }
+// 2026-11-13 (option B): the other buttons a soft teal fill; the selected one (tabs, stage filters) solid teal.
+.btn.btn-outline-primary { color: #174a4e; border: 1px solid #d9eef0; background: #d9eef0; }
+.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { background: #c5e5e8; color: #123b3e; border-color: #c5e5e8; }
+.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { background: #23656b; border-color: #23656b; color: #fff; }
+.btn.btn-outline-primary.active .badge, .btn.btn-outline-primary[aria-pressed='true'] .badge { background: rgba(255, 255, 255, 0.22) !important; color: #fff !important; }
+.btn.btn-outline-warning { color: #7a4700; border: 1px solid #fff1d6; background: #fff1d6; }
+.btn.btn-outline-warning:hover { background: #ffe6b5; border-color: #ffe6b5; color: #6a3d00; }
+.btn.btn-outline-success { color: #1e6b3a; border: 1px solid #dff2e5; background: #dff2e5; }
+.btn.btn-outline-success:hover { background: #cbead5; border-color: #cbead5; }
+.btn.btn-outline-secondary { color: #24393b; border: 1px solid #e6eded; background: #e6eded; }
+.btn.btn-outline-secondary:hover { background: #d6e2e3; border-color: #d6e2e3; }
 // Long text in a table cell: three lines, the rest on hover (title) or "more".
 .clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .muted { color: $muted; }

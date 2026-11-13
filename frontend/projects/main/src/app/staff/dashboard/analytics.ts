@@ -203,9 +203,9 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an-status.is-hidden { display: none; }
     /* The date basis as tabs; State, District, Certification, the date range and More filters in one row. */
     .an-basis { display: inline-flex; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
-    .an-basis-tab { border: 0; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; padding: 7px 14px; }
+    .an-basis-tab { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; }
     .an-basis-tab + .an-basis-tab { border-left: 1px solid #cbd9da; }
-    .an-basis-tab.active { background: #45a5ad; color: #fff; }
+    .an-basis-tab.active { background: #23656b; color: #fff; }
     .an-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.7fr) auto; gap: 12px 16px; margin-bottom: 12px; align-items: end; }
     .an-more { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid #e4ecec; border-radius: 10px; }
     .an-more[hidden] { display: none; }
