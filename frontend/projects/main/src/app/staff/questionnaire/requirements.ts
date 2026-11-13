@@ -10,6 +10,8 @@ import { ListSearchComponent, searchRows } from '../pager';
 import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 
 export const PURPOSE_MAX = 500;
+/** The requirement's text (Requirements.RequirementName), as the server allows (2026-11-13). */
+export const REQUIREMENT_NAME_MAX = 2000;
 export const ACTION_MAX = 100;
 export const CHECKPOINT_MAX = 1990;
 export const MAX_SAMPLE_BYTES = 2 * 1024 * 1024;
@@ -33,6 +35,8 @@ interface RequirementForm {
   /** The requirement being edited; null = a new one. */
   id: number | null;
   label: string;
+  /** The requirement's text (required, 2026-11-13). */
+  requirementName: string;
   purpose: string;
   benefits: string;
   /** The video tutorial's link (2026-11-07); empty = none. */
@@ -131,6 +135,11 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
             <form class="req-form" (ngSubmit)="save()" novalidate>
               <div class="det-head">
                 <h4>{{ f.id ? 'Edit requirement ' + f.label : 'New requirement ' + f.label }}</h4>
+              </div>
+              <div class="field">
+                <label for="requirementName"><span>Requirement<span class="req">*</span></span> <small class="count">{{ f.requirementName.length }} / {{ requirementNameMax }}</small></label>
+                <textarea id="requirementName" name="requirementName" class="form-control" rows="2" [maxlength]="requirementNameMax" [(ngModel)]="f.requirementName"
+                          placeholder="What the unit must have or do, e.g. The organisation has a documented quality policy communicated to all staff"></textarea>
               </div>
               <div class="two">
                 <div class="field">
@@ -237,7 +246,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
           } @else if (selected(); as q) {
             <article class="req-card">
               <div class="det-head">
-                <h4><span class="req-code">{{ d.sectionCode }}.{{ q.requirementCode }}</span> Requirement {{ d.sectionCode }}.{{ q.requirementCode }}</h4>
+                <h4><span class="req-code">{{ d.sectionCode }}.{{ q.requirementCode }}</span> {{ q.requirementName?.trim() || 'Requirement ' + d.sectionCode + '.' + q.requirementCode }}</h4>
                 <span class="det-actions">
                   <button type="button" class="btn btn-outline-primary btn-sm edit-requirement" [disabled]="d.checklistReady === false" (click)="edit(q)">EDIT</button>
                   @if (q.canRemove) {
@@ -430,6 +439,7 @@ export class RequirementsPage {
   protected readonly sectionType = this.route.get('sectionType') ?? 'Bronze';
   protected readonly sectionCode = this.route.get('sectionCode') ?? '';
   protected readonly purposeMax = PURPOSE_MAX;
+  protected readonly requirementNameMax = REQUIREMENT_NAME_MAX;
   protected readonly actionMax = ACTION_MAX;
   protected readonly checkpointMax = CHECKPOINT_MAX;
   protected readonly videoMax = VIDEO_MAX;
@@ -487,13 +497,15 @@ export class RequirementsPage {
   }
 
   /** The requirement's name in the list: its first checkpoint (requirements have no title of their own). */
+  /** The requirement's text; older requirements without one show their first checkpoint. */
   protected titleOf(q: Requirement): string {
-    return q.points[0]?.name?.trim() || `Requirement ${q.requirementCode}`;
+    return q.requirementName?.trim() || q.points[0]?.name?.trim() || `Requirement ${q.requirementCode}`;
   }
 
   /** What the requirement still lacks, shown under it in the list. */
   protected missing(q: Requirement): string[] {
     const m: string[] = [];
+    if (!q.requirementName?.trim()) m.push('requirement text');
     if (!q.purpose) m.push('purpose');
     if (!q.benefits) m.push('benefits');
     if (!q.mandatoryEvidences.length && !q.optionalEvidences.length) m.push('evidence');
@@ -541,7 +553,7 @@ export class RequirementsPage {
   protected startNew(): void {
     this.clearMessages();
     this.form.set({
-      id: null, label: `${this.sectionCode}.${this.requirements().length + 1}`, purpose: '', benefits: '', videoUrl: '', checkpoints: [newCheckpoint()], general: [],
+      id: null, label: `${this.sectionCode}.${this.requirements().length + 1}`, requirementName: '', purpose: '', benefits: '', videoUrl: '', checkpoints: [newCheckpoint()], general: [],
     });
     this.reveal();
   }
@@ -564,6 +576,7 @@ export class RequirementsPage {
     this.form.set({
       id: q.id,
       label: `${this.sectionCode}.${q.requirementCode}`,
+      requirementName: q.requirementName ?? '',
       purpose: q.purpose ?? '',
       benefits: q.benefits ?? '',
       videoUrl: q.videoUrl ?? '',
@@ -622,6 +635,7 @@ export class RequirementsPage {
       evidenceName: e.evidenceName.trim(), mandatory: e.mandatory, sampleFile: e.sampleFile, helpText: e.helpText, validationRequired: e.validationRequired,
     });
     return {
+      requirementName: f.requirementName.trim(),
       purpose: f.purpose.trim(),
       benefits: f.benefits.trim(),
       videoUrl: f.videoUrl.trim(),
@@ -641,6 +655,10 @@ export class RequirementsPage {
     this.clearMessages();
     const body = this.request(f);
     const blank = body.checkpoints.findIndex((c) => !c.text);
+    if (!body.requirementName) {
+      this.formError.set('Please enter the requirement.');
+      return;
+    }
     if (body.videoUrl && !/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(body.videoUrl)) {
       this.formError.set('The video link must be a web address starting with https://, e.g. a YouTube link.');
       return;

@@ -69,8 +69,8 @@ public sealed class QuestionnaireTests : IDisposable
         Assert.Equal("Photo", first.GetProperty("optionalEvidences")[0].GetProperty("evidenceName").GetString());
         Assert.False(first.GetProperty("canRemove").GetBoolean());
         Assert.True(reqs[1].GetProperty("canRemove").GetBoolean());
-        // Only the shown columns are returned.
-        Assert.False(first.TryGetProperty("requirementName", out _));
+        // The requirement's text (2026-11-13): none in these rows.
+        Assert.Equal(JsonValueKind.Null, first.GetProperty("requirementName").ValueKind);
         Assert.Equal("P1", FakeSql.Arg(Call("SP_MASTER_GET_REQUIREMENTS_BY_QUESTION_ID").Args, "SectionCode"));
     }
 

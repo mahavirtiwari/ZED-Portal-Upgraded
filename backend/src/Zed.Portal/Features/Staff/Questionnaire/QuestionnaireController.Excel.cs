@@ -24,6 +24,8 @@ public sealed partial class QuestionnaireController
         new("Evidence (if Yes)", "The evidences the unit shows when the answer is Yes, one per line (Alt+Enter in the cell)."),
         new("Mandatory evidence", "Yes or No for each evidence, one per line in the same order. Empty = Yes."),
         new("Action needed (if No / Partial)", $"The actions, one per line (each up to {ActionMax} characters, at most {MaxActions})."),
+        // 2026-11-13: last, so files exported before still upload.
+        new("Requirement text", $"The requirement itself (up to {RequirementNameMax} characters), on any of its rows. Empty = unchanged; required for a new requirement.", MayBeAbsent: true),
     ], 2, "Rows are matched by Requirement + Checkpoint: a new one is added, an existing one is updated. Nothing is deleted. Sample copies " +
         "and the evidences of a whole requirement (added before checkpoints) are kept and managed on the page.",
         (_, value) => int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var n) ? n.ToString(CultureInfo.InvariantCulture) : value);
@@ -82,7 +84,7 @@ public sealed partial class QuestionnaireController
             {
                 Trim(r.RequirementCode), Trim(p.OptionCode), i == 0 ? r.Purpose ?? "" : "", i == 0 ? r.Benefits ?? "" : "", p.Name,
                 string.Join("\n", evidences.Select(e => e.EvidenceName)), string.Join("\n", evidences.Select(e => IsMandatory(r, e) ? "Yes" : "No")),
-                string.Join("\n", p.Actions ?? []),
+                string.Join("\n", p.Actions ?? []), i == 0 ? r.RequirementName ?? "" : "",
             };
         }));
 
@@ -96,6 +98,8 @@ public sealed partial class QuestionnaireController
         var nextRequirement = requirements.Select(r => Order(Trim(r.RequirementCode))).Where(n => n < int.MaxValue).DefaultIfEmpty(0).Max() + 1;
         var lastPoint = requirements.ToDictionary(r => Trim(r.RequirementCode),
             r => r.Points.Select(p => Order(Trim(p.OptionCode))).Where(n => n < int.MaxValue).DefaultIfEmpty(0).Max());
+        // The requirements that have their text (stored, or given on an earlier row of the file): a save needs it.
+        var named = requirements.Where(r => !string.IsNullOrWhiteSpace(r.RequirementName)).Select(r => Trim(r.RequirementCode)).ToHashSet();
         return (current, row =>
         {
             var requirementNo = int.TryParse(row.Cell(0), NumberStyles.None, CultureInfo.InvariantCulture, out var rq) && rq > 0 ? rq : 0;
@@ -115,6 +119,7 @@ public sealed partial class QuestionnaireController
             var actions = Lines(row.Cell(7));
             if (actions.Any(a => a.Length > ActionMax)) row.Errors.Add($"Each action needed can be up to {ActionMax} characters.");
             if (actions.Count > MaxActions) row.Errors.Add($"At most {MaxActions} actions for a checkpoint.");
+            if (!StaffUserRules.TryText(row.Cell(8), RequirementNameMax, false, true, out _)) row.Errors.Add($"Requirement text can be up to {RequirementNameMax} characters.");
             if (row.Errors.Count > 0) return;
 
             row.Cells[0] = requirementNo.ToString(CultureInfo.InvariantCulture);
@@ -125,11 +130,19 @@ public sealed partial class QuestionnaireController
             // Empty purpose / benefits = unchanged.
             for (var c = 2; c <= 3; c++)
                 if (row.Cell(c).Length == 0) row.Cells[c] = row.Current?[c] ?? "";
+            if (row.Cell(8).Length == 0) row.Cells[8] = row.Current?[8] ?? "";
 
             var key = row.Cell(0);
+            if (row.Cell(8).Length > 0) named.Add(key);
+            else if (byCode.ContainsKey(key) && !named.Contains(key) && (row.Current is null || !row.Cells.SequenceEqual(row.Current)))
+            {
+                row.Errors.Add($"Requirement {key} has no Requirement text yet: please add it on this row.");
+                return;
+            }
             if (!byCode.ContainsKey(key) && !lastPoint.ContainsKey(key))
             {
                 if (requirementNo != nextRequirement) { row.Errors.Add($"A new requirement takes the next number: {nextRequirement}."); return; }
+                if (row.Cell(8).Length == 0) { row.Errors.Add("A new requirement needs its Requirement text (on its first row)."); return; }
                 nextRequirement++;
                 lastPoint[key] = 0;
             }
@@ -154,7 +167,7 @@ public sealed partial class QuestionnaireController
         if (requirement is null)
         {
             var point = new PointIn(null, row.Cell(4), evidenceNames.Select((n, i) => new EvidenceIn(n, flags.ElementAtOrDefault(i) != "No", null, null, false)).ToList(), actions);
-            await AddChecklistAsync(section, new ChecklistIn(Text(2), Text(3), [point], []), ct);
+            await AddChecklistAsync(section, new ChecklistIn(Text(2), Text(3), [point], [], RequirementName: Text(8)), ct);
             return null;
         }
         var input = ToInput(requirement);
@@ -167,7 +180,7 @@ public sealed partial class QuestionnaireController
         }).ToList();
         var updated = new PointIn(old?.OptionCode, row.Cell(4), evidences, actions);
         var points = old is null ? [.. input.Points, updated] : input.Points.Select(p => p == old ? updated : p).ToList();
-        var full = new ChecklistIn(Text(2) ?? input.Purpose, Text(3) ?? input.Benefits, points, input.General, input.VideoUrl);
+        var full = new ChecklistIn(Text(2) ?? input.Purpose, Text(3) ?? input.Benefits, points, input.General, input.VideoUrl, Text(8) ?? input.RequirementName);
         var (_, error) = ValidateChecklist(ToRequest(full));
         if (error is not null) return error;
         await UpdateChecklistAsync(section, requirement, full, ct);
@@ -179,7 +192,7 @@ public sealed partial class QuestionnaireController
         EvidenceIn In(Evidence e) => new(e.EvidenceName, IsMandatory(r, e), e.SampleFile, e.HelpText, e.ValidationRequired);
         return new ChecklistIn(r.Purpose, r.Benefits,
             r.Points.Select(p => new PointIn(Trim(p.OptionCode), p.Name, EvidencesOf(r, Trim(p.OptionCode)).Select(In).ToList(), [.. p.Actions ?? []])).ToList(),
-            EvidencesOf(r, null).Select(In).ToList(), r.VideoUrl);
+            EvidencesOf(r, null).Select(In).ToList(), r.VideoUrl, r.RequirementName);
     }
 
     private static ChecklistRequest ToRequest(ChecklistIn c)
@@ -187,6 +200,6 @@ public sealed partial class QuestionnaireController
         static ChecklistEvidence Out(EvidenceIn e) => new(e.Name, e.Mandatory, e.SampleFile, e.HelpText, e.ValidationRequired);
         return new ChecklistRequest(c.Purpose, c.Benefits,
             c.Points.Select(p => new ChecklistPoint(p.OptionCode, p.Text, p.Evidences.Select(Out).ToList(), [.. p.Actions])).ToList(),
-            c.General.Select(Out).ToList(), c.VideoUrl);
+            c.General.Select(Out).ToList(), c.VideoUrl, c.RequirementName);
     }
 }

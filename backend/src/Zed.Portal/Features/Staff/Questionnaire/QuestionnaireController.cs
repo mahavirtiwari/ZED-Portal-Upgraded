@@ -55,7 +55,7 @@ public sealed partial class QuestionnaireController(
         string? OptionCode = null, string? SampleFile = null);
     public sealed record Requirement(long Id, string RequirementCode, IReadOnlyList<Point> Points,
         IReadOnlyList<Evidence> MandatoryEvidences, IReadOnlyList<Evidence> OptionalEvidences, bool CanRemove,
-        string? Purpose = null, string? Benefits = null, string? VideoUrl = null);
+        string? Purpose = null, string? Benefits = null, string? VideoUrl = null, string? RequirementName = null);
     /// <param name="ChecklistReady">False until migration 0034 is applied (purpose, benefits, checkpoints' evidence and actions).</param>
     public sealed record RequirementsResponse(string SectionType, string SectionCode, string SectionName, IReadOnlyList<Requirement> Requirements,
         bool ChecklistReady = true);
@@ -198,7 +198,7 @@ public sealed partial class QuestionnaireController(
             return new Requirement(Long(r, "Id"), code, points,
                 sets[3].Where(e => e.Text("RequirementCode") == code).Select(ToEvidence).ToList(),
                 sets[4].Where(e => e.Text("RequirementCode") == code).Select(ToEvidence).ToList(),
-                code == lastCode);
+                code == lastCode, RequirementName: r.Text("RequirementName").Trim() is { Length: > 0 } name ? name : null);
         }).ToList();
     }
 

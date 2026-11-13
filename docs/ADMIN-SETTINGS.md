@@ -28,6 +28,14 @@ What the single Admin (main portal) sets, and where it shows. See also `USER-MAN
 - **Fees.** The "Fee shown" box was removed: the level card lists the Micro / Small / Medium fees of Masters → Payments, and
   each MSME's dashboard card shows its own fee (after subsidy, with GST; `api/msme/dashboard/level-fees`).
 
+## Questionnaire → Requirements: requirement text
+
+Since 2026-11-13 every requirement has its text (`dbo.Requirements.RequirementName`, up to 2000 characters), required in
+the editor on every level of ZED Certification and Surveillance. It is the requirement's title in the list and the detail
+(older requirements without it show their first checkpoint, and "Missing: requirement text"). The MSME, assessor and
+review pages show it. The Excel sheet has a last column "Requirement text" (empty = unchanged; required for a new
+requirement, and for a changed row of a requirement that has none yet); files exported before it still upload.
+
 ## Questionnaire → Requirements: video
 
 The requirement's video (`dbo.Requirements.VideoUrl`, 0056) shows as "Watch video" next to the requirement on the MSME
@@ -70,3 +78,15 @@ checkpoint are now looked up within the unit's requirement (id and text first). 
 - The PAN is kept in `dbo.Users.PanNo` (0068) and shown on the assessor lists (under the ID), on the assessor's details
   (next to the certificate) and on the Surveillance assessors list. On the main portal it is also written on the assessor's
   copy in `ZED_SURVEILLANCE.dbo.Users` straight after the account is created; migration 0069 copies the PANs missing there.
+
+## Subsidy categories: Disable / Enable (Masters → Payments)
+
+- Each subsidy category (SC, ST, woman-owned, aspirational, LWE, Himalayan, island, NER; not General) has Disable next to
+  Edit. Disable asks for a reason and switches the category off on the three portals at once (`dbo.AssessmentFee`
+  `SubsidyOff`, `SubsidyOffReason`, `SubsidyOffBy`, `SubsidyOffOn` of ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE;
+  migration 0070).
+- `dbo.FN_V4_SUBSIDY_CATEGORY` then leaves the category out: from the next payment its units are charged their next
+  eligible category, General when none. Payments already made do not change. The rows show "Off", who switched it off,
+  when and why; Enable switches it on again.
+- A portal whose database could not be changed (migration 0070 missing, or no rights from that host) is named in the
+  answer; the others are switched.

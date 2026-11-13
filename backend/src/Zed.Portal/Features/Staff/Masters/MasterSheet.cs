@@ -7,9 +7,10 @@ namespace Zed.Portal.Features.Staff.Masters;
 
 /// <summary>
 /// A column of a master's Excel sheet: its header, and how to fill it (the template's "How to fill" sheet). A key column
-/// may be <paramref name="Optional"/> (e.g. a region's district code: empty = the whole state).
+/// may be <paramref name="Optional"/> (e.g. a region's district code: empty = the whole state). A column added later may be
+/// <paramref name="MayBeAbsent"/>: a file exported before it was added still uploads, the column read as empty.
 /// </summary>
-public sealed record SheetColumn(string Name, string Help, bool Optional = false);
+public sealed record SheetColumn(string Name, string Help, bool Optional = false, bool MayBeAbsent = false);
 
 /// <summary>
 /// The Excel sheet of a master: its columns (the first <paramref name="KeyColumns"/> identify a row) and how rows are
@@ -98,7 +99,7 @@ public static class MasterSheet
         if (sheet.Count == 0) return (null, [], "The file is empty.");
         var header = sheet[0].Select(Header).ToList();
         var index = spec.Columns.Select(c => header.IndexOf(Header(c.Name))).ToArray();
-        var missing = spec.Columns.Where((_, i) => index[i] < 0).Select(c => c.Name).ToList();
+        var missing = spec.Columns.Where((c, i) => index[i] < 0 && !c.MayBeAbsent).Select(c => c.Name).ToList();
         if (missing.Count > 0)
             return (null, [], $"The first row must have the template's column headers; missing: {string.Join(", ", missing)}. Please download the template.");
 
@@ -109,7 +110,7 @@ public static class MasterSheet
         var seen = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var i = 1; i < sheet.Count; i++)
         {
-            var cells = index.Select(c => c < sheet[i].Length ? Clean(sheet[i][c]) : "").ToArray();
+            var cells = index.Select(c => c >= 0 && c < sheet[i].Length ? Clean(sheet[i][c]) : "").ToArray();
             if (cells.All(c => c.Length == 0)) continue;
             if (spec.KeyForm is { } form)
                 for (var k = 0; k < spec.KeyColumns; k++) cells[k] = form(k, cells[k]);

@@ -38,6 +38,8 @@ export interface Requirement {
   mandatoryEvidences: Evidence[];
   optionalEvidences: Evidence[];
   canRemove: boolean;
+  /** The requirement's text (Requirements.RequirementName), required in the editor since 2026-11-13; null on older ones. */
+  requirementName?: string | null;
   purpose?: string | null;
   benefits?: string | null;
   /** The video tutorial's link (migration 0056), null = none. */
@@ -70,6 +72,8 @@ export interface ChecklistPoint {
 }
 
 export interface ChecklistRequest {
+  /** The requirement's text (required). */
+  requirementName: string;
   purpose: string;
   benefits: string;
   /** The video tutorial's link; empty = none. */

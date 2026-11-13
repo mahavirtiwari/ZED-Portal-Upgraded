@@ -78,7 +78,7 @@ public sealed class RequirementChecklistTests : IDisposable
         var body = await admin.GetFromJsonAsync<JsonElement>(Base);
         Assert.False(body.GetProperty("checklistReady").GetBoolean());
         Assert.Equal(2, body.GetProperty("requirements").GetArrayLength());
-        var r = await admin.PostAsJsonAsync(Base + "/checklist", new { checkpoints = new[] { Checkpoint(null, "Q?") } });
+        var r = await admin.PostAsJsonAsync(Base + "/checklist", new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?") } });
         Assert.Contains("migration 0034", await r.ProblemTitle());
         Assert.Empty(Calls("SP_MASTER_INSERT_REQUIREMENT"));
     }
@@ -88,7 +88,7 @@ public sealed class RequirementChecklistTests : IDisposable
     {
         var r = await (await Admin()).PostAsJsonAsync(Base + "/checklist", new
         {
-            purpose = "Why", benefits = "What for",
+            requirementName = "Roles and responsibilities are defined", purpose = "Why", benefits = "What for",
             checkpoints = new[]
             {
                 Checkpoint(null, "Defined?", [new { evidenceName = "Chart", mandatory = true, sampleFile = "sample_20261030_abcd1234.pdf" }, new { evidenceName = "Photo", mandatory = false }], ["Prepare a chart", " "]),
@@ -100,6 +100,8 @@ public sealed class RequirementChecklistTests : IDisposable
         Assert.Single(Calls("SP_MASTER_INSERT_REQUIREMENT"));
         var purpose = Assert.Single(Calls(QuestionnaireController.PurposeSql));
         Assert.Equal(("3", "Why", "What for"), (FakeSql.Arg(purpose.Args, "RequirementCode"), FakeSql.Arg(purpose.Args, "Purpose"), FakeSql.Arg(purpose.Args, "Benefits")));
+        Assert.Equal("Roles and responsibilities are defined", FakeSql.Arg(purpose.Args, "RequirementName"));
+        Assert.Equal("Roles and responsibilities are defined", FakeSql.Arg(Assert.Single(Calls("SP_MASTER_INSERT_REQUIREMENT")).Args, "RequirementName"));
         Assert.Equal("Prepare a chart", FakeSql.Arg(Calls(QuestionnaireController.ActionsSql)[0].Args, "ActionsNeeded"));
         Assert.Null(FakeSql.Arg(Calls(QuestionnaireController.ActionsSql)[1].Args, "ActionsNeeded"));
         Assert.Single(Calls("SP_MASTER_INSERT_EVIDENCES"));
@@ -117,14 +119,14 @@ public sealed class RequirementChecklistTests : IDisposable
         Assert.Equal("https://youtu.be/abc123", body.GetProperty("requirements")[0].GetProperty("videoUrl").GetString());
         Assert.Equal(JsonValueKind.Null, body.GetProperty("requirements")[1].GetProperty("videoUrl").ValueKind);
 
-        var saved = await admin.PutAsJsonAsync(Base + "/11/checklist", new { videoUrl = " https://www.youtube.com/watch?v=xyz ", checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
+        var saved = await admin.PutAsJsonAsync(Base + "/11/checklist", new { requirementName = "R", videoUrl = " https://www.youtube.com/watch?v=xyz ", checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
         var video = Assert.Single(Calls(QuestionnaireController.VideoUpdateSql));
         Assert.Equal(("1", "https://www.youtube.com/watch?v=xyz"), (FakeSql.Arg(video.Args, "RequirementCode"), FakeSql.Arg(video.Args, "VideoUrl")));
 
         foreach (var bad in new[] { "javascript:alert(1)", "youtube.com/watch", "https://x.com/a b", "https://" + new string('a', 500) + ".com" })
         {
-            var r = await admin.PutAsJsonAsync(Base + "/11/checklist", new { videoUrl = bad, checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
+            var r = await admin.PutAsJsonAsync(Base + "/11/checklist", new { requirementName = "R", videoUrl = bad, checkpoints = new[] { Checkpoint("1", "Roles are defined?") } });
             Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
             Assert.Contains("video link", await r.ProblemTitle());
         }
@@ -135,15 +137,17 @@ public sealed class RequirementChecklistTests : IDisposable
     [InlineData("purpose", "Purpose can be up to 500 characters.")]
     [InlineData("action", "Checkpoint 1: each action needed can be up to 100 characters.")]
     [InlineData("none", "Please add at least one checkpoint.")]
+    [InlineData("name", "Please enter the requirement (up to 2000 characters).")]
     [InlineData("sample", "Checkpoint 1: the sample copy of \"Chart\" is not valid. Please upload it again.")]
     public async Task Checklists_are_validated(string what, string message)
     {
         object body = what switch
         {
-            "purpose" => new { purpose = new string('x', 501), checkpoints = new[] { Checkpoint(null, "Q?") } },
-            "action" => new { checkpoints = new[] { Checkpoint(null, "Q?", actions: [new string('x', 101)]) } },
-            "none" => new { checkpoints = Array.Empty<object>() },
-            _ => new { checkpoints = new[] { Checkpoint(null, "Q?", [new { evidenceName = "Chart", mandatory = true, sampleFile = "../../web.config" }]) } },
+            "purpose" => new { requirementName = "R", purpose = new string('x', 501), checkpoints = new[] { Checkpoint(null, "Q?") } },
+            "action" => new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?", actions: [new string('x', 101)]) } },
+            "none" => new { requirementName = "R", checkpoints = Array.Empty<object>() },
+            "name" => new { requirementName = " ", checkpoints = new[] { Checkpoint(null, "Q?") } },
+            _ => new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?", [new { evidenceName = "Chart", mandatory = true, sampleFile = "../../web.config" }]) } },
         };
         var r = await (await Admin()).PostAsJsonAsync(Base + "/checklist", body);
         Assert.Equal(message, await r.ProblemTitle());
@@ -156,7 +160,7 @@ public sealed class RequirementChecklistTests : IDisposable
         var admin = await Admin();
         var r = await admin.PutAsJsonAsync(Base + "/12/checklist", new
         {
-            purpose = "P", checkpoints = new[] { Checkpoint("1", "First, reworded", actions: ["Do it"]), Checkpoint(null, "Fourth") },
+            requirementName = "R", purpose = "P", checkpoints = new[] { Checkpoint("1", "First, reworded", actions: ["Do it"]), Checkpoint(null, "Fourth") },
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         var text = Assert.Single(Calls(QuestionnaireController.PointTextSql));
@@ -166,9 +170,9 @@ public sealed class RequirementChecklistTests : IDisposable
         // No evidence left: the requirement's evidences are cleared (the procedure would need a list).
         Assert.Single(Calls(QuestionnaireController.ClearEvidencesSql));
 
-        r = await admin.PutAsJsonAsync(Base + "/12/checklist", new { checkpoints = new[] { Checkpoint("9", "Unknown") } });
+        r = await admin.PutAsJsonAsync(Base + "/12/checklist", new { requirementName = "R", checkpoints = new[] { Checkpoint("9", "Unknown") } });
         Assert.Equal("Checkpoint 9 is not a checkpoint of this requirement.", await r.ProblemTitle());
-        Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync(Base + "/99/checklist", new { checkpoints = new[] { Checkpoint(null, "Q?") } })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.PutAsJsonAsync(Base + "/99/checklist", new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?") } })).StatusCode);
     }
 
     [Fact]
@@ -176,7 +180,7 @@ public sealed class RequirementChecklistTests : IDisposable
     {
         var r = await (await Admin()).PutAsJsonAsync(Base + "/11/checklist", new
         {
-            checkpoints = new[] { Checkpoint("1", "Roles are defined?", [new { evidenceName = "Org chart", mandatory = true, sampleFile = "sample_20261030_abcd1234.pdf", helpText = "Signed", validationRequired = true }]) },
+            requirementName = "R", checkpoints = new[] { Checkpoint("1", "Roles are defined?", [new { evidenceName = "Org chart", mandatory = true, sampleFile = "sample_20261030_abcd1234.pdf", helpText = "Signed", validationRequired = true }]) },
             generalEvidences = new[] { new { evidenceName = "Old policy", mandatory = true } },
         });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
@@ -208,7 +212,9 @@ public sealed class RequirementChecklistTests : IDisposable
 
     private static MultipartFormDataContent Xlsx(params string?[][] rows)
     {
+        // Eight columns: a file exported before the Requirement text column (2026-11-13); nine with it.
         var columns = new[] { "Requirement", "Checkpoint", "Purpose", "Benefits", "Checkpoint text", "Evidence (if Yes)", "Mandatory evidence", "Action needed (if No / Partial)" };
+        if (rows.Any(r => r.Length > 8)) columns = [.. columns, "Requirement text"];
         var part = new ByteArrayContent(XlsxWriter.Write([new XlsxSheet("Sheet1", columns, rows.Select(r => (IReadOnlyList<object?>)r.Cast<object?>().ToList()))]));
         part.Headers.ContentType = new MediaTypeHeaderValue(XlsxWriter.ContentType);
         return new MultipartFormDataContent { { part, "file", "requirements.xlsx" } };
@@ -222,22 +228,31 @@ public sealed class RequirementChecklistTests : IDisposable
         Assert.Equal(["1", "1", "Clear roles", "Fewer gaps", "Roles are defined?", "Org chart\nPhoto", "Yes\nNo", "Prepare a chart\nWrite job descriptions"], export[1][..8]);
         Assert.Equal(5, export.Count); // the header and four checkpoints
 
+        // A file without the Requirement text column (exported before it) still uploads.
+        var old = await (await admin.PostAsync(Base + "/excel/check", Xlsx(
+            ["1", "1", "", "", "Roles are defined?", "Org chart\nPhoto", "yes\nno", "Prepare a chart\nWrite job descriptions"]))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("same", old.GetProperty("rows")[0].GetProperty("result").GetString());
+
         var check = await (await admin.PostAsync(Base + "/excel/check", Xlsx(
-            ["1", "1", "", "", "Roles are defined?", "Org chart\nPhoto", "yes\nno", "Prepare a chart\nWrite job descriptions"],
-            ["2", "4", "", "", "Fourth", "Plan", "", "Make a plan"],
-            ["3", "1", "New purpose", "", "New requirement?", "", "", ""],
-            ["5", "1", "", "", "Skipped a number", "", "", ""],
-            ["2", "6", "", "", "Gap", "", "", ""]))).Content.ReadFromJsonAsync<JsonElement>();
+            ["1", "1", "", "", "Roles are defined?", "Org chart\nPhoto", "yes\nno", "Prepare a chart\nWrite job descriptions", ""],
+            ["2", "4", "", "", "Fourth", "Plan", "", "Make a plan", "Second requirement"],
+            ["3", "1", "New purpose", "", "New requirement?", "", "", "", "A new requirement"],
+            ["5", "1", "", "", "Skipped a number", "", "", "", "Text"],
+            ["2", "6", "", "", "Gap", "", "", "", ""]))).Content.ReadFromJsonAsync<JsonElement>();
         var rows = check.GetProperty("rows");
         Assert.Equal(["same", "new", "new", "error", "error"], rows.EnumerateArray().Select(r => r.GetProperty("result").GetString()));
         Assert.Equal("A new requirement takes the next number: 4.", rows[3].GetProperty("errors")[0].GetString());
         Assert.Equal("A new checkpoint of requirement 2 takes the next number: 5.", rows[4].GetProperty("errors")[0].GetString());
+        // An older requirement without its text: the row must give it.
+        var unnamed = await (await admin.PostAsync(Base + "/excel/check", Xlsx(["2", "4", "", "", "Fourth", "", "", "", ""]))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Requirement 2 has no Requirement text yet: please add it on this row.", unnamed.GetProperty("rows")[0].GetProperty("errors")[0].GetString());
 
-        var r = await admin.PostAsync(Base + "/excel/apply", Xlsx(["2", "4", "", "", "Fourth", "Plan", "", "Make a plan"], ["3", "1", "New purpose", "", "New requirement?", "", "", ""]));
+        var r = await admin.PostAsync(Base + "/excel/apply", Xlsx(["2", "4", "", "", "Fourth", "Plan", "", "Make a plan", "Second requirement"], ["3", "1", "New purpose", "", "New requirement?", "", "", "", "A new requirement"]));
         var applied = await r.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(2, applied.GetProperty("added").GetInt32());
         Assert.Equal("4", FakeSql.Arg(Assert.Single(Calls(QuestionnaireController.AddPointSql)).Args, "OptionCode"));
         Assert.Single(Calls("SP_MASTER_INSERT_REQUIREMENT"));
-        Assert.Contains(Calls(QuestionnaireController.PurposeSql), c => FakeSql.Arg(c.Args, "Purpose") == "New purpose" && FakeSql.Arg(c.Args, "RequirementCode") == "3");
+        Assert.Contains(Calls(QuestionnaireController.PurposeSql), c => FakeSql.Arg(c.Args, "Purpose") == "New purpose" && FakeSql.Arg(c.Args, "RequirementCode") == "3"
+            && FakeSql.Arg(c.Args, "RequirementName") == "A new requirement");
     }
 }

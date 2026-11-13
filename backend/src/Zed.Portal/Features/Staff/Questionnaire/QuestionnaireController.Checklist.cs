@@ -20,6 +20,9 @@ namespace Zed.Portal.Features.Staff.Questionnaire;
 public sealed partial class QuestionnaireController
 {
     public const int PurposeMax = 500;
+
+    /// <summary>The requirement's text (dbo.Requirements.RequirementName, varchar(5000)), required in the editor since 2026-11-13.</summary>
+    public const int RequirementNameMax = 2000;
     public const int ActionMax = 100;
     public const int MaxActions = 20;
     /// <summary>The video tutorial's address (dbo.Requirements.VideoUrl, migration 0056).</summary>
@@ -34,17 +37,18 @@ public sealed partial class QuestionnaireController
 
     /// <param name="GeneralEvidences">Evidences of the whole requirement (added before V4, no checkpoint): kept or removed.</param>
     /// <param name="VideoUrl">New (2026-11-07): the requirement's video tutorial, an http(s) address; empty = none.</param>
+    /// <param name="RequirementName">New (2026-11-13): the requirement's text (Requirements.RequirementName), required.</param>
     public sealed record ChecklistRequest(string? Purpose, string? Benefits, List<ChecklistPoint>? Checkpoints, List<ChecklistEvidence>? GeneralEvidences = null,
-        string? VideoUrl = null);
+        string? VideoUrl = null, string? RequirementName = null);
 
     internal const string RequirementExtrasSql =
-        "SELECT RequirementCode, Purpose, Benefits FROM dbo.Requirements WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
+        "SELECT RequirementCode, Purpose, Benefits, RequirementName FROM dbo.Requirements WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string OptionExtrasSql =
         "SELECT RequirementCode, OptionCode, ActionsNeeded FROM dbo.Options WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
     internal const string EvidenceExtrasSql =
         "SELECT RequirementCode, EvidenceCode, OptionCode, SampleFile FROM dbo.Evidences WHERE SectionType = @SectionType AND SectionCode = @SectionCode;";
 
-    public sealed record RequirementExtra(string? RequirementCode, string? Purpose, string? Benefits);
+    public sealed record RequirementExtra(string? RequirementCode, string? Purpose, string? Benefits, string? RequirementName = null);
     public sealed record OptionExtra(string? RequirementCode, string? OptionCode, string? ActionsNeeded);
     public sealed record EvidenceExtra(string? RequirementCode, string? EvidenceCode, string? OptionCode, string? SampleFile);
 
@@ -107,6 +111,7 @@ public sealed partial class QuestionnaireController
         }
         return r with
         {
+            RequirementName = Trim(req?.RequirementName) is { Length: > 0 } n ? n : r.RequirementName,
             Purpose = Trim(req?.Purpose) is { Length: > 0 } p ? p : null,
             Benefits = Trim(req?.Benefits) is { Length: > 0 } b ? b : null,
             VideoUrl = Trim(video?.VideoUrl) is { Length: > 0 } v ? v : null,
@@ -161,7 +166,8 @@ public sealed partial class QuestionnaireController
 
     internal sealed record EvidenceIn(string Name, bool Mandatory, string? SampleFile, string? HelpText, bool ValidationRequired);
     internal sealed record PointIn(string? OptionCode, string Text, List<EvidenceIn> Evidences, List<string> Actions);
-    internal sealed record ChecklistIn(string? Purpose, string? Benefits, List<PointIn> Points, List<EvidenceIn> General, string? VideoUrl = null);
+    internal sealed record ChecklistIn(string? Purpose, string? Benefits, List<PointIn> Points, List<EvidenceIn> General, string? VideoUrl = null,
+        string? RequirementName = null);
 
     /// <summary>A video tutorial's address: http or https, absolute, no spaces; null when empty, false when not valid.</summary>
     internal static bool TryVideoUrl(string? value, out string? url)
@@ -178,6 +184,8 @@ public sealed partial class QuestionnaireController
 
     internal static (ChecklistIn? Input, string? Error) ValidateChecklist(ChecklistRequest req)
     {
+        if (!StaffUserRules.TryText(req.RequirementName, RequirementNameMax, true, true, out var requirementName))
+            return (null, $"Please enter the requirement (up to {RequirementNameMax} characters).");
         if (!StaffUserRules.TryText(req.Purpose, PurposeMax, false, true, out var purpose)) return (null, $"Purpose can be up to {PurposeMax} characters.");
         if (!StaffUserRules.TryText(req.Benefits, PurposeMax, false, true, out var benefits)) return (null, $"Benefits can be up to {PurposeMax} characters.");
         if (!TryVideoUrl(req.VideoUrl, out var video))
@@ -207,7 +215,7 @@ public sealed partial class QuestionnaireController
         if (gError is not null) return (null, gError);
         var all = points.SelectMany(p => p.Evidences).Concat(general!).ToList();
         if (all.Count(e => e.Mandatory) > MaxEvidences || all.Count(e => !e.Mandatory) > MaxEvidences) return (null, $"At most {MaxEvidences} evidences of each kind (mandatory, not mandatory).");
-        return (new ChecklistIn(purpose, benefits, points, general!, video), null);
+        return (new ChecklistIn(purpose, benefits, points, general!, video, requirementName), null);
     }
 
     private static (List<EvidenceIn>? Evidences, string? Error) ValidateChecklistEvidences(List<ChecklistEvidence>? evidences, string where)
@@ -234,7 +242,8 @@ public sealed partial class QuestionnaireController
     // ---- saving --------------------------------------------------------------------------------
 
     internal const string PurposeSql =
-        "UPDATE dbo.Requirements SET Purpose = @Purpose, Benefits = @Benefits WHERE SectionType = @SectionType AND SectionCode = @SectionCode AND RequirementCode = @RequirementCode;";
+        "UPDATE dbo.Requirements SET RequirementName = @RequirementName, Purpose = @Purpose, Benefits = @Benefits " +
+        "WHERE SectionType = @SectionType AND SectionCode = @SectionCode AND RequirementCode = @RequirementCode;";
     internal const string ActionsSql =
         "UPDATE dbo.Options SET ActionsNeeded = @ActionsNeeded WHERE SectionType = @SectionType AND SectionCode = @SectionCode AND RequirementCode = @RequirementCode AND OptionCode = @OptionCode;";
     internal const string PointTextSql =
@@ -261,7 +270,7 @@ public sealed partial class QuestionnaireController
         p.Add("SectionType", section.Type);
         p.Add("SectionCode", section.Code);
         p.Add("QuestionCode", null);
-        p.Add("RequirementName", null);
+        p.Add("RequirementName", input.RequirementName);
         p.Add("PointList", PointTable(input.Points.Select(x => new PointInput(x.Text, [])).ToList()).AsTableValuedParameter("MasterOption2"));
         await db.ExecuteProcAsync("SP_MASTER_INSERT_REQUIREMENT", p, ct);
         var code = (await LoadAsync(section, ct)).Select(r => Trim(r.RequirementCode)).Where(c => !before.Contains(c)).OrderBy(Order).LastOrDefault()
@@ -310,7 +319,7 @@ public sealed partial class QuestionnaireController
     /// </summary>
     private async Task SaveExtrasAsync(Section section, string code, ChecklistIn input, CancellationToken ct)
     {
-        await db.ExecuteSqlAsync(PurposeSql, new { input.Purpose, input.Benefits, SectionType = section.Type, SectionCode = section.Code, RequirementCode = code }, ct);
+        await db.ExecuteSqlAsync(PurposeSql, new { input.RequirementName, input.Purpose, input.Benefits, SectionType = section.Type, SectionCode = section.Code, RequirementCode = code }, ct);
         await SaveVideoAsync(section, code, input.VideoUrl, ct);
         foreach (var x in input.Points)
             await db.ExecuteSqlAsync(ActionsSql, new { ActionsNeeded = JoinActions(x.Actions), SectionType = section.Type, SectionCode = section.Code, RequirementCode = code, x.OptionCode }, ct);

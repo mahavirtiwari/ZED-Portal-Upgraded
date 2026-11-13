@@ -31,7 +31,7 @@ const response: RequirementsResponse = {
   checklistReady: true,
   requirements: [
     {
-      id: 11, requirementCode: '1', canRemove: false, purpose: 'Clear roles', benefits: 'Fewer gaps', videoUrl: 'https://youtu.be/abc123',
+      id: 11, requirementCode: '1', canRemove: false, requirementName: 'Roles and responsibilities are defined', purpose: 'Clear roles', benefits: 'Fewer gaps', videoUrl: 'https://youtu.be/abc123',
       points: [{ id: 101, optionCode: '1', name: '<img src=x onerror=alert(1)>', bullets: [{ id: 501, subOptionCode: '1', name: 'Bullet A' }], actions: ['Prepare a chart'] }],
       mandatoryEvidences: [
         { evidenceCode: '1', evidenceName: 'Org chart', helpText: 'Signed', validationRequired: true, optionCode: '1', sampleFile: 'sample_20261030_abcd1234.pdf' },
@@ -75,7 +75,9 @@ describe('RequirementsPage', () => {
     const items = [...el.querySelectorAll('.rq-item')];
     expect(items.map((i) => i.querySelector('.rq-code')!.textContent)).toEqual(['P1.1', 'P1.2']);
     expect(items[1].querySelector('.rq-name')!.textContent).toBe('First');
-    expect(items[1].querySelector('.rq-missing')!.textContent).toBe('Missing: purpose, benefits, evidence, action');
+    // The requirement's text is its title (2026-11-13); an older one without it shows its first checkpoint and lacks it.
+    expect(items[0].querySelector('.rq-name')!.textContent).toBe('Roles and responsibilities are defined');
+    expect(items[1].querySelector('.rq-missing')!.textContent).toBe('Missing: requirement text, purpose, benefits, evidence, action');
     expect(items[0].querySelector('.rq-ok')!.textContent).toContain('Complete');
 
     const card = el.querySelector('.req-card')!;
@@ -105,13 +107,15 @@ describe('RequirementsPage', () => {
   it('adds a requirement with its checkpoints, evidence, actions and video tutorial', async () => {
     (el.querySelector('.add-requirement') as HTMLButtonElement).click();
     await settle(fixture);
+    type(el, '#requirementName', ' Roles are defined ');
     type(el, '#purpose', 'Why');
     type(el, '#video', ' https://www.youtube.com/watch?v=xyz ');
     type(el, '#cp-0', 'Defined?');
     type(el, 'input[aria-label="Evidence 1 of checkpoint 1"]', 'Chart');
     type(el, 'input[aria-label="Action 1 of checkpoint 1"]', 'Prepare a chart');
     await settle(fixture);
-    expect(el.querySelector('.field .count')!.textContent).toContain('3 / 500');
+    expect(el.querySelector('label[for="purpose"] .count')!.textContent).toContain('3 / 500');
+    expect(el.querySelector('label[for="requirementName"] .count')!.textContent).toContain('/ 2000');
 
     // The add buttons are coloured buttons.
     expect(buttonByText(el, '+ Add evidence').classList).toContain('btn-add-evidence');
@@ -127,7 +131,7 @@ describe('RequirementsPage', () => {
     const req = http.expectOne(`${BASE}/checklist`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({
-      purpose: 'Why', benefits: '', videoUrl: 'https://www.youtube.com/watch?v=xyz',
+      requirementName: 'Roles are defined', purpose: 'Why', benefits: '', videoUrl: 'https://www.youtube.com/watch?v=xyz',
       checkpoints: [
         { optionCode: null, text: 'Defined?', evidences: [{ evidenceName: 'Chart', mandatory: true, sampleFile: null, helpText: null, validationRequired: false }], actions: ['Prepare a chart'] },
         { optionCode: null, text: 'Communicated?', evidences: [], actions: [] },
@@ -147,6 +151,7 @@ describe('RequirementsPage', () => {
     (el.querySelector('.edit-requirement') as HTMLButtonElement).click();
     await settle(fixture);
     expect((el.querySelector('#purpose') as HTMLTextAreaElement).value).toBe('Clear roles');
+    expect((el.querySelector('#requirementName') as HTMLTextAreaElement).value).toBe('Roles and responsibilities are defined');
     expect((el.querySelector('#video') as HTMLInputElement).value).toBe('https://youtu.be/abc123');
     expect(el.querySelector('.file')!.textContent).toBe('sample_20261030_abcd1234.pdf');
     type(el, '#cp-0', 'Are roles defined?');
@@ -163,6 +168,7 @@ describe('RequirementsPage', () => {
       ],
     });
     expect(req.request.body.videoUrl).toBe('https://youtu.be/abc123');
+    expect(req.request.body.requirementName).toBe('Roles and responsibilities are defined');
     expect(req.request.body.generalEvidences).toEqual([{ evidenceName: 'Old policy', mandatory: true, sampleFile: null, helpText: null, validationRequired: false }]);
     req.flush({ message: 'Requirement P1.1 updated.' });
     await settle(fixture);
@@ -181,8 +187,13 @@ describe('RequirementsPage', () => {
     expect(el.querySelector('.file')!.textContent).toBe('sample_20261030_00000001.pdf');
   });
 
-  it('asks for the checkpoint text, and a web address for the video, before saving', async () => {
+  it('asks for the requirement, the checkpoint text and a web address for the video before saving', async () => {
     (el.querySelector('.add-requirement') as HTMLButtonElement).click();
+    await settle(fixture);
+    buttonByText(el, 'SAVE REQUIREMENT').click();
+    await settle(fixture);
+    expect(el.querySelector('.help-block')!.textContent).toContain('Please enter the requirement.');
+    type(el, '#requirementName', 'Roles are defined');
     await settle(fixture);
     buttonByText(el, 'SAVE REQUIREMENT').click();
     await settle(fixture);
