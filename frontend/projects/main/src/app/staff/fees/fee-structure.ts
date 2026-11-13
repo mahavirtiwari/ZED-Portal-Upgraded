@@ -6,7 +6,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ActivatedRoute } from '@angular/router';
 import { levelCodes, levelName } from '../../msme/shared/levels';
-import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
+import { ENTERPRISE_TYPES, FeeRow, FeesApi, LevelFee, OffCategory, MAIN_ENTERPRISE_TYPES, PaymentSchedule, isFullFee } from './fees.api';
 
 /** Consultancy's handholding milestones (AssessmentFee.MileStone); one fee each per handholding level. */
 const MILESTONES = ['1', '2', '3'] as const;
@@ -245,10 +245,16 @@ interface SharePreview {
             </thead>
             <tbody>
               @for (s of structure(); track s.row.id) {
-                <tr>
+                <tr [class.fs-off]="offOf(s.category)">
                   <td class="fs-code"><span class="cat-chip" [class.cat-1]="s.category === 1 || s.category === 3" [class.cat-2]="s.category === 2" [class.cat-region]="s.category >= 4">{{ s.code }}</span></td>
                   <td class="fs-cat">
                     <strong>{{ s.name }}</strong>
+                    @if (offOf(s.category); as o) {
+                      @if (!s.row.isCouponRow) {
+                        <span class="off-badge">Off</span>
+                        <small class="d-block off-note">Since {{ dmy(o.on) }}{{ o.by ? ' by ' + o.by : '' }} · units pay as their next category@if (o.reason) {<br />“{{ o.reason }}”}</small>
+                      }
+                    }
                     @if (s.row.isCouponRow) { <small class="d-block reward-note">with joining reward ₹ {{ s.row.coupon | number: '1.0-2' }}</small> }
                   </td>
                   <td class="text-end" data-label="Subsidy">
@@ -263,7 +269,16 @@ interface SharePreview {
                   <td class="text-end" data-label="MSME taxable"><strong>₹ {{ s.row.subsidyPer | number: '1.2-2' }}</strong></td>
                   <td class="text-center fs-actions">
                     @if (!rejected() && !s.row.isCouponRow) {
-                      <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit the subsidy of ' + s.name" (click)="edit(s)">Edit</button>
+                      <div class="row-actions justify-content-center">
+                        <button type="button" class="btn btn-sm btn-outline-primary" [attr.aria-label]="'Edit the subsidy of ' + s.name" (click)="edit(s)">Edit</button>
+                        @if (switchReady() && s.category !== 0) {
+                          @if (offOf(s.category)) {
+                            <button type="button" class="btn btn-sm btn-primary" [disabled]="busy()" [attr.aria-label]="'Enable the ' + s.name + ' subsidy'" (click)="enableSubsidy(s)">Enable</button>
+                          } @else {
+                            <button type="button" class="btn btn-sm btn-outline-danger" [attr.aria-label]="'Disable the ' + s.name + ' subsidy'" (click)="openDisable(s)">Disable</button>
+                          }
+                        }
+                      </div>
                     }
                   </td>
                 </tr>
@@ -456,10 +471,34 @@ interface SharePreview {
       </div>
       <div class="modal-backdrop show"></div>
     }
+    @if (disabling(); as d) {
+      <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="fs-off-title">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h4 class="m-0" id="fs-off-title">Disable the {{ d.name }} subsidy?</h4>
+              <button type="button" class="btn-close" aria-label="Close" (click)="disabling.set(null)"></button>
+            </div>
+            <div class="modal-body">
+              <p class="muted">From the next payment, units in this category get their next eligible subsidy (SC, ST, woman-owned or a region), or General. It applies on the ZED Certification, Handholding and Surveillance portals. Payments already made do not change. You can enable it again at any time.</p>
+              <label class="form-label" for="fs-off-reason">Reason<span class="req">*</span></label>
+              <textarea class="form-control" id="fs-off-reason" rows="3" maxlength="500" [(ngModel)]="d.reason"></textarea>
+              @if (switchError()) { <span class="help-block" role="alert">{{ switchError() }}</span> }
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-default" (click)="disabling.set(null)">Cancel</button>
+              <button type="button" class="btn btn-danger" [disabled]="busy()" (click)="disableSubsidy(d)">Disable</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-backdrop show"></div>
+    }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
     }
   `,
+  styleUrl: './fee-structure-switch.scss',
   styles: `
     .page-head { align-items: flex-end; }
     .fs-type { flex-direction: column; align-items: flex-start; gap: 4px; }
@@ -714,6 +753,11 @@ export class FeeStructurePage {
   }
 
   protected readonly editing = signal<ShareEdit | null>(null);
+  /** 2026-11-13: the subsidy categories switched off on the three portals (Disable / Enable), and the Disable pop-up. */
+  protected readonly offCategories = signal<OffCategory[]>([]);
+  protected readonly switchReady = signal(false);
+  protected readonly disabling = signal<{ category: number; name: string; reason: string } | null>(null);
+  protected readonly switchError = signal('');
   protected readonly loaded = signal(false);
   protected readonly busy = signal(false);
   protected readonly error = signal('');
@@ -824,6 +868,42 @@ export class FeeStructurePage {
     }]));
   }
 
+  protected offOf(category: number): OffCategory | undefined {
+    return this.offCategories().find((o) => o.category === category);
+  }
+
+  private async loadSwitches(): Promise<void> {
+    try {
+      const r = await firstValueFrom(this.api.subsidySwitches());
+      this.switchReady.set(r.ready);
+      this.offCategories.set(r.off);
+    } catch {
+      this.switchReady.set(false);
+    }
+  }
+
+  protected openDisable(s: StructureRow): void {
+    this.switchError.set('');
+    this.disabling.set({ category: s.category, name: s.name, reason: '' });
+  }
+
+  protected async disableSubsidy(d: { category: number; name: string; reason: string }): Promise<void> {
+    if (!d.reason.trim()) {
+      this.switchError.set('Please enter the reason.');
+      return;
+    }
+    await this.run(async () => {
+      const r = await firstValueFrom(this.api.switchSubsidy(d.category, true, d.reason.trim()));
+      this.disabling.set(null);
+      return r;
+    });
+  }
+
+  protected async enableSubsidy(s: StructureRow): Promise<void> {
+    if (!window.confirm(`Enable the ${s.name} subsidy again on the three portals? Units in this category get it from their next payment.`)) return;
+    await this.run(() => this.api.switchSubsidy(s.category, false, null));
+  }
+
   protected async saveShare(e: ShareEdit): Promise<void> {
     await this.run(async () => {
       const r = await firstValueFrom(this.api.saveSubsidy(this.type(), {
@@ -863,6 +943,7 @@ export class FeeStructurePage {
     if (showBusy) this.busy.set(true);
     this.error.set('');
     try {
+      void this.loadSwitches();
       const res = await firstValueFrom(this.api.fees(this.type()));
       this.levelFees.set(res.levels);
       this.rows.set(res.rows);

@@ -6,6 +6,11 @@ import { FeeStructurePage } from './fee-structure';
 import { setAllLevels } from '../../msme/shared/levels';
 import { FeeRow, FeesResponse } from './fees.api';
 
+/** The subsidy switches the page reads beside the fees (2026-11-13): none switched off. */
+function flushSwitches(http: HttpTestingController): void {
+  http.match('/api/staff/fees/subsidy-switches').forEach((r) => r.flush({ ready: true, off: [] }));
+}
+
 function row(id: number, certification: string, category: number, pct: number, fee: number, coupon: number | null = null): FeeRow {
   const base = coupon === null ? fee : (fee * 1.18 - coupon) / 1.18;
   const taxable = (base * (100 - pct)) / 100;
@@ -62,7 +67,54 @@ describe('FeeStructurePage', () => {
     await settle();
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    flushSwitches(http);
+    http.verify();
+  });
+
+  it('disables a subsidy category with a reason on the three portals and enables it again', async () => {
+    http.expectOne('/api/staff/fees/subsidy-switches').flush({ ready: true, off: [] });
+    await settle();
+    expect(button('Disable')).toBeTruthy();
+    const generalRow = el.querySelector('section[aria-labelledby="fs-structure"] tbody tr')!;
+    expect(button('Disable', generalRow)).toBeUndefined();
+
+    button('Disable').click();
+    await settle();
+    expect(el.querySelector('#fs-off-title')!.textContent).toContain('Disable the');
+    button('Disable', el.querySelector('.modal-footer')!).click();
+    await settle();
+    expect(el.querySelector('.modal .help-block')!.textContent).toContain('reason');
+    http.expectNone((r) => r.method === 'PUT');
+
+    const reason = el.querySelector('#fs-off-reason') as HTMLTextAreaElement;
+    reason.value = 'Scheme closed';
+    reason.dispatchEvent(new Event('input'));
+    await settle();
+    button('Disable', el.querySelector('.modal-footer')!).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url.startsWith('/api/staff/fees/subsidy-switches/'));
+    const category = Number(put.request.url.split('/').pop());
+    expect(put.request.body).toEqual({ off: true, reason: 'Scheme closed' });
+    put.flush({ message: 'Switched off.' });
+    await settle();
+    http.expectOne('/api/staff/fees/subsidy-switches').flush({ ready: true, off: [{ category, reason: 'Scheme closed', by: 'ADMIN1', on: '2026-11-13T10:00:00' }] });
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+    expect(el.querySelector('.modal')).toBeNull();
+    expect(el.querySelector('.off-badge')!.textContent).toContain('Off');
+    expect(el.querySelector('.off-note')!.textContent).toContain('13-11-2026 by ADMIN1');
+
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    button('Enable').click();
+    await settle();
+    const on = http.expectOne((r) => r.method === 'PUT' && r.url === `/api/staff/fees/subsidy-switches/${category}`);
+    expect(on.request.body).toEqual({ off: false, reason: null });
+    on.flush({ message: 'Switched on.' });
+    await settle();
+    http.expectOne('/api/staff/fees/Micro').flush(micro);
+    await settle();
+  });
 
   it('shows the fee, joining reward and payment structure of each category, then the TDS', () => {
     expect(el.querySelector('h3')!.textContent).toContain('Fee Structure — Bronze');
@@ -268,6 +320,7 @@ describe('FeeStructurePage with a level the Admin added', () => {
   }
 
   afterEach(() => {
+    flushSwitches(http);
     http.verify();
     setAllLevels(null);
   });
@@ -355,6 +408,7 @@ describe('FeeStructurePage on Consultancy', () => {
   });
 
   afterEach(() => {
+    flushSwitches(http);
     http.verify();
     sessionStorage.clear();
   });

@@ -98,6 +98,14 @@ export interface AddFeesRequest {
   levels?: string[];
 }
 
+/** A subsidy category switched off on the three portals (Masters → Payments, Disable; migration 0070). */
+export interface OffCategory {
+  category: number;
+  reason: string | null;
+  by: string | null;
+  on: string | null;
+}
+
 /** Client for api/staff/fees (Zed.Main.Api AssessmentFeesController). Admin only; amounts are computed on the server. */
 @Injectable({ providedIn: 'root' })
 export class FeesApi {
@@ -121,6 +129,16 @@ export class FeesApi {
 
   saveSubsidy(type: string, req: SubsidyRequest): Observable<MessageResponse> {
     return this.http.put<MessageResponse>(`/api/staff/fees/${encodeURIComponent(type)}/subsidy`, req);
+  }
+
+  /** The switched-off subsidy categories; ready is false before migration 0070. */
+  subsidySwitches(): Observable<{ ready: boolean; off: OffCategory[] }> {
+    return this.http.get<{ ready: boolean; off: OffCategory[] }>('/api/staff/fees/subsidy-switches');
+  }
+
+  /** Switches a subsidy category off (a reason is required) or on again, on the three portals. */
+  switchSubsidy(category: number, off: boolean, reason: string | null): Observable<MessageResponse> {
+    return this.http.put<MessageResponse>(`/api/staff/fees/subsidy-switches/${category}`, { off, reason });
   }
 
   /** Consultancy: milestone by milestone, or all three at milestone 1 from a date (Micro, Small and Medium alike). */
