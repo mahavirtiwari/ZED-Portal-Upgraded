@@ -12,7 +12,8 @@ import { PortalSwitchComponent, QUESTIONNAIRE_PORTALS } from '../admin-portal';
 export const PURPOSE_MAX = 500;
 /** The requirement's text (Requirements.RequirementName), as the server allows (2026-11-13). */
 export const REQUIREMENT_NAME_MAX = 2000;
-export const ACTION_MAX = 100;
+/** Each action needed (500 since 2026-11-13, migration 0071). */
+export const ACTION_MAX = 500;
 export const CHECKPOINT_MAX = 1990;
 export const MAX_SAMPLE_BYTES = 2 * 1024 * 1024;
 /** dbo.Requirements.VideoUrl (migration 0056). */
@@ -53,7 +54,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
  * Requirements of a questionnaire parameter (Admin). Port of Views/Questionaire/Requirements.cshtml, in the V4 layout
  * (migration 0034): a requirement has its purpose and benefits (up to 500 characters each) and its Yes / No checkpoints;
  * each checkpoint has the evidence the unit shows when the answer is Yes (mandatory or not, each with an optional sample
- * copy) and the actions needed when the answer is No or Partial (up to 100 characters each). A requirement is added or
+ * copy) and the actions needed when the answer is No or Partial (up to 500 characters each). A requirement is added or
  * edited in place. 2026-11-07 redesign (approved): the requirements as a list on the left (what each still lacks), the chosen
  * one on the right with its video tutorial (migration 0056), purpose, benefits and checkpoints, edited in the same panel; the
  * add buttons in colour. Export Excel / Upload Excel: one row per checkpoint. Points and bullets of the old layout show as

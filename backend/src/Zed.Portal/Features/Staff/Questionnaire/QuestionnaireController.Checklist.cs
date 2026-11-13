@@ -23,7 +23,8 @@ public sealed partial class QuestionnaireController
 
     /// <summary>The requirement's text (dbo.Requirements.RequirementName, varchar(5000)), required in the editor since 2026-11-13.</summary>
     public const int RequirementNameMax = 2000;
-    public const int ActionMax = 100;
+    /// <summary>Each action needed of a checkpoint (dbo.Options.ActionsNeeded, one per line; 500 since 2026-11-13, migration 0071).</summary>
+    public const int ActionMax = 500;
     public const int MaxActions = 20;
     /// <summary>The video tutorial's address (dbo.Requirements.VideoUrl, migration 0056).</summary>
     public const int VideoUrlMax = 500;

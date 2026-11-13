@@ -135,7 +135,7 @@ public sealed class RequirementChecklistTests : IDisposable
 
     [Theory]
     [InlineData("purpose", "Purpose can be up to 500 characters.")]
-    [InlineData("action", "Checkpoint 1: each action needed can be up to 100 characters.")]
+    [InlineData("action", "Checkpoint 1: each action needed can be up to 500 characters.")]
     [InlineData("none", "Please add at least one checkpoint.")]
     [InlineData("name", "Please enter the requirement (up to 2000 characters).")]
     [InlineData("sample", "Checkpoint 1: the sample copy of \"Chart\" is not valid. Please upload it again.")]
@@ -144,7 +144,7 @@ public sealed class RequirementChecklistTests : IDisposable
         object body = what switch
         {
             "purpose" => new { requirementName = "R", purpose = new string('x', 501), checkpoints = new[] { Checkpoint(null, "Q?") } },
-            "action" => new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?", actions: [new string('x', 101)]) } },
+            "action" => new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?", actions: [new string('x', 501)]) } },
             "none" => new { requirementName = "R", checkpoints = Array.Empty<object>() },
             "name" => new { requirementName = " ", checkpoints = new[] { Checkpoint(null, "Q?") } },
             _ => new { requirementName = "R", checkpoints = new[] { Checkpoint(null, "Q?", [new { evidenceName = "Chart", mandatory = true, sampleFile = "../../web.config" }]) } },

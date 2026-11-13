@@ -42,6 +42,10 @@ one sheet: a Parameter column first (P1, P2 …), then the columns above. Each r
 rules, exactly as on that parameter's own sheet; a parameter the level does not have is an error (add it first). API:
 `api/staff/questionnaire/{level}/all-requirements/excel` (`/template`, `/check`, `/apply`).
 
+**Actions needed (2026-11-13):** each action of a checkpoint can be up to 500 characters (was 100), at most 20 per
+checkpoint, in the editor and in Excel. Migration 0071 makes `dbo.Options.ActionsNeeded` and the ticked
+`dbo.MsmeOptions.DaActions / SaActions / HhActions` nvarchar(max) so twenty long actions fit.
+
 ## Questionnaire → Requirements: video
 
 The requirement's video (`dbo.Requirements.VideoUrl`, 0056) shows as "Watch video" next to the requirement on the MSME
