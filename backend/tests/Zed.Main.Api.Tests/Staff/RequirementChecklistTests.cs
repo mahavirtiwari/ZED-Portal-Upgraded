@@ -255,4 +255,43 @@ public sealed class RequirementChecklistTests : IDisposable
         Assert.Contains(Calls(QuestionnaireController.PurposeSql), c => FakeSql.Arg(c.Args, "Purpose") == "New purpose" && FakeSql.Arg(c.Args, "RequirementCode") == "3"
             && FakeSql.Arg(c.Args, "RequirementName") == "A new requirement");
     }
+
+    private static MultipartFormDataContent LevelXlsx(params string?[][] rows)
+    {
+        var columns = new[] { "Parameter", "Requirement", "Checkpoint", "Purpose", "Benefits", "Checkpoint text", "Evidence (if Yes)", "Mandatory evidence",
+            "Action needed (if No / Partial)", "Requirement text" };
+        var part = new ByteArrayContent(XlsxWriter.Write([new XlsxSheet("Sheet1", columns, rows.Select(r => (IReadOnlyList<object?>)r.Cast<object?>().ToList()))]));
+        part.Headers.ContentType = new MediaTypeHeaderValue(XlsxWriter.ContentType);
+        return new MultipartFormDataContent { { part, "file", "bronze-requirements.xlsx" } };
+    }
+
+    [Fact]
+    public async Task The_level_excel_has_every_parameter_and_saves_each_row_in_its_parameter()
+    {
+        _host.Sql.Procs["SP_MASTER_GET_SECTIONS"] = _ => FakeSql.Sets([
+            new { Id = 4, SectionType = "Bronze", SectionCode = "P2", SectionName = "Planning" },
+            new { Id = 3, SectionType = "Bronze", SectionCode = "P1", SectionName = "Leadership" }]);
+        const string level = "/api/staff/questionnaire/Bronze/all-requirements/excel";
+        var admin = await Admin();
+
+        var export = XlsxSheetReader.ReadFirstSheet(await (await admin.GetAsync(level)).Content.ReadAsStreamAsync());
+        Assert.Equal("Parameter", export[0][0]);
+        Assert.Equal("Requirement text", export[0][9]);
+        Assert.Equal(9, export.Count); // the header and four checkpoints of each of the two parameters
+        Assert.Equal(["P1", "P1", "P1", "P1", "P2", "P2", "P2", "P2"], export.Skip(1).Select(r => r[0]));
+
+        var check = await (await admin.PostAsync(level + "/check", LevelXlsx(
+            ["P1", "1", "1", "", "", "Roles are defined?", "Org chart\nPhoto", "yes\nno", "Prepare a chart\nWrite job descriptions", ""],
+            ["p2", "2", "4", "", "", "Fourth", "Plan", "", "Make a plan", "Second requirement"],
+            ["P9", "1", "1", "", "", "Unknown parameter", "", "", "", "Text"]))).Content.ReadFromJsonAsync<JsonElement>();
+        var rows = check.GetProperty("rows");
+        Assert.Equal(["same", "new", "error"], rows.EnumerateArray().Select(r => r.GetProperty("result").GetString()));
+        Assert.Equal("Bronze has no parameter P9: please add it on the Parameters page first.", rows[2].GetProperty("errors")[0].GetString());
+
+        var applied = await (await admin.PostAsync(level + "/apply", LevelXlsx(
+            ["P2", "2", "4", "", "", "Fourth", "Plan", "", "Make a plan", "Second requirement"]))).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(1, applied.GetProperty("added").GetInt32());
+        var add = Assert.Single(Calls(QuestionnaireController.AddPointSql));
+        Assert.Equal(("P2", "2", "4"), (FakeSql.Arg(add.Args, "SectionCode"), FakeSql.Arg(add.Args, "RequirementCode"), FakeSql.Arg(add.Args, "OptionCode")));
+    }
 }

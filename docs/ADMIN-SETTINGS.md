@@ -36,6 +36,12 @@ the editor on every level of ZED Certification and Surveillance. It is the requi
 review pages show it. The Excel sheet has a last column "Requirement text" (empty = unchanged; required for a new
 requirement, and for a changed row of a requirement that has none yet); files exported before it still upload.
 
+**All parameters at once (2026-11-13):** the Parameters page of a level (group "Requirements of all parameters") and each
+Requirements page (group "All {level} parameters") export and upload the requirements of every parameter of the level in
+one sheet: a Parameter column first (P1, P2 …), then the columns above. Each row is checked and saved by its parameter's
+rules, exactly as on that parameter's own sheet; a parameter the level does not have is an error (add it first). API:
+`api/staff/questionnaire/{level}/all-requirements/excel` (`/template`, `/check`, `/apply`).
+
 ## Questionnaire → Requirements: video
 
 The requirement's video (`dbo.Requirements.VideoUrl`, 0056) shows as "Watch video" next to the requirement on the MSME

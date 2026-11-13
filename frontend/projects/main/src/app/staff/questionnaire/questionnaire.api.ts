@@ -122,6 +122,11 @@ export class QuestionnaireApi {
     return this.base(sectionType, sectionCode);
   }
 
+  /** The requirements of every parameter of a level in one Excel sheet (2026-11-13; a Parameter column first). */
+  levelRequirementsUrl(sectionType: string): string {
+    return `/api/staff/questionnaire/${encodeURIComponent(sectionType)}/all-requirements`;
+  }
+
   addChecklist(sectionType: string, sectionCode: string, body: ChecklistRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(`${this.base(sectionType, sectionCode)}/checklist`, body);
   }

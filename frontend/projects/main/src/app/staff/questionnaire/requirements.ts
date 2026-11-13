@@ -84,8 +84,13 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
       </div>
       <div class="page-actions">
         @if (data()?.checklistReady !== false) {
-          <zed-excel-tools [api]="api.requirementsUrl(sectionType, sectionCode)" [title]="'Requirements of ' + sectionCode"
-                           [fileName]="'requirements-' + sectionType.toLowerCase() + '-' + sectionCode.toLowerCase()" (applied)="load()" />
+          <span class="xl-group"><span class="xl-group-label">This parameter</span>
+            <zed-excel-tools [api]="api.requirementsUrl(sectionType, sectionCode)" [title]="'Requirements of ' + sectionCode"
+                             [fileName]="'requirements-' + sectionType.toLowerCase() + '-' + sectionCode.toLowerCase()" (applied)="load()" /></span>
+          <!-- 2026-11-13: every parameter of the level in one sheet (a Parameter column first). -->
+          <span class="xl-group xl-group-all"><span class="xl-group-label">All {{ levelLabel() }} parameters</span>
+            <zed-excel-tools [api]="api.levelRequirementsUrl(sectionType)" [title]="'Requirements of all ' + levelLabel() + ' parameters'"
+                             [fileName]="'requirements-' + sectionType.toLowerCase() + '-all-parameters'" (applied)="load()" /></span>
         }
         <a class="btn btn-default" [routerLink]="['/staff/masters/parameters', sectionType]">&lt;&lt; BACK</a>
       </div>

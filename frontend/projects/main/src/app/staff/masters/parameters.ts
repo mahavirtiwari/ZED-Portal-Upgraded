@@ -35,8 +35,13 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
         <p class="page-sub">The {{ levelName() }} questionnaire: each parameter, the NIC sectors it applies to, whether surveillance assesses it again{{ onMain ? ' and whether consultancy uses it' : '' }}. Requirements opens its questions.</p>
       </div>
       <div class="page-actions">
-        <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="levelName() + ' parameters'"
-                         [fileName]="'parameters-' + sectionType().toLowerCase()" (applied)="load(true)" />
+        <span class="xl-group"><span class="xl-group-label">Parameters</span>
+          <zed-excel-tools [api]="'/api/staff/masters/parameters/' + sectionType()" [title]="levelName() + ' parameters'"
+                           [fileName]="'parameters-' + sectionType().toLowerCase()" (applied)="load(true)" /></span>
+        <!-- 2026-11-13: the requirements of every parameter of the level in one sheet (a Parameter column first). -->
+        <span class="xl-group xl-group-all"><span class="xl-group-label">Requirements of all parameters</span>
+          <zed-excel-tools [api]="'/api/staff/questionnaire/' + sectionType() + '/all-requirements'" [title]="'Requirements of all ' + levelName() + ' parameters'"
+                           [fileName]="'requirements-' + sectionType().toLowerCase() + '-all-parameters'" /></span>
         <button type="button" class="btn btn-primary" (click)="openAdd()">+ ADD PARAMETER</button>
       </div>
     </div>

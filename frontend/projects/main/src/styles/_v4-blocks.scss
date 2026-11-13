@@ -56,6 +56,10 @@ td .row-actions .btn:not(.btn-link), td.text-center > .btn:not(.btn-link) {
 }
 td .row-actions:has(> .btn ~ .btn ~ .btn) { display: inline-grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); }
 td .row-actions:has(> .btn ~ .btn ~ .btn) > .btn { width: 100%; }
+// Excel buttons in labelled groups (2026-11-13): one parameter's sheet and the level's sheet of all parameters side by side.
+.xl-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 4px 6px; border: 1px dashed #b9d8db; border-radius: 10px; }
+.xl-group.xl-group-all { border-color: #23656b; }
+.xl-group-label { font-size: 11.5px; font-weight: 600; color: #5f6f70; margin: 0 2px; }
 // A user without a mobile number in the lists' contact cells (2026-11-13).
 .no-mobile { color: #8a9899; font-style: italic; font-weight: 400; }
 // 2026-11-13 (option B): the other buttons a soft teal fill; the selected one (tabs, stage filters) solid teal.
