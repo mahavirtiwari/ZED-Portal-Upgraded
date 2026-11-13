@@ -20,6 +20,8 @@ public sealed class TestHost : WebApplicationFactory<Program>
     public const string WorkingKey = "ABCDEF0123456789ABCDEF0123456789";
     public const string ReconciliationKey = "0123456789ABCDEF0123456789ABCDEF";
     public FakeGstin Gstin { get; } = new();
+    /// <summary>The other portal's API of professional verification (Settings → Professional Verification, Api mode).</summary>
+    public FakeHttp ProfessionalApi { get; } = new();
 
     public string StorageRoot { get; } = Path.Combine(Path.GetTempPath(), "zed-tests-" + Guid.NewGuid().ToString("N"));
 
@@ -45,6 +47,9 @@ public sealed class TestHost : WebApplicationFactory<Program>
             s.RemoveAll<IEmailSender>(); s.AddSingleton<IEmailSender>(sp => new TemplatedEmailSender(Email, sp.GetRequiredService<ILogger<TemplatedEmailSender>>()));
             s.RemoveAll<IUdyamClient>(); s.AddSingleton<IUdyamClient>(Udyam);
             s.RemoveAll<Zed.Portal.Features.Payments.IGstinVerifier>(); s.AddSingleton<Zed.Portal.Features.Payments.IGstinVerifier>(Gstin);
+            // The real client (mapping, errors) over a fake handler.
+            s.AddHttpClient<Zed.Portal.Features.Staff.Users.IProfessionalApiClient, Zed.Portal.Features.Staff.Users.ProfessionalApiClient>()
+                .ConfigurePrimaryHttpMessageHandler(() => new FakeHttp.Handler(ProfessionalApi));
         });
     }
 
@@ -172,5 +177,26 @@ public sealed class FakeGstin : Zed.Portal.Features.Payments.IGstinVerifier
     {
         Calls.Enqueue(gstin);
         return Task.FromResult(new Zed.Portal.Features.Payments.GstinResult(Valid, Valid ? "GSTIN verified." : "Invalid GSTIN."));
+    }
+}
+
+/// <summary>Answers outgoing HTTP calls with <see cref="Respond"/> and keeps them (method, address, headers, body).</summary>
+public sealed class FakeHttp
+{
+    public sealed record Request(string Method, Uri Uri, IReadOnlyDictionary<string, string> Headers, string? Body);
+
+    public ConcurrentQueue<Request> Requests { get; } = new();
+    public Func<Request, HttpResponseMessage> Respond { get; set; } = _ => new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+
+    public sealed class Handler(FakeHttp fake) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            var headers = request.Headers.ToDictionary(h => h.Key, h => string.Join(",", h.Value), StringComparer.OrdinalIgnoreCase);
+            var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+            var r = new Request(request.Method.Method, request.RequestUri!, headers, body);
+            fake.Requests.Enqueue(r);
+            return fake.Respond(r);
+        }
     }
 }

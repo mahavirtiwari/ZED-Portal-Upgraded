@@ -16,6 +16,13 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./captcha-settings').then((m) => m.CaptchaSettingsPage),
   },
+  // 2026-11-13: how agencies' certified professionals are verified (per portal, through the portal switch).
+  {
+    path: 'professional-verification',
+    title: 'ZED | Professional Verification',
+    canActivate: [admin],
+    loadComponent: () => import('./professional-verification').then((m) => m.ProfessionalVerificationPage),
+  },
   // New in V4: the CCAvenue account and the invoice switch (main portal; the API refuses the others).
   {
     path: 'payment-gateway',

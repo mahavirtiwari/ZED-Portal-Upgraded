@@ -25,6 +25,15 @@ public sealed class UserManagementTests : IDisposable
     }
 
     [Fact]
+    public async Task The_admin_reads_this_portals_professional_verification_off_by_default()
+    {
+        var admin = await _staff.SignInAsync("ADMIN1", 1);
+        var view = await admin.GetFromJsonAsync<JsonElement>("/api/staff/settings/professional-verification");
+        Assert.Equal(("Off", "surveillance"), (view.GetProperty("mode").GetString(), view.GetProperty("portal").GetString()));
+        Assert.False(view.GetProperty("api").GetProperty("keySet").GetBoolean());
+    }
+
+    [Fact]
     public async Task Owners_give_the_screens_of_their_own_menu()
     {
         var agency = await _staff.SignInAsync("AGENCY1", 2, "DesktopVerification", "SiteVerification", "FinancialVerification");

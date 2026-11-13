@@ -8,12 +8,14 @@ import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
+import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
 
 interface AssessorModel {
   assessorType: string;
   certificateNo: string;
   professionalEmail: string;
+  /** The professional's PAN (verification off, or by another portal's API). */
+  pan: string;
   userName: string;
   emailId: string;
   mobileNo: string;
@@ -29,17 +31,23 @@ interface AssessorModel {
   sectorActivity: SectorActivity | '';
 }
 
+const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_PATTERN = /^\d{10}$/;
+
 function emptyAssessor(): AssessorModel {
   return {
-    assessorType: '', certificateNo: '', professionalEmail: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '',
+    assessorType: '', certificateNo: '', professionalEmail: '', pan: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '',
     idProofType: '', idProofNumber: '', states: [], nicSectors: [], areasOfKnowledge: [], reasonForRejection: '', sectorActivity: '',
   };
 }
 
 /**
  * Add / update an assessor (agency) or view one (MasterAdmin). Port of Views/User/Assessor.cshtml.
- * For a new assessor the agency looks up the certified professional by certificate number and
- * registered e-mail; name, e-mail and mobile come from that record (the API repeats the lookup). V4 layout: a profile card
+ * How a new assessor's certified professional is verified is the Admin's choice per portal (Settings -> Professional
+ * Verification, the options' `verification`): Off (the default) - the agency types the certificate number, PAN, name, e-mail
+ * and mobile; TrainingPortal - the old lookup by certificate number and registered e-mail; Api - another portal's API by
+ * certificate number and PAN. With a lookup, name, e-mail and mobile come from that record (the API repeats the lookup). V4 layout: a profile card
  * (initials, ID, certificate, type, sector type and status) above a saved assessor, numbered sections (type and
  * certificate, contact, ID proof, what the assessor assesses, block reason), the type, ID proof and sector type as choice
  * chips, the lookup in a shaded box that names the professional found, and a sticky save bar showing unsaved changes.
@@ -131,6 +139,8 @@ export class AssessorFormPage {
   protected readonly professional = signal<{ key: string; data: Professional } | null>(null);
   protected readonly loading = signal(true);
   protected readonly searching = signal(false);
+  /** The portal's professional verification (Off until the options say otherwise, as on the server). */
+  protected readonly verification = signal<VerificationMode>('Off');
   protected readonly saving = signal(false);
   protected readonly submitted = signal(false);
   protected readonly activities = SECTOR_ACTIVITIES;
@@ -169,7 +179,8 @@ export class AssessorFormPage {
   }
 
   protected get saveNote(): string {
-    if (this.isNew && !this.typed && !this.lookupDone) return 'Search the certified professional to continue.';
+    if (this.isNew && this.searches && !this.lookupDone) return 'Search the certified professional to continue.';
+    if (this.isNew && this.verifyOff && !this.offDetailsValid) return 'Enter the certificate number, PAN, name, e-mail and mobile number to continue.';
     if (this.dirty()) return 'Not saved yet.';
     return this.isNew ? 'Fill in the details, then Create.' : 'No unsaved changes.';
   }
@@ -206,6 +217,41 @@ export class AssessorFormPage {
     return this.consultancy && this.model.assessorType === 'TechnicalExpert';
   }
 
+  /** Verification off: a certified professional's certificate number, PAN, name, e-mail and mobile are typed (no SEARCH). */
+  protected get verifyOff(): boolean {
+    return !this.typed && this.verification() === 'Off';
+  }
+
+  /** Verification by another portal's API: certificate number and PAN, then SEARCH. */
+  protected get byApi(): boolean {
+    return !this.typed && this.verification() === 'Api';
+  }
+
+  /** The professional is searched (training portal or API) before Create. */
+  protected get searches(): boolean {
+    return !this.typed && this.verification() !== 'Off';
+  }
+
+  /** Name, e-mail and mobile are typed on the form (technical experts, verification off). */
+  protected get typesIdentity(): boolean {
+    return this.isNew && (this.typed || this.verifyOff);
+  }
+
+  protected get panValid(): boolean {
+    return PAN_PATTERN.test(this.model.pan.trim());
+  }
+
+  /** Verification off: the typed certificate number, PAN, name, e-mail and mobile are filled in and valid (Create is enabled). */
+  protected get offDetailsValid(): boolean {
+    const m = this.model;
+    return !!m.assessorType && !!m.certificateNo.trim() && this.panValid && !!m.userName.trim() && EMAIL_PATTERN.test(m.emailId.trim()) &&
+      MOBILE_PATTERN.test(m.mobileNo.trim());
+  }
+
+  protected panChanged(value: string | null): void {
+    this.model.pan = (value ?? '').toUpperCase();
+  }
+
   protected get title(): string {
     if (!this.isAgency) return this.noun + ' Details';
     return this.isNew ? 'Add ' + this.noun : 'Update ' + this.noun + ' Details';
@@ -215,8 +261,10 @@ export class AssessorFormPage {
     const noun = this.noun.toLowerCase();
     if (!this.isAgency) return `Details of the ${noun} (view only).`;
     if (!this.isNew) return `Address, ID proof, states, sectors and areas of the ${noun}.`;
-    return this.typed
-      ? 'Enter the name, e-mail and mobile number of the technical expert.'
+    if (this.typed) return 'Enter the name, e-mail and mobile number of the technical expert.';
+    if (this.verifyOff) return `Enter the certificate number, PAN, name, e-mail and mobile number of the ${noun} as on the certificate.`;
+    return this.byApi
+      ? 'Search the certified professional by certificate number and PAN; the name, e-mail and mobile come from that record.'
       : 'Search the certified professional by certificate number and registered e-mail; the name, e-mail and mobile come from that record.';
   }
 
@@ -226,7 +274,8 @@ export class AssessorFormPage {
   }
 
   private lookupKey(): string {
-    return [this.model.assessorType, this.model.certificateNo.trim(), this.model.professionalEmail.trim().toLowerCase()].join('|');
+    const second = this.byApi ? this.model.pan.trim() : this.model.professionalEmail.trim().toLowerCase();
+    return [this.verification(), this.model.assessorType, this.model.certificateNo.trim(), second].join('|');
   }
 
   private async load(): Promise<void> {
@@ -235,6 +284,8 @@ export class AssessorFormPage {
       this.states.set(options.states.map((s) => ({ value: s, label: s })));
       this.sectors.set(options.sectors.map((s) => ({ value: s.sectorCode, label: `${s.sectorCode}-${s.sectorName}` })));
       this.areas.set(options.areasOfKnowledge.map((a) => ({ value: a, label: a })));
+      const mode = options.verification?.mode;
+      this.verification.set(mode === 'TrainingPortal' || mode === 'Api' ? mode : 'Off');
       if (this.isNew && !this.consultancy) {
         const own = (await firstValueFrom(this.api.agencySectorActivity())).message;
         this.agencyActivity.set(own === 'Manufacturing' || own === 'Services' || own === 'Both' ? own : null);
@@ -264,7 +315,7 @@ export class AssessorFormPage {
   /** Changing the type clears the looked-up details, as the old page did. */
   protected typeChanged(): void {
     this.professional.set(null);
-    Object.assign(this.model, { certificateNo: '', professionalEmail: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '' });
+    Object.assign(this.model, { certificateNo: '', professionalEmail: '', pan: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '' });
   }
 
   protected async searchProfessional(): Promise<void> {
@@ -272,13 +323,20 @@ export class AssessorFormPage {
     this.professional.set(null);
     const m = this.model;
     Object.assign(m, { userName: '', emailId: '', mobileNo: '', address: '', pinCode: '' });
-    if (!m.assessorType || !m.certificateNo.trim() || !m.professionalEmail.trim()) {
+    if (this.byApi) {
+      if (!m.assessorType || !m.certificateNo.trim() || !this.panValid) {
+        this.error.set('Please enter the Certificate Number and a valid PAN (e.g. ABCDE1234F).');
+        return;
+      }
+    } else if (!m.assessorType || !m.certificateNo.trim() || !m.professionalEmail.trim()) {
       this.error.set('Please enter the Certificate Number and the Registered Email Id.');
       return;
     }
     this.searching.set(true);
     try {
-      const p = await firstValueFrom(this.api.lookupProfessional(m.assessorType, m.certificateNo.trim(), m.professionalEmail.trim()));
+      const p = await firstValueFrom(this.byApi
+        ? this.api.lookupProfessionalByPan(m.assessorType, m.certificateNo.trim(), m.pan.trim())
+        : this.api.lookupProfessional(m.assessorType, m.certificateNo.trim(), m.professionalEmail.trim()));
       Object.assign(m, { userName: p.name, emailId: p.email, mobileNo: p.mobileNo, address: p.address ?? '', pinCode: p.pinCode ?? '' });
       this.professional.set({ key: this.lookupKey(), data: p });
     } catch (err) {
@@ -308,7 +366,25 @@ export class AssessorFormPage {
       this.error.set('Please enter the name, e-mail and mobile number.');
       return;
     }
-    if (this.isNew && !this.typed && !this.lookupDone) {
+    if (this.isNew && this.verifyOff) {
+      if (!m.assessorType || !m.certificateNo.trim() || [m.pan, m.userName, m.emailId, m.mobileNo].some((v) => !v.trim())) {
+        this.error.set('Please enter the certificate number, PAN, name, e-mail and mobile number.');
+        return;
+      }
+      if (!this.panValid) {
+        this.error.set('Please enter a valid PAN (e.g. ABCDE1234F).');
+        return;
+      }
+      if (!EMAIL_PATTERN.test(m.emailId.trim())) {
+        this.error.set('Please enter a valid Email ID.');
+        return;
+      }
+      if (!MOBILE_PATTERN.test(m.mobileNo.trim())) {
+        this.error.set('Please enter a valid 10 digit mobile number.');
+        return;
+      }
+    }
+    if (this.isNew && this.searches && !this.lookupDone) {
       this.error.set('Please SEARCH the certified professional first.');
       return;
     }
@@ -329,7 +405,8 @@ export class AssessorFormPage {
             assessorType: m.assessorType, certificateNo: m.certificateNo.trim(), professionalEmail: m.professionalEmail.trim(),
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber,
             states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, sectorActivity: m.sectorActivity,
-            ...(this.typed ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
+            ...(this.typesIdentity ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
+            ...(this.verifyOff || this.byApi ? { pan: m.pan.trim() } : {}),
           }),
         );
         await this.router.navigate(['/staff/users/my-assessors'], { state: { message: r.message } });

@@ -47,6 +47,10 @@ public static class PortalSetup
         services.AddHttpClient<IGstinVerifier, ProteanGstinVerifier>(c => c.Timeout = TimeSpan.FromSeconds(30));
         services.Configure<UdyamiBharatOptions>(config.GetSection(UdyamiBharatOptions.Section));
         services.AddHttpClient<IUdyamiBharatVerifier, UdyamiBharatVerifier>(c => c.Timeout = TimeSpan.FromSeconds(20));
+        // Professional verification by another portal's API (Settings → Professional Verification). No request logging:
+        // the address carries the certificate number and PAN with GET, and the key travels in a header.
+        services.AddHttpClient<Features.Staff.Users.IProfessionalApiClient, Features.Staff.Users.ProfessionalApiClient>(c => c.Timeout = TimeSpan.FromSeconds(10))
+            .RemoveAllLoggers();
         services.AddScoped<PaymentCompletion>();
         services.AddScoped<PanCorrectionNotice>();
         services.AddScoped<SurveillancePaymentCompletion>();

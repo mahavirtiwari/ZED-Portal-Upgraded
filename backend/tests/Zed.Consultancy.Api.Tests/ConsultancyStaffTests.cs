@@ -205,6 +205,9 @@ public sealed class ConsultancyStaffTests : IDisposable
     [Fact]
     public async Task A_co_creates_a_consultant_through_the_lookup_with_type_3()
     {
+        // The training portal's check (Settings → Professional Verification); the default is off.
+        _host.Sql.Queries["SELECT SettingKey, SettingValue FROM dbo.V4Settings"] = _ =>
+            [new { SettingKey = "ProfessionalVerification.Mode", SettingValue = "TrainingPortal" }];
         _host.Sql.Procs["SP_GET_PROFESSIONAL_DETAILS_BY_CERT_NO_duplicatetest"] = args => FakeSql.Arg(args, "AssessorType") == "3"
             ? FakeSql.Sets([new { Email = "pro@zed.test", ContactNumber = "9111111111", Name = "Real Consultant", CertificateNo = "{}" }],
                 [new { Status = 1, ErrorMessage = "ok" }])
@@ -244,6 +247,49 @@ public sealed class ConsultancyStaffTests : IDisposable
         Assert.Equal("Tech Expert", FakeSql.Arg(args, "UserName"));
         Assert.Null(FakeSql.Arg(args, "CertificateNo"));
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_GET_PROFESSIONAL_DETAILS_BY_CERT_NO_duplicatetest");
+    }
+
+    [Fact]
+    public async Task With_verification_off_a_co_types_the_consultant_and_its_pan()
+    {
+        _host.Sql.Procs["SP_GET_USER_DETAILS_BY_NAME"] = _ => FakeSql.Sets([new { UserId = "ZEDCC0099" }]);
+        var client = await ConsultancyLogin.SignInAsync(_host, "CO1");
+        var options = await client.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors/options");
+        Assert.Equal("Off", options.GetProperty("verification").GetProperty("mode").GetString());
+        var body = new Dictionary<string, object?>
+        {
+            ["assessorType"] = "Consultant", ["certificateNo"] = "CO1234", ["userName"] = "Typed Consultant", ["emailId"] = "typed@zed.test",
+            ["mobileNo"] = "9222222222", ["address"] = "Addr", ["pinCode"] = "560001", ["idProofType"] = "PAN Card", ["idProofNumber"] = "ABCDE1234F",
+            ["states"] = new[] { "DELHI" },
+        };
+        Assert.Equal("Please enter a valid PAN (e.g. ABCDE1234F).", await (await client.PostAsJsonAsync("/api/staff/users/assessors", body)).ProblemTitle());
+
+        _host.Sql.Queries["SELECT COUNT(*) FROM dbo.Users WHERE RoleId = 3 AND IsActive = 1"] = _ => [1];
+        body["pan"] = "pqrst6789z";
+        Assert.Equal("User Already mapped to another agency", await (await client.PostAsJsonAsync("/api/staff/users/assessors", body)).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_INSERT_USER");
+
+        _host.Sql.Queries["SELECT COUNT(*) FROM dbo.Users WHERE RoleId = 3 AND IsActive = 1"] = _ => [0];
+        var r = await client.PostAsJsonAsync("/api/staff/users/assessors", body);
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var args = Call("SP_INSERT_USER").Args;
+        Assert.Equal(("3", "Typed Consultant", "CO1234"), (FakeSql.Arg(args, "RoleId"), FakeSql.Arg(args, "UserName"), FakeSql.Arg(args, "CertificateNo")));
+        var pan = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE dbo.Users SET PanNo", StringComparison.Ordinal));
+        Assert.Equal(("ZEDCC0099", "PQRST6789Z"), (FakeSql.Arg(pan.Args, "UserId"), FakeSql.Arg(pan.Args, "Pan")));
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_GET_PROFESSIONAL_DETAILS_BY_CERT_NO_duplicatetest");
+    }
+
+    [Fact]
+    public async Task The_admin_sets_this_portals_professional_verification()
+    {
+        var admin = await ConsultancyLogin.SignInAsync(_host, "ADMIN1");
+        var view = await admin.GetFromJsonAsync<JsonElement>("/api/staff/settings/professional-verification");
+        Assert.Equal(("Off", "consultancy"), (view.GetProperty("mode").GetString(), view.GetProperty("portal").GetString()));
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/settings/professional-verification", new { mode = "TrainingPortal" })).StatusCode);
+        var merge = _host.Sql.Calls.Last(c => c.Name.StartsWith("MERGE dbo.V4Settings", StringComparison.Ordinal));
+        Assert.Equal(("ProfessionalVerification.Mode", "TrainingPortal"), (FakeSql.Arg(merge.Args, "SettingKey"), FakeSql.Arg(merge.Args, "SettingValue")));
+        var co = await ConsultancyLogin.SignInAsync(_host, "CO1");
+        Assert.Equal(HttpStatusCode.Forbidden, (await co.GetAsync("/api/staff/settings/professional-verification")).StatusCode);
     }
 
     [Fact]

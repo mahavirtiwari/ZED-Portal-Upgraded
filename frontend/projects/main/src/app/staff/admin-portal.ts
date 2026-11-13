@@ -40,6 +40,8 @@ export const SWITCHED_APIS: readonly { prefix: string; portals: readonly AdminPo
   { prefix: '/api/staff/settings/app-forms', portals: ALL_PORTALS },
   { prefix: '/api/staff/settings/site-tour-sections', portals: SITE_TOUR_PORTALS },
   { prefix: '/api/staff/settings/captcha', portals: ALL_PORTALS },
+  // Professional verification (2026-11-13): each portal keeps its own (the agencies' Add Assessor / Consultant form).
+  { prefix: '/api/staff/settings/professional-verification', portals: ALL_PORTALS },
   // Links (contact, app stores): main only (2026-11-08: the Consultancy and Surveillance builds have no page that shows them).
   { prefix: '/api/staff/settings/links', portals: ['main'] },
   { prefix: '/api/staff/masters/parameters', portals: QUESTIONNAIRE_PORTALS },

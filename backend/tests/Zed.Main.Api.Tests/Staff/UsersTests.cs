@@ -542,6 +542,7 @@ public sealed class UsersTests : IDisposable
     [Fact]
     public async Task Lookup_returns_the_professional_and_passes_the_signed_in_agency()
     {
+        ProfessionalVerificationTests.UseMode(_host, "TrainingPortal");
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
         var r = await client.PostAsJsonAsync("/api/staff/users/assessors/lookup", new { assessorType = "BronzeAssessor", certificateNo = "BA1234", email = "pro@zed.test" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
@@ -560,6 +561,7 @@ public sealed class UsersTests : IDisposable
     [Fact]
     public async Task Agency_creates_an_assessor_under_itself_with_the_verified_identity()
     {
+        ProfessionalVerificationTests.UseMode(_host, "TrainingPortal");
         var resets = new Zed.TestSupport.FakeStaffResets().Attach(_host.Sql.Procs);
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
         var r = await client.PostAsJsonAsync("/api/staff/users/assessors", new
@@ -597,6 +599,7 @@ public sealed class UsersTests : IDisposable
     [Fact]
     public async Task Assessor_is_not_created_when_the_professional_lookup_fails()
     {
+        ProfessionalVerificationTests.UseMode(_host, "TrainingPortal");
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
         var r = await client.PostAsJsonAsync("/api/staff/users/assessors", new
         {

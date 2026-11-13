@@ -13,7 +13,7 @@
            0011 all three | 0012 all three | 0013 all three |
            0014 ZEDCS_V2_LIVE | 0015 all three | 0016 all three | 0017 all three | 0018 all three | 0019 ZEDCS_V2_LIVE | 0020 ZED_CONSULTANT | 0021 ZED_SURVEILLANCE | 0022 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0023 all three | 0024 ZEDCS_V2_LIVE | 0025 all three | 0026 ZEDCS_V2_LIVE | 0027 ZEDCS_V2_LIVE | 0028 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0029 ZEDCS_V2_LIVE | 0030 all three | 0031 ZEDCS_V2_LIVE | 0032 ZEDCS_V2_LIVE | 0033 ZED_SURVEILLANCE | 0034 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0035 ZEDCS_V2_LIVE | 0036 ZED_SURVEILLANCE | 0037 ZEDCS_V2_LIVE | 0038 ZED_SURVEILLANCE | 0039 all three | 0040 all three |
            0041 all three (ZED_CONSULTANT first) | 0042 ZEDCS_V2_LIVE | 0043 ZEDCS_V2_LIVE, ZED_SURVEILLANCE |
-           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE | 0051 ZEDCS_V2_LIVE | 0052 ZED_CONSULTANT, ZED_SURVEILLANCE (after 0051) | 0053 ZEDCS_V2_LIVE | 0054 ZEDCS_V2_LIVE (after 0051) | 0055 all three | 0056 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0057 all three | 0058 all three | 0059 all three | 0060 ZEDCS_V2_LIVE | 0061 all three | 0062 ZEDCS_V2_LIVE | 0063 ZEDCS_V2_LIVE (after 0031, 0060) | 0064 all three (after 0015) | 0065 ZEDCS_V2_LIVE (after 0063) | 0066 ZED_SURVEILLANCE (after 0065) | 0067 ZEDCS_V2_LIVE
+           0044 ZED_CONSULTANT | 0045 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0046 ZEDCS_V2_LIVE | 0047 all three | 0048 ZEDCS_V2_LIVE | 0049 ZEDCS_V2_LIVE (once) | 0050 ZEDCS_V2_LIVE | 0051 ZEDCS_V2_LIVE | 0052 ZED_CONSULTANT, ZED_SURVEILLANCE (after 0051) | 0053 ZEDCS_V2_LIVE | 0054 ZEDCS_V2_LIVE (after 0051) | 0055 all three | 0056 ZEDCS_V2_LIVE, ZED_SURVEILLANCE | 0057 all three | 0058 all three | 0059 all three | 0060 ZEDCS_V2_LIVE | 0061 all three | 0062 ZEDCS_V2_LIVE | 0063 ZEDCS_V2_LIVE (after 0031, 0060) | 0064 all three (after 0015) | 0065 ZEDCS_V2_LIVE (after 0063) | 0066 ZED_SURVEILLANCE (after 0065) | 0067 ZEDCS_V2_LIVE | 0068 all three
          The run stops at the first migration that fails.
       2. Fix scripts (database\fixes\<db>\*.sql), each in PREVIEW, which changes nothing. For every procedure a fix
          touches, the runner saves the live definition (live\<proc>.sql: the undo) and, where the script prints it,
@@ -178,6 +178,7 @@ $Migrations = @(
     @{ File = '0066_generic_certification_levels_surveillance.sql'; Dbs = @($Surv); Markers = @('DEF:dbo.FN_V4_LEVEL_MODE:V4_0066') }
     # Marker: the procedure only. A live text that differs prints a warning and must not roll the update back; the log says edited / already edited.
     @{ File = '0067_da_details_duplicate_parameters.sql'; Dbs = @($Main); Markers = @('P:dbo.SP_ASSESSMENT_DA_DETAILS') }
+    @{ File = '0068_users_pan_no.sql';            Dbs = @($Main, $Cons, $Surv); Markers = @('COL:dbo.Users.PanNo') }
 )
 $MailOutbox = @{ File = '0003_mail_outbox.sql'; Dbs = $Zed; Markers = @('U:dbo.V4MailOutbox', 'P:dbo.SP_V4_SEND_DBMAIL') }
 $NeverApply = @{

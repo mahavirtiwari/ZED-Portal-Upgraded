@@ -29,7 +29,10 @@ const options = {
   states: ['DELHI', 'MAHARASHTRA'],
   sectors: [{ sectorCode: '24', sectorName: 'Basic metals' }],
   areasOfKnowledge: ['Quality'],
+  // The training portal's lookup (Admin -> Settings -> Professional Verification); the other modes have their own specs.
+  verification: { mode: 'TrainingPortal', needsPan: false },
 };
+const withMode = (mode: string) => ({ ...options, verification: { mode, needsPan: mode !== 'TrainingPortal' } });
 
 describe('AssessorFormPage', () => {
   let fixture: ComponentFixture<AssessorFormPage>;
@@ -122,6 +125,110 @@ describe('AssessorFormPage', () => {
     req.flush({ message: 'User created successfully.', userId: 'ZEDBA0001' });
     await settle(fixture);
     expect(navigate).toHaveBeenCalledWith(['/staff/users/my-assessors'], { state: { message: 'User created successfully.' } });
+  });
+
+  it('verification off: the agency types the certificate, PAN, name, e-mail and mobile, without SEARCH', async () => {
+    await create(StaffRole.Agency, null);
+    http.expectOne('/api/staff/users/assessors/options').flush(withMode('Off'));
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Both' });
+    await settle(fixture);
+    await pick('assessorType', 'Assessor');
+    expect(el.querySelector('.alert-warning')!.textContent!.trim()).toBe("Verification is off: enter the assessor's details as on the certificate.");
+    expect([...el.querySelectorAll('button')].some((b) => b.textContent!.trim() === 'SEARCH')).toBe(false);
+    expect(el.querySelector('#professionalEmail')).toBeNull();
+    expect((el.querySelector('#userName') as HTMLInputElement).readOnly).toBe(false);
+    expect(el.querySelector('label[for="pan"]')!.textContent).toContain('PAN Number*');
+    const createButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Create') as HTMLButtonElement;
+    expect(createButton.disabled).toBe(true);
+    expect(saveNote()).not.toBe('Search the certified professional to continue.');
+
+    await type('#certificateNo', 'AS1234');
+    await type('#pan', 'abcde1234f');
+    expect((el.querySelector('#pan') as HTMLInputElement).value).toBe('ABCDE1234F');
+    await type('#userName', 'Typed Pro');
+    await type('#emailId', 'typed@zed.test');
+    await type('#mobileNo', '12345');
+    expect(createButton.disabled).toBe(true);
+    await type('#mobileNo', '9222222222');
+    expect(createButton.disabled).toBe(false);
+    await type('#address', 'Street 1');
+    await type('#pinCode', '411001');
+    await pick('idProofType', 'Aadhaar Card');
+    await type('#idProofNumber', '123412341234');
+    await pick('sectorActivity', 'Both');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    expect(el.querySelector('.alert-danger')?.textContent ?? '').toBe('');
+    const req = http.expectOne('/api/staff/users/assessors');
+    expect(req.request.body).toMatchObject({
+      assessorType: 'Assessor', certificateNo: 'AS1234', pan: 'ABCDE1234F', userName: 'Typed Pro', emailId: 'typed@zed.test', mobileNo: '9222222222',
+    });
+    http.expectNone('/api/staff/users/assessors/lookup');
+    req.flush({ message: 'User created successfully.', userId: 'ZEDAS0099' });
+    await settle(fixture);
+  });
+
+  it('api mode: SEARCH by certificate number and PAN, then the details are locked', async () => {
+    await create(StaffRole.Agency, null);
+    http.expectOne('/api/staff/users/assessors/options').flush(withMode('Api'));
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Both' });
+    await settle(fixture);
+    await pick('assessorType', 'Bronze Assessor');
+    expect(el.querySelector('.alert-warning')).toBeNull();
+    expect(el.querySelector('#professionalEmail')).toBeNull();
+    expect(saveNote()).toBe('Search the certified professional to continue.');
+    await type('#certificateNo', 'BA1234');
+    await type('#pan', 'ABCDE123');
+    const search = () => ([...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'SEARCH') as HTMLButtonElement).click();
+    search();
+    await settle(fixture);
+    expect(el.querySelector('.alert-danger')!.textContent).toContain('a valid PAN');
+    http.expectNone('/api/staff/users/assessors/lookup');
+    await type('#pan', 'abcde1234f');
+    search();
+    await settle(fixture);
+    const lookup = http.expectOne('/api/staff/users/assessors/lookup');
+    expect(lookup.request.body).toEqual({ assessorType: 'BronzeAssessor', certificateNo: 'BA1234', pan: 'ABCDE1234F' });
+    lookup.flush({ name: 'Api Pro', email: 'api@zed.test', mobileNo: '9333333333', address: null, pinCode: null, selfieUrl: null });
+    await settle(fixture);
+    expect((el.querySelector('#userName') as HTMLInputElement).value).toBe('Api Pro');
+    expect((el.querySelector('#userName') as HTMLInputElement).readOnly).toBe(true);
+    expect(el.querySelector('.af-found')!.textContent).toContain('come from the other portal');
+    const createButton = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Create') as HTMLButtonElement;
+    expect(createButton.disabled).toBe(false);
+    // Another PAN needs a new SEARCH.
+    await type('#pan', 'ABCDE1234G');
+    expect(createButton.disabled).toBe(true);
+    await type('#pan', 'ABCDE1234F');
+    await type('#address', 'Street 1');
+    await type('#pinCode', '411001');
+    await pick('idProofType', 'Aadhaar Card');
+    await type('#idProofNumber', '123412341234');
+    await pick('sectorActivity', 'Both');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const req = http.expectOne('/api/staff/users/assessors');
+    expect(req.request.body).toMatchObject({ certificateNo: 'BA1234', pan: 'ABCDE1234F' });
+    expect(Object.keys(req.request.body)).not.toContain('userName');
+    req.flush({ message: 'User created successfully.', userId: 'ZEDBA0099' });
+    await settle(fixture);
+  });
+
+  it('consultancy, verification off: the consultant/expert is typed in too; a technical expert has no PAN', async () => {
+    await create(StaffRole.Agency, null, true, ['SiteVerification']);
+    http.expectOne('/api/staff/users/assessors/options').flush(withMode('Off'));
+    await settle(fixture);
+    await pick('assessorType', 'Consultant/Expert');
+    expect(el.querySelector('.alert-warning')!.textContent).toContain("enter the consultant/expert's details as on the certificate.");
+    expect(el.querySelector('#pan')).not.toBeNull();
+    await pick('assessorType', 'Technical Expert');
+    expect(el.querySelector('.alert-warning')).toBeNull();
+    expect(el.querySelector('#pan')).toBeNull();
+    expect(el.querySelector('#certificateNo')).toBeNull();
   });
 
   it('consultancy: names the Consultant/Expert and offers Technical Expert and the states only with SiteVerification', async () => {

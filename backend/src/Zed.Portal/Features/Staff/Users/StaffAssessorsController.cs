@@ -34,6 +34,8 @@ public sealed class StaffAssessorsController(
     IEmailSender email,
     IHtmlTemplateRenderer templates,
     IOptions<PortalOptions> portal,
+    IPortalSettings settings,
+    IProfessionalApiClient professionalApi,
     ILogger<StaffAssessorsController> log) : StaffApiController
 {
     private StaffUserMail Mail => new(email, templates, portal, HttpContext.RequestServices.GetRequiredService<EmailAddresses>(), log);
@@ -143,14 +145,21 @@ public sealed class StaffAssessorsController(
     }
 
     public sealed record Sector(string SectorCode, string SectorName);
-    public sealed record AssessorOptions(IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<string> AreasOfKnowledge);
+    /// <param name="Mode">How the Add form verifies the professional (<see cref="ProfessionalVerificationMode"/>): Off, TrainingPortal or Api.</param>
+    /// <param name="NeedsPan">The Add form asks for the PAN (Off and Api).</param>
+    public sealed record VerificationInfo(string Mode, bool NeedsPan);
+
+    public sealed record AssessorOptions(IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<string> AreasOfKnowledge,
+        VerificationInfo? Verification = null);
 
     [HttpGet("options")]
     [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
     public async Task<AssessorOptions> Options(CancellationToken ct)
     {
         var (sectors, areas) = await LoadOptionsAsync(ct);
-        return new AssessorOptions(StaffUserRules.States, sectors, areas);
+        var mode = await ProfessionalVerification.ModeAsync(settings, ct);
+        return new AssessorOptions(StaffUserRules.States, sectors, areas,
+            new VerificationInfo(mode.ToString(), mode != ProfessionalVerificationMode.TrainingPortal));
     }
 
     public sealed record AssessorDetails(
@@ -199,32 +208,57 @@ public sealed class StaffAssessorsController(
             : (null, $"Your agency assesses {agency} only, so its assessors cannot be set to {activity}.");
     }
 
-    public sealed record LookupRequest(string? AssessorType, string? CertificateNo, string? Email);
+    public sealed record LookupRequest(string? AssessorType, string? CertificateNo, string? Email, string? Pan = null);
 
     /// <summary>
-    /// Certified professional for a certificate number and registered e-mail (legacy GeProfessionalDetailsByCertNo).
-    /// Rate-limited: it reads the professionals registry of the training portal.
+    /// Certified professional for a certificate number and, by the portal's verification mode, the registered e-mail (the
+    /// training portal: legacy GeProfessionalDetailsByCertNo) or the PAN (another portal's API). With verification off there
+    /// is nothing to look up. Rate-limited: it reads another system's registry.
     /// </summary>
     [HttpPost("lookup")]
     [StaffRoles(UserRole.Agency)]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<ActionResult<StaffUserRules.Professional>> Lookup(LookupRequest req, CancellationToken ct)
     {
-        var (type, cert, mail, error) = LookupInput(req.AssessorType, req.CertificateNo, req.Email);
+        var mode = await ProfessionalVerification.ModeAsync(settings, ct);
+        if (mode == ProfessionalVerificationMode.Off) return this.Problem400(ProfessionalVerification.OffLookupMessage);
+        var (type, cert, error) = TypeAndCertificate(req.AssessorType, req.CertificateNo);
         if (error is not null) return this.Problem400(error);
+        if (mode == ProfessionalVerificationMode.Api)
+        {
+            if (ProfessionalVerification.NormalizePan(req.Pan) is not { } pan) return this.Problem400(PanError);
+            var (p, apiError) = await ApiProfessionalAsync(cert!, pan, ct);
+            return p is null ? this.Problem400(apiError!) : p;
+        }
+        var mail = req.Email?.Trim();
+        if (!StaffUserRules.IsEmail(mail)) return this.Problem400("Please enter the registered Email Id.");
         var (found, message) = await StaffUserRules.LookupProfessionalAsync(db, CurrentUser, LookupType(type!), cert!, mail!, ct);
         return found is null ? this.Problem400(message!) : found;
+    }
+
+    private const string PanError = "Please enter a valid PAN (e.g. ABCDE1234F).";
+
+    /// <summary>Api mode: the certificate must not be in use, then the other portal's answer (name, e-mail, mobile).</summary>
+    private async Task<(StaffUserRules.Professional? Found, string? Error)> ApiProfessionalAsync(string cert, string pan, CancellationToken ct)
+    {
+        if (await ProfessionalVerification.CertificateInUseAsync(db, cert, ct)) return (null, ProfessionalVerification.AlreadyMapped);
+        var config = await ProfessionalVerification.ApiConfigAsync(settings, ct);
+        var r = await professionalApi.LookupAsync(config, cert, pan, ct);
+        return r.Ok ? (new StaffUserRules.Professional(r.Name!, r.Email!, r.MobileNo!, null, null, null), null) : (null, r.Error);
     }
 
     public sealed record CreateRequest(
         string? AssessorType, string? CertificateNo, string? ProfessionalEmail, string? Address, string? PinCode,
         string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors, List<string>? AreasOfKnowledge,
-        string? UserName = null, string? EmailId = null, string? MobileNo = null, string? SectorActivity = null);
+        string? UserName = null, string? EmailId = null, string? MobileNo = null, string? SectorActivity = null, string? Pan = null);
 
     /// <summary>
     /// Creates an assessor under the signed-in agency (SP_INSERT_USER RoleId 3, CreatedBy = the agency; the
     /// procedure copies the agency's verification types). Agencies can only create assessors. Name, e-mail and
-    /// mobile come from the professional lookup; the assessor is mailed a one-time link to set its password
+    /// mobile come from the professional lookup of the portal's verification mode (<see cref="ProfessionalVerification"/>:
+    /// the training portal or another portal's API), or are typed by the agency when verification is off (the default;
+    /// certificate number and PAN required, a certificate in use by an active assessor refused); the PAN is kept in
+    /// Users.PanNo. The assessor is mailed a one-time link to set its password
     /// (<see cref="StaffWelcomeLogin"/>), and the generated password is never returned.
     /// </summary>
     [HttpPost]
@@ -233,8 +267,26 @@ public sealed class StaffAssessorsController(
     public async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> Create(CreateRequest req, CancellationToken ct)
     {
         if (host.IsConsultancy() && req.AssessorType == ConsultancyUsers.TechnicalExpert) return await CreateTechnicalExpertAsync(req, ct);
-        var (type, cert, mail, error) = LookupInput(req.AssessorType, req.CertificateNo, req.ProfessionalEmail);
+        var mode = await ProfessionalVerification.ModeAsync(settings, ct);
+        var (type, cert, error) = TypeAndCertificate(req.AssessorType, req.CertificateNo);
         if (error is not null) return this.Problem400(error);
+        // The PAN: required with verification off and with the API, optional (checked when given) with the training portal.
+        var pan = ProfessionalVerification.NormalizePan(req.Pan);
+        if (pan is null && (mode != ProfessionalVerificationMode.TrainingPortal || !string.IsNullOrWhiteSpace(req.Pan))) return this.Problem400(PanError);
+        string? mail = null, typedName = null, typedMobile = null;
+        if (mode == ProfessionalVerificationMode.TrainingPortal)
+        {
+            mail = req.ProfessionalEmail?.Trim();
+            if (!StaffUserRules.IsEmail(mail)) return this.Problem400("Please enter the registered Email Id.");
+        }
+        else if (mode == ProfessionalVerificationMode.Off)
+        {
+            if (!StaffUserRules.TryText(req.UserName, 100, true, false, out typedName)) return this.Problem400("Please enter the name (up to 100 characters).");
+            mail = req.EmailId?.Trim();
+            if (!StaffUserRules.IsEmail(mail)) return this.Problem400("Please enter a valid Email ID.");
+            typedMobile = req.MobileNo?.Trim();
+            if (typedMobile is null || !StaffUserRules.MobilePattern().IsMatch(typedMobile)) return this.Problem400("Please enter a valid 10 digit mobile number.");
+        }
         var (sectors, areas) = await LoadOptionsAsync(ct);
         var (values, valuesError) = ValidateCommon(req.Address, req.PinCode, req.IdProofType, req.IdProofNumber, null,
             req.States, req.NicSectors, req.AreasOfKnowledge, sectors, areas, existing: null);
@@ -242,7 +294,24 @@ public sealed class StaffAssessorsController(
         var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
         if (activityError is not null) return this.Problem400(activityError);
 
-        var (professional, message) = await StaffUserRules.LookupProfessionalAsync(db, CurrentUser, LookupType(type!), cert!, mail!, ct);
+        StaffUserRules.Professional? professional;
+        string? message;
+        switch (mode)
+        {
+            case ProfessionalVerificationMode.TrainingPortal:
+                (professional, message) = await StaffUserRules.LookupProfessionalAsync(db, CurrentUser, LookupType(type!), cert!, mail!, ct);
+                break;
+            case ProfessionalVerificationMode.Api:
+                (professional, message) = await ApiProfessionalAsync(cert!, pan!, ct);
+                mail = professional?.Email;
+                break;
+            default:
+                // Verification off: the agency's typed details; a certificate already used by an active assessor is refused.
+                var inUse = await ProfessionalVerification.CertificateInUseAsync(db, cert!, ct);
+                professional = inUse ? null : new StaffUserRules.Professional(typedName!, mail!, typedMobile!, null, null, null);
+                message = inUse ? ProfessionalVerification.AlreadyMapped : null;
+                break;
+        }
         if (professional is null) return this.Problem400(message!);
 
         var password = SecureRandom.Password();
@@ -250,8 +319,9 @@ public sealed class StaffAssessorsController(
         var parameters = host.IsConsultancy()
             ? ConsultancyParameters(values!, null, ConsultancyUsers.ConsultantRole, professional.Name, professional.Email, professional.MobileNo, stored, cert, mail)
             : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, stored, type, cert, mail);
+        log.LogInformation("Assessor being added with professional verification {Mode} by {Actor}", mode, UserId);
         return await InsertAsync(parameters, professional.Name, professional.Email, professional.MobileNo, password,
-            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity);
+            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity, pan);
     }
 
     /// <summary>
@@ -281,7 +351,7 @@ public sealed class StaffAssessorsController(
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
         object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct,
-        string? activity = null)
+        string? activity = null, string? pan = null)
     {
         var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", parameters, ct);
         var newId = result.Scalar(0);
@@ -300,6 +370,8 @@ public sealed class StaffAssessorsController(
         log.LogInformation("Assessor {NewUserId} ({Type}) created by agency {Actor}", newId, type, UserId);
         await Passwords.SetAsync(newId!, password, ct);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
+        // The legacy procedure does not know Users.PanNo (migration 0068), so it is written after it.
+        var panSaved = pan is null || await ProfessionalVerification.SavePanAsync(db, newId!, pan, log, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
@@ -317,7 +389,7 @@ public sealed class StaffAssessorsController(
         return new StaffAgenciesController.CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {email}."
             : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
-            + (activitySaved ? "" : UserSectorActivity.NotSaved), newId);
+            + (activitySaved ? "" : UserSectorActivity.NotSaved) + (panSaved ? "" : ProfessionalVerification.PanNotSaved), newId);
     }
 
     public sealed record UpdateRequest(
@@ -430,16 +502,14 @@ public sealed class StaffAssessorsController(
     /// <summary>@AssessorType of the professional lookup: Main's assessor type, or "3" (consultant) on Consultancy.</summary>
     private string LookupType(string type) => host.IsConsultancy() ? ConsultancyUsers.LookupAssessorType : type;
 
-    private (string? Type, string? Cert, string? Email, string? Error) LookupInput(string? type, string? cert, string? email)
+    private (string? Type, string? Cert, string? Error) TypeAndCertificate(string? type, string? cert)
     {
         if (host.IsConsultancy()) type ??= ConsultancyUsers.Consultant;
         if (type is null || !(host.IsConsultancy() ? type == ConsultancyUsers.Consultant : StaffUserRules.AssessorTypes.Contains(type)))
-            return (null, null, null, "Assessor Type required.");
+            return (null, null, "Assessor Type required.");
         var c = cert?.Trim();
-        if (c is null || !StaffUserRules.CertificateNoPattern().IsMatch(c)) return (null, null, null, "Please enter a valid Certificate Number.");
-        var e = email?.Trim();
-        if (!StaffUserRules.IsEmail(e)) return (null, null, null, "Please enter the registered Email Id.");
-        return (type, c, e, null);
+        if (c is null || !StaffUserRules.CertificateNoPattern().IsMatch(c)) return (null, null, "Please enter a valid Certificate Number.");
+        return (type, c, null);
     }
 
     private sealed record AssessorValues(

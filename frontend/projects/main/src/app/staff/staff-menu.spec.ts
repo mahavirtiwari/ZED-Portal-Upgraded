@@ -62,7 +62,7 @@ describe('staff menu', () => {
 
     it('has no categories, technologies masters or legacy links', () => {
       const admin = c(StaffRole.Admin, []);
-      expect(admin).toEqual(['Upload Image', 'Documents/Videos', 'Sectors', 'Payments', 'User Management', 'Captcha Settings', 'Email Settings', 'Email Templates', 'Texts', 'App Forms']);
+      expect(admin).toEqual(['Upload Image', 'Documents/Videos', 'Sectors', 'Payments', 'User Management', 'Captcha Settings', 'Email Settings', 'Professional Verification', 'Email Templates', 'Texts', 'App Forms']);
       expect(menuFor(StaffRole.MasterAdmin, [], 'consultancy').every((i) => i.route && !i.legacyPath)).toBe(true);
     });
 
@@ -105,10 +105,10 @@ describe('staff menu', () => {
     it('groups the long menus into a few drop-downs (V4)', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
-        'Masters (6)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (5)', 'User Management', 'Administration (10)',
+        'Masters (6)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (5)', 'User Management', 'Administration (11)',
       ]);
-      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'User Management', 'Administration (5)']);
-      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (2)', 'Questionnaire (5)', 'User Management', 'Administration (7)']);
+      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['Masters (4)', 'User Management', 'Administration (6)']);
+      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['Masters (2)', 'Questionnaire (5)', 'User Management', 'Administration (8)']);
       // The incentives in four groups, a page each (the state is chosen on the State Government page), and the MSME dashboard's cards.
       expect(menuFor(StaffRole.Admin, [], 'main').filter((i) => i.group === 'Incentives').map((i) => `${i.label} ${i.route}`)).toEqual([
         'Ministry of MSME /staff/incentives/ministry', 'State Government /staff/incentives/state',

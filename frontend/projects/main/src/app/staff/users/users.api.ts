@@ -219,10 +219,15 @@ export interface OwnAssessorRow {
   UserType?: string | null;
 }
 
+/** How the Add form verifies a certified professional (Admin → Settings → Professional Verification, per portal). */
+export type VerificationMode = 'Off' | 'TrainingPortal' | 'Api';
+
 export interface AssessorOptions {
   states: string[];
   sectors: Sector[];
   areasOfKnowledge: string[];
+  /** Off (the default): the agency types the details; TrainingPortal: certificate + e-mail; Api: certificate + PAN. */
+  verification?: { mode: VerificationMode; needsPan: boolean };
 }
 
 export interface AssessorDetails {
@@ -275,6 +280,8 @@ export interface AssessorCreateRequest {
   emailId?: string;
   mobileNo?: string;
   sectorActivity?: SectorActivity | '';
+  /** The professional's PAN (verification off or by API). */
+  pan?: string;
 }
 
 export interface AssessorUpdateRequest {
@@ -361,6 +368,11 @@ export class UsersApi {
 
   lookupProfessional(assessorType: string, certificateNo: string, email: string): Observable<Professional> {
     return this.http.post<Professional>(`${this.base}/assessors/lookup`, { assessorType, certificateNo, email });
+  }
+
+  /** Verification by another portal's API: certificate number and PAN. */
+  lookupProfessionalByPan(assessorType: string, certificateNo: string, pan: string): Observable<Professional> {
+    return this.http.post<Professional>(`${this.base}/assessors/lookup`, { assessorType, certificateNo, pan });
   }
 
   createAssessor(req: AssessorCreateRequest): Observable<CreatedUserResponse> {
