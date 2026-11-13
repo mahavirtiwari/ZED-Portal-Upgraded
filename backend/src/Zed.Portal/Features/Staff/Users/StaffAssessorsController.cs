@@ -64,10 +64,12 @@ public sealed class StaffAssessorsController(
         var sets = await db.QueryProcMultipleAsync("SP_GET_ASSESSORS", new { UserId, AssessorType = type ?? "", CertificationBodyUserId = agencyId ?? "" }, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
+        var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, AllColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
+            row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             AddBlock(row, blocks);
             return row;
@@ -82,10 +84,12 @@ public sealed class StaffAssessorsController(
         var sets = await db.QueryProcMultipleAsync("SP_GET_USERS_BY_ROLE", new { UserId, RoleId = Assessor }, ct);
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
+        var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, OwnColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
+            row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             AddBlock(row, blocks);
             if (host.IsConsultancy())
@@ -166,7 +170,8 @@ public sealed class StaffAssessorsController(
         string UserId, string UserName, string? EmailId, string? MobileNo, string? Address, string? PinCode, string? AssessorType,
         string? CertificateNo, string? IdProofType, string? IdProofNumberMasked, IReadOnlyList<string> States,
         IReadOnlyList<string> NicSectors, IReadOnlyList<string> AreasOfKnowledge, string? ReasonForRejection, bool IsActive,
-        string? AgencyUserId, bool CanEdit, string? UserType = null, string? SectorActivity = null, string? AgencySectorActivity = null);
+        string? AgencyUserId, bool CanEdit, string? UserType = null, string? SectorActivity = null, string? AgencySectorActivity = null,
+        string? PanNo = null);
 
     /// <summary>One assessor (SP_GET_USER_DETAILS_BY_USER_ID). An agency only gets its own; the MasterAdmin any (read-only).</summary>
     [HttpGet("{userId}")]
@@ -181,7 +186,8 @@ public sealed class StaffAssessorsController(
             host.IsConsultancy() ? null : T("AssessorType"),
             T("CertificateNo"), T("IdProofType"), StaffUserRules.MaskIdProof(T("IdProofNumber")), a.States, a.NicSectors, a.AreasOfKnowledge,
             T("ReasonForRejection"), a.IsActive, T("CreatedBy"), CanEdit: IsRole(UserRole.Agency),
-            UserType: host.IsConsultancy() ? (r.Text("RoleId") == "33" ? ConsultancyUsers.TechnicalExpert : ConsultancyUsers.Consultant) : null);
+            UserType: host.IsConsultancy() ? (r.Text("RoleId") == "33" ? ConsultancyUsers.TechnicalExpert : ConsultancyUsers.Consultant) : null,
+            PanNo: T("PanNo") ?? await ProfessionalVerification.PanOfAsync(db, a.UserId, log, ct));
         if (host.IsConsultancy()) return details;
         return details with
         {
@@ -372,6 +378,8 @@ public sealed class StaffAssessorsController(
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, newId!, activity, log, ct);
         // The legacy procedure does not know Users.PanNo (migration 0068), so it is written after it.
         var panSaved = pan is null || await ProfessionalVerification.SavePanAsync(db, newId!, pan, log, ct);
+        if (panSaved && pan is not null && host.System == PortalSystem.Main)
+            await ProfessionalVerification.CopyPanToSurveillanceAsync(db, newId!, pan, log, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId

@@ -186,6 +186,8 @@ export interface AssessorRow {
   SectorActivity?: SectorActivity | null;
   AgencyUserId: string | null;
   AgencyUserName: string | null;
+  /** Users.PanNo (2026-11-13), when the agency entered it. */
+  PanNo?: string | null;
   /** Blocked: the reason and date of its latest block (2026-11-08). */
   BlockReason?: string | null;
   BlockedOn?: string | null;
@@ -215,6 +217,8 @@ export interface OwnAssessorRow {
   IsCertAttached: number;
   IdProofNumber: string | null;
   PhotoPath: string | null;
+  /** Users.PanNo (2026-11-13), when the agency entered it. */
+  PanNo?: string | null;
   /** Consultancy: "Consultant" or "Technical Expert" (RoleId 3 / 33). */
   UserType?: string | null;
 }
@@ -253,6 +257,8 @@ export interface AssessorDetails {
   sectorActivity?: SectorActivity | null;
   /** The agency's own (an assessor cannot cover more). */
   agencySectorActivity?: SectorActivity | null;
+  /** Users.PanNo (2026-11-13). */
+  panNo?: string | null;
 }
 
 export interface Professional {

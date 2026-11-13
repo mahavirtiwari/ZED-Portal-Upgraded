@@ -128,7 +128,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                     <span class="as-avatar" aria-hidden="true">{{ initials(s.UserName) }}</span>
                     <span class="as-who">
                       <span class="as-name">{{ s.UserName }}</span>
-                      <span class="as-id">{{ s.UserId }}</span>
+                      <span class="as-id">{{ s.UserId }}@if (s.PanNo) { · PAN {{ s.PanNo }} }</span>
                     </span>
                     <span class="status-badge as-badge-phone" [class.is-active]="s.IsActive" [class.is-rejected]="!s.IsActive">{{ s.IdStatus }}</span>
                   </div>

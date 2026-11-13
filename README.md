@@ -151,7 +151,7 @@ Everything else is listed in `docs/MIGRATION-PLAN.md`.
 ```powershell
 # 1. Databases (once). Refuses to touch existing DBs unless -Force; -Force drops only these three.
 .\database\setup.ps1          # the three ZED databases and the three referenced ones (05-07); KAWACH comes from the seed below
-# Every migration (0001-0068), in order, on the right databases (safe to re-run):
+# Every migration (0001-0069), in order, on the right databases (safe to re-run):
 .\deploy\Invoke-ZedDatabaseScripts.ps1 -Server localhost\SQLEXPRESS -TrustServerCertificate -Apply -SkipFixes
 # Optional local test data (never on production):
 sqlcmd -S localhost\SQLEXPRESS -E -C -i database\seed\dev-test-user.sql

@@ -62,3 +62,11 @@ dashboard incentives (`api/public/incentive-cards`), keeping the last answer off
 Surveillance copies a unit's checkpoints and evidences from main with main's ids. The checkpoint actions and the evidence's
 checkpoint are now looked up within the unit's requirement (id and text first). `database/verify_surveillance_questionnaire_ids.sql`
 (read-only, on ZED_SURVEILLANCE) shows how many rows the old id-only lookup got wrong.
+
+## Professional Verification (Administration → Settings, per portal)
+
+- **Off** (the default): the agency types the certificate number, PAN, name, e-mail and mobile of the new assessor
+  (consultant). **Training portal**: the old lookup. **API**: another portal's API checks the certificate number and PAN.
+- The PAN is kept in `dbo.Users.PanNo` (0068) and shown on the assessor lists (under the ID), on the assessor's details
+  (next to the certificate) and on the Surveillance assessors list. On the main portal it is also written on the assessor's
+  copy in `ZED_SURVEILLANCE.dbo.Users` straight after the account is created; migration 0069 copies the PANs missing there.

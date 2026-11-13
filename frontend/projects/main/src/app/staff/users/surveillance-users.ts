@@ -157,6 +157,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
                       <span class="sv-who">
                         <span class="sv-name">{{ s.userName }}</span>
                         @if (field(s, 'address')) { <span class="sv-line">{{ field(s, 'address') }}</span> }
+                        @if (field(s, 'panNo')) { <span class="sv-proof">PAN: <strong>{{ field(s, 'panNo') }}</strong></span> }
                         @if (field(s, 'idProofNumber')) { <span class="sv-proof">ID proof: <strong>{{ field(s, 'idProofNumber') }}</strong></span> }
                         @if (showsAgency && s.agencyUserId) {
                           <span class="sv-agency-line"><span class="zed-chip" [title]="s.agencyUserId">{{ s.agencyUserName || s.agencyUserId }}</span></span>
@@ -607,7 +608,7 @@ export class SurveillanceUsersPage {
 
   /**
    * A column the old lists showed that is not in SurveillanceAgency / SurveillanceAssessor (users.api.ts): the API sends the
-   * agency's address and pinCode and the assessor's address and idProofNumber (Users.Address, Pincode, IdProofNumber).
+   * agency's address and pinCode and the assessor's address, idProofNumber and panNo (Users.Address, Pincode, IdProofNumber, PanNo).
    */
   protected field(u: object, key: string): string {
     const v = (u as Record<string, unknown>)[key];

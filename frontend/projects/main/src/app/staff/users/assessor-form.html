@@ -20,7 +20,7 @@
     <span class="af-avatar" aria-hidden="true">{{ initials(model.userName) }}</span>
     <div class="af-who">
       <span class="af-name">{{ model.userName }}</span>
-      <span class="af-id"><strong>{{ userId }}</strong>@if (model.certificateNo) { · Certificate {{ model.certificateNo }} }</span>
+      <span class="af-id"><strong>{{ userId }}</strong>@if (model.certificateNo) { · Certificate {{ model.certificateNo }} }@if (panNo()) { · PAN {{ panNo() }} }</span>
     </div>
     <div class="af-tags">
       @if (model.assessorType) { <span class="zed-chip">{{ typeLabel(model.assessorType) }}</span> }

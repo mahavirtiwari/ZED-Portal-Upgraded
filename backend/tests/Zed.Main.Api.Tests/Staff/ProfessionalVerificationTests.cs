@@ -68,6 +68,20 @@ public sealed class ProfessionalVerificationTests : IDisposable
     // ---- the Add form, verification off (the default) ---------------------------------------
 
     [Fact]
+    public async Task The_agency_list_shows_the_pan()
+    {
+        _host.Sql.Procs["SP_GET_USERS_BY_ROLE"] = _ => FakeSql.Sets([
+            new { Id = 1, UserId = "ZEDBA0099", UserName = "Typed Pro", IsActive = true, IdStatus = "Active", IsCertAttached = 0 },
+            new { Id = 2, UserId = "ZEDBA0100", UserName = "Old Pro", IsActive = true, IdStatus = "Active", IsCertAttached = 0 }]);
+        _host.Sql.Queries[ProfessionalVerification.PansSql] = _ => [new { UserId = "ZEDBA0099 ", PanNo = "ABCDE1234F" }];
+        var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+
+        var rows = await client.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors/mine");
+        Assert.Equal("ABCDE1234F", rows[0].GetProperty("PanNo").GetString());
+        Assert.Equal(JsonValueKind.Null, rows[1].GetProperty("PanNo").ValueKind);
+    }
+
+    [Fact]
     public async Task By_default_verification_is_off_and_the_agency_creates_with_the_typed_details_and_pan()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
@@ -89,6 +103,9 @@ public sealed class ProfessionalVerificationTests : IDisposable
         Assert.Equal("BA1234", FakeSql.Arg(Call(ProfessionalVerification.CertificateInUseSql).Args, "CertificateNo"));
         var pan = Call(ProfessionalVerification.SavePanSql);
         Assert.Equal(("ZEDBA0099", "ABCDE1234F"), (FakeSql.Arg(pan.Args, "UserId"), FakeSql.Arg(pan.Args, "Pan")));
+        // Main: the same PAN on the assessor's copy in ZED_SURVEILLANCE (SP_INSERT_USER writes that row too).
+        var copy = Call(ProfessionalVerification.SaveSurveillancePanSql);
+        Assert.Equal(("ZEDBA0099", "ABCDE1234F"), (FakeSql.Arg(copy.Args, "UserId"), FakeSql.Arg(copy.Args, "Pan")));
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == StaffUserRules.ProfessionalProcedure);
         Assert.Equal("typed@zed.test", Assert.Single(_host.Email.Sent).To);
     }

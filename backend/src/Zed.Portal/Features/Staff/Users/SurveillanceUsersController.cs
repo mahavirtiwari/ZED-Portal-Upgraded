@@ -152,6 +152,8 @@ public sealed class SurveillanceUsersController(
         public string? AgencyUserName { get; init; }
         public string? Address { get; init; }
         public string? IdProofNumber { get; init; }
+        /// <summary>Users.PanNo (0068; copied from main when main creates the assessor, 0069 for older ones).</summary>
+        public string? PanNo { get; set; }
     }
 
     /// <summary>Assessors: all of them for the MasterAdmin (optionally of one agency), the agency's own for an agency.</summary>
@@ -160,12 +162,15 @@ public sealed class SurveillanceUsersController(
     {
         if (!string.IsNullOrEmpty(agencyId) && !StaffUserRules.IsUserId(agencyId)) return this.Problem400("Invalid agency.");
         var agency = IsRole(UserRole.Agency) ? UserId : string.IsNullOrEmpty(agencyId) ? null : agencyId;
-        return Ok(await db.QuerySqlAsync<AssessorRow>(
+        var rows = await db.QuerySqlAsync<AssessorRow>(
             "SELECT A.UserId, A.UserName, A.Email, A.MobileNo, A.IsActive, A.ReasonForRejection, A.DesktopVerification, A.SiteVerification, " +
             "A.AllowBronzeSurveillance, A.CreatedBy AS AgencyUserId, G.UserName AS AgencyUserName, A.Address, A.IdProofNumber " +
             "FROM Users A LEFT JOIN Users G ON G.UserId = A.CreatedBy AND G.RoleId = 2 " +
             "WHERE A.RoleId = 3 AND (@AgencyId IS NULL OR A.CreatedBy = @AgencyId) ORDER BY A.CreatedBy, A.UserId",
-            new { AgencyId = agency }, ct));
+            new { AgencyId = agency }, ct);
+        var pans = await ProfessionalVerification.PansAsync(db, log, ct);
+        foreach (var r in rows) r.PanNo = r.UserId is { } id ? pans.GetValueOrDefault(id.Trim()) : null;
+        return Ok(rows);
     }
 
     public sealed record AssessorBronzeRequest(bool Allow);

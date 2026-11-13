@@ -131,6 +131,8 @@ export class AssessorFormPage {
 
   protected model: AssessorModel = emptyAssessor();
   protected readonly maskedIdProof = signal<string | null>(null);
+  /** The PAN the agency entered (Users.PanNo), shown next to the certificate. */
+  protected readonly panNo = signal<string | null>(null);
   protected readonly storedIdProofType = signal<string | null>(null);
   protected readonly states = signal<MultiSelectOption[]>([]);
   protected readonly sectors = signal<MultiSelectOption[]>([]);
@@ -301,6 +303,7 @@ export class AssessorFormPage {
         };
         this.agencyActivity.set(a.agencySectorActivity ?? null);
         this.maskedIdProof.set(a.idProofNumberMasked);
+        this.panNo.set(a.panNo ?? null);
         this.storedIdProofType.set(a.idProofType);
         this.isActive.set(a.isActive);
         this.canEdit.set(a.canEdit && this.isAgency);

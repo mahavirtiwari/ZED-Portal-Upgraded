@@ -123,6 +123,67 @@ public static partial class ProfessionalVerification
     }
 
     public const string PanNotSaved = " The PAN could not be saved: please ask the administrator to apply database migration 0068.";
+
+    /// <summary>
+    /// Main host: the same PAN on the assessor's copy in ZED_SURVEILLANCE (main's SP_INSERT_USER writes the agencies' and
+    /// assessors' rows there too). Skipped while that database has no PanNo column; migration 0069 copies what is missing.
+    /// </summary>
+    internal const string SaveSurveillancePanSql =
+        "IF EXISTS (SELECT 1 FROM ZED_SURVEILLANCE.sys.columns WHERE object_id = OBJECT_ID('ZED_SURVEILLANCE.dbo.Users') AND name = 'PanNo') " +
+        "EXEC ZED_SURVEILLANCE.sys.sp_executesql N'UPDATE dbo.Users SET PanNo = @Pan WHERE UserId = @UserId;', " +
+        "N'@UserId varchar(50), @Pan varchar(10)', @UserId = @UserId, @Pan = @Pan;";
+
+    /// <summary>Main host: <see cref="SaveSurveillancePanSql"/>. A failure is logged only (the next update's 0069 copies it).</summary>
+    public static async Task CopyPanToSurveillanceAsync(ISqlExecutor db, string userId, string pan, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            await db.ExecuteSqlAsync(SaveSurveillancePanSql, new { UserId = userId, Pan = pan }, ct);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "PAN of {UserId} not copied to ZED_SURVEILLANCE (migration 0069 copies it at the next update)", userId);
+        }
+    }
+
+    /// <summary>The assessors' (consultants', technical experts') PANs, for the lists.</summary>
+    internal const string PansSql = "SELECT UserId, PanNo FROM dbo.Users WHERE RoleId IN (3, 33) AND NULLIF(PanNo, '') IS NOT NULL;";
+
+    internal const string PanOfSql = "SELECT PanNo FROM dbo.Users WHERE UserId = @UserId;";
+
+    public sealed record PanRow(string? UserId, string? PanNo);
+
+    /// <summary>UserId → PAN of every assessor that has one; empty when the column is missing (migration 0068 not applied).</summary>
+    public static async Task<Dictionary<string, string>> PansAsync(ISqlExecutor db, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            var rows = await db.QuerySqlAsync<PanRow>(PansSql, null, ct);
+            return rows.Where(r => !string.IsNullOrWhiteSpace(r.UserId) && !string.IsNullOrWhiteSpace(r.PanNo))
+                .GroupBy(r => r.UserId!.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.First().PanNo!.Trim(), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "Assessors' PANs not read (is migration 0068 applied?)");
+            return new(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>One user's PAN; null without one or when the column is missing.</summary>
+    public static async Task<string?> PanOfAsync(ISqlExecutor db, string userId, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            return (await db.QuerySqlAsync<string?>(PanOfSql, new { UserId = userId }, ct)).FirstOrDefault() is { } p && !string.IsNullOrWhiteSpace(p)
+                ? p.Trim() : null;
+        }
+        catch (DbException ex)
+        {
+            log.LogWarning(ex, "PAN of {UserId} not read (is migration 0068 applied?)", userId);
+            return null;
+        }
+    }
 }
 
 /// <param name="Url">https address of the other portal's API; null when not set.</param>
