@@ -139,3 +139,28 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .chip.is-info { background: #e5f1fb; color: #1f5f99; }
   td .row-actions { justify-content: flex-start; }
 }
+
+// 2026-11-14 (approved frame A, Admin and agency): one style for every staff page that keeps its own markup (masters,
+// settings, monitoring, reports...): the title row like the shared header, flat white cards, light table headers and
+// hairline borders in place of the teal header row. Only inside the staff frame (.staff-page); the applicant pages are not
+// touched. The pages already redesigned (list cards) keep their own rules, which are more specific.
+// .staff-page twice: one class more than the skin's table rules (same file order would let the skin win).
+.staff-page.staff-page {
+  .page-head { align-items: center; }
+  .page-head .registration-title { font-size: 22px; font-weight: 700; color: #23474a; }
+  .page-head .page-sub { font-size: 13.5px; color: #7a8a8b; }
+  .page-actions .btn { font-weight: 600; }
+  .zed-card { border-color: #dfe9ea; border-radius: 12px; box-shadow: none; }
+  table.table.table-zed > thead > tr { background: #f4f8f8 !important; }
+  table.table.table-zed > thead > tr > th, table.table.table-zed > thead > tr > td {
+    --bs-table-bg: #f4f8f8; --bs-table-color: #5f6f70; background: #f4f8f8 !important; color: #5f6f70 !important;
+    font-size: 12.5px; font-weight: 700; border-color: #e3ecec;
+  }
+  table.table.table-zed { background: #fff; font-size: 13.5px; border-color: #e3ecec; }
+  table.table.table-zed > :not(caption) > * > * { border-color: #eef3f3; }
+  .table-responsive:has(> table.table-zed) { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; }
+  .list-card .table-responsive:has(> table.table-zed) { border: 0; border-radius: 0; }
+  .list-card table.table.table-zed { border: 0; }
+  .table-responsive > table.table-zed { margin-bottom: 0; border: 0; }
+  .status-badge { border-radius: 12px; font-weight: 700; }
+}

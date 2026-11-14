@@ -4,6 +4,7 @@ import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ListSearchComponent, searchRows } from '../pager';
 import { DashboardPortalSwitchComponent } from '../dashboard-portal-switch';
+import { PageHead } from '../../msme/shared/page-head';
 
 export interface ReportItem {
   id: string;
@@ -30,34 +31,35 @@ async function blobError(err: unknown): Promise<string> {
  */
 @Component({
   selector: 'zed-staff-reports',
-  imports: [ListSearchComponent, DashboardPortalSwitchComponent],
+  imports: [ListSearchComponent, DashboardPortalSwitchComponent, PageHead],
+  host: { class: 'list-v2 d-block' },
   template: `
     <!-- One Dashboard Admin (2026-11-07): the portal of this screen. -->
     <zed-dashboard-portal-switch [screens]="['reports']" />
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">Reports</h3>
-        <p class="page-sub">The reports of your role, each downloaded as an Excel file.</p>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header and the reports in one card (each downloads as Excel: no filters to show). -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: 'Reports' }]" title="Reports" />
     @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
-    <zed-list-search [(value)]="search" placeholder="Search reports" inputId="reports-search" [found]="shown().length" />
-    <div class="table-responsive reports">
-      <table class="table table-zed table-bordered">
+    <div class="list-card reports">
+    <div class="list-card-head">
+      <b>{{ reports().length }} reports <small class="sub d-inline">· each downloaded as an Excel file</small></b>
+      <zed-list-search [(value)]="search" placeholder="Search reports" inputId="reports-search" [found]="shown().length" />
+    </div>
+    <div class="table-responsive">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 70px">S.No</th>
+            <th style="width: 70px">S.No</th>
             <th>Report Name</th>
-            <th class="text-center" style="width: 150px">Download</th>
+            <th style="width: 150px">Download</th>
           </tr>
         </thead>
         <tbody>
           @for (r of shown(); track r.id) {
             <tr>
-              <td class="text-center">{{ $index + 1 }}</td>
+              <td>{{ $index + 1 }}</td>
               <td><strong>{{ r.name }}</strong></td>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
+              <td>
+                <div class="row-actions">
                   <button type="button" class="btn btn-primary" [disabled]="downloading() !== null"
                           (click)="download(r)">{{ downloading() === r.id ? 'PLEASE WAIT' : 'DOWNLOAD' }}</button>
                 </div>
@@ -69,13 +71,14 @@ async function blobError(err: unknown): Promise<string> {
         </tbody>
       </table>
     </div>
+    </div>
     @if (downloading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite"><div class="loadingimage"><div class="loader"></div><div class="text-center"><small>Please wait ... large reports may take a few minutes.</small></div></div></div>
     }
   `,
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .reports { max-width: 900px; }
+    .reports { max-width: 960px; }
   `,
 })
 export class ReportsPage {

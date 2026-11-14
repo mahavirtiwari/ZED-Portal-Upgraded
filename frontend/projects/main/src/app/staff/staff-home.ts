@@ -46,8 +46,16 @@ export function iconFor(label: string): string {
           <h3 class="mb-1">Welcome, {{ user()?.actingUserName || user()?.userName }}</h3>
           <p class="mb-0 text-muted">Choose a screen to start. The same screens are in the menu above.</p>
         </div>
-        <span class="role-badge">{{ roleName() }}{{ subRoleText() }}</span>
+        <div class="welcome-side">
+          <span class="role-badge">{{ roleName() }}{{ subRoleText() }}</span>
+          <!-- 2026-11-14 (approved frame A): find a screen among the tiles. -->
+          <input type="search" class="form-control find" placeholder="Find a screen" aria-label="Find a screen" maxlength="60"
+                 [value]="query()" (input)="query.set($any($event.target).value)" />
+        </div>
       </div>
+      @if (query().trim() && !singles().length && !groups().length) {
+        <p class="text-muted">No screen matches “{{ query() }}”.</p>
+      }
 
       @if (singles().length) {
         <div class="row g-3 mb-3">
@@ -73,7 +81,7 @@ export function iconFor(label: string): string {
 
       <div class="row g-3">
         @for (g of groups(); track g.group) {
-          <div class="col-md-6 col-xl-4">
+          <div class="col-12">
             <section class="group-card h-100" [attr.aria-label]="g.group">
               <h4>
                 <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path [attr.d]="icon(g.group)" /></svg></span>
@@ -134,7 +142,20 @@ export function iconFor(label: string): string {
     .group-card li a:hover, .group-card li a:focus { color: #2f7c83; }
     .group-card li a:hover span { color: #45a5ad; }
     .chooser-label { display: block; background: none; padding: 0; font-size: 13px; color: #5f6f70; margin: 4px 0 6px; }
-    .group-card .form-select { margin-bottom: 10px; }
+    .group-card .form-select { margin-bottom: 10px; max-width: 420px; }
+    /* 2026-11-14 (approved frame A): the hub: each menu a section of tiles, the search on the welcome card. */
+    .welcome-side { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .welcome-side .find { width: 240px; max-width: 100%; }
+    .group-card { background: transparent; border: 0; box-shadow: none; padding: 0; }
+    .group-card h4 { font-size: 13px; letter-spacing: .05em; text-transform: uppercase; color: #5f6f70; margin: 6px 0 10px; }
+    .group-card h4 .icon { width: 28px; height: 28px; border-radius: 8px; }
+    .group-card h4 .icon svg { width: 16px; height: 16px; }
+    .group-card h5 { margin: 4px 0 8px; }
+    .group-card ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+    .group-card li + li { border-top: 0; }
+    .group-card li a { align-items: center; height: 100%; min-height: 54px; padding: 12px 14px; background: #fff; border: 1px solid #dfe9ea; border-radius: 12px;
+      font-weight: 600; transition: border-color .15s, box-shadow .15s; }
+    .group-card li a:hover, .group-card li a:focus { border-color: #45a5ad; box-shadow: 0 4px 12px rgba(69, 165, 173, 0.16); }
   `,
 })
 export class StaffHomePage {
@@ -148,8 +169,20 @@ export class StaffHomePage {
     const u = this.user();
     return menuEntries(u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : []);
   });
-  protected readonly singles = computed(() => this.entries().flatMap((e) => ('item' in e ? [e.item] : [])));
-  protected readonly groups = computed(() => this.entries().flatMap((e) => ('group' in e ? [e] : [])));
+  /** 2026-11-14: the search box: only the screens whose label (or menu) has the words typed. */
+  protected readonly query = signal('');
+  private matches(label: string, also = ''): boolean {
+    const q = this.query().trim().toLowerCase();
+    return !q || (label + ' ' + also).toLowerCase().includes(q);
+  }
+  protected readonly singles = computed(() =>
+    this.entries().flatMap((e) => ('item' in e ? [e.item] : [])).filter((i) => i.route !== '/staff/administration' && this.matches(i.label)));
+  protected readonly groups = computed(() => this.entries().flatMap((e) => ('group' in e ? [e] : [])).map((g) => ({
+    ...g,
+    sections: g.sections
+      .map((sec) => ({ ...sec, items: sec.items.filter((i) => this.matches(i.label, g.group + ' ' + (sec.heading ?? ''))) }))
+      .filter((sec) => sec.items.length),
+  })).filter((g) => g.sections.length));
   protected readonly roleName = computed(() => staffRoleName(this.user()));
   protected readonly subRoleText = computed(() => {
     const subs = this.user()?.subRoles ?? [];

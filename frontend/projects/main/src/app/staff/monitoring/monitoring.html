@@ -1,11 +1,9 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ title }}</h3>
-    <p class="page-sub">{{ subtitle }}</p>
-  </div>
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header, the stage counts, the filters, stages and list in one card. -->
+<zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: title }]" [title]="title" />
+@if (certification()) { <zed-list-counts [counts]="stageCounts()" /> }
 
-<div class="zed-card">
+<div class="list-card">
+<div class="list-card-head mon-head">
   <div class="filter-bar">
     <div class="filter">
       <label class="form-label" for="certification">Certification Level</label>
@@ -57,7 +55,7 @@
 }
 
 <div class="table-responsive">
-  <table class="table table-bordered table-zed">
+  <table class="table table-zed">
     <thead>
       @if (consultancy) {
         <tr>
@@ -179,6 +177,7 @@
 </div>
 
 <zed-pager [pager]="pager" />
+</div>
 
 @if (action(); as a) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="monitoring-action-title" (click)="close()">

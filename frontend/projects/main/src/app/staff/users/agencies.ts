@@ -8,6 +8,7 @@ import { AgencyLevel, AgencyRow, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivit
 import { LABELS } from '../../portal-labels';
 import { PagedView, PagerComponent } from '../pager';
 import { STAFF_SYSTEM } from '../staff-menu';
+import { PageHead } from '../../msme/shared/page-head';
 
 /** 'levels': Agency level allocation (2026-11-08; before, the Bronze Assessment Agencies page). */
 type Mode = 'all' | 'levels';
@@ -32,7 +33,7 @@ interface Dialog {
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent, PageHead],
   templateUrl: './agencies.html',
   styles: `
     .ag-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }

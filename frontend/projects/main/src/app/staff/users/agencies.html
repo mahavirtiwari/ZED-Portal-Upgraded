@@ -1,14 +1,7 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">{{ title }}</h3>
-    <p class="page-sub">{{ subtitle }}</p>
-  </div>
-  @if (mode === 'all') {
-    <div class="page-actions">
-      <a routerLink="/staff/users/agencies/new" class="btn btn-primary">+ Add New</a>
-    </div>
-  }
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header. -->
+<zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: title }]" [title]="title">
+  @if (mode === 'all') { <a routerLink="/staff/users/agencies/new" class="btn btn-primary btn-sm">+ Add New</a> }
+</zed-page-head>
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>

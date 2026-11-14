@@ -60,7 +60,7 @@ describe('AgenciesPage', () => {
     await create('all');
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0001'), agency('ZEDAA0002', { IsActive: false, IdStatus: 'In-Active' })]);
     await settle();
-    expect(el.querySelector('h3')!.textContent).toContain('Assessment Agencies');
+    expect(el.querySelector('h2')!.textContent).toContain('Assessment Agencies');
     expect(el.querySelectorAll('tbody tr').length).toBe(2);
     expect(el.textContent).toContain('+ Add New');
 
@@ -156,7 +156,7 @@ describe('AgenciesPage', () => {
       agency('ZEDAA0002', { AllowSilverAssessments: true, AllowGoldAssessments: true, AllowZedxAssessments: true }),
     ]);
     await settle();
-    expect(el.querySelector('h3')!.textContent).toContain('Agency Level Allocation');
+    expect(el.querySelector('h2')!.textContent).toContain('Agency Level Allocation');
     expect(el.textContent).not.toContain('+ Add New');
     expect(el.textContent).not.toContain('Edit');
     // Per level: enabled and off.

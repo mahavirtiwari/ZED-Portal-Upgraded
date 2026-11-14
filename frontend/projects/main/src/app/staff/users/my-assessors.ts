@@ -9,6 +9,7 @@ import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { OwnAssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { PagedView, PagerComponent } from '../pager';
 import { ScopeItem, scopeChips } from './assessor-scope';
+import { PageHead } from '../../msme/shared/page-head';
 
 interface Dialog {
   kind: 'block';
@@ -29,17 +30,12 @@ type StatusFilter = 'all' | 'active' | 'blocked';
  */
 @Component({
   selector: 'zed-staff-my-assessors',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead],
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ labels.assessors }}</h3>
-        <p class="page-sub">Your {{ labels.assessors.toLowerCase() }}: block or unblock, edit (also the mobile number) or send a password reset link.</p>
-      </div>
-      <div class="page-actions">
-        <a routerLink="/staff/users/assessors/new" class="btn btn-primary">+ Add New</a>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: labels.assessors }]" [title]="labels.assessors">
+      <a routerLink="/staff/users/assessors/new" class="btn btn-primary btn-sm">+ Add New</a>
+    </zed-page-head>
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

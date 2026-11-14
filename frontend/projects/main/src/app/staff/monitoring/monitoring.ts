@@ -7,6 +7,8 @@ import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { MonitoringApi, MonitoringCounts, Row } from './monitoring.api';
 import { ClientPager, PagerComponent } from '../pager';
 import { levelCodes, levelName } from '../../msme/shared/levels';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 type Action = { kind: 'extend'; unit: Row; days: number } | { kind: 'stepBack'; unit: Row } | { kind: 'sendBack'; unit: Row };
 
@@ -26,13 +28,17 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
  */
 @Component({
   selector: 'zed-staff-monitoring',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './monitoring.html',
   styles: `
     .yellow-background { background-color: #fff3c4; }
     .unit { min-width: 200px; }
     .stack > div + div { margin-top: 6px; }
-    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; padding-top: 14px; border-top: 1px solid #dfe9ea; }
+    .mon-head { display: block; }
+    .mon-head .filter-bar { margin: 0; }
+    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #eef3f3; }
+    .status-tabs .btn { border-radius: 18px; }
     .status-tabs .btn { font-size: 13px; font-weight: 600; }
     .status-tabs .btn .badge { background: #eef6f6; color: #23474a; margin-left: 4px; }
     .status-tabs .btn.active { background: #23656b; border-color: #23656b; color: #fff; }
@@ -80,6 +86,12 @@ export class MonitoringPage {
   protected readonly search = this.pager.search;
   protected readonly page = this.pager.page;
   protected readonly counts = signal<MonitoringCounts>(NO_COUNTS);
+  /** 2026-11-14: the stages' counts above the card (the stage buttons keep theirs too). */
+  protected readonly stageCounts = computed<ListCount[]>(() => {
+    const c = this.counts();
+    const tone: Partial<Record<keyof MonitoringCounts, ListCount['tone']>> = { Nc: 'bad', Rj: 'bad', Qc: 'warn' };
+    return this.tabs.map((t) => ({ label: t.label.charAt(0) + t.label.slice(1).toLowerCase(), value: c[t.count] ?? 0, tone: tone[t.count] }));
+  });
   // The server says so with each list; until the first list (no certification level chosen yet), the role decides,
   // as the old page's header did (MasterAdmin: "Assessment Dates / NC Closure Date").
   protected readonly canManage = signal(inject(AuthService).currentUser()?.roleId === 7);

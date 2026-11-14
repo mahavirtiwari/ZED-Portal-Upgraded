@@ -60,6 +60,8 @@ const MAIN_STAFF_CHILDREN: Routes = [
     loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
   },
   { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  // 2026-11-14: the Admin's hub of every screen (the staff home page, without the landing redirect).
+  { path: 'administration', title: 'ZED | All settings', loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage) },
   { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
   {
     path: 'failed-transactions',
@@ -383,6 +385,8 @@ const SYSTEM_COMMON_STAFF_CHILDREN: Routes = [
     loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage),
   },
   { path: 'dashboard', title: 'ZED | Dashboard', loadComponent: () => import('./staff/dashboard/staff-dashboard').then((m) => m.StaffDashboardPage) },
+  // 2026-11-14: the Admin's hub of every screen (the staff home page, without the landing redirect).
+  { path: 'administration', title: 'ZED | All settings', loadComponent: () => import('./staff/staff-home').then((m) => m.StaffHomePage) },
   { path: 'registered-msme', title: 'ZED | Registered MSME', loadComponent: () => import('./staff/dashboard/registered-msme').then((m) => m.RegisteredMsmePage) },
   {
     path: 'failed-transactions',

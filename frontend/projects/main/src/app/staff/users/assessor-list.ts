@@ -10,6 +10,7 @@ import { STAFF_SYSTEM } from '../staff-menu';
 import { AssessorRow, BlockHistoryEntry, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { ClientPager, PagerComponent } from '../pager';
 import { ScopeItem, scopeChips } from './assessor-scope';
+import { PageHead } from '../../msme/shared/page-head';
 
 /** Which assessors the list shows: the status tiles, the type tabs and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
@@ -45,14 +46,11 @@ export function assessorTypeLabel(type: string | null | undefined): string {
  */
 @Component({
   selector: 'zed-staff-assessor-list',
-  imports: [FormsModule, RouterLink, PagerComponent, DatePipe, ContentTextComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, DatePipe, ContentTextComponent, PageHead],
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ consultancy ? 'Consultants' : labels.assessors }}{{ agencyId ? ' of ' + agencyId : '' }}</h3>
-        <p class="page-sub">{{ consultancy ? 'Consultants' : labels.assessors }} of the {{ labels.agencies.toLowerCase() }}, with their details and status.</p>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: consultancy ? 'Consultants' : labels.assessors }]"
+                   [title]="(consultancy ? 'Consultants' : labels.assessors) + (agencyId ? ' of ' + agencyId : '')" />
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }

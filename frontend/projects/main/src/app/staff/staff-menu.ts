@@ -148,6 +148,8 @@ export const MAIN_MENU: StaffMenuItem[] = [
 
   // Admin: as the live layout (Frontend/Shared/_Layout.cshtml, Admin), labels and order; Questionnaire and Technology
   // Upgradation are drop-downs of their own rather than headings under Masters (V4, 2026-10-27).
+  // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
+  { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
   { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
   { label: 'Documents/Videos', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
@@ -207,6 +209,8 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   { label: 'Customer History', route: '/staff/history', roles: [R.CitizenFeedback, R.QC] },
 
   // Admin: as the live layout; its Incentives drop-down is not ported (ZED_CONSULTANT incentives are not served here).
+  // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
+  { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
   { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
   { label: 'Documents/Videos', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
@@ -273,6 +277,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
   // Customer History: from Registered MSME for SuperAdmin and Citizen Feedback; QC has no list here, so it keeps the item.
   { label: 'Customer History', route: '/staff/history', roles: [R.QC] },
 
+  // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
+  { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
   { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
   { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
   { label: '{level}', route: '/staff/masters/parameters/{level}', roles: [R.Admin], menu: 'Questionnaire', perLevel: true },
