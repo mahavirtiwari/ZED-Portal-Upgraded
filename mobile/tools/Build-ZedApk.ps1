@@ -34,7 +34,7 @@
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App zedmsme -Production -Bundle -VersionCode 3 -VersionName 2.1
   # ZED MSME for the Play Store: the APK and the .aab bundle, version 2.1 (code 3). (2026-11-14: -Bundle, -VersionCode and
-  # -VersionName; the version options are read by the ZED MSME build only, the other apps keep their own numbers.)
+  # -VersionName; read by the ZED MSME, ZED SA and ZED Consultancy builds; ZED Surveillance keeps its own numbers.)
 #>
 [CmdletBinding()]
 param(
@@ -51,7 +51,7 @@ param(
     [switch]$KeepBuildFolders,
     # 2026-11-14: also the Android App Bundle (.aab) the Play Store asks for, next to the APK.
     [switch]$Bundle,
-    # 2026-11-14: the version of a store release (Gradle -PzedVersionCode / -PzedVersionName; ZED MSME reads them).
+    # 2026-11-14: the version of a store release (Gradle -PzedVersionCode / -PzedVersionName; ZED MSME, SA and Consultancy read them).
     [ValidateRange(1, 2100000000)][int]$VersionCode,
     [ValidatePattern('^\d+(\.\d+){0,3}$')][string]$VersionName
 )
