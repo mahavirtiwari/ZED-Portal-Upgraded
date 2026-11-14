@@ -3,8 +3,10 @@
     @if (mode() === 'login') {
       <!-- 2026-11-07 redesign (option A): icons in the fields, Show / Hide, a full-width LOGIN and Forgot as a link. -->
       <form class="login-form" (ngSubmit)="login()" novalidate>
-        <h2 class="ml-heading">Registered user</h2>
-        <p class="ml-lead">Sign in with your ZED ID</p>
+        <!-- 2026-11-14 (approved): Sign in; Forgot beside the password; Register under the card. -->
+        <span class="ml-tag">Registered MSMEs</span>
+        <h2 class="ml-heading">Sign in</h2>
+        <p class="ml-lead">Use your ZED ID and password</p>
         @if (expired()) {
           <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
         }
@@ -16,7 +18,8 @@
                  [(ngModel)]="userId" required maxlength="100" />
         </div>
 
-        <label for="password">Password</label>
+        <div class="ml-pw-label"><label for="password">Password</label>
+          <button type="button" class="ml-forgot" (click)="switchMode('reset')">Forgot password or ZED ID?</button></div>
         <div class="mb-3 in-field">
           <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
           <input id="password" name="password" class="form-control has-toggle" placeholder="Password" autocomplete="current-password"
@@ -31,8 +34,7 @@
         </div>
 
         <div class="ml-actions">
-          <button type="submit" class="btn btn-primary ml-login" [disabled]="busy()">LOGIN</button>
-          <button type="button" class="ml-forgot" (click)="switchMode('reset')">Forgot password or ZED ID?</button>
+          <button type="submit" class="btn btn-primary ml-login" [disabled]="busy()">Sign in<svg class="ml-go" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3z" /></svg></button>
         </div>
       </form>
     } @else {
@@ -108,10 +110,11 @@
     }
   </div>
 
-  <div class="ml-or"><span>New to ZED?</span></div>
   <div class="ml-new">
-    <h2>New user</h2>
-    <zed-text key="msme.login.newUserEligibility" />
-    <a routerLink="/msme/register" class="btn ml-register">REGISTER NOW</a>
+    <div class="ml-new-text">
+      <h2>New to ZED?</h2>
+      <zed-text key="msme.login.newUserEligibility" />
+    </div>
+    <a routerLink="/msme/register" class="btn ml-register">Register now</a>
   </div>
 </zed-login-shell>

@@ -67,3 +67,22 @@
 @media (max-width: 900px) {
   .login-login { padding: 16px 16px 14px; box-shadow: none; }
 }
+
+/* 2026-11-14 (approved): as the staff sign-in — a tag, "Sign in", Forgot beside the password label, a full-width button,
+   and "New to ZED?" in a dashed box with Register now beside the text. */
+.ml-tag { display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px; background: #d9eef0; color: #174a4e; margin-bottom: 10px; }
+.ml-pw-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ml-pw-label .ml-forgot { font-size: 13px; }
+.ml-actions .ml-login { width: 100%; flex: 1 1 100%; text-transform: none; letter-spacing: 0.2px; }
+.ml-go { width: 18px; height: 18px; fill: currentColor; margin-left: 8px; }
+.ml-new {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 16px;
+  background: #f8fcfc; border: 1px dashed #9cc8cc; border-radius: 12px; padding: 12px 16px;
+}
+.ml-new-text { min-width: 0; }
+.ml-new .ml-register {
+  width: auto; flex: none; margin: 0; height: 40px; padding: 0 16px; border-radius: 8px; font-size: 14px; letter-spacing: 0;
+  background: #e6eded; color: #174a4e; box-shadow: none; border: 0;
+}
+.ml-new .ml-register:hover, .ml-new .ml-register:focus-visible { background: #23656b; color: #fff; }
+@media (max-width: 480px) { .ml-new { flex-direction: column; align-items: stretch; } .ml-new .ml-register { width: 100%; } }

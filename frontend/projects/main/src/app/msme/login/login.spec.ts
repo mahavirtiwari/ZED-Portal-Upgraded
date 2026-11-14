@@ -35,7 +35,6 @@ describe('LoginPage', () => {
 
     await settle();
     http.expectOne('/api/auth/me').flush(null, { status: 204, statusText: 'No Content' });
-    http.expectOne('/api/msme/auth/banner').flush({ imageUrl: null });
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '' });
     await settle();
   });

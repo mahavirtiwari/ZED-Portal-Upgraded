@@ -19,8 +19,8 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
   imports: [FormsModule, RouterLink, Recaptcha, StaffLoginShell],
   template: `
     <zed-staff-login-shell>
-      <h1 class="login-title">Welcome</h1>
-      <p class="login-sub">Sign in with your ZED user ID{{ systemName ? ' · ' + systemName : '' }}</p>
+      <h1 class="login-title">Sign in</h1>
+      <p class="login-sub">Use your ZED user ID and password{{ systemName ? ' · ' + systemName : '' }}</p>
       @if (expired) {
         <div class="alert alert-info session-expired" role="status">{{ expiredMessage }}</div>
       }
@@ -33,7 +33,8 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
           </div>
         </div>
         <div class="mb-3">
-          <label for="password">Password</label>
+          <!-- 2026-11-14: Forgot password beside the label. -->
+          <div class="pw-label"><label for="password">Password</label><a routerLink="/forgot-password">Forgot password?</a></div>
           <div class="field">
             <span class="in-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Zm2 10.2a1.7 1.7 0 1 1 0-3.4 1.7 1.7 0 0 1 0 3.4Z" /></svg></span>
             <input id="password" name="password" [type]="showPassword() ? 'text' : 'password'" class="form-control has-toggle" placeholder="Password" autocomplete="current-password" [(ngModel)]="password" required maxlength="50" />
@@ -43,10 +44,8 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
           </div>
         </div>
         <div class="mb-3"><zed-recaptcha (token)="captchaToken = $event" /></div>
-        <!-- 2026-11-12: the button and the link on one line. -->
         <div class="login-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">Login<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3z" /></svg></button>
-          <a routerLink="/forgot-password">Forgot password?</a>
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Sign in<svg class="go" viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 5.3 19.9 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.1l-4.3-4.3z" /></svg></button>
         </div>
         @if (error()) {
           <div class="alert alert-danger mt-3 mb-0" role="alert">{{ error() }}</div>
@@ -61,7 +60,7 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     </zed-staff-login-shell>
   `,
   styles: `
-    .login-title { font-size: 28px; font-weight: 700; color: #1d2b2c; margin: 0; }
+    .login-title { font-size: 26px; font-weight: 700; color: #1d2b2c; margin: 0; }
     .login-sub { color: #5f6b6c; font-size: 14px; margin: 4px 0 22px; }
     .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
     .field { position: relative; }
@@ -81,9 +80,9 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
       text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     }
     .btn-primary:hover, .btn-primary:focus-visible { background-color: #174a4e; border-color: #174a4e; filter: none; }
-    .login-actions { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .login-actions .btn-primary { flex: 0 0 auto; min-width: 170px; padding: 0 28px; }
-    .login-actions a { color: #23656b; font-weight: 600; white-space: nowrap; }
+    .login-actions .btn-primary { width: 100%; text-transform: none; letter-spacing: 0.2px; }
+    .pw-label { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+    .pw-label a { color: #23656b; font-weight: 600; font-size: 13px; white-space: nowrap; }
     .btn-primary .go { width: 18px; height: 18px; fill: currentColor; margin-left: 8px; }
   `,
 })
