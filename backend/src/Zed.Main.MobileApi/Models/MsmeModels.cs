@@ -15,6 +15,12 @@ public sealed class LoginServiceRequest
     public DeviceInfo? deviceInfo { get; set; }
 }
 
+/// <summary>FinalSubmit (2026-11-14): with the agency the applicant chose when a ZED Facilitator assisted it (else null).</summary>
+public class FinalSubmitRequest : BaseServiceRequest
+{
+    public string? facilitatorAgencyId { get; set; }
+}
+
 public class BaseServiceRequest
 {
     public DeviceInfo? deviceInfo { get; set; }

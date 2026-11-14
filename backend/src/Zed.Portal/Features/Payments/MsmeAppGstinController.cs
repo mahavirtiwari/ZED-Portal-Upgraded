@@ -28,11 +28,14 @@ public sealed class MsmeAppGstinController(
 {
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
+    /// <summary>Why the last <see cref="UnitAsync"/> refused the token (2026-11-14, <see cref="MsmeAppToken"/>).</summary>
+    private AppTokenCheck refusal = AppTokenCheck.Missing;
+
     private async Task<string?> UnitAsync(CancellationToken ct)
     {
-        var token = Request.Headers[AppTokens.Header].ToString();
-        if (tokens.Read(token) is not { } t || (t.Unit ?? t.User) is not { Length: > 0 } zedId) return null;
-        return await tokens.CheckAsync(token, MobileApps.Msme, null, zedId, ct) == AppTokenCheck.Valid ? zedId : null;
+        var (zedId, check) = await MsmeAppToken.UnitAsync(Request, tokens, ct);
+        refusal = check;
+        return zedId;
     }
 
     private static string GstinKey(string zedId, string gstin) => $"app-gstin-ok:{zedId}:{gstin}";
@@ -57,7 +60,7 @@ public sealed class MsmeAppGstinController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> VerifyGstin(string? certification, string? gstin, CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         if (Certifications.CanonicalApplicable(certification ?? "") is not { } cert) return Fail("Invalid certification.");
         var g = (gstin ?? "").Trim().ToUpperInvariant();
         if (!Certifications.Gstin().IsMatch(g)) return Fail("Please enter valid GSTIN.");
@@ -90,7 +93,7 @@ public sealed class MsmeAppGstinController(
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> CorrectPan(string? certification, string? gstin, string? pan, CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         if (Certifications.CanonicalApplicable(certification ?? "") is not { } cert) return Fail("Invalid certification.");
         var g = (gstin ?? "").Trim().ToUpperInvariant();
         var p = (pan ?? "").Trim().ToUpperInvariant();

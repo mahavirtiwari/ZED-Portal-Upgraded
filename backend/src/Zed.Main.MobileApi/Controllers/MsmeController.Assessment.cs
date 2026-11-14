@@ -332,9 +332,20 @@ public sealed partial class MsmeController
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]
     [MsmeEditAudit("App: final submit")]
-    public async Task<IActionResult> FinalSubmit(BaseServiceRequest request, CancellationToken ct)
+    public async Task<IActionResult> FinalSubmit(FinalSubmitRequest request, CancellationToken ct)
     {
         var args = new { CertificationType = request.certificationType, ZedId = request.userName };
+        // 2026-11-14: the agency chosen with a ZED Facilitator's help (first submission only), checked before anything is saved.
+        FacilitatorAgency? chosen = null;
+        if (!string.IsNullOrWhiteSpace(request.facilitatorAgencyId))
+        {
+            if (LevelRegistry.Canonical(request.certificationType?.Trim()) is not { } chosenLevel) return Fail(InvalidDetails);
+            chosen = (await FacilitatorAgenciesAsync(request.userName ?? "", chosenLevel, ct))
+                .FirstOrDefault(a => string.Equals(a.userId, request.facilitatorAgencyId.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (chosen is null) return Fail("The agency you chose cannot take this application. Please choose the agency again.");
+            // Only the first submission is allotted (an NC answer keeps its agency).
+            if ((await StageAsync(request.userName ?? "", request.certificationType, ct)) is not { BeforeFinalSubmit: true }) chosen = null;
+        }
 
         var allow = (await db.QueryProcMultipleAsync("SP_APP_CHECK_DATA_SYNC_FINAL_SUBMIT", args, ct)).FirstRow(0);
         if (allow.Count == 0) return Fail(InvalidDetails);
@@ -360,6 +371,14 @@ public sealed partial class MsmeController
             var level = LevelRegistry.Canonical(request.certificationType!.Trim())!;
             var allot = await TryExecuteAsync("SP_V4_AUTO_ALLOT_AGENCY", new { ZedId = request.userName, CertificationType = level }, ct);
             if (allot is not null) log.LogError("{Level} auto-allotment of {ZedId} failed: {Error} (is migration 0031 applied?)", level, request.userName, allot);
+        }
+        if (chosen is not null)
+        {
+            // The applicant's agency instead of the automatic one, as the Master Admin's Allot (history 'AgencyAlloted').
+            var level = LevelRegistry.Canonical(request.certificationType!.Trim())!;
+            var allotted = await TryExecuteAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY", new { ZedId = request.userName, Certification = level, CertificationBodyUserId = chosen.userId }, ct);
+            if (allotted is null) log.LogInformation("{ZedId} {Level} allotted to the applicant's agency {Agency} (ZED Facilitator)", request.userName, level, chosen.userId);
+            else log.LogError("{ZedId} {Level}: allotment to the applicant's agency {Agency} failed: {Error}", request.userName, level, chosen.userId, allotted);
         }
 
         await SendSubmissionMailAsync(request.userName ?? "", request.certificationType ?? "", ct);

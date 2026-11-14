@@ -311,6 +311,30 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
     private Task<JsonElement> FinalSubmit() => Post("/Msme/FinalSubmit", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze"}"""));
 
     [Fact]
+    public async Task A_facilitator_assisted_applicant_picks_an_allowed_agency_and_the_final_submit_allots_it()
+    {
+        // 2026-11-14: Yes = the applicant chooses the agency (desktop verification for Bronze); No keeps the automatic allotment.
+        Host.Sql.Procs["SP_ASSESSMENT_AGENCIES_TO_ALLOT"] = _ => FakeSql.Sets([
+            new { UserId = "AGENCY2", UserName = "Zeta Assessors", DesktopVerification = true, SiteVerification = false },
+            new { UserId = "AGENCY1", UserName = "Alpha Assessors", DesktopVerification = true, SiteVerification = true },
+            new { UserId = "AGENCY9", UserName = "Site Only", DesktopVerification = false, SiteVerification = true }]);
+        var list = await Post("/Msme/GetFacilitatorAgencies", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze"}"""));
+        AssertOk(list);
+        Assert.Equal(["AGENCY1", "AGENCY2"], list.GetProperty("agencies").EnumerateArray().Select(a => a.GetProperty("userId").GetString()));
+
+        FinalSubmitProcs(0);
+        Stage("Bronze", 1);
+        AssertFail(await Post("/Msme/FinalSubmit", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze","facilitatorAgencyId":"AGENCY9"}""")),
+            "The agency you chose cannot take this application. Please choose the agency again.");
+        Assert.Empty(CallsTo("SP_APP_MSME_FINAL_SUBMIT"));
+
+        AssertOk(await Post("/Msme/FinalSubmit", Json($$"""{"userName":"{{ZedId}}","certificationType":"Bronze","facilitatorAgencyId":"agency2"}""")));
+        Assert.Single(CallsTo("SP_APP_MSME_FINAL_SUBMIT"));
+        var allot = Assert.Single(CallsTo("SP_ASSESSMENT_ALLOT_TO_AGENCY"));
+        Assert.Equal(("Bronze", "AGENCY2"), (FakeSql.Arg(allot.Args, "Certification"), FakeSql.Arg(allot.Args, "CertificationBodyUserId")));
+    }
+
+    [Fact]
     public async Task FinalSubmit_submits_and_mails_a_confirmation_without_passwords()
     {
         Host.Settings["Email:RegistrationCc"] = "zed.office@example.test";
@@ -398,7 +422,7 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         var actions = typeof(MsmeController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes().Any(a => a is HttpPostAttribute or AcceptVerbsAttribute))
             .ToList();
-        Assert.Equal(21, actions.Count);
+        Assert.Equal(22, actions.Count); // 2026-11-14: + GetFacilitatorAgencies
         foreach (var action in actions.Where(a => !unbound.Contains(a.Name)))
         {
             var bound = action.GetCustomAttribute<DeviceBoundAttribute>();

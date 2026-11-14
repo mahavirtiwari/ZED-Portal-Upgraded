@@ -18,11 +18,14 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     private string? ClientIp => HttpContext.Connection.RemoteIpAddress?.ToString();
 
     /// <summary>The unit of a valid ZED MSME app token, else null.</summary>
+    /// <summary>Why the last <see cref="UnitAsync"/> refused the token (2026-11-14, <see cref="MsmeAppToken"/>).</summary>
+    private AppTokenCheck refusal = AppTokenCheck.Missing;
+
     private async Task<string?> UnitAsync(CancellationToken ct)
     {
-        var token = Request.Headers[AppTokens.Header].ToString();
-        if (tokens.Read(token) is not { } t || (t.Unit ?? t.User) is not { Length: > 0 } zedId) return null;
-        return await tokens.CheckAsync(token, MobileApps.Msme, null, zedId, ct) == AppTokenCheck.Valid ? zedId : null;
+        var (zedId, check) = await MsmeAppToken.UnitAsync(Request, tokens, ct);
+        refusal = check;
+        return zedId;
     }
 
     private IActionResult Answer<T>(MsmeProfileService.Result<T> r, Func<T, object> ok) =>
@@ -31,7 +34,7 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     [HttpGet("/Msme/AppProfile")]
     public async Task<IActionResult> Profile(CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         return Answer(await profiles.GetAsync(zedId, ct), p => new { status = "1", p.Msme, p.BasicInfo, p.RegisteredEmail });
     }
 
@@ -39,7 +42,7 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> Activities(CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         return Answer(await profiles.ActivitiesAsync(zedId, ct), list => new { status = "1", Activities = list });
     }
 
@@ -47,7 +50,7 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> UpdateActivity(string? fiveDigitActivity, CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         var r = await profiles.UpdateActivityAsync(zedId, fiveDigitActivity, ClientIp, ct);
         await history.RecordAsync(new MsmeEdit
         {
@@ -62,7 +65,7 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> SendEmailOtp(string? email, CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         return Answer(await profiles.SendEmailOtpAsync(zedId, email, ct), to => new { status = "1", SentTo = to });
     }
 
@@ -70,14 +73,14 @@ public sealed class MsmeAppProfileController(MsmeProfileService profiles, IMsmeE
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     public async Task<IActionResult> VerifyEmailOtp(string? otp, CancellationToken ct)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         return Answer(await profiles.VerifyEmailOtpAsync(zedId, otp, LoginChannels.Mobile, ClientIp, ct), address => new { status = "1", Email = address });
     }
 
     [HttpGet("/Msme/AppEditHistory")]
     public async Task<IActionResult> EditHistory(int pageNo = 1, int pageSize = 20, CancellationToken ct = default)
     {
-        if (await UnitAsync(ct) is not { } zedId) return Unauthorized();
+        if (await UnitAsync(ct) is not { } zedId) return MsmeAppToken.Refused(this, refusal);
         var page = await MsmeEditHistoryResponses.PageAsync(history, zedId, pageNo, pageSize, ct);
         return LegacyJson(new
         {

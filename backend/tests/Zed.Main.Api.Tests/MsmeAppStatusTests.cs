@@ -83,9 +83,19 @@ public sealed class MsmeAppStatusTests : IDisposable
     {
         var (client, _) = await AppAsync();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await GetAsync(client, "Bronze", null)).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await GetAsync(client, "Bronze", "h1.forged.token")).StatusCode);
+        var missing = await GetAsync(client, "Bronze", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, missing.StatusCode);
+        var forged = await GetAsync(client, "Bronze", "h1.forged.token");
+        Assert.Equal(HttpStatusCode.Unauthorized, forged.StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_GET_DETAILS");
+        // 2026-11-14: the refusal says the sign-in has ended, in the app's own words, so the app signs out to its login
+        // page instead of showing "HTTP 401 Unauthorized"; the reason is in a header (and the log).
+        foreach (var (r, reason) in new[] { (missing, "Missing"), (forged, "Invalid") })
+        {
+            var body = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+            Assert.Equal(("0", Zed.Core.Mobile.AppTokens.ExpiredMessage), (body.GetProperty("status").GetString(), body.GetProperty("errorMessage").GetString()));
+            Assert.Equal(reason, r.Headers.GetValues("X-Zed-App-Token").Single());
+        }
     }
 
     [Theory]

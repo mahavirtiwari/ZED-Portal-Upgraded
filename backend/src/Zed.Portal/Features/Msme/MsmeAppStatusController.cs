@@ -22,10 +22,9 @@ public sealed class MsmeAppStatusController(ISqlExecutor db, AppTokens tokens) :
     [HttpGet("/Msme/AppCertificationStatus")]
     public async Task<IActionResult> AppCertificationStatus(string? certification, CancellationToken ct)
     {
-        var token = Request.Headers[AppTokens.Header].ToString();
-        if (tokens.Read(token) is not { } t || (t.Unit ?? t.User) is not { Length: > 0 } zedId
-            || await tokens.CheckAsync(token, MobileApps.Msme, null, zedId, ct) != AppTokenCheck.Valid)
-            return Unauthorized();
+        // 2026-11-14: a refused token says why, so the app signs out and a new sign-in works (MsmeAppToken).
+        var (unit, check) = await MsmeAppToken.UnitAsync(Request, tokens, ct);
+        if (unit is not { } zedId) return MsmeAppToken.Refused(this, check);
 
         var level = Levels.FirstOrDefault(l => string.Equals(l, certification?.Trim(), StringComparison.OrdinalIgnoreCase));
         if (level is null) return Fail("Invalid certification.");

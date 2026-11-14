@@ -165,6 +165,9 @@ public static partial class ContentCatalogue
 
         // MSME app: the assessment
         // Not shown by the Bronze surveillance build (its step is switched off there).
+        // 2026-11-14: the page's heading and the box's heading, editable too.
+        App("app.msme.assessment.complianceUndertaking.title", "Assessment: undertaking page heading", MsmeApp, Main, "Undertaking of Compliances"),
+        App("app.msme.assessment.complianceUndertaking.heading", "Assessment: undertaking box heading", MsmeApp, Main, "Undertaking of Compliances"),
         App("app.msme.assessment.complianceUndertaking", "Assessment: undertaking of compliances", MsmeApp, Main, """
             <p>I/We understand that the ZED Certification is voluntary and recognize the authority of the Ministry of MSME, Government of India, in issuance of any Certificate.</p>
             <p>By proceeding I/We certify that my/our Enterprise/Unit complies with &amp; fulfils all relevant &amp; applicable regulatory &amp; statutory norms/licenses pertaining to the functioning of this manufacturing unit. If not, then efforts will be taken to fulfil those regulatory/statutory requirements by me/us. If at any stage the Enterprise/Unit is found to be non-compliant with any relevant/applicable regulatory &amp; statutory norms, the competent authority will have the right to recall/withdraw any or all reports or Certifications awarded.</p>

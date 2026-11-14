@@ -35,10 +35,9 @@ public sealed class MsmeAppFilesController(
     [HttpGet("/Msme/AppDocument")]
     public async Task<IActionResult> AppDocument(string? path, CancellationToken ct)
     {
-        var token = Request.Headers[AppTokens.Header].ToString();
-        if (tokens.Read(token) is not { } t || (t.Unit ?? t.User) is not { Length: > 0 } zedId
-            || await tokens.CheckAsync(token, MobileApps.Msme, null, zedId, ct) != AppTokenCheck.Valid)
-            return Unauthorized();
+        // 2026-11-14: a refused token says why, so the app signs out and a new sign-in works (MsmeAppToken).
+        var (unit, check) = await MsmeAppToken.UnitAsync(Request, tokens, ct);
+        if (unit is not { } zedId) return MsmeAppToken.Refused(this, check);
 
         var requested = string.Equals(path?.Trim(), PledgePath, StringComparison.OrdinalIgnoreCase) ? null : MsmeFilePaths.FromLegacy(path);
         if (requested is null && !string.Equals(path?.Trim(), PledgePath, StringComparison.OrdinalIgnoreCase)) return NotFound();

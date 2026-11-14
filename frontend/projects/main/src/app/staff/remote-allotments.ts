@@ -25,7 +25,7 @@ export class RemoteAllotments {
       this.askedFor = key;
       this.has.set(false);
       if (!key) return;
-      this.http.get<unknown[]>('/api/staff/remote-assessments').subscribe({
+      this.http.get<unknown[]>('/api/staff/site-assessment/remote-assessments').subscribe({
         next: (rows) => { if (this.askedFor === key) this.has.set(Array.isArray(rows) && rows.length > 0); },
         error: () => undefined,
       });
