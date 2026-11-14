@@ -189,6 +189,45 @@ public sealed class SurveillanceRemoteTests : IDisposable
     }
 
     [Fact]
+    public async Task An_onsite_visit_is_final_submitted_without_a_recording_link()
+    {
+        // 2026-11-14 (Onsite surveillance, migration 0075): after the app's closing meeting (13) the lead reviews on the web,
+        // where an onsite visit has no recording links; the procedure's recording-link refusal is replaced by its last checks.
+        _status = 13;
+        _recordings = 0;
+        _host.Sql.Queries["SELECT AssessmentVisit FROM dbo.MsmeCertifications"] = _ => [new { AssessmentVisit = "Onsite" }];
+        _host.Sql.Procs["SP_ASSESSMENT_RA_CONFIRM_FINAL_SUBMIT"] = _ => FakeSql.Sets(
+            [new { AllowFinalSubmit = 0, ErrorMessage = RemoteAssessmentController.RecordingLinkMissing }], [new { RaisedForNc = 0 }]);
+        var tail = new List<object> { "Minimum two participants needed in closing meeting." };
+        _host.Sql.Queries[RemoteAssessmentController.OnsiteVisitConfirmSql[..30]] = _ => tail;
+        var lead = await Assessor();
+
+        var view = await lead.GetFromJsonAsync<JsonElement>(Base);
+        Assert.True(view.GetProperty("onsiteReview").GetBoolean());
+        Assert.False(view.TryGetProperty("usesMeetingLink", out var uses) && uses.ValueKind == JsonValueKind.True);
+        var check = await (await lead.PostAsync(Base + "/final-submit/check", null)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Minimum two participants needed in closing meeting.", check.GetProperty("message").GetString());
+
+        tail.Clear();
+        check = await (await lead.PostAsync(Base + "/final-submit/check", null)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(check.GetProperty("allowed").GetBoolean());
+        Assert.Equal(HttpStatusCode.OK, (await lead.PostAsJsonAsync(Base + "/final-submit", new { comments = "Visit complete" })).StatusCode);
+        Assert.Single(CallsTo("SP_ASSESSMENT_RA_FINAL_SUBMIT"));
+    }
+
+    [Fact]
+    public async Task A_meeting_link_surveillance_still_needs_its_recording_link()
+    {
+        _status = 13;
+        _host.Sql.Procs["SP_ASSESSMENT_RA_CONFIRM_FINAL_SUBMIT"] = _ => FakeSql.Sets(
+            [new { AllowFinalSubmit = 0, ErrorMessage = RemoteAssessmentController.RecordingLinkMissing }], [new { RaisedForNc = 0 }]);
+        var check = await (await (await Assessor()).PostAsync(Base + "/final-submit/check", null)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(check.GetProperty("allowed").GetBoolean());
+        Assert.Equal(RemoteAssessmentController.RecordingLinkMissing, check.GetProperty("message").GetString());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == RemoteAssessmentController.OnsiteVisitConfirmSql);
+    }
+
+    [Fact]
     public async Task Recording_links_are_checked()
     {
         var lead = await Assessor();

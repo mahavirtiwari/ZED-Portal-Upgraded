@@ -96,6 +96,31 @@ public sealed class SurveillanceSiteAllotmentTests : IDisposable
     }
 
     [Fact]
+    public async Task An_onsite_surveillance_level_is_allotted_for_a_visit_without_a_link_to_assessors_ticked_onsite()
+    {
+        // 2026-11-14: Silver's surveillance Mode of assessment is Onsite; ASR1 is ticked for Silver onsite, ASR2 is not.
+        _host.Sql.Queries[global::Zed.Portal.Features.CertLevels.LevelFlows.ReadSql] = _ =>
+            [new { Code = "Silver", AssessmentFlow = (string?)null, SurveillanceMode = "Onsite" }];
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.AssessorScope.OfUserSql] = args => FakeSql.Arg(args, "UserId") switch
+        {
+            "ASR1" => [new { UserId = "ASR1", AssessmentModes = "Silver=D,O", AssessorType = "Assessor" }],
+            _ => [new { UserId = "ASR2", AssessmentModes = "Bronze=D", AssessorType = "BronzeAssessor" }],
+        };
+        var agency = await Agency();
+        var list = await agency.GetFromJsonAsync<System.Text.Json.JsonElement>(Base + "/allotments");
+        Assert.Equal("Onsite", list.GetProperty("units")[0].GetProperty("AssessmentMode").GetString());
+
+        // No meeting link needed; the co-assessor must be ticked too.
+        Assert.Contains("not ticked for Silver onsite", await (await agency.PostAsJsonAsync(Base + "/allotments", Allot(null))).ProblemTitle());
+        var r = await agency.PostAsJsonAsync(Base + "/allotments", Allot(null, co: null));
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        Assert.Empty(CallsTo("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA"));
+        var args = Assert.Single(CallsTo(global::Zed.Portal.Features.Staff.SiteAssessment.SiteAssessmentController.OnsiteVisitProcedure))!;
+        Assert.Equal(("ASR1", Tomorrow), (FakeSql.Arg(args, "SiteAssessorId"), FakeSql.Arg(args, "AssessmentDate")));
+        Assert.All(_host.Email.Sent, m => Assert.StartsWith("Allocation of Onsite Assessment", m.Subject));
+    }
+
+    [Fact]
     public async Task Allots_with_the_meeting_link_and_mails_it_without_passwords()
     {
         var r = await (await Agency()).PostAsJsonAsync(Base + "/allotments", Allot());
@@ -164,6 +189,32 @@ public sealed class SurveillanceSiteAllotmentTests : IDisposable
         Assert.Equal("Onsite Assessment", row.GetProperty("ModeOfAssessment").GetString());
         Assert.False(row.TryGetProperty("AgencyEmail", out _));
         Assert.Equal("RA", FakeSql.Arg(Assert.Single(CallsTo("SP_ASSESSMENT_ALLOT_LIST")), "AllotmentType"));
+    }
+
+    private sealed class NoAssessorTypeColumn() : System.Data.Common.DbException("Invalid column name 'AssessorType'.");
+
+    [Fact]
+    public async Task The_onsite_ticks_are_read_from_surveillance_users_which_have_no_assessor_type()
+    {
+        // ZED_SURVEILLANCE.dbo.Users has AssessmentModes but no AssessorType (found on a real database, 2026-11-14).
+        _host.Sql.Queries[global::Zed.Portal.Features.CertLevels.LevelFlows.ReadSql] = _ =>
+            [new { Code = "Silver", AssessmentFlow = (string?)null, SurveillanceMode = "Onsite" }];
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.AssessorScope.OfUserSql] = _ => throw new NoAssessorTypeColumn();
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.AssessorScope.ByRoleSql] = _ => throw new NoAssessorTypeColumn();
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.AssessorScope.NoTypeOfUserSql] = args => FakeSql.Arg(args, "UserId") switch
+        {
+            "ASR1" => [new { UserId = "ASR1", AssessmentModes = "Silver=D,O", AssessorType = (string?)null }],
+            _ => [new { UserId = "ASR2", AssessmentModes = "Silver=D", AssessorType = (string?)null }],
+        };
+        _host.Sql.Queries[global::Zed.Portal.Features.Staff.Users.AssessorScope.NoTypeByRoleSql] = _ =>
+            [new { UserId = "ASR1", AssessmentModes = "Silver=D,O", AssessorType = (string?)null }, new { UserId = "ASR2", AssessmentModes = "Silver=D", AssessorType = (string?)null }];
+        var agency = await Agency();
+        var list = await agency.GetFromJsonAsync<JsonElement>(Base + "/allotments");
+        var co = list.GetProperty("assessors").EnumerateArray().Single(a => a.GetProperty("userId").GetString() == "ASR2");
+        Assert.Equal(["Desktop"], co.GetProperty("assessments")[0].GetProperty("modes").EnumerateArray().Select(m => m.GetString()));
+
+        Assert.Contains("ASR2 is not ticked for Silver onsite", await (await agency.PostAsJsonAsync(Base + "/allotments", Allot(null))).ProblemTitle());
+        Assert.Empty(CallsTo(global::Zed.Portal.Features.Staff.SiteAssessment.SiteAssessmentController.OnsiteVisitProcedure));
     }
 
     [Fact]

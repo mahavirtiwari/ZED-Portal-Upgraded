@@ -36,3 +36,20 @@
 .ar-pt20 {
   padding-top: 20px;
 }
+
+// 2026-11-14 (approved): white cards, pill tabs, light section heads and tidy tables in place of the grey panels and black bars.
+.report-v2 {
+  .panel-steps { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: none; }
+  .panel-steps > .panel-body { padding: 16px 18px; }
+  .zed-info-panel .cert-steps { margin: 0 0 6px; }
+  .nav-tabs { border-bottom: 0; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+  .nav-tabs .nav-link { border: 1px solid #d9eef0; border-radius: 16px; background: #eef6f6; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 5px 14px; }
+  .nav-tabs .nav-link.active { background: #2f7c83; border-color: #2f7c83; color: #fff; }
+  .ar-pane-grey { background: #f6f9f9; border-radius: 10px; padding: 10px; }
+  .panel-black { background: #eef6f6 !important; border: 0; border-radius: 8px; }
+  .panel-black > .panel-body, .panel-black h5 { color: #23474a !important; font-weight: 700; }
+  table.table { background: #fff; border-color: #e3ecec; font-size: 13.5px; }
+  table.table > thead th, table.table > tbody > tr > th { background: #f4f8f8; color: #5f6f70; font-weight: 700; border-color: #e3ecec; }
+  table.table td { border-color: #eef3f3; vertical-align: middle; }
+  .row-data { border-radius: 8px; }
+}

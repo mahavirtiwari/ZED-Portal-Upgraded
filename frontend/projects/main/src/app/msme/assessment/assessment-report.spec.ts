@@ -109,7 +109,8 @@ describe('Assessment pages (MSME, read-only)', () => {
 
     expect(text()).toContain('Acme Castings');
     expect(text()).toContain('UDYAM-UP-29-0003915');
-    expect(text()).toContain('Pledged on May 1, 2024');
+    // 2026-11-14: the key facts strip (no pledge row) in place of the unit side bar.
+    expect(el.querySelector('zed-unit-facts')).toBeTruthy();
     expect(text()).toContain('Basic Information & Documents Upload');
     expect(text()).toContain('Tata Motors');
     expect(text()).toContain('100 Tons');
@@ -221,7 +222,7 @@ describe('Assessment pages (MSME, read-only)', () => {
 
     expect(Array.from(el.querySelectorAll('.nav-tabs .nav-link')).map((b) => b.textContent!.trim())).toEqual(['NC1', 'NC2']);
     expect(text()).toContain('Non-Conformance(s)');
-    expect(text()).toContain('Pledge taken on May 1, 2024');
+    expect(el.querySelector('zed-unit-facts')).toBeTruthy();
 
     // NC1: site exterior photos of the desktop assessment and the MSME's reply.
     expect(text()).toContain('ASSESSOR RESPONSE');

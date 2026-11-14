@@ -86,9 +86,12 @@ export class CertificationDetailsPage {
 
   /** The mobile app banner was shown for every type except Bronze surveillance and the milestones. */
   protected readonly showAppBanner = computed(() =>
-    ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? ''),
+    ['Bronze', 'Silver', 'Gold', 'SilverSurveillance', 'GoldSurveillance'].includes(this.type() ?? '') || this.webEntry(),
   );
-  /** V4: ZED-X and the levels the Admin added are entered on the web (the MSME app has no ZED-X). */
+  /**
+   * ZED-X and the levels the Admin added: what the app uploaded is shown read-only on the entry page (2026-11-14: no level
+   * has web entry; everything is entered in the ZED MSME app).
+   */
   protected readonly webEntry = computed(() => isWebEntryLevel(this.type()));
 
 
@@ -107,9 +110,9 @@ export class CertificationDetailsPage {
     const baseLevel = type.replace('Surveillance', '');
     const basicInfoRoute = this.webEntry() ? `/msme/entry/${type}` : `/msme/assessment/basic-info/${baseLevel}`;
     const ncRoute = `/msme/assessment/non-conformances/${type === 'BronzeSurveillance' ? 'Bronze' : type}`;
-    // V4: ZED-X answers its NCs on the web (the MSME app has no ZED-X).
+    // ZED-X and the added levels: the NCs (answered in the app) shown on the entry page.
     const nc: Action = this.webEntry()
-      ? { icon: 'non-conformance', label: 'Non-Conformance(s): answer', enabled: true, danger: true, route: `/msme/entry/${type}` }
+      ? { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: `/msme/entry/${type}` }
       : { icon: 'non-conformance', label: 'Non-Conformance(s)', enabled: true, danger: true, route: ncRoute };
     const siteRoute = `/msme/site-assessment/${this.kind() === 'surveillance' ? baseLevel : type}`;
 
@@ -120,7 +123,7 @@ export class CertificationDetailsPage {
         break;
       case 'silverGold':
         list.push(this.webEntry()
-          ? { icon: 'basicInfo', label: 'Basic Information & Documents Upload', enabled: true, route: basicInfoRoute }
+          ? { icon: 'basicInfo', label: basicInfo, enabled: this.num(this.cert(), `${type}Status`) >= 1, route: basicInfoRoute }
           : { icon: 'basicInfo', label: basicInfo, enabled: has('DesktopVerification'), route: basicInfoRoute });
         // A level the Admin added with desktop assessment only has no site visit (2026-11-08).
         if (levelMode(this.level()) !== 'Desktop') {

@@ -26,7 +26,17 @@ public sealed class SiteAllotmentEmails(
 {
     private const string Scheme = "“MSME Sustainable (ZED) Certification” Scheme";
 
-    public async Task SendOnsiteAllotmentAsync(string zedId, string certification, CancellationToken ct)
+    public Task SendOnsiteAllotmentAsync(string zedId, string certification, CancellationToken ct) =>
+        SendSiteAllotmentAsync(zedId, certification, null, ct);
+
+    /// <summary>
+    /// 2026-11-14 (Desktop + Remote, Remote only): the same mails for a remote assessment, with the meeting link the agency
+    /// entered (main has no MeetingLink in SP_EMAIL_GET_DETAILS, so it is passed in).
+    /// </summary>
+    public Task SendRemoteAllotmentAsync(string zedId, string certification, string meetingLink, CancellationToken ct) =>
+        SendSiteAllotmentAsync(zedId, certification, meetingLink, ct);
+
+    private async Task SendSiteAllotmentAsync(string zedId, string certification, string? meetingLink, CancellationToken ct)
     {
         try
         {
@@ -37,15 +47,16 @@ public sealed class SiteAllotmentEmails(
                 return;
             }
 
-            var subject = $"Allocation of Onsite Assessment under {Scheme} - {zedId}";
+            var remote = meetingLink is not null;
+            var subject = $"Allocation of {(remote ? "Remote" : "Onsite")} Assessment under {Scheme} - {zedId}";
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
 
-            await SendAsync(OnsiteUnitKey, zedId, row.Text("EmailId"), subject, UnitBody(row), cc, ct);
+            await SendAsync(OnsiteUnitKey, zedId, row.Text("EmailId"), subject, UnitBody(row, meetingLink), cc, ct);
             await SendAsync(OnsiteAssessorKey, zedId, row.Text("AssessorEmailId"), subject,
-                AssessorBody(row, zedId, "Lead Assessor", row.Text("AssessorUserId")), cc, ct);
+                AssessorBody(row, zedId, "Lead Assessor", row.Text("AssessorUserId"), meetingLink), cc, ct);
             if (row.Text("CoAssessorUserId").Length > 0)
                 await SendAsync(OnsiteAssessorKey, zedId, row.Text("CoAssessorEmailId"), subject,
-                    AssessorBody(row, zedId, "a Co-assessor", row.Text("CoAssessorUserId")), cc, ct);
+                    AssessorBody(row, zedId, "a Co-assessor", row.Text("CoAssessorUserId"), meetingLink), cc, ct);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -166,38 +177,43 @@ public sealed class SiteAllotmentEmails(
     private static void Closing(StringBuilder sb) =>
         sb.Append("<p style=\"font-size: 13px; margin-bottom: 0px;\">Thanks and Regards,</p><p style=\"font-size: 13px; margin-bottom: 20px;\">ZED Team</p>");
 
-    private string UnitBody(IDictionary<string, object?> row)
+    private string UnitBody(IDictionary<string, object?> row, string? meetingLink = null)
     {
         var sb = new StringBuilder();
         P(sb, "Dear Madam/Sir,");
         P(sb, "Greetings of the day!");
-        P(sb, "The Date of On-site assessment is finalized. The details of the Agency allocated to your Unit are as follows:");
-        Table(sb,
+        P(sb, meetingLink is null
+            ? "The Date of On-site assessment is finalized. The details of the Agency allocated to your Unit are as follows:"
+            : "The Date of Remote assessment is finalized. The details of the Agency allocated to your Unit are as follows:");
+        Table(sb, [
             ("Registered Assessment Agency", row.Text("AgencyName")),
             ("Agency SPOC Name", row.Text("SpocName")),
             ("Agency SPOC Email ID", row.Text("AgencyEmailId")),
             ("Agency SPOC Mobile No", row.Text("AgencyMobileNo")),
             ("Final Assessment Date", row.Text("FinalSaDate")),
-            ("Mode of Assessment", "On-site Assessment"));
+            ("Mode of Assessment", meetingLink is null ? "On-site Assessment" : "Remote Assessment"),
+            .. (meetingLink is null ? Array.Empty<(string, string?)>() : [("Meeting Link", meetingLink)])]);
         Button(sb, portal.Value.PublicBaseUrl.TrimEnd('/') + "/Msme/Login", "Click here to Login");
         P(sb, "You will soon be contacted by the Assessor to take this forward.");
         Closing(sb);
         return sb.ToString();
     }
 
-    private string AssessorBody(IDictionary<string, object?> row, string zedId, string role, string assessorId)
+    private string AssessorBody(IDictionary<string, object?> row, string zedId, string role, string assessorId, string? meetingLink = null)
     {
         var sb = new StringBuilder();
         P(sb, "Dear Madam/Sir,");
         P(sb, "Greetings of the day!");
         P(sb, $"You have been allocated an assessment as {role} under \"MSME Sustainable (ZED) Certification\" Scheme. The details are as follows:");
-        Table(sb,
+        Table(sb, [
             ("MSME ZED ID", zedId),
             ("Unit Name", row.Text("EnterpriseName")),
             ("Unit Address", row.Text("Address")),
-            ("Mode Of Assessment", "Onsite Assessment"),
+            ("Mode Of Assessment", meetingLink is null ? "Onsite Assessment" : "Remote Assessment"),
             ("Assessor ID", assessorId),
-            ("Assessment Date", row.Text("FinalSaDate")));
+            ("Assessment Date", row.Text("FinalSaDate")),
+            .. (meetingLink is null ? Array.Empty<(string, string?)>() : [("Meeting Link", meetingLink)])]);
+        if (meetingLink is not null) P(sb, "The assessment is held remotely: please join the meeting link on the assessment date and fill it in on the web module.");
         P(sb, "Please sign in to the Mobile App and the web module with your Assessor ID and your existing ZED password. " +
               "If you do not remember it, use \"Forgot Password\" on the login page.");
         P(sb, "Please download the Mobile Application to proceed (the same can also be downloaded directly from Google Play Store):");

@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -26,7 +27,7 @@ describe('DocumentsPage', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [DocumentsPage],
-      providers: [provideHttpClient(), provideHttpClientTesting()],
+      providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
     fixture = TestBed.createComponent(DocumentsPage);
     http = TestBed.inject(HttpTestingController);
@@ -60,13 +61,14 @@ describe('DocumentsPage', () => {
 
     expect(el.querySelector('.loadingdiv')).toBeNull();
     expect(rows()).toEqual([
-      { text: 'ZED Guidelines', href: '/api/msme/files/Uploads/Documents/Guide.pdf', target: '_blank' },
-      { text: 'Checklist', href: '/api/msme/files/Uploads/Documents/Checklist.docx', target: null },
       // The pledge certificate page (drawn when opened, never stored).
       { text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' },
       { text: 'Silver Certificate', href: '/api/msme/files/Certificates/SA/ZEDMSME000001/Silver.pdf', target: '_blank' },
       { text: 'HANDHOLDING - Silver milestone 2 Invoice', href: '/api/msme/files/ReceiptInvoice/I1_ZEDMSME000001_Invoice.pdf', target: '_blank' },
       { text: 'ZED - Bronze Assessment Receipt', href: null, target: null },
+      // 2026-11-14 (approved design): the guidelines last.
+      { text: 'ZED Guidelines', href: '/api/msme/files/Uploads/Documents/Guide.pdf', target: '_blank' },
+      { text: 'Checklist', href: '/api/msme/files/Uploads/Documents/Checklist.docx', target: null },
     ]);
   });
 

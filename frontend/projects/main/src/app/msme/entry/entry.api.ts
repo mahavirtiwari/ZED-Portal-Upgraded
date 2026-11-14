@@ -4,9 +4,10 @@ import { Observable } from 'rxjs';
 import { isV4Level } from '../shared/levels';
 
 /**
- * Levels whose basic information and documents are entered on the web (MsmeEntry.Levels on the server): ZED-X and every
- * level the Admin adds (2026-11-08, any V4 level). Bronze, Silver and Gold are entered in the MSME app. Not a surveillance
- * or milestone type.
+ * Levels whose basic information and documents are shown on the web entry page (MsmeEntry.Levels on the server): ZED-X and
+ * every level the Admin adds (any V4 level); Bronze, Silver and Gold on the assessment pages. 2026-11-14: read-only, as no
+ * level has web entry (everything is entered in the ZED MSME app; Msme:WebEntry on the server). Not a surveillance or
+ * milestone type.
  */
 export const isWebEntryLevel = (level: string | null | undefined): boolean =>
   isV4Level(level) && !/(Surveillance|Milestone\d)$/i.test(level ?? '');
@@ -98,6 +99,8 @@ export interface EntryState {
   sections: EntrySection[];
   /** The open non-conformance (null when none is open). */
   nc?: EntryNc | null;
+  /** 2026-11-14: false or absent: read-only, everything is entered in the ZED MSME app (Msme:WebEntry on the server). */
+  webEntry?: boolean;
 }
 
 export interface EntryNc {

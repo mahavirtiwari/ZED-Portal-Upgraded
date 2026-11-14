@@ -131,7 +131,9 @@ public sealed record EntryState(
     JsonObject Form,
     EntrySaved Saved,
     IReadOnlyList<EntrySection> Sections,
-    EntryNc? Nc = null);
+    EntryNc? Nc = null,
+    /// <summary>2026-11-14: false (the default): the page is read-only, everything is entered in the ZED MSME app (Msme:WebEntry).</summary>
+    bool WebEntry = false);
 
 // ---------- What the page sends ----------
 

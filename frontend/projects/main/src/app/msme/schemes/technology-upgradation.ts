@@ -7,6 +7,7 @@ import { ContentTextComponent } from '../../content/content-text';
 import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
 import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
+import { PageHead } from '../shared/page-head';
 import {
   SchemeAccount, SchemeDocument, SchemesApi, TuPage, TuTechnology, TuTechnologySubmission, inr, toInputDate, todayIso, uploadProblem,
 } from './schemes.api';
@@ -29,7 +30,7 @@ type TechnologyForm = Omit<TuTechnologySubmission, 'documents'>;
  */
 @Component({
   selector: 'zed-msme-technology-upgradation',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead],
   templateUrl: './technology-upgradation.html',
   styleUrls: ['../shared/msme-page.scss', './scheme-page.scss'],
 })

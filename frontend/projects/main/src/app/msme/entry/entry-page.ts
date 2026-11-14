@@ -9,6 +9,7 @@ import { EntryField } from './entry-field';
 import { CellValue, FormValues, emptyRow, initialValues, isShown, missing, sortedFields, toRequest } from './entry-form';
 import { EntryApi, EntryEvidence, EntryNc, EntryState, FormField, isWebEntryLevel } from './entry.api';
 import { RequirementVideo } from '../shared/requirement-video';
+import { Crumb, PageHead } from '../shared/page-head';
 
 type Tab = 'basic' | 'documents' | 'nc' | 'submit';
 
@@ -23,14 +24,29 @@ const MAX_ROWS = 20;
  */
 @Component({
   selector: 'zed-msme-entry',
-  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent, RequirementVideo],
+  imports: [RouterLink, EntryField, AlertDialog, ContentTextComponent, RequirementVideo, PageHead],
   templateUrl: './entry-page.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
-    .entry-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dee2e6; margin-bottom: 16px; flex-wrap: wrap; }
-    .entry-tabs button { border: 0; background: none; padding: 8px 14px; font-weight: 600; color: #555; border-bottom: 3px solid transparent; margin-bottom: -2px; }
-    .entry-tabs button.active { color: #0d6efd; border-bottom-color: #0d6efd; }
-    .entry-tabs .count { font-weight: 400; font-size: 12px; margin-left: 4px; }
+    /* 2026-11-14 (approved): the step tracker, a card per step. */
+    .entry-tabs { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .entry-tabs button { display: flex; align-items: center; gap: 10px; text-align: left; background: #fff; border: 1px solid #dfe9ea;
+      border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 14px; color: #23474a; }
+    .entry-tabs button:hover { border-color: #9cc9cd; }
+    .entry-tabs button.active { border: 2px solid #2f7c83; padding: 9px 11px; }
+    .entry-tabs button.done { background: #eef8f2; border-color: #bfe3cb; }
+    .entry-tabs button.done.active { border-color: #1e7a3c; }
+    .entry-tabs .st-num { flex: none; width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; background: #eef6f6;
+      color: #2f7c83; font-size: 13px; font-weight: 800; }
+    .entry-tabs button.done .st-num { background: #1e7a3c; color: #fff; }
+    .entry-tabs button.is-nc .st-num { background: #f8d9d5; color: #c0392b; }
+    .entry-tabs .st-text { min-width: 0; }
+    .entry-tabs .count { display: block; font-weight: 500; font-size: 12px; color: #5f6f70; }
+    .entry-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 18px 20px 0; }
+    .entry-card .stepper-footer-sec { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid #eef3f3; margin: 14px -20px 0;
+      padding: 12px 20px; background: #fafcfc; border-radius: 0 0 12px 12px; }
+    .entry-card > :last-child:not(.stepper-footer-sec) { margin-bottom: 18px; }
+    @media (max-width: 575.98px) { .entry-card { padding: 14px 12px 0; } .entry-card .stepper-footer-sec { margin: 14px -12px 0; padding: 12px; } }
     .field-row { margin-bottom: 14px; }
     .field-row > label, .field-label { font-weight: 600; display: block; margin-bottom: 4px; }
     .req { color: #c00; }
@@ -43,10 +59,23 @@ const MAX_ROWS = 20;
     .doc-req .req-name { font-weight: 600; margin-bottom: 6px; }
     .doc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px; border: 1px solid #e6e9ee; border-radius: 4px; margin-bottom: 6px; }
     .doc-row .doc-name { flex: 1 1 260px; }
-    .badge-ok { background: #198754; color: #fff; }
-    .badge-req { background: #dc3545; color: #fff; }
-    .badge-opt { background: #6c757d; color: #fff; }
-    .doc-badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+    .badge-ok { background: #e3f4e8; color: #1e7a3c; }
+    .badge-req { background: #fbe4e1; color: #b03a2e; }
+    .badge-opt { background: #eef1f1; color: #5f6f70; }
+    .doc-badge { font-size: 11.5px; font-weight: 700; padding: 2px 10px; border-radius: 10px; white-space: nowrap; }
+    /* A document row on fixed columns (name, status, file, button), so that the pickers line up under each other. */
+    .doc-row.doc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 150px; gap: 10px; }
+    .doc-row.doc-grid.can-upload { grid-template-columns: minmax(0, 1fr) 150px minmax(0, 260px) 92px; }
+    .doc-grid .doc-name { flex: none; min-width: 0; }
+    .doc-grid .doc-status { display: flex; align-items: center; gap: 6px; }
+    .doc-grid input[type=file] { width: 100% !important; }
+    .doc-grid > .btn { width: 100%; }
+    @media (max-width: 767.98px) {
+      .doc-row.doc-grid, .doc-row.doc-grid.can-upload { grid-template-columns: minmax(0, 1fr) auto; }
+      .doc-grid input[type=file] { grid-column: 1; }
+    }
+    .doc-req .req-name { color: #23474a; }
+    .doc-section h5 { border-radius: 6px; color: #23474a; font-weight: 700; }
     .checklist li { margin-bottom: 6px; }
   `,
 })
@@ -58,6 +87,12 @@ export class EntryPage implements OnInit {
 
   protected readonly state = signal<EntryState | null>(null);
   protected readonly loading = signal(true);
+  /** Home › Dashboard › <level> certification › Basic information. */
+  protected readonly crumbs = computed<Crumb[]>(() => [
+    { label: 'Home', link: '/msme/dashboard' },
+    { label: `${levelName(this.certification())} certification`, link: ['/msme/certification', this.certification()] },
+    { label: 'Basic information' },
+  ]);
   protected readonly loadError = signal<string | null>(null);
   protected readonly busy = signal(false);
   protected readonly alert = signal<AlertMessage | null>(null);
@@ -80,6 +115,8 @@ export class EntryPage implements OnInit {
     return s.form.sections.map((sec) => ({ ...sec, fields: this.fields().filter((f) => f.section === sec.key) }));
   });
   protected readonly editable = computed(() => !!this.state()?.editable);
+  /** NC answers on the web only while the server has web entry on (2026-11-14: off; answered in the ZED MSME app). */
+  protected readonly ncAnswerable = computed(() => !!this.state()?.webEntry && !!this.state()?.nc);
   protected readonly evidences = computed(() =>
     (this.state()?.sections ?? []).flatMap((s) => s.requirements.flatMap((r) => r.evidences)),
   );
@@ -112,7 +149,7 @@ export class EntryPage implements OnInit {
 
   protected async load(): Promise<void> {
     if (!isWebEntryLevel(this.certification())) {
-      this.loadError.set('Details of this certification are entered in the ZED mobile app.');
+      this.loadError.set('Details of this certification are entered in the ZED MSME app; see View Details.');
       this.loading.set(false);
       return;
     }

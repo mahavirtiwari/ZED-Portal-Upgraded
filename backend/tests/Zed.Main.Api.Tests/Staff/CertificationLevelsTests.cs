@@ -236,9 +236,8 @@ public sealed class CertificationLevelsTests : IDisposable
             ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
             ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["assessmentFlow"] = flow, ["surveillanceMode"] = mode,
         };
-        // Not built yet (2026-11-14): refused, nothing written.
-        Assert.Contains("Remote only is not available yet", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("Remote"))).ProblemTitle());
-        Assert.Contains("Onsite surveillance is not available yet", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("DesktopOnsite", "Onsite"))).ProblemTitle());
+        // Refused (2026-11-14): Bronze stays Desktop only; Silver / Gold keep a site step. Nothing written.
+        Assert.Contains("Bronze stays Desktop only", await (await admin.PutAsJsonAsync($"{Url}/bronze", Body("Remote"))).ProblemTitle());
         Assert.Contains("keep a site assessment", await (await admin.PutAsJsonAsync($"{Url}/gold", Body("Desktop"))).ProblemTitle());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql);
 

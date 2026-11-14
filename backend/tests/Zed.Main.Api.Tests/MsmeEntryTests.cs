@@ -26,6 +26,8 @@ public sealed class MsmeEntryTests : IDisposable
 
     public MsmeEntryTests()
     {
+        // The old web entry, switched on (2026-11-14: off by default; the app enters everything).
+        _host.Settings[WebEntryGateAttribute.Setting] = "true";
         MsmeSchemesTestSupport.RegisterUsers(_host);
         _host.Sql.Queries[MsmeEntry.StageSql("ZEDX")] = args => FakeSql.Arg(args, "ZedId") != Me ? [] :
             [new { Paid = _paid, CertificationStatus = _status, NcCount = _status is null ? (int?)null : _ncCount, CertificationId = _status is null ? (int?)null : 41,
@@ -94,6 +96,20 @@ public sealed class MsmeEntryTests : IDisposable
 
     private string Stored(string folder, string name) =>
         Path.Combine(_host.StorageRoot, "mobileapi", "Photos", Me, "ZEDX", folder, name);
+
+    [Fact]
+    public async Task By_default_the_web_only_shows_what_the_app_uploaded()
+    {
+        using var host = new TestHost();
+        MsmeSchemesTestSupport.RegisterUsers(host);
+        var client = await MsmeSchemesTestSupport.MsmeAsync(host);
+        foreach (var path in new[] { "basic-info", "evidences/501", "final-submit", "nc/requirements/11", "nc/products/71", "nc/site-exterior" })
+        {
+            var r = await client.PostAsync($"{Url}/{path}", new MultipartFormDataContent());
+            Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
+            Assert.Equal(WebEntryGateAttribute.AppOnly, await r.ProblemTitle());
+        }
+    }
 
     [Fact]
     public async Task Only_a_paid_web_level_is_open()
@@ -251,6 +267,8 @@ public sealed class MsmeEntryTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync($"{Url}/final-submit", null)).StatusCode);
         Assert.Equal("ZEDX", FakeSql.Arg(Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_APP_MSME_FINAL_SUBMIT")), "CertificationType"));
         Assert.Equal("ZEDX", FakeSql.Arg(Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_V4_AUTO_ALLOT_AGENCY")), "CertificationType"));
+        // 2026-11-14: then the desktop skip of Remote only / Onsite only levels (decided by the procedure).
+        Assert.Equal("ZEDX", FakeSql.Arg(Assert.Single(MsmeSchemesTestSupport.CallsTo(_host, "SP_V4_SKIP_DESKTOP")), "Certification"));
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Contains(Me, mail.Subject);
         Assert.Contains("ZED-X", mail.HtmlBody);

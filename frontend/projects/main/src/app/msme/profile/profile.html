@@ -2,37 +2,60 @@
      address), the selected unit (plant) and its NIC activity with Edit Activity. -->
 <div class="container form-page view-profile profile-v2" id="zed_user_form">
   <div class="row mt-3 justify-content-center">
-    <div class="col-lg-10">
-      <h2 class="registration-title mb-3">Enterprise Profile</h2>
+    <div class="col-lg-11">
+      <!-- 2026-11-14 (approved design): breadcrumb header, a summary card, the details in sections without empty rows. -->
+      <div class="page-head">
+        <div>
+          <nav class="crumb" aria-label="Breadcrumb"><a routerLink="/msme/dashboard">Home</a><span aria-hidden="true">›</span><span aria-current="page">Profile</span></nav>
+          <h2 class="registration-title">Enterprise profile</h2>
+        </div>
+        <a class="btn btn-outline-secondary btn-sm" routerLink="/msme/edit-history">Edit history</a>
+      </div>
 
+      @if (enterpriseName()) {
+        <section class="pcard summary" aria-label="Your enterprise">
+          @if (entType()) { <span class="ent ent-{{ entType().toLowerCase() }}" aria-hidden="true">{{ entType().charAt(0) }}</span> }
+          <div class="summary-text">
+            <b>{{ enterpriseName() }}</b>
+            @if (summaryLine()) { <span>{{ summaryLine() }}</span> }
+          </div>
+          @if (text(msme(), 'PledgeOn')) { <span class="pledge-chip">Pledge taken</span> }
+        </section>
+      }
+
+      <!-- Full-width sections, one under the other (as the staff MSME profile): every card has the same edges. -->
+      <div class="pcols">
       <section class="pcard" aria-labelledby="enterpriseTitle">
         <header class="pcard-head">
           <h3 id="enterpriseTitle"><img src="/Images/svgicons/Icon-MSME.svg" alt="" /> Enterprise (from Udyam)</h3>
-          <span class="id-chip">{{ text(msme(), 'ZedId') }}</span>
+          @if (hasMoreRows()) {
+            <button type="button" class="btn btn-link p-0 more" (click)="showAll.set(!showAll())" [attr.aria-expanded]="showAll()">
+              {{ showAll() ? 'Show fewer details' : 'Show all details' }}
+            </button>
+          }
         </header>
         <dl class="pgrid">
-          @for (r of shownRows(); track r.field) {
-            <div><dt>{{ r.label }}</dt><dd>{{ value(r) || '—' }}</dd></div>
+          @for (r of filledRows(); track r.field) {
+            <div><dt>{{ label(r) }}</dt><dd>{{ value(r) }}</dd></div>
+          } @empty {
+            <p class="text-muted mb-0 pgrid-empty">The Udyam details are not available yet.</p>
           }
         </dl>
-        <button type="button" class="btn btn-link p-0 more" (click)="showAll.set(!showAll())" [attr.aria-expanded]="showAll()">
-          {{ showAll() ? 'Show fewer details' : 'Show all details' }}
-        </button>
       </section>
 
       <section class="pcard" aria-labelledby="contactTitle">
-        <header class="pcard-head"><h3 id="contactTitle">Contact</h3></header>
+        <header class="pcard-head"><h3 id="contactTitle"><img src="/Images/svgicons/mail.svg" alt="" /> Contact</h3></header>
         <dl class="pgrid">
           <div>
             <dt>Registered e-mail <small>(ZED mails and password links)</small></dt>
             <dd class="d-flex align-items-center gap-2 flex-wrap">
-              <span data-testid="registered-email">{{ registeredEmail() || '—' }}</span>
+              <span data-testid="registered-email">{{ registeredEmail() || 'Not given' }}</span>
               @if (emailStep() === 'idle') {
                 <button type="button" class="btn btn-outline-primary btn-sm" (click)="startEmailChange()">Change</button>
               }
             </dd>
           </div>
-          <div><dt>Mobile</dt><dd>{{ text(basicInfo(), 'MobileNo') || '—' }}</dd></div>
+          <div><dt>Mobile</dt><dd>{{ text(basicInfo(), 'MobileNo') || 'Not given' }}</dd></div>
         </dl>
 
         @if (emailStep() !== 'idle') {
@@ -68,8 +91,14 @@
 
       <section class="pcard" aria-labelledby="unitTitle">
         <header class="pcard-head"><h3 id="unitTitle"><img src="/Images/svgicons/mapicon.svg" alt="" /> Selected unit (plant)</h3></header>
-        <p class="unit-name">{{ text(msme(), 'PUnitName') }}</p>
-        <p class="mb-0">{{ unitAddress() }}</p>
+        @if (text(msme(), 'PUnitName') || unitAddress()) {
+          <dl class="pgrid">
+            <div><dt>Unit name</dt><dd>{{ text(msme(), 'PUnitName') }}</dd></div>
+            <div class="span-3"><dt>Address</dt><dd>{{ unitAddress() }}</dd></div>
+          </dl>
+        } @else {
+          <p class="text-muted mb-0">No unit selected yet.</p>
+        }
       </section>
 
       <section class="pcard" aria-labelledby="activityTitle">
@@ -81,10 +110,10 @@
         </header>
         @if (!editMode()) {
           <dl class="pgrid">
-            <div><dt>Activity</dt><dd>{{ text(msme(), 'Activity') || '—' }}</dd></div>
-            <div><dt>2-digit</dt><dd>{{ text(msme(), 'TwoDigitActivity') || '—' }}</dd></div>
-            <div><dt>4-digit</dt><dd>{{ text(msme(), 'FourDigitActivity') || '—' }}</dd></div>
-            <div><dt>5-digit</dt><dd>{{ text(msme(), 'FiveDigitActivity') || '—' }}</dd></div>
+            <div><dt>Activity</dt><dd>{{ text(msme(), 'Activity') || 'Not set' }}</dd></div>
+            <div><dt>2-digit</dt><dd>{{ text(msme(), 'TwoDigitActivity') || 'Not set' }}</dd></div>
+            <div><dt>4-digit</dt><dd>{{ text(msme(), 'FourDigitActivity') || 'Not set' }}</dd></div>
+            <div><dt>5-digit</dt><dd>{{ text(msme(), 'FiveDigitActivity') || 'Not set' }}</dd></div>
           </dl>
         } @else {
           <div class="panel-units" role="radiogroup" aria-label="Unit activity">
@@ -110,6 +139,7 @@
           </div>
         }
       </section>
+      </div>
     </div>
   </div>
 </div>

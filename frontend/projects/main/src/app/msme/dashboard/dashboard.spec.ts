@@ -62,7 +62,29 @@ describe('DashboardPage', () => {
     for (const level of ['silver', 'gold']) expect(card(level).querySelectorAll('.stepper li').length).toBe(4);
     // The unit is in the band at the top; the side bar is gone.
     expect(el.querySelector('zed-msme-unit-summary')).toBeNull();
-    expect(el.textContent).toMatch(/Refresh on \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (AM|PM)/);
+    // 2026-11-14 (approved design A): the breadcrumb, "Welcome, <unit>" and Refresh (its time in the tooltip); no next step before a payment.
+    expect(el.querySelector('.dash-crumb')!.textContent).toContain('Dashboard');
+    expect(el.querySelector('.dash-head h3')!.textContent).toBe('Welcome, Acme Castings');
+    expect((el.querySelector('.refresh-btn') as HTMLElement).title).toMatch(/Refreshed on \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (AM|PM)/);
+    expect(el.querySelector('.next-step')).toBeNull();
+    // The app badges are in the unit band; the separate green banner is gone.
+    expect(el.querySelector('.unit-band .app-badges')).toBeTruthy();
+    expect(el.querySelector('.app-banner')).toBeNull();
+  });
+
+  it('shows the next step of the first paid level that is not completed', async () => {
+    await render({ BronzeStatus: 1 }, { IsBronzePaymentDone: 1 });
+    let next = el.querySelector('.next-step') as HTMLElement;
+    expect(next.textContent).toContain('BRONZE');
+    expect(next.textContent).toContain('Complete Basic Information & Documents in the ZED MSME app and final submit.');
+    expect(next.querySelector('a')!.getAttribute('href')).toBe('/msme/certification/Bronze');
+  });
+
+  it('asks for the non-conformances in the next step', async () => {
+    await render({ BronzeStatus: 4 }, { IsBronzePaymentDone: 1 });
+    const next = el.querySelector('.next-step') as HTMLElement;
+    expect(next.classList).toContain('is-nc');
+    expect(next.textContent).toContain('in the ZED MSME app');
   });
 
   it('shows the unit band, and on each card its validity, surveillance and fee and how far the bar is filled', async () => {
@@ -100,6 +122,10 @@ describe('DashboardPage', () => {
     expect(card('bronze').textContent).toContain('In-progress');
     expect(card('silver').classList).toContain('plant-activity-disabled');
     expect(card('gold').classList).toContain('plant-activity-disabled');
+    // A locked level says so, and why.
+    expect(card('silver').querySelector('.lv-status')!.textContent!.trim()).toBe('Locked');
+    expect(card('silver').querySelector('.lv-lock-note')).toBeTruthy();
+    expect(el.querySelector('.next-step')!.textContent).toContain('under assessment');
 
     const steps = [...card('bronze').querySelectorAll('.stepper li')].map((li) =>
       ['completed', 'current'].find((c) => li.classList.contains(c)) ?? '',
@@ -214,7 +240,8 @@ describe('DashboardPage', () => {
 
     // Paid: basic information and documents on the web, as ZED-X.
     await render({ PLATINUMStatus: 1 }, { IsPLATINUMPaymentDone: 1 }, 0, undefined, levels);
-    expect(card('platinum').querySelector('a[href="/msme/entry/PLATINUM"]')!.textContent).toContain('ENTER DETAILS');
+    // 2026-11-14: no web entry; the details are entered in the ZED MSME app.
+    expect(card('platinum').querySelector('a[href="/msme/entry/PLATINUM"]')).toBeNull();
     // While it runs, Bronze, Silver and Gold are greyed out.
     for (const level of ['bronze', 'silver', 'gold']) expect(card(level).classList).toContain('plant-activity-disabled');
     fixture.destroy();

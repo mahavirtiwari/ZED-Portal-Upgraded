@@ -59,6 +59,8 @@ export interface CoAllotRequest {
 
 /** The only mode the old allotment pop-up offered. */
 export const ONSITE = 'Onsite Assessment';
+/** 2026-11-14: a main remote assessment (Desktop + Remote / Remote only levels), held on the agency's meeting link. */
+export const REMOTE = 'Remote Assessment';
 
 /**
  * Consultancy milestone review page of package C2 (staff/consultancy/milestones/...). The consultants' lists link

@@ -79,6 +79,24 @@ public sealed class RemoteAssessmentController(
     /// <summary>Surveillance: the remote assessment runs on the agency's meeting link.</summary>
     private bool MeetingMode => host.System == PortalSystem.Surveillance;
 
+    private sealed record LinkRow(string? MeetingLink);
+
+    /// <summary>Main (migration 0073): the remote assessment's meeting link; null before the migration or when none.</summary>
+    private async Task<string?> MainMeetingLinkAsync(string zedId, string level, CancellationToken ct)
+    {
+        try
+        {
+            var row = (await db.QuerySqlAsync<LinkRow>("SELECT MeetingLink FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification;",
+                new { ZedId = zedId, Certification = level }, ct)).FirstOrDefault();
+            return Staff.SiteAssessment.AssessmentInputs.WebLink(row?.MeetingLink, 5000);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Meeting link of {ZedId} {Level} not read (is migration 0073 applied?)", zedId, level);
+            return null;
+        }
+    }
+
     /// <summary>
     /// One final submit at a time: the procedure reads NcCount and the round's answers without locks, so two submits in a row
     /// raised NC n and then, on the fresh round with nothing answered "No", closed it and issued the certification number.
@@ -288,9 +306,11 @@ public sealed class RemoteAssessmentController(
             sa[12].Select(s => new Selfie(RemoteFiles.Url(zedId, level!, s.Text("PhotoPath"), MeetingMode), NullIfEmpty(s.Text("RepresentativeName")), NullIfEmpty(s.Text("Designation")))).ToList(),
             new Permissions(IsLead(record!), canAssess))
         {
-            UsesMeetingLink = MeetingMode ? true : null,
+            UsesMeetingLink = MeetingMode && !record!.OnsiteVisit ? true : null,
             OnsiteReview = OnsiteReview(record!) ? true : null,
-            MeetingLink = MeetingMode ? Staff.SiteAssessment.AssessmentInputs.WebLink(main.Text("MeetingLink"), 5000) : null,
+            // 2026-11-14: a main remote assessment's link (migration 0073) too.
+            MeetingLink = MeetingMode ? (record!.OnsiteVisit ? null : Staff.SiteAssessment.AssessmentInputs.WebLink(main.Text("MeetingLink"), 5000))
+                : string.Equals(record!.ModeOfAssessment?.Trim(), RemoteMode, StringComparison.OrdinalIgnoreCase) ? await MainMeetingLinkAsync(zedId, level!, ct) : null,
             // Set 15 of the surveillance SP_ASSESSMENT_SA_DETAILS: MeetingRecordingLinks of the unit.
             RecordingLinks = MeetingMode
                 ? sa[15].Select(r => (Id: long.TryParse(r.Text("Id"), out var rid) ? rid : 0, Url: Staff.SiteAssessment.AssessmentInputs.WebLink(r.Text("RecordingLink"), 5000)))
@@ -824,6 +844,8 @@ public sealed class RemoteAssessmentController(
         public string? ModeOfAssessment { get; init; }
         /// <summary>1 once the remote assessment was started (the old "Start Assessment"); the assessment lists count by it.</summary>
         public int? JoinRoomStatus { get; init; }
+        /// <summary>Surveillance (2026-11-14, migration 0075): allotted for an onsite visit (MsmeCertifications.AssessmentVisit).</summary>
+        public bool OnsiteVisit { get; set; }
         public int? Nc1Status { get; init; }
         public int? Nc2Status { get; init; }
         public int? Nc3Status { get; init; }
@@ -879,9 +901,31 @@ public sealed class RemoteAssessmentController(
 
     private bool CanAssess(RemoteRecord r) => IsLead(r) && IsOpen(r);
 
-    private async Task<RemoteRecord?> RecordAsync(string zedId, string level, CancellationToken ct) =>
-        (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
+    private async Task<RemoteRecord?> RecordAsync(string zedId, string level, CancellationToken ct)
+    {
+        var record = (await db.QuerySqlAsync<RemoteRecord>(RecordSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
+        if (record is not null && MeetingMode) record.OnsiteVisit = await OnsiteVisitAsync(db, zedId, level, log, ct);
+        return record;
+    }
+
+    private sealed record VisitRow(string? AssessmentVisit);
+
+    /// <summary>Surveillance: the unit was allotted for an onsite visit (migration 0075); false before it.</summary>
+    internal static async Task<bool> OnsiteVisitAsync(ISqlExecutor db, string zedId, string level, ILogger log, CancellationToken ct)
+    {
+        try
+        {
+            var row = (await db.QuerySqlAsync<VisitRow>("SELECT AssessmentVisit FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification;",
+                new { ZedId = zedId, Certification = level }, ct)).FirstOrDefault();
+            return string.Equals(row?.AssessmentVisit?.Trim(), "Onsite", StringComparison.OrdinalIgnoreCase);
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogDebug(ex, "AssessmentVisit not read (migration 0075 not applied)");
+            return false;
+        }
+    }
 
     /// <summary>404 unless the unit is allotted in remote mode with the caller as lead or co-assessor.</summary>
     private async Task<(string? Level, RemoteRecord? Record, ActionResult? Error)> ForViewer(string zedId, string certification, CancellationToken ct)
@@ -934,12 +978,14 @@ public sealed class RemoteAssessmentController(
         var m = r.ModeOfAssessment?.Trim();
         return string.Equals(m, RemoteMode, StringComparison.OrdinalIgnoreCase) ||
                (string.Equals(m, OnsiteMode, StringComparison.OrdinalIgnoreCase) &&
-                (system == PortalSystem.Surveillance || r.CertificationStatus == 13 || InNcRound(r)));
+                ((system == PortalSystem.Surveillance && !r.OnsiteVisit) || r.CertificationStatus == 13 || InNcRound(r)));
     }
 
     /// <summary>Main onsite unit after the app's closing meeting: reviewed here, without the video room.</summary>
     private bool OnsiteReview(RemoteRecord r) =>
-        host.System != PortalSystem.Surveillance && string.Equals(r.ModeOfAssessment?.Trim(), OnsiteMode, StringComparison.OrdinalIgnoreCase);
+        (host.System != PortalSystem.Surveillance && string.Equals(r.ModeOfAssessment?.Trim(), OnsiteMode, StringComparison.OrdinalIgnoreCase))
+        // 2026-11-14: a surveillance onsite visit, reviewed here after the assessor app's closing meeting as well.
+        || (host.System == PortalSystem.Surveillance && r.OnsiteVisit);
 
     /// <summary>
     /// The certification level when <paramref name="userId"/> is the lead assessor of the unit's open remote assessment
@@ -1021,6 +1067,24 @@ public sealed class RemoteAssessmentController(
         (await db.QuerySqlAsync<RoundPhotos>(RoundSitePhotosSql,
             new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level), NcCount = ncCount }, ct)).FirstOrDefault() ?? new RoundPhotos();
 
+    /// <summary>The surveillance SP_ASSESSMENT_RA_CONFIRM_FINAL_SUBMIT's refusal when no recording link was added.</summary>
+    internal const string RecordingLinkMissing = "Please submit Meeting recording link.";
+
+    /// <summary>
+    /// The checks the surveillance procedure makes after the recording link (closing meeting comments and two participants,
+    /// remarks for each "No"), with its texts; NULL when all pass. Used for an onsite visit only.
+    /// </summary>
+    internal const string OnsiteVisitConfirmSql = """
+        SELECT CASE
+            WHEN EXISTS (SELECT 1 FROM Meetings WHERE CertificationType = @Certification AND ZedId = @ZedId AND MeetingType = 'Close Meeting' AND FieldComments IS NULL)
+                THEN 'Please submit closing meeting comments.'
+            WHEN (SELECT COUNT(*) FROM MeetingParticipants WHERE CertificationType = @Certification AND ZedId = @ZedId AND MeetingType = 'Close Meeting') < 2
+                THEN 'Minimum two participants needed in closing meeting.'
+            WHEN EXISTS (SELECT 1 FROM MsmeRequirements WHERE SectionType = @Certification AND ZedId = @ZedId AND SaConformance = 'No' AND SaAssessorRemarks IS NULL)
+                THEN 'Please provide remarks for the parameters with SaConformance as "No"'
+        END AS ErrorMessage;
+        """;
+
     private async Task<FinalSubmitCheck> Confirm(string zedId, string level, RemoteRecord record, CancellationToken ct)
     {
         // An NC round: every product and site exterior photo set the MSME sent must be answered (the procedure checks the
@@ -1036,6 +1100,14 @@ public sealed class RemoteAssessmentController(
         var row = sets[0].FirstOrDefault();
         var allowed = row is not null && row.Text("AllowFinalSubmit") == "1";
         var message = row?.Text("ErrorMessage") is { Length: > 0 } m ? m : null;
+        // 2026-11-14 (Onsite surveillance): an onsite visit has no meeting recording (the page offers none), but the
+        // surveillance procedure asks for one before its last checks; for a visit those last checks are made here instead.
+        if (!allowed && MeetingMode && record.OnsiteVisit && message == RecordingLinkMissing)
+        {
+            message = (await db.QuerySqlAsync<string?>(OnsiteVisitConfirmSql,
+                new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(level) }, ct)).FirstOrDefault();
+            allowed = message is null;
+        }
         // With NcCount >= 5 the procedure returns an extra "0" set before the real answer; the old action read the second set.
         return new FinalSubmitCheck(allowed, allowed ? null : message ?? "Please complete the assessment before final submit.",
             sets[1].FirstOrDefault()?.Text("RaisedForNc") == "1");

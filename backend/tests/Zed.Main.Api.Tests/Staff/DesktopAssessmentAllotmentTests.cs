@@ -244,6 +244,8 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/assessment/allot",
             new { zedId = "ZEDMSME000001", certification = "ZEDX", agencyUserId = "AGENCYS" })).StatusCode);
         Assert.Equal("ZEDX", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_ALLOT_TO_AGENCY").Single().Args, "Certification"));
+        // 2026-11-14: a Remote only / Onsite only level then skips the desktop step (the procedure decides by the level's flow).
+        Assert.Equal("ZEDX", FakeSql.Arg(DaTestUsers.CallsTo(_host.Sql, "SP_V4_SKIP_DESKTOP").Single().Args, "Certification"));
     }
 
     [Fact]

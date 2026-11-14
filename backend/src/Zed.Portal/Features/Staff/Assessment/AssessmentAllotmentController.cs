@@ -84,6 +84,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
         await db.ExecuteProcAsync("SP_ASSESSMENT_ALLOT_TO_AGENCY",
             new { ZedId = req.ZedId, Certification = level, CertificationBodyUserId = agency.UserId }, ct);
         log.LogInformation("{UserId} allotted {ZedId} {Certification} to agency {Agency}", UserId, req.ZedId, level, agency.UserId);
+        // 2026-11-14: Remote only / Onsite only levels go straight to the agency's SA allotment (migration 0074).
+        if (host.System == PortalSystem.Main) await DesktopSkip.TryAsync(db, req.ZedId!, level, log, ct);
         await DesktopAssessmentEmails.Create(HttpContext.RequestServices)
             .SendAsync(DesktopAssessmentEmails.Kind.AllottedToAgency, req.ZedId!, level, null, ct);
         return new MessageResponse(host.System == PortalSystem.Consultancy ? "Consultancy allotted." : "Assessment allotted.");

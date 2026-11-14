@@ -173,7 +173,10 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         if (desktop && !Documents.DocumentLevels.IsDesktop(level!)) return new MessageResponse("Desktop verification completed.");
         // V4 levels (ZED-X): the certificate number and first surveillance date from Administration → Certification Levels.
         // 2026-11-08: also a V4 level completed at the desktop (ApplyAsync leaves Bronze, Silver and Gold alone).
-        await LevelCertification.ApplyAsync(db, zedId, level!, log, ct);
+        // 2026-11-14: after the legacy final submit has committed, a failure here must not end in an error page that hides the
+        // certificate step (the procedure's number then stays).
+        try { await LevelCertification.ApplyAsync(db, zedId, level!, log, ct); }
+        catch (System.Data.Common.DbException ex) { log.LogError(ex, "Admin certificate number not applied for {ZedId} {Level}", zedId, level); }
 
         var outcome = await CertificationCompletion.Create(HttpContext.RequestServices).CertifyAsync(zedId, level!, ct);
         return new MessageResponse(

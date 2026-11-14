@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
-import { Assessor, ONSITE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
+import { Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { mayAssess } from '../users/assessor-scope';
@@ -34,7 +34,7 @@ interface AllotForm {
     <div class="page-head">
       <div>
         <h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot SA Assessments' }}</h3>
-        <p class="page-sub">{{ surveillance ? 'Allot the Silver and Gold surveillance assessments to an assessor, with the date and the meeting link.' : 'Allot the site assessments to a lead assessor (and a co-assessor for onsite), with the date and the mode.' }}</p>
+        <p class="page-sub">{{ surveillance ? 'Allot the Silver and Gold surveillance assessments to an assessor, with the date and, for a remote surveillance, the meeting link.' : 'Allot the site assessments to a lead assessor (and a co-assessor for onsite), with the date and the mode.' }}</p>
       </div>
       <div class="page-actions">
         <button type="button" class="refresh-link btn btn-default" (click)="load()">
@@ -125,10 +125,15 @@ interface AllotForm {
                 <select id="ModeOfAssessment" name="ModeOfAssessment" class="form-select" [(ngModel)]="f.modeOfAssessment">
                   <option value="">--Select--</option>
                   <!-- Surveillance stores Onsite but the assessment runs on the meeting link (the old page showed "Remote Assessment"). -->
-                  <option [value]="onsite">{{ surveillance ? 'Remote Assessment' : 'Onsite Assessment' }}</option>
+                  <!-- 2026-11-14: a main unit whose level is assessed remotely (Desktop + Remote, Remote only) is allotted Remote. -->
+                  @if (remoteUnit(f.unit)) {
+                    <option [value]="remote">Remote Assessment</option>
+                  } @else {
+                    <option [value]="onsite">{{ surveillance && !onsiteVisit(f.unit) ? 'Remote Assessment' : 'Onsite Assessment' }}</option>
+                  }
                 </select>
               </div>
-              @if (surveillance) {
+              @if (needsLink(f.unit)) {
                 <div class="mb-3">
                   <label class="form-label" for="MeetingLink">Meeting Link<span class="req">*</span></label>
                   <textarea id="MeetingLink" name="MeetingLink" class="form-control" maxlength="5000" rows="4"
@@ -211,14 +216,31 @@ export class SaAllotmentPage {
   protected readonly formError = signal('');
   protected readonly form = signal<AllotForm | null>(null);
   protected readonly onsite = ONSITE;
+  protected readonly remote = REMOTE;
+
+  /** 2026-11-14: a main unit whose level's flow is remote (the server sends AssessmentMode). */
+  protected remoteUnit(unit: Row): boolean {
+    return !this.surveillance && unit['AssessmentMode'] === 'Remote';
+  }
+
+  /** 2026-11-14 (Onsite surveillance): a surveillance unit whose level is surveilled by an onsite visit. */
+  protected onsiteVisit(unit: Row): boolean {
+    return this.surveillance && unit['AssessmentMode'] === 'Onsite';
+  }
+
+  /** Surveillance (except an onsite visit) and main remote assessments are held on a meeting link. */
+  protected needsLink(unit: Row): boolean {
+    return (this.surveillance && !this.onsiteVisit(unit)) || this.remoteUnit(unit);
+  }
   protected readonly minDate = todayIso();
   /** V4: only assessors who assess the unit's kind (Manufacturing / Services; not set = no limit). */
   protected assessorsFor(unit: Row): Assessor[] {
     const category = unit['SectorCategory'];
     const level = String(unit['Certification'] ?? '');
-    // 2026-11-14: only assessors ticked for the unit's level onsite (the site mode allotted today).
+    // 2026-11-14: only assessors ticked for the unit's level in its mode (remote or onsite).
     return this.assessors().filter((a) => (!category || !a.sectorActivity || a.sectorActivity === 'Both' || a.sectorActivity === category)
-      && mayAssess(a, level, 'Onsite'));
+      // A meeting-link surveillance keeps today's list (no mode to tick for it).
+      && (this.surveillance && !this.onsiteVisit(unit) ? true : mayAssess(a, level, this.remoteUnit(unit) ? 'Remote' : 'Onsite')));
   }
   protected readonly coAssessors = (leadId: string) => {
     const unit = this.form()?.unit;
@@ -251,10 +273,10 @@ export class SaAllotmentPage {
     this.form.set({
       unit,
       assessmentDate: '',
-      modeOfAssessment: this.surveillance ? ONSITE : '',
+      modeOfAssessment: this.surveillance ? ONSITE : this.remoteUnit(unit) ? REMOTE : '',
       siteAssessorId: value('SiteAssessorId'),
       coAssessorId: '',
-      meetingLink: this.surveillance ? value('MeetingLink') : '',
+      meetingLink: this.needsLink(unit) ? value('MeetingLink') : '',
     });
   }
 
@@ -267,7 +289,7 @@ export class SaAllotmentPage {
       this.formError.set('Please select valid data.');
       return;
     }
-    if (this.surveillance && !isWebLink(f.meetingLink)) {
+    if (this.needsLink(f.unit) && !isWebLink(f.meetingLink)) {
       this.formError.set('Please enter a valid meeting link (starting with https:// or http://).');
       return;
     }
@@ -282,7 +304,7 @@ export class SaAllotmentPage {
           coAssessorId: f.modeOfAssessment === ONSITE && f.coAssessorId && !this.surveillance ? f.coAssessorId : null,
           assessmentDate: f.assessmentDate,
           modeOfAssessment: f.modeOfAssessment,
-          ...(this.surveillance ? { meetingLink: f.meetingLink.trim() } : {}),
+          ...(this.needsLink(f.unit) ? { meetingLink: f.meetingLink.trim() } : {}),
         }),
       );
       this.form.set(null);

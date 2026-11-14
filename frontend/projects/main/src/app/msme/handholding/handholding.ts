@@ -17,6 +17,7 @@ import {
   handholdingLevel,
 } from './handholding.api';
 import { MsmeUnitSummary } from '../shared/unit-summary';
+import { Crumb, PageHead } from '../shared/page-head';
 
 type InfoTopic = 'My' | HandholdingLevel;
 
@@ -48,7 +49,7 @@ interface MilestoneRow {
  */
 @Component({
   selector: 'zed-msme-handholding',
-  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, MsmeUnitSummary],
+  imports: [RouterLink, FormsModule, DatePipe, ContentTextComponent, MsmeUnitSummary, PageHead],
   templateUrl: './handholding.html',
   styleUrl: '../shared/msme-page.scss',
   styles: `
@@ -66,6 +67,25 @@ interface MilestoneRow {
     .milestone-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .clickable { cursor: pointer; }
     .checkbox-inline { margin-left: 30px; padding-left: 10px; }
+    /* 2026-11-14 (approved): main column and the unit / steps column. */
+    .hh-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+    @media (max-width: 991.98px) { .hh-grid { grid-template-columns: minmax(0, 1fr); } }
+    .hh-steps { border-radius: 12px; }
+    /* The milestones as a numbered timeline. */
+    .ms-list { list-style: none; padding: 0; margin: 0; }
+    .ms-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid #eef3f3; }
+    .ms-item:first-child { border-top: 0; }
+    .ms-num { flex: none; width: 32px; height: 32px; border-radius: 16px; display: grid; place-items: center; font-weight: 800; font-size: 13px;
+      background: #eef1f1; color: #7a8a8b; }
+    .ms-item.is-done .ms-num { background: #1e7a3c; color: #fff; }
+    .ms-item.is-due .ms-num { background: #fdf1dc; color: #a86a12; }
+    .ms-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+    .ms-text strong { color: #23474a; font-size: 14px; overflow-wrap: anywhere; }
+    .ms-text small { color: #7a8a8b; font-size: 12.5px; }
+    .ms-item.is-off .ms-text strong { color: #7a8a8b; }
+    .ms-act { flex: none; display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+    .ms-chip { background: #eef1f1; color: #5f6f70; border-radius: 12px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+    @media (max-width: 575.98px) { .ms-item { flex-wrap: wrap; } .ms-act { width: 100%; justify-content: flex-start; padding-left: 44px; } }
   `,
 })
 export class HandholdingPage {
@@ -83,6 +103,13 @@ export class HandholdingPage {
 
   /** Level whose milestones are shown (the old page's showLevels / certification). */
   protected readonly selected = signal<HandholdingLevel | null>(null);
+  /** Home › Handholding support (› the level). */
+  protected readonly crumbs = computed<Crumb[]>(() => {
+    const level = this.selected();
+    return level
+      ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }, { label: level }]
+      : [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support' }];
+  });
   protected readonly info = signal<InfoTopic | null>(null);
   protected readonly detailsOf = signal<HandholdingLevel | null>(null);
   protected readonly accepting = signal<{ level: HandholdingLevel; milestone: number } | null>(null);

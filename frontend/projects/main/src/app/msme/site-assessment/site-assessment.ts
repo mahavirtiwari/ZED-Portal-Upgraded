@@ -4,7 +4,9 @@ import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SiteAssessmentApi, SiteAssessmentData, SitePhoto, SiteRequirement, SiteSection, canonicalSiteAssessment } from './site-assessment.api';
-import { MsmeUnitSummary } from '../shared/unit-summary';
+import { Crumb, PageHead } from '../shared/page-head';
+import { UnitFacts } from '../shared/unit-facts';
+import { levelName } from '../shared/levels';
 import { RequirementVideo } from '../shared/requirement-video';
 import { ParameterNav } from '../shared/parameter-status';
 
@@ -157,7 +159,7 @@ export const MILESTONE_INFO: readonly InfoSection[] = [
  */
 @Component({
   selector: 'zed-msme-site-assessment',
-  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary, RequirementVideo],
+  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts, RequirementVideo],
   templateUrl: './site-assessment.html',
   styleUrls: ['../shared/msme-page.scss', './site-assessment.scss'],
   host: { '(document:keydown.escape)': 'closePreview()' },
@@ -183,6 +185,17 @@ export class SiteAssessmentPage {
   protected readonly basic = computed<Row>(() => this.data()?.basicInfo ?? {});
   protected readonly assessment = computed<Row>(() => this.data()?.assessment ?? {});
   protected readonly isMilestone = computed(() => this.data()?.kind === 'milestone');
+  /** 2026-11-14: "Gold", "Gold surveillance" or "Silver milestone 2", for the header and the facts strip. */
+  protected readonly levelTitle = computed(() => {
+    const c = this.type() ?? this.certification() ?? '';
+    const m = /^(.*?)(Surveillance|Milestone(\d))$/i.exec(c);
+    if (!m) return levelName(c);
+    return levelName(m[1]) + (m[3] ? ` milestone ${m[3]}` : ' surveillance');
+  });
+  protected readonly crumbs = computed<Crumb[]>(() => this.isMilestone()
+    ? [{ label: 'Home', link: '/msme/dashboard' }, { label: 'Handholding support', link: '/msme/handholding' }, { label: this.levelTitle() }]
+    : [{ label: 'Home', link: '/msme/dashboard' }, { label: `${this.levelTitle()} certification`, link: ['/msme/certification', this.certification()] },
+       { label: 'Site assessment' }]);
   /**
    * Parameters tab: the parameter list and the selected parameter. Handholding milestones show the basic diagnostic
    * conformance as status; the Silver / Gold report has no conformance for the unit, so it lists the parameters only.

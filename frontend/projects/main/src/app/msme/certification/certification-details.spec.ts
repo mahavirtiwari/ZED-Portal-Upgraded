@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { CertificationDetailsPage } from './certification-details';
 import { CertificationData } from './certification.api';
+import { PublicLevels } from '../shared/levels';
 
 const LEGACY = 'https://legacy.example.test';
 
@@ -61,7 +62,8 @@ describe('CertificationDetailsPage', () => {
 
     expect(text()).toContain('Acme Castings');
     expect(text()).toContain('UDYAM-UP-29-0003915');
-    expect(text()).toContain('Pledge taken on May 1, 2024');
+    // 2026-11-14: the unit card is short: no activity, no pledge.
+    expect(text()).not.toContain('Pledge taken on');
     expect(el.querySelector('.entp-label.micro')).toBeTruthy();
     expect(el.querySelector('.zed-payment-success')).toBeTruthy();
   });
@@ -96,6 +98,13 @@ describe('CertificationDetailsPage', () => {
     expect(action('Download Certificate')!.classList).toContain('btn-disabled');
     expect(action('Download Report')!.classList).toContain('btn-disabled');
     expect(action('View My Incentives')!.classList).toContain('btn-disabled');
+  });
+
+  it('follows the flow of the level: Remote only has no desktop step and a Remote Assessment step (2026-11-14)', async () => {
+    TestBed.inject(PublicLevels).levels.set([{ code: 'Silver', name: 'Silver', logoUrl: null, assessmentFlow: 'Remote' }]);
+    await open('Silver', details('Silver', { ApplicationReceived: 'Received', ScheduledOn: 'Scheduled' }));
+    expect(visibleSteps()).toEqual(['Basic Information and Document Upload', 'Remote Assessment']);
+    expect([...el.querySelectorAll('zed-certification-steps .step-num span')].map((n) => n.textContent!.trim()).slice(0, 2)).toEqual(['1', '2']);
   });
 
   it('links the certificate and report of this portal and the incentives once certified', async () => {
@@ -196,7 +205,7 @@ describe('CertificationDetailsPage', () => {
 
   it('reloads on Refresh and when the route changes', async () => {
     await open('Bronze', details('Bronze'));
-    (el.querySelector('.refresh-link') as HTMLButtonElement).click();
+    ([...el.querySelectorAll('.cd-actions button')].find((b) => b.textContent!.includes('Refresh')) as HTMLButtonElement).click();
     await settle();
     http.expectOne('/api/msme/certifications/Bronze').flush(details('Bronze'));
     await settle();

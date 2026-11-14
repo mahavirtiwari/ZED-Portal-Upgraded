@@ -138,9 +138,9 @@ describe('SiteAssessmentPage', () => {
 
     expect(text()).toContain('Acme Castings');
     expect(text()).toContain('UDYAM-UP-29-0003915');
-    expect(el.querySelector('.entp-label.small')).toBeTruthy();
-    expect(text()).toContain('Site Assessment Information');
-    expect(el.querySelector('.step-num')!.textContent!.trim()).toBe('3');
+    expect(el.querySelector('zed-unit-facts')).toBeTruthy();
+    expect(text()).toContain('Site assessment information');
+    expect(el.querySelector('.step-num')).toBeNull();   // 2026-11-14: the shared header, no step number
     expect(Array.from(el.querySelectorAll('.nav-link')).map((b) => b.textContent!.trim())).toEqual(['Basic Info', 'Site Tour', 'Parameters']);
 
     expect(text()).toContain('Whether 3rd Party Financial Audits are conducted? Yes');
@@ -235,7 +235,7 @@ describe('SiteAssessmentPage', () => {
   it('shows the handholding milestone pages', async () => {
     await open('SilverMilestone2', milestone(), '/api/msme/site-assessment/SilverMilestone2');
 
-    expect(text()).toContain('HANDHOLDING SUPPORT');
+    expect(text()).toContain('Handholding support');
     expect(el.querySelector('.step-num')).toBeNull();
     expect(Array.from(el.querySelectorAll('.nav-link')).map((b) => b.textContent!.trim())).toEqual(['Basic Information', 'Site Tour', 'Parameters']);
 

@@ -8,6 +8,9 @@ export interface PublicLevelInfo {
   name: string;
   logoUrl: string | null;
   assessmentMode?: 'Desktop' | 'Site';
+  /** 2026-11-14: Desktop | Remote | Onsite | DesktopRemote | DesktopOnsite (the level's steps). */
+  assessmentFlow?: string | null;
+  surveillanceMode?: string | null;
 }
 
 /** Every level, enabled or not (api/public/levels/all), for staff filters, menus and tables with old records. */

@@ -9,6 +9,7 @@ import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/a
 import { handholdingLevel } from '../handholding/handholding.api';
 import { ConsultancyOptions, ConsultancyPaymentApi } from './consultancy-payment.api';
 import { FeeRow, postToGateway } from './payment.api';
+import { PageHead } from '../shared/page-head';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
@@ -23,11 +24,21 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-consultancy-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead],
   templateUrl: './consultancy-payment.html',
   styleUrl: './payment-form.scss',
 })
 export class ConsultancyPaymentPage implements OnInit {
+  /** 2026-11-14: the three steps of the page, for the step tracker. */
+  protected readonly payStepList = [
+    { key: 'disclaimer', label: 'Disclaimer' },
+    { key: 'instructions', label: 'Instructions' },
+    { key: 'payment', label: 'Payment' },
+  ];
+  protected payStepIndex(step: string): number {
+    return this.payStepList.findIndex((x) => x.key === step);
+  }
+
   private readonly api = inject(ConsultancyPaymentApi);
   private readonly router = inject(Router);
 

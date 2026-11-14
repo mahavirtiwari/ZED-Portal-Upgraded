@@ -103,6 +103,16 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
             // 2026-11-14: each assessor's levels and modes; the page offers, for each unit, those ticked for its level onsite.
             var scopes = await Users.AssessorScope.ByRoleAsync(db, log, ct);
+            // 2026-11-14: each unit's mode from its level's flow (Remote / Onsite) and, for a remote one, its saved link.
+            var flows = await Users.AssessorScope.FlowsAsync(db, log, ct);
+            var links = await MeetingLinksAsync(rows, ct);
+            foreach (var row in rows)
+            {
+                var level = row.Text("Certification").Trim();
+                var isRemote = IsRemoteFlow(flows.GetValueOrDefault(level) ?? CertLevels.LevelFlows.DesktopOnsite);
+                row["AssessmentMode"] = isRemote ? "Remote" : "Onsite";
+                if (isRemote && links.TryGetValue(UnitKey(row.Text("ZedId"), level), out var link)) row["MeetingLink"] = link;
+            }
             return new AllotmentsResponse(rows, Assessors(sets).Select(a => a with
             {
                 SectorActivity = activities.GetValueOrDefault(a.UserId),
@@ -125,7 +135,45 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
                 u["CoAssessorId"] ??= r.CoAssessorId;
             }
         }
-        return new AllotmentsResponse(units, Assessors(sets));
+        // 2026-11-14: each unit's surveillance mode (Onsite: a visit without a meeting link) and the assessors' ticks.
+        var surveillanceModes = await CertLevels.LevelFlows.StoredAsync(db, log, ct);
+        foreach (var u in units)
+            u["AssessmentMode"] = CertLevels.LevelFlows.SurveillanceModeOf(surveillanceModes.GetValueOrDefault(u.Text("Certification").Trim())?.SurveillanceMode) == CertLevels.LevelFlows.Onsite
+                ? "Onsite" : "Remote";
+        var surveillanceScopes = await Users.AssessorScope.ByRoleAsync(db, log, ct);
+        return new AllotmentsResponse(units, Assessors(sets).Select(a => a with
+        {
+            Assessments = surveillanceScopes.TryGetValue(a.UserId, out var sc) ? Users.AssessorScope.Items(sc) : null,
+        }).ToList());
+    }
+
+    private sealed record LinkRow(string? ZedId, string? Certification, string? MeetingLink);
+
+    /// <summary>Main (migration 0073): the meeting links of the agency's listed units.</summary>
+    internal const string MeetingLinksSql = """
+        SELECT C.ZedId, C.Certification, C.MeetingLink
+        FROM OPENJSON(@Units) WITH (ZedId varchar(50) '$.z', Certification varchar(50) '$.c') J
+        JOIN dbo.MsmeCertifications C ON C.ZedId = J.ZedId AND C.Certification = J.Certification
+        WHERE C.CertificationBodyUserId = @UserId
+        """;
+
+    /// <summary>Main: the meeting links of the listed units (migration 0073); none before it.</summary>
+    private async Task<Dictionary<string, string>> MeetingLinksAsync(IReadOnlyList<Dictionary<string, object?>> rows, CancellationToken ct)
+    {
+        var result = new Dictionary<string, string>();
+        if (rows.Count == 0) return result;
+        try
+        {
+            var keys = System.Text.Json.JsonSerializer.Serialize(rows.Select(u => new { z = u.Text("ZedId"), c = u.Text("Certification") }));
+            foreach (var r in await db.QuerySqlAsync<LinkRow>(MeetingLinksSql,
+                         new { Units = new Dapper.DbString { Value = keys, IsAnsi = false, Length = -1 }, UserId }, ct))
+                if (!string.IsNullOrWhiteSpace(r.MeetingLink)) result[UnitKey(r.ZedId, r.Certification)] = r.MeetingLink!;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Meeting links not read (is migration 0073 applied?)");
+        }
+        return result;
     }
 
     private static string UnitKey(string? zedId, string? certification) =>
@@ -144,16 +192,24 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         var date = IsoDate(req.AssessmentDate);
         var today = DateOnly.FromDateTime(DateTime.Now);
 
+        // 2026-11-14: on main the level's flow decides the mode (Desktop + Remote / Remote only: a remote assessment with a
+        // meeting link; the others onsite). Surveillance stays the meeting-link flow of its procedure.
+        var remote = !Surveillance && certification is not null && IsRemoteFlow(await CertLevels.LevelFlows.FlowAsync(db, certification, log, ct));
+        // 2026-11-14 (Onsite surveillance): the level's surveillance Mode of assessment is Onsite: an onsite visit, no link.
+        var onsiteVisit = Surveillance && certification is not null && await SurveillanceOnsiteAsync(certification, ct);
+        var mode = remote ? Remote.RemoteAssessmentController.RemoteMode : Onsite;
         if (!IsId(zedId) || certification is null || !IsId(lead) || (co is not null && !IsId(co)) ||
-            date is null || req.ModeOfAssessment?.Trim() != Onsite)
+            date is null || req.ModeOfAssessment?.Trim() != mode)
             return this.Problem400("Please select valid data.");
         if (date < today || date > today.AddYears(1))
             return this.Problem400("Please select a valid assessment date.");
         if (co is not null && string.Equals(co, lead, StringComparison.OrdinalIgnoreCase))
             return this.Problem400("Lead Assessor and Co Assessor must be different.");
-        // Only the surveillance procedure has @MeetingLink; on Main the value is ignored.
-        var meetingLink = Surveillance ? AssessmentInputs.WebLink(req.MeetingLink, MaxMeetingLink) : null;
-        if (Surveillance && meetingLink is null)
+        // Surveillance's procedure takes @MeetingLink; a main remote assessment keeps it in MsmeCertifications.MeetingLink
+        // (migration 0073), written after the procedure.
+        var needsLink = (Surveillance && !onsiteVisit) || remote;
+        var meetingLink = needsLink ? AssessmentInputs.WebLink(req.MeetingLink, MaxMeetingLink) : null;
+        if (needsLink && meetingLink is null)
             return this.Problem400("Please enter a valid meeting link (starting with https:// or http://).");
 
         // The unit must be in this agency's list, in the state where the old page offered ALLOT/RE-ALLOT.
@@ -168,6 +224,13 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
         if (!assessors.Any(a => string.Equals(a.UserId, lead, StringComparison.OrdinalIgnoreCase)) ||
             (co is not null && !assessors.Any(a => string.Equals(a.UserId, co, StringComparison.OrdinalIgnoreCase))))
             return this.Problem400("Please select an assessor of your agency.");
+        if (onsiteVisit)
+        {
+            // The assessors must be ticked for the level onsite (their surveillance copy of Users.AssessmentModes).
+            foreach (var id in new[] { lead, co }.OfType<string>())
+                if (!Users.AssessorScope.Has(await Users.AssessorScope.OfUserAsync(db, id!, log, ct), certification!, Users.AssessorScope.OnsiteMode))
+                    return this.Problem400($"{id} is not ticked for {Zed.Core.Data.LevelRegistry.NameOf(certification)} onsite assessment. The agency can tick it on the assessor's page.");
+        }
         if (!Surveillance)
         {
             var category = Users.UserSectorActivity.UnitCategory(unit.Text("Activity"), unit.Text("TwoDigitActivity"),
@@ -176,19 +239,30 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             {
                 if (await Users.UserSectorActivity.OfUserAsync(db, id!, log, ct) is var activity && !Users.UserSectorActivity.Serves(activity, category))
                     return this.Problem400($"{id} assesses {activity} units only; the unit is {category}.");
-                // 2026-11-14: the assessor must be ticked for the level onsite (the only site mode allotted today).
-                if (!Users.AssessorScope.Has(await Users.AssessorScope.OfUserAsync(db, id!, log, ct), certification!, Users.AssessorScope.OnsiteMode))
-                    return this.Problem400($"{id} is not ticked for {Zed.Core.Data.LevelRegistry.NameOf(certification)} onsite assessment. The agency can tick it on the assessor's page.");
+                // 2026-11-14: the assessor must be ticked for the level in this mode (remote or onsite).
+                if (!Users.AssessorScope.Has(await Users.AssessorScope.OfUserAsync(db, id!, log, ct), certification!,
+                        remote ? Users.AssessorScope.RemoteMode : Users.AssessorScope.OnsiteMode))
+                    return this.Problem400($"{id} is not ticked for {Zed.Core.Data.LevelRegistry.NameOf(certification)} {(remote ? "remote" : "onsite")} assessment. The agency can tick it on the assessor's page.");
             }
         }
 
         try
         {
             var assessmentDate = date.Value.ToString("yyyy-MM-dd");
+            if (onsiteVisit)
+            {
+                await db.ExecuteProcAsync(OnsiteVisitProcedure,
+                    new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate }, ct);
+                var visitMails = ActivatorUtilities.CreateInstance<SiteAllotmentEmails>(HttpContext.RequestServices);
+                await visitMails.SendOnsiteAllotmentAsync(zedId!, certification, ct);
+                return new MessageResponse("Unit allotted for an onsite surveillance visit.");
+            }
             object args = Surveillance
                 ? new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate, ModeOfAssessment = Onsite, MeetingLink = meetingLink }
-                : new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate, ModeOfAssessment = Onsite };
+                : new { ZedId = zedId, Certification = certification, SiteAssessorId = lead, CoAssessorId = co, AssessmentDate = assessmentDate, ModeOfAssessment = mode };
             await db.ExecuteProcAsync("SP_ASSESSMENT_ACCEPT_UNIT_FOR_SA", args, ct);
+            // A meeting-link surveillance is no onsite visit (a unit re-allotted after an onsite allotment).
+            if (Surveillance) await ClearVisitAsync(zedId!, certification, ct);
         }
         catch (Microsoft.Data.SqlClient.SqlException ex)
         {
@@ -196,10 +270,55 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             return this.Problem400("Unable to allot the unit. Please try again.");
         }
 
+        var linkNote = "";
+        if (remote && !await SaveMeetingLinkAsync(zedId!, certification, meetingLink!, ct))
+            linkNote = " The meeting link could not be saved: please ask the administrator to apply database migration 0073.";
+
         var mails = ActivatorUtilities.CreateInstance<SiteAllotmentEmails>(HttpContext.RequestServices);
         if (Surveillance) await mails.SendSurveillanceAllotmentAsync(zedId!, certification, ct);
+        else if (remote) await mails.SendRemoteAllotmentAsync(zedId!, certification, meetingLink!, ct);
         else await mails.SendOnsiteAllotmentAsync(zedId!, certification, ct);
-        return new MessageResponse("Unit allotted.");
+        return new MessageResponse("Unit allotted." + linkNote);
+    }
+
+    /// <summary>Surveillance (migration 0075): the agency's allotment of an onsite surveillance visit.</summary>
+    public const string OnsiteVisitProcedure = "SP_V4_SURVEILLANCE_ACCEPT_ONSITE";
+
+    /// <summary>Surveillance: the level's surveillance Mode of assessment is Onsite (its SectionTypes copy, kept by the Admin's save).</summary>
+    private async Task<bool> SurveillanceOnsiteAsync(string level, CancellationToken ct)
+    {
+        var stored = (await CertLevels.LevelFlows.StoredAsync(db, log, ct)).GetValueOrDefault(level);
+        return CertLevels.LevelFlows.SurveillanceModeOf(stored?.SurveillanceMode) == CertLevels.LevelFlows.Onsite;
+    }
+
+    internal const string ClearVisitSql =
+        "UPDATE dbo.MsmeCertifications SET AssessmentVisit = NULL WHERE ZedId = @ZedId AND Certification = @Certification AND AssessmentVisit IS NOT NULL;";
+
+    private async Task ClearVisitAsync(string zedId, string level, CancellationToken ct)
+    {
+        try { await db.ExecuteSqlAsync(ClearVisitSql, new { ZedId = zedId, Certification = level }, ct); }
+        catch (System.Data.Common.DbException ex) { log.LogDebug(ex, "AssessmentVisit not cleared (migration 0075 not applied)"); }
+    }
+
+    /// <summary>Desktop + Remote and Remote only are assessed remotely (2026-11-14, <see cref="CertLevels.LevelFlows"/>).</summary>
+    internal static bool IsRemoteFlow(string flow) => flow is CertLevels.LevelFlows.DesktopRemote or CertLevels.LevelFlows.Remote;
+
+    /// <summary>Main (migration 0073): the remote assessment's meeting link on the unit's level row.</summary>
+    internal const string SaveMeetingLinkSql =
+        "UPDATE dbo.MsmeCertifications SET MeetingLink = @MeetingLink WHERE ZedId = @ZedId AND Certification = @Certification;";
+
+    private async Task<bool> SaveMeetingLinkAsync(string zedId, string certification, string link, CancellationToken ct)
+    {
+        try
+        {
+            await db.ExecuteSqlAsync(SaveMeetingLinkSql, new { ZedId = zedId, Certification = certification, MeetingLink = link }, ct);
+            return true;
+        }
+        catch (System.Data.Common.DbException ex)
+        {
+            log.LogWarning(ex, "Meeting link of {ZedId} {Certification} not saved (is migration 0073 applied?)", zedId, certification);
+            return false;
+        }
     }
 
     /// <summary>Remote/on-site assessments allotted to the signed-in assessor (lead or co-assessor).</summary>
@@ -210,7 +329,13 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     {
         var sets = await db.QueryProcMultipleAsync("SP_ASSESSMENT_ALLOT_LIST",
             new { UserId, RoleId = ((int)UserRole.DesktopAssessor).ToString(), AllotmentType = "RA" }, ct);
-        return Pick(sets[0], RemoteFields);
+        var rows = Pick(sets[0], RemoteFields);
+        // 2026-11-14 (Onsite surveillance): which surveillance units are onsite visits (assessed in the app, reviewed at 13).
+        if (Surveillance)
+            foreach (var row in rows)
+                if (await Remote.RemoteAssessmentController.OnsiteVisitAsync(db, row.Text("ZedId"), row.Text("Certification"), log, ct))
+                    row["OnsiteVisit"] = true;
+        return rows;
     }
 
     /// <summary>SA branch of the agency list: CertificationBodyUserId = the signed-in agency, status 6 or 8.</summary>

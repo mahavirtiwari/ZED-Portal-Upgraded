@@ -11,40 +11,29 @@
     }
 
     @if (data(); as d) {
-      <div class="page-head">
+      <!-- 2026-11-14 (approved design): breadcrumb header with Back and Refresh; progress on the left, unit and actions on the right. -->
+      <div class="page-head cd-head">
         <div>
+          <nav class="crumb" aria-label="Breadcrumb">
+            <a routerLink="/msme/dashboard">Home</a><span aria-hidden="true">›</span>
+            @if (kind() === 'milestone') { <a routerLink="/msme/handholding">Handholding</a> } @else { <a routerLink="/msme/dashboard">Dashboard</a> }
+            <span aria-hidden="true">›</span><span aria-current="page">{{ heading() }}</span>
+          </nav>
           <h3 class="registration-title">{{ heading() }}</h3>
+        </div>
+        <div class="cd-actions">
+          <a class="btn btn-outline-secondary btn-sm" [routerLink]="kind() === 'milestone' ? '/msme/handholding' : '/msme/dashboard'">
+            <img src="/Images/svgicons/back.svg" alt="" /> Back
+          </a>
+          <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()">
+            <img src="/Images/svgicons/refresh.svg" alt="" /> Refresh
+          </button>
         </div>
       </div>
 
-      <div class="row">
-        <!-- Unit summary, as on the live portal -->
-        <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" /></div>
+      <div class="dash-main">
 
-        <div class="col-lg-9 dash-main">
-          <div class="refresh-bar">
-            <div>
-              <a [routerLink]="kind() === 'milestone' ? '/msme/handholding' : '/msme/dashboard'">
-                <img src="/Images/svgicons/back.svg" alt="" />
-                <span>BACK</span>
-              </a>
-            </div>
-            <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
-              <img src="/Images/svgicons/refresh.svg" alt="" />
-              <span>Refresh</span>
-            </button>
-          </div>
-
-          @if (webEntry()) {
-            <div class="zed-payment-success">
-              <div class="label-highlight">
-                <div>
-                  <p>Enter the <strong>Basic Information and Documents</strong> of your unit on this portal to proceed to the next step.</p>
-                  <a class="btn btn-primary" [routerLink]="['/msme/entry', d.certification]">ENTER DETAILS</a>
-                </div>
-              </div>
-            </div>
-          } @else if (showAppBanner()) {
+          @if (showAppBanner()) {
             <div class="zed-payment-success">
               <div class="label-highlight">
                 <div>
@@ -57,16 +46,15 @@
             </div>
           }
 
-          <!-- As the live page: the steps panel, Status on the left (col-sm-7) and Actions on the right (col-sm-5). -->
-          <div class="panel panel-steps panel-bg-default">
-            <div class="panel-body">
-              <div class="row">
-            <div class="col-sm-7">
-              <h3 class="registration-title">Status</h3>
+          <div class="cd-grid">
+            <section class="cd-card" aria-labelledby="progressTitle">
+              <h3 id="progressTitle" class="cd-title">Progress</h3>
               <zed-certification-steps [certification]="d.certification" [status]="status()" [incentiveUrl]="incentiveUrl()" />
-            </div>
-            <div class="col-sm-5">
-              <h3 class="registration-title">Actions</h3>
+            </section>
+            <div>
+              <zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [compact]="true" />
+              <section class="cd-card" aria-labelledby="actionsTitle">
+              <h3 id="actionsTitle" class="cd-title">Actions</h3>
               @for (a of actions(); track $index) {
                 <div class="alert alert-document" [class.alert-document-danger]="a.danger" [class.btn-disabled]="!a.enabled">
                   <div>
@@ -88,12 +76,12 @@
                     <small class="soon-note" title="This page is being moved to the new portal.">Available soon</small>
                   }
                 </div>
+              } @empty {
+                <p class="text-muted small mb-0">No actions at this step.</p>
               }
-            </div>
-              </div>
+              </section>
             </div>
           </div>
-        </div>
       </div>
     }
   </div>

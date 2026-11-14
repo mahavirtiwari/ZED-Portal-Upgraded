@@ -38,4 +38,32 @@ label.panel-item {
   .email-change .otp { letter-spacing: 4px; width: 160px; }
   .activity-option { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #d6d6d6; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
   .activity-option.panel-selected { border: 2px solid #45a5ad; background: rgba(69, 165, 173, 0.08); }
+
+  // 2026-11-14 (approved design): header, summary card, two-column sections.
+  .page-head { align-items: center; }
+  .crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
+  .crumb a { color: #7a8a8b; text-decoration: none; }
+  .crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+  .registration-title { font-size: 22px; }
+  .summary { display: flex; align-items: center; gap: 14px; background: linear-gradient(90deg, #eef8f6, #fff 70%); }
+  .ent { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 20px;
+    background: #eef6f6; color: #23474a; }
+  .ent-micro { background: #F6CB8B; color: #6b4d00; }
+  .ent-small { background: #E6E96E; color: #575a00; }
+  .ent-medium { background: #A9DBEB; color: #1d4f5e; }
+  .summary-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+  .summary-text b { font-size: 17px; color: #23474a; overflow-wrap: anywhere; }
+  .summary-text span { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
+  .pledge-chip { flex: none; background: #e3f4e8; color: #1e7a3c; border-radius: 14px; padding: 3px 12px; font-size: 12.5px; font-weight: 700; }
+  .pcols { display: flex; flex-direction: column; gap: 16px; margin-bottom: 16px; }
+  .pcols > .pcard { margin: 0; }
+  // Four equal columns in every section, so that the fields of all the sections line up under each other.
+  .pcols .pgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px; }
+  .pcols .pgrid-empty { grid-column: 1 / -1; }
+  .pcols .span-3 { grid-column: span 3; }
+  .pcard-head .more { margin: 0; font-size: 13px; }
+  @media (max-width: 991.98px) { .pcols .pgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .pcols .span-3 { grid-column: 1 / -1; } }
+  @media (max-width: 575.98px) { .pcols .pgrid { grid-template-columns: minmax(0, 1fr); } }
+  .summary-text b + span { margin-top: 2px; }
+
 }

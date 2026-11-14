@@ -1,17 +1,13 @@
 @if (options(); as o) {
-  <!-- As the live step 4: one panel, the level badge in its grey head, the options and the summary side by side. -->
-  <div class="row justify-content-center">
-  <div class="col-sm-10 Dashboard">
-  <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
-    <div class="panel panel-default panel-payment">
-      <div class="panel-heading">
-        <div class="text-center"><img [src]="logo()" [alt]="name() + ' Certification'" class="level-logo" /></div>
-      </div>
-      <div class="panel-body">
-      <div class="row">
+  <!-- 2026-11-14 (approved): two white cards, the options on the left and a receipt-style summary with the pay button on the right. -->
+  <form (ngSubmit)="proceed()" class="form-horizontal pay-v2" novalidate>
+    <div class="pay-cols">
       <!-- Payment options -->
-      <div class="col-sm-6">
-        <h3 class="registration-title">Payment Options</h3>
+      <section class="pay-card" aria-labelledby="payOptionsTitle">
+        <div class="pay-card-head">
+          <img [src]="logo()" [alt]="name() + ' Certification'" class="level-logo" />
+          <h3 class="registration-title" id="payOptionsTitle">Payment Options</h3>
+        </div>
 
         <div class="payment-option-block">
           <p id="gstinLabel">GSTIN Applicable?</p>
@@ -68,11 +64,11 @@
             </div>
           </div>
         }
-      </div>
+      </section>
 
       <!-- Summary -->
-      <div class="col-sm-6 payment-summary">
-        <h3 class="registration-title">Summary</h3>
+      <section class="pay-card payment-summary" aria-labelledby="paySummaryTitle">
+        <h3 class="registration-title" id="paySummaryTitle">Summary</h3>
         <div class="panel panel-info summary-rows">
           <div><span>Certification Fee</span><strong>₹ {{ n('Total') | number: '1.2-2' }}</strong></div>
           @if (useReward()) {
@@ -100,20 +96,11 @@
           }
           <div class="net"><strong>Net Payable Amount</strong><strong>₹ {{ netPayable() | number: '1.2-2' }}</strong></div>
         </div>
-      </div>
-
-      <div class="col-sm-12">
-        <div class="stepper-footer-sec initial-step1">
-          <button type="button" class="btn btn-default" (click)="back.emit()">BACK TO DASHBOARD</button>
-          <button type="submit" class="btn btn-primary" [disabled]="busy()">PROCEED TO PAY</button>
-        </div>
-      </div>
-      </div>
-      </div>
+        <button type="submit" class="btn btn-primary pay-btn" [disabled]="busy()">PROCEED TO PAY</button>
+        <button type="button" class="btn btn-link back-link" (click)="back.emit()">BACK TO DASHBOARD</button>
+      </section>
     </div>
   </form>
-  </div>
-  </div>
 } @else if (!busy()) {
   <!-- As the legacy step 4 (always rendered): the way back stays when the fee summary could not load. -->
   <div class="stepper-footer-sec">

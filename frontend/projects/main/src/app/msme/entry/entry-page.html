@@ -1,13 +1,10 @@
-<div class="container form-page" id="zed_user_form">
-  <div class="page-head">
-    <div>
-      <h3 class="registration-title">{{ levelName(certification()) }} Certification: Basic Information &amp; Documents</h3>
-    </div>
-    <div class="page-actions refresh-bar mb-0">
-      <a [routerLink]="['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
-      <button type="button" class="btn btn-link refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
-    </div>
-  </div>
+<!-- 2026-11-14 (approved): breadcrumb header, a step tracker with the progress of each step, the step's form in a card
+     with Save / Next in a footer bar. -->
+<div class="container form-page entry-v2" id="zed_user_form">
+  <zed-page-head [crumbs]="crumbs()" [title]="levelName(certification()) + ': Basic information and documents'">
+    <a class="btn btn-outline-secondary btn-sm" [routerLink]="['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+    <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  </zed-page-head>
 
   @if (loading() && !state()) {
     <p class="text-muted" role="status">Loading…</p>
@@ -20,26 +17,40 @@
         Your basic information and documents have been submitted. The assessment agency will review them; you can follow the progress
         under <a [routerLink]="['/msme/certification', s.certification]">View Details</a>.
       </div>
-    } @else if (!s.editable && !s.nc) {
-      <div class="alert alert-info" role="status">These details cannot be changed now.</div>
+    }
+    @if (!s.webEntry) {
+      <!-- 2026-11-14: no web entry for any level; what the ZED MSME app uploaded, read-only. -->
+      <div class="alert alert-info app-only" role="status" id="appOnly">
+        Basic information, documents and NC answers are entered in the <strong>ZED MSME app</strong>. Here you can see what has been uploaded.
+      </div>
     }
 
     <div class="entry-tabs" role="tablist">
-      <button type="button" role="tab" [class.active]="tab() === 'basic'" [attr.aria-selected]="tab() === 'basic'" (click)="tab.set('basic')">
-        1. Basic Information @if (s.basicInfoSaved) { <span class="count">(saved)</span> }
+      <button type="button" role="tab" [class.active]="tab() === 'basic'" [class.done]="s.basicInfoSaved" [attr.aria-selected]="tab() === 'basic'" (click)="tab.set('basic')">
+        <span class="st-num" aria-hidden="true">{{ s.basicInfoSaved ? '✓' : '1' }}</span>
+        <span class="st-text">1. Basic Information <span class="count">{{ s.basicInfoSaved ? '(saved)' : 'Not saved yet' }}</span></span>
       </button>
-      <button type="button" role="tab" [class.active]="tab() === 'documents'" [attr.aria-selected]="tab() === 'documents'" (click)="tab.set('documents')">
-        2. Documents <span class="count">({{ requiredDone() }}/{{ requiredCount() }} required)</span>
+      <button type="button" role="tab" [class.active]="tab() === 'documents'" [class.done]="requiredCount() > 0 && requiredDone() === requiredCount()"
+              [attr.aria-selected]="tab() === 'documents'" (click)="tab.set('documents')">
+        <span class="st-num" aria-hidden="true">{{ requiredCount() > 0 && requiredDone() === requiredCount() ? '✓' : '2' }}</span>
+        <span class="st-text">2. Documents <span class="count">({{ requiredDone() }}/{{ requiredCount() }} required)</span></span>
       </button>
       @if (s.nc; as n) {
-        <button type="button" role="tab" [class.active]="tab() === 'nc'" [attr.aria-selected]="tab() === 'nc'" (click)="tab.set('nc')">
-          NC {{ n.number }} <span class="count">({{ ncItems().answered }}/{{ ncItems().total }} answered)</span>
+        <button type="button" role="tab" class="is-nc" [class.active]="tab() === 'nc'" [class.done]="ncItems().total > 0 && ncItems().answered === ncItems().total"
+                [attr.aria-selected]="tab() === 'nc'" (click)="tab.set('nc')">
+          <span class="st-num" aria-hidden="true">!</span>
+          <span class="st-text">NC {{ n.number }} <span class="count">({{ ncItems().answered }}/{{ ncItems().total }} answered)</span></span>
         </button>
       }
-      <button type="button" role="tab" [class.active]="tab() === 'submit'" [attr.aria-selected]="tab() === 'submit'" (click)="tab.set('submit')">
-        3. Submit
-      </button>
+      @if (s.editable || ncAnswerable()) {
+        <button type="button" role="tab" [class.active]="tab() === 'submit'" [attr.aria-selected]="tab() === 'submit'" (click)="tab.set('submit')">
+          <span class="st-num" aria-hidden="true">3</span>
+          <span class="st-text">3. Submit <span class="count">{{ readyToSubmit() ? 'Ready' : 'After all required' }}</span></span>
+        </button>
+      }
     </div>
+
+    <div class="entry-card">
 
     @switch (tab()) {
       @case ('basic') {
@@ -101,11 +112,13 @@
       }
 
       @case ('documents') {
-        @if (!s.basicInfoSaved) {
-          <div class="alert alert-info" role="status">Please save the basic information first; the documents can be uploaded after that.</div>
+        @if (editable()) {
+          @if (!s.basicInfoSaved) {
+            <div class="alert alert-info" role="status">Please save the basic information first; the documents can be uploaded after that.</div>
+          }
+          <p class="help">For each document, upload one PDF, or up to 10 photos (JPG / PNG), which are joined into one PDF. Uploading again replaces it.
+            Documents marked <span class="doc-badge badge-req">Required</span> are needed for the final submit.</p>
         }
-        <p class="help">For each document, upload one PDF, or up to 10 photos (JPG / PNG), which are joined into one PDF. Uploading again replaces it.
-          Documents marked <span class="doc-badge badge-req">Required</span> are needed for the final submit.</p>
         @for (sec of s.sections; track sec.code) {
           <div class="doc-section">
             <h5>{{ sec.code }}. {{ sec.name }}</h5>
@@ -113,19 +126,21 @@
               <div class="doc-req">
                 <div class="req-name">{{ req.code }} {{ req.name }}<zed-requirement-video [url]="req.videoUrl" [code]="req.code" /></div>
                 @for (e of req.evidences; track e.id) {
-                  <div class="doc-row" [attr.data-evidence]="e.id">
+                  <div class="doc-row doc-grid" [attr.data-evidence]="e.id" [class.can-upload]="editable() && s.basicInfoSaved">
                     <div class="doc-name">
                       {{ e.name }}
                       @if (e.help) { <span class="help">{{ e.help }}</span> }
                     </div>
-                    @if (e.uploaded) {
-                      <span class="doc-badge badge-ok">Uploaded</span>
-                      @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">VIEW</a> }
-                    } @else if (e.required) {
-                      <span class="doc-badge badge-req">Required</span>
-                    } @else {
-                      <span class="doc-badge badge-opt">Optional</span>
-                    }
+                    <span class="doc-status">
+                      @if (e.uploaded) {
+                        <span class="doc-badge badge-ok">Uploaded</span>
+                        @if (e.url) { <a [href]="e.url" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">VIEW</a> }
+                      } @else if (e.required) {
+                        <span class="doc-badge badge-req">Required</span>
+                      } @else {
+                        <span class="doc-badge badge-opt">Optional</span>
+                      }
+                    </span>
                     @if (editable() && s.basicInfoSaved) {
                       <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
                              [attr.aria-label]="'Files for ' + e.name" (change)="choose(e, $event)" />
@@ -152,8 +167,9 @@
       @case ('nc') {
         @if (nc(); as n) {
           <div class="alert alert-warning" role="status" id="ncIntro">
-            The assessor raised Non-Conformance {{ n.number }}. Answer each item below with a new document or photos and your remarks, then submit
-            the answers on the Submit tab.
+            The assessor raised Non-Conformance {{ n.number }}.
+            @if (ncAnswerable()) { Answer each item below with a new document or photos and your remarks, then submit the answers on the Submit tab. }
+            @else { The items and their answers from the ZED MSME app are below. }
           </div>
           @if (n.siteExterior; as site) {
             <div class="doc-section" data-nc="site">
@@ -163,11 +179,13 @@
                   @if (site.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ site.assessorRemarks }}</span> }
                   @if (site.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
                 </div>
-                <input type="file" class="form-control form-control-sm w-auto" multiple accept="image/jpeg,image/png"
-                       aria-label="New site exterior photos (up to 2)" (change)="chooseNc('site', $event)" />
-                <input class="form-control form-control-sm w-auto" placeholder="Your remarks" aria-label="Remarks on the site exterior photos" maxlength="2000"
-                       [value]="remark('site')" (input)="setRemark('site', $any($event.target).value)" />
-                <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">SAVE</button>
+                @if (ncAnswerable()) {
+                  <input type="file" class="form-control form-control-sm w-auto" multiple accept="image/jpeg,image/png"
+                         aria-label="New site exterior photos (up to 2)" (change)="chooseNc('site', $event)" />
+                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" aria-label="Remarks on the site exterior photos" maxlength="2000"
+                         [value]="remark('site')" (input)="setRemark('site', $any($event.target).value)" />
+                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('site').length === 0" (click)="answerSite()">SAVE</button>
+                }
               </div>
             </div>
           }
@@ -181,15 +199,17 @@
                     @if (p.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ p.assessorRemarks }}</span> }
                     @if (p.answered) { <span class="doc-badge badge-ok">Answered</span> } @else { <span class="doc-badge badge-req">To answer</span> }
                   </div>
-                  <label class="small mb-0">Product photo
-                    <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png" (change)="chooseNc('p-' + p.id + '-photo', $event)" />
-                  </label>
-                  <label class="small mb-0">Label / description
-                    <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png,application/pdf" (change)="chooseNc('p-' + p.id + '-label', $event)" />
-                  </label>
-                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + p.productName" maxlength="2000"
-                         [value]="remark('p-' + p.id)" (input)="setRemark('p-' + p.id, $any($event.target).value)" />
-                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">SAVE</button>
+                  @if (ncAnswerable()) {
+                    <label class="small mb-0">Product photo
+                      <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png" (change)="chooseNc('p-' + p.id + '-photo', $event)" />
+                    </label>
+                    <label class="small mb-0">Label / description
+                      <input type="file" class="form-control form-control-sm" accept="image/jpeg,image/png,application/pdf" (change)="chooseNc('p-' + p.id + '-label', $event)" />
+                    </label>
+                    <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + p.productName" maxlength="2000"
+                           [value]="remark('p-' + p.id)" (input)="setRemark('p-' + p.id, $any($event.target).value)" />
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy()" (click)="answerProduct(p.id)">SAVE</button>
+                  }
                 </div>
               }
             </div>
@@ -209,20 +229,24 @@
                       <span class="doc-badge badge-req">To answer</span>
                     }
                   </div>
-                  <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
-                         [attr.aria-label]="'Document for ' + r.code" (change)="chooseNc('r-' + r.id, $event)" />
-                  <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + r.code" maxlength="2000"
-                         [value]="remark('r-' + r.id)" (input)="setRemark('r-' + r.id, $any($event.target).value)" />
-                  <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('r-' + r.id).length === 0" (click)="answerRequirement(r.id)">
-                    {{ r.answered ? 'REPLACE' : 'SAVE' }}
-                  </button>
+                  @if (ncAnswerable()) {
+                    <input type="file" class="form-control form-control-sm w-auto" multiple accept="application/pdf,image/jpeg,image/png"
+                           [attr.aria-label]="'Document for ' + r.code" (change)="chooseNc('r-' + r.id, $event)" />
+                    <input class="form-control form-control-sm w-auto" placeholder="Your remarks" [attr.aria-label]="'Remarks on ' + r.code" maxlength="2000"
+                           [value]="remark('r-' + r.id)" (input)="setRemark('r-' + r.id, $any($event.target).value)" />
+                    <button type="button" class="btn btn-primary btn-sm" [disabled]="busy() || ncFilesFor('r-' + r.id).length === 0" (click)="answerRequirement(r.id)">
+                      {{ r.answered ? 'REPLACE' : 'SAVE' }}
+                    </button>
+                  }
                 </div>
               }
             </div>
           }
-          <div class="stepper-footer-sec">
-            <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
-          </div>
+          @if (ncAnswerable()) {
+            <div class="stepper-footer-sec">
+              <button type="button" class="btn btn-primary" (click)="tab.set('submit')">NEXT</button>
+            </div>
+          }
         }
       }
 
@@ -254,6 +278,7 @@
         }
       }
     }
+    </div>
   }
 </div>
 

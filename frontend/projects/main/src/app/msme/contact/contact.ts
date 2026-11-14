@@ -3,19 +3,16 @@ import { Component, inject, signal, viewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MessageResponse, Recaptcha, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PageHead } from '../shared/page-head';
 
 /** "Contact ZED". Port of Views/Home/Contact.cshtml; V4: page head, label / field grid in a card. */
 @Component({
   selector: 'zed-msme-contact',
-  imports: [FormsModule, Recaptcha],
+  imports: [FormsModule, Recaptcha, PageHead],
   template: `
     <div class="container form-page">
       <div class="narrow-page">
-        <div class="page-head">
-          <div>
-            <h3 class="registration-title">Contact ZED</h3>
-          </div>
-        </div>
+        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Contact ZED' }]" title="Contact ZED" />
         <div class="zed-card">
           @if (success()) {
             <div class="alert alert-success mb-0" role="status"><strong>{{ success() }}</strong></div>

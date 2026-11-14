@@ -28,6 +28,9 @@ public sealed class TestHost : WebApplicationFactory<Program>
     /// <summary>Set before the first request: Portal:AssessmentStorageRoot, the live layout's separate folder of the apps' files.</summary>
     public string? AssessmentStorageRoot { get; set; }
 
+    /// <summary>Extra settings, set before the first request (e.g. Msme:WebEntry).</summary>
+    public Dictionary<string, string> Settings { get; } = new();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
@@ -36,6 +39,7 @@ public sealed class TestHost : WebApplicationFactory<Program>
         builder.UseSetting("Portal:StorageRoot", StorageRoot);
         if (AssessmentStorageRoot is not null) builder.UseSetting("Portal:AssessmentStorageRoot", AssessmentStorageRoot);
         builder.UseSetting("Email:ContactInbox", "zed.support@example.test");
+        foreach (var (k, v) in Settings) builder.UseSetting(k, v);
         builder.UseSetting("CcAvenue:MerchantId", "12345");
         builder.UseSetting("CcAvenue:AccessCode", "AVTEST");
         builder.UseSetting("CcAvenue:WorkingKey", WorkingKey);

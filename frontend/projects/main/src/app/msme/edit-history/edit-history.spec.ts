@@ -1,3 +1,4 @@
+import { provideRouter } from '@angular/router';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -21,7 +22,7 @@ describe('EditHistoryPage', () => {
   });
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({ imports: [EditHistoryPage], providers: [provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
+    await TestBed.configureTestingModule({ imports: [EditHistoryPage], providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()] }).compileComponents();
     fixture = TestBed.createComponent(EditHistoryPage);
     http = TestBed.inject(HttpTestingController);
     el = fixture.nativeElement;

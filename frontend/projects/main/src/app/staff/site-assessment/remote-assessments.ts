@@ -103,7 +103,14 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
               <tr>
                 <td class="text-center">
                   <div class="row-actions justify-content-center">
-                    @if (surveillance) {
+                    @if (surveillance && s['OnsiteVisit']) {
+                      <!-- 2026-11-14 (Onsite surveillance): assessed in the assessor app; reviewed here after its closing meeting. -->
+                      @if (+(s['CertificationStatus'] ?? 0) === 13) {
+                        <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">REVIEW &amp; SUBMIT</a>
+                      } @else if (+(s['CertificationStatus'] ?? 0) === 14) {
+                        <a class="btn btn-primary assess review-nc" [routerLink]="remoteLink(s)">REVIEW NC</a>
+                      }
+                    } @else if (surveillance) {
                       <!-- That portal's list: ASSESS only on Onsite rows (held on the meeting link); no VIEW DETAILS. -->
                       @if (s['ModeOfAssessment'] === 'Onsite Assessment') {
                         <a class="btn btn-primary assess" [routerLink]="remoteLink(s)">ASSESS</a>
@@ -204,7 +211,7 @@ export class RemoteAssessmentsPage {
   }
 
   protected mode(s: Row): string {
-    if (this.surveillance) return s['ModeOfAssessment'] ? 'Remote' : 'Desktop';
+    if (this.surveillance) return s['OnsiteVisit'] ? 'Onsite' : s['ModeOfAssessment'] ? 'Remote' : 'Desktop';
     return s['ModeOfAssessment'] === 'Remote Assessment' ? 'Remote' : s['ModeOfAssessment'] === 'Onsite Assessment' ? 'Onsite' : 'Desktop';
   }
 

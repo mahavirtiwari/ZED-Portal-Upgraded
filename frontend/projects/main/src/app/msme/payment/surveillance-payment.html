@@ -1,5 +1,16 @@
 <div class="container form-page" id="zed_user_form">
   <div class="Dashboard-msme step-page">
+    <!-- 2026-11-14 (approved): the shared header and the three steps. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: name() + ' certification', link: ['/msme/certification', level() ?? ''] }, { label: 'Surveillance payment' }]" [title]="name() + ' surveillance payment'" />
+    @if (step(); as st) {
+      <ol class="pay-steps" aria-label="Steps">
+        @for (x of payStepList; track x.key; let i = $index) {
+          <li [class.active]="st === x.key" [class.done]="payStepIndex(st) > i" [attr.aria-current]="st === x.key ? 'step' : null">
+            <span class="ps-num" aria-hidden="true">{{ payStepIndex(st) > i ? '✓' : i + 1 }}</span>{{ x.label }}
+          </li>
+        }
+      </ol>
+    }
     @if (!step() && !busy()) {
       <!-- The page could not open (the reason is in the pop-up). -->
       <div class="form-actions justify-content-start"><a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a></div>
@@ -7,12 +18,8 @@
 
     @switch (step()) {
       @case ('disclaimer') {
-        <div class="page-head">
-          <div>
-            <h3 class="registration-title">DISCLAIMER</h3>
-          </div>
-        </div>
         <div class="zed-card disclaimer-sec">
+          <h3 class="step-title">DISCLAIMER</h3>
           <zed-text key="msme.surveillance.payment.disclaimer" />
           <div class="form-actions">
             <a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
@@ -22,12 +29,8 @@
       }
 
       @case ('instructions') {
-        <div class="page-head">
-          <div>
-            <h3 class="registration-title">INSTRUCTIONS</h3>
-          </div>
-        </div>
         <div class="zed-card disclaimer-sec">
+          <h3 class="step-title">INSTRUCTIONS</h3>
           <zed-text key="msme.surveillance.payment.instructions" />
           <div class="form-actions">
             <a class="btn btn-default" routerLink="/msme/dashboard">BACK TO DASHBOARD</a>
@@ -38,12 +41,6 @@
 
       @case ('payment') {
         @if (options(); as o) {
-          <div class="page-head">
-            <div>
-              <h3 class="registration-title">Surveillance Assessment: Payment</h3>
-            </div>
-            <div class="page-actions"><img class="level-badge" [src]="logo()" [alt]="name()" /></div>
-          </div>
           <form (ngSubmit)="proceed()" class="form-horizontal" novalidate>
             <div class="pay-grid">
               <!-- Payment options -->

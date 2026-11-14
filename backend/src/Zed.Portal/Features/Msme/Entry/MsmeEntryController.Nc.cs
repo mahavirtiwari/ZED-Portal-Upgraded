@@ -91,6 +91,7 @@ public sealed partial class MsmeEntryController
     /// document of a requirement of the open NC (one PDF, or photos made into one), SP_APP_MSME_INSERT_REQUIREMENT.
     /// </summary>
     [HttpPost("{certification}/nc/requirements/{requirementId:int}")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: NC requirement answered")]
     [RequestSizeLimit(55 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 55 * 1024 * 1024)]
@@ -136,6 +137,7 @@ public sealed partial class MsmeEntryController
     /// <c>remarks</c>): new photos of a product of the open NC, SP_APP_MSME_INSERT_PRODUCT_INFO.
     /// </summary>
     [HttpPost("{certification}/nc/products/{productId:int}")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: NC product answered")]
     [RequestSizeLimit(12 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 12 * 1024 * 1024)]
@@ -186,6 +188,7 @@ public sealed partial class MsmeEntryController
     /// new site exterior photos for the open NC, SP_APP_MSME_INSERT_SITE_EXTERIOR.
     /// </summary>
     [HttpPost("{certification}/nc/site-exterior")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: NC site exterior answered")]
     [RequestSizeLimit(12 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 12 * 1024 * 1024)]

@@ -7,7 +7,6 @@ import { firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
 import { isLegacyLevel, levelLogo, levelName } from '../shared/levels';
-import { isWebEntryLevel } from '../entry/entry.api';
 
 type Row = Record<string, string | number | boolean | null>;
 
@@ -159,11 +158,37 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     .pledge-box small { display: block; font-size: 11.5px; color: #5f6f70; }
     .pledge-box b { font-size: 14px; color: #232527; }
     .pledge-box .btn { white-space: nowrap; }
-    @media (max-width: 767.98px) {
+    .band-side { flex: none; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .app-badges { display: flex; flex-direction: column; gap: 4px; max-width: 220px; }
+    .app-badges small { font-size: 11.5px; color: #5f6f70; line-height: 1.3; }
+    .app-badges small ::ng-deep p { margin: 0; }
+    .app-badges div { display: flex; gap: 6px; }
+    @media (max-width: 991.98px) {
       .unit-band { flex-wrap: wrap; }
+      .band-side { width: 100%; justify-content: flex-start; }
+    }
+    @media (max-width: 767.98px) {
       .pledge-box { width: 100%; }
       .pledge-box .btn { margin-left: auto; }
     }
+    /* 2026-11-14 (approved design A): the page header and the next-step banner. */
+    .dash-head { align-items: center; }
+    .dash-crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
+    .dash-crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+    .dash-head .registration-title { font-size: 22px; overflow-wrap: anywhere; }
+    .page-actions { display: flex; align-items: center; gap: 8px; }
+    .refresh-btn { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+    .refresh-btn img { width: 14px; }
+    .next-step { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin-bottom: 16px; background: #fff;
+      border: 1px solid #dfe9ea; border-left: 4px solid #2f7c83; border-radius: 10px; }
+    .next-step.is-nc { border-left-color: #c0392b; background: #fdf3f2; }
+    .ns-icon { flex: none; width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; background: #eef6f6; color: #2f7c83; font-weight: 800; }
+    .next-step.is-nc .ns-icon { background: #f8d9d5; color: #c0392b; }
+    .ns-text { flex: 1 1 auto; min-width: 0; }
+    .ns-text small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #7a8a8b; }
+    .ns-text b { font-size: 14.5px; color: #232527; }
+    .next-step .btn { flex: none; font-weight: 700; }
+    @media (max-width: 575.98px) { .next-step { flex-wrap: wrap; } .next-step .btn { width: 100%; } }
 
     /* A card per level: all in one row on wide screens, two on tablets, one on phones. */
     .level-grid { display: grid; grid-template-columns: repeat(var(--levels, 3), minmax(0, 1fr)); gap: 18px; }
@@ -186,6 +211,14 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
       color: #a86a12; background: #fdf1dc; border-radius: 14px; padding: 3px 12px; }
     .lv-status.is-done { color: #1e7a3c; background: #e3f4e8; }
+    .lv-status.is-new { color: #2f7c83; background: #eef6f6; }
+    .lv-status.is-locked { color: #5f6f70; background: #eef1f1; }
+    .lv-lock-note { margin: -6px 0 0; font-size: 12px; color: #5f6f70; }
+    /* A locked level stays readable (the legacy rule fades it to 0.3). */
+    .lv-card.plant-activity-disabled { opacity: 1; }
+    .lv-card.plant-activity-disabled .lv-head { filter: grayscale(.5); }
+    .lv-card.plant-activity-disabled .lv-logo, .lv-card.plant-activity-disabled .lv-steps,
+    .lv-card.plant-activity-disabled .lv-actions { opacity: .55; filter: grayscale(.6); }
     .lv-steps-labels { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: #7a8a8b; }
     .lv-steps-labels span { flex: 1 1 0; text-align: center; }
     .lv-steps-labels span:first-child { text-align: left; }
@@ -404,15 +437,31 @@ export class DashboardPage {
     return this.num(`${level}Status`);
   }
 
+  /** 2026-11-14 (approved design): the next step of the first paid level that is not completed. */
+  protected readonly nextStep = computed<{ level: Level; kind: 'entry' | 'nc' | 'wait'; text: string; action: string; link: string[] } | null>(() => {
+    for (const level of this.levels()) {
+      if (!this.paid(level)) continue;
+      const s = this.status(level);
+      if (s === completedStatus(level) || s === 7 || s === 17) continue;
+      // 2026-11-14: basic information, documents and NC answers are entered in the ZED MSME app (no web entry).
+      if (s <= 1)
+        return { level, kind: 'entry', text: 'Complete Basic Information & Documents in the ZED MSME app and final submit.', action: 'DETAILS',
+          link: ['/msme/certification', level] };
+      if (s === 4 || s === 14)
+        return { level, kind: 'nc', text: 'Answer the non-conformances raised in the assessment in the ZED MSME app.', action: 'DETAILS',
+          link: ['/msme/certification', level] };
+      return { level, kind: 'wait', text: 'Your application is under assessment. We will notify you of the next step.', action: 'DETAILS',
+        link: ['/msme/certification', level] };
+    }
+    return null;
+  });
+
   /** A level the Admin added (not Bronze, Silver, Gold or ZED-X): no colours of its own on the page. */
   protected addedLevel(level: Level): boolean {
     return !isLegacyLevel(level) && level !== 'ZEDX';
   }
 
   /** ZED-X and the levels the Admin added: basic information and documents are entered on the web (the MSME app has no ZED-X). */
-  protected webEntry(level: Level): boolean {
-    return isWebEntryLevel(level);
-  }
 
   protected paid(level: Level): boolean {
     return this.is(this.msme(), `Is${level}PaymentDone`, 1);

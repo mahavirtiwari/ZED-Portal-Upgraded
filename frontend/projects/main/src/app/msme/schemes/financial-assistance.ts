@@ -8,6 +8,7 @@ import { AlertDialog, AlertMessage, errorAlert } from '../shared/alert-dialog';
 import { fieldError } from '../shared/field-error';
 import { SchemeDocumentField, SchemeIntro, SchemeUnitPanel } from './scheme-parts';
 import { FaApplication, FaPage, FaSubmission, SchemeDocument, SchemesApi, inr, todayIso, uploadProblem } from './schemes.api';
+import { PageHead } from '../shared/page-head';
 
 export const FA_DOCUMENTS = {
   certificate: 'Copy of Certificate',
@@ -30,7 +31,7 @@ const STATUS: Record<number, string> = {
  */
 @Component({
   selector: 'zed-msme-financial-assistance',
-  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent],
+  imports: [FormsModule, RouterLink, SchemeUnitPanel, SchemeIntro, SchemeDocumentField, AlertDialog, ContentTextComponent, PageHead],
   templateUrl: './financial-assistance.html',
   styleUrls: ['../shared/msme-page.scss', './scheme-page.scss'],
 })

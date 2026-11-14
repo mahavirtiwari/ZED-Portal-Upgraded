@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
+import { PageHead } from '../shared/page-head';
 
 /** ChangePwdViewModel's RegularExpression on the new and the confirm password. */
 /** As PasswordPolicy on the server: 8 to 50 characters, upper and lower case, a digit and any other character. */
@@ -13,20 +14,23 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
 /** Change password while signed in (MSME and staff). Port of Frontend/User/ChangePassword.cshtml, in the live page's layout (eye toggles in the fields). */
 @Component({
   selector: 'zed-msme-change-password',
-  imports: [FormsModule],
+  imports: [FormsModule, PageHead],
   template: `
     <!-- Redesigned 2026-11-07: one card with the title and the signed-in ID, the rules of the new password ticked as typed
          with a strength bar, and CHANGE PASSWORD. -->
     <div class="container form-page" id="zed_user_form">
-      <div class="row mt-4 justify-content-center">
+      <div class="row justify-content-center" [class.mt-4]="!applicant">
         <div class="col-md-8 col-lg-6">
+          @if (applicant) {
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Change password' }]" title="Change password" />
+          }
           <div class="cp-card">
             <div class="cp-head">
               <span class="cp-icon" aria-hidden="true">
                 <svg width="20" height="20" viewBox="0 0 24 24"><path fill="currentColor" d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></svg>
               </span>
               <div>
-                <h2 class="cp-title">Change password</h2>
+                @if (!applicant) { <h2 class="cp-title">Change password</h2> }
                 <div class="cp-sub">@if (userId()) { {{ userId() }} · }you'll be signed out and log in again with the new password</div>
               </div>
             </div>
@@ -92,7 +96,7 @@ const WEAK_PASSWORD = 'Password must be at least 8 characters long and contain a
     .cp-rules li.met { color: #2d6f75; font-weight: 600; }
     /* The eye icon inside the field on its right, with a 32px tap area. */
     .pwd-field { position: relative; }
-    .pwd-field .form-control { padding-right: 44px; height: 44px; }
+    .pwd-field .form-control { padding-right: 44px; height: 44px; width: 100%; max-width: none; }
     .field-icon { position: absolute; top: 6px; right: 4px; float: none; margin: 0; border: 0; background: transparent; padding: 6px; line-height: 0; }
   `,
 })
@@ -102,6 +106,8 @@ export class ChangePasswordPage {
   private readonly router = inject(Router);
   /** Where to sign in again afterwards (route data `loginUrl`; MSME login by default). */
   private readonly loginUrl: string = inject(ActivatedRoute).snapshot.data['loginUrl'] ?? '/msme/login';
+  /** 2026-11-14: the applicant's page has the breadcrumb header (the staff pages keep theirs until their redesign). */
+  protected readonly applicant = this.router.url.startsWith('/msme');
 
   protected readonly busy = signal(false);
   protected readonly error = signal('');

@@ -9,6 +9,7 @@ import { AlertDialog, AlertMessage, errorAlert, successAlert } from '../shared/a
 import { canonicalLevelCode, levelLogo, levelName } from '../shared/levels';
 import { CheckoutRequest, FeeRow, postToGateway } from './payment.api';
 import { SurveillanceOptions, SurveillancePaymentApi } from './surveillance-payment.api';
+import { PageHead } from '../shared/page-head';
 
 const GSTIN = /^([0][1-9]|[1-2][0-9]|[3][0-8])[A-Za-z]{5}[0-9]{4}[A-Za-z][1-9A-Za-z][zZ][0-9A-Za-z]$/;
 const TAN = /^[A-Za-z]{4}[0-9]{5}[A-Za-z]$/;
@@ -23,11 +24,21 @@ type Step = 'disclaimer' | 'instructions' | 'payment';
  */
 @Component({
   selector: 'zed-surveillance-payment',
-  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent],
+  imports: [FormsModule, DecimalPipe, AlertDialog, RouterLink, ContentTextComponent, PageHead],
   templateUrl: './surveillance-payment.html',
   styleUrl: './payment-form.scss',
 })
 export class SurveillancePaymentPage implements OnInit {
+  /** 2026-11-14: the three steps of the page, for the step tracker. */
+  protected readonly payStepList = [
+    { key: 'disclaimer', label: 'Disclaimer' },
+    { key: 'instructions', label: 'Instructions' },
+    { key: 'payment', label: 'Payment' },
+  ];
+  protected payStepIndex(step: string): number {
+    return this.payStepList.findIndex((x) => x.key === step);
+  }
+
   private readonly api = inject(SurveillancePaymentApi);
   private readonly router = inject(Router);
 

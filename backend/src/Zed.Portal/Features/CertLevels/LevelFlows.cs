@@ -25,8 +25,8 @@ public static class LevelFlows
     public static readonly string[] SurveillanceModes = [Remote, Onsite];
 
     /// <summary>The flows the portal runs today (the others come later and are refused when saved).</summary>
-    public static readonly string[] Available = [Desktop, DesktopOnsite];
-    public static readonly string[] AvailableSurveillance = [Remote];
+    public static readonly string[] Available = [Desktop, DesktopOnsite, DesktopRemote, Remote, Onsite];
+    public static readonly string[] AvailableSurveillance = [Remote, Onsite];
 
     /// <summary>The modes an assessor can be given for a level of this flow: D(esktop), R(emote), O(nsite).</summary>
     public static IReadOnlyList<char> ModesOf(string flow) => flow switch

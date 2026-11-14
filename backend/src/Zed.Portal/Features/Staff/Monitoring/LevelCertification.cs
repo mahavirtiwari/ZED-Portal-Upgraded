@@ -20,9 +20,17 @@ public static partial class LevelCertification
         "SELECT SaCertificateNo, CertificationStatusDate FROM dbo.MsmeCertifications " +
         "WHERE ZedId = @ZedId AND Certification = @Level AND CertificationStatus = 16;";
 
+    /// <remarks>
+    /// 2026-11-14 (stored procedure audit): ZED_SURVEILLANCE.MsmeCertifications has no FirstSurveDueDate, so the date is set
+    /// only where the column exists (dynamic SQL, compiled only then); the number is set everywhere.
+    /// </remarks>
     internal const string UpdateSql =
-        "UPDATE dbo.MsmeCertifications SET SaCertificateNo = @CertificateNo, FirstSurveDueDate = @FirstSurveDueDate " +
-        "WHERE ZedId = @ZedId AND Certification = @Level AND CertificationStatus = 16 AND SaCertificateNo = @ProcedureNo;";
+        "UPDATE dbo.MsmeCertifications SET SaCertificateNo = @CertificateNo " +
+        "WHERE ZedId = @ZedId AND Certification = @Level AND CertificationStatus = 16 AND SaCertificateNo = @ProcedureNo; " +
+        "IF COL_LENGTH('dbo.MsmeCertifications', 'FirstSurveDueDate') IS NOT NULL " +
+        "EXEC sp_executesql N'UPDATE dbo.MsmeCertifications SET FirstSurveDueDate = @Due " +
+        "WHERE ZedId = @Z AND Certification = @L AND CertificationStatus = 16 AND SaCertificateNo = @N;', " +
+        "N'@Due datetime, @Z varchar(50), @L varchar(50), @N varchar(50)', @FirstSurveDueDate, @ZedId, @Level, @CertificateNo;";
 
     /// <summary>2026-11-08: the same for a V4 level assessed at the desktop only (status 6, DaCertificateNo; fix main/14).</summary>
     internal static readonly string DesktopRowSql = RowSql.Replace("SELECT SaCertificateNo,", "SELECT DaCertificateNo AS SaCertificateNo,").Replace("CertificationStatus = 16", "CertificationStatus = 6");

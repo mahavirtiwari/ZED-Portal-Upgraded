@@ -47,6 +47,13 @@ public sealed partial class SAController(
     internal const string InvalidCredentials = "Invalid credetials."; // sic: the app shows the old text
     internal const string TooManyAttempts = "Too many failed attempts. Please try again after 15 minutes.";
     internal const string NotAllocated = "Site Assessment data not yet allocated for the ZEDID: ";
+    internal const string RemoteOnWeb = "This assessment is held remotely: please fill it in on the ZED web portal (Remote Assessments). ZED ID: ";
+
+    private sealed record ModeRow(string? ModeOfAssessment);
+
+    private async Task<string?> ModeAsync(string zedId, string certification, CancellationToken ct) =>
+        (await db.QuerySqlAsync<ModeRow>("SELECT TOP 1 ModeOfAssessment FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification;",
+            new { ZedId = zedId, Certification = certification }, ct)).FirstOrDefault()?.ModeOfAssessment;
     internal const string LoginClosed = "SA Closing Meeting Submitted, hence SA is deemed completed for the ZEDID: ";
     internal const string Closed = "MSME SA Closing Meeting Submitted, hence SA is deemed completed for the ZEDID: ";
     internal const string OpenNotSubmitted = "MSME SA Open Meeting not Submitted for the ZEDID: ";
@@ -181,6 +188,10 @@ public sealed partial class SAController(
         if (sets[1].Count == 0) return new UnitAnswer(null, NotAllocated + requestedZedId, null);
         var unit = sets[1][0];
         if (unit.Int("CertificationStatus") >= 13) return new UnitAnswer(null, LoginClosed + requestedZedId, null);
+        // 2026-11-14: a main remote assessment (Desktop + Remote, Remote only) is held on the meeting link and filled in on the web.
+        if (portal.System == PortalSystem.Main && await ModeAsync(unit.Text("ZedId"), unit.Text("CertificationType"), ct) is { } mode
+            && string.Equals(mode.Trim(), "Remote Assessment", StringComparison.OrdinalIgnoreCase))
+            return new UnitAnswer(null, RemoteOnWeb + requestedZedId, null);
 
         var flags = sets.FirstRow(8);
         var response = new AssessmentDetails

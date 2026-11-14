@@ -11,28 +11,20 @@
     }
 
     @if (data()) {
-      <div class="page-head">
-        <div>
-          <h3 class="registration-title dash-text-clr">Welcome</h3>
-        </div>
-        <div class="page-actions">
-          @if (selected()) {
-            <a class="back-link" href="" (click)="$event.preventDefault(); selected.set(null)"><img src="/Images/svgicons/back.svg" alt="" /> <strong>BACK</strong></a>
-          } @else {
-            <a class="back-link" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <strong>BACK</strong></a>
-          }
-          <button type="button" class="refresh-link btn btn-link p-0" (click)="load()">
-            <img src="/Images/svgicons/refresh.svg" alt="" />
-            <span>Refresh on {{ loadedAt() | date: 'dd/MM/yyyy hh:mm a' }}</span>
-          </button>
-        </div>
-      </div>
+      <!-- 2026-11-14 (approved): the shared header; the levels or the milestones on the left, the unit and the steps on the right. -->
+      <zed-page-head [crumbs]="crumbs()" [title]="selected() ? 'Handholding support · ' + selected() : 'Handholding support'">
+        @if (selected()) {
+          <button type="button" class="btn btn-outline-secondary btn-sm back-link" (click)="selected.set(null)"><img src="/Images/svgicons/back.svg" alt="" /> Back</button>
+        } @else {
+          <a class="btn btn-outline-secondary btn-sm back-link" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+        }
+        <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()" [title]="'Refreshed on ' + (loadedAt() | date: 'dd/MM/yyyy hh:mm a')">
+          <img src="/Images/svgicons/refresh.svg" alt="" /> Refresh
+        </button>
+      </zed-page-head>
 
-      <div class="row">
-        <!-- Unit summary, as on the live portal -->
-        <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" /></div>
-
-        <div class="col-lg-9 dash-main">
+      <div class="hh-grid">
+        <div class="dash-main">
           @if (!selected()) {
             <!-- Level cards -->
             <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
@@ -99,29 +91,30 @@
                 <button type="button" class="btn btn-link p-0" aria-label="About Handholding Support" (click)="info.set('My')"><img src="/Images/svgicons/infoIcon.svg" alt="i" /></button>
               </div>
               <div class="panel-body">
-                @for (m of milestones(); track m.number) {
-                  <div class="milestone">
-                    <div class="panel panel-default milestone-card" [class.plant-activity-disabled]="m.disabled">
-                      <div class="panel-body">
-                        <div class="inner1 milestone-row">
-                          <strong>{{ m.title }}</strong>
-                          <span>
-                            @if (m.applied) {
-                              <a class="btn btn-outline-primary" [routerLink]="milestoneRoute(m)">VIEW</a>
-                            } @else {
-                              <button type="button" class="btn btn-primary" [disabled]="!m.canApply" (click)="apply(m)">APPLY</button>
-                            }
-                          </span>
-                        </div>
+                <!-- The milestones as a numbered timeline, one action each. -->
+                <ol class="ms-list">
+                  @for (m of milestones(); track m.number) {
+                    <li class="ms-item milestone" [class.is-done]="m.applied" [class.is-due]="!m.applied && m.canApply" [class.is-off]="m.disabled">
+                      <span class="ms-num" aria-hidden="true">{{ m.applied ? '✓' : m.number }}</span>
+                      <div class="ms-text">
+                        <strong>{{ m.title }}</strong>
+                        <small>{{ m.canAccept ? 'Submitted by the consultant: please accept' : m.applied ? 'Applied' : m.canApply ? 'Apply and pay to start' : 'After the previous milestone' }}</small>
                       </div>
-                    </div>
-                    @if (m.canAccept) {
-                      <div class="text-center mb-2">
-                        <button type="button" class="btn btn-primary" (click)="openAccept(m)">ACCEPT MILESTONE {{ m.number }}</button>
-                      </div>
-                    }
-                  </div>
-                }
+                      <span class="ms-act">
+                        @if (m.canAccept) {
+                          <button type="button" class="btn btn-primary btn-sm" (click)="openAccept(m)">ACCEPT MILESTONE {{ m.number }}</button>
+                        }
+                        @if (m.applied) {
+                          <a class="btn btn-outline-primary btn-sm" [routerLink]="milestoneRoute(m)">VIEW</a>
+                        } @else if (m.canApply) {
+                          <button type="button" class="btn btn-primary btn-sm" (click)="apply(m)">APPLY</button>
+                        } @else {
+                          <span class="ms-chip">Not started</span>
+                        }
+                      </span>
+                    </li>
+                  }
+                </ol>
                 @if (state(selected()!); as st) {
                   @if (!st.canPay && st.refusal && st.enabled) {
                     <p class="text-muted mb-0">{{ st.refusal }}</p>
@@ -131,8 +124,10 @@
             </div>
           }
 
-          <div><div class="line-icon"></div></div>
-          <div class="panel panel-steps panel-bg-default">
+        </div>
+        <div>
+          <zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [compact]="true" />
+          <div class="panel panel-steps panel-bg-default hh-steps">
             <div class="panel-body">
               <h4 class="step-title">HANDHOLDING SUPPORT STEPS</h4>
               <ul class="cert-steps">

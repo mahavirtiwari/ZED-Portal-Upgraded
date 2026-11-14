@@ -1,5 +1,5 @@
 <div class="container form-page" id="zed_user_form">
-  <div class="Dashboard-msme">
+  <div class="Dashboard-msme report-v2">
     @if (error()) {
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
@@ -11,30 +11,15 @@
     }
 
     @if (data(); as d) {
-      <div class="page-head">
-        <div class="zed-info-panel">
-          <ul class="cert-steps mb-0">
-            <li>
-              @if (isMilestone()) {
-                <div class="step-details ms-0">
-                  <h3 class="registration-title">HANDHOLDING SUPPORT</h3>
-                </div>
-              } @else {
-                <div class="step-num"><span>3</span></div>
-                <div class="step-details">
-                  <h3 class="registration-title">Site Assessment Information</h3>
-                </div>
-              }
-            </li>
-          </ul>
-        </div>
-      </div>
+      <!-- 2026-11-14 (approved): the shared header and the key facts strip in place of the unit side bar. -->
+      <zed-page-head [crumbs]="crumbs()" [title]="isMilestone() ? 'Handholding support' : 'Site assessment information'">
+        <a class="btn btn-outline-secondary btn-sm" [routerLink]="isMilestone() ? '/msme/handholding' : ['/msme/certification', certification()]"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+      </zed-page-head>
+      <zed-unit-facts [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [extra]="[{ label: 'Level', value: levelTitle() }]" />
 
-      <div class="row">
-        <!-- Unit summary, as on the live portal -->
-        <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="basic()['UdyogAadharNo']" [showType]="msme()['RegistrationType'] === 'UAM' || msme()['RegistrationType'] === 'UDYAM'" /></div>
-
-        <div class="col-lg-9 dash-main">
+      <div>
+        <div class="dash-main">
           <div class="zed-tabs">
             <ul class="nav nav-tabs" role="tablist">
               <li class="nav-item" role="presentation">

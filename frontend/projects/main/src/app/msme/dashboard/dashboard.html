@@ -10,17 +10,19 @@
     @if (data(); as d) {
       @switch (step()) {
         @case ('home') {
-          <div class="page-head">
+          <!-- 2026-11-14 (approved design A): breadcrumb, the welcome title and the refresh as a secondary button. -->
+          <div class="page-head dash-head">
             <div>
-              <h3 class="registration-title dash-text-clr">Welcome</h3>
+              <nav class="dash-crumb" aria-label="Breadcrumb"><span>Home</span><span aria-hidden="true">›</span><span aria-current="page">Dashboard</span></nav>
+              <h3 class="registration-title dash-text-clr">Welcome{{ msme()['EnterpriseName'] ? ', ' + msme()['EnterpriseName'] : '' }}</h3>
             </div>
             <div class="page-actions">
               @if (ubpReturnUrl) {
-                <a class="btn btn-primary" [href]="ubpReturnUrl">Back to UBP</a>
+                <a class="btn btn-primary btn-sm" [href]="ubpReturnUrl">Back to UBP</a>
               }
-              <button type="button" class="refresh-link btn btn-link p-0" (click)="load()">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-btn" (click)="load()" [title]="'Refreshed on ' + (refreshedAt() | date: 'dd/MM/yyyy hh:mm a')">
                 <img src="/Images/svgicons/refresh.svg" alt="" />
-                <span>Refresh on {{ refreshedAt() | date: 'dd/MM/yyyy hh:mm a' }}</span>
+                <span>Refresh</span>
               </button>
             </div>
           </div>
@@ -35,28 +37,38 @@
                 <span class="id-tag"><i>ZED ID</i>{{ msme()['ZedId'] }}</span>
               </div>
             </div>
-            @if (msme()['PledgeOn']) {
-              <div class="pledge-box">
-                <span class="seal" aria-hidden="true">✓</span>
-                <div><small>ZED Pledge taken on</small><b>{{ msme()['PledgeOn'] }}</b></div>
-                <a class="btn btn-primary btn-sm" routerLink="/msme/pledge-certificate">DOWNLOAD PLEDGE</a>
-              </div>
-            }
-          </section>
-
-          <div class="dash-main">
-              <!-- As on the live dashboard: the text on the left half, then the store badges and the QR code. -->
-              <div class="zed-payment-success">
-                <div class="label-highlight">
-                  <div class="app-banner">
-                    <div class="app-banner-text"><zed-text key="msme.dashboard.mobileAppHint" /></div>
-                    @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="110" /></a>}
-                    @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="110" /></a>}
-                    <img src="/Images/qrcode.png" width="80" alt="QR code for the ZED MSME app" />
-                  </div>
+            <div class="band-side">
+              @if (msme()['PledgeOn']) {
+                <div class="pledge-box">
+                  <span class="seal" aria-hidden="true">✓</span>
+                  <div><small>ZED Pledge taken on</small><b>{{ msme()['PledgeOn'] }}</b></div>
+                  <a class="btn btn-primary btn-sm" routerLink="/msme/pledge-certificate">DOWNLOAD PLEDGE</a>
+                </div>
+              }
+              <!-- The ZED MSME app (it was a separate green banner below). -->
+              <div class="app-badges">
+                <small><zed-text key="msme.dashboard.mobileAppHint" /></small>
+                <div>
+                  @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="96" /></a>}
+                  @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="96" /></a>}
                 </div>
               </div>
+            </div>
+          </section>
 
+          <!-- Next step: the first paid level not completed yet (2026-11-14). -->
+          @if (nextStep(); as n) {
+            <section class="next-step" [class.is-nc]="n.kind === 'nc'" aria-label="Next step">
+              <span class="ns-icon" aria-hidden="true">{{ n.kind === 'nc' ? '!' : n.kind === 'entry' ? '→' : '⏳' }}</span>
+              <div class="ns-text">
+                <small>NEXT STEP · {{ levelName(n.level).toUpperCase() }}</small>
+                <b>{{ n.text }}</b>
+              </div>
+              <a class="btn btn-sm" [class.btn-primary]="n.kind !== 'nc'" [class.btn-danger]="n.kind === 'nc'" [routerLink]="n.link">{{ n.action }}</a>
+            </section>
+          }
+
+          <div class="dash-main">
               <!-- My Certifications: a card per level, all in one row on wide screens. -->
               <div class="panel panel-default panel-dashboard panel-certification panel-bg-default">
                 <div class="panel-heading dash-panel-head">
@@ -87,7 +99,12 @@
                               </dl>
                             }
                           }
-                          <p class="lv-status" [class.is-done]="status(level) === completed(level)"><img src="/Images/svgicons/arrow-right.svg" alt="" /> <span>{{ statusLabel(level) }}</span></p>
+                          <p class="lv-status" [class.is-done]="status(level) === completed(level)" [class.is-new]="status(level) === 0" [class.is-locked]="levelDisabled(level)">
+                            <span>{{ levelDisabled(level) ? 'Locked' : statusLabel(level) }}</span>
+                          </p>
+                          @if (levelDisabled(level)) {
+                            <p class="lv-lock-note">Available after your current certification is completed.</p>
+                          }
                           <div class="stepper lv-steps" [style.--fill]="fill(level)" role="img" [attr.aria-label]="statusLabel(level)">
                             <ol>
                               @for (rule of steps(level); track $index) {
@@ -109,11 +126,6 @@
                               <button type="button" class="btn btn-primary btn-sm apply-btn" (click)="apply(level)">APPLY</button>
                             }
                           </div>
-                          @if (paid(level) && webEntry(level) && status(level) <= 1) {
-                            <a class="btn btn-primary btn-sm lv-wide" [routerLink]="['/msme/entry', level]">ENTER DETAILS</a>
-                          } @else if (paid(level) && webEntry(level) && (status(level) === 4 || status(level) === 14)) {
-                            <a class="btn btn-danger btn-sm lv-wide" [routerLink]="['/msme/entry', level]">ANSWER NC</a>
-                          }
 
                           @if (surveillanceVisible(level)) {
                             <div class="lv-extra">

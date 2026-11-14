@@ -67,7 +67,8 @@ describe('HandholdingPage', () => {
     expect(el.textContent).toContain('Get started');
     const gold = [...el.querySelectorAll('.panel-cert-block')].find((p) => p.textContent!.includes('GOLD'))!;
     expect(gold.classList).toContain('plant-activity-disabled');
-    expect(el.querySelector('a[href="/msme/pledge-certificate"]')).not.toBeNull();
+    // 2026-11-14: the short unit card (no pledge row) in the right column.
+    expect(el.querySelector('zed-msme-unit-summary .us-card')).not.toBeNull();
   });
 
   it('opens the milestones of a level and sends APPLY to the payment of the milestone due', async () => {
@@ -82,7 +83,9 @@ describe('HandholdingPage', () => {
     const view = find('a', 'VIEW')!;
     expect(view.getAttribute('href')).toBe('/msme/certification/SilverMilestone1');
     const applies = [...el.querySelectorAll('button')].filter((b) => b.textContent!.trim() === 'APPLY') as HTMLButtonElement[];
-    expect(applies.map((b) => b.disabled)).toEqual([false, true]);   // milestone 2 can be paid, milestone 3 not yet
+    // Milestone 2 can be paid; milestone 3 not yet (2026-11-14: shown as "Not started", no APPLY).
+    expect(applies.map((b) => b.disabled)).toEqual([false]);
+    expect(el.textContent).toContain('Not started');
     applies[0].click();
     expect(navigate).toHaveBeenCalledWith(['/msme/handholding', 'Silver', 'payment']);
   });

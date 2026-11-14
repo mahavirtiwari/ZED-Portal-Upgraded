@@ -17,6 +17,7 @@ function state(over: Partial<EntryState> = {}): EntryState {
     certification: 'ZEDX',
     paid: true,
     editable: true,
+    webEntry: true,
     submitted: false,
     certificationStatus: null,
     basicInfoSaved: false,
@@ -144,7 +145,7 @@ describe('EntryPage', () => {
 
   it('is only for the levels entered on the web', async () => {
     await open(null, 'Bronze');
-    expect(text()).toContain('entered in the ZED mobile app');
+    expect(text()).toContain('entered in the ZED MSME app');
   });
 
   it("renders the Admin's form: rows, conditions and the Admin's own fields", async () => {
@@ -214,6 +215,13 @@ describe('EntryPage', () => {
     await settle();
     expect(el.querySelector('#entrySubmitted')).not.toBeNull();
     expect(el.querySelector('#finalSubmit')).toBeNull();
+  });
+
+  it('is read-only by default: what the app uploaded, no upload, no submit', async () => {
+    await open(state({ basicInfoSaved: true, editable: false, webEntry: false, submitted: true, certificationStatus: 2 }));
+    expect(el.querySelector('#appOnly')!.textContent).toContain('ZED MSME app');
+    expect(el.querySelector('input[type=file]')).toBeNull();
+    expect(Array.from(el.querySelectorAll('.entry-tabs button')).some((b) => b.textContent!.includes('Submit'))).toBe(false);
   });
 
   it('opens on the NC tab, saves an answer and submits the NC', async () => {

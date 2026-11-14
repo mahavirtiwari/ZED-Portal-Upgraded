@@ -109,8 +109,9 @@ public sealed partial class MsmeEntryController(
         var synced = (await db.QuerySqlAsync<EvidenceIdRow>(SyncedSql, key, ct)).Select(r => r.EvidenceId).ToHashSet();
         var sections = await SectionsAsync(level, synced, ct);
         var nc = stage.NcOpen ? await NcAsync(level, stage.NcCount, ct) : null;
-        return new EntryState(level, stage.Paid, stage.Editable, stage.Submitted, stage.CertificationStatus, answers is not null,
-            form.ToAppJson(), saved, sections, nc);
+        // 2026-11-14: read-only on the web (entered in the ZED MSME app) unless Msme:WebEntry is switched on.
+        return new EntryState(level, stage.Paid, stage.Editable && WebEntryGateAttribute.On(config), stage.Submitted, stage.CertificationStatus, answers is not null,
+            form.ToAppJson(), saved, sections, nc, WebEntryGateAttribute.On(config));
     }
 
     /// <summary>GET api/msme/entry/{certification}/files/{folder}/{name}: one of the unit's own files of this level.</summary>
@@ -130,6 +131,7 @@ public sealed partial class MsmeEntryController(
     /// the new photos, each under the form name its <see cref="EntryPhotoRef.Upload"/> gives. Saved photos are sent by id.
     /// </summary>
     [HttpPost("{certification}/basic-info")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: basic information saved")]
     [RequestSizeLimit(60 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 60 * 1024 * 1024)]
@@ -324,6 +326,7 @@ public sealed partial class MsmeEntryController(
     /// <see cref="MsmeEntry.MaxEvidencePhotos"/> photos made into one PDF. Replaces what was uploaded for the evidence.
     /// </summary>
     [HttpPost("{certification}/evidences/{evidenceId:int}")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: document uploaded")]
     [RequestSizeLimit(55 * 1024 * 1024)]
     [RequestFormLimits(MultipartBodyLengthLimit = 55 * 1024 * 1024)]
@@ -407,6 +410,7 @@ public sealed partial class MsmeEntryController(
     /// While an NC is open: the submit of the NC answers (the procedures' NC branch), without allotment.
     /// </summary>
     [HttpPost("{certification}/final-submit")]
+    [WebEntryGate]
     [MsmeEditAudit("Web: final submit")]
     public async Task<ActionResult<EntryMessage>> FinalSubmit(string certification, CancellationToken ct)
     {
@@ -456,6 +460,8 @@ public sealed partial class MsmeEntryController(
         {
             log.LogError(ex, "Auto-allotment of {ZedId} {Level} failed (is migration 0031 applied?); left for manual allotment", ZedId, level);
         }
+        // 2026-11-14: Remote only / Onsite only levels go straight to the site assessment (migration 0074).
+        await Staff.Assessment.DesktopSkip.TryAsync(db, ZedId, level, log, ct);
 
         await SendSubmissionMailAsync(level, 0, ct);
         return new EntryMessage("Submitted. The assessment agency will review your details and documents.");

@@ -35,8 +35,22 @@ What the single Admin (main portal) sets, and where it shows. See also `USER-MAN
   the others 'Site'). Not set = as before (Bronze Desktop only, the others Desktop + Onsite).
 - **Mode of assessment** (Surveillance tab): Remote (today's flow with a meeting link) or Onsite (as an onsite assessment
   on the parameters marked "In surveillance") (`dbo.SectionTypes.SurveillanceMode`; not set = Remote). Both are saved on main and on the same level's row of the ZED_SURVEILLANCE copy, which the surveillance portal reads.
-- The flows are built one by one: today Desktop only and Desktop + Onsite, and Remote surveillance. The others show
-  as "Available soon" and are refused when saved. Bronze stays Desktop only; Silver and Gold keep a site step.
+- What each choice does (all built since 2026-11-14 step 2; Bronze stays Desktop only and Silver / Gold keep a site step):
+  - **Desktop only**: desktop verification, then the certificate (as Bronze).
+  - **Desktop + Onsite**: desktop verification, then the agency allots an onsite assessment (the assessor app).
+  - **Desktop + Remote**: desktop verification, then the agency allots a **remote** assessment with a required meeting
+    link (`MsmeCertifications.MeetingLink`, migration 0073); the unit, the lead and the co-assessor get the link by mail,
+    the lead joins it from the Remote Assessments page and fills the assessment in on the web (the assessor app refuses
+    remote units).
+  - **Remote only / Onsite only**: no desktop step: once the agency is set (automatic, the applicant's facilitator
+    agency or the Master Admin's), `SP_V4_SKIP_DESKTOP` (migration 0074) puts the unit at status 6, the agency's SA
+    allotment, with the history row "DesktopSkipped"; every parameter is assessed at the site (no desktop exemptions).
+    An agency without site verification is taken off for the Master Admin to allot one that has it ("AgencyNeeded").
+  - **Surveillance Remote**: today's flow on a meeting link. **Surveillance Onsite**: the agency allots an onsite visit
+    without a link (`SP_V4_SURVEILLANCE_ACCEPT_ONSITE`, `MsmeCertifications.AssessmentVisit = 'Onsite'`, migration 0075
+    on ZED_SURVEILLANCE) to assessors ticked for the level onsite; the lead assesses in the assessor app (which signs in on
+    both the ZED and the surveillance hosts and opens each unit on its own) and reviews / final-submits on the web after
+    the closing meeting, as a main onsite assessment.
 - **Assessors**: one kind ("Assessor"). On Add / Edit the agency ticks, for each enabled level, the modes the assessor may
   do; the level's flow decides which can be ticked (`dbo.Users.AssessmentModes`, e.g. `Bronze=D;Silver=D,O`; also on
   the ZED_SURVEILLANCE copy). Not set = from the old type (Bronze Assessor: Bronze desktop; Assessor: every other level).

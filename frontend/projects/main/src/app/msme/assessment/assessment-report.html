@@ -1,5 +1,5 @@
 <div class="container form-page" id="zed_user_form">
-  <div class="Dashboard-msme msme-cer-details">
+  <div class="Dashboard-msme msme-cer-details report-v2">
     @if (error()) {
       <div class="alert alert-danger mt-3" role="alert">
         {{ error() }}
@@ -11,27 +11,15 @@
     }
 
     @if (basic() || nc()) {
-      <div class="page-head">
-        <div>
-          <h3 class="registration-title">{{ mode() === 'basic-info' ? 'Basic Information' : 'Non-Conformances' }}</h3>
-        </div>
-        <div class="page-actions refresh-bar mb-0">
-          <a [routerLink]="backLink()">
-            <img src="/Images/svgicons/back.svg" alt="" />
-            <span>BACK</span>
-          </a>
-          <button type="button" class="refresh-link btn btn-link p-0" (click)="refresh()">
-            <img src="/Images/svgicons/refresh.svg" alt="" />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
+      <!-- 2026-11-14 (approved): the shared header and the key facts strip in place of the unit side bar; read-only (the app uploads). -->
+      <zed-page-head [crumbs]="crumbs()" [title]="pageTitle()">
+        <a class="btn btn-outline-secondary btn-sm" [routerLink]="backLink()"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+        <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+      </zed-page-head>
+      <zed-unit-facts [msme]="msme()" [udyam]="udyam()" [extra]="[{ label: 'Level', value: levelTitle() }]" />
 
-      <div class="row">
-        <!-- Unit summary, as on the live portal -->
-        <div class="col-lg-3"><zed-msme-unit-summary [msme]="msme()" [udyam]="udyam()" [showType]="!!unit()" [showAddress]="!!unit()" [basicInfo]="mode() === 'basic-info'" /></div>
-
-        <div class="col-lg-9 dash-main" [class.zed-tabs]="mode() === 'basic-info'">
+      <div>
+        <div class="dash-main" [class.zed-tabs]="mode() === 'basic-info'">
           <div class="panel panel-steps panel-bg-default">
             <div class="panel-body">
               @if (basic(); as b) {

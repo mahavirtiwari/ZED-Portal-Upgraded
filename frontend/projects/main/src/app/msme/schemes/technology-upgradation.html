@@ -2,12 +2,9 @@
   <div class="scheme-page">
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
-        <div class="page-head">
-          <div><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-          <div class="page-actions">
-            <button type="button" class="refresh-link btn btn-link p-0" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span></button>
-          </div>
-        </div>
+        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+          <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+        </zed-page-head>
         <div class="row">
           <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
           <div class="col-sm-9 dash-main">
@@ -53,12 +50,9 @@
             </div>
           }
           @case ('list') {
-            <div class="page-head">
-              <div><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-              <div class="page-actions">
-                <button type="button" class="refresh-link btn btn-link p-0" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span></button>
-              </div>
-            </div>
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+            </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
@@ -97,12 +91,9 @@
           }
           @case ('technology') {
             @if (current(); as t) {
-              <div class="page-head">
-                <div><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-                <div class="page-actions">
-                  <button type="button" class="refresh-link btn btn-link p-0" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span></button>
-                </div>
-              </div>
+              <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+                <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+              </zed-page-head>
               <div class="row">
                 <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
                 <div class="col-sm-9 dash-main">
@@ -205,11 +196,8 @@
             }
           }
           @case ('summary') {
-            <div class="page-head">
-              <div>
-                <h3 class="registration-title">Summary</h3>
-              </div>
-            </div>
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+            </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
@@ -235,12 +223,9 @@
             </div>
           }
           @case ('account') {
-            <div class="page-head">
-              <div><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-              <div class="page-actions">
-                <button type="button" class="refresh-link btn btn-link p-0" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span></button>
-              </div>
-            </div>
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Technology upgradation' }]" title="Technology upgradation">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+            </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">

@@ -104,3 +104,40 @@
   color: #23474a;
   font-size: 14px;
 }
+
+// 2026-11-14 (approved): the payment step as two white cards (options 3/5, summary 2/5), the summary like a receipt.
+.pay-v2 {
+  .pay-cols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
+  @media (max-width: 767.98px) { .pay-cols { grid-template-columns: minmax(0, 1fr); } }
+  .pay-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 18px; }
+  .pay-card .registration-title { font-size: 15px; font-weight: 700; color: #2f7c83; margin: 0 0 12px; }
+  .pay-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .pay-card-head .registration-title { margin: 0; }
+  .pay-card-head .level-logo { width: 40px; height: 40px; object-fit: contain; }
+  .summary-rows { border: 0; margin: 0; box-shadow: none; }
+  .summary-rows > div { padding: 9px 0; border-bottom: 1px solid #eef3f3; font-size: 14px; }
+  .summary-rows > div > span { color: #5f6f70; }
+  .summary-rows > .net { border-top: 1px solid #cfdcdd; border-bottom: 0; margin-top: 2px; padding-top: 12px; }
+  .summary-rows > .net strong { font-size: 16px; color: #23474a; }
+  .pay-btn { display: block; width: 100%; margin-top: 14px; height: 44px; font-weight: 700; letter-spacing: .03em; }
+  .back-link { display: block; width: 100%; margin-top: 6px; font-weight: 600; color: #5f6f70; text-decoration: none; }
+}
+
+// 2026-11-14 (approved): the step tracker and the cards of the surveillance and handholding payment pages.
+.pay-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; list-style: none; padding: 0; margin: 0 0 14px; }
+.pay-steps li { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px;
+  font-weight: 700; font-size: 14px; color: #7a8a8b; }
+.pay-steps li.active { border: 2px solid #2f7c83; padding: 9px 11px; color: #23474a; }
+.pay-steps li.done { background: #eef8f2; border-color: #bfe3cb; color: #1e7a3c; }
+.pay-steps .ps-num { flex: none; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #eef6f6; color: #2f7c83; font-size: 12.5px; }
+.pay-steps li.done .ps-num { background: #1e7a3c; color: #fff; }
+.step-title { font-size: 15px; font-weight: 700; color: #2f7c83; margin: 0 0 10px; letter-spacing: .03em; }
+.step-page .zed-card { border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: none; }
+.step-page .pay-grid { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; }
+@media (max-width: 767.98px) { .step-page .pay-grid { grid-template-columns: minmax(0, 1fr); } }
+.step-page .pay-grid h4 { font-size: 15px; font-weight: 700; color: #2f7c83; }
+.step-page .payment-summary .summary-rows { border: 0; }
+.step-page .payment-summary .summary-rows > div { padding: 9px 0; border-bottom: 1px solid #eef3f3; font-size: 14px; }
+.step-page .payment-summary .summary-rows > div > span { color: #5f6f70; }
+.step-page .payment-summary .summary-rows > .net { border-top: 1px solid #cfdcdd; border-bottom: 0; padding-top: 12px; }
+.step-page .payment-summary .summary-rows > .net strong { font-size: 16px; color: #23474a; }

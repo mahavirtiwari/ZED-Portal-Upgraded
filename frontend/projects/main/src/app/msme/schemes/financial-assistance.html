@@ -3,15 +3,10 @@
     @if (page(); as p) {
       @if (!p.canApply && step() !== 'done') {
         <!-- Already applied, not eligible or not certified: the MSME's own applications (old Details page). -->
-        <div class="page-head">
-          <div>
-            <h3 class="registration-title">Financial Assistance</h3>
-          </div>
-          <div class="page-actions refresh-bar mb-0">
-            <a routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> <span>BACK</span></a>
-            <button type="button" class="btn btn-link refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
-          </div>
-        </div>
+        <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Financial assistance' }]" title="Financial assistance">
+          <a class="btn btn-outline-secondary btn-sm" routerLink="/msme/dashboard"><img src="/Images/svgicons/back.svg" alt="" /> Back</a>
+          <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+        </zed-page-head>
         <div class="row">
           <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" [pledge]="true" /></div>
           <div class="col-sm-9 dash-main">
@@ -99,12 +94,9 @@
             </div>
           }
           @case (4) {
-            <div class="page-head">
-              <div><h3 class="registration-title dash-text-clr">Welcome</h3></div>
-              <div class="page-actions">
-                <button type="button" class="refresh-link btn btn-link p-0" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span></button>
-              </div>
-            </div>
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Financial assistance' }]" title="Financial assistance">
+              <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="/Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+            </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">
@@ -326,11 +318,8 @@
             </div>
           }
           @case ('summary') {
-            <div class="page-head">
-              <div>
-                <h3 class="registration-title">Summary</h3>
-              </div>
-            </div>
+            <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Financial assistance' }]" title="Financial assistance">
+            </zed-page-head>
             <div class="row">
               <div class="col-sm-3"><zed-scheme-unit-panel [unit]="unit()" /></div>
               <div class="col-sm-9 dash-main">

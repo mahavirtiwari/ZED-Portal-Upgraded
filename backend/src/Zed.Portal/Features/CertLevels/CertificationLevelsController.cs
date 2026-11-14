@@ -581,8 +581,9 @@ public sealed partial class CertificationLevelsController(
 [Route("api/public/levels")]
 public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger<PublicLevelsController> log) : ControllerBase
 {
+    /// <param name="AssessmentFlow">2026-11-14: how the level is assessed (<see cref="LevelFlows"/>), for the MSME's status steps.</param>
     public sealed record PublicLevel(string Code, string Name, string? Description, string? Comment, string? LogoUrl, string AssessmentMode,
-        int ValidityMonths, decimal? Fee, PublicSurveillance? Surveillance = null);
+        int ValidityMonths, decimal? Fee, PublicSurveillance? Surveillance = null, string? AssessmentFlow = null, string? SurveillanceMode = null);
 
     /// <summary>
     /// When surveillance falls due, for the level's dashboard card; null without surveillance. Every level gives its whole
@@ -591,12 +592,16 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     public sealed record PublicSurveillance(int FirstDueMonths, int? Count, int? IntervalMonths);
 
     [HttpGet]
-    public async Task<IReadOnlyList<PublicLevel>> Enabled(CancellationToken ct) =>
-        (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
+    public async Task<IReadOnlyList<PublicLevel>> Enabled(CancellationToken ct)
+    {
+        var flows = await LevelFlows.StoredAsync(db, log, ct);
+        return (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
             // Fee: none since 2026-11-08 (the dashboard shows the unit's own fee from Masters → Payments, api/msme/dashboard/level-fees).
             .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, null,
-                SurveillanceOf(l)))
+                SurveillanceOf(l), LevelFlows.FlowOf(flows.GetValueOrDefault(l.Code)?.AssessmentFlow, l.AssessmentMode),
+                LevelFlows.SurveillanceModeOf(flows.GetValueOrDefault(l.Code)?.SurveillanceMode)))
             .ToList();
+    }
 
     /// <param name="AssessmentMode">"Desktop" or "Site".</param>
     public sealed record LevelSummary(string Code, string Name, bool IsEnabled, string AssessmentMode, string? LogoUrl, int OrderNo);

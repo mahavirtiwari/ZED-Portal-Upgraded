@@ -52,7 +52,7 @@ export function certificationKind(certification: string): CertificationKind {
 
 /** "SilverMilestone2" → "Silver"; "BronzeSurveillance" → "Bronze"; "ZEDXSurveillance" → "ZEDX"; "PLATINUMSurveillance" → "PLATINUM". */
 export function certificationLevel(certification: string): Level {
-  return certification.replace(/(Surveillance|Milestone\d)$/, '') || 'Bronze';
+  return (certification ?? '').replace(/(Surveillance|Milestone\d)$/, '') || 'Bronze';
 }
 
 /** "GoldMilestone3" → 3; 0 for other types. */
@@ -69,7 +69,7 @@ export function milestoneNumber(certification: string): number {
 export function incentiveUrl(data: CertificationData | null): string {
   if (!data) return '';
   const q = new URLSearchParams({ ct: certificationLevel(data.certification) });
-  const state = String(data.msme['StateId'] ?? '');
+  const state = String(data.msme?.['StateId'] ?? '');
   if (state) q.set('id', state);
   return `/incentives?${q}`;
 }

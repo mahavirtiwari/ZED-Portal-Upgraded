@@ -1,6 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Component, inject, input, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
+import { PageHead } from '../shared/page-head';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 
@@ -42,10 +43,12 @@ export interface PledgeCertificate {
   selector: 'zed-pledge-certificate',
   template: `
     @let c = certificate();
-    <div class="pledge-actions">
-      <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">DOWNLOAD PDF</a>
-      <a class="btn btn-default" [href]="pdfUrl() + (pdfUrl().includes('?') ? '&' : '?') + 'inline=true'" target="_blank" rel="noopener">OPEN PDF</a>
-    </div>
+    @if (showActions()) {
+      <div class="pledge-actions">
+        <a class="btn btn-primary" [href]="pdfUrl()" [attr.download]="c.fileName">DOWNLOAD PDF</a>
+        <a class="btn btn-default" [href]="inlineUrl()" target="_blank" rel="noopener">OPEN PDF</a>
+      </div>
+    }
     <div class="pledge-sheet" role="img" [attr.aria-label]="'ZED pledge certificate of ' + c.name + ', ' + c.zedId">
       @for (f of c.fields; track f.name) {
         @switch (f.align) {
@@ -92,6 +95,12 @@ export class PledgeCertificateCard {
   readonly certificate = input.required<PledgeCertificate>();
   /** Where the PDF is drawn (a download; "?inline=true" opens it in the browser). */
   readonly pdfUrl = input.required<string>();
+  /** 2026-11-14: false when the page shows DOWNLOAD PDF and OPEN PDF in its header (the applicant's page). */
+  readonly showActions = input(true);
+
+  protected inlineUrl(): string {
+    return pledgeInlineUrl(this.pdfUrl());
+  }
 
   protected textOf(c: PledgeCertificate, field: string): string {
     switch (field) {
@@ -104,25 +113,36 @@ export class PledgeCertificateCard {
   }
 }
 
-/** The signed-in MSME's pledge certificate (/msme/pledge-certificate). */
+/** The PDF opened in the browser instead of downloaded. */
+export const pledgeInlineUrl = (pdfUrl: string) => pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'inline=true';
+
+/** The signed-in MSME's pledge certificate (/msme/pledge-certificate). 2026-11-14 (approved): the actions in the header. */
 @Component({
   selector: 'zed-msme-pledge-certificate',
-  imports: [PledgeCertificateCard, RouterLink],
+  imports: [PledgeCertificateCard, PageHead],
   template: `
     <div class="container pledge-page">
-      <div class="page-head">
-        <div>
-          <h3 class="registration-title">ZED Pledge Certificate</h3>
-        </div>
-        <a routerLink="/msme/dashboard" class="btn btn-default">BACK</a>
-      </div>
+      <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Pledge certificate' }]" title="Pledge certificate">
+        @if (certificate(); as c) {
+          <a class="btn btn-outline-secondary btn-sm" [href]="inline" target="_blank" rel="noopener">OPEN PDF</a>
+          <a class="btn btn-primary btn-sm" [href]="pdf" [attr.download]="c.fileName">DOWNLOAD PDF</a>
+        }
+      </zed-page-head>
       @if (error()) { <div class="alert alert-danger" role="alert">{{ error() }}</div> }
-      @if (certificate(); as c) { <zed-pledge-certificate [certificate]="c" pdfUrl="/api/msme/pledge-certificate/pdf" /> }
+      @if (certificate(); as c) {
+        <div class="pledge-card"><zed-pledge-certificate [certificate]="c" [pdfUrl]="pdf" [showActions]="false" /></div>
+      }
     </div>
   `,
-  styles: `.pledge-page { padding: 24px 12px 48px; }`,
+  styles: `
+    .pledge-page { padding: 8px 12px 48px; max-width: 960px; }
+    .pledge-card { background: #f3f7f7; border: 1px solid #dfe9ea; border-radius: 12px; padding: 24px; }
+    @media (max-width: 575.98px) { .pledge-card { padding: 10px; } }
+  `,
 })
 export class MsmePledgePage {
+  protected readonly pdf = '/api/msme/pledge-certificate/pdf';
+  protected readonly inline = pledgeInlineUrl(this.pdf);
   protected readonly certificate = signal<PledgeCertificate | null>(null);
   protected readonly error = signal('');
 

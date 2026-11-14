@@ -1,79 +1,78 @@
-<!-- As the live page (Views/Msme/MyDocuments.cshtml): one bordered panel with the Guidelines, Certificates and
-     Invoices headings. -->
-<div class="container form-page" id="zed_user_form">
+<!-- 2026-11-14 (approved design): breadcrumb header, one card with the Certificates, Invoices and receipts and
+     Guidelines groups; each row its icon, name and one Download (or Watch) button. -->
+<div class="container form-page docs-v2" id="zed_user_form">
   <div class="row justify-content-center mt-3">
-    <div class="col-sm-9 Dashboard">
-    @if (error()) {
-      <div class="alert alert-danger" role="alert">{{ error() }}</div>
-    }
-    <div class="panel panel-default panel-design">
-      <div class="panel-body">
-    @if (guidelines().length) {
-      <div>
-        <h3 class="registration-title">Guidelines</h3>
-        @for (d of guidelines(); track $index) {
-          <div class="alert alert-document">
-            <div>
-              <img class="icon-bg" src="/Images/svgicons/document.svg" alt="document" />
-              <p>
-                {{ d.DocumentName }}
-                @if (d.Description) { <small class="d-block text-muted">{{ d.Description }}</small> }
-              </p>
-            </div>
-            @if (d.VideoUrl) {
-              <a class="doc-download" [href]="d.VideoUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Watch ' + d.DocumentName">Watch</a>
-            } @else if (d.DocumentPath) {
-              <a class="doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
-                <img src="/Images/svgicons/download.svg" alt="download" />
-              </a>
-            } @else {
-              <!-- The file is not on the server (yet): no link that would fail. -->
-              <span class="doc-download not-available"><img src="/Images/svgicons/download.svg" alt="not available" title="Not available yet" /></span>
-            }
-          </div>
-        }
-      </div>
-    }
-
-    <div>
-      <h3 class="registration-title">Certificates</h3>
-      @for (c of certificates(); track c.label) {
-        <div class="alert alert-document">
-          <div>
-            <img class="icon-bg" src="/Images/svgicons/certificate.svg" alt="certificate" />
-            <p>{{ c.label }}</p>
-          </div>
-          @if (c.url) {
-            <a class="doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">
-              <img src="/Images/svgicons/download.svg" alt="download" />
-            </a>
-          } @else {
-            <span class="doc-download not-available"><img src="/Images/svgicons/download.svg" alt="not available" title="Not available yet" /></span>
-          }
+    <div class="col-lg-9">
+      <div class="page-head">
+        <div>
+          <nav class="crumb" aria-label="Breadcrumb"><a routerLink="/msme/dashboard">Home</a><span aria-hidden="true">›</span><span aria-current="page">My documents</span></nav>
+          <h2 class="registration-title">My documents</h2>
         </div>
-      }
-    </div>
+      </div>
 
-    @if (invoices().length) {
-      <div>
-        <h3 class="registration-title">Invoices and Receipts</h3>
-        @for (inv of invoices(); track $index) {
-          <div class="alert alert-document">
-            <div>
-              <img class="icon-bg" src="/Images/svgicons/report.svg" alt="document" />
-              <p>{{ invoiceLabel(inv) }}</p>
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">{{ error() }}</div>
+      }
+
+      <div class="dcard">
+        <section aria-labelledby="certTitle">
+          <h3 id="certTitle" class="dgroup">Certificates</h3>
+          @for (c of certificates(); track c.label) {
+            <div class="alert-document drow">
+              <img class="dicon" src="/Images/svgicons/certificate.svg" alt="" />
+              <p>{{ c.label }}</p>
+              @if (c.url) {
+                <a class="btn btn-outline-primary btn-sm doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">
+                  <img src="/Images/svgicons/download.svg" alt="" /> Download
+                </a>
+              } @else {
+                <span class="doc-download not-available" title="Not available yet">Not available yet</span>
+              }
             </div>
-            @if (inv.InvoicePath) {
-              <a class="doc-download" [href]="inv.InvoicePath" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + invoiceLabel(inv)">
-                <img src="/Images/svgicons/download.svg" alt="download" />
-              </a>
+          }
+        </section>
+
+        @if (invoices().length) {
+          <section aria-labelledby="invTitle">
+            <h3 id="invTitle" class="dgroup">Invoices and Receipts</h3>
+            @for (inv of invoices(); track $index) {
+              <div class="alert-document drow">
+                <img class="dicon" src="/Images/svgicons/report.svg" alt="" />
+                <p>{{ invoiceLabel(inv) }}</p>
+                @if (inv.InvoicePath) {
+                  <a class="btn btn-outline-primary btn-sm doc-download" [href]="inv.InvoicePath" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + invoiceLabel(inv)">
+                    <img src="/Images/svgicons/download.svg" alt="" /> Download
+                  </a>
+                } @else {
+                  <span class="doc-download not-available">Not available yet</span>
+                }
+              </div>
             }
-          </div>
+          </section>
+        }
+
+        @if (guidelines().length) {
+          <section aria-labelledby="guideTitle">
+            <h3 id="guideTitle" class="dgroup">Guidelines</h3>
+            @for (d of guidelines(); track $index) {
+              <div class="alert-document drow">
+                <img class="dicon" src="/Images/svgicons/document.svg" alt="" />
+                <p>
+                  {{ d.DocumentName }}
+                  @if (d.Description) { <small class="d-block text-muted">{{ d.Description }}</small> }
+                </p>
+                @if (d.VideoUrl) {
+                  <a class="btn btn-outline-primary btn-sm doc-download" [href]="d.VideoUrl" target="_blank" rel="noopener noreferrer" [attr.aria-label]="'Watch ' + d.DocumentName">Watch</a>
+                } @else if (d.DocumentPath) {
+                  <a class="btn btn-outline-primary btn-sm doc-download" [href]="d.DocumentPath" [attr.target]="target(d.DocumentPath)" rel="noopener" [attr.aria-label]="'Download ' + d.DocumentName">
+                    <img src="/Images/svgicons/download.svg" alt="" /> Download
+                  </a>
+                }
+              </div>
+            }
+          </section>
         }
       </div>
-    }
-      </div>
-    </div>
     </div>
   </div>
 </div>

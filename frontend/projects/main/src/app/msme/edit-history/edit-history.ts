@@ -4,6 +4,7 @@ import { Component, effect, inject, input, signal, untracked } from '@angular/co
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { PagerComponent, ServerPager } from '../../staff/pager';
+import { PageHead } from '../shared/page-head';
 
 export interface EditItem {
   id: number;
@@ -67,7 +68,7 @@ export function submittedValues(data: string | null): string[] {
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
-    <div class="timeline">
+    <div class="timeline" [class.is-empty]="!rows().length">
       @for (r of rows(); track r.id; let i = $index) {
         @if (i === 0 || dayOf(rows()[i - 1].at) !== dayOf(r.at)) {
           <div class="eh-day">{{ r.at | date: 'd MMMM y' }}</div>
@@ -106,6 +107,7 @@ export function submittedValues(data: string | null): string[] {
     .eh-chip { border: 1px solid #d9eef0; background: #d9eef0; border-radius: 16px; padding: 3px 14px; font-weight: 500; color: #174a4e; }
     .eh-chip.active { background: #23656b; border-color: #23656b; color: #fff; }
     .timeline { border-left: 2px solid #d6e9eb; margin-left: 8px; padding-left: 20px; }
+    .timeline.is-empty { border-left: 0; margin-left: 0; padding-left: 0; }
     .eh-day { color: #7a7d80; font-weight: 600; margin: 14px 0 6px -20px; padding-left: 0; background: #fff; position: relative; left: -10px; }
     .eh-item { position: relative; border: 1px solid #e3e6e8; border-radius: 10px; padding: 10px 14px; margin-bottom: 10px; background: #fff; }
     .eh-dot { position: absolute; left: -28px; top: 14px; width: 14px; height: 14px; border-radius: 50%; background: #45a5ad; border: 3px solid #fff; box-shadow: 0 0 0 1px #45a5ad; }
@@ -192,16 +194,18 @@ export class EditHistoryTable {
 /** MSME → Edit History: the signed-in applicant's own changes. */
 @Component({
   selector: 'zed-msme-edit-history',
-  imports: [EditHistoryTable],
+  imports: [EditHistoryTable, PageHead],
   template: `
+    <!-- 2026-11-14 (approved): breadcrumb header; the filters and the changes in one card. -->
     <div class="container form-page" id="zed_user_form">
-      <div class="page-head mt-4">
-        <div>
-          <h3 class="registration-title">Edit History</h3>
+      <div class="row justify-content-center">
+        <div class="col-lg-10">
+          <zed-page-head [crumbs]="[{ label: 'Home', link: '/msme/dashboard' }, { label: 'Profile', link: '/msme/profile' }, { label: 'Edit history' }]" title="Edit history" />
+          <div class="eh-card"><zed-edit-history-table url="/api/msme/edit-history" /></div>
         </div>
       </div>
-      <zed-edit-history-table url="/api/msme/edit-history" />
     </div>
   `,
+  styles: `.eh-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 20px; }`,
 })
 export class EditHistoryPage {}

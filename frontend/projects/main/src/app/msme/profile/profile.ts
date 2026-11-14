@@ -1,4 +1,5 @@
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Component, computed, inject, signal } from '@angular/core';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -47,7 +48,7 @@ const MAIN_FIELDS = ['EnterpriseName', 'UdyogAadharNo', 'OwnerName', 'Enterprise
 @Component({
   selector: 'zed-msme-profile',
   host: { class: 'd-block' },
-  imports: [AlertDialog, FormsModule],
+  imports: [AlertDialog, FormsModule, RouterLink],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
@@ -60,6 +61,22 @@ export class ProfilePage {
   protected readonly shownRows = computed(() =>
     this.showAll() ? BASIC_INFO.filter((r) => r.field !== 'ZedId') : BASIC_INFO.filter((r) => MAIN_FIELDS.includes(r.field)),
   );
+  /** 2026-11-14: only the rows with a value (no walls of dashes). */
+  protected readonly filledRows = computed(() => this.shownRows().filter((r) => this.value(r)));
+  /** "Show all details" only when it would show more. */
+  protected readonly hasMoreRows = computed(() =>
+    BASIC_INFO.some((r) => r.field !== 'ZedId' && !MAIN_FIELDS.includes(r.field) && this.value(r)));
+  protected readonly enterpriseName = computed(() => this.text(this.basicInfo(), 'EnterpriseName') || this.text(this.msme(), 'EnterpriseName'));
+  protected readonly entType = computed(() =>
+    this.text(this.basicInfo(), 'EnterpriseTypee') || this.text(this.msme(), 'EnterpriseType') || this.text(this.msme(), 'EnterpriseTypee'));
+  /** Udyam · ZED ID · type, under the enterprise name of the summary card. */
+  protected readonly summaryLine = computed(() =>
+    [this.text(this.basicInfo(), 'UdyogAadharNo'), this.text(this.msme(), 'ZedId'), this.entType()].filter((x) => x).join(' · '));
+
+  /** The label without the legacy trailing colon. */
+  protected label(row: InfoRow): string {
+    return row.label.replace(/:$/, '');
+  }
   protected readonly registeredEmail = signal('');
   /** Change of the registered e-mail: enter the new address, then the OTP sent to it. */
   protected readonly emailStep = signal<'idle' | 'enter' | 'otp'>('idle');

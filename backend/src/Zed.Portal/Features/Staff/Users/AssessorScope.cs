@@ -106,6 +106,9 @@ public static class AssessorScope
     internal const string OfUserSql = "SELECT UserId, AssessmentModes, AssessorType FROM dbo.Users WHERE UserId = @UserId;";
     internal const string LegacyByRoleSql = "SELECT UserId, CAST(NULL AS nvarchar(1000)) AS AssessmentModes, AssessorType FROM dbo.Users WHERE RoleId = 3;";
     internal const string LegacyOfUserSql = "SELECT UserId, CAST(NULL AS nvarchar(1000)) AS AssessmentModes, AssessorType FROM dbo.Users WHERE UserId = @UserId;";
+    // ZED_SURVEILLANCE.dbo.Users has AssessmentModes (0072) but no AssessorType: the surveillance portal reads the ticks with these.
+    internal const string NoTypeByRoleSql = "SELECT UserId, AssessmentModes, CAST(NULL AS varchar(50)) AS AssessorType FROM dbo.Users WHERE RoleId = 3;";
+    internal const string NoTypeOfUserSql = "SELECT UserId, AssessmentModes, CAST(NULL AS varchar(50)) AS AssessorType FROM dbo.Users WHERE UserId = @UserId;";
 
     // ZED_SURVEILLANCE.dbo.Users has no AssessorType column (schema export), so its copy gets AssessorType only where the
     // column exists (nested sp_executesql: a missing column fails the whole batch at compile time).
@@ -121,7 +124,7 @@ public static class AssessorScope
     public static async Task<Dictionary<string, Dictionary<string, HashSet<char>>>> ByRoleAsync(ISqlExecutor db, ILogger log, CancellationToken ct)
     {
         var flows = await FlowsAsync(db, log, ct);
-        var rows = await RowsAsync(db, ByRoleSql, LegacyByRoleSql, null, log, ct);
+        var rows = await RowsAsync(db, ByRoleSql, NoTypeByRoleSql, LegacyByRoleSql, null, log, ct);
         return rows.Where(r => !string.IsNullOrWhiteSpace(r.UserId))
             .GroupBy(r => r.UserId.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => Of(g.First().AssessmentModes, g.First().AssessorType, flows), StringComparer.OrdinalIgnoreCase);
@@ -130,15 +133,25 @@ public static class AssessorScope
     public static async Task<Dictionary<string, HashSet<char>>> OfUserAsync(ISqlExecutor db, string userId, ILogger log, CancellationToken ct)
     {
         var flows = await FlowsAsync(db, log, ct);
-        var row = (await RowsAsync(db, OfUserSql, LegacyOfUserSql, new { UserId = userId }, log, ct)).FirstOrDefault();
+        var row = (await RowsAsync(db, OfUserSql, NoTypeOfUserSql, LegacyOfUserSql, new { UserId = userId }, log, ct)).FirstOrDefault();
         return Of(row?.AssessmentModes, row?.AssessorType, flows);
     }
 
-    private static async Task<IReadOnlyList<Row>> RowsAsync(ISqlExecutor db, string sql, string legacy, object? args, ILogger log, CancellationToken ct)
+    private static async Task<IReadOnlyList<Row>> RowsAsync(ISqlExecutor db, string sql, string noType, string legacy, object? args, ILogger log, CancellationToken ct)
     {
         try
         {
             return await db.QuerySqlAsync<Row>(sql, args, ct);
+        }
+        catch (DbException ex)
+        {
+            // 2026-11-14: ZED_SURVEILLANCE.dbo.Users has no AssessorType; before this the surveillance portal fell through to
+            // the old type (none: every assessor "ticked" for every mode) and the Onsite-surveillance tick check let anyone in.
+            log.LogDebug(ex, "Users.AssessorType not readable; reading the assessors' modes without it");
+        }
+        try
+        {
+            return await db.QuerySqlAsync<Row>(noType, args, ct);
         }
         catch (DbException ex)
         {

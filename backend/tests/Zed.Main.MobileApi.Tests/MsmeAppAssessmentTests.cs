@@ -341,6 +341,8 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         FinalSubmitProcs(0);
         AssertOk(await FinalSubmit());
         Assert.Single(CallsTo("SP_APP_MSME_FINAL_SUBMIT"));
+        // 2026-11-14: every level's submission then asks for the desktop skip (Remote only / Onsite only levels).
+        Assert.Single(CallsTo("SP_V4_SKIP_DESKTOP"));
         var mail = Assert.Single(Host.Email.Sent);
         Assert.Equal("unit@example.com", mail.To);
         // The office copy is blind, as the old ccAddress copy was.

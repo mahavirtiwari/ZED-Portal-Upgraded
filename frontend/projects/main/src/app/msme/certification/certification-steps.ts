@@ -1,6 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input } from '@angular/core';
-import { Row, certificationKind, milestoneNumber } from './certification.api';
+import { Component, computed, inject, input } from '@angular/core';
+import { Row, certificationKind, certificationLevel, milestoneNumber } from './certification.api';
+import { PublicLevels } from '../shared/levels';
 
 /**
  * The "Status" timeline of Views/Msme/CertificationDetails.cshtml (also used by ViewStatus.cshtml):
@@ -29,6 +30,21 @@ export class CertificationSteps {
   protected readonly milestone = computed(() => milestoneNumber(this.certification()));
 
   protected readonly ncRounds = [1, 2, 3, 4, 5];
+
+  /**
+   * 2026-11-14: the level's steps follow its flow (Admin → Certification Levels): Remote only / Onsite only have no
+   * desktop step; the site step is called Remote or Onsite Assessment by the flow ("Remote/Onsite" while unknown).
+   */
+  private readonly levels = inject(PublicLevels);
+  private readonly flow = computed(() => {
+    const code = certificationLevel(this.certification()).toLowerCase();
+    return this.levels.levels()?.find((l) => l.code.toLowerCase() === code)?.assessmentFlow ?? null;
+  });
+  protected readonly hasDesktop = computed(() => this.flow() !== 'Remote' && this.flow() !== 'Onsite');
+  protected readonly siteTitle = computed(() => {
+    const f = this.flow();
+    return f === 'Remote' || f === 'DesktopRemote' ? 'Remote Assessment' : f === 'Onsite' || f === 'DesktopOnsite' ? 'Onsite Assessment' : 'Remote/Onsite Assessment';
+  });
 
   /** Description for a status type, or '' when ng-show would have hidden it (null, empty, 0, false). */
   protected s(field: string): string {

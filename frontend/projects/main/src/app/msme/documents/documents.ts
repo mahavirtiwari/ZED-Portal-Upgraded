@@ -1,4 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { DocumentsApi, Invoice, MyDocuments } from './documents.api';
@@ -12,6 +13,7 @@ interface CertificateItem {
 /** My Documents: guidelines, certificates and invoices/receipts. Port of Views/Msme/MyDocuments.cshtml. */
 @Component({
   selector: 'zed-msme-documents',
+  imports: [RouterLink],
   templateUrl: './documents.html',
   styleUrl: './documents.scss',
 })

@@ -83,24 +83,26 @@
           <ul><li><strong>YOU: </strong>{{ s('BasicInfoStatus') }}</li></ul>
         </div>
       </li>
-      <li [hidden]="!s('DesktopVerification')">
-        <div class="step-num"><span>2</span></div>
-        <div class="step-details">
-          <h4>Desktop Verification</h4>
-          <ul><li><strong class="dash-text-clr">ZED: </strong>{{ s('DesktopVerification') }}</li></ul>
-        </div>
-      </li>
+      @if (hasDesktop()) {
+        <li [hidden]="!s('DesktopVerification')">
+          <div class="step-num"><span>2</span></div>
+          <div class="step-details">
+            <h4>Desktop Verification</h4>
+            <ul><li><strong class="dash-text-clr">ZED: </strong>{{ s('DesktopVerification') }}</li></ul>
+          </div>
+        </li>
+      }
       <li [hidden]="!s('ScheduledOn')">
-        <div class="step-num"><span>3</span></div>
+        <div class="step-num"><span>{{ hasDesktop() ? 3 : 2 }}</span></div>
         <div class="step-details">
-          <h4>Remote/Onsite Assessment</h4>
+          <h4>{{ siteTitle() }}</h4>
           <ul>
             <li><strong class="dash-text-clr">ZED: </strong>{{ s('ScheduledOn') }}</li>
             <ng-container *ngTemplateOutlet="ncList; context: { tick: false }" />
           </ul>
         </div>
       </li>
-      <ng-container *ngTemplateOutlet="certified; context: { from: 4 }" />
+      <ng-container *ngTemplateOutlet="certified; context: { from: hasDesktop() ? 4 : 3 }" />
     }
 
     @case ('surveillance') {

@@ -381,6 +381,13 @@ public sealed partial class MsmeController
             else log.LogError("{ZedId} {Level}: allotment to the applicant's agency {Agency} failed: {Error}", request.userName, level, chosen.userId, allotted);
         }
 
+        // 2026-11-14: Remote only / Onsite only levels go straight to the site assessment once the agency is set (migration 0074).
+        if (LevelRegistry.Canonical(request.certificationType?.Trim()) is { } skipLevel)
+        {
+            var skip = await TryExecuteAsync("SP_V4_SKIP_DESKTOP", new { ZedId = request.userName, Certification = skipLevel }, ct);
+            if (skip is not null) log.LogError("Desktop skip of {ZedId} {Level} failed: {Error} (is migration 0074 applied?)", request.userName, skipLevel, skip);
+        }
+
         await SendSubmissionMailAsync(request.userName ?? "", request.certificationType ?? "", ct);
         return LegacyJson(new ServiceResponse { status = "1" });
     }

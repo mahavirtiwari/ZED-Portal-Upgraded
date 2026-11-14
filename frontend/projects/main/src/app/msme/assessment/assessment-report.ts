@@ -6,9 +6,11 @@ import { firstValueFrom } from 'rxjs';
 import { CertificationApi, CertificationData } from '../certification/certification.api';
 import { AssessmentApi, AssessmentReport, NonConformanceReport, Row, assessmentType } from './assessment.api';
 import { FileItem, NcRequirementView, NcSectionView, SectionView, basicInfoSections, nonConformanceRounds, photosOfType } from './assessment-view';
-import { MsmeUnitSummary } from '../shared/unit-summary';
 import { ParameterNav } from '../shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../shared/nc-thread';
+import { Crumb, PageHead } from '../shared/page-head';
+import { UnitFacts } from '../shared/unit-facts';
+import { levelName } from '../shared/levels';
 
 export type AssessmentMode = 'basic-info' | 'non-conformances';
 
@@ -25,7 +27,7 @@ type BasicTab = 'basicInfo' | 'esg' | 'elements';
  */
 @Component({
   selector: 'zed-msme-assessment-report',
-  imports: [RouterLink, NgTemplateOutlet, MsmeUnitSummary],
+  imports: [RouterLink, NgTemplateOutlet, PageHead, UnitFacts],
   templateUrl: './assessment-report.html',
   styleUrls: ['../shared/msme-page.scss', './assessment-report.scss'],
 })
@@ -40,6 +42,19 @@ export class AssessmentReportView {
   private loadedKey = '';
 
   protected readonly type = computed(() => assessmentType(this.certification()));
+  /** 2026-11-14: the level's name ("Bronze", "Bronze surveillance") for the header and the facts strip. */
+  protected readonly levelTitle = computed(() => {
+    const c = this.type() ?? this.certification() ?? '';
+    const base = c.replace(/Surveillance$/i, '');
+    return levelName(base) + (base !== c ? ' surveillance' : '');
+  });
+  protected readonly pageTitle = computed(() =>
+    `${this.levelTitle()}: ${this.mode() === 'basic-info' ? 'Basic information and documents' : 'Non-conformances'}`);
+  protected readonly crumbs = computed<Crumb[]>(() => [
+    { label: 'Home', link: '/msme/dashboard' },
+    { label: `${this.levelTitle()} certification`, link: ['/msme/certification', this.certification()] },
+    { label: this.mode() === 'basic-info' ? 'Basic information' : 'Non-conformances' },
+  ]);
 
   protected readonly loading = signal(false);
   protected readonly error = signal('');
