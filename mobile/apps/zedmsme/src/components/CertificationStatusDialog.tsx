@@ -40,6 +40,8 @@ export function certificationStatus(
   level: CertificationType,
   f: Record<string, string | null | undefined>,
   desktop: boolean = level === 'Bronze',
+  /** 2026-11-14: the level's flow (no desktop step for Remote only / Onsite only; the site step's name). */
+  flow?: string | null,
 ): CertificationStatus {
   const line = (who: StatusLine['who'], key: string): StatusLine[] => {
     const t = text(f[key]);
@@ -79,9 +81,11 @@ export function certificationStatus(
       }),
     );
   } else {
+    if (flow !== 'Remote' && flow !== 'Onsite')
+      steps.push(step('Desktop Verification', !!text(f.DesktopVerification), { lines: line('ZED', 'DesktopVerification') }));
+    const site = flow === 'Remote' || flow === 'DesktopRemote' ? 'Remote Assessment' : flow === 'Onsite' || flow === 'DesktopOnsite' ? 'Onsite Assessment' : 'Remote/Onsite Assessment';
     steps.push(
-      step('Desktop Verification', !!text(f.DesktopVerification), { lines: line('ZED', 'DesktopVerification') }),
-      step('Remote/Onsite Assessment', !!text(f.ScheduledOn), {
+      step(site, !!text(f.ScheduledOn), {
         lines: line('ZED', 'ScheduledOn'),
         nc: nc(),
         after: [...line('ZED', 'NcClosed'), ...line('ZED', 'CompletedOn')],

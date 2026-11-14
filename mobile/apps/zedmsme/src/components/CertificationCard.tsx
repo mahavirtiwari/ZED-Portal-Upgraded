@@ -23,7 +23,20 @@ export type CardState = {
  * CertificationStatusHandler.setCertificationStatus (MyCertificationsFragment.kt). `actionsHidden` is true when both
  * the apply button and the arrow are INVISIBLE, which shows the overlay first.
  */
-export function certificationCardState(details: CertificationDetails | null, isBronze: boolean, actionsHidden: boolean): CardState {
+/** 2026-11-14: the site step's name by the level's flow; null when the flow does not say (the old rule then). */
+export function siteStepName(flow: string | null | undefined): string | null {
+  return flow === 'Remote' || flow === 'DesktopRemote' ? 'Remote Assessment' : flow === 'Onsite' || flow === 'DesktopOnsite' ? 'Onsite Assessment' : null;
+}
+
+/** 2026-11-14: Remote only / Onsite only levels have no desktop step. */
+export const hasDesktopStep = (flow: string | null | undefined) => flow !== 'Remote' && flow !== 'Onsite';
+
+export function certificationCardState(
+  details: CertificationDetails | null,
+  isBronze: boolean,
+  actionsHidden: boolean,
+  flow?: string | null,
+): CardState {
   const s: CardState = {
     statusText: 'Get Started',
     one: 'default',
@@ -55,18 +68,27 @@ export function certificationCardState(details: CertificationDetails | null, isB
     }
     return s;
   }
+  // 2026-11-14: a level without a desktop step shows no desktop dot, and its site step from the final submit on.
+  const desktop = hasDesktopStep(flow);
+  const site = siteStepName(flow);
+  if (!desktop) s.two = null;
   if (details.status === 4 || isCompletedAndDisabled(details)) {
-    s.one = s.two = s.three = s.four = 'completed';
+    s.one = s.three = s.four = 'completed';
+    if (desktop) s.two = 'completed';
     s.statusText = 'Completed';
     s.overlay = isCompletedAndDisabled(details);
   } else if (details.status === 3) {
     s.one = 'completed';
-    s.two = 'completed';
-    s.statusText = details.remoteStatus === '1' || details.remoteStatus === '2' ? 'Remote Assessment' : 'Onsite Assessment';
+    if (desktop) s.two = 'completed';
+    s.statusText = site ?? (details.remoteStatus === '1' || details.remoteStatus === '2' ? 'Remote Assessment' : 'Onsite Assessment');
     s.three = anyActiveNc(details) ? 'nc' : 'current';
   } else if (details.status === 2) {
     s.one = 'completed';
-    s.statusText = 'Desktop Verification';
+    if (desktop) s.statusText = 'Desktop Verification';
+    else {
+      s.statusText = site ?? 'Onsite Assessment';
+      s.three = 'current';
+    }
   } else if (details.status === 1) {
     s.statusText = 'Basic Information & Document Upload';
     if (details.basicInformation != null && !details.finalSubmitDone) s.one = 'current';

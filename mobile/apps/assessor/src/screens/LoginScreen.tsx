@@ -142,6 +142,7 @@ export function LoginScreen() {
       return;
     }
     app.session.clear();
+    app.surveillanceSession.clear();
     startupChecks(ui);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

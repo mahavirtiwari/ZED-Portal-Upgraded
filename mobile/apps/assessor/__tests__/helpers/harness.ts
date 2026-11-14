@@ -31,6 +31,8 @@ type Responder = (req: SentRequest) => unknown | Promise<unknown>;
 export class FakeServer {
   readonly requests: SentRequest[] = [];
   online = true;
+  /** 2026-11-14: the surveillance host answers only when a test switches it on (otherwise it cannot be reached). */
+  surveillanceOnline = false;
   constructor(public responder: Responder = () => ({ status: '1' })) {}
 
   fetch = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -108,7 +110,14 @@ export async function makeApp(server: FakeServer, dbs?: { db: SqlDb; mediaDb: Sq
   const mediaDb = dbs?.mediaDb ?? (await memoryDb());
   const http = new HttpClient({ fetchImpl: server.fetch });
   const api = new SaApi(saEnvironment(ENVIRONMENTS.local), () => ({ version: '1.3', deviceInfo: DEVICE }), { rest: http, retrofit: http });
-  const app = new SaApp({ db, mediaDb, environment: ENVIRONMENTS.local, versionName: '1.3', api, prefs });
+  const survHttp = new HttpClient({
+    fetchImpl: async (url: string, init?: RequestInit) => {
+      if (!server.surveillanceOnline) throw new TypeError('Network request failed');
+      return server.fetch(url, init);
+    },
+  });
+  const surveillanceApi = new SaApi(saEnvironment(ENVIRONMENTS.local), () => ({ version: '1.3', deviceInfo: DEVICE }), { rest: survHttp, retrofit: survHttp }, 'surveillance');
+  const app = new SaApp({ db, mediaDb, environment: ENVIRONMENTS.local, versionName: '1.3', api, surveillanceApi, prefs });
   await app.init();
   registerHandlers(app);
   return { app, db, mediaDb, prefs };

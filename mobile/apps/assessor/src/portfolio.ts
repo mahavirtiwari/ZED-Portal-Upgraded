@@ -34,6 +34,8 @@ export type Stage = 'scheduled' | 'inProgress' | 'submitted' | 'ncRound' | 'unde
 export type AssessmentSummary = {
   zedId: string;
   certificationType: string;
+  /** 2026-11-14: the server the unit is allotted on (the surveillance one for a surveillance visit); absent = main. */
+  system?: 'main' | 'surveillance';
   levelName?: string | null;
   enterpriseName?: string | null;
   unitName?: string | null;

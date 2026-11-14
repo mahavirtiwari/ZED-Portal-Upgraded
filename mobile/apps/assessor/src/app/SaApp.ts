@@ -35,6 +35,8 @@ export type SaAppDeps = {
   versionName: string;
   prefs?: Prefs;
   api?: SaApi;
+  /** 2026-11-14: the surveillance host's API (tests); built from the environment otherwise. */
+  surveillanceApi?: SaApi;
   system?: SaSystem;
 };
 
@@ -55,9 +57,16 @@ export class SaApp {
   readonly cache: KeyValueStore;
   readonly texts: AppTexts;
   readonly forms: AppForms;
-  readonly api: SaApi;
-  /** New in V4 (audit C1): the app sign-in token, sent with every call; kept per user in ZedAppToken. */
-  readonly session: AppSession;
+  /**
+   * 2026-11-14 (Onsite surveillance, "the app tries both"): the assessor signs in on the main and the surveillance hosts
+   * with the same credentials; each unit is opened on the host it is allotted on (AssessmentSummary.system). `api` and
+   * `session` are the current unit's host's; the surveillance token is kept under "SURV:" + the user (see tokenKey).
+   */
+  private readonly mainApi: SaApi;
+  readonly surveillanceApi: SaApi;
+  private readonly mainSession: AppSession;
+  readonly surveillanceSession: AppSession;
+  private system: SaSystem = 'main';
   readonly tokens: AppTokenStore;
   readonly prefs: Prefs;
   readonly environment: Environment;
@@ -86,11 +95,39 @@ export class SaApp {
     this.environment = saEnvironment(deps.environment);
     this.portalEnvironment = deps.environment;
     this.versionName = deps.versionName;
-    this.api = deps.api ?? new SaApi(this.environment, () => requestContext(), undefined, deps.system ?? 'main');
+    this.mainApi = deps.api ?? new SaApi(this.environment, () => requestContext(), undefined, deps.system ?? 'main');
+    this.surveillanceApi = deps.surveillanceApi ?? new SaApi(this.environment, () => requestContext(), undefined, 'surveillance');
     this.tokens = new AppTokenStore(deps.db);
-    this.session = new AppSession(this.tokens);
-    this.api.rest.useSession(this.session);
-    this.api.retrofit.useSession(this.session);
+    this.mainSession = new AppSession(this.tokens);
+    this.surveillanceSession = new AppSession(this.tokens);
+    this.mainApi.rest.useSession(this.mainSession);
+    this.mainApi.retrofit.useSession(this.mainSession);
+    this.surveillanceApi.rest.useSession(this.surveillanceSession);
+    this.surveillanceApi.retrofit.useSession(this.surveillanceSession);
+  }
+
+  /** The current unit's host API (main unless a surveillance unit is open). */
+  get api(): SaApi {
+    return this.system === 'surveillance' ? this.surveillanceApi : this.mainApi;
+  }
+
+  /** The current host's sign-in. */
+  get session(): AppSession {
+    return this.system === 'surveillance' ? this.surveillanceSession : this.mainSession;
+  }
+
+  get currentSystem(): SaSystem {
+    return this.system;
+  }
+
+  /** Switches to the host a unit is allotted on, before its calls. */
+  useSystem(system: SaSystem | null | undefined): void {
+    this.system = system === 'surveillance' ? 'surveillance' : 'main';
+  }
+
+  /** The token store's key of a user on the current host (the surveillance token apart from the main one). */
+  tokenKey(userId: string): string {
+    return this.system === 'surveillance' ? 'SURV:' + userId : userId;
   }
 
   static async open(openDatabase: (name: string) => SqlDb): Promise<SaApp> {
@@ -197,8 +234,19 @@ export class SaApp {
   async refreshAssessments(): Promise<void> {
     const a = this._assessor;
     if (!a) return;
-    const r = await this.api.assessments(a.assessorId);
-    if (r && String(r.status ?? '') === '1' && Array.isArray(r.assessments)) await this.signedInAs(a, r.assessments);
+    const r = await this.mainApi.assessments(a.assessorId);
+    if (!(r && String(r.status ?? '') === '1' && Array.isArray(r.assessments))) return;
+    // 2026-11-14: the surveillance host's units too, when the assessor is signed in there.
+    let surveillance: AssessmentSummary[] = this._assessments.filter(x => x.system === 'surveillance');
+    if (this.surveillanceSession.appToken) {
+      try {
+        const s = await this.surveillanceApi.assessments(a.assessorId);
+        if (s && String(s.status ?? '') === '1' && Array.isArray(s.assessments)) surveillance = s.assessments.map(x => ({ ...x, system: 'surveillance' as const }));
+      } catch {
+        // keep the last surveillance list
+      }
+    }
+    await this.signedInAs(a, [...r.assessments.map(x => ({ ...x, system: 'main' as const })), ...surveillance]);
   }
 
   get notifications(): AppNotification[] {

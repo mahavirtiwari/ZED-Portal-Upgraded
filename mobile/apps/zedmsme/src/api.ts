@@ -194,6 +194,8 @@ export type PublicLevel = {
   fee?: number | null;
   /** "Desktop" (Bronze's statuses) or "Site" (Gold's). */
   assessmentMode?: string | null;
+  /** 2026-11-14: Desktop | Remote | Onsite | DesktopRemote | DesktopOnsite: the level's steps (Admin → Certification Levels). */
+  assessmentFlow?: string | null;
 };
 
 /**

@@ -1,3 +1,4 @@
+import { certificationCardState } from '../src/components/CertificationCard';
 import { certificationStatus } from '../src/components/CertificationStatusDialog';
 
 describe('VIEW DETAILS status steps (Views/Msme/ViewStatus.cshtml)', () => {
@@ -64,5 +65,23 @@ describe('VIEW DETAILS status steps (Views/Msme/ViewStatus.cshtml)', () => {
     const s = certificationStatus('Gold', {});
     expect(s.applicationReceived).toBeNull();
     expect(s.steps.some(x => x.reached)).toBe(false);
+  });
+});
+
+describe('the level flow decides the steps (2026-11-14)', () => {
+  it('Remote only: no desktop step, the site step is Remote Assessment', () => {
+    const s = certificationStatus('Silver', { ApplicationReceived: 'Received', ScheduledOn: 'Scheduled' }, false, 'Remote');
+    expect(s.steps.map(x => x.title)).toEqual(['Basic Information and Document Upload', 'Remote Assessment', 'Get Certified!', 'Avail Incentives']);
+    const card = certificationCardState({ status: 2 } as never, false, false, 'Remote');
+    expect([card.statusText, card.two, card.three]).toEqual(['Remote Assessment', null, 'current']);
+  });
+
+  it('Desktop + Onsite: the desktop step stays; the site step is Onsite Assessment', () => {
+    const s = certificationStatus('Gold', { ScheduledOn: 'Scheduled' }, false, 'DesktopOnsite');
+    expect(s.steps.map(x => x.title).slice(0, 3)).toEqual(['Basic Information and Document Upload', 'Desktop Verification', 'Onsite Assessment']);
+    expect(certificationCardState({ status: 2 } as never, false, false, 'DesktopOnsite').statusText).toBe('Desktop Verification');
+    expect(certificationCardState({ status: 3 } as never, false, false, 'DesktopRemote').statusText).toBe('Remote Assessment');
+    // Unknown flow (an older server): as before.
+    expect(certificationCardState({ status: 3, remoteStatus: '0' } as never, false, false).statusText).toBe('Onsite Assessment');
   });
 });

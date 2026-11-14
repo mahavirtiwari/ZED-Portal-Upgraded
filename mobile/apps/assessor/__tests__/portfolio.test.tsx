@@ -68,6 +68,33 @@ const texts = (r: ReactTestRenderer.ReactTestRenderer) =>
   r.root.findAll(n => (n.type as unknown) === 'Text').map(n => (Array.isArray(n.props.children) ? n.props.children.join('') : String(n.props.children ?? '')));
 
 describe('sign-in (redesign: assessor ID + password, several assessments)', () => {
+  it('signs in on the surveillance host too and opens a surveillance unit there (2026-11-14, onsite surveillance)', async () => {
+    const s = new FakeServer(r => {
+      const surv = r.url.includes('surveillancemobileapi');
+      const name = r.url.split('/SA/')[1]?.split('?')[0] ?? '';
+      if (name === 'SignIn') {
+        const a = signInAnswer() as { assessments: { zedId: string }[] } & Record<string, unknown>;
+        return surv ? { ...a, appToken: 'tok-s', assessments: [{ ...a.assessments[0], zedId: 'ZEDS000009' }] } : a;
+      }
+      if (name === 'Assessment') return { ...loginAnswer(), appToken: surv ? 'tok-su' : 'tok-u' };
+      return { status: '1' };
+    });
+    s.surveillanceOnline = true;
+    const { app } = await makeApp(s);
+    expect(await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true)).toEqual({ kind: 'proceed', toast: 'Login Successful.' });
+    expect(app.assessments.map(a => [a.zedId, a.system])).toEqual([...app.assessments.slice(0, 2).map(a => [a.zedId, 'main']), ['ZEDS000009', 'surveillance']]);
+    expect(app.surveillanceSession.appToken).toBe('tok-s');
+
+    const surv = app.assessments.find(a => a.system === 'surveillance')!;
+    await openAssessment(app, surv, true);
+    expect(s.last('SA/Assessment')!.url).toContain('surveillancemobileapi/SA/Assessment');
+    expect(app.currentSystem).toBe('surveillance');
+    const main = app.assessments.find(a => a.system === 'main')!;
+    await openAssessment(app, main, true);
+    expect(s.last('SA/Assessment')!.url).toContain('/mobileapi/SA/Assessment');
+    expect(app.currentSystem).toBe('main');
+  });
+
   it('signs in online, keeps the token for the assessor and the list; the offline sign-in uses them', async () => {
     const s = server();
     const { app, db, mediaDb, prefs } = await makeApp(s);

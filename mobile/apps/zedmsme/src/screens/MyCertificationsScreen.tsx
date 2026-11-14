@@ -136,7 +136,8 @@ export function MyCertificationsScreen() {
     } finally {
       ui.hideLoading();
     }
-    if (isSuccess(r) && r.steps) setStatusOf({ level, status: certificationStatus(level, r.steps, isDesktopLevel(level, status)) });
+    if (isSuccess(r) && r.steps)
+      setStatusOf({ level, status: certificationStatus(level, r.steps, isDesktopLevel(level, status), publicLevel(app.levels, level)?.assessmentFlow) });
     else ui.toast(errorOf(r), { long: true });
   };
   useFocusEffect(
@@ -158,7 +159,8 @@ export function MyCertificationsScreen() {
             // setCertificationStatus is only called when the details exist; otherwise the card keeps its defaults.
             // ZED-X (and a level the Admin added) may have no details yet (left out by servers that cannot read it): greyed out
             // all the same when it cannot be applied for. A desktop level the Admin added has Bronze's steps.
-            const state = certificationCardState(details, isDesktopLevel(level.type, status), (details != null || !isLegacyLevel(level.type)) && action === 'none');
+            const state = certificationCardState(details, isDesktopLevel(level.type, status), (details != null || !isLegacyLevel(level.type)) && action === 'none',
+              publicLevel(app.levels, level.type)?.assessmentFlow);
             return (
               <CertificationCard
                 key={level.type}

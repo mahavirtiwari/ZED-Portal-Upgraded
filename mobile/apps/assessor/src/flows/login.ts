@@ -52,7 +52,7 @@ export async function login(app: SaApp, input: LoginInput, online: boolean): Pro
     const token = takeAppToken(resp);
     const out = await proceedWith(app, resp, input);
     if (out.kind !== 'proceed') return out;
-    await app.session.signedIn(input.assessorId + input.zedId, token);
+    await app.session.signedIn(app.tokenKey(input.assessorId + input.zedId), token);
     return { ...out, toast: LOGIN_SUCCESSFUL };
   }
   if (resp && status === '2') return { kind: 'update' };
@@ -64,7 +64,7 @@ const hasParams = (d: AssessmentDetails | null) => !!d?.allottedParameters?.leng
 /** Offline sign-in; new (audit C1): the token of this user's last online login is sent again. */
 async function offlineSignIn(app: SaApp, input: LoginInput): Promise<LoginOutcome> {
   const out = await proceedWith(app, null, input);
-  if (out.kind === 'proceed') await app.session.resumed(input.assessorId + input.zedId);
+  if (out.kind === 'proceed') await app.session.resumed(app.tokenKey(input.assessorId + input.zedId));
   return out;
 }
 
@@ -135,11 +135,14 @@ export async function signIn(app: SaApp, input: { assessorId: string; password: 
   const offline = async (): Promise<SignInOutcome> => {
     if (!app.compareCredentials(input.assessorId, input.password, '')) return { kind: 'toast', message: NETWORK_UNAVAILABLE };
     await app.resumeAssessor(input.assessorId);
+    app.useSystem('main');
     await app.session.resumed(input.assessorId);
+    await app.surveillanceSession.resumed('SURV:' + input.assessorId);
     return { kind: 'proceed' };
   };
   if (!online) return offline();
   let resp;
+  app.useSystem('main');
   try {
     resp = await app.api.signIn(input);
   } catch (e) {
@@ -151,11 +154,26 @@ export async function signIn(app: SaApp, input: { assessorId: string; password: 
     const token = takeAppToken(resp);
     await app.session.signedIn(input.assessorId, token);
     app.saveCredentials(input.assessorId, input.password, '');
-    await app.signedInAs({ ...(resp.profile ?? {}), assessorId: resp.profile?.assessorId || input.assessorId }, resp.assessments ?? []);
+    // 2026-11-14 (Onsite surveillance): the same sign-in on the surveillance host; its units join the list.
+    const surveillance = await surveillanceSignIn(app, input);
+    await app.signedInAs({ ...(resp.profile ?? {}), assessorId: resp.profile?.assessorId || input.assessorId },
+      [...(resp.assessments ?? []).map(x => ({ ...x, system: 'main' as const })), ...surveillance]);
     return { kind: 'proceed', toast: LOGIN_SUCCESSFUL };
   }
   if (resp && status === '2') return { kind: 'update' };
   return { kind: 'toast', message: resp?.errorMessage ? resp.errorMessage : INVALID_USER };
+}
+
+/** The surveillance host's sign-in (2026-11-14); its units, or none when it refuses or cannot be reached. */
+async function surveillanceSignIn(app: SaApp, input: { assessorId: string; password: string }): Promise<AssessmentSummary[]> {
+  try {
+    const r = await app.surveillanceApi.signIn(input);
+    if (!r || String(r.status ?? '') !== '1') return [];
+    await app.surveillanceSession.signedIn('SURV:' + input.assessorId, takeAppToken(r));
+    return (r.assessments ?? []).map(x => ({ ...x, system: 'surveillance' as const }));
+  } catch {
+    return [];
+  }
 }
 
 export type OpenOutcome = { kind: 'open'; userType: number; allottedParamsAvailable: boolean } | { kind: 'update' } | { kind: 'alert'; message: string } | { kind: 'toast'; message: string };
@@ -172,6 +190,8 @@ export async function openAssessment(app: SaApp, a: AssessmentSummary, online: b
     if (!d) return { kind: 'toast', message: NETWORK_UNAVAILABLE };
     return { kind: 'open', userType: d.userType || 1, allottedParamsAvailable: hasParams(d) };
   };
+  // 2026-11-14: the unit's own host (a surveillance visit on the surveillance host).
+  app.useSystem(a.system);
   if (!online) return offline();
   let resp: AssessmentDetails | null = null;
   try {
@@ -183,7 +203,7 @@ export async function openAssessment(app: SaApp, a: AssessmentSummary, online: b
   const status = resp ? String(resp.status ?? '') : '';
   if (resp && status === '1') {
     const token = takeAppToken(resp);
-    if (token) await app.session.signedIn(assessorId, token);
+    if (token) await app.session.signedIn(app.tokenKey(assessorId), token);
     const out = await proceedWith(app, resp, input);
     if (out.kind !== 'proceed') return out;
     return { kind: 'open', userType: out.userType ?? 1, allottedParamsAvailable: out.allottedParamsAvailable };

@@ -34,7 +34,7 @@ import {
   Status,
   type CertificationType,
 } from '../models';
-import { levelDisplayName, v4LevelImage } from '../levels';
+import { levelDisplayName, publicLevel, v4LevelImage } from '../levels';
 
 /** CertificationOptionsFragment */
 export function CertificationOptionsScreen() {
@@ -95,7 +95,7 @@ export function CertificationOptionsScreen() {
             showTitle={false}
             image={image}
             action="gone"
-            state={{ ...certificationCardState(details, isDesktopLevel(type, status), false), overlay: false }}
+            state={{ ...certificationCardState(details, isDesktopLevel(type, status), false, publicLevel(app.levels, type)?.assessmentFlow), overlay: false }}
             testID="options-card"
           />
           <ClickableOption
