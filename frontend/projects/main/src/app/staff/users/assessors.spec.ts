@@ -127,6 +127,47 @@ describe('AssessorFormPage', () => {
     expect(navigate).toHaveBeenCalledWith(['/staff/users/my-assessors'], { state: { message: 'User created successfully.' } });
   });
 
+  it('one kind of assessor: the agency ticks the levels and modes instead of a type (2026-11-14)', async () => {
+    await create(StaffRole.Agency, null);
+    http.expectOne('/api/staff/users/assessors/options').flush({
+      ...withMode('Off'),
+      levels: [{ code: 'Bronze', name: 'Bronze', modes: ['Desktop'] }, { code: 'Silver', name: 'Silver', modes: ['Desktop', 'Onsite'] }],
+    });
+    await settle(fixture);
+    http.expectOne('/api/staff/users/assessors/agency-sector-activity').flush({ message: 'Both' });
+    await settle(fixture);
+    // No Bronze Assessor / Assessor choice; a mode the level does not use cannot be ticked.
+    expect(el.querySelector('input[name=assessorType]')).toBeNull();
+    expect(el.querySelector('[data-scope="Bronze:Onsite"]')).toBeNull();
+    expect(el.querySelector('.af-scope-table tbody tr td:nth-child(4)')!.textContent!.trim()).toBe('not used');
+    // Bronze at the desktop only: a Bronze Assessor for the lookup; the certificate fields open.
+    (el.querySelector('[data-scope="Bronze:Desktop"]') as HTMLInputElement).click();
+    await settle(fixture);
+    expect(el.querySelector('#certificateNo')).not.toBeNull();
+    (el.querySelector('[data-scope="Silver:Onsite"]') as HTMLInputElement).click();
+    await settle(fixture);
+    await type('#certificateNo', 'AS1234');
+    await type('#pan', 'ABCDE1234F');
+    await type('#userName', 'Typed Pro');
+    await type('#emailId', 'typed@zed.test');
+    await type('#mobileNo', '9222222222');
+    await type('#address', 'Street 1');
+    await type('#pinCode', '411001');
+    await pick('idProofType', 'Aadhaar Card');
+    await type('#idProofNumber', '123412341234');
+    await pick('sectorActivity', 'Both');
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    (el.querySelector('form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const req = http.expectOne('/api/staff/users/assessors');
+    expect(req.request.body).toMatchObject({
+      assessorType: 'Assessor',
+      assessments: [{ level: 'Bronze', modes: ['Desktop'] }, { level: 'Silver', modes: ['Onsite'] }],
+    });
+    req.flush({ message: 'User created successfully.', userId: 'ZEDAS0099' });
+    await settle(fixture);
+  });
+
   it('verification off: the agency types the certificate, PAN, name, e-mail and mobile, without SEARCH', async () => {
     await create(StaffRole.Agency, null);
     http.expectOne('/api/staff/users/assessors/options').flush(withMode('Off'));

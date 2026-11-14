@@ -37,6 +37,10 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
 
     private bool Surveillance => host.System == PortalSystem.Surveillance;
 
+    /// <summary>Main: the agency's assessors of the old two lists (Assessors, then Bronze Assessors), once each.</summary>
+    private static List<Person> AllAssessors(ResultSets sets) =>
+        People(sets[1].Concat(sets.Count > 2 ? sets[2] : [])).GroupBy(p => p.UserId, StringComparer.OrdinalIgnoreCase).Select(g => g.First()).ToList();
+
     /// <summary>DA Allotment screen: the agency's records waiting for a desktop assessor, and its assessors.</summary>
     [HttpGet("da-allotment")]
     [StaffRoles(UserRole.Agency)]
@@ -52,7 +56,15 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
             row["SectorCategory"] = Users.UserSectorActivity.UnitCategory(raw.Text("Activity"), raw.Text("TwoDigitActivity"), types);
         var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         List<Person> WithActivity(List<Person> people) => people.Select(p => p with { SectorActivity = activities.GetValueOrDefault(p.UserId) }).ToList();
-        return new DaAllotmentResponse(rows, WithActivity(People(sets[1])), WithActivity(People(sets[Surveillance ? 1 : 2])));
+        if (Surveillance) return new DaAllotmentResponse(rows, WithActivity(People(sets[1])), WithActivity(People(sets[1])));
+        // 2026-11-14: one kind of assessor. Both lists hold all the agency's assessors with their levels and modes; the page
+        // offers, for each unit, those ticked for its level at the desktop.
+        var scopes = await Users.AssessorScope.ByRoleAsync(db, log, ct);
+        var all = WithActivity(AllAssessors(sets)).Select(p => p with
+        {
+            Assessments = scopes.TryGetValue(p.UserId, out var s) ? Users.AssessorScope.Items(s) : [],
+        }).ToList();
+        return new DaAllotmentResponse(rows, all, all);
     }
 
     public sealed record AllotToAssessorRequest(string? ZedId, string? Certification, string? DesktopAssessorId);
@@ -70,11 +82,13 @@ public sealed class DesktopAllotmentController(ISqlExecutor db, PortalHost host,
         var row = sets[0].FirstOrDefault(r => Same(r, "ZedId", req.ZedId!) && Same(r, "Certification", level));
         if (row is null) return this.Problem400("This assessment is not allotted to your agency or can no longer be allotted.");
 
-        // Main: Bronze goes to the agency's Bronze assessors (fewer than 10 allotments today), the rest to its other
-        // assessors. Surveillance: one list, the agency's assessors allowed for Bronze surveillance.
-        var assessors = People(Surveillance ? sets[1] : level == "Bronze" ? sets[2] : sets[1]);
+        // Main (2026-11-14): any of the agency's assessors ticked for the level at the desktop (Users.AssessmentModes; the old
+        // Bronze Assessor / Assessor lists together). Surveillance: one list, the agency's assessors allowed for Bronze surveillance.
+        var assessors = Surveillance ? People(sets[1]) : AllAssessors(sets);
         var assessor = assessors.FirstOrDefault(a => string.Equals(a.UserId, req.DesktopAssessorId, StringComparison.OrdinalIgnoreCase));
         if (assessor is null) return this.Problem400("Please select valid data.");
+        if (!Surveillance && !Users.AssessorScope.Has(await Users.AssessorScope.OfUserAsync(db, assessor.UserId, log, ct), level, Users.AssessorScope.DesktopMode))
+            return this.Problem400($"{assessor.UserName} is not ticked for {Zed.Core.Data.LevelRegistry.NameOf(level)} desktop assessment. The agency can tick it on the assessor's page.");
         var category = Users.UserSectorActivity.UnitCategory(row.Text("Activity"), row.Text("TwoDigitActivity"), await Users.UserSectorActivity.SectorTypesAsync(db, log, ct));
         var activity = await Users.UserSectorActivity.OfUserAsync(db, assessor.UserId, log, ct);
         if (!Users.UserSectorActivity.Serves(activity, category))

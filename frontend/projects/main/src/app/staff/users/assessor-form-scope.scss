@@ -1,0 +1,9 @@
+// 2026-11-14 (approved): the levels x modes grid of an assessor (Users.AssessmentModes).
+.af-scope-table { width: 100%; max-width: 560px; border-collapse: collapse; font-size: 14px; }
+.af-scope-table th, .af-scope-table td { border: 1px solid #e1ecec; padding: 8px 10px; text-align: center; }
+.af-scope-table thead th { background: #f4f8f8; color: #5f6f70; font-weight: 700; }
+.af-scope-table tbody th { text-align: left; font-weight: 700; color: #1d2b2c; }
+.af-scope-table .form-check-input { width: 18px; height: 18px; margin: 0; float: none; cursor: pointer; }
+.af-scope-table .form-check-input:checked { background-color: #23656b; border-color: #23656b; }
+.af-scope-na { color: #9bb7b9; font-size: 12px; }
+.af-scope-note { color: #5f6f70; font-size: 12.5px; margin: 8px 0 0; }

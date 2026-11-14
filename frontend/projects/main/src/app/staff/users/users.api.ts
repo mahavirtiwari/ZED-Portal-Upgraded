@@ -177,6 +177,8 @@ export interface AssessorRow {
   Id: number;
   UserId: string;
   UserName: string;
+  /** Main (2026-11-14): the levels and modes the assessor may do. */
+  Assessments?: AssessorAssessment[] | null;
   MobileNo: string | null;
   Email: string | null;
   Address: string | null;
@@ -207,6 +209,8 @@ export interface OwnAssessorRow {
   Id: number;
   UserId: string;
   UserName: string;
+  /** Main (2026-11-14): the levels and modes the assessor may do. */
+  Assessments?: AssessorAssessment[] | null;
   Address: string | null;
   MobileNo: string | null;
   Email: string | null;
@@ -232,6 +236,23 @@ export interface AssessorOptions {
   areasOfKnowledge: string[];
   /** Off (the default): the agency types the details; TrainingPortal: certificate + e-mail; Api: certificate + PAN. */
   verification?: { mode: VerificationMode; needsPan: boolean };
+  /** Main (2026-11-14): the enabled levels and the modes their flows have (Desktop, Remote, Onsite). */
+  levels?: LevelModes[];
+}
+
+/** A level of the assessor grid and the modes the assessor can be ticked for. */
+export interface LevelModes {
+  code: string;
+  name: string;
+  modes: AssessmentModeName[];
+}
+
+export type AssessmentModeName = 'Desktop' | 'Remote' | 'Onsite';
+
+/** One level's ticks of an assessor (Users.AssessmentModes, migration 0072). */
+export interface AssessorAssessment {
+  level: string;
+  modes: AssessmentModeName[];
 }
 
 export interface AssessorDetails {
@@ -259,6 +280,8 @@ export interface AssessorDetails {
   agencySectorActivity?: SectorActivity | null;
   /** Users.PanNo (2026-11-13). */
   panNo?: string | null;
+  /** Main (2026-11-14): the levels and modes the assessor may do. */
+  assessments?: AssessorAssessment[] | null;
 }
 
 export interface Professional {
@@ -288,11 +311,15 @@ export interface AssessorCreateRequest {
   sectorActivity?: SectorActivity | '';
   /** The professional's PAN (verification off or by API). */
   pan?: string;
+  /** Main (2026-11-14): the ticked levels and modes; the old type follows them. */
+  assessments?: AssessorAssessment[];
 }
 
 export interface AssessorUpdateRequest {
   /** 2026-11-13: the mobile number is changed here (SP_UPDATE_USER, also on the ZED_SURVEILLANCE copy on main). */
   mobileNo?: string;
+  /** Main (2026-11-14): the ticked levels and modes. */
+  assessments?: AssessorAssessment[];
   address: string;
   pinCode: string;
   idProofType: string;

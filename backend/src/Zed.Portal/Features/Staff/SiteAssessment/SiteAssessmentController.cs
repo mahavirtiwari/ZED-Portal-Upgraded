@@ -77,7 +77,8 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
     ];
 
     /// <param name="SectorActivity">V4: Manufacturing, Services or Both (null: not set, no limit).</param>
-    public sealed record Assessor(string UserId, string UserName, string? SectorActivity = null);
+    /// <param name="Assessments">2026-11-14: the levels and modes the assessor may do (<see cref="Users.AssessorScope"/>).</param>
+    public sealed record Assessor(string UserId, string UserName, string? SectorActivity = null, IReadOnlyList<Users.AssessorScope.Item>? Assessments = null);
 
     public sealed record AllotmentsResponse(IReadOnlyList<Dictionary<string, object?>> Units, IReadOnlyList<Assessor> Assessors);
 
@@ -100,7 +101,13 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             foreach (var (row, raw) in rows.Zip(sets[0]))
                 row["SectorCategory"] = Users.UserSectorActivity.UnitCategory(raw.Text("Activity"), raw.Text("TwoDigitActivity"), types);
             var activities = await Users.UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
-            return new AllotmentsResponse(rows, Assessors(sets).Select(a => a with { SectorActivity = activities.GetValueOrDefault(a.UserId) }).ToList());
+            // 2026-11-14: each assessor's levels and modes; the page offers, for each unit, those ticked for its level onsite.
+            var scopes = await Users.AssessorScope.ByRoleAsync(db, log, ct);
+            return new AllotmentsResponse(rows, Assessors(sets).Select(a => a with
+            {
+                SectorActivity = activities.GetValueOrDefault(a.UserId),
+                Assessments = scopes.TryGetValue(a.UserId, out var s) ? Users.AssessorScope.Items(s) : [],
+            }).ToList());
         }
 
         var units = Pick(sets[0], SurveillanceAllotmentFields);
@@ -166,8 +173,13 @@ public sealed class SiteAssessmentController(ISqlExecutor db, PortalHost host, I
             var category = Users.UserSectorActivity.UnitCategory(unit.Text("Activity"), unit.Text("TwoDigitActivity"),
                 await Users.UserSectorActivity.SectorTypesAsync(db, log, ct));
             foreach (var id in new[] { lead, co }.OfType<string>())
+            {
                 if (await Users.UserSectorActivity.OfUserAsync(db, id!, log, ct) is var activity && !Users.UserSectorActivity.Serves(activity, category))
                     return this.Problem400($"{id} assesses {activity} units only; the unit is {category}.");
+                // 2026-11-14: the assessor must be ticked for the level onsite (the only site mode allotted today).
+                if (!Users.AssessorScope.Has(await Users.AssessorScope.OfUserAsync(db, id!, log, ct), certification!, Users.AssessorScope.OnsiteMode))
+                    return this.Problem400($"{id} is not ticked for {Zed.Core.Data.LevelRegistry.NameOf(certification)} onsite assessment. The agency can tick it on the assessor's page.");
+            }
         }
 
         try

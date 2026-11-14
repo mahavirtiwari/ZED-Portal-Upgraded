@@ -55,6 +55,15 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
     public DesktopAssessmentAllotmentTests()
     {
         DaTestUsers.Install(_host.Sql);
+        // 2026-11-14: the assessors' levels and modes, from their old type (ASSESSOR1 a Bronze Assessor, ASSESSOR9 an Assessor).
+        object[] Scope(string? id) => id?.ToUpperInvariant() switch
+        {
+            "ASSESSOR1" => [new { UserId = "ASSESSOR1", AssessmentModes = (string?)null, AssessorType = "BronzeAssessor" }],
+            "ASSESSOR9" => [new { UserId = "ASSESSOR9", AssessmentModes = (string?)null, AssessorType = "Assessor" }],
+            _ => [],
+        };
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.AssessorScope.ByRoleSql] = _ => [.. Scope("ASSESSOR1"), .. Scope("ASSESSOR9")];
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.AssessorScope.OfUserSql] = args => Scope(FakeSql.Arg(args, "UserId"));
         _host.Sql.Procs["SP_ASSESSMENT_ALLOT_LIST"] = args =>
         {
             var user = FakeSql.Arg(args, "UserId");
@@ -147,8 +156,11 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
         Assert.Equal("ZEDMSME000001", row.GetProperty("ZedId").GetString());
         Assert.False(row.TryGetProperty("AgencyEmail", out _));
         Assert.False(row.TryGetProperty("DaAssessorEmail", out _));
-        Assert.Equal("ASSESSOR1", json.GetProperty("bronzeAssessors")[0].GetProperty("userId").GetString());
-        Assert.False(json.GetProperty("bronzeAssessors")[0].TryGetProperty("noOfAllocationsInDay", out _));
+        // One list of the agency's assessors with their levels and modes (2026-11-14); the page offers those ticked for the level.
+        var bronze = json.GetProperty("bronzeAssessors").EnumerateArray().Single(p => p.GetProperty("userId").GetString() == "ASSESSOR1");
+        Assert.False(bronze.TryGetProperty("noOfAllocationsInDay", out _));
+        var ticks = bronze.GetProperty("assessments").EnumerateArray().Single();
+        Assert.Equal(("Bronze", "Desktop"), (ticks.GetProperty("level").GetString(), ticks.GetProperty("modes")[0].GetString()));
 
         // Another agency gets its own (empty) list.
         var other = await DaTestUsers.SignInAsync(_host, "AGENCY2");

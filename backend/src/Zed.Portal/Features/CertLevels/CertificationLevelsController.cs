@@ -30,6 +30,12 @@ public sealed partial class CertificationLevelsController(
     {
         public IReadOnlyList<LevelFee> Fees { get; init; } = [];
         public LevelReadiness Readiness { get; init; } = LevelReadiness.Complete(0);
+        /// <summary>2026-11-14: how the level is assessed (<see cref="LevelFlows"/>) and the surveillance's mode.</summary>
+        public string AssessmentFlow { get; init; } = LevelFlows.DesktopOnsite;
+        public string SurveillanceMode { get; init; } = LevelFlows.Remote;
+        /// <summary>The choices the portal runs today (the others are shown as "available soon").</summary>
+        public IReadOnlyList<string> AvailableFlows { get; init; } = LevelFlows.Available;
+        public IReadOnlyList<string> AvailableSurveillanceModes { get; init; } = LevelFlows.AvailableSurveillance;
     }
 
     /// <summary>The checklist of a level (Administration → Certification Levels). Bronze, Silver, Gold and ZED-X: all true.</summary>
@@ -84,13 +90,20 @@ public sealed partial class CertificationLevelsController(
         catch (System.Data.Common.DbException ex) { log.LogWarning(ex, "Fees of the levels not readable"); fees = []; }
         string[] order = ["Micro", "Small", "Medium"];
         var parameters = await ParameterCountsAsync(ct);
+        var flows = await LevelFlows.StoredAsync(db, log, ct);
         var items = new List<LevelItem>();
         foreach (var l in levels)
         {
             var levelFees = fees.Where(f => string.Equals(f.Certification, l.Code, StringComparison.OrdinalIgnoreCase) && f.Type is not null)
                 .OrderBy(f => Array.FindIndex(order, o => string.Equals(o, f.Type, StringComparison.OrdinalIgnoreCase)))
                 .Select(f => new LevelFee(f.Type!, f.Total)).ToList();
-            items.Add(Item(l) with { Fees = levelFees, Readiness = await ReadinessAsync(l, levelFees, parameters, ct) });
+            var levelFlow = flows.GetValueOrDefault(l.Code);
+            items.Add(Item(l) with
+            {
+                Fees = levelFees, Readiness = await ReadinessAsync(l, levelFees, parameters, ct),
+                AssessmentFlow = LevelFlows.FlowOf(levelFlow?.AssessmentFlow, l.AssessmentMode),
+                SurveillanceMode = LevelFlows.SurveillanceModeOf(levelFlow?.SurveillanceMode),
+            });
         }
         return new LevelsResponse(items, CertificateNumbers.Tokens, stored);
     }
@@ -209,7 +222,21 @@ public sealed partial class CertificationLevelsController(
         string? CertNoFormatService, decimal? Fee, string? Code = null,
         int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
         int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null,
-        bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null);
+        bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null,
+        string? AssessmentFlow = null, string? SurveillanceMode = null);
+
+    /// <summary>The request with the old AssessmentMode set from the chosen flow (2026-11-14), and why the flow cannot be saved.</summary>
+    private static (LevelRequest Request, string? Problem) WithFlow(LevelRequest req, string code) =>
+        (req.AssessmentFlow is { } flow && LevelFlows.Flows.Contains(flow) ? req with { AssessmentMode = LevelFlows.AssessmentModeOf(flow) } : req,
+         LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code));
+
+    /// <summary>Saves the chosen flow and surveillance mode after the level's row; the message's tail when it could not.</summary>
+    private async Task<string> SaveFlowAsync(string code, LevelRequest req, CancellationToken ct)
+    {
+        if (req.AssessmentFlow is null && req.SurveillanceMode is null) return "";
+        var flow = req.AssessmentFlow ?? LevelFlows.FlowOf(null, req.AssessmentMode ?? CertificationLevels.Site);
+        return await LevelFlows.SaveAsync(db, code, flow, req.SurveillanceMode ?? LevelFlows.Remote, log, ct) ? "" : LevelFlows.NotSaved;
+    }
 
     internal const string UpdateSql =
         "UPDATE dbo.SectionTypes SET DisplayName = @Name, Description = @Description, Comment = @Comment, IsEnabled = @IsEnabled, " +
@@ -237,12 +264,15 @@ public sealed partial class CertificationLevelsController(
     public async Task<ActionResult<MessageResponse>> Update(string code, LevelRequest req, CancellationToken ct)
     {
         if (await StoredAsync(code, ct) is not { } level) return NotFound();
+        (req, var flowProblem) = WithFlow(req, level.Code);
+        if (flowProblem is not null) return this.Problem400(flowProblem);
         if (Validate(req, level.Code) is { } problem) return this.Problem400(problem);
         if (req.IsEnabled && !level.IsEnabled && await NotReadyAsync(level, ct) is { } notReady) return this.Problem400(notReady);
         if (!await RunAsync(UpdateSql, Args(level.Code, req), ct)) return Unavailable();
+        var flowNote = await SaveFlowAsync(level.Code, req, ct);
         await RefreshRegistryAsync(ct);
         log.LogInformation("Certification level {Code} saved ({State}) by {Actor}", level.Code, req.IsEnabled ? "enabled" : "disabled", UserId);
-        return new MessageResponse($"{req.Name!.Trim()} saved.");
+        return new MessageResponse($"{req.Name!.Trim()} saved." + flowNote);
     }
 
     public sealed record SwitchRequest(bool Enabled);
@@ -275,6 +305,8 @@ public sealed partial class CertificationLevelsController(
     {
         var code = req.Code?.Trim() ?? "";
         if (!CodePattern().IsMatch(code)) return this.Problem400("The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).");
+        (req, var flowProblem) = WithFlow(req, code);
+        if (flowProblem is not null) return this.Problem400(flowProblem);
         if (Validate(req, code) is { } problem) return this.Problem400(problem);
         var all = await CertificationLevels.AllAsync(db, log, ct);
         if (ReferenceEquals(all, CertificationLevels.BuiltIn)) return Unavailable();
@@ -284,10 +316,11 @@ public sealed partial class CertificationLevelsController(
         log.LogWarning("Certification level {Code} added by {Actor}", code, UserId);
         var columns = await AddColumnsAsync(code, ct);
         await AssignQrDigitAsync(code, ct);
+        var flowNote = await SaveFlowAsync(code, req, ct);
         await RefreshRegistryAsync(ct);
         return new MessageResponse($"{req.Name!.Trim()} added (disabled). Add its questionnaire (Questionnaire menu), its fees (Masters → Payments) " +
             "and its certificate and report artwork before enabling it." +
-            (columns ? "" : $" Its database columns could not be added by the portal: {ColumnsPending.ToLowerInvariant()}."));
+            (columns ? "" : $" Its database columns could not be added by the portal: {ColumnsPending.ToLowerInvariant()}.") + flowNote);
     }
 
     /// <summary>

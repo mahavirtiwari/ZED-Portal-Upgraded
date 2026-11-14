@@ -32,7 +32,8 @@ public sealed class AssessmentAllotmentController(ISqlExecutor db, PortalHost ho
     public sealed record ListResponse(IReadOnlyList<Dictionary<string, object?>> Rows);
 
     /// <param name="SectorActivity">V4: Manufacturing, Services or Both (null: not set, no limit).</param>
-    public sealed record Person(string UserId, string UserName, string? SectorActivity = null);
+    /// <param name="Assessments">2026-11-14: the levels and modes the assessor may do (<see cref="Users.AssessorScope"/>).</param>
+    public sealed record Person(string UserId, string UserName, string? SectorActivity = null, IReadOnlyList<Users.AssessorScope.Item>? Assessments = null);
 
     /// <summary>Allot screen (Assessment/Allot): records waiting for an agency or re-allotment.</summary>
     [HttpGet("allot")]

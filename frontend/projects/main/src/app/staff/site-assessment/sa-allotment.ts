@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { Assessor, ONSITE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLink, todayIso } from './site-assessment.api';
 import { CoAllotmentPage } from './co-allotment';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { mayAssess } from '../users/assessor-scope';
 
 interface AllotForm {
   unit: Row;
@@ -214,7 +215,10 @@ export class SaAllotmentPage {
   /** V4: only assessors who assess the unit's kind (Manufacturing / Services; not set = no limit). */
   protected assessorsFor(unit: Row): Assessor[] {
     const category = unit['SectorCategory'];
-    return this.assessors().filter((a) => !category || !a.sectorActivity || a.sectorActivity === 'Both' || a.sectorActivity === category);
+    const level = String(unit['Certification'] ?? '');
+    // 2026-11-14: only assessors ticked for the unit's level onsite (the site mode allotted today).
+    return this.assessors().filter((a) => (!category || !a.sectorActivity || a.sectorActivity === 'Both' || a.sectorActivity === category)
+      && mayAssess(a, level, 'Onsite'));
   }
   protected readonly coAssessors = (leadId: string) => {
     const unit = this.form()?.unit;

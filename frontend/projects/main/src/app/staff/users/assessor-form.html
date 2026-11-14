@@ -34,21 +34,33 @@
 
 <form class="af-form" (ngSubmit)="submit()" (input)="markDirty($event)" (change)="markDirty($event)" novalidate>
   <fieldset [disabled]="!canEdit()">
+    @if (!isNew && levels().length) {
+      <section class="zed-card af-section">
+        <h4 class="af-head">Assessments this assessor can do</h4>
+        <ng-container *ngTemplateOutlet="scopeGrid" />
+      </section>
+    }
     @if (isNew) {
       <section class="zed-card af-section">
-        <h4 class="af-head"><span class="af-no">1</span>{{ noun }} type and certificate</h4>
-        <div class="form-grid">
-          <span class="af-label top" id="assessorType-label">{{ consultancy ? 'Consultant/Expert' : 'Assessor Type' }}<span class="req">*</span></span>
-          <div>
-            <div class="af-chips" role="radiogroup" aria-labelledby="assessorType-label">
-              @for (t of typeChoices; track t.value) {
-                <label class="af-chip" [class.active]="model.assessorType === t.value"><input type="radio" name="assessorType" [value]="t.value"
-                       [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()" /> {{ t.label }}</label>
-              }
+        <h4 class="af-head"><span class="af-no">1</span>{{ consultancy ? noun + ' type' : 'Assessments' }} and certificate</h4>
+        @if (consultancy || !levels().length) {
+          <div class="form-grid">
+            <span class="af-label top" id="assessorType-label">{{ consultancy ? 'Consultant/Expert' : 'Assessor Type' }}<span class="req">*</span></span>
+            <div>
+              <div class="af-chips" role="radiogroup" aria-labelledby="assessorType-label">
+                @for (t of typeChoices; track t.value) {
+                  <label class="af-chip" [class.active]="model.assessorType === t.value"><input type="radio" name="assessorType" [value]="t.value"
+                         [(ngModel)]="model.assessorType" (ngModelChange)="typeChanged()" /> {{ t.label }}</label>
+                }
+              </div>
+              @if (submitted() && !model.assessorType) { <span class="help-block">Assessor Type required.</span> }
             </div>
-            @if (submitted() && !model.assessorType) { <span class="help-block">Assessor Type required.</span> }
           </div>
-        </div>
+        } @else {
+          <!-- 2026-11-14 (approved): one kind of assessor; the levels and modes it may do decide the allotments. -->
+          <ng-container *ngTemplateOutlet="scopeGrid" />
+          @if (submitted() && !model.assessorType) { <span class="help-block">Please tick at least one level and mode.</span> }
+        }
         @if (model.assessorType && verifyOff) {
           <!-- Verification off (Admin -> Settings -> Professional Verification): the details are typed, no SEARCH. -->
           <div class="alert alert-warning mt-3 mb-3" role="note">Verification is off: enter the {{ consultancy ? 'consultant/expert' : 'assessor' }}'s details as on the certificate.</div>
@@ -224,3 +236,30 @@
 @if (loading() || saving() || searching()) {
   <div class="loadingdiv" role="status" aria-live="polite"><div class="spinner-border text-light"></div><span class="visually-hidden">Loading…</span></div>
 }
+
+<!-- The levels the assessor may assess and in which modes (Users.AssessmentModes, migration 0072). -->
+<ng-template #scopeGrid>
+  <div class="af-scope">
+    <table class="af-scope-table">
+      <thead><tr><th scope="col">Certification level</th>@for (m of modes; track m) { <th scope="col">{{ m }}</th> }</tr></thead>
+      <tbody>
+        @for (l of levels(); track l.code) {
+          <tr>
+            <th scope="row">{{ l.name }}</th>
+            @for (m of modes; track m) {
+              <td>
+                @if (l.modes.includes(m)) {
+                  <input type="checkbox" class="form-check-input" [attr.aria-label]="l.name + ' ' + m" [attr.data-scope]="l.code + ':' + m"
+                         [checked]="ticked(l.code, m)" [disabled]="!canEdit()" (change)="tick(l.code, m, $any($event.target).checked)" />
+                } @else {
+                  <span class="af-scope-na">not used</span>
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+    <p class="af-scope-note">The modes come from each level's assessment (Administration → Certification Levels). The allotment lists offer the assessor only for the levels and modes ticked here.</p>
+  </div>
+</ng-template>

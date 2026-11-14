@@ -65,11 +65,13 @@ public sealed class StaffAssessorsController(
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
+        var scopes = host.IsConsultancy() ? [] : await AssessorScope.ByRoleAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, AllColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
+            if (scopes.TryGetValue(r.Text("UserId").Trim(), out var scope)) row["Assessments"] = AssessorScope.Items(scope);
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             AddBlock(row, blocks);
             return row;
@@ -85,11 +87,13 @@ public sealed class StaffAssessorsController(
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var activities = host.IsConsultancy() ? [] : await UserSectorActivity.ByRoleAsync(db, (int)UserRole.DesktopAssessor, log, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
+        var scopes = host.IsConsultancy() ? [] : await AssessorScope.ByRoleAsync(db, log, ct);
         return sets[0].Select(r =>
         {
             var row = StaffUserRules.Pick(r, OwnColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
             row["PanNo"] = pans.GetValueOrDefault(r.Text("UserId").Trim());
+            if (scopes.TryGetValue(r.Text("UserId").Trim(), out var scope)) row["Assessments"] = AssessorScope.Items(scope);
             row["SectorActivity"] = activities.GetValueOrDefault(r.Text("UserId"));
             AddBlock(row, blocks);
             if (host.IsConsultancy())
@@ -153,8 +157,11 @@ public sealed class StaffAssessorsController(
     /// <param name="NeedsPan">The Add form asks for the PAN (Off and Api).</param>
     public sealed record VerificationInfo(string Mode, bool NeedsPan);
 
+    /// <summary>2026-11-14: a level of the assessor form's grid and the modes its flow has (Desktop, Remote, Onsite).</summary>
+    public sealed record LevelModes(string Code, string Name, IReadOnlyList<string> Modes);
+
     public sealed record AssessorOptions(IReadOnlyList<string> States, IReadOnlyList<Sector> Sectors, IReadOnlyList<string> AreasOfKnowledge,
-        VerificationInfo? Verification = null);
+        VerificationInfo? Verification = null, IReadOnlyList<LevelModes>? Levels = null);
 
     [HttpGet("options")]
     [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
@@ -162,8 +169,17 @@ public sealed class StaffAssessorsController(
     {
         var (sectors, areas) = await LoadOptionsAsync(ct);
         var mode = await ProfessionalVerification.ModeAsync(settings, ct);
+        // The enabled levels with the modes of their flows (Administration → Certification Levels).
+        IReadOnlyList<LevelModes>? levels = null;
+        if (!host.IsConsultancy())
+        {
+            var flows = await AssessorScope.FlowsAsync(db, log, ct);
+            levels = LevelRegistry.All.Where(l => l.IsEnabled)
+                .Select(l => new LevelModes(l.Code, l.Name, CertLevels.LevelFlows.ModesOf(flows.GetValueOrDefault(l.Code) ?? CertLevels.LevelFlows.DesktopOnsite)
+                    .Select(AssessorScope.ModeName).ToList())).ToList();
+        }
         return new AssessorOptions(StaffUserRules.States, sectors, areas,
-            new VerificationInfo(mode.ToString(), mode != ProfessionalVerificationMode.TrainingPortal));
+            new VerificationInfo(mode.ToString(), mode != ProfessionalVerificationMode.TrainingPortal), levels);
     }
 
     public sealed record AssessorDetails(
@@ -171,7 +187,7 @@ public sealed class StaffAssessorsController(
         string? CertificateNo, string? IdProofType, string? IdProofNumberMasked, IReadOnlyList<string> States,
         IReadOnlyList<string> NicSectors, IReadOnlyList<string> AreasOfKnowledge, string? ReasonForRejection, bool IsActive,
         string? AgencyUserId, bool CanEdit, string? UserType = null, string? SectorActivity = null, string? AgencySectorActivity = null,
-        string? PanNo = null);
+        string? PanNo = null, IReadOnlyList<AssessorScope.Item>? Assessments = null);
 
     /// <summary>One assessor (SP_GET_USER_DETAILS_BY_USER_ID). An agency only gets its own; the MasterAdmin any (read-only).</summary>
     [HttpGet("{userId}")]
@@ -192,6 +208,7 @@ public sealed class StaffAssessorsController(
         return details with
         {
             SectorActivity = T("SectorActivity") ?? await UserSectorActivity.OfUserAsync(db, a.UserId, log, ct),
+            Assessments = AssessorScope.Items(await AssessorScope.OfUserAsync(db, a.UserId, log, ct)),
             AgencySectorActivity = T("CreatedBy") is { } agency ? await UserSectorActivity.OfUserAsync(db, agency, log, ct) : null,
         };
     }
@@ -256,7 +273,8 @@ public sealed class StaffAssessorsController(
     public sealed record CreateRequest(
         string? AssessorType, string? CertificateNo, string? ProfessionalEmail, string? Address, string? PinCode,
         string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors, List<string>? AreasOfKnowledge,
-        string? UserName = null, string? EmailId = null, string? MobileNo = null, string? SectorActivity = null, string? Pan = null);
+        string? UserName = null, string? EmailId = null, string? MobileNo = null, string? SectorActivity = null, string? Pan = null,
+        List<AssessorScope.Item>? Assessments = null);
 
     /// <summary>
     /// Creates an assessor under the signed-in agency (SP_INSERT_USER RoleId 3, CreatedBy = the agency; the
@@ -274,6 +292,15 @@ public sealed class StaffAssessorsController(
     {
         if (host.IsConsultancy() && req.AssessorType == ConsultancyUsers.TechnicalExpert) return await CreateTechnicalExpertAsync(req, ct);
         var mode = await ProfessionalVerification.ModeAsync(settings, ct);
+        // 2026-11-14: one kind of assessor; the agency ticks the levels and modes, and the old type follows them.
+        (string Stored, string Type)? scope = null;
+        if (!host.IsConsultancy() && req.Assessments is not null)
+        {
+            var (scopeText, map, scopeError) = AssessorScope.Validate(req.Assessments, await AssessorScope.FlowsAsync(db, log, ct));
+            if (scopeError is not null) return this.Problem400(scopeError);
+            scope = (scopeText!, AssessorScope.TypeOf(map!));
+            req = req with { AssessorType = scope.Value.Type };
+        }
         var (type, cert, error) = TypeAndCertificate(req.AssessorType, req.CertificateNo);
         if (error is not null) return this.Problem400(error);
         // The PAN: required with verification off and with the API, optional (checked when given) with the training portal.
@@ -327,7 +354,7 @@ public sealed class StaffAssessorsController(
             : Parameters(values!, null, professional.Name, professional.Email, professional.MobileNo, stored, type, cert, mail);
         log.LogInformation("Assessor being added with professional verification {Mode} by {Actor}", mode, UserId);
         return await InsertAsync(parameters, professional.Name, professional.Email, professional.MobileNo, password,
-            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity, pan);
+            type == StaffUserRules.AssessorTypeBronze, type!, ct, activity, pan, scope?.Stored);
     }
 
     /// <summary>
@@ -357,7 +384,7 @@ public sealed class StaffAssessorsController(
     /// <summary>SP_INSERT_USER, then the new id (selected first by main's procedure, looked up by name otherwise) and the welcome mail.</summary>
     private async Task<ActionResult<StaffAgenciesController.CreatedUserResponse>> InsertAsync(
         object parameters, string name, string email, string mobile, string password, bool bronze, string type, CancellationToken ct,
-        string? activity = null, string? pan = null)
+        string? activity = null, string? pan = null, string? scope = null)
     {
         var result = await db.QueryProcMultipleAsync("SP_INSERT_USER", parameters, ct);
         var newId = result.Scalar(0);
@@ -380,6 +407,7 @@ public sealed class StaffAssessorsController(
         var panSaved = pan is null || await ProfessionalVerification.SavePanAsync(db, newId!, pan, log, ct);
         if (panSaved && pan is not null && host.System == PortalSystem.Main)
             await ProfessionalVerification.CopyPanToSurveillanceAsync(db, newId!, pan, log, ct);
+        var scopeSaved = scope is null || await AssessorScope.SaveAsync(db, newId!, scope, type, log, ct);
 
         var subject = host.IsConsultancy()
             ? "Consultant/Expert Login Details under “MSME Sustainable (ZED) Certification” - " + newId
@@ -397,12 +425,14 @@ public sealed class StaffAssessorsController(
         return new StaffAgenciesController.CreatedUserResponse((sent
             ? $"User created successfully. The login details have been sent to {email}."
             : "User created, but the e-mail with the login details could not be sent. Please contact the ZED support team.")
-            + (activitySaved ? "" : UserSectorActivity.NotSaved) + (panSaved ? "" : ProfessionalVerification.PanNotSaved), newId);
+            + (activitySaved ? "" : UserSectorActivity.NotSaved) + (panSaved ? "" : ProfessionalVerification.PanNotSaved)
+            + (scopeSaved ? "" : AssessorScope.NotSaved), newId);
     }
 
     public sealed record UpdateRequest(
         string? Address, string? PinCode, string? IdProofType, string? IdProofNumber, List<string>? States, List<string>? NicSectors,
-        List<string>? AreasOfKnowledge, string? ReasonForRejection, string? SectorActivity = null, string? MobileNo = null);
+        List<string>? AreasOfKnowledge, string? ReasonForRejection, string? SectorActivity = null, string? MobileNo = null,
+        List<AssessorScope.Item>? Assessments = null);
 
     /// <summary>
     /// Updates one of the agency's assessors (SP_UPDATE_USER RoleId 3). Name and e-mail stay as they are (read-only on the
@@ -421,6 +451,13 @@ public sealed class StaffAssessorsController(
         if (error is not null) return this.Problem400(error);
         var (activity, activityError) = await ActivityAsync(req.SectorActivity, ct);
         if (activityError is not null) return this.Problem400(activityError);
+        (string Stored, string Type)? scope = null;
+        if (!host.IsConsultancy() && req.Assessments is not null)
+        {
+            var (scopeText, map, scopeError) = AssessorScope.Validate(req.Assessments, await AssessorScope.FlowsAsync(db, log, ct));
+            if (scopeError is not null) return this.Problem400(scopeError);
+            scope = (scopeText!, AssessorScope.TypeOf(map!));
+        }
 
         var r = a.Row;
         var mobile = r.Text("MobileNo");
@@ -434,10 +471,11 @@ public sealed class StaffAssessorsController(
             : Parameters(values!, a.UserId, r.Text("UserName"), r.Text("Email"), mobile, null, null, null, null), ct);
         if (mobile != r.Text("MobileNo")) log.LogInformation("Mobile number of {UserId} changed by {Actor}", a.UserId, UserId);
         var activitySaved = activity is null || await UserSectorActivity.SaveAsync(db, a.UserId, activity, log, ct);
+        var scopeSaved = scope is null || await AssessorScope.SaveAsync(db, a.UserId, scope.Value.Stored, scope.Value.Type, log, ct);
         log.LogInformation("Assessor {UserId} updated by {Actor}", a.UserId, UserId);
         // M12: a staff user's edit ends its sessions; the next sign-in reads the account as it is now.
         await SessionStamps.EndSessionsAsync(db, host.System, a.UserId, log, ct);
-        return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved));
+        return new MessageResponse("User updated successfully." + (activitySaved ? "" : UserSectorActivity.NotSaved) + (scopeSaved ? "" : AssessorScope.NotSaved));
     }
 
     public sealed record ReasonRequest(string? Reason);

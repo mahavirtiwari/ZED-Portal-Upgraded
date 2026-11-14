@@ -5,6 +5,7 @@ import { firstValueFrom } from 'rxjs';
 import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Person, Row, serves } from './assessment.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { mayAssess } from '../users/assessor-scope';
 
 /**
  * Agency (desktop verification): allot its MSMEs to its desktop assessors, or reject them. Port of
@@ -220,11 +221,14 @@ export class DaAllotmentPage {
     }
   }
 
-  /** Bronze goes to the agency's Bronze assessors, other levels to its other desktop assessors. */
+  /**
+   * 2026-11-14: the agency's assessors ticked for the unit's level at the desktop (one kind of assessor; main sends one
+   * list with the ticks). Surveillance keeps its own list. V4: only those who assess the unit's kind (Manufacturing / Services).
+   */
   protected assessorsFor(s: Row): Person[] {
-    const list = text(s, 'Certification') === 'Bronze' ? this.bronzeAssessors() : this.assessors();
-    // V4: only assessors who assess the unit's kind (Manufacturing / Services).
-    return list.filter((a) => serves(a, s['SectorCategory']));
+    const level = text(s, 'Certification');
+    const list = level === 'Bronze' ? this.bronzeAssessors() : this.assessors();
+    return list.filter((a) => serves(a, s['SectorCategory']) && mayAssess(a, level, 'Desktop'));
   }
 
   /**

@@ -8,6 +8,7 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { OwnAssessorRow, RESET_CONFIRM, UsersApi } from './users.api';
 import { PagedView, PagerComponent } from '../pager';
+import { ScopeItem, scopeChips } from './assessor-scope';
 
 interface Dialog {
   kind: 'block';
@@ -111,7 +112,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                     </div>
                   </td>
                   <td class="ma-type-cell" [attr.data-label]="consultancy ? 'User Type' : 'Type and Sector'">
-                    <span class="zed-chip">{{ typeLabel(consultancy ? u.UserType : u.AssessorType) }}</span>
+                    @for (c of chips(consultancy ? null : u.Assessments); track c) { <span class="zed-chip">{{ c }}</span> } @empty { <span class="zed-chip">{{ typeLabel(consultancy ? u.UserType : u.AssessorType) }}</span> }
                     @if (!consultancy) {
                       @if (u.SectorActivity) {
                         <span class="sector-chip" [class]="'sector-' + u.SectorActivity.toLowerCase()">{{ u.SectorActivity }}</span>
@@ -296,6 +297,8 @@ export class MyAssessorsPage {
   protected readonly dialogError = signal('');
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
+  /** 2026-11-14: the levels and modes the assessor may do. */
+  protected readonly chips = (v: unknown) => scopeChips(Array.isArray(v) ? (v as ScopeItem[]) : null);
 
   protected readonly tiles = computed(() => {
     const rows = this.assessors();

@@ -28,6 +28,22 @@ What the single Admin (main portal) sets, and where it shows. See also `USER-MAN
 - **Fees.** The "Fee shown" box was removed: the level card lists the Micro / Small / Medium fees of Masters → Payments, and
   each MSME's dashboard card shows its own fee (after subsidy, with GST; `api/msme/dashboard/level-fees`).
 
+## Certification levels: how a level is assessed, and which assessors may do it (2026-11-14)
+
+- **Assessment** (Certificate tab): Desktop only · Remote only · Onsite only · Desktop + Remote · Desktop + Onsite
+  (`dbo.SectionTypes.AssessmentFlow`, migration 0072; the old `AssessmentMode` stays in step: Desktop only = 'Desktop',
+  the others 'Site'). Not set = as before (Bronze Desktop only, the others Desktop + Onsite).
+- **Mode of assessment** (Surveillance tab): Remote (today's flow with a meeting link) or Onsite (as an onsite assessment
+  on the parameters marked "In surveillance") (`dbo.SectionTypes.SurveillanceMode`; not set = Remote). Both are saved on main and on the same level's row of the ZED_SURVEILLANCE copy, which the surveillance portal reads.
+- The flows are built one by one: today Desktop only and Desktop + Onsite, and Remote surveillance. The others show
+  as "Available soon" and are refused when saved. Bronze stays Desktop only; Silver and Gold keep a site step.
+- **Assessors**: one kind ("Assessor"). On Add / Edit the agency ticks, for each enabled level, the modes the assessor may
+  do; the level's flow decides which can be ticked (`dbo.Users.AssessmentModes`, e.g. `Bronze=D;Silver=D,O`; also on
+  the ZED_SURVEILLANCE copy). Not set = from the old type (Bronze Assessor: Bronze desktop; Assessor: every other level).
+  `Users.AssessorType` follows the ticks (only Bronze = BronzeAssessor) for the legacy procedures and the apps.
+- **Allotment**: DA Allotment offers, for each unit, the assessors ticked for its level at the desktop; SA Allotment those
+  ticked for it onsite. The server checks the same when allotting.
+
 ## Parameters: the code is a number (2026-11-13)
 
 A parameter's code (Masters → Parameters of a level, and its Excel upload) must be a number: 1, 2, 3 … A code such as

@@ -9,6 +9,7 @@ import { LABELS } from '../../portal-labels';
 import { STAFF_SYSTEM } from '../staff-menu';
 import { AssessorRow, BlockHistoryEntry, RESET_CONFIRM, SECTOR_ACTIVITIES, SectorActivity, UsersApi } from './users.api';
 import { ClientPager, PagerComponent } from '../pager';
+import { ScopeItem, scopeChips } from './assessor-scope';
 
 /** Which assessors the list shows: the status tiles, the type tabs and the sector type / agency drop-downs. */
 type StatusFilter = 'all' | 'active' | 'blocked';
@@ -142,7 +143,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                 </td>
                 @if (!consultancy) {
                   <td class="as-type-cell" data-label="Type and Sector">
-                    <span class="zed-chip">{{ typeLabel(s.AssessorType) }}</span>
+                    @for (c of chips(s.Assessments); track c) { <span class="zed-chip">{{ c }}</span> } @empty { <span class="zed-chip">{{ typeLabel(s.AssessorType) }}</span> }
                     @if (s.SectorActivity) {
                       <span class="sector-chip" [class]="'sector-' + s.SectorActivity.toLowerCase()">{{ s.SectorActivity }}</span>
                     } @else {
@@ -390,6 +391,8 @@ export class AssessorListPage {
   protected readonly dialogError = signal('');
   protected readonly initials = initialsOf;
   protected readonly typeLabel = assessorTypeLabel;
+  /** 2026-11-14: the levels and modes the assessor may do. */
+  protected readonly chips = (v: unknown) => scopeChips(Array.isArray(v) ? (v as ScopeItem[]) : null);
 
   protected readonly tiles = computed(() => {
     const rows = this.rows();

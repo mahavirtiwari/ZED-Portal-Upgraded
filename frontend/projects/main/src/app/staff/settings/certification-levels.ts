@@ -88,7 +88,35 @@ interface LevelItem {
   /** 2026-11-08: the level's fees in Masters → Payments (with GST, before subsidy) by enterprise type. */
   fees?: { type: string; total: number | null }[];
   readiness?: LevelReadiness;
+  /** 2026-11-14: how the level is assessed and its surveillance's mode; the choices the portal runs today. */
+  assessmentFlow?: AssessmentFlow;
+  surveillanceMode?: SurveillanceMode;
+  availableFlows?: string[];
+  availableSurveillanceModes?: string[];
 }
+
+export type AssessmentFlow = 'Desktop' | 'Remote' | 'Onsite' | 'DesktopRemote' | 'DesktopOnsite';
+export type SurveillanceMode = 'Remote' | 'Onsite';
+
+/** The Admin's choices (2026-11-14, approved): the level's flow decides the assessment steps. */
+export const ASSESSMENT_FLOWS: { value: AssessmentFlow; label: string; hint: string }[] = [
+  { value: 'Desktop', label: 'Desktop only', hint: 'Documents checked, as Bronze today.' },
+  { value: 'Remote', label: 'Remote only', hint: 'No desktop step; a remote visit.' },
+  { value: 'Onsite', label: 'Onsite only', hint: 'No desktop step; an onsite visit.' },
+  { value: 'DesktopRemote', label: 'Desktop + Remote', hint: 'Desktop, then a remote visit.' },
+  { value: 'DesktopOnsite', label: 'Desktop + Onsite', hint: 'Desktop, then an onsite visit.' },
+];
+export const SURVEILLANCE_MODES: { value: SurveillanceMode; label: string; hint: string }[] = [
+  { value: 'Remote', label: 'Remote', hint: 'The current surveillance flow (meeting link).' },
+  { value: 'Onsite', label: 'Onsite', hint: 'As an onsite assessment, on the parameters marked "In surveillance".' },
+];
+/** Bronze stays Desktop only and Silver / Gold keep a site step until their other flows are built (the server says the same). */
+export function levelFlowsFor(code: string, available: string[]): string[] {
+  const c = code.toLowerCase();
+  return available.filter((f) => (c === 'bronze' ? f === 'Desktop' : c === 'silver' || c === 'gold' ? f !== 'Desktop' : true));
+}
+export const flowLabel = (f: string | undefined, mode: string) =>
+  ASSESSMENT_FLOWS.find((x) => x.value === f)?.label ?? (mode === 'Desktop' ? 'Desktop only' : 'Desktop + Onsite');
 
 /** The built-in levels: ready by themselves, no checklist. */
 const BUILT_IN_LEVELS = ['bronze', 'silver', 'gold', 'zedx'];
@@ -110,6 +138,11 @@ interface LevelForm {
   comment: string;
   isEnabled: boolean;
   assessmentMode: 'Desktop' | 'Site';
+  assessmentFlow: AssessmentFlow;
+  surveillanceMode: SurveillanceMode;
+  /** The choices the portal runs today; the others show as "available soon". */
+  availableFlows: string[];
+  availableSurveillanceModes: string[];
   validityMonths: number | null;
   surveillanceEnabled: boolean;
   firstSurveillanceMonths: number | null;
@@ -226,7 +259,7 @@ const API = '/api/staff/settings/levels';
           </div>
           @if (l.description) { <p class="lv-desc">{{ l.description }}</p> }
           <dl class="lv-facts">
-            <div><dt>Assessment</dt><dd>{{ l.assessmentMode === 'Desktop' ? 'Desktop' : 'Desktop + site' }}</dd></div>
+            <div><dt>Assessment</dt><dd>{{ flowOf(l) }}</dd></div>
             <div><dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd></div>
             <div><dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd></div>
             <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
@@ -382,15 +415,16 @@ const API = '/api/staff/settings/levels';
                     <div [hidden]="tab() !== 'certificate'">
                       <div class="form-grid">
                         <span class="label-like">Assessment</span>
-                        <div class="lv-choice" role="radiogroup" aria-label="Assessment">
-                          <label class="choice-card" [class.active]="e.assessmentMode === 'Desktop'">
-                            <input type="radio" class="form-check-input" name="assessmentMode" value="Desktop" [(ngModel)]="e.assessmentMode" />
-                            <span><strong>Desktop only</strong><small>Documents checked remotely, as Bronze.</small></span>
-                          </label>
-                          <label class="choice-card" [class.active]="e.assessmentMode === 'Site'">
-                            <input type="radio" class="form-check-input" name="assessmentMode" value="Site" [(ngModel)]="e.assessmentMode" />
-                            <span><strong>Desktop and site</strong><small>Then an assessor visits the unit.</small></span>
-                          </label>
+                        <!-- 2026-11-14 (approved): five flows; those the portal does not run yet show as "available soon". -->
+                        <div class="lv-choice lv-flows" role="radiogroup" aria-label="Assessment">
+                          @for (f of flows; track f.value) {
+                            @let soon = !e.availableFlows.includes(f.value) && e.assessmentFlow !== f.value;
+                            <label class="choice-card" [class.active]="e.assessmentFlow === f.value" [class.is-soon]="soon">
+                              <input type="radio" class="form-check-input" name="assessmentFlow" [value]="f.value" [attr.disabled]="soon ? '' : null"
+                                     [ngModel]="e.assessmentFlow" (ngModelChange)="setFlow(e, $event)" />
+                              <span><strong>{{ f.label }}</strong><small>{{ f.hint }}</small>@if (soon) { <em class="lv-soon">Available soon</em> }</span>
+                            </label>
+                          }
                         </div>
                         <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
                         <div class="lv-surv">
@@ -438,6 +472,19 @@ const API = '/api/staff/settings/levels';
                             <span>months</span>
                           }
                         </div>
+                        @if (e.surveillanceEnabled) {
+                          <!-- 2026-11-14 (approved): how the surveillance is assessed. -->
+                          <span class="label-like">Mode of assessment</span>
+                          <div class="lv-choice lv-flows" role="radiogroup" aria-label="Surveillance mode of assessment">
+                            @for (m of surveillanceModes; track m.value) {
+                              @let soon = !e.availableSurveillanceModes.includes(m.value) && e.surveillanceMode !== m.value;
+                              <label class="choice-card" [class.active]="e.surveillanceMode === m.value" [class.is-soon]="soon">
+                                <input type="radio" class="form-check-input" name="surveillanceMode" [value]="m.value" [attr.disabled]="soon ? '' : null" [(ngModel)]="e.surveillanceMode" />
+                                <span><strong>{{ m.label }}</strong><small>{{ m.hint }}</small>@if (soon) { <em class="lv-soon">Available soon</em> }</span>
+                              </label>
+                            }
+                          </div>
+                        }
                         @if (e.surveillanceEnabled) {
                           <label for="lv-count">Surveillances<span class="req">*</span></label>
                           <div class="lv-surv">
@@ -846,10 +893,25 @@ export class CertificationLevelsPage {
     this.tab.set('box');
     this.editError.set('');
     this.editing.set({
-      code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site', validityMonths: 36,
+      code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site',
+      assessmentFlow: 'DesktopOnsite', surveillanceMode: 'Remote', availableFlows: ['Desktop', 'DesktopOnsite'], availableSurveillanceModes: ['Remote'],
+      validityMonths: 36,
       surveillanceEnabled: true, certNoFormat: '{DDMMYYYY}_{ZEDNO}', certNoFormatManufacturing: '', certNoFormatService: '', fee: null,
       ...DEFAULT_SCHEDULE, surveillanceAutoApply: false, surveillanceSuspendRounds: null, surveillanceScheduleFrom: null,
     });
+  }
+
+  protected readonly flows = ASSESSMENT_FLOWS;
+  protected readonly surveillanceModes = SURVEILLANCE_MODES;
+
+  /** The level's flow as the list shows it. */
+  protected flowOf(l: CertificationLevel): string {
+    return flowLabel(this.levels().find((i) => i.level.code === l.code)?.assessmentFlow, l.assessmentMode);
+  }
+
+  /** A flow chosen: the old Desktop / Site follows it (the preview and the Bronze rules read it). */
+  protected setFlow(e: LevelForm, flow: AssessmentFlow): void {
+    this.editing.set({ ...e, assessmentFlow: flow, assessmentMode: flow === 'Desktop' ? 'Desktop' : 'Site' });
   }
 
   protected edit(i: LevelItem): void {
@@ -860,6 +922,8 @@ export class CertificationLevelsPage {
     this.editing.set({
       code: l.code, isNew: false, name: l.name, description: l.description ?? '', comment: l.comment ?? '', isEnabled: l.isEnabled,
       assessmentMode: l.assessmentMode, validityMonths: l.validityMonths, surveillanceEnabled: l.surveillanceEnabled,
+      assessmentFlow: i.assessmentFlow ?? (l.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite'), surveillanceMode: i.surveillanceMode ?? 'Remote',
+      availableFlows: levelFlowsFor(l.code, i.availableFlows ?? ['Desktop', 'DesktopOnsite']), availableSurveillanceModes: i.availableSurveillanceModes ?? ['Remote'],
       firstSurveillanceMonths: l.firstSurveillanceMonths, certNoFormat: l.certNoFormat, certNoFormatManufacturing: l.certNoFormatManufacturing ?? '',
       certNoFormatService: l.certNoFormatService ?? '', fee: l.fee,
       ...(Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, l[k] ?? DEFAULT_SCHEDULE[k]])) as Record<ScheduleKey, number>),
@@ -893,6 +957,7 @@ export class CertificationLevelsPage {
     const body = {
       code: e.isNew ? e.code.trim() : undefined, name: e.name.trim(), description: e.description, comment: e.comment, isEnabled: e.isEnabled,
       assessmentMode: e.assessmentMode, validityMonths: e.validityMonths, surveillanceEnabled: e.surveillanceEnabled,
+      assessmentFlow: e.assessmentFlow, surveillanceMode: e.surveillanceMode,
       firstSurveillanceMonths: e.surveillanceEnabled ? e.firstSurveillanceMonths : null, certNoFormat: e.certNoFormat.trim(),
       certNoFormatManufacturing: e.certNoFormatManufacturing, certNoFormatService: e.certNoFormatService, fee: e.fee,
       ...(e.surveillanceEnabled

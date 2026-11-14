@@ -15,6 +15,8 @@ export interface Assessor {
   userName: string;
   /** V4: Manufacturing, Services or Both; null when not set (no limit). */
   sectorActivity?: string | null;
+  /** 2026-11-14: the levels and modes the assessor may do (absent = not limited, e.g. surveillance). */
+  assessments?: { level: string; modes: string[] }[] | null;
 }
 
 export interface AllotmentsResponse {

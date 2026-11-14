@@ -226,4 +226,32 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/masters/parameters/ZEDX/8", new { sectionName = "Energy", inSurveillance = false })).StatusCode);
         Assert.Single(_host.Sql.Calls, c => c.Name == StaffMastersController.SurveillanceByIdSql);
     }
+
+    [Fact]
+    public async Task A_level_saves_its_assessment_flow_and_surveillance_mode_and_refuses_those_not_built_yet()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Dictionary<string, object?> Body(string flow, string mode = "Remote") => new()
+        {
+            ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
+            ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["assessmentFlow"] = flow, ["surveillanceMode"] = mode,
+        };
+        // Not built yet (2026-11-14): refused, nothing written.
+        Assert.Contains("Remote only is not available yet", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("Remote"))).ProblemTitle());
+        Assert.Contains("Onsite surveillance is not available yet", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("DesktopOnsite", "Onsite"))).ProblemTitle());
+        Assert.Contains("keep a site assessment", await (await admin.PutAsJsonAsync($"{Url}/gold", Body("Desktop"))).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql);
+
+        // Desktop only: the old AssessmentMode follows the flow; the flow and the mode are saved after the level's row.
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body("Desktop"))).StatusCode);
+        Assert.Equal("Desktop", FakeSql.Arg(Assert.Single(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql).Args, "AssessmentMode"));
+        var saved = Assert.Single(_host.Sql.Calls, c => c.Name == LevelFlows.SaveSql).Args;
+        Assert.Equal(("ZEDX", "Desktop", "Remote"), (FakeSql.Arg(saved, "Code"), FakeSql.Arg(saved, "AssessmentFlow"), FakeSql.Arg(saved, "SurveillanceMode")));
+
+        // The list shows each level's flow: as before when nothing is stored (Bronze Desktop only, the others Desktop + Onsite).
+        var levels = (await admin.GetFromJsonAsync<JsonElement>(Url)).GetProperty("levels");
+        Assert.Equal("Desktop", levels[0].GetProperty("assessmentFlow").GetString());
+        Assert.Equal("DesktopOnsite", levels[1].GetProperty("assessmentFlow").GetString());
+        Assert.Equal("Remote", levels[1].GetProperty("surveillanceMode").GetString());
+    }
 }

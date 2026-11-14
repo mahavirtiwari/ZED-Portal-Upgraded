@@ -1,4 +1,5 @@
 import { Component, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
@@ -8,7 +9,7 @@ import { STAFF_SYSTEM, StaffRole } from '../staff-menu';
 import { assessorTypeLabel, initialsOf } from './assessor-list';
 import { AssessorMobilePanel, canSeeAssessorMobile } from './assessor-mobile';
 import { MultiSelect, MultiSelectOption } from './multi-select';
-import { Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
+import { AssessmentModeName, AssessorAssessment, LevelModes, Professional, SECTOR_ACTIVITIES, SectorActivity, UsersApi, VerificationMode } from './users.api';
 
 interface AssessorModel {
   assessorType: string;
@@ -29,6 +30,17 @@ interface AssessorModel {
   reasonForRejection: string;
   /** Main (V4): Manufacturing, Services or Both, within the agency's. */
   sectorActivity: SectorActivity | '';
+  /** Main (2026-11-14): the ticked modes by level code. */
+  assessments: Record<string, AssessmentModeName[]>;
+}
+
+/** The grid's columns. */
+export const ASSESSMENT_MODES: AssessmentModeName[] = ['Desktop', 'Remote', 'Onsite'];
+
+/** The old Users.AssessorType of the ticks (the professional lookup and the legacy lists still read it). */
+export function typeOfTicks(t: Record<string, AssessmentModeName[]>): string {
+  const levels = Object.keys(t).filter((k) => t[k]?.length);
+  return !levels.length ? '' : levels.every((k) => k.toLowerCase() === 'bronze') ? 'BronzeAssessor' : 'Assessor';
 }
 
 const PAN_PATTERN = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
@@ -39,6 +51,7 @@ function emptyAssessor(): AssessorModel {
   return {
     assessorType: '', certificateNo: '', professionalEmail: '', pan: '', userName: '', emailId: '', mobileNo: '', address: '', pinCode: '',
     idProofType: '', idProofNumber: '', states: [], nicSectors: [], areasOfKnowledge: [], reasonForRejection: '', sectorActivity: '',
+    assessments: {},
   };
 }
 
@@ -54,7 +67,8 @@ function emptyAssessor(): AssessorModel {
  */
 @Component({
   selector: 'zed-staff-assessor-form',
-  imports: [FormsModule, RouterLink, MultiSelect, AssessorMobilePanel],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, MultiSelect, AssessorMobilePanel],
+  styleUrl: './assessor-form-scope.scss',
   templateUrl: './assessor-form.html',
   styles: `
     fieldset { min-width: 0; }
@@ -166,6 +180,27 @@ export class AssessorFormPage {
 
   constructor() {
     void this.load();
+  }
+
+  /** Main (2026-11-14, approved): the levels of the grid and their modes. */
+  protected readonly levels = signal<LevelModes[]>([]);
+  protected readonly modes = ASSESSMENT_MODES;
+
+  protected ticked(level: string, mode: AssessmentModeName): boolean {
+    return !!this.model.assessments[level]?.includes(mode);
+  }
+
+  /** A tick changed: the old type follows the ticks (one kind of assessor). */
+  protected tick(level: string, mode: AssessmentModeName, on: boolean): void {
+    const now = new Set(this.model.assessments[level] ?? []);
+    if (on) now.add(mode); else now.delete(mode);
+    this.model.assessments = { ...this.model.assessments, [level]: ASSESSMENT_MODES.filter((m) => now.has(m)) };
+    this.model.assessorType = typeOfTicks(this.model.assessments);
+    this.dirty.set(true);
+  }
+
+  private ticks(): AssessorAssessment[] {
+    return Object.entries(this.model.assessments).filter(([, m]) => m.length).map(([level, modes]) => ({ level, modes }));
   }
 
   protected get typeChoices(): { value: string; label: string }[] {
@@ -293,6 +328,7 @@ export class AssessorFormPage {
       this.areas.set(options.areasOfKnowledge.map((a) => ({ value: a, label: a })));
       const mode = options.verification?.mode;
       this.verification.set(mode === 'TrainingPortal' || mode === 'Api' ? mode : 'Off');
+      this.levels.set(this.consultancy ? [] : options.levels ?? []);
       if (this.isNew && !this.consultancy) {
         const own = (await firstValueFrom(this.api.agencySectorActivity())).message;
         this.agencyActivity.set(own === 'Manufacturing' || own === 'Services' || own === 'Both' ? own : null);
@@ -305,6 +341,7 @@ export class AssessorFormPage {
           mobileNo: a.mobileNo ?? '', address: a.address ?? '', pinCode: a.pinCode ?? '', idProofType: a.idProofType ?? '',
           states: a.states, nicSectors: a.nicSectors, areasOfKnowledge: a.areasOfKnowledge, reasonForRejection: a.reasonForRejection ?? '',
           sectorActivity: a.sectorActivity ?? '',
+          assessments: Object.fromEntries((a.assessments ?? []).map((x) => [x.level, x.modes])),
         };
         this.agencyActivity.set(a.agencySectorActivity ?? null);
         this.maskedIdProof.set(a.idProofNumberMasked);
@@ -392,6 +429,10 @@ export class AssessorFormPage {
         return;
       }
     }
+    if (!this.consultancy && this.levels().length && !this.ticks().length) {
+      this.error.set('Please tick at least one certification level and mode the assessor may assess.');
+      return;
+    }
     if (this.editsMobile && !MOBILE_PATTERN.test(m.mobileNo.trim())) {
       this.error.set('Please enter a valid 10 digit mobile number.');
       return;
@@ -419,6 +460,7 @@ export class AssessorFormPage {
             states: m.states, nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, sectorActivity: m.sectorActivity,
             ...(this.typesIdentity ? { userName: m.userName.trim(), emailId: m.emailId.trim(), mobileNo: m.mobileNo.trim() } : {}),
             ...(this.verifyOff || this.byApi ? { pan: m.pan.trim() } : {}),
+            ...(this.consultancy ? {} : { assessments: this.ticks() }),
           }),
         );
         await this.router.navigate(['/staff/users/my-assessors'], { state: { message: r.message } });
@@ -428,6 +470,7 @@ export class AssessorFormPage {
             address: m.address, pinCode: m.pinCode, idProofType: m.idProofType, idProofNumber: m.idProofNumber, states: m.states,
             nicSectors: m.nicSectors, areasOfKnowledge: m.areasOfKnowledge, reasonForRejection: m.reasonForRejection, sectorActivity: m.sectorActivity,
             mobileNo: m.mobileNo.trim(),
+            ...(this.consultancy || !this.levels().length ? {} : { assessments: this.ticks() }),
           }),
         );
         this.success.set(r.message);
