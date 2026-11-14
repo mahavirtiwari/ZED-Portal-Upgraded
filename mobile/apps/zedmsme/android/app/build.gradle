@@ -61,8 +61,9 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // A new app: starts at 2.0 (the store ZED MSME app is 1.x). Must only grow.
-        versionCode 1
-        versionName "2.0"
+        // 2026-11-14: -PzedVersionCode=<n> -PzedVersionName=<x.y> for a store release (Build-ZedMsmeApp.ps1); 1 / 2.0 otherwise.
+        versionCode((project.findProperty("zedVersionCode") ?: "1").toString().toInteger())
+        versionName((project.findProperty("zedVersionName") ?: "2.0").toString())
     }
     signingConfigs {
         debug {

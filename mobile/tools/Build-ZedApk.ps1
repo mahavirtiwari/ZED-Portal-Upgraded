@@ -31,6 +31,10 @@
 .EXAMPLE
   $env:ZED_UPLOAD_STORE_FILE = 'F:\secure\zed-bronze-upload.jks'   # and the three other ZED_UPLOAD_* variables
   powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App msme -Production
+.EXAMPLE
+  powershell -ExecutionPolicy Bypass -File .\Build-ZedApk.ps1 -App zedmsme -Production -Bundle -VersionCode 3 -VersionName 2.1
+  # ZED MSME for the Play Store: the APK and the .aab bundle, version 2.1 (code 3). (2026-11-14: -Bundle, -VersionCode and
+  # -VersionName; the version options are read by the ZED MSME build only, the other apps keep their own numbers.)
 #>
 [CmdletBinding()]
 param(
@@ -44,7 +48,12 @@ param(
     [switch]$SkipUpdate,
     [string]$Output = 'E:\Releases\apk',
     [switch]$Production,
-    [switch]$KeepBuildFolders
+    [switch]$KeepBuildFolders,
+    # 2026-11-14: also the Android App Bundle (.aab) the Play Store asks for, next to the APK.
+    [switch]$Bundle,
+    # 2026-11-14: the version of a store release (Gradle -PzedVersionCode / -PzedVersionName; ZED MSME reads them).
+    [ValidateRange(1, 2100000000)][int]$VersionCode,
+    [ValidatePattern('^\d+(\.\d+){0,3}$')][string]$VersionName
 )
 
 $ErrorActionPreference = 'Stop'
@@ -147,7 +156,12 @@ try {
         Write-Step "Building $($info.Label) ($($info.Id)) for the $kind server (6-12 minutes the first time)"
         Push-Location $android
         try {
-            $code = Invoke-Tool (Join-Path $android 'gradlew.bat') @('assembleRelease', "-PzedEnvironment=$environment", '--no-daemon')
+            $gradleArgs = @("-PzedEnvironment=$environment", '--no-daemon')
+            if ($VersionCode) { $gradleArgs += "-PzedVersionCode=$VersionCode" }
+            if ($VersionName) { $gradleArgs += "-PzedVersionName=$VersionName" }
+            $tasks = @('assembleRelease')
+            if ($Bundle) { $tasks += 'bundleRelease' }
+            $code = Invoke-Tool (Join-Path $android 'gradlew.bat') ($tasks + $gradleArgs)
             if ($code -ne 0) { throw "Gradle failed for $a (exit code $code)." }
         } finally { Pop-Location }
 
@@ -174,6 +188,23 @@ try {
         $hash = (Get-FileHash $dest -Algorithm SHA256).Hash
         Set-Content -Path "$dest.sha256" -Value "$hash  $name" -Encoding ascii
         $results += [pscustomobject]@{ App = $info.Label; Server = $kind; File = $dest; SizeMB = [math]::Round((Get-Item $dest).Length / 1MB, 1); Commit = $commit }
+
+        if ($Bundle) {
+            # The .aab (Play Store upload): same checks as the APK's signature, copied beside it with its checksum.
+            $aab = Get-ChildItem (Join-Path $android 'app\build\outputs\bundle\release') -Filter *.aab -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if (-not $aab) { throw "No .aab in $android\app\build\outputs\bundle\release." }
+            if ($Production) {
+                $cert = cmd /c "`"$jdk\bin\keytool.exe`" -printcert -jarfile `"$($aab.FullName)`" 2>&1" | Out-String
+                if ($LASTEXITCODE -ne 0 -or $cert -match 'CN=Android Debug') { throw "$($aab.Name) is not signed with the upload keystore." }
+            }
+            $aabName = [IO.Path]::ChangeExtension($name, '.aab')
+            $aabDest = Join-Path $Output $aabName
+            Copy-Item $aab.FullName $aabDest -Force
+            $aabHash = (Get-FileHash $aabDest -Algorithm SHA256).Hash
+            Set-Content -Path "$aabDest.sha256" -Value "$aabHash  $aabName" -Encoding ascii
+            $results += [pscustomobject]@{ App = "$($info.Label) (bundle)"; Server = $kind; File = $aabDest; SizeMB = [math]::Round((Get-Item $aabDest).Length / 1MB, 1); Commit = $commit }
+        }
 
         if (-not $KeepBuildFolders) {
             Remove-Item -Recurse -Force (Join-Path $android 'app\build') -ErrorAction SilentlyContinue
