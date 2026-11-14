@@ -11,7 +11,6 @@ import {
   PhotosField,
   RadioButton,
   ScreenFrame,
-  TextField,
   shapes,
   textStyles,
   UNKNOWN_ERROR,
@@ -28,6 +27,8 @@ import {
 import { icons } from '../assets/icons';
 import { useMsme } from '../app/context';
 import { useOnline } from '../app/online';
+import { AgencyPicker } from '../components/AgencyPicker';
+import type { FacilitatorAgency } from '../api';
 import { useScreenCapture } from '../components/capture';
 import { RequirementVideoButton } from '../components/RequirementVideoButton';
 import {
@@ -57,16 +58,37 @@ export function EvidencesScreen() {
   const [selected, setSelected] = useState<Evidence | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const confirmText = useAppText('app.msme.evidences.finalSubmit.confirm');
-  // 2026-11-08: "Were you assisted by a ZED Facilitator?" (as in the old app); Yes opens Facilitator Details.
-  const facilitatorDone = details?.facilitatorAssistanceData?.isSubmitted === true;
-  const [assisted, setAssisted] = useState<'yes' | 'no' | null>(facilitatorDone ? 'yes' : null);
-  const [facilitatorOpen, setFacilitatorOpen] = useState(false);
-  const canFinalSubmit = (confirmed || !confirmText) && (assisted === 'no' || (assisted === 'yes' && facilitatorDone));
+  // "Were you assisted by a ZED Facilitator?". 2026-11-14 (approved): Yes = choose the assessment agency (searchable list
+  // of those allowed for the level), to which the final submit allots the case; No keeps the automatic allotment.
+  const [assisted, setAssisted] = useState<'yes' | 'no' | null>(null);
+  const [agencies, setAgencies] = useState<FacilitatorAgency[] | null>(null);
+  const [agencyId, setAgencyId] = useState<string | null>(null);
+  const [agenciesLoading, setAgenciesLoading] = useState(false);
+  const [agenciesError, setAgenciesError] = useState<string | null>(null);
+  const canFinalSubmit = (confirmed || !confirmText) && (assisted === 'no' || (assisted === 'yes' && !!agencyId));
+  const loadAgencies = async () => {
+    if (!app.loginId) return;
+    if (!(await isNetworkAvailable())) {
+      setAgenciesError('Please connect to the Internet to see the agencies.');
+      return;
+    }
+    setAgenciesLoading(true);
+    setAgenciesError(null);
+    try {
+      const r = await app.api.getFacilitatorAgencies(app.loginId, type);
+      if (isSuccess(r)) setAgencies(r.agencies ?? []);
+      else setAgenciesError(r.errorMessage?.trim() || 'The agencies could not be loaded.');
+    } catch (e) {
+      setAgenciesError(isNetworkError(e) ? 'Please connect to the Internet to see the agencies.' : 'The agencies could not be loaded.');
+    } finally {
+      setAgenciesLoading(false);
+    }
+  };
   const answer = (value: 'yes' | 'no') => {
     // A changed answer asks for the confirmation again.
     setConfirmed(false);
     setAssisted(value);
-    if (value === 'yes' && !facilitatorDone) setFacilitatorOpen(true);
+    if (value === 'yes' && agencies == null && !agenciesLoading) void loadAgencies();
   };
   const [, rerender] = useState(0);
   const refresh = () => rerender(x => x + 1);
@@ -143,7 +165,7 @@ export function EvidencesScreen() {
     ui.showLoading();
     let r: BaseServiceResponse;
     try {
-      r = await app.api.finalSubmit(app.loginId, type);
+      r = await app.api.finalSubmit(app.loginId, type, false, assisted === 'yes' ? agencyId : null);
     } catch (e) {
       r = { status: '0', errorMessage: e instanceof Error ? e.message : null };
     } finally {
@@ -198,10 +220,15 @@ export function EvidencesScreen() {
               <RadioButton label="Yes" selected={assisted === 'yes'} onPress={() => answer('yes')} style={{ margin: dimens.padding1 }} testID="facilitator-yes" />
               <RadioButton label="No" selected={assisted === 'no'} onPress={() => answer('no')} style={{ margin: dimens.padding1 }} testID="facilitator-no" />
             </View>
-            {assisted === 'yes' && facilitatorDone ? (
-              <Text style={styles.facilitatorNote} testID="facilitator-saved">
-                Facilitator: {details?.facilitatorAssistanceData?.email ?? ''} · {details?.facilitatorAssistanceData?.mobileNumber ?? ''}
-              </Text>
+            {assisted === 'yes' ? (
+              <AgencyPicker
+                agencies={agencies}
+                selected={agencyId}
+                onSelect={setAgencyId}
+                loading={agenciesLoading}
+                error={agenciesError}
+                onRetry={() => void loadAgencies()}
+              />
             ) : null}
             {/* Switched off by the Admin (Admin → Texts): no confirmation to tick. */}
             {confirmText ? <CheckBox label={htmlToPlain(confirmText.html)} checked={confirmed} onChange={setConfirmed} testID="confirm" /> : null}
@@ -209,16 +236,6 @@ export function EvidencesScreen() {
           </ScrollView>
         ) : null}
       </View>
-      {facilitatorOpen ? (
-        <FacilitatorDialog
-          type={type}
-          onClose={saved => {
-            setFacilitatorOpen(false);
-            if (!saved) setAssisted(null);
-            refresh();
-          }}
-        />
-      ) : null}
       {selected ? (
         <EvidenceDialog
           evidence={selected}
@@ -281,56 +298,6 @@ function EvidenceRow({
         </View>
       ) : null}
     </Pressable>
-  );
-}
-
-/**
- * FacilitatorDetailsFragment ("Facilitator Details"): phone number and e-mail of the ZED Facilitator, checked by the server
- * (SubmitFacilitatorDetails); kept on the level once accepted. Closing without a success leaves the question unanswered.
- */
-function FacilitatorDialog({ type, onClose }: { type: CertificationType; onClose: (saved: boolean) => void }) {
-  const app = useMsme();
-  const ui = useUi();
-  const details = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, type);
-  const [phone, setPhone] = useState(details?.facilitatorAssistanceData?.mobileNumber ?? '');
-  const [email, setEmail] = useState(details?.facilitatorAssistanceData?.email ?? '');
-  const [errors, setErrors] = useState<{ phone?: string; email?: string }>({});
-
-  const done = async () => {
-    const e: { phone?: string; email?: string } = {};
-    if (!/^[6-9]\d{9}$/.test(phone.trim())) e.phone = 'Please enter a valid 10 digit mobile number';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) e.email = 'Please enter a valid e-mail';
-    setErrors(e);
-    if (e.phone || e.email || !app.loginId) return;
-    if (!(await isNetworkAvailable())) {
-      ui.toast('Please connect to the Internet to submit the facilitator details.', { long: true });
-      return;
-    }
-    ui.showLoading();
-    let r: BaseServiceResponse;
-    try {
-      r = await app.api.submitFacilitatorDetails(app.loginId, type, phone.trim(), email.trim());
-    } catch (err) {
-      r = { status: '0', errorMessage: err instanceof Error ? err.message : null };
-    } finally {
-      ui.hideLoading();
-    }
-    if (isSuccess(r)) {
-      if (details) details.facilitatorAssistanceData = { mobileNumber: phone.trim(), email: email.trim(), isSubmitted: true };
-      await app.persist();
-      ui.toast('Facilitator details added successfully', { long: true });
-      onClose(true);
-    } else {
-      ui.showAlert(r.errorMessage?.trim() ? r.errorMessage : UNKNOWN_ERROR);
-    }
-  };
-
-  return (
-    <ZedDialog visible title="Facilitator Details" onClose={() => onClose(false)} testID="facilitator-dialog">
-      <TextField label="Phone Number" value={phone} onChange={setPhone} numeric maxLength={10} error={errors.phone} testID="facilitator-phone" />
-      <TextField label="Email" value={email} onChange={setEmail} autoCapitalize="none" maxLength={100} error={errors.email} testID="facilitator-email" />
-      <ZedButton title="Done" small onPress={done} testID="facilitator-done" />
-    </ZedDialog>
   );
 }
 

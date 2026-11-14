@@ -21,6 +21,16 @@ export function isSignInRefused(e: unknown): boolean {
   return /\bHTTP 401\b/.test(message);
 }
 
+/** True when the portal says the app's sign-in has ended (the session is then expired and the login page shown). */
+async function signInEnded(app: MsmeApp): Promise<boolean> {
+  try {
+    await app.api.getProfile();
+    return false;
+  } catch {
+    return app.session.expiredMessage != null;
+  }
+}
+
 /**
  * MyDocumentsActivity.openFile / MyCertificationsFragment.openPledgePdf: downloads the document with the sign-in token
  * (Msme/AppDocument) and opens it. A video or other web page (a guideline's link) opens in the browser.
@@ -43,7 +53,13 @@ export async function openDocument(app: MsmeApp, ui: Ui, path: string, name: str
     // Changed 2026-11-07: a refused download no longer signs the user out. The portal refuses the token when its
     // Mobile:AppTokenKey differs from the mobile host's (a server setting, docs/MOBILE-API.md), which is not the user's
     // sign-in expiring; a really expired sign-in still ends the session on the app's other calls (shared http.ts).
-    if (isSignInRefused(e)) ui.showAlert('This document could not be opened right now. Please try again later.');
+    if (isSignInRefused(e)) {
+      // 2026-11-14: a download cannot read the portal's answer, so one JSON call of the portal asks again: when the
+      // sign-in has ended (a password reset or change elsewhere, an old token) that answer signs the app out to its
+      // login page (shared http.ts), where a new sign-in gives a token the portal accepts.
+      if (await signInEnded(app)) return;
+      ui.showAlert('This document could not be opened right now. Please try again later.');
+    }
     // New (2026-11-07): a document whose file is not on the server yet says so.
     else if (/HTTP 404/.test(e instanceof Error ? e.message : String(e))) ui.toast('This document is not available yet.', { long: true });
     else ui.toast('Unknown error occurred while downloading file', { long: true });

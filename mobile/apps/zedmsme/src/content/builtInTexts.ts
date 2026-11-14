@@ -49,6 +49,10 @@ export const BUILT_IN_TEXTS: Readonly<Record<string, string>> = {
   "app.msme.dashboard.info.myIncentives": "<p>The Joining Reward incentive is available to any applicant which has taken the ZED Pledge. All other incentives &amp; benefits will be activated after attaining the respective Certification Level (Bronze, Silver or Gold). Complete list is available under \"My Documents\".</p>",
   // My Incentives: how to avail the joining reward (Main)
   "app.msme.incentives.joiningReward.availInfo": "<p>Kindly apply for any of the ZED Certification levels (Bronze, Silver, Gold) to avail Joining Reward</p>",
+  // Assessment: undertaking page heading (Main)
+  "app.msme.assessment.complianceUndertaking.title": "Undertaking of Compliances",
+  // Assessment: undertaking box heading (Main)
+  "app.msme.assessment.complianceUndertaking.heading": "Undertaking of Compliances",
   // Assessment: undertaking of compliances (Main)
   "app.msme.assessment.complianceUndertaking": "<p>I/We understand that the ZED Certification is voluntary and recognize the authority of the Ministry of MSME, Government of India, in issuance of any Certificate.</p><p>By proceeding I/We certify that my/our Enterprise/Unit complies with &amp; fulfils all relevant &amp; applicable regulatory &amp; statutory norms/licenses pertaining to the functioning of this manufacturing unit. If not, then efforts will be taken to fulfil those regulatory/statutory requirements by me/us. If at any stage the Enterprise/Unit is found to be non-compliant with any relevant/applicable regulatory &amp; statutory norms, the competent authority will have the right to recall/withdraw any or all reports or Certifications awarded.</p>",
   // Assessment: certification requirements read (checkbox) (Main)

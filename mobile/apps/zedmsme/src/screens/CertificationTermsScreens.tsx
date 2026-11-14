@@ -40,18 +40,21 @@ export function ComplianceScreen() {
   const nav = useNavigation();
   const type = useRoute<Params>().params.certificationType;
   const undertaking = useAppText('app.msme.assessment.complianceUndertaking');
+  // 2026-11-14: the headings are Admin texts too (Admin → Texts).
+  const pageTitle = useAppText('app.msme.assessment.complianceUndertaking.title');
+  const boxHeading = useAppText('app.msme.assessment.complianceUndertaking.heading');
   const title = useTitle(type);
   const msme = app.user?.MsmeDetails;
 
   return (
     <ScreenFrame title={title} backBar={{ zedId: msme?.ZedId, onBack: () => nav.pop() }} testID="compliance">
       <ScrollView contentContainerStyle={styles.page}>
-        <Text style={styles.heading}>Undertaking of Compliances</Text>
+        {pageTitle ? <Text style={styles.heading}>{htmlToPlain(pageTitle.html)}</Text> : null}
         {msme ? <EnterpriseCard details={msme} /> : null}
         {/* The Admin may switch the undertaking off (Admin → Texts): then no empty box. */}
         {undertaking ? (
           <View style={styles.section}>
-            <Text style={styles.sectionHead}>Undertaking of Compliances</Text>
+            {boxHeading ? <Text style={styles.sectionHead}>{htmlToPlain(boxHeading.html)}</Text> : null}
             <Text style={styles.body} testID="compliance-text">
               {htmlToPlain(undertaking.html)}
             </Text>

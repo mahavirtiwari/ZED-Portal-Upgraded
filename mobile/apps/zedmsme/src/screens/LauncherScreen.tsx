@@ -215,7 +215,10 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
           accessibilityRole="button"
           testID="forgot-password">
           <Icon icon={icons.ic_key_teal} size={18} />
-          <Text style={styles.forgotText}>FORGOT PASSWORD?</Text>
+          {/* 2026-11-14: kept inside its border on narrow phones and large font sizes (it shrinks, never overflows). */}
+          <Text style={styles.forgotText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+            FORGOT PASSWORD?
+          </Text>
         </Pressable>
         <ZedButton title="Login" onPress={login} style={{ flex: 1 }} testID="login-button" />
       </View>
@@ -281,10 +284,13 @@ const styles = StyleSheet.create({
     borderColor: colors.appColor,
     borderRadius: 5,
     paddingVertical: dimens.padding2,
+    paddingHorizontal: dimens.padding2,
     marginRight: dimens.padding2,
+    minHeight: 48,
+    overflow: 'hidden',
   },
   forgotPressed: { backgroundColor: colors.appColor3 },
-  forgotText: { color: colors.appColorDark, fontSize: 13, fontWeight: 'bold', marginLeft: 6 },
+  forgotText: { flexShrink: 1, color: colors.appColorDark, fontSize: 13, fontWeight: 'bold', marginLeft: 6 },
   divider: { alignSelf: 'stretch', marginHorizontal: dimens.padding1 },
   newUser: { alignSelf: 'stretch', padding: dimens.padding3, borderRadius: dimens.padding2, overflow: 'hidden', backgroundColor: colors.appColor },
   newUserBackground: { borderRadius: dimens.padding2, overflow: 'hidden' },

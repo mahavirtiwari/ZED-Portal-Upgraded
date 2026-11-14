@@ -245,6 +245,16 @@ function filePart(name: string, photo: PhotoData, fileName: string): MultipartFi
 /** The upload copy of a photo: the base64 cleared (`it.photo = null`) before its JSON goes into the form. */
 const metadata = (p: PhotoData) => gsonJson({ ...p, photo: null });
 
+/** An agency an applicant assisted by a ZED Facilitator may choose (2026-11-14). */
+export interface FacilitatorAgency {
+  userId: string;
+  userName: string;
+}
+
+export interface FacilitatorAgenciesResponse extends BaseServiceResponse {
+  agencies?: FacilitatorAgency[] | null;
+}
+
 export class MsmeApi {
   readonly http: HttpClient;
   /** The portal site (pledge certificate, Msme/ViewStatus). */
@@ -461,8 +471,17 @@ export class MsmeApi {
    * FinalSubmit (BaseCertificationRequest): the documents of a level, and the close of its NC replies (`surveillance`:
    * of the surveillance round's NC, on the surveillance host).
    */
-  finalSubmit(username: string, certificationType: string, surveillance = false) {
-    return this.http.postJson<BaseServiceResponse>(this.ncBase(surveillance) + 'FinalSubmit', this.req(username, { certificationType }));
+  finalSubmit(username: string, certificationType: string, surveillance = false, facilitatorAgencyId?: string | null) {
+    // 2026-11-14: with the agency the applicant chose when a ZED Facilitator assisted it (the case is allotted to it).
+    return this.http.postJson<BaseServiceResponse>(
+      this.ncBase(surveillance) + 'FinalSubmit',
+      this.req(username, { certificationType, ...(facilitatorAgencyId ? { facilitatorAgencyId } : {}) }),
+    );
+  }
+
+  /** 2026-11-14: the agencies the applicant may choose for the level (Msme/GetFacilitatorAgencies). */
+  getFacilitatorAgencies(username: string, certificationType: string) {
+    return this.http.postJson<FacilitatorAgenciesResponse>(this.msme + 'GetFacilitatorAgencies', this.req(username, { certificationType }));
   }
 
   getNcDetails(username: string, certificationType: string, ncCount: number, surveillance = false) {
