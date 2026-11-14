@@ -29,17 +29,16 @@ import { RemoteAllotments } from './remote-allotments';
 
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
         <div class="container nav-bar-sec">
+          <!-- 2026-11-14 (approved frame A): the role and portal are shown with the user on wide screens; the bar's name on phones only. -->
           <a class="navbar-brand" routerLink="/staff">{{ roleName() }}<span>{{ portalName }}</span></a>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
           </button>
           <div class="collapse navbar-collapse" id="staff-menu" [class.show]="menuOpen()">
-            <ul class="navbar-nav nav ms-auto mb-2 mb-lg-0" #bar>
+            <ul class="navbar-nav nav mb-2 mb-lg-0" #bar>
               <li class="nav-item tag">
-                <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" aria-label="Home">
-                  <img src="Images/svgicons/home.svg" alt="" /><span class="d-lg-none ms-2">Home</span>
-                </a>
+                <a class="nav-link" routerLink="/staff" [routerLinkActiveOptions]="{ exact: true }" routerLinkActive="active" aria-label="Home">Home</a>
               </li>
               @for (entry of entries(); track $index) {
                 @if ('group' in entry) {
@@ -109,7 +108,8 @@ import { RemoteAllotments } from './remote-allotments';
               <li class="nav-item dropdown tag user-menu">
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
                         [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
-                  {{ user()?.actingUserName || user()?.userName }}
+                  <span class="avatar" aria-hidden="true">{{ (user()?.actingUserName || user()?.userName || '?').charAt(0) }}</span>
+                  <span class="who">{{ user()?.actingUserName || user()?.userName }}<small>{{ roleName() }}, {{ portalName }}</small></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
                   <li><a class="dropdown-item" routerLink="/staff/change-password">Change Password</a></li>
@@ -163,6 +163,29 @@ import { RemoteAllotments } from './remote-allotments';
     }
     .zed-navbar .nav > li > button.nav-link.active { border-bottom: 2px solid #fff; }
     .zed-navbar .nav > li > button.nav-link:hover, .zed-navbar .nav > li > button.nav-link:focus { opacity: 0.9; }
+
+    /* 2026-11-14 (approved frame A): a slim dark-teal strip, text links, the current page underlined, the user on the right. */
+    .zed-navbar { background: #23656b; top: 0; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.14); }
+    .zed-navbar .nav-bar-sec { background: none; min-height: 48px; border-radius: 0; box-shadow: none; }
+    .zed-navbar .nav > li:not(:last-child) { border-right: 0; }
+    .zed-navbar .tag { padding: 0; }
+    .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
+    .zed-navbar .avatar { flex: none; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: #174a4e;
+      font-size: 12.5px; font-weight: 800; }
+    .zed-navbar .who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
+    .zed-navbar .who small { font-size: 11px; font-weight: 600; color: #a9d3d6; }
+    @media (min-width: 992px) {
+      .zed-navbar .navbar-brand { display: none; }
+      .zed-navbar .navbar-collapse > .nav { flex: 1 1 auto; }
+      .zed-navbar .nav { align-items: stretch; }
+      .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link {
+        display: flex; align-items: center; gap: 8px; height: 48px; margin: 0; padding: 0 12px; color: #d9eef0; font-size: 14px; font-weight: 700;
+        line-height: 1.2; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; opacity: 1;
+      }
+      .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
+      .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; border-bottom: 3px solid #c9e8a0; }
+      .zed-navbar .nav > li.user-menu { margin-left: auto; }
+    }
   `,
 })
 export class StaffLayout {

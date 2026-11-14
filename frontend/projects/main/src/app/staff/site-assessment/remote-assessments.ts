@@ -1,9 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { Row, SITE_SYSTEM, SiteAssessmentApi, milestoneReviewLink } from './site-assessment.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 /**
  * "Remote/Onsite Assessment" list of an assessor with the site verification sub-role. Port of
@@ -19,57 +21,56 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
  */
 @Component({
   selector: 'zed-staff-remote-assessments',
-  imports: [RouterLink, PagerComponent, ListSearchComponent],
+  imports: [RouterLink, PagerComponent, ListSearchComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ consultancy ? 'Milestone ' + milestone : 'Remote/Onsite Assessment' }}</h3>
-        <p class="page-sub">{{ subtitle }}</p>
-      </div>
-      <div class="page-actions">
-        <button type="button" class="refresh-link btn btn-default" (click)="load()">
-          <img src="Images/svgicons/refresh.svg" alt="" />
-          <span>REFRESH</span>
-        </button>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: title }]" [title]="title">
+      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="consultancy ? milestoneCounts() : counts()" />
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
-    <zed-list-search [(value)]="search" placeholder="Search units" inputId="remote-search" [found]="view.total()" />
+    <div class="list-card">
+    <div class="list-card-head">
+      <b>Units</b>
+      <zed-list-search [(value)]="search" placeholder="Search units" inputId="remote-search" [found]="view.total()" />
+    </div>
     @if (consultancy) {
       <div class="table-responsive">
-        <table class="table table-zed table-bordered">
+        <table class="table table-zed">
           <thead>
             <tr>
-              <th class="text-center">Desired Certification</th>
-              <th>Unit Details</th>
-              <th>Unit SPOC Details</th>
-              <th>Consultant Organisation</th>
-              <th class="text-center">Site Visit dates</th>
-              <th class="text-center" style="width: 140px">Action(s)</th>
+              <th>Unit</th>
+              <th>Desired level</th>
+              <th>Unit SPOC</th>
+              <th>Consultant organisation</th>
+              <th>Site visit dates</th>
+              <th>Status</th>
+              <th style="width: 150px"><span class="visually-hidden">Action(s)</span></th>
             </tr>
           </thead>
           <tbody>
             @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
               <tr>
-                <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
-                <td class="unit">
-                  <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
-                  <div><strong>{{ s['EnterpriseName'] }}</strong></div>
-                  <div class="muted">{{ s['UnitAddress'] }}</div>
+                <td class="unit unit-cell">
+                  <b>{{ s['EnterpriseName'] }}</b>
+                  <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
                 </td>
-                <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
-                <td><strong>{{ s['AgencyName'] }}</strong><div class="muted">{{ s['CertificationBodyUserId'] }}</div></td>
+                <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
+                <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
                 @if (milestone === 1) {
-                  <td class="text-center"><div>BDS: {{ s['BdsToDate'] }}</div><div>HAP: {{ s['HapToDate'] }}</div></td>
+                  <td>BDS: {{ s['BdsToDate'] }}<span class="sub">HAP: {{ s['HapToDate'] }}</span></td>
                 } @else {
-                  <td class="text-center">{{ s['BdsToDate'] }}</td>
+                  <td>{{ s['BdsToDate'] }}</td>
                 }
-                <td class="text-center">
-                  <div class="row-actions justify-content-center">
+                <td><span [class]="'chip ' + milestoneState(s).tone">{{ milestoneState(s).label }}</span></td>
+                <td>
+                  <div class="row-actions">
                     <a class="btn btn-outline-primary profile" [routerLink]="['/staff/msme-profile', s['ZedId']]">View Profile</a>
                     <a class="btn btn-outline-primary details" [routerLink]="reviewLink(s)">VIEW DETAILS</a>
                   </div>
@@ -77,7 +78,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
               </tr>
             } @empty {
               <tr>
-                <td colspan="6" style="padding: 0px"><div class="no-data">No Data</div></td>
+                <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
               </tr>
             }
           </tbody>
@@ -86,23 +87,34 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
       <zed-pager [pager]="view" />
     } @else {
       <div class="table-responsive">
-        <table class="table table-zed table-bordered">
+        <table class="table table-zed">
           <thead>
             <tr>
-              <th class="text-center" style="width: 140px">Action(s)</th>
-              <th class="text-center">Certification Level</th>
-              <th>Unit Details</th>
-              <th>Unit SPOC Details</th>
-              <th>Agency Details</th>
-              <th class="text-center">Mode of Assessment</th>
-              <th class="text-center">{{ surveillance ? 'Surveillance Date' : 'Assessment Date' }}</th>
+              <th>Unit</th>
+              <th>Level</th>
+              <th>Unit SPOC</th>
+              <th>Agency</th>
+              <th>Mode</th>
+              <th>{{ surveillance ? 'Surveillance date' : 'Assessment date' }}</th>
+              <th>Status</th>
+              <th style="width: 150px"><span class="visually-hidden">Action(s)</span></th>
             </tr>
           </thead>
           <tbody>
             @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
               <tr>
-                <td class="text-center">
-                  <div class="row-actions justify-content-center">
+                <td class="unit unit-cell">
+                  <b>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</b>
+                  <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
+                </td>
+                <td><span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span></td>
+                <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
+                <td>{{ s['AgencyName'] }}<span class="sub">{{ s['CertificationBodyUserId'] }}</span></td>
+                <td><span class="zed-chip">{{ mode(s) }}</span></td>
+                <td>{{ s['AssessmentDate'] }}</td>
+                <td><span [class]="'chip ' + stateOf(s).tone">{{ stateOf(s).label }}</span></td>
+                <td>
+                  <div class="row-actions">
                     @if (surveillance && s['OnsiteVisit']) {
                       <!-- 2026-11-14 (Onsite surveillance): assessed in the assessor app; reviewed here after its closing meeting. -->
                       @if (+(s['CertificationStatus'] ?? 0) === 13) {
@@ -129,20 +141,10 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
                     }
                   </div>
                 </td>
-                <td class="text-center"><strong>{{ s['Certification'] }}</strong></td>
-                <td class="unit">
-                  <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
-                  <div><strong>{{ surveillance ? s['PUnitName'] : s['EnterpriseName'] }}</strong></div>
-                  <div class="muted">{{ s['UnitAddress'] }}</div>
-                </td>
-                <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
-                <td><strong>{{ s['AgencyName'] }}</strong><div class="muted">{{ s['CertificationBodyUserId'] }}</div></td>
-                <td class="text-center"><span class="zed-chip">{{ mode(s) }}</span></td>
-                <td class="text-center">{{ s['AssessmentDate'] }}</td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="7" style="padding: 0px"><div class="no-data">No Data</div></td>
+                <td colspan="8" style="padding: 0px"><div class="no-data">No Data</div></td>
               </tr>
             }
           </tbody>
@@ -150,6 +152,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
       </div>
       <zed-pager [pager]="view" />
     }
+    </div>
 
     @if (loading()) {
       <div class="loadingdiv" role="status" aria-live="polite">
@@ -161,7 +164,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
     }
   `,
   styles: `
-    .unit { min-width: 200px; }
+    .unit { min-width: 220px; }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })
@@ -180,6 +183,50 @@ export class RemoteAssessmentsPage {
     : 'Site assessments allotted to you: assess the remote ones here, open the onsite ones for their details.';
 
   protected readonly rows = signal<Row[]>([]);
+  protected readonly title = this.consultancy ? `Milestone ${this.milestone}` : this.surveillance ? 'Surveillance assessments (site)' : 'Remote and onsite assessments';
+
+  protected lc(v: unknown): string {
+    return String(v ?? '').toLowerCase();
+  }
+
+  /** Where a site assessment stands for the assessor (the chip of its row). */
+  protected stateOf(s: Row): { label: string; tone: string } {
+    const st = +(s['CertificationStatus'] ?? 0);
+    if (st === 13) return { label: 'Meetings done: review', tone: 'is-warn' };
+    if (st === 14) return { label: 'NC answered: review', tone: 'is-bad' };
+    return { label: this.mode(s) === 'Remote' ? 'To assess' : 'Scheduled', tone: 'is-info' };
+  }
+
+  /** Consultancy: where a milestone stands for the consultant (review after the meetings, the site visit to come, in progress). */
+  protected milestoneState(s: Row): { label: string; tone: string } {
+    const st = +(s['CertificationStatus'] ?? 0);
+    if (st === 13 || st === 14) return { label: 'To review', tone: 'is-warn' };
+    const visit = Date.parse(String(s['BdsToDate'] ?? ''));
+    if (!isNaN(visit) && visit >= new Date().setHours(0, 0, 0, 0)) return { label: 'Site visit due', tone: 'is-info' };
+    return { label: 'In progress', tone: '' };
+  }
+
+  protected readonly milestoneCounts = computed<ListCount[]>(() => {
+    const rows = this.rows();
+    const by = (label: string) => rows.filter((r) => this.milestoneState(r).label === label).length;
+    return [
+      { label: 'Allotted to me', value: rows.length },
+      { label: 'Site visit due', value: by('Site visit due') },
+      { label: 'To review', value: by('To review'), tone: 'warn' },
+      { label: 'In progress', value: by('In progress') },
+    ];
+  });
+
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.rows();
+    const st = (r: Row) => +(r['CertificationStatus'] ?? 0);
+    return [
+      { label: 'Allotted to me', value: rows.length },
+      { label: 'Remote', value: rows.filter((r) => this.mode(r) === 'Remote').length },
+      { label: 'Onsite', value: rows.filter((r) => this.mode(r) === 'Onsite').length },
+      { label: 'To review', value: rows.filter((r) => st(r) === 13 || st(r) === 14).length, tone: 'warn' },
+    ];
+  });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   /** The search box above the list (any column). */
   protected readonly search = signal('');

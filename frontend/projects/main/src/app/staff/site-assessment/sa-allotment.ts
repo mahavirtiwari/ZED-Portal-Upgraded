@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
@@ -6,6 +6,8 @@ import { Assessor, ONSITE, REMOTE, Row, SITE_SYSTEM, SiteAssessmentApi, isWebLin
 import { CoAllotmentPage } from './co-allotment';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { mayAssess } from '../users/assessor-scope';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 interface AllotForm {
   unit: Row;
@@ -26,23 +28,17 @@ interface AllotForm {
  */
 @Component({
   selector: 'zed-staff-sa-allotment',
-  imports: [FormsModule, CoAllotmentPage, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, CoAllotmentPage, PagerComponent, ListSearchComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
     @if (system === 'consultancy') {
       <zed-staff-co-allotment />
     } @else {
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot SA Assessments' }}</h3>
-        <p class="page-sub">{{ surveillance ? 'Allot the Silver and Gold surveillance assessments to an assessor, with the date and, for a remote surveillance, the meeting link.' : 'Allot the site assessments to a lead assessor (and a co-assessor for onsite), with the date and the mode.' }}</p>
-      </div>
-      <div class="page-actions">
-        <button type="button" class="refresh-link btn btn-default" (click)="load()">
-          <img src="Images/svgicons/refresh.svg" alt="" />
-          <span>Refresh Data</span>
-        </button>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: pageTitle }]" [title]="pageTitle">
+      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="counts()" />
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
@@ -51,42 +47,39 @@ interface AllotForm {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
 
-    <zed-list-search [(value)]="search" placeholder="Search units" inputId="sa-allot-search" [found]="view.total()" />
+    <div class="list-card">
+    <div class="list-card-head">
+      <b>Units</b>
+      <zed-list-search [(value)]="search" placeholder="Search units" inputId="sa-allot-search" [found]="view.total()" />
+    </div>
     <div class="table-responsive">
-      <table class="table table-bordered table-zed">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 140px">Action(s)</th>
-            <th class="text-center">Certification Level</th>
-            <th>Unit Details</th>
-            <th>Unit SPOC Details</th>
-            @if (surveillance) { <th class="text-center">Surveillance Date</th> }
-            <th>Assessor Details</th>
+            <th>Unit</th>
+            <th>Level</th>
+            <th>Unit SPOC</th>
+            @if (surveillance) { <th>Surveillance Date</th> }
+            <th>Mode</th>
+            <th>Assessors</th>
+            <th>Status</th>
+            <th style="width: 120px"><span class="visually-hidden">Action(s)</span></th>
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track s['ZedId'] + '|' + s['Certification']) {
             <tr>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
-                  @if (s['SiteAssessorId']) {
-                    <button type="button" class="btn btn-outline-primary" (click)="open(s)">RE-ALLOT</button>
-                  } @else if (!s['ReasonForRejection']) {
-                    <button type="button" class="btn btn-primary" (click)="open(s)">ALLOT</button>
-                  }
-                </div>
+              <td class="unit unit-cell">
+                <b>{{ s['PUnitName'] }}</b>
+                <small><span class="dash-text-clr">{{ s['ZedId'] }}</span> · {{ s['UnitAddress'] }}</small>
               </td>
-              <td class="text-center">
-                <strong>{{ s['Certification'] }}</strong>
-                @if (surveillance && s['SurveillanceNo']) { <div class="muted">{{ s['SurveillanceNo'] }}</div> }
+              <td>
+                <span [class]="'lv-tag lv-' + lc(s['Certification'])">{{ s['Certification'] }}</span>
+                @if (surveillance && s['SurveillanceNo']) { <span class="sub">{{ s['SurveillanceNo'] }}</span> }
               </td>
-              <td class="unit">
-                <strong class="dash-text-clr">{{ s['ZedId'] }}</strong>
-                <div><strong>{{ s['PUnitName'] }}</strong></div>
-                <div class="muted">{{ s['UnitAddress'] }}</div>
-              </td>
-              <td><strong>{{ s['UnitSpocName'] }}</strong><div>{{ s['UnitSpocMobileNo'] }}</div><div class="muted">{{ s['UnitSpocEmailId'] }}</div></td>
-              @if (surveillance) { <td class="text-center">{{ s['AssessmentDate'] }}</td> }
+              <td><b>{{ s['UnitSpocName'] }}</b><span class="sub">{{ s['UnitSpocMobileNo'] }}</span><span class="sub">{{ s['UnitSpocEmailId'] }}</span></td>
+              @if (surveillance) { <td>{{ s['AssessmentDate'] }}</td> }
+              <td>@if (modeOf(s); as m) { <span class="zed-chip">{{ m }}</span> }</td>
               <td class="stack">
                 <div><span class="muted">{{ s['SiteAssessorId'] }}</span> <strong>{{ s['SaAssessorName'] }}</strong></div>
                 @if (surveillance) {
@@ -95,16 +88,31 @@ interface AllotForm {
                   <div><strong>{{ s['CoAssessorName'] }}</strong></div>
                 }
               </td>
+              <td>
+                @if (s['SiteAssessorId']) { <span class="chip is-good">Allotted</span> }
+                @else if (s['ReasonForRejection']) { <span class="chip is-bad">Rejected</span> }
+                @else { <span class="chip is-warn">Waiting</span> }
+              </td>
+              <td>
+                <div class="row-actions">
+                  @if (s['SiteAssessorId']) {
+                    <button type="button" class="btn btn-outline-primary" (click)="open(s)">RE-ALLOT</button>
+                  } @else if (!s['ReasonForRejection']) {
+                    <button type="button" class="btn btn-primary" (click)="open(s)">ALLOT</button>
+                  }
+                </div>
+              </td>
             </tr>
           } @empty {
             <tr>
-              <td [attr.colspan]="surveillance ? 6 : 5" style="padding: 0px"><div class="no-data">No Data</div></td>
+              <td [attr.colspan]="surveillance ? 8 : 7" style="padding: 0px"><div class="no-data">No Data</div></td>
             </tr>
           }
         </tbody>
       </table>
     </div>
     <zed-pager [pager]="view" />
+    </div>
 
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="allot-title" (click)="close()">
@@ -217,6 +225,30 @@ export class SaAllotmentPage {
   protected readonly form = signal<AllotForm | null>(null);
   protected readonly onsite = ONSITE;
   protected readonly remote = REMOTE;
+
+  protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments (Site)' : 'Allot SA Assessments';
+
+  protected lc(v: unknown): string {
+    return String(v ?? '').toLowerCase();
+  }
+
+  /** The unit's mode for the list: surveillance Onsite / Remote, a main unit's flow (Remote) or its allotted mode. */
+  protected modeOf(s: Row): string {
+    if (this.surveillance) return s['AssessmentMode'] === 'Onsite' ? 'Onsite' : 'Remote';
+    if (s['AssessmentMode'] === 'Remote') return 'Remote';
+    const m = String(s['ModeOfAssessment'] ?? '');
+    return m === 'Remote Assessment' ? 'Remote' : m === 'Onsite Assessment' ? 'Onsite' : '';
+  }
+
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.units();
+    return [
+      { label: 'Waiting for allotment', value: rows.filter((r) => !r['SiteAssessorId'] && !r['ReasonForRejection']).length, tone: 'warn' },
+      { label: 'Allotted', value: rows.filter((r) => !!r['SiteAssessorId']).length, tone: 'good' },
+      { label: 'Onsite', value: rows.filter((r) => this.modeOf(r) === 'Onsite').length },
+      { label: 'Remote', value: rows.filter((r) => this.modeOf(r) === 'Remote').length },
+    ];
+  });
 
   /** 2026-11-14: a main unit whose level's flow is remote (the server sends AssessmentMode). */
   protected remoteUnit(unit: Row): boolean {

@@ -89,9 +89,10 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect(el.querySelector('.video-panel')).toBeNull();
     expect(el.querySelector('.zed-tabs')!.classList).toContain('col-lg-12');
     expect(el.querySelector('.zed-tabs')!.classList).not.toContain('col-lg-8');
-    expect(el.querySelector('a.join-meeting')).toBeNull(); // on the Overview tab, not beside the tabs
+    // 2026-11-14 (approved frame A): the meeting card above the tabs, and the Overview tab's row.
+    expect(el.querySelector('#remoteMeeting a.join-meeting')!.getAttribute('href')).toBe('https://meet.example/abc');
     await openTab('Assessment Overview');
-    const join = el.querySelector('a.join-meeting') as HTMLAnchorElement;
+    const join = el.querySelector('.tab-content a.join-meeting') as HTMLAnchorElement;
     expect(join.getAttribute('href')).toBe('https://meet.example/abc');
     expect(join.getAttribute('target')).toBe('_blank');
     expect(join.getAttribute('rel')).toContain('noopener');
@@ -183,6 +184,7 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     await create(details(1, null));
     await openTab('Assessment Overview');
     expect(el.querySelector('a.join-meeting')).toBeNull();
+    expect(el.querySelector('#remoteMeeting')!.textContent).toContain('No meeting link');
     expect(el.textContent).toContain('No meeting link');
   });
 

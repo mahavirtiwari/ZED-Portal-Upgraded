@@ -13,6 +13,9 @@ import { FinalSubmitCheck, MAX_RECORDING_LINKS, Meeting, PhotoTarget, RemoteApi,
 import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ParameterNav } from '../../msme/shared/parameter-status';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
+import { Location } from '@angular/common';
+import { PageHead } from '../../msme/shared/page-head';
+import { UnitFacts } from '../../msme/shared/unit-facts';
 
 const NUMBERS = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 
@@ -105,7 +108,7 @@ interface FinalSubmitEdit { check: FinalSubmitCheck; comments: string; confirmed
  */
 @Component({
   selector: 'zed-staff-remote-assessment',
-  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo],
+  imports: [FormsModule, RouterLink, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
   templateUrl: './remote-assessment.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './remote-assessment.css',
@@ -189,6 +192,32 @@ export class RemoteAssessmentPage {
   });
   /** Surveillance: held on the agency's meeting link. */
   protected readonly meetingMode = computed(() => this.data()?.usesMeetingLink === true);
+  /** 2026-11-14 (frame A): "Shree Castings · Silver surveillance" (the ZED ID until loaded). */
+  protected readonly headTitle = computed(() => {
+    const m = this.msme();
+    const unit = text(m, this.meetingMode() ? 'PUnitName' : 'EnterpriseName') || text(m, 'PUnitName') || text(m, 'ZedId') || this.zedId;
+    return `${unit} · ${this.certification}${this.meetingMode() ? ' surveillance' : ''}`;
+  });
+  protected readonly headCrumbs = computed(() => [
+    { label: 'Home', link: '/staff' },
+    { label: this.meetingMode() ? 'Surveillance assessments (site)' : 'Remote and onsite assessments', link: '/staff/remote-assessments' },
+    { label: text(this.msme(), 'ZedId') || this.zedId },
+  ]);
+  /** The facts strip's unit: the plant (surveillance) or the enterprise. */
+  protected readonly factsRow = computed(() => {
+    const m = this.msme();
+    return { ...m, EnterpriseName: text(m, 'EnterpriseName') || text(m, 'PUnitName'), ZedId: text(m, 'ZedId') || this.zedId };
+  });
+  protected readonly modeLabel = computed(() => {
+    const d = this.data();
+    if (!d) return '';
+    if (d.onsiteReview) return 'Onsite';
+    return this.meetingMode() || d.meetingLink ? 'Remote' : 'Onsite';
+  });
+  private readonly location = inject(Location);
+  protected goBack(): void {
+    this.location.back();
+  }
   protected readonly maxRecordingLinks = MAX_RECORDING_LINKS;
   protected recordingLink = '';
   protected readonly tabs = computed(() => {

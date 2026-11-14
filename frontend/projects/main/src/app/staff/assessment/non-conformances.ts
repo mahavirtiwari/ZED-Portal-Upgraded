@@ -7,6 +7,8 @@ import { ClientPager, PagerComponent } from '../pager';
 import { STATES, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, ListFilter, Row } from './assessment.api';
 import { levelOptions } from '../../msme/shared/levels';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 /**
  * Desktop assessor: records with an open non-conformance round (DA status 4, site assessment status 14).
@@ -16,20 +18,21 @@ import { levelOptions } from '../../msme/shared/levels';
  */
 @Component({
   selector: 'zed-staff-non-conformances',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">Non-Conformances</h3>
-        <p class="page-sub">Assessments with an open non-conformance round, waiting for the MSME's closure or your review.</p>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the filters and the list in one card. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: 'Non-conformances' }]" title="Non-conformances">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="counts()" />
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
-    <div class="zed-card">
+    <div class="list-card">
+    <div class="list-card-head">
       <div class="filter-bar">
         <div class="filter">
           <label class="form-label" for="ncState">State</label>
@@ -71,24 +74,42 @@ import { levelOptions } from '../../msme/shared/levels';
     </div>
 
     <div class="table-responsive">
-      <table class="table table-zed table-bordered">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 60px">S.No.</th>
-            <th class="text-center" style="width: 140px">Action(s)</th>
-            <th class="text-center">Certification Level</th>
-            <th>Unit Details</th>
-            <th>Unit SPOC Details</th>
-            <th>Agency Details</th>
-            <th class="text-center">Mode of Assessment</th>
+            <th style="width: 56px">S.No.</th>
+            <th>Unit</th>
+            <th>Level</th>
+            <th>Unit SPOC</th>
+            <th>Agency</th>
+            <th>Mode</th>
+            <th>Status</th>
+            <th style="width: 140px"><span class="visually-hidden">Action(s)</span></th>
           </tr>
         </thead>
         <tbody>
           @for (s of pager.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
-            <tr [class.table-danger]="n(s, 'NcStatus') === 2 && (n(s, 'CertificationStatus') === 4 || n(s, 'CertificationStatus') === 14)">
-              <td class="text-center">{{ t(s, 'RowNumber') }}</td>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
+            <tr [class.table-danger]="answered(s)" [class.is-answered]="answered(s)">
+              <td>{{ t(s, 'RowNumber') }}</td>
+              <td class="unit unit-cell">
+                <b>{{ t(s, 'PUnitName') }}</b>
+                <small><span class="dash-text-clr">{{ t(s, 'ZedId') }}</span> · {{ t(s, 'UnitAddress') }}</small>
+              </td>
+              <td><span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ t(s, 'UnitSpocEmailId') }}</span></td>
+              <td>{{ t(s, 'AgencyName') }}<span class="sub">{{ t(s, 'CertificationBodyUserId') }}</span></td>
+              <td>
+                @switch (t(s, 'ModeOfAssessment')) {
+                  @case ('Remote Assessment') { <span class="zed-chip">Remote</span> }
+                  @case ('Onsite Assessment') { <span class="zed-chip">Onsite</span> }
+                  @case ('') { <span class="zed-chip">Desktop</span> }
+                }
+              </td>
+              <td>
+                @if (answered(s)) { <span class="chip is-warn">Answered: to review</span> } @else { <span class="chip">Waiting for the MSME</span> }
+              </td>
+              <td>
+                <div class="row-actions">
                   @if (legacy.profile(t(s, 'ZedId')); as href) {
                     <a [href]="href" class="btn btn-outline-primary">View Profile</a>
                   }
@@ -101,29 +122,15 @@ import { levelOptions } from '../../msme/shared/levels';
                   }
                 </div>
               </td>
-              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
-              <td class="unit">
-                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
-                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
-                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
-              </td>
-              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
-              <td><strong>{{ t(s, 'AgencyName') }}</strong><div class="muted">{{ t(s, 'CertificationBodyUserId') }}</div></td>
-              <td class="text-center">
-                @switch (t(s, 'ModeOfAssessment')) {
-                  @case ('Remote Assessment') { <span class="zed-chip">Remote</span> }
-                  @case ('Onsite Assessment') { <span class="zed-chip">Onsite</span> }
-                  @case ('') { <span class="zed-chip">Desktop</span> }
-                }
-              </td>
             </tr>
           } @empty {
-            <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            <tr><td colspan="8" style="padding: 0"><div class="no-data">No Data</div></td></tr>
           }
         </tbody>
       </table>
     </div>
     <zed-pager [pager]="pager" />
+    </div>
 
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
@@ -131,7 +138,12 @@ import { levelOptions } from '../../msme/shared/levels';
       </div>
     }
   `,
-  styles: `.unit { min-width: 200px; }`,
+  styles: `
+    .unit { min-width: 220px; }
+    .list-card-head .filter-bar { width: 100%; margin: 0; }
+    /* The MSME answered the round: a light tint in place of Bootstrap's red row. */
+    tr.is-answered > td { background: #fffaf0 !important; }
+  `,
 })
 export class NonConformancesPage {
   private readonly api = inject(AssessmentApi);
@@ -148,6 +160,21 @@ export class NonConformancesPage {
   protected readonly loading = signal(false);
   protected readonly error = signal('');
   private request = 0;
+
+  /** The MSME has answered the open round (NcStatus 2 at DA status 4 / site status 14): waiting for the assessor's review. */
+  protected answered(s: Row): boolean {
+    return num(s, 'NcStatus') === 2 && (num(s, 'CertificationStatus') === 4 || num(s, 'CertificationStatus') === 14);
+  }
+
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.pager.all();
+    const answered = rows.filter((r) => this.answered(r)).length;
+    return [
+      { label: 'Open NC rounds', value: rows.length },
+      { label: 'Answered: to review', value: answered, tone: 'warn' },
+      { label: 'Waiting for the MSME', value: rows.length - answered },
+    ];
+  });
 
   constructor() {
     void this.load();

@@ -276,7 +276,7 @@ describe('assessment pages per system', () => {
     const el: HTMLElement = fixture.nativeElement;
     http.expectOne((r) => r.url === '/api/staff/assessment/rejected').flush({ rows: [], totalCount: 0, pageNo: 1, pageSize: 10 });
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Rejected Surveillance');
+    expect(el.querySelector('h2')!.textContent).toContain('Rejected Surveillance');
     expect([...el.querySelectorAll('select[id]')].map((s) => s.id)).toEqual(['resLevel']);
     expect([...el.querySelectorAll<HTMLOptionElement>('#resLevel option')].map((o) => o.text.trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X']);
     expect(el.querySelector('#resState')).toBeNull();

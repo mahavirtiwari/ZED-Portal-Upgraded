@@ -1,13 +1,13 @@
 <!-- Content of ZEDCS_CONSULTANCY Frontend/Assessment/SaDetails.cshtml, laid out with the V4 blocks. -->
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Consultancy Details</h3>
-    <p class="page-sub">Handholding of {{ zedId() }} ({{ certification() }}): the plan, attendance, meetings, parameters and the milestone decisions.</p>
-  </div>
-  <div class="page-actions">
-    <button type="button" class="btn btn-outline-primary" (click)="refresh()">REFRESH</button>
-  </div>
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the tabs as pills below. -->
+<zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+</zed-page-head>
+@if (milestoneRow(1); as m1) {
+  <zed-unit-facts [msme]="m1" [udyam]="t(m1, 'UdyogAadharNo')"
+                  [extra]="[{ label: 'Desired level', value: t(m1, 'Certification') || certification() }, { label: 'Current milestone', value: milestone() ? milestone() + ' of 3' : '' }]" />
+}
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">
@@ -26,7 +26,7 @@
 @if (loading() && !data()) { <p role="status">Loading…</p> }
 
 @if (data(); as d) {
-  <div class="zed-tabs">
+  <div class="zed-tabs cd-v2">
     <div class="tab-title">
       <div class="numberCircle">{{ tab() }}</div>
       <h4>{{ tabs[tab()] }}</h4>

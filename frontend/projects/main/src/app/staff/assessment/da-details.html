@@ -1,22 +1,8 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Assessment Details</h3>
-    @if (data(); as d) {
-      <p class="page-sub head-ids">
-        <strong class="dash-text-clr">{{ t(msme(), 'ZedId') || d.zedId }}</strong>
-        @if (t(msme(), 'PUnitName')) { <span>{{ t(msme(), 'PUnitName') }}</span> }
-        <span class="zed-chip">{{ t(msme(), 'Certification') || d.certification }}</span>
-      </p>
-    } @else {
-      <p class="page-sub">Desktop assessment of the unit's photos, products and documents.</p>
-    }
-  </div>
-  <div class="page-actions">
-    <button type="button" class="refresh-link btn btn-default" (click)="refresh()">
-      <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-    </button>
-  </div>
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header; the unit and its level in the title. -->
+<zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+</zed-page-head>
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">

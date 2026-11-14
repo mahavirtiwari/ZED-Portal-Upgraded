@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../../staff-menu';
 import { TU_LANDING, TuApi, TuCounts, TuSubmission, TuTab, UserOption } from './tu.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../../pager';
+import { PageHead } from '../../../msme/shared/page-head';
 
 type Dialog =
   | { kind: 'allot'; row: TuSubmission; options: UserOption[]; choice: string }
@@ -24,14 +25,16 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
  */
 @Component({
   selector: 'zed-staff-tu-submissions',
-  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent, PageHead],
+  host: { class: 'list-v2 d-block' },
   templateUrl: './tu-submissions.html',
   styles: `
     table tbody tr td { font-size: 14px; }
     /* The old page's btn-danger rows (a reason for rejection, tinted by table-danger) and action cells (TimeDuration). */
     td.late { background-color: #fdeef0; }
     /* Status lists as a row of tabs with their counts. */
-    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .status-tabs .btn { border-radius: 18px; font-weight: 700; }
     .status-tabs .tab-count { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 7px; border-radius: 10px; background: rgba(69, 165, 173, 0.15); font-size: 12px; font-weight: 700; }
     .status-tabs .btn-primary .tab-count { background: rgba(255, 255, 255, 0.25); }
     .badges { display: flex; flex-wrap: wrap; gap: 4px; }

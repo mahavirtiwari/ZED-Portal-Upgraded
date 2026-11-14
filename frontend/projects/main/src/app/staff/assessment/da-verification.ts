@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -7,6 +7,8 @@ import { ContentTextComponent } from '../../content/content-text';
 import { ASSESSMENT_SYSTEM, flag, num, text, useLegacyPortal } from './assessment-shared';
 import { AssessmentApi, Row } from './assessment.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 /**
  * Desktop assessor: units allotted for desktop verification — accept/reject, then assess. Port of
@@ -17,19 +19,14 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
  */
 @Component({
   selector: 'zed-staff-da-verification',
-  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent, ContentTextComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, ListSearchComponent, ContentTextComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ surveillance ? 'Surveillance Assessments' : 'Desktop Verification' }}</h3>
-        <p class="page-sub">{{ surveillance ? 'Surveillance assessments allotted to you; verify them here after the final submit in the Surveillance app.' : 'Units allotted to you for desktop verification: accept or reject them, then assess.' }}</p>
-      </div>
-      <div class="page-actions">
-        <button type="button" class="refresh-link btn btn-default" (click)="load()">
-          <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-        </button>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card with a status chip per unit. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: title }]" [title]="title">
+      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="counts()" />
 
     @if (notice(); as n) {
       <div class="alert alert-dismissible" [class.alert-success]="n.ok" [class.alert-danger]="!n.ok" role="status">
@@ -38,23 +35,36 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
       </div>
     }
 
-    <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-ver-search" [found]="view.total()" />
+    <div class="list-card">
+    <div class="list-card-head">
+      <b>Units</b>
+      <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-ver-search" [found]="view.total()" />
+    </div>
     <div class="table-responsive">
-      <table class="table table-zed table-bordered">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 140px">Action(s)</th>
-            <th class="text-center">Certification Level</th>
-            <th>Unit Details</th>
-            <th>Unit SPOC Details</th>
-            <th>Agency Details</th>
+            <th>Unit</th>
+            <th>Level</th>
+            <th>Unit SPOC</th>
+            <th>Agency</th>
+            <th>Status</th>
+            <th style="width: 140px"><span class="visually-hidden">Action(s)</span></th>
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track t(s, 'ZedId') + t(s, 'Certification')) {
             <tr>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
+              <td class="unit unit-cell">
+                <b>{{ t(s, 'PUnitName') }}</b>
+                <small><span class="dash-text-clr">{{ t(s, 'ZedId') }}</span> · {{ t(s, 'UnitAddress') }}</small>
+              </td>
+              <td><span class="lv-tag" [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ t(s, 'UnitSpocEmailId') }}</span></td>
+              <td>{{ t(s, 'AgencyName') }}<span class="sub">{{ t(s, 'CertificationBodyUserId') }}</span></td>
+              <td><span class="chip" [class]="'chip ' + stateOf(s).tone">{{ stateOf(s).label }}</span></td>
+              <td>
+                <div class="row-actions">
                   @if (legacy.profile(t(s, 'ZedId')); as href) {
                     <a [href]="href" class="btn btn-outline-primary">View Profile</a>
                   }
@@ -66,26 +76,16 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
                     <a [routerLink]="['/staff/assessment/da-details', t(s, 'ZedId'), t(s, 'Certification')]" class="btn btn-primary">ASSESS</a>
                   }
                 </div>
-                @if (f(s, 'DesktopAccepted') && surveillance && nm(s, 'CertificationStatus') < 2) {
-                  <span class="status-badge is-pending mt-2">Pending in the Surveillance app</span>
-                }
               </td>
-              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
-              <td class="unit">
-                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
-                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
-                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
-              </td>
-              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
-              <td><strong>{{ t(s, 'AgencyName') }}</strong><div class="muted">{{ t(s, 'CertificationBodyUserId') }}</div></td>
             </tr>
           } @empty {
-            <tr><td colspan="5" style="padding: 0"><div class="no-data">No Data</div></td></tr>
+            <tr><td colspan="6" style="padding: 0"><div class="no-data">No Data</div></td></tr>
           }
         </tbody>
       </table>
     </div>
     <zed-pager [pager]="view" />
+    </div>
 
     @if (acceptFor(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="dvAcceptTitle">
@@ -139,7 +139,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
       </div>
     }
   `,
-  styles: `.unit { min-width: 200px; }`,
+  styles: `.unit { min-width: 220px; }`,
 })
 export class DaVerificationPage {
   private readonly api = inject(AssessmentApi);
@@ -150,6 +150,27 @@ export class DaVerificationPage {
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
+  protected readonly title = this.surveillance ? 'Surveillance assessments' : 'Desktop verification';
+
+  /** Where a unit stands for the assessor (the chip of its row). */
+  protected stateOf(s: Row): { label: string; tone: string } {
+    if (text(s, 'DesktopReasonForRejection')) return { label: 'Rejected by you', tone: 'is-bad' };
+    if (!flag(s, 'DesktopAccepted')) return { label: 'To accept', tone: 'is-warn' };
+    if (this.surveillance && num(s, 'CertificationStatus') < 2) return { label: 'Pending in the Surveillance app', tone: 'is-info' };
+    return { label: 'To assess', tone: 'is-warn' };
+  }
+
+  /** Allotted, to accept, to assess and rejected (the counts above the list). */
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.rows();
+    const by = (label: string) => rows.filter((r) => this.stateOf(r).label === label).length;
+    return [
+      { label: 'Allotted to me', value: rows.length },
+      { label: 'To accept', value: by('To accept'), tone: 'warn' },
+      { label: 'To assess', value: by('To assess') + by('Pending in the Surveillance app'), tone: 'warn' },
+      { label: 'Rejected by me', value: by('Rejected by you'), tone: 'bad' },
+    ];
+  });
   /** Paged as the old list pages (10 per page, back to page 1 when the list changes). */
   /** The search box above the list (any column). */
   protected readonly search = signal('');

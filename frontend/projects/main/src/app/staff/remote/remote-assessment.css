@@ -7,3 +7,14 @@
 .requirement > tbody > tr > th { background: #eef6f6; color: #23474a; width: 140px; }
 .photo-name { max-width: 320px; }
 .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
+
+/* 2026-11-14 (approved frame A): the meeting card, pill tabs, the tab's content on white. */
+.meet-card { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: #fff; border: 1px solid #dfe9ea; border-left: 4px solid #23656b;
+  border-radius: 0 10px 10px 0; padding: 10px 14px; margin-bottom: 14px; font-size: 14px; color: #23474a; }
+.meet-card > span { flex: 1 1 260px; }
+.meet-card .join-meeting { font-weight: 700; }
+.tabs-v2 > .nav-tabs { border-bottom: 0; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.tabs-v2 > .nav-tabs .nav-link { border: 1px solid #d9eef0; border-radius: 16px; background: #eef6f6; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 5px 14px; }
+.tabs-v2 > .nav-tabs .nav-link.active { background: #23656b; border-color: #23656b; color: #fff; }
+.tabs-v2 > .tab-content { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 18px; }
+.tabs-v2 > .tab-content > .tab-title { display: none; }

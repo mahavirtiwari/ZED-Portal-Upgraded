@@ -214,7 +214,7 @@ describe('assessment list pages', () => {
       rows: [{ RowNumber: 1, ZedId: 'ZEDMSME000001', RejectedZedId: 'ZEDMSME000001_D_45', Certification: 'Bronze' }], totalCount: 1, pageNo: 1, pageSize: 20,
     });
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Rejected Certification');
+    expect(el.querySelector('h2')!.textContent).toContain('Rejected Certification');
     expect(el.querySelector('a[href="/staff/assessment/da-details/ZEDMSME000001_D_45/Bronze"]')).toBeTruthy();
   });
 

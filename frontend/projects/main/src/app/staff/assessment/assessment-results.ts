@@ -9,6 +9,8 @@ import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
 import { levelCodes, levelName } from '../../msme/shared/levels';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCounts } from '../list-counts';
 
 /** Certificates and reports for staff (authorised downloads, same visibility as the DA review page). */
 const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
@@ -26,20 +28,21 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
  */
 @Component({
   selector: 'zed-staff-assessment-results',
-  imports: [FormsModule, RouterLink, PagerComponent],
+  imports: [FormsModule, RouterLink, PagerComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ heading() }}</h3>
-        <p class="page-sub">{{ subtitle() }}</p>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the count, the filters and the list in one card. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: heading() }]" [title]="heading()">
+      <button type="button" class="btn btn-outline-secondary btn-sm" (click)="search()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="[{ label: completed() ? 'Completed' : 'Rejected', value: pager.total(), tone: completed() ? 'good' : 'bad' }]" />
 
     @if (error()) {
       <div class="alert alert-danger" role="alert">{{ error() }}</div>
     }
 
-    <div class="zed-card">
+    <div class="list-card">
+    <div class="list-card-head">
       <div class="filter-bar">
         @if (surveillance && !completed()) {
           <!-- Rejected Surveillance (that portal's Rejected.cshtml): only the level, Bronze/Silver/Gold. -->
@@ -109,7 +112,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
     </div>
 
     <div class="table-responsive">
-      <table class="table table-bordered table-zed">
+      <table class="table table-zed">
         <thead>
           @if (consultancy) {
             <tr>
@@ -309,6 +312,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
     </div>
 
     <zed-pager [pager]="pager" [sizes]="sizes" />
+    </div>
 
     @if (loading()) {
       <div class="loadingdiv" style="display: block" role="status" aria-live="polite">
@@ -317,7 +321,8 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
     }
   `,
   styles: `
-    .unit { min-width: 200px; }
+    .unit { min-width: 220px; }
+    .list-card-head .filter-bar { width: 100%; margin: 0; }
     .stack > div + div { margin-top: 6px; }
   `,
 })

@@ -241,7 +241,7 @@ describe('RemoteAssessmentsPage (consultancy milestone list)', () => {
       { ZedId: 'ZEDMSME000001', Certification: 'Silver', EnterpriseName: 'Acme', BdsToDate: 'October 30, 2026', ConsultantRole: 'Lead Consultant' },
     ]);
     await settle(fixture);
-    expect(el.querySelector('h3')!.textContent).toContain('Milestone 2');
+    expect(el.querySelector('h2')!.textContent).toContain('Milestone 2');
     expect(el.textContent).toContain('October 30, 2026');
     expect((el.querySelector('a.details') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/consultancy/milestones/ZEDMSME000001/Silver');
     // As the old list: "View Profile" before VIEW DETAILS, and no consultant role under the certification.
@@ -270,7 +270,7 @@ describe('RemoteAssessmentsPage (surveillance)', () => {
     await settle(fixture);
     expect((el.querySelector('a.assess') as HTMLAnchorElement).getAttribute('href')).toBe('/staff/remote/ZEDMSME000001/Silver');
     expect(el.textContent).toContain('Remote');
-    expect(el.textContent).toContain('Surveillance Date');
+    expect(el.textContent).toContain('Surveillance date');
     expect(el.textContent).not.toContain('VIEW DETAILS');
   });
 

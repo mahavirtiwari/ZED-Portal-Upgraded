@@ -1,9 +1,5 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Technology Upgradation</h3>
-    <p class="page-sub">Technology upgradation applications: allotment to consultant organisations and consultants, and their verification.</p>
-  </div>
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header, the status tabs (with their counts), the list in one card. -->
+<zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: 'Technology upgradation' }]" title="Technology upgradation" />
 <!-- No tab bar for the MSME-DFO officer, as on the old page. -->
 @if (!isDfo()) {
   <div class="status-tabs" role="group" aria-label="Application status">
@@ -21,9 +17,13 @@
 @if (success()) {
   <div class="alert alert-success" role="status">{{ success() }}</div>
 }
-<zed-list-search [(value)]="search" placeholder="Search applications" inputId="tu-sub-search" [found]="view.total()" />
+<div class="list-card">
+<div class="list-card-head">
+  <b>Applications</b>
+  <zed-list-search [(value)]="search" placeholder="Search applications" inputId="tu-sub-search" [found]="view.total()" />
+</div>
 <div class="table-responsive">
-  <table class="table table-bordered table-zed">
+  <table class="table table-zed">
     <thead>
       <tr>
         <th class="text-center" style="width: 140px">Action(s)</th>
@@ -115,6 +115,7 @@
   </table>
 </div>
 <zed-pager [pager]="view" />
+</div>
 
 @if (dialog(); as d) {
   <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="tuDialogTitle">

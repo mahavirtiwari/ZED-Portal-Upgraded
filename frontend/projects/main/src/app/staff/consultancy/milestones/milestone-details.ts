@@ -12,6 +12,9 @@ import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveReq
 import { BulletType, MilestoneBullet, MilestoneDetails, MilestoneMeeting, MilestonePhoto, MilestonesApi, Row, milestoneLevel } from './milestones.api';
 import { RequirementVideo } from '../../../msme/shared/requirement-video';
 import { ParameterNav } from '../../../msme/shared/parameter-status';
+import { Location } from '@angular/common';
+import { PageHead } from '../../../msme/shared/page-head';
+import { UnitFacts } from '../../../msme/shared/unit-facts';
 
 /** Tabs of the old consultancy SaDetails page. */
 export const MILESTONE_TABS: Record<number, string> = {
@@ -163,10 +166,18 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
  */
 @Component({
   selector: 'zed-consultancy-milestone-details',
-  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog, RequirementVideo],
+  imports: [RouterLink, FormsModule, NgTemplateOutlet, ContentTextComponent, CheckpointDialog, RequirementVideo, PageHead, UnitFacts],
   templateUrl: './milestone-details.html',
   host: { '(document:keydown.escape)': 'preview.set(null)' },
   styles: [CHECKPOINT_CHIP_STYLES, `
+    /* 2026-11-14 (approved frame A): pill tabs, the tab's content on white, light key-value tables. */
+    .cd-v2 > .tab-title { display: none; }
+    .cd-v2 > .nav-tabs { border-bottom: 0; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .cd-v2 > .nav-tabs .nav-link { border: 1px solid #d9eef0; border-radius: 16px; background: #eef6f6; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 5px 14px; }
+    .cd-v2 > .nav-tabs .nav-link.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .cd-v2 > .tab-content { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 18px; }
+    .cd-v2 table.details th { background: #f8fbfb !important; color: #5f6f70 !important; font-weight: 700; font-size: 13px; }
+    .cd-v2 table.details td, .cd-v2 table.details th { border-color: #eef3f3 !important; }
     .details { margin-bottom: 0; }
     .w-40 { width: 40%; }
     /* Section bars (the old page's black "panel-black" headings). */
@@ -246,6 +257,21 @@ export class MilestoneDetailsPage {
 
   protected readonly level = computed(() => milestoneLevel(this.certification()));
   protected readonly milestone = computed(() => this.data()?.milestone ?? 0);
+  /** 2026-11-14 (frame A): "Pump Engineers · Silver handholding" (the ZED ID until loaded). */
+  protected readonly headTitle = computed(() => {
+    const m1 = this.milestoneRow(1);
+    const unit = (m1 && text(m1, 'PUnitName')) || this.zedId();
+    return `${unit} · ${(m1 && text(m1, 'Certification')) || this.certification()} handholding`;
+  });
+  protected readonly headCrumbs = computed(() => [
+    { label: 'Home', link: '/staff' },
+    ...(this.milestone() ? [{ label: `Milestone ${this.milestone()}`, link: `/staff/site-assessment/milestones/${this.milestone()}` }] : []),
+    { label: this.zedId() },
+  ]);
+  private readonly location = inject(Location);
+  protected goBack(): void {
+    this.location.back();
+  }
   protected readonly perms = computed(() => this.data()?.permissions);
   /** The milestone rows in order (the old page's msme, msme2, msme3). */
   protected readonly milestoneRows = computed(() => (this.data()?.milestones ?? []).slice(0, 3));

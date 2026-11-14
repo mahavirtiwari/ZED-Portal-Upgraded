@@ -6,6 +6,8 @@ import { ASSESSMENT_SYSTEM, Expanded, flag, num, text, useLegacyPortal } from '.
 import { AssessmentApi, Person, Row, serves } from './assessment.api';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
 import { mayAssess } from '../users/assessor-scope';
+import { PageHead } from '../../msme/shared/page-head';
+import { ListCount, ListCounts } from '../list-counts';
 
 /**
  * Agency (desktop verification): allot its MSMEs to its desktop assessors, or reject them. Port of
@@ -15,19 +17,14 @@ import { mayAssess } from '../users/assessor-scope';
  */
 @Component({
   selector: 'zed-staff-da-allotment',
-  imports: [FormsModule, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, PagerComponent, ListSearchComponent, PageHead, ListCounts],
+  host: { class: 'list-v2 d-block' },
   template: `
-    <div class="page-head">
-      <div>
-        <h3 class="registration-title">{{ surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments' }}</h3>
-        <p class="page-sub">{{ surveillance ? 'Allot the surveillance assessments to your assessors, or re-allot them until the assessor starts.' : 'Accept the MSMEs allotted to your agency and allot them to a desktop assessor, or reject them.' }}</p>
-      </div>
-      <div class="page-actions">
-        <button type="button" class="refresh-link btn btn-default" (click)="load()">
-          <img src="Images/svgicons/refresh.svg" alt="" /> <span>Refresh Data</span>
-        </button>
-      </div>
-    </div>
+    <!-- 2026-11-14 (approved frame A): the shared header, the counts, the list in one card. -->
+    <zed-page-head [crumbs]="[{ label: 'Home', link: '/staff' }, { label: pageTitle }]" [title]="pageTitle">
+      <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="load()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    </zed-page-head>
+    <zed-list-counts [counts]="counts()" />
 
     @if (surveillance) {
       <!-- That portal's DaAllotment.cshtml: an "Enter ZED ID" search box. -->
@@ -48,25 +45,51 @@ import { mayAssess } from '../users/assessor-scope';
       </div>
     }
 
-    <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-allot-search" [found]="view.total()" />
+    <div class="list-card">
+    <div class="list-card-head">
+      <b>Units</b>
+      <zed-list-search [(value)]="search" placeholder="Search units" inputId="da-allot-search" [found]="view.total()" />
+    </div>
     <div class="table-responsive">
-      <table class="table table-bordered table-zed">
+      <table class="table table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 140px">Action(s)</th>
-            <th class="text-center" style="width: 110px">Status</th>
-            <th class="text-center">Certification Level</th>
-            <th>Unit Details</th>
-            <th>Unit SPOC Details</th>
-            <th>Assessor Details</th>
+            <th>Unit</th>
+            <th>Level</th>
+            <th>Unit SPOC</th>
+            <th>Assessor</th>
+            <th style="width: 130px">Status</th>
             <th>Reason For Rejection</th>
+            <th style="width: 140px"><span class="visually-hidden">Action(s)</span></th>
           </tr>
         </thead>
         <tbody>
           @for (s of view.page(); track key(s)) {
             <tr>
-              <td class="text-center">
-                <div class="row-actions justify-content-center">
+              <td class="unit unit-cell">
+                <b>{{ t(s, 'PUnitName') }}</b>
+                <small><span class="dash-text-clr">{{ t(s, 'ZedId') }}</span> · {{ t(s, 'UnitAddress') }}</small>
+              </td>
+              <td><span [class]="'lv-tag lv-' + t(s, 'Certification').toLowerCase()">{{ t(s, 'Certification') }}</span></td>
+              <td><b>{{ t(s, 'UnitSpocName') }}</b><span class="sub">{{ t(s, 'UnitSpocMobileNo') }}</span><span class="sub">{{ t(s, 'UnitSpocEmailId') }}</span></td>
+              <td>{{ t(s, 'DaAssessorName') }}<span class="sub">{{ t(s, 'DesktopAssessorId') }}</span></td>
+              <td>
+                @if (t(s, 'DesktopReasonForRejection')) { <span class="chip is-bad">ASSESSOR REJECTED</span> }
+                @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
+                  <span class="chip is-info">ALLOTED TO ASSESSOR</span>
+                }
+                @if (!t(s, 'DesktopAssessorId')) { <span class="chip is-warn">Allotment Pending</span> }
+              </td>
+              <td class="reason">
+                @if (t(s, 'DesktopReasonForRejection'); as reason) {
+                  <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
+                  @if (reason.length > 120) {
+                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
+                  }
+                }
+              </td>
+              <td>
+                <div class="row-actions">
                   @if (legacy.profile(t(s, 'ZedId')); as href) {
                     <a [href]="href" class="btn btn-outline-primary">View Profile</a>
                   }
@@ -81,29 +104,6 @@ import { mayAssess } from '../users/assessor-scope';
                   }
                 </div>
               </td>
-              <td class="text-center">
-                @if (t(s, 'DesktopReasonForRejection')) { <span class="status-badge is-rejected">ASSESSOR REJECTED</span> }
-                @if (!t(s, 'DesktopReasonForRejection') && t(s, 'DesktopAssessorId') && (surveillance || !f(s, 'DesktopAccepted'))) {
-                  <span class="status-badge is-info">ALLOTED TO ASSESSOR</span>
-                }
-                @if (!t(s, 'DesktopAssessorId')) { <span class="status-badge is-pending">Allotment Pending</span> }
-              </td>
-              <td class="text-center"><strong>{{ t(s, 'Certification') }}</strong></td>
-              <td class="unit">
-                <strong class="dash-text-clr">{{ t(s, 'ZedId') }}</strong>
-                <div><strong>{{ t(s, 'PUnitName') }}</strong></div>
-                <div class="muted">{{ t(s, 'UnitAddress') }}</div>
-              </td>
-              <td><strong>{{ t(s, 'UnitSpocName') }}</strong><div>{{ t(s, 'UnitSpocMobileNo') }}</div><div class="muted">{{ t(s, 'UnitSpocEmailId') }}</div></td>
-              <td><strong>{{ t(s, 'DaAssessorName') }}</strong><div class="muted">{{ t(s, 'DesktopAssessorId') }}</div></td>
-              <td class="reason">
-                @if (t(s, 'DesktopReasonForRejection'); as reason) {
-                  <div [class.clamp-3]="!more.has(key(s))" [title]="reason">{{ reason }}</div>
-                  @if (reason.length > 120) {
-                    <button type="button" class="btn btn-link btn-sm p-0" (click)="more.toggle(key(s))">{{ more.has(key(s)) ? 'less' : 'more' }}</button>
-                  }
-                }
-              </td>
             </tr>
           } @empty {
             <tr><td colspan="7" style="padding: 0"><div class="no-data">No Data</div></td></tr>
@@ -112,6 +112,7 @@ import { mayAssess } from '../users/assessor-scope';
       </table>
     </div>
     <zed-pager [pager]="view" />
+    </div>
 
     @if (allotFor(); as c) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="daAllotTitle">
@@ -179,6 +180,16 @@ export class DaAllotmentPage {
   protected readonly surveillance = inject(ASSESSMENT_SYSTEM) === 'surveillance';
 
   protected readonly rows = signal<Row[]>([]);
+  protected readonly pageTitle = this.surveillance ? 'Allot Surveillance Assessments' : 'Allot DA Assessments';
+  /** Waiting, allotted and rejected by the assessor (the counts above the list). */
+  protected readonly counts = computed<ListCount[]>(() => {
+    const rows = this.rows();
+    return [
+      { label: 'Allotment pending', value: rows.filter((r) => !text(r, 'DesktopAssessorId')).length, tone: 'warn' },
+      { label: 'Allotted to an assessor', value: rows.filter((r) => !!text(r, 'DesktopAssessorId') && !text(r, 'DesktopReasonForRejection')).length, tone: 'good' },
+      { label: 'Rejected by the assessor', value: rows.filter((r) => !!text(r, 'DesktopReasonForRejection')).length, tone: 'bad' },
+    ];
+  });
   /** Surveillance: the ZED ID searched for (applied on Search / Enter, as the old page reloaded the list then). */
   private readonly zedIdFilter = signal('');
   protected zedIdText = '';

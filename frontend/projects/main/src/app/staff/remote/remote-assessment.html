@@ -1,25 +1,17 @@
-<div class="page-head">
-  <div>
-    <h3 class="registration-title">Assessment Details</h3>
-    <p class="page-sub head-ids">
-      <strong class="dash-text-clr">{{ t(msme(), 'ZedId') || zedId }}</strong>
-      @if (t(msme(), meetingMode() ? 'PUnitName' : 'EnterpriseName'); as unit) { <span>{{ unit }}</span> }
-      @if (certification) { <span class="zed-chip">{{ certification }}</span> }
-    </p>
-  </div>
-  <div class="page-actions">
-    @if (!meetingMode()) {
-      <button type="button" class="refresh-link btn btn-default" (click)="refresh()">
-        <img src="Images/svgicons/refresh.svg" alt="" /> <span>REFRESH</span>
-      </button>
-    }
-    <!-- Surveillance (that portal's Remote/Index.cshtml): a Refresh button and the unit's assessment report. -->
-    @if (meetingMode()) {
-      <button type="button" class="btn btn-default refresh" (click)="refresh()">Refresh</button>
-      <a class="btn btn-outline-primary assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">ASSESSMENT REPORT <i class="fa fa-download" aria-hidden="true"></i></a>
-    }
-  </div>
-</div>
+<!-- 2026-11-14 (approved frame A): the shared header and the key facts strip; the meeting card above the tabs (pills). -->
+<zed-page-head [crumbs]="headCrumbs()" [title]="headTitle()">
+  <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
+  @if (meetingMode()) {
+    <button type="button" class="btn btn-outline-secondary btn-sm refresh" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+    <a class="btn btn-outline-primary btn-sm assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">ASSESSMENT REPORT <i class="fa fa-download" aria-hidden="true"></i></a>
+  } @else {
+    <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
+  }
+</zed-page-head>
+@if (data()) {
+  <zed-unit-facts [msme]="factsRow()" [udyam]="t(msme(), 'UdyogAadharNo')"
+                  [extra]="[{ label: meetingMode() ? 'Surveillance date' : 'Assessment date', value: t(msme(), 'AssessmentDate') }, { label: 'Mode', value: modeLabel() }]" />
+}
 
 @if (error()) {
   <div class="alert alert-danger" role="alert">
@@ -36,11 +28,15 @@
 }
 
 @if (data(); as d) {
-  @if (!meetingMode() && d.meetingLink) {
-    <!-- 2026-11-14 (Desktop + Remote, Remote only): the remote assessment's meeting link, as the agency entered it. -->
-    <div class="alert alert-info d-flex align-items-center justify-content-between gap-2 flex-wrap" role="status" id="remoteMeeting">
-      <span>This assessment is held remotely on the agency's meeting link.</span>
-      <a class="btn btn-primary btn-sm join-meeting" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Click here to Join</a>
+  @if (meetingMode() || d.meetingLink) {
+    <!-- The meeting card: the agency's meeting link (remote assessments and meeting-link surveillance). -->
+    <div class="meet-card" role="status" id="remoteMeeting">
+      @if (d.meetingLink) {
+        <span>This {{ meetingMode() ? 'surveillance' : 'assessment' }} is held on the agency's meeting link.</span>
+        <a class="btn btn-primary btn-sm join-meeting top-join" [href]="d.meetingLink" target="_blank" rel="noopener noreferrer">Join meeting</a>
+      } @else {
+        <span class="no-meeting-link">No meeting link has been given for this assessment. Please contact the agency.</span>
+      }
     </div>
   }
   @if (d.nc; as nc) {
@@ -62,7 +58,7 @@
     </div>
   }
   <div class="row g-3">
-    <div class="zed-tabs col-lg-12">
+    <div class="zed-tabs col-lg-12 tabs-v2">
       <ul class="nav nav-tabs" role="tablist">
         @for (x of tabs(); track x.id) {
           <li class="nav-item" role="presentation">

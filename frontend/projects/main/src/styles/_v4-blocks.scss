@@ -107,3 +107,35 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .activity-choice { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; min-height: 38px; }
 .activity-choice label { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-weight: 400; }
 .activity-choice .form-check-input { margin: 0; }
+
+// 2026-11-14 (approved frame A, assessor lists first): a list in one white card (title and search on top, the table, the
+// pager at the bottom), a tidy table, the unit as name over ZED ID, the level as a tag and the status as a chip.
+.list-v2 {
+  .list-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; overflow: hidden; }
+  .list-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px;
+    border-bottom: 1px solid #eef3f3; }
+  .list-card-head > b { font-size: 14px; color: #23474a; }
+  .list-card-head zed-list-search { margin: 0; }
+  .list-card .table-responsive { margin: 0; }
+  .list-card table.table { margin: 0; border: 0; font-size: 13.5px; }
+  .list-card table.table > thead > tr, .list-card table.table.table-zed > thead > tr { background: #f4f8f8 !important; }
+  .list-card table.table > thead > tr > th, .list-card table.table.table-zed > thead > tr > th { --bs-table-bg: #f4f8f8; --bs-table-color: #5f6f70; color: #5f6f70 !important; background: #f4f8f8 !important; font-weight: 700; font-size: 12.5px; border: 0;
+    border-bottom: 1px solid #e3ecec; padding: 9px 12px; text-align: left; }
+  .list-card table.table > tbody > tr > td { border: 0; border-top: 1px solid #eef3f3; padding: 10px 12px; vertical-align: middle; text-align: left; }
+  .list-card table.table > tbody > tr:first-child > td { border-top: 0; }
+  .list-card table.table > tbody > tr:hover > td { background: #fafcfc; }
+  .list-card zed-pager { display: block; padding: 8px 14px; border-top: 1px solid #eef3f3; }
+  .list-card .no-data { margin: 0; border: 0; }
+  .unit-cell b { display: block; color: #23474a; }
+  .unit-cell small, .sub { display: block; color: #7a8a8b; font-size: 12px; }
+  .lv-tag { display: inline-block; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; background: #eef6f6; color: #23656b; white-space: nowrap; }
+  .lv-tag.lv-bronze { background: #f3e3d9; color: #8a4b25; }
+  .lv-tag.lv-silver { background: #e9eef0; color: #455a64; }
+  .lv-tag.lv-gold { background: #f6ecd0; color: #7a5a00; }
+  .chip { display: inline-block; border-radius: 12px; padding: 3px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; background: #eef1f1; color: #5f6f70; }
+  .chip.is-warn { background: #fdf1dc; color: #a86a12; }
+  .chip.is-bad { background: #fbe4e1; color: #b03a2e; }
+  .chip.is-good { background: #e3f4e8; color: #1e7a3c; }
+  .chip.is-info { background: #e5f1fb; color: #1f5f99; }
+  td .row-actions { justify-content: flex-start; }
+}

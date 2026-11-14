@@ -15,6 +15,8 @@ import { AssessmentApi, DaDetails, FinalSubmitCheck, NcRound, OpenedType, Row, c
 import { RequirementVideo } from '../../msme/shared/requirement-video';
 import { ThreadMessage, hasContent, message } from '../../msme/shared/nc-thread';
 import { ParameterChip, ParameterNav, ParameterProgress, ParameterStatus, parameterChip, parameterComplete, parameterProgress, parameterStatus, requirementStatus } from '../../msme/shared/parameter-status';
+import { Location } from '@angular/common';
+import { PageHead } from '../../msme/shared/page-head';
 
 /** Tab ids of the old page: 1 overview, 2 basic info, 9 ESG, 3 parameters, 4..8 NC1..NC5. */
 export const TAB_TITLES: Record<number, string> = {
@@ -53,7 +55,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo, PageHead],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './da-details.css',
@@ -94,6 +96,21 @@ export class DaDetailsPage {
   private request = 0;
 
   protected readonly level = computed(() => canonicalLevel(this.certification()));
+  /** 2026-11-14 (frame A): "Pump Engineers · Bronze" (the ZED ID until the unit is loaded). */
+  protected readonly headTitle = computed(() => {
+    const d = this.data();
+    const unit = text(this.msme(), 'PUnitName') || text(this.msme(), 'ZedId') || d?.zedId || 'Assessment details';
+    return `${unit} · ${text(this.msme(), 'Certification') || d?.certification || this.level() || ''}`.replace(/ · $/, '');
+  });
+  protected readonly headCrumbs = computed(() => [
+    { label: 'Home', link: '/staff' },
+    { label: 'Desktop verification', link: '/staff/assessment/da-verification' },
+    { label: text(this.msme(), 'ZedId') || this.data()?.zedId || 'Unit' },
+  ]);
+  private readonly location = inject(Location);
+  protected goBack(): void {
+    this.location.back();
+  }
   protected readonly msme = computed<Row>(() => this.data()?.msme ?? {});
   protected readonly perms = computed(() => this.data()?.permissions ?? { canAssess: false, canFinalSubmit: false, canWithdrawExemption: false, review: NO_REVIEW });
   protected readonly review = computed(() => this.perms().review ?? NO_REVIEW);
