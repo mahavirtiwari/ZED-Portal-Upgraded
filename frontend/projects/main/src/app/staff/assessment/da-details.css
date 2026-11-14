@@ -12,19 +12,23 @@
 .z-tooltip:focus-within .tooltiptext { visibility: visible; }
 .z-tooltip .tooltiptext { font-weight: 400; z-index: 30; }
 
-/* Assessment summary: key facts in a responsive grid. */
-.summary { padding: 16px 18px; }
-.summary-title { font-size: 15px; font-weight: 700; color: #1b3b3e; margin: 0 0 12px; }
-.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 22px; margin: 0; }
-.fact { min-width: 0; }
-.fact.wide { grid-column: span 2; }
-.fact dt { font-size: 11px; font-weight: 600; letter-spacing: 0.4px; text-transform: uppercase; color: #5f6f70; margin-bottom: 3px; }
-.fact dd { margin: 0; font-weight: 600; color: #1b2a2c; overflow-wrap: anywhere; }
+/* Assessment summary (2026-11-14, as the MSME profile's approved option B): a compact report, a teal bar and two
+   label-value pairs per row; a long fact (the address) takes the whole row. */
+.summary { padding: 0; overflow: hidden; border: 1px solid #e1ecec; border-radius: 6px; }
+.summary-title { font-size: 14px; font-weight: 700; color: #fff; background: #23656b; margin: 0; padding: 8px 12px; }
+.facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin: 0; background: #fff; }
+.fact { min-width: 0; display: grid; grid-template-columns: 40% minmax(0, 1fr); border-bottom: 1px solid #e1ecec; }
+.fact:nth-child(odd):not(.wide) { border-right: 1px solid #e1ecec; }
+.fact.wide { grid-column: 1 / -1; grid-template-columns: 20% minmax(0, 1fr); }
+.fact dt { font-size: 14px; font-weight: 600; color: #5f6f70; background: #f4f8f8; padding: 8px 10px; margin: 0; border-right: 1px solid #e1ecec; }
+.fact dd { margin: 0; padding: 8px 10px; font-weight: 600; color: #1b2a2c; overflow-wrap: anywhere; display: flex; align-items: center; }
 .fact .loc { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
-.map-link { font-weight: 600; color: #23656b; border: 1px solid #cfe0e2; border-radius: 7px; padding: 1px 9px; text-decoration: none; }
-.map-link:hover { border-color: #23656b; }
-@media (max-width: 991px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 575px) { .facts { grid-template-columns: minmax(0, 1fr); } .fact.wide { grid-column: auto; } }
+.map-link { font-weight: 600; color: #fff; background: #23656b; border: 1px solid #23656b; border-radius: 4px; padding: 1px 9px; text-decoration: none; }
+.map-link:hover { background: #174a4e; border-color: #174a4e; color: #fff; }
+@media (max-width: 767px) {
+  .facts { grid-template-columns: minmax(0, 1fr); }
+  .fact, .fact.wide { grid-column: auto; grid-template-columns: 40% minmax(0, 1fr); border-right: 0 !important; }
+}
 
 .nc-tag { font-weight: 700; color: #23656b; margin-right: 6px; }
 

@@ -44,7 +44,7 @@ describe('staff MSME profile', () => {
     expect((fixture.nativeElement as HTMLElement).textContent).toContain('not allotted to you');
   });
 
-  it('lays the page out as the legacy sections, in the legacy order', async () => {
+  it('lays the page out as a compact report: the sections, two fields per row', async () => {
     const { fixture, http } = create('ZEDMSME000001');
     http.expectOne('/api/staff/msme-profile/ZEDMSME000001').flush({
       unit: { ZedId: 'ZEDMSME000001', PUnitName: 'Unit One', PAddress: 'Plot 1', PDistrictName: 'Agra', PStateName: 'UP', PPin: '282001' },
@@ -54,11 +54,12 @@ describe('staff MSME profile', () => {
     fixture.detectChanges();
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h3.registration-title')?.textContent?.trim()).toBe('MSME Profile');
-    expect([...el.querySelectorAll('.zed-card > h4')].map((h) => h.textContent?.trim()).slice(0, 3))
-      .toEqual(['Basic Information', 'Selected Unit', 'Selected Unit Activity']);
-    const labels = [...el.querySelector('table')!.querySelectorAll('td:first-child')].map((td) => td.textContent?.trim());
-    expect(labels.slice(0, 4)).toEqual(['ZED ID:', 'Udyam Number:', 'Owner Name:', 'Enterprise Name:']);
-    expect(labels.at(-1)).toBe('Applied Date:');
+    expect([...el.querySelectorAll('h4.pf-bar')].map((h) => h.textContent?.trim()).slice(0, 4))
+      .toEqual(['Owner and Enterprise', 'Address and Business', 'Selected Unit', 'Selected Unit Activity']);
+    const labels = [...el.querySelector('table')!.querySelectorAll('td.pf-label')].map((td) => td.textContent?.trim());
+    expect(labels.slice(0, 4)).toEqual(['ZED ID', 'Udyam Number', 'Owner Name', 'Enterprise Name']);
+    expect(el.querySelector('table')!.querySelectorAll('tr')[0].querySelectorAll('td.pf-label').length).toBe(2);
+    expect(el.querySelector('.pf-unit')?.textContent).toContain('Unit One');
     expect(el.querySelector('[data-field="PAddress"]')?.textContent).toContain('Plot 1, Agra, UP, 282001');
     expect(el.textContent).not.toContain('EDIT PROFILE');
     expect(el.textContent).toContain('Edit History');

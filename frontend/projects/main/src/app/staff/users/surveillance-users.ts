@@ -74,7 +74,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
         <div class="table-responsive">
           <table class="table table-zed table-bordered sv-table">
             <thead>
-              <tr><th class="text-center" style="width: 100px">Status</th><th class="text-center">Agency Id</th><th>Agency Details</th><th>Spoc Details</th><th class="text-center">No. of Assessors</th><th class="text-center" style="width: 270px">Actions</th></tr>
+              <tr><th class="text-center" style="width: 100px">Status</th><th class="text-center">Agency Id</th><th>Agency Details</th><th>Spoc Details</th><th class="text-center">No. of Assessors</th><th class="text-center" style="width: 140px">Actions</th></tr>
             </thead>
             <tbody>
               @for (a of agenciesView.page(); track a.userId) {
@@ -144,7 +144,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
         <div class="table-responsive">
           <table class="table table-zed table-bordered sv-table">
             <thead>
-              <tr><th class="text-center" style="width: 100px">Status</th><th class="text-center">Assessor ID</th><th>Assessor Details</th><th>Assessor Contact Details</th><th class="text-center" style="width: 270px">Action(s)</th></tr>
+              <tr><th class="text-center" style="width: 100px">Status</th><th class="text-center">Assessor ID</th><th>Assessor Details</th><th>Assessor Contact Details</th><th class="text-center" style="width: 140px">Action(s)</th></tr>
             </thead>
             <tbody>
               @for (s of assessorsView.page(); track s.userId) {

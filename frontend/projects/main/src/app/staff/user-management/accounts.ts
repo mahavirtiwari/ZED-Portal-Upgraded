@@ -166,7 +166,7 @@ const typeHints: Readonly<Record<number, string>> = {
           <thead>
             <tr>
               <th>User</th><th class="text-center">Login Type</th><th>Contact</th>
-              <th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 300px">Actions</th>
+              <th class="text-center" style="width: 110px">Status</th><th class="text-center" style="width: 140px">Actions</th>
             </tr>
           </thead>
           <tbody>

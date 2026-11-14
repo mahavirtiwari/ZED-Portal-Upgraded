@@ -75,7 +75,7 @@ import { levelOptions } from '../../msme/shared/levels';
         <thead>
           <tr>
             <th class="text-center" style="width: 60px">S.No.</th>
-            <th class="text-center" style="width: 200px">Action(s)</th>
+            <th class="text-center" style="width: 140px">Action(s)</th>
             <th class="text-center">Certification Level</th>
             <th>Unit Details</th>
             <th>Unit SPOC Details</th>

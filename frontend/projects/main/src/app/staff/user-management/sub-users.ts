@@ -89,7 +89,7 @@ const API = '/api/staff/sub-users';
           <thead>
             <tr>
               <th>User</th><th>Contact</th><th>Screens</th><th class="text-center">Last Login</th>
-              <th class="text-center" style="width: 100px">Status</th><th class="text-center" style="width: 210px">Actions</th>
+              <th class="text-center" style="width: 100px">Status</th><th class="text-center" style="width: 140px">Actions</th>
             </tr>
           </thead>
           <tbody>

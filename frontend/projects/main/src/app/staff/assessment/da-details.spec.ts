@@ -170,6 +170,25 @@ describe('DaDetailsPage', () => {
     expect(Array.from(el.querySelectorAll('.cp-chip')).map((c) => c.textContent!.trim())).toEqual(['No']);
   });
 
+  it('shows a checkpoint with its own evidences under it and its Validate button beside the answer', async () => {
+    const checkpoints = [
+      { id: 501, requirementId: 11, optionCode: '1', text: 'Has a quality policy', actions: [],
+        evidences: [{ id: 31, name: 'Policy', mandatory: true, uploaded: true, verified: null }],
+        desktop: { value: 'Yes' as const, actions: [], remarks: null }, site: null, baseline: null, review1: null, review2: null },
+    ];
+    await open(details({ checkpoints }));
+    tab('Parameters');
+    await settle();
+    const cp = el.querySelector('[data-requirement="11"] .zp-cp-item')!;
+    // The evidence is listed under its checkpoint, without its own button; the button sits beside the answer.
+    expect(cp.querySelector('.zp-cp-ev a[href$="Evidences/5551.pdf"]')).not.toBeNull();
+    expect(cp.querySelector('.zp-ev-act')).toBeNull();
+    expect(cp.querySelector('.zp-cp-answer .cp-chip')!.textContent!.trim()).toBe('Yes');
+    expect(cp.querySelector<HTMLInputElement>('.zp-cp-answer input[type=button]')!.value).toBe('Validate');
+    // No evidence is left for the whole requirement.
+    expect(el.querySelector('[data-requirement="11"] .zp-evidences .zp-ev-row')).toBeNull();
+  });
+
   it('uploads evidence screenshots as a form', async () => {
     await open(details());
     tab('Parameters');

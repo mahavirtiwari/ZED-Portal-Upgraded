@@ -39,7 +39,8 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 .form-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
 // Small labels inside cells.
 .zed-chip { display: inline-block; background: $teal-tint; color: $teal-ink; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; margin: 2px 4px 2px 0; }
-.status-badge { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+// 2026-11-14 (approved): smaller corners and the text wraps, so the Status column can be narrow (about 110px).
+.status-badge { display: inline-block; max-width: 100%; border-radius: 4px; padding: 3px 8px; font-size: 12px; font-weight: 700; line-height: 1.3; white-space: normal; text-align: center; overflow-wrap: anywhere; }
 .status-badge.is-active, .status-badge.is-success { background: #e6f6ec; color: #1e7a3c; }
 .status-badge.is-inactive { background: #eef1f2; color: #5f6f70; }
 .status-badge.is-pending { background: #fff4d6; color: #8a6100; }
@@ -50,12 +51,22 @@ $shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
 .row-actions .btn { padding: 4px 10px; font-size: 13px; border-radius: 6px; }
 // 2026-11-13 (approved): one shape for every row button in a table, whatever its colour (the old grey "default" buttons
 // were in capitals), and three or more of them in two equal columns instead of one long, uneven line.
+// 2026-11-14 (approved): every row button the same size (112 x 30), solid dark teal with white text (reject / delete dark
+// red), 4px corners, one per line: the Action column stays narrow and no button spills into the next column. A long label
+// wraps inside the button. The colours are !important: the old grey .btn-default is (_v4-skin.scss).
+td .row-actions { flex-direction: column; flex-wrap: nowrap; align-items: center; }
 td .row-actions .btn:not(.btn-link), td.text-center > .btn:not(.btn-link) {
-  display: inline-flex; align-items: center; justify-content: center; height: 30px; padding: 0 12px; font-size: 13px;
-  font-weight: 600; line-height: 1; letter-spacing: 0; border-radius: 8px; text-transform: none !important; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center; width: 112px; max-width: 100%; min-height: 30px; height: auto;
+  margin: 0 auto; padding: 4px 8px; font-size: 13px; font-weight: 600; line-height: 1.2; letter-spacing: 0; text-align: center;
+  border-radius: 4px; text-transform: none !important; white-space: normal;
+  background: #23656b !important; border: 1px solid #23656b !important; color: #fff !important;
 }
-td .row-actions:has(> .btn ~ .btn ~ .btn) { display: inline-grid; grid-template-columns: repeat(2, minmax(92px, 1fr)); }
-td .row-actions:has(> .btn ~ .btn ~ .btn) > .btn { width: 100%; }
+td.text-center > .btn:not(.btn-link) + .btn:not(.btn-link) { margin-top: 6px; }
+td .row-actions .btn:not(.btn-link):hover, td .row-actions .btn:not(.btn-link):focus-visible,
+td.text-center > .btn:not(.btn-link):hover, td.text-center > .btn:not(.btn-link):focus-visible { background: #174a4e !important; border-color: #174a4e !important; color: #fff !important; }
+td .row-actions .btn:is(.btn-danger, .btn-outline-danger), td.text-center > .btn:is(.btn-danger, .btn-outline-danger) { background: #8f1f15 !important; border-color: #8f1f15 !important; color: #fff !important; }
+td .row-actions .btn:is(.btn-danger, .btn-outline-danger):hover, td.text-center > .btn:is(.btn-danger, .btn-outline-danger):hover { background: #6f170f !important; border-color: #6f170f !important; color: #fff !important; }
+td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-link):disabled { background: #9bb7b9 !important; border-color: #9bb7b9 !important; color: #fff !important; opacity: 1; }
 // Excel buttons in labelled groups (2026-11-13): one parameter's sheet and the level's sheet of all parameters side by side.
 .xl-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 4px 6px; border: 1px dashed #b9d8db; border-radius: 10px; }
 .xl-group.xl-group-all { border-color: #23656b; }

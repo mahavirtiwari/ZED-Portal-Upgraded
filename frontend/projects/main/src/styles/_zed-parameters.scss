@@ -72,6 +72,12 @@ $zp-muted: #5f6f70;
 .zp-cp-note { font-size: 12px; color: $zp-muted; margin-top: 2px; }
 .zp-cp-answer { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
 .zp-cp-answer .cp-chip { margin: 0; }
+// 2026-11-14 (approved): a checkpoint with its answer and, under it, its own evidences.
+.zp-cp.zp-cp-item { display: block; }
+.zp-cp-line { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.zp-cp-no { width: 22px; height: 22px; border-radius: 50%; background: #d9eef0; color: #174a4e; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.zp-cp-ev { margin: 8px 0 0 34px; border: 1px solid $zp-line; border-radius: 6px; overflow: hidden; }
+.zp-cp-item > .zp-cp-note { margin-left: 34px; margin-top: 6px; color: #8a6100; }
 .zp-ev-table { width: 100%; border-collapse: collapse; margin: 0; }
 .zp-ev-table th { text-align: left; padding: 6px 12px; border-bottom: 1px solid $zp-soft-line; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: $zp-muted; background: none; }
 .zp-ev-table td { padding: 8px 12px; border-bottom: 1px solid $zp-row-line; vertical-align: middle; background: none; }

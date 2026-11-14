@@ -49,7 +49,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
               <th>Unit SPOC Details</th>
               <th>Consultant Organisation</th>
               <th class="text-center">Site Visit dates</th>
-              <th class="text-center" style="width: 220px">Action(s)</th>
+              <th class="text-center" style="width: 140px">Action(s)</th>
             </tr>
           </thead>
           <tbody>
@@ -89,7 +89,7 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
         <table class="table table-zed table-bordered">
           <thead>
             <tr>
-              <th class="text-center" style="width: 150px">Action(s)</th>
+              <th class="text-center" style="width: 140px">Action(s)</th>
               <th class="text-center">Certification Level</th>
               <th>Unit Details</th>
               <th>Unit SPOC Details</th>

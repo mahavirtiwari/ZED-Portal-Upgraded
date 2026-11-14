@@ -55,10 +55,10 @@ interface AllotForm {
       <table class="table table-bordered table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 120px">Action(s)</th>
+            <th class="text-center" style="width: 140px">Action(s)</th>
             <th class="text-center">Certification Level</th>
             <th>Unit Details</th>
-            <th>SPOC Details</th>
+            <th>Unit SPOC Details</th>
             @if (surveillance) { <th class="text-center">Surveillance Date</th> }
             <th>Assessor Details</th>
           </tr>

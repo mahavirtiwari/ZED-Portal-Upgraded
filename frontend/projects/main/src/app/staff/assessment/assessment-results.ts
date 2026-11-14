@@ -120,7 +120,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
               @if (!isAgency()) { <th>CO Details</th> }
               @if (!isAssessor()) { <th>Consultant Details</th> }
               <th class="text-center">Date of Completion</th>
-              <th class="text-center" style="width: 220px">Action(s)</th>
+              <th class="text-center" style="width: 140px">Action(s)</th>
             </tr>
           } @else if (completed()) {
             <tr>
@@ -143,7 +143,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                 @if (!surveillance) { <th class="text-center">Surveillance Due Date</th> }
               }
               @if (!surveillance) { <th class="text-center">Duplicates</th> }
-              @if (!isAssessor()) { <th class="text-center" style="width: 220px">Action(s)</th> }
+              @if (!isAssessor()) { <th class="text-center" style="width: 140px">Action(s)</th> }
             </tr>
           } @else {
             <tr>
@@ -152,7 +152,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
               <th>Unit Details</th>
               @if (isMasterAdmin()) { <th>Agency Name</th> }
               <th class="text-center">Assessment Date<br />Rejected Date</th>
-              <th class="text-center" style="width: 220px">Action(s)</th>
+              <th class="text-center" style="width: 140px">Action(s)</th>
             </tr>
           }
         </thead>

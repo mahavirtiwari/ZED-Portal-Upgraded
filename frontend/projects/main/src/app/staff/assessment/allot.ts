@@ -86,8 +86,8 @@ import { levelCodes, levelName } from '../../msme/shared/levels';
       <table class="table table-zed table-bordered">
         <thead>
           <tr>
-            <th class="text-center" style="width: 200px">Action(s)</th>
-            <th class="text-center" style="width: 140px">Status</th>
+            <th class="text-center" style="width: 140px">Action(s)</th>
+            <th class="text-center" style="width: 110px">Status</th>
             @if (consultancy) {
               <th class="text-center">Desired Certification</th>
               <th class="text-center">Milestone</th>

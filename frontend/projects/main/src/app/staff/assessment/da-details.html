@@ -379,84 +379,61 @@
                         <span class="zp-chip zp-req-status" [attr.data-v]="rst">{{ rst }}</span>
                       </div>
 
+                      <!-- 2026-11-14 (approved): each checkpoint with its answer and its own evidences under it; evidences not tied
+                           to a checkpoint (added before checkpoints) in a last block; the conformance and remarks at the foot. -->
                       <div class="zp-req-body">
                         <div class="zp-block zp-checkpoints">
                           <div class="zp-block-head">Checkpoints</div>
                           @for (o of optionsOf(r, d.options); track $index) {
                             @let cp = checkpointOf(r, o);
-                            <div class="zp-cp">
-                              <div class="zp-cp-text">
-                                {{ t(o, 'OptionName') }}
-                                @if (subOptionsOf(o, d.subOptions).length) {
-                                  <ul>
-                                    @for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
-                                  </ul>
-                                }
-                                @if (cp?.desktop?.actions?.length || cp?.desktop?.remarks) {
-                                  <div class="zp-cp-note">
-                                    @if (cp?.desktop?.actions?.length) { <span>Actions: {{ cp?.desktop?.actions?.join(', ') }}</span> }
-                                    @if (cp?.desktop?.actions?.length && cp?.desktop?.remarks) { <span> · </span> }
-                                    @if (cp?.desktop?.remarks) { <span>Remarks: {{ cp?.desktop?.remarks }}</span> }
-                                  </div>
-                                }
+                            @let cpEv = checkpointEvidences(r, o, d.evidences);
+                            <div class="zp-cp zp-cp-item">
+                              <div class="zp-cp-line">
+                                <span class="zp-cp-no">{{ $index + 1 }}</span>
+                                <div class="zp-cp-text">
+                                  {{ t(o, 'OptionName') }}
+                                  @if (subOptionsOf(o, d.subOptions).length) {
+                                    <ul>
+                                      @for (so of subOptionsOf(o, d.subOptions); track $index) { <li>{{ t(so, 'SubOptionName') }}</li> }
+                                    </ul>
+                                  }
+                                </div>
+                                <div class="zp-cp-answer">
+                                  @if (answerOf(r, o); as a) {
+                                    <span class="cp-chip" [attr.data-v]="a">{{ a }}</span>
+                                  } @else if (withCheckpoints) {
+                                    <span class="zp-chip zp-none">Not answered</span>
+                                  }
+                                  <!-- 2026-11-14: the checkpoint's evidence is validated from here, next to its answer. -->
+                                  @if (evidenceToValidate(cpEv); as ve) {
+                                    <input type="button" [value]="t(ve, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm zp-btn" [class.btn-primary]="!t(ve, 'IsVerified')"
+                                           [class.btn-outline-primary]="!!t(ve, 'IsVerified')" [attr.aria-label]="(t(ve, 'IsVerified') ? 'Edit ' : 'Validate ') + t(ve, 'EvidenceName')" (click)="editEvidence(ve)" />
+                                  }
+                                </div>
                               </div>
-                              <div class="zp-cp-answer">
-                                @if (answerOf(r, o); as a) {
-                                  <span class="cp-chip" [attr.data-v]="a">{{ a }}</span>
-                                } @else if (withCheckpoints) {
-                                  <span class="zp-chip zp-none">Not answered</span>
-                                }
-                              </div>
+                              @if (cpEv.length) {
+                                <div class="zp-cp-ev">
+                                  <ng-container *ngTemplateOutlet="evidenceTable; context: { $implicit: cpEv, act: false }" />
+                                </div>
+                              }
+                              @if (cp?.desktop?.actions?.length || cp?.desktop?.remarks) {
+                                <div class="zp-cp-note">
+                                  @if (cp?.desktop?.actions?.length) { <span>Actions needed: {{ cp?.desktop?.actions?.join(', ') }}</span> }
+                                  @if (cp?.desktop?.actions?.length && cp?.desktop?.remarks) { <span> · </span> }
+                                  @if (cp?.desktop?.remarks) { <span>Remarks: {{ cp?.desktop?.remarks }}</span> }
+                                </div>
+                              }
                             </div>
                           } @empty {
                             <div class="zp-cp"><span class="zp-muted">No checkpoints.</span></div>
                           }
                         </div>
 
+                        @let loose = looseEvidences(r, d.evidences);
                         <div class="zp-block zp-evidences">
-                          <div class="zp-block-head">Evidences</div>
-                          @if (evidencesOf(r, d.evidences).length) {
-                            <table class="zp-ev-table">
-                              <thead><tr><th>Document</th><th>Verified</th><th>Source</th><th>Screenshots</th><th><span class="visually-hidden">Action</span></th></tr></thead>
-                              <tbody>
-                                @for (e of evidencesOf(r, d.evidences); track t(e, 'Id')) {
-                                  <tr class="zp-ev-row">
-                                    <td class="zp-ev-doc" data-label="Document">
-                                      @if (t(e, 'FileUrl')) {
-                                        <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
-                                          <span class="pdf-chip" [class.opened]="f(e, 'Opened')"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span>
-                                        </a>
-                                      } @else {
-                                        <span class="zp-ev-name">{{ t(e, 'EvidenceName') }}</span>
-                                      }
-                                      @if (t(e, 'AssessorRemarks')) { <div class="zp-ev-remarks">Remarks: {{ t(e, 'AssessorRemarks') }}</div> }
-                                    </td>
-                                    <td class="zp-ev-verified" data-label="Verified">
-                                      @if (t(e, 'IsVerified')) {
-                                        <span class="zp-chip" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span>
-                                      } @else {
-                                        <span class="zp-chip">Not checked</span>
-                                      }
-                                    </td>
-                                    <td class="zp-ev-source" data-label="Source">{{ t(e, 'SourceOfValidation') || '—' }}</td>
-                                    <td class="zp-ev-shots" data-label="Screenshots">
-                                      @if (t(e, 'IsVerified') && screenshots(e).length) {
-                                        @for (sc of screenshots(e); track sc) {
-                                          <a class="pdf-link" [href]="sc" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + ($index + 1)"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ $index + 1 }}</span></a>
-                                        }
-                                      } @else {
-                                        —
-                                      }
-                                    </td>
-                                    <td class="zp-ev-act">
-                                      @if (canChange(0) && f(e, 'ValidationRequired') && f(e, 'Opened')) {
-                                        <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm zp-btn" [class.btn-primary]="!t(e, 'IsVerified')" [class.btn-outline-primary]="!!t(e, 'IsVerified')" (click)="editEvidence(e)" />
-                                      }
-                                    </td>
-                                  </tr>
-                                }
-                              </tbody>
-                            </table>
+                          <div class="zp-block-head">{{ loose.length < evidencesOf(r, d.evidences).length ? 'Evidences of the whole requirement' : 'Evidences' }}</div>
+                          @if (loose.length) {
+                            <ng-container *ngTemplateOutlet="evidenceTable; context: { $implicit: loose, act: true }" />
                           } @else {
                             <div class="zp-block-empty zp-muted">No evidences.</div>
                           }
@@ -1059,3 +1036,50 @@
     </div>
   </div>
 }
+
+<!-- The evidence rows of a checkpoint, or of the whole requirement (Parameters tab). -->
+<ng-template #evidenceTable let-list let-act="act">
+<table class="zp-ev-table">
+    <thead><tr><th>Document</th><th>Verified</th><th>Source</th><th>Screenshots</th>@if (act) { <th><span class="visually-hidden">Action</span></th> }</tr></thead>
+    <tbody>
+      @for (e of list; track t(e, 'Id')) {
+        <tr class="zp-ev-row">
+          <td class="zp-ev-doc" data-label="Document">
+            @if (t(e, 'FileUrl')) {
+              <a class="pdf-link" [href]="t(e, 'FileUrl')" target="_blank" rel="noopener" (click)="markOpened('Evidence', e)">
+                <span class="pdf-chip" [class.opened]="f(e, 'Opened')"><span class="pdf-tag">PDF</span>{{ t(e, 'EvidenceName') || 'View PDF' }}</span>
+              </a>
+            } @else {
+              <span class="zp-ev-name">{{ t(e, 'EvidenceName') }}</span>
+            }
+            @if (t(e, 'AssessorRemarks')) { <div class="zp-ev-remarks">Remarks: {{ t(e, 'AssessorRemarks') }}</div> }
+          </td>
+          <td class="zp-ev-verified" data-label="Verified">
+            @if (t(e, 'IsVerified')) {
+              <span class="zp-chip" [attr.data-v]="t(e, 'IsVerified')">{{ t(e, 'IsVerified') }}</span>
+            } @else {
+              <span class="zp-chip">Not checked</span>
+            }
+          </td>
+          <td class="zp-ev-source" data-label="Source">{{ t(e, 'SourceOfValidation') || '—' }}</td>
+          <td class="zp-ev-shots" data-label="Screenshots">
+            @if (t(e, 'IsVerified') && screenshots(e).length) {
+              @for (sc of screenshots(e); track sc) {
+                <a class="pdf-link" [href]="sc" target="_blank" rel="noopener" [attr.aria-label]="'Screenshot ' + ($index + 1)"><span class="pdf-chip"><span class="pdf-tag">PDF</span>{{ $index + 1 }}</span></a>
+              }
+            } @else {
+              —
+            }
+          </td>
+          @if (act) {
+            <td class="zp-ev-act">
+              @if (canValidate(e)) {
+                <input type="button" [value]="t(e, 'IsVerified') ? 'Edit' : 'Validate'" class="btn btn-sm zp-btn" [class.btn-primary]="!t(e, 'IsVerified')" [class.btn-outline-primary]="!!t(e, 'IsVerified')" (click)="editEvidence(e)" />
+              }
+            </td>
+          }
+        </tr>
+      }
+    </tbody>
+  </table>
+</ng-template>

@@ -20,81 +20,42 @@
   </div>
 }
 @if (profile(); as p) {
-  <div class="zed-card">
-    <h4>Basic Information</h4>
-    @if (p.certifications.length) {
-      <p class="muted">Certifications: @for (c of p.certifications; track $index) { <span class="zed-chip">{{ c }}</span> }</p>
-    }
-    <table class="table info-table">
-      <tbody>
-        @for (r of rows; track r.field) {
-          <tr>
-            <td class="info-label">{{ r.label }}</td>
-            <td [attr.data-field]="r.field">
-              @if (editing() && r.edit) {
-                <input type="text" class="form-control" [attr.aria-label]="r.label" [attr.name]="r.edit"
-                       [attr.maxlength]="r.edit === 'ownerName' ? 200 : 250" [(ngModel)]="form[r.edit]" />
-              } @else {
-                {{ show(r.source === 'unit' ? p.unit : p.enterprise, r.field) }}
+  <!-- 2026-11-14 (option B approved): a compact report; teal section bars, two label-value pairs per row. -->
+  <div class="pf-unit">
+    <strong>{{ show(p.unit, 'PUnitName') }}</strong>
+    <span class="pf-id">{{ zedId }}</span>
+    @for (c of p.certifications; track $index) { <span class="pf-chip">{{ c }}</span> }
+  </div>
+  @for (s of sections; track s.title) {
+    <section class="pf-section">
+      <h4 class="pf-bar">{{ s.title }}</h4>
+      <table class="pf-table">
+        <tbody>
+          @for (row of s.rows; track $index) {
+            <tr>
+              @for (r of row; track r.field) {
+                <td class="pf-label">{{ r.label }}</td>
+                <td class="pf-value" [attr.data-field]="r.field" [attr.colspan]="row.length === 1 ? 3 : null">
+                  @if (editing() && r.edit === 'twoDigitActivity') {
+                    <select class="form-select" [attr.aria-label]="r.label" name="twoDigitActivity" [(ngModel)]="form.twoDigitActivity">
+                      @for (o of sectorOptions(); track o) {
+                        <option [value]="o">{{ o }}</option>
+                      }
+                    </select>
+                  } @else if (editing() && r.edit) {
+                    <input type="text" class="form-control" [attr.aria-label]="r.label" [attr.name]="r.edit"
+                           [attr.maxlength]="r.edit === 'ownerName' ? 200 : 250" [(ngModel)]="form[r.edit]" />
+                  } @else {
+                    {{ value(p, r) }}
+                  }
+                </td>
               }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-
-  <div class="profile-cols">
-    <div class="zed-card">
-      <h4>Selected Unit</h4>
-      <div class="unit-selection" data-field="PUnitName">
-        @if (editing()) {
-          <input type="text" class="form-control" aria-label="Unit Name" name="pUnitName" maxlength="250" [(ngModel)]="form.pUnitName" />
-        } @else {
-          <p>{{ show(p.unit, 'PUnitName') }}</p>
-        }
-      </div>
-      <div class="unit-selection">
-        <img src="/Images/svgicons/mapicon.svg" alt="" />
-        <div><p data-field="PAddress">{{ unitAddress() }}</p></div>
-      </div>
-    </div>
-
-    <div class="zed-card">
-      <h4>Selected Unit Activity</h4>
-      <div class="unit-selection" data-field="Activity">
-        <img src="/Images/svgicons/manufacturing.svg" alt="" /><p>{{ show(p.unit, 'Activity') }}</p>
-      </div>
-      <div class="unit-selection" data-field="TwoDigitActivity">
-        <img src="/Images/svgicons/Icon-2-Digit-Code.svg" alt="" />
-        @if (editing()) {
-          <select class="form-select" aria-label="NIC 2 Digit" name="twoDigitActivity" [(ngModel)]="form.twoDigitActivity">
-            @for (s of sectorOptions(); track s) {
-              <option [value]="s">{{ s }}</option>
-            }
-          </select>
-        } @else {
-          <p>{{ show(p.unit, 'TwoDigitActivity') }}</p>
-        }
-      </div>
-      <div class="unit-selection" data-field="FourDigitActivity">
-        <img src="/Images/svgicons/Icon-4-Digit-Code.svg" alt="" />
-        @if (editing()) {
-          <input type="text" class="form-control" aria-label="NIC 4 Digit" name="fourDigitActivity" maxlength="250" [(ngModel)]="form.fourDigitActivity" />
-        } @else {
-          <p>{{ show(p.unit, 'FourDigitActivity') }}</p>
-        }
-      </div>
-      <div class="unit-selection" data-field="FiveDigitActivity">
-        <img src="/Images/svgicons/Icon-5-Digit-Code.svg" alt="" />
-        @if (editing()) {
-          <input type="text" class="form-control" aria-label="NIC 5 Digit" name="fiveDigitActivity" maxlength="250" [(ngModel)]="form.fiveDigitActivity" />
-        } @else {
-          <p>{{ show(p.unit, 'FiveDigitActivity') }}</p>
-        }
-      </div>
-    </div>
-  </div>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
 
   @if (editing()) {
     <div class="form-actions mb-3">
@@ -104,10 +65,12 @@
   }
 
   @if (seesEditHistory) {
-    <div class="zed-card">
-      <h4>Edit History (changes made by the applicant)</h4>
-      <zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" />
-    </div>
+    <section class="pf-section">
+      <h4 class="pf-bar">Edit History (changes made by the applicant)</h4>
+      <div class="zed-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+        <zed-edit-history-table [url]="editHistoryUrl" [showOrigin]="true" />
+      </div>
+    </section>
   }
 } @else if (loading()) {
   <p role="status">Loading…</p>

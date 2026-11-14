@@ -60,7 +60,7 @@ export const STAGE_LABEL: Record<number, string> = { 1: 'Baseline Diagnostic Stu
       <table class="table table-bordered table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 190px">Action(s)</th>
+            <th class="text-center" style="width: 140px">Action(s)</th>
             <th class="text-center">Desired Certification</th>
             <th class="text-center">Milestone</th>
             <th>Unit Details</th>

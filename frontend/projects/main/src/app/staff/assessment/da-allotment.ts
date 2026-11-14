@@ -52,11 +52,11 @@ import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../p
       <table class="table table-bordered table-zed">
         <thead>
           <tr>
-            <th class="text-center" style="width: 200px">Action(s)</th>
-            <th class="text-center" style="width: 150px">Status</th>
+            <th class="text-center" style="width: 140px">Action(s)</th>
+            <th class="text-center" style="width: 110px">Status</th>
             <th class="text-center">Certification Level</th>
             <th>Unit Details</th>
-            <th>SPOC Details</th>
+            <th>Unit SPOC Details</th>
             <th>Assessor Details</th>
             <th>Reason For Rejection</th>
           </tr>

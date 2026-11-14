@@ -3,6 +3,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { RemoteAllotments } from './remote-allotments';
 
 /**
  * Frame of the staff pages: header, role-based menu and footer. Port of the staff branches of
@@ -173,9 +174,10 @@ export class StaffLayout {
   private readonly destroyRef = inject(DestroyRef);
 
   protected readonly user = this.auth.currentUser;
+  private readonly remote = inject(RemoteAllotments);
   protected readonly menu = computed(() => {
     const u = this.user();
-    return u ? menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes) : [];
+    return u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : [];
   });
   /** The menu bar: long menus fold into drop-downs as in the old layout (StaffMenuItem.group). */
   protected readonly entries = computed(() => menuEntries(this.menu()));

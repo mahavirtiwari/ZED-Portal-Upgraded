@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -52,7 +53,7 @@ export interface SummaryFact { label: string; value: string; wide?: boolean }
  */
 @Component({
   selector: 'zed-staff-da-details',
-  imports: [FormsModule, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
+  imports: [FormsModule, NgTemplateOutlet, RouterLink, ReviewActionsBar, ReviewRemarksDialog, ContentTextComponent, AppFormValuesPanel, CheckpointDialog, RequirementVideo],
   templateUrl: './da-details.html',
   styles: [DETAILS_STYLES, CHECKPOINT_CHIP_STYLES],
   styleUrl: './da-details.css',
@@ -221,6 +222,29 @@ export class DaDetailsPage {
 
   protected evidencesOf(r: Row, rows: Row[] | undefined): Row[] {
     return (rows ?? []).filter((e) => text(e, 'SectionCode') === text(r, 'SectionCode') && text(e, 'RequirementCode') === text(r, 'RequirementCode'));
+  }
+
+  /** The evidences of a requirement that belong to a checkpoint (its ids in CheckpointAnswers, migration 0039). */
+  protected checkpointEvidences(r: Row, o: Row, rows: Row[] | undefined): Row[] {
+    const ids = new Set((this.checkpointOf(r, o)?.evidences ?? []).map((e) => String(e.id)));
+    return ids.size ? this.evidencesOf(r, rows).filter((e) => ids.has(text(e, 'Id'))) : [];
+  }
+
+  /** The assessor may validate this evidence now (opened, validation required, the assessment open to them). */
+  protected canValidate(e: Row): boolean {
+    return this.canChange(0) && flag(e, 'ValidationRequired') && flag(e, 'Opened');
+  }
+
+  /** The evidence a checkpoint's Validate button opens: the first not yet validated, else the first (Edit). */
+  protected evidenceToValidate(list: Row[]): Row | null {
+    const open = list.filter((e) => this.canValidate(e));
+    return open.find((e) => !text(e, 'IsVerified')) ?? open[0] ?? null;
+  }
+
+  /** The evidences of a requirement that belong to none of its checkpoints (the whole requirement's). */
+  protected looseEvidences(r: Row, rows: Row[] | undefined): Row[] {
+    const ids = new Set(checkpointsOf(this.data()?.checkpoints, r['Id']).flatMap((c) => c.evidences.map((e) => String(e.id))));
+    return this.evidencesOf(r, rows).filter((e) => !ids.has(text(e, 'Id')));
   }
 
   protected oldProductsOf(p: Row, n: number): Row[] {

@@ -2,6 +2,7 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
 import { StaffMenuItem, StaffMenuSection, menuEntries, menuFor, staffRoleName } from './staff-menu';
+import { RemoteAllotments } from './remote-allotments';
 
 /** A heading with more screens than this is a chooser (e.g. the incentives of every state), not a list. */
 const LIST_LIMIT = 8;
@@ -139,12 +140,13 @@ export function iconFor(label: string): string {
 export class StaffHomePage {
   private readonly router = inject(Router);
   protected readonly user = inject(AuthService).currentUser;
+  private readonly remote = inject(RemoteAllotments);
   protected readonly legacyUrl = signal('');
   protected readonly listLimit = LIST_LIMIT;
   protected readonly icon = iconFor;
   private readonly entries = computed(() => {
     const u = this.user();
-    return menuEntries(u ? menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes) : []);
+    return menuEntries(u ? this.remote.filter(menuFor(u.roleId, u.subRoles ?? [], undefined, u.permissionRoutes)) : []);
   });
   protected readonly singles = computed(() => this.entries().flatMap((e) => ('item' in e ? [e.item] : [])));
   protected readonly groups = computed(() => this.entries().flatMap((e) => ('group' in e ? [e] : [])));

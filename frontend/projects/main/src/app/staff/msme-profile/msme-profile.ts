@@ -32,40 +32,94 @@ export function staffProfileLink(zedId: string): string {
   return `/staff/msme-profile/${encodeURIComponent(zedId)}`;
 }
 
-/** One row of the "Basic Information" table: label, the table it comes from and, if the SuperAdmin may edit it, its form field. */
-interface InfoRow {
+type EditField = keyof StaffMsmeProfileUpdate;
+
+/** One label and value of the report; `edit` = the SuperAdmin's form field; `wide` = the whole row (an address). */
+export interface InfoRow {
   label: string;
   source: 'unit' | 'enterprise';
   field: string;
-  edit?: 'ownerName' | 'enterpriseName' | 'emailId';
+  edit?: EditField;
+  wide?: boolean;
 }
 
-/** Labels and order of Views/Msme/Profile.cshtml ("Basic Information"). */
-const BASIC_INFO: InfoRow[] = [
-  { label: 'ZED ID:', source: 'unit', field: 'ZedId' },
-  { label: 'Udyam Number:', source: 'enterprise', field: 'UdyogAadharNo' },
-  { label: 'Owner Name:', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
-  { label: 'Enterprise Name:', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
-  { label: 'Organisation Type:', source: 'enterprise', field: 'OrganisationTypeName' },
-  { label: 'Social Category:', source: 'enterprise', field: 'SocialCategoryName' },
-  { label: 'Gender:', source: 'enterprise', field: 'Gender' },
-  { label: 'Email Id:', source: 'enterprise', field: 'EmailId', edit: 'emailId' },
-  { label: 'Mobile No.:', source: 'enterprise', field: 'MobileNo' },
-  { label: 'Physically Handicapped:', source: 'enterprise', field: 'PH' },
-  { label: 'PanNo:', source: 'enterprise', field: 'PanNo' },
-  { label: 'Registered Address:', source: 'enterprise', field: 'Address' },
-  { label: 'State:', source: 'enterprise', field: 'StateName' },
-  { label: 'District:', source: 'enterprise', field: 'DistrictName' },
-  { label: 'Pincode:', source: 'enterprise', field: 'Pincode' },
-  { label: 'Major Activity:', source: 'enterprise', field: 'MajorActivityName' },
-  { label: 'Enterprise Type:', source: 'enterprise', field: 'EnterpriseTypee' },
-  { label: 'Incorporation Date:', source: 'unit', field: 'IncorporationDate' },
-  { label: 'Whether Production Commenced:', source: 'unit', field: 'WhetherProdCommenced' },
-  { label: 'Commencement Date:', source: 'enterprise', field: 'CommmenceDate' },
-  { label: 'Total Employee:', source: 'enterprise', field: 'TotalEmp' },
-  { label: 'DIC Name:', source: 'enterprise', field: 'DicName' },
-  { label: 'Applied Date:', source: 'enterprise', field: 'AppliedDate' },
+/** One section of the report (2026-11-14, option B approved): a teal bar and two label-value pairs per row. */
+export interface InfoSection {
+  title: string;
+  rows: InfoRow[];
+}
+
+/** The fields of Views/Msme/Profile.cshtml, grouped; Selected Unit and Selected Unit Activity stay separate sections. */
+export const PROFILE_SECTIONS: InfoSection[] = [
+  {
+    title: 'Owner and Enterprise',
+    rows: [
+      { label: 'ZED ID', source: 'unit', field: 'ZedId' },
+      { label: 'Udyam Number', source: 'enterprise', field: 'UdyogAadharNo' },
+      { label: 'Owner Name', source: 'enterprise', field: 'OwnerName', edit: 'ownerName' },
+      { label: 'Enterprise Name', source: 'enterprise', field: 'EnterpriseName', edit: 'enterpriseName' },
+      { label: 'Organisation Type', source: 'enterprise', field: 'OrganisationTypeName' },
+      { label: 'Social Category', source: 'enterprise', field: 'SocialCategoryName' },
+      { label: 'Gender', source: 'enterprise', field: 'Gender' },
+      { label: 'Physically Handicapped', source: 'enterprise', field: 'PH' },
+      { label: 'Email Id', source: 'enterprise', field: 'EmailId', edit: 'emailId' },
+      { label: 'Mobile No.', source: 'enterprise', field: 'MobileNo' },
+      { label: 'PAN', source: 'enterprise', field: 'PanNo' },
+    ],
+  },
+  {
+    title: 'Address and Business',
+    rows: [
+      { label: 'Registered Address', source: 'enterprise', field: 'Address', wide: true },
+      { label: 'State', source: 'enterprise', field: 'StateName' },
+      { label: 'District', source: 'enterprise', field: 'DistrictName' },
+      { label: 'Pincode', source: 'enterprise', field: 'Pincode' },
+      { label: 'DIC Name', source: 'enterprise', field: 'DicName' },
+      { label: 'Major Activity', source: 'enterprise', field: 'MajorActivityName' },
+      { label: 'Enterprise Type', source: 'enterprise', field: 'EnterpriseTypee' },
+      { label: 'Incorporation Date', source: 'unit', field: 'IncorporationDate' },
+      { label: 'Whether Production Commenced', source: 'unit', field: 'WhetherProdCommenced' },
+      { label: 'Commencement Date', source: 'enterprise', field: 'CommmenceDate' },
+      { label: 'Total Employee', source: 'enterprise', field: 'TotalEmp' },
+      { label: 'Applied Date', source: 'enterprise', field: 'AppliedDate' },
+    ],
+  },
+  {
+    title: 'Selected Unit',
+    rows: [
+      { label: 'Unit Name', source: 'unit', field: 'PUnitName', edit: 'pUnitName', wide: true },
+      { label: 'Unit Address', source: 'unit', field: 'PAddress', wide: true },
+    ],
+  },
+  {
+    title: 'Selected Unit Activity',
+    rows: [
+      { label: 'Activity', source: 'unit', field: 'Activity' },
+      { label: 'NIC 2 Digit', source: 'unit', field: 'TwoDigitActivity', edit: 'twoDigitActivity' },
+      { label: 'NIC 4 Digit', source: 'unit', field: 'FourDigitActivity', edit: 'fourDigitActivity' },
+      { label: 'NIC 5 Digit', source: 'unit', field: 'FiveDigitActivity', edit: 'fiveDigitActivity' },
+    ],
+  },
 ];
+
+/** A section's rows as table rows: a wide field alone, the others two per row. */
+export function pairRows(rows: InfoRow[]): InfoRow[][] {
+  const out: InfoRow[][] = [];
+  let pending: InfoRow | null = null;
+  for (const r of rows) {
+    if (r.wide) {
+      if (pending) { out.push([pending]); pending = null; }
+      out.push([r]);
+    } else if (pending) {
+      out.push([pending, r]);
+      pending = null;
+    } else {
+      pending = r;
+    }
+  }
+  if (pending) out.push([pending]);
+  return out;
+}
 
 /**
  * Staff "View Profile" of a unit (all three portals). Port of Views/Msme/Profile.cshtml (Basic Information, Selected Unit,
@@ -78,19 +132,29 @@ const BASIC_INFO: InfoRow[] = [
   imports: [FormsModule, EditHistoryTable],
   templateUrl: './msme-profile.html',
   styles: `
-    .info-table { margin-bottom: 0; }
-    .info-table td { border-color: #eef3f3; padding: 8px 10px; }
-    .info-table .info-label { width: 35%; color: #5f6f70; font-weight: 600; }
-    .profile-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 18px; }
-    .unit-selection .form-control, .unit-selection .form-select { flex: 1 1 auto; margin-left: 12px; }
-    .unit-selection[data-field='PUnitName'] .form-control { margin-left: 0; }
+    .pf-unit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: -4px 0 14px; }
+    .pf-unit strong { font-size: 18px; color: #1d2b2c; }
+    .pf-unit .pf-id { color: #5f6f70; font-weight: 600; }
+    .pf-chip { display: inline-block; background: #d9eef0; color: #174a4e; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+    .pf-section { margin-bottom: 14px; }
+    .pf-bar { background: #23656b; color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; margin: 0; }
+    .pf-table { width: 100%; margin: 0; border-collapse: collapse; table-layout: fixed; background: #fff; }
+    .pf-table td { border: 1px solid #e1ecec; padding: 8px 10px; vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
+    .pf-table td.pf-label { background: #f4f8f8; color: #5f6f70; font-weight: 600; width: 20%; }
+    .pf-table td.pf-value { color: #1d2b2c; font-weight: 600; width: 30%; }
+    .pf-table .form-control, .pf-table .form-select { height: 34px; padding: 4px 8px; font-size: 14px; }
+    @media (max-width: 720px) {
+      .pf-table, .pf-table tbody, .pf-table tr, .pf-table td { display: block; width: 100% !important; }
+      .pf-table td.pf-label { border-bottom: 0; padding-bottom: 2px; }
+    }
   `,
 })
 export class StaffMsmeProfilePage {
   private readonly http = inject(HttpClient);
   private readonly roleId = inject(AuthService).currentUser()?.roleId ?? 0;
   protected readonly zedId = inject(ActivatedRoute).snapshot.paramMap.get('zedId') ?? '';
-  protected readonly rows = BASIC_INFO;
+  /** The sections of the report, each as table rows of one or two fields. */
+  protected readonly sections = PROFILE_SECTIONS.map((s) => ({ title: s.title, rows: pairRows(s.rows) }));
   protected readonly profile = signal<StaffMsmeProfile | null>(null);
   protected readonly loading = signal(true);
   protected readonly error = signal('');
@@ -184,6 +248,11 @@ export class StaffMsmeProfilePage {
 
   protected show(row: ProfileRow, field: string): string {
     return this.text(row, field) || '-';
+  }
+
+  /** A field's value; the unit address is put together from its parts. */
+  protected value(p: StaffMsmeProfile, r: InfoRow): string {
+    return r.field === 'PAddress' ? this.unitAddress() : this.show(r.source === 'unit' ? p.unit : p.enterprise, r.field);
   }
 
   protected back(): void {

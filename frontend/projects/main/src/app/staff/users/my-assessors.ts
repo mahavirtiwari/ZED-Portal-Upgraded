@@ -89,7 +89,7 @@ type StatusFilter = 'all' | 'active' | 'blocked';
                 <th>{{ consultancy ? 'User Type' : 'Type and Sector' }}</th>
                 <th>Contact Details</th>
                 <th class="text-center" style="width: 100px">Status</th>
-                <th class="text-center" style="width: 230px">Action(s)</th>
+                <th class="text-center" style="width: 140px">Action(s)</th>
               </tr>
             </thead>
             <tbody>

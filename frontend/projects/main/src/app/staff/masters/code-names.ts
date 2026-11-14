@@ -117,7 +117,7 @@ interface OtherList {
               <th>{{ labels.one }} Name</th>
               @if (isSectors) { <th style="width: 170px">Sector Type</th> }
               @if (syncing()) { <th style="width: 210px">Other portals</th> }
-              <th class="text-center" style="width: 110px">Actions</th>
+              <th class="text-center" style="width: 140px">Actions</th>
             </tr>
           </thead>
           <tbody>

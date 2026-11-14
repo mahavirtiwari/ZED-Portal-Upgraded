@@ -116,7 +116,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
                 <th>{{ labels.agency }} Details</th>
               }
               <th class="text-center" style="width: 100px">Status</th>
-              <th class="text-center" style="width: 190px">Action(s)</th>
+              <th class="text-center" style="width: 140px">Action(s)</th>
             </tr>
           </thead>
           <tbody>
