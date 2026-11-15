@@ -14,6 +14,7 @@ import { BUILT_IN_BASIC_INFO, STANDARD_KEYS } from '../src/forms';
 import { newAttendance } from '../src/attendance';
 import { syncNow } from '../src/sync/queue';
 import { EVIDENCE_ADDED, EVIDENCE_SITE_TOUR, newBasicInformation, type PhotoInformation } from '../src/models';
+import { encodeTourComment, sectionsOf, tourCounts } from '../src/siteTour';
 import { FakeServer, makeApp, type SentRequest } from './helpers/harness';
 import { loginAnswer, SA_ID, ZED_ID } from './helpers/fixtures';
 
@@ -92,6 +93,20 @@ describe('site tour (submitSitetourData)', () => {
     const r = await submitSiteTour(app, photos);
     expect(r).toMatchObject({ status: '0', errorMessage: 'No' });
     expect(server.requests.map(q => (q.json!.siteTourPhotos as unknown[]).length)).toEqual([3, 3]);
+  });
+
+  it('adds the sent photos to their sections, so the closing meeting sees them without re-opening the unit', async () => {
+    const { app } = await openAssessment();
+    const sections = sectionsOf(app.details);
+    const [first, second] = [sections[0]!, sections[1]!];
+    const photos = [
+      photoInfo('1', EVIDENCE_SITE_TOUR, { comment: encodeTourComment(sections, first.key, 'Gate') }),
+      photoInfo('2', EVIDENCE_SITE_TOUR, { comment: encodeTourComment(sections, second.key, '') }),
+      photoInfo('3', EVIDENCE_SITE_TOUR, { comment: encodeTourComment(sections, second.key, 'GRN') }),
+    ];
+    expect(await submitSiteTour(app, photos)).toMatchObject({ status: '1' });
+    const after = tourCounts(sectionsOf(app.details), [], true);
+    expect([after[first.key], after[second.key]]).toEqual([first.uploaded + 1, second.uploaded + 2]);
   });
 });
 

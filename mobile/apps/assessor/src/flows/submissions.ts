@@ -24,7 +24,7 @@ import {
   type SubmitAssessmentRequest,
   type SubmitSelfieImageRequest,
 } from '../models';
-import { sectionsOf, withSection } from '../siteTour';
+import { decodeTourComment, sectionsOf, withSection } from '../siteTour';
 
 export function baseRequest(app: SaApp): BaseServiceRequest {
   return { saId: app.saId, zedId: app.zedId, certificationType: app.certificationType };
@@ -143,7 +143,27 @@ export async function submitSiteTour(app: SaApp, photos: PhotoInformation[]): Pr
     response = await app.api.submitSiteTour({ ...baseRequest(app), siteTourPhotos: photos.slice(i, i + 3).map(p => withSection(p, sections)) });
     if (!isSuccess(response)) break;
   }
+  if (isSuccess(response)) addUploaded(app, photos);
   return response;
+}
+
+/**
+ * 2026-11-15: the sent photos join their sections' uploaded counts, so the closing meeting's check (tourCounts) sees them
+ * without re-opening the unit (the counts were those of opening the assessment). Only once every photo is sent: after a
+ * refusal the photos stay on the phone and are counted there.
+ */
+function addUploaded(app: SaApp, photos: PhotoInformation[]) {
+  const d = app.details;
+  if (!d || !photos.length) return;
+  const sections = sectionsOf(d);
+  const list = d.siteTourSections?.length
+    ? d.siteTourSections
+    : (d.siteTourSections = sections.map(s => ({ id: s.key, title: s.title, hint: s.hint, min: s.min, max: s.max, uploaded: s.uploaded })));
+  for (const p of photos) {
+    const { section } = decodeTourComment(sections, p.comment);
+    const info = section ? list.find(s => (s.id ?? s.title ?? '') === section) : undefined;
+    if (info) info.uploaded = Number(info.uploaded ?? 0) + 1;
+  }
 }
 
 export async function siteTourSubmitted(app: SaApp) {
