@@ -29,8 +29,7 @@ export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
  * The surveillance and consultancy applications had the same page (/surveillance/SA/ReportSummary/{id}?certification=X,
  * /consultancy/SA/ReportSummary/{id}?certification=X&milestone=n, linked from Certification details and mails); they
  * open the surveillance report and the handholding milestone report, which this portal now draws.
- * 2026-11-15: the reports are pages (/msme/report/..., /staff/report/...); a rejected copy's report still opens as the PDF,
- * as before.
+ * 2026-11-15: the reports are pages (/msme/report/..., /staff/report/...), a rejected copy's report included.
  */
 @Component({
   selector: 'zed-legacy-report',
@@ -40,7 +39,6 @@ export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
         <div class="alert alert-danger" role="alert">{{ message() }}</div>
       } @else {
         <p>Opening the assessment report ...</p>
-        @if (pdf()) { <p class="text-muted small">The report of a rejected application opens as a PDF.</p> }
       }
     </div>
   `,
@@ -58,8 +56,6 @@ export class LegacyReportRedirect implements OnInit {
   private readonly router = inject(Router);
   private readonly open = inject(OPEN_FILE);
   protected readonly message = signal('');
-  /** A rejected copy's report: the PDF, as before (the note above). */
-  protected readonly pdf = signal(false);
 
   ngOnInit(): void {
     void this.go();
@@ -94,15 +90,11 @@ export class LegacyReportRedirect implements OnInit {
       else this.open(PORTAL_API_BASE.consultancy + route);
       return;
     }
-    const type = system === 'surveillance' ? `${level}Surveillance` : level;
     const kind = system === 'surveillance' ? 'surveillance' : 'assessment';
-    if (!own && id.includes('_')) {
-      // A rejected copy (ZEDMSME000123_D_45): its PDF, as before.
-      this.pdf.set(true);
-      const base = system === 'surveillance' && !msme ? PORTAL_API_BASE.surveillance : '';
-      this.open(msme
-        ? `/api/msme/certification-documents/${type}/report?record=${encodeURIComponent(id)}`
-        : `${base}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
+    if (msme && !own && id.includes('_')) {
+      // A rejected copy of the MSME's own record (ZEDMSME000123_D_45): the report page, like any report (the
+      // server checks the copy belongs to the signed-in MSME).
+      await this.router.navigateByUrl(reportRoute({ kind, level, record: id }), { replaceUrl: true });
       return;
     }
     if (msme) {

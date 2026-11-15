@@ -153,15 +153,15 @@ describe('LegacyReportRedirect', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('opens the MSME report page, and the PDF of a rejected record as before (2026-11-15)', async () => {
+  it('opens the MSME report page, a rejected record included (2026-11-15)', async () => {
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     await run('ZEDMSME000001', 'bronze');
     expect(opened).toEqual([]);
     expect(navigated).toEqual(['/msme/report/assessment/Bronze']);
     TestBed.resetTestingModule();
-    const el = await run('ZEDMSME000001_D_45', 'Bronze');
-    expect(opened).toEqual(['/api/msme/certification-documents/Bronze/report?record=ZEDMSME000001_D_45']);
-    expect(el.textContent).toContain('The report of a rejected application opens as a PDF.');
+    await run('ZEDMSME000001_D_45', 'Bronze');
+    expect(opened).toEqual([]);
+    expect(navigated).toEqual(['/msme/report/assessment/Bronze?record=ZEDMSME000001_D_45']);
   });
 
   it('opens the staff report for staff and sends visitors to the login page', async () => {
@@ -170,7 +170,8 @@ describe('LegacyReportRedirect', () => {
     expect(navigated).toEqual(['/staff/report/assessment/Gold/ZEDMSME000001']);
     TestBed.resetTestingModule();
     await run('ZEDMSME000001_D_45', 'Gold');
-    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001_D_45/Gold/report']);
+    expect(opened).toEqual([]);
+    expect(navigated).toEqual(['/staff/report/assessment/Gold/ZEDMSME000001_D_45']);
     TestBed.resetTestingModule();
     user = null;
     await run('ZEDMSME000001', 'Gold');
