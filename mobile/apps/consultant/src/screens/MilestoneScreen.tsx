@@ -251,6 +251,9 @@ export function MilestoneScreen() {
   const hap = m1 ? range(profile.hapFromDate, profile.hapToDate) : null;
   const sector = profile.sectorName != null ? (profile.sectorId != null ? `${profile.sectorId}. ${profile.sectorName}` : profile.sectorName) : null;
   const place = [profile.districtName, profile.stateName, profile.pincode].filter(x => !!x && String(x).trim()).join(', ');
+  // 2026-11-15: UnitAddress glues district, state and PIN to the address ("GunturGUNTURANDHRA PRADESH522001"): the header
+  // shows the plant address and the place with commas when the profile has them.
+  const headerAddress = plant && place ? `${plant.trim().replace(/[\s,]+$/, '')}, ${place}` : address;
 
   return (
     <Page testID="assessment-options">
@@ -266,7 +269,7 @@ export function MilestoneScreen() {
           <Text style={[z.h2, { marginTop: 8 }]} testID="profile-msme-name">
             {profile.msmeName}
           </Text>
-          {address ? <Text style={[z.muted, { marginTop: 2 }]}>{address}</Text> : null}
+          {headerAddress ? <Text style={[z.muted, { marginTop: 2 }]} testID="profile-header-address">{headerAddress}</Text> : null}
           <View style={st.divider} />
           <View style={z.rowBetween}>
             <Text style={st.overline}>MILESTONE PROGRESS</Text>
