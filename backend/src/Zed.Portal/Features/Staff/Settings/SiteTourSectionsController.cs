@@ -30,11 +30,13 @@ public sealed class SiteTourSectionsController(IPortalSettings settings, ISqlExe
     [HttpGet]
     public async Task<SectionsResponse> Get(CancellationToken ct)
     {
-        // Bronze has no site tour; handholding (Consultancy) is towards Silver or Gold only.
+        // Bronze has a site tour only when its flow has a visit (2026-11-15, Administration → Certification Levels: its mode
+        // is then Site); handholding (Consultancy) is towards Silver or Gold only.
         var levels = (await CertLevels.CertificationLevels.AllAsync(db, log, ct))
             .Where(l => host.System == PortalSystem.Consultancy
                 ? l.Code is "Silver" or "Gold"
-                : !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase))
+                : !string.Equals(l.Code, "Bronze", StringComparison.OrdinalIgnoreCase)
+                  || string.Equals(l.AssessmentMode, CertLevels.CertificationLevels.Site, StringComparison.OrdinalIgnoreCase))
             .Select(l => new LevelOption(l.Code, l.Name)).ToList();
         return new SectionsResponse(await SiteTourSections.LoadAsync(settings, ct), levels, !string.IsNullOrWhiteSpace(await settings.GetAsync(SiteTourSections.Key, ct)));
     }

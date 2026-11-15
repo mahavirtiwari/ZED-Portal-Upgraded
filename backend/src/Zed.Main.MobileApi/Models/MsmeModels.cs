@@ -110,6 +110,12 @@ public class CertificationDetails
     public string? remoteStatus { get; set; }
     public string? surveillanceStatus { get; set; }
     public string? surveillanceDate { get; set; }
+    /// <summary>
+    /// "Desktop" or "Site": how the record is assessed (V4 levels: the level's mode; 2026-11-15 Bronze: its record's path,
+    /// BronzeVisitAppStatus). Not sent for Silver and Gold.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? assessmentMode { get; set; }
 
     public string? nc1StatusText { get; set; }
     public string? nc2StatusText { get; set; }
@@ -192,6 +198,6 @@ public sealed class AppLevelStatus : CertificationDetails
 {
     public string code { get; set; } = "";
     public string name { get; set; } = "";
-    /// <summary>"Desktop" or "Site".</summary>
-    public string assessmentMode { get; set; } = "Site";
+
+    public AppLevelStatus() => assessmentMode = "Site";
 }

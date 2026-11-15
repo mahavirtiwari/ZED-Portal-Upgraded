@@ -146,6 +146,8 @@ public sealed partial class MsmeController
             details.surveillanceStatus = row.Text(level + "SurveillanceStatus");
             details.surveillanceDate = row.Text(level + "SurveillanceDate");
         }
+        // 2026-11-15: a Bronze with a visit shows the visit's steps (Silver's scale and remote status).
+        await BronzeVisitAppStatus.ApplyAsync(db, userName, status, withRemote: true, log, ct);
         return LegacyJson(status);
     }
 

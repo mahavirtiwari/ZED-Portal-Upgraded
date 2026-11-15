@@ -215,6 +215,31 @@ public sealed class DocumentsSystemsTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/certification-documents/GoldSurveillance/certificate")).StatusCode);
     }
 
+    /// <summary>
+    /// 2026-11-15 (migration 0082): a Bronze certified on main after a visit, a Silver at the desktop. The surveillance round
+    /// copies main's number (by main's record) into its OWN column, so the certificate drawn from ZED_SURVEILLANCE reads the
+    /// round's procedure (Bronze SP_DA, Silver SP_RA) and is stored in the round's folder, whatever route main took.
+    /// </summary>
+    [Theory]
+    [InlineData("Bronze", "SP_DA_GET_CERTIFICATE_DETAILS", "DaCertificateNo", "SP_RA_GET_CERTIFICATE_DETAILS", "DA", "16032025_000003")]
+    [InlineData("Silver", "SP_RA_GET_CERTIFICATE_DETAILS", "SaCertificateNo", "SP_DA_GET_CERTIFICATE_DETAILS", "SA", "13042025_000004")]
+    public async Task Surveillance_certificate_of_a_level_certified_the_other_way_on_main_reads_the_rounds_own_column(
+        string level, string roundProc, string column, string otherProc, string folder, string mainNumber)
+    {
+        var round = _surveillance.Procs[roundProc];
+        _surveillance.Procs[roundProc] = args =>
+        {
+            var sets = round(args);
+            foreach (var row in sets[0]) row[column] = mainNumber;
+            return sets;
+        };
+        var client = await SignIn(_factory, Me);
+        var pdf = await Pdf(await client.GetAsync($"/api/msme/certification-documents/{level}Surveillance/certificate"), $"{level}.pdf");
+        Assert.Equal(pdf, await File.ReadAllBytesAsync(Stored($"Surveillance/Certificates/{folder}/{Me}/{level}.pdf")));
+        Assert.Single(CallsTo(_surveillance, roundProc));
+        Assert.Empty(CallsTo(_surveillance, otherProc));
+    }
+
     [Fact]
     public async Task Current_milestone_report_is_drawn_from_ZED_CONSULTANT_and_stored_under_its_legacy_name()
     {

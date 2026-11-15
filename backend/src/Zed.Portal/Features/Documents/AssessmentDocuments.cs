@@ -150,7 +150,11 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
     /// <summary>
     /// The certificate's details and where the unit was certified: 2026-11-15, from the record (status 6 with its desktop
     /// number, 16 with its site number), whatever the level's flow is now; the level's flow when the record cannot tell.
-    /// Surveillance keeps its levels' rule (Bronze desktop, others site).
+    /// Surveillance keeps its levels' rule (Bronze desktop, others site): the procedure and column are the ROUND's own (a
+    /// Bronze round ends at the desktop with its DaCertificateNo, a Silver / Gold round after its visit with its
+    /// SaCertificateNo), and since migration 0082 that column holds main's number taken by main's record (16 its site number,
+    /// 6 its desktop number), so a Bronze certified after a visit shows its site number on the Bronze surveillance artwork.
+    /// Picking the procedure by main's route would read the round's other, empty column.
     /// </summary>
     private static async Task<(IDictionary<string, object?> Row, bool AtDesktop)> CertificateRowAsync(
         ISqlExecutor db, string zedId, string level, bool surveillance, CancellationToken ct)

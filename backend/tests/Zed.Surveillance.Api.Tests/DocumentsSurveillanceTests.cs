@@ -49,9 +49,9 @@ public sealed class DocumentsSurveillanceTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private static ResultSets Certificate(string zedId, string level, string numberColumn) =>
-        Records.Any(r => r.ZedId == zedId && r.Level == level && r.Status is 6 or 16)
-            ? FakeSql.Sets([Row(("EnterpriseName", "ACME PRECISION CASTINGS UNIT 1"), (numberColumn, "21102026_1234"), ("DateOfCertification", "October 21, 2024"),
+    private static ResultSets Certificate(string zedId, string level, string numberColumn, string? number = "21102026_1234", bool anyRecord = false) =>
+        anyRecord || Records.Any(r => r.ZedId == zedId && r.Level == level && r.Status is 6 or 16)
+            ? FakeSql.Sets([Row(("EnterpriseName", "ACME PRECISION CASTINGS UNIT 1"), (numberColumn, number), ("DateOfCertification", "October 21, 2024"),
                 ("Address", "Plot No. 4, Sector 7, Industrial Area, Kanpur Nagar, Uttar Pradesh-208020"), ("UdyogAadharNo", "UDYAM-UP-29-0003915"),
                 ("NicCode", "24 - Manufacture of basic metals"), ("AssessmentAgency", level == "Bronze" ? "" : "Quality Assessors Private Limited"),
                 ("QrCodeSeqNo", "https://loginzed.msme.gov.in/Verify/BC/P12abcd"), ("DateOfSurveillance", "October 20, 2025"), ("SurveillanceNo", 1))])
@@ -105,6 +105,40 @@ public sealed class DocumentsSurveillanceTests : IDisposable
 
         var report = await docs.RenderReportAsync(Me, "Gold", default);
         Assert.Equal($"Surveillance/PDFs/SA/{Me}/Gold_Report.pdf", report.RelativePath);
+    }
+
+    /// <summary>The bundled surveillance artwork is embedded as it is (a slice of the JPEG is found in the PDF).</summary>
+    private static bool Embeds(byte[] pdf, string artwork)
+    {
+        var jpg = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "Assets", "Documents", artwork));
+        return pdf.AsSpan().IndexOf(jpg.AsSpan(jpg.Length / 2, 4096)) >= 0;
+    }
+
+    /// <summary>
+    /// 2026-11-15 (migration 0082): a round copies main's number by main's record into the round's own column, so a Bronze
+    /// certified after a visit has its site number in the Bronze round's DaCertificateNo and a Silver certified at the desktop
+    /// its desktop number in the Silver round's SaCertificateNo. The certificate reads the round's procedure and column
+    /// (the round's other column is empty) and keeps the level's own surveillance artwork and folder.
+    /// </summary>
+    [Theory]
+    [InlineData("Bronze", "SP_DA_GET_CERTIFICATE_DETAILS", "DaCertificateNo", "SP_RA_GET_CERTIFICATE_DETAILS", "SaCertificateNo", "16032025_000003", "DA", "Surveillance/DaBronze.jpg")]
+    [InlineData("Silver", "SP_RA_GET_CERTIFICATE_DETAILS", "SaCertificateNo", "SP_DA_GET_CERTIFICATE_DETAILS", "DaCertificateNo", "13042025_000004", "SA", "SaSilver.jpg")]
+    [InlineData("Gold", "SP_RA_GET_CERTIFICATE_DETAILS", "SaCertificateNo", "SP_DA_GET_CERTIFICATE_DETAILS", "DaCertificateNo", "13042025_000005", "SA", "Surveillance/SaGold.jpg")]
+    public async Task A_round_shows_mains_number_of_either_route_on_the_levels_own_surveillance_artwork(
+        string level, string roundProc, string roundColumn, string otherProc, string otherColumn, string mainNumber, string folder, string artwork)
+    {
+        _host.Sql.Procs[roundProc] = args => Certificate(FakeSql.Arg(args, "ZedId")!, level, roundColumn, mainNumber, anyRecord: true);
+        _host.Sql.Procs[otherProc] = args => Certificate(FakeSql.Arg(args, "ZedId")!, level, otherColumn, null, anyRecord: true);
+        using var scope = _host.Services.CreateScope();
+        var docs = scope.ServiceProvider.GetRequiredService<IAssessmentDocuments>();
+
+        var cert = await docs.IssueCertificateAsync(Me, level, default);
+
+        Assert.Equal($"Surveillance/Certificates/{folder}/{Me}/{level}.pdf", cert.RelativePath);
+        Assert.Equal(cert.RelativePath, DocumentLevels.SurveillanceCertificatePath(Me, level));
+        Assert.Single(_host.Sql.Calls, c => c.Name == roundProc);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == otherProc);
+        Assert.True(Embeds(cert.Content, artwork), $"{level}: {artwork}");
     }
 
     [Theory]

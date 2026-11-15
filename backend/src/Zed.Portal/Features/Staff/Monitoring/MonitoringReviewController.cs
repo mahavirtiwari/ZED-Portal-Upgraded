@@ -163,7 +163,8 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
             // 2026-11-15: the V4 procedures route by the level's flow (migration 0078: a desktop-only Silver / Gold is
             // certified at the desktop, a Bronze with a visit after it) and run the legacy ones otherwise; before 0078 is
             // applied, the legacy ones.
-            // The surveillance host (ZED_SURVEILLANCE) keeps its own legacy procedures (0078 is main's).
+            // The surveillance host (ZED_SURVEILLANCE) keeps its own legacy procedures (0078 is main's) and its rounds' flow
+            // (Bronze desktop, others site); they copy main's certificate number by main's record (migration 0082).
             var args = new { UserId, ZedId = zedId, CertificationType = level, QrCodeSeqNo = qr };
             var surveillance = HttpContext.RequestServices.GetService<PortalHost>()?.System == PortalSystem.Surveillance;
             try

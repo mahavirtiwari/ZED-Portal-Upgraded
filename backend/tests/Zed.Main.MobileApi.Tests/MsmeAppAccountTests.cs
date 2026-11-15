@@ -284,6 +284,48 @@ public sealed class MsmeAppAccountTests : MsmeAppTestBase
         Assert.Equal(1, e.GetProperty("financialAssistanceStatus").GetInt32());
     }
 
+    [Theory]
+    // A Bronze with a visit (2026-11-15): Silver's scale (2 desktop, 3 visit, 4 certified), Silver's remote status, mode Site.
+    [InlineData(2, 4, "Onsite Assessment", false, 2, "0", "Site")]
+    [InlineData(2, 9, "Remote Assessment", false, 3, "1", "Site")]
+    [InlineData(2, 13, "Remote Assessment", false, 3, "2", "Site")]
+    [InlineData(3, 16, "Onsite Assessment", false, 4, "0", "Site")]
+    [InlineData(5, 16, "Onsite Assessment", false, 5, "0", "Site")]
+    // On the desktop path (certified at the desktop, or a Desktop-only Bronze in progress): Bronze's values, mode Desktop.
+    [InlineData(3, 6, null, true, 3, null, "Desktop")]
+    [InlineData(2, 4, null, true, 2, null, "Desktop")]
+    public async Task GetMsmeStatus_gives_a_Bronze_with_a_visit_the_visit_steps(
+        int procedureValue, int certificationStatus, string? mode, bool desktopPath, int expected, string? remote, string expectedMode)
+    {
+        Host.Sql.Procs["SP_APP_MSME_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BronzeStatus"] = procedureValue, ["SilverStatus"] = 0, ["GoldStatus"] = 0, ["BronzeRemoteStatus"] = 0,
+        }]);
+        Host.Sql.Queries["SELECT TOP (1) ISNULL(c.CertificationStatus, 0) AS CertificationStatus"] = _ =>
+            [new { CertificationStatus = certificationStatus, ModeOfAssessment = mode, DesktopPath = desktopPath }];
+        var e = await Post("/Msme/GetMsmeStatus", Json($$"""{"userName":"{{ZedId}}","version":"1.0.0"}"""));
+        var bronze = e.GetProperty("bronze");
+        Assert.Equal(expected, bronze.GetProperty("status").GetInt32());
+        Assert.Equal(remote ?? "0", bronze.GetProperty("remoteStatus").GetString());
+        Assert.Equal(expectedMode, bronze.GetProperty("assessmentMode").GetString());
+        // The legacy top-level column stays the procedure's (older apps), and Silver gets no mode.
+        Assert.Equal(procedureValue, e.GetProperty("BronzeStatus").GetInt32());
+        Assert.False(e.GetProperty("silver").TryGetProperty("assessmentMode", out _));
+    }
+
+    [Fact]
+    public async Task GetMsmeStatus_leaves_Bronze_as_it_is_without_its_record()
+    {
+        Host.Sql.Procs["SP_APP_MSME_STATUS"] = _ => FakeSql.Sets([new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["BronzeStatus"] = 1, ["SilverStatus"] = 0, ["GoldStatus"] = 0,
+        }]);
+        var e = await Post("/Msme/GetMsmeStatus", Json($$"""{"userName":"{{ZedId}}","version":"1.0.0"}"""));
+        var bronze = e.GetProperty("bronze");
+        Assert.Equal(1, bronze.GetProperty("status").GetInt32());
+        Assert.False(bronze.TryGetProperty("assessmentMode", out _));
+    }
+
     [Fact]
     public async Task GetMsmeStatus_says_invalid_ZED_ID_when_the_unit_does_not_exist()
     {

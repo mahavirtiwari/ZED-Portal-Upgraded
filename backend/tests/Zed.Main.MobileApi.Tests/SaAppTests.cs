@@ -23,6 +23,7 @@ public sealed class SaAppTests : IDisposable
     private int _status = 9;
     private string _role = "3";
     private bool _active = true;
+    private string _assessorType = "Assessor";
     private readonly DateTime _tomorrow = DateTime.Today.AddDays(1).AddHours(10);
 
     public SaAppTests()
@@ -38,7 +39,7 @@ public sealed class SaAppTests : IDisposable
                 ? [new Dictionary<string, object?>
                 {
                     ["UserId"] = Lead, ["Password"] = Password, ["RoleId"] = _role, ["UserName"] = "Mahavir Tiwari", ["Email"] = "lead@zed.test",
-                    ["MobileNo"] = "9810011122", ["AssessorType"] = "Assessor", ["CertificateNo"] = "AS-123", ["SectorActivity"] = "Manufacturing",
+                    ["MobileNo"] = "9810011122", ["AssessorType"] = _assessorType, ["CertificateNo"] = "AS-123", ["SectorActivity"] = "Manufacturing",
                     ["CreatedBy"] = "ZEDAG0001", ["DesktopVerification"] = true, ["SiteVerification"] = true, ["IsActive"] = true,
                 }]
                 : [];
@@ -246,6 +247,23 @@ public sealed class SaAppTests : IDisposable
         {
             CertificationStatus = status, OpenMeetingSubmitted = open, ModeOfAssessment = mode, JoinRoomStatus = joined,
         }).Stage);
+
+    [Theory]
+    // 2026-11-15: a Bronze assessor's desktop Bronze; once Bronze's flow has a visit, Bronze is a site level, listed once.
+    [InlineData("Desktop", "Desktop")]
+    [InlineData("Site", "Site")]
+    public async Task A_Bronze_assessor_gets_Bronze_once_with_its_mode(string bronzeMode, string expectedMode)
+    {
+        _assessorType = "BronzeAssessor";
+        _t.Fake.Queries[SaAppData.LevelsSql] = _ =>
+        [
+            new { SectionType = "Bronze", DisplayName = "Bronze", AssessmentMode = bronzeMode },
+            new { SectionType = "Silver", DisplayName = "Silver", AssessmentMode = "Site" },
+        ];
+        var levels = (await SignIn()).GetProperty("profile").GetProperty("levels").EnumerateArray().ToList();
+        Assert.Equal(["Bronze", "Silver"], levels.Select(l => l.GetProperty("code").GetString()));
+        Assert.Equal(expectedMode, levels[0].GetProperty("mode").GetString());
+    }
 
     [Fact]
     public async Task Sign_in_makes_the_checks_of_login()

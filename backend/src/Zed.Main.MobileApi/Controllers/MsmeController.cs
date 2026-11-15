@@ -138,6 +138,9 @@ public sealed partial class MsmeController(
             },
             TwilioToken = null, // video calls were removed; the field stays for the installed apps
         };
+        // 2026-11-15: a Bronze with a visit shows the visit's steps (Silver's scale; Login has no remote fields).
+        if (zedId.Length > 0 && response.MsmeDetails.msmeStatus is { } loginStatus)
+            await BronzeVisitAppStatus.ApplyAsync(db, zedId, loginStatus, withRemote: false, log, ct);
 
         await devices.RememberAsync(MobileApps.Msme, zedId.Length > 0 ? zedId : userName, request.deviceInfo, ClientIp, ct);
         // The store app has no source and never sends it back: the MSME app stays in Monitor (docs/MOBILE-API.md).

@@ -80,9 +80,11 @@ public static class DocumentLevels
     /// <summary>
     /// Surveillance certificates: Surveillance/Certificates/DA/{ZedId}/Bronze.pdf, .../SA/{ZedId}/{Level}.pdf. Written by the
     /// surveillance host (and by main when it draws a missing one from ZED_SURVEILLANCE); the storage root is shared.
+    /// 2026-11-15: the folder is the surveillance round's (Bronze desktop, others site, as the round itself), not the level's
+    /// current main flow nor the route of the main certificate.
     /// </summary>
     public static string SurveillanceCertificatePath(string zedId, string level) =>
-        $"Surveillance/{CertificatePath(zedId, level)}";
+        $"Surveillance/{CertificatePath(zedId, level, Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level))}";
 
     /// <summary>PDFs/SA/{ZedId}/{Level}_Report.pdf (MonitoringController.GenerateSaRepory).</summary>
     public static string ReportPath(string zedId, string level) => $"PDFs/SA/{zedId}/{level}_Report.pdf";

@@ -222,7 +222,9 @@ public sealed partial class SAController
         }
         if (site.Count == 0)
             site = new[] { "Silver", "Gold" }.Select(l => new SaLevel { code = l, name = l, mode = "Site" }).ToList();
-        if (string.Equals(assessorType, "BronzeAssessor", StringComparison.OrdinalIgnoreCase))
+        // 2026-11-15: once Bronze's flow has a visit, Bronze is a site level above (its onsite visit in this app); listed once.
+        if (string.Equals(assessorType, "BronzeAssessor", StringComparison.OrdinalIgnoreCase)
+            && !site.Any(l => string.Equals(l.code, "Bronze", StringComparison.OrdinalIgnoreCase)))
             site.Insert(0, new SaLevel { code = "Bronze", name = "Bronze", mode = "Desktop" });
         return site;
     }
@@ -242,7 +244,7 @@ public static class SaAppData
     public const string Rejected = "rejected";
     public const string Closed = "closed";
 
-    /// <summary>The site assessment levels (RemoteAssessmentController.Levels); Bronze has no site assessment.</summary>
+    /// <summary>The site assessment levels (RemoteAssessmentController.Levels); Bronze only when its flow has a visit.</summary>
     /// 2026-11-08: every site level of Administration → Certification Levels (codes are letters and digits).
     public static string SiteLevels => string.Join(", ", LevelRegistry.Codes.Where(c => !LevelRegistry.IsDesktop(c)).Select(c => $"'{c}'"));
 

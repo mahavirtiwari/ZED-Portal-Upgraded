@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bronze With a Visit</title>
+<style>
+  :root {
+    --app: #45A5AD; --app-dark: #2F7F86; --bronze: #D87B62; --orange: #FFB243;
+    --nc-red: #DD4F5A; --nc-bg: #D87B621A; --track: #DFE1E4; --label: #595959;
+    --ink: #1F2328; --muted: #6B7178; --page: #F4F5F7; --card: #FFFFFF; --line: #E3E5E8;
+    --new: #2E7D32; --new-bg: #E8F5E9;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  main { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 17px; margin: 32px 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 16px; max-width: 760px; }
+  .row { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .caption { font-size: 13px; color: var(--muted); max-width: 300px; }
+  .tag { align-self: flex-start; display: inline-block; font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+  .tag.today { background: #FDECEC; color: #B3261E; }
+  .tag.new { background: var(--new-bg); color: var(--new); }
+
+  /* phone */
+  .phone { width: 300px; background: #fff; border-radius: 28px; border: 8px solid #22262B; overflow: hidden; box-shadow: 0 6px 24px #0002; }
+  .appbar { background: linear-gradient(90deg, var(--app-dark), var(--app)); color: #fff; padding: 14px 14px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
+  .appbar .menu { width: 18px; height: 12px; border-top: 2px solid #fff; border-bottom: 2px solid #fff; position: relative; }
+  .appbar .menu::after { content: ""; position: absolute; left: 0; right: 0; top: 3px; border-top: 2px solid #fff; }
+  .backbar { font-size: 12px; color: var(--label); padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .screen { padding: 8px; min-height: 470px; background: #fff; }
+
+  /* certification card (layout_certification_overview) */
+  .ctitle { background: var(--bronze); color: #fff; font-weight: 700; font-size: 14px; padding: 10px 12px; border-radius: 4px 4px 0 0; margin: 6px 6px 0; display: flex; justify-content: space-between; }
+  .ccard { margin: 0 6px 10px; background: #fff; border-radius: 0 0 4px 4px; box-shadow: 0 1px 3px #0003; display: flex; padding: 6px 0; }
+  .ccard.solo { border-radius: 4px; margin-top: 6px; }
+  .cleft { flex: 1; min-width: 0; }
+  .status { color: var(--orange); font-weight: 700; padding: 6px 8px; display: flex; gap: 6px; align-items: center; font-size: 14px; }
+  .status::before { content: "→"; font-size: 12px; }
+  .dots { position: relative; margin: 4px 8px 6px; display: flex; justify-content: space-between; }
+  .dots::before { content: ""; position: absolute; left: 10px; right: 10px; top: 50%; height: 2px; background: var(--track); }
+  .dot { position: relative; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--track); }
+  .dot.done { background: var(--app); border-color: var(--app); }
+  .dot.done::after { content: "✓"; color: #fff; font-size: 11px; position: absolute; inset: 0; text-align: center; line-height: 14px; }
+  .dot.cur { border-color: var(--orange); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 9px var(--orange); }
+  .dot.nc { border-color: var(--nc-red); box-shadow: inset 0 0 0 3px #fff, inset 0 0 0 9px var(--nc-red); }
+  .dotlabels { display: flex; justify-content: space-between; margin: 0 2px 4px; font-size: 9.5px; color: var(--muted); }
+  .dotlabels span { width: 46px; text-align: center; white-space: nowrap; font-size: 9px; }
+  .details { color: var(--app); font-weight: 700; font-size: 12px; letter-spacing: 1px; padding: 2px 8px; }
+  .medal { width: 52px; margin: 4px; border-radius: 4px; background: linear-gradient(160deg, #F0B39F, var(--bronze)); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 11px; writing-mode: vertical-rl; transform: rotate(180deg); }
+  .divider { width: 1px; background: var(--line); }
+  .act { width: 44px; display: flex; align-items: center; justify-content: center; color: var(--label); font-size: 20px; }
+  .ghost { opacity: .45; }
+
+  /* options (ClickableOption) */
+  .opt { display: flex; align-items: center; gap: 10px; margin: 8px 6px; padding: 12px; border-radius: 6px; border: 1px solid var(--line); }
+  .opt .ic { width: 30px; height: 30px; border-radius: 6px; background: var(--bronze); flex: none; }
+  .opt b { display: block; font-size: 14px; }
+  .opt small { color: var(--muted); font-size: 12px; }
+  .opt .go { margin-left: auto; color: var(--label); }
+  .opt.nc { background: var(--nc-bg); border-color: transparent; }
+  .opt.nc .ic { background: var(--nc-red); }
+  .opt.newopt { outline: 2px dashed var(--new); outline-offset: 2px; }
+
+  /* status dialog */
+  .dim { background: #0007; padding: 18px 10px; min-height: 470px; }
+  .dialog { background: #fff; border-radius: 8px; padding: 14px; }
+  .dialog h3 { margin: 0 0 8px; font-size: 16px; }
+  .received { background: #E7F5EA; border-radius: 6px; padding: 8px; font-size: 12.5px; margin-bottom: 6px; }
+  .step { display: flex; gap: 10px; margin: 10px 0; font-size: 12.5px; line-height: 1.45; }
+  .num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--app); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .step.pending { opacity: .5; }
+  .step.pending .num { background: var(--track); color: #fff; }
+  .step b.t { display: block; font-size: 13px; }
+  .who { font-weight: 700; }
+  .who.zed { color: var(--app); }
+  .ncbox { background: var(--nc-bg); border-radius: 5px; padding: 6px; margin-top: 4px; }
+  .ncbox .h { color: var(--nc-red); font-weight: 700; }
+  .ok { display: block; margin: 8px auto 0; background: var(--app); color: #fff; border: 0; border-radius: 4px; padding: 6px 22px; font-weight: 700; }
+  .newmark { outline: 2px dashed var(--new); outline-offset: 3px; border-radius: 4px; }
+
+  /* notes */
+  .notes { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 14px 18px; max-width: 900px; }
+  .notes li { margin: 4px 0; }
+  table { border-collapse: collapse; background: var(--card); font-size: 13.5px; width: 100%; max-width: 900px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #EEF0F2; }
+  .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+  <h1>ZED MSME app: Bronze with a visit</h1>
+  <p class="lead">When the Admin gives Bronze a flow with a visit (Desktop + Onsite, Desktop + Remote, Onsite only or Remote only), the app
+  shows the visit's own steps for that Bronze, exactly as it does for Silver and Gold. A Bronze assessed at the desktop only looks as it does today.
+  The example below is a Bronze with <b>Desktop + Onsite</b> whose desktop step is done and whose onsite visit is scheduled.</p>
+
+  <h2>1. ZED Certifications: the Bronze card</h2>
+  <div class="row">
+    <div class="col">
+      <span class="tag today">Today</span>
+      <div class="phone">
+        <div class="appbar"><span class="menu"></span>ZED Certifications</div>
+        <div class="backbar">‹ ZED ID: ZED-XXXX-0001</div>
+        <div class="screen">
+          <div class="ctitle">ZED Bronze <span>ⓘ</span></div>
+          <div class="ccard">
+            <div class="cleft">
+              <div class="status">Desktop Verification</div>
+              <div class="dots"><span class="dot done"></span><span class="dot cur"></span><span class="dot"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Desktop</span><span>Certified</span></div>
+              <div class="details">VIEW DETAILS</div>
+            </div>
+            <div class="medal">BRONZE</div><div class="divider"></div><div class="act">›</div>
+          </div>
+          <div class="ctitle ghost" style="background:#8E9499">ZED Silver <span>ⓘ</span></div>
+          <div class="ccard ghost"><div class="cleft"><div class="status">Get Started</div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="dotlabels"><span></span><span></span><span></span><span></span></div></div><div class="medal" style="background:#B7BCC0">SILVER</div><div class="divider"></div><div class="act"></div></div>
+        </div>
+      </div>
+      <p class="caption">The card keeps saying "Desktop Verification" through the whole visit, and it has no visit step.</p>
+    </div>
+
+    <div class="col">
+      <span class="tag new">Proposed</span>
+      <div class="phone">
+        <div class="appbar"><span class="menu"></span>ZED Certifications</div>
+        <div class="backbar">‹ ZED ID: ZED-XXXX-0001</div>
+        <div class="screen">
+          <div class="ctitle">ZED Bronze <span>ⓘ</span></div>
+          <div class="ccard">
+            <div class="cleft">
+              <div class="status">Onsite Assessment</div>
+              <div class="dots newmark"><span class="dot done"></span><span class="dot done"></span><span class="dot cur"></span><span class="dot"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Desktop</span><span>Onsite</span><span>Certified</span></div>
+              <div class="details">VIEW DETAILS</div>
+            </div>
+            <div class="medal">BRONZE</div><div class="divider"></div><div class="act">›</div>
+          </div>
+          <div class="ctitle ghost" style="background:#8E9499">ZED Silver <span>ⓘ</span></div>
+          <div class="ccard ghost"><div class="cleft"><div class="status">Get Started</div><div class="dots"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span></div><div class="dotlabels"><span></span><span></span><span></span><span></span></div></div><div class="medal" style="background:#B7BCC0">SILVER</div><div class="divider"></div><div class="act"></div></div>
+        </div>
+      </div>
+      <p class="caption">Four steps, like Silver: basic information, desktop, the visit (named by the flow: Onsite or Remote Assessment), certified.
+      An open NC turns the visit step red.</p>
+    </div>
+
+    <div class="col">
+      <span class="tag new">Proposed: other flows</span>
+      <div class="phone">
+        <div class="appbar"><span class="menu"></span>ZED Certifications</div>
+        <div class="backbar">‹ ZED ID: ZED-XXXX-0002</div>
+        <div class="screen">
+          <div class="ctitle">ZED Bronze · Remote only</div>
+          <div class="ccard">
+            <div class="cleft">
+              <div class="status">Remote Assessment</div>
+              <div class="dots"><span class="dot done"></span><span class="dot nc"></span><span class="dot"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Remote</span><span>Certified</span></div>
+              <div class="details">VIEW DETAILS</div>
+            </div>
+            <div class="medal">BRONZE</div><div class="divider"></div><div class="act">›</div>
+          </div>
+          <div class="ctitle">ZED Bronze · Desktop + Remote, certified</div>
+          <div class="ccard">
+            <div class="cleft">
+              <div class="status">Completed</div>
+              <div class="dots"><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Desktop</span><span>Remote</span><span>Certified</span></div>
+              <div class="details">VIEW DETAILS</div>
+            </div>
+            <div class="medal">BRONZE</div><div class="divider"></div><div class="act">›</div>
+          </div>
+          <div class="ctitle">ZED Bronze · Desktop only (as today)</div>
+          <div class="ccard">
+            <div class="cleft">
+              <div class="status">Completed</div>
+              <div class="dots"><span class="dot done"></span><span class="dot done"></span><span class="dot done"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Desktop</span><span>Certified</span></div>
+              <div class="details">VIEW DETAILS</div>
+            </div>
+            <div class="medal">BRONZE</div><div class="divider"></div><div class="act">›</div>
+          </div>
+        </div>
+      </div>
+      <p class="caption">Remote only / Onsite only have no desktop dot (top, with an open NC). A Bronze certified at the desktop before the Admin
+      changed the flow keeps its three steps (bottom).</p>
+    </div>
+  </div>
+
+  <h2>2. Opening the Bronze card, and VIEW DETAILS</h2>
+  <div class="row">
+    <div class="col">
+      <span class="tag new">Proposed</span>
+      <div class="phone">
+        <div class="appbar"><span class="menu"></span>ZED Bronze Certification</div>
+        <div class="backbar">‹ ZED ID: ZED-XXXX-0003</div>
+        <div class="screen">
+          <div class="ccard solo">
+            <div class="cleft">
+              <div class="status">Remote Assessment</div>
+              <div class="dots"><span class="dot done"></span><span class="dot done"></span><span class="dot cur"></span><span class="dot"></span></div>
+              <div class="dotlabels"><span>Basic info</span><span>Desktop</span><span>Remote</span><span>Certified</span></div>
+            </div>
+            <div class="medal">BRONZE</div>
+          </div>
+          <div class="opt"><span class="ic"></span><div><b>Basic Information &amp; Document Upload</b><small>Fill in your unit's details and upload the documents.</small></div><span class="go">›</span></div>
+          <div class="opt nc ghost"><span class="ic"></span><div><b>Non-conformances</b></div><span class="go">›</span></div>
+          <div class="opt newopt"><span class="ic" style="background:var(--app)"></span><div><b>Remote Assessment</b><small>Join your remote assessment.</small></div><span class="go">›</span></div>
+        </div>
+      </div>
+      <p class="caption">A Bronze with <b>Desktop + Remote</b> on its scheduled day: the same "Remote Assessment" option Silver and Gold have
+      (dashed outline = new for Bronze). Non-conformances lights up when the assessor raises an NC at the visit.</p>
+    </div>
+
+    <div class="col">
+      <span class="tag new">Proposed</span>
+      <div class="phone">
+        <div class="appbar"><span class="menu"></span>ZED Certifications</div>
+        <div class="dim">
+          <div class="dialog">
+            <h3>ZED Bronze Certification</h3>
+            <div class="received"><b>Application Received</b><br>12 Nov 2026</div>
+            <div class="step"><span class="num">1</span><div><b class="t">Basic Information and Document Upload</b><span class="who">YOU:</span> Submitted on 12 Nov 2026</div></div>
+            <div class="step"><span class="num">2</span><div><b class="t">Desktop Verification</b><span class="who zed">ZED:</span> Desktop verification completed on 14 Nov 2026</div></div>
+            <div class="step newmark"><span class="num">3</span><div><b class="t">Onsite Assessment</b><span class="who zed">ZED:</span> Onsite assessment scheduled on 20 Nov 2026
+              <div class="ncbox"><span class="h">Non-Conformance(s) (NC)</span> (close by 05 Dec 2026)<br><span class="who zed">ZED:</span> NC 1 raised<br><span class="who">YOU:</span> NC 1 answered</div></div></div>
+            <div class="step pending"><span class="num">4</span><div><b class="t">Get Certified!</b>Not yet</div></div>
+            <div class="step pending"><span class="num">5</span><div><b class="t">Avail Incentives</b>After certification</div></div>
+            <button class="ok">OK</button>
+          </div>
+        </div>
+      </div>
+      <p class="caption">VIEW DETAILS lists the visit as its own step, with its date and the NC rounds of the visit; the NCs no longer
+      sit under the desktop step.</p>
+    </div>
+  </div>
+
+  <h2>3. What decides which steps a Bronze shows</h2>
+  <div class="wrap">
+  <table>
+    <tr><th>Bronze record</th><th>Steps shown</th><th>Certified when</th></tr>
+    <tr><td>Flow Desktop only (today's Bronze), or no flow set</td><td>Basic info → Desktop → Certified</td><td>desktop final submit</td></tr>
+    <tr><td>Flow Desktop + Onsite / Desktop + Remote</td><td>Basic info → Desktop → Onsite / Remote Assessment → Certified</td><td>after the visit</td></tr>
+    <tr><td>Flow Onsite only / Remote only</td><td>Basic info → Onsite / Remote Assessment → Certified</td><td>after the visit</td></tr>
+    <tr><td>Already certified at the desktop, flow changed later</td><td>Basic info → Desktop → Certified (unchanged)</td><td>(already certified)</td></tr>
+  </table>
+  </div>
+
+  <h2>Notes for review</h2>
+  <div class="notes">
+    <ul>
+      <li>The steps follow the Bronze <b>record</b> (how it is being, or was, assessed), not only the level's current flow. That way a unit certified
+        at the desktop never starts to show a visit step because the Admin changed the flow afterwards.</li>
+      <li>Only the Bronze card, the Bronze screen and its VIEW DETAILS change. Silver, Gold, ZED-X, the levels the Admin added and the surveillance
+        screens stay as they are.</li>
+      <li>No new screens and no new flow. A Bronze onsite visit is the existing onsite assessment in the site assessor app (allotment, check-in,
+        photos and videos, the lead assessor's review), and a Bronze remote visit is the remote assessment Silver and Gold use today. The "Remote
+        Assessment" option and the NC screens are the ones Silver and Gold use; only the certificate artwork and QR code at the end are Bronze's own.</li>
+      <li>To build it, the server sends the Bronze stage on Silver's scale for a Bronze with a visit (desktop, visit, certified), with its remote
+        assessment status and the visit's date. The app takes Bronze's steps from that, falling back to the flow while the server has not said.</li>
+    </ul>
+  </div>
+</main>
+</body>
+</html>
