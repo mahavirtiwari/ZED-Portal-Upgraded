@@ -1,4 +1,5 @@
 import React from 'react';
+import { Linking } from 'react-native';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import NetInfo from '@react-native-community/netinfo';
 import { formatDate, StackNavigator, UiHost, zedDevice } from '@zed/shared';
@@ -64,6 +65,32 @@ describe('CertificationOptionsFragment', () => {
     expect(byTestId(r, 'option-surveillance')).toHaveLength(0); // the surveillance apps' work, not the applicant's
     expect(byTestId(r, 'option-remote')).toHaveLength(0);
     expect(texts(r)).toContain('Basic Information & Document Upload');
+  });
+
+  it('View Report opens the report page by its signed link in the browser (2026-11-15)', async () => {
+    const server = new FakeServer(req =>
+      req.url.includes('AppReportLink') ? { status: '1', url: 'https://zed.test/report/link?t=signed' } : { status: '1' },
+    );
+    const app = await signedInApp(server);
+    const c = certificationDetailsOf(app.user?.MsmeDetails?.msmeStatus, 'Bronze')!;
+    c.report = 'r.pdf';
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    try {
+      const r = render(app, 'CertificationOptions', { certificationType: 'Bronze' });
+      expect(texts(r)).toContain('View Report');
+      expect(texts(r)).not.toContain('Download Report');
+      await act(async () => handler(r, 'option-report', 'onPress').props.onPress());
+      expect(server.last('AppReportLink?certification=Bronze')?.method).toBe('GET');
+      expect(openURL).toHaveBeenCalledWith('https://zed.test/report/link?t=signed');
+
+      // Not available yet: the portal's message, no browser.
+      openURL.mockClear();
+      server.responder = req => (req.url.includes('AppReportLink') ? { status: '0', errorMessage: 'The report is available once the certification is complete.' } : { status: '1' });
+      await act(async () => handler(r, 'option-report', 'onPress').props.onPress());
+      expect(openURL).not.toHaveBeenCalled();
+    } finally {
+      openURL.mockRestore();
+    }
   });
 
   it('opens the evidences when the basic information was submitted and no final submit happened', async () => {

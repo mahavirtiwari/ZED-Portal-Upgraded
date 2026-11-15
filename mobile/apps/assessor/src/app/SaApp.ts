@@ -22,7 +22,7 @@ import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
 import { ASSESSOR_BASIC_INFO, BUILT_IN_BASIC_INFO } from '../forms';
 import { EVIDENCE_ADDED, EVIDENCE_SITE_TOUR, normalizeDetails, type AssessmentDetails } from '../models';
-import { hasUnsentWork, type AppNotification, type AssessmentSummary, type AssessorProfile, type ReportSummary } from '../portfolio';
+import { hasUnsentWork, type AppNotification, type AssessmentSummary, type AssessorProfile, type ReportLinkResponse, type ReportSummary } from '../portfolio';
 import { base64Decode, base64EncodeDefault } from '../util/base64';
 
 /** ZedCache key of an assessor's profile and assessment list (redesign). */
@@ -339,6 +339,17 @@ export class SaApp {
   reportUrl(zedId: string, certificationType: string, path?: string | null): string {
     if (path) return this.portalEnvironment.baseUrl.replace(/\/+$/, '') + '/' + path.replace(/^\/+/, '');
     return apiBase(this.portalEnvironment, 'SA/AppReport').replace(/\/$/, '') + `?zedId=${encodeURIComponent(zedId)}&certificationType=${encodeURIComponent(certificationType)}`;
+  }
+
+  /**
+   * 2026-11-15: the report as a page of the portal (built from the live data, with Download PDF there): its address signed
+   * for 10 minutes (portal SA/AppReportLink, checked with the sign-in token), which the app opens in the browser.
+   */
+  reportLink(zedId: string, certificationType: string, linkPath?: string | null): Promise<ReportLinkResponse> {
+    const url = linkPath
+      ? this.portalEnvironment.baseUrl.replace(/\/+$/, '') + '/' + linkPath.replace(/^\/+/, '')
+      : apiBase(this.portalEnvironment, 'SA/AppReportLink').replace(/\/$/, '') + `?zedId=${encodeURIComponent(zedId)}&certificationType=${encodeURIComponent(certificationType)}`;
+    return this.api.retrofit.getJson<ReportLinkResponse>(url);
   }
 
   /**

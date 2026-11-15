@@ -21,7 +21,7 @@ import { BUILT_IN_TEXTS } from '../content/builtInTexts';
 import { ASSESSMENT_DB_NAME, AssessorStore, MEDIA_DB_NAME, nativePrefs, PREFS, PROTECTED_PREFS, type Prefs } from '../db/stores';
 import { BUILT_IN_BASIC_INFO, CONSULTANT_BASIC_INFO } from '../forms';
 import { normalizeDetails, type AssessmentDetails } from '../models';
-import type { AppNotification, AssessmentSummary, AssessorProfile, ReportSummary } from '../portfolio';
+import type { AppNotification, AssessmentSummary, AssessorProfile, ReportLinkResponse, ReportSummary } from '../portfolio';
 import { base64Decode, base64EncodeDefault } from '../util/base64';
 
 /** ZedCache keys of a consultant's profile and cases, notifications and reports (redesign). */
@@ -280,6 +280,17 @@ export class SaApp {
   reportUrl(zedId: string, certificationType: string, path?: string | null): string {
     if (path) return this.api.hosts.web + path.replace(/^\/+/, '');
     return this.api.hosts.web + `SA/AppReport?zedId=${encodeURIComponent(zedId)}&certificationType=${encodeURIComponent(certificationType)}`;
+  }
+
+  /**
+   * 2026-11-15: the milestone report as a page of the consultancy portal: its address signed for 10 minutes (portal
+   * SA/AppReportLink, checked with the sign-in token), opened in the browser; `stored` for an earlier milestone's PDF.
+   */
+  reportLink(zedId: string, certificationType: string, linkPath?: string | null): Promise<ReportLinkResponse> {
+    const url = linkPath
+      ? this.api.hosts.web + linkPath.replace(/^\/+/, '')
+      : this.api.hosts.web + `SA/AppReportLink?zedId=${encodeURIComponent(zedId)}&certificationType=${encodeURIComponent(certificationType)}`;
+    return this.api.retrofit.getJson<ReportLinkResponse>(url);
   }
 
   /**

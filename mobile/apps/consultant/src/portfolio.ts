@@ -108,7 +108,15 @@ export type ReportSummary = {
   reportAvailable?: boolean | null;
   /** The PDF's address relative to the portal (GET with the app token). */
   reportPath?: string | null;
+  /**
+   * 2026-11-15: the address (relative to the portal, GET with the app token) answering the report page's signed link, which
+   * the app opens in the browser instead of downloading the PDF.
+   */
+  reportLinkPath?: string | null;
 };
+
+/** The portal's SA/AppReportLink: the report page's address signed for 10 minutes; `stored`: an earlier milestone's PDF. */
+export type ReportLinkResponse = BaseServiceResponse & { url?: string | null; stored?: boolean | null };
 
 export type ReportsResponse = BaseServiceResponse & { reports?: ReportSummary[] | null };
 

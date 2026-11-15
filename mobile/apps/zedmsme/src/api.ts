@@ -104,6 +104,12 @@ export type PaymentDetails = {
   SubsidyLabel?: string | null;
 };
 
+/**
+ * 2026-11-15: Msme/AppReportLink. The report is a page of the portal (docs/designs/reports-html.html); the app's sign-in
+ * token is no web sign-in, so the portal answers the page's address with a signed token valid for 10 minutes.
+ */
+export type ReportLinkResponse = BaseServiceResponse & { url?: string | null };
+
 export type PaymentDetailsResponse = BaseServiceResponse & {
   WithCoupon?: PaymentDetails[] | null;
   WithOutCoupon?: PaymentDetails[] | null;
@@ -345,6 +351,14 @@ export class MsmeApi {
    */
   getCertificationStatus(certification: CertificationType) {
     return this.http.getJson<CertificationStatusResponse>(this.portalMsme + 'AppCertificationStatus?certification=' + encodeURIComponent(certification));
+  }
+
+  /**
+   * 2026-11-15: the address of the certification's report page, signed for 10 minutes (Msme/AppReportLink on the portal,
+   * with the sign-in token); "View Report" opens it in the browser, where Download PDF saves it on the phone.
+   */
+  getReportLink(certification: CertificationType) {
+    return this.http.getJson<ReportLinkResponse>(this.portalMsme + 'AppReportLink?certification=' + encodeURIComponent(certification));
   }
 
   // ----- Financial Assistance (FinAssistanceViewModel) -----

@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
+import { Linking } from 'react-native';
 import { APP_TOKEN_HEADER, StackNavigator, UiHost } from '@zed/shared';
 import { SCREENS } from '../App';
 import { SaAppProvider } from '../src/app/context';
@@ -184,6 +185,31 @@ describe('screens', () => {
     await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
     const r = render(app, 'Help');
     expect(texts(r)).toEqual(expect.arrayContaining(['YOUR ASSESSMENT AGENCY', 'Acme Agency', 'help@acme.example', '9810000000']));
+  });
+
+  it('Reports opens the report page by its signed link in the browser instead of the PDF (2026-11-15)', async () => {
+    const report = {
+      zedId: ZED_ID, certificationType: 'Gold', enterpriseName: 'RN Test Enterprise', reportAvailable: true,
+      reportPath: `SA/AppReport?zedId=${ZED_ID}&certificationType=Gold`, reportLinkPath: `SA/AppReportLink?zedId=${ZED_ID}&certificationType=Gold`,
+    };
+    const s = server({ Reports: { status: '1', reports: [report] }, AppReportLink: { status: '1', url: 'https://zed.test/report/link?t=signed' } });
+    const { app } = await makeApp(s);
+    await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
+    await app.refreshReports();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    try {
+      const r = render(app, 'Home', { tab: 'reports' });
+      await act(async () => undefined);
+      await act(async () => r.root.findAll(n => n.props.testID === 'report-open-' + ZED_ID && typeof n.props.onPress === 'function')[0]!.props.onPress());
+      expect(openURL).toHaveBeenCalledWith('https://zed.test/report/link?t=signed');
+      const link = s.requests.find(x => x.url.includes('/SA/AppReportLink?'))!;
+      expect(link.method).toBe('GET');
+      expect(link.url).toContain(`zedId=${ZED_ID}&certificationType=Gold`);
+      expect(link.headers?.[APP_TOKEN_HEADER]).toBe('tok-a');
+      expect(s.requests.some(x => x.url.includes('/SA/AppReport?'))).toBe(false);
+    } finally {
+      openURL.mockRestore();
+    }
   });
 
   it('the login page forwards a signed-in assessor to the dashboard (end of an assessment)', async () => {

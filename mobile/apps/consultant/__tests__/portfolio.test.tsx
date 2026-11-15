@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import ReactTestRenderer, { act } from 'react-test-renderer';
-import { APP_TOKEN_HEADER, StackNavigator, UiHost } from '@zed/shared';
+import { APP_TOKEN_HEADER, StackNavigator, UiHost, zedDevice } from '@zed/shared';
 import { SCREENS } from '../App';
 import { SaAppProvider } from '../src/app/context';
 import type { SaApp } from '../src/app/SaApp';
@@ -154,6 +154,43 @@ describe('screens', () => {
     expect(byTestId(r, 'view-' + ZED_ID)).toHaveLength(1);
     // Nothing of the unit on the phone yet: no "Clear data".
     expect(byTestId(r, 'clean-' + ZED_ID)).toHaveLength(0);
+  });
+
+  it('Reports opens the milestone report page by its signed link; a milestone stored as a PDF downloads as before (2026-11-15)', async () => {
+    const report = (milestone: number) => ({
+      zedId: ZED_ID, certificationType: 'Silver', enterpriseName: 'RN Consultancy Unit Pvt Ltd', milestone, reportAvailable: true,
+      reportPath: `SA/AppReport?zedId=${ZED_ID}&certificationType=Silver&milestone=${milestone}`,
+      reportLinkPath: `SA/AppReportLink?zedId=${ZED_ID}&certificationType=Silver&milestone=${milestone}`,
+    });
+    let answer: Record<string, unknown> = { status: '1', url: 'https://zed.test/Consultancy/report/link?t=signed' };
+    const s = server({ Reports: { status: '1', reports: [report(2)] } });
+    const base = s.responder;
+    s.responder = r => (r.url.includes('/SA/AppReportLink?') ? answer : base(r));
+    const { app } = await makeApp(s);
+    await signIn(app, { assessorId: SA_ID, password: 'Secret1' }, true);
+    await app.refreshReports();
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    try {
+      const r = render(app, 'Home', { tab: 'reports' });
+      await act(async () => undefined);
+      const press = () => r.root.findAll(n => n.props.testID === 'report-open-' + ZED_ID && typeof n.props.onPress === 'function')[0]!.props.onPress();
+      await act(async () => press());
+      expect(openURL).toHaveBeenCalledWith('https://zed.test/Consultancy/report/link?t=signed');
+      const link = s.requests.find(x => x.url.includes('/SA/AppReportLink?'))!;
+      expect(link.url).toContain('milestone=2');
+      expect(link.headers?.[APP_TOKEN_HEADER]).toBe('tok-a');
+
+      // An earlier milestone kept as a PDF: no browser, the PDF from SA/AppReport.
+      openURL.mockClear();
+      answer = { status: '1', stored: true };
+      const download = jest.spyOn(zedDevice(), 'downloadFile');
+      await act(async () => press());
+      expect(openURL).not.toHaveBeenCalled();
+      expect(download).toHaveBeenCalledWith(expect.stringContaining(`SA/AppReport?zedId=${ZED_ID}&certificationType=Silver&milestone=2`), expect.any(String), 'tok-a');
+      download.mockRestore();
+    } finally {
+      openURL.mockRestore();
+    }
   });
 
   it('the case detail lists the milestones and opens the current one', async () => {

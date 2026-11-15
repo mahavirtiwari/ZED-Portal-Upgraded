@@ -51,6 +51,23 @@ export function CertificationOptionsScreen() {
   const READ_ONLY_MESSAGE = readOnlyText ? htmlToPlain(readOnlyText.html) : '';
   const open = (url: string) => Linking.openURL(url).catch(() => ui.toast('No suitable application found to perform this action'));
 
+  /**
+   * 2026-11-15 "View Report" (the legacy "Download Report" had no click listener): the report is a page of the portal, built
+   * from the live data; the portal hands out its address signed for 10 minutes, opened in the browser (Download PDF there).
+   */
+  const onReport = async () => {
+    ui.showLoading();
+    try {
+      const r = await app.api.getReportLink(type);
+      if (String(r.status) === '1' && r.url) await Linking.openURL(r.url);
+      else alert(r.errorMessage?.trim() || 'The report is available once the certification is complete.');
+    } catch {
+      ui.toast('The report could not be opened right now. Please try again.');
+    } finally {
+      ui.hideLoading();
+    }
+  };
+
   const onBasicInfo = () => {
     if (details?.status != null && details.status >= 2) {
       alert(READ_ONLY_MESSAGE);
@@ -131,8 +148,15 @@ export function CertificationOptionsScreen() {
             />
           ) : null}
           {showReport ? (
-            // The legacy option has no click listener.
-            <ClickableOption label="Download Report" description="Your assessment report." tint={tint} left={icons.ic_basic_info_doc_upload} right={icons.ic_download} testID="option-report" />
+            <ClickableOption
+              label="View Report"
+              description="Your assessment report; save it as a PDF from the page."
+              tint={tint}
+              left={icons.ic_basic_info_doc_upload}
+              right={icons.ic_external_link}
+              onPress={onReport}
+              testID="option-report"
+            />
           ) : null}
           {showIncentives ? (
             <ClickableOption

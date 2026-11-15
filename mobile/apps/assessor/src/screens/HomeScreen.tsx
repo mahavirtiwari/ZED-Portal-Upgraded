@@ -382,6 +382,8 @@ function AssessmentList({ stored, onView, onClean, refreshControl }: ListProps) 
 
 // ------------------------------------------------------------------ 15 Reports
 
+const errorText = (e: unknown) => (typeof e === 'object' && e !== null && 'message' in e ? String((e as { message: unknown }).message) : '');
+
 function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl'] }) {
   const app = useSa();
   const ui = useUi();
@@ -390,16 +392,34 @@ function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl
   const q = query.trim().toLowerCase();
   const list = q ? all.filter(r => [r.enterpriseName, r.zedId, r.baseZedId, r.levelName].some(v => (v ?? '').toLowerCase().includes(q))) : all;
 
-  const download = async (r: ReportSummary) => {
+  /**
+   * 2026-11-15: the report is a page of the portal (Download PDF there); the portal hands out its address signed for
+   * 10 minutes and the browser opens it. Before the server lists the link (an older server), the PDF as before.
+   */
+  const view = async (r: ReportSummary) => {
     if (!(await isNetworkAvailable())) return ui.toast('Network Unavailable', { long: true });
+    if (!r.reportLinkPath) return download(r);
+    ui.showLoading();
+    try {
+      const link = await app.reportLink(r.zedId, r.certificationType, r.reportLinkPath);
+      if (String(link.status) === '1' && link.url) await Linking.openURL(link.url);
+      else ui.toast(link.errorMessage?.trim() || 'The report is available once the assessment is reviewed.', { long: true });
+    } catch (e) {
+      if (/\bHTTP 401\b/.test(errorText(e))) app.session.expire(SESSION_EXPIRED_MESSAGE);
+      else ui.toast('The report could not be opened right now. Please try again.', { long: true });
+    } finally {
+      ui.hideLoading();
+    }
+  };
+
+  const download = async (r: ReportSummary) => {
     const fileName = `SA_Report_${r.zedId}_${r.certificationType}.pdf`;
     ui.showLoading();
     try {
       const local = await zedDevice().downloadFile(app.reportUrl(r.zedId, r.certificationType, r.reportPath), fileName, app.session.appToken);
       zedDevice().openPdf(local, fileName);
     } catch (e) {
-      const message = typeof e === 'object' && e !== null && 'message' in e ? String((e as { message: unknown }).message) : '';
-      if (/\bHTTP 401\b/.test(message)) app.session.expire(SESSION_EXPIRED_MESSAGE);
+      if (/\bHTTP 401\b/.test(errorText(e))) app.session.expire(SESSION_EXPIRED_MESSAGE);
       else ui.toast('Unknown error occurred while downloading file', { long: true });
     } finally {
       ui.hideLoading();
@@ -446,7 +466,7 @@ function Reports({ refreshControl }: { refreshControl: ListProps['refreshControl
               </View>
             ) : null}
             {r.reportAvailable ? (
-              <ZButton title="View report" icon="document" variant="outline" small onPress={() => download(r)} style={{ marginTop: 12 }} testID={`report-open-${r.zedId}`} />
+              <ZButton title="View report" icon="document" variant="outline" small onPress={() => view(r)} style={{ marginTop: 12 }} testID={`report-open-${r.zedId}`} />
             ) : (
               <Text style={[z.muted, { marginTop: 10 }]}>The report is available once the assessment is reviewed.</Text>
             )}
