@@ -262,6 +262,24 @@ export type NcDetails = BaseServiceResponse & {
   sitePhotosSubmitted?: boolean;
   products?: ProductDetailsNc[] | null;
   parameters?: Element[] | null;
+  /** NCs on the Admin's "Validation required" Basic Information fields (V4, migration 0080). */
+  formFields?: NcFormField[] | null;
+};
+
+/** An NC on a Basic Information field: the unit enters the field again (MsmeController.SubmitNcFormField). */
+export type NcFormField = {
+  form: string;
+  key: string;
+  label: string;
+  type: string;
+  help?: string | null;
+  options?: string[] | null;
+  assessorRemarks?: string | null;
+  /** The answer the assessor found not valid. */
+  previousValue?: string | null;
+  /** The new answer as the server stored it (several choices: a JSON array), once answered. */
+  value?: string | null;
+  answered: boolean;
 };
 
 // ---------- Surveillance, remote assessment, final submit ----------
@@ -608,7 +626,23 @@ export function normalizeNcDetails(nc: NcDetails): NcDetails {
     p.status ??= Status.TO_START;
   }
   nc.sitePhotosSubmitted ??= false;
+  nc.formFields ??= [];
   return nc;
+}
+
+/** A stored answer of an NC field as the input shows it: several choices (a JSON array) as a list. */
+export function ncFieldValue(f: NcFormField): unknown {
+  const v = f.value;
+  if (v == null) return null;
+  if ((f.type === 'multiselect' || f.type === 'checkboxes') && v.startsWith('[')) {
+    try {
+      const list = JSON.parse(v);
+      if (Array.isArray(list)) return list.map(String);
+    } catch {
+      // not a list: shown as text
+    }
+  }
+  return v;
 }
 
 /** The evidences of all requirements of all parameters (EvidencesActivity.getEvidencesList). */

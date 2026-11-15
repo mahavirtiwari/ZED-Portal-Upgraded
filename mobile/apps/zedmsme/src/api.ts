@@ -498,6 +498,11 @@ export class MsmeApi {
     );
   }
 
+  /** SubmitNcFormField (main system only): the new answer to an NC on a Basic Information field. */
+  submitNcFormField(username: string, certificationType: string, form: string, key: string, value: unknown) {
+    return this.http.postJson<BaseServiceResponse>(this.msme + 'SubmitNcFormField', this.req(username, { certificationType, form, key, value }));
+  }
+
   /** SubmitNcProduct: productDetailsNc as JSON (photos without base64) and both photos in `files`. */
   submitNcProduct(username: string, certificationType: string, product: ProductDetailsNc, surveillance = false) {
     const photos = [product.productPhoto, product.productDescriptionPhoto].filter((p): p is PhotoData => p != null);

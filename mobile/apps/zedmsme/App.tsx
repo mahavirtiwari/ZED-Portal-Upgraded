@@ -21,6 +21,7 @@ import {
   NcProductScreen,
   NcRequirementScreen,
   NcSitePhotosScreen,
+  NcFormFieldScreen,
   NonConformancesScreen,
 } from './src/screens/NonConformanceScreens';
 import { PaymentScreen } from './src/screens/PaymentScreen';
@@ -53,6 +54,7 @@ export const SCREENS: ScreenMap = {
   NonConformances: NonConformancesScreen,
   NcDetails: NcDetailsScreen,
   NcSitePhotos: NcSitePhotosScreen,
+  NcFormField: NcFormFieldScreen,
   NcProduct: NcProductScreen,
   NcRequirement: NcRequirementScreen,
   RemoteAssessmentInitial: RemoteAssessmentInitialScreen,

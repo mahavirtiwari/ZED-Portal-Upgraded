@@ -9,6 +9,10 @@ import {
   isNetworkError,
   isSuccess,
   PhotosField,
+  CustomFormField,
+  FieldHelp,
+  checkAnswer,
+  isAnswered,
   REQUIRED,
   ScreenFrame,
   sharedIcons,
@@ -39,7 +43,9 @@ import {
   type CertificationDetails,
   type CertificationType,
   type NcDetails,
+  type NcFormField,
   type ProductDetailsNc,
+  ncFieldValue,
   type Requirement,
   certificationLabel,
 } from '../models';
@@ -215,6 +221,24 @@ export function NcDetailsScreen() {
     sections.push(
       <NcRow key="site" title="Site Exterior Photos">
         <NcOption label="Site Exterior Photos" submitted={!!nc.sitePhotosSubmitted} onPress={() => nav.push('NcSitePhotos', { certificationType: type, isSurveillance: surveillance })} testID="nc-site" />
+      </NcRow>,
+    );
+  }
+  if (nc.formFields && nc.formFields.length > 0) {
+    sections.push(
+      <NcRow key="fields" title="Basic Information">
+        {nc.formFields.map(f => {
+          if (!f.answered) anyUnsubmitted = true;
+          return (
+            <NcOption
+              key={`${f.form}/${f.key}`}
+              label={f.label}
+              submitted={f.answered}
+              onPress={() => nav.push('NcFormField', { certificationType: type, isSurveillance: surveillance, form: f.form, fieldKey: f.key })}
+              testID={`nc-field-${f.key}`}
+            />
+          );
+        })}
       </NcRow>,
     );
   }
@@ -411,6 +435,55 @@ export function NcSitePhotosScreen() {
         store={app.photos}
         testID="nc-site-photo"
       />
+      <ZedButton title="Submit" small onPress={submit} testID="nc-submit" />
+    </NcFormFrame>
+  );
+}
+
+/**
+ * An NC on a Basic Information field the Admin marked "Validation required": the assessor's remark, the answer found not
+ * valid, and the field to enter again (sent at once; it needs the connection). The assessor checks it in the next round.
+ */
+export function NcFormFieldScreen() {
+  const { app, type, details } = useNcContext();
+  const nav = useNavigation();
+  const ui = useUi();
+  const { form, fieldKey } = useRoute<{ form: string; fieldKey: string }>().params;
+  const item: NcFormField | undefined = details?.activeNcDetails?.formFields?.find(f => f.form === form && f.key === fieldKey);
+  const [value, setValue] = useState<unknown>(item ? ncFieldValue(item) : null);
+  const [error, setError] = useState<string | undefined>();
+  if (!item) return null;
+  const field = { key: item.key, label: item.label, type: item.type, required: true, custom: true, section: '', order: 0, options: item.options ?? null };
+
+  const submit = async () => {
+    if (!isAnswered(value)) return setError(REQUIRED);
+    const invalid = checkAnswer(field, value);
+    if (invalid) return setError(invalid);
+    if (!app.loginId) return;
+    if (!(await isNetworkAvailable())) return ui.snackbar('Please connect to the internet to submit this answer.');
+    ui.showLoading();
+    let r: BaseServiceResponse;
+    try {
+      r = await app.api.submitNcFormField(app.loginId, type, item.form, item.key, value);
+    } catch (e) {
+      r = { status: '0', errorMessage: e instanceof Error ? e.message : null };
+    } finally {
+      ui.hideLoading();
+    }
+    if (!isSuccess(r)) return ui.toast(r.errorMessage ?? UNKNOWN_ERROR, { long: true });
+    item.answered = true;
+    item.value = Array.isArray(value) ? JSON.stringify(value) : String(value);
+    await app.persist();
+    ui.toast('Answer submitted successfully', { long: true });
+    nav.pop();
+  };
+
+  return (
+    <NcFormFrame title={item.label} testID="nc-field">
+      <StaticText label="Assessor Remarks" value={item.assessorRemarks ?? ''} onViewMore={t => ui.alert('Assessor Remarks', t, [{ text: 'OK' }], false)} />
+      <StaticText label="Your earlier answer" value={item.previousValue ?? ''} onViewMore={t => ui.alert('Your earlier answer', t, [{ text: 'OK' }], false)} />
+      <CustomFormField field={field} value={value} onChange={v => (setValue(v), setError(undefined))} error={error} label="New answer" testID="nc-field-input" />
+      <FieldHelp text={item.help} />
       <ZedButton title="Submit" small onPress={submit} testID="nc-submit" />
     </NcFormFrame>
   );
