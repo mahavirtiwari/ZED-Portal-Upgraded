@@ -95,7 +95,7 @@ describe('EmailTemplatesPage', () => {
     http.expectOne(`${url}/ContactQueryEmail`).flush({ item: items[0], bodyHtml: '<b>Name:</b> {{Name}}', standardBody: true });
     await settle();
     const dialog = el.querySelector('[role=dialog]')!;
-    expect(dialog.textContent).toContain('This e-mail is switched off');
+    expect(dialog.textContent).toContain('Switched off (not sent)');
     expect([...dialog.querySelectorAll('.chip')].map((c) => c.textContent!.trim())).toEqual(['{{Name}}', '{{Query}}', '{{StandardSubject}}', '{{StandardBody}}']);
     expect(dialog.querySelector('iframe')!.getAttribute('sandbox')).toBe('');
 
@@ -205,5 +205,35 @@ describe('EmailTemplatesPage', () => {
     http.expectOne((r) => r.method === 'GET').flush(items);
     await settle();
     expect(el.querySelector('.alert-success')!.textContent).toContain('The standard e-mail is used again.');
+  });
+
+  it("switches a mail off from the list after confirming, keeping its subject and text", async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const sw = () => el.querySelector('[aria-label="Switch off Payment Confirmation"]') as HTMLInputElement;
+    sw().click();
+    await settle();
+    expect(confirm).toHaveBeenCalled();   // refused: nothing is asked of the server
+    confirm.mockReturnValue(true);
+    sw().click();
+    await settle();
+    http.expectOne(`${url}/PaymentConfirmationEmail`).flush({
+      item: { ...items[1], subject: 'Paid: {{Name}}' }, bodyHtml: '<p>Own text</p>', standardBody: false,
+    });
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/PaymentConfirmationEmail`);
+    expect(put.request.body).toEqual({ enabled: false, subject: 'Paid: {{Name}}', bodyHtml: '<p>Own text</p>' });
+    put.flush({ message: 'Saved.' });
+    await settle();
+    http.expectOne((r) => r.method === 'GET' && r.url === url).flush(items);
+    await settle();
+
+    // Switching on asks nothing; a standard text is sent as none.
+    confirm.mockClear();
+    (el.querySelector('[aria-label="Switch on Contact Query"]') as HTMLInputElement).click();
+    await settle();
+    expect(confirm).not.toHaveBeenCalled();
+    http.expectOne(`${url}/ContactQueryEmail`).flush({ item: items[0], bodyHtml: '<p>Standard</p>', standardBody: true });
+    await settle();
+    expect(http.expectOne((r) => r.method === 'PUT').request.body).toEqual({ enabled: true, subject: null, bodyHtml: null });
   });
 });

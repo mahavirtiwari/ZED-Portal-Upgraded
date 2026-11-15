@@ -23,6 +23,20 @@ export const SETTINGS_ROUTES: Routes = [
     canActivate: [admin],
     loadComponent: () => import('./professional-verification').then((m) => m.ProfessionalVerificationPage),
   },
+  // 2026-11-15: the logos and colour themes of each portal and app (main portal; the API refuses the others).
+  {
+    path: 'branding',
+    title: 'ZED | Branding',
+    canActivate: [admin],
+    loadComponent: () => import('./branding').then((m) => m.BrandingPage),
+  },
+  // 2026-11-15: each portal and app up or down (main portal; the API refuses the others).
+  {
+    path: 'maintenance',
+    title: 'ZED | Maintenance mode',
+    canActivate: [admin],
+    loadComponent: () => import('./maintenance-mode').then((m) => m.MaintenanceModePage),
+  },
   // New in V4: the CCAvenue account and the invoice switch (main portal; the API refuses the others).
   {
     path: 'payment-gateway',

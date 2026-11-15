@@ -66,4 +66,32 @@ label.panel-item {
   @media (max-width: 575.98px) { .pcols .pgrid { grid-template-columns: minmax(0, 1fr); } }
   .summary-text b + span { margin-top: 2px; }
 
+  // 2026-11-15 (the user, design approved): as the staff MSME Profile, in the applicant pages' colours: each section a
+  // heading bar (the applicant heading gradient, as "My Incentives") over ruled label / value rows, the labels on a pale
+  // teal column, four columns that line up from section to section.
+  .summary { background: none; border: 0; border-radius: 0; padding: 0; margin: 0 0 12px; box-shadow: none; }
+  .summary .ent { width: 38px; height: 38px; font-size: 17px; border-radius: 10px; }
+  .pcols { gap: 14px; }
+  .pcols > .pcard { padding: 0; overflow: hidden; border: 1px solid #cfe3e3; border-radius: 10px; }
+  .pcols .pcard-head { margin: 0; padding: 9px 14px; min-height: 42px;
+    background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }
+  .pcols .pcard-head h3 { color: #fff; font-size: 15px; }
+  .pcols .pcard-head h3 img { width: 18px; height: 18px; filter: brightness(0) invert(1); }
+  .pcols .pcard-head .more { color: #fff; text-decoration: underline; }
+  .pcols .pcard-head .btn-outline-primary { background: #fff; border-color: #fff; color: #2f7c83; font-weight: 600; }
+  // Lines under and right of every cell; the last row's and column's are hidden under the card's edge.
+  .pcols .pgrid { grid-template-columns: 18% 32% 18% 32%; gap: 0; margin: 0 -1px -1px 0; }
+  .pcols .pgrid > div { display: contents; }
+  .pcols .pgrid dt, .pcols .pgrid dd { padding: 9px 12px; border-bottom: 1px solid #dbe8e9; border-right: 1px solid #dbe8e9; min-width: 0; }
+  .pcols .pgrid dt { background: #f1f8f8; color: #5f6f70; font-weight: 500; font-size: 13.5px; }
+  .pcols .pgrid dd { color: #1d2b2c; font-weight: 600; font-size: 14px; }
+  .pcols .pgrid .span-3 dd { grid-column: span 3; }
+  .pcols .pgrid .pgrid-empty { padding: 12px 14px; }
+  // What a section has besides its rows (the e-mail change, the activity choice, a note) keeps a margin.
+  .pcols .pcard > :not(.pcard-head):not(.pgrid) { margin: 12px 14px; }
+  @media (max-width: 991.98px) {
+    .pcols .pgrid { grid-template-columns: 38% 62%; }
+    .pcols .pgrid .span-3 dd { grid-column: auto; }
+  }
+  @media (max-width: 575.98px) { .pcols .pgrid { grid-template-columns: 42% 58%; } }
 }

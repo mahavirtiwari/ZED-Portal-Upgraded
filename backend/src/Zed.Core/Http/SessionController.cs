@@ -11,6 +11,7 @@ namespace Zed.Core.Http;
 /// <summary>Who is signed in, sign-out, and public client settings for the Angular app.</summary>
 [ApiController]
 [Route("api")]
+[Zed.Core.Maintenance.AllowDuringMaintenance]   // the session and the configuration answer while the portal is down
 public sealed class SessionController(IOptions<RecaptchaOptions> recaptcha, IOptions<PortalOptions> portal, ICaptchaSettings captcha,
     IPortalSettings settings) : ControllerBase
 {

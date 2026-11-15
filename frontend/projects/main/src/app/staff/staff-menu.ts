@@ -179,6 +179,10 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // New in V4: the CCAvenue account and the invoice switch (main portal only: payments run there).
   { label: 'Payment Gateway and Invoices', route: '/staff/settings/payment-gateway', roles: [R.Admin], menu: 'Administration' },
   { label: 'Email Templates', route: '/staff/settings/email-templates', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-15: each portal and app up or down (main portal only).
+  { label: 'Maintenance mode', route: '/staff/settings/maintenance', roles: [R.Admin], menu: 'Administration' },
+  // 2026-11-15: the logos and colour themes of each portal and app (main portal only).
+  { label: 'Branding', route: '/staff/settings/branding', roles: [R.Admin], menu: 'Administration' },
   { label: 'Texts', route: '/staff/settings/texts', roles: [R.Admin], menu: 'Administration' },
   { label: 'App Forms', route: '/staff/settings/app-forms', roles: [R.Admin], menu: 'Administration' },
   // New in V4: the site tour sections of the site assessor app (main and surveillance only).

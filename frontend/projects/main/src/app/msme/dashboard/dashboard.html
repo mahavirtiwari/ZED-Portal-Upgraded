@@ -45,14 +45,7 @@
                   <a class="btn btn-primary btn-sm" routerLink="/msme/pledge-certificate">DOWNLOAD PLEDGE</a>
                 </div>
               }
-              <!-- The ZED MSME app (it was a separate green banner below). -->
-              <div class="app-badges">
-                <small><zed-text key="msme.dashboard.mobileAppHint" /></small>
-                <div>
-                  @if (links.url('appStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/app-store.png" alt="Download on the App Store" width="96" /></a>}
-                  @if (links.url('playStore'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/google-play.png" alt="Get it on Google Play" width="96" /></a>}
-                </div>
-              </div>
+              <!-- 2026-11-15 (the user): the ZED MSME app hint and store badges removed from the band. -->
             </div>
           </section>
 
@@ -351,11 +344,13 @@
 
 <!-- Information pop-ups (#CertificationDetails, #CertificationInfo, #JoiningReward, #FinancialAssistance, #TechnologyUpgradation) -->
 @if (modal(); as m) {
-  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" (click)="modal.set(null)">
-    <div class="modal-dialog modal-md modal-popup modal-certification-info" (click)="$event.stopPropagation()">
+  <!-- 2026-11-15 (design approved): a dark title bar (with "Availed" once availed), the amount in large type, the facts as
+       tiles or rows, and a Close button. -->
+  <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="dashPopTitle" (click)="modal.set(null)">
+    <div class="modal-dialog modal-md modal-popup modal-certification-info dash-pop" (click)="$event.stopPropagation()">
       <div class="modal-content">
-        <div class="modal-header justify-content-between">
-          <h3 class="registration-title m-0">
+        <div class="modal-header dp-head">
+          <h3 class="dp-title" id="dashPopTitle">
             @switch (m.kind) {
               @case ('apply-info') { {{ levelName(m.level) }} Certification }
               @case ('info') { {{ infoTitle(m.topic) }} }
@@ -364,88 +359,92 @@
               @case ('tu') { Technology Upgradation }
               @case ('incentive') { {{ m.card.title }} }
             }
+            @if (availed(m.kind)) { <span class="dp-chip">Availed</span> }
           </h3>
-          <button type="button" class="btn btn-link p-0" aria-label="Close" (click)="modal.set(null)"><img src="/Images/svgicons/close.svg" alt="" /></button>
+          <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="modal.set(null)"></button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body dp-body">
           @switch (m.kind) {
             @case ('incentive') {
               @let c = m.card;
-              @if (c.highlight) { <p><span class="clr-spot">{{ c.highlight }}</span></p> }
+              @if (c.highlight) { <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Benefit</small><b>{{ c.highlight }}</b></div></div> }
               <p class="incentive-details">{{ c.details }}</p>
-              <table class="table">
-                @if (c.department) { <tr><th>Department:</th><td>{{ c.department }}</td></tr> }
-                <tr><th>Applicable for:</th><td>{{ levelsOf(c) }} certified MSMEs</td></tr>
-                @if (c.contactPerson) { <tr><th>Contact person:</th><td>{{ c.contactPerson }}</td></tr> }
-                @if (c.email) { <tr><th>E-mail:</th><td><a [href]="'mailto:' + c.email">{{ c.email }}</a></td></tr> }
-                @if (c.mobileNo) { <tr><th>Phone:</th><td>{{ c.mobileNo }}</td></tr> }
-              </table>
-              @if (!eligibleFor(c)) { <p class="text-muted">Available once your unit is certified at {{ levelsOf(c, ' or ') }} level.</p> }
-              <div class="d-flex flex-wrap gap-2 justify-content-center">
+              <dl class="dp-rows">
+                @if (c.department) { <div><dt>Department</dt><dd>{{ c.department }}</dd></div> }
+                <div><dt>Applicable for</dt><dd>{{ levelsOf(c) }} certified MSMEs</dd></div>
+                @if (c.contactPerson) { <div><dt>Contact person</dt><dd>{{ c.contactPerson }}</dd></div> }
+                @if (c.email) { <div><dt>E-mail</dt><dd><a [href]="'mailto:' + c.email">{{ c.email }}</a></dd></div> }
+                @if (c.mobileNo) { <div><dt>Phone</dt><dd>{{ c.mobileNo }}</dd></div> }
+              </dl>
+              @if (!eligibleFor(c)) { <p class="dp-note">Available once your unit is certified at {{ levelsOf(c, ' or ') }} level.</p> }
+              <div class="d-flex flex-wrap gap-2 justify-content-center mt-3">
                 @if (c.webLink) { <a class="btn btn-primary" [href]="c.webLink" target="_blank" rel="noopener noreferrer">APPLY ON THE SCHEME PORTAL</a> }
                 @if (c.videoLink) { <a class="btn btn-default" [href]="c.videoLink" target="_blank" rel="noopener noreferrer">WATCH VIDEO</a> }
               </div>
             }
             @case ('apply-info') {
-              <div class="modal-info"><p>Click on APPLY button to start Application Process</p></div>
-              <div class="text-center mt-4"><img [src]="levelLogo(m.level)" alt="" class="apply-logo" /></div>
+              <div class="text-center"><img [src]="levelLogo(m.level)" alt="" class="apply-logo" /></div>
+              <p class="dp-note text-center mt-3">Click on APPLY to start the application.</p>
             }
             @case ('info') {
-              @switch (m.topic) {
-                @case ('Bronze') { <zed-text key="msme.dashboard.levelInfo.bronze" /> }
-                @case ('Silver') { <zed-text key="msme.dashboard.levelInfo.silver" /> }
-                @case ('Gold') { <zed-text key="msme.dashboard.levelInfo.gold" /> }
-                @case ('My') { <zed-text key="msme.dashboard.info.myCertifications" /> }
-                @case ('MyIncentives') { <zed-text key="msme.dashboard.info.myIncentives" /> }
-                <!-- ZED-X and the levels the Admin added: the information text the Admin wrote. -->
-                @default { <p class="level-comment">{{ levelComment(m.topic) }}</p> }
-              }
+              <div class="dp-text">
+                @switch (m.topic) {
+                  @case ('Bronze') { <zed-text key="msme.dashboard.levelInfo.bronze" /> }
+                  @case ('Silver') { <zed-text key="msme.dashboard.levelInfo.silver" /> }
+                  @case ('Gold') { <zed-text key="msme.dashboard.levelInfo.gold" /> }
+                  @case ('My') { <zed-text key="msme.dashboard.info.myCertifications" /> }
+                  @case ('MyIncentives') { <zed-text key="msme.dashboard.info.myIncentives" /> }
+                  <!-- ZED-X and the levels the Admin added: the information text the Admin wrote. -->
+                  @default { <p class="level-comment">{{ levelComment(m.topic) }}</p> }
+                }
+              </div>
             }
             @case ('joining') {
               @if (is(msme(), 'IsCouponUsed', 1)) {
-                <table class="table">
-                  <tr><th>Date of avail:</th><td>{{ msme()['DateOfAvail'] }}</td></tr>
-                  <tr><th>Amount:</th><td>{{ msme()['JoiningRewardAmount'] }}</td></tr>
-                  <tr><th>Certification level:</th><td>{{ msme()['LatestCertification'] }}</td></tr>
-                </table>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">🎁</span><div><small>Reward amount</small><b>{{ rupees(msme()['JoiningRewardAmount']) }}</b></div></div>
+                <div class="dp-tiles">
+                  <div><small>Date of avail</small><b>{{ msme()['DateOfAvail'] }}</b></div>
+                  <div><small>Certification level</small><span class="dp-level dp-level-{{ (msme()['LatestCertification'] || '').toString().toLowerCase() }}">{{ msme()['LatestCertification'] }}</span></div>
+                </div>
               } @else {
-                <zed-text key="msme.dashboard.joiningReward.availInfo" />
+                <div class="dp-text"><zed-text key="msme.dashboard.joiningReward.availInfo" /></div>
               }
             }
             @case ('fa') {
               @if (is(cert(), 'FinancialAssistanceStatus', 0)) {
-                <table class="table">
-                  <tr><th>Level of Certification:</th><td>{{ cert()['LevelOfCertificationForFa'] }}</td></tr>
-                  <tr><th>Date of avail:</th><td>{{ cert()['DateOfFaAvail'] }}</td></tr>
-                  <tr><th>Amount:</th><td>{{ cert()['FaAmount'] }}</td></tr>
-                  <tr><th>Reference No.:</th><td>{{ cert()['FaReferenceNo'] }}</td></tr>
-                  <tr><th>Certification Category:</th><td>{{ cert()['FaCertificationCategory'] }}</td></tr>
-                </table>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Amount</small><b>{{ rupees(cert()['FaAmount']) }}</b></div></div>
+                <dl class="dp-rows">
+                  <div><dt>Level of certification</dt><dd>{{ cert()['LevelOfCertificationForFa'] }}</dd></div>
+                  <div><dt>Date of avail</dt><dd>{{ cert()['DateOfFaAvail'] }}</dd></div>
+                  <div><dt>Reference no.</dt><dd>{{ cert()['FaReferenceNo'] }}</dd></div>
+                  <div><dt>Certification category</dt><dd>{{ cert()['FaCertificationCategory'] }}</dd></div>
+                </dl>
               } @else {
-                <ul><li><p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p></li></ul>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>75% subsidy</small><b>Up to ₹ 50,000</b></div></div>
+                <p class="dp-note">For system certification, product certification or product testing.</p>
               }
             }
             @case ('tu') {
               @if (is(cert(), 'TechnologyUpgradationStatus', 0)) {
-                <table class="table">
-                  <tr><th>Level of Certification:</th><td>{{ cert()['LevelOfCertificationForTu'] }}</td></tr>
-                  <tr><th>Date of availing:</th><td>{{ cert()['DateOfTuAvail'] }}</td></tr>
-                  <tr><th>Amount:</th><td>{{ cert()['TuAmount'] }}</td></tr>
-                  <tr><th>Reference No.:</th><td>{{ cert()['TuReferenceNo'] }}</td></tr>
-                  <tr>
-                    <th>Recommended Technologies:</th>
-                    <td>
-                      @for (t of technologies(); track $index) {
-                        {{ t }}<hr />
-                      }
-                    </td>
-                  </tr>
-                </table>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Amount</small><b>{{ rupees(cert()['TuAmount']) }}</b></div></div>
+                <dl class="dp-rows">
+                  <div><dt>Level of certification</dt><dd>{{ cert()['LevelOfCertificationForTu'] }}</dd></div>
+                  <div><dt>Date of availing</dt><dd>{{ cert()['DateOfTuAvail'] }}</dd></div>
+                  <div><dt>Reference no.</dt><dd>{{ cert()['TuReferenceNo'] }}</dd></div>
+                </dl>
+                @if (technologies().length) {
+                  <p class="dp-sub">Recommended technologies</p>
+                  <ul class="dp-list">@for (t of technologies(); track $index) { <li>{{ t }}</li> }</ul>
+                }
               } @else {
-                <ul><li><p><span class="clr-spot">75% of Subsidy (Max. Rs. 50,000/-)</span> For System Certification or Product Certification or Product Testing</p></li></ul>
+                <div class="dp-amount"><span class="dp-icon" aria-hidden="true">₹</span><div><small>Support</small><b>Up to ₹ 3,00,000</b></div></div>
+                <p class="dp-note">For moving towards Zero Effect Solutions.</p>
               }
             }
           }
+        </div>
+        <div class="modal-footer dp-foot">
+          <button type="button" class="btn btn-default" (click)="modal.set(null)">Close</button>
         </div>
       </div>
     </div>

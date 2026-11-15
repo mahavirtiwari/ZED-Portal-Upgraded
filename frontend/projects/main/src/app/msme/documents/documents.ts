@@ -56,6 +56,12 @@ export class DocumentsPage {
     return parts.join(' ');
   }
 
+  /** A guideline file's type badge: its extension (PDF, DOCX, ...), else FILE. */
+  protected fileType(url: string | null | undefined): string {
+    const m = /\.([a-z0-9]{2,5})(?:[?#].*)?$/i.exec(url ?? '');
+    return m ? m[1].toUpperCase() : 'FILE';
+  }
+
   /** PDFs open in a new tab; other guideline files (docx, xlsx, ...) just download. */
   protected target(url: string): string | null {
     return /\.pdf$/i.test(url) || !url.startsWith('/') ? '_blank' : null;

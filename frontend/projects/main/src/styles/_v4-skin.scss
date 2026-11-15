@@ -1,11 +1,13 @@
+// 2026-11-15: the ZED colours are CSS variables (--zt-dark, --zt-mid, --zt-accent) with today's values as defaults, so an
+// Admin colour theme (Branding; styles/_themes.scss) recolours these blocks; without a theme nothing changes.
 // V4 look of the staff pages (inside .zed-legacy.zed-v4, the staff layout), loaded after the legacy site styles so that it
 // wins over them. The MSME and public pages do not load it: they keep the live portal's look (the old site styles), with
-// the V4 building blocks of _v4-blocks.scss. It keeps the ZED colours (teal #45A5AD, green #B3E079) and the page structure the
+// the V4 building blocks of _v4-blocks.scss. It keeps the ZED colours (teal var(--zt-mid, #45a5ad), green #B3E079) and the page structure the
 // old screens had; it changes how the common blocks look: page titles, tables, filter and form boxes, inputs,
 // buttons, tabs, pop-ups, notes, empty lists and the loading overlay.
 
-$teal: #45a5ad;
-$teal-dark: #2f7c83;
+$teal: var(--zt-mid, #45a5ad);
+$teal-dark: var(--zt-dark, #2f7c83);
 $teal-ink: #23474a;
 $teal-tint: #eef6f6;
 $line: #dfe9ea;
@@ -172,10 +174,10 @@ input[type='file'].form-control { padding: 6px 8px; }
 .btn:hover { box-shadow: 0 2px 6px rgba(16, 61, 64, 0.15); }
 .btn:focus-visible { box-shadow: 0 0 0 3px rgba(69, 165, 173, 0.3); }
 .btn-sm { border-radius: 6px; font-size: 13px; }
-// 2026-11-13 (option B, approved): every button filled. The main action solid teal (#23656b, 6.4:1 with white text).
+// 2026-11-13 (option B, approved): every button filled. The main action solid teal (var(--zt-dark, #23656b), 6.4:1 with white text).
 .btn-primary,
-.btn-primary:focus { background-color: #23656b; border: 1px solid #23656b; color: #fff; }
-.btn-primary:hover { background-color: #174a4e; border-color: #174a4e; color: #fff; filter: none; }
+.btn-primary:focus { background-color: var(--zt-dark, #23656b); border: 1px solid var(--zt-dark, #23656b); color: #fff; }
+.btn-primary:hover { background-color: var(--zt-dark, #174a4e); border-color: var(--zt-dark, #174a4e); color: #fff; filter: none; }
 .btn-primary:disabled, .btn-primary.disabled { background-color: #9fc5c8; border-color: #9fc5c8; color: #fff; }
 // The old grey "default" button (BACK, CANCEL, RESET, BLOCK): a quiet outlined button.
 .btn.btn-default,
@@ -268,3 +270,36 @@ input.btn-default {
   border-top-color: $teal !important;
 }
 .loadingimage small { color: $teal-dark !important; font-weight: 600; }
+
+// ---- User Management pop-up (2026-11-15, design approved; staff/user-management/accounts.ts) -------------------------------
+// The Add / Edit login pop-up: dark title bar, numbered sections side by side, a fixed save bar. Here, not in the component,
+// for the component style budget; every class is the pop-up's own (acc-*).
+/* Heavier than the skin's .modal-dialog.modal-popup { max-width: 760px }. */
+.modal .modal-dialog.modal-popup.acc-dialog { max-width: 720px; }
+.modal .modal-dialog.modal-popup.acc-dialog.acc-wide { max-width: 1140px; width: calc(100% - 32px); }
+.modal .modal-popup .acc-body { padding: 16px 18px; }
+.acc-content { max-height: calc(100vh - 3.5rem); display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; }
+.acc-form { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.modal .acc-head { background: var(--zt-dark, #23656b); color: #fff; border-bottom: 0; padding: 12px 18px; align-items: center; }
+.modal .acc-head .registration-title { color: #fff; font-size: 17px; }
+.acc-head-sub { display: block; color: var(--zt-accent, #c9e8a0); font-size: 12.5px; margin-top: 2px; }
+.acc-body { overflow-y: auto; background: #f6f9f9; padding: 16px 18px; flex: 1 1 auto; min-height: 0; }
+.acc-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
+.acc-cols.has-side { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); }
+.acc-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.acc-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.acc-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 12px 14px; }
+.acc-num { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%;
+  background: var(--zt-dark, #23656b); color: #fff; font-size: 11.5px; font-weight: 700; margin-right: 8px; vertical-align: 1px; }
+.acc-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.acc-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.modal .modal-popup .acc-field label { font-size: 12.5px; font-weight: 600; color: #5f6f70; margin: 0; }
+.modal .acc-foot { justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid #dfe9ea; background: #fff; padding: 10px 18px; flex: none; }
+.acc-foot-note { font-size: 12.5px; color: #6b7a7b; }
+.acc-foot-actions { display: inline-flex; gap: 8px; }
+.acc-side .acc-scope-box { margin-top: 0; background: #fff; border-color: #dfe9ea; border-radius: 10px; }
+.acc-side .acc-scope-row { grid-template-columns: 140px minmax(0, 1fr); }
+.acc-side .acc-screen-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+@media (max-width: 991.98px) { .acc-cols.has-side { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .acc-side .acc-scope-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+@media (max-width: 575.98px) { .acc-fields { grid-template-columns: minmax(0, 1fr); } .modal .modal-dialog.modal-popup.acc-dialog.acc-wide { width: auto; } }

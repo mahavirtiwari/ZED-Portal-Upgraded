@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
+import { BrandingService } from '../branding';
 import { PORTAL_SYSTEM } from '../portal-system';
 import { PublicLevels } from '../msme/shared/levels';
 
@@ -20,11 +21,11 @@ import { PublicLevels } from '../msme/shared/levels';
       <aside class="zl-hero" aria-label="About the portal">
         <div class="zl-logos">
           @if (links.url('ministry'); as u) {
-            <a [href]="u" target="_blank" rel="noopener"><img src="Images/header/ministry.png" alt="Ministry of MSME" class="zl-ministry" /></a>
+            <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="zl-ministry" /></a>
           } @else {
-            <img src="Images/header/ministry.png" alt="Ministry of MSME" class="zl-ministry" />
+            <img [src]="brand.logo('login-left', 'Images/header/ministry.png')" alt="Ministry of MSME" class="zl-ministry" />
           }
-          <img src="Images/header/zed-logo.png" alt="ZED" class="zl-zed" />
+          <img [src]="brand.logo('login-right', 'Images/header/zed-logo.png?ui=1')" alt="ZED" class="zl-zed" />
         </div>
         <div class="zl-hero-body">
           <p class="zl-kicker">{{ kicker }}</p>
@@ -159,6 +160,8 @@ import { PublicLevels } from '../msme/shared/levels';
 export class StaffLoginShell {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
+  /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
+  protected readonly brand = inject(BrandingService);
   protected readonly year = new Date().getFullYear();
   /** Who signs in here (the card's tag). */
   protected readonly audience = PORTAL_SYSTEM === 'consultancy' ? 'Staff · Organisation · Consultant' : 'Staff · Agency · Assessor';

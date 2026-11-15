@@ -4,6 +4,8 @@ import { provideZedHttp } from '@zed/shared';
 import { apiBaseInterceptor } from './api-base';
 import { adminPortalInterceptor } from './staff/admin-portal';
 import { sessionExpiryInterceptor } from './session-expiry';
+import { MaintenanceService, maintenanceInterceptor } from './maintenance';
+import { BrandingService } from './branding';
 import { routes } from './app.routes';
 import { PublicLevels } from './msme/shared/levels';
 import { PublicStates } from './msme/shared/states';
@@ -12,7 +14,15 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding()),
-    provideZedHttp([adminPortalInterceptor, apiBaseInterceptor, sessionExpiryInterceptor]),
+    provideZedHttp([adminPortalInterceptor, apiBaseInterceptor, sessionExpiryInterceptor, maintenanceInterceptor]),
+    // 2026-11-15: Maintenance mode: whether this portal is down, without holding up the start.
+    provideAppInitializer(() => {
+      void inject(MaintenanceService).check();
+    }),
+    // 2026-11-15: the Admin's logos and colour theme (Branding), without holding up the start.
+    provideAppInitializer(() => {
+      void inject(BrandingService).load();
+    }),
     // The Admin's level names and logos (Certification Levels), without holding up the start.
     // 2026-11-08: also every level, enabled or not (staff filters, menus and tables; levels the Admin added).
     provideAppInitializer(() => {

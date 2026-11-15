@@ -184,6 +184,12 @@ const standardBodySample =
                 </td>
                 <td class="text-center">
                   <div class="row-actions justify-content-center">
+                    <!-- 2026-11-15 (design approved): switch an e-mail on or off from the list. -->
+                    <label class="quick-switch" [class.off]="!t.enabled" [title]="t.enabled ? 'Switch this e-mail off' : 'Switch this e-mail on'">
+                      <input type="checkbox" role="switch" [checked]="t.enabled" [attr.aria-label]="(t.enabled ? 'Switch off ' : 'Switch on ') + t.name"
+                             (click)="$event.preventDefault(); toggle(t)" />
+                      <span class="qs-track" aria-hidden="true"></span>{{ t.enabled ? 'On' : 'Off' }}
+                    </label>
                     <button type="button" class="btn btn-outline-primary" (click)="edit(t)">Edit</button>
                     @if (t.customised) {
                       <button type="button" class="btn btn-outline-danger" (click)="reset(t)">Reset</button>
@@ -202,39 +208,39 @@ const standardBodySample =
 
     @if (editing(); as e) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="templateTitle">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable editor-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
+        <!-- 2026-11-15 (design approved): the switch in the title bar, subject and fields in one strip, the HTML and the
+             preview side by side filling the pop-up (each scrolls on its own), a fixed bar with Reset / Cancel / Save. -->
+        <div class="modal-dialog modal-xl editor-dialog">
+          <div class="modal-content ed-content">
+            <div class="modal-header ed-head">
               <div class="title-block">
                 <div class="modal-title" id="templateTitle">{{ e.item.name }}</div>
-                <small class="muted">{{ e.item.database ? 'Database mail' : 'Portal mail' }} · {{ e.item.group }}</small>
+                <small>{{ e.item.database ? 'Database mail' : 'Portal mail' }} · {{ e.item.group }}</small>
               </div>
               <div class="head-right">
-                <span class="status-badge" [class.is-active]="e.enabled" [class.is-inactive]="!e.enabled">{{ e.enabled ? 'Sent' : 'Switched off' }}</span>
-                <button type="button" class="btn-close" aria-label="Close" (click)="editing.set(null)"></button>
+                <label class="head-switch" [class.off]="!e.enabled" for="templateEnabled">
+                  <input class="form-check-input" type="checkbox" role="switch" id="templateEnabled" [(ngModel)]="e.enabled" />
+                  <span>{{ e.enabled ? 'Sent (switch off to stop it)' : 'Switched off (not sent)' }}</span>
+                </label>
+                <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="editing.set(null)"></button>
               </div>
             </div>
-            <div class="modal-body editor-body">
-              <div class="switch-row" [class.off]="!e.enabled">
-                <div class="form-check form-switch">
-                  <input class="form-check-input" type="checkbox" role="switch" id="templateEnabled" [(ngModel)]="e.enabled" />
-                  <label class="form-check-label" for="templateEnabled">{{ e.enabled ? 'This e-mail is sent' : 'This e-mail is switched off (not sent)' }}</label>
-                </div>
-              </div>
-              <div>
+            <div class="ed-strip">
+              <div class="ed-subject">
                 <label class="ed-label" for="templateSubject">Subject</label>
                 <input #subjectBox type="text" class="form-control" id="templateSubject" maxlength="400" autocomplete="off" placeholder="Empty: the standard subject"
                        [(ngModel)]="e.subject" (focus)="focused('subject')" />
               </div>
               <div class="fields" role="group" aria-labelledby="templateFields">
-                <div class="ed-label" id="templateFields">Fields <small class="muted fw-normal">— click one to put it at the cursor in the text, or in the subject when you were typing there</small></div>
+                <div class="ed-label" id="templateFields">Fields <small class="muted fw-normal">: click one to put it at the cursor (in the subject when you were typing there)</small></div>
                 <div class="chips">
                   @for (p of e.item.placeholders; track p) {
                     <button type="button" class="chip" [title]="hint(p)" (mousedown)="$event.preventDefault()" (click)="insert(p)">{{ braces(p) }}</button>
                   }
                 </div>
-                <small class="muted d-block">A field is filled in when the e-mail is sent. {{ braces('StandardBody') }} is the standard e-mail's text and {{ braces('StandardSubject') }} its subject.</small>
               </div>
+            </div>
+            <div class="modal-body ed-body">
               <div class="editor">
                 <div class="pane">
                   <div class="pane-head">
@@ -252,28 +258,40 @@ const standardBodySample =
                       <button type="button" [class.active]="phone()" [attr.aria-pressed]="phone()" (click)="phone.set(true)">Phone</button>
                     </div>
                   </div>
-                  <div class="mail-frame" [class.phone]="phone()">
-                    <div class="mail-meta">
-                      <span class="meta-label">Subject</span>
-                      <span class="meta-subject">{{ subjectPreview(e) }}</span>
+                  <div class="preview-well">
+                    <div class="mail-frame" [class.phone]="phone()">
+                      <div class="mail-meta">
+                        <span class="meta-label">Subject</span>
+                        <span class="meta-subject">{{ subjectPreview(e) }}</span>
+                      </div>
+                      <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
                     </div>
-                    <iframe class="preview" title="E-mail preview" sandbox="" [attr.srcdoc]="previewHtml()"></iframe>
                   </div>
-                  <small class="muted d-block mt-1">Fields shown with sample values: [Name] stands for the unit's value.</small>
-                  @if (e.item.database) {
-                    <small class="muted d-block" data-db-example>
-                      @if (e.example?.createdAt) { {{ braces('StandardBody') }} shows the procedure's last mail, of {{ e.example!.createdAt | date: 'dd-MM-yyyy HH:mm' }}. }
-                      @else { This procedure has sent no mail yet, so {{ braces('StandardBody') }} is shown as a box. }
-                      {{ braces('To') }} is the recipient and {{ braces('ZedId') }} the ZED ID the mail names.
-                    </small>
-                  }
                 </div>
               </div>
-              @if (modalError()) { <div class="alert alert-danger mb-0" role="alert">{{ modalError() }}</div> }
+              <small class="muted d-block ed-note">
+                A field is filled in when the e-mail is sent ({{ braces('StandardBody') }} is the standard e-mail's text, {{ braces('StandardSubject') }} its subject);
+                the preview shows sample values: [Name] stands for the unit's value.
+                @if (e.item.database) {
+                  <span data-db-example>
+                    @if (e.example?.createdAt) { {{ braces('StandardBody') }} shows the procedure's last mail, of {{ e.example!.createdAt | date: 'dd-MM-yyyy HH:mm' }}. }
+                    @else { This procedure has sent no mail yet, so {{ braces('StandardBody') }} is shown as a box. }
+                    {{ braces('To') }} is the recipient and {{ braces('ZedId') }} the ZED ID the mail names.
+                  </span>
+                }
+              </small>
+              @if (modalError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ modalError() }}</div> }
             </div>
-            <div class="modal-footer">
-              <input type="button" class="btn btn-default" value="CANCEL" (click)="editing.set(null)" />
-              <input type="button" class="btn btn-primary" value="SAVE" [disabled]="busy()" (click)="save(e)" />
+            <div class="modal-footer ed-foot">
+              <span>
+                @if (e.item.customised) {
+                  <button type="button" class="btn btn-outline-danger" (click)="resetFromEditor(e)">Reset to standard</button>
+                }
+              </span>
+              <span class="ed-foot-actions">
+                <input type="button" class="btn btn-default" value="CANCEL" (click)="editing.set(null)" />
+                <input type="button" class="btn btn-primary" value="SAVE" [disabled]="busy()" (click)="save(e)" />
+              </span>
             </div>
           </div>
         </div>
@@ -314,7 +332,7 @@ const standardBodySample =
     .col-sno { width: 70px; }
     .col-status { width: 160px; }
     .col-change { width: 160px; }
-    .col-action { width: 170px; }
+    .col-action { width: 230px; }
     .mail { display: flex; gap: 12px; align-items: flex-start; }
     .mail-icon { flex: 0 0 34px; height: 34px; border-radius: 10px; background: #eef6f6; color: #2f7c83; display: grid; place-items: center; font-size: 16px; font-weight: 700; }
     .mail-icon.db { background: #f1f0fb; color: #3f3a7a; font-size: 11px; }
@@ -324,43 +342,64 @@ const standardBodySample =
     .subject { margin-top: 2px; overflow-wrap: anywhere; }
     .status-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 
-    /* Editor pop-up: wide, the full height, the header and footer fixed and the body scrolling. */
-    @media (min-width: 576px) { .modal-dialog.editor-dialog { max-width: min(1180px, calc(100vw - 32px)); } }
-    .editor-dialog .modal-content { height: 100%; }
-    .modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    /* 2026-11-15 (design approved): the editor pop-up fills the window; only the two panes scroll. */
+    .modal .modal-dialog.editor-dialog { max-width: min(1240px, calc(100vw - 32px)); height: calc(100vh - 2rem); margin: 1rem auto; }
+    .ed-content { height: 100%; display: flex; flex-direction: column; overflow: hidden; border-radius: 12px; }
+    .modal .ed-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #23656b; color: #fff; border-bottom: 0; padding: 10px 16px; flex: none; }
+    .modal .ed-head .modal-title { color: #fff; font-size: 17px; font-weight: 700; }
     .title-block { min-width: 0; }
-    .title-block .muted { display: block; margin-top: 2px; font-size: 13px; }
-    .head-right { display: flex; align-items: center; gap: 12px; }
-    .editor-body { display: flex; flex-direction: column; gap: 16px; }
+    .title-block small { display: block; margin-top: 2px; font-size: 12.5px; color: #c9e8a0; }
+    .head-right { display: flex; align-items: center; gap: 14px; flex: none; }
+    .head-switch { display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 4px 12px 4px 6px; border-radius: 16px; background: rgba(255,255,255,.14);
+      color: #fff; font-size: 13px; font-weight: 600; cursor: pointer; text-transform: none; }
+    .modal .modal-dialog .head-switch { color: #fff; }
+    .head-switch.off { background: rgba(0,0,0,.25); }
+    .head-switch .form-check-input { float: none; width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
+    .head-switch .form-check-input:checked { background-color: #c9e8a0; border-color: #c9e8a0; }
+    .ed-strip { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 14px; padding: 10px 16px; background: #f6f9f9; border-bottom: 1px solid #dfe9ea; flex: none; }
+    .ed-strip .ed-label { margin-bottom: 4px; font-size: 12.5px; }
     .ed-label { display: block; margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #23474a; text-transform: none; }
-    .switch-row { padding: 10px 14px; background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; }
-    .switch-row.off { background: #f6f7f7; border-color: #e3e7e8; }
-    .switch-row .form-check { display: flex; align-items: center; gap: 10px; min-height: 0; margin: 0; padding: 0; }
-    .switch-row .form-check-input { float: none; flex: 0 0 auto; width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
-    .switch-row .form-check-label { margin: 0; font-weight: 600; color: #23474a; text-transform: none; cursor: pointer; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
-    .chip { padding: 3px 10px; border: 1px solid #cfe3e5; border-radius: 12px; background: #eef6f6; color: #23474a; cursor: pointer;
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 64px; overflow-y: auto; }
+    .chip { padding: 2px 8px; border: 1px solid #9cc9cd; border-radius: 4px; background: #fff; color: #23474a; cursor: pointer;
       font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; }
     .chip:hover { background: #dff0f1; border-color: #45a5ad; }
     .chip:focus-visible { outline: 2px solid #45a5ad; outline-offset: 2px; }
-    .editor { flex: 1 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    @media (min-width: 992px) { .editor { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
-    .pane { display: flex; flex-direction: column; min-width: 0; }
-    .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 6px; }
+    .modal .ed-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 12px 16px; overflow: hidden; }
+    .editor { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+    .pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    .pane-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 30px; margin-bottom: 6px; flex: none; }
     .pane-head .ed-label { margin: 0; }
     .pane-head .muted { font-size: 12px; }
-    .editor textarea.form-control.code { flex: 1 1 auto; width: 100%; max-width: 100%; min-height: 470px; resize: vertical;
+    .editor textarea.form-control.code { flex: 1 1 auto; min-height: 0; height: auto; width: 100%; max-width: 100%; resize: none; overflow: auto;
       padding: 10px 12px; font-size: 12.5px; line-height: 1.55; tab-size: 2; background: #1f2a2b; color: #e6f1f1; border-color: #1f2a2b; border-radius: 8px; }
     .editor textarea.form-control.code:focus { box-shadow: 0 0 0 3px rgba(69, 165, 173, .35); }
-    /* The preview as a mail: the subject line on top of the message. */
-    .mail-frame { flex: 1 1 auto; display: flex; flex-direction: column; border: 1px solid #dfe9ea; border-radius: 8px; overflow: hidden; background: #eef2f3;
-      margin: 0 auto; width: 100%; transition: max-width .2s; }
+    /* The preview as a mail on a grey well: the subject line on top; Phone keeps a 390px frame inside the pane. */
+    .preview-well { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; background: #eef2f3; border: 1px solid #dfe9ea; border-radius: 8px; padding: 10px; }
+    .mail-frame { display: flex; flex-direction: column; width: 100%; height: 100%; min-height: 0; border: 1px solid #dfe9ea; border-radius: 6px; overflow: hidden; background: #fff; }
     .mail-frame.phone { max-width: 390px; border-radius: 18px; border-width: 6px; border-color: #2a3435; }
-    .mail-meta { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; background: #fff; border-bottom: 1px solid #dfe9ea; font-size: 13px; }
+    .mail-meta { display: flex; gap: 8px; align-items: baseline; padding: 8px 12px; background: #fff; border-bottom: 1px solid #dfe9ea; font-size: 13px; flex: none; }
     .meta-label { color: #5f6f70; font-weight: 600; flex: none; }
     .meta-subject { color: #232527; font-weight: 600; overflow-wrap: anywhere; }
-    .preview { flex: 1 1 auto; display: block; width: 100%; min-height: 430px; border: 0; background: #fff; }
-    @media (max-width: 991.98px) { .editor textarea.form-control.code, .preview { min-height: 360px; } }
+    .preview { flex: 1 1 auto; display: block; width: 100%; min-height: 0; border: 0; background: #fff; }
+    .ed-note { margin-top: 8px; font-size: 12px; flex: none; }
+    .modal .ed-foot { justify-content: space-between; border-top: 1px solid #dfe9ea; padding: 10px 16px; flex: none; }
+    .ed-foot-actions { display: inline-flex; gap: 8px; }
+    @media (max-width: 991.98px) {
+      .modal .modal-dialog.editor-dialog { height: auto; }
+      .ed-content { height: auto; max-height: calc(100vh - 2rem); }
+      .modal .ed-body { overflow-y: auto; }
+      .ed-strip, .editor { grid-template-columns: minmax(0, 1fr); }
+      .editor textarea.form-control.code, .preview-well { min-height: 360px; }
+    }
+    /* The on / off switch of a row. */
+    .quick-switch { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    .quick-switch.off { color: #8a9899; }
+    .quick-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .qs-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; transition: background .15s; flex: none; }
+    .qs-track::after { content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
+    .quick-switch.off .qs-track { background: #c3cdce; }
+    .quick-switch.off .qs-track::after { left: 2px; }
+    .quick-switch input:focus-visible + .qs-track { outline: 2px solid #23656b; outline-offset: 2px; }
     @media (max-width: 767.98px) { .et-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }`,
 })
@@ -513,8 +552,40 @@ export class EmailTemplatesPage {
     }
   }
 
-  protected async reset(item: EmailTemplateItem): Promise<void> {
-    if (!confirm(`Use the standard e-mail again for "${item.name}"? The saved subject and text are removed.`)) return;
+  /** The list's switch: on or off, the saved subject and text kept (read first, then saved with only the switch changed). */
+  protected async toggle(item: EmailTemplateItem): Promise<void> {
+    const on = !item.enabled;
+    if (!on && !confirm(`Switch "${item.name}" off? It is no longer sent until it is switched on again.`)) return;
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      const d = await firstValueFrom(this.http.get<EmailTemplateDetails>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`));
+      const r = await firstValueFrom(
+        this.http.put<MessageResponse>(`${EmailTemplatesPage.url}/${encodeURIComponent(item.key)}`, {
+          enabled: on,
+          subject: d.item.subject?.trim() || null,
+          bodyHtml: d.standardBody ? null : d.bodyHtml,
+        }),
+      );
+      this.success.set(r.message);
+      await this.load();
+    } catch (err) {
+      this.error.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
+  }
+
+  /** "Reset to standard" in the pop-up: as the list's Reset, then the pop-up closes. */
+  protected async resetFromEditor(e: Editing): Promise<void> {
+    if (!confirm(`Use the standard e-mail again for "${e.item.name}"? The saved subject and text are removed.`)) return;
+    this.editing.set(null);
+    await this.reset(e.item, false);
+  }
+
+  protected async reset(item: EmailTemplateItem, ask = true): Promise<void> {
+    if (ask && !confirm(`Use the standard e-mail again for "${item.name}"? The saved subject and text are removed.`)) return;
     this.busy.set(true);
     this.error.set('');
     this.success.set('');

@@ -36,6 +36,7 @@ public sealed class StaffAuthController(ISqlExecutor db, ICaptchaVerifier captch
     public const string TooManyFailures = "Too many failed sign-in attempts. Please try again after 30 minutes.";
 
     [HttpPost("login")]
+    [Zed.Core.Maintenance.AllowDuringMaintenance]   // the Admin signs in while the portal is down (others are then refused)
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitPolicies.Sensitive)]
     [LoginAudit(LoginChannels.Web, "Staff")]

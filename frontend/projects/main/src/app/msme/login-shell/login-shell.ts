@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { PortalLinksService } from '@zed/shared';
+import { BrandingService } from '../../branding';
 import { PublicLevels } from '../shared/levels';
 import { ContentTextComponent } from '../../content/content-text';
 
@@ -22,11 +23,11 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       <aside class="ml-hero" aria-label="About ZED certification">
         <div class="ml-logos">
           @if (links.url('ministry'); as u) {
-            <a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" class="ml-ministry" /></a>
+            <a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('login-left', '/Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" /></a>
           } @else {
-            <img src="/Images/header/ministry.png" alt="Ministry of MSME" class="ml-ministry" />
+            <img [src]="brand.logo('login-left', '/Images/header/ministry.png')" alt="Ministry of MSME" class="ml-ministry" />
           }
-          <img class="ml-zed" src="/Images/header/zed-logo.png" alt="ZED" />
+          <img class="ml-zed" [src]="brand.logo('login-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" />
         </div>
         <div class="ml-hero-body">
           <!-- 2026-11-15 (the user): every text here is the Admin's (Administration → Texts, "MSME: Registration"); the words
@@ -136,6 +137,8 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
 export class LoginShell {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
+  /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
+  protected readonly brand = inject(BrandingService);
   protected readonly year = new Date().getFullYear();
   protected readonly steps = [
     { title: 'Register', text: 'With your Udyam number' },

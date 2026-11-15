@@ -15,6 +15,35 @@ export interface SavedGateway {
   mobileWorkingKeySet: boolean;
 }
 
+/** 2026-11-15: the QCI ERP account as the API shows it: never the secret, only whether one is saved. */
+export interface ErpInfo {
+  /** "page": the account saved here; "file": the server settings file's; "none": no account. */
+  inUse: 'page' | 'file' | 'none';
+  problem: string | null;
+  saved: {
+    tenantId: string; clientId: string; clientSecretSet: boolean; companyBaseUrl: string; scope: string | null;
+    customerEndpoint: string | null; invoiceEndpoint: string | null; receiptEndpoint: string | null;
+  } | null;
+  fileConfigured: boolean;
+  defaults: { scope: string; customerEndpoint: string; invoiceEndpoint: string; receiptEndpoint: string };
+}
+
+type Section = 'payments' | 'gateway' | 'erp' | 'invoices';
+
+/** 2026-11-15: the invoice setup (what the procedures had fixed); an empty field keeps today's value. */
+export interface InvoiceSetupValues {
+  seriesManufacturing: string;
+  seriesServices: string;
+  board: string;
+  portal: string;
+  locationCode: string;
+  feeLedger: string;
+  itemBronze: string;
+  itemSilver: string;
+  itemGold: string;
+  excludedUdyam: string[];
+}
+
 export interface PaymentGatewayInfo {
   gateway: {
     /** "page": the account saved here is in use; "file": the server settings file's. */
@@ -25,7 +54,7 @@ export interface PaymentGatewayInfo {
     returnBase: string;
     testAllowed: boolean;
   };
-  invoices: { enabled: boolean; erpReady: boolean; examples: string[] };
+  invoices: { enabled: boolean; erpReady: boolean; examples: string[]; erp?: ErpInfo | null; setup?: { values: InvoiceSetupValues; defaults: InvoiceSetupValues } | null };
   /** Online payments (CCAvenue checkouts); on unless the Admin switched them off. */
   paymentsOn: boolean;
 }
@@ -54,7 +83,28 @@ export interface PaymentGatewayInfo {
       <div class="alert alert-success" role="status">{{ success() }}</div>
     }
     @if (info(); as i) {
-      <form class="zed-card mb-3" (ngSubmit)="savePayments()" novalidate>
+      <!-- 2026-11-15 (the user): side by side as Questionnaire: the sections on the left, the chosen one on the right. -->
+      <div class="pg-layout">
+      <nav class="pg-nav" aria-label="Sections">
+        <button type="button" class="pg-item" [class.active]="section() === 'payments'" [attr.aria-current]="section() === 'payments'" (click)="section.set('payments')">
+          <span><strong>Online payments</strong><small>Payments on the portal and in the apps</small></span>
+          <span class="chip" [class.is-good]="i.paymentsOn" [class.is-bad]="!i.paymentsOn">{{ i.paymentsOn ? 'On' : 'Off' }}</span>
+        </button>
+        <button type="button" class="pg-item" [class.active]="section() === 'gateway'" [attr.aria-current]="section() === 'gateway'" (click)="section.set('gateway')">
+          <span><strong>CCAvenue payment gateway</strong><small>{{ i.gateway.inUse === 'page' ? 'The account saved here' : 'The server settings file' }}</small></span>
+          <span class="chip" [class.is-good]="i.gateway.inUse === 'page' || i.gateway.file.configured">{{ i.gateway.inUse === 'page' || i.gateway.file.configured ? 'Set up' : 'Not set' }}</span>
+        </button>
+        <button type="button" class="pg-item" [class.active]="section() === 'erp'" [attr.aria-current]="section() === 'erp'" (click)="section.set('erp')">
+          <span><strong>QCI ERP connection</strong><small>Business Central account of the invoices</small></span>
+          <span class="chip" [class.is-good]="i.invoices.erpReady" [class.is-warn]="!i.invoices.erpReady">{{ i.invoices.erpReady ? 'Set up' : 'Not set' }}</span>
+        </button>
+        <button type="button" class="pg-item" [class.active]="section() === 'invoices'" [attr.aria-current]="section() === 'invoices'" (click)="section.set('invoices')">
+          <span><strong>Invoices</strong><small>Invoice numbers and ERP posting</small></span>
+          <span class="chip" [class.is-good]="i.invoices.enabled">{{ i.invoices.enabled ? 'On' : 'Off' }}</span>
+        </button>
+      </nav>
+      <div class="pg-detail">
+      <form class="zed-card" [hidden]="section() !== 'payments'" (ngSubmit)="savePayments()" novalidate>
         <div class="card-head">
           <h5 class="card-title">Online payments</h5>
           <span class="status-badge" [class.is-active]="i.paymentsOn" data-testid="payments-state">{{ i.paymentsOn ? 'On' : 'Off' }}</span>
@@ -75,7 +125,7 @@ export interface PaymentGatewayInfo {
         </div>
       </form>
 
-      <form class="zed-card" (ngSubmit)="saveGateway()" novalidate>
+      <form class="zed-card" [hidden]="section() !== 'gateway'" (ngSubmit)="saveGateway()" novalidate>
         <div class="card-head">
           <h5 class="card-title">CCAvenue payment gateway</h5>
           <span class="status-badge" [class.is-active]="i.gateway.inUse === 'page'" data-testid="gateway-in-use">
@@ -133,7 +183,7 @@ export interface PaymentGatewayInfo {
         </div>
       </form>
 
-      <form class="zed-card mt-3" (ngSubmit)="saveInvoices()" novalidate>
+      <form class="zed-card" [hidden]="section() !== 'invoices'" (ngSubmit)="saveInvoices()" novalidate>
         <div class="card-head">
           <h5 class="card-title">Invoices (QCI ERP posting)</h5>
           <span class="status-badge" [class.is-active]="i.invoices.enabled" data-testid="invoices-state">{{ i.invoices.enabled ? 'On' : 'Off' }}</span>
@@ -144,19 +194,138 @@ export interface PaymentGatewayInfo {
             <label class="me-3"><input type="radio" name="invoices" [value]="true" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> On</label>
             <label><input type="radio" name="invoices" [value]="false" [ngModel]="invoicesOn()" (ngModelChange)="invoicesOn.set($event)" /> Off</label>
           </span>
-          <span class="lbl">Invoice numbers</span>
-          <span>{{ i.invoices.examples[0] }} (Manufacturing), {{ i.invoices.examples[1] }} (Services): each sector has its own series</span>
-          <span class="lbl">ERP on the server</span>
-          <span [class.text-danger]="!i.invoices.erpReady">{{ i.invoices.erpReady ? 'Set up' : 'Not set up (needed before switching on)' }}</span>
+          @if (!i.invoices.setup) {
+            <span class="lbl">Invoice numbers</span>
+            <span>{{ i.invoices.examples[0] }} (Manufacturing), {{ i.invoices.examples[1] }} (Services): each sector has its own series</span>
+          }
+          <span class="lbl">QCI ERP connection</span>
+          <span [class.text-danger]="!i.invoices.erpReady">
+            {{ i.invoices.erpReady ? 'Set up' : 'Not set up (needed before switching on)' }}
+            <button type="button" class="btn btn-link p-0 ms-1 align-baseline" (click)="section.set('erp')">{{ i.invoices.erpReady ? 'View' : 'Set it up' }}</button>
+          </span>
         </div>
         <small class="muted d-block mt-2">
           On: after each gateway payment the customer, invoice and receipt go to the ERP, and the invoice PDF comes back through the
           Finance API. Off: payments work as usual and no invoice is made.
         </small>
+
+        @if (i.invoices.setup; as setup) {
+          <!-- 2026-11-15 (the user): the setup of the invoices; an empty field keeps today's value (shown greyed). -->
+          <section class="inv-sec" aria-labelledby="inv-numbers">
+            <h6 id="inv-numbers" class="inv-title">Invoice numbers</h6>
+            <div class="grid">
+              <label class="lbl" for="inv-series-m">Manufacturing series</label>
+              <span class="inv-pair">
+                <input id="inv-series-m" name="seriesManufacturing" class="form-control inv-short" maxlength="10" autocomplete="off"
+                       [placeholder]="setup.defaults.seriesManufacturing" [(ngModel)]="inv.seriesManufacturing" />
+                <span class="muted">e.g. {{ (inv.seriesManufacturing || setup.defaults.seriesManufacturing).toUpperCase() }}/{{ fy(i) }}/1</span>
+              </span>
+              <label class="lbl" for="inv-series-s">Services series</label>
+              <span class="inv-pair">
+                <input id="inv-series-s" name="seriesServices" class="form-control inv-short" maxlength="10" autocomplete="off"
+                       [placeholder]="setup.defaults.seriesServices" [(ngModel)]="inv.seriesServices" />
+                <span class="muted">e.g. {{ (inv.seriesServices || setup.defaults.seriesServices).toUpperCase() }}/{{ fy(i) }}/1</span>
+              </span>
+            </div>
+            <small class="muted d-block mt-1">Letters and digits. Each sector keeps its own counter, which starts again at 1 every 1 April.</small>
+          </section>
+
+          <section class="inv-sec" aria-labelledby="inv-erp">
+            <h6 id="inv-erp" class="inv-title">Values sent to the ERP</h6>
+            <div class="grid">
+              <label class="lbl" for="inv-board">Board</label>
+              <input id="inv-board" name="board" class="form-control inv-short" maxlength="30" autocomplete="off" [placeholder]="setup.defaults.board" [(ngModel)]="inv.board" />
+              <label class="lbl" for="inv-portal">Portal · Location code</label>
+              <span class="inv-pair">
+                <input id="inv-portal" name="portal" class="form-control inv-short" maxlength="30" autocomplete="off" aria-label="Portal" [placeholder]="setup.defaults.portal" [(ngModel)]="inv.portal" />
+                <input id="inv-location" name="locationCode" class="form-control inv-short" maxlength="30" autocomplete="off" aria-label="Location code" [placeholder]="setup.defaults.locationCode" [(ngModel)]="inv.locationCode" />
+              </span>
+              <label class="lbl" for="inv-ledger">Fee ledger</label>
+              <input id="inv-ledger" name="feeLedger" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.feeLedger" [(ngModel)]="inv.feeLedger" />
+            </div>
+          </section>
+
+          <section class="inv-sec" aria-labelledby="inv-items">
+            <h6 id="inv-items" class="inv-title">Item name on the invoice, by level</h6>
+            <div class="grid">
+              <label class="lbl" for="inv-bronze">Bronze</label>
+              <input id="inv-bronze" name="itemBronze" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemBronze" [(ngModel)]="inv.itemBronze" />
+              <label class="lbl" for="inv-silver">Silver</label>
+              <input id="inv-silver" name="itemSilver" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemSilver" [(ngModel)]="inv.itemSilver" />
+              <label class="lbl" for="inv-gold">Gold</label>
+              <input id="inv-gold" name="itemGold" class="form-control" maxlength="100" autocomplete="off" [placeholder]="setup.defaults.itemGold" [(ngModel)]="inv.itemGold" />
+            </div>
+          </section>
+
+          <section class="inv-sec" aria-labelledby="inv-units">
+            <h6 id="inv-units" class="inv-title">Units never invoiced (test units)</h6>
+            <div class="inv-tags" data-testid="inv-units">
+              @for (u of units(); track u) {
+                <span class="inv-tag">{{ u }}<button type="button" class="inv-x" [attr.aria-label]="'Remove ' + u" (click)="removeUnit(u)">×</button></span>
+              } @empty {
+                <span class="muted">None: every unit's payment is posted.</span>
+              }
+            </div>
+            <div class="inv-pair mt-2">
+              <input id="inv-unit" name="newUnit" class="form-control inv-unit" maxlength="25" autocomplete="off" placeholder="UDYAM-XX-00-0000000"
+                     aria-label="Add a UDYAM number" [(ngModel)]="newUnit" (keydown.enter)="$event.preventDefault(); addUnit()" />
+              <button type="button" class="btn btn-outline-secondary" (click)="addUnit()">Add</button>
+              <span class="muted">Payments of these units are not posted to the ERP.</span>
+            </div>
+            @if (unitProblem()) {
+              <small class="text-danger d-block mt-1" role="alert">{{ unitProblem() }}</small>
+            }
+          </section>
+        }
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary" [disabled]="busy() || invoicesOn() === i.invoices.enabled">Save</button>
+          <button type="submit" class="btn btn-primary" [disabled]="busy() || (!i.invoices.setup && invoicesOn() === i.invoices.enabled)">Save</button>
         </div>
       </form>
+
+      <!-- 2026-11-15 (the user): the ERP account entered here, as the CCAvenue account (else the server file's). -->
+      <form class="zed-card" [hidden]="section() !== 'erp'" (ngSubmit)="saveErp()" novalidate>
+        <div class="card-head">
+          <h5 class="card-title">QCI ERP connection (Business Central)</h5>
+          <span class="status-badge" [class.is-active]="erpInUse(i) === 'page'" data-testid="erp-in-use">
+            In use: {{ erpInUse(i) === 'page' ? 'the account saved here' : erpInUse(i) === 'file' ? 'server settings file' : 'none' }}
+          </span>
+        </div>
+        @if (i.invoices.erp?.problem; as problem) {
+          <div class="alert alert-warning" role="alert">The saved account is not used: {{ problem }}</div>
+        }
+        <div class="grid">
+          <label class="lbl" for="erp-tenant">Tenant ID</label>
+          <input id="erp-tenant" name="tenantId" class="form-control" maxlength="100" autocomplete="off" placeholder="Azure directory ID or domain" [(ngModel)]="erpTenantId" />
+          <label class="lbl" for="erp-client">Client ID</label>
+          <input id="erp-client" name="clientId" class="form-control" maxlength="100" autocomplete="off" placeholder="Application (client) ID" [(ngModel)]="erpClientId" />
+          <label class="lbl" for="erp-secret">Client secret</label>
+          <input id="erp-secret" name="clientSecret" type="password" class="form-control" maxlength="500" autocomplete="new-password"
+                 [placeholder]="i.invoices.erp?.saved?.clientSecretSet ? 'Saved (hidden): leave blank to keep' : 'Not saved'" [(ngModel)]="erpClientSecret" />
+          <label class="lbl" for="erp-base">Company base URL</label>
+          <input id="erp-base" name="companyBaseUrl" class="form-control" maxlength="500" autocomplete="off"
+                 placeholder="https://api.businesscentral.dynamics.com/v2.0/<tenant>/Production/ODataV4/Company('…')/" [(ngModel)]="erpBaseUrl" />
+          <label class="lbl" for="erp-scope">Scope</label>
+          <input id="erp-scope" name="scope" class="form-control" maxlength="300" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.scope ?? ''" [(ngModel)]="erpScope" />
+          <label class="lbl" for="erp-customer">Customer endpoint</label>
+          <input id="erp-customer" name="customerEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.customerEndpoint ?? ''" [(ngModel)]="erpCustomerEndpoint" />
+          <label class="lbl" for="erp-invoice">Invoice endpoint</label>
+          <input id="erp-invoice" name="invoiceEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.invoiceEndpoint ?? ''" [(ngModel)]="erpInvoiceEndpoint" />
+          <label class="lbl" for="erp-receipt">Receipt endpoint</label>
+          <input id="erp-receipt" name="receiptEndpoint" class="form-control" maxlength="100" autocomplete="off" [placeholder]="i.invoices.erp?.defaults?.receiptEndpoint ?? ''" [(ngModel)]="erpReceiptEndpoint" />
+        </div>
+        <small class="muted d-block mt-2">
+          The client secret is stored encrypted and never shown again. Scope and endpoints left empty use the defaults shown.
+          A saved account is used from the next payment; the Invoices switch decides whether invoices are made.
+        </small>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary" [disabled]="busy()">Save</button>
+          @if (i.invoices.erp?.saved) {
+            <button type="button" class="btn btn-outline-secondary" [disabled]="busy()" (click)="useErpFile()">Use server file again</button>
+          }
+        </div>
+      </form>
+      </div>
+      </div>
     }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
@@ -164,10 +333,37 @@ export interface PaymentGatewayInfo {
   `,
   styles: `
     .card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    /* 2026-11-15: the sections on the left (as Questionnaire), the chosen one on the right. */
+    .pg-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+    .pg-nav { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 8px; position: sticky; top: 72px; display: flex; flex-direction: column; gap: 9px; }
+    .pg-item { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; border: 1px solid transparent;
+      border-radius: 8px; background: transparent; padding: 10px 12px; color: #23474a; }
+    /* A clear line between the sections (the user, 2026-11-15). */
+    .pg-item:not(:last-child)::after { content: ''; position: absolute; left: 4px; right: 4px; bottom: -5px; height: 1px; background: #c5d6d8; pointer-events: none; }
+    .pg-item .chip { white-space: nowrap; }
+    .pg-item:hover { background: #f4f8f8; }
+    .pg-item.active { background: #eef6f6; border-color: #9cc9cd; }
+    .pg-item strong { display: block; font-size: 14px; }
+    .pg-item small { display: block; font-size: 12px; color: #7a8a8b; }
+    .pg-item .chip { flex: none; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700; background: #eef1f1; color: #5f6f70; }
+    .pg-item .chip.is-good { background: #e3f4e8; color: #1e7a3c; }
+    .pg-item .chip.is-warn { background: #fdf1dc; color: #a86a12; }
+    .pg-item .chip.is-bad { background: #fbe4e1; color: #b03a2e; }
+    .pg-detail > .zed-card { margin: 0; }
+    .pg-detail > form[hidden] { display: none !important; }
+    @media (max-width: 900px) { .pg-layout { grid-template-columns: minmax(0, 1fr); } .pg-nav { position: static; } }
     .grid { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 10px 14px; align-items: center; max-width: 720px; }
     .lbl { color: #5f6f70; font-weight: 600; }
     .muted { color: #6b7a7b; font-size: 13px; }
-    .form-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .form-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+    .inv-sec { border-top: 1px solid #dfe9ea; margin-top: 14px; padding-top: 12px; }
+    .inv-title { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #2f7c83; margin: 0 0 8px; }
+    .inv-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .inv-short { max-width: 160px; }
+    .inv-unit { max-width: 240px; }
+    .inv-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .inv-tag { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #cbd9da; border-radius: 4px; padding: 2px 4px 2px 8px; font-size: 12.5px; background: #fff; }
+    .inv-x { border: 0; background: transparent; color: #b03a2e; font-size: 16px; line-height: 1; padding: 0 4px; cursor: pointer; }
     @media (max-width: 600px) { .grid { grid-template-columns: 1fr; } }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
@@ -180,6 +376,72 @@ export class PaymentGatewayPage {
   protected readonly mode = signal<'live' | 'test'>('live');
   protected readonly invoicesOn = signal(false);
   protected readonly paymentsOn = signal(true);
+  /** The invoice setup being edited (an empty field keeps today's value). */
+  protected inv: Omit<InvoiceSetupValues, 'excludedUdyam'> = PaymentGatewayPage.emptySetup();
+  protected readonly units = signal<string[]>([]);
+  protected newUnit = '';
+  protected readonly unitProblem = signal('');
+
+  private static emptySetup(): Omit<InvoiceSetupValues, 'excludedUdyam'> {
+    return { seriesManufacturing: '', seriesServices: '', board: '', portal: '', locationCode: '', feeLedger: '', itemBronze: '', itemSilver: '', itemGold: '' };
+  }
+
+  /** The financial year part of an invoice number (2627), from the example the server gives. */
+  protected fy(i: PaymentGatewayInfo): string {
+    return i.invoices.examples[0]?.split('/')[1] ?? '';
+  }
+
+  protected addUnit(): void {
+    const u = this.newUnit.trim().toUpperCase();
+    this.unitProblem.set('');
+    if (!u) return;
+    if (!/^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/.test(u)) {
+      this.unitProblem.set('Please enter a UDYAM number like UDYAM-UP-29-0003915.');
+      return;
+    }
+    if (!this.units().includes(u)) this.units.update((list) => [...list, u]);
+    this.newUnit = '';
+  }
+
+  protected removeUnit(u: string): void {
+    this.units.update((list) => list.filter((x) => x !== u));
+  }
+  /** The section shown on the right. */
+  protected readonly section = signal<Section>('payments');
+  protected erpTenantId = '';
+  protected erpClientId = '';
+  protected erpClientSecret = '';
+  protected erpBaseUrl = '';
+  protected erpScope = '';
+  protected erpCustomerEndpoint = '';
+  protected erpInvoiceEndpoint = '';
+  protected erpReceiptEndpoint = '';
+
+  protected erpInUse(i: PaymentGatewayInfo): 'page' | 'file' | 'none' {
+    return i.invoices.erp?.inUse ?? (i.invoices.erpReady ? 'file' : 'none');
+  }
+
+  protected async saveErp(): Promise<void> {
+    await this.run(() =>
+      firstValueFrom(
+        this.http.put<MessageResponse>(`${PaymentGatewayPage.url}/erp`, {
+          tenantId: this.erpTenantId,
+          clientId: this.erpClientId,
+          clientSecret: this.erpClientSecret || null,
+          companyBaseUrl: this.erpBaseUrl,
+          scope: this.erpScope || null,
+          customerEndpoint: this.erpCustomerEndpoint || null,
+          invoiceEndpoint: this.erpInvoiceEndpoint || null,
+          receiptEndpoint: this.erpReceiptEndpoint || null,
+        }),
+      ),
+    );
+  }
+
+  protected async useErpFile(): Promise<void> {
+    if (!confirm('ERP postings will use the account in the server settings file again. Continue?')) return;
+    await this.run(() => firstValueFrom(this.http.delete<MessageResponse>(`${PaymentGatewayPage.url}/erp`)));
+  }
   protected merchantId = '';
   protected accessCode = '';
   protected workingKey = '';
@@ -220,7 +482,10 @@ export class PaymentGatewayPage {
   }
 
   protected async saveInvoices(): Promise<void> {
-    await this.run(() => firstValueFrom(this.http.put<MessageResponse>(`${PaymentGatewayPage.url}/invoices`, { enabled: this.invoicesOn() })));
+    const body = this.info()?.invoices.setup
+      ? { enabled: this.invoicesOn(), setup: { ...this.inv, excludedUdyam: this.units() } }
+      : { enabled: this.invoicesOn() };
+    await this.run(() => firstValueFrom(this.http.put<MessageResponse>(`${PaymentGatewayPage.url}/invoices`, body)));
   }
 
   /** Runs a change, shows its message and reloads the page's data (the key boxes are emptied). */
@@ -251,6 +516,24 @@ export class PaymentGatewayPage {
       this.mobileAccessCode = s?.mobileAccessCode ?? '';
       this.workingKey = this.reconciliationKey = this.mobileWorkingKey = '';
       this.invoicesOn.set(i.invoices.enabled);
+      // A value equal to today's default shows as an empty field (its default greyed in it).
+      const sv = i.invoices.setup;
+      this.inv = PaymentGatewayPage.emptySetup();
+      if (sv) {
+        for (const k of Object.keys(this.inv) as (keyof typeof this.inv)[]) this.inv[k] = sv.values[k] === sv.defaults[k] ? '' : sv.values[k];
+      }
+      this.units.set(sv ? [...sv.values.excludedUdyam] : []);
+      this.newUnit = '';
+      this.unitProblem.set('');
+      const e = i.invoices.erp?.saved;
+      this.erpTenantId = e?.tenantId ?? '';
+      this.erpClientId = e?.clientId ?? '';
+      this.erpBaseUrl = e?.companyBaseUrl ?? '';
+      this.erpScope = e?.scope ?? '';
+      this.erpCustomerEndpoint = e?.customerEndpoint ?? '';
+      this.erpInvoiceEndpoint = e?.invoiceEndpoint ?? '';
+      this.erpReceiptEndpoint = e?.receiptEndpoint ?? '';
+      this.erpClientSecret = '';
       this.paymentsOn.set(i.paymentsOn);
     } catch (err) {
       this.error.set(apiErrorMessage(err));

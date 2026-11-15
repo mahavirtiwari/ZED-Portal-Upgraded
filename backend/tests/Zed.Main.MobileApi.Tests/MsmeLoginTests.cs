@@ -194,8 +194,8 @@ public sealed class MsmeVersionCheckTests : IDisposable
         var e = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
         Assert.Equal("2", e.GetProperty("status").GetString());
         Assert.Equal("Download new app from store.", e.GetProperty("errorMessage").GetString());
-        // No login procedure ran; only the refused attempt was recorded.
-        var call = Assert.Single(_host.Sql.Calls);
+        // No login procedure ran; only the refused attempt was recorded (the settings read is the maintenance check's).
+        var call = Assert.Single(_host.Sql.Calls, c => !c.Name.StartsWith("SELECT SettingKey", StringComparison.Ordinal));
         Assert.StartsWith("INSERT INTO dbo.V4LoginEvents", call.Name);
         Assert.Equal("Failed", FakeSql.Arg(call.Args, "Result"));
         Assert.Equal("1.0.0", FakeSql.Arg(call.Args, "AppVersion"));

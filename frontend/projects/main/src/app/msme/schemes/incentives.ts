@@ -10,7 +10,8 @@ import { Incentive, IncentiveDetails, STATES, SchemesApi } from './schemes.api';
 @Component({
   selector: 'zed-public-frame',
   imports: [RouterLink],
-  host: { class: 'zed-legacy d-block' },
+  // 2026-11-15 (the user): room for the fixed 100px header, as the public layout has; the filters were hidden under it.
+  host: { class: 'zed-legacy d-block', '[style.padding-top.px]': 'bare() ? 0 : 100' },
   template: `
     @if (!bare()) {
       <header class="zed-header zed-smooth">

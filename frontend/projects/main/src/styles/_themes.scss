@@ -1,0 +1,36 @@
+// 2026-11-15 (the user, design approved): Admin → Settings → Branding, colour themes. Only with a theme other than ZED Teal
+// (BrandingService puts <html data-zed-theme="..."> and the colours as --zt-dark / --zt-mid / --zt-accent): the menu bars,
+// buttons, table headings, pop-up title bars, active tabs and links take the theme's colours. Without the attribute nothing
+// here applies, so ZED Teal stays exactly as it is. !important: these must win over the pages' own colours.
+html[data-zed-theme] {
+  // Menu bars (staff and MSME) and their accents.
+  .zed-navbar, .topnav { background: var(--zt-dark) !important; }
+  .zed-navbar .nav-link.active, .topnav .nav-link.active { border-bottom-color: var(--zt-accent) !important; }
+  .zed-navbar .avatar, .topnav .avatar { background: var(--zt-accent) !important; color: var(--zt-dark) !important; }
+
+  // Buttons.
+  .btn-primary, .ml-login, .zl-login {
+    background-color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important;
+  }
+  .btn-primary:hover, .btn-primary:focus-visible, .ml-login:hover, .zl-login:hover { filter: brightness(1.12); }
+  .btn-outline-primary { color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }
+  .btn-outline-primary:hover { background-color: var(--zt-dark) !important; color: #fff !important; }
+  .btn-link { color: var(--zt-dark) !important; }
+
+  // Table headings.
+  .table-zed > thead > tr > th, .table-zed thead th { background: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }
+
+  // Pop-up title bars and their numbers.
+  .modal .acc-head, .modal .ed-head { background: var(--zt-dark) !important; }
+  .acc-head-sub, .ed-head .title-block small { color: var(--zt-accent) !important; }
+  .acc-num { background: var(--zt-dark) !important; }
+
+  // Segmented filters, tabs and the chosen card.
+  .seg button.active, .acc-seg-btn.on, .acc-tab.active, .stat-tab.active { background: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important; }
+  .et-tab.active, .nav-tabs .nav-link.active { border-bottom-color: var(--zt-mid) !important; }
+  .pg-item.active, .choice-card.active { border-color: var(--zt-mid) !important; box-shadow: inset 0 0 0 1px var(--zt-mid) !important; }
+
+  // Links in the pages (not the menus or buttons).
+  .zed-legacy main a:not(.btn):not(.nav-link):not(.dropdown-item), .page-head a { color: var(--zt-dark); }
+  .registration-title { color: var(--zt-dark); }
+}

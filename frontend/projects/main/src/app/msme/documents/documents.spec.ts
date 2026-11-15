@@ -18,7 +18,7 @@ describe('DocumentsPage', () => {
   }
 
   const rows = () =>
-    [...el.querySelectorAll('.alert-document')].map((d) => ({
+    [...el.querySelectorAll('.doc-row')].map((d) => ({
       text: d.querySelector('p')!.textContent!.replace(/\s+/g, ' ').trim(),
       href: d.querySelector('a')?.getAttribute('href') ?? null,
       target: d.querySelector('a')?.getAttribute('target') ?? null,

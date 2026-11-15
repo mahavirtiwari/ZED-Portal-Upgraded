@@ -2,7 +2,7 @@ import { DatePipe } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ClientConfigService, PortalLinksService, apiErrorMessage } from '@zed/shared';
+import { ClientConfigService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { ContentService, ContentTextComponent } from '../../content/content-text';
 import { PaymentStep } from '../payment/payment-step';
@@ -159,10 +159,6 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     .pledge-box b { font-size: 14px; color: #232527; }
     .pledge-box .btn { white-space: nowrap; }
     .band-side { flex: none; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
-    .app-badges { display: flex; flex-direction: column; gap: 4px; max-width: 220px; }
-    .app-badges small { font-size: 11.5px; color: #5f6f70; line-height: 1.3; }
-    .app-badges small ::ng-deep p { margin: 0; }
-    .app-badges div { display: flex; gap: 6px; }
     @media (max-width: 991.98px) {
       .unit-band { flex-wrap: wrap; }
       .band-side { width: 100%; justify-content: flex-start; }
@@ -171,6 +167,7 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
       .pledge-box { width: 100%; }
       .pledge-box .btn { margin-left: auto; }
     }
+    /* The information pop-ups (dash-pop, dp-*): styles/_v4-blocks.scss (the component style budget). */
     /* 2026-11-14 (approved design A): the page header and the next-step banner. */
     .dash-head { align-items: center; }
     .dash-crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
@@ -264,7 +261,6 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
 })
 export class DashboardPage {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
-  protected readonly links = inject(PortalLinksService);
   private readonly http = inject(HttpClient);
   /** The disclaimer and instructions must be shown before ACCEPT & PROCEED. */
   protected readonly textsLoaded = inject(ContentService).loaded;
@@ -390,6 +386,20 @@ export class DashboardPage {
   protected num(field: string, row: Row = this.cert()): number {
     const v = row[field];
     return typeof v === 'number' ? v : Number(v ?? 0) || 0;
+  }
+
+  /** 2026-11-15: the pop-up's "Availed" chip: the joining reward used, financial assistance or TU availed. */
+  protected availed(kind: string): boolean {
+    if (kind === 'joining') return this.is(this.msme(), 'IsCouponUsed', 1);
+    if (kind === 'fa') return this.is(this.cert(), 'FinancialAssistanceStatus', 0);
+    if (kind === 'tu') return this.is(this.cert(), 'TechnologyUpgradationStatus', 0);
+    return false;
+  }
+
+  /** An amount as ₹ 10,000 (Indian grouping); a text that is not a number stays as it is. */
+  protected rupees(v: unknown): string {
+    const n = Number(String(v ?? '').replace(/[^0-9.]/g, ''));
+    return v === null || v === undefined || v === '' || !Number.isFinite(n) ? String(v ?? '') : '₹ ' + n.toLocaleString('en-IN');
   }
 
   /** Loose equality like the AngularJS expressions (null/undefined never equal a number). */

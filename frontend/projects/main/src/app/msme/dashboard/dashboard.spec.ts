@@ -67,8 +67,8 @@ describe('DashboardPage', () => {
     expect(el.querySelector('.dash-head h3')!.textContent).toBe('Welcome, Acme Castings');
     expect((el.querySelector('.refresh-btn') as HTMLElement).title).toMatch(/Refreshed on \d{2}\/\d{2}\/\d{4} \d{2}:\d{2} (AM|PM)/);
     expect(el.querySelector('.next-step')).toBeNull();
-    // The app badges are in the unit band; the separate green banner is gone.
-    expect(el.querySelector('.unit-band .app-badges')).toBeTruthy();
+    // 2026-11-15: no app badges in the unit band, and no separate green banner.
+    expect(el.querySelector('.unit-band .app-badges')).toBeNull();
     expect(el.querySelector('.app-banner')).toBeNull();
   });
 

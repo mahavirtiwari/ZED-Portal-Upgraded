@@ -294,7 +294,8 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         AssertFail(e, "An error has occurred, please try again later.");
         Assert.False(Directory.Exists(StoragePath("Videos")));
         AssertNothingOutside("evil-ulb");
-        Assert.Empty(Host.Sql.Calls);
+        // Nothing stored (the settings read is the maintenance check's, 2026-11-15).
+        Assert.DoesNotContain(Host.Sql.Calls, c => !c.Name.StartsWith("SELECT SettingKey", StringComparison.Ordinal));
     }
 
     private void FinalSubmitProcs(int ncCount, params string[] sitePhotoPaths)

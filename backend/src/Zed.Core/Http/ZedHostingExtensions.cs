@@ -46,7 +46,11 @@ public static class ZedHostingExtensions
     public static IServiceCollection AddZedPlatform(
         this IServiceCollection services, IConfiguration config, string defaultDatabase, string authCookieName)
     {
-        services.AddControllers(o => o.Filters.AddService<ValidateAntiforgeryFilter>());
+        services.AddControllers(o =>
+        {
+            o.Filters.AddService<ValidateAntiforgeryFilter>();
+            o.Filters.AddService<Zed.Core.Maintenance.MaintenanceFilter>();   // 2026-11-15: Admin → Maintenance mode
+        });
         services.AddZedAuthentication(authCookieName);
         services.AddZedDataProtection(config, applicationName: authCookieName);
         services.AddZedServices(config, defaultDatabase);
@@ -78,6 +82,10 @@ public static class ZedHostingExtensions
         services.Configure<RecaptchaOptions>(config.GetSection(RecaptchaOptions.Section));
         services.AddHttpClient<RecaptchaVerifier>();
         services.AddSingleton<IPortalSettings, PortalSettings>();
+        // 2026-11-15: what the Admin sets on the main portal for every portal and app (maintenance, branding).
+        services.AddSingleton<Zed.Core.Maintenance.IMainSettings, Zed.Core.Maintenance.MainSettings>();
+        services.AddSingleton<Zed.Core.Maintenance.MaintenanceState>();
+        services.AddScoped<Zed.Core.Maintenance.MaintenanceFilter>();
         services.AddSingleton<ICaptchaSettings, CaptchaSettings>();
         services.AddSingleton<EmailAddresses>();
         services.AddSingleton<TextCaptcha>();
@@ -171,6 +179,8 @@ public static class ZedHostingExtensions
         else app.UseHsts();
 
         app.UseDefaultFiles();
+        // 2026-11-15: Admin → Branding: the e-mails' logo address answers with the saved e-mail logo.
+        Zed.Core.Maintenance.Branding.UseZedBrandedEmailLogo(app);
         app.UseStaticFiles();
         app.UseRateLimiter();
         app.UseAuthentication();

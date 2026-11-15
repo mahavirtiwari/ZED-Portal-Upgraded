@@ -5,16 +5,27 @@
   .crumb a { color: #7a8a8b; text-decoration: none; }
   .crumb [aria-current] { color: #2f7c83; font-weight: 600; }
   .registration-title { font-size: 22px; margin: 0; }
-  .dcard { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 6px 20px 10px; }
-  .dgroup { font-size: 14px; font-weight: 700; color: #2f7c83; margin: 14px 0 4px; }
-  .drow { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #eef3f3; margin: 0; }
-  .dgroup + .drow { border-top: 0; }
-  .dicon { flex: none; width: 32px; height: 32px; padding: 6px; border-radius: 8px; background: #eef6f6; }
-  .drow p { flex: 1 1 auto; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; color: #232527; overflow-wrap: anywhere; }
-  .drow small { font-size: 12px; font-weight: 400; }
-  .doc-download { flex: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 700; white-space: nowrap; }
-  .doc-download img { width: 14px; }
-  .not-available { font-size: 12px; font-weight: 600; color: #7a8a8b; }
+  // 2026-11-15 (design approved, second option): a heading bar in the applicant pages' colours over a ruled table per group.
+  .dsec { background: #fff; border: 1px solid #cfe3e3; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+  .dbar { margin: 0; padding: 9px 14px; font-size: 15px; font-weight: 700; color: #fff;
+    background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }
+  .table-responsive { margin: 0; }
+  .dtable { width: 100%; margin: 0; border-collapse: collapse; font-size: 14px; }
+  .dtable th { background: #f1f8f8; color: #5f6f70; font-weight: 600; font-size: 13px; text-align: left; padding: 8px 12px; border-bottom: 1px solid #dbe8e9; }
+  .dtable td { padding: 9px 12px; border-bottom: 1px solid #dbe8e9; border-right: 1px solid #dbe8e9; vertical-align: middle; }
+  .dtable td:last-child { border-right: 0; }
+  .dtable tbody tr:last-child td { border-bottom: 0; }
+  .dtable tbody tr:hover td { background: #f7fbfb; }
+  .dn { width: 64px; text-align: center !important; color: #7a8a8b; }
+  .da { width: 150px; text-align: center !important; }
+  .dtable p { margin: 0; font-weight: 600; color: #1d2b2c; overflow-wrap: anywhere; }
+  .dd { color: #5f6f70; font-size: 13px; overflow-wrap: anywhere; }
+  .dname { display: flex; align-items: center; gap: 8px; }
+  .dtag { flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: .03em; border-radius: 3px; padding: 1px 6px; background: #fbe4e1; color: #b03a2e; }
+  .dtag-video { background: #e5eefb; color: #2b5aa8; }
+  .doc-download { min-width: 96px; font-weight: 700; }
+  .not-available { display: inline-block; font-size: 12px; font-weight: 600; color: #9a6a12; background: #fdf1dc; border-radius: 4px; padding: 2px 8px; }
+  @media (max-width: 575.98px) { .dtable th:nth-child(3), .dtable td.dd { display: none; } .da { width: 110px; } }
 }
 
 .loadingdiv {

@@ -22,7 +22,8 @@ builder.Services.AddZedServices(builder.Configuration, host.Database);
 builder.Services.AddZedDataProtection(builder.Configuration, "zed.mobile." + system.ToString().ToLowerInvariant());
 builder.Services.AddLegacyMobile(builder.Configuration);
 builder.Services.AddSingleton<LoginThrottle>();
-builder.Services.AddControllers().ConfigureApplicationPartManager(m =>
+// 2026-11-15: a down app (Admin → Maintenance mode) gets its message instead of an answer.
+builder.Services.AddControllers(o => o.Filters.AddService<Zed.Core.Maintenance.MaintenanceFilter>()).ConfigureApplicationPartManager(m =>
     m.FeatureProviders.Add(new PortalControllerFilter(system, typeof(LoginThrottle).Assembly)));
 
 var maxRequest = builder.Configuration.GetValue<long?>("Mobile:MaxRequestBytes") ?? new MobileOptions().MaxRequestBytes;

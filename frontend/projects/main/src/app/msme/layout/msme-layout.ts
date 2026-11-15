@@ -1,6 +1,7 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, PortalLinksService } from '@zed/shared';
+import { BrandingService } from '../../branding';
 import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
 
 /**
@@ -16,8 +17,8 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
-            <a routerLink="/msme/dashboard"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" />}
+            <a routerLink="/msme/dashboard"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
           </div>
         </div>
       </header>
@@ -68,7 +69,7 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
         <div class="footer">
           <div class="container d-flex justify-content-between align-items-center py-2">
             <small>ZED © {{ year }} All Rights Reserved</small>
-            <img src="/Images/footer/footer-icon.png" alt="QCI" height="32" />
+            <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
           </div>
         </div>
       </footer>
@@ -109,6 +110,8 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
 export class MsmeLayout {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
+  /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
+  protected readonly brand = inject(BrandingService);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 

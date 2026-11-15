@@ -92,6 +92,43 @@ describe('PaymentGatewayPage', () => {
 
   const savedAccount = { merchantId: '998877', accessCode: 'AVNEW00AA11BB22CC', mode: 'live' as const, workingKeySet: true, reconciliationKeySet: true, mobileAccessCode: null, mobileWorkingKeySet: false };
 
+  it('shows one section at a time, picked on the left (2026-11-15)', async () => {
+    await create(info());
+    const shown = () => forms().filter((f) => !f.hidden).length;
+    expect(shown()).toBe(1);
+    expect(forms()[0].hidden).toBe(false);
+    const erpButton = [...el.querySelectorAll('.pg-item')].find((b) => b.textContent!.includes('QCI ERP connection')) as HTMLButtonElement;
+    erpButton.click();
+    await settle();
+    expect(shown()).toBe(1);
+    expect(forms()[3].hidden).toBe(false);
+    expect(el.querySelector('[data-testid=erp-in-use]')!.textContent).toContain('none');
+  });
+
+  it('saves the ERP connection and leaves a blank secret out', async () => {
+    await create(info({}, {
+      erp: { inUse: 'none', problem: null, saved: null, fileConfigured: false,
+        defaults: { scope: 'https://api.businesscentral.dynamics.com/.default', customerEndpoint: 'Import_Customer_Data_Excel', invoiceEndpoint: 'Import_Invoice_Data_Excel', receiptEndpoint: 'Import_Receipt_Data_Excel' } },
+    }));
+    expect(input('erp-invoice').placeholder).toBe('Import_Invoice_Data_Excel');
+    await type('erp-tenant', 'qci.onmicrosoft.com');
+    await type('erp-client', 'abc-123');
+    await type('erp-secret', 's3cret');
+    await type('erp-base', 'https://api.example.test/Company/');
+    forms()[3].dispatchEvent(new Event('submit'));
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/erp`);
+    expect(put.request.body).toEqual({
+      tenantId: 'qci.onmicrosoft.com', clientId: 'abc-123', clientSecret: 's3cret', companyBaseUrl: 'https://api.example.test/Company/',
+      scope: null, customerEndpoint: null, invoiceEndpoint: null, receiptEndpoint: null,
+    });
+    put.flush({ message: 'ERP connection saved.' });
+    await settle();
+    http.expectOne(url).flush(info({}, { erpReady: true }));
+    await settle();
+    expect(input('erp-secret').value).toBe('');
+  });
+
   it('switches invoices off', async () => {
     await create(info({}, { enabled: true, erpReady: true }));
     const save = () => forms()[2].querySelector('button[type=submit]') as HTMLButtonElement;
@@ -108,6 +145,49 @@ describe('PaymentGatewayPage', () => {
     http.expectOne(url).flush(info({}, { enabled: false, erpReady: true }));
     await settle();
     expect(el.querySelector('[data-testid=invoices-state]')!.textContent!.trim()).toBe('Off');
+  });
+
+  it('saves the invoice setup with the switch; a default shows as an empty field', async () => {
+    const defaults = {
+      seriesManufacturing: 'ZEDM', seriesServices: 'ZEDS', board: 'ZED', portal: 'NDIE', locationCode: 'NDIE', feeLedger: 'ASSESSMENT FEE',
+      itemBronze: 'ZMS - ZED BRONZE CERTIFICATION', itemSilver: 'ZMS - ZED SILVER CERTIFICATION', itemGold: 'ZMS - ZED GOLD CERTIFICATION',
+      excludedUdyam: ['UDYAM-GJ-01-0013310', 'UDYAM-MH-23-0006117', 'UDYAM-UP-29-0003915'],
+    };
+    await create(info({}, { setup: { values: { ...defaults, board: 'ZEDX' }, defaults } }));
+    expect(input('inv-series-m').value).toBe('');
+    expect(input('inv-series-m').placeholder).toBe('ZEDM');
+    expect(input('inv-board').value).toBe('ZEDX');
+    const units = () => [...el.querySelectorAll('[data-testid=inv-units] .inv-tag')].map((t) => t.textContent!.replace('×', '').trim());
+    expect(units()).toEqual(defaults.excludedUdyam);
+
+    const set = (id: string, v: string) => { const i = input(id); i.value = v; i.dispatchEvent(new Event('input')); };
+    set('inv-series-m', 'qzm');
+    (el.querySelector('[aria-label="Remove UDYAM-MH-23-0006117"]') as HTMLButtonElement).click();
+    set('inv-unit', 'udyam-12');
+    const add = [...el.querySelectorAll('button')].find((b) => b.textContent!.trim() === 'Add') as HTMLButtonElement;
+    add.click();
+    await settle();
+    expect(el.querySelector('[role=alert].text-danger')!.textContent).toContain('UDYAM number');
+    set('inv-unit', 'udyam-ka-03-0000001');
+    add.click();
+    await settle();
+    expect(units()).toEqual(['UDYAM-GJ-01-0013310', 'UDYAM-UP-29-0003915', 'UDYAM-KA-03-0000001']);
+    expect(el.textContent).toContain('e.g. QZM/2627/1');
+
+    forms()[2].dispatchEvent(new Event('submit'));
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${url}/invoices`);
+    expect(put.request.body).toEqual({
+      enabled: false,
+      setup: {
+        seriesManufacturing: 'qzm', seriesServices: '', board: 'ZEDX', portal: '', locationCode: '', feeLedger: '',
+        itemBronze: '', itemSilver: '', itemGold: '', excludedUdyam: ['UDYAM-GJ-01-0013310', 'UDYAM-UP-29-0003915', 'UDYAM-KA-03-0000001'],
+      },
+    });
+    put.flush({ message: 'Invoices are off.' });
+    await settle();
+    http.expectOne(url).flush(info());
+    await settle();
   });
 
   it('goes back to the server file after confirming', async () => {

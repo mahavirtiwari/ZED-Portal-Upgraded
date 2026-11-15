@@ -1,6 +1,7 @@
 import { Component, inject, input, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { PortalLinksService } from '@zed/shared';
+import { BrandingService } from '../../branding';
 import { ContactPage } from '../contact/contact';
 
 /**
@@ -16,8 +17,8 @@ import { ContactPage } from '../contact/contact';
       <header class="zed-header zed-smooth" id="main_header">
         <div class="container g-0">
           <div class="header-top">
-            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img src="/Images/header/ministry.png" alt="Ministry of MSME" /></a>} @else {<img src="/Images/header/ministry.png" alt="Ministry of MSME" />}
-            <a routerLink="/msme/login"><img class="zedv2-logo" src="/Images/header/zed-logo.png" alt="ZED" /></a>
+            @if (links.url('ministry'); as u) {<a [href]="u" target="_blank" rel="noopener"><img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" /></a>} @else {<img [src]="brand.logo('header-left', '/Images/header/ministry.png')" alt="Ministry of MSME" />}
+            <a routerLink="/msme/login"><img class="zedv2-logo" [src]="brand.logo('header-right', '/Images/header/zed-logo.png?ui=1')" alt="ZED" /></a>
           </div>
         </div>
       </header>
@@ -47,7 +48,7 @@ import { ContactPage } from '../contact/contact';
         <div class="footer">
           <div class="container d-flex justify-content-between align-items-center py-2">
             <small>ZED © {{ year }} All Rights Reserved</small>
-            <img src="/Images/footer/footer-icon.png" alt="QCI" height="32" />
+            <img [src]="brand.logo('footer', '/Images/footer/footer-icon.png')" alt="QCI" height="32" />
           </div>
         </div>
       </footer>
@@ -61,6 +62,8 @@ import { ContactPage } from '../contact/contact';
 export class PublicLayout {
   /** Links to pages outside the portal, as the Admin set them (Admin → Links). */
   protected readonly links = inject(PortalLinksService);
+  /** 2026-11-15: the Admin's logos (Branding); today's files when none is saved. */
+  protected readonly brand = inject(BrandingService);
   /** The page name shown in the green bar (old ViewBag title: "Registration", "Contact ZED"). */
   readonly title = input('Home');
   protected readonly menuOpen = signal(false);

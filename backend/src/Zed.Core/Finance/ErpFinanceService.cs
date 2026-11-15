@@ -52,7 +52,10 @@ public sealed class ErpFinanceService(
 
     public async Task PushAsync(ErpPush push, CancellationToken ct = default)
     {
-        var o = options.Value;
+        // 2026-11-15: the Admin's saved ERP account when complete (ErpSettings), else the settings file's.
+        var resolved = await ErpSettings.ResolveAsync(options.Value, settings, ct);
+        if (resolved.Problem is { } problem) log.LogError("ERP settings: {Problem}; the server file's account is used", problem);
+        var o = resolved.Options;
         if (!o.Enabled)
         {
             log.LogInformation("ERP disabled; skipped {Document} for {ZedId}/{Certification}", push.Document, push.ZedId, push.Certification);
@@ -79,6 +82,21 @@ public sealed class ErpFinanceService(
 
         try
         {
+            // 2026-11-15: the Admin's invoice setup (InvoiceSetup): test units are never posted (migration 0077 took the
+            // list out of the procedures), and the saved Board, Portal, ledger and item names replace the procedures'.
+            var setup = await InvoiceSetup.LoadAsync(settings, ct);
+            if (setup.ExcludedUdyam.Count > 0)
+            {
+                var udyam = (await db.QuerySqlAsync<UnitUdyam>(
+                    "SELECT TOP (1) UdyogAadharNo FROM dbo.MsmeBasicInformation WHERE ZedId = @ZedId ORDER BY UdyogAadharNo;", new { push.ZedId }, ct))
+                    .FirstOrDefault()?.UdyogAadharNo;
+                if (InvoiceSetup.IsExcluded(setup, udyam))
+                {
+                    log.LogInformation("Test unit {Udyam}: {Document} for {ZedId}/{Certification} not posted", udyam, push.Document, push.ZedId, push.Certification);
+                    return;
+                }
+            }
+
             // The consultancy procedures also take the handholding milestone (LatestMileStoneNo; the latest
             // paid one when empty), as ConsultancyPayController.SubmiXxxDataToApi passed it when it had one.
             object args = push.Document == ErpDocument.Customer
@@ -92,6 +110,7 @@ public sealed class ErpFinanceService(
                 log.LogInformation("No {Document} data for {ZedId}/{Certification}", push.Document, push.ZedId, push.Certification);
                 return;
             }
+            InvoiceSetup.Apply(row, push.Document, push.ModuleName, push.Certification, setup);
 
             var body = push.Document switch
             {
@@ -162,6 +181,8 @@ public sealed class ErpFinanceService(
         var token = await response.Content.ReadFromJsonAsync<TokenResponse>(ct);
         return token?.AccessToken ?? throw new HttpRequestException("Token response had no access_token.");
     }
+
+    internal sealed record UnitUdyam(string? UdyogAadharNo);
 
     private sealed record TokenResponse([property: JsonPropertyName("access_token")] string? AccessToken);
 }

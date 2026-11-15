@@ -235,15 +235,22 @@ const typeHints: Readonly<Record<number, string>> = {
 
     @if (form(); as f) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="account-title">
-        <div class="modal-dialog modal-popup modal-lg acc-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit Login ' + editing() : 'Add Login' }}</h3>
-              <button type="button" class="btn-close" aria-label="Close" (click)="close()"></button>
+        <!-- 2026-11-15 (design approved): a wide pop-up, dark title bar, numbered sections side by side, a fixed save bar. -->
+        <div class="modal-dialog modal-popup acc-dialog" [class.acc-wide]="scopeType() || screensType()">
+          <div class="modal-content acc-content">
+            <div class="modal-header acc-head">
+              <div>
+                <h3 class="registration-title m-0" id="account-title">{{ editing() ? 'Edit Login ' + editing() : 'Add Login' }}</h3>
+                <small class="acc-head-sub">{{ editing() ? typeLabel(f.roleId ?? 0) : 'The password is made and e-mailed to the user' }}</small>
+              </div>
+              <button type="button" class="btn-close btn-close-white" aria-label="Close" (click)="close()"></button>
             </div>
-            <form (ngSubmit)="save()" novalidate>
-              <div class="modal-body">
-                <h4 class="acc-section" id="acc-type-head">Login type@if (!editing()) {<span class="req">*</span>}</h4>
+            <form class="acc-form" (ngSubmit)="save()" novalidate>
+              <div class="modal-body acc-body">
+                <div class="acc-cols" [class.has-side]="scopeType() || screensType()">
+                <div class="acc-main">
+                <section class="acc-card">
+                <h4 class="acc-section" id="acc-type-head"><span class="acc-num">1</span>Login type@if (!editing()) {<span class="req">*</span>}</h4>
                 @if (editing()) {
                   <div class="acc-type-fixed">
                     <span class="zed-chip">{{ typeLabel(f.roleId ?? 0) }}</span>
@@ -262,24 +269,31 @@ const typeHints: Readonly<Record<number, string>> = {
                     }
                   </div>
                 }
-                <h4 class="acc-section">Details</h4>
-                <div class="form-grid">
+                </section>
+                <section class="acc-card">
+                <h4 class="acc-section"><span class="acc-num">2</span>Details</h4>
+                <div class="acc-fields">
                   @if (!editing()) {
-                    <label for="acc-id">User ID<span class="req">*</span></label>
-                    <div>
+                    <div class="acc-field">
+                      <label for="acc-id">User ID<span class="req">*</span></label>
                       <input class="form-control" id="acc-id" name="userId" maxlength="50" autocomplete="off" [ngModel]="f.userId" (ngModelChange)="patch('userId', $event)" />
-                      <small class="text-muted">4 to 50 letters and digits, e.g. MINISTRY01.</small>
                     </div>
                   }
-                  <label for="acc-name">Name<span class="req">*</span></label>
-                  <input class="form-control" id="acc-name" name="userName" maxlength="100" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
-                  <label for="acc-email">Email<span class="req">*</span></label>
-                  <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
-                  <label for="acc-mobile">Mobile Number<span class="req">*</span></label>
-                  <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                  <div class="acc-field">
+                    <label for="acc-name">Name<span class="req">*</span></label>
+                    <input class="form-control" id="acc-name" name="userName" maxlength="100" [ngModel]="f.userName" (ngModelChange)="patch('userName', $event)" />
+                  </div>
+                  <div class="acc-field">
+                    <label for="acc-email">Email<span class="req">*</span></label>
+                    <input class="form-control" id="acc-email" name="email" type="email" maxlength="100" [ngModel]="f.email" (ngModelChange)="patch('email', $event)" />
+                  </div>
+                  <div class="acc-field">
+                    <label for="acc-mobile">Mobile number<span class="req">*</span></label>
+                    <input class="form-control" id="acc-mobile" name="mobileNo" maxlength="10" inputmode="numeric" [ngModel]="f.mobileNo" (ngModelChange)="patch('mobileNo', $event)" />
+                  </div>
                   @if (needsState()) {
-                    <label for="acc-state">State<span class="req">*</span></label>
-                    <div>
+                    <div class="acc-field">
+                      <label for="acc-state">State<span class="req">*</span></label>
                       <select class="form-select" id="acc-state" name="stateCode" [ngModel]="f.stateCode" (ngModelChange)="patch('stateCode', $event)">
                         <option value="">Select</option>
                         @for (s of states(); track s.code) { <option [value]="s.code">{{ s.name }}</option> }
@@ -288,11 +302,18 @@ const typeHints: Readonly<Record<number, string>> = {
                     </div>
                   }
                 </div>
+                @if (!editing()) {
+                  <small class="text-muted d-block mt-2">User ID: 4 to 50 letters and digits, e.g. MINISTRY01.</small>
+                }
+                </section>
+                </div>
+                @if (scopeType() || screensType()) {
+                <div class="acc-side">
                 @if (screensType()) {
                   <!-- 2026-11-07 (design approved): the Dashboard Admin's screens, per portal. -->
                   <section class="acc-scope-box acc-screens" aria-labelledby="acc-screens-head">
                     <div class="acc-scope-top">
-                      <h4 class="acc-section m-0" id="acc-screens-head">Screens this login can open</h4>
+                      <h4 class="acc-section m-0" id="acc-screens-head"><span class="acc-num">3</span>Screens this login can open</h4>
                       <span class="acc-screens-links">
                         <button type="button" class="btn btn-link p-0" (click)="setAllScreens(true)">Select all</button> ·
                         <button type="button" class="btn btn-link p-0" (click)="setAllScreens(false)">Clear</button>
@@ -322,7 +343,7 @@ const typeHints: Readonly<Record<number, string>> = {
                   <!-- 2026-11-07 (design approved): what the login works with; the users it creates stay within it. -->
                   <section class="acc-scope-box" aria-labelledby="acc-scope-head">
                     <div class="acc-scope-top">
-                      <h4 class="acc-section m-0" id="acc-scope-head">Scope of this login</h4>
+                      <h4 class="acc-section m-0" id="acc-scope-head"><span class="acc-num">{{ screensType() ? 4 : 3 }}</span>Scope of this login</h4>
                       <small class="muted">It sees only these MSMEs, and the users it creates stay within them.</small>
                     </div>
                     <div class="acc-scope-row">
@@ -387,14 +408,17 @@ const typeHints: Readonly<Record<number, string>> = {
                     <p class="acc-scope-note">{{ st.hasDistricts ? 'One login: Financial Assistance on ZED Certification, Technology Upgradation on Handholding (a switch on its NEFT pages).' : 'Both, every level and every state = no limit.' }}</p>
                   </section>
                 }
-                @if (!editing()) {
-                  <p class="acc-mail-note mt-3 mb-0">A password is generated and e-mailed to the user.</p>
+                </div>
                 }
-                @if (formError()) { <div class="alert alert-danger mt-2 mb-0" role="alert">{{ formError() }}</div> }
+                </div>
+                @if (formError()) { <div class="alert alert-danger mt-3 mb-0" role="alert">{{ formError() }}</div> }
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
-                <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'UPDATE' : 'SAVE' }}</button>
+              <div class="modal-footer acc-foot">
+                <span class="acc-foot-note"><span class="req">*</span> required@if (!editing()) { · a password is generated and e-mailed to the user }</span>
+                <span class="acc-foot-actions">
+                  <button type="button" class="btn btn-default" (click)="close()">CANCEL</button>
+                  <button type="submit" class="btn btn-primary" [disabled]="busy()">{{ editing() ? 'UPDATE' : 'SAVE' }}</button>
+                </span>
               </div>
             </form>
           </div>
@@ -448,9 +472,10 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-actions-cell .row-actions { flex-wrap: nowrap; }
     .acc-empty .btn-link { font-weight: 600; }
 
+    /* The Add / Edit login pop-up's layout (2026-11-15): styles/_v4-skin.scss, "User Management pop-up" (the size budget). */
     .acc-section { margin: 0 0 10px; font-size: 14px; font-weight: 700; color: #23474a; text-transform: none; }
     .acc-section + .form-grid { margin-top: 0; }
-    .acc-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 18px; }
+    .acc-types { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
     .choice-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
     .choice-card:hover { border-color: #45a5ad; }
     .choice-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
@@ -458,7 +483,7 @@ const typeHints: Readonly<Record<number, string>> = {
     .modal .modal-popup label.choice-card { font-weight: 400; color: #232527; }
     .choice-card .form-check-input { flex: none; margin: 3px 0 0; float: none; }
     .choice-card strong { color: #23474a; }
-    .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 18px; }
+    .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .acc-type-fixed .zed-chip { margin: 0; }
     .acc-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: #2f7c83; font-size: 13px; }
 

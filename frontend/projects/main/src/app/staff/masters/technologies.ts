@@ -13,7 +13,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 /**
  * Technologies (Admin). Port of Views/Technology/List.cshtml: list, edit link, activate / deactivate. V4: search, pages,
  * a status column, and long descriptions folded to three lines. V4 layout: counts at the top, an active / inactive filter
- * and a chip per category (a click shows only that category), the description under the technology's name, and a card
+ * and a category filter (shows only that category), the description under the technology's name, and a card
  * per technology on phones.
  */
 @Component({
@@ -49,23 +49,23 @@ type StatusFilter = 'all' | 'active' | 'inactive';
       <div class="list-toolbar">
         <input type="search" class="form-control search" placeholder="Search code, name, sector or category" aria-label="Search technologies"
                [ngModel]="pager.search()" (ngModelChange)="pager.setSearch($event)" />
+        @if (categoryChips().length) {
+          <label class="cat-filter">
+            <span class="cat-label">Category</span>
+            <select class="form-select" aria-label="Category" [ngModel]="category()" (ngModelChange)="setCategory($event)">
+              <option value="">All categories</option>
+              @for (c of categoryChips(); track c.name) {
+                <option [value]="c.name">{{ c.name }} ({{ c.count }})</option>
+              }
+            </select>
+          </label>
+        }
         <div class="seg" role="group" aria-label="Status">
           @for (f of filters; track f.key) {
             <button type="button" [class.active]="status() === f.key" [attr.aria-pressed]="status() === f.key" (click)="setStatus(f.key)">{{ f.label }}</button>
           }
         </div>
       </div>
-      @if (categoryChips().length) {
-        <div class="cat-chips" role="group" aria-label="Category">
-          <span class="cat-label">Category</span>
-          <button type="button" class="cat-chip" [class.is-on]="!category()" [attr.aria-pressed]="!category()" (click)="setCategory('')">All</button>
-          @for (c of categoryChips(); track c.name) {
-            <button type="button" class="cat-chip" [class.is-on]="category() === c.name" [attr.aria-pressed]="category() === c.name" (click)="setCategory(c.name)">
-              {{ c.name }} <span class="cat-count">{{ c.count }}</span>
-            </button>
-          }
-        </div>
-      }
 
       <div class="table-responsive">
         <table class="table table-zed tech-table">
@@ -142,17 +142,17 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .list-card { padding: 16px; }
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
+    .list-toolbar .seg { margin-left: auto; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
     .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
     .seg button:hover { background: #c5e5e8; }
     .seg button.active { background: #23656b; color: #fff; }
 
-    .cat-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
-    .cat-label { font-size: 12px; font-weight: 600; color: #5f6f70; margin-right: 4px; }
-    .cat-chip { border: 1px solid #cbd9da; background: #fff; color: #3f3a7a; border-radius: 14px; padding: 2px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .cat-chip:hover { border-color: #3f3a7a; background: #f1f0fb; }
-    .cat-chip.is-on { background: #3f3a7a; border-color: #3f3a7a; color: #fff; }
+    /* 2026-11-15 (the user): the category is a filter beside the search, not a row of chips. */
+    .cat-filter { display: flex; align-items: center; gap: 8px; margin: 0; flex: 0 1 300px; }
+    .cat-label { font-size: 13px; font-weight: 600; color: #5f6f70; white-space: nowrap; }
+    .cat-filter .form-select { min-width: 0; }
     .cat-count { font-weight: 400; opacity: .8; margin-left: 2px; }
 
     .tech-table { table-layout: fixed; width: 100%; min-width: 900px; margin-bottom: 8px; }

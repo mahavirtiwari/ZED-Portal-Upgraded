@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Zed.Core.Data;
+using Zed.Core.Finance;
 using Zed.Core.Payments;
 using Zed.Portal.Features.CertLevels;
 using Zed.Portal.Features.ExternalApi;
@@ -152,17 +153,121 @@ public sealed class PaymentGatewayTests : IDisposable
     }
 
     [Fact]
+    public async Task The_erp_account_is_saved_with_the_secret_encrypted_and_then_allows_invoices()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        // Without a secret the first save is refused; a base URL must be https.
+        var noSecret = await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/erp",
+            new { tenantId = "qci.onmicrosoft.com", clientId = "11111111-2222-3333-4444-555555555555", companyBaseUrl = "https://api.example.test/Company/" });
+        Assert.Equal("Please enter the client secret.", await noSecret.ProblemTitle());
+        var http = await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/erp",
+            new { tenantId = "qci.onmicrosoft.com", clientId = "11111111-2222-3333-4444-555555555555", clientSecret = "s3cret", companyBaseUrl = "http://api.example.test/" });
+        Assert.Equal("Please enter the company base URL (https://..., up to 500 characters).", await http.ProblemTitle());
+
+        var ok = await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/erp",
+            new { tenantId = "qci.onmicrosoft.com", clientId = "11111111-2222-3333-4444-555555555555", clientSecret = "s3cret", companyBaseUrl = "https://api.example.test/Company" });
+        Assert.Equal(HttpStatusCode.OK, ok.StatusCode);
+        var merges = Merges();
+        Assert.Contains((ErpSettings.TenantId, "qci.onmicrosoft.com"), merges);
+        Assert.Contains((ErpSettings.CompanyBaseUrl, "https://api.example.test/Company/"), merges);
+        var secret = merges.Single(m => m.Key == ErpSettings.ClientSecret).Value;
+        Assert.DoesNotContain("s3cret", secret);
+        Assert.Equal("s3cret", SettingSecret.Unprotect(secret));
+
+        // Stored: the page shows the set (never the secret) and invoices can be switched on.
+        Stored((ErpSettings.TenantId, "qci.onmicrosoft.com"), (ErpSettings.ClientId, "11111111-2222-3333-4444-555555555555"),
+            (ErpSettings.ClientSecret, secret!), (ErpSettings.CompanyBaseUrl, "https://api.example.test/Company/"));
+        await ClearSettingsCacheAsync();
+        var page = await admin.GetStringAsync("/api/staff/settings/payment-gateway");
+        Assert.DoesNotContain("s3cret", page);
+        var erp = JsonDocument.Parse(page).RootElement.GetProperty("invoices").GetProperty("erp");
+        Assert.Equal("page", erp.GetProperty("inUse").GetString());
+        Assert.True(erp.GetProperty("saved").GetProperty("clientSecretSet").GetBoolean());
+        Assert.Equal("Import_Invoice_Data_Excel", erp.GetProperty("defaults").GetProperty("invoiceEndpoint").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/invoices", new { enabled = true })).StatusCode);
+
+        // "Use server file again" removes every key of the set.
+        Assert.Equal(HttpStatusCode.OK, (await admin.DeleteAsync("/api/staff/settings/payment-gateway/erp")).StatusCode);
+        foreach (var key in ErpSettings.All)
+            Assert.Contains(_host.Sql.Calls, c => c.Name.StartsWith("DELETE FROM dbo.V4Settings", StringComparison.Ordinal) && FakeSql.Arg(c.Args, "SettingKey") == key);
+    }
+
+    [Fact]
+    public void A_saved_erp_set_is_used_whole_or_not_at_all()
+    {
+        var file = new ErpOptions { Enabled = false };
+        Assert.False(ErpSettings.Build(file, new Dictionary<string, string?> { [ErpSettings.TenantId] = "t" }).FromAdmin);
+        var unreadable = ErpSettings.Build(file, new Dictionary<string, string?>
+        {
+            [ErpSettings.TenantId] = "t", [ErpSettings.ClientId] = "c", [ErpSettings.CompanyBaseUrl] = "https://x.test/", [ErpSettings.ClientSecret] = "dpapi1:AAAA",
+        });
+        Assert.False(unreadable.FromAdmin);
+        Assert.NotNull(unreadable.Problem);
+        var used = ErpSettings.Build(file, new Dictionary<string, string?>
+        {
+            [ErpSettings.TenantId] = "t", [ErpSettings.ClientId] = "c", [ErpSettings.CompanyBaseUrl] = "https://x.test/",
+            [ErpSettings.ClientSecret] = SettingSecret.Protect("k"), [ErpSettings.InvoiceEndpoint] = "My_Invoices",
+        });
+        Assert.True(used.FromAdmin);
+        Assert.True(ErpSettings.Ready(used.Options));
+        Assert.Equal("My_Invoices", used.Options.InvoiceEndpoint);
+        Assert.Equal(file.ReceiptEndpoint, used.Options.ReceiptEndpoint);
+    }
+
+    [Fact]
     public async Task Invoices_cannot_be_switched_on_while_the_server_does_not_allow_erp_posting()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         var r = await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/invoices", new { enabled = true });
-        Assert.Equal("Invoices can be switched on only when the server is set up for ERP posting (ask the server team).", await r.ProblemTitle());
+        Assert.Equal("Invoices can be switched on only when the ERP connection is set up (the QCI ERP section of this page).", await r.ProblemTitle());
         Assert.Empty(Merges());
 
         // Off is always allowed (removes the row).
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync("/api/staff/settings/payment-gateway/invoices", new { enabled = false })).StatusCode);
         Assert.Contains(_host.Sql.Calls, c => c.Name.StartsWith("DELETE FROM dbo.V4Settings", StringComparison.Ordinal)
                                               && FakeSql.Arg(c.Args, "SettingKey") == InvoiceSettings.EnabledKey);
+    }
+
+    [Fact]
+    public async Task The_invoice_setup_is_saved_with_the_switch_and_shown_with_its_defaults()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        var page = JsonDocument.Parse(await admin.GetStringAsync("/api/staff/settings/payment-gateway")).RootElement.GetProperty("invoices");
+        var setup = page.GetProperty("setup");
+        Assert.Equal("ZEDM", setup.GetProperty("values").GetProperty("seriesManufacturing").GetString());
+        Assert.Equal("ASSESSMENT FEE", setup.GetProperty("defaults").GetProperty("feeLedger").GetString());
+        Assert.Equal(3, setup.GetProperty("values").GetProperty("excludedUdyam").GetArrayLength());
+
+        object Setup(string manufacturing = "qzm", string services = "ZEDS", string[]? units = null) => new
+        {
+            enabled = false,
+            setup = new
+            {
+                seriesManufacturing = manufacturing, seriesServices = services, board = "ZED", portal = "", locationCode = "DELHI",
+                feeLedger = "CERTIFICATION FEE", itemBronze = "", itemSilver = "ZED SILVER", itemGold = "",
+                excludedUdyam = units ?? ["udyam-ka-03-0000001"],
+            },
+        };
+        const string Url = "/api/staff/settings/payment-gateway/invoices";
+        Assert.Equal("The Manufacturing series must be 1 to 10 letters and digits.", await (await admin.PutAsJsonAsync(Url, Setup(manufacturing: "ZED/M"))).ProblemTitle());
+        Assert.Equal("The Manufacturing and Services series must differ.", await (await admin.PutAsJsonAsync(Url, Setup(manufacturing: "ZEDS"))).ProblemTitle());
+        Assert.Equal("UDYAM-12 is not a UDYAM number (UDYAM-XX-00-0000000).", await (await admin.PutAsJsonAsync(Url, Setup(units: ["UDYAM-12"]))).ProblemTitle());
+        Assert.Empty(Merges());
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync(Url, Setup())).StatusCode);
+        var merges = Merges();
+        Assert.Contains((InvoiceSetup.SeriesManufacturing, "QZM"), merges);
+        Assert.Contains((InvoiceSetup.LocationCode, "DELHI"), merges);
+        Assert.Contains((InvoiceSetup.FeeLedger, "CERTIFICATION FEE"), merges);
+        Assert.Contains((InvoiceSetup.ItemSilver, "ZED SILVER"), merges);
+        Assert.Contains((InvoiceSetup.ExcludedUdyam, "UDYAM-KA-03-0000001"), merges);
+        // Empty or today's value: no row (the default stays in use).
+        foreach (var key in new[] { InvoiceSetup.SeriesServices, InvoiceSetup.Board, InvoiceSetup.Portal, InvoiceSetup.ItemBronze })
+            Assert.Contains(_host.Sql.Calls, c => c.Name.StartsWith("DELETE FROM dbo.V4Settings", StringComparison.Ordinal) && FakeSql.Arg(c.Args, "SettingKey") == key);
+
+        // An empty list of test units is kept as "none".
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync(Url, Setup(units: []))).StatusCode);
+        Assert.Contains((InvoiceSetup.ExcludedUdyam, InvoiceSetup.NoUnits), Merges());
     }
 }
 
