@@ -138,7 +138,7 @@ public sealed class MonitoringReviewTests : IDisposable
     private static readonly string[] ChangeProcs =
     [
         "SP_MONITORING_UPDATE_AGENCY_REMARKS", "SP_MONITORING_RA_UPDATE_AGENCY_REMARKS", "SP_ASSESSMENT_RA_UPDATE_COMMENTS",
-        "SP_MONITORING_DA_FINAL_SUBMIT", "SP_MONITORING_RA_FINAL_SUBMIT", "SP_MONITORING_SEND_BACK_TO_ASSESSOR",
+        "SP_V4_DA_FINAL_SUBMIT", "SP_V4_RA_FINAL_SUBMIT", "SP_MONITORING_SEND_BACK_TO_ASSESSOR",
         "SP_MONITORING_REJECT_FINAL_SUBMIT", "SP_MONITORING_REJECT_CERTIFICATION",
     ];
 
@@ -264,7 +264,7 @@ public sealed class MonitoringReviewTests : IDisposable
         var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true, zedId = "ZEDMSME999999" });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
 
-        var call = Assert.Single(CallsTo("SP_MONITORING_DA_FINAL_SUBMIT"));
+        var call = Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
         Assert.Equal(Zed, FakeSql.Arg(call, "ZedId"));
         Assert.Equal("Bronze", FakeSql.Arg(call, "CertificationType"));
         Assert.Equal("AGENCY1", FakeSql.Arg(call, "UserId"));
@@ -291,8 +291,8 @@ public sealed class MonitoringReviewTests : IDisposable
         var client = await As("AGENCY1");
         var r = await client.PostAsJsonAsync(Silver + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
-        Assert.Single(CallsTo("SP_MONITORING_DA_FINAL_SUBMIT"));
-        Assert.Empty(CallsTo("SP_MONITORING_RA_FINAL_SUBMIT"));
+        Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
+        Assert.Empty(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
         Assert.Empty(_docs.Calls);
         Assert.Empty(_host.Email.Sent);
     }
@@ -305,7 +305,7 @@ public sealed class MonitoringReviewTests : IDisposable
         var r = await client.PostAsJsonAsync(Bronze + "/final-submit", new { exemptionsReviewed = true, qualityChecked = true });
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Contains("could not be generated", (await r.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
-        Assert.Single(CallsTo("SP_MONITORING_DA_FINAL_SUBMIT"));
+        Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
         // No mail without a certificate.
         Assert.Empty(_host.Email.Sent);
     }
@@ -325,7 +325,7 @@ public sealed class MonitoringReviewTests : IDisposable
     {
         using var submitting = new ManualResetEventSlim();
         using var release = new ManualResetEventSlim();
-        _host.Sql.Procs["SP_MONITORING_DA_FINAL_SUBMIT"] = _ =>
+        _host.Sql.Procs["SP_V4_DA_FINAL_SUBMIT"] = _ =>
         {
             submitting.Set();
             release.Wait(TimeSpan.FromSeconds(10));
@@ -356,7 +356,7 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Equal(HttpStatusCode.Conflict, r.StatusCode);
         Assert.Equal(MonitoringReviewController.AlreadyDecided, await r.ProblemTitle());
         // One certification: one procedure call (one QR code) and one mail.
-        Assert.Single(CallsTo("SP_MONITORING_DA_FINAL_SUBMIT"));
+        Assert.Single(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
         Assert.Single(_host.Email.Sent);
     }
 
@@ -460,9 +460,9 @@ public sealed class MonitoringReviewTests : IDisposable
         var client = await As("AGENCYSV");
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = false })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true })).StatusCode);
-        var call = Assert.Single(CallsTo("SP_MONITORING_RA_FINAL_SUBMIT"));
+        var call = Assert.Single(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
         Assert.Equal("Silver", FakeSql.Arg(call, "CertificationType"));
-        Assert.Empty(CallsTo("SP_MONITORING_DA_FINAL_SUBMIT"));
+        Assert.Empty(CallsTo("SP_V4_DA_FINAL_SUBMIT"));
         Assert.Contains(("certificate", Zed, "Silver"), _docs.Calls);
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("Silver.pdf", mail.Attachments![0].FileName);

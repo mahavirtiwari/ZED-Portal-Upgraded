@@ -65,10 +65,12 @@ public static class MsmeMyDocuments
     /// number, Certificates/DA/...).
     /// </summary>
     internal const string V4CertificatesSql =
-        "SELECT Certification FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification NOT IN ('Bronze', 'Silver', 'Gold') " +
+        "SELECT Certification, CAST(CASE WHEN CertificationStatus = 6 THEN 1 ELSE 0 END AS bit) AS AtDesktop " +
+        "FROM dbo.MsmeCertifications WHERE ZedId = @ZedId AND Certification NOT IN ('Bronze', 'Silver', 'Gold') " +
         "AND ((CertificationStatus = 16 AND SaCertificateNo IS NOT NULL) OR (CertificationStatus = 6 AND DaCertificateNo IS NOT NULL));";
 
-    public sealed record V4Certificate(string Certification);
+    /// <param name="AtDesktop">Certified at the desktop (status 6; 2026-11-15: by the record, whatever the level's flow is now).</param>
+    public sealed record V4Certificate(string Certification, bool? AtDesktop = null);
 
     /// <summary>Adds a column per V4 level (ZEDX, ...) to the certificates row (null when not certified), as the procedure's Gold column.</summary>
     public static async Task AddV4LevelsAsync(ISqlExecutor db, ResultSets sets, string zedId, CancellationToken ct)
@@ -84,8 +86,8 @@ public static class MsmeMyDocuments
             certified = [];
         }
         foreach (var level in Zed.Core.Data.LevelRegistry.V4Codes)
-            row[level] = certified.Any(c => string.Equals(c.Certification?.Trim(), level, StringComparison.OrdinalIgnoreCase))
-                ? Documents.DocumentLevels.CertificatePath(zedId, level) : null;
+            row[level] = certified.FirstOrDefault(c => string.Equals(c.Certification?.Trim(), level, StringComparison.OrdinalIgnoreCase)) is { } c
+                ? Documents.DocumentLevels.CertificatePath(zedId, level, c.AtDesktop) : null;
     }
 
     /// <summary>The files the procedure lists for this ZED ID that pass the path checks (pass sets already through <see cref="MsmeGuidelines.ForMsme"/>).</summary>

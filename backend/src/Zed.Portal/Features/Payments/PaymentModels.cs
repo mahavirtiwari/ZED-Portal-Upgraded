@@ -37,8 +37,38 @@ public static partial class Certifications
 
     /// <summary>A level started and not yet certified (the old dashboard's conditions: Bronze 1–5 or 7, the others 1–15 or 17).
     /// 2026-11-08: a V4 level assessed at the desktop only follows Bronze's numbers.</summary>
-    public static bool InProgress(string level, int status) =>
-        LevelRegistry.IsDesktop(level) ? status > 0 && (status < 6 || status == 7) : status > 0 && (status < 16 || status == 17);
+    /// 2026-11-15: with <paramref name="certified"/> (the unit's certified levels, by record) the answer does not depend on the
+    /// level's flow: started (1 to 17, not 16) and not certified; a desktop-certified unit is at 6, a visit's at 16.
+    public static bool InProgress(string level, int status, IReadOnlySet<string>? certified = null) =>
+        certified is not null
+            ? status > 0 && status <= 17 && status != 16 && !certified.Contains(level)
+            : LevelRegistry.IsDesktop(level) ? status > 0 && (status < 6 || status == 7) : status > 0 && (status < 16 || status == 17);
+
+    /// <summary>The unit's records at a certified status, with their certificate numbers (Documents.DocumentLevels.IsCertifiedRecord decides).</summary>
+    internal const string CertifiedLevelsSql =
+        "SELECT Certification, CertificationStatus, DaCertificateNo, CertificationPhase FROM dbo.MsmeCertifications " +
+        "WHERE ZedId = @ZedId AND CertificationStatus IN (6, 16);";
+
+    public sealed record CertifiedLevel(string? Certification, int? CertificationStatus = null, string? DaCertificateNo = null, string? CertificationPhase = null);
+
+    /// <summary>Null when the records cannot be read (then the levels' flows decide, as before).</summary>
+    public static async Task<IReadOnlySet<string>?> CertifiedLevelsAsync(ISqlExecutor db, string zedId, CancellationToken ct)
+    {
+        try
+        {
+            return (await db.QuerySqlAsync<CertifiedLevel>(CertifiedLevelsSql, new { ZedId = zedId }, ct))
+                .Where(r => r.Certification is { Length: > 0 } c
+                            && Documents.DocumentLevels.IsCertifiedRecord(r.CertificationStatus, r.DaCertificateNo, r.CertificationPhase))
+                .Select(r => r.Certification!.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase) is { Count: > 0 } set
+                    ? set
+                    // None certified: the levels' flows give the same answers for units on the way.
+                    : null;
+        }
+        catch (System.Data.Common.DbException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// The level that keeps <paramref name="cert"/> from being applied for. Two certifications never run at once: ZED-X and
@@ -47,16 +77,16 @@ public static partial class Certifications
     /// card out on the same conditions (dashboard.ts levelDisabled); Bronze/Silver/Gold among themselves keep the old page's
     /// rules, checked in the browser only as before.
     /// </summary>
-    public static string? BlockedBy(string cert, IReadOnlyDictionary<string, int> statuses)
+    public static string? BlockedBy(string cert, IReadOnlyDictionary<string, int> statuses, IReadOnlySet<string>? certified = null)
     {
         int S(string l) => statuses.TryGetValue(l, out var s) ? s : 0;
         if (S(cert) >= 1) return null;   // already applied: the checkout refuses it (AlreadyPaidAsync, the payment procedures)
         // 2026-11-08: every V4 level as ZED-X. A V4 level waits for the three and for another V4 level in progress; the three
         // are closed by a V4 level in progress or certified.
         if (IsV4(cert))
-            return Paid.FirstOrDefault(l => InProgress(l, S(l)))
+            return Paid.FirstOrDefault(l => InProgress(l, S(l), certified))
                 ?? statuses.Keys.Where(l => IsV4(l) && !string.Equals(l, cert, StringComparison.OrdinalIgnoreCase)).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1)
-                    .FirstOrDefault(l => InProgress(l, S(l)));
+                    .FirstOrDefault(l => InProgress(l, S(l), certified));
         return statuses.Keys.Where(IsV4).OrderBy(l => l == LevelRegistry.ZedX ? 0 : 1).FirstOrDefault(l => S(l) > 0);
     }
 
@@ -75,10 +105,11 @@ public static partial class Certifications
             var s = await V4LevelStatus.ReadAsync(db, zedId, level, log, ct);
             statuses[level] = s.Status ?? s.PaymentDone;
         }
-        return BlockedBy(cert, statuses) switch
+        var certified = await CertifiedLevelsAsync(db, zedId, ct);
+        return BlockedBy(cert, statuses, certified) switch
         {
             null => null,
-            var other when InProgress(other, statuses[other]) =>
+            var other when InProgress(other, statuses[other], certified) =>
                 $"{LevelName(cert)} certification cannot be applied for while your {LevelName(other)} certification is in progress.",
             LevelRegistry.ZedX => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at ZED-X, the highest level.",
             var other => $"{LevelName(cert)} certification cannot be applied for: your unit is certified at {LevelName(other)}.",

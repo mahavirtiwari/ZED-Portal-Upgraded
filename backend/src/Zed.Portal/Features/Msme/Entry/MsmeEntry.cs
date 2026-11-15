@@ -169,4 +169,9 @@ public sealed record EntryNcRequirement(int Id, string Code, string Name, string
 public sealed record EntryNcSection(string Code, string Name, IReadOnlyList<EntryNcRequirement> Requirements);
 
 /// <summary>The open NC: what the assessor raised and what is answered so far.</summary>
-public sealed record EntryNc(int Number, EntryNcSite? SiteExterior, IReadOnlyList<EntryNcProduct> Products, IReadOnlyList<EntryNcSection> Sections);
+/// <param name="FormFields">V4 (migration 0080): NCs on the Admin's "Validation required" fields; answered in the ZED MSME app only.</param>
+public sealed record EntryNc(int Number, EntryNcSite? SiteExterior, IReadOnlyList<EntryNcProduct> Products, IReadOnlyList<EntryNcSection> Sections,
+    IReadOnlyList<EntryNcFormField>? FormFields = null);
+
+/// <summary>An NC on an App Forms answer: the field, the remark, the answer found not valid and the unit's new answer.</summary>
+public sealed record EntryNcFormField(string Key, string Label, string? AssessorRemarks, string? PreviousValue, string? Value, bool Answered);

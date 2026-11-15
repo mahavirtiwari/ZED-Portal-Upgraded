@@ -44,7 +44,7 @@ public sealed class SurveillancePhotoController(ISqlExecutor db, MobileStorage s
 
     /// <summary>2026-11-08: every site level of Administration → Certification Levels.</summary>
     private static IReadOnlySet<string> SiteLevels =>
-        new HashSet<string>(LevelRegistry.Codes.Where(c => !LevelRegistry.IsDesktop(c)), StringComparer.OrdinalIgnoreCase);
+        new HashSet<string>(LevelRegistry.Codes.Where(c => !LevelRegistry.IsLegacyDesktop(c)), StringComparer.OrdinalIgnoreCase);
 
     [HttpPost]
     [DeviceBound(MobileApps.Msme, "userName")]

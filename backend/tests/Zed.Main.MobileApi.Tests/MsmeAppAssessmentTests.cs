@@ -425,7 +425,7 @@ public sealed class MsmeAppAssessmentTests : MsmeAppTestBase
         var actions = typeof(MsmeController).GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
             .Where(m => m.GetCustomAttributes().Any(a => a is HttpPostAttribute or AcceptVerbsAttribute))
             .ToList();
-        Assert.Equal(22, actions.Count); // 2026-11-14: + GetFacilitatorAgencies
+        Assert.Equal(23, actions.Count); // 2026-11-14: + GetFacilitatorAgencies; 2026-11-15: + SubmitNcFormField
         foreach (var action in actions.Where(a => !unbound.Contains(a.Name)))
         {
             var bound = action.GetCustomAttribute<DeviceBoundAttribute>();

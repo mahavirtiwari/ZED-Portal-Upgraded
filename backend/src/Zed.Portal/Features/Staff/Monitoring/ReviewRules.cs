@@ -60,7 +60,8 @@ public static class ReviewRules
         {
             if (r.Status == DesktopQualityCheck)
                 return agency ? new ReviewActions(true, true, true, false) : ReviewActions.None;
-            if (r.Status == DesktopRejected && bronze && r.Nc == RejectedNcCount)
+            // 2026-11-15: every desktop-only level (Silver / Gold too) can be rejected at the desktop, as Bronze always could.
+            if (r.Status == DesktopRejected && (bronze || desktopOnly) && r.Nc == RejectedNcCount)
                 return new ReviewActions(false, false, (agency && !auto) || (master && auto), agency);
             return ReviewActions.None;
         }

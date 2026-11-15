@@ -49,6 +49,8 @@ export interface AppFieldItem {
   /** V4: the level codes it is asked for, and the NIC 2-digit sectors of the units it is asked of; empty = all. */
   levels?: string[] | null;
   nicSectors?: string[] | null;
+  /** V4 (migration 0080): the assessor checks the answer (Valid / Not valid, which raises an NC). */
+  validationRequired?: boolean;
 }
 
 export interface AppFormSection {
@@ -65,6 +67,8 @@ export interface AppFormDetails {
   fields: AppFieldItem[];
   /** The certification levels a field can be limited to (Administration → Certification Levels). */
   levels?: { code: string; name: string }[] | null;
+  /** The Admin's own fields of this form can be "Validation required" (a form the unit fills in, checked by an assessor). */
+  canValidate?: boolean;
 }
 
 interface Editing {
@@ -84,6 +88,7 @@ interface Editing {
   /** "Only these levels / sectors" chosen (the lists show); off empties the list. */
   limitLevels: boolean;
   limitSectors: boolean;
+  validationRequired: boolean;
 }
 
 export const FIELD_TYPES: Record<string, string> = {
@@ -190,6 +195,7 @@ const TYPE_GLYPHS: Record<string, string> = {
                     <div class="field-label">
                       <strong>{{ f.label }}</strong>
                       @if (f.custom) { <span class="status-badge is-info">Added</span> }
+                      @if (f.validationRequired) { <span class="zed-chip" title="The assessor checks this answer">Validated</span> }
                       @else if (f.customised) { <span class="status-badge is-pending">Changed</span> }
                     </div>
                     @if (f.standardLabel && f.standardLabel !== f.label) { <small class="field-note">Standard: {{ f.standardLabel }}</small> }
@@ -403,6 +409,15 @@ const TYPE_GLYPHS: Record<string, string> = {
                         <small class="text-muted d-block">{{ e.enabled ? 'Asked in the form.' : 'Not shown; answers already given are kept.' }}</small>
                       </span>
                     </label>
+                    @if (e.custom && details()?.canValidate) {
+                      <label class="toggle-card form-switch" for="fieldValidated">
+                        <input class="form-check-input" type="checkbox" role="switch" id="fieldValidated" [(ngModel)]="e.validationRequired" />
+                        <span>
+                          <strong>Validation required</strong>
+                          <small class="text-muted d-block">The assessor checks this answer: Valid, or Not valid with a remark. Not valid raises an NC on this field.</small>
+                        </span>
+                      </label>
+                    }
                   </div>
                 </aside>
               </div>
@@ -639,7 +654,7 @@ export class AppFormsPage {
     this.modalError.set('');
     this.editing.set({
       field: null, custom: true, label: '', help: '', type: 'text', required: false, enabled: true, section: d.sections[0]?.key ?? '', options: [''],
-      levels: [], nicSectors: [], limitLevels: false, limitSectors: false,
+      levels: [], nicSectors: [], limitLevels: false, limitSectors: false, validationRequired: false,
     });
   }
 
@@ -659,6 +674,7 @@ export class AppFormsPage {
       nicSectors: [...(f.nicSectors ?? [])],
       limitLevels: !!f.levels?.length,
       limitSectors: !!f.nicSectors?.length,
+      validationRequired: !!f.validationRequired,
     });
   }
 
@@ -703,6 +719,7 @@ export class AppFormsPage {
       options: e.custom && this.isChoice(e.type) ? e.options.map((o) => o.trim()).filter((o) => o) : null,
       levels: e.levels,
       nicSectors: e.nicSectors,
+      validationRequired: e.custom && e.validationRequired,
     };
     this.busy.set(true);
     this.modalError.set('');

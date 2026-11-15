@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -11,7 +12,7 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// <summary>
 /// The agency and master-admin review actions of the desktop (DaDetails) and site (SaDetails)
 /// assessment pages. Port of MonitoringController UpdateRemarks (SP_MONITORING_UPDATE_AGENCY_REMARKS),
-/// FinalSubmit (SP_MONITORING_DA_FINAL_SUBMIT), RaFinalSubmit (SP_MONITORING_RA_FINAL_SUBMIT),
+/// FinalSubmit (SP_V4_DA_FINAL_SUBMIT / SP_V4_RA_FINAL_SUBMIT, migration 0078, over the legacy SP_MONITORING_DA/RA_FINAL_SUBMIT),
 /// SendBackToAssessor (SP_MONITORING_SEND_BACK_TO_ASSESSOR), RejectFinalSubmit
 /// (SP_MONITORING_REJECT_FINAL_SUBMIT + SP_MONITORING_REJECT_CERTIFICATION) and of the
 /// two agency actions SaDetails called on RemoteController: UpdateRemarks
@@ -159,8 +160,22 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         {
             if (await StillOpen(zedId, certification, a => a.FinalSubmit, stage, ct) is { } decided) return decided;
             var qr = RandomNumberGenerator.GetString(QrChars, 4);
-            await db.ExecuteProcAsync(desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT",
-                new { UserId, ZedId = zedId, CertificationType = level, QrCodeSeqNo = qr }, ct);
+            // 2026-11-15: the V4 procedures route by the level's flow (migration 0078: a desktop-only Silver / Gold is
+            // certified at the desktop, a Bronze with a visit after it) and run the legacy ones otherwise; before 0078 is
+            // applied, the legacy ones.
+            // The surveillance host (ZED_SURVEILLANCE) keeps its own legacy procedures (0078 is main's).
+            var args = new { UserId, ZedId = zedId, CertificationType = level, QrCodeSeqNo = qr };
+            var surveillance = HttpContext.RequestServices.GetService<PortalHost>()?.System == PortalSystem.Surveillance;
+            try
+            {
+                await db.ExecuteProcAsync(surveillance ? (desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT")
+                    : desktop ? "SP_V4_DA_FINAL_SUBMIT" : "SP_V4_RA_FINAL_SUBMIT", args, ct);
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 2812)
+            {
+                log.LogWarning("Migration 0078 not applied: the legacy final submit runs for {ZedId} {Certification}", zedId, level);
+                await db.ExecuteProcAsync(desktop ? "SP_MONITORING_DA_FINAL_SUBMIT" : "SP_MONITORING_RA_FINAL_SUBMIT", args, ct);
+            }
             log.LogInformation("Agency {UserId} final-submitted the {Stage} review of {ZedId} {Certification}", UserId, stage, zedId, level);
         }
         finally
@@ -170,7 +185,10 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
 
         // Silver/Gold desktop verification only moves on to the site assessment (the old code mailed Bronze only).
         // 2026-11-08: a V4 level assessed at the desktop only is certified here, as Bronze (fix main/14 SP_MONITORING_DA_FINAL_SUBMIT).
-        if (desktop && !Documents.DocumentLevels.IsDesktop(level!)) return new MessageResponse("Desktop verification completed.");
+        // 2026-11-15: every level by its flow (LevelRegistry.IsDesktop), as SP_V4_DA_FINAL_SUBMIT routes it.
+        var surveillanceHost = HttpContext.RequestServices.GetService<PortalHost>()?.System == PortalSystem.Surveillance;
+        if (desktop && !(surveillanceHost ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level!) : Documents.DocumentLevels.IsDesktop(level!)))
+            return new MessageResponse("Desktop verification completed.");
         // V4 levels (ZED-X): the certificate number and first surveillance date from Administration → Certification Levels.
         // 2026-11-08: also a V4 level completed at the desktop (ApplyAsync leaves Bronze, Silver and Gold alone).
         // 2026-11-14: after the legacy final submit has committed, a failure here must not end in an error page that hides the

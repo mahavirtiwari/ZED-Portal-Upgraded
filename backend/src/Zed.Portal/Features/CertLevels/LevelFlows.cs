@@ -11,7 +11,8 @@ namespace Zed.Portal.Features.CertLevels;
 /// procedures and the apps that read it are unchanged. Not set = as before: Desktop only for a desktop level, Desktop +
 /// Onsite for the others; surveillance Remote (today's flow with a meeting link).
 /// The flows are built one by one: a choice the portal cannot run yet is shown in the Admin but refused when saved
-/// (<see cref="Available"/>).
+/// (<see cref="Available"/>). 2026-11-15: every flow runs for every level (migration 0078); where a unit was certified is
+/// read from its record (status 6 with DaCertificateNo, 16 with SaCertificateNo).
 /// </summary>
 public static class LevelFlows
 {
@@ -112,12 +113,8 @@ public static class LevelFlows
         if (flow is not null && !Available.Contains(flow)) return $"{Label(flow)} is not available yet: it comes with the next update.";
         if (surveillanceMode is not null && !AvailableSurveillance.Contains(surveillanceMode))
             return "Onsite surveillance is not available yet: it comes with the next update.";
-        // Silver and Gold are assessed on site by the legacy procedures, whatever AssessmentMode says.
-        if (flow == Desktop && (string.Equals(code, "Silver", StringComparison.OrdinalIgnoreCase) || string.Equals(code, "Gold", StringComparison.OrdinalIgnoreCase)))
-            return "Silver and Gold keep a site assessment.";
-        // Bronze is certified after desktop verification by the legacy procedures.
-        if (flow is not null && flow != Desktop && string.Equals(code, "Bronze", StringComparison.OrdinalIgnoreCase))
-            return "Bronze stays Desktop only until its remote and onsite flows come with the next update.";
+        // 2026-11-15 (the user): every level can have every flow; Bronze, Silver and Gold too (migration 0078 routes them:
+        // SP_V4_DA_FINAL_SUBMIT / SP_V4_RA_FINAL_SUBMIT).
         return null;
     }
 

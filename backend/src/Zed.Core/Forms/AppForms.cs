@@ -19,9 +19,10 @@ namespace Zed.Core.Forms;
 /// </summary>
 /// <param name="Levels">V4 (migration 0030): the certification levels the field is asked for, comma-separated codes; null = all.</param>
 /// <param name="NicSectors">V4 (migration 0030): the NIC 2-digit sectors of the units it is asked of, comma-separated; null = all.</param>
+/// <param name="ValidationRequired">V4 (migration 0080, column NeedsVerification): the assessor checks the answer (Valid / Not valid, which raises an NC).</param>
 public sealed record AppFormFieldRow(string FormKey, string FieldKey, bool Custom, string? Label, string? Help, string? Type, bool? Required,
     bool Enabled, int? SortOrder, string? Section, string? OptionsJson, string? UpdatedBy, DateTime? UpdatedOn,
-    string? Levels = null, string? NicSectors = null);
+    string? Levels = null, string? NicSectors = null, bool? ValidationRequired = null);
 
 /// <summary>
 /// The unit and level a form is filled for: a field limited to other levels or NIC sectors is not shown to it (V4). The
@@ -96,6 +97,11 @@ public interface IAppFormStore
 public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> log) : IAppFormStore
 {
     public const string FieldsSql =
+        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
+        "NeedsVerification AS ValidationRequired FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
+
+    /// <summary>Before migration 0080 (no ValidationRequired yet).</summary>
+    public const string FieldsSql0030 =
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
@@ -122,8 +128,16 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
             }
             catch (SqlException ex) when (ex.Number == 207)
             {
-                // Invalid column: migration 0030 not applied yet; the fields apply to every level and sector.
-                return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql0017, new { FormKey = Ansi(formKey, 50) }, ct);
+                try
+                {
+                    // Invalid column: migration 0080 not applied yet; no field is validated.
+                    return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql0030, new { FormKey = Ansi(formKey, 50) }, ct);
+                }
+                catch (SqlException ex2) when (ex2.Number == 207)
+                {
+                    // Nor 0030: the fields apply to every level and sector.
+                    return await db.QuerySqlAsync<AppFormFieldRow>(FieldsSql0017, new { FormKey = Ansi(formKey, 50) }, ct);
+                }
             }
         }
         catch (SqlException ex)
@@ -138,14 +152,16 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
         "ON t.FormKey = s.FormKey AND t.FieldKey = s.FieldKey " +
         "WHEN MATCHED THEN UPDATE SET Custom = @Custom, Label = @Label, Help = @Help, Type = @Type, Required = @Required, Enabled = @Enabled, " +
         "SortOrder = @SortOrder, Section = @Section, OptionsJson = @OptionsJson, Levels = @Levels, NicSectors = @NicSectors, " +
-        "UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
-        "WHEN NOT MATCHED THEN INSERT (FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, Levels, NicSectors, UpdatedBy) " +
-        "VALUES (@FormKey, @FieldKey, @Custom, @Label, @Help, @Type, @Required, @Enabled, @SortOrder, @Section, @OptionsJson, @Levels, @NicSectors, @UpdatedBy);",
+        "NeedsVerification = @ValidationRequired, UpdatedBy = @UpdatedBy, UpdatedOn = SYSUTCDATETIME() " +
+        "WHEN NOT MATCHED THEN INSERT (FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, Levels, NicSectors, " +
+        "NeedsVerification, UpdatedBy) " +
+        "VALUES (@FormKey, @FieldKey, @Custom, @Label, @Help, @Type, @Required, @Enabled, @SortOrder, @Section, @OptionsJson, @Levels, @NicSectors, " +
+        "@ValidationRequired, @UpdatedBy);",
         new
         {
             FormKey = Ansi(row.FormKey, 50), FieldKey = Ansi(row.FieldKey, 100), row.Custom, row.Label, row.Help, Type = Ansi(row.Type, 20),
             row.Required, row.Enabled, row.SortOrder, Section = Ansi(row.Section, 50), row.OptionsJson,
-            Levels = Ansi(row.Levels, 300), NicSectors = Ansi(row.NicSectors, 2000), UpdatedBy = Ansi(User(userId), 50),
+            Levels = Ansi(row.Levels, 300), NicSectors = Ansi(row.NicSectors, 2000), row.ValidationRequired, UpdatedBy = Ansi(User(userId), 50),
         }, ct);
 
     public async Task SaveOrderAsync(string formKey, IReadOnlyList<(string FieldKey, int SortOrder)> order, string userId, CancellationToken ct = default)
@@ -234,6 +250,8 @@ public sealed record AppField
     /// <summary>V4: the levels it is asked for (empty = all) and the NIC sectors of the units it is asked of (empty = all).</summary>
     public IReadOnlyList<string> Levels { get; init; } = [];
     public IReadOnlyList<string> NicSectors { get; init; } = [];
+    /// <summary>V4 (migration 0080): the assessor checks the answer (the Admin's own fields of a form the unit fills in).</summary>
+    public bool ValidationRequired { get; init; }
 
     /// <summary>Asked of this unit at this level (no unit: the form as a whole, every field applies).</summary>
     public bool AppliesTo(AppFormUnit? unit) =>
@@ -379,6 +397,7 @@ public sealed class EffectiveAppForm
         UpdatedOn = r.UpdatedOn,
         Levels = AppFormUnit.Split(r.Levels),
         NicSectors = AppFormUnit.Split(r.NicSectors),
+        ValidationRequired = r.ValidationRequired == true,
     };
 
     // ---------- The definition the apps get (docs/mobile/APP-FORMS.md) ----------

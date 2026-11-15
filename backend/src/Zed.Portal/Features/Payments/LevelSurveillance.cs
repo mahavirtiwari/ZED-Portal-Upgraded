@@ -26,9 +26,10 @@ public static class LevelSurveillance
     internal static string StatusSql(string level) =>
         $"SELECT TOP 1 C.EnableSurveillance1 AS Round, C.CertificationPhase AS Phase, CAST(ISNULL(M.[IsSur{level}PaymentDone], 0) AS bit) AS Paid " +
         "FROM dbo.MsmeCertifications C JOIN dbo.Msme M ON M.ZedId = C.ZedId " +
-        (LevelRegistry.IsDesktop(level)
-            ? "WHERE C.ZedId = @ZedId AND C.Certification = @Level AND C.CertificationStatus = 6 AND C.DaCertificateNo IS NOT NULL ORDER BY C.Id DESC;"
-            : "WHERE C.ZedId = @ZedId AND C.Certification = @Level AND C.CertificationStatus = 16 AND C.SaCertificateNo IS NOT NULL ORDER BY C.Id DESC;");
+        // 2026-11-15: the certified record whichever way it was certified (the level's flow may have changed since).
+        "WHERE C.ZedId = @ZedId AND C.Certification = @Level " +
+        "AND ((C.CertificationStatus = 6 AND C.DaCertificateNo IS NOT NULL) OR (C.CertificationStatus = 16 AND C.SaCertificateNo IS NOT NULL)) ORDER BY C.Id DESC;";
+        // (With their certificate numbers, as this query had them before: the surveillance needs the certificate's number.)
 
     /// <summary>The surveillance box: 1 once a round is open on a live certificate (as {Level}DashboardSurStatus), else 0.</summary>
     public static int DashboardStatus(StatusRow? r) =>

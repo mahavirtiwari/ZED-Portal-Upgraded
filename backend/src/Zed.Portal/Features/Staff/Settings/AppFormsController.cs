@@ -30,19 +30,23 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
     public sealed record FieldItem(string Key, string Label, string? Help, string? Heading, string Type, bool Required, bool Enabled,
         bool Active, bool Custom, string Section, int Order, IReadOnlyList<string>? Options, string? OptionsSource, int? MaxItems,
         string? ShownWhen, string? StandardLabel, string? StandardHelp, bool? StandardRequired, bool Customised, string? UpdatedBy,
-        DateTime? UpdatedOn, IReadOnlyList<FieldItem>? Columns, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null);
+        DateTime? UpdatedOn, IReadOnlyList<FieldItem>? Columns, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null,
+        bool ValidationRequired = false);
 
     public sealed record LevelOption(string Code, string Name);
 
     /// <param name="Levels">The certification levels a field can be limited to (Administration → Certification Levels).</param>
+    /// <param name="CanValidate">V4 (migration 0080): the Admin's own fields of this form can be "Validation required".</param>
     public sealed record FormDetails(FormItem Form, string Version, bool Numbered, IReadOnlyList<AppFormSection> Sections,
-        IReadOnlyList<string> CustomTypes, IReadOnlyList<FieldItem> Fields, IReadOnlyList<LevelOption>? Levels = null);
+        IReadOnlyList<string> CustomTypes, IReadOnlyList<FieldItem> Fields, IReadOnlyList<LevelOption>? Levels = null, bool CanValidate = false);
 
     /// <summary>Add (no key) or save a field. A standard field takes only the label, help, required and enabled.</summary>
     /// <param name="Levels">V4: the level codes it is asked for; none = all levels.</param>
     /// <param name="NicSectors">V4: the NIC 2-digit sectors of the units it is asked of; none = all sectors.</param>
+    /// <param name="ValidationRequired">V4: the assessor checks the answer (the Admin's own fields of a form the unit fills in).</param>
     public sealed record FieldRequest(string? Key, string? Label, string? Help, string? Type, bool Required, bool Enabled = true,
-        string? Section = null, IReadOnlyList<string>? Options = null, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null);
+        string? Section = null, IReadOnlyList<string>? Options = null, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null,
+        bool ValidationRequired = false);
 
     public sealed record EnabledRequest(string? Key, bool Enabled);
 
@@ -67,7 +71,8 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
     {
         if (await forms.GetAsync(host.System, form, ct) is not { } f) return NotFound();
         var levels = (await CertLevels.CertificationLevels.AllAsync(db, log, ct)).Select(l => new LevelOption(l.Code, l.Name)).ToList();
-        return new FormDetails(Item(f), f.Version, f.Spec.Numbered, f.Spec.Sections, AppFieldTypes.Custom, f.Fields.Select(x => Field(f, x)).ToList(), levels);
+        return new FormDetails(Item(f), f.Version, f.Spec.Numbered, f.Spec.Sections, AppFieldTypes.Custom, f.Fields.Select(x => Field(f, x)).ToList(), levels,
+            f.Spec.CanValidate(host.System));
     }
 
     [HttpPost("{form}/fields")]
@@ -76,13 +81,14 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         if (await forms.GetAsync(host.System, form, ct) is not { } f) return NotFound();
         if (f.CustomFields.Count() >= MaxCustomFields) return this.Problem400($"A form can have at most {MaxCustomFields} fields of your own.");
         if (CustomError(f, req, out var section, out var options) is { } error) return this.Problem400(error);
+        if (ValidationError(f, req) is { } invalid) return this.Problem400(invalid);
         var (levels, sectors, scopeError) = await ScopeAsync(req, ct);
         if (scopeError is not null) return this.Problem400(scopeError);
 
         var key = NewKey(f, req.Label!);
         var order = f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10;
         var row = new AppFormFieldRow(f.Spec.Key, key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(), req.Required,
-            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors);
+            req.Enabled, order, section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req));
         if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "add a field to", f) is { } failed) return failed;
         log.LogInformation("App form {Form}: field {Key} ({Type}) added by {UserId}", f.Spec.Key, key, row.Type, UserId);
         return new AddedResponse("Field added. The apps show it the next time they load the form.", key);
@@ -99,9 +105,10 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         if (field.Custom)
         {
             if (CustomError(f, req, out var section, out var options) is { } error) return this.Problem400(error);
+            if (ValidationError(f, req) is { } invalid) return this.Problem400(invalid);
             var row = new AppFormFieldRow(f.Spec.Key, field.Key, true, req.Label!.Trim(), Clean(req.Help), req.Type!.Trim().ToLowerInvariant(),
                 req.Required, req.Enabled, section == field.Section ? field.Order : f.Fields.Where(x => x.Section == section).Select(x => x.Order).DefaultIfEmpty(0).Max() + 10,
-                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors);
+                section, options is null ? null : AppFormRules.ToJsonArray(options), null, null, levels, sectors, Validated(req));
             if (await WriteAsync(() => forms.Store.SaveFieldAsync(row, UserId, ct), "save a field of", f) is { } failed) return failed;
         }
         else
@@ -109,11 +116,12 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
             if (req.Type is { Length: > 0 } type && !string.Equals(type.Trim(), field.Type, StringComparison.OrdinalIgnoreCase))
                 return this.Problem400("The type of a standard field cannot be changed.");
             if (LabelError(req.Label, req.Help) is { } error) return this.Problem400(error);
+            if (req.ValidationRequired) return this.Problem400("Only the fields you added can be \"Validation required\". The assessor already checks the standard answers.");
             var row = StandardRow(f, f.KeyOf(req.Key)!, field, req.Label!.Trim(), Clean(req.Help), req.Required, req.Enabled, levels, sectors);
             if (await WriteAsync(() => SaveStandardAsync(row, ct), "save a field of", f) is { } failed) return failed;
         }
-        log.LogInformation("App form {Form}: field {Key} saved by {UserId} (required {Required}, enabled {Enabled})",
-            f.Spec.Key, field.Key, UserId, req.Required, req.Enabled);
+        log.LogInformation("App form {Form}: field {Key} saved by {UserId} (required {Required}, enabled {Enabled}, validated {Validated})",
+            f.Spec.Key, field.Key, UserId, req.Required, req.Enabled, req.ValidationRequired);
         return new MessageResponse(req.Enabled ? "Field saved." : "Field saved. It is not shown in the apps.");
     }
 
@@ -124,7 +132,8 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         if (f.Find(req.Key) is not { } field) return NotFound();
         var row = field.Custom
             ? new AppFormFieldRow(f.Spec.Key, field.Key, true, field.Label, field.Help, field.Type, field.Required, req.Enabled, field.Order, field.Section,
-                field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null, AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors))
+                field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null, AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors),
+                field.ValidationRequired ? true : null)
             : StandardRow(f, f.KeyOf(req.Key)!, field, field.Label, field.Help, field.Required, req.Enabled,
                 AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors));
         if (await WriteAsync(() => field.Custom ? forms.Store.SaveFieldAsync(row, UserId, ct) : SaveStandardAsync(row, ct), "change", f) is { } failed)
@@ -171,7 +180,8 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         new(x.Key, x.Label, x.Help, x.Heading, x.Type, x.Required, x.Enabled, x.Active, x.Custom, x.Section, x.Order, x.Options, x.OptionsSource,
             x.MaxItems, x.When is { } w ? $"{(f.Find(w.Field)?.Label ?? w.Field)} is {w.EqualsValue}" : null,
             x.Standard?.Label, x.Standard?.Help, x.Standard?.Required, x.Customised, x.UpdatedBy, x.UpdatedOn,
-            x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList(), x.Levels, x.NicSectors);
+            x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList(), x.Levels, x.NicSectors,
+            x.ValidationRequired);
 
     /// <summary>The row of a standard field: only what differs from the catalogue is stored.</summary>
     private static AppFormFieldRow StandardRow(EffectiveAppForm f, string key, AppField field, string label, string? help, bool required, bool enabled,
@@ -251,6 +261,14 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         if (options.Count > AppFormRules.MaxOptions) return $"A field can have at most {AppFormRules.MaxOptions} choices.";
         return null;
     }
+
+    /// <summary>Stored as 1, or null (not validated).</summary>
+    private static bool? Validated(FieldRequest req) => req.ValidationRequired ? true : null;
+
+    private string? ValidationError(EffectiveAppForm f, FieldRequest req) =>
+        req.ValidationRequired && !f.Spec.CanValidate(host.System)
+            ? "The answers to this form are not checked by an assessor, so its fields cannot be \"Validation required\"."
+            : null;
 
     private static string? Clean(string? help) => string.IsNullOrWhiteSpace(help) ? null : help.Trim();
 

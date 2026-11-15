@@ -72,7 +72,11 @@ public sealed partial class MsmeEntryController
                     answered && evidence!.EvidenceId is { } e ? FileUrl(level, MsmeEntry.EvidencesFolder, $"{e}.pdf") : null);
             }).Where(r => r.Id > 0).ToList());
         }).ToList();
-        return new EntryNc(nc, site, productList, sections);
+        var formFields = (await HttpContext.RequestServices.GetRequiredService<Zed.Core.Forms.AppFormChecks>().NcItemsAsync(PortalSystem.Main, ZedId, level, nc, ct))
+            .Select(i => new EntryNcFormField(i.Key, i.Label, i.Remarks, i.PreviousValue,
+                i.Value is null ? null : Zed.Core.Forms.AppFormRules.Display(i.Type, i.Value), i.Answered))
+            .ToList();
+        return new EntryNc(nc, site, productList, sections, formFields);
     }
 
     private async Task<(MsmeEntry.Stage Stage, ActionResult? Error)> NcStageAsync(string certification, CancellationToken ct)

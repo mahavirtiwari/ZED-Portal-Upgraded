@@ -19,9 +19,9 @@ describe('assessor levels and modes (2026-11-14)', () => {
     expect(typeOfTicks({ Bronze: [] })).toBe('');
   });
 
-  it('lets Bronze stay Desktop only and Silver / Gold keep a site step for now', () => {
-    expect(levelFlowsFor('Bronze', ['Desktop', 'DesktopOnsite'])).toEqual(['Desktop']);
-    expect(levelFlowsFor('Gold', ['Desktop', 'DesktopOnsite'])).toEqual(['DesktopOnsite']);
+  it('lets every level choose every flow the server runs (2026-11-15)', () => {
+    expect(levelFlowsFor('Bronze', ['Desktop', 'DesktopOnsite'])).toEqual(['Desktop', 'DesktopOnsite']);
+    expect(levelFlowsFor('Gold', ['Desktop', 'DesktopOnsite'])).toEqual(['Desktop', 'DesktopOnsite']);
     expect(levelFlowsFor('PLATINUM', ['Desktop', 'DesktopOnsite'])).toEqual(['Desktop', 'DesktopOnsite']);
   });
 });

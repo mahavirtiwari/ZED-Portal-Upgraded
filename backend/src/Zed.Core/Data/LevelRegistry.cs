@@ -50,7 +50,7 @@ public static partial class LevelRegistry
 
     public const string Sql =
         "SELECT SectionType AS Code, ISNULL(DisplayName, SectionType) AS Name, CAST(ISNULL(IsEnabled, 0) AS bit) AS IsEnabled, " +
-        "ISNULL(AssessmentMode, 'Site') AS AssessmentMode, ISNULL(OrderNo, 0) AS OrderNo, QrDigit " +
+        "ISNULL(AssessmentMode, CASE WHEN SectionType = 'Bronze' THEN 'Desktop' ELSE 'Site' END) AS AssessmentMode, ISNULL(OrderNo, 0) AS OrderNo, QrDigit " +
         "FROM dbo.SectionTypes WHERE IsCertificationLevel = 1;";
 
     /// <summary>The same before migration 0065 (no QrDigit column yet).</summary>
@@ -81,8 +81,20 @@ public static partial class LevelRegistry
     /// <summary>What pages show ("ZED-X" for ZEDX); the code itself when unknown.</summary>
     public static string NameOf(string? code) => Find(code)?.Name ?? code ?? "";
 
-    /// <summary>Assessed at the desktop only, as Bronze: Bronze, and V4 levels whose AssessmentMode is Desktop (ZED-X is always a site level).</summary>
+    /// <summary>
+    /// Certified at the desktop (its flow is Desktop only), else after a visit. 2026-11-15: the Admin's flow decides for every
+    /// level, Bronze, Silver and Gold included (AssessmentMode is kept in step with AssessmentFlow; migration 0078); before,
+    /// Bronze was always a desktop level and Silver / Gold always site levels. A unit's own record says where it WAS
+    /// certified (status 6 with DaCertificateNo, or 16 with SaCertificateNo): read that for a record, this for routing.
+    /// </summary>
     public static bool IsDesktop(string? code) =>
+        Find(code) is { } e ? e.AssessmentMode == Desktop : string.Equals(code?.Trim(), "Bronze", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The rule before 2026-11-15 (Bronze desktop, Silver / Gold site, a V4 level by its AssessmentMode): the surveillance
+    /// rounds and their certificates, and the level's own certificate artwork (DaBronze, SaSilver, SaGold), still follow it.
+    /// </summary>
+    public static bool IsLegacyDesktop(string? code) =>
         Find(code) is { } e
             ? (string.Equals(e.Code, "Bronze", StringComparison.OrdinalIgnoreCase) || (!IsLegacy(e.Code) && e.AssessmentMode == Desktop))
             : string.Equals(code?.Trim(), "Bronze", StringComparison.OrdinalIgnoreCase);

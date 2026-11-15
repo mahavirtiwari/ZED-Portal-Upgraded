@@ -75,6 +75,8 @@ describe('RemoteAssessmentPage', () => {
   }
 
   afterEach(() => {
+    // The "to validate" panel (App Forms, migration 0080) asks for its checks.
+    for (const r of http.match((req) => req.url.endsWith('/form-checks'))) r.flush({ applies: false, canCheck: false, round: 0, ncRound: false, items: [] });
     http.verify();
     vi.restoreAllMocks();
   });

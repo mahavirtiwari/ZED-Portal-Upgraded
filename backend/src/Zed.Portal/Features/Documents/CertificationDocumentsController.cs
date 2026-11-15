@@ -193,7 +193,7 @@ public sealed class StaffCertificateRegenerationController(
         {
             var zedId = row.Text("ZedId");
             if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(row.Text("Certification")) is not { } level) continue;
-            if (storage.Find(DocumentLevels.CertificatePath(zedId, level)) is not null) continue;
+            if (DocumentLevels.CertificatePaths(zedId, level).Any(p => storage.Find(p) is not null)) continue;
             try
             {
                 await documents.IssueCertificateAsync(zedId, level, ct);
@@ -272,15 +272,16 @@ internal static class CertificationDownloads
     public static async Task<IActionResult> CertificateAsync(ControllerBase c, DocumentStorage storage, IAssessmentDocuments documents,
         CertificationRecord? record, string zedId, string level, CancellationToken ct)
     {
-        if (record is null || !DocumentLevels.IsCertified(level, record.CertificationStatus)) return c.NotFound();
-        if (storage.Find(DocumentLevels.CertificatePath(zedId, level)) is { } path) return DocumentResults.PhysicalFile(c, path);
+        // 2026-11-15: certified and where (desktop or after a visit) from the record, whatever the level's flow is now.
+        if (record is null || !record.IsCertified) return c.NotFound();
+        if (storage.Find(DocumentLevels.CertificatePath(zedId, level, record.CertifiedAtDesktop)) is { } path) return DocumentResults.PhysicalFile(c, path);
         return await PdfAsync(c, () => documents.IssueCertificateAsync(zedId, level, ct));
     }
 
     /// <summary>A certified record, or a rejected one (the rejection e-mail links to its report).</summary>
     public static bool HasReport(string level, CertificationRecord? record) =>
         record is not null &&
-        (DocumentLevels.IsCertified(level, record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected);
+        (record.IsCertified || record.CertificationStatus == DocumentLevels.Rejected);
 
     public static async Task<IActionResult> ReportAsync(ControllerBase c, IAssessmentDocuments documents,
         CertificationRecord? record, string zedId, string level, CancellationToken ct)

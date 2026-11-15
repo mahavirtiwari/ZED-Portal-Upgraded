@@ -85,7 +85,7 @@ public static class CertificationLevels
 
     internal const string Sql =
         "SELECT SectionType AS Code, ISNULL(DisplayName, SectionType) AS Name, ISNULL(OrderNo, 0) AS OrderNo, Description, Comment, LogoPath, " +
-        "CAST(ISNULL(IsEnabled, 0) AS bit) AS IsEnabled, ISNULL(AssessmentMode, 'Site') AS AssessmentMode, ISNULL(ValidityMonths, 36) AS ValidityMonths, " +
+        "CAST(ISNULL(IsEnabled, 0) AS bit) AS IsEnabled, ISNULL(AssessmentMode, CASE WHEN SectionType = 'Bronze' THEN 'Desktop' ELSE 'Site' END) AS AssessmentMode, ISNULL(ValidityMonths, 36) AS ValidityMonths, " +
         "CAST(ISNULL(SurveillanceEnabled, 0) AS bit) AS SurveillanceEnabled, FirstSurveillanceMonths, " +
         "ISNULL(CertNoFormat, '{DDMMYYYY}_{ZEDNO}') AS CertNoFormat, CertNoFormatManufacturing, CertNoFormatService, Fee, UpdatedBy, UpdatedOn, " +
         ScheduleColumns + "FROM dbo.SectionTypes WHERE IsCertificationLevel = 1 ORDER BY ISNULL(OrderNo, 0), SectionType;";

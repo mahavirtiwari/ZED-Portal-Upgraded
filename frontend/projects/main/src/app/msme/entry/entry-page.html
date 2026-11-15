@@ -189,6 +189,23 @@
               </div>
             </div>
           }
+          @if (n.formFields?.length) {
+            <div class="doc-section" data-nc="form-fields">
+              <h5>Basic information</h5>
+              <p class="help mb-1">Answer these in the ZED MSME app: open Non-Conformances and enter each field again.</p>
+              @for (f of n.formFields; track f.key) {
+                <div class="doc-row" [attr.data-nc]="'field-' + f.key">
+                  <div class="doc-name">
+                    {{ f.label }}
+                    @if (f.assessorRemarks) { <span class="help"><b>Assessor:</b> {{ f.assessorRemarks }}</span> }
+                    @if (f.previousValue) { <span class="help">Your answer was {{ f.previousValue }}</span> }
+                    @if (f.answered) { <span class="help">New answer: {{ f.value }}</span> <span class="doc-badge badge-ok">Answered</span> }
+                    @else { <span class="doc-badge badge-req">To answer in the app</span> }
+                  </div>
+                </div>
+              }
+            </div>
+          }
           @if (n.products.length) {
             <div class="doc-section">
               <h5>Products</h5>

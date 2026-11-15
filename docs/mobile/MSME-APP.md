@@ -71,6 +71,7 @@ the Silver/Gold surveillance and remote assessment entries, which need `surveill
 | `FinalSubmit` | suitableForSilverUpgrade, handholdingSupport (or none) | same | OK, answers status "1" |
 | `GetNcDetailsByType` | ncCount | same | OK |
 | `SubmitSiteExteriorInfo` | photos, msmeRemarks | same | OK |
+| `SubmitNcFormField` (V4, 2026-11-15) | form, key, value (text, number, true/false or a list of choices) | new | the new answer to an NC on a "Validation required" Basic Information field; only while that NC is open. `GetNcDetailsByType` lists those NCs in `formFields` (form, key, label, type, options, assessorRemarks, previousValue, value, answered); `FinalSubmit` refuses to close the NC while one is unanswered |
 | `SubmitNcProduct` | multipart, productDetailsNc JSON (`productId` text), `files` | same | OK |
 | `SubmitNcRequirement` | multipart, requirementId/Code, photo, msmeRemarks, `file_data` | same | OK |
 | `GetMsmeStatus` | userName, version | HTTP 500 as before | **same failure as the old server** (procedure lacks six columns); the app shows an error alert where it refreshes the status |

@@ -184,3 +184,13 @@ property paths (`occupationalSafety.numOfAccidents`, `energyManagement.electrica
 legacy inputs: `number` for `isNumeric`, `decimal` for `allowDecimal` (energy % of total consumption, defects, rework,
 customer rejections, complaints resolved, customer satisfaction), `text` for units and "Measures Taken". Labels and
 sub-headings are those of `ZEDConsultant` `models/Models.kt`.
+
+## Validation required (V4, migration 0080)
+
+The Admin can mark a field they added to `msme.basicInfo` (Main) **Validation required** (`dbo.V4AppFormFields.NeedsVerification`).
+The flag is not part of the definition the apps get (it does not change `version`). Who checks follows the level's flow: the desktop
+assessor for a level certified at the desktop, the lead assessor's web review (remote or onsite) for a level with a visit. Each answer is marked Valid, or Not valid with a
+remark. The final submit is refused while an answer is not checked. `SP_ASSESSMENT_DA_FINAL_SUBMIT` /
+`SP_ASSESSMENT_RA_FINAL_SUBMIT` raise an NC on each Not valid one (`V4AppFormValues.NcRound`, `NcValue`, `NcRemarks`).
+The unit answers it in the ZED MSME app's NC screen, which enters the field again (`Msme/SubmitNcFormField`), and the
+assessor checks the new answer in the next round. The MSME web shows these NCs read-only.

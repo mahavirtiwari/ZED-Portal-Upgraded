@@ -81,9 +81,9 @@ internal static class ZedXAppStatus
             "ISNULL(c.Nc1Status, 0) AS StatusOfNc1, ISNULL(c.Nc2Status, 0) AS StatusOfNc2, ISNULL(c.Nc3Status, 0) AS StatusOfNc3, " +
             "ISNULL(c.Nc4Status, 0) AS StatusOfNc4, ISNULL(c.Nc5Status, 0) AS StatusOfNc5, ISNULL(c.IsSaSelfieSubmitted, 0) AS SelfieStatus, " +
             string.Join(", ", Enumerable.Range(1, 5).Select(NcTextOf)) + ", " +
-            (desktop
-                ? $"CASE WHEN c.CertificationStatus = 6 AND c.DaCertificateNo IS NOT NULL THEN 'Certificates/DA/' + m.ZedId + '/{level}.pdf' END AS CertificatePath "
-                : $"CASE WHEN c.CertificationStatus = 16 AND c.SaCertificateNo IS NOT NULL THEN 'Certificates/SA/' + m.ZedId + '/{level}.pdf' END AS CertificatePath ") +
+            // 2026-11-15: the certificate where the record was certified (desktop or after a visit), whatever the flow is now.
+            $"CASE WHEN c.CertificationStatus = 6 AND c.DaCertificateNo IS NOT NULL THEN 'Certificates/DA/' + m.ZedId + '/{level}.pdf' " +
+            $"WHEN c.CertificationStatus = 16 AND c.SaCertificateNo IS NOT NULL THEN 'Certificates/SA/' + m.ZedId + '/{level}.pdf' END AS CertificatePath " +
             "FROM dbo.Msme m LEFT JOIN dbo.MsmeCertifications c ON c.ZedId = m.ZedId AND c.Certification = @Level WHERE m.ZedId = @ZedId;";
     }
 

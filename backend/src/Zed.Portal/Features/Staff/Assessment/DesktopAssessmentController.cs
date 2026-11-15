@@ -49,7 +49,7 @@ namespace Zed.Portal.Features.Staff.Assessment;
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [Route("api/staff/assessment/da/{zedId}/{certification}")]
 [StaffRoles(UserRole.MasterAdmin, UserRole.Agency, UserRole.DesktopAssessor, UserRole.SuperAdmin, UserRole.Ministry, UserRole.CitizenFeedback, UserRole.QC)]
-public sealed class DesktopAssessmentController(
+public sealed partial class DesktopAssessmentController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
@@ -190,17 +190,23 @@ public sealed class DesktopAssessmentController(
         var bronze = level == "Bronze";
         var system = host.System;
         var surveillance = system == PortalSystem.Surveillance;
+        // 2026-11-15: a level certified at the desktop (Bronze by default; any level whose flow is Desktop only). Bronze, Silver
+        // and Gold may now have any flow (migration 0078); on the surveillance portal the levels keep their old rule.
+        var desktopOnly = surveillance ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level) : Zed.Core.Data.LevelRegistry.IsDesktop(level);
         var evidences = Evidences(da[7], zedId, level, moved, system);
-        var screenshots = da[bronze ? 10 : 21];
+        // The procedure sends Silver's result sets for every level but Bronze, and (2026-11-15, migration 0079) for a Bronze
+        // with a visit too: the screenshots are set 21 then, else set 10 (Bronze's sets).
+        var visitSets = !bronze || da.Count > 21;
+        var screenshots = da[visitSets ? 21 : 10];
         foreach (var e in evidences) e["Screenshots"] = Screenshots(screenshots, e, zedId, level, system);
         // Index of the ESG check list: right after the screenshots, or after the ZED-assessment location on Surveillance.
-        var esg = (bronze ? 10 : 21) + (surveillance ? 2 : 1);
+        var esg = (visitSets ? 21 : 10) + (surveillance ? 2 : 1);
 
         // NC rounds exist only for Bronze desktop verification (Silver/Gold NCs are raised at the site assessment).
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         // The Admin's requirement videos (2026-11-08).
         var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
-        var rounds = bronze && ncCount > 0
+        var rounds = desktopOnly && ncCount > 0
             ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, videos, ct)))
             : [];
 
@@ -208,7 +214,7 @@ public sealed class DesktopAssessmentController(
         var permissions = new Permissions(
             record.CanAssess(user),
             record.CanFinalSubmit(user),
-            IsRole(UserRole.MasterAdmin) && !bronze && status is 5 or 6 or 8,
+            IsRole(UserRole.MasterAdmin) && !desktopOnly && status is 5 or 6 or 8,
             Monitoring.ReviewRules.For(user, record, Monitoring.ReviewStage.Desktop));
 
         var checkpoints = await CheckpointAnswers.LoadAsync(db, zedId, level, null, "dbo", log, ct);
@@ -545,7 +551,7 @@ public sealed class DesktopAssessmentController(
         var (level, record, error) = await ForAssessor(zedId, certification, ct);
         if (error is not null) return error;
         if (!record!.CanFinalSubmit(CurrentUser)) return Forbidden("This assessment cannot be submitted now.");
-        return await Confirm(zedId, level!, ct);
+        return await WithFormChecks(await Confirm(zedId, level!, ct), zedId, level!, record!, ct);
     }
 
     public sealed record FinalSubmitRequest(string? Remarks);
@@ -579,7 +585,7 @@ public sealed class DesktopAssessmentController(
         {
             if (await StillSubmittable(zedId, certification, record, ct) is { } submitted) return submitted;
             // The old page sent "isNcRaised" from the browser; the procedure's own answer is used instead.
-            check = await Confirm(zedId, level!, ct);
+            check = await WithFormChecks(await Confirm(zedId, level!, ct), zedId, level!, record!, ct);
             if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
 
             await db.ExecuteProcAsync("SP_ASSESSMENT_DA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = remarks }, ct);

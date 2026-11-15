@@ -242,6 +242,33 @@ public sealed class NcResponse : ServiceResponse
     public List<string>? siteExteriorPhotos { get; set; }
     public List<ProductDetails>? products { get; set; }
     public List<ParameterDetails>? parameters { get; set; }
+    /// <summary>V4 (migration 0080): answers to the Admin's "Validation required" fields the assessor found not valid.</summary>
+    public List<NcFormField>? formFields { get; set; }
+}
+
+/// <summary>An NC on an App Forms answer: the field, the assessor's remark, the answer found not valid and the new one.</summary>
+public sealed class NcFormField
+{
+    public string? form { get; set; }
+    public string? key { get; set; }
+    public string? label { get; set; }
+    /// <summary>text, number, decimal, date, yesno, dropdown, multiselect, checkboxes (docs/mobile/APP-FORMS.md).</summary>
+    public string? type { get; set; }
+    public string? help { get; set; }
+    public List<string>? options { get; set; }
+    public string? assessorRemarks { get; set; }
+    public string? previousValue { get; set; }
+    /// <summary>The new answer as stored (several answers: a JSON array), once answered.</summary>
+    public string? value { get; set; }
+    public bool answered { get; set; }
+}
+
+/// <summary>The unit's new answer to an NC on an App Forms field (value: text, number, true/false or an array of choices).</summary>
+public sealed class NcFormFieldSubmitRequest : BaseServiceRequest
+{
+    public string? form { get; set; }
+    public string? key { get; set; }
+    public System.Text.Json.JsonElement value { get; set; }
 }
 
 public sealed class ParameterDetails

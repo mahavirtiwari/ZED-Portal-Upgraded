@@ -82,7 +82,11 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     await settle(fixture);
   }
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The "to validate" panel (App Forms, migration 0080) asks for its checks.
+    for (const r of http.match((req) => req.url.endsWith('/form-checks'))) r.flush({ applies: false, canCheck: false, round: 0, ncRound: false, items: [] });
+    http.verify();
+  });
 
   it('offers the meeting link instead of the video call and no frame captures', async () => {
     await create(details());

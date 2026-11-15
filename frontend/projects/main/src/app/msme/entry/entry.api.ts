@@ -113,6 +113,8 @@ export interface EntryNc {
     name: string;
     requirements: { id: number; code: string; name: string; assessorRemarks: string | null; answered: boolean; url: string | null }[];
   }[];
+  /** NCs on the Admin's "Validation required" Basic Information fields (answered in the ZED MSME app only). */
+  formFields?: { key: string; label: string; assessorRemarks: string | null; previousValue: string | null; value: string | null; answered: boolean }[] | null;
 }
 
 export interface EntryMessage {

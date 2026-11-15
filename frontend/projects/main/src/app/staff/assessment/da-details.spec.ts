@@ -76,7 +76,11 @@ describe('DaDetailsPage', () => {
     el = fixture.nativeElement;
   });
 
-  afterEach(() => http.verify());
+  afterEach(() => {
+    // The "to validate" panel (App Forms, migration 0080) asks for its checks.
+    for (const r of http.match((req) => req.url.endsWith('/form-checks'))) r.flush({ applies: false, canCheck: false, round: 0, ncRound: false, items: [] });
+    http.verify();
+  });
 
   it('shows the overview and the parameters with the assessor controls', async () => {
     await open(details());

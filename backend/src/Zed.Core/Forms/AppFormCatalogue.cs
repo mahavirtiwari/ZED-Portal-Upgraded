@@ -53,7 +53,16 @@ public sealed record AppFormSection(string Key, string Label);
 
 /// <summary>A configurable form of an app. <paramref name="Numbered"/>: the app numbers the top-level fields (1, 2, ...).</summary>
 public sealed record AppFormSpec(string Key, string Name, string App, IReadOnlyList<PortalSystem> Systems, bool Numbered,
-    IReadOnlyList<AppFormSection> Sections, IReadOnlyList<AppFormFieldSpec> Fields);
+    IReadOnlyList<AppFormSection> Sections, IReadOnlyList<AppFormFieldSpec> Fields)
+{
+    /// <summary>
+    /// V4 (migration 0080): systems where the Admin's own fields can be "Validation required" (the unit fills the form in,
+    /// an assessor checks the answers and raises NCs on them). Empty: none.
+    /// </summary>
+    public IReadOnlyList<PortalSystem> Validated { get; init; } = [];
+
+    public bool CanValidate(PortalSystem system) => Validated.Contains(system);
+}
 
 /// <summary>
 /// The apps' "Basic Information" forms with their standard fields, as the legacy apps build them (Admin → App Forms changes
@@ -82,7 +91,7 @@ public static class AppFormCatalogue
                 new("assessorSelfie", "Assessor Selfie", AppFieldTypes.Photo, true, Basic, 10) { MaxItems = 1, Systems = [PortalSystem.Surveillance] },
                 new("siteExteriorPhotos", "Site Exterior Photos (max. 2 photos)", AppFieldTypes.Photo, true, Basic, 20) { MaxItems = 2 },
                 .. UnitQuestions(30),
-            ]),
+            ]) { Validated = [PortalSystem.Main] },
         // Site assessment app (ZED_SA_Studio): the same questions without the photos, numbered 1-10.
         new(AssessorBasicInfo, "Basic Information", "Site assessment app", [PortalSystem.Main, PortalSystem.Surveillance], true,
             [new(Basic, "Basic Information")],

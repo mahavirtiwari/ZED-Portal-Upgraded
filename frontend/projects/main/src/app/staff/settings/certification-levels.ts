@@ -110,10 +110,12 @@ export const SURVEILLANCE_MODES: { value: SurveillanceMode; label: string; hint:
   { value: 'Remote', label: 'Remote', hint: 'The current surveillance flow (meeting link).' },
   { value: 'Onsite', label: 'Onsite', hint: 'As an onsite assessment, on the parameters marked "In surveillance".' },
 ];
-/** Bronze stays Desktop only and Silver / Gold keep a site step until their other flows are built (the server says the same). */
-export function levelFlowsFor(code: string, available: string[]): string[] {
-  const c = code.toLowerCase();
-  return available.filter((f) => (c === 'bronze' ? f === 'Desktop' : c === 'silver' || c === 'gold' ? f !== 'Desktop' : true));
+/**
+ * The flows a level can choose: every flow the server runs, for every level (2026-11-15: Bronze, Silver and Gold too; the
+ * server routes them, migration 0078). An older server sends fewer and the others show as "available soon".
+ */
+export function levelFlowsFor(_code: string, available: string[]): string[] {
+  return available;
 }
 export const flowLabel = (f: string | undefined, mode: string) =>
   ASSESSMENT_FLOWS.find((x) => x.value === f)?.label ?? (mode === 'Desktop' ? 'Desktop only' : 'Desktop + Onsite');

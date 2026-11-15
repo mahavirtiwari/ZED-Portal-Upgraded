@@ -63,7 +63,7 @@ namespace Zed.Portal.Features.Remote;
 [PortalSystems(PortalSystem.Main, PortalSystem.Surveillance)]
 [StaffRoles(UserRole.DesktopAssessor)]
 [SubRole(SubRoles.SiteVerification)]
-public sealed class RemoteAssessmentController(
+public sealed partial class RemoteAssessmentController(
     ISqlExecutor db,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
@@ -781,7 +781,7 @@ public sealed class RemoteAssessmentController(
     {
         var (level, record, error) = await ForAssessor(zedId, certification, ct, roundWork: true);
         if (error is not null) return error;
-        return await Confirm(zedId, level!, record!, ct);
+        return await WithFormChecks(await Confirm(zedId, level!, record!, ct), zedId, level!, record!, ct);
     }
 
     public sealed record FinalSubmitRequest(string? Comments);
@@ -806,7 +806,7 @@ public sealed class RemoteAssessmentController(
                 return this.Problem400("This assessment has already been submitted. Please reload the page.");
 
             // The old FinalSubmit ran without these checks and took "NC raised" from the browser.
-            check = await Confirm(zedId, level!, now, ct);
+            check = await WithFormChecks(await Confirm(zedId, level!, now, ct), zedId, level!, now, ct);
             if (!check.Allowed) return this.Problem400(check.Message ?? "Please complete the assessment before final submit.");
 
             await db.ExecuteProcAsync("SP_ASSESSMENT_RA_FINAL_SUBMIT", new { ZedId = zedId, CertificationType = level, AssessorRemarks = comments }, ct);

@@ -135,8 +135,8 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal(("2", "64", "1"), (FakeSql.Arg(gold, "SurveillanceCount"), FakeSql.Arg(gold, "SurveillanceWithdrawAfterDays"), FakeSql.Arg(gold, "SurveillanceSuspendRounds")));
 
         // Only Bronze is applied for by the portal (the legacy apply records a zero payment), and only on a reminder.
-        Assert.Contains("Only Bronze", await (await admin.PutAsJsonAsync($"{Url}/gold", Body(autoApply: true))).ProblemTitle());
-        Assert.Contains("Only Bronze", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(count: 1, mode: "Desktop", autoApply: true))).ProblemTitle());
+        Assert.Contains("Only a Bronze", await (await admin.PutAsJsonAsync($"{Url}/gold", Body(autoApply: true))).ProblemTitle());
+        Assert.Contains("Only a Bronze", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body(count: 1, mode: "Desktop", autoApply: true))).ProblemTitle());
         var noReminder = Body(count: 1, mode: "Desktop", autoApply: true, suspendRounds: 0);
         noReminder["surveillanceReminders"] = 0;
         Assert.Contains("reminder", await (await admin.PutAsJsonAsync($"{Url}/bronze", noReminder)).ProblemTitle());
@@ -228,7 +228,7 @@ public sealed class CertificationLevelsTests : IDisposable
     }
 
     [Fact]
-    public async Task A_level_saves_its_assessment_flow_and_surveillance_mode_and_refuses_those_not_built_yet()
+    public async Task A_level_saves_its_assessment_flow_and_surveillance_mode_and_every_level_may_have_every_flow()
     {
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         Dictionary<string, object?> Body(string flow, string mode = "Remote") => new()
@@ -236,10 +236,12 @@ public sealed class CertificationLevelsTests : IDisposable
             ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
             ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["assessmentFlow"] = flow, ["surveillanceMode"] = mode,
         };
-        // Refused (2026-11-14): Bronze stays Desktop only; Silver / Gold keep a site step. Nothing written.
-        Assert.Contains("Bronze stays Desktop only", await (await admin.PutAsJsonAsync($"{Url}/bronze", Body("Remote"))).ProblemTitle());
-        Assert.Contains("keep a site assessment", await (await admin.PutAsJsonAsync($"{Url}/gold", Body("Desktop"))).ProblemTitle());
+        // An unknown flow is refused; nothing written.
+        Assert.Equal("Please choose how the level is assessed.", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("Phone"))).ProblemTitle());
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql);
+        // 2026-11-15: Bronze may have a visit and Gold may be Desktop only (migration 0078 routes them).
+        Assert.Null(LevelFlows.Problem("Onsite", "Remote", "Bronze"));
+        Assert.Null(LevelFlows.Problem("Desktop", "Remote", "Gold"));
 
         // Desktop only: the old AssessmentMode follows the flow; the flow and the mode are saved after the level's row.
         Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body("Desktop"))).StatusCode);

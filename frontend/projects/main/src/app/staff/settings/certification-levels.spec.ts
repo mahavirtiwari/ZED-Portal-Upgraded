@@ -118,6 +118,42 @@ describe('CertificationLevelsPage', () => {
     expect(el.querySelector('.modal')).toBeNull();
   });
 
+  it('lets Bronze choose any assessment flow the server runs (2026-11-15)', async () => {
+    const all = ['Desktop', 'Remote', 'Onsite', 'DesktopRemote', 'DesktopOnsite'];
+    const r = response(false);
+    (r.levels[0] as Record<string, unknown>)['availableFlows'] = all;
+    button(box('Bronze'), 'Edit').click();
+    await settle();
+    // The page was loaded without the list: reload it with every flow available.
+    (el.querySelector('.modal .btn-close, .modal [aria-label="Close"]') as HTMLElement | null)?.click();
+    await settle();
+    http.match(api).forEach((req) => req.flush(r));
+    fixture.destroy();
+    fixture = TestBed.createComponent(CertificationLevelsPage);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne(api).flush(r);
+    await settle();
+    button(box('Bronze'), 'Edit').click();
+    await settle();
+    button(el.querySelector('.modal')!, 'Certificate').click();
+    await settle();
+    const radios = [...el.querySelectorAll('input[name="assessmentFlow"]')] as HTMLInputElement[];
+    expect(radios.length).toBe(5);
+    expect(radios.every((x) => !x.disabled)).toBe(true);
+    expect(el.querySelector('[aria-label="Assessment"] .is-soon')).toBeNull();
+    ([...el.querySelectorAll('[aria-label="Assessment"] label')].find((l) => l.textContent!.includes('Onsite only'))!.querySelector('input') as HTMLInputElement).click();
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const save = http.expectOne(`${api}/Bronze`);
+    expect(save.request.body).toEqual(expect.objectContaining({ assessmentFlow: 'Onsite' }));
+    save.flush({ message: 'Bronze saved.' });
+    await settle();
+    http.expectOne(api).flush(r);
+    await settle();
+  });
+
   it('sets the surveillance schedule of Bronze as of ZED-X: applied by the portal, never suspended', async () => {
     button(box('Bronze'), 'Edit').click();
     await settle();

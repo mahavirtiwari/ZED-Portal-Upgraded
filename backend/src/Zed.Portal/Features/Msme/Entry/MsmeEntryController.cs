@@ -419,6 +419,10 @@ public sealed partial class MsmeEntryController(
         if (!stage.Editable && !stage.NcOpen) return this.Problem400(NotOpen);
         if (!stage.HasRow) return this.Problem400(SaveBasicInfoFirst);
         var args = new { CertificationType = level, ZedId };
+        // V4 (migration 0080): the NCs on Basic Information fields are answered in the app; the round closes once they are.
+        if (stage.NcOpen && await HttpContext.RequestServices.GetRequiredService<Zed.Core.Forms.AppFormChecks>()
+                .UnansweredAsync(PortalSystem.Main, ZedId, level, stage.NcCount, ct) > 0)
+            return this.Problem400("Please answer the non-conformances under Basic information in the ZED MSME app first.");
 
         try
         {

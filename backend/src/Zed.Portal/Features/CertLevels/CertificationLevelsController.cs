@@ -506,7 +506,7 @@ public sealed partial class CertificationLevelsController(
         if (r.Fee is < 0 or > 10_000_000) return "The fee must be between 0 and 1,00,00,000.";
         if (r.SurveillanceEnabled && Schedule(r).Problem(r.ValidityMonths!.Value) is { } schedule) return schedule;
         if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && !AutoApplies(code, r.AssessmentMode))
-            return "Only Bronze can be applied for its surveillance by the portal.";
+            return "Only a Bronze assessed at the desktop only can be applied for its surveillance by the portal.";
         if (r.SurveillanceEnabled && r.SurveillanceAutoApply == true && (r.SurveillanceReminders ?? SurveillanceSchedule.Default.Reminders) < 1)
             return "To apply for the surveillance on the last reminder, please keep at least one reminder.";
         if (r.SurveillanceEnabled && r.SurveillanceSuspendRounds is < 0 or > 5) return "Please choose which surveillances suspend the certificate.";

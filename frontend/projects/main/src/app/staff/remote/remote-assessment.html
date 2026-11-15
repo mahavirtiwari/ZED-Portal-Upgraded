@@ -237,6 +237,7 @@
 
         <!-- ===================================================== basic info -->
         @if (tab() === 'basicInfo') {
+          @if (!d.nc) { <zed-form-checks kind="remote" [zedId]="zedId" [certification]="certification" /> }
           <div class="table-responsive">
           <table class="table table-bordered table-zed basic-info">
             <thead><tr><th class="text-center">S.No</th><th>Description</th><th>Responses</th></tr></thead>
@@ -693,6 +694,7 @@
           } @else if (!rd) {
             <p class="text-muted">The answers of NC {{ nc.round }} could not be loaded. Please refresh.</p>
           } @else {
+            <zed-form-checks kind="remote" [zedId]="zedId" [certification]="certification" />
             @if (rd.products.length) {
               <h5 class="nc-heading">Products</h5>
               <div class="table-responsive">

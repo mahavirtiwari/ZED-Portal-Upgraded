@@ -2,6 +2,8 @@ using System.Globalization;
 using Dapper;
 using Microsoft.AspNetCore.Mvc;
 using Zed.Core.Data;
+using Zed.Core.Forms;
+using Zed.Core.Http;
 using Zed.Core.Mobile;
 using Zed.Core.Security;
 using Zed.Main.MobileApi.Models;
@@ -43,7 +45,35 @@ public sealed partial class MsmeController
         }
         if (sets[2].Count > 0) res.parameters = BuildParameters(sets, 2, withEvidences: false, withAssessorRemarks: true);
         await AppRequirementVideos.FillAsync(db, "dbo", certificationType, res.parameters, log, ct);
+        // V4 (migration 0080): the NCs on the Admin's "Validation required" fields of that round.
+        if (int.TryParse(ncCount, NumberStyles.Integer, CultureInfo.InvariantCulture, out var round) && round > 0)
+            res.formFields = (await FormChecks.NcItemsAsync(PortalSystem.Main, userName ?? "", AppFormSubmission.Certification(certificationType), round, ct))
+                .Select(i => new NcFormField
+                {
+                    form = i.Form, key = i.Key, label = i.Label, type = i.Type, help = i.Help, options = i.Options?.ToList(),
+                    assessorRemarks = i.Remarks, previousValue = i.PreviousValue, value = i.Value, answered = i.Answered,
+                })
+                .ToList();
         return LegacyJson(res);
+    }
+
+    private AppFormChecks FormChecks => HttpContext.RequestServices.GetRequiredService<AppFormChecks>();
+
+    /// <summary>
+    /// V4 (migration 0080): the unit's new answer to an NC on an App Forms field, while that NC round is open; checked
+    /// against the field's type and choices. The assessor checks it again in the next round.
+    /// </summary>
+    [HttpPost]
+    [DeviceBound(MobileApps.Msme, "userName")]
+    [MsmeEditAudit("App: non-conformance answer to a Basic Information field submitted")]
+    public async Task<IActionResult> SubmitNcFormField(NcFormFieldSubmitRequest request, CancellationToken ct)
+    {
+        var zedId = request.userName ?? "";
+        var stage = await StageAsync(zedId, request.certificationType, ct);
+        if (stage is not { NcOpen: true }) return StageRefused(nameof(SubmitNcFormField), zedId, request.certificationType, stage);
+        var error = await FormChecks.AnswerNcAsync(PortalSystem.Main, zedId, AppFormSubmission.Certification(request.certificationType), stage.NcCount,
+            request.form, request.key, request.value, zedId, ct);
+        return LegacyJson(error is null ? new ServiceResponse { status = "1" } : ServiceResponse.Fail(error));
     }
 
     /// <summary>

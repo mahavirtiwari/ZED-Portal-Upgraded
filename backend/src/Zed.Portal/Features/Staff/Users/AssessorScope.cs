@@ -9,7 +9,7 @@ namespace Zed.Portal.Features.Staff.Users;
 /// certification level, the modes the assessor may do: Desktop, Remote, Onsite (the level's flow decides which can be
 /// ticked, <see cref="LevelFlows.ModesOf"/>). Kept in dbo.Users.AssessmentModes (migration 0072) as "Bronze=D;Silver=D,O".
 /// Not set = from the old AssessorType: a Bronze Assessor does Bronze at the desktop, an Assessor every other level in all
-/// its modes. Users.AssessorType stays in step (only Bronze ticked = BronzeAssessor, else Assessor) for the legacy
+/// its modes (2026-11-15: and Bronze's remote or onsite visit when Bronze's flow has one). Users.AssessorType stays in step (only Bronze ticked = BronzeAssessor, else Assessor) for the legacy
 /// procedures and the apps. The allotment lists offer an assessor only for a level and mode it is ticked for.
 /// </summary>
 public static class AssessorScope
@@ -57,7 +57,12 @@ public static class AssessorScope
             map["Bronze"] = [DesktopMode];
         else
             foreach (var (level, flow) in flows)
-                if (!string.Equals(level, "Bronze", StringComparison.OrdinalIgnoreCase)) map[level] = [.. LevelFlows.ModesOf(flow)];
+            {
+                // 2026-11-15: Bronze's visits (a Bronze flow with a remote or onsite step) go to the Assessors too; Bronze's
+                // desktop step stays the Bronze Assessors'.
+                var modes = LevelFlows.ModesOf(flow).Where(m => !string.Equals(level, "Bronze", StringComparison.OrdinalIgnoreCase) || m != DesktopMode).ToHashSet();
+                if (modes.Count > 0) map[level] = modes;
+            }
         return map;
     }
 

@@ -350,6 +350,13 @@ public sealed partial class MsmeController
         var allow = (await db.QueryProcMultipleAsync("SP_APP_CHECK_DATA_SYNC_FINAL_SUBMIT", args, ct)).FirstRow(0);
         if (allow.Count == 0) return Fail(InvalidDetails);
         if (allow.Text("AllowFinalSubmit") == "0") return Fail(allow.Text("ErrorMessage"));
+        // V4 (migration 0080): an NC round is closed only once every NC on a Basic Information field is answered.
+        if (await StageAsync(request.userName ?? "", request.certificationType, ct) is { NcOpen: true } open &&
+            await HttpContext.RequestServices.GetRequiredService<AppFormChecks>().UnansweredAsync(PortalSystem.Main, request.userName ?? "",
+                AppFormSubmission.Certification(request.certificationType), open.NcCount, ct) is > 0 and var unanswered)
+            return Fail(unanswered == 1
+                ? "Please answer the non-conformance under Basic Information before you close the non-conformances."
+                : $"Please answer the {unanswered} non-conformances under Basic Information before you close the non-conformances.");
 
         var photos = await db.QueryProcMultipleAsync("SP_ASSESSMENT_CHECK_NC_PHOTO_AVAILABILITY", args, ct);
         // Only the first non-empty list is checked, as before.

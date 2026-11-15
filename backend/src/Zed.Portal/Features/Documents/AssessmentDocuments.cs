@@ -104,13 +104,13 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
     public async Task<DocumentFile> IssueCertificateAsync(ISqlExecutor db, string zedId, string certification, CancellationToken ct)
     {
         var level = Validate(zedId, certification);
-        var row = await CertificateRowAsync(db, zedId, level, ct);
-        var relative = DocumentLevels.CertificatePath(zedId, level);
+        var (row, atDesktop) = await CertificateRowAsync(db, zedId, level, surveillance: false, ct);
+        var relative = DocumentLevels.CertificatePath(zedId, level, atDesktop);
         // Every level's validity is the Admin's (Certification Levels); V4 levels also take their logo from there.
         var settings = await CertificationLevels.FindAsync(db, level, log, ct);
         try
         {
-            var pdf = RenderCertificate(level, row, surveillance: false, settings);
+            var pdf = RenderCertificate(level, row, surveillance: false, atDesktop, settings);
             await _storage.WriteAsync(relative, pdf, ct);
             await RecordStatusAsync(db, zedId, level, "SUCCESS", "SUCCESS", ct);
             log.LogInformation("Certificate {Path} generated", relative);
@@ -128,14 +128,14 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
     public async Task<DocumentFile> IssueSurveillanceCertificateAsync(ISqlExecutor surveillanceDb, string zedId, string certification, CancellationToken ct)
     {
         var level = Validate(zedId, certification);
-        var row = await CertificateRowAsync(surveillanceDb, zedId, level, ct);
+        var (row, atDesktop) = await CertificateRowAsync(surveillanceDb, zedId, level, surveillance: true, ct);
         var relative = DocumentLevels.SurveillanceCertificatePath(zedId, level);
         // V4 levels: the Admin's settings are main's (dbo.SectionTypes), read by name from ZED_SURVEILLANCE's connection.
         var settings = await CertificationLevels.FindAsync(surveillanceDb, level, log, ct, fromOtherDatabase: true);
         var round = DocumentLevels.IsBuiltIn(level) ? null : await SurveillanceRoundAsync(surveillanceDb, zedId, level, ct);
         try
         {
-            var pdf = RenderCertificate(level, row, surveillance: true, settings, round);
+            var pdf = RenderCertificate(level, row, surveillance: true, atDesktop, settings, round);
             await _storage.WriteAsync(relative, pdf, ct);
             log.LogInformation("Surveillance certificate {Path} generated", relative);
             return new DocumentFile(relative, pdf);
@@ -147,15 +147,42 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         }
     }
 
-    private static async Task<IDictionary<string, object?>> CertificateRowAsync(ISqlExecutor db, string zedId, string level, CancellationToken ct)
+    /// <summary>
+    /// The certificate's details and where the unit was certified: 2026-11-15, from the record (status 6 with its desktop
+    /// number, 16 with its site number), whatever the level's flow is now; the level's flow when the record cannot tell.
+    /// Surveillance keeps its levels' rule (Bronze desktop, others site).
+    /// </summary>
+    private static async Task<(IDictionary<string, object?> Row, bool AtDesktop)> CertificateRowAsync(
+        ISqlExecutor db, string zedId, string level, bool surveillance, CancellationToken ct)
     {
-        var desktop = DocumentLevels.IsDesktop(level);
+        var desktop = surveillance ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level)
+            : await CertifiedAtDesktopAsync(db, zedId, level, ct) ?? DocumentLevels.IsDesktop(level);
         var sets = await db.QueryProcMultipleAsync(desktop ? "SP_DA_GET_CERTIFICATE_DETAILS" : "SP_RA_GET_CERTIFICATE_DETAILS",
             new { ZedId = AssessmentInput.Ansi(zedId, 100), CertificationType = AssessmentInput.Ansi(level, 100) }, ct);
         var row = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No certification record.");
         if (row.Text(desktop ? "DaCertificateNo" : "SaCertificateNo").Length == 0)
             throw new DocumentNotAvailableException("The certification has not been issued.");
-        return row;
+        return (row, desktop);
+    }
+
+    internal const string CertifiedSql =
+        "SELECT TOP 1 CertificationStatus, DaCertificateNo, CertificationPhase FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification ORDER BY Id DESC;";
+
+    private sealed record CertifiedRow(int? CertificationStatus, string? DaCertificateNo, string? CertificationPhase);
+
+    /// <summary>True when the record was certified at the desktop, false after a visit, null when not certified or unreadable.</summary>
+    private static async Task<bool?> CertifiedAtDesktopAsync(ISqlExecutor db, string zedId, string level, CancellationToken ct)
+    {
+        try
+        {
+            var r = (await db.QuerySqlAsync<CertifiedRow>(CertifiedSql, new { ZedId = zedId, Certification = level }, ct)).FirstOrDefault();
+            return r is not null && DocumentLevels.IsCertifiedRecord(r.CertificationStatus, r.DaCertificateNo, r.CertificationPhase)
+                ? r.CertificationStatus == DocumentLevels.BronzeCertified : null;
+        }
+        catch (DbException)
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -178,9 +205,18 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         }
     }
 
-    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance, CertificationLevel? settings = null, int? surveillanceRound = null)
+    private byte[] RenderCertificate(string level, IDictionary<string, object?> row, bool surveillance, bool atDesktop,
+        CertificationLevel? settings = null, int? surveillanceRound = null)
     {
-        var desktop = DocumentLevels.IsDesktop(level);
+        // 2026-11-15: the number is the record's (desktop or site); the background and its layout are the level's own artwork
+        // (Bronze: DaBronze; Silver / Gold: SaSilver / SaGold; a V4 level: the one for how it was certified, else the other),
+        // so a Bronze certified after a visit keeps the Bronze certificate and a Silver certified at the desktop the Silver one.
+        var desktop = surveillance || !DocumentLevels.IsBuiltIn(level) ? atDesktop
+            : File.Exists(Path.Combine(_storage.AssetsFolder, "Da" + level + ".jpg"));
+        if (!surveillance && !DocumentLevels.IsBuiltIn(level)
+            && LevelArtwork.CertificateTemplate(_storage.Root, _storage.AssetsFolder, level, desktop) is null
+            && LevelArtwork.CertificateTemplate(_storage.Root, _storage.AssetsFolder, level, !desktop) is not null)
+            desktop = !desktop;
         var folder = surveillance ? SurveillanceAssets : _storage.AssetsFolder;
         var layout = CertificateComposer.LoadLayout(Path.Combine(folder, desktop ? "DaCertification.json" : "SaCertification.json"));
         var template = (desktop ? "Da" : "Sa") + level + ".jpg";
@@ -195,7 +231,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
         List<CertificateText> texts =
         [
             new("Name", row.Text("EnterpriseName"), Bold: true),
-            new("CertificateNo", row.Text(desktop ? "DaCertificateNo" : "SaCertificateNo"), Anchor: TextAnchor.TopLeft),
+            new("CertificateNo", row.Text(atDesktop ? "DaCertificateNo" : "SaCertificateNo"), Anchor: TextAnchor.TopLeft),
             new("DateOfPledge", row.Text("DateOfCertification"), Anchor: TextAnchor.TopLeft),
             new("Address", row.Text("Address"), Bold: true, Anchor: TextAnchor.BoxTopCenter),
             new("RegistrationNumber", row.Text("UdyogAadharNo"), Bold: !desktop),

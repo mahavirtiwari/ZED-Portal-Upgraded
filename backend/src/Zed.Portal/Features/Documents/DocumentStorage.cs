@@ -49,12 +49,33 @@ public static class DocumentLevels
         return $"{months} month{(months == 1 ? "" : "s")} from the date of issue";
     }
 
+    /// <summary>
+    /// A surveillance record's certified status by its level (surveillance keeps the rule before 2026-11-15: Bronze 6,
+    /// others 16). A main certification record: <see cref="IsCertifiedRecord"/>.
+    /// </summary>
     public static bool IsCertified(string level, int? status) =>
-        status == (IsDesktop(level) ? BronzeCertified : SiteCertified);
+        status == (Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level) ? BronzeCertified : SiteCertified);
 
-    /// <summary>Certificates/DA/{ZedId}/Bronze.pdf, Certificates/SA/{ZedId}/Silver.pdf (MonitoringController.GenerateCertificate).</summary>
-    public static string CertificatePath(string zedId, string level) =>
-        $"Certificates/{(IsDesktop(level) ? "DA" : "SA")}/{zedId}/{level}.pdf";
+    /// <summary>
+    /// 2026-11-15: a main certification record is certified whatever its level's flow (migrations 0078, 0079): 16 (only
+    /// reached by certification), or 6 with its desktop certificate number or a certification phase (ACTIVE, UPGRADED,
+    /// EXPIRED ...: only certification sets it, so an old record without its number still counts). A 6 with neither is
+    /// waiting for its visit. Never by the level's current flow: the Admin may change it while units are on the way.
+    /// </summary>
+    public static bool IsCertifiedRecord(int? status, string? daCertificateNo, string? certificationPhase) =>
+        status == SiteCertified
+        || (status == BronzeCertified && (!string.IsNullOrWhiteSpace(daCertificateNo) || !string.IsNullOrWhiteSpace(certificationPhase)));
+
+    /// <summary>
+    /// Certificates/DA/{ZedId}/Bronze.pdf (certified at the desktop), Certificates/SA/{ZedId}/Silver.pdf (after a visit)
+    /// (MonitoringController.GenerateCertificate). Without the record: by the level's flow.
+    /// </summary>
+    public static string CertificatePath(string zedId, string level, bool? atDesktop = null) =>
+        $"Certificates/{(atDesktop ?? IsDesktop(level) ? "DA" : "SA")}/{zedId}/{level}.pdf";
+
+    /// <summary>Both places a level's certificate can be (a unit has one certificate per level): the flow's first.</summary>
+    public static string[] CertificatePaths(string zedId, string level) =>
+        [CertificatePath(zedId, level), CertificatePath(zedId, level, !IsDesktop(level))];
 
     /// <summary>
     /// Surveillance certificates: Surveillance/Certificates/DA/{ZedId}/Bronze.pdf, .../SA/{ZedId}/{Level}.pdf. Written by the

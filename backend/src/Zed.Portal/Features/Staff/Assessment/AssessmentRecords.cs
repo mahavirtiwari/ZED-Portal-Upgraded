@@ -90,6 +90,17 @@ public sealed class CertificationRecord
     public string? CoAssessorId { get; init; }
     /// <summary>Set by the NC closure job when the MSME let the NC final closure date pass (status 7/17, NcCount 6).</summary>
     public bool? IsAutoReject { get; init; }
+    /// <summary>The desktop certificate number (certified at the desktop, status 6) and the site one (after a visit, 16).</summary>
+    public string? DaCertificateNo { get; init; }
+    public string? SaCertificateNo { get; init; }
+    /// <summary>ACTIVE, UPGRADED, EXPIRED ...: set by certification only (NULL while waiting).</summary>
+    public string? CertificationPhase { get; init; }
+
+    /// <summary>2026-11-15: certified, whatever the level's flow (status 6 with its desktop number, or 16 with its site number).</summary>
+    public bool IsCertified => Documents.DocumentLevels.IsCertifiedRecord(CertificationStatus, DaCertificateNo, CertificationPhase);
+
+    /// <summary>Certified at the desktop (else after a visit); null while not certified.</summary>
+    public bool? CertifiedAtDesktop => IsCertified ? Status == Documents.DocumentLevels.BronzeCertified : null;
 
     public int Status => CertificationStatus ?? 0;
     public int Nc => NcCount ?? 0;
@@ -141,8 +152,22 @@ public static class AssessmentRecords
 {
     public const string CertificationSql =
         "SELECT TOP 1 ZedId, Certification, CertificationStatus, NcCount, NcStatus, Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status, " +
-        "DesktopAssessorId, DesktopAccepted, DesktopReasonForRejection, CertificationBodyUserId, SiteAssessorId, CoAssessorId, IsAutoReject " +
+        "DesktopAssessorId, DesktopAccepted, DesktopReasonForRejection, CertificationBodyUserId, SiteAssessorId, CoAssessorId, IsAutoReject, " +
+        "DaCertificateNo, SaCertificateNo, CertificationPhase " +
         "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
+
+    /// <summary>
+    /// <see cref="CertificationSql"/> for ZED_CONSULTANT and ZED_SURVEILLANCE, whose MsmeCertifications has no
+    /// CertificationPhase (main's only): their records are read without it.
+    /// </summary>
+    internal const string CertificationSqlWithoutPhase =
+        "SELECT TOP 1 ZedId, Certification, CertificationStatus, NcCount, NcStatus, Nc1Status, Nc2Status, Nc3Status, Nc4Status, Nc5Status, " +
+        "DesktopAssessorId, DesktopAccepted, DesktopReasonForRejection, CertificationBodyUserId, SiteAssessorId, CoAssessorId, IsAutoReject, " +
+        "DaCertificateNo, SaCertificateNo " +
+        "FROM MsmeCertifications WHERE ZedId = @ZedId AND Certification = @Certification";
+
+    /// <summary>The databases (one executor each) found without CertificationPhase: asked without it from then on.</summary>
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<ISqlExecutor, object> NoPhase = new();
 
     public const string RequirementSql =
         "SELECT TOP 1 CAST(Id AS bigint) AS Id, NcCount FROM MsmeRequirements WHERE Id = @Id AND ZedId = @ZedId AND SectionType = @Certification";
@@ -171,9 +196,23 @@ public static class AssessmentRecords
         public string? IsAssessmentExcempted { get; init; }
     }
 
-    public static async Task<CertificationRecord?> CertificationAsync(ISqlExecutor db, string zedId, string certification, CancellationToken ct) =>
-        (await db.QuerySqlAsync<CertificationRecord>(CertificationSql,
-            new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(certification) }, ct)).FirstOrDefault();
+    public static async Task<CertificationRecord?> CertificationAsync(ISqlExecutor db, string zedId, string certification, CancellationToken ct)
+    {
+        var args = new { ZedId = AssessmentInput.Ansi(zedId), Certification = AssessmentInput.Ansi(certification) };
+        if (!NoPhase.TryGetValue(db, out _))
+        {
+            try
+            {
+                return (await db.QuerySqlAsync<CertificationRecord>(CertificationSql, args, ct)).FirstOrDefault();
+            }
+            catch (Microsoft.Data.SqlClient.SqlException ex) when (ex.Number == 207)
+            {
+                // Invalid column: ZED_CONSULTANT / ZED_SURVEILLANCE have no CertificationPhase (2026-11-15).
+                NoPhase.AddOrUpdate(db, new object());
+            }
+        }
+        return (await db.QuerySqlAsync<CertificationRecord>(CertificationSqlWithoutPhase, args, ct)).FirstOrDefault();
+    }
 
     public static async Task<Item?> ItemAsync(ISqlExecutor db, string sql, long id, string zedId, string certification, CancellationToken ct) =>
         (await db.QuerySqlAsync<Item>(sql,

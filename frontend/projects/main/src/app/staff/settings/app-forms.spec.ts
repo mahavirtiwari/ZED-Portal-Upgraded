@@ -125,7 +125,7 @@ describe('AppFormsPage', () => {
     const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
     expect(put.request.body).toEqual({
       key: 'auditsConducted', label: 'Audited by a third party?', help: 'Statutory audits do not count', type: null, required: false, enabled: true,
-      section: null, options: null, levels: ['ZEDX'], nicSectors: ['62'],
+      section: null, options: null, levels: ['ZEDX'], nicSectors: ['62'], validationRequired: false,
     });
     put.flush({ message: 'Field saved.' });
     await reloaded('Field saved.');
@@ -136,6 +136,8 @@ describe('AppFormsPage', () => {
     await settle();
     const dialog = el.querySelector('[role=dialog]')!;
     await type(dialog.querySelector('#fieldLabel') as HTMLInputElement, 'Sector of the unit');
+    // The form is not one an assessor checks (canValidate not sent): no "Validation required".
+    expect(dialog.querySelector('#fieldValidated')).toBeNull();
     // The type as tiles, text first.
     expect(dialog.querySelector('.type-tile.active')!.textContent).toContain('Text');
     (dialog.querySelector('#type-dropdown') as HTMLInputElement).click();
@@ -157,7 +159,7 @@ describe('AppFormsPage', () => {
     const post = http.expectOne((r) => r.method === 'POST' && r.url === `${formUrl}/fields`);
     expect(post.request.body).toEqual({
       key: null, label: 'Sector of the unit', help: null, type: 'dropdown', required: true, enabled: true, section: 'basic', options: ['Auto', 'Textile'],
-      levels: [], nicSectors: [],
+      levels: [], nicSectors: [], validationRequired: false,
     });
     post.flush({ title: 'Please add at least one choice.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
@@ -167,6 +169,41 @@ describe('AppFormsPage', () => {
     http.expectOne((r) => r.method === 'POST').flush({ message: 'Field added.', key: 'cf_sector_of_the_unit' });
     await reloaded('Field added.');
     expect(el.querySelector('[role=dialog]')).toBeNull();
+  });
+
+  it('marks an own field "Validation required" (App Forms checked by the assessor, migration 0080)', async () => {
+    const withValidation = (): AppFormDetails => {
+      const d = details();
+      d.canValidate = true;
+      d.fields = d.fields.map((f) => (f.key === 'cf_sector' ? { ...f, validationRequired: true } : f));
+      return d;
+    };
+    (fixture.componentInstance as unknown as { details: { set(d: AppFormDetails): void } }).details.set(withValidation());
+    await settle();
+    expect(row('cf_sector').textContent).toContain('Validated');
+    expect(row('auditsConducted').textContent).not.toContain('Validated');
+
+    // A standard field: no switch (the assessor already checks the standard answers).
+    button('Edit', row('auditsConducted')).click();
+    await settle();
+    expect(el.querySelector('[role=dialog] #fieldValidated')).toBeNull();
+    button('CANCEL', el.querySelector('[role=dialog]')!).click();
+    await settle();
+
+    button('Edit', row('cf_sector')).click();
+    await settle();
+    const dialog = el.querySelector('[role=dialog]')!;
+    const toggle = dialog.querySelector('#fieldValidated') as HTMLInputElement;
+    expect(dialog.textContent).toContain('Not valid raises an NC on this field.');
+    expect(toggle.checked).toBe(true);
+    toggle.click();
+    await settle();
+    button('SAVE', dialog).click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
+    expect(put.request.body.validationRequired).toBe(false);
+    put.flush({ message: 'Field saved.' });
+    await reloaded('Field saved.');
   });
 
   it('empties the levels when switched back to every level', async () => {
