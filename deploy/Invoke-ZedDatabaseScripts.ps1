@@ -194,7 +194,9 @@ $Migrations = @(
     # Every assessment flow for every level: the level's flow decides where a unit is certified (desktop or after the visit).
     @{ File = '0078_level_flows_routing.sql'; Dbs = @($Main, $Surv); Markers = @('FN:dbo.FN_V4_LEVEL_DESKTOP') }
     # The operational procedures read "certified" from the record (status 16, or 6 with its desktop number or a phase), not by the level's name.
-    @{ File = '0079_certified_by_record.sql'; Dbs = @($Main, $Surv); Markers = @('DEF:dbo.SP_VERIFY_QR_CODE:CASE WHEN C.CertificationStatus = 16 THEN C.SaCertificateNo ELSE C.DaCertificateNo END') }
+    # SP_VERIFY_QR_CODE is edited in ZEDCS_V2_LIVE only; ZED_SURVEILLANCE is checked by its own edit (DbMarkers).
+    @{ File = '0079_certified_by_record.sql'; Dbs = @($Main, $Surv); Markers = @('DEF:dbo.SP_VERIFY_QR_CODE:CASE WHEN C.CertificationStatus = 16 THEN C.SaCertificateNo ELSE C.DaCertificateNo END')
+       DbMarkers = @{ $Surv = @('DEF:dbo.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY:AND (S.CertificationStatus = 16 OR') } }
     # App Forms "Validation required": the assessor's check of an answer, and the NC the final submit raises on a Not valid one.
     @{ File = '0080_app_form_validation.sql'; Dbs = @($Main, $Cons, $Surv); Markers = @('COL:dbo.V4AppFormFields.NeedsVerification', 'COL:dbo.V4AppFormValues.NcRound') }
     # The reports and dashboards read "certified" (and a level's stage) from the record too, not by the level's name (0079's later pass).
@@ -312,6 +314,11 @@ foreach ($db in ($Zed + $Related)) {
 if ($failed) { Write-Line 'A ZED database is missing: nothing was run.' 'Red'; exit 1 }
 
 # ---------------------------------------------------------------- migration status
+# A migration's markers for one database: DbMarkers[$db] when the migration checks that database differently, else Markers.
+function Get-Markers($migration, [string]$db) {
+    if ($migration.ContainsKey('DbMarkers') -and $migration.DbMarkers.ContainsKey($db)) { return $migration.DbMarkers[$db] }
+    return $migration.Markers
+}
 function Get-MarkerState([string]$db, [string[]]$markers) {
     $tests = foreach ($m in $markers) {
         $kind, $name = $m.Split(':', 2)
@@ -333,10 +340,10 @@ $plan = New-Object System.Collections.Generic.List[object]
 if (-not $SkipMigrations) {
     foreach ($m in $Migrations) {
         if ($m.ContainsKey('Optional') -and -not $IncludeDistributedCache) {
-            foreach ($db in $m.Dbs) { $plan.Add([pscustomobject]@{ Kind = 'migration'; Name = $m.File; Db = $db; Mode = 'skipped (needs -IncludeDistributedCache)'; State = (Get-MarkerState $db $m.Markers); Path = $null }) }
+            foreach ($db in $m.Dbs) { $plan.Add([pscustomobject]@{ Kind = 'migration'; Name = $m.File; Db = $db; Mode = 'skipped (needs -IncludeDistributedCache)'; State = (Get-MarkerState $db (Get-Markers $m $db)); Path = $null }) }
             continue
         }
-        foreach ($db in $m.Dbs) { $plan.Add([pscustomobject]@{ Kind = 'migration'; Name = $m.File; Db = $db; Mode = 'run'; State = (Get-MarkerState $db $m.Markers); Path = (Join-Path $dbDir "migrations\$($m.File)") }) }
+        foreach ($db in $m.Dbs) { $plan.Add([pscustomobject]@{ Kind = 'migration'; Name = $m.File; Db = $db; Mode = 'run'; State = (Get-MarkerState $db (Get-Markers $m $db)); Path = (Join-Path $dbDir "migrations\$($m.File)") }) }
     }
 }
 if (-not $SkipFixes) {
@@ -407,7 +414,7 @@ foreach ($p in $plan) {
         $dir = Join-Path $LogDir 'migrations'; New-Item -ItemType Directory -Force -Path $dir | Out-Null
         $log = Join-Path $dir ("{0}.{1}.log" -f [System.IO.Path]::GetFileNameWithoutExtension($p.Name), $p.Db)
         $code = Invoke-Sqlcmd2 $p.Db @('-i', (Get-ScriptAsRun $p.Path ("{0}.{1}.sql" -f [System.IO.Path]::GetFileNameWithoutExtension($p.Name), $p.Db))) $log
-        $after = Get-MarkerState $p.Db $(if ($p.Name -eq $MailOutbox.File) { $MailOutbox.Markers } else { ($Migrations | Where-Object { $_.File -eq $p.Name }).Markers })
+        $after = Get-MarkerState $p.Db $(if ($p.Name -eq $MailOutbox.File) { $MailOutbox.Markers } else { (Get-Markers ($Migrations | Where-Object { $_.File -eq $p.Name } | Select-Object -First 1) $p.Db) })
         $status = if ($code -eq 0 -and $after -eq 'applied') { "ok (was: $($p.State))" } elseif ($code -eq 0) { "ran, but objects: $after" } else { "FAILED (exit $code)" }
         if ($code -ne 0 -or $after -ne 'applied') { $failed = $true; $stopMigrations = $true }
         $results.Add([pscustomobject]@{ Step = $p.Name; Db = $p.Db; Mode = 'run'; Status = $status; Seconds = [int]$watch.Elapsed.TotalSeconds; Log = $log })

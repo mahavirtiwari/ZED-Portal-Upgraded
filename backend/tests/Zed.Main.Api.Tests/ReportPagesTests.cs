@@ -191,8 +191,17 @@ public sealed class ReportPagesTests : IDisposable
         var anonymous = _factory.CreateDefaultClient(new DocumentsSystemsTests.CookieXsrfHandler());
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page")).StatusCode);
 
-        // Gold is at status 9 (not certified): staff see a DRAFT, the MSME nothing.
+        // Gold at status 9 (not submitted for review): no report, not even a draft.
         var admin = await SignIn("ADMIN1");
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page")).StatusCode);
+
+        // Gold waiting for review (status 15): staff see a DRAFT, the MSME nothing.
+        const string recordQuery = "SELECT TOP 1 ZedId, Certification, CertificationStatus";
+        var records = _host.Sql.Queries[recordQuery];
+        _host.Sql.Queries[recordQuery] = args => FakeSql.Arg(args, "ZedId") == Me && FakeSql.Arg(args, "Certification") == "Gold"
+            ? [new { ZedId = Me, Certification = "Gold", CertificationStatus = 15, NcCount = 0, CertificationBodyUserId = "AGENCY1",
+                DesktopAssessorId = (string?)null, SiteAssessorId = (string?)null, CertificationPhase = (string?)null }]
+            : records(args);
         var draft = await Json(await admin.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page"));
         Assert.True(draft.GetProperty("draft").GetBoolean());
         Assert.Equal("draft", draft.GetProperty("result").GetProperty("tone").GetString());

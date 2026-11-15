@@ -26,6 +26,7 @@ public sealed class DocumentsSurveillanceTests : IDisposable
         (Me, "Bronze", 6, null, "ASSESSORDA"),
         (Me, "Gold", 16, "AGENCY1", null),
         (Other, "Silver", 9, "AGENCY2", null),
+        (Other, "Gold", 15, "AGENCY2", null),
     ];
 
     private static Dictionary<string, object?> Row(params (string K, object? V)[] values) =>
@@ -192,12 +193,14 @@ public sealed class DocumentsSurveillanceTests : IDisposable
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_VERIFY_QR_CODE");
         Assert.False(File.Exists(Stored($"Surveillance/PDFs/SA/{Me}/Gold_Report.pdf")));
 
-        // Silver of the other unit is at status 9: a DRAFT for the staff who may see it.
-        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Other}/Silver/report/page");
+        // Silver of the other unit is at status 9: no report, not even a draft.
+        Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/staff/certification-documents/{Other}/Silver/report/page")).StatusCode);
+        // Its Gold waits for review (status 15): a DRAFT for the staff who may see it.
+        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Other}/Gold/report/page");
         Assert.True(draft.GetProperty("draft").GetBoolean());
         Assert.Equal(JsonValueKind.Null, draft.GetProperty("verify").ValueKind);
         var agency = await SignIn("AGENCY1");
-        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync($"/api/staff/certification-documents/{Other}/Silver/report/page")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync($"/api/staff/certification-documents/{Other}/Gold/report/page")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page?milestone=1")).StatusCode);
         var anonymous = await _host.CreateBrowserAsync();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page")).StatusCode);

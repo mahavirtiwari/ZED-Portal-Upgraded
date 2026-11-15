@@ -170,8 +170,8 @@ public sealed class StaffCertificationDocumentsController(
     }
 
     /// <summary>
-    /// The report as page data (/staff/report/assessment/{level}/{zedId}), 2026-11-15. Staff may also open it before the final
-    /// submit: a draft, marked DRAFT.
+    /// The report as page data (/staff/report/assessment/{level}/{zedId}), 2026-11-15. Staff may also open it while it waits
+    /// for review before the final submit (status 15): a draft, marked DRAFT.
     /// </summary>
     [HttpGet("{certification}/report/page")]
     public async Task<ActionResult<ReportPageView>> ReportPage(string zedId, string certification, CancellationToken ct)
@@ -318,7 +318,7 @@ public sealed class StaffSystemDocumentsController(
     /// <summary>
     /// The report as page data (2026-11-15): surveillance /staff/report/surveillance/{level}/{zedId}; consultancy
     /// /staff/report/milestone/{level}/{zedId}?milestone=n (an earlier milestone stored as a PDF answers that file's address).
-    /// Staff may open the current one before the final submit: a draft, marked DRAFT.
+    /// Staff may open the current one while it waits for review (status 15): a draft, marked DRAFT.
     /// </summary>
     [HttpGet("{certification}/report/page")]
     public async Task<ActionResult<ReportPageView>> ReportPage(string zedId, string certification, int? milestone, CancellationToken ct)
@@ -415,16 +415,20 @@ internal static class MilestoneDownloads
 /// <summary>
 /// Who may open a report page (2026-11-15), as the PDF downloads: a certified record or a rejected copy; a handholding
 /// milestone once completed, accepted or rejected (an earlier one: the PDF stored when it was completed, else drawn from its
-/// own rows). Staff (<paramref name="staff"/>) may also open the current one before the final submit, as a draft.
+/// own rows). Staff (<paramref name="staff"/>) may also open the current one as a draft, as before, only while it waits for
+/// review before the final submit (status 15).
 /// </summary>
 internal static class ReportPageAccess
 {
+    /// <summary>MsmeCertifications.CertificationStatus while the submitted assessment / milestone waits for review.</summary>
+    private const int UnderReview = 15;
+
     public static async Task<ActionResult<ReportPageView>> AssessmentAsync(ControllerBase c, ReportPages pages, ISqlExecutor db,
         CertificationRecord? record, string recordId, string level, bool surveillance, bool staff, CancellationToken ct)
     {
         if (record is null) return c.NotFound();
         var final = CertificationDownloads.HasReport(level, record);
-        if (!final && !staff) return c.NotFound();
+        if (!final && !(staff && record.CertificationStatus == UnderReview)) return c.NotFound();
         return await BuildAsync(c, () => pages.AssessmentAsync(db, recordId, level, surveillance, draft: !final, ct));
     }
 
@@ -440,7 +444,7 @@ internal static class ReportPageAccess
             return await BuildAsync(c, () => pages.MilestoneAsync(db, zedId, level, milestone, record, draft: false, ct));
         }
         var final = DocumentLevels.IsMilestoneCompleted(record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected;
-        if (!final && !staff) return c.NotFound();
+        if (!final && !(staff && record.CertificationStatus == UnderReview)) return c.NotFound();
         return await BuildAsync(c, () => pages.MilestoneAsync(db, zedId, level, milestone, record, draft: !final, ct));
     }
 

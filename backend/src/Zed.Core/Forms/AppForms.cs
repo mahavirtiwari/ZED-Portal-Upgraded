@@ -100,14 +100,19 @@ public sealed class SqlAppFormStore(ISqlExecutor db, ILogger<SqlAppFormStore> lo
         "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
         "NeedsVerification AS ValidationRequired FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
-    /// <summary>Before migration 0080 (no ValidationRequired yet).</summary>
+    /// <summary>
+    /// Before migration 0080 (no ValidationRequired yet). Every column of <see cref="AppFormFieldRow"/>'s constructor is
+    /// selected (Dapper matches the constructor by its full signature), the missing ones as NULL.
+    /// </summary>
     public const string FieldsSql0030 =
-        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors " +
+        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, Levels, NicSectors, " +
+        "CAST(NULL AS bit) AS ValidationRequired " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
-    /// <summary>Before migration 0030 (no Levels / NicSectors yet).</summary>
+    /// <summary>Before migration 0030 (no Levels / NicSectors yet); the missing columns as NULL, as above.</summary>
     public const string FieldsSql0017 =
-        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn " +
+        "SELECT FormKey, FieldKey, Custom, Label, Help, Type, Required, Enabled, SortOrder, Section, OptionsJson, UpdatedBy, UpdatedOn, " +
+        "CAST(NULL AS varchar(400)) AS Levels, CAST(NULL AS varchar(400)) AS NicSectors, CAST(NULL AS bit) AS ValidationRequired " +
         "FROM dbo.V4AppFormFields WHERE FormKey = @FormKey;";
 
     public const string ValuesSql =
