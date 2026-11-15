@@ -199,3 +199,26 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
 .dp-list { margin: 0; padding-left: 18px; font-size: 14px; }
 .dp-text { font-size: 14px; line-height: 1.6; }
 .modal .dash-pop .dp-foot { border-top: 1px solid #dfe9ea; padding: 10px 16px; justify-content: flex-end; }
+
+// ---- Admin → App Forms field list controls (2026-11-15, design approved; staff/settings/app-forms) ---------------------
+.af-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+.af-actions > * { white-space: nowrap; flex: none; }
+.af-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
+  color: #23474a; font-weight: 700; padding: 0; }
+.af-icon:hover:not(:disabled) { border-color: #45a5ad; background: #eef6f6; }
+.af-icon:disabled { opacity: .35; cursor: default; }
+.af-edit { border: 1px solid #9cc9cd; background: #fff; color: #23656b; border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
+.af-edit:hover { background: #eef6f6; }
+.af-reset { border: 0; background: none; padding: 0 2px; color: #7a8a8b; font-size: 12.5px; text-decoration: underline; }
+.af-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+.af-switch.off { color: #8a9899; }
+.af-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.af-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; flex: none; transition: background .15s; }
+.af-track::after { content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
+.af-switch.off .af-track { background: #c3cdce; }
+.af-switch.off .af-track::after { left: 2px; }
+.af-switch input:focus-visible + .af-track { outline: 2px solid #23656b; outline-offset: 2px; }
+.af-note { display: block; text-align: right; margin-top: 4px; font-size: 11.5px; color: #a86a12; }
+.req-chip { display: inline-block; font-size: 12px; font-weight: 600; border-radius: 4px; padding: 1px 8px; background: #eef1f1; color: #7a8a8b; }
+.req-chip.is-yes { background: #e5eefb; color: #2b5aa8; }
+.type-name { display: inline-block; background: #eef6f6; border-radius: 10px; padding: 1px 9px; }

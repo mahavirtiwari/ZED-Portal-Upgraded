@@ -194,6 +194,31 @@ describe('SiteTourSectionsPage', () => {
     expect(el.querySelector('.alert-danger')!.textContent).toContain('At least one section must be in use.');
   });
 
+  it('switches a section off from the list after confirming, and on again without asking', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const sw = (label: string) => el.querySelector(`[aria-label="${label}"]`) as HTMLInputElement;
+    sw('Switch off Unit Entrance & Signage').click();
+    await settle();
+    http.expectNone((r) => r.method === 'PUT');
+    confirm.mockReturnValue(true);
+    sw('Switch off Unit Entrance & Signage').click();
+    await settle();
+    const put = http.expectOne((r) => r.method === 'PUT' && r.url === url);
+    expect(put.request.body.sections.find((x: { id: string }) => x.id === 'entrance').active).toBe(false);
+    expect(put.request.body.sections.length).toBe(3);
+    put.flush({ message: 'Saved.' });
+    await reloaded('Saved.');
+
+    confirm.mockClear();
+    sw('Switch on Utilities').click();
+    await settle();
+    expect(confirm).not.toHaveBeenCalled();
+    const on = http.expectOne((r) => r.method === 'PUT');
+    expect(on.request.body.sections.find((x: { id: string }) => x.id === 'utilities').active).toBe(true);
+    on.flush({ message: 'Saved.' });
+    await reloaded('Saved.');
+  });
+
   it('resets to the standard sections after confirming', async () => {
     // Saved once, so there is something to reset.
     button('↓', row('entrance')).click();

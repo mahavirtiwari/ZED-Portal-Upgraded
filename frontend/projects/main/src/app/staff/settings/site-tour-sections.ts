@@ -103,6 +103,12 @@ export function sectionId(title: string, taken: readonly string[]): string {
     }
 
     @if (data(); as d) {
+      <!-- 2026-11-15 (design approved): count tiles, then a compact list with small arrows, an On/Off switch and Edit. -->
+      <div class="st-tiles">
+        <div class="st-tile"><b>{{ d.sections.length }}</b><small>Sections ({{ activeCount() }} on)</small></div>
+        <div class="st-tile"><b>{{ photoRange() }}</b><small>Photos per site tour</small></div>
+        <div class="st-tile"><b>{{ d.customised ? 'Changed' : 'Standard' }}</b><small>{{ d.customised ? 'Changed by the Admin' : 'Not changed yet' }}</small></div>
+      </div>
       <p class="sync-note">
         <span class="info-dot" aria-hidden="true">i</span>
         @if (!d.customised) { <span class="standard-note">Standard sections (not changed yet).</span> }
@@ -113,19 +119,17 @@ export function sectionId(title: string, taken: readonly string[]): string {
           <colgroup>
             <col style="width: 56px" />
             <col />
-            <col style="width: 70px" />
-            <col style="width: 70px" />
-            <col style="width: 260px" />
-            <col style="width: 150px" />
+            <col style="width: 120px" />
+            <col style="width: 240px" />
+            <col style="width: 220px" />
           </colgroup>
           <thead>
             <tr>
               <th class="text-center">#</th>
               <th>Section</th>
-              <th class="text-center">Min</th>
-              <th class="text-center">Max</th>
+              <th>Photos</th>
               <th>Used for</th>
-              <th class="text-center">Action</th>
+              <th class="text-end">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -139,8 +143,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
                   </div>
                   @if (s.hint) { <small class="section-hint">{{ s.hint }}</small> }
                 </td>
-                <td class="text-center num">{{ s.min }}</td>
-                <td class="text-center num">{{ s.max }}</td>
+                <td><span class="photos-pill"><span class="num">{{ s.min }}</span> – <span class="num">{{ s.max }}</span> photos</span></td>
                 <td>
                   <div class="scope" [title]="scopeText(s)">
                     @if (!s.levels.length && !s.nicSectors.length) {
@@ -160,17 +163,21 @@ export function sectionId(title: string, taken: readonly string[]): string {
                   </div>
                 </td>
                 <td>
-                  <div class="row-actions justify-content-center">
-                    <span class="move">
-                      <button type="button" class="btn btn-default" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
-                      <button type="button" class="btn btn-default" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
-                    </span>
-                    <button type="button" class="btn btn-outline-primary" [disabled]="busy()" (click)="edit(s)">Edit</button>
+                  <div class="st-actions">
+                    <button type="button" class="st-icon" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(i, -1)">↑</button>
+                    <button type="button" class="st-icon" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(i, 1)">↓</button>
+                    <!-- 2026-11-15 (the user): switch a section off (or on) from the list. -->
+                    <label class="st-switch" [class.off]="!s.active" [title]="s.active ? 'Switch this section off' : 'Switch this section on'">
+                      <input type="checkbox" role="switch" [checked]="s.active" [disabled]="busy()" [attr.aria-label]="(s.active ? 'Switch off ' : 'Switch on ') + s.title"
+                             (click)="$event.preventDefault(); toggle(i)" />
+                      <span class="st-track" aria-hidden="true"></span>{{ s.active ? 'On' : 'Off' }}
+                    </label>
+                    <button type="button" class="st-edit" [disabled]="busy()" (click)="edit(s)">Edit</button>
                   </div>
                 </td>
               </tr>
             } @empty {
-              <tr><td colspan="6" style="padding: 0"><div class="no-data">No sections</div></td></tr>
+              <tr><td colspan="5" style="padding: 0"><div class="no-data">No sections</div></td></tr>
             }
           </tbody>
         </table>
@@ -286,15 +293,32 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .section-title strong { color: #232527; font-size: 14.5px; }
     .is-off .section-title strong { color: #8a9899; }
     .section-hint { display: block; font-size: 12.5px; margin-top: 2px; color: #3b4b4c; }
-    .num { font-weight: 600; font-size: 14px; padding-top: 16px !important; }
+    .photos-pill { display: inline-block; font-size: 12.5px; color: #23474a; background: #eef6f6; border-radius: 12px; padding: 2px 10px; white-space: nowrap; }
+    .num { font-weight: 700; }
+    .st-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0 0 12px; }
+    .st-tile { background: #fff; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 14px; display: flex; flex-direction: column; }
+    .st-tile b { font-size: 20px; font-weight: 700; color: #23474a; line-height: 1.2; }
+    .st-tile small { font-size: 12.5px; color: #5f6f70; }
+    .st-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    .st-icon { width: 30px; height: 30px; display: inline-grid; place-items: center; border: 1px solid #cbd9da; border-radius: 6px; background: #fff;
+      color: #23474a; font-weight: 700; padding: 0; }
+    .st-icon:hover:not(:disabled) { border-color: #45a5ad; background: #eef6f6; }
+    .st-icon:disabled { opacity: .35; cursor: default; }
+    .st-edit { border: 1px solid #9cc9cd; background: #fff; color: #23656b; border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
+    .st-edit:hover:not(:disabled) { background: #eef6f6; }
+    .st-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
+    .st-switch.off { color: #8a9899; }
+    .st-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+    .st-track { position: relative; width: 30px; height: 16px; border-radius: 9px; background: #45a5ad; flex: none; transition: background .15s; }
+    .st-track::after { content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
+    .st-switch.off .st-track { background: #c3cdce; }
+    .st-switch.off .st-track::after { left: 2px; }
+    .st-switch input:focus-visible + .st-track { outline: 2px solid #23656b; outline-offset: 2px; }
+    @media (max-width: 767.98px) { .st-tiles { grid-template-columns: minmax(0, 1fr); } }
     .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
     .scope .zed-chip { font-size: 11px; padding: 1px 8px; }
     .scope .zed-chip.sector { background: #f1f0fb; color: #3f3a7a; }
     .scope-all { font-size: 11px; color: #5f6f70; border: 1px dashed #cbd9da; border-radius: 10px; padding: 0 8px; margin: 2px 4px 2px 0; }
-    .move { display: inline-flex; }
-    .move .btn { min-width: 30px; padding: 4px 6px; }
-    .move .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .move .btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
     .totals { color: #3b4b4c; font-size: 13px; font-weight: 600; margin: 10px 0 0; }
 
     /* The pop-up (as App Forms'). */
@@ -431,6 +455,24 @@ export class SiteTourSectionsPage {
     } finally {
       this.busy.set(false);
     }
+  }
+
+  protected readonly activeCount = computed(() => (this.data()?.sections ?? []).filter((s) => s.active).length);
+
+  /** "18 – 30": the photos a site tour needs and allows, over the sections in use. */
+  protected readonly photoRange = computed(() => {
+    const on = (this.data()?.sections ?? []).filter((s) => s.active);
+    return `${on.reduce((a, s) => a + s.min, 0)} – ${on.reduce((a, s) => a + s.max, 0)}`;
+  });
+
+  /** The list's switch: a section off (no longer asked for in the app) or on again; asks before switching off. */
+  protected toggle(index: number): Promise<void> {
+    const sections = (this.data()?.sections ?? []).map((x) => ({ ...x }));
+    const s = sections[index];
+    if (!s) return Promise.resolve();
+    if (s.active && !confirm(`Switch "${s.title}" off? The app no longer asks for its photos.`)) return Promise.resolve();
+    s.active = !s.active;
+    return this.change(() => this.http.put<MessageResponse>(SiteTourSectionsPage.url, { sections }));
   }
 
   protected move(index: number, by: -1 | 1): Promise<void> {

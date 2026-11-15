@@ -91,7 +91,7 @@ describe('AppFormsPage', () => {
     expect(r[0]).toContain('All sectors');
     expect(r[2]).toContain('↳ Name of Product manufactured');
     expect(r[3]).toContain('↳ Product Photo');
-    expect(r[3]).toContain('Disabled');
+    expect(r[3]).toContain('Off');
     expect(r[4]).toContain('Added');
     expect(r[4]).toContain('Choices: Auto, Textile');
     expect(r[5]).toContain('Asked when Whether Exported? is Yes');
@@ -197,7 +197,7 @@ describe('AppFormsPage', () => {
     order.flush({ message: 'Order saved.' });
     await reloaded('Order saved.');
 
-    button('Disable', row('productDetailsList/productName')).click();
+    (row('productDetailsList/productName').querySelector('[role=switch]') as HTMLInputElement).click();
     await settle();
     const enabled = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/enabled`);
     expect(enabled.request.body).toEqual({ key: 'productDetailsList/productName', enabled: false });

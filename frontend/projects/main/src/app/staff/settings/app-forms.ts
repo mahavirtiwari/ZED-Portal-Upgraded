@@ -164,22 +164,21 @@ const TYPE_GLYPHS: Record<string, string> = {
         <zed-collapse-card [title]="s.label" [summary]="sectionSummary(s.key)" [open]="first">
         <div class="table-responsive">
           <table class="table table-zed fields-table">
+            <!-- 2026-11-15 (design approved): a compact list; small arrows, an On/Off switch, Edit and a Reset link. -->
             <colgroup>
-              <col style="width: 56px" />
+              <col style="width: 52px" />
               <col />
               <col style="width: 150px" />
               <col style="width: 96px" />
-              <col style="width: 130px" />
-              <col style="width: 290px" />
+              <col style="width: 300px" />
             </colgroup>
             <thead>
               <tr>
                 <th class="text-center">#</th>
                 <th>Field</th>
                 <th>Type</th>
-                <th class="text-center">Required</th>
-                <th class="text-center">Status</th>
-                <th class="text-center">Action</th>
+                <th>Required</th>
+                <th class="text-end">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -212,20 +211,19 @@ const TYPE_GLYPHS: Record<string, string> = {
                     </div>
                   </td>
                   <td><span class="type-name">{{ typeName(f) }}</span></td>
-                  <td class="text-center"><span class="status-badge" [class.is-info]="f.required" [class.is-inactive]="!f.required">{{ f.required ? 'Yes' : 'No' }}</span></td>
-                  <td class="text-center">
-                    <span class="status-badge wrap" [class.is-active]="f.enabled && f.active" [class.is-pending]="f.enabled && !f.active" [class.is-inactive]="!f.enabled">{{ status(f) }}</span>
-                  </td>
+                  <td><span class="req-chip" [class.is-yes]="f.required">{{ f.required ? 'Yes' : 'No' }}</span></td>
                   <td>
-                    <div class="row-actions justify-content-center">
-                      <span class="move">
-                        <button type="button" class="btn btn-default" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
-                        <button type="button" class="btn btn-default" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
-                      </span>
-                      <button type="button" class="btn btn-outline-primary" (click)="edit(f)">Edit</button>
-                      <button type="button" class="btn" [class.btn-outline-danger]="f.enabled" [class.btn-outline-primary]="!f.enabled" (click)="toggle(f)">{{ f.enabled ? 'Disable' : 'Enable' }}</button>
-                      @if (f.customised && !f.custom) { <button type="button" class="btn btn-default" (click)="reset(f)">Reset</button> }
+                    <div class="af-actions">
+                      <button type="button" class="af-icon" title="Move up" aria-label="Move up" [disabled]="i === 0 || busy()" (click)="move(s.key, i, -1)">↑</button>
+                      <button type="button" class="af-icon" title="Move down" aria-label="Move down" [disabled]="last || busy()" (click)="move(s.key, i, 1)">↓</button>
+                      <label class="af-switch" [class.off]="!f.enabled" [title]="status(f)">
+                        <input type="checkbox" role="switch" [checked]="f.enabled" [disabled]="busy()" [attr.aria-label]="(f.enabled ? 'Switch off ' : 'Switch on ') + f.label" (click)="$event.preventDefault(); toggle(f)" />
+                        <span class="af-track" aria-hidden="true"></span>{{ f.enabled ? 'On' : 'Off' }}
+                      </label>
+                      <button type="button" class="af-edit" (click)="edit(f)">Edit</button>
+                      @if (f.customised && !f.custom) { <button type="button" class="af-reset" (click)="reset(f)">Reset</button> }
                     </div>
+                    @if (f.enabled && !f.active) { <small class="af-note">{{ status(f) }}</small> }
                   </td>
                 </tr>
                 @for (c of f.columns ?? []; track c.key) {
@@ -237,13 +235,15 @@ const TYPE_GLYPHS: Record<string, string> = {
                       @if (c.updatedOn) { <small class="changed-on">Changed {{ c.updatedOn | date: 'dd-MM-yyyy HH:mm' }}@if (c.updatedBy) { by {{ c.updatedBy }} }</small> }
                     </td>
                     <td><span class="type-name">{{ typeName(c) }}</span></td>
-                    <td class="text-center"><span class="status-badge" [class.is-info]="c.required" [class.is-inactive]="!c.required">{{ c.required ? 'Yes' : 'No' }}</span></td>
-                    <td class="text-center"><span class="status-badge" [class.is-active]="c.enabled" [class.is-inactive]="!c.enabled">{{ c.enabled ? 'Shown' : 'Disabled' }}</span></td>
+                    <td><span class="req-chip" [class.is-yes]="c.required">{{ c.required ? 'Yes' : 'No' }}</span></td>
                     <td>
-                      <div class="row-actions justify-content-center">
-                        <button type="button" class="btn btn-outline-primary" (click)="edit(c)">Edit</button>
-                        <button type="button" class="btn" [class.btn-outline-danger]="c.enabled" [class.btn-outline-primary]="!c.enabled" (click)="toggle(c)">{{ c.enabled ? 'Disable' : 'Enable' }}</button>
-                        @if (c.customised) { <button type="button" class="btn btn-default" (click)="reset(c)">Reset</button> }
+                      <div class="af-actions">
+                        <label class="af-switch" [class.off]="!c.enabled" [title]="c.enabled ? 'Shown' : 'Disabled'">
+                          <input type="checkbox" role="switch" [checked]="c.enabled" [disabled]="busy()" [attr.aria-label]="(c.enabled ? 'Switch off ' : 'Switch on ') + c.label" (click)="$event.preventDefault(); toggle(c)" />
+                          <span class="af-track" aria-hidden="true"></span>{{ c.enabled ? 'On' : 'Off' }}
+                        </label>
+                        <button type="button" class="af-edit" (click)="edit(c)">Edit</button>
+                        @if (c.customised) { <button type="button" class="af-reset" (click)="reset(c)">Reset</button> }
                       </div>
                     </td>
                   </tr>
@@ -471,10 +471,7 @@ const TYPE_GLYPHS: Record<string, string> = {
     .status-badge.wrap { white-space: normal; }
     tr.column td { background: #f8fbfb; }
     .column-cell { padding-left: 28px !important; border-left: 3px solid #cfe5e6; font-size: 14px; color: #232527; }
-    .move { display: inline-flex; }
-    .move .btn { min-width: 30px; padding: 4px 6px; }
-    .move .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-    .move .btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+    /* The row controls (af-*, req-chip): styles/_v4-blocks.scss (the component style budget). */
 
     /* The pop-up: the field and who is asked on the left; the preview and the settings on the right. */
     .sec-no { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 10px; background: #45a5ad; color: #fff; font-size: 11px; margin-right: 6px; vertical-align: 1px; }
