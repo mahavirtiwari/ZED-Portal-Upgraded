@@ -1,5 +1,6 @@
 import { InjectionToken } from '@angular/core';
 import { PORTAL_SYSTEM, PortalSystem } from '../portal-system';
+import { LABELS } from '../portal-labels';
 import { INCENTIVE_GROUPS } from './schemes/incentives.api';
 import { allLevels, isLegacyLevel, levelName } from '../msme/shared/levels';
 
@@ -340,13 +341,19 @@ export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, c
 
 /** The system of this build for the staff pages that differ per portal (a token, so specs can render each variant). */
 /**
- * The role as people say it (2026-11-08): Dashboard Admin (RoleId 10), NEFT Admin or MSME DFO (RoleId 6), otherwise the role
- * name with spaces ("MasterAdmin" -> "Master Admin").
+ * The role as people say it (2026-11-08): Dashboard Admin (RoleId 10), NEFT Admin or MSME DFO (RoleId 6), on Consultancy the
+ * Consultant Organisation (2) and Consultant/Expert (3), otherwise the role name with spaces ("MasterAdmin" -> "Master Admin").
  */
-export function staffRoleName(user: { roleId: number; role?: string | null; isNeftAdmin?: boolean } | null | undefined): string {
+export function staffRoleName(
+  user: { roleId: number; role?: string | null; isNeftAdmin?: boolean } | null | undefined,
+  system: PortalSystem = PORTAL_SYSTEM,
+): string {
   if (!user) return '';
   if (user.roleId === 10) return 'Dashboard Admin';
   if (user.roleId === 6) return user.isNeftAdmin ? 'NEFT Admin' : 'MSME DFO';
+  // 2026-11-15: Consultancy's agencies and assessors are its Consultant Organisations and Consultants/Experts ("Desktop Assessor, ZED Handholding").
+  if (system === 'consultancy' && (user.roleId === R.Agency || user.roleId === R.DesktopAssessor))
+    return user.roleId === R.Agency ? LABELS.consultancy.agency : LABELS.consultancy.assessor;
   return (user.role ?? '').replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 

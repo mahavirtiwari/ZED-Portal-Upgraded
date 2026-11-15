@@ -1,9 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { MessageResponse } from '@zed/shared';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { Row } from '../../assessment/assessment.api';
-import { withApiBase } from '../../../api-base';
+import { rebaseApiUrls, withApiBase } from '../../../api-base';
 import type { Checkpoint, CheckpointSaveRequest, CheckpointStage } from '../../assessment/checkpoint-dialog';
 
 export type { Row };
@@ -114,7 +114,7 @@ export class MilestonesApi {
   }
 
   details(zedId: string, level: string): Observable<MilestoneDetails> {
-    return this.http.get<MilestoneDetails>(this.base(zedId, level));
+    return this.http.get<MilestoneDetails>(this.base(zedId, level)).pipe(map((d) => rebaseApiUrls(d)));
   }
 
   /** Yes / Partial / No for each checkpoint of a requirement (baseline: its No / Partial actions join the action plan). */

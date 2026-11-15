@@ -1,4 +1,4 @@
-import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor } from './staff-menu';
+import { StaffMenuEntry, StaffMenuItem, StaffRole, homeFor, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { setAllLevels } from '../msme/shared/levels';
 
 describe('staff menu', () => {
@@ -38,6 +38,13 @@ describe('staff menu', () => {
 
   describe('consultancy', () => {
     const c = (roleId: number, subRoles: string[]) => menuFor(roleId, subRoles, 'consultancy').map((i) => i.label);
+
+    it('names the consultant and the CO as Consultancy calls them (2026-11-15: "Desktop Assessor, ZED Handholding")', () => {
+      expect(staffRoleName({ roleId: 3, role: 'DesktopAssessor' }, 'consultancy')).toBe('Consultant/Expert');
+      expect(staffRoleName({ roleId: 2, role: 'Agency' }, 'consultancy')).toBe('Consultant Organisation');
+      expect(staffRoleName({ roleId: 3, role: 'DesktopAssessor' }, 'main')).toBe('Desktop Assessor');
+      expect(staffRoleName({ roleId: 1, role: 'MasterAdmin' }, 'consultancy')).toBe('Master Admin');
+    });
 
     it('gives the master admin allotment, the CO and consultant lists and TU', () => {
       expect(c(StaffRole.MasterAdmin, [])).toEqual(expect.arrayContaining([

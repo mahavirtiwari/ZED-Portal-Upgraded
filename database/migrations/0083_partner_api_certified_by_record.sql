@@ -48,7 +48,20 @@ BEGIN
         THROW 50040, @msg, 1;
     END
     DECLARE @def nvarchar(max) = OBJECT_DEFINITION(@id);
-    IF CHARINDEX(@Marker, @def) > 0
+    -- 2026-11-15: 0084 rewrites the certified rule this script wrote ({a}CertificationPhase IS [NOT] NULL) everywhere, markers
+    -- included; a procedure carrying the rewritten marker is edited too (a re-run after 0084 changes nothing).
+    DECLARE @Marker84 nvarchar(1000) = @Marker;
+    DECLARE @aliases TABLE (O int NOT NULL PRIMARY KEY, A nvarchar(10) NOT NULL);
+    INSERT @aliases VALUES (1, N'C.'), (2, N'G.'), (3, N'MC.'), (4, N'P.'), (5, N'S.'), (6, N'ZP.'), (7, N'lc.'), (8, N'main.'), (9, N'');
+    DECLARE @o int = 1, @a nvarchar(10);
+    WHILE @o <= 9   -- the bare name last, after the aliased ones
+    BEGIN
+        SELECT @a = A FROM @aliases WHERE O = @o;
+        SET @Marker84 = REPLACE(REPLACE(@Marker84, @a + N'CertificationPhase IS NOT NULL', N'ISNULL(' + @a + N'CertificationPhase, ''PENDING'') NOT IN (''PENDING'', ''REJECTED'')'),
+            @a + N'CertificationPhase IS NULL', N'ISNULL(' + @a + N'CertificationPhase, ''PENDING'') IN (''PENDING'', ''REJECTED'')');
+        SET @o += 1;
+    END
+    IF CHARINDEX(@Marker, @def) > 0 OR CHARINDEX(@Marker84, @def) > 0
     BEGIN
         PRINT CONCAT(DB_NAME(), N'.', @Object, N': already edited.');
         RETURN;

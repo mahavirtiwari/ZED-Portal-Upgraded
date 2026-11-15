@@ -1,8 +1,8 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { MessageResponse } from '@zed/shared';
-import { withApiBase } from '../../../api-base';
+import { rebaseApiUrls, withApiBase } from '../../../api-base';
 
 /** List tabs of SP_FINANCIAL_ASSISTANCE_GET_LIST on ZED_CONSULTANT (FinancialAssistance.TechUpgradeStatus). */
 export const TuTab = { Allotment: 2, InProgress: 5, Qc: 6, Approved: 8, Rejected: 9 } as const;
@@ -176,7 +176,7 @@ export class TuApi {
   }
 
   details(zedId: string): Observable<TuApplication[]> {
-    return this.http.get<TuApplication[]>(`${BASE}/${encodeURIComponent(zedId)}`);
+    return this.http.get<TuApplication[]>(`${BASE}/${encodeURIComponent(zedId)}`).pipe(map((d) => rebaseApiUrls(d)));
   }
 
   validate(zedId: string, certification: string, documentId: number, v: TuValidation): Observable<MessageResponse> {

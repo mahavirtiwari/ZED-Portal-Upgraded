@@ -202,7 +202,7 @@ interface SharePreview {
         <h5 class="fs-h" id="fs-rates">{{ consultancy ? 'Handholding' : 'Certification' }} Fee &amp; Rates <span class="zed-chip">{{ levelName(level()) }}</span><span class="zed-chip">{{ type() }}</span></h5>
         <p class="muted">{{ type() === 'Recertification' ? 'Units re-certifying a level pay this full fee: no subsidy and no joining reward. It is separate from the Rejected fee.'
           : rejected() ? 'Units whose certification was rejected pay the full fee again: no subsidy and no joining reward.'
-          : consultancy ? 'The fee of ' + hhLevel() + ' handholding for this milestone (Gold has its own). GST and TDS apply to the MSME share only; the joining reward is kept.'
+          : consultancy ? 'The fee of ' + hhLevel() + ' handholding for this milestone (' + (hhLevel() === 'Gold' ? 'Silver' : 'Gold') + ' has its own). GST and TDS apply to the MSME share only; the joining reward is kept.'
           : 'The fee is before GST. It is split by subsidy category first; GST and TDS then apply to the MSME share only.' }}</p>
         <div class="fs-rates">
           <div>
