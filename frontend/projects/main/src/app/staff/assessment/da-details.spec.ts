@@ -557,6 +557,19 @@ describe('DaDetailsPage', () => {
     expect(el.querySelector('.zp-round .zp-foot input[type=button]')).toBeNull();
   });
 
+  it('shows the NC round raised only on App Forms fields, with its Final Submit', async () => {
+    // No section in the round (SecNcCount stays 0): the round's tab still shows, as the place of its Final Submit.
+    const ncRound = {
+      ncCount: 1, products: [], oldProducts: [], photos: [], assessorRemarks: null, options: [], subOptions: [],
+      sections: [], requirements: [], evidences: [],
+    };
+    await open(details({ msme: { ...details().msme, CertificationStatus: 4, NcCount: 1, SecNcCount: 0 }, ncRounds: [ncRound] }));
+    tab('NC1');
+    await settle();
+    expect(el.textContent).toContain('Basic Information fields found not valid are checked again on the Basic Information tab.');
+    expect(Array.from(el.querySelectorAll<HTMLInputElement>('.submit-bar input[type=button]')).map((b) => b.value)).toContain('Final Submit');
+  });
+
   it('marks a parameter Partial while only some checkpoints are answered', async () => {
     const checkpoints = [
       { id: 501, requirementId: 11, optionCode: '1', text: 'Has a quality policy', actions: [], evidences: [],

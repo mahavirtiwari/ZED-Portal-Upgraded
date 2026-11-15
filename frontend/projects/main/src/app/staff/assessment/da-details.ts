@@ -128,10 +128,16 @@ export class DaDetailsPage {
   protected readonly esg = computed(() => (this.data()?.esgCheckList ?? []).filter((r) => text(r, 'CheckListType') === 'ESG'));
   protected readonly social = computed(() => (this.data()?.esgCheckList ?? []).filter((r) => text(r, 'CheckListType') === 'SOCIAL/OHS'));
 
-  /** NC tabs shown on the old page: NC n when NcCount and SecNcCount are at least n. */
+  /**
+   * NC tabs shown on the old page: NC n when NcCount and SecNcCount are at least n. V4: also the current round when it was
+   * raised only on App Forms fields found not valid (no section in the round, so SecNcCount stays behind): its tab holds the
+   * round's Final Submit.
+   */
   protected readonly ncTabs = computed(() => {
     const m = this.msme();
-    return (this.data()?.ncRounds ?? []).map((r) => r.ncCount).filter((n) => num(m, 'NcCount') > n - 1 && num(m, 'SecNcCount') > n - 1);
+    const current = this.currentRound();
+    return (this.data()?.ncRounds ?? []).map((r) => r.ncCount)
+      .filter((n) => num(m, 'NcCount') > n - 1 && (num(m, 'SecNcCount') > n - 1 || n === current));
   });
 
   /** Surveillance: answers from the Bronze surveillance app and the location of the original ZED assessment. */

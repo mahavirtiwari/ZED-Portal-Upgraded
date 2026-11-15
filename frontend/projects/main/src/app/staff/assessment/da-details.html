@@ -756,6 +756,9 @@
                   </div>
                 } @else {
                   <p class="zp-muted">No non-conformance in this round.</p>
+                  @if (currentRound() === nc) {
+                    <p class="zp-muted">Basic Information fields found not valid are checked again on the Basic Information tab.</p>
+                  }
                 }
               </div>
             </div>
