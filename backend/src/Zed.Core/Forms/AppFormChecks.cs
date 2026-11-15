@@ -60,6 +60,9 @@ public sealed record AppFormCheckItem(string Form, string FormName, string Key, 
 public sealed record AppFormNcItem(string Form, string Key, string Label, string Type, string? Help, IReadOnlyList<string>? Options,
     string? Remarks, string? PreviousValue, string? Value, bool Answered);
 
+/// <summary>An NC raised on an App Forms answer, as the report lists it (<see cref="AppFormChecks.ReportNcsAsync"/>).</summary>
+public sealed record AppFormReportNc(int Round, string Label, string? Remarks, string Status);
+
 /// <summary>Where a check is made: who, which NC round of the record (NcCount), and whether that round is an NC round.</summary>
 public sealed record AppFormCheckRound(string Stage, int Round, bool NcRound);
 
@@ -202,6 +205,29 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
                 var type = f?.Type ?? AppFieldTypes.Text;
                 result.Add(new AppFormNcItem(spec.Key, row.FieldKey, f?.Label ?? row.FieldKey, type, f?.Help, f?.Options, row.NcRemarks,
                     AppFormRules.Display(type, row.NcValue), row.NcAnsweredOn is null ? null : row.Value, row.NcAnsweredOn is not null));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Every NC raised on an answer, for the report (2026-11-15: an NC round raised only by App Forms fields counted none):
+    /// its round, the field, the assessor's remark, and "Closed" (checked Valid in that round or later), "Not closed" (Not valid
+    /// again) or "Pending".
+    /// </summary>
+    public async Task<IReadOnlyList<AppFormReportNc>> ReportNcsAsync(PortalSystem system, string zedId, string certification, CancellationToken ct = default)
+    {
+        var raised = (await RowsAsync(zedId, certification, ct)).Where(r => r.NcRound > 0).ToList();
+        var result = new List<AppFormReportNc>();
+        foreach (var round in raised.Select(r => r.NcRound!.Value).Distinct().Order())
+        {
+            foreach (var item in await NcItemsAsync(system, zedId, certification, round, ct))
+            {
+                var row = raised.First(r => r.NcRound == round && string.Equals(r.FormKey, item.Form, StringComparison.OrdinalIgnoreCase)
+                    && string.Equals(r.FieldKey, item.Key, StringComparison.OrdinalIgnoreCase));
+                var checkedAfter = row.ValidRound >= round;
+                var status = checkedAfter && row.ValidStatus == "Yes" ? "Closed" : checkedAfter && row.ValidStatus == "No" ? "Not closed" : "Pending";
+                result.Add(new AppFormReportNc(round, item.Label, item.Remarks, status));
             }
         }
         return result;

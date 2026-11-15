@@ -29,6 +29,12 @@ const MILESTONE_NAMES = ['BDSR / HAP', 'Progress review 1', 'Progress review 2']
 /** A route input as text: '' when the address does not carry it. */
 const orEmpty = (value: string | number | null | undefined): string => (value == null ? '' : String(value));
 
+/** "ZED Silver", and "ZED-X" itself (never "ZED ZED-X"). */
+export const zedTitle = (name: string | null | undefined): string => {
+  const n = (name ?? '').trim();
+  return /^zed/i.test(n) ? n : `ZED ${n}`;
+};
+
 @Component({
   selector: 'zed-report-page',
   imports: [NgTemplateOutlet, UpperCasePipe],
@@ -53,6 +59,7 @@ export class ReportPageView implements OnInit {
   private readonly print = inject(PRINT_PAGE);
 
   protected readonly report = signal<ReportPage | null>(null);
+  protected readonly zedTitle = zedTitle;
   protected readonly loading = signal(true);
   protected readonly error = signal('');
 
@@ -63,7 +70,7 @@ export class ReportPageView implements OnInit {
       const n = r.milestone?.number ?? 0;
       return `Handholding Report · Milestone ${n}${MILESTONE_NAMES[n - 1] ? ` (${MILESTONE_NAMES[n - 1]})` : ''}`;
     }
-    return `${r.kind === 'surveillance' ? 'Surveillance Report' : 'Assessment Report'} · ZED ${r.levelName}`;
+    return `${r.kind === 'surveillance' ? 'Surveillance Report' : 'Assessment Report'} · ${zedTitle(r.levelName)}`;
   });
 
   /** The section chips of the toolbar; each scrolls to its sheet. */
@@ -96,7 +103,7 @@ export class ReportPageView implements OnInit {
     const r = this.report();
     if (!r) return '';
     if (r.kind === 'milestone') return `${r.zedId} · Milestone ${r.milestone?.number ?? ''} · ${r.milestone?.existing ? r.milestone.existing + ' → ' : ''}${r.levelName}`;
-    return `${r.zedId} · ZED ${r.levelName}`;
+    return `${r.zedId} · ${zedTitle(r.levelName)}`;
   });
 
   ngOnInit(): void {

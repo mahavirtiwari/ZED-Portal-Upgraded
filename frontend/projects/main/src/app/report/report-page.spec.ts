@@ -93,6 +93,14 @@ describe('Report page', () => {
     expect(el.querySelectorAll('.rp-sheet').length).toBeGreaterThan(0);
   });
 
+  it('names ZED-X once in the title, never "ZED ZED-X"', async () => {
+    const { fixture, http, el } = await open({ kind: 'assessment', level: 'ZEDX' });
+    http.expectOne('/api/msme/certification-documents/ZEDX/report/page').flush({ ...base, level: 'ZEDX', levelName: 'ZED-X' });
+    await settle(fixture);
+    expect(el.querySelector('.rp-title')!.textContent).toContain('Assessment Report · ZED-X');
+    expect(el.textContent).not.toContain('ZED ZED-X');
+  });
+
   it('shows the MSME its assessment report as A4 sheets with the design sections', async () => {
     const { fixture, http, el } = await open({ kind: 'assessment', level: 'Silver' });
     http.expectOne('/api/msme/certification-documents/Silver/report/page').flush(base);

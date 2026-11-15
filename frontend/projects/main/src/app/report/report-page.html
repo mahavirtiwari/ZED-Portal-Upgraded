@@ -61,9 +61,9 @@
             <div><div class="rp-k">ZED ID</div><b>{{ r.zedId }}</b></div>
             @if (r.kind === 'milestone') {
               <div><div class="rp-k">Milestone</div><b>{{ r.milestone?.number }} of 3</b></div>
-              <div><div class="rp-k">Target level</div><b>ZED {{ r.levelName }}</b></div>
+              <div><div class="rp-k">Target level</div><b>{{ zedTitle(r.levelName) }}</b></div>
             } @else {
-              <div><div class="rp-k">Level</div><b>ZED {{ r.levelName }}</b></div>
+              <div><div class="rp-k">Level</div><b>{{ zedTitle(r.levelName) }}</b></div>
               @if (r.dated) { <div><div class="rp-k">{{ r.dated.label }}</div><b>{{ r.dated.value }}</b></div> }
               @else if (r.draft) { <div><div class="rp-k">Status</div><b>Draft</b></div> }
             }

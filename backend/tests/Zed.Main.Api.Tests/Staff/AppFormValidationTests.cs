@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Portal.Features.Staff.Assessment;
@@ -59,6 +60,26 @@ public sealed class AppFormValidationTests : IDisposable
         Assert.Equal(AppFormStages.Site, AppFormStages.For("ZEDX"));
         Assert.True(AppFormCatalogue.Find(PortalSystem.Main, Msme)!.CanValidate(PortalSystem.Main));
         Assert.False(AppFormCatalogue.Find(PortalSystem.Main, AppFormCatalogue.AssessorBasicInfo)!.CanValidate(PortalSystem.Main));
+    }
+
+    /// <summary>2026-11-15: the report lists the NCs raised on answers in their rounds (a round raised only by them counted none).</summary>
+    [Fact]
+    public async Task The_report_lists_the_NCs_raised_on_answers_with_their_state()
+    {
+        _answers.Clear();
+        _answers.Add(new AppFormCheckRow { FormKey = Msme, FieldKey = "cf_gst", Value = "27AAACZ1234F1Z5", NcRound = 1, NcRemarks = "Wrong GST",
+            ValidStatus = "Yes", ValidStage = AppFormStages.Desktop, ValidRound = 1, NcAnsweredOn = DateTime.UtcNow });
+        _answers.Add(new AppFormCheckRow { FormKey = Msme, FieldKey = "cf_notes", Value = "none", NcRound = 2, NcRemarks = "Explain",
+            ValidStatus = "No", ValidStage = AppFormStages.Desktop, ValidRound = 1 });
+        _answers.Add(new AppFormCheckRow { FormKey = Msme, FieldKey = "cf_other", Value = "x" });
+        _ = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");   // starts the host
+
+        var ncs = await _host.Services.GetRequiredService<AppFormChecks>().ReportNcsAsync(PortalSystem.Main, Zed, "Bronze");
+
+        Assert.Equal(2, ncs.Count);
+        Assert.Equal(new AppFormReportNc(1, "GST number", "Wrong GST", "Closed"), ncs[0]);
+        // Not valid in round 1 raised round 2; not checked in round 2 yet.
+        Assert.Equal(new AppFormReportNc(2, "Notes", "Explain", "Pending"), ncs[1]);
     }
 
     [Fact]

@@ -5,6 +5,7 @@ using QRCoder;
 using SkiaSharp;
 using Zed.Core.Assessment;
 using Zed.Core.Data;
+using Zed.Core.Forms;
 using Zed.Core.Http;
 using Zed.Portal.Features.CertLevels;
 using Zed.Portal.Features.Staff.Assessment;
@@ -92,7 +93,8 @@ public sealed record ReportPageVerify(string Url, string QrImage);
 /// public verification page), and the V4 checkpoint answers (<see cref="CheckpointAnswers"/>). Photos are addressed by signed
 /// tokens (<see cref="ReportLinks"/>) to the record's own folder.
 /// </summary>
-public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions> portal, ReportLinks links, ILogger<ReportPages> log)
+public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions> portal, ReportLinks links, ILogger<ReportPages> log,
+    AppFormChecks? formChecks = null)
 {
     private readonly DocumentRenderer _renderer = new(env, portal, log);
 
@@ -140,6 +142,19 @@ public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions>
                     : r.Conformance.Length > 0 ? (r.Conformance, "x") : ("Pending", "x");
                 return new ReportPageNcItem($"{s.Code}.{r.RequirementCode}", RequirementText(r), r.Remarks, status, tone);
             })).ToList())).ToList();
+        // NCs raised on App Forms answers ("Validation required" fields, migration 0080), in their rounds: a round raised only by
+        // them has no requirement and was left out (2026-11-15). Main only (the surveillance portal has no App Forms checks).
+        var formNcs = !surveillance && formChecks is not null ? await formChecks.ReportNcsAsync(PortalSystem.Main, recordId, level, ct) : [];
+        if (formNcs.Count > 0)
+        {
+            rounds = rounds.Select(r => r.Round).Concat(formNcs.Select(f => f.Round)).Distinct().Order().Select(n =>
+            {
+                var round = rounds.FirstOrDefault(r => r.Round == n);
+                var forms = formNcs.Where(f => f.Round == n).Select(f => new ReportPageNcItem("Basic information", f.Label, f.Remarks ?? "", f.Status,
+                    f.Status == "Closed" ? "y" : f.Status == "Not closed" ? "n" : "x"));
+                return new ReportPageNcRound(n, round?.Products ?? [], [.. round?.Items ?? [], .. forms]);
+            }).ToList();
+        }
         var lastRound = rounds.LastOrDefault();
         var ncClosed = certified && lastRound is not null && lastRound.Items.Count > 0 && lastRound.Items.All(i => i.Tone == "y");
 
@@ -150,12 +165,12 @@ public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions>
         var result = draft
             ? new ReportPageResult("draft", "DRAFT: not yet final", "A preview for staff before the final submit; it changes with the assessment.")
             : rejected
-                ? new ReportPageResult("rej", surveillance ? $"Surveillance rejected: ZED {levelName}" : $"Rejected: ZED {levelName}",
+                ? new ReportPageResult("rej", surveillance ? $"Surveillance rejected: {LevelRegistry.ZedTitle(levelName)}" : $"Rejected: {LevelRegistry.ZedTitle(levelName)}",
                     Join(" ", data.DateLabel.Length > 0 && date.Length > 0 ? $"{Sentence(data.DateLabel)} {date}" : ""))
                 : surveillance
                     ? new ReportPageResult("ok", date.Length > 0 ? $"Surveillance {(hasRound ? surveillanceNo + " " : "")}completed on {date}" : "Surveillance completed",
                         certificateNo.Length > 0 ? $"Certificate {certificateNo}" : "")
-                    : new ReportPageResult("ok", $"Certified: ZED {levelName}",
+                    : new ReportPageResult("ok", $"Certified: {LevelRegistry.ZedTitle(levelName)}",
                         Join(" · ", certificateNo.Length > 0 ? $"Certificate {certificateNo}" : "",
                             Value(verified, "DateOfExpiry") is { Length: > 0 } expiry ? $"valid till {expiry}" : "",
                             certificateNo.Length == 0 && date.Length > 0 ? $"Certified on {date}" : ""));
@@ -164,7 +179,7 @@ public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions>
         [
             new(assessed.Count.ToString(CultureInfo.InvariantCulture), surveillance ? "Requirements checked" : "Requirements assessed"),
             new(conformed.ToString(CultureInfo.InvariantCulture), surveillance ? "Still conforming" : "Conformed", "g"),
-            new(ncs.ToString(CultureInfo.InvariantCulture), "NCs raised", "r"),
+            new((ncs + formNcs.Count(f => f.Round == 1)).ToString(CultureInfo.InvariantCulture), "NCs raised", "r"),
             surveillance && hasRound
                 ? new($"Round {surveillanceNo}", "Surveillance", "a")
                 : new(rounds.Count.ToString(CultureInfo.InvariantCulture), "NC rounds", "a"),
@@ -388,23 +403,23 @@ public sealed class ReportPages(IWebHostEnvironment env, IOptions<PortalOptions>
         if (rejected)
             return
             [
-                $"You may apply again for the ZED {levelName} level: sign in to the ZED portal and pay the fee that applies.",
+                $"You may apply again for the {LevelRegistry.ZedTitle(levelName)} level: sign in to the ZED portal and pay the fee that applies.",
                 "Use the findings and the assessor's remarks in this report to strengthen the systems and processes of the unit.",
             ];
         var list = new List<string>();
         if (surveillanceDue is { Length: > 0 }) list.Add($"Keep the certificate valid: surveillance is due by {surveillanceDue}.");
         else if (surveillance) list.Add("Keep the certificate valid: complete each surveillance assessment on time.");
         var next = level switch { "Bronze" => "Silver", "Silver" => "Gold", _ => null };
-        if (next is not null && !surveillance) list.Add($"Apply for the ZED {next} level when ready; ZED trained consultants can help through handholding.");
-        list.Add($"See the incentives you can claim as a ZED {levelName} unit in the ZED MSME app or on the ZED portal.");
+        if (next is not null && !surveillance) list.Add($"Apply for the {LevelRegistry.ZedTitle(next)} level when ready; ZED trained consultants can help through handholding.");
+        list.Add($"See the incentives you can claim as a {LevelRegistry.ZedTitle(levelName)} unit in the ZED MSME app or on the ZED portal.");
         return list;
     }
 
     private static IReadOnlyList<string> MilestoneWayForward(int milestone, string levelName, bool rejected) => rejected ? [] : milestone switch
     {
-        1 => ["Carry out the planned activities with the consultant; progress is reviewed at milestone 2.", $"Aim for the ZED {levelName} level once the gaps are closed."],
-        2 => ["Complete the remaining activities before the second progress review (milestone 3).", $"Aim for the ZED {levelName} level once the gaps are closed."],
-        _ => [$"Apply for the ZED {levelName} certification when ready.", "See the incentives you can claim in the ZED MSME app or on the ZED portal."],
+        1 => ["Carry out the planned activities with the consultant; progress is reviewed at milestone 2.", $"Aim for the {LevelRegistry.ZedTitle(levelName)} level once the gaps are closed."],
+        2 => ["Complete the remaining activities before the second progress review (milestone 3).", $"Aim for the {LevelRegistry.ZedTitle(levelName)} level once the gaps are closed."],
+        _ => [$"Apply for the {LevelRegistry.ZedTitle(levelName)} certification when ready.", "See the incentives you can claim in the ZED MSME app or on the ZED portal."],
     };
 
     private async Task<(IDictionary<string, object?> Row, bool AtDesktop)?> CertificateAsync(ISqlExecutor db, string zedId, string level, bool surveillance,

@@ -8,6 +8,14 @@ namespace Zed.Main.Api.Tests;
 /// <summary>2026-11-15: every flow for every level; a record says where it was certified (migration 0078).</summary>
 public sealed class LevelFlowsRecordTests
 {
+    /// <summary>The report's "ZED Gold", and "ZED-X" itself (the walkthrough found "ZED ZED-X").</summary>
+    [Theory]
+    [InlineData("Gold", "ZED Gold")]
+    [InlineData("ZED-X", "ZED-X")]
+    [InlineData("zed-x", "zed-x")]
+    [InlineData("Titanium", "ZED Titanium")]
+    public void Zed_title_puts_zed_in_front_once(string name, string expected) => Assert.Equal(expected, LevelRegistry.ZedTitle(name));
+
     [Theory]
     // Old records keep their answers.
     [InlineData("Bronze", 6, "01012025_1", "ACTIVE", true)]

@@ -206,7 +206,10 @@ public sealed partial class DesktopAssessmentController(
         var ncCount = Math.Clamp(record.Nc, 0, 5);
         // The Admin's requirement videos (2026-11-08).
         var videos = await RequirementVideos.LoadAsync(db, "dbo", level, log, ct);
-        var rounds = desktopOnly && ncCount > 0
+        // A record with NC rounds and no site assessor is in its desktop NC rounds whatever the level's flow says now (the Admin
+        // may change a level's flow while records are under way; 2026-11-15, an App Forms NC on Gold Desktop only lost its tab).
+        var desktopNcs = desktopOnly || (!surveillance && string.IsNullOrWhiteSpace(record.SiteAssessorId));
+        var rounds = desktopNcs && ncCount > 0
             ? await Task.WhenAll(Enumerable.Range(1, ncCount).Select(n => Round(zedId, level, n, moved, videos, ct)))
             : [];
 

@@ -81,6 +81,13 @@ public static partial class LevelRegistry
     /// <summary>What pages show ("ZED-X" for ZEDX); the code itself when unknown.</summary>
     public static string NameOf(string? code) => Find(code)?.Name ?? code ?? "";
 
+    /// <summary>"ZED Silver", "ZED Gold", and "ZED-X" itself (never "ZED ZED-X"): a level name with "ZED" in front once.</summary>
+    public static string ZedTitle(string? name)
+    {
+        var n = (name ?? "").Trim();
+        return n.StartsWith("ZED", StringComparison.OrdinalIgnoreCase) ? n : $"ZED {n}";
+    }
+
     /// <summary>
     /// Certified at the desktop (its flow is Desktop only), else after a visit. 2026-11-15: the Admin's flow decides for every
     /// level, Bronze, Silver and Gold included (AssessmentMode is kept in step with AssessmentFlow; migration 0078); before,

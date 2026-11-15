@@ -130,6 +130,39 @@ public sealed class DesktopAssessmentTests : IDisposable
         Assert.Equal("28.6", json.GetProperty("location").GetProperty("Latitude").GetString());
     }
 
+    /// <summary>
+    /// 2026-11-15: Gold's flow is Site (built in), yet a Gold record in a desktop NC round (raised by an App Forms field while
+    /// Gold was Desktop only) keeps its NC tab: no site assessor yet, so its rounds are the desktop ones. With a site assessor
+    /// the NCs are the site assessment's, shown on the site review page.
+    /// </summary>
+    [Theory]
+    [InlineData(null, 1)]
+    [InlineData("SITE1", 0)]
+    public async Task A_desktop_nc_round_shows_even_when_the_levels_flow_is_now_site(string? siteAssessor, int expectedRounds)
+    {
+        var gold = new
+        {
+            ZedId = Zed, Certification = "Gold", CertificationStatus = 4, NcCount = 1, NcStatus = 0, Nc1Status = 2, Nc2Status = 0, Nc3Status = 0, Nc4Status = 0, Nc5Status = 0,
+            DesktopAssessorId = "ASSESSOR1", DesktopAccepted = true, DesktopReasonForRejection = (string?)null, CertificationBodyUserId = "AGENCY1",
+            SiteAssessorId = siteAssessor, CoAssessorId = (string?)null,
+        };
+        _host.Sql.Queries[AssessmentRecords.CertificationSql] = args =>
+            FakeSql.Arg(args, "ZedId") == Zed && FakeSql.Arg(args, "Certification") == "Gold" ? [gold] : [];
+        // Silver's result sets (every level but Bronze): 23 sets, the screenshots at 21 and the ESG check list at 22.
+        var sets = Enumerable.Range(0, 23).Select(_ => (IEnumerable<object>)Array.Empty<object>()).ToArray();
+        sets[0] = [new { ZedId = Zed, Certification = "Gold", PUnitName = "Unit 1", CertificationStatus = 4, NcCount = 1, PhotosPath = (string?)null,
+                         DesktopAssessorId = "ASSESSOR1", CertificationBodyUserId = "AGENCY1" }];
+        _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS"] = _ => FakeSql.Sets(sets);
+        _host.Sql.Procs["SP_ASSESSMENT_DA_DETAILS_NC"] = _ => FakeSql.Sets([], [], [], [], [], [], [], [], []);
+        Assert.False(LevelRegistry.IsDesktop("Gold"));
+
+        var client = await As("ASSESSOR1");
+        var json = await client.GetFromJsonAsync<JsonElement>("/api/staff/assessment/da/ZEDMSME000001/Gold");
+
+        Assert.Equal(expectedRounds, json.GetProperty("ncRounds").GetArrayLength());
+        Assert.Equal(expectedRounds, DaTestUsers.CallsTo(_host.Sql, "SP_ASSESSMENT_DA_DETAILS_NC").Count());
+    }
+
     [Fact]
     public async Task Qc_users_do_not_see_agency_and_assessor_names()
     {
