@@ -30,6 +30,8 @@ public sealed class AssessorAppController(
     AppTokens tokens,
     StaffPasswordResets resets,
     IBackgroundWork background,
+    PortalHost host,
+    ReportLinks links,
     ILogger<AssessorAppController> log) : LegacyMobileController
 {
     /// <summary>Users.RoleId of assessors (the site assessor app signs in RoleId 3 only).</summary>
@@ -62,6 +64,33 @@ public sealed class AssessorAppController(
         }
         return await CertificationDownloads.ReportAsync(this, documents, record, zedId!, level, ct);
     }
+
+    /// <summary>
+    /// <c>GET /SA/AppReportLink?zedId=…&amp;certificationType=…</c> (2026-11-15): the report as a page instead of the PDF. Same token
+    /// and rules as <see cref="AppReport"/>; answers <c>{status: "1", url}</c>, the page address with a 10-minute signed token
+    /// (<see cref="ReportLinks"/>) that the app opens in the browser (the app's token is no web sign-in).
+    /// </summary>
+    [HttpGet("/SA/AppReportLink")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> AppReportLink(string? zedId, string? certificationType, CancellationToken ct)
+    {
+        var token = Request.Headers[AppTokens.Header].ToString();
+        if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
+            return Unauthorized();
+
+        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not { } level || DocumentLevels.IsDesktop(level)) return NotFound();
+        var record = await AssessmentRecords.CertificationAsync(db, zedId!, level, ct);
+        if (record is null || !(Is(record.SiteAssessorId, t.User) || Is(record.CoAssessorId, t.User)))
+        {
+            log.LogWarning("SA app report link of {ZedId} {Level} refused to {UserId}: not the record's assessor", zedId, level, t.User);
+            return NotFound();
+        }
+        if (!CertificationDownloads.HasReport(level, record)) return Fail(ReportNotReady);
+        var kind = host.System == PortalSystem.Surveillance ? ReportLinks.Surveillance : ReportLinks.Assessment;
+        return LegacyJson(new { status = "1", url = links.PageUrl(new ReportLinkTarget(kind, zedId!, level, null)) });
+    }
+
+    public const string ReportNotReady = "The report is available once the assessment is complete.";
 
     public sealed class ForgotPasswordRequest
     {

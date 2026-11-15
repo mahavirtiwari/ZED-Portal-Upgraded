@@ -3,6 +3,7 @@ using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Portal.Features.Documents;
+using Zed.Portal.Features.Staff.Assessment;
 using Zed.Portal.Templates;
 
 namespace Zed.Portal.Features.Staff.Monitoring;
@@ -17,14 +18,15 @@ namespace Zed.Portal.Features.Staff.Monitoring;
 /// <para>
 /// The certification is already saved when this runs, so a failed document or mail is logged and
 /// reported to the caller, never thrown. As before the certificate is attached to the mail; the old
-/// mails linked to the public SA/ReportSummary page instead of attaching the report (finding #18), so
-/// the report is attached when it can be generated and the button opens the MSME login.
+/// mails linked to the public SA/ReportSummary page (finding #18). 2026-11-15: the report is a page of the portal built from
+/// the live data (<see cref="ReportPages"/>), so the mails link to it ("View report", /msme/report/..., sign-in needed)
+/// instead of attaching a PDF.
 /// </para>
 /// <para>
 /// On the Surveillance host (ZED_SURVEILLANCE: the procedures re-use main's certificate number and set main's
 /// certificate ACTIVE or WITHDRAWN themselves) the certificate comes from the same <see cref="IAssessmentDocuments"/>
 /// (surveillance artwork, DateOfSurveillance, SurveillanceNo, stored under main's Surveillance/Certificates/...), the
-/// mails carry the old surveillance subjects and wording, and no report is attached (as in SurveillanceWeb).
+/// mails carry the old surveillance subjects and wording, and link to the surveillance report page on main.
 /// </para>
 /// </summary>
 public sealed class CertificationCompletion(
@@ -70,6 +72,15 @@ public sealed class CertificationCompletion(
         return baseUrl + "/msme/login";
     }
 
+    /// <summary>
+    /// The MSME's report page on main (2026-11-15): /msme/report/{assessment|surveillance|milestone}/{Level}[?…]. The page asks
+    /// for the sign-in first and comes back to the report.
+    /// </summary>
+    public static string MsmeReportUrl(PortalOptions options, PortalHost host, string kind, string level, string? query = null) =>
+        MsmeLoginUrl(options, host)[..^"/msme/login".Length] + $"/msme/report/{kind}/{Uri.EscapeDataString(level)}" + (string.IsNullOrEmpty(query) ? "" : "?" + query);
+
+    private string ReportKind => Surveillance ? ReportLinks.Surveillance : ReportLinks.Assessment;
+
     /// <summary>Subject of the certificate mail; surveillance: the old SurveillanceWeb FinalSubmit / RaFinalSubmit subjects.</summary>
     private string CertificateSubject(string zedId, string certification) => !Surveillance
         ? $"Certificate and Assessment Report under {Scheme} - {zedId}"
@@ -95,15 +106,15 @@ public sealed class CertificationCompletion(
                 return new Outcome(true, false);
             }
 
+            // The certificate stays attached; the report is a link to its page (2026-11-15).
             var attachments = new List<EmailAttachment> { new(Path.GetFileName(certificate.RelativePath), certificate.Content) };
-            var report = Surveillance ? null : await TryReportAsync(zedId, certification, ct);
-            if (report is not null) attachments.Add(new EmailAttachment($"{zedId}_{certification}_Report.pdf", report.Content));
 
             var html = await templates.RenderAsync<StaffMonitoringCertificateEmail>(new Dictionary<string, object?>
             {
                 [nameof(StaffMonitoringCertificateEmail.Surveillance)] = Surveillance,
                 [nameof(StaffMonitoringCertificateEmail.SiteAssessment)] = IsSiteLevel(certification),
-                [nameof(StaffMonitoringCertificateEmail.ReportAttached)] = report is not null,
+                [nameof(StaffMonitoringCertificateEmail.ReportAttached)] = false,
+                [nameof(StaffMonitoringCertificateEmail.ReportUrl)] = MsmeReportUrl(portal.Value, host, ReportKind, certification),
                 [nameof(StaffMonitoringCertificateEmail.ZedId)] = zedId,
                 [nameof(StaffMonitoringCertificateEmail.Certification)] = certification,
                 [nameof(StaffMonitoringCertificateEmail.EnterpriseName)] = row!.Text("EstablishmentName"),
@@ -139,19 +150,6 @@ public sealed class CertificationCompletion(
         }
     }
 
-    private async Task<DocumentFile?> TryReportAsync(string zedId, string certification, CancellationToken ct)
-    {
-        try
-        {
-            return await documents.RenderReportAsync(zedId, certification, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            log.LogWarning(ex, "Report of {ZedId} {Certification} could not be generated; mail sent without it", zedId, certification);
-            return null;
-        }
-    }
-
     // ------------------------------------------------------------------ rejection
 
     /// <summary>Mail details of the unit before its rows are renamed to the rejected copy (ZedId_D_{Id}).</summary>
@@ -179,11 +177,14 @@ public sealed class CertificationCompletion(
                 return false;
             }
             var rejected = row!.Text("RejectedZedId");
-            // Surveillance: no report attachment (the old surveillance rejection mail had none).
-            var report = !Surveillance && rejected.Length > 0 ? await TryReportAsync(rejected, certification, ct) : null;
+            // 2026-11-15: the rejected copy's report page (live data of the renamed rows), linked instead of attached.
+            var reportUrl = AssessmentInput.IsId(rejected) && rejected.Contains('_')
+                ? MsmeReportUrl(portal.Value, host, ReportKind, certification, "record=" + Uri.EscapeDataString(rejected))
+                : null;
             var html = await templates.RenderAsync<StaffMonitoringRejectionEmail>(new Dictionary<string, object?>
             {
-                [nameof(StaffMonitoringRejectionEmail.ReportAttached)] = report is not null,
+                [nameof(StaffMonitoringRejectionEmail.ReportAttached)] = false,
+                [nameof(StaffMonitoringRejectionEmail.ReportUrl)] = reportUrl,
                 [nameof(StaffMonitoringRejectionEmail.ZedId)] = zedId,
                 [nameof(StaffMonitoringRejectionEmail.Certification)] = certification,
                 [nameof(StaffMonitoringRejectionEmail.EnterpriseName)] = row!.Text("EstablishmentName"),
@@ -191,9 +192,8 @@ public sealed class CertificationCompletion(
                 [nameof(StaffMonitoringRejectionEmail.PublicBaseUrl)] = portal.Value.PublicBaseUrl,
             });
             var cc = emailOptions.Value.RegistrationCc is { Length: > 0 } c ? new[] { c } : null;
-            var attachments = report is null ? null : new[] { new EmailAttachment($"{zedId}_{certification}_Report.pdf", report.Content) };
             await email.SendAsync(new EmailMessage(to, $"Rejection of your application under {Scheme} - {zedId}", html,
-                EmailProfiles.Certification, cc, attachments), ct);
+                EmailProfiles.Certification, cc), ct);
             return true;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

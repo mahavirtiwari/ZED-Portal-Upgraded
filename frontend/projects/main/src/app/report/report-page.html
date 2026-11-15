@@ -1,0 +1,425 @@
+<!-- 2026-11-15 (approved design docs/designs/reports-html.html). Styles: styles/_report.scss (global, under .zed-report). -->
+<div class="zed-report" [class.is-draft]="report()?.draft">
+  <header class="rp-toolbar">
+    <b class="rp-title">{{ toolbarTitle() }}</b>
+    @if (report(); as r) { <span class="rp-zedid">{{ r.zedId }}</span> }
+    <span class="rp-sp"></span>
+    @if (report(); as r) {
+      @if (!r.storedPdf) {
+        <button type="button" class="rp-btn rp-btn-o" (click)="doPrint()">Print</button>
+        <button type="button" class="rp-btn" (click)="downloadPdf()" title="Choose 'Save as PDF'" aria-label="Download PDF (choose 'Save as PDF')">
+          <span aria-hidden="true">⬇</span> Download PDF
+        </button>
+      }
+    }
+  </header>
+
+  @if (chips().length) {
+    <nav class="rp-toc" aria-label="Report sections">
+      @for (c of chips(); track c.id) {
+        <button type="button" (click)="scrollTo(c.id)">{{ c.label }}</button>
+      }
+    </nav>
+  }
+
+  @if (loading()) {
+    <p class="rp-state">Opening the report ...</p>
+  } @else if (error()) {
+    <div class="rp-state"><div class="alert alert-danger" role="alert">{{ error() }}</div></div>
+  } @else if (report(); as r) {
+    @if (r.storedPdf) {
+      <!-- An earlier handholding milestone: its report was stored as a PDF when the milestone was completed. -->
+      <div class="rp-state">
+        <div class="rp-note" role="note">
+          <b>Milestone {{ r.milestone?.number }} report</b>
+          <p>This report was saved as a PDF when the milestone was completed, so it opens as that file.</p>
+          <a class="rp-btn" [href]="api(r.storedPdf)" target="_blank" rel="noopener">Open PDF</a>
+        </div>
+      </div>
+    } @else {
+      <main class="rp-sheets">
+        <!-- ====================================================== cover -->
+        <section class="rp-sheet rp-cover" id="rp-cover">
+          <div class="rp-cover-top">
+            <div class="rp-gov"><b>Ministry of</b>MICRO, SMALL &amp; MEDIUM ENTERPRISES</div>
+            <img class="rp-logo-img" src="Images/header/zed-logo.png" alt="ZED" />
+          </div>
+          <div class="rp-band">
+            <div class="rp-band-t">MSME Sustainable (ZED)<br />Certification Scheme</div>
+            <div class="rp-band-s">{{ r.title | uppercase }}</div>
+          </div>
+          <div class="rp-cunit">
+            @if (r.badge) { <img class="rp-medal rp-medal-img" [src]="r.badge" [alt]="r.levelName" /> }
+            @else { <div [class]="medal(r.level)">{{ r.levelName | uppercase }}</div> }
+            <div>
+              <div class="rp-k">Unit</div>
+              <div class="rp-v">{{ r.unit?.name }}</div>
+              @if (r.unit?.place) { <div class="rp-k rp-mt">{{ r.unit?.place }}</div> }
+            </div>
+          </div>
+          <div class="rp-meta">
+            <div><div class="rp-k">ZED ID</div><b>{{ r.zedId }}</b></div>
+            @if (r.kind === 'milestone') {
+              <div><div class="rp-k">Milestone</div><b>{{ r.milestone?.number }} of 3</b></div>
+              <div><div class="rp-k">Target level</div><b>ZED {{ r.levelName }}</b></div>
+            } @else {
+              <div><div class="rp-k">Level</div><b>ZED {{ r.levelName }}</b></div>
+              @if (r.dated) { <div><div class="rp-k">{{ r.dated.label }}</div><b>{{ r.dated.value }}</b></div> }
+              @else if (r.draft) { <div><div class="rp-k">Status</div><b>Draft</b></div> }
+            }
+          </div>
+        </section>
+
+        @if (r.kind !== 'milestone') {
+          <!-- ====================================================== summary -->
+          <section class="rp-sheet" id="rp-summary">
+            <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+            <div class="rp-body">
+              <div class="rp-h"><span class="n"></span><b>{{ r.kind === 'surveillance' ? 'SURVEILLANCE SUMMARY' : 'ASSESSMENT SUMMARY' }}</b></div>
+              @if (r.result; as res) {
+                <div [class]="'rp-result rp-r-' + res.tone">
+                  @if (r.badge) { <img class="rp-medal rp-medal-sm rp-medal-img" [src]="r.badge" [alt]="r.levelName" /> }
+                  @else { <div [class]="medal(r.level) + ' rp-medal-sm'">{{ r.levelName | uppercase }}</div> }
+                  <div><b>{{ res.heading }}</b>{{ res.detail }}</div>
+                </div>
+              }
+              <div class="rp-facts">
+                @for (f of r.facts; track $index) {
+                  <div [class]="'rp-fact rp-f-' + (f.tone || 'n')"><b>{{ f.value }}</b><small>{{ f.label }}</small></div>
+                }
+              </div>
+              @if (r.sectionResults.length) {
+                <div class="rp-h"><span class="n"></span><b>RESULTS BY SECTION</b></div>
+                @for (s of r.sectionResults; track $index) {
+                  <div class="rp-secrow">
+                    <span>{{ s.code }}. {{ s.name }}</span>
+                    @if (s.exempted) {
+                      <span class="rp-chip rp-c-x">Exempted</span><span></span>
+                    } @else {
+                      <div class="rp-bar" role="img" [attr.aria-label]="s.conformed + ' of ' + s.total + ' conformed'">
+                        <i class="rp-g" [style.width.%]="width(s.conformed, s.total)"></i>
+                        <i class="rp-r" [style.width.%]="width(s.total - s.conformed, s.total)"></i>
+                      </div>
+                      <span>{{ s.conformed }} / {{ s.total }}</span>
+                    }
+                  </div>
+                }
+              }
+              @if (r.journey.length) {
+                <div class="rp-h"><span class="n"></span><b>{{ r.kind === 'surveillance' ? 'THIS SURVEILLANCE' : 'ASSESSMENT JOURNEY' }}</b></div>
+                <table class="rp-kv">
+                  @for (j of r.journey; track $index) { <tr><td>{{ j.label }}</td><td>{{ j.value }}</td></tr> }
+                </table>
+              }
+            </div>
+            <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Summary' }" />
+          </section>
+        } @else {
+          <!-- ====================================================== milestone overview -->
+          <section class="rp-sheet" id="rp-overview">
+            <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+            <div class="rp-body">
+              <div class="rp-h"><span class="n"></span><b>OVERVIEW</b></div>
+              @if (r.result; as res) {
+                <div [class]="'rp-result rp-r-' + res.tone">
+                  @if (r.milestone?.existing) {
+                    <div [class]="medal(r.milestone!.existing) + ' rp-medal-xs'">{{ r.milestone!.existing | uppercase }}</div>
+                    <span class="rp-arrow" aria-hidden="true">→</span>
+                  }
+                  <div [class]="medal(r.level) + ' rp-medal-xs'">{{ r.levelName | uppercase }}</div>
+                  <div><b>{{ res.heading }}</b>{{ res.detail }}</div>
+                </div>
+              }
+              <div class="rp-facts">
+                @for (f of r.facts; track $index) {
+                  <div [class]="'rp-fact rp-f-' + (f.tone || 'n')"><b>{{ f.value }}</b><small>{{ f.label }}</small></div>
+                }
+              </div>
+              <div class="rp-h"><span class="n"></span><b>MILESTONES</b></div>
+              <table class="rp-kv">
+                @for (s of r.milestone?.steps ?? []; track s.number) {
+                  <tr><td>{{ s.name }}</td><td><span [class]="'rp-chip rp-c-' + s.tone">{{ s.status }}</span> {{ s.date }}</td></tr>
+                }
+              </table>
+            </div>
+            <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Overview' }" />
+          </section>
+
+          @if (r.milestone; as m) {
+            @if (m.gaps.length || m.progress) {
+              <section class="rp-sheet" id="rp-plan">
+                <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+                <div class="rp-body">
+                  @if (m.number === 1) {
+                    <div class="rp-h"><span class="n"></span><b>GAPS AND PLAN</b></div>
+                    <table class="rp-t">
+                      <thead><tr><th class="rp-w-code">Code</th><th>Gap identified</th><th>Planned activity</th><th class="rp-w-days">Days</th></tr></thead>
+                      <tbody>
+                        @for (g of m.gaps; track $index) {
+                          <tr>
+                            <td class="rp-code">{{ g.code }}</td>
+                            <td>
+                              <div class="rp-req">{{ g.requirement }}</div>
+                              @if (g.conformance) { <div class="rp-opts">Conformance: {{ g.conformance }}</div> }
+                              @for (x of g.gaps; track $index) { <div>• {{ x }}</div> }
+                            </td>
+                            <td>
+                              @for (x of g.plan; track $index) { <div>• {{ x }}</div> }
+                              @if (g.technology.length || g.rationale) {
+                                <div class="rp-remark">Technology: {{ g.technology.join('; ') }}@if (g.technology.length && g.rationale) {. }{{ g.rationale }}</div>
+                              }
+                            </td>
+                            <td>{{ g.days }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else if (m.progress; as p) {
+                    <div class="rp-h"><span class="n"></span><b>PROGRESS AGAINST THE PLAN</b></div>
+                    <div class="rp-secrow rp-secrow-wide">
+                      <span>Activities completed</span>
+                      <div class="rp-bar"><i class="rp-g" [style.width.%]="width(p.completed, p.total)"></i></div>
+                      <span>{{ p.completed }} / {{ p.total }}</span>
+                    </div>
+                    <table class="rp-t rp-mt8">
+                      <thead><tr><th class="rp-w-code">Code</th><th>Requirement</th><th class="rp-w-res">Completed</th><th>Consultant remark</th></tr></thead>
+                      <tbody>
+                        @for (i of p.items; track $index) {
+                          <tr>
+                            <td class="rp-code">{{ i.code }}</td>
+                            <td>{{ i.requirement }}</td>
+                            <td><span [class]="'rp-chip rp-c-' + i.tone">{{ i.completed || '—' }}</span></td>
+                            <td>{{ i.remarks }}@if (i.date) { <div class="rp-opts">{{ i.date }}</div> }</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+                </div>
+                <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: m.number === 1 ? 'Gaps and plan' : 'Progress' }" />
+              </section>
+            }
+          }
+        }
+
+        <!-- ====================================================== unit details -->
+        <section class="rp-sheet" id="rp-unit">
+          <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+          <div class="rp-body">
+            <div class="rp-h"><span class="n"></span><b>UNIT DETAILS</b></div>
+            @if (r.unit; as u) {
+              <table class="rp-kv">
+                <tr><td>Unit name</td><td><b>{{ u.name }}</b></td></tr>
+                @if (u.udyam) { <tr><td>Udyam registration</td><td>{{ u.udyam }}</td></tr> }
+                @if (u.enterpriseType || u.nic) { <tr><td>Enterprise type · NIC</td><td>{{ u.enterpriseType }}@if (u.enterpriseType && u.nic) { · }{{ u.nic }}</td></tr> }
+                @if (u.address) { <tr><td>Address</td><td>{{ u.address }}</td></tr> }
+              </table>
+              @if (u.mapImage) {
+                <img class="rp-map-img" [src]="api(u.mapImage)" alt="Map of the unit's location" />
+              } @else if (u.latitude && u.longitude) {
+                <div class="rp-map" aria-hidden="true"><span>📍</span></div>
+              }
+              @if (u.latitude && u.longitude) {
+                <div class="rp-coords">
+                  Latitude {{ u.latitude }}, longitude {{ u.longitude }} · recorded with the assessment photos
+                  @if (mapLink(r); as link) { <a class="rp-screen" [href]="link" target="_blank" rel="noopener">Open in a map</a> }
+                </div>
+              }
+            }
+            @if (r.sitePhotos.length) {
+              <div class="rp-h"><span class="n"></span><b>SITE PHOTOS</b></div>
+              <div class="rp-photos">
+                @for (p of r.sitePhotos; track $index) {
+                  <figure class="rp-ph"><img [src]="api(p.url)" [alt]="p.caption || 'Site photo'" loading="eager" />@if (p.caption) { <span>{{ p.caption }}</span> }</figure>
+                }
+              </div>
+            }
+            @if (r.products.length) {
+              <div class="rp-h"><span class="n"></span><b>PRODUCTS</b></div>
+              <ng-container *ngTemplateOutlet="products; context: { $implicit: r.products, verified: 'Verified' }" />
+            }
+            @if (r.unitInfo.length) {
+              <div class="rp-h"><span class="n"></span><b>CUSTOMERS, RAW MATERIALS, ENERGY</b></div>
+              <table class="rp-kv">
+                @for (i of r.unitInfo; track $index) { <tr><td>{{ i.label }}</td><td>{{ i.value }}</td></tr> }
+              </table>
+              @if (r.rawMaterials.length) {
+                <table class="rp-t rp-mt8">
+                  <thead><tr><th>Imported raw material</th><th>% imported</th><th>Country</th></tr></thead>
+                  <tbody>
+                    @for (m of r.rawMaterials; track $index) { <tr><td>{{ m.name }}</td><td>{{ m.percentage }}</td><td>{{ m.country }}</td></tr> }
+                  </tbody>
+                </table>
+              }
+            }
+          </div>
+          <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Unit details' }" />
+        </section>
+
+        @if (r.findings.length) {
+          <!-- ====================================================== findings -->
+          <section class="rp-sheet" id="rp-findings">
+            <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+            <div class="rp-body">
+              @for (s of r.findings; track $index) {
+                <div class="rp-h"><span class="n"></span><b>{{ r.kind === 'surveillance' ? 'SURVEILLANCE FINDINGS' : 'ASSESSMENT FINDINGS' }} · {{ s.name | uppercase }}</b></div>
+                <table class="rp-t">
+                  <thead><tr><th class="rp-w-code">Code</th><th>Requirement and checkpoints</th><th class="rp-w-res">Result</th></tr></thead>
+                  <tbody>
+                    @if (s.exempted) {
+                      <tr><td class="rp-code">{{ s.code }}</td><td>Exempted from assessment</td><td><span class="rp-chip rp-c-x">Exempted</span></td></tr>
+                    }
+                    @for (q of s.requirements; track $index) {
+                      <tr>
+                        <td class="rp-code">{{ q.code }}</td>
+                        <td>
+                          @if (q.name) { <div class="rp-req">{{ q.name }}</div> }
+                          @if (q.checkpoints.length) {
+                            <div class="rp-opts">
+                              @for (c of q.checkpoints; track $index) {
+                                <div [class.sel]="c.answer === 'Yes'" [class.part]="c.answer === 'Partial'" [class.no]="c.answer === 'No'">
+                                  {{ c.text }}@if (c.answer) { <em> ({{ c.answer }})</em> }
+                                  @for (so of c.subOptions; track $index) { <div class="rp-sub">• {{ so }}</div> }
+                                </div>
+                              }
+                            </div>
+                          }
+                          @if (q.remarks) { <div class="rp-remark">Assessor: {{ q.remarks }}</div> }
+                        </td>
+                        <td><span [class]="'rp-chip rp-c-' + q.tone">{{ q.result }}</span></td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                @if (s.ofi) {
+                  <div class="rp-ofi"><b>Opportunities for improvement</b><div class="rp-remark">{{ s.ofi }}</div></div>
+                }
+              }
+            </div>
+            <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Findings' }" />
+          </section>
+        }
+
+        @if (r.ncRounds.length) {
+          <!-- ====================================================== non-conformances -->
+          <section class="rp-sheet" id="rp-nc">
+            <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+            <div class="rp-body">
+              <div class="rp-h"><span class="n"></span><b>NON-CONFORMANCES</b></div>
+              @for (n of r.ncRounds; track n.round) {
+                <div class="rp-ncround">
+                  <div class="rp-hd"><span>NC round {{ n.round }}</span><span>{{ n.items.length }} {{ n.items.length === 1 ? 'requirement' : 'requirements' }}</span></div>
+                  @if (n.items.length) {
+                    <table class="rp-t">
+                      <thead><tr><th class="rp-w-code">Code</th><th>Requirement</th><th>Assessor's remark</th><th class="rp-w-res">Status</th></tr></thead>
+                      <tbody>
+                        @for (i of n.items; track $index) {
+                          <tr><td class="rp-code">{{ i.code }}</td><td>{{ i.requirement }}</td><td>{{ i.remarks }}</td><td><span [class]="'rp-chip rp-c-' + i.tone">{{ i.status }}</span></td></tr>
+                        }
+                      </tbody>
+                    </table>
+                  }
+                  @if (n.products.length) {
+                    <div class="rp-pad"><ng-container *ngTemplateOutlet="products; context: { $implicit: n.products, verified: 'Verified' }" /></div>
+                  }
+                </div>
+              }
+              @if (r.ncClosed) {
+                <div class="rp-ncround"><div class="rp-hd rp-ok"><span>All non-conformances closed</span><span aria-hidden="true">✓</span></div></div>
+              }
+            </div>
+            <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Non-conformances' }" />
+          </section>
+        }
+
+        @if (r.milestone?.meetings?.length) {
+          <!-- ====================================================== meetings -->
+          <section class="rp-sheet" id="rp-meetings">
+            <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+            <div class="rp-body">
+              <div class="rp-h"><span class="n"></span><b>OPENING AND CLOSING MEETINGS</b></div>
+              <div class="rp-meetings">
+                @for (m of r.milestone!.meetings; track m.title) {
+                  <div class="rp-meeting">
+                    @if (m.photo) {
+                      <figure class="rp-ph"><img [src]="api(m.photo)" [alt]="m.title" /><span>{{ m.title }} · {{ m.participants.length }} participants</span></figure>
+                    } @else {
+                      <b>{{ m.title }} · {{ m.participants.length }} participants</b>
+                    }
+                    @if (m.remark) { <div class="rp-remark">Consultant: {{ m.remark }}</div> }
+                    @if (m.participants.length) {
+                      <ul class="rp-people">
+                        @for (p of m.participants; track $index) { <li>{{ p.label }}@if (p.value) { <span>, {{ p.value }}</span> }</li> }
+                      </ul>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+            <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Meetings' }" />
+          </section>
+        }
+
+        <!-- ====================================================== way forward -->
+        <section class="rp-sheet" id="rp-way">
+          <ng-container *ngTemplateOutlet="head; context: { $implicit: r }" />
+          <div class="rp-body">
+            @if (r.wayForward.length) {
+              <div class="rp-h"><span class="n"></span><b>WAY FORWARD</b></div>
+              <div class="rp-wf"><ul>@for (w of r.wayForward; track $index) { <li>{{ w }}</li> }</ul></div>
+            }
+            @if (r.verify; as v) {
+              <div class="rp-verify">
+                <img class="rp-qr" [src]="v.qrImage" alt="QR code of the verification page" />
+                <div>
+                  <b>Verify this report</b><br />
+                  <span class="rp-muted">Scan to open the ZED verification page for {{ r.zedId }}. This report is generated from the ZED portal and needs no signature.</span>
+                  <div class="rp-muted rp-small">{{ v.url }}</div>
+                </div>
+              </div>
+            } @else if (r.draft) {
+              <div class="rp-verify"><div><b>DRAFT</b><br /><span class="rp-muted">Not final: the report is complete after the final submit.</span></div></div>
+            }
+            @if (r.disclaimer.length) {
+              <div class="rp-h"><span class="n"></span><b>DISCLAIMER</b></div>
+              <ol class="rp-disclaimer">@for (d of r.disclaimer; track $index) { <li>{{ d }}</li> }</ol>
+            }
+          </div>
+          <ng-container *ngTemplateOutlet="foot; context: { $implicit: r, part: 'Way forward' }" />
+        </section>
+      </main>
+    }
+  }
+</div>
+
+<ng-template #head let-r>
+  <div class="rp-shead">
+    <img class="rp-logo-img rp-logo-sm" src="Images/header/zed-logo.png" alt="ZED" />
+    <div class="rp-rt"><b>{{ r.title }}</b><small>{{ subtitle() }}</small></div>
+  </div>
+  <div class="rp-rule"></div>
+</ng-template>
+
+<ng-template #foot let-r let-part="part">
+  <div class="rp-sfoot"><span>{{ r.footer }}</span><span>{{ part }}</span></div>
+</ng-template>
+
+<ng-template #products let-list let-verified="verified">
+  <table class="rp-t">
+    <thead><tr><th>Product</th><th>Exported</th><th>Photo</th><th>{{ verified }}</th><th>Assessor's remark</th></tr></thead>
+    <tbody>
+      @for (p of list; track $index) {
+        <tr>
+          <td>{{ p.name }}@if (p.descriptionNote) { <div class="rp-opts">Description: {{ p.descriptionNote }}</div> }</td>
+          <td>{{ p.exported }}</td>
+          <td>
+            @if (p.photo) { <img class="rp-thumb" [src]="api(p.photo)" [alt]="p.name" /> }
+            @if (p.descriptionPhoto) { <img class="rp-thumb" [src]="api(p.descriptionPhoto)" [alt]="'Description of ' + p.name" /> }
+          </td>
+          <td>@if (p.verified) { <span [class]="'rp-chip rp-c-' + p.tone">{{ p.verified }}</span> }</td>
+          <td>{{ p.remarks }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</ng-template>

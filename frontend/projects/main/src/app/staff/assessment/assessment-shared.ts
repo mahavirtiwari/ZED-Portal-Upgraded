@@ -3,7 +3,8 @@ import { CanActivateFn, Router } from '@angular/router';
 import { AuthService, ClientConfigService } from '@zed/shared';
 import { PORTAL_SYSTEM, PortalSystem } from '../../portal-system';
 import { Row } from './assessment.api';
-import { withApiBase } from '../../api-base';
+import { apiBasePath, withApiBase } from '../../api-base';
+import { ReportKind, reportRoute } from '../../report/report.api';
 import { onStates } from '../../msme/shared/states';
 
 /**
@@ -12,9 +13,17 @@ import { onStates } from '../../msme/shared/states';
  */
 export const ASSESSMENT_SYSTEM = new InjectionToken<PortalSystem>('ASSESSMENT_SYSTEM', { factory: () => PORTAL_SYSTEM });
 
-/** Milestone report of a handholding unit (served by the certification documents API). */
+/**
+ * The report page of a record (2026-11-15: built from the live data, with Print and Download PDF), under this portal's base
+ * (/Consultancy/, /surveillance/), for a new tab. An earlier milestone stored as a PDF opens from that page.
+ */
+export function reportPageHref(kind: ReportKind, zedId: string, certification: string, milestone?: number): string {
+  return apiBasePath() + reportRoute({ kind, level: certification, zedId, milestone });
+}
+
+/** Milestone report page of a handholding unit. */
 export function milestoneReportUrl(zedId: string, certification: string, milestone: number): string {
-  return withApiBase(`/api/staff/certification-documents/${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}/report?milestone=${milestone}`);
+  return reportPageHref('milestone', zedId, certification, milestone);
 }
 
 /** State filter of the old list pages (LG state codes): the LG Directory masters (2026-11-08). */

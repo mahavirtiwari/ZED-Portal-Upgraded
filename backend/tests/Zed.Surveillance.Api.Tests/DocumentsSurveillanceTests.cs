@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
 using Zed.Main.Api.Tests;
@@ -159,7 +160,8 @@ public sealed class DocumentsSurveillanceTests : IDisposable
         await Pdf(await admin.GetAsync($"/api/staff/certification-documents/{Me}/Bronze/certificate"), "Bronze.pdf");
         Assert.Single(_host.Sql.Calls, c => c.Name == "SP_DA_GET_CERTIFICATE_DETAILS");
         await Pdf(await admin.GetAsync($"/api/staff/certification-documents/{Me}/GoldSurveillance/report"), "Gold_Report.pdf");
-        Assert.True(File.Exists(Stored($"Surveillance/PDFs/SA/{Me}/Gold_Report.pdf")));
+        // 2026-11-15: the report is a page; the PDF is drawn when asked for and not stored.
+        Assert.False(File.Exists(Stored($"Surveillance/PDFs/SA/{Me}/Gold_Report.pdf")));
         Assert.Equal(HttpStatusCode.NotFound, (await admin.GetAsync($"/api/staff/certification-documents/{Other}/Silver/report")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report?milestone=1")).StatusCode);
 
@@ -171,5 +173,33 @@ public sealed class DocumentsSurveillanceTests : IDisposable
 
         var state = await SignIn("STATE1");
         Assert.Equal(HttpStatusCode.Forbidden, (await state.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Staff_open_the_surveillance_report_page_and_a_draft_before_the_final_submit()
+    {
+        var admin = await SignIn("ADMIN1");
+        var page = await admin.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Me}/GoldSurveillance/report/page");
+        Assert.Equal("surveillance", page.GetProperty("kind").GetString());
+        Assert.Equal("Surveillance Assessment Report", page.GetProperty("title").GetString());
+        Assert.False(page.GetProperty("draft").GetBoolean());
+        Assert.Equal("Surveillance 2 completed on October 20, 2025", page.GetProperty("result").GetProperty("heading").GetString());
+        Assert.Equal("Certificate 21102026_1234", page.GetProperty("result").GetProperty("detail").GetString());
+        Assert.Equal("Round 2", page.GetProperty("facts")[3].GetProperty("value").GetString());
+        // No Opportunities for Improvement in surveillance; the QR code of main's certificate.
+        Assert.Equal(JsonValueKind.Null, page.GetProperty("findings")[0].GetProperty("ofi").ValueKind);
+        Assert.EndsWith("/Verify/GC/P12abcd", page.GetProperty("verify").GetProperty("url").GetString());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_VERIFY_QR_CODE");
+        Assert.False(File.Exists(Stored($"Surveillance/PDFs/SA/{Me}/Gold_Report.pdf")));
+
+        // Silver of the other unit is at status 9: a DRAFT for the staff who may see it.
+        var draft = await admin.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Other}/Silver/report/page");
+        Assert.True(draft.GetProperty("draft").GetBoolean());
+        Assert.Equal(JsonValueKind.Null, draft.GetProperty("verify").ValueKind);
+        var agency = await SignIn("AGENCY1");
+        Assert.Equal(HttpStatusCode.NotFound, (await agency.GetAsync($"/api/staff/certification-documents/{Other}/Silver/report/page")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await admin.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page?milestone=1")).StatusCode);
+        var anonymous = await _host.CreateBrowserAsync();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync($"/api/staff/certification-documents/{Me}/Gold/report/page")).StatusCode);
     }
 }

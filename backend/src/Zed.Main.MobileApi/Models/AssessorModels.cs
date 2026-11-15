@@ -586,6 +586,11 @@ public sealed class SaReport
     public bool reportAvailable { get; set; }
     /// <summary>Address of the PDF relative to the deployment's portal (GET with the app token), or null.</summary>
     public string? reportPath { get; set; }
+    /// <summary>
+    /// 2026-11-15: address (relative to the portal, GET with the app token) answering the report page's signed link, which the
+    /// app opens in the browser instead of downloading the PDF; null when no report.
+    /// </summary>
+    public string? reportLinkPath { get; set; }
 }
 
 public sealed class SaReportsResponse : ServiceResponse

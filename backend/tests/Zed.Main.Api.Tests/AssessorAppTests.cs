@@ -98,6 +98,36 @@ public sealed class AssessorAppTests : IDisposable
         Assert.Empty(_reports.Drawn);
     }
 
+    // ----- the report page's signed link (2026-11-15)
+
+    private async Task<HttpResponseMessage> Link(string zedId, string level, string? token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/SA/AppReportLink?zedId={Uri.EscapeDataString(zedId)}&certificationType={level}");
+        if (token is not null) request.Headers.Add(AppTokens.Header, token);
+        return await _app.CreateClient().SendAsync(request);
+    }
+
+    [Fact]
+    public async Task The_app_gets_a_signed_link_to_the_report_page_instead_of_the_pdf()
+    {
+        var lead = await Token(MobileApps.SiteAssessor, Lead);
+        var r = await Link("ZEDMSME000004", "gold", lead);
+        Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+        var json = JsonDocument.Parse(await r.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("1", json.GetProperty("status").GetString());
+        var url = json.GetProperty("url").GetString()!;
+        Assert.Contains("/report/link?t=", url);
+        var target = _app.Services.GetRequiredService<ReportLinks>().ReadLink(Uri.UnescapeDataString(url.Split("?t=")[1]));
+        Assert.Equal(new ReportLinkTarget(ReportLinks.Assessment, "ZEDMSME000004", "Gold", null), target);
+        Assert.Empty(_reports.Drawn);
+
+        // As the PDF: not the assessor's record, before the report, without a genuine token.
+        Assert.Equal(HttpStatusCode.NotFound, (await Link("ZEDMSME000004", "Gold", await Token(MobileApps.SiteAssessor, Other))).StatusCode);
+        Assert.Equal("0", JsonDocument.Parse(await (await Link("ZEDMSME000007", "Gold", lead)).Content.ReadAsStringAsync()).RootElement.GetProperty("status").GetString());
+        Assert.Equal(HttpStatusCode.Unauthorized, (await Link("ZEDMSME000004", "Gold", "h1.forged.token")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await Link("ZEDMSME000004", "Bronze", lead)).StatusCode);
+    }
+
     // ----- Forgot password
 
     private FakeStaffResets Resets()

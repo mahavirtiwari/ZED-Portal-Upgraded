@@ -64,6 +64,8 @@ describe('DocumentsPage', () => {
       // The pledge certificate page (drawn when opened, never stored).
       { text: 'Pledge Certificate', href: '/msme/pledge-certificate', target: '_blank' },
       { text: 'Silver Certificate', href: '/api/msme/files/Certificates/SA/ZEDMSME000001/Silver.pdf', target: '_blank' },
+      // 2026-11-15: the level's report page beside its certificate.
+      { text: 'Silver Assessment Report', href: '/msme/report/assessment/Silver', target: '_blank' },
       { text: 'HANDHOLDING - Silver milestone 2 Invoice', href: '/api/msme/files/ReceiptInvoice/I1_ZEDMSME000001_Invoice.pdf', target: '_blank' },
       { text: 'ZED - Bronze Assessment Receipt', href: null, target: null },
       // 2026-11-14 (approved design): the guidelines last.

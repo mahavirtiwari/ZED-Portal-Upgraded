@@ -48,6 +48,38 @@ public sealed partial class ReportPhotos(string storageRoot, string recordZedId)
         return null;
     }
 
+    /// <summary>
+    /// The report page's photos (2026-11-15): the record-folder path of the first candidate whose file exists (to be served by
+    /// <see cref="Open"/>), else null. The same candidates and rules as <see cref="Load"/>, without decoding the picture.
+    /// </summary>
+    public string? Locate(IEnumerable<string?> candidates)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (string.IsNullOrWhiteSpace(candidate)) continue;
+            var value = candidate.Contains("this.src", StringComparison.Ordinal) && UrlInScript().Match(candidate) is { Success: true } m
+                ? m.Groups[1].Value
+                : candidate;
+            if (Relative(value) is { } relative && FullPath(relative) is not null) return relative;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// The file of a path <see cref="Locate"/> gave, checked again (a photo store, the record's own folder, inside the storage
+    /// root), else null.
+    /// </summary>
+    public static string? Open(string storageRoot, string recordZedId, string relative)
+    {
+        var photos = new ReportPhotos(storageRoot, recordZedId);
+        return photos.Relative(relative) is { } checkedPath ? photos.FullPath(checkedPath) : null;
+    }
+
+    private string? FullPath(string relative) =>
+        StorageCandidates(relative)
+            .Select(c => MsmeFilePaths.Resolve(storageRoot, c))
+            .FirstOrDefault(p => p is not null && File.Exists(p));
+
     private string? Relative(string value)
     {
         var path = MsmeFilePaths.FromLegacy(value);
@@ -90,13 +122,7 @@ public sealed partial class ReportPhotos(string storageRoot, string recordZedId)
         return [relative, string.Join('/', moved)];
     }
 
-    private SKImage? Read(string relative)
-    {
-        var full = StorageCandidates(relative)
-            .Select(c => MsmeFilePaths.Resolve(storageRoot, c))
-            .FirstOrDefault(p => p is not null && File.Exists(p));
-        return full is null ? null : Downscale(full);
-    }
+    private SKImage? Read(string relative) => FullPath(relative) is { } full ? Downscale(full) : null;
 
     /// <summary>Decodes (at a reduced size where the codec allows), applies the EXIF orientation and re-encodes as JPEG.</summary>
     public static SKImage? Downscale(string path, int maxPixels = MaxPixels)

@@ -181,10 +181,11 @@ describe('assessment pages per system', () => {
     expect(el.textContent).toContain('Consultancy Completed');
     const rows = el.querySelectorAll('tbody tr');
     const links = (i: number) => [...rows[i].querySelectorAll('a')].map((a) => a.getAttribute('href'));
-    expect(links(0)).toContain('/api/staff/certification-documents/ZEDMSME000001/Silver/report?milestone=3');
+    // 2026-11-15: the report pages (an earlier milestone stored as a PDF opens from there).
+    expect(links(0)).toContain('/staff/report/milestone/Silver/ZEDMSME000001?milestone=3');
     expect(links(0)).toContain('/staff/consultancy/technology/ZEDMSME000001/Silver');
-    expect(links(1)).toContain('/api/staff/certification-documents/ZEDMSME000002/Gold/report?milestone=1');
-    expect(links(1).filter((h) => h?.includes('report?milestone')).length).toBe(1);
+    expect(links(1)).toContain('/staff/report/milestone/Gold/ZEDMSME000002?milestone=1');
+    expect(links(1).filter((h) => h?.includes('/staff/report/milestone/')).length).toBe(1);
     expect(rows[1].textContent).not.toContain('Recommended Technologies');
   });
 

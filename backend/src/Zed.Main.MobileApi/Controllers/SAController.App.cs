@@ -497,6 +497,10 @@ public static class SaAppData
     public static string ReportPath(string zedId, string level) =>
         $"SA/AppReport?zedId={Uri.EscapeDataString(zedId)}&certificationType={Uri.EscapeDataString(level)}";
 
+    /// <summary>2026-11-15: address of the report page's signed link on the portal (AssessorAppController.AppReportLink).</summary>
+    public static string ReportLinkPath(string zedId, string level) =>
+        $"SA/AppReportLink?zedId={Uri.EscapeDataString(zedId)}&certificationType={Uri.EscapeDataString(level)}";
+
     public static SaReport Report(AssessmentRow r, string saId)
     {
         var (stage, label) = StageOf(r);
@@ -520,6 +524,7 @@ public static class SaAppData
             team = Team(r),
             reportAvailable = available,
             reportPath = available ? ReportPath(r.ZedId!.Trim(), r.Certification!.Trim()) : null,
+            reportLinkPath = available ? ReportLinkPath(r.ZedId!.Trim(), r.Certification!.Trim()) : null,
         };
     }
 

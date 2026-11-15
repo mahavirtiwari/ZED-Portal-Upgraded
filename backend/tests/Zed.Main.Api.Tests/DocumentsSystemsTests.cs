@@ -190,7 +190,8 @@ public sealed class DocumentsSystemsTests : IDisposable
         Assert.Equal(Me, FakeSql.Arg(call, "ZedId"));
         Assert.Equal("Bronze", FakeSql.Arg(call, "Certification"));
         Assert.Empty(CallsTo(_host.Sql, "SP_REPORT_GET_DETAILS"));
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(Stored($"Surveillance/PDFs/SA/{Me}/Bronze_Report.pdf")));
+        // 2026-11-15: not stored (the report is a page).
+        Assert.False(File.Exists(Stored($"Surveillance/PDFs/SA/{Me}/Bronze_Report.pdf")));
         Assert.False(File.Exists(Stored($"PDFs/SA/{Me}/Bronze_Report.pdf")));
         Assert.InRange(bytes.Length, 100_000, 2_000_000);
 
@@ -241,7 +242,7 @@ public sealed class DocumentsSystemsTests : IDisposable
     }
 
     [Fact]
-    public async Task Current_milestone_report_is_drawn_from_ZED_CONSULTANT_and_stored_under_its_legacy_name()
+    public async Task Current_milestone_report_is_drawn_from_ZED_CONSULTANT_under_its_legacy_name_and_not_stored()
     {
         var client = await SignIn(_factory, Me);
         var bytes = await Pdf(await client.GetAsync("/api/msme/certification-documents/Silver/report?milestone=2"), "Silver_Report_PR1.pdf");
@@ -249,12 +250,13 @@ public sealed class DocumentsSystemsTests : IDisposable
         var call = Assert.Single(CallsTo(_consultancy, "SP_REPORT_GET_DETAILS"));
         Assert.Equal("2", FakeSql.Arg(call, "NcCount"));
         Assert.Equal(Me, FakeSql.Arg(call, "ZedId"));
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf")));
+        Assert.False(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf")));
         Assert.InRange(bytes.Length, 50_000, 2_000_000);
 
         // Milestone 1 is over: only its stored file. Milestone 3 has not started. Gold is not a handholding of this unit.
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/certification-documents/Silver/report?milestone=1")).StatusCode);
         var stored = Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(stored)!);
         await File.WriteAllTextAsync(stored, "%PDF-1.4 milestone 1");
         Assert.Equal("%PDF-1.4 milestone 1", System.Text.Encoding.ASCII.GetString(await Pdf(await client.GetAsync("/api/msme/certification-documents/Silver/report?milestone=1"), "Silver_Report.pdf")));
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/msme/certification-documents/Silver/report?milestone=3")).StatusCode);
@@ -277,7 +279,8 @@ public sealed class DocumentsSystemsTests : IDisposable
         SystemDocumentsTestData.Consultancy(_consultancy, nc: 1, status: 99);
         var client = await SignIn(_factory, Me);
         await Pdf(await client.GetAsync("/api/msme/certification-documents/Silver/report?milestone=1"), "Silver_Reject_Report.pdf");
-        Assert.True(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Reject_Report.pdf")));
+        // Stored only by the CO's rejection (before the rows are archived), not by a download.
+        Assert.False(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Reject_Report.pdf")));
     }
 
     [Fact]
@@ -357,7 +360,7 @@ public sealed class DocumentsSystemsTests : IDisposable
     }
 
     /// <summary>Cookie jar and XSRF echo, like TestHost.CreateBrowserAsync, for the factory with the extra services.</summary>
-    private sealed class CookieXsrfHandler : DelegatingHandler
+    internal sealed class CookieXsrfHandler : DelegatingHandler
     {
         private readonly System.Net.CookieContainer _cookies = new();
 

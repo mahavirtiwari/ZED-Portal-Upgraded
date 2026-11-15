@@ -27,28 +27,23 @@ public static class AssessmentReport
     /// <summary>The disclaimer points, with the level's validity ("3 years" for 36 months, as the old page; "18 months").</summary>
     public static string[] Disclaimer(int validityMonths) => Texts.DisclaimerFor(validityMonths);
 
-    private const int NcRounds = 5;
-
     /// <param name="validityMonths">The level's validity (Administration → Certification Levels), stated in the disclaimer.</param>
-    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos, bool surveillance = false, int validityMonths = DocumentLevels.DefaultValidityMonths)
+    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos, bool surveillance = false, int validityMonths = DocumentLevels.DefaultValidityMonths) =>
+        Render(sets, AssessmentReportData.Parse(sets, surveillance), assets, photos, validityMonths);
+
+    /// <summary>The PDF of <paramref name="data"/> (read from <paramref name="sets"/>, whose texts the fonts are subset to).</summary>
+    public static byte[] Render(ResultSets sets, AssessmentReportData data, Assets assets, ReportPhotos photos, int validityMonths = DocumentLevels.DefaultValidityMonths)
     {
-        var unit = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No report data.");
-        var zedId = unit.Text("ZedId");
-        var level = unit.Text("Certification");
-        var rejected = unit.Text("CertificationStatus") == DocumentLevels.Rejected.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        var location = sets[9].FirstOrDefault();
-        var latitude = location?.Text("Latitude") ?? "";
-        var longitude = location?.Text("Longitude") ?? "";
-        var app = surveillance ? "surveillancemobileapi" : "mobileapi";
-        var photoBase = unit.Text("PhotosPath").Length > 0 ? $"{app}/CertifiedPhotos" : $"{app}/Photos";
-        var bronze = level == "Bronze";
+        var unit = data.Unit;
+        var surveillance = data.Surveillance;
+        var rejected = unit.Rejected;
 
         // Fonts are subset to the characters of the data (fixed texts are covered by FontSubsetter.BasicCharacters).
         var characters = Enumerable.Range(0, sets.Count).SelectMany(i => sets[i]).SelectMany(r => r.Values)
             .OfType<string>().SelectMany(v => v);
-        using var pdf = new ReportPdf(zedId + (surveillance ? "/SURVEILLANCE ASSESSMENT REPORT" : "/ASSESSMENT REPORT"), assets.Header, characters);
+        using var pdf = new ReportPdf(unit.ZedId + (surveillance ? "/SURVEILLANCE ASSESSMENT REPORT" : "/ASSESSMENT REPORT"), assets.Header, characters);
 
-        Cover(pdf, assets, unit.Text("PUnitName"), $"{unit.Text("PDistrictName")}, {unit.Text("PStateName")}", latitude, longitude);
+        Cover(pdf, assets, unit.Name, unit.Place, data.Latitude, data.Longitude);
 
         // ----- about, disclaimer, summary
         pdf.NewPage();
@@ -69,14 +64,14 @@ public static class AssessmentReport
         pdf.Ensure(assets.Map is null ? 230 : 520);
         pdf.Panel(surveillance ? "SURVEILLANCE ASSESSMENT SUMMARY" : "ASSESSMENT SUMMARY");
         pdf.Table(new TableSpec(1.1f, 2f) { LabelColumn = true, FontSize = 9 }
-            .Row(Cell.Of("Unit Name"), Cell.Of(unit.Text("PUnitName")))
+            .Row(Cell.Of("Unit Name"), Cell.Of(unit.Name))
             .Row(Cell.Of("Udyam Registration Number"), Cell.Of(unit.Text("UdyogAadharNo")))
             .Row(Cell.Of("Enterprise Type"), Cell.Of(unit.Text("EnterpriseTypee")))
             .Row(Cell.Of("NIC Sector (2 Digit)"), Cell.Of(unit.Text("TwoDigitActivity")))
             .Row(Cell.Of("Unit Address"), Cell.Of(unit.Text("PlantAddress")))
-            .Row(Cell.Of(DateLabel(unit, bronze, rejected, surveillance)), Cell.Of(unit.Text("AssessmentDate"))));
+            .Row(Cell.Of(data.DateLabel), Cell.Of(unit.Text("AssessmentDate"))));
         pdf.Ensure(assets.Map is null ? 40 : 300);
-        pdf.Panel($"Latitude: {latitude}: Longitude: {longitude}");
+        pdf.Panel($"Latitude: {data.Latitude}: Longitude: {data.Longitude}");
         if (assets.Map is not null) pdf.Image(assets.Map, Math.Min(pdf.ContentWidth, 420));
 
         // ----- certification level and basic information
@@ -92,10 +87,7 @@ public static class AssessmentReport
 
         pdf.Panel("BASIC INFORMATION");
         pdf.Paragraph(Texts.BasicInformation, 9.5f);
-        var exterior = sets[8].Select(p => bronze
-                ? photos.Load($"{photoBase}/{p.Text("ZedId")}/{p.Text("Certification")}/SiteExteriorPhotos/{p.Text("PhotoId")}.{p.Text("PhotoExtension")}", p.Text("OldPath"))
-                : photos.Load(p.Text("Photo"), p.Text("OldPath")))
-            .OfType<SKImage>().ToList();
+        var exterior = data.SitePhotos.Select(p => photos.Load([.. p.Candidates])).OfType<SKImage>().ToList();
         pdf.Gallery(exterior, "Site Exterior Picture");
 
         var basic = new TableSpec(0.45f, 2.2f, 3f) { Header = [Cell.Of("S.No"), Cell.Of("Fields"), Cell.Of("Input")] };
@@ -103,7 +95,7 @@ public static class AssessmentReport
         basic.Row(Cell.Of("2"), Cell.Of("Product manufactured"), Cell.Of(""));
         pdf.Table(basic, repeatHeader: true);
         pdf.Space(-8);
-        pdf.Table(Products(sets[1], level, photoBase, photos, "Conformance", app));
+        pdf.Table(Products(data.Products, photos, "Conformance"));
 
         var rest = new TableSpec(0.45f, 2.2f, 3f);
         rest.Row(Cell.Of("3"), Cell.Of("Key Domestic Customers"), Cell.Of(unit.Text("DomesticCustomers")));
@@ -111,11 +103,11 @@ public static class AssessmentReport
         rest.Row(Cell.Of("5"), Cell.Of("Whether Raw Material is Imported?"), Cell.Of(unit.Text("RawMaterialImported")));
         pdf.Space(-8);
         pdf.Table(rest);
-        if (sets[2].Count > 0)
+        if (data.RawMaterials.Count > 0)
         {
             pdf.Space(-8);
             var raw = new TableSpec(2f, 1.2f, 1.4f) { Header = [Cell.Of("Raw Material Name"), Cell.Of("% of Raw Material Imported"), Cell.Of("Name of Country")] };
-            foreach (var r in sets[2]) raw.Row(Cell.Of(r.Text("RawMaterialName")), Cell.Of(r.Text("Percentage")), Cell.Of(r.Text("CountryName")));
+            foreach (var r in data.RawMaterials) raw.Row(Cell.Of(r.Name), Cell.Of(r.Percentage), Cell.Of(r.Country));
             pdf.Table(raw);
         }
         var last = new TableSpec(0.45f, 2.2f, 3f);
@@ -127,19 +119,17 @@ public static class AssessmentReport
         // ----- findings
         pdf.Panel(surveillance ? "SURVEILLANCE ASSESSMENT FINDINGS" : "ASSESSMENT FINDINGS");
         pdf.Paragraph(Texts.Findings, 9.5f);
-        Sections(pdf, sets[3], sets[4], sets[5], sets[6], ofi: !bronze && !surveillance, exemptions: true);
+        Sections(pdf, data.Sections, ofi: data.Ofi);
 
-        for (var n = 1; n <= NcRounds; n++)
+        foreach (var round in data.NcRounds)
         {
-            var b = 10 + 7 * (n - 1);
-            if (sets[b].Count == 0 && sets[b + 1].Count == 0) continue;
-            pdf.Panel($"Non Conformance {n}");
-            if (sets[b].Count > 0)
+            pdf.Panel($"Non Conformance {round.Round}");
+            if (round.Products.Count > 0)
             {
                 pdf.Heading("Product Manufactured");
-                pdf.Table(Products(sets[b], level, photoBase, photos, "Verified", app, ncRound: true));
+                pdf.Table(Products(round.Products, photos, "Verified"));
             }
-            Sections(pdf, sets[b + 1], sets[b + 2], sets[b + 3], sets[b + 4], ofi: false, exemptions: false);
+            Sections(pdf, round.Sections, ofi: false);
         }
 
         // ----- way forward and closing page
@@ -154,13 +144,6 @@ public static class AssessmentReport
         pdf.ImagePage(assets.LastPage);
         return pdf.Finish();
     }
-
-    /// <summary>Last row of the summary table.</summary>
-    private static string DateLabel(IDictionary<string, object?> unit, bool bronze, bool rejected, bool surveillance) =>
-        !surveillance ? (rejected ? "Rejected Date" : "Certification Date")
-        : bronze ? (rejected ? "SURVEILLANCE REJECTED ON" : "Surveillance Completed on")
-        : rejected ? "SURVEILLANCE 1 REJECTED ON"
-        : $"Surveillance {unit.Text("SurveillanceNo")} Completed on".Replace("  ", " ");
 
     internal static void Cover(ReportPdf pdf, Assets assets, string unitName, string place, string latitude, string longitude)
     {
@@ -195,10 +178,8 @@ public static class AssessmentReport
         }
     }
 
-    private static TableSpec Products(IReadOnlyList<IDictionary<string, object?>> rows, string level, string photoBase, ReportPhotos photos,
-        string verifiedHeader, string app, bool ncRound = false)
+    private static TableSpec Products(IReadOnlyList<ReportProduct> rows, ReportPhotos photos, string verifiedHeader)
     {
-        var bronze = level == "Bronze";
         var table = new TableSpec(1.6f, 0.9f, 1.2f, 1.2f, 1f, 1.8f)
         {
             Header = [Cell.Of("Product Name"), Cell.Of("Whether Exported"), Cell.Of("Product Photo"), Cell.Of("Product Description Photo"), Cell.Of(verifiedHeader), Cell.Of("Assessor Remarks")],
@@ -206,78 +187,60 @@ public static class AssessmentReport
         };
         foreach (var p in rows)
         {
-            var zed = p.Text("ZedId");
-            var cert = p.Text("Certification");
-            var store = bronze ? photoBase : $"{app}/SaPhotos";
-            string Path(string file) => $"{store}/{zed}/{cert}/BasicInfo/{file}";
-
-            var productPhoto = p.Text("ProductPhoto");
-            var photo = bronze || !ncRound
-                ? photos.Load(Path(productPhoto), p.Text("OldProductPhoto"))
-                : photos.Load(productPhoto, Path(productPhoto));
-
-            var description = p.Text("ProductDescriptionPhoto");
+            var photo = photos.Load([.. p.Photo]);
             Cell descriptionCell;
-            if (description.Contains(".pdf", StringComparison.OrdinalIgnoreCase))
-                descriptionCell = Cell.Of("PDF document (available on the portal)");
-            else if (description.Contains(".jpg", StringComparison.OrdinalIgnoreCase) &&
-                     (bronze || !ncRound ? photos.Load(Path(description), p.Text("OldProductDescPhoto")) : photos.Load(description, Path(description))) is { } d)
+            if (p.DescriptionIsPdf)
+                descriptionCell = Cell.Of(Texts.DescriptionPdf);
+            else if (p.Description.Count > 0 && photos.Load([.. p.Description]) is { } d)
                 descriptionCell = new Cell([new CellImage(d, 60)]);
             else
                 descriptionCell = Cell.Of("");
 
             table.Row(
-                Cell.Of(p.Text("ProductName")),
-                Cell.Of(p.Text("Exported")),
+                Cell.Of(p.Name),
+                Cell.Of(p.Exported),
                 photo is null ? Cell.Of("") : new Cell([new CellImage(photo, 60)]),
                 descriptionCell,
-                Cell.Of(p.Text("IsVerified"), center: true),
-                Cell.Of(p.Text("AssessorRemarks")));
+                Cell.Of(p.Verified, center: true),
+                Cell.Of(p.Remarks));
         }
         return table;
     }
 
-    private static void Sections(ReportPdf pdf,
-        IReadOnlyList<IDictionary<string, object?>> sections, IReadOnlyList<IDictionary<string, object?>> requirements,
-        IReadOnlyList<IDictionary<string, object?>> options, IReadOnlyList<IDictionary<string, object?>> subOptions,
-        bool ofi, bool exemptions)
+    private static void Sections(ReportPdf pdf, IReadOnlyList<ReportSection> sections, bool ofi)
     {
         foreach (var s in sections)
         {
-            var code = s.Text("SectionCode");
-            var exempted = exemptions && s.Text("IsAssessmentExcempted") == "Yes";
             pdf.Space(6);
-            pdf.Heading($"{code}. {s.Text("SectionName")}", exempted ? "Exempted from Assessment" : null);
+            pdf.Heading($"{s.Code}. {s.Name}", s.Exempted ? "Exempted from Assessment" : null);
 
             var table = new TableSpec(0.55f, 3.2f, 0.9f, 2.2f)
             {
                 Header = [Cell.Of("Code"), Cell.Of("Requirement"), Cell.Of("Conformance (Yes/No)"), Cell.Of("Assessor Remark")],
             };
-            if (!exempted)
+            if (!s.Exempted)
             {
-                foreach (var r in requirements.Where(r => r.Text("SectionCode") == code))
+                foreach (var r in s.Requirements)
                 {
-                    var rc = r.Text("RequirementCode");
                     var items = new List<CellItem>();
-                    foreach (var o in options.Where(o => o.Text("SectionCode") == code && o.Text("RequirementCode") == rc))
+                    foreach (var o in r.Options)
                     {
-                        items.Add(new CellText(o.Text("OptionName")));
-                        items.AddRange(subOptions
-                            .Where(so => so.Text("SectionCode") == code && so.Text("RequirementCode") == rc && so.Text("OptionCode") == o.Text("OptionCode"))
-                            .Select(so => new CellText(so.Text("SubOptionName"), Bullet: "•")));
+                        items.Add(new CellText(o.Name));
+                        items.AddRange(o.SubOptions.Select(so => new CellText(so, Bullet: "•")));
                     }
-                    table.Row(Cell.Of($"{code}.{rc}", bold: true), new Cell(items), Cell.Of(r.Text("Conformance"), center: true), Cell.Of(r.Text("AssessorRemarks")));
+                    table.Row(Cell.Of($"{s.Code}.{r.RequirementCode}", bold: true), new Cell(items), Cell.Of(r.Conformance, center: true), Cell.Of(r.Remarks));
                 }
                 if (ofi)
-                    table.Row(Cell.Of("Opportunities for Improvement", bold: true, colSpan: 2), Cell.Of(s.Text("OfiComments"), colSpan: 2));
+                    table.Row(Cell.Of("Opportunities for Improvement", bold: true, colSpan: 2), Cell.Of(s.Ofi, colSpan: 2));
             }
             pdf.Table(table);
         }
     }
 
     /// <summary>The fixed texts of the old report page.</summary>
-    private static class Texts
+    internal static class Texts
     {
+        public const string DescriptionPdf = "PDF document (available on the portal)";
         public const string About1 = "The MSME Sustainable (ZED) Certification is a scheme of Ministry of MSME to facilitate, assess and certify the applicant MSME based on a matrix of Quality, Productivity, Environment, Energy and other Parameters, leading to the following Certification Levels:";
         public const string About2 = "This report is an outcome of an assessment (Desktop or Remote or Site, as per Certification Level) of the applicant MSME’s unit based on the requirements as laid down in the relevant Certification Level. The intent of this report is to provide information useful for the MSME for it to strengthen its systems and processes and move ahead on the journey of ZED.";
         public const string About3 = "In this report, findings are presented on an exception basis only.";

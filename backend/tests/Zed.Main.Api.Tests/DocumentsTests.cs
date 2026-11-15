@@ -301,7 +301,7 @@ public sealed class DocumentsTests : IDisposable
     // ----- MSME report
 
     [Fact]
-    public async Task Report_is_drawn_for_the_signed_in_msme_and_saved_at_the_legacy_path()
+    public async Task Report_pdf_is_drawn_for_the_signed_in_msme_and_not_stored()
     {
         var client = await SignIn(Me);
         var bytes = await Pdf(await client.GetAsync("/api/msme/certification-documents/Bronze/report?zedId=" + Other));
@@ -309,7 +309,8 @@ public sealed class DocumentsTests : IDisposable
         var call = Assert.Single(CallsTo("SP_REPORT_GET_DETAILS"));
         Assert.Equal(Me, FakeSql.Arg(call, "ZedId"));
         Assert.Equal("Bronze", FakeSql.Arg(call, "Certification"));
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(Stored($"PDFs/SA/{Me}/Bronze_Report.pdf")));
+        // 2026-11-15: the report is a page; the PDF of the old links is drawn each time and never stored.
+        Assert.False(File.Exists(Stored($"PDFs/SA/{Me}/Bronze_Report.pdf")));
         Assert.InRange(bytes.Length, 100_000, 2_000_000);
     }
 

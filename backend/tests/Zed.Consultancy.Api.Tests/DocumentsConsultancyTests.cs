@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Zed.Core.Data;
 using Zed.Main.Api.Tests;
@@ -75,13 +76,14 @@ public sealed class DocumentsConsultancyTests : IDisposable
     }
 
     [Fact]
-    public async Task Milestone_report_is_drawn_with_the_milestone_and_saved_under_the_legacy_name()
+    public async Task Milestone_report_is_drawn_with_the_milestone_under_the_legacy_name_and_stored_only_when_rejected()
     {
         using var scope = _host.Services.CreateScope();
         var docs = scope.ServiceProvider.GetRequiredService<IAssessmentDocuments>();
         var file = await docs.RenderReportAsync(Me, "SilverMilestone2", default);
         Assert.Equal($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf", file.RelativePath);
-        Assert.Equal(file.Content, await File.ReadAllBytesAsync(Stored(file.RelativePath)));
+        // 2026-11-15: a completed milestone's report is a page; only the rejection's copy is stored.
+        Assert.False(File.Exists(Stored(file.RelativePath)));
         Assert.Equal("2", FakeSql.Arg(Assert.Single(ReportCalls), "NcCount"));
 
         // A plain level takes the current milestone.
@@ -101,6 +103,8 @@ public sealed class DocumentsConsultancyTests : IDisposable
         using var scope = _host.Services.CreateScope();
         var file = await scope.ServiceProvider.GetRequiredService<IAssessmentDocuments>().RenderReportAsync(Me, "SilverMilestone2", default);
         Assert.Equal($"Consultancy/PDFs/SA/{Me}/Silver_Reject_Report.pdf", file.RelativePath);
+        // The rejection archives the rows next: this file is then the report's only source.
+        Assert.Equal(file.Content, await File.ReadAllBytesAsync(Stored(file.RelativePath)));
     }
 
     [Fact]
@@ -111,7 +115,7 @@ public sealed class DocumentsConsultancyTests : IDisposable
 
         var co = await SignIn("CO1");
         await Pdf(await co.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report?milestone=2"), "Silver_Report_PR1.pdf");
-        Assert.True(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf")));
+        Assert.False(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf")));
         await Pdf(await co.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report"), "Silver_Report_PR1.pdf");
         Assert.Equal(HttpStatusCode.NotFound, (await co.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report?milestone=1")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await co.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report?milestone=3")).StatusCode);
@@ -146,5 +150,37 @@ public sealed class DocumentsConsultancyTests : IDisposable
         var bytes = await Pdf(await admin.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report?milestone=1"), "Silver_Report.pdf");
         Assert.Equal("%PDF-1.4 milestone 1", System.Text.Encoding.ASCII.GetString(bytes));
         Assert.Empty(ReportCalls);
+    }
+
+    [Fact]
+    public async Task Staff_open_the_milestone_report_page_a_draft_before_the_final_submit_and_an_earlier_stored_pdf()
+    {
+        var co = await SignIn("CO1");
+        var page = await co.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Me}/Silver/report/page?milestone=2");
+        Assert.Equal("milestone", page.GetProperty("kind").GetString());
+        Assert.False(page.GetProperty("draft").GetBoolean());
+        Assert.Equal("Bronze", page.GetProperty("milestone").GetProperty("existing").GetString());
+        Assert.Equal("PR1: October 1, 2026", page.GetProperty("milestone").GetProperty("dates").GetString());
+        Assert.False(File.Exists(Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report_PR1.pdf")));
+        // The current milestone by default.
+        Assert.Equal(2, (await co.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Me}/Silver/report/page")).GetProperty("milestone").GetProperty("number").GetInt32());
+
+        // Waiting for the CO's review: a DRAFT for staff.
+        _status = 15;
+        var draft = await co.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Me}/Silver/report/page?milestone=2");
+        Assert.True(draft.GetProperty("draft").GetBoolean());
+        Assert.Equal("Under review", draft.GetProperty("milestone").GetProperty("steps")[1].GetProperty("status").GetString());
+
+        // Milestone 1, stored as a PDF when it was completed: the page only links to it.
+        var stored = Stored($"Consultancy/PDFs/SA/{Me}/Silver_Report.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(stored)!);
+        await File.WriteAllTextAsync(stored, "%PDF-1.4 milestone 1");
+        var first = await co.GetFromJsonAsync<JsonElement>($"/api/staff/certification-documents/{Me}/Silver/report/page?milestone=1");
+        Assert.Equal($"/api/staff/certification-documents/{Me}/Silver/report?milestone=1", first.GetProperty("storedPdf").GetString());
+
+        var otherCo = await SignIn("CO2");
+        Assert.Equal(HttpStatusCode.NotFound, (await otherCo.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report/page?milestone=2")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await co.GetAsync($"/api/staff/certification-documents/{Me}/Bronze/report/page?milestone=1")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await co.GetAsync($"/api/staff/certification-documents/{Me}/Silver/report/page?milestone=3")).StatusCode);
     }
 }

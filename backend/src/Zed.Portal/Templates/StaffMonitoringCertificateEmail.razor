@@ -1,13 +1,18 @@
 @* Port of _BronzeDaReportTemplate.cshtml (Bronze, Monitoring/FinalSubmit) and _SaReportTemplate.cshtml (Silver/Gold,
    Monitoring/RaFinalSubmit). The old mails linked to SA/ReportSummary/{ZedId}, a page anyone could open for any ZED ID
    (SECURITY-FINDINGS #18); here the report is attached when it could be generated and the button opens the MSME login.
-   Surveillance (SurveillanceWeb Monitoring): the surveillance certificate only, no report attachment. *@
+   Surveillance (SurveillanceWeb Monitoring): the surveillance certificate only, no report attachment.
+   2026-11-15: the report is a page of the portal; the mail carries a "View report" link (sign-in needed) instead of the PDF. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings of the day!</p>
     <p style="font-size: 13px; margin-bottom: 0;">At the outset, we thank you for being a part of the "MSME Sustainable (ZED) Certification" Scheme of Ministry of MSME, Government of India.</p>
     @if (Surveillance)
     {
         <p style="font-size: 13px; margin-bottom: 0;">The surveillance assessment of your unit has been completed. Please find attached the Certificate of your unit issued after the surveillance. The same can also be downloaded from your dashboard after you sign in.</p>
+        @if (!string.IsNullOrEmpty(ReportUrl))
+        {
+            <p style="font-size: 13px; margin-bottom: 0;">The Surveillance Assessment Report can be viewed on the ZED portal after you sign in, with "View report" below; it can be saved from there as a PDF.</p>
+        }
     }
     else if (ReportAttached)
     {
@@ -15,7 +20,7 @@
     }
     else
     {
-        <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Certificate of your unit. The Assessment Report can be downloaded from your dashboard after you sign in.</p>
+        <p style="font-size: 13px; margin-bottom: 0;">Please find attached the Certificate of your unit. The Assessment Report can be viewed on the ZED portal after you sign in@(string.IsNullOrEmpty(ReportUrl) ? "." : ", with \"View report\" below; it can be saved from there as a PDF.")</p>
     }
 
     @if (SiteAssessment)
@@ -40,6 +45,12 @@
         <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)</span>
     }
 
+    @if (!string.IsNullOrEmpty(ReportUrl))
+    {
+        <div style="text-align: center; padding: 20px 0 0;">
+            <a href="@ReportUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #23656B; text-decoration: none; border-radius: 4px; text-align: center;">View report</a>
+        </div>
+    }
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Go to Login</a>
     </div>
@@ -62,6 +73,8 @@
     /// <summary>Silver/Gold certified after the site assessment (the _SaReportTemplate layout); false for Bronze.</summary>
     [Parameter] public bool SiteAssessment { get; set; }
     [Parameter] public bool ReportAttached { get; set; }
+    /// <summary>2026-11-15: the report page on the ZED portal (sign-in needed), linked instead of attaching a PDF.</summary>
+    [Parameter] public string? ReportUrl { get; set; }
     /// <summary>Sent by the Surveillance portal: surveillance certificate wording, no report.</summary>
     [Parameter] public bool Surveillance { get; set; }
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";

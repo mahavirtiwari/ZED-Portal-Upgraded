@@ -1,7 +1,8 @@
 @* Mail of the CO's final submit of a handholding milestone (consultancy Monitoring/RaFinalSubmit, subject
    "Handholding Support (Milestone n) Report ..."). The old mail reused the Silver/Gold certificate template and
    attached nothing; here the milestone report is attached when it could be generated, and the MSME is asked to
-   sign in on the ZED portal to accept the milestone. No passwords. *@
+   sign in on the ZED portal to accept the milestone. No passwords. 2026-11-15: the report is a page of the portal, linked with
+   "View report" (sign-in needed) instead of the attachment. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir, <br>Greetings from the Quality Council of India!</p>
     <p style="font-size: 13px; margin-bottom: 0;">Milestone @Milestone of the Handholding Support for @Certification Certification of your unit under the "MSME Sustainable (ZED) Certification" Scheme of the Ministry of MSME, Government of India has been completed by the Consultant Organisation.</p>
@@ -11,7 +12,7 @@
     }
     else
     {
-        <p style="font-size: 13px; margin-bottom: 0;">The Handholding Support (Milestone @Milestone) Report can be seen after you sign in.</p>
+        <p style="font-size: 13px; margin-bottom: 0;">The Handholding Support (Milestone @Milestone) Report can be seen after you sign in@(string.IsNullOrEmpty(ReportUrl) ? "." : ", with \"View report\" below; it can be saved from there as a PDF.")</p>
     }
     <p style="font-size: 13px; margin-bottom: 0;">Please sign in to review and accept the milestone.</p>
 
@@ -38,6 +39,12 @@
     </table>
     <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)</span>
 
+    @if (!string.IsNullOrEmpty(ReportUrl))
+    {
+        <div style="text-align: center; padding: 20px 0 0;">
+            <a href="@ReportUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #23656B; text-decoration: none; border-radius: 4px; text-align: center;">View report</a>
+        </div>
+    }
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #45A5AD; text-decoration: none; border-radius: 4px; text-align: center;">Go to Login</a>
     </div>
@@ -47,6 +54,8 @@
 
 @code {
     [Parameter] public bool ReportAttached { get; set; }
+    /// <summary>2026-11-15: the report page on the ZED portal (sign-in needed), linked instead of attaching a PDF.</summary>
+    [Parameter] public string? ReportUrl { get; set; }
     [Parameter] public int Milestone { get; set; }
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";
     [Parameter, EditorRequired] public string Certification { get; set; } = "";

@@ -153,19 +153,24 @@ describe('LegacyReportRedirect', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('opens the MSME report, with the rejected record when the link names one', async () => {
+  it('opens the MSME report page, and the PDF of a rejected record as before (2026-11-15)', async () => {
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     await run('ZEDMSME000001', 'bronze');
-    expect(opened).toEqual(['/api/msme/certification-documents/Bronze/report']);
+    expect(opened).toEqual([]);
+    expect(navigated).toEqual(['/msme/report/assessment/Bronze']);
     TestBed.resetTestingModule();
-    await run('ZEDMSME000001_D_45', 'Bronze');
+    const el = await run('ZEDMSME000001_D_45', 'Bronze');
     expect(opened).toEqual(['/api/msme/certification-documents/Bronze/report?record=ZEDMSME000001_D_45']);
+    expect(el.textContent).toContain('The report of a rejected application opens as a PDF.');
   });
 
   it('opens the staff report for staff and sends visitors to the login page', async () => {
     user = { userId: 'ADMIN1', roleId: 7 };
     await run('ZEDMSME000001', 'Gold');
-    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001/Gold/report']);
+    expect(navigated).toEqual(['/staff/report/assessment/Gold/ZEDMSME000001']);
+    TestBed.resetTestingModule();
+    await run('ZEDMSME000001_D_45', 'Gold');
+    expect(opened).toEqual(['/api/staff/certification-documents/ZEDMSME000001_D_45/Gold/report']);
     TestBed.resetTestingModule();
     user = null;
     await run('ZEDMSME000001', 'Gold');
@@ -176,21 +181,21 @@ describe('LegacyReportRedirect', () => {
   it('opens the surveillance report drawn by this portal', async () => {
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     await run('ZEDMSME000001', 'gold', 'surveillance');
-    expect(opened).toEqual(['/api/msme/certification-documents/GoldSurveillance/report']);
+    expect(navigated).toEqual(['/msme/report/surveillance/Gold']);
     TestBed.resetTestingModule();
     user = { userId: 'ADMIN1', roleId: 7 };
     await run('ZEDMSME000001', 'Gold', 'surveillance');
-    expect(opened).toEqual(['/surveillance/api/staff/certification-documents/ZEDMSME000001/Gold/report']);
+    expect(opened).toEqual(['/surveillance/staff/report/surveillance/Gold/ZEDMSME000001']);
   });
 
   it('opens the handholding milestone report and checks the milestone', async () => {
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     await run('ZEDMSME000001', 'Silver', 'consultancy', '2');
-    expect(opened).toEqual(['/api/msme/certification-documents/Silver/report?milestone=2']);
+    expect(navigated).toEqual(['/msme/report/milestone/Silver?milestone=2']);
     TestBed.resetTestingModule();
     user = { userId: 'AGENCY1', roleId: 2 };
     await run('ZEDMSME000001', 'Gold', 'consultancy', '3');
-    expect(opened).toEqual(['/Consultancy/api/staff/certification-documents/ZEDMSME000001/Gold/report?milestone=3']);
+    expect(opened).toEqual(['/Consultancy/staff/report/milestone/Gold/ZEDMSME000001?milestone=3']);
     TestBed.resetTestingModule();
     user = { userId: 'ZEDMSME000001', roleId: 5 };
     const el = await run('ZEDMSME000001', 'Silver', 'consultancy', '4');

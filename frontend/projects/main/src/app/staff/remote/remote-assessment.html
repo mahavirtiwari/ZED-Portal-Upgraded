@@ -3,7 +3,7 @@
   <button type="button" class="btn btn-outline-secondary btn-sm" (click)="goBack()"><img src="Images/svgicons/back.svg" alt="" /> Back</button>
   @if (meetingMode()) {
     <button type="button" class="btn btn-outline-secondary btn-sm refresh" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
-    <a class="btn btn-outline-primary btn-sm assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">ASSESSMENT REPORT <i class="fa fa-download" aria-hidden="true"></i></a>
+    <a class="btn btn-outline-primary btn-sm assessment-report" [href]="reportUrl()" target="_blank" rel="noopener">VIEW REPORT</a>
   } @else {
     <button type="button" class="btn btn-outline-secondary btn-sm refresh-link" (click)="refresh()"><img src="Images/svgicons/refresh.svg" alt="" /> Refresh</button>
   }

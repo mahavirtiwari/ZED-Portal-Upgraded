@@ -9,10 +9,12 @@ using Zed.Portal.Templates;
 namespace Zed.Portal.Features.Consultancy.Milestones;
 
 /// <summary>
-/// What follows the CO's decision on a milestone: the milestone report through <see cref="IAssessmentDocuments"/>
-/// (type "{Level}Milestone{n}", the old _Report / _Report_PR1 / _Report_PR2 / _Reject_Report files) and the mail to the
-/// MSME (SP_RA_GET_CERTIFICATE_DETAILS: EmailId, EstablishmentName). The decision is already saved when this runs, so
-/// a failed report or mail is logged and reported, never thrown.
+/// What follows the CO's decision on a milestone: the mail to the MSME (SP_RA_GET_CERTIFICATE_DETAILS: EmailId,
+/// EstablishmentName). 2026-11-15: a completed milestone's report is a page of the portal (<see cref="ReportPages"/>), linked
+/// from the mail ("View report", sign-in needed) and never stored; a rejected milestone's report is still drawn through
+/// <see cref="IAssessmentDocuments"/> (type "{Level}Milestone{n}", the old _Reject_Report file) and attached, because the
+/// rejection archives the rows next and the file is then its only source. The decision is already saved when this runs, so a
+/// failed report or mail is logged and reported, never thrown.
 /// </summary>
 public sealed class MilestoneCompletion(
     ISqlExecutor db,
@@ -31,6 +33,7 @@ public sealed class MilestoneCompletion(
     /// <summary>Document type of a milestone report (MsmeSiteAssessmentController.CertificationTypes): SilverMilestone2, ...</summary>
     public static string ReportType(string level, int milestone) => $"{level}Milestone{milestone}";
 
+    /// <param name="ReportAttached">The mail carries the report (a link to its page, 2026-11-15).</param>
     public sealed record Outcome(bool ReportAttached, bool MailSent);
 
     /// <summary>Mail details (read before a rejection renames the rows).</summary>
@@ -60,16 +63,17 @@ public sealed class MilestoneCompletion(
         }
     }
 
-    /// <summary>"Handholding Support (Milestone n) Report" mail after the CO's final submit.</summary>
+    /// <summary>"Handholding Support (Milestone n) Report" mail after the CO's final submit, with the "View report" link.</summary>
     public async Task<Outcome> CompletedAsync(string zedId, string level, int milestone, CancellationToken ct)
     {
-        var report = await ReportAsync(zedId, level, milestone, ct);
         var row = await DetailsAsync(zedId, level, ct);
-        var sent = await SendAsync(row, zedId, level, report,
+        var reportUrl = CertificationCompletion.MsmeReportUrl(portal.Value, host, ReportLinks.Milestone, level,
+            "milestone=" + milestone.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        var sent = await SendAsync(row, zedId, level, null,
             $"Handholding Support (Milestone {milestone}) Report under {Scheme} - {zedId}",
             $"{zedId}_{level}_Milestone{milestone}_Report.pdf",
-            (to, attached) => templates.RenderAsync<ConsultancyMilestoneReportEmail>(Model(zedId, level, milestone, row, attached)), ct);
-        return new Outcome(report is not null, sent);
+            (to, attached) => templates.RenderAsync<ConsultancyMilestoneReportEmail>(Model(zedId, level, milestone, row, attached, reportUrl)), ct);
+        return new Outcome(true, sent);
     }
 
     /// <summary>Rejection mail, with the report rendered before the rows were archived.</summary>
@@ -79,16 +83,23 @@ public sealed class MilestoneCompletion(
             $"{zedId}_{level}_Reject_Report.pdf",
             (to, attached) => templates.RenderAsync<ConsultancyMilestoneRejectionEmail>(Model(zedId, level, milestone, row, attached)), ct);
 
-    private Dictionary<string, object?> Model(string zedId, string level, int milestone, IDictionary<string, object?>? row, bool attached) => new()
+    private Dictionary<string, object?> Model(string zedId, string level, int milestone, IDictionary<string, object?>? row, bool attached,
+        string? reportUrl = null)
     {
-        ["ReportAttached"] = attached,
-        ["Milestone"] = milestone,
-        ["ZedId"] = zedId,
-        ["Certification"] = level,
-        ["EnterpriseName"] = row?.Text("EstablishmentName"),
-        ["LoginUrl"] = CertificationCompletion.MsmeLoginUrl(portal.Value, host),
-        ["PublicBaseUrl"] = portal.Value.PublicBaseUrl,
-    };
+        var model = new Dictionary<string, object?>
+        {
+            ["ReportAttached"] = attached,
+            ["Milestone"] = milestone,
+            ["ZedId"] = zedId,
+            ["Certification"] = level,
+            ["EnterpriseName"] = row?.Text("EstablishmentName"),
+            ["LoginUrl"] = CertificationCompletion.MsmeLoginUrl(portal.Value, host),
+            ["PublicBaseUrl"] = portal.Value.PublicBaseUrl,
+        };
+        // Only the completed milestone's mail has the link (the rejection mail attaches the stored report).
+        if (reportUrl is not null) model["ReportUrl"] = reportUrl;
+        return model;
+    }
 
     private async Task<bool> SendAsync(IDictionary<string, object?>? row, string zedId, string level, DocumentFile? report,
         string subject, string attachmentName, Func<string, bool, Task<string>> render, CancellationToken ct)

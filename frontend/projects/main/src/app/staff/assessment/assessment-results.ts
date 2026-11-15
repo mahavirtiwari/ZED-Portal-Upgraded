@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService, apiErrorMessage } from '@zed/shared';
 import { firstValueFrom } from 'rxjs';
 import { StaffRole } from '../staff-menu';
-import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, text, useLegacyPortal } from './assessment-shared';
+import { ASSESSMENT_SYSTEM, STATES, milestoneReportUrl, num, reportPageHref, text, useLegacyPortal } from './assessment-shared';
 import { PagerComponent, ServerPager } from '../pager';
 import { AssessmentApi, ResultsFilter, Row } from './assessment.api';
 import { withApiBase } from '../../api-base';
@@ -264,7 +264,7 @@ const DOCUMENTS_API = withApiBase('/api/staff/certification-documents');
                       @if (certificateUrl(s); as href) {
                         <a [href]="href" class="btn btn-outline-primary" target="_blank" rel="noopener">Download Certificate</a>
                       }
-                      <a [href]="reportUrl(s)" class="btn btn-outline-primary" target="_blank" rel="noopener">Download Report</a>
+                      <a [href]="reportUrl(s)" class="btn btn-outline-primary" target="_blank" rel="noopener">View Report</a>
                     </div>
                   </td>
                 } @else if (isAgency()) {
@@ -423,8 +423,9 @@ export class AssessmentResultsPage {
     return `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/${encodeURIComponent(text(s, 'Certification'))}/certificate`;
   }
 
+  /** The report page (2026-11-15; the surveillance portal's is the surveillance report). */
   protected reportUrl(s: Row): string {
-    return `${DOCUMENTS_API}/${encodeURIComponent(text(s, 'ZedId'))}/${encodeURIComponent(text(s, 'Certification'))}/report`;
+    return reportPageHref(this.surveillance ? 'surveillance' : 'assessment', text(s, 'ZedId'), text(s, 'Certification'));
   }
 
   private async load(): Promise<void> {

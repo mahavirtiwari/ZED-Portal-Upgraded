@@ -561,6 +561,10 @@ public static class ConsultancyAppData
     public static string ReportPath(string zedId, string level, int milestone) =>
         $"SA/AppReport?zedId={Uri.EscapeDataString(zedId)}&certificationType={Uri.EscapeDataString(level)}&milestone={milestone.ToString(CultureInfo.InvariantCulture)}";
 
+    /// <summary>2026-11-15: address of the milestone report page's signed link on the consultancy portal (ConsultantAppController.AppReportLink).</summary>
+    public static string ReportLinkPath(string zedId, string level, int milestone) =>
+        $"SA/AppReportLink?zedId={Uri.EscapeDataString(zedId)}&certificationType={Uri.EscapeDataString(level)}&milestone={milestone.ToString(CultureInfo.InvariantCulture)}";
+
     public static ConsultantReport Report(CaseRow r, IReadOnlyList<TeamRow> team, string saId)
     {
         var (stage, label) = StageOf(r);
@@ -587,6 +591,7 @@ public static class ConsultancyAppData
             team = Team(r, team),
             reportAvailable = available,
             reportPath = available ? ReportPath(r.ZedId!.Trim(), level!, r.Milestone) : null,
+            reportLinkPath = available ? ReportLinkPath(r.ZedId!.Trim(), level!, r.Milestone) : null,
         };
     }
 

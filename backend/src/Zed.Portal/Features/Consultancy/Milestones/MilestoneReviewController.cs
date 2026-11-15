@@ -602,7 +602,7 @@ public sealed class MilestoneReviewController(
 
         var outcome = await MilestoneCompletion.Create(HttpContext.RequestServices).CompletedAsync(ctx.ZedId, ctx.Level, ctx.Milestone, ct);
         return new MessageResponse(
-            outcome.MailSent && outcome.ReportAttached ? $"Milestone {ctx.Milestone} completed. The milestone report has been mailed to the MSME."
+            outcome.MailSent && outcome.ReportAttached ? $"Milestone {ctx.Milestone} completed. The MSME has been mailed a link to the milestone report."
             : outcome.MailSent ? $"Milestone {ctx.Milestone} completed. The MSME has been informed; the report could not be generated now."
             : $"Milestone {ctx.Milestone} completed. The mail to the MSME could not be sent.");
     }

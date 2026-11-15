@@ -115,6 +115,53 @@ public sealed class ConsultantAppTests : IDisposable
         Assert.Empty(ReportCalls);
     }
 
+    // ----- the report page's signed link (2026-11-15)
+
+    private async Task<JsonElement> Link(string query, string? token, HttpStatusCode expected = HttpStatusCode.OK)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/SA/AppReportLink?" + query);
+        if (token is not null) request.Headers.Add(AppTokens.Header, token);
+        var response = await _app.CreateClient().SendAsync(request);
+        Assert.Equal(expected, response.StatusCode);
+        return expected == HttpStatusCode.OK ? JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement : default;
+    }
+
+    [Fact]
+    public async Task The_app_gets_a_signed_link_to_the_milestone_report_page()
+    {
+        _host.Sql.Queries["SELECT TOP 1 ZedId, Certification, CertificationStatus"] = args => FakeSql.Arg(args, "ZedId") == Me && FakeSql.Arg(args, "Certification") == "Silver"
+            ? [new { ZedId = Me, Certification = "Silver", CertificationStatus = _status, NcCount = 2, CertificationBodyUserId = "CO1", SiteAssessorId = Lead }]
+            : [];
+        var co = await Token(MobileApps.SiteAssessor, Co);
+        var json = await Link($"zedId={Me}&certificationType=silver&milestone=2", co);
+        Assert.Equal("1", json.GetProperty("status").GetString());
+        var url = json.GetProperty("url").GetString()!;
+        Assert.Contains("/report/link?t=", url);
+        Assert.Empty(ReportCalls);
+
+        // The page's API takes the link instead of a sign-in.
+        var page = await _app.CreateClient().GetAsync("/api/report-pages/link?t=" + url.Split("?t=")[1]);
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        var model = JsonDocument.Parse(await page.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("milestone", model.GetProperty("kind").GetString());
+        Assert.Equal(2, model.GetProperty("milestone").GetProperty("number").GetInt32());
+        Assert.Equal(1, model.GetProperty("milestone").GetProperty("progress").GetProperty("completed").GetInt32());
+        Assert.False(Directory.Exists(Path.Combine(_host.StorageRoot, "Consultancy")));
+
+        // An earlier milestone stored as a PDF: the app downloads that file as before.
+        var stored = Path.Combine(_host.StorageRoot, "Consultancy", "PDFs", "SA", Me, "Silver_Report.pdf");
+        Directory.CreateDirectory(Path.GetDirectoryName(stored)!);
+        await File.WriteAllTextAsync(stored, "%PDF-1.4 milestone 1");
+        var lead = await Token(MobileApps.SiteAssessor, Lead);
+        Assert.True((await Link($"zedId={Me}&certificationType=Silver&milestone=1", lead)).GetProperty("stored").GetBoolean());
+
+        // Not on the milestone, no genuine token, not completed yet.
+        await Link($"zedId={Me}&certificationType=Silver&milestone=2", await Token(MobileApps.SiteAssessor, Other), HttpStatusCode.NotFound);
+        await Link($"zedId={Me}&certificationType=Silver&milestone=2", "h1.forged.token", HttpStatusCode.Unauthorized);
+        _status = 15;
+        Assert.Equal("0", (await Link($"zedId={Me}&certificationType=Silver&milestone=2", lead)).GetProperty("status").GetString());
+    }
+
     // ----- Forgot password
 
     private FakeStaffResets Resets()

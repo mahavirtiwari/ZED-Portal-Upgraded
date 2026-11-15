@@ -96,7 +96,7 @@ describe('CertificationDetailsPage', () => {
 
     // Not certified yet: downloads are greyed out.
     expect(action('Download Certificate')!.classList).toContain('btn-disabled');
-    expect(action('Download Report')!.classList).toContain('btn-disabled');
+    expect(action('View Report')!.classList).toContain('btn-disabled');
     expect(action('View My Incentives')!.classList).toContain('btn-disabled');
   });
 
@@ -122,8 +122,9 @@ describe('CertificationDetailsPage', () => {
     ]);
     expect(action('Download Certificate')!.querySelector('a')!.getAttribute('href'))
       .toBe('/api/msme/certification-documents/Silver/certificate');
-    expect(action('Download Report')!.querySelector('a')!.getAttribute('href'))
-      .toBe('/api/msme/certification-documents/Silver/report');
+    // 2026-11-15: the report page (a new tab) instead of the PDF.
+    expect(action('View Report')!.querySelector('a')!.getAttribute('href')).toBe('/msme/report/assessment/Silver');
+    expect(action('View Report')!.querySelector('a')!.getAttribute('target')).toBe('_blank');
     expect(action('View My Incentives')!.querySelector('a')!.getAttribute('href'))
       .toBe('/incentives?ct=Silver&id=9'); // the public incentive list, now in this portal
     expect(action('View My Incentives')!.querySelector('a')!.getAttribute('target')).toBeNull();   // same tab
@@ -140,7 +141,7 @@ describe('CertificationDetailsPage', () => {
   it('links the Bronze certificate and report of this portal even before the file exists', async () => {
     await open('Bronze', details('Bronze', { GetCertified: 'Certified on June 1, 2024' }, { BronzeStatus: 6, CertPath: null }));
     expect(action('Download Certificate')!.querySelector('a')!.getAttribute('href')).toBe('/api/msme/certification-documents/Bronze/certificate');
-    expect(action('Download Report')!.querySelector('a')!.getAttribute('href')).toBe('/api/msme/certification-documents/Bronze/report');
+    expect(action('View Report')!.querySelector('a')!.getAttribute('href')).toBe('/msme/report/assessment/Bronze');
     expect(action('Download Certificate')!.classList).not.toContain('btn-disabled');
   });
 
@@ -164,8 +165,7 @@ describe('CertificationDetailsPage', () => {
     expect(el.querySelector('.zed-payment-success')).toBeNull();
     expect(action('Download Surveillance Certificate')!.querySelector('a')!.getAttribute('href'))
       .toBe('/api/msme/certification-documents/BronzeSurveillance/certificate');
-    expect(action('Download Surveillance Report')!.querySelector('a')!.getAttribute('href'))
-      .toBe('/api/msme/certification-documents/BronzeSurveillance/report');
+    expect(action('View Surveillance Report')!.querySelector('a')!.getAttribute('href')).toBe('/msme/report/surveillance/Bronze');
     expect(action('View Onsite/Remote Assessment Information')).toBeUndefined();
   });
 
@@ -182,8 +182,7 @@ describe('CertificationDetailsPage', () => {
     expect(text()).toContain('BDS on May 1, 2025');
     expect(text()).not.toContain('HAP on May 2, 2025'); // only milestone 1 lists the HAP date
     expect(action('View Milestone 2')!.querySelector('a')!.getAttribute('href')).toBe('/msme/site-assessment/GoldMilestone2');
-    expect(action('Download Report')!.querySelector('a')!.getAttribute('href'))
-      .toBe('/api/msme/certification-documents/Gold/report?milestone=2');
+    expect(action('View Report')!.querySelector('a')!.getAttribute('href')).toBe('/msme/report/milestone/Gold?milestone=2');
     expect(action('Download Certificate')).toBeUndefined();
   });
 

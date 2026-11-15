@@ -644,6 +644,11 @@ public sealed class ConsultantReport
     public bool reportAvailable { get; set; }
     /// <summary>Address of the PDF relative to the consultancy portal (GET with the app token), or null.</summary>
     public string? reportPath { get; set; }
+    /// <summary>
+    /// 2026-11-15: address (relative to the consultancy portal, GET with the app token) answering the report page's signed link
+    /// (or "stored" for an earlier milestone kept as a PDF, then <see cref="reportPath"/>); null when no report.
+    /// </summary>
+    public string? reportLinkPath { get; set; }
 }
 
 public sealed class ConsultantReportsResponse : ServiceResponse

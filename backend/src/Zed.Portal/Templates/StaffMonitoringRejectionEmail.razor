@@ -1,6 +1,7 @@
 @* Port of _NcRejectionMailTemplate.cshtml (Monitoring/RejectFinalSubmit). The old mail linked to
    SA/ReportSummary/{RejectedZedId}, a page anyone could open (SECURITY-FINDINGS #18); here the report is attached
-   when it could be generated, and the MSME can sign in to see it. *@
+   when it could be generated, and the MSME can sign in to see it. 2026-11-15: a "View report" link to the report page (sign-in
+   needed) instead of the attachment. *@
 <EmailLayout PublicBaseUrl="@PublicBaseUrl">
     <p style="font-size: 13px; margin-bottom: 0;">Dear Madam/Sir,</p>
     <p style="font-size: 13px; margin-bottom: 0;">Greetings of the day!</p>
@@ -13,7 +14,7 @@
     }
     else
     {
-        <p style="font-size: 13px; margin-bottom: 0;">The Assessment report can be seen after you sign in.</p>
+        <p style="font-size: 13px; margin-bottom: 0;">The Assessment report can be seen after you sign in@(string.IsNullOrEmpty(ReportUrl) ? "." : ", with \"View report\" below.")</p>
     }
 
     <p style="font-size: 13px; margin-bottom: 0;">Your application details are as follows:</p>
@@ -38,6 +39,12 @@
         </tbody>
     </table>
     <span style="font-size: 12px; line-height: 20px; margin-top: 10px; display: inline-block; margin-bottom: 10px;">(Remember to use your ZED ID in all future correspondence with the ZED Team at QCI)</span>
+    @if (!string.IsNullOrEmpty(ReportUrl))
+    {
+        <div style="text-align: center; padding: 20px 0 0;">
+            <a href="@ReportUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #23656B; text-decoration: none; border-radius: 4px; text-align: center;">View report</a>
+        </div>
+    }
     <div style="text-align: center; padding: 30px 0;">
         <a href="@LoginUrl" target="_blank" style="display: block; margin: 0 auto; width: 300px; line-height: 42px; color: #ffffff; background-color: #555555; text-decoration: none; border-radius: 4px; text-align: center;">Click here to Login</a>
     </div>
@@ -48,6 +55,8 @@
 
 @code {
     [Parameter] public bool ReportAttached { get; set; }
+    /// <summary>2026-11-15: the report page on the ZED portal (sign-in needed), linked instead of attaching a PDF.</summary>
+    [Parameter] public string? ReportUrl { get; set; }
     [Parameter, EditorRequired] public string ZedId { get; set; } = "";
     [Parameter, EditorRequired] public string Certification { get; set; } = "";
     [Parameter] public string? EnterpriseName { get; set; }

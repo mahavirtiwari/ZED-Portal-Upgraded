@@ -68,9 +68,9 @@
                   } @else if (a.route) {
                     <span class="doc-go" aria-hidden="true"><img src="/Images/svgicons/arrow-right-black.svg" alt="" /></span>
                   } @else if (a.href !== undefined) {
-                    <!-- Downloads open a new tab; "View My Incentives" opens in the same tab, as the live page. -->
-                    <a class="doc-go" [href]="a.href" [attr.target]="a.download ? '_blank' : null" [attr.rel]="a.download ? 'noopener' : null" [attr.aria-label]="a.label">
-                      <img [src]="a.download ? '/Images/svgicons/download.svg' : '/Images/svgicons/arrow-right-black.svg'" alt="" />
+                    <!-- Downloads and the report page open a new tab; "View My Incentives" opens in the same tab, as the live page. -->
+                    <a class="doc-go" [href]="a.href" [attr.target]="a.download || a.newTab ? '_blank' : null" [attr.rel]="a.download || a.newTab ? 'noopener' : null" [attr.aria-label]="a.label">
+                      <img [src]="a.download ? '/Images/svgicons/download.svg' : a.newTab ? '/Images/svgicons/eye.svg' : '/Images/svgicons/arrow-right-black.svg'" alt="" />
                     </a>
                   } @else {
                     <small class="soon-note" title="This page is being moved to the new portal.">Available soon</small>

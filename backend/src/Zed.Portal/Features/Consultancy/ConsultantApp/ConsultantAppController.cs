@@ -36,6 +36,7 @@ public sealed class ConsultantAppController(
     IBackgroundWork background,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    ReportLinks links,
     ILogger<DocumentRenderer> documentLog,
     ILogger<ConsultantAppController> log) : LegacyMobileController
 {
@@ -87,6 +88,43 @@ public sealed class ConsultantAppController(
             return NotFound();
         }
         return await MilestoneDownloads.ReportAsync(this, new DocumentRenderer(env, portal, documentLog), db, record, zedId!, level, number, preview: false, ct);
+    }
+
+    /// <summary>
+    /// <c>GET /SA/AppReportLink?zedId=…&amp;certificationType=…&amp;milestone=n</c> (2026-11-15): the milestone report as a page. Same
+    /// token and rules as <see cref="AppReport"/>; answers <c>{status: "1", url}</c> (a 10-minute signed page address the app opens
+    /// in the browser, <see cref="ReportLinks"/>), or <c>{status: "1", stored: true}</c> for an earlier milestone whose report was
+    /// stored as a PDF when it was completed: the app downloads that file with <see cref="AppReport"/>, as before.
+    /// </summary>
+    [HttpGet("/SA/AppReportLink")]
+    [EnableRateLimiting(RateLimitPolicies.Sensitive)]
+    public async Task<IActionResult> AppReportLink(string? zedId, string? certificationType, int? milestone, CancellationToken ct)
+    {
+        var token = Request.Headers[AppTokens.Header].ToString();
+        if (tokens.Read(token) is not { } t || await tokens.CheckAsync(token, MobileApps.SiteAssessor, t.User, null, ct) != AppTokenCheck.Valid)
+            return Unauthorized();
+
+        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certificationType) is not ("Silver" or "Gold") || milestone is < 1 or > DocumentLevels.Milestones)
+            return NotFound();
+        var level = DocumentLevels.Level(certificationType)!;
+        var record = (await db.QuerySqlAsync<CertificationRecord>(MilestoneContext.RecordSql, new { ZedId = Ansi(zedId), Certification = Ansi(level) }, ct))
+            .FirstOrDefault();
+        var number = milestone ?? record?.Nc ?? 0;
+        var allotted = record is not null && (await db.QuerySqlAsync<int>(MilestoneTeamSql, new
+        {
+            ZedId = Ansi(zedId), Certification = Ansi(level), NcCount = number, UserId = Ansi(t.User),
+        }, ct)).FirstOrDefault() > 0;
+        if (!allotted)
+        {
+            log.LogWarning("Consultant app report link of {ZedId} {Level} milestone {Milestone} refused to {UserId}: not on the milestone", zedId, level, number, t.User);
+            return NotFound();
+        }
+        if (number < 1 || number > record!.Nc) return NotFound();
+        if (number < record.Nc && new DocumentStorage(env, portal).Find(DocumentLevels.MilestoneReportPath(zedId!, level, number, rejected: false)) is not null)
+            return LegacyJson(new { status = "1", stored = true });
+        if (number == record.Nc && !(DocumentLevels.IsMilestoneCompleted(record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected))
+            return Fail("The report is available once the milestone is completed.");
+        return LegacyJson(new { status = "1", url = links.PageUrl(new ReportLinkTarget(ReportLinks.Milestone, zedId!, level, number)) });
     }
 
     public sealed class ForgotPasswordRequest

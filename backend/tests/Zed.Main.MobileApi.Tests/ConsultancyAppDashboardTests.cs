@@ -462,6 +462,8 @@ public sealed class ConsultancyAppDashboardTests : IDisposable
 
         Assert.True(reports[0].GetProperty("reportAvailable").GetBoolean());
         Assert.Equal("SA/AppReport?zedId=ZEDMSME000005&certificationType=Silver&milestone=3", reports[0].GetProperty("reportPath").GetString());
+        // 2026-11-15: the milestone report page's signed link.
+        Assert.Equal("SA/AppReportLink?zedId=ZEDMSME000005&certificationType=Silver&milestone=3", reports[0].GetProperty("reportLinkPath").GetString());
         Assert.Equal(3, reports[0].GetProperty("milestone").GetInt32());
         Assert.Equal("Progress Review 2", reports[0].GetProperty("milestoneLabel").GetString());
         Assert.Equal("SA/AppReport?zedId=ZEDMSME000001&certificationType=Silver&milestone=1", reports[1].GetProperty("reportPath").GetString());
@@ -471,6 +473,7 @@ public sealed class ConsultancyAppDashboardTests : IDisposable
         // Closing meeting done, not completed: no report; a Bronze milestone has none either.
         Assert.False(reports[2].GetProperty("reportAvailable").GetBoolean());
         Assert.Equal(JsonValueKind.Null, reports[2].GetProperty("reportPath").ValueKind);
+        Assert.Equal(JsonValueKind.Null, reports[2].GetProperty("reportLinkPath").ValueKind);
         Assert.False(reports[3].GetProperty("reportAvailable").GetBoolean());
     }
 

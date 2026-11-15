@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { AuthService } from '@zed/shared';
 import { PORTAL_API_BASE } from '../staff/admin-portal';
 import { canonicalLevelCode } from '../msme/shared/levels';
+import { reportRoute } from '../report/report.api';
 
 /** Leaves the Angular app for a file address (replaced in tests). */
 export const OPEN_FILE = new InjectionToken<(url: string) => void>('OPEN_FILE', {
@@ -28,6 +29,8 @@ export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
  * The surveillance and consultancy applications had the same page (/surveillance/SA/ReportSummary/{id}?certification=X,
  * /consultancy/SA/ReportSummary/{id}?certification=X&milestone=n, linked from Certification details and mails); they
  * open the surveillance report and the handholding milestone report, which this portal now draws.
+ * 2026-11-15: the reports are pages (/msme/report/..., /staff/report/...); a rejected copy's report still opens as the PDF,
+ * as before.
  */
 @Component({
   selector: 'zed-legacy-report',
@@ -37,6 +40,7 @@ export type LegacyReportSystem = 'main' | 'surveillance' | 'consultancy';
         <div class="alert alert-danger" role="alert">{{ message() }}</div>
       } @else {
         <p>Opening the assessment report ...</p>
+        @if (pdf()) { <p class="text-muted small">The report of a rejected application opens as a PDF.</p> }
       }
     </div>
   `,
@@ -54,6 +58,8 @@ export class LegacyReportRedirect implements OnInit {
   private readonly router = inject(Router);
   private readonly open = inject(OPEN_FILE);
   protected readonly message = signal('');
+  /** A rejected copy's report: the PDF, as before (the note above). */
+  protected readonly pdf = signal(false);
 
   ngOnInit(): void {
     void this.go();
@@ -76,26 +82,40 @@ export class LegacyReportRedirect implements OnInit {
       return;
     }
     const own = id.toLowerCase() === user.userId.toLowerCase();
+    const msme = user.roleId === MSME_ROLE;
     if (system === 'consultancy') {
-      if (user.roleId === MSME_ROLE && !own) {
+      if (msme && !own) {
         this.message.set('This report link is not valid.');
         return;
       }
-      // Staff: the consultancy portal draws the milestone report (main's staff API knows only main's report).
-      this.open(
-        user.roleId === MSME_ROLE
-          ? `/api/msme/certification-documents/${level}/report?milestone=${milestone}`
-          : `${PORTAL_API_BASE.consultancy}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report?milestone=${milestone}`,
-      );
+      // Staff: the consultancy portal's page (main's staff API knows only main's report).
+      const route = reportRoute({ kind: 'milestone', level, milestone: Number(milestone), zedId: msme ? undefined : id });
+      if (msme) await this.router.navigateByUrl(route, { replaceUrl: true });
+      else this.open(PORTAL_API_BASE.consultancy + route);
       return;
     }
     const type = system === 'surveillance' ? `${level}Surveillance` : level;
-    if (user.roleId === MSME_ROLE) {
-      this.open(`/api/msme/certification-documents/${type}/report${own ? '' : `?record=${encodeURIComponent(id)}`}`);
+    const kind = system === 'surveillance' ? 'surveillance' : 'assessment';
+    if (!own && id.includes('_')) {
+      // A rejected copy (ZEDMSME000123_D_45): its PDF, as before.
+      this.pdf.set(true);
+      const base = system === 'surveillance' && !msme ? PORTAL_API_BASE.surveillance : '';
+      this.open(msme
+        ? `/api/msme/certification-documents/${type}/report?record=${encodeURIComponent(id)}`
+        : `${base}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
+      return;
+    }
+    if (msme) {
+      if (!own) {
+        this.message.set('This report link is not valid.');
+        return;
+      }
+      await this.router.navigateByUrl(reportRoute({ kind, level }), { replaceUrl: true });
+    } else if (system === 'surveillance') {
+      // Staff: the surveillance portal's page.
+      this.open(PORTAL_API_BASE.surveillance + reportRoute({ kind, level, zedId: id }));
     } else {
-      // Staff: a surveillance report comes from the surveillance portal's staff API.
-      const base = system === 'surveillance' ? PORTAL_API_BASE.surveillance : '';
-      this.open(`${base}/api/staff/certification-documents/${encodeURIComponent(id)}/${level}/report`);
+      await this.router.navigateByUrl(reportRoute({ kind, level, zedId: id }), { replaceUrl: true });
     }
   }
 }

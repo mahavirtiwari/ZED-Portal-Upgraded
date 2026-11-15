@@ -2,6 +2,8 @@
 @use 'bootstrap/dist/css/bootstrap.min.css';
 // @keyframes from the MVC site's Content/site.css and swachh.css (must stay global).
 @use 'styles/legacy-site-global';
+// 2026-11-15: the report pages (A4 sheets, print), under .zed-report (app/report/report-page.ts).
+@use 'styles/report';
 
 body {
   font-family: 'Work Sans', sans-serif;

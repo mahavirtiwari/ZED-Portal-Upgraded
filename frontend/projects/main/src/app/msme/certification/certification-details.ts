@@ -16,6 +16,7 @@ import {
 import { MsmeUnitSummary } from '../shared/unit-summary';
 import { levelMode, levelName } from '../shared/levels';
 import { isWebEntryLevel } from '../entry/entry.api';
+import { reportRoute } from '../../report/report.api';
 
 /** One box in the "Actions" column. */
 interface Action {
@@ -28,6 +29,8 @@ interface Action {
   /** Opens in a new tab. Absent (and no route): the target page is not migrated yet ("Available soon"). */
   href?: string;
   download?: boolean;
+  /** A page of this portal opened in a new tab (the report page, 2026-11-15). */
+  newTab?: boolean;
 }
 
 /** Folder of a stored surveillance certificate: {SurveCertPath}/DA|SA/{ZedId}/{Level}.pdf. */
@@ -141,18 +144,18 @@ export class CertificationDetailsPage {
         break;
       case 'milestone':
         list.push({ icon: 'basicInfo', label: `View Milestone ${this.milestone()}`, enabled: has('CompletedOn'), route: siteRoute });
-        list.push({ icon: 'report', label: 'Download Report', enabled: has('CompletedOn'), href: this.reportUrl(), download: true });
+        list.push({ icon: 'report', label: 'View Report', enabled: has('CompletedOn'), href: this.reportUrl(), newTab: true });
         break;
     }
 
     const certified = has('GetCertified');
     if (this.kind() === 'bronze' || this.kind() === 'silverGold') {
       list.push({ icon: 'certificate', label: 'Download Certificate', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'Download Report', enabled: certified, href: this.reportUrl(), download: true });
+      list.push({ icon: 'report', label: 'View Report', enabled: certified, href: this.reportUrl(), newTab: true });
       list.push({ icon: 'incentives', label: 'View My Incentives', enabled: certified, href: this.incentiveUrl() });
     } else if (this.kind() === 'surveillance') {
       list.push({ icon: 'certificate', label: 'Download Surveillance Certificate', enabled: certified, href: this.certificateUrl(), download: true });
-      list.push({ icon: 'report', label: 'Download Surveillance Report', enabled: certified, href: this.reportUrl(), download: true });
+      list.push({ icon: 'report', label: 'View Surveillance Report', enabled: certified, href: this.reportUrl(), newTab: true });
       list.push({ icon: 'incentives', label: 'View My Incentives', enabled: true, href: this.incentiveUrl() });
     }
     // A download whose address cannot be built (no certificate path yet, settings not loaded) stays disabled.
@@ -220,18 +223,12 @@ export class CertificationDetailsPage {
   }
 
   /**
-   * Reports are drawn by this portal for the signed-in MSME: Bronze/Silver/Gold from its own database, surveillance
-   * reports from ZED_SURVEILLANCE and handholding milestone reports from ZED_CONSULTANT (read-only connections).
+   * The report page of the signed-in MSME (2026-11-15: built from the live data, with Download PDF; nothing is stored):
+   * Bronze/Silver/Gold from this portal's database, surveillance reports from ZED_SURVEILLANCE and handholding milestone
+   * reports from ZED_CONSULTANT (read-only connections). An earlier milestone's stored PDF opens from that page.
    */
   private reportUrl(): string {
-    const level = this.level();
-    switch (this.kind()) {
-      case 'surveillance':
-        return `${DOCUMENTS_API}/${level}Surveillance/report`;
-      case 'milestone':
-        return `${DOCUMENTS_API}/${level}/report?milestone=${this.milestone()}`;
-      default:
-        return `${DOCUMENTS_API}/${level}/report`;
-    }
+    const kind = this.kind() === 'surveillance' ? 'surveillance' : this.kind() === 'milestone' ? 'milestone' : 'assessment';
+    return reportRoute({ kind, level: this.level(), milestone: kind === 'milestone' ? this.milestone() : undefined });
   }
 }

@@ -3,9 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom, tap } from 'rxjs';
-import { withApiBase } from '../../api-base';
 import { ContentService, ContentTextComponent, fillText, textParts } from '../../content/content-text';
-import { DETAILS_STYLES, num, text } from '../assessment/assessment-shared';
+import { DETAILS_STYLES, num, reportPageHref, text } from '../assessment/assessment-shared';
 import { AssessmentApi, OpenedType } from '../assessment/assessment.api';
 import { FormChecksPanel } from '../assessment/form-checks';
 import { CHECKPOINT_CHIP_STYLES, Checkpoint, CheckpointDialog, CheckpointSaveRequest, CheckpointValue, checkpointsOf } from '../assessment/checkpoint-dialog';
@@ -242,9 +241,12 @@ export class RemoteAssessmentPage {
     const surveillance = box('Surveillance Assessment', 'SurLatitude', 'SurLongitude');
     return surveillance.lat ? [site, surveillance] : [site];
   });
-  /** "ASSESSMENT REPORT" (the old SA/ReportSummary/{ZedId}?Certification=…), served by the certification documents API. */
+  /**
+   * "ASSESSMENT REPORT" (the old SA/ReportSummary/{ZedId}?Certification=…): the report page (2026-11-15), a DRAFT until the
+   * final submit. The meeting (surveillance) portal's is the surveillance report.
+   */
   protected readonly reportUrl = computed(() =>
-    withApiBase(`/api/staff/certification-documents/${encodeURIComponent(this.zedId)}/${encodeURIComponent(this.data()?.certification ?? this.certification)}/report`));
+    reportPageHref(this.meetingMode() ? 'surveillance' : 'assessment', this.zedId, this.data()?.certification ?? this.certification));
   /** Product descriptions opened on this page (the old page marked them opened without a reload). */
   private readonly opened = signal<ReadonlySet<string>>(new Set());
   /** Products and parameters marked "No" (shown in the final-submit pop-up); in an NC round, the round's. */

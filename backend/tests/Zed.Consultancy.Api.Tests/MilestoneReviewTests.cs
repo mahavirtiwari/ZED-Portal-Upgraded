@@ -470,23 +470,29 @@ public sealed class MilestoneReviewTests : IDisposable
         var call = CallsTo("SP_MONITORING_RA_FINAL_SUBMIT").Single();
         Assert.Equal(Co, FakeSql.Arg(call, "UserId"));
         Assert.Matches("^[1-9a-z]{4}$", FakeSql.Arg(call, "QrCodeSeqNo"));
-        Assert.Contains(("report", Zed, "SilverMilestone2"), _docs.Calls);
+        // 2026-11-15: the milestone report is a page, linked from the mail ("View report", on main's MSME sign-in); nothing drawn or stored.
+        Assert.DoesNotContain(_docs.Calls, c => c.Kind == "report");
         var mail = Assert.Single(_host.Email.Sent);
         Assert.Equal("unit@x.test", mail.To);
         Assert.Contains("Handholding Support (Milestone 2) Report", mail.Subject);
         Assert.Contains("Acme &lt;Castings&gt;", mail.HtmlBody);
-        Assert.Equal($"{Zed}_Silver_Milestone2_Report.pdf", Assert.Single(mail.Attachments!).FileName);
+        Assert.Null(mail.Attachments);
+        Assert.Contains("/msme/report/milestone/Silver?milestone=2", mail.HtmlBody);
+        Assert.DoesNotContain("/Consultancy/msme/report", mail.HtmlBody);
+        Assert.Contains("mailed a link to the milestone report", (await res.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>()).GetProperty("message").GetString());
     }
 
     [Fact]
-    public async Task CO_final_submit_still_succeeds_when_the_report_cannot_be_generated()
+    public async Task CO_final_submit_does_not_draw_the_report()
     {
         _status = 15;
         _docs.FailReports = true;
         var co = await As(Co, UserRole.Agency);
         var res = await co.PostAsJsonAsync(Base + "/final-submit", new { confirmed = true });
         Assert.Equal(HttpStatusCode.OK, res.StatusCode);
-        Assert.Null(Assert.Single(_host.Email.Sent).Attachments);
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.Null(mail.Attachments);
+        Assert.Contains("View report", mail.HtmlBody);
     }
 
     [Fact]

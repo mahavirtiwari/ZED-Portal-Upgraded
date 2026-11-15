@@ -204,7 +204,7 @@ public sealed class SurveillanceReviewTests : IDisposable
     // ------------------------------------------------------------------ agency decisions
 
     [Fact]
-    public async Task Silver_final_submit_at_15_mails_the_surveillance_certificate_without_a_report()
+    public async Task Silver_final_submit_at_15_mails_the_surveillance_certificate_and_links_the_report_page()
     {
         var client = await ReviewTestHost.SignInAsync(App(), "AGENCYSV", UserRole.Agency, Sv);
         var res = await client.PostAsJsonAsync(Monitoring + "/Silver/final-submit", new { exemptionsReviewed = false, qualityChecked = true });
@@ -215,6 +215,9 @@ public sealed class SurveillanceReviewTests : IDisposable
         Assert.StartsWith("Surveillance Certificate and Assessment Report under", mail.Subject);
         Assert.Single(mail.Attachments!);
         Assert.Contains("surveillance", mail.HtmlBody);
+        // 2026-11-15: the surveillance report page on main's MSME sign-in.
+        Assert.Contains("/msme/report/surveillance/Silver", mail.HtmlBody);
+        Assert.DoesNotContain("/surveillance/msme/report", mail.HtmlBody);
         Assert.DoesNotContain("/surveillance/msme/login", mail.HtmlBody);
         Assert.Contains("/msme/login", mail.HtmlBody);
     }

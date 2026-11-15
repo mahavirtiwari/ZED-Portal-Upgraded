@@ -57,6 +57,9 @@ public static class PortalSetup
         MobilePaymentsSetup.AddMobilePayments(services, config);
         services.AddSingleton<PledgeCertificateService>();
         services.AddScoped<IAssessmentDocuments, AssessmentDocuments>();
+        // 2026-11-15: the reports as pages (no stored PDF) and their signed links and photo addresses.
+        services.AddSingleton<Features.Documents.ReportLinks>();
+        services.AddScoped<Features.Documents.ReportPages>();
         services.AddScoped<Features.Staff.PasswordReset.StaffPasswordResets>();
         services.AddScoped<Features.Msme.MsmePasswordResets>();
         services.AddScoped<Features.Msme.MsmeAccountFinder>();

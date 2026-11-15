@@ -15,7 +15,11 @@ public interface IAssessmentDocuments
     /// </summary>
     Task<DocumentFile> IssueCertificateAsync(string zedId, string certification, CancellationToken ct);
 
-    /// <summary>The assessment report PDF (old SA/ReportSummary + Summary pages), saved at its legacy location and returned.</summary>
+    /// <summary>
+    /// The assessment report PDF (old SA/ReportSummary + Summary pages), drawn from the current data and returned under its
+    /// legacy name. 2026-11-15: not stored (the report is a page, <see cref="ReportPages"/>), except a rejected handholding
+    /// milestone's report on the consultancy host, whose rows are archived right after (its file is then the only source).
+    /// </summary>
     Task<DocumentFile> RenderReportAsync(string zedId, string certification, CancellationToken ct);
 }
 

@@ -132,7 +132,7 @@ What a call is checked against (the identity the action acts on):
 | `RA/CheckAssessment`, `RA/SubmitSelfie` (also called by the rebuilt ZED MSME app, which signs in through `msme/login` and never holds an RA token) | `RA`, or `MSME` when the call carries an MSME app token (`[DeviceBound(..., AlsoApp = MSME)]`) | unit = the ZED ID of the bound model; with an MSME token also the MSME app's devices. The mode is `RA`'s. The other `RA/*` calls take `RA` tokens only |
 | `[DeviceBound]` actions of the site assessor and consultant apps (`SA/*`; portal `FinancialAssistance/SubmitOpenMeeting`) | `SA` | user = `saId` / `userName` of the bound model (the allotment check of each action covers the unit) |
 | Site assessor app 2.0 reads `SA/Assessments`, `SA/Assessment`, `SA/Notifications`, `SA/Reports` (Main and Surveillance mobile hosts) | `SA` | user = `saId`; **always enforced** (`TokenRequired`), see "Site assessor app 2.0" |
-| Portal `GET SA/AppReport` (Main and Surveillance portals) | `SA` | the token's assessor must be the record's lead or co-assessor; always required |
+| Portal `GET SA/AppReport`, `GET SA/AppReportLink` (Main and Surveillance portals) | `SA` | the token's assessor must be the record's lead or co-assessor; always required |
 | Bronze surveillance app, every call after login that names a unit (`Surveillance/*`) | `SURV` | user = the unit's allotted desktop assessor, unit = the ZED ID of the call |
 | Consultancy portal `FinancialAssistance/GetDetails`, `ValidateEvidence`, `updatetechnology`, `FinalSubmit` (consultant app, DFO) | `SA` | user = the application's allotted DFO, unit = the ZED ID of the call |
 | `Msme/SubmitSurveillancePhoto` (Surveillance mobile host) | `MSME` | unit; no MSME signs in on that deployment, so it can only be monitored |
@@ -220,6 +220,13 @@ with its sign-in token (`X-Zed-App-Token`, required whatever the MSME token mode
 `GetMyDocuments` (V4 no longer serves those as public files) or `pledge` for the pledge certificate, drawn now; only what
 `SP_MSME_GET_MY_DOCUMENTS` lists for the token's ZED ID is served (`MsmeAppFilesController`, as the web's
 `MsmeFilesController`). The portal needs the same `Mobile:AppTokenKey` as the mobile host to read the token.
+
+2026-11-15: the reports are pages of the portal (built from the live data; Print and Download PDF on the page, nothing
+stored). "View Report" calls `GET Msme/AppReportLink?certification={Level}|{Level}Surveillance[&milestone=n]` with the same
+token: `{ "status": "1", "url" }`, the page address `{PublicBaseUrl}/report/link?t=…` with a token signed by the portal's
+Data Protection keys, valid for 10 minutes and bound to the ZED ID, the report kind, the level and the milestone; the app
+opens it in the system browser. `{ "status": "0", "errorMessage" }` while the certification has no report yet. The page reads
+`GET api/report-pages/link?t=…` (no cookie, read-only; final reports only) and its photos `GET api/report-pages/photo?t=…`.
 
 The app sends no session or registration id, so the calls are linked only by the client address (captcha) and the
 pledge e-mail address (OTP and verification), held server-side in the distributed cache. **FinalSubmit trusts none of
@@ -605,10 +612,11 @@ on the web, Remote / Onsite Assessment; dated by `Nc{n}Submitted`). Ids: `h{Msme
 
 **`SA/Reports`** answers `{ status, errorMessage, reports: [ { "zedId", "baseZedId", "certificationType", "levelName",
 "enterpriseName", "district", "state", "assessmentDate", "certificationStatus", "statusDate", "stage", "statusLabel",
-"role", "team", "reportAvailable", "reportPath" } ] }`: every record from the closing meeting (status 13) on, including
+"role", "team", "reportAvailable", "reportPath", "reportLinkPath" } ] }`: every record from the closing meeting (status 13) on, including
 rejected / reset copies (`zedId` `ZEDMSME000123_D_45`, `baseZedId` the unit), at most 200, newest first.
 `reportAvailable` when the portal draws the report (certified 16 or rejected 99, as the staff download); `reportPath` =
-`SA/AppReport?zedId=...&certificationType=...`, relative to the portal, else null.
+`SA/AppReport?zedId=...&certificationType=...`, relative to the portal, else null; `reportLinkPath` (2026-11-15) =
+`SA/AppReportLink?zedId=...&certificationType=...` (below), else null.
 
 ### Report PDF (portal)
 
@@ -618,6 +626,10 @@ The token must be a genuine, unexpired, unrevoked `SA` token of this deployment 
 record's lead or co-assessor; another assessor's record, Bronze, an unknown level or a record without a report answer 404.
 The PDF is the staff download's (`CertificationDownloads.ReportAsync`, `application/pdf`, legacy file name). `Sensitive`
 rate limit (HTTP 429 beyond 10 a minute per address). The portal needs the mobile host's `Mobile:AppTokenKey`.
+
+2026-11-15: the report is a page of the portal. `GET {portal}/SA/AppReportLink?zedId=…&certificationType=…` (same token and
+rules) answers `{ "status": "1", "url" }`: the page address with a token signed for 10 minutes (bound to the record, the
+kind and the level), which the app opens in the browser instead of downloading the PDF; `{ "status": "0" }` before the report.
 
 ### Forgot password (portal)
 
@@ -767,7 +779,7 @@ started; dated now) and `accepted` (status 100 with a status date in the window)
 
 **`SA/Reports`** answers `{ status, errorMessage, reports: [ { "zedId", "certificationType", "levelName", "milestone",
 "milestoneLabel", "enterpriseName", "district", "state", "assessmentDate", "certificationStatus", "statusDate", "stage",
-"statusLabel", "role", "team", "reportAvailable", "reportPath" } ] }`: every milestone of the consultant from the closing
+"statusLabel", "role", "team", "reportAvailable", "reportPath", "reportLinkPath" } ] }`: every milestone of the consultant from the closing
 meeting (status 13) on, at most 300, newest first. `reportAvailable` for Silver / Gold milestones completed, accepted or
 rejected; `reportPath` = `SA/AppReport?zedId=...&certificationType=...&milestone=n`, relative to the **consultancy portal**.
 
@@ -778,7 +790,11 @@ rejected; `reportPath` = `SA/AppReport?zedId=...&certificationType=...&milestone
   lead or a co-consultant **of that milestone** (else 404). The PDF is the MSME's download (`MilestoneDownloads`): the
   current milestone drawn from `SP_REPORT_GET_DETAILS` once completed (16), accepted (100) or rejected (99) and stored under
   its legacy name; an earlier milestone from the file stored when it was completed (404 when it was never stored). Bronze,
-  milestone 4, a bad id: 404. `Sensitive` rate limit.
+  milestone 4, a bad id: 404. `Sensitive` rate limit. 2026-11-15: a completed milestone's report is no longer stored (it is a
+  page); only the files stored before, and a rejected milestone's `_Reject_Report.pdf`, are files.
+- `GET {consultancy portal}/SA/AppReportLink?zedId=…&certificationType=…&milestone=n` (2026-11-15, same token and rules):
+  `{ "status": "1", "url" }`, the milestone report page signed for 10 minutes (opened in the browser), or
+  `{ "status": "1", "stored": true }` for an earlier milestone stored as a PDF (the app then downloads it with `SA/AppReport`).
 - `POST {consultancy portal}/SA/AppForgotPassword` with `{ "assessorId" }` or `{ "email" }`: the Consultancy portal's staff
   "Forgot password?" (`StaffPasswordResets`, mail "ZED Password Reset - {UserId}", link to this portal's
   `/reset-password`) limited to RoleId 3 (the app's accounts), by e-mail each active RoleId 3 account (up to 5) with that

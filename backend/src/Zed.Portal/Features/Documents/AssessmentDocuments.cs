@@ -81,13 +81,15 @@ public sealed class AssessmentDocuments(
 /// server); version 4, error correction M, as before.</item>
 /// <item>Each main generation is recorded with SP_INSERT_CERTIFICATE_GENERATION_STATUS (SUCCESS/FAILED), as
 /// GenerateCertificate did; SP_GET_RE_GENERATE_CERTIFICATE_LIST relies on it. ZED_SURVEILLANCE has no such procedure.</item>
-/// <item>Report: SP_REPORT_GET_DETAILS → PDFs/SA/{ZedId}/{Level}_Report.pdf (GenerateSaRepory's file name).</item>
+/// <item>Report: SP_REPORT_GET_DETAILS, drawn when asked for (2026-11-15: not stored; the report is a page,
+/// <see cref="ReportPages"/>), under GenerateSaRepory's file name PDFs/SA/{ZedId}/{Level}_Report.pdf.</item>
 /// <item>Surveillance (ZED_SURVEILLANCE, ZEDCS_SURVEILLANCE MonitoringController.SaveDaCertificate/SaveSaCertificate): the
 /// same procedures with DateOfSurveillance and SurveillanceNo, the surveillance artwork (Assets/Documents/Surveillance:
 /// its own Bronze and Gold backgrounds; Silver is main's) → Surveillance/Certificates/{DA|SA}/{ZedId}/{Level}.pdf. Report:
-/// the surveillance variant of <see cref="AssessmentReport"/> → Surveillance/PDFs/SA/{ZedId}/{Level}_Report.pdf.</item>
+/// the surveillance variant of <see cref="AssessmentReport"/> (named Surveillance/PDFs/SA/{ZedId}/{Level}_Report.pdf, not stored).</item>
 /// <item>Handholding milestone (ZED_CONSULTANT, SP_REPORT_GET_DETAILS @NcCount): <see cref="MilestoneReport"/> →
-/// Consultancy/PDFs/SA/{ZedId}/{Level}_Report[_PR1|_PR2].pdf or _Reject_Report.pdf.</item>
+/// Consultancy/PDFs/SA/{ZedId}/{Level}_Report[_PR1|_PR2].pdf or _Reject_Report.pdf. 2026-11-15: only the rejection's copy is
+/// still stored (the rows are archived after it, so the file is its only source); the files stored before stay served.</item>
 /// </list>
 /// </summary>
 public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOptions> portal, ILogger log)
@@ -156,7 +158,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
     /// 6 its desktop number), so a Bronze certified after a visit shows its site number on the Bronze surveillance artwork.
     /// Picking the procedure by main's route would read the round's other, empty column.
     /// </summary>
-    private static async Task<(IDictionary<string, object?> Row, bool AtDesktop)> CertificateRowAsync(
+    internal static async Task<(IDictionary<string, object?> Row, bool AtDesktop)> CertificateRowAsync(
         ISqlExecutor db, string zedId, string level, bool surveillance, CancellationToken ct)
     {
         var desktop = surveillance ? Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level)
@@ -319,31 +321,50 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
 
     // ------------------------------------------------------------------ reports
 
+    /// <summary>
+    /// The assessment report PDF, drawn from the current data each time (2026-11-15: no longer written to storage; the
+    /// report is a page, <see cref="ReportPages"/>; this PDF is kept for the old links and the rejected copies). The relative
+    /// path is the legacy name, used as the download's file name.
+    /// </summary>
     public async Task<DocumentFile> RenderReportAsync(ISqlExecutor db, string zedId, string certification, CancellationToken ct)
     {
         var level = Validate(zedId, certification);
         var pdf = await AssessmentReportPdfAsync(db, zedId, level, surveillance: false, ct);
-        var relative = DocumentLevels.ReportPath(zedId, level);
-        await _storage.WriteAsync(relative, pdf, ct);
-        return new DocumentFile(relative, pdf);
+        return new DocumentFile(DocumentLevels.ReportPath(zedId, level), pdf);
     }
 
-    /// <summary>The surveillance report (ZEDCS_SURVEILLANCE SA/ReportSummary) from ZED_SURVEILLANCE.</summary>
+    /// <summary>The surveillance report (ZEDCS_SURVEILLANCE SA/ReportSummary) from ZED_SURVEILLANCE; not stored either.</summary>
     public async Task<DocumentFile> RenderSurveillanceReportAsync(ISqlExecutor surveillanceDb, string zedId, string certification, CancellationToken ct)
     {
         var level = Validate(zedId, certification);
         var pdf = await AssessmentReportPdfAsync(surveillanceDb, zedId, level, surveillance: true, ct);
-        var relative = DocumentLevels.SurveillanceReportPath(zedId, level);
-        await _storage.WriteAsync(relative, pdf, ct);
-        return new DocumentFile(relative, pdf);
+        return new DocumentFile(DocumentLevels.SurveillanceReportPath(zedId, level), pdf);
     }
 
-    private async Task<byte[]> AssessmentReportPdfAsync(ISqlExecutor db, string zedId, string level, bool surveillance, CancellationToken ct)
+    /// <summary>
+    /// SP_REPORT_GET_DETAILS of an assessment or surveillance report (the PDF and the page read the same sets).
+    /// ZED_SURVEILLANCE's procedure also takes @UserId (unused for the report); main's is called as before.
+    /// </summary>
+    internal static async Task<ResultSets> AssessmentSetsAsync(ISqlExecutor db, string zedId, string level, CancellationToken ct)
     {
-        // ZED_SURVEILLANCE's procedure also takes @UserId (unused for the report); main's is called as before.
         var sets = await db.QueryProcMultipleAsync("SP_REPORT_GET_DETAILS",
             new { Certification = AssessmentInput.Ansi(level), ZedId = AssessmentInput.Ansi(zedId, 100) }, ct);
         if (sets[0].Count == 0) throw new DocumentNotAvailableException("No report data.");
+        return sets;
+    }
+
+    /// <summary>ZED_CONSULTANT's SP_REPORT_GET_DETAILS of a milestone (null: the unit's current one).</summary>
+    internal static Task<ResultSets> MilestoneSetsAsync(ISqlExecutor consultancyDb, string zedId, string level, int? milestone, CancellationToken ct) =>
+        consultancyDb.QueryProcMultipleAsync("SP_REPORT_GET_DETAILS", new
+        {
+            Certification = AssessmentInput.Ansi(level),
+            ZedId = AssessmentInput.Ansi(zedId, 100),
+            NcCount = milestone,
+        }, ct);
+
+    private async Task<byte[]> AssessmentReportPdfAsync(ISqlExecutor db, string zedId, string level, bool surveillance, CancellationToken ct)
+    {
+        var sets = await AssessmentSetsAsync(db, zedId, level, ct);
 
         var assets = _storage.AssetsFolder;
         using var cover = Image(assets, "ReportCover.jpg");
@@ -363,7 +384,9 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
 
     /// <summary>
     /// Handholding milestone report from ZED_CONSULTANT (SA/ReportSummary?milestone=n). A null milestone lets the
-    /// procedure take the unit's current one. <paramref name="save"/>: keep the file at its legacy name.
+    /// procedure take the unit's current one. <paramref name="save"/>: keep a rejected milestone's report at its legacy name
+    /// (_Reject_Report.pdf): the rejection archives the rows next, so the file is then its only source. 2026-11-15: a completed
+    /// milestone's report is a page (<see cref="ReportPages"/>) and is never stored; the files stored before stay served.
     /// </summary>
     public async Task<DocumentFile> RenderMilestoneReportAsync(ISqlExecutor consultancyDb, string zedId, string level, int? milestone, bool save,
         CancellationToken ct)
@@ -373,12 +396,7 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
             throw new ArgumentException("Invalid milestone.", nameof(milestone));
         level = DocumentLevels.Level(level)!;
 
-        var sets = await consultancyDb.QueryProcMultipleAsync("SP_REPORT_GET_DETAILS", new
-        {
-            Certification = AssessmentInput.Ansi(level),
-            ZedId = AssessmentInput.Ansi(zedId, 100),
-            NcCount = milestone,
-        }, ct);
+        var sets = await MilestoneSetsAsync(consultancyDb, zedId, level, milestone, ct);
         var unit = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No report data.");
         var number = milestone ?? (int.TryParse(unit.Text("NcCount"), out var n) && n is >= 1 and <= DocumentLevels.Milestones
             ? n
@@ -397,22 +415,23 @@ public sealed class DocumentRenderer(IWebHostEnvironment env, IOptions<PortalOpt
 
         var pdf = MilestoneReport.Render(sets, new MilestoneReport.Assets(cover, header, existing, desired, lastPage, map), photos);
         var relative = DocumentLevels.MilestoneReportPath(zedId, level, number, rejected);
-        if (save) await _storage.WriteAsync(relative, pdf, ct);
+        if (save && rejected) await _storage.WriteAsync(relative, pdf, ct);
         return new DocumentFile(relative, pdf);
     }
 
     /// <summary>A static map the old application downloaded (its own GoogleMaps folder first, then main's).</summary>
-    private SKImage? Map(string systemFolder, string zedId, string level)
-    {
-        var path = _storage.Find($"{systemFolder}GoogleMaps/{zedId}_{level}.jpg") ?? _storage.Find($"GoogleMaps/{zedId}_{level}.jpg");
-        return path is null ? null : ReportPhotos.Downscale(path, 1000);
-    }
+    private SKImage? Map(string systemFolder, string zedId, string level) =>
+        MapPath(systemFolder, zedId, level) is { } relative && _storage.Find(relative) is { } path ? ReportPhotos.Downscale(path, 1000) : null;
+
+    /// <summary>The storage path of that map, null when there is none.</summary>
+    internal string? MapPath(string systemFolder, string zedId, string level) =>
+        new[] { $"{systemFolder}GoogleMaps/{zedId}_{level}.jpg", $"GoogleMaps/{zedId}_{level}.jpg" }.FirstOrDefault(p => _storage.Find(p) is not null);
 
     /// <summary>
     /// The report's level badge: Level{Level}.png; for a V4 level (ZED-X) the report artwork the Admin uploaded (2026-11-08),
     /// else the logo the Admin uploaded, else the bundled picture.
     /// </summary>
-    private async Task<SKImage> BadgeAsync(ISqlExecutor db, string level, CancellationToken ct)
+    internal async Task<SKImage> BadgeAsync(ISqlExecutor db, string level, CancellationToken ct)
     {
         if (LevelArtwork.Uploaded(_storage.Root, level, LevelArtwork.Report) is { } artwork && SKImage.FromEncodedData(artwork) is { } own)
             return own;

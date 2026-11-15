@@ -27,6 +27,7 @@ public sealed class MsmeCertificationDocumentsController(
     IAssessmentDocuments documents,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    ReportPages pages,
     ILogger<DocumentRenderer> log) : MsmeApiController
 {
     /// <summary>
@@ -94,6 +95,43 @@ public sealed class MsmeCertificationDocumentsController(
         var row = await AssessmentRecords.CertificationAsync(db, recordId, level, ct);
         return await CertificationDownloads.ReportAsync(this, documents, row, recordId, level, ct);
     }
+
+    /// <summary>
+    /// GET api/msme/certification-documents/{certification}/report/page[?record=…|?milestone=n] (2026-11-15): the same report
+    /// as page data (<see cref="ReportPageView"/>, the portal's /msme/report/... page), under the same rules as
+    /// <see cref="Report"/>. An earlier milestone stored as a PDF answers only the address of that file.
+    /// </summary>
+    [HttpGet("{certification}/report/page")]
+    public async Task<ActionResult<ReportPageView>> ReportPage(string certification, string? record, int? milestone, CancellationToken ct)
+    {
+        var surveillanceLevel = DocumentLevels.SurveillanceLevel(certification);
+        if ((surveillanceLevel ?? DocumentLevels.Level(certification)) is not { } level) return this.Problem400("Invalid certification.");
+
+        if (milestone is not null)
+        {
+            if (surveillanceLevel is not null || level == "Bronze" || milestone is < 1 or > DocumentLevels.Milestones || !string.IsNullOrEmpty(record))
+                return this.Problem400("Invalid milestone.");
+            if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Consultancy) is not { } consultancyDb) return NotFound();
+            var milestoneRecord = await AssessmentRecords.CertificationAsync(consultancyDb, ZedId, level, ct);
+            return await ReportPageAccess.MilestoneAsync(this, pages, new DocumentStorage(env, portal), consultancyDb, milestoneRecord, ZedId, level,
+                milestone.Value, staff: false, $"/api/msme/certification-documents/{level}/report?milestone={milestone.Value}", ct);
+        }
+
+        var recordId = string.IsNullOrEmpty(record) ? ZedId : record;
+        if (!AssessmentInput.IsId(recordId) ||
+            !string.Equals(AssessmentInput.BaseZedId(recordId), ZedId, StringComparison.OrdinalIgnoreCase))
+            return NotFound();
+
+        if (surveillanceLevel is not null)
+        {
+            if (SystemDatabases.Open(HttpContext.RequestServices, PortalSystem.Surveillance) is not { } surveillanceDb) return NotFound();
+            var surveillanceRow = await AssessmentRecords.CertificationAsync(surveillanceDb, recordId, level, ct);
+            return await ReportPageAccess.AssessmentAsync(this, pages, surveillanceDb, surveillanceRow, recordId, level, surveillance: true, staff: false, ct);
+        }
+
+        var row = await AssessmentRecords.CertificationAsync(db, recordId, level, ct);
+        return await ReportPageAccess.AssessmentAsync(this, pages, db, row, recordId, level, surveillance: false, staff: false, ct);
+    }
 }
 
 /// <summary>
@@ -109,7 +147,8 @@ public sealed class StaffCertificationDocumentsController(
     IAssessmentDocuments documents,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
-    PledgeCertificateService pledges) : StaffApiController
+    PledgeCertificateService pledges,
+    ReportPages pages) : StaffApiController
 {
     [HttpGet("{certification}/certificate")]
     public async Task<IActionResult> Certificate(string zedId, string certification, CancellationToken ct)
@@ -128,6 +167,19 @@ public sealed class StaffCertificationDocumentsController(
         var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
         if (record is null || !record.CanView(CurrentUser)) return NotFound();
         return await CertificationDownloads.ReportAsync(this, documents, record, zedId, level, ct);
+    }
+
+    /// <summary>
+    /// The report as page data (/staff/report/assessment/{level}/{zedId}), 2026-11-15. Staff may also open it before the final
+    /// submit: a draft, marked DRAFT.
+    /// </summary>
+    [HttpGet("{certification}/report/page")]
+    public async Task<ActionResult<ReportPageView>> ReportPage(string zedId, string certification, CancellationToken ct)
+    {
+        if (!AssessmentInput.IsId(zedId) || DocumentLevels.Level(certification) is not { } level) return this.Problem400("Invalid request.");
+        var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (record is null || !record.CanView(CurrentUser)) return NotFound();
+        return await ReportPageAccess.AssessmentAsync(this, pages, db, record, zedId, level, surveillance: false, staff: true, ct);
     }
 
     /// <summary>
@@ -229,6 +281,7 @@ public sealed class StaffSystemDocumentsController(
     IAssessmentDocuments documents,
     IWebHostEnvironment env,
     IOptions<PortalOptions> portal,
+    ReportPages pages,
     ILogger<DocumentRenderer> log) : StaffApiController
 {
     [HttpGet("{certification}/certificate")]
@@ -260,6 +313,31 @@ public sealed class StaffSystemDocumentsController(
         if (unit is null || !unit.CanView(CurrentUser)) return NotFound();
         return await MilestoneDownloads.ReportAsync(this, new DocumentRenderer(env, portal, log), db, unit, zedId, level,
             milestone ?? unit.Nc, preview: true, ct);
+    }
+
+    /// <summary>
+    /// The report as page data (2026-11-15): surveillance /staff/report/surveillance/{level}/{zedId}; consultancy
+    /// /staff/report/milestone/{level}/{zedId}?milestone=n (an earlier milestone stored as a PDF answers that file's address).
+    /// Staff may open the current one before the final submit: a draft, marked DRAFT.
+    /// </summary>
+    [HttpGet("{certification}/report/page")]
+    public async Task<ActionResult<ReportPageView>> ReportPage(string zedId, string certification, int? milestone, CancellationToken ct)
+    {
+        if (!AssessmentInput.IsId(zedId) || Level(certification) is not { } level) return this.Problem400("Invalid request.");
+        if (host.System == PortalSystem.Surveillance)
+        {
+            if (milestone is not null) return this.Problem400("Invalid request.");
+            var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+            if (record is null || !record.CanView(CurrentUser)) return NotFound();
+            return await ReportPageAccess.AssessmentAsync(this, pages, db, record, zedId, level, surveillance: true, staff: true, ct);
+        }
+
+        if (level == "Bronze" || milestone is < 1 or > DocumentLevels.Milestones) return this.Problem400("Invalid milestone.");
+        var unit = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (unit is null || !unit.CanView(CurrentUser)) return NotFound();
+        var number = milestone ?? unit.Nc;
+        return await ReportPageAccess.MilestoneAsync(this, pages, new DocumentStorage(env, portal), db, unit, zedId, level, number, staff: true,
+            $"/api/staff/certification-documents/{Uri.EscapeDataString(zedId)}/{level}/report?milestone={number}", ct);
     }
 
     /// <summary>"Gold", or "GoldSurveillance" as main names it.</summary>
@@ -330,6 +408,54 @@ internal static class MilestoneDownloads
 
         var final = DocumentLevels.IsMilestoneCompleted(record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected;
         if (!final && !(preview && record.CertificationStatus == Submitted)) return c.NotFound();
-        return await CertificationDownloads.PdfAsync(c, () => renderer.RenderMilestoneReportAsync(consultancyDb, zedId, level, milestone, save: final, ct));
+        return await CertificationDownloads.PdfAsync(c, () => renderer.RenderMilestoneReportAsync(consultancyDb, zedId, level, milestone, save: false, ct));
     }
+}
+
+/// <summary>
+/// Who may open a report page (2026-11-15), as the PDF downloads: a certified record or a rejected copy; a handholding
+/// milestone once completed, accepted or rejected (an earlier one: the PDF stored when it was completed, else drawn from its
+/// own rows). Staff (<paramref name="staff"/>) may also open the current one before the final submit, as a draft.
+/// </summary>
+internal static class ReportPageAccess
+{
+    public static async Task<ActionResult<ReportPageView>> AssessmentAsync(ControllerBase c, ReportPages pages, ISqlExecutor db,
+        CertificationRecord? record, string recordId, string level, bool surveillance, bool staff, CancellationToken ct)
+    {
+        if (record is null) return c.NotFound();
+        var final = CertificationDownloads.HasReport(level, record);
+        if (!final && !staff) return c.NotFound();
+        return await BuildAsync(c, () => pages.AssessmentAsync(db, recordId, level, surveillance, draft: !final, ct));
+    }
+
+    public static async Task<ActionResult<ReportPageView>> MilestoneAsync(ControllerBase c, ReportPages pages, DocumentStorage storage, ISqlExecutor db,
+        CertificationRecord? record, string zedId, string level, int milestone, bool staff, string storedPdfUrl, CancellationToken ct)
+    {
+        if (record is null || level is not ("Silver" or "Gold") || milestone < 1 || milestone > record.Nc) return c.NotFound();
+        if (milestone < record.Nc)
+        {
+            NoStore(c);
+            if (storage.Find(DocumentLevels.MilestoneReportPath(zedId, level, milestone, rejected: false)) is not null)
+                return ReportPageView.Stored(zedId, level, milestone, storedPdfUrl);
+            return await BuildAsync(c, () => pages.MilestoneAsync(db, zedId, level, milestone, record, draft: false, ct));
+        }
+        var final = DocumentLevels.IsMilestoneCompleted(record.CertificationStatus) || record.CertificationStatus == DocumentLevels.Rejected;
+        if (!final && !staff) return c.NotFound();
+        return await BuildAsync(c, () => pages.MilestoneAsync(db, zedId, level, milestone, record, draft: !final, ct));
+    }
+
+    private static async Task<ActionResult<ReportPageView>> BuildAsync(ControllerBase c, Func<Task<ReportPageView>> build)
+    {
+        NoStore(c);
+        try
+        {
+            return await build();
+        }
+        catch (DocumentNotAvailableException)
+        {
+            return c.NotFound();
+        }
+    }
+
+    private static void NoStore(ControllerBase c) => c.Response.Headers.CacheControl = "private, no-store";
 }

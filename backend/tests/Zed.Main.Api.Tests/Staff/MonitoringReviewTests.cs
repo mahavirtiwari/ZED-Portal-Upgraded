@@ -278,7 +278,11 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.Equal("unit@x.test", mail.To);
         Assert.Contains("Certificate and Assessment Report", mail.Subject);
         Assert.EndsWith(Zed, mail.Subject);
-        Assert.Equal(["Bronze.pdf", $"{Zed}_Bronze_Report.pdf"], mail.Attachments!.Select(a => a.FileName));
+        // 2026-11-15: the certificate is attached; the report is a "View report" link to its page (sign-in needed).
+        Assert.Equal(["Bronze.pdf"], mail.Attachments!.Select(a => a.FileName));
+        Assert.DoesNotContain(("report", Zed, "Bronze"), _docs.Calls);
+        Assert.Contains("/msme/report/assessment/Bronze", mail.HtmlBody);
+        Assert.Contains("View report", mail.HtmlBody);
         Assert.DoesNotContain("Secret#1", mail.HtmlBody);
         Assert.DoesNotContain("ReportSummary", mail.HtmlBody);
         Assert.Contains("/msme/login", mail.HtmlBody);
@@ -409,9 +413,10 @@ public sealed class MonitoringReviewTests : IDisposable
         Assert.StartsWith("Rejection of your application", mail.Subject);
         Assert.Contains("Acme &lt;Castings&gt;", mail.HtmlBody);
         Assert.DoesNotContain("Secret#1", mail.HtmlBody);
-        // The report of the archived copy is attached.
-        Assert.Contains(("report", Zed + "_D_45", "Bronze"), _docs.Calls);
-        Assert.Single(mail.Attachments!);
+        // 2026-11-15: the archived copy's report page is linked (sign-in needed), nothing attached.
+        Assert.DoesNotContain(_docs.Calls, c => c.Kind == "report");
+        Assert.Null(mail.Attachments);
+        Assert.Contains($"/msme/report/assessment/Bronze?record={Zed}_D_45", mail.HtmlBody);
     }
 
     [Fact]

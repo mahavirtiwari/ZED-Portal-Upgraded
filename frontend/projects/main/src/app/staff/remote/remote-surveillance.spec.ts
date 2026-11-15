@@ -172,11 +172,12 @@ describe('RemoteAssessmentPage (surveillance meeting link)', () => {
     expect([...el.querySelectorAll('.locations .sub-heading')].map((b) => b.textContent!.trim())).toEqual(['Site Assessment']);
   });
 
-  it('has Refresh and ASSESSMENT REPORT buttons', async () => {
+  it('has Refresh and VIEW REPORT buttons', async () => {
     await create(details());
     expect(el.querySelector('.refresh-link')).toBeNull();
     const report = el.querySelector('a.assessment-report') as HTMLAnchorElement;
-    expect(report.getAttribute('href')).toBe('/api/staff/certification-documents/ZEDMSME000001/Silver/report');
+    // 2026-11-15: the surveillance report page (a DRAFT until the final submit).
+    expect(report.getAttribute('href')).toBe('/staff/report/surveillance/Silver/ZEDMSME000001');
     expect(report.getAttribute('target')).toBe('_blank');
     (el.querySelector('button.refresh') as HTMLButtonElement).click();
     await settle(fixture);

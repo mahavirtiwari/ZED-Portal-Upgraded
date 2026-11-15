@@ -24,9 +24,11 @@
                 <tr class="doc-row">
                   <td class="dn">{{ i + 1 }}</td>
                   <td><p>{{ c.label }}</p></td>
-                  <td class="dd">{{ c.label === 'Pledge Certificate' ? 'Certificate of the ZED Pledge' : 'ZED certification certificate' }}</td>
+                  <td class="dd">{{ c.report ? 'ZED assessment report (a page with Download PDF)' : c.label === 'Pledge Certificate' ? 'Certificate of the ZED Pledge' : 'ZED certification certificate' }}</td>
                   <td class="da">
-                    @if (c.url) {
+                    @if (c.url && c.report) {
+                      <a class="btn btn-primary btn-sm doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'View ' + c.label">View Report</a>
+                    } @else if (c.url) {
                       <a class="btn btn-primary btn-sm doc-download" [href]="c.url" target="_blank" rel="noopener" [attr.aria-label]="'Download ' + c.label">Download</a>
                     } @else {
                       <span class="not-available" title="Not available yet">Not available yet</span>

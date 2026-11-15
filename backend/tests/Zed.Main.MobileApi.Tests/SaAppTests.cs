@@ -446,6 +446,8 @@ public sealed class SaAppTests : IDisposable
 
         Assert.True(reports[0].GetProperty("reportAvailable").GetBoolean());
         Assert.Equal("SA/AppReport?zedId=ZEDMSME000004&certificationType=Gold", reports[0].GetProperty("reportPath").GetString());
+        // 2026-11-15: the report page's signed link (the app opens it in the browser).
+        Assert.Equal("SA/AppReportLink?zedId=ZEDMSME000004&certificationType=Gold", reports[0].GetProperty("reportLinkPath").GetString());
         Assert.Equal("Certified", reports[0].GetProperty("statusLabel").GetString());
 
         // A rejected copy: its record id for the report, the unit's ZED ID beside it.
@@ -457,6 +459,7 @@ public sealed class SaAppTests : IDisposable
         // Closing meeting done, not certified yet: no report.
         Assert.False(reports[2].GetProperty("reportAvailable").GetBoolean());
         Assert.Equal(JsonValueKind.Null, reports[2].GetProperty("reportPath").ValueKind);
+        Assert.Equal(JsonValueKind.Null, reports[2].GetProperty("reportLinkPath").ValueKind);
         Assert.Equal("Co", reports[2].GetProperty("role").GetString());
     }
 

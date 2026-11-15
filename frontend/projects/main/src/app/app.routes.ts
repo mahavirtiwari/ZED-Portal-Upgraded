@@ -10,6 +10,7 @@ import { MSME_SCHEME_ROUTES, PUBLIC_INCENTIVE_ROUTES, SCHEME_LEGACY_REDIRECTS } 
 import { MILESTONE_LEGACY_REDIRECTS, MILESTONE_ROUTES } from './staff/consultancy/milestones/milestones.routes';
 import { PORTAL_SYSTEM } from './portal-system';
 import { PORTAL_LABELS } from './portal-labels';
+import { reportGuard } from './report/report.api';
 
 /** MSME role id (Users.RoleId 5, "Ulb" in the legacy enum). */
 const MSME = 5;
@@ -31,6 +32,16 @@ const FINANCIAL_SUPPORT = staffScreenGuard([R.SuperAdmin, R.CitizenFeedback]);
 const MONITORING = staffScreenGuard([R.MasterAdmin, R.Agency]);
 const SA_ALLOTMENT = staffScreenGuard([R.Agency]);
 const REMOTE_ASSESSMENTS = staffScreenGuard([R.DesktopAssessor]);
+
+/**
+ * 2026-11-15: the reports as pages (assessment, surveillance, handholding milestone), full screen with Print and Download PDF.
+ * Staff open a record they may see (all three portals); main also the MSME's own; any portal a signed link from an app.
+ */
+const REPORT_PAGE = () => import('./report/report-page').then((m) => m.ReportPageView);
+const STAFF_REPORT_ROUTES: Routes = [
+  { path: 'staff/report/:kind/:level/:zedId', title: 'ZED | Report', canActivate: [reportGuard('staff')], loadComponent: REPORT_PAGE },
+  { path: 'report/link', title: 'ZED | Report', loadComponent: REPORT_PAGE },
+];
 
 /** Main's staff screens (children of `staff`). */
 /** The incentives page of a type of the old menu (?type= / ?incentiveType=): its group, a state's list for a state name. */
@@ -192,6 +203,10 @@ const MAIN_ROUTES: Routes = [
   },
   ...PUBLIC_INCENTIVE_ROUTES,
   { path: 'privacy-policy', title: 'ZED | Privacy Policy', loadComponent: () => import('./public/privacy-policy').then((m) => m.PrivacyPolicyPage) },
+
+  // The report pages (before the MSME and staff layouts: full screen, sign-in with the way back).
+  { path: 'msme/report/:kind/:level', title: 'ZED | Report', canActivate: [reportGuard('msme')], loadComponent: REPORT_PAGE },
+  ...STAFF_REPORT_ROUTES,
 
   // Signed-in MSME area
   {
@@ -568,6 +583,7 @@ const SYSTEM_ROUTES: Routes = [
   { path: 'login', title: PORTAL_LABELS.loginTitle, loadComponent: () => import('./staff/staff-login').then((m) => m.StaffLoginPage) },
   { path: 'forgot-password', title: PORTAL_LABELS.loginTitle.replace('User Login', 'Forgot Password'), loadComponent: () => import('./staff/password-reset/staff-forgot-password').then((m) => m.StaffForgotPasswordPage) },
   { path: 'reset-password', title: PORTAL_LABELS.loginTitle.replace('User Login', 'Set a New Password'), loadComponent: () => import('./staff/password-reset/staff-reset-password').then((m) => m.StaffResetPasswordPage) },
+  ...STAFF_REPORT_ROUTES,
   {
     path: 'staff',
     canActivate: [authGuard('/login', STAFF_ROLE_IDS)],

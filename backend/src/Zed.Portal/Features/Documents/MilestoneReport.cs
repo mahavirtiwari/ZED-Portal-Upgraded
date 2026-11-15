@@ -29,22 +29,22 @@ public static class MilestoneReport
     private static readonly SKColor Milestone2 = new(0xB3, 0xE0, 0x79);
     private static readonly SKColor Milestone3 = new(0x45, 0xA5, 0xAD);
 
-    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos)
+    public static byte[] Render(ResultSets sets, Assets assets, ReportPhotos photos) =>
+        Render(sets, MilestoneReportData.Parse(sets), assets, photos);
+
+    /// <summary>The PDF of <paramref name="data"/> (read from <paramref name="sets"/>, whose texts the fonts are subset to).</summary>
+    public static byte[] Render(ResultSets sets, MilestoneReportData data, Assets assets, ReportPhotos photos)
     {
-        var unit = sets[0].FirstOrDefault() ?? throw new DocumentNotAvailableException("No report data.");
-        var zedId = unit.Text("ZedId");
-        var milestone = unit.Text("NcCount");
-        var rejected = unit.Text("CertificationStatus") == DocumentLevels.Rejected.ToString(System.Globalization.CultureInfo.InvariantCulture);
-        var location = sets[9].FirstOrDefault();
-        var latitude = location?.Text("Latitude") ?? "";
-        var longitude = location?.Text("Longitude") ?? "";
+        var unit = data.Unit;
+        var milestone = data.Milestone;
+        var rejected = unit.Rejected;
 
         var characters = Enumerable.Range(0, sets.Count).SelectMany(i => sets[i]).SelectMany(r => r.Values)
             .OfType<string>().SelectMany(v => v);
-        using var pdf = new ReportPdf(zedId + "/ASSESSMENT REPORT", assets.Header, characters);
+        using var pdf = new ReportPdf(unit.ZedId + "/ASSESSMENT REPORT", assets.Header, characters);
 
         AssessmentReport.Cover(pdf, new AssessmentReport.Assets(assets.Cover, assets.Header, assets.Cover, null, assets.LastPage, null),
-            unit.Text("PUnitName"), $"{unit.Text("PDistrictName")}, {unit.Text("PStateName")}", latitude, longitude);
+            unit.Name, unit.Place, data.Latitude, data.Longitude);
 
         // ----- disclaimer
         pdf.NewPage();
@@ -56,23 +56,16 @@ public static class MilestoneReport
         // ----- overview, location and levels
         pdf.NewPage();
         pdf.Panel("OVERVIEW");
-        var dates = milestone switch
-        {
-            "1" => $"BDSR: {unit.Text("BdsFromDate")}\nHAP: {unit.Text("HapFromDate")}",
-            "2" => $"PR1: {unit.Text("BdsFromDate")}",
-            "3" => $"PR2: {unit.Text("BdsFromDate")}",
-            _ => "",
-        };
         pdf.Table(new TableSpec(1.1f, 2f) { LabelColumn = true, FontSize = 9 }
-            .Row(Cell.Of("Unit Name"), Cell.Of(unit.Text("PUnitName")))
+            .Row(Cell.Of("Unit Name"), Cell.Of(unit.Name))
             .Row(Cell.Of("Udyam Registration Number"), Cell.Of(unit.Text("UdyogAadharNo")))
             .Row(Cell.Of("Enterprise Type"), Cell.Of(unit.Text("EnterpriseTypee")))
             .Row(Cell.Of("NIC Sector (2 Digit)"), Cell.Of(unit.Text("TwoDigitActivity")))
             .Row(Cell.Of("Unit Address"), Cell.Of(unit.Text("PlantAddress")))
-            .Row(Cell.Of(rejected ? "Rejected Date" : $"Milestone {milestone} Date"), Cell.Of(dates)));
+            .Row(Cell.Of(rejected ? "Rejected Date" : $"Milestone {milestone} Date"), Cell.Of(Dates(unit, milestone))));
         pdf.Ensure(assets.Map is null ? 60 : 300);
         pdf.Heading("Location", size: 10);
-        pdf.Panel($"Latitude: {latitude}; Longitude: {longitude}");
+        pdf.Panel($"Latitude: {data.Latitude}; Longitude: {data.Longitude}");
         if (assets.Map is not null) pdf.Image(assets.Map, Math.Min(pdf.ContentWidth, 420));
 
         if (!rejected)
@@ -86,28 +79,27 @@ public static class MilestoneReport
         pdf.NewPage();
         pdf.Panel("BASIC INFORMATION");
         pdf.Paragraph(Texts.BasicInformation, 9.5f);
-        var site = sets[8]
-            .Select(p => (Image: photos.Load(p.Text("Photo"), PhotoPath(p, zedId)), Caption: p.Text("Name")))
+        var site = data.SitePhotos
+            .Select(p => (Image: photos.Load([.. p.Candidates]), p.Caption))
             .Where(p => p.Image is not null)
             .Select(p => (p.Image!, p.Caption))
             .ToList();
         pdf.Gallery(site, maxWidth: 240, maxHeight: 260);
 
         // ----- meetings
-        Meeting(pdf, "OPENING MEETING", "Opening Meeting Photo:", sets[10], sets[11], sets[14], photos);
-        Meeting(pdf, "CLOSING MEETING", "Closing Meeting Photo:", sets[12], sets[13], sets[15], photos);
+        Meeting(pdf, "OPENING MEETING", "Opening Meeting Photo:", data.Opening, photos);
+        Meeting(pdf, "CLOSING MEETING", "Closing Meeting Photo:", data.Closing, photos);
 
         // ----- findings
         pdf.NewPage();
         pdf.Panel("FINDINGS");
         pdf.Paragraph(Texts.Findings, 9.5f);
-        foreach (var s in sets[3])
+        foreach (var s in data.Sections)
         {
-            var code = s.Text("SectionCode");
             pdf.Space(6);
-            pdf.Heading($"{code}. {s.Text("SectionName")}");
-            foreach (var r in sets[4].Where(r => r.Text("SectionCode") == code))
-                Requirement(pdf, milestone, s, r, sets[5], sets[6], sets[16]);
+            pdf.Heading($"{s.Code}. {s.Name}");
+            foreach (var r in data.Requirements.Where(r => r.Requirement.SectionCode == s.Code))
+                Requirement(pdf, milestone, r);
         }
 
         // ----- way forward and closing page
@@ -118,9 +110,14 @@ public static class MilestoneReport
         return pdf.Finish();
     }
 
-    /// <summary>The page built the site photo address from the name and photo id when Photo was empty.</summary>
-    private static string PhotoPath(IDictionary<string, object?> p, string zedId) =>
-        $"consultancymobileapi/SaPhotos/{zedId}/{p.Text("Certification")}/{p.Text("Name")}_{p.Text("PhotoId")}.jpg";
+    /// <summary>The milestone's dates as the old page wrote them (BDSR and HAP for milestone 1, PR1 / PR2 after).</summary>
+    public static string Dates(ReportUnit unit, string milestone) => milestone switch
+    {
+        "1" => $"BDSR: {unit.Text("BdsFromDate")}\nHAP: {unit.Text("HapFromDate")}",
+        "2" => $"PR1: {unit.Text("BdsFromDate")}",
+        "3" => $"PR2: {unit.Text("BdsFromDate")}",
+        _ => "",
+    };
 
     private static void Levels(ReportPdf pdf, SKImage? existing, SKImage? desired)
     {
@@ -143,49 +140,39 @@ public static class MilestoneReport
         pdf.Space(badge + labelHeight + 34);
     }
 
-    private static void Meeting(ReportPdf pdf, string title, string photoTitle,
-        IReadOnlyList<IDictionary<string, object?>> meetings, IReadOnlyList<IDictionary<string, object?>> participants,
-        IReadOnlyList<IDictionary<string, object?>> meetingPhotos, ReportPhotos photos)
+    private static void Meeting(ReportPdf pdf, string title, string photoTitle, ReportMeeting meeting, ReportPhotos photos)
     {
         pdf.NewPage();
         pdf.Panel(title);
-        var remark = meetings.FirstOrDefault()?.Text("Comments") ?? "";
-        var photo = meetingPhotos.FirstOrDefault() is { } p ? photos.Load(p.Text("PhotoPath"), p.Text("Photo")) : null;
+        var photo = meeting.Photo is { } p ? photos.Load([.. p.Candidates]) : null;
         var photoCell = new List<CellItem> { new CellText(photoTitle, Bold: true) };
         if (photo is not null) photoCell.Add(new CellImage(photo, 260));
         pdf.Table(new TableSpec(3f, 2f) { FontSize = 9 }
-            .Row(new Cell([new CellText("CONSULTANT REMARK", Bold: true), new CellText(remark)]), new Cell(photoCell)));
+            .Row(new Cell([new CellText("CONSULTANT REMARK", Bold: true), new CellText(meeting.Remark)]), new Cell(photoCell)));
 
         pdf.Heading("PARTICIPANTS", size: 10);
-        foreach (var person in participants)
+        foreach (var (name, designation) in meeting.Participants)
         {
             pdf.Ensure(30);
-            pdf.Paragraph(person.Text("ParticipantName"), 9.5f, bold: true);
-            if (person.Text("Designation") is { Length: > 0 } designation) pdf.Paragraph(designation, 9, indent: 12);
+            pdf.Paragraph(name, 9.5f, bold: true);
+            if (designation.Length > 0) pdf.Paragraph(designation, 9, indent: 12);
         }
     }
 
-    private static void Requirement(ReportPdf pdf, string milestone, IDictionary<string, object?> section, IDictionary<string, object?> r,
-        IReadOnlyList<IDictionary<string, object?>> options, IReadOnlyList<IDictionary<string, object?>> subOptions,
-        IReadOnlyList<IDictionary<string, object?>> bullets)
+    private static void Requirement(ReportPdf pdf, string milestone, ReportMilestoneRequirement m)
     {
-        var code = section.Text("SectionCode");
-        var rc = r.Text("RequirementCode");
+        var r = m.Requirement;
         var requirement = new List<CellItem> { new CellText("REQUIREMENT", Bold: true) };
-        foreach (var o in options.Where(o => o.Text("SectionCode") == code && o.Text("RequirementCode") == rc))
+        foreach (var o in r.Options)
         {
-            requirement.Add(new CellText(o.Text("OptionName")));
-            requirement.AddRange(subOptions
-                .Where(so => so.Text("SectionCode") == code && so.Text("RequirementCode") == rc && so.Text("OptionCode") == o.Text("OptionCode"))
-                .Select(so => new CellText(so.Text("SubOptionName"), Bullet: "•")));
+            requirement.Add(new CellText(o.Name));
+            requirement.AddRange(o.SubOptions.Select(so => new CellText(so, Bullet: "•")));
         }
 
         var table = new TableSpec(1.15f, 3.6f) { LabelColumn = true, FontSize = 8.5f };
-        table.Row(Cell.Of($"{code}.{rc}", center: true), new Cell(requirement));
+        table.Row(Cell.Of($"{r.SectionCode}.{r.RequirementCode}", center: true), new Cell(requirement));
 
-        IEnumerable<CellItem> List(string type) => bullets
-            .Where(b => b.Text("ReqType") == type && b.Text("RequirementId") == r.Text("Id"))
-            .Select(b => (CellItem)new CellText(b.Text("BulletPoints"), Bullet: "•"));
+        static IEnumerable<CellItem> List(IReadOnlyList<string> bullets) => bullets.Select(b => (CellItem)new CellText(b, Bullet: "•"));
         CellText Title(string text, string date) => new(date.Length > 0 ? $"{text}   ({date})" : text, Bold: true);
 
         switch (milestone)
@@ -193,23 +180,23 @@ public static class MilestoneReport
             case "1":
                 table.Row(Cell.Of("Milestone 1 : Basic Diagnostic Study", center: true, fill: Milestone1), new Cell(
                 [
-                    new CellText($"Conformance: {r.Text("SaConformance")}"),
-                    Title("GAPS IDENTIFIED", r.Text("BaselineDate")),
-                    .. List("BaselineDiagnostic"),
+                    new CellText($"Conformance: {m.Text("SaConformance")}"),
+                    Title("GAPS IDENTIFIED", m.Text("BaselineDate")),
+                    .. List(m.Gaps),
                 ]));
                 table.Row(Cell.Of("Milestone 1 : Handholding Action Plan", center: true, fill: Milestone2), new Cell(
                 [
-                    Title("PLANNED ACTIVITIES", r.Text("HActionPlanDate")),
-                    .. List("HandholdingActionPlan"),
-                    Title("ESTIMATED TIME (IN DAYS)", r.Text("HActionPlanDate")),
-                    new CellText(r.Text("EstimatedTimeInDays")),
+                    Title("PLANNED ACTIVITIES", m.Text("HActionPlanDate")),
+                    .. List(m.Plan),
+                    Title("ESTIMATED TIME (IN DAYS)", m.Text("HActionPlanDate")),
+                    new CellText(m.Text("EstimatedTimeInDays")),
                 ]));
                 table.Row(Cell.Of("Milestone 1 : Technology Intervention", center: true, fill: Milestone3), new Cell(
                 [
-                    Title("SUGGESTED TECHNOLOGY INTERVENTION", r.Text("InterventionDate")),
-                    .. List("TechnologyIntervention"),
-                    Title("RATIONALE FOR TECHNOLOGY INTERVENTION", r.Text("InterventionDate")),
-                    new CellText(r.Text("Intervention")),
+                    Title("SUGGESTED TECHNOLOGY INTERVENTION", m.Text("InterventionDate")),
+                    .. List(m.Technology),
+                    Title("RATIONALE FOR TECHNOLOGY INTERVENTION", m.Text("InterventionDate")),
+                    new CellText(m.Text("Intervention")),
                 ]));
                 break;
             case "2":
@@ -217,9 +204,9 @@ public static class MilestoneReport
                 var suffix = milestone == "2" ? "" : "2";
                 table.Row(Cell.Of($"Milestone {milestone} : Progress Review {(milestone == "2" ? 1 : 2)}", center: true, fill: Milestone1), new Cell(
                 [
-                    new CellText($"Is Proposed Activity Completed: {r.Text("IsProposedActivityCompleted" + suffix)}"),
-                    Title("REMARKS IF ANY", r.Text("ProgressReviewDate" + suffix)),
-                    new CellText(r.Text("ProgressReviewRemarks" + suffix)),
+                    new CellText($"Is Proposed Activity Completed: {m.Text("IsProposedActivityCompleted" + suffix)}"),
+                    Title("REMARKS IF ANY", m.Text("ProgressReviewDate" + suffix)),
+                    new CellText(m.Text("ProgressReviewRemarks" + suffix)),
                 ]));
                 break;
         }
@@ -230,7 +217,7 @@ public static class MilestoneReport
     }
 
     /// <summary>The fixed texts of the consultancy page (where they differ from main's report).</summary>
-    private static class Texts
+    internal static class Texts
     {
         public const string DisclaimerIntro = "This disclaimer governs the use of this report. By using this report, you accept this disclaimer in full.";
 
