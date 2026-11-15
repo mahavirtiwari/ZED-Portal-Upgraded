@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { Row } from '../assessment/assessment.api';
 import { ReviewActions } from '../monitoring/review.api';
-import { canonicalLevelCode, isLegacyLevel } from '../../msme/shared/levels';
+import { canonicalLevelCode } from '../../msme/shared/levels';
 
 export type { Row };
 
@@ -156,13 +156,16 @@ export interface SaOriginal {
   location?: Row | null;
 }
 
-/** V4: ZED-X is a site level (SiteReviewController.SiteLevels); so is every level the Admin added with site assessment (2026-11-08). */
+/**
+ * V4: ZED-X is a site level (SiteReviewController.SiteLevels); so is every level the Admin added with site assessment (2026-11-08),
+ * and a built-in level the Admin gave a remote or onsite visit (2026-11-15: Bronze with a visit).
+ */
 export const SITE_LEVELS = ['Silver', 'Gold', 'ZEDX'] as const;
 
 export function siteLevel(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();
   return SITE_LEVELS.find((l) => l.toLowerCase() === v)
-    ?? canonicalLevelCode(value, (l) => !isLegacyLevel(l.code) && l.assessmentMode === 'Site');
+    ?? canonicalLevelCode(value, (l) => l.assessmentMode === 'Site');
 }
 
 /** Client for api/staff/site-review (Zed.Main.Api Features/Staff/SiteReview). */

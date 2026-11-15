@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { setAllLevels } from '../shared/levels';
 import { SiteAssessmentPage } from './site-assessment';
 import { SiteAssessmentData, SitePhoto, SiteRequirement, canonicalSiteAssessment } from './site-assessment.api';
 
@@ -130,6 +131,12 @@ describe('SiteAssessmentPage', () => {
     expect(canonicalSiteAssessment('goldmilestone3')).toBe('GoldMilestone3');
     expect(canonicalSiteAssessment('SILVERSURVEILLANCE')).toBe('SilverSurveillance');
     expect(canonicalSiteAssessment('Bronze')).toBeNull();
+    setAllLevels([{ code: 'Bronze', name: 'Bronze', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 10 }]);
+    try {
+      expect(canonicalSiteAssessment('bronze')).toBe('Bronze');
+    } finally {
+      setAllLevels(null);
+    }
     expect(canonicalSiteAssessment('../Silver')).toBeNull();
   });
 

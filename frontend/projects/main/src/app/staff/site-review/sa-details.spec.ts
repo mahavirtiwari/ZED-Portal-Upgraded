@@ -4,6 +4,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { ASSESSMENT_SYSTEM } from '../assessment/assessment-shared';
 import { NO_REVIEW } from '../monitoring/review.api';
+import { setAllLevels } from '../../msme/shared/levels';
 import { SaDetailsPage } from './sa-details';
 import { SaDetails, SaOriginal } from './site-review.api';
 
@@ -294,6 +295,22 @@ describe('SaDetailsPage', () => {
     expect(verdict.querySelector('.zp-chip')!.getAttribute('data-v')).toBe('Yes');
     // Edit Remarks of the requirement, then the round's NC comments.
     expect(Array.from(el.querySelectorAll<HTMLInputElement>('input[type=button]')).filter((b) => b.value === 'Edit Remarks').length).toBe(2);
+  });
+
+  it('opens Bronze when the Admin gave it a remote or onsite visit', async () => {
+    setAllLevels([
+      { code: 'Bronze', name: 'Bronze', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 10 },
+      { code: 'Silver', name: 'Silver', isEnabled: true, assessmentMode: 'Site', logoUrl: null, orderNo: 20 },
+    ]);
+    try {
+      fixture.componentRef.setInput('zedId', 'ZEDMSME000001');
+      fixture.componentRef.setInput('certification', 'bronze');
+      await settle();
+      for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '', legacyPortalUrl: '' });
+      http.expectOne('/api/staff/site-review/ZEDMSME000001/Bronze');
+    } finally {
+      setAllLevels(null);
+    }
   });
 
   it('does not call the API for Bronze or a malformed ZED ID', async () => {

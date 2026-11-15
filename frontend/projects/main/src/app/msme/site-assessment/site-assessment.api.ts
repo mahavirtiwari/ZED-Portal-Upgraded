@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { isV4Level, levelMode, splitCertification } from '../shared/levels';
+import { levelMode, splitCertification } from '../shared/levels';
 
 /** Rows keep the procedure's column names (EnterpriseName, SaDomesticCustomers, TurnOver, ...). */
 export type Row = Record<string, string | number | boolean | null>;
@@ -96,14 +96,14 @@ export const SITE_ASSESSMENT_TYPES = [
 
 /**
  * Canonical spelling of a certification type from the URL, or null when the page does not exist for it: also a site level
- * the Admin added (2026-11-08, desktop and site assessment) or its surveillance.
+ * the Admin added (2026-11-08, desktop and site assessment) or its surveillance, and Bronze when the Admin gave it a visit (2026-11-15).
  */
 export function canonicalSiteAssessment(value: string | null | undefined): string | null {
   const v = (value ?? '').toLowerCase();
   const known = SITE_ASSESSMENT_TYPES.find((t) => t.toLowerCase() === v);
   if (known) return known;
   const split = splitCertification(value);
-  if (!split || !isV4Level(split.level) || levelMode(split.level) !== 'Site') return null;
+  if (!split || levelMode(split.level) !== 'Site') return null;
   return split.suffix === '' || split.suffix === 'Surveillance' ? split.level + split.suffix : null;
 }
 
