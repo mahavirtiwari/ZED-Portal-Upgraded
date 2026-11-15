@@ -70,7 +70,7 @@ describe('Report page', () => {
   /** The document title while the print dialog was open (the PDF's suggested file name). */
   let titles: string[];
 
-  async function open(inputs: Record<string, string>) {
+  async function open(inputs: Record<string, string | undefined>) {
     printed = 0;
     titles = [];
     await TestBed.configureTestingModule({
@@ -83,6 +83,15 @@ describe('Report page', () => {
     await settle(fixture);
     return { fixture, http, el: fixture.nativeElement as HTMLElement };
   }
+
+  it('opens when the router sets the inputs the address does not carry to undefined', async () => {
+    // withComponentInputBinding: /msme/report/assessment/Bronze has no t, zedId, record or milestone.
+    const { fixture, http, el } = await open({ kind: 'assessment', level: 'Bronze', t: undefined, zedId: undefined, record: undefined, milestone: undefined });
+    http.expectOne('/api/msme/certification-documents/Bronze/report/page').flush(base);
+    await settle(fixture);
+    expect(el.textContent).not.toContain('This report address is not valid.');
+    expect(el.querySelectorAll('.rp-sheet').length).toBeGreaterThan(0);
+  });
 
   it('shows the MSME its assessment report as A4 sheets with the design sections', async () => {
     const { fixture, http, el } = await open({ kind: 'assessment', level: 'Silver' });

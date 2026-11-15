@@ -26,20 +26,26 @@ const MILESTONE_NAMES = ['BDSR / HAP', 'Progress review 1', 'Progress review 2']
  * </ul>
  * The styles are global (styles/_report.scss, scoped under .zed-report): the component style budget is 8 kB.
  */
+/** A route input as text: '' when the address does not carry it. */
+const orEmpty = (value: string | number | null | undefined): string => (value == null ? '' : String(value));
+
 @Component({
   selector: 'zed-report-page',
   imports: [NgTemplateOutlet, UpperCasePipe],
   templateUrl: './report-page.html',
 })
 export class ReportPageView implements OnInit {
-  /** Route parameters and query parameters (component input binding). */
-  readonly kind = input<string>('');
-  readonly level = input<string>('');
-  readonly zedId = input<string>('');
-  readonly record = input<string>('');
-  readonly milestone = input<string>('');
+  /**
+   * Route parameters and query parameters (component input binding). The router sets an input the address does not carry
+   * to undefined (not to the default), so each one is read as '' then.
+   */
+  readonly kind = input('', { transform: orEmpty });
+  readonly level = input('', { transform: orEmpty });
+  readonly zedId = input('', { transform: orEmpty });
+  readonly record = input('', { transform: orEmpty });
+  readonly milestone = input('', { transform: orEmpty });
   /** /report/link?t=… */
-  readonly t = input<string>('');
+  readonly t = input('', { transform: orEmpty });
 
   private readonly http = inject(HttpClient);
   private readonly title = inject(Title);

@@ -63,8 +63,9 @@ export class LegacyReportRedirect implements OnInit {
 
   private async go(): Promise<void> {
     const system = this.system() ?? 'main';
-    const level = levelOf(this.certification().trim(), system);
-    const id = this.id().trim();
+    // The router sets an input the address does not carry to undefined.
+    const level = levelOf((this.certification() ?? '').trim(), system);
+    const id = (this.id() ?? '').trim();
     const milestone = String(this.milestone() ?? '').trim();
     const milestoneOk = system !== 'consultancy' || (/^[1-3]$/.test(milestone) && level !== 'Bronze');
     if (!level || !/^[A-Za-z0-9_]{1,50}$/.test(id) || !milestoneOk) {
