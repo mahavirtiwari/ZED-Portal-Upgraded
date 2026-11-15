@@ -30,6 +30,7 @@ import { SyncAllButton } from '../components/SyncAllButton';
 import {
   certificationDetailsOf,
   isDesktopLevel,
+  certifiedStatus,
   isLegacyLevel,
   levelName,
   sameLevel,
@@ -286,9 +287,11 @@ export function certificationAction(status: MsmeStatus | null, type: Certificati
   if (details == null || allInactive) return 'apply';
   if (details.status >= 1 && details.status <= 4) return 'arrow';
   if (details.status === 0) {
+    // 2026-11-15: Bronze certified is 3 at the desktop, 4 after a visit (certifiedStatus).
     const bronze = of('Bronze');
-    if (type === 'Silver' && (bronze === 3 || bronze === 0) && of('Gold') === 0) return 'apply';
-    if (type === 'Gold' && (bronze === 0 || bronze === 3) && (of('Silver') === 0 || of('Silver') === 4)) return 'apply';
+    const bronzeCertified = certifiedStatus('Bronze', status);
+    if (type === 'Silver' && (bronze === bronzeCertified || bronze === 0) && of('Gold') === 0) return 'apply';
+    if (type === 'Gold' && (bronze === 0 || bronze === bronzeCertified) && (of('Silver') === 0 || of('Silver') === 4)) return 'apply';
   }
   return 'none';
 }

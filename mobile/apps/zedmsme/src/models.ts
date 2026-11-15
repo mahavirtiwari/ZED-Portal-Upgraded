@@ -366,6 +366,11 @@ export type CertificationDetails = {
   surveillanceStatus?: string | null;
   surveillanceDate?: string | null;
   surveillanceData?: SurveillanceData | null;
+  /**
+   * "Desktop" or "Site": the level's mode for a V4 level; 2026-11-15 for Bronze, its record's path (a Bronze whose flow has
+   * a visit is "Site": Silver's statuses, 4 certified). Not sent by older servers (Bronze then stays Desktop).
+   */
+  assessmentMode?: string | null;
 };
 
 export type MsmeStatus = BaseServiceResponse & {
@@ -390,8 +395,6 @@ export type MsmeStatus = BaseServiceResponse & {
 export type AppLevelStatus = CertificationDetails & {
   code: string;
   name?: string | null;
-  /** "Desktop" (statuses as Bronze's) or "Site" (as Gold's). */
-  assessmentMode?: string | null;
 };
 
 export type MsmeDetails = {
@@ -441,9 +444,11 @@ export const allLevelCodes = (status: MsmeStatus | null | undefined): Certificat
 /**
  * The level is assessed at the desktop only: Bronze, and a level the Admin added with the Desktop mode (its statuses are
  * Bronze's: 3 certified). Silver, Gold and ZED-X have the site assessment (4 certified).
+ * 2026-11-15: a Bronze whose record has a visit (the server's assessmentMode "Site") has Silver's steps and statuses; a
+ * Bronze certified at the desktop stays Desktop whatever the flow is now.
  */
 export function isDesktopLevel(type: CertificationType, status: MsmeStatus | null | undefined, modeHint?: string | null): boolean {
-  if (sameLevel(type, 'Bronze')) return true;
+  if (sameLevel(type, 'Bronze')) return String(status?.bronze?.assessmentMode ?? '').toLowerCase() !== 'site';
   if (isLegacyLevel(type) || sameLevel(type, 'ZEDX')) return false;
   const mode = (status?.levels ?? []).find(l => sameLevel(l.code, type))?.assessmentMode ?? modeHint;
   return String(mode ?? '').toLowerCase() === 'desktop';
@@ -468,6 +473,7 @@ function updateStatus(local: CertificationDetails, server: CertificationDetails)
   local.remoteStatus = server.remoteStatus;
   local.surveillanceStatus = server.surveillanceStatus;
   local.surveillanceDate = server.surveillanceDate;
+  local.assessmentMode = server.assessmentMode ?? local.assessmentMode;
 }
 
 /** MsmeStatus.updateCertificationDetails */
@@ -491,7 +497,6 @@ export function updateCertificationDetails(local: MsmeStatus, server: MsmeStatus
     if (known) {
       updateStatus(known, level);
       known.name = level.name ?? known.name;
-      known.assessmentMode = level.assessmentMode ?? known.assessmentMode;
     } else {
       normalizeCertification(level);
       local.levels.push(level);
@@ -517,12 +522,15 @@ export function updateMsmeSurveillanceStatus(details: MsmeDetails, status: MsmeS
   }
 }
 
+/** The level's certified status: 3 for a desktop level (Bronze at the desktop), 4 for a site level (2026-11-15: Bronze with a visit too). */
+export const certifiedStatus = (type: CertificationType, s: MsmeStatus | null | undefined): number => (isDesktopLevel(type, s) ? 3 : 4);
+
 export const isAnyCertificationCompleted = (s: MsmeStatus) =>
-  s.bronze?.status === 3 ||
+  s.bronze?.status === certifiedStatus('Bronze', s) ||
   s.silver?.status === 4 ||
   s.gold?.status === 4 ||
   s.zedx?.status === 4 ||
-  addedLevelCodes(s).some(code => certificationDetailsOf(s, code)?.status === (isDesktopLevel(code, s) ? 3 : 4));
+  addedLevelCodes(s).some(code => certificationDetailsOf(s, code)?.status === certifiedStatus(code, s));
 
 export const anyActiveNc = (c: CertificationDetails) =>
   c.nc1Status !== 0 || c.nc2Status !== 0 || c.nc3Status !== 0 || c.nc4Status !== 0 || c.nc5Status !== 0;
