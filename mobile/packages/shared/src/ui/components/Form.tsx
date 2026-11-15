@@ -13,6 +13,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { useBrandTheme } from '../../branding/AppBrandingContext';
 import { COMMENT_LENGTH, decimalFilter, NUMERIC_MAX_LENGTH, numericFilter, percentageFilter, REQUIRED } from '../../forms/validation';
 import { sharedIcons } from '../sharedIcons';
 import { colors, dimens, shapes, textStyles } from '../theme';
@@ -525,6 +526,7 @@ export function ZedButton({
   allCaps?: boolean;
   testID?: string;
 }) {
+  const theme = useBrandTheme();
   return (
     <Pressable
       onPress={onPress}
@@ -533,6 +535,8 @@ export function ZedButton({
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.button,
+        // 2026-11-15: the Admin's theme colours the primary button; a screen's own `style` still wins.
+        theme && !disabled && { backgroundColor: theme.mid },
         small && { alignSelf: 'flex-end' },
         disabled && styles.buttonDisabled,
         pressed && !disabled && { opacity: 0.85 },

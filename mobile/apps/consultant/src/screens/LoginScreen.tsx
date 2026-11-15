@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Image, Linking, PermissionsAndroid, Pressable, StyleSheet, Text, View } from 'react-native';
-import { htmlToPlain, isNetworkAvailable, SESSION_EXPIRED_PARAM, useAppText, useBackHandler, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
+import { BrandLogo, htmlToPlain, isNetworkAvailable, SESSION_EXPIRED_PARAM, useAppText, useBackHandler, useBrandTheme, useNavigation, useRoute, useUi, zedDevice } from '@zed/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSa } from '../app/context';
 import { images as legacyImages } from '../assets/images';
@@ -88,7 +88,8 @@ export function SplashScreen() {
   return (
     <View style={[st.splash, { paddingTop: insets.top, paddingBottom: insets.bottom + 24 }]} testID="splash">
       <View style={st.splashMain}>
-        <Image source={images.zedLogo} style={st.splashLogo} resizeMode="contain" />
+        {/* 2026-11-15: the Admin's logo (Admin → Settings → Branding) in place of the ZED logo, which stays the fallback. */}
+        <BrandLogo fallback={images.zedLogo} style={st.splashLogo} testID="splash-logo" />
         <Text style={st.splashTitle}>ZED Consultancy • Consultant App</Text>
         <Text style={st.splashSub}>Handholding of MSMEs towards ZED certification</Text>
         <View style={st.cachedChip}>
@@ -118,6 +119,7 @@ export function LoginScreen() {
   const { params } = useRoute<{ saDateDue?: boolean; [SESSION_EXPIRED_PARAM]?: string }>();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
+  const theme = useBrandTheme();
   const windowNote = useAppText('app.consultant.login.windowNote');
   // The legacy layout pre-filled the ID prefix.
   const [assessorId, setAssessorId] = useState('ZEDCC');
@@ -188,8 +190,8 @@ export function LoginScreen() {
       <ZScroll style={{ backgroundColor: C.bg }} contentContainerStyle={[st.login, { paddingTop: 12 + insets.top }]} keyboardShouldPersistTaps="handled" testID="login">
         {/* The legacy sign-in page's illustration stays at the top of the page. */}
         <Image source={legacyImages.login_image} style={st.loginImage} resizeMode="contain" testID="login-image" />
-        <Image source={images.zedMark} style={st.loginMark} resizeMode="contain" />
-        <Text style={st.brand}>ZED Consultancy</Text>
+        <BrandLogo fallback={images.zedMark} style={st.loginMark} testID="login-logo" />
+        <Text style={[st.brand, theme && { color: theme.dark }]}>ZED Consultancy</Text>
         <Text style={[z.h1, { textAlign: 'center', marginTop: 10 }]}>Sign in</Text>
         <Text style={[z.sub, { textAlign: 'center', marginTop: 6, marginBottom: 20 }]}>Use the credentials emailed to your registered ID.</Text>
         <Card style={{ padding: 16, paddingBottom: 24 }}>
@@ -204,13 +206,13 @@ export function LoginScreen() {
             autoCorrect={false}
             testID="login-password"
             right={
-              <Text onPress={() => setShowPassword(v => !v)} style={st.show} testID="login-password-toggle">
+              <Text onPress={() => setShowPassword(v => !v)} style={[st.show, theme && { color: theme.dark }]} testID="login-password-toggle">
                 {showPassword ? 'Hide' : 'Show'}
               </Text>
             }
           />
           <Pressable style={{ alignSelf: 'flex-end', marginBottom: 14 }} onPress={() => nav.push('ForgotPassword')} testID="login-forgot">
-            <Text style={st.link}>Forgot password?</Text>
+            <Text style={[st.link, theme && { color: theme.mid }]}>Forgot password?</Text>
           </Pressable>
           <SubmitButton title="Sign in" ready={!!assessorId.trim() && !!password.trim()} onPress={onLogin} testID="login-button" />
         </Card>

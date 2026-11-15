@@ -6,6 +6,8 @@ import {
   AppTexts,
   AppTokenStore,
   credentialToStore,
+  AppBranding,
+  fetchAppBranding,
   getAppInfo,
   KeyValueStore,
   PhotoStore,
@@ -56,6 +58,8 @@ export class SaApp {
   readonly queue: SyncQueue;
   readonly cache: KeyValueStore;
   readonly texts: AppTexts;
+  /** 2026-11-15: the Admin's logo and colours for this app (Admin → Settings → Branding), the last answer kept. */
+  readonly branding: AppBranding;
   readonly forms: AppForms;
   /**
    * 2026-11-14 (Onsite surveillance, "the app tries both"): the assessor signs in on the main and the surveillance hosts
@@ -91,6 +95,7 @@ export class SaApp {
     this.cache = new KeyValueStore(deps.db);
     this.texts = new AppTexts(this.cache, BUILT_IN_TEXTS);
     this.forms = new AppForms(this.cache, { [ASSESSOR_BASIC_INFO]: BUILT_IN_BASIC_INFO });
+    this.branding = new AppBranding(this.cache, 'assessor');
     this.prefs = deps.prefs ?? nativePrefs;
     this.environment = saEnvironment(deps.environment);
     this.portalEnvironment = deps.environment;
@@ -147,6 +152,18 @@ export class SaApp {
     for (const file of PROTECTED_PREFS) this.prefs.protect(file);
     await this.texts.load();
     await this.forms.load([ASSESSOR_BASIC_INFO]);
+    // Before the first screen: an offline start shows the Admin's last logo and colours at once.
+    await this.branding.load();
+  }
+
+  /**
+   * 2026-11-15: the Admin's logo and colours from the main portal (api/public/branding/app/assessor, 5 s at most): the
+   * build's portal address, not the local MobileApi port, and the main host's client (never the surveillance one).
+   * Asked at start and when the app comes back to the front, never awaited by the start; a failure keeps the last
+   * answer (or today's look) without a message.
+   */
+  async refreshBranding(): Promise<void> {
+    await this.branding.refresh(() => fetchAppBranding(this.mainApi.retrofit, this.portalEnvironment.baseUrl, 'assessor'));
   }
 
   /** Admin texts and the Basic Information form: at start and after login; a failure keeps the last answer. */

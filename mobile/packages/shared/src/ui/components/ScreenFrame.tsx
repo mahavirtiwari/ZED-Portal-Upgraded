@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useRef } from 'react';
-import { Animated, Modal, Pressable, ScrollView, StatusBar, StyleSheet, Text, View, type ImageSourcePropType, Image } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, StatusBar, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { headerDate } from '../../util/dates';
+import { BrandLogo, useBrandTheme } from '../../branding/AppBrandingContext';
 import { sharedIcons } from '../sharedIcons';
 import { colors, dimens } from '../theme';
 import { GradientFill, Icon, type IconDefinition } from './Icon';
@@ -43,13 +44,15 @@ export function ScreenFrame({
 }) {
   const insets = useSafeAreaInsets();
   const offlineNote = useContext(OfflineNoteContext);
+  // 2026-11-15: the Admin's theme (Admin → Settings → Branding) colours the header; none keeps the app's own.
+  const theme = useBrandTheme();
   return (
     <View style={styles.root} testID={testID}>
       <StatusBar barStyle="dark-content" />
       <View style={{ height: insets.top, backgroundColor: colors.statusBar }} />
       {showHeader && (
         <View style={styles.header}>
-          <GradientFill from={colors.appColor} to={colors.appColorSecondary} angle={90} />
+          <GradientFill from={theme?.mid ?? colors.appColor} to={theme?.accent ?? colors.appColorSecondary} angle={90} />
           {onMenu ? (
             <Pressable onPress={onMenu} testID="header-menu" style={{ width: 36, height: 36 }}>
               <Icon icon={sharedIcons.ic_baseline_menu_48} size={36} />
@@ -122,6 +125,7 @@ export function Drawer({
   checkedTint?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  const theme = useBrandTheme();
   const x = useRef(new Animated.Value(-300)).current;
   useEffect(() => {
     if (open) Animated.timing(x, { toValue: 0, duration: 200, useNativeDriver: true }).start();
@@ -137,7 +141,8 @@ export function Drawer({
               <Pressable onPress={onClose} testID="drawer-close">
                 <Icon icon={sharedIcons.ic_close_dialog} size={36} />
               </Pressable>
-              {banner ? <Image source={banner} style={largeBanner ? styles.bannerLarge : styles.banner} resizeMode="contain" /> : null}
+              {/* 2026-11-15: the Admin's logo when there is one; the app's banner otherwise or when it fails to load. */}
+              {banner ? <BrandLogo fallback={banner} style={largeBanner ? styles.bannerLarge : styles.banner} testID="drawer-logo" /> : null}
             </View>
             {header}
           </View>
@@ -153,7 +158,7 @@ export function Drawer({
                   if (!checked) setTimeout(item.onPress, 220); // MenuDrawerListener.runWhenIdle
                 }}>
                 <Icon icon={item.icon} size={24} />
-                <Text style={[styles.drawerItemText, checked && { color: colors.appColor }]}>{item.title}</Text>
+                <Text style={[styles.drawerItemText, checked && { color: theme?.mid ?? colors.appColor }]}>{item.title}</Text>
               </Pressable>
             );
           })}

@@ -4,9 +4,10 @@
  * conformance_choice, empty_state, ...) so every screen is drawn from the same parts.
  */
 import React from 'react';
-import { Dimensions, Image, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ScrollViewProps, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
+import { Dimensions, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance, type ScrollViewProps, type StyleProp, type TextInputProps, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { BrandLogo, useBrandTheme, type BrandTheme } from '@zed/shared';
 
 export const C = {
   primary: '#F9A63A',
@@ -224,14 +225,20 @@ export function Page({ children, testID, style }: { children: React.ReactNode; t
 export function GradientFill() {
   // Drawn at the parent's measured size: a percentage-sized Svg keeps the size of its first layout.
   const [size, setSize] = React.useState<{ w: number; h: number } | null>(null);
+  // 2026-11-15: the Admin's theme (Admin → Settings → Branding) runs mid to dark; every header is drawn on this fill,
+  // whose own background covers the header's fixed colour until the gradient is measured.
+  const theme = useBrandTheme();
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none" onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
+    <View
+      style={[StyleSheet.absoluteFill, theme && { backgroundColor: theme.mid }]}
+      pointerEvents="none"
+      onLayout={e => setSize({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
       {size ? (
         <Svg width={size.w} height={size.h}>
           <Defs>
             <LinearGradient id="zedGradient" x1="0" y1="1" x2="1" y2="0">
-              <Stop offset="0" stopColor={C.primary} />
-              <Stop offset="1" stopColor={C.primaryDeep} />
+              <Stop offset="0" stopColor={theme?.mid ?? C.primary} />
+              <Stop offset="1" stopColor={theme?.dark ?? C.primaryDeep} />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width={size.w} height={size.h} fill="url(#zedGradient)" />
@@ -318,10 +325,11 @@ export function PlainHeader({ title, subtitle, right, testID }: { title: string;
   );
 }
 
+/** The ZED mark on a white disc; 2026-11-15: the Admin's logo when there is one (the mark when it fails to load). */
 export function ZedMark({ size = 34 }: { size?: number }) {
   return (
     <View style={[s.mark, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Image source={images.zedMark} style={{ width: size - 4, height: size - 4, borderRadius: (size - 4) / 2 }} resizeMode="contain" />
+      <BrandLogo fallback={images.zedMark} style={{ width: size - 4, height: size - 4, borderRadius: (size - 4) / 2 }} testID="header-logo" />
     </View>
   );
 }
@@ -336,11 +344,12 @@ const TABS: { key: TabKey; icon: IconName; label: string }[] = [
 
 export function BottomTabs({ active, onChange }: { active: TabKey; onChange: (t: TabKey) => void }) {
   const insets = useSafeAreaInsets();
+  const theme = useBrandTheme();
   return (
     <View style={[s.tabs, { paddingBottom: Math.max(insets.bottom, 8) }]}>
       {TABS.map(t => {
         const on = t.key === active;
-        const color = on ? C.primary : C.tMuted;
+        const color = on ? (theme?.mid ?? C.primary) : C.tMuted;
         return (
           <Pressable key={t.key} style={s.tab} onPress={() => onChange(t.key)} testID={`tab-${t.key}`} accessibilityRole="tab" accessibilityState={{ selected: on }}>
             <ZIcon name={t.icon} size={22} color={color} />
@@ -389,7 +398,7 @@ export function ZButton({
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }) {
-  const v = BUTTONS[variant];
+  const v = buttonColours(variant, useBrandTheme());
   return (
     <Pressable
       style={({ pressed }) => [
@@ -410,6 +419,13 @@ export function ZButton({
       <Text style={[s.buttonText, small && { fontSize: 14 }, { color: disabled ? C.tMuted : v.fg }, icon ? { marginLeft: 8 } : null]}>{title}</Text>
     </Pressable>
   );
+}
+
+/** 2026-11-15: the primary and outline buttons in the Admin's theme (mid; dark text on the outline); the rest as they are. */
+function buttonColours(variant: ButtonVariant, theme: BrandTheme | null): { bg: string; fg: string; border: string } {
+  if (theme && variant === 'primary') return { bg: theme.mid, fg: C.tInverse, border: theme.mid };
+  if (theme && variant === 'outline') return { bg: C.surface, fg: theme.dark, border: theme.mid };
+  return BUTTONS[variant];
 }
 
 const BUTTONS: Record<ButtonVariant, { bg: string; fg: string; border: string }> = {
@@ -490,8 +506,9 @@ export function LevelBadge({ certification, name, small }: { certification: stri
 }
 
 export function Chip({ label, active, onPress, testID }: { label: string; active?: boolean; onPress?: () => void; testID?: string }) {
+  const on = useBrandTheme()?.mid ?? C.primary;
   return (
-    <Pressable style={[s.chip, active && { backgroundColor: C.primary, borderColor: C.primary }]} onPress={onPress} testID={testID}>
+    <Pressable style={[s.chip, active && { backgroundColor: on, borderColor: on }]} onPress={onPress} testID={testID}>
       <Text style={[s.chipText, active && { color: C.tInverse }]}>{label}</Text>
     </Pressable>
   );
@@ -510,6 +527,8 @@ export function SectionLabel({ label, brand, right, style }: { label: string; br
 export function ProgressBar({ value, color, height = 8 }: { value: number; color?: string; height?: number }) {
   const v = Math.max(0, Math.min(1, value));
   const [width, setWidth] = React.useState(0);
+  // 2026-11-15: the Admin's theme runs mid into its accent (today: the app colour into green).
+  const theme = useBrandTheme();
   const fill = Math.round(width * v);
   return (
     <View style={{ height, borderRadius: height / 2, backgroundColor: C.primaryTrack, overflow: 'hidden' }} onLayout={e => setWidth(e.nativeEvent.layout.width)}>
@@ -519,8 +538,8 @@ export function ProgressBar({ value, color, height = 8 }: { value: number; color
         <Svg width={fill} height={height}>
           <Defs>
             <LinearGradient id="zedProgress" x1="0" y1="0" x2="1" y2="0">
-              <Stop offset="0" stopColor={C.primary} />
-              <Stop offset="1" stopColor={C.green} />
+              <Stop offset="0" stopColor={theme?.mid ?? C.primary} />
+              <Stop offset="1" stopColor={theme?.accent ?? C.green} />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width={fill} height={height} rx={height / 2} fill="url(#zedProgress)" />

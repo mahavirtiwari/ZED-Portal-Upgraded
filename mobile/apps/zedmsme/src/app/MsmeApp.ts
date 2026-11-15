@@ -1,4 +1,5 @@
 import {
+  AppBranding,
   AppForms,
   AppSession,
   AppTexts,
@@ -9,6 +10,7 @@ import {
   PhotoStore,
   SyncQueue,
   credentialToStore,
+  fetchAppBranding,
   getAppInfo,
   requestContext,
   takeAppToken,
@@ -62,6 +64,8 @@ export class MsmeApp {
   readonly cache: KeyValueStore;
   readonly texts: AppTexts;
   readonly forms: AppForms;
+  /** 2026-11-15: the Admin's logo and colours for this app (Admin → Settings → Branding), the last answer kept. */
+  readonly branding: AppBranding;
   readonly api: MsmeApi;
   /** New in V4 (audit C1): the app sign-in token, sent with every call; kept per user in QCI_MSME_DB.ZedAppToken. */
   readonly session: AppSession;
@@ -94,6 +98,7 @@ export class MsmeApp {
     this.cache = new KeyValueStore(deps.loginDb);
     this.texts = new AppTexts(this.cache, BUILT_IN_TEXTS);
     this.forms = new AppForms(this.cache, { [MSME_BASIC_INFO]: BUILT_IN_BASIC_INFO });
+    this.branding = new AppBranding(this.cache, 'msme');
     this.environment = deps.environment;
     this.versionName = deps.versionName;
     this.api = deps.api ?? new MsmeApi(deps.environment, () => requestContext());
@@ -122,6 +127,8 @@ export class MsmeApp {
     await this.tokens.ensureSchema();
     await this.texts.load();
     await this.forms.load([MSME_BASIC_INFO]);
+    // Before the first screen: an offline start shows the Admin's last logo and colours at once.
+    await this.branding.load();
     this._levels = await this.cache.get<PublicLevel[]>(LEVELS_KEY).catch(() => null);
     this._incentiveCards = usableIncentiveCards(await this.cache.get<PublicIncentiveCards>(INCENTIVE_CARDS_KEY).catch(() => null));
   }
@@ -175,6 +182,15 @@ export class MsmeApp {
       this.forms.refresh(MSME_BASIC_INFO, () => this.api.getFormDefinition(MSME_BASIC_INFO)),
       this.refreshLevels(),
     ]);
+  }
+
+  /**
+   * 2026-11-15: the Admin's logo and colours from the main portal (api/public/branding/app/msme, 5 s at most). Asked at
+   * start and when the app comes back to the front, never awaited by the start; a failure keeps the last answer (or
+   * today's look) without a message.
+   */
+  async refreshBranding(): Promise<void> {
+    await this.branding.refresh(() => fetchAppBranding(this.api.http, this.environment.baseUrl, 'msme'));
   }
 
   // ----- state -----

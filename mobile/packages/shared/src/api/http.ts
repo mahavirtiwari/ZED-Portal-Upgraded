@@ -105,8 +105,9 @@ export class HttpClient {
     this.session = session;
   }
 
-  async getJson<T>(url: string): Promise<T> {
-    return this.parse<T>(await this.send('GET', url, undefined, {}));
+  /** `options.timeoutMs`: this call only (2026-11-15: the branding call waits 5 s, not the client's 60 s). */
+  async getJson<T>(url: string, options?: { timeoutMs?: number }): Promise<T> {
+    return this.parse<T>(await this.send('GET', url, undefined, {}, options?.timeoutMs));
   }
 
   /** JSON body as Gson wrote it: null fields left out. */
@@ -134,10 +135,10 @@ export class HttpClient {
     return res.text();
   }
 
-  private async send(method: string, url: string, body: string | FormData | undefined, headers: Record<string, string>) {
+  private async send(method: string, url: string, body: string | FormData | undefined, headers: Record<string, string>, timeoutMs = this.timeoutMs) {
     this.onRequest?.(method, url);
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     const token = this.session?.appToken;
     const all: Record<string, string> = { Accept: 'application/json', ...headers };
     if (token) all[APP_TOKEN_HEADER] = token;

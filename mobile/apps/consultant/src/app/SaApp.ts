@@ -5,6 +5,8 @@ import {
   AppTexts,
   AppTokenStore,
   credentialToStore,
+  AppBranding,
+  fetchAppBranding,
   getAppInfo,
   KeyValueStore,
   PhotoStore,
@@ -47,6 +49,8 @@ export class SaApp {
   readonly queue: SyncQueue;
   readonly cache: KeyValueStore;
   readonly texts: AppTexts;
+  /** 2026-11-15: the Admin's logo and colours for this app (Admin → Settings → Branding), the last answer kept. */
+  readonly branding: AppBranding;
   readonly forms: AppForms;
   readonly api: SaApi;
   /** New in V4 (audit C1): the app sign-in token, sent with every call; kept per user in ZedAppToken. */
@@ -73,6 +77,7 @@ export class SaApp {
     this.cache = new KeyValueStore(deps.db);
     this.texts = new AppTexts(this.cache, BUILT_IN_TEXTS);
     this.forms = new AppForms(this.cache, { [CONSULTANT_BASIC_INFO]: BUILT_IN_BASIC_INFO });
+    this.branding = new AppBranding(this.cache, 'consultant');
     this.prefs = deps.prefs ?? nativePrefs;
     this.environment = deps.environment;
     this.versionName = deps.versionName;
@@ -100,6 +105,17 @@ export class SaApp {
     for (const file of PROTECTED_PREFS) this.prefs.protect(file);
     await this.texts.load();
     await this.forms.load([CONSULTANT_BASIC_INFO]);
+    // Before the first screen: an offline start shows the Admin's last logo and colours at once.
+    await this.branding.load();
+  }
+
+  /**
+   * 2026-11-15: the Admin's logo and colours from the main portal (api/public/branding/app/consultant, 5 s at most;
+   * one site serves it in production). Asked at start and when the app comes back to the front, never awaited by the
+   * start; a failure keeps the last answer (or today's look) without a message.
+   */
+  async refreshBranding(): Promise<void> {
+    await this.branding.refresh(() => fetchAppBranding(this.api.retrofit, this.environment.baseUrl, 'consultant'));
   }
 
   /** Admin texts and the Basic Information form: at start and after login; a failure keeps the last answer. */

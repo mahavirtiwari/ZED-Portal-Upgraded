@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useSyncExternalStore } from 'react';
-import { AppTextsProvider, htmlToPlain, OfflineNoteProvider, useAppText } from '@zed/shared';
+import { AppBrandingProvider, AppTextsProvider, htmlToPlain, OfflineNoteProvider, useAppText } from '@zed/shared';
 import type { MsmeApp } from './MsmeApp';
 
 const AppContext = createContext<MsmeApp | null>(null);
@@ -8,7 +8,10 @@ export function MsmeAppProvider({ app, children }: { app: MsmeApp; children: Rea
   return (
     <AppContext.Provider value={app}>
       <AppTextsProvider texts={app.texts}>
-        <OfflineNote>{children}</OfflineNote>
+        {/* 2026-11-15: the Admin's logo and colours for the header, the buttons and the sign-in page. */}
+        <AppBrandingProvider branding={app.branding}>
+          <OfflineNote>{children}</OfflineNote>
+        </AppBrandingProvider>
       </AppTextsProvider>
     </AppContext.Provider>
   );

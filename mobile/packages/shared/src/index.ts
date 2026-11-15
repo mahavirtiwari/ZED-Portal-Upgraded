@@ -32,6 +32,9 @@ export * from './location/location';
 // Admin texts and forms (new in V4)
 export * from './content/appTexts';
 export * from './content/AppTextsContext';
+// Admin branding of each app: logo and colour theme (2026-11-15)
+export * from './branding/appBranding';
+export * from './branding/AppBrandingContext';
 export * from './forms/appForms';
 export * from './forms/basicInfoForm';
 

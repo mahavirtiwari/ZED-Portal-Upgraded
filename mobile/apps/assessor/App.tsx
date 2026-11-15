@@ -90,6 +90,8 @@ export default function App() {
         if (alive) setApp(a);
         // New: Admin texts and the Basic Information form at start (the last answer is used offline).
         a.refreshServerContent().catch(() => undefined);
+        // 2026-11-15: the Admin's logo and colours (5 s at most, not awaited; the kept answer is already shown).
+        a.refreshBranding().catch(() => undefined);
       })
       .catch(() => {
         if (alive) setStartFailed(true);
@@ -110,6 +112,7 @@ export default function App() {
       if (Date.now() - refreshedAt < CONTENT_REFRESH_MS) return;
       refreshedAt = Date.now();
       app.refreshServerContent().catch(() => undefined);
+      app.refreshBranding().catch(() => undefined);
     };
     const sub = AppState.addEventListener('change', s => {
       if (s !== 'active') return;

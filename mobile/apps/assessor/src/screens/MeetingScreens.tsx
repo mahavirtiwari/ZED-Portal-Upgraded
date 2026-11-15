@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
-import { isNetworkAvailable, isNetworkError, isSuccess, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
+import { isNetworkAvailable, isNetworkError, isSuccess, useBrandTheme, useNavigation, useRoute, useUi, type Coordinates } from '@zed/shared';
 import { useSa } from '../app/context';
 import { randomUuid } from '../util/uuid';
 import {
@@ -31,8 +31,10 @@ export function geoText(lat: string | number | null | undefined, long: string | 
  * empty state, but stays pressable so the screen's own checks still answer with their messages.
  */
 export function SubmitButton({ title, ready, onPress, style, testID }: { title: string; ready: boolean; onPress: () => void; style?: StyleProp<ViewStyle>; testID?: string }) {
+  // 2026-11-15: in the Admin's theme when ready (mid).
+  const theme = useBrandTheme();
   return (
-    <Pressable style={({ pressed }) => [styles.submit, !ready && styles.submitIdle, pressed && { opacity: 0.85 }, style]} onPress={onPress} accessibilityRole="button" testID={testID}>
+    <Pressable style={({ pressed }) => [styles.submit, theme && { backgroundColor: theme.mid }, !ready && styles.submitIdle, pressed && { opacity: 0.85 }, style]} onPress={onPress} accessibilityRole="button" testID={testID}>
       <Text style={[styles.submitText, !ready && { color: C.tMuted }]}>{title}</Text>
     </Pressable>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { BackHandler, Image, PermissionsAndroid, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
+  BrandLogo,
   colors,
   dimens,
   errorOf,
@@ -17,6 +18,7 @@ import {
   UNKNOWN_ERROR,
   useNavigation,
   useAppText,
+  useBrandTheme,
   useRoute,
   useUi,
   ZedButton,
@@ -87,7 +89,8 @@ function Splash() {
   return (
     <View style={styles.splash}>
       <Image source={images.main_logo} style={styles.splashLogo} resizeMode="contain" />
-      <Image source={images.zed_banner} style={styles.banner} resizeMode="contain" />
+      {/* 2026-11-15: the Admin's logo (Admin → Settings → Branding) in place of the ZED logo, which stays the fallback. */}
+      <BrandLogo fallback={images.zed_banner} style={styles.banner} testID="splash-logo" />
     </View>
   );
 }
@@ -134,6 +137,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const ui = useUi();
   const nav = useNavigation();
   const newUser = useAppText('app.msme.login.newUserEligibility');
+  const theme = useBrandTheme();
   const [zedId, setZedId] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<{ zedId?: string; password?: string }>({});
@@ -191,7 +195,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   return (
     <ScrollView contentContainerStyle={styles.login} keyboardShouldPersistTaps="handled">
       <Image source={images.main_logo} style={styles.loginLogo} resizeMode="contain" />
-      <Image source={images.zed_banner} style={[styles.banner, { marginBottom: dimens.padding2 }]} resizeMode="contain" />
+      <BrandLogo fallback={images.zed_banner} style={[styles.banner, { marginBottom: dimens.padding2 }]} testID="login-logo" />
       <Text style={[textStyles.defaultLabel, styles.label]}>ZED ID</Text>
       <View style={styles.input}>
         <OutlinedInput value={zedId} onChangeText={t => (setZedId(t), setErrors({}))} error={errors.zedId} autoCapitalize="characters" testID="login-zed-id" />
@@ -210,20 +214,20 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       </View>
       <View style={styles.loginRow}>
         <Pressable
-          style={({ pressed }) => [styles.forgot, pressed && styles.forgotPressed]}
+          style={({ pressed }) => [styles.forgot, theme && { borderColor: theme.mid }, pressed && styles.forgotPressed]}
           onPress={() => nav.push('ForgotPassword')}
           accessibilityRole="button"
           testID="forgot-password">
           <Icon icon={icons.ic_key_teal} size={18} />
           {/* 2026-11-14: kept inside its border on narrow phones and large font sizes (it shrinks, never overflows). */}
-          <Text style={styles.forgotText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+          <Text style={[styles.forgotText, theme && { color: theme.dark }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
             FORGOT PASSWORD?
           </Text>
         </Pressable>
         <ZedButton title="Login" onPress={login} style={{ flex: 1 }} testID="login-button" />
       </View>
       <GearDivider style={styles.divider} />
-      <View style={styles.newUser} testID="new-user">
+      <View style={[styles.newUser, theme && { backgroundColor: theme.mid }]} testID="new-user">
         <RegisterOptionBackground />
         <Text style={styles.newUserTitle}>New User</Text>
         {newUser ? <HtmlText html={newUser.html} style={styles.newUserText} /> : null}
@@ -245,6 +249,8 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
  */
 function RegisterOptionBackground() {
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  // 2026-11-15: in the Admin's theme, accent to mid (today: the secondary colour to the app colour).
+  const theme = useBrandTheme();
   return (
     <View
       pointerEvents="none"
@@ -254,8 +260,8 @@ function RegisterOptionBackground() {
         <Svg width={size.w} height={size.h}>
           <Defs>
             <RadialGradient id="register" gradientUnits="userSpaceOnUse" cx={size.w * 0.8} cy={size.h * 0.1} r={320}>
-              <Stop offset="0" stopColor={colors.appColorSecondary} />
-              <Stop offset="1" stopColor={colors.appColor} />
+              <Stop offset="0" stopColor={theme?.accent ?? colors.appColorSecondary} />
+              <Stop offset="1" stopColor={theme?.mid ?? colors.appColor} />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width={size.w} height={size.h} rx={dimens.padding2} ry={dimens.padding2} fill="url(#register)" />
