@@ -13,8 +13,11 @@
                     databases (COPY_ONLY), runs the migrations (Invoke-ZedDatabaseScripts -Apply -SkipFixes), installs the
                     three portals (and, with -IncludeMobile, the mobile app hosts), runs the smoke test, and puts the
                     files back by itself when the install or the test fails.
-    5. Verify       reads the databases: every migration of this release is there (0073-0076 by their objects), and
-                    the three portals answer over HTTPS.
+    5. Verify       reads the databases: every migration of this release is there (0073-0084 by their objects and
+                    procedure texts), and the three portals answer over HTTPS.
+  2026-11-15 release: migrations 0077-0084 (invoice setup, level flows, certified-by-record rule, App Forms validation,
+  reports / surveillance certificate / partner API by record, PENDING phase fix). They go together: never 0078-0083
+  without 0084. Zed.Jobs did not change (no -IncludeJobs needed).
   Everything is written to a transcript in <InstallRoot>\logs\deploy-<time>.log.
 
   Run on the server, in an administrator Windows PowerShell 5.1 (or later), from the repository folder.
@@ -125,6 +128,26 @@ try {
         @{ Db = 'ZED_SURVEILLANCE'; Name = '0075 onsite surveillance visit';      Sql = "SELECT CASE WHEN COL_LENGTH('dbo.MsmeCertifications','AssessmentVisit') IS NOT NULL AND OBJECT_ID('dbo.SP_V4_SURVEILLANCE_ACCEPT_ONSITE','P') IS NOT NULL THEN 1 ELSE 0 END" },
         @{ Db = 'ZED_SURVEILLANCE'; Name = '0076 attendance and ESG checklist report'; Sql = "SELECT CASE WHEN OBJECT_ID('dbo.ZedDailyAttendance','U') IS NOT NULL AND OBJECT_ID('dbo.SP_APP_SA_INSERT_DAILY_ATTENDANCE','P') IS NOT NULL AND OBJECT_ID('dbo.CheckListReport','U') IS NOT NULL THEN 1 ELSE 0 END" }
     )
+    # 2026-11-15 release (0077-0084): the same markers Invoke-ZedDatabaseScripts.ps1 checks after applying each one.
+    function Has-Text([string]$proc, [string]$text) {
+        "CHARINDEX('" + $text.Replace("'", "''") + "', ISNULL(OBJECT_DEFINITION(OBJECT_ID('$proc')), '')) > 0"
+    }
+    function Has-Col([string]$table, [string]$col) { "COL_LENGTH('$table', '$col') IS NOT NULL" }
+    $release = @(
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0077 invoice setup'; Test = (Has-Text 'dbo.SP_API_FINANCE_GET_INVOICE_DETAILS' 'V4_0077_TEST_UNITS_IN_PORTAL') },
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_SURVEILLANCE'); Name = '0078 level flows routing'; Test = "OBJECT_ID('dbo.FN_V4_LEVEL_DESKTOP') IS NOT NULL" },
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0079 certified by record'; Test = (Has-Text 'dbo.SP_VERIFY_QR_CODE' 'CASE WHEN C.CertificationStatus = 16 THEN C.SaCertificateNo ELSE C.DaCertificateNo END') },
+        @{ Dbs = @('ZED_SURVEILLANCE'); Name = '0079 certified by record'; Test = (Has-Text 'dbo.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY' 'AND (S.CertificationStatus = 16 OR') },
+        @{ Dbs = @('ZEDCS_V2_LIVE', 'ZED_CONSULTANT', 'ZED_SURVEILLANCE'); Name = '0080 App Forms validation'; Test = (Has-Col 'dbo.V4AppFormFields' 'NeedsVerification') + ' AND ' + (Has-Col 'dbo.V4AppFormValues' 'NcRound') },
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0081 reports certified by record'; Test = (Has-Text 'dbo.SP_DASHBOARD_GET_DETAILS' 'AS V4Cert, CAST(CASE WHEN') },
+        @{ Dbs = @('ZED_SURVEILLANCE'); Name = '0082 surveillance certificate by record'; Test = (Has-Text 'dbo.SP_DA_GET_CERTIFICATE_DETAILS' 'CertificationStatus IN (6, 16)') },
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0083 partner API certified by record'; Test = (Has-Text 'dbo.SP_API_GET_STATE_CERTIFIED_UNIT_DETAILS' 'THEN C.DaCertificateNo ELSE C.SaCertificateNo END AS CertificateNumber') },
+        @{ Dbs = @('ZEDCS_V2_LIVE'); Name = '0084 PENDING phase, skipped desktop step'; Test = (Has-Text 'dbo.SP_ASSESSMENT_ALLOT_LIST' 'AND ISNULL(P.CertificationPhase, ') + ' AND ' + (Has-Text 'dbo.SP_V4_SKIP_DESKTOP' 'DesktopAccepted = 1') + ' AND ' + (Has-Text 'dbo.SP_REPORT_GET_DETAILS' 'LEFT JOIN Users U ON (C.DesktopAssessorId = U.UserId)') },
+        @{ Dbs = @('ZED_SURVEILLANCE'); Name = '0084 PENDING phase'; Test = (Has-Text 'dbo.SP_AUTO_REJECT_BRONZE_SURVEILLANCE_BEFORE_EXPIRY' 'OR ISNULL(S.CertificationPhase, ') + ' AND ' + (Has-Text 'dbo.SP_REPORT_GET_DETAILS' 'LEFT JOIN Users U ON (C.DesktopAssessorId = U.UserId)') }
+    )
+    foreach ($r in $release) {
+        foreach ($d in $r.Dbs) { $checks += @{ Db = $d; Name = $r.Name; Sql = "SELECT CASE WHEN $($r.Test) THEN 1 ELSE 0 END" } }
+    }
     $failed = 0
     foreach ($c in $checks) {
         $db = $DatabasePrefix + $c.Db
