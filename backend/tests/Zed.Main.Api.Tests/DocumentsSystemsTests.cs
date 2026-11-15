@@ -28,8 +28,9 @@ internal static class SystemDocumentsTestData
                 {
                     r.ZedId, Certification = r.Level, CertificationStatus = r.Status, NcCount = r.Nc,
                     CertificationBodyUserId = r.Agency, DesktopAssessorId = r.Desktop, SiteAssessorId = r.Site,
-                    // 2026-11-15: a certified record has its phase (certified is read from the record, migration 0079).
-                    CertificationPhase = r.Status == 16 || (r.Status == 6 && r.Level == "Bronze") ? "ACTIVE" : null,
+                    // 2026-11-15: a certified record has its phase (certified is read from the record, migrations 0079,
+                    // 0084); the others keep the column's default PENDING.
+                    CertificationPhase = r.Status == 16 || (r.Status == 6 && r.Level == "Bronze") ? "ACTIVE" : "PENDING",
                 }).ToList();
         };
 

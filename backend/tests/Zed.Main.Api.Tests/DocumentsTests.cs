@@ -59,8 +59,9 @@ internal static class DocumentsTestData
                 {
                     r.ZedId, r.Certification, CertificationStatus = r.Status, NcCount = 0,
                     CertificationBodyUserId = r.Agency, DesktopAssessorId = r.Desktop, SiteAssessorId = r.Site,
-                    // 2026-11-15: a certified record has its phase (certified is read from the record, migration 0079).
-                    CertificationPhase = r.Status == 16 || (r.Status == 6 && r.Certification == "Bronze") ? "ACTIVE" : null,
+                    // 2026-11-15: a certified record has its phase (certified is read from the record, migrations 0079,
+                    // 0084); the others keep the column's default PENDING.
+                    CertificationPhase = r.Status == 16 || (r.Status == 6 && r.Certification == "Bronze") ? "ACTIVE" : "PENDING",
                 }).ToList();
         };
         host.Sql.Procs["SP_DA_GET_CERTIFICATE_DETAILS"] = args => CertificateDetails(FakeSql.Arg(args, "ZedId")!, FakeSql.Arg(args, "CertificationType")!, "DaCertificateNo");

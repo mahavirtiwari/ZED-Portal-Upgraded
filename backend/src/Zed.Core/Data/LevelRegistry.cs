@@ -140,26 +140,39 @@ public static partial class LevelRegistry
     /// </summary>
     public static bool Apply(IEnumerable<Entry> rows)
     {
-        var list = rows.Where(r => r is not null && r.Code is not null && CodePattern().IsMatch(r.Code.Trim()))
-            .Select(r => r with
-            {
-                Code = r.Code.Trim(),
-                Name = string.IsNullOrWhiteSpace(r.Name) ? r.Code.Trim() : r.Name.Trim(),
-                AssessmentMode = r.AssessmentMode == Desktop ? Desktop : Site,
-                QrDigit = string.IsNullOrWhiteSpace(r.QrDigit) ? null : r.QrDigit.Trim(),
-            })
-            .DistinctBy(r => r.Code, StringComparer.OrdinalIgnoreCase).ToList();
-        if (list.Count == 0) return false;
-        foreach (var b in BuiltIn)
-        {
-            var i = list.FindIndex(r => string.Equals(r.Code, b.Code, StringComparison.OrdinalIgnoreCase));
-            if (i < 0) list.Add(b);
-            // The built-in levels keep their spelling and the rules of their procedures (Bronze desktop; Silver, Gold and
-            // ZED-X site: the procedures treat ZED-X as Gold whatever its assessment mode says) and ZED-X's QR digit.
-            else list[i] = list[i] with { Code = b.Code, AssessmentMode = b.AssessmentMode, QrDigit = list[i].QrDigit ?? b.QrDigit };
-        }
+        if (Merge(rows) is not { } list) return false;
         current = new Snapshot(list);
         return true;
+    }
+
+    /// <summary>
+    /// The list <see cref="Apply"/> uses (null when no row is usable). The built-in four keep their spelling and ZED-X's QR
+    /// digit; 2026-11-15 their AssessmentMode is the table's too (migration 0078 keeps it in step with the Admin's flow, e.g.
+    /// Bronze with a visit = Site, Silver Desktop only = Desktop). Only an empty mode takes the built-in one (Bronze Desktop,
+    /// the others Site), as the SQL's ISNULL does for NULL.
+    /// </summary>
+    public static List<Entry>? Merge(IEnumerable<Entry> rows)
+    {
+        var list = rows.Where(r => r is not null && r.Code is not null && CodePattern().IsMatch(r.Code.Trim()))
+            .Select(r =>
+            {
+                var code = r.Code.Trim();
+                var builtIn = BuiltIn.FirstOrDefault(b => string.Equals(b.Code, code, StringComparison.OrdinalIgnoreCase));
+                var mode = string.IsNullOrWhiteSpace(r.AssessmentMode) ? builtIn?.AssessmentMode ?? Site
+                    : string.Equals(r.AssessmentMode.Trim(), Desktop, StringComparison.OrdinalIgnoreCase) ? Desktop : Site;
+                return r with
+                {
+                    Code = builtIn?.Code ?? code,
+                    Name = string.IsNullOrWhiteSpace(r.Name) ? code : r.Name.Trim(),
+                    AssessmentMode = mode,
+                    QrDigit = string.IsNullOrWhiteSpace(r.QrDigit) ? builtIn?.QrDigit : r.QrDigit.Trim(),
+                };
+            })
+            .DistinctBy(r => r.Code, StringComparer.OrdinalIgnoreCase).ToList();
+        if (list.Count == 0) return null;
+        foreach (var b in BuiltIn)
+            if (!list.Any(r => string.Equals(r.Code, b.Code, StringComparison.OrdinalIgnoreCase))) list.Add(b);
+        return list;
     }
 
     /// <summary>Adds (or replaces) levels, keeping the others: for tests and for a level the Admin just added.</summary>

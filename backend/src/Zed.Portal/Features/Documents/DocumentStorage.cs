@@ -57,14 +57,24 @@ public static class DocumentLevels
         status == (Zed.Core.Data.LevelRegistry.IsLegacyDesktop(level) ? BronzeCertified : SiteCertified);
 
     /// <summary>
-    /// 2026-11-15: a main certification record is certified whatever its level's flow (migrations 0078, 0079): 16 (only
-    /// reached by certification), or 6 with its desktop certificate number or a certification phase (ACTIVE, UPGRADED,
-    /// EXPIRED ...: only certification sets it, so an old record without its number still counts). A 6 with neither is
-    /// waiting for its visit. Never by the level's current flow: the Admin may change it while units are on the way.
+    /// 2026-11-15: a main certification record is certified whatever its level's flow (migrations 0078, 0079, 0084): 16
+    /// (only reached by certification), or 6 with its desktop certificate number or a certification phase
+    /// (<see cref="IsCertificationPhase"/>: ACTIVE, UPGRADED, EXPIRED ...; only certification sets one, so an old record without
+    /// its number still counts). A 6 with neither (phase PENDING, the column's default) is waiting for its visit. Never by the
+    /// level's current flow: the Admin may change it while units are on the way.
     /// </summary>
     public static bool IsCertifiedRecord(int? status, string? daCertificateNo, string? certificationPhase) =>
         status == SiteCertified
-        || (status == BronzeCertified && (!string.IsNullOrWhiteSpace(daCertificateNo) || !string.IsNullOrWhiteSpace(certificationPhase)));
+        || (status == BronzeCertified && (!string.IsNullOrWhiteSpace(daCertificateNo) || IsCertificationPhase(certificationPhase)));
+
+    /// <summary>
+    /// A phase that only certification gives (migration 0084): not empty, not PENDING (MsmeCertifications.CertificationPhase's
+    /// default, kept until certified) and not REJECTED (the rejection's, at 99). SQL: ISNULL(phase, 'PENDING') NOT IN
+    /// ('PENDING', 'REJECTED').
+    /// </summary>
+    public static bool IsCertificationPhase(string? certificationPhase) =>
+        certificationPhase?.Trim() is { Length: > 0 } p
+        && !p.Equals("PENDING", StringComparison.OrdinalIgnoreCase) && !p.Equals("REJECTED", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Certificates/DA/{ZedId}/Bronze.pdf (certified at the desktop), Certificates/SA/{ZedId}/Silver.pdf (after a visit)

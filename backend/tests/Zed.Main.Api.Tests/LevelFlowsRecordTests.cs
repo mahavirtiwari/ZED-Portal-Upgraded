@@ -1,3 +1,4 @@
+using Zed.Core.Data;
 using Zed.Portal.Features.Documents;
 using Zed.Portal.Features.Payments;
 using Zed.Portal.Features.Staff.Assessment;
@@ -19,12 +20,53 @@ public sealed class LevelFlowsRecordTests
     [InlineData("Bronze", 6, null, null, false)]           // a Bronze waiting for its visit
     [InlineData("Silver", 6, "15112026_1", "ACTIVE", true)] // a Silver certified at the desktop
     [InlineData("Bronze", 9, null, null, false)]
+    // 0084: PENDING is MsmeCertifications.CertificationPhase's default until certified, REJECTED the rejection's: neither counts.
+    [InlineData("Silver", 6, null, "PENDING", false)]       // a Silver waiting for its visit, as the database has it
+    [InlineData("Bronze", 6, null, "PENDING", false)]       // a Bronze with a visit, waiting for it
+    [InlineData("Gold", 6, null, "pending", false)]
+    [InlineData("Bronze", 6, null, "REJECTED", false)]
+    [InlineData("Silver", 6, "15112026_1", "PENDING", true)] // the desktop number certifies whatever the phase
+    [InlineData("Bronze", 6, null, "WITHDRAWN", true)]      // set only on certified records
+    [InlineData("Bronze", 6, null, "EXPIRED", true)]
+    [InlineData("Silver", 16, null, "PENDING", true)]       // 16 is only reached by certification
     public void A_record_is_certified_by_its_own_status_number_and_phase(string level, int status, string? da, string? phase, bool certified)
     {
         Assert.Equal(certified, DocumentLevels.IsCertifiedRecord(status, da, phase));
         var record = new CertificationRecord { Certification = level, CertificationStatus = status, DaCertificateNo = da, CertificationPhase = phase };
         Assert.Equal(certified, record.IsCertified);
         Assert.Equal(certified ? status == 6 : null, record.CertifiedAtDesktop);
+    }
+
+    [Theory]
+    // 2026-11-15: the built-in levels take the Admin's flow from the table (AssessmentMode in step with it, migration 0078).
+    [InlineData("Bronze", "Site", "Site")]        // Bronze with a visit (Remote only, Desktop + Onsite ...)
+    [InlineData("Silver", "Desktop", "Desktop")]  // Silver Desktop only
+    [InlineData("Gold", "desktop", "Desktop")]
+    [InlineData("ZEDX", "Desktop", "Desktop")]
+    // The default flows, and an empty column (older database): the built-in modes.
+    [InlineData("Bronze", "Desktop", "Desktop")]
+    [InlineData("Silver", "Site", "Site")]
+    [InlineData("Bronze", "", "Desktop")]
+    [InlineData("Silver", null, "Site")]
+    [InlineData("ZEDX", " ", "Site")]
+    public void The_registry_takes_a_built_in_levels_mode_from_the_table(string code, string? mode, string expected)
+    {
+        var list = LevelRegistry.Merge([new LevelRegistry.Entry(code.ToLowerInvariant(), code, true, mode!, 10)])!;
+        var entry = Assert.Single(list, e => string.Equals(e.Code, code, StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(code, entry.Code);   // the built-in spelling
+        Assert.Equal(expected, entry.AssessmentMode);
+        // The other built-in levels are added with their defaults.
+        Assert.Equal(LevelRegistry.BuiltIn.Select(b => b.Code).Order(), list.Select(e => e.Code).Order());
+        Assert.All(list.Where(e => e != entry), e => Assert.Equal(LevelRegistry.BuiltIn.Single(b => b.Code == e.Code).AssessmentMode, e.AssessmentMode));
+    }
+
+    [Fact]
+    public void The_registry_keeps_the_built_in_qr_digits_unless_the_table_sets_one()
+    {
+        var list = LevelRegistry.Merge([new LevelRegistry.Entry("Bronze", "Bronze", true, "Site", 10), new LevelRegistry.Entry("ZEDX", "ZED-X", true, "Site", 40, "7")])!;
+        Assert.Equal("2", list.Single(e => e.Code == "Bronze").QrDigit);
+        Assert.Equal("7", list.Single(e => e.Code == "ZEDX").QrDigit);
+        Assert.Null(LevelRegistry.Merge([]));
     }
 
     [Fact]
