@@ -1,6 +1,7 @@
 import { Component, computed, inject } from '@angular/core';
 import { PortalLinksService } from '@zed/shared';
 import { PublicLevels } from '../shared/levels';
+import { ContentTextComponent } from '../../content/content-text';
 
 /** The live portal's banner (Banner_20220428033601.png, resized); no longer shown on the login pages since 2026-11-14. */
 export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
@@ -14,6 +15,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
  */
 @Component({
   selector: 'zed-login-shell',
+  imports: [ContentTextComponent],
   host: { class: 'zed-login d-block' },
   template: `
     <div class="ml-page">
@@ -27,19 +29,25 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
           <img class="ml-zed" src="/Images/header/zed-logo.png" alt="ZED" />
         </div>
         <div class="ml-hero-body">
-          <p class="ml-kicker">For manufacturing and service MSMEs</p>
-          <p class="ml-title">MSME Sustainable (ZED) Certification</p>
+          <!-- 2026-11-15 (the user): every text here is the Admin's (Administration → Texts, "MSME: Registration"); the words
+               below are the defaults until the Admin changes them. -->
+          <p class="ml-kicker"><zed-text key="msme.login.hero.kicker" [inline]="true">For manufacturing and service MSMEs</zed-text></p>
+          <p class="ml-title"><zed-text key="msme.login.hero.title" [inline]="true">MSME Sustainable (ZED) Certification</zed-text></p>
           <span class="ml-rule" aria-hidden="true"></span>
-          <p class="ml-sub">Raise your quality and sustainability, get certified and unlock incentives.</p>
+          <p class="ml-sub"><zed-text key="msme.login.hero.subtitle" [inline]="true">Raise your quality and sustainability, get certified and unlock incentives.</zed-text></p>
 
-          <p class="ml-label">How it works</p>
+          <p class="ml-label"><zed-text key="msme.login.hero.stepsHeading" [inline]="true">How it works</zed-text></p>
           <ol class="ml-steps">
             @for (s of steps; track s.title; let i = $index) {
-              <li><span class="ml-no">{{ i + 1 }}</span><strong>{{ s.title }}</strong><small>{{ s.text }}</small></li>
+              <li>
+                <span class="ml-no">{{ i + 1 }}</span>
+                <strong><zed-text [key]="'msme.login.hero.step' + (i + 1) + '.title'" [inline]="true">{{ s.title }}</zed-text></strong>
+                <small><zed-text [key]="'msme.login.hero.step' + (i + 1) + '.text'" [inline]="true">{{ s.text }}</zed-text></small>
+              </li>
             }
           </ol>
 
-          <p class="ml-label">Certification levels</p>
+          <p class="ml-label"><zed-text key="msme.login.hero.levelsHeading" [inline]="true">Certification levels</zed-text></p>
           <ul class="ml-levels">
             @for (l of levels(); track l.name) {
               <li class="ml-level">
@@ -49,14 +57,11 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
             }
           </ul>
 
-          @if (links.url('playStore') || links.url('appStore')) {
-            <p class="ml-label">Also on the ZED MSME app</p>
-            <div class="ml-apps">
-              @if (links.url('playStore'); as p) { <a class="ml-app" [href]="p" target="_blank" rel="noopener">Google Play</a> }
-              @if (links.url('appStore'); as a) { <a class="ml-app" [href]="a" target="_blank" rel="noopener">App Store</a> }
-            </div>
-          }
         </div>
+        <!-- 2026-11-15 (the user): the copyright at the bottom of the left column. -->
+        <footer class="ml-footer ml-foot-wide">
+          <small>ZED © {{ year }} All Rights Reserved</small>
+        </footer>
       </aside>
       <main class="ml-side">
         <div class="ml-side-top">
@@ -70,7 +75,7 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
         <section class="ml-card">
           <ng-content />
         </section>
-        <footer class="ml-footer">
+        <footer class="ml-footer ml-foot-phone">
           <small>ZED © {{ year }} All Rights Reserved</small>
         </footer>
       </main>
@@ -84,26 +89,24 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       background-color: #f1f8f8; background-image: radial-gradient(#d3e6e8 1px, transparent 1px); background-size: 22px 22px;
     }
     .ml-logos { display: flex; align-items: center; gap: 18px; padding-bottom: 16px; border-bottom: 1px solid #d9e7e8; }
-    .ml-ministry { height: 64px; display: block; }
-    .ml-zed { height: 56px; display: block; margin-left: auto; }
-    .ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0 4px; max-width: 580px; }
+    /* 2026-11-15 (the user): bigger logos. */
+    .ml-ministry { height: 84px; display: block; }
+    .ml-zed { height: 76px; display: block; margin-left: auto; }
+    .ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0 4px; }
     .ml-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #23656b; margin: 0 0 8px; }
     .ml-title { font-size: 34px; font-weight: 700; color: #16302f; line-height: 1.15; margin: 0; }
     .ml-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: #23656b; margin: 14px 0; }
     .ml-sub { font-size: 15.5px; color: #4f6062; line-height: 1.6; margin: 0 0 20px; }
     .ml-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
     .ml-steps { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
-    .ml-steps li { background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 12px; }
+    .ml-steps li { background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 12px 14px; }
     .ml-steps strong { display: block; font-size: 14px; color: #1d2b2c; margin-top: 6px; }
     .ml-steps small { display: block; font-size: 12.5px; color: #5f6f70; line-height: 1.4; }
     .ml-no { width: 24px; height: 24px; border-radius: 50%; background: #23656b; color: #fff; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
     .ml-levels { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
-    .ml-level { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 8px 12px; font-weight: 700; color: #1d2b2c; font-size: 14px; }
+    .ml-level { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 14px; font-weight: 700; color: #1d2b2c; font-size: 14px; }
     .ml-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
     .ml-level-dot { width: 28px; height: 28px; border-radius: 50%; background: #d9eef0; flex: none; }
-    .ml-apps { display: flex; gap: 8px; flex-wrap: wrap; }
-    .ml-app { background: #1d2b2c; color: #fff; border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 600; text-decoration: none; }
-    .ml-app:hover { background: #23656b; color: #fff; }
     .ml-side { display: flex; flex-direction: column; padding: 24px 40px 12px; min-width: 0; }
     .ml-side-top { display: flex; justify-content: flex-end; min-height: 32px; }
     .ml-help { display: inline-flex; align-items: center; gap: 6px; color: #23656b; font-weight: 600; font-size: 14px; text-decoration: none; }
@@ -113,14 +116,18 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
       display: flex; justify-content: center; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 10px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
     }
+    .ml-foot-wide { justify-content: flex-start; border-top-color: #d9e7e8; margin-top: 16px; }
+    .ml-foot-phone { display: none; }
     @media (max-width: 900px) {
+      .ml-foot-wide { display: none; }
+      .ml-foot-phone { display: flex; }
       .ml-page { grid-template-columns: 1fr; }
       .ml-hero { padding: 14px 20px 16px; border-right: 0; border-bottom: 1px solid #e3ecee; }
       .ml-ministry { height: 40px; }
       .ml-zed { height: 42px; }
       .ml-hero-body { padding: 12px 0 0; }
       .ml-title { font-size: 21px; }
-      .ml-rule, .ml-sub, .ml-label, .ml-steps, .ml-levels, .ml-apps { display: none; }
+      .ml-rule, .ml-sub, .ml-label, .ml-steps, .ml-levels { display: none; }
       .ml-side { padding: 8px 20px 14px; }
       .ml-card { padding: 14px 0 20px; }
     }

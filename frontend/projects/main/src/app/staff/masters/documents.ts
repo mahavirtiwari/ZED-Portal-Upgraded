@@ -363,7 +363,7 @@ interface DocumentIcon {
     .seg button.active { background: #23656b; color: #fff; }
     .role-filter { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid #eef3f3; }
     .role-filter-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-right: 4px; }
-    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 16px; border: 1px solid #d9eef0; background: #d9eef0;
+    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
       color: #174a4e; font-size: 13px; font-weight: 600; cursor: pointer; }
     .role-pill:hover { background: #c5e5e8; border-color: #45a5ad; }
     .role-pill.none:not(.active) { color: #8a9899; }
@@ -429,7 +429,7 @@ interface DocumentIcon {
     .doc-roles-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .doc-role-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .modal .modal-popup.doc-dialog label.doc-role { position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px solid #cbd9da;
-      border-radius: 18px; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+      border-radius: 6px; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
     .modal .modal-popup.doc-dialog label.doc-role::before { content: '+'; font-weight: 700; width: 12px; text-align: center; }
     .modal .modal-popup.doc-dialog label.doc-role.on { background: #45a5ad; border-color: #45a5ad; color: #fff; }
     .modal .modal-popup.doc-dialog label.doc-role.on::before { content: '✓'; }

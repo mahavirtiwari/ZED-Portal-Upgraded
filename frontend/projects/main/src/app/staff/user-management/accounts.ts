@@ -418,7 +418,7 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
     .acc-list { padding: 16px; }
     .acc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
       color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
     .acc-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
     .acc-tab.active { background: #23656b; border-color: #23656b; color: #fff; }

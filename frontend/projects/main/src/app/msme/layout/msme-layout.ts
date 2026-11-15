@@ -85,7 +85,7 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
     .topnav .navbar-nav { align-items: stretch; gap: 2px; }
     .topnav .nav-link, .topnav button.nav-link {
       display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; color: #d9eef0; font-size: 14px; font-weight: 700;
-      border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; white-space: nowrap;
+      border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; white-space: nowrap;
     }
     .topnav .nav-link:hover, .topnav .nav-link:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.06); }
     .topnav .nav-link.active { color: #fff; border-bottom-color: #c9e8a0; }

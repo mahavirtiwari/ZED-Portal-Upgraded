@@ -280,7 +280,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
 
     .as-list { padding: 16px; }
     .as-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
       color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
     .as-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
     .as-tab.active { background: #23656b; border-color: #23656b; color: #fff; }

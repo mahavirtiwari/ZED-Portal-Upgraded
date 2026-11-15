@@ -96,7 +96,7 @@ function emptyAssessor(): AssessorModel {
 
     /* Choice chips: one radio per pill (assessor type, ID proof, sector type). */
     .af-chips { display: flex; flex-wrap: wrap; gap: 8px; min-height: 38px; align-items: center; }
-    .af-chip { position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 16px; border-radius: 20px;
+    .af-chip { position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 0; padding: 7px 16px; border-radius: 6px;
       border: 1px solid #cbd9da; background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; }
     .af-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
     .af-chip::before { content: ''; width: 14px; height: 14px; border-radius: 50%; border: 2px solid #9fbfc1; background: #fff; box-sizing: border-box; }

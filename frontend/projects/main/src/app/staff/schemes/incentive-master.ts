@@ -194,7 +194,7 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .page-head { align-items: center; }
 
     .inc-groups { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 20px; border: 1px solid #d9eef0; background: #d9eef0;
+    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
       color: #174a4e; font-weight: 600; font-size: 14px; text-decoration: none; }
     .inc-group-tab:hover { background: #c5e5e8; border-color: #45a5ad; color: #2f7c83; }
     .inc-group-tab.active { background: #23656b; border-color: #23656b; color: #fff; }

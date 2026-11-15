@@ -34,7 +34,7 @@ const NO_COUNTS: TuCounts = { New: 0, InProgress: 0, Qc: 0, Approved: 0, Rejecte
     td.late { background-color: #fdeef0; }
     /* Status lists as a row of tabs with their counts. */
     .status-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .status-tabs .btn { border-radius: 18px; font-weight: 700; }
+    .status-tabs .btn { border-radius: 6px; font-weight: 700; }
     .status-tabs .tab-count { display: inline-block; min-width: 22px; margin-left: 6px; padding: 0 7px; border-radius: 10px; background: rgba(69, 165, 173, 0.15); font-size: 12px; font-weight: 700; }
     .status-tabs .btn-primary .tab-count { background: rgba(255, 255, 255, 0.25); }
     .badges { display: flex; flex-wrap: wrap; gap: 4px; }

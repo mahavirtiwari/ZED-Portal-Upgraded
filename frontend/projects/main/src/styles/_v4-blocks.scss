@@ -118,10 +118,12 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .list-card-head zed-list-search { margin: 0; }
   .list-card .table-responsive { margin: 0; }
   .list-card table.table { margin: 0; border: 0; font-size: 13.5px; }
-  .list-card table.table > thead > tr, .list-card table.table.table-zed > thead > tr { background: #f4f8f8 !important; }
-  .list-card table.table > thead > tr > th, .list-card table.table.table-zed > thead > tr > th { --bs-table-bg: #f4f8f8; --bs-table-color: #5f6f70; color: #5f6f70 !important; background: #f4f8f8 !important; font-weight: 700; font-size: 12.5px; border: 0;
+  // 2026-11-15 (the user): a dark header row, so that it stands apart from the rows.
+  .list-card table.table > thead > tr, .list-card table.table.table-zed > thead > tr { background: #23656b !important; }
+  .list-card table.table > thead > tr > th, .list-card table.table.table-zed > thead > tr > th { --bs-table-bg: #23656b; --bs-table-color: #fff; color: #fff !important; background: #23656b !important; font-weight: 700; font-size: 12.5px; border: 0;
     border-bottom: 1px solid #e3ecec; padding: 9px 12px; text-align: left; }
-  .list-card table.table > tbody > tr > td { border: 0; border-top: 1px solid #eef3f3; padding: 10px 12px; vertical-align: middle; text-align: left; }
+  // 2026-11-15 (the user): separating lines that show.
+  .list-card table.table > tbody > tr > td { border: 0; border-top: 1px solid #d0dcdd; padding: 10px 12px; vertical-align: middle; text-align: left; }
   .list-card table.table > tbody > tr:first-child > td { border-top: 0; }
   .list-card table.table > tbody > tr:hover > td { background: #fafcfc; }
   .list-card zed-pager { display: block; padding: 8px 14px; border-top: 1px solid #eef3f3; }
@@ -151,14 +153,14 @@ td .row-actions .btn:not(.btn-link):disabled, td.text-center > .btn:not(.btn-lin
   .page-head .page-sub { font-size: 13.5px; color: #7a8a8b; }
   .page-actions .btn { font-weight: 600; }
   .zed-card { border-color: #dfe9ea; border-radius: 12px; box-shadow: none; }
-  table.table.table-zed > thead > tr { background: #f4f8f8 !important; }
+  table.table.table-zed > thead > tr { background: #23656b !important; }
   table.table.table-zed > thead > tr > th, table.table.table-zed > thead > tr > td {
-    --bs-table-bg: #f4f8f8; --bs-table-color: #5f6f70; background: #f4f8f8 !important; color: #5f6f70 !important;
+    --bs-table-bg: #23656b; --bs-table-color: #fff; background: #23656b !important; color: #fff !important;
     font-size: 12.5px; font-weight: 700; border-color: #e3ecec;
   }
   table.table.table-zed { background: #fff; font-size: 13.5px; border-color: #e3ecec; }
-  table.table.table-zed > :not(caption) > * > * { border-color: #eef3f3; }
-  .table-responsive:has(> table.table-zed) { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; }
+  table.table.table-zed > :not(caption) > * > * { border-color: #d0dcdd; }
+  .table-responsive:has(> table.table-zed) { background: #fff; border: 1px solid #c7d6d7; border-radius: 12px; }
   .list-card .table-responsive:has(> table.table-zed) { border: 0; border-radius: 0; }
   .list-card table.table.table-zed { border: 0; }
   .table-responsive > table.table-zed { margin-bottom: 0; border: 0; }

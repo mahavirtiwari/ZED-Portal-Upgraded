@@ -52,6 +52,10 @@ import { PublicLevels } from '../msme/shared/levels';
             </a>
           }
         </div>
+        <!-- 2026-11-15 (the user): the copyright at the bottom of the left column. -->
+        <footer class="zl-foot zl-foot-wide">
+          <small>ZED © {{ year }} All Rights Reserved</small>
+        </footer>
       </aside>
       <main class="zl-side">
         <div class="zl-side-top">
@@ -69,7 +73,7 @@ import { PublicLevels } from '../msme/shared/levels';
             <p class="zl-secure"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3Zm-1 14-4-4 1.4-1.4 2.6 2.6 5.6-5.6L18 9l-7 7Z" /></svg>Authorised users only · sign-ins are recorded</p>
           </div>
         </div>
-        <footer class="zl-foot">
+        <footer class="zl-foot zl-foot-phone">
           <small>ZED © {{ year }} All Rights Reserved</small>
         </footer>
       </main>
@@ -83,9 +87,10 @@ import { PublicLevels } from '../msme/shared/levels';
       background-color: #f1f8f8; background-image: radial-gradient(#d3e6e8 1px, transparent 1px); background-size: 22px 22px;
     }
     .zl-logos { display: flex; align-items: center; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid #d9e7e8; }
-    .zl-ministry { height: 64px; display: block; }
-    .zl-zed { height: 56px; display: block; margin-left: auto; }
-    .zl-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 8px; max-width: 560px; }
+    /* 2026-11-15 (the user): bigger logos. */
+    .zl-ministry { height: 84px; display: block; }
+    .zl-zed { height: 76px; display: block; margin-left: auto; }
+    .zl-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 8px; }
     .zl-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #23656b; margin: 0 0 8px; }
     .zl-title { font-size: 36px; font-weight: 700; color: #16302f; line-height: 1.15; margin: 0; }
     .zl-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: #23656b; margin: 16px 0; }
@@ -93,7 +98,7 @@ import { PublicLevels } from '../msme/shared/levels';
     .zl-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
     .zl-levels { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
     .zl-level {
-      display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 8px 12px;
+      display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 14px;
       font-weight: 700; color: #1d2b2c; font-size: 14px;
     }
     .zl-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
@@ -116,7 +121,8 @@ import { PublicLevels } from '../msme/shared/levels';
     /* min-width 0: a long sentence (Forgot Password) wraps instead of widening the form. */
     .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 460px; margin: 0 auto; padding: 24px 0; min-width: 0; }
     .zl-card {
-      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid #23656b; border-radius: 12px; padding: 26px 30px 16px;
+      /* 2026-11-15: smaller corners, so that the teal top line bends less at its ends. */
+      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid #23656b; border-radius: 8px; padding: 26px 30px 16px;
       box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08); min-width: 0;
     }
     .zl-tag {
@@ -131,7 +137,11 @@ import { PublicLevels } from '../msme/shared/levels';
       display: flex; justify-content: center; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */
     }
+    .zl-foot-wide { justify-content: flex-start; border-top-color: #d9e7e8; margin-top: 16px; }
+    .zl-foot-phone { display: none; }
     @media (max-width: 900px) {
+      .zl-foot-wide { display: none; }
+      .zl-foot-phone { display: flex; }
       .zl-page { grid-template-columns: 1fr; }
       .zl-hero { padding: 14px 20px 16px; border-right: 0; border-bottom: 1px solid #e3ecee; }
       .zl-logos { padding-bottom: 10px; }

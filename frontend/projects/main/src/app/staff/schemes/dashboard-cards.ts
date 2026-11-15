@@ -251,7 +251,8 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
 
     /* Each card as the MSME dashboard draws it, with its controls around it. */
-    .dc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 14px; }
+    /* 2026-11-15 (the user): the cards fill the row (auto-fit), as wide as on the MSME dashboard. */
+    .dc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
     .dc-grid > .no-data { grid-column: 1 / -1; }
     .dc-card { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid #dfe9ea; border-radius: 12px; background: #f4f8f8; min-width: 0; }
     .dc-card.is-off { background: #f6f6f6; border-style: dashed; }
@@ -261,10 +262,11 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .dc-stake { font-size: 12px; color: #5f6f70; text-align: right; overflow-wrap: anywhere; }
     .pv-card { background: #fff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 6px 14px rgba(0, 0, 0, .08); overflow: hidden; flex: 1 1 auto; }
     .pv-card.is-faded { opacity: .5; }
-    .pv-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 14px 14px 0; }
-    .pv-head img { width: 70px; max-height: 64px; object-fit: contain; }
+    /* As the MSME dashboard's incentive cards (msme/dashboard: 90 x 72 picture, 16px padding). */
+    .pv-head { display: flex; justify-content: space-between; align-items: center; padding: 16px 16px 0; }
+    .pv-head img { width: 90px; height: 72px; object-fit: contain; }
     .pv-avail { background: #45a5ad; color: #fff; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 3px 9px; text-transform: uppercase; }
-    .pv-body { padding: 8px 14px 14px; }
+    .pv-body { padding: 12px 16px 16px; }
     .pv-body h6 { margin: 0 0 6px; font-weight: 700; font-size: 16px; color: #232527; overflow-wrap: anywhere; }
     .pv-body p { margin: 0; font-size: 13px; color: #232527; overflow-wrap: anywhere; }
     .clr-spot { color: #27aae1; font-weight: 700; }
@@ -276,11 +278,11 @@ const LEVEL_FIELD: Record<Exclude<LevelFilter, 'all'>, 'applicableForBronze' | '
     .lv-chip.lv-silver { background: #eef1f2; color: #4f5b60; }
     .lv-chip.lv-gold { background: #fbf3d9; color: #7a6110; }
 
-    .dc-stake-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-    .dc-stake-card { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border: 1px solid #dfe9ea; border-radius: 10px; background: #fff;
+    .dc-stake-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .dc-stake-card { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #dfe9ea; border-radius: 10px; background: #fff;
       color: #232527; text-decoration: none; min-width: 0; }
     .dc-stake-card:hover { border-color: #45a5ad; background: #f4fafa; color: #232527; }
-    .dc-stake-card img { flex: none; width: 56px; height: 44px; object-fit: contain; }
+    .dc-stake-card img { flex: none; width: 72px; height: 56px; object-fit: contain; }
 
     /* The pop-up: the fields beside the preview. Wider than the skin's 760px form pop-ups. */
     .modal > .modal-dialog.modal-xl.dc-dialog { max-width: 940px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }

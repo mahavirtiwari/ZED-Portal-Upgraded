@@ -186,6 +186,21 @@ public static partial class ContentCatalogue
             "Eligible Financial Assistance: 75% of invoice amount and max. up to 50,000 only"),
 
         // msme/login and msme/register
+        // 2026-11-15 (the user): the login page's left side, editable (plain texts, no paragraph).
+        Web("msme.login.hero.kicker", "Login: left side, line above the title", Registration, Main, "For manufacturing and service MSMEs"),
+        Web("msme.login.hero.title", "Login: left side, title", Registration, Main, "MSME Sustainable (ZED) Certification"),
+        Web("msme.login.hero.subtitle", "Login: left side, line under the title", Registration, Main,
+            "Raise your quality and sustainability, get certified and unlock incentives."),
+        Web("msme.login.hero.stepsHeading", "Login: left side, heading of the steps", Registration, Main, "How it works"),
+        Web("msme.login.hero.step1.title", "Login: left side, step 1 title", Registration, Main, "Register"),
+        Web("msme.login.hero.step1.text", "Login: left side, step 1 text", Registration, Main, "With your Udyam number"),
+        Web("msme.login.hero.step2.title", "Login: left side, step 2 title", Registration, Main, "Apply"),
+        Web("msme.login.hero.step2.text", "Login: left side, step 2 text", Registration, Main, "Choose a level and pay"),
+        Web("msme.login.hero.step3.title", "Login: left side, step 3 title", Registration, Main, "Assessment"),
+        Web("msme.login.hero.step3.text", "Login: left side, step 3 text", Registration, Main, "Your documents, then a visit"),
+        Web("msme.login.hero.step4.title", "Login: left side, step 4 title", Registration, Main, "Certificate"),
+        Web("msme.login.hero.step4.text", "Login: left side, step 4 text", Registration, Main, "And the incentives it unlocks"),
+        Web("msme.login.hero.levelsHeading", "Login: left side, heading of the certification levels", Registration, Main, "Certification levels"),
         Web("msme.login.newUserEligibility", "Login: new user eligibility", Registration, Main, """
             <p>If you are a first time user, click below on “Register Now”.<br>(Applicable only for manufacturing sector: Section C, NIC 2008)</p>
             """),

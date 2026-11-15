@@ -260,7 +260,7 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     /* One tab per level of Administration → Certification Levels. */
     .level-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .level-tab {
-      display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 20px; border: 1px solid #cbd9da;
+      display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid #cbd9da;
       background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer;
     }
     .level-tab:hover { background: #eef6f6; border-color: #45a5ad; }

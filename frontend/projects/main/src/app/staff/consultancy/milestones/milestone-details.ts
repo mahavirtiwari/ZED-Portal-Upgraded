@@ -173,11 +173,11 @@ type Dialog = 'consultantSubmit' | 'coSubmit' | 'sendBack' | 'reject' | 'meeting
     /* 2026-11-14 (approved frame A): pill tabs, the tab's content on white, light key-value tables. */
     .cd-v2 > .tab-title { display: none; }
     .cd-v2 > .nav-tabs { border-bottom: 0; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-    .cd-v2 > .nav-tabs .nav-link { border: 1px solid #d9eef0; border-radius: 16px; background: #eef6f6; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 5px 14px; }
+    .cd-v2 > .nav-tabs .nav-link { border: 1px solid #d9eef0; border-radius: 6px; background: #eef6f6; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 5px 14px; }
     .cd-v2 > .nav-tabs .nav-link.active { background: #23656b; border-color: #23656b; color: #fff; }
     .cd-v2 > .tab-content { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 16px 18px; }
     .cd-v2 table.details th { background: #f8fbfb !important; color: #5f6f70 !important; font-weight: 700; font-size: 13px; }
-    .cd-v2 table.details td, .cd-v2 table.details th { border-color: #eef3f3 !important; }
+    .cd-v2 table.details td, .cd-v2 table.details th { border-color: #d0dcdd !important; }
     .details { margin-bottom: 0; }
     .w-40 { width: 40%; }
     /* Section bars (the old page's black "panel-black" headings). */

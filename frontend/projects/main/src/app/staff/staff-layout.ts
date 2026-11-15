@@ -166,7 +166,7 @@ import { RemoteAllotments } from './remote-allotments';
 
     /* 2026-11-14 (approved frame A): a slim dark-teal strip, text links, the current page underlined, the user on the right. */
     .zed-navbar { background: #23656b; top: 0; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.14); }
-    .zed-navbar .nav-bar-sec { background: none; min-height: 48px; border-radius: 0; box-shadow: none; }
+    .zed-navbar .nav-bar-sec { background: none; min-height: 56px; border-radius: 0; box-shadow: none; }
     .zed-navbar .nav > li:not(:last-child) { border-right: 0; }
     .zed-navbar .tag { padding: 0; }
     .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
@@ -176,11 +176,14 @@ import { RemoteAllotments } from './remote-allotments';
     .zed-navbar .who small { font-size: 11px; font-weight: 600; color: #a9d3d6; }
     @media (min-width: 992px) {
       .zed-navbar .navbar-brand { display: none; }
-      .zed-navbar .navbar-collapse > .nav { flex: 1 1 auto; }
+      /* 2026-11-15: no bottom margin on wide screens (the 8px of mb-2 pushed the row up in the strip). */
+      .zed-navbar .navbar-collapse > .nav { flex: 1 1 auto; margin-bottom: 0 !important; }
       .zed-navbar .nav { align-items: stretch; }
       .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link {
-        display: flex; align-items: center; gap: 8px; height: 48px; margin: 0; padding: 0 12px; color: #d9eef0; font-size: 14px; font-weight: 700;
-        line-height: 1.2; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; opacity: 1;
+        /* 2026-11-15: the full height of the strip (56px), and a transparent top line as thick as the underline, so that the
+           text sits in the middle. */
+        display: flex; align-items: center; gap: 8px; height: 56px; margin: 0; padding: 0 12px; color: #d9eef0; font-size: 14px; font-weight: 700;
+        line-height: 1.2; border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; opacity: 1;
       }
       .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
       .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; border-bottom: 3px solid #c9e8a0; }
