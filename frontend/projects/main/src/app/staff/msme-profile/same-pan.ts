@@ -10,7 +10,7 @@ export interface SamePanUnit {
 }
 
 export interface SamePanResponse {
-  /** Masked. */
+  /** In full (for tracing). */
   pan: string | null;
   this: SamePanUnit | null;
   others: SamePanUnit[];

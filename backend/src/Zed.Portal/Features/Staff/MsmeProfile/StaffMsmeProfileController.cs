@@ -97,7 +97,7 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
     /// <param name="ZedId">Masked (the unit names and addresses are shown in full).</param>
     public sealed record SamePanUnit(string ZedId, string? UnitName, string Address);
 
-    /// <param name="Pan">Masked, as the profile shows it.</param>
+    /// <param name="Pan">In full (2026-11-17, the user: for tracing; the profile itself keeps it masked).</param>
     public sealed record SamePanResponse(string? Pan, SamePanUnit? This, IReadOnlyList<SamePanUnit> Others);
 
     internal const string SamePanSql =
@@ -135,7 +135,7 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
         var rows = await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct);
         static SamePanUnit Unit(SamePanRow r) => new(Zed.Portal.Features.Msme.MsmeAccountFinder.MaskZedId(r.ZedId?.Trim() ?? ""), r.PUnitName?.Trim(), AddressOf(r));
         var self = rows.FirstOrDefault(r => string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase));
-        return new SamePanResponse(StaffUserRules.MaskIdProof(pan), self is null ? null : Unit(self),
+        return new SamePanResponse(pan.Trim().ToUpperInvariant(), self is null ? null : Unit(self),
             rows.Where(r => !string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase)).Select(Unit).ToList());
     }
 

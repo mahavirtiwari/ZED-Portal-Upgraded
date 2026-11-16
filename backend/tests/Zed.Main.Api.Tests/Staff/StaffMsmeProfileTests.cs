@@ -97,7 +97,7 @@ public sealed class StaffMsmeProfileTests : IDisposable
         ];
         var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         var r = (await master.GetFromJsonAsync<StaffMsmeProfileController.SamePanResponse>("/api/staff/msme-profile/ZEDMSME000001/same-pan"))!;
-        Assert.DoesNotContain("CDE1234", r.Pan);
+        Assert.Equal("ABCDE1234F", r.Pan);
         Assert.Equal("Acme Unit 2", r.This!.UnitName);
         Assert.Equal(2, r.Others.Count);
         Assert.All(r.Others, o => Assert.DoesNotContain("00000", o.ZedId));
