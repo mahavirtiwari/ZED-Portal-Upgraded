@@ -15,7 +15,8 @@ public sealed class ScopeAccessFilter(ILogger<ScopeAccessFilter> log) : IAsyncAc
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         var http = context.HttpContext;
-        if (ZedUser.FromPrincipal(http.User) is { } user && LoginScopes.CanHaveScope(user.RoleId)
+        // 2026-11-16: an agency's or operation admin's sub-user with its own states / agencies (migration 0087) too.
+        if (ZedUser.FromPrincipal(http.User) is { } user && (LoginScopes.CanHaveScope(user.RoleId) || user.IsSubUser)
             && (http.Request.Path.Value ?? "").StartsWith("/api/staff/", StringComparison.OrdinalIgnoreCase)
             && Unit(context) is ({ Length: > 0 } zedId, var level))
         {

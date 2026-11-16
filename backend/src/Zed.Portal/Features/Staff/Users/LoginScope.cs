@@ -19,6 +19,29 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
     /// <summary>An MSME DFO's districts among its states (dbo.Users.ScopeDistricts, migration 0059); empty = every district.</summary>
     public IReadOnlyList<string> Districts { get; init; } = [];
 
+    /// <summary>
+    /// 2026-11-16 (migration 0087): an operation admin's assessment agencies (Users.UserId, RoleId 2): only the applications
+    /// those agencies assess (MsmeCertifications.CertificationBodyUserId) are seen; empty = every agency.
+    /// </summary>
+    public IReadOnlyList<string> Agencies { get; init; } = [];
+
+    /// <summary>Whether an agency (Users.UserId) is inside the scope.</summary>
+    public bool AllowsAgency(string? agencyId) =>
+        Agencies.Count == 0 || (!string.IsNullOrWhiteSpace(agencyId) && Agencies.Contains(agencyId.Trim(), StringComparer.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// 2026-11-16 (approved): a sub-user's scope: its owner's, narrowed by the sub-user's own states (dbo.V4SubUsers.ScopeStates;
+    /// within the owner's states, or all of the owner's when none) and, for an operation admin, its agencies.
+    /// </summary>
+    public LoginScope Narrow(string? subStates, string? subAgencies, bool agencies)
+    {
+        var own = Split(subStates);
+        var states = own.Count == 0 ? StateCodes
+            : StateCodes.Count == 0 ? own
+            : own.Where(s => StateCodes.Contains(s, StringComparer.OrdinalIgnoreCase)).DefaultIfEmpty("-").ToList();
+        return this with { StateCodes = states, Agencies = agencies ? Split(subAgencies) : [] };
+    }
+
     public const string Manufacturing = "Manufacturing";
     public const string Services = "Services";
 
@@ -28,7 +51,7 @@ public sealed record LoginScope(string? Sector, IReadOnlyList<string> Levels, IR
     /// <summary>Manufacturing or Services; null when both.</summary>
     public string? OneSector => Sector is Manufacturing or Services ? Sector : null;
 
-    public bool IsLimited => OneSector is not null || Levels.Count > 0 || StateCodes.Count > 0;
+    public bool IsLimited => OneSector is not null || Levels.Count > 0 || StateCodes.Count > 0 || Agencies.Count > 0;
 
     /// <summary>The state names (Msme.PStateName) of <see cref="StateCodes"/>.</summary>
     public IReadOnlyList<string> StateNames =>
@@ -138,12 +161,19 @@ public sealed class LoginScopes(ISqlExecutor db, IMemoryCache cache, ILogger<Log
 
 public static class LoginScopeExtensions
 {
-    /// <summary>The scope of the signed-in login (its owner's for a sub-user); none for other roles.</summary>
-    public static Task<LoginScope> LoginScopeAsync(this HttpContext http, CancellationToken ct)
+    /// <summary>
+    /// The scope of the signed-in login; none for other roles. A sub-user has its owner's, narrowed by its own states and (an
+    /// operation admin) agencies (2026-11-16, migration 0087), also for an agency's sub-users.
+    /// </summary>
+    public static async Task<LoginScope> LoginScopeAsync(this HttpContext http, CancellationToken ct)
     {
         var user = Zed.Core.Security.ZedUser.FromPrincipal(http.User);
-        return user is null
-            ? Task.FromResult(LoginScope.None)
-            : http.RequestServices.GetRequiredService<LoginScopes>().ForAsync(user.UserId, user.RoleId, ct);
+        if (user is null) return LoginScope.None;
+        var scope = await http.RequestServices.GetRequiredService<LoginScopes>().ForAsync(user.UserId, user.RoleId, ct);
+        if (!user.IsSubUser) return scope;
+        var sub = await http.RequestServices.GetRequiredService<SubUsers.SubUserStore>().FindCachedAsync(user.ActingUserId!, ct);
+        return sub is null || (sub.ScopeStates is null && sub.ScopeAgencies is null)
+            ? scope
+            : scope.Narrow(sub.ScopeStates, sub.ScopeAgencies, agencies: user.RoleId == (int)Zed.Core.Security.UserRole.MasterAdmin);
     }
 }

@@ -1,6 +1,7 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Zed.Core.Data;
 using Zed.Core.Email;
 using Zed.Core.Http;
 using Zed.Core.Security;
@@ -22,6 +23,7 @@ namespace Zed.Portal.Features.Staff.SubUsers;
 [PortalSystems(PortalSystem.Main, PortalSystem.Consultancy, PortalSystem.Surveillance)]
 public sealed class SubUsersController(
     SubUserStore store,
+    ISqlExecutor db,
     PortalHost host,
     IEmailSender email,
     IHtmlTemplateRenderer templates,
@@ -35,11 +37,34 @@ public sealed class SubUsersController(
 
     public sealed record SubUserItem(
         string UserId, string UserName, string? Email, string? MobileNo, IReadOnlyList<string> Permissions, bool IsActive,
-        DateTime CreatedAt, DateTime? LastLoginAt, bool Locked);
+        DateTime CreatedAt, DateTime? LastLoginAt, bool Locked)
+    {
+        /// <summary>2026-11-16: the state codes the sub-user may see; empty = every state (of the owner's).</summary>
+        public IReadOnlyList<string> States { get; init; } = [];
 
-    public sealed record SubUsersResponse(string AccountType, IReadOnlyList<PermissionOption> Permissions, IReadOnlyList<SubUserItem> Users);
+        /// <summary>2026-11-16, operation admins: the assessment agencies (user IDs) it may see; empty = every agency.</summary>
+        public IReadOnlyList<string> Agencies { get; init; } = [];
+    }
 
-    public sealed record SubUserRequest(string? UserName, string? Email, string? MobileNo, List<string>? Permissions, bool IsActive = true);
+    public sealed record Option(string Code, string Name);
+
+    public sealed record SubUsersResponse(string AccountType, IReadOnlyList<PermissionOption> Permissions, IReadOnlyList<SubUserItem> Users)
+    {
+        /// <summary>2026-11-16: the states that can be chosen (the owner's own, when its login is limited to some).</summary>
+        public IReadOnlyList<Option> States { get; init; } = [];
+
+        /// <summary>2026-11-16, Master Admin only: the assessment agencies (consultant organisations on the consultancy portal).</summary>
+        public IReadOnlyList<Option>? Agencies { get; init; }
+    }
+
+    /// <param name="States">2026-11-16: state codes; empty = every state.</param>
+    /// <param name="Agencies">2026-11-16, Master Admin: agency user IDs; empty = every agency.</param>
+    public sealed record SubUserRequest(string? UserName, string? Email, string? MobileNo, List<string>? Permissions, bool IsActive = true,
+        List<string>? States = null, List<string>? Agencies = null);
+
+    internal const string AgenciesSql = "SELECT UserId AS Code, UserName AS Name FROM dbo.Users WHERE RoleId = 2 AND IsActive = 1 AND UserId IS NOT NULL ORDER BY UserName;";
+
+    private bool ForMasterAdmin => RoleId == (int)UserRole.MasterAdmin;
 
     public sealed record CreatedSubUserResponse(string Message, string UserId);
 
@@ -54,14 +79,18 @@ public sealed class SubUsersController(
         var available = Available;
         var rows = await store.ListAsync(UserId, ct);
         return new SubUsersResponse(AccountType, available.Select(p => new PermissionOption(p.Key, p.Label)).ToList(),
-            rows.Select(r => Item(r, available)).ToList());
+            rows.Select(r => Item(r, available)).ToList())
+        {
+            States = await StateOptionsAsync(ct),
+            Agencies = ForMasterAdmin ? await AgencyOptionsAsync(ct) : null,
+        };
     }
 
     [HttpPost]
     public async Task<ActionResult<CreatedSubUserResponse>> Create(SubUserRequest req, CancellationToken ct)
     {
         if (CurrentUser.IsSubUser) return Forbidden();
-        var (values, error) = Validate(req);
+        var (values, error) = await ValidateAsync(req, ct);
         if (error is not null) return this.Problem400(error);
 
         var existing = await store.ListAsync(UserId, ct);
@@ -76,8 +105,9 @@ public sealed class SubUsersController(
 
         var password = SecureRandom.Password();
         await store.CreateAsync(new SubUserRow(newId, UserId, RoleId, values!.UserName, values.Email, values.MobileNo, values.Permissions, true,
-            PasswordStore.Hash(password), 0, null, null, UserId, DateTime.UtcNow), ct);
-        log.LogInformation("Sub-user {NewUserId} created by {Owner} with {Permissions}", newId, UserId, values.Permissions);
+            PasswordStore.Hash(password), 0, null, null, UserId, DateTime.UtcNow, values.States, values.Agencies), ct);
+        log.LogInformation("Sub-user {NewUserId} created by {Owner} with {Permissions}, states {States}, agencies {Agencies}",
+            newId, UserId, values.Permissions, values.States ?? "all", values.Agencies ?? "all");
 
         // A one-time link to set the password (StaffWelcomeLogin; sub-users' links set the dbo.V4SubUsers hash).
         var login = await StaffWelcomeLogin.ForAsync(HttpContext, newId, roleId: 0, password, UserId, ct);
@@ -92,10 +122,12 @@ public sealed class SubUsersController(
     {
         if (CurrentUser.IsSubUser) return Forbidden();
         if (await MineAsync(userId, ct) is not { } row) return NotFound();
-        var (values, error) = Validate(req);
+        var (values, error) = await ValidateAsync(req, ct);
         if (error is not null) return this.Problem400(error);
-        await store.UpdateAsync(row.UserId, values!.UserName, values.Email, values.MobileNo, values.Permissions, req.IsActive, UserId, ct);
-        log.LogInformation("Sub-user {SubUserId} updated by {Owner}: active {Active}, {Permissions}", row.UserId, UserId, req.IsActive, values.Permissions);
+        await store.UpdateAsync(row.UserId, values!.UserName, values.Email, values.MobileNo, values.Permissions, req.IsActive, UserId, ct,
+            values.States, values.Agencies);
+        log.LogInformation("Sub-user {SubUserId} updated by {Owner}: active {Active}, {Permissions}, states {States}, agencies {Agencies}",
+            row.UserId, UserId, req.IsActive, values.Permissions, values.States ?? "all", values.Agencies ?? "all");
         return new MessageResponse($"{AccountType} {row.UserId} updated.");
     }
 
@@ -125,10 +157,51 @@ public sealed class SubUsersController(
     {
         var keys = SubUserPermissions.Split(r.Permissions).ToHashSet(StringComparer.OrdinalIgnoreCase);
         return new SubUserItem(r.UserId, r.UserName, r.Email, r.MobileNo, available.Where(p => keys.Contains(p.Key)).Select(p => p.Key).ToList(),
-            r.IsActive, r.CreatedAt, r.LastLoginAt, r.LockedUntil is { } u && u > DateTime.UtcNow);
+            r.IsActive, r.CreatedAt, r.LastLoginAt, r.LockedUntil is { } u && u > DateTime.UtcNow)
+        {
+            States = LoginScope.Split(r.ScopeStates),
+            Agencies = LoginScope.Split(r.ScopeAgencies),
+        };
     }
 
-    private sealed record Values(string UserName, string Email, string? MobileNo, string Permissions);
+    private sealed record Values(string UserName, string Email, string? MobileNo, string Permissions, string? States = null, string? Agencies = null);
+
+    /// <summary>The states that can be chosen: every state, or only the owner's when its own login is limited to some.</summary>
+    private async Task<IReadOnlyList<Option>> StateOptionsAsync(CancellationToken ct)
+    {
+        var own = (await HttpContext.LoginScopeAsync(ct)).StateCodes;
+        return Dashboard.DashboardFilters.States
+            .Where(s => own.Count == 0 || own.Contains(s.Key, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(s => s.Value, StringComparer.Ordinal).Select(s => new Option(s.Key, s.Value)).ToList();
+    }
+
+    private async Task<IReadOnlyList<Option>> AgencyOptionsAsync(CancellationToken ct) =>
+        (await db.QuerySqlAsync<Option>(AgenciesSql, null, ct)).Where(a => !string.IsNullOrWhiteSpace(a.Code))
+            .Select(a => a with { Code = a.Code.Trim(), Name = (a.Name ?? a.Code).Trim() }).ToList();
+
+    /// <summary>The fields, then the states (known ones, within the owner's) and the agencies (Master Admin; active agencies).</summary>
+    private async Task<(Values? Values, string? Error)> ValidateAsync(SubUserRequest req, CancellationToken ct)
+    {
+        var (values, error) = Validate(req);
+        if (error is not null) return (null, error);
+        static List<string> Clean(List<string>? list) =>
+            (list ?? []).Select(v => v?.Trim() ?? "").Where(v => v.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        var states = Clean(req.States);
+        if (states.Count > 0)
+        {
+            var allowed = (await StateOptionsAsync(ct)).Select(o => o.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (states.Any(s => !allowed.Contains(s))) return (null, "Please select only the states shown.");
+        }
+        var agencies = Clean(req.Agencies);
+        if (agencies.Count > 0)
+        {
+            if (!ForMasterAdmin) return (null, "Only an operation admin can be limited to assessment agencies.");
+            var known = (await AgencyOptionsAsync(ct)).Select(o => o.Code).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (agencies.Any(a => !known.Contains(a))) return (null, "Please select only the assessment agencies shown.");
+        }
+        return (values! with { States = LoginScope.Join(states), Agencies = LoginScope.Join(agencies) }, null);
+    }
 
     private (Values? Values, string? Error) Validate(SubUserRequest req)
     {

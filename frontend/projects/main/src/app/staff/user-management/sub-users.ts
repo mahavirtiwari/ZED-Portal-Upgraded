@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { ListSearchComponent, PagedView, PagerComponent, searchRows } from '../pager';
+import { MultiSelect, MultiSelectOption } from '../users/multi-select';
 
 interface PermissionOption {
   key: string;
@@ -21,12 +22,24 @@ interface SubUser {
   createdAt: string;
   lastLoginAt: string | null;
   locked: boolean;
+  /** 2026-11-16: the state codes it may see; empty = every state. */
+  states?: string[];
+  /** 2026-11-16, operation admins: the assessment agencies it may see; empty = every agency. */
+  agencies?: string[];
+}
+
+interface ScopeOption {
+  code: string;
+  name: string;
 }
 
 interface SubUsersResponse {
   accountType: string;
   permissions: PermissionOption[];
   users: SubUser[];
+  states?: ScopeOption[];
+  /** Master Admin only. */
+  agencies?: ScopeOption[] | null;
 }
 
 interface SubUserForm {
@@ -35,6 +48,8 @@ interface SubUserForm {
   mobileNo: string;
   permissions: string[];
   isActive: boolean;
+  states: string[];
+  agencies: string[];
 }
 
 type LoginStatus = 'active' | 'locked' | 'blocked';
@@ -51,7 +66,7 @@ const API = '/api/staff/sub-users';
  */
 @Component({
   selector: 'zed-staff-sub-users',
-  imports: [FormsModule, DatePipe, PagerComponent, ListSearchComponent],
+  imports: [FormsModule, DatePipe, PagerComponent, ListSearchComponent, MultiSelect],
   template: `
     <div class="page-head">
       <div>
@@ -88,7 +103,7 @@ const API = '/api/staff/sub-users';
         <table class="table table-zed su-table">
           <thead>
             <tr>
-              <th>User</th><th>Contact</th><th>Screens</th><th class="text-center">Last Login</th>
+              <th>User</th><th>Contact</th><th>Screens</th><th>Scope</th><th class="text-center">Last Login</th>
               <th class="text-center" style="width: 100px">Status</th><th class="text-center" style="width: 140px">Actions</th>
             </tr>
           </thead>
@@ -120,6 +135,7 @@ const API = '/api/staff/sub-users';
                   }
                   @if (!u.permissions.length) { <span class="su-mail">No screens</span> }
                 </td>
+                <td class="su-scope" data-label="Scope"><span class="zed-chip" data-scope>{{ scopeText(u) }}</span></td>
                 <td class="text-center su-login" data-label="Last Login">
                   @if (u.lastLoginAt) { {{ u.lastLoginAt + 'Z' | date: 'dd-MM-yyyy HH:mm' }} } @else { <span class="su-never">Never signed in</span> }
                   <small class="d-block muted">Added {{ u.createdAt | date: 'dd-MM-yyyy' }}</small>
@@ -139,7 +155,7 @@ const API = '/api/staff/sub-users';
             } @empty {
               @if (!busy()) {
                 <tr class="empty-row">
-                  <td colspan="6" style="padding: 0">
+                  <td colspan="7" style="padding: 0">
                     <div class="no-data su-empty">
                       @if (users().length) {
                         No login matches the filters.
@@ -196,6 +212,19 @@ const API = '/api/staff/sub-users';
                     </label>
                   }
                 </div>
+                <!-- 2026-11-16 (approved): the states (and, for an operation admin, the assessment agencies) it may see. -->
+                <h4 class="su-section">Scope</h4>
+                <div class="su-scope-row" data-scope-states>
+                  <span class="su-scope-label">States<small class="muted d-block">None selected = every state</small></span>
+                  <zed-multi-select label="States" inputId="sub-states" [options]="stateOptions()" [value]="f.states" (valueChange)="patch('states', $event)" />
+                </div>
+                @if (agencyOptions(); as ag) {
+                  <div class="su-scope-row" data-scope-agencies>
+                    <span class="su-scope-label">Assessment agencies<small class="muted d-block">None selected = every agency</small></span>
+                    <zed-multi-select label="Assessment agencies" inputId="sub-agencies" [options]="ag" [value]="f.agencies" (valueChange)="patch('agencies', $event)" />
+                  </div>
+                }
+                <p class="su-mail-note mt-2 mb-0">{{ scopeNote() }}</p>
                 @if (editing()) {
                   <h4 class="su-section">Access</h4>
                   <label class="toggle-card form-switch su-active-card" [class.active]="f.isActive" for="sub-active">
@@ -222,6 +251,9 @@ const API = '/api/staff/sub-users';
     }
   `,
   styles: `
+    .su-scope-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: start; margin-bottom: 10px; }
+    .su-scope-label { font-weight: 600; padding-top: 4px; }
+    @media (max-width: 575.98px) { .su-scope-row { grid-template-columns: 1fr; } }
     .su-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
     .su-stat { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 18px; text-align: left; min-width: 0;
       background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; box-shadow: 0 1px 2px rgba(35,71,74,.05); cursor: pointer; }
@@ -309,6 +341,13 @@ export class SubUsersPage {
 
   protected readonly accountType = signal('Sub-User');
   protected readonly options = signal<PermissionOption[]>([]);
+  protected readonly stateOptions = signal<MultiSelectOption[]>([]);
+  /** Master Admin only: null for an agency's sub-users. */
+  protected readonly agencyOptions = signal<MultiSelectOption[] | null>(null);
+  protected readonly scopeNote = computed(() =>
+    this.agencyOptions()
+      ? 'The operation admin sees only the units whose plant is in these states and the applications these agencies assess, on every screen given.'
+      : "The sub-user sees only your units whose plant is in these states, on every screen given.");
   protected readonly users = signal<SubUser[]>([]);
   /** The tile chosen above the list. */
   protected readonly status = signal<'all' | LoginStatus>('all');
@@ -380,13 +419,29 @@ export class SubUsersPage {
   protected add(): void {
     this.editing.set(null);
     this.formError.set('');
-    this.form.set({ userName: '', email: '', mobileNo: '', permissions: [], isActive: true });
+    this.form.set({ userName: '', email: '', mobileNo: '', permissions: [], isActive: true, states: [], agencies: [] });
   }
 
   protected edit(u: SubUser): void {
     this.editing.set(u.userId);
     this.formError.set('');
-    this.form.set({ userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: u.isActive });
+    this.form.set({
+      userName: u.userName, email: u.email ?? '', mobileNo: u.mobileNo ?? '', permissions: [...u.permissions], isActive: u.isActive,
+      states: [...(u.states ?? [])], agencies: [...(u.agencies ?? [])],
+    });
+  }
+
+  /** The list's Scope chip: "2 states · 1 agency", "All states". */
+  protected scopeText(u: SubUser): string {
+    const s = u.states?.length ?? 0;
+    const a = u.agencies?.length ?? 0;
+    const states = s === 0 ? 'All states' : s === 1 ? this.stateName(u.states![0]) : `${s} states`;
+    if (!this.agencyOptions()) return states;
+    return `${states} · ${a === 0 ? 'all agencies' : a === 1 ? '1 agency' : a + ' agencies'}`;
+  }
+
+  private stateName(code: string): string {
+    return this.stateOptions().find((o) => o.value === code)?.label ?? code;
   }
 
   protected close(): void {
@@ -440,6 +495,8 @@ export class SubUsersPage {
       const r = await firstValueFrom(this.http.get<SubUsersResponse>(API));
       this.accountType.set(r.accountType);
       this.options.set(r.permissions);
+      this.stateOptions.set((r.states ?? []).map((o) => ({ value: o.code, label: o.name })));
+      this.agencyOptions.set(r.agencies ? r.agencies.map((o) => ({ value: o.code, label: o.name })) : null);
       this.users.set(r.users);
     } catch (err) {
       this.error.set(apiErrorMessage(err));

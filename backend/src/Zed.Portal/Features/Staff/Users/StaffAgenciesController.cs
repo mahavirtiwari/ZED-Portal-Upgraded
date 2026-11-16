@@ -58,7 +58,9 @@ public sealed class StaffAgenciesController(
         IReadOnlyList<AgencyLevels.Level> addedLevels = [];
         var addedByUser = new Dictionary<string, Dictionary<string, AgencyLevels.AddedRow>>(StringComparer.OrdinalIgnoreCase);
         if (!host.IsConsultancy()) (addedLevels, addedByUser) = await AgencyLevels.AddedAsync(db, log, ct);
-        return sets[0].Select(r =>
+        // 2026-11-16: an operation admin limited to some agencies sees only those.
+        var scope = await HttpContext.LoginScopeAsync(ct);
+        return sets[0].Where(r => scope.AllowsAgency(r.Text("UserId"))).Select(r =>
         {
             var row = StaffUserRules.Pick(r, ListColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");

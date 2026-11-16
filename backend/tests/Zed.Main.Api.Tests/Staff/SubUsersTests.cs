@@ -20,9 +20,9 @@ public sealed class SubUsersTests : IDisposable
     public SubUsersTests()
     {
         UsersMastersLogin.Setup(_host);
-        _host.Sql.Queries["SELECT UserId, OwnerUserId, OwnerRoleId, UserName, Email, MobileNo, Permissions, IsActive, PasswordHash, FailedLogins, LockedUntil, LastLoginAt, CreatedBy, CreatedAt FROM dbo.V4SubUsers WHERE UserId"] =
+        _host.Sql.Queries["SELECT UserId, OwnerUserId, OwnerRoleId, UserName, Email, MobileNo, Permissions, IsActive, PasswordHash, FailedLogins, LockedUntil, LastLoginAt, CreatedBy, CreatedAt, ScopeStates, ScopeAgencies FROM dbo.V4SubUsers WHERE UserId"] =
             args => _subUsers.TryGetValue(FakeSql.Arg(args, "UserId") ?? "", out var row) ? [row] : [];
-        _host.Sql.Queries["SELECT UserId, OwnerUserId, OwnerRoleId, UserName, Email, MobileNo, Permissions, IsActive, PasswordHash, FailedLogins, LockedUntil, LastLoginAt, CreatedBy, CreatedAt FROM dbo.V4SubUsers WHERE OwnerUserId"] =
+        _host.Sql.Queries["SELECT UserId, OwnerUserId, OwnerRoleId, UserName, Email, MobileNo, Permissions, IsActive, PasswordHash, FailedLogins, LockedUntil, LastLoginAt, CreatedBy, CreatedAt, ScopeStates, ScopeAgencies FROM dbo.V4SubUsers WHERE OwnerUserId"] =
             args => _subUsers.Values.Where(r => (string)r.GetType().GetProperty("OwnerUserId")!.GetValue(r)! == FakeSql.Arg(args, "OwnerUserId"));
         _host.Sql.Procs["SP_GET_USER_DETAILS_BY_USER_ID"] = args => FakeSql.Arg(args, "UserId") switch
         {
@@ -34,12 +34,13 @@ public sealed class SubUsersTests : IDisposable
 
     public void Dispose() => _host.Dispose();
 
-    private void SubUser(string id, string owner, string permissions, bool active = true, int ownerRole = 2) =>
+    private void SubUser(string id, string owner, string permissions, bool active = true, int ownerRole = 2, string? states = null, string? agencies = null) =>
         _subUsers[id] = new
         {
             UserId = id, OwnerUserId = owner, OwnerRoleId = ownerRole, UserName = "Ravi " + id, Email = "ravi@zed.test", MobileNo = (string?)null,
             Permissions = permissions, IsActive = active, PasswordHash = PasswordStore.Hash(SubPassword), FailedLogins = 0,
             LockedUntil = (DateTime?)null, LastLoginAt = (DateTime?)null, CreatedBy = owner, CreatedAt = DateTime.UtcNow,
+            ScopeStates = states, ScopeAgencies = agencies,
         };
 
     private async Task<(HttpClient Client, CurrentUserResponse User)> SignInSubUserAsync(string id)
@@ -91,6 +92,73 @@ public sealed class SubUsersTests : IDisposable
         Assert.Contains("AGENCY1S01", mail.HtmlBody);
         Assert.Contains("AGENCY1 name (AGENCY1)", mail.HtmlBody);
         Assert.Null(mail.Cc);
+    }
+
+    /// <summary>2026-11-16 (approved): an operation admin's states and assessment agencies; an agency sub-user's states.</summary>
+    [Fact]
+    public async Task Owners_give_states_and_a_master_admin_also_agencies()
+    {
+        _host.Sql.Queries[SubUsersController.AgenciesSql] = _ => [new { Code = "AGENCY1", Name = "Acme Assessors" }];
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var list = (await master.GetFromJsonAsync<SubUsersController.SubUsersResponse>("/api/staff/sub-users"))!;
+        Assert.Contains(list.States, s => s.Code == "28");
+        Assert.Equal(["AGENCY1"], list.Agencies!.Select(a => a.Code));
+
+        Assert.Equal("Please select only the states shown.", await (await master.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Ops", email = "ops@zed.test", permissions = new[] { "allot" }, states = new[] { "999" } })).ProblemTitle());
+        Assert.Equal("Please select only the assessment agencies shown.", await (await master.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Ops", email = "ops@zed.test", permissions = new[] { "allot" }, agencies = new[] { "OTHER" } })).ProblemTitle());
+        (await master.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Ops", email = "ops@zed.test", permissions = new[] { "allot" }, states = new[] { "28", "36" }, agencies = new[] { "agency1" } })).EnsureSuccessStatusCode();
+        var scope = Assert.Single(Sql("UPDATE dbo.V4SubUsers SET ScopeStates"));
+        Assert.Equal(("28,36", "agency1"), (FakeSql.Arg(scope.Args, "ScopeStates"), FakeSql.Arg(scope.Args, "ScopeAgencies")));
+
+        // An agency gives states only.
+        var agency = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
+        Assert.Null((await agency.GetFromJsonAsync<SubUsersController.SubUsersResponse>("/api/staff/sub-users"))!.Agencies);
+        Assert.Equal("Only an operation admin can be limited to assessment agencies.", await (await agency.PostAsJsonAsync("/api/staff/sub-users",
+            new { userName = "Ravi", email = "ravi@zed.test", permissions = new[] { "monitoring" }, agencies = new[] { "AGENCY1" } })).ProblemTitle());
+
+        // The list shows each one's scope.
+        SubUser("AGENCY1S01", "AGENCY1", "monitoring", states: "29");
+        var item = Assert.Single((await agency.GetFromJsonAsync<SubUsersController.SubUsersResponse>("/api/staff/sub-users"))!.Users);
+        Assert.Equal(["29"], item.States);
+    }
+
+    [Fact]
+    public void A_sub_users_states_narrow_its_owners_and_agencies_limit_the_applications()
+    {
+        var owner = new Zed.Portal.Features.Staff.Users.LoginScope(null, [], ["28", "36"]);
+        Assert.Equal(["28", "36"], owner.Narrow(null, null, agencies: true).StateCodes);
+        Assert.Equal(["36"], owner.Narrow("36", null, agencies: true).StateCodes);
+        Assert.Equal(["-"], owner.Narrow("29", null, agencies: true).StateCodes);   // outside the owner's: nothing
+        Assert.Equal(["29"], Zed.Portal.Features.Staff.Users.LoginScope.None.Narrow("29", "A1", agencies: false).StateCodes);
+        Assert.Empty(Zed.Portal.Features.Staff.Users.LoginScope.None.Narrow("29", "A1", agencies: false).Agencies);
+
+        var ops = Zed.Portal.Features.Staff.Users.LoginScope.None.Narrow(null, "A1", agencies: true);
+        Assert.True(ops.IsLimited);
+        Assert.True(ops.AllowsAgency("a1"));
+        Assert.False(ops.AllowsAgency("A2"));
+        var assessed = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "ZEDMSME000001", "ZEDMSME000001|Silver" };
+        Assert.True(Zed.Portal.Features.Staff.Users.ScopeFilter.Allows(ops, null, "ZEDMSME000001", "Silver", assessed));
+        Assert.True(Zed.Portal.Features.Staff.Users.ScopeFilter.Allows(ops, null, "ZEDMSME000001_D_45", "SilverSurveillance", assessed));
+        Assert.False(Zed.Portal.Features.Staff.Users.ScopeFilter.Allows(ops, null, "ZEDMSME000001", "Gold", assessed));   // another agency's level
+        Assert.True(Zed.Portal.Features.Staff.Users.ScopeFilter.Allows(ops, null, "ZEDMSME000001", null, assessed));
+        Assert.False(Zed.Portal.Features.Staff.Users.ScopeFilter.Allows(ops, null, "ZEDMSME000002", null, assessed));
+    }
+
+    /// <summary>2026-11-16: an agency sub-user with its states cannot open a unit outside them.</summary>
+    [Fact]
+    public async Task An_agency_sub_user_with_states_gets_404_for_a_unit_outside_them()
+    {
+        _host.Sql.Queries[Zed.Portal.Features.Staff.Users.ScopedUnits.StateUnitsSql] = _ => [new { ZedId = "ZEDMSME000001", Activity = (string?)null, TwoDigitActivity = (string?)null }];
+        SubUser("AGENCY1S01", "AGENCY1", "monitoring", states: "28");
+        var (client, _) = await SignInSubUserAsync("AGENCY1S01");
+        // Outside its states the page is never reached (no unit is looked up); inside, the page reads the unit.
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/staff/assessment/da/ZEDMSME000099/Silver")).StatusCode);
+        Assert.DoesNotContain(_host.Sql.Calls, c => FakeSql.Arg(c.Args, "ZedId") == "ZEDMSME000099");
+        await client.GetAsync("/api/staff/assessment/da/ZEDMSME000001/Silver");
+        Assert.Contains(_host.Sql.Calls, c => FakeSql.Arg(c.Args, "ZedId") == "ZEDMSME000001");
     }
 
     [Fact]

@@ -306,12 +306,47 @@ describe('User management', () => {
       submit();
       await settle();
       const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/sub-users');
-      expect(post.request.body).toEqual({ userName: 'Asha', email: 'asha@zed.test', mobileNo: '', permissions: ['monitoring'], isActive: true });
+      expect(post.request.body).toEqual({ userName: 'Asha', email: 'asha@zed.test', mobileNo: '', permissions: ['monitoring'], isActive: true, states: [], agencies: [] });
       post.flush({ message: 'Sub-User AG1S02 created.' });
       await settle();
       http.expectOne('/api/staff/sub-users').flush(list);
       await settle();
       expect(el.querySelector('.alert-success')!.textContent).toContain('AG1S02');
+    });
+
+    it('gives an agency sub-user states, and an operation admin states and agencies (2026-11-16)', async () => {
+      await create(SubUsersPage);
+      const states = [{ code: '28', name: 'ANDHRA PRADESH' }, { code: '36', name: 'TELANGANA' }];
+      http.expectOne('/api/staff/sub-users').flush({ ...list, states, users: [{ ...list.users[0], states: ['36'] }] });
+      await settle();
+      expect(el.querySelector('[data-scope]')!.textContent!.trim()).toBe('TELANGANA');
+      button('+ Add Sub-User').click();
+      await settle();
+      // An agency's sub-user: states only.
+      expect(el.querySelector('[data-scope-states]')).not.toBeNull();
+      expect(el.querySelector('[data-scope-agencies]')).toBeNull();
+      type('#sub-name', 'Asha');
+      type('#sub-email', 'asha@zed.test');
+      (el.querySelector('#perm-monitoring') as HTMLInputElement).click();
+      const stateBox = [...el.querySelectorAll<HTMLLabelElement>('[data-scope-states] label.option')].find((l) => l.textContent!.includes('ANDHRA'))!;
+      stateBox.querySelector('input')!.click();
+      await settle();
+      submit();
+      await settle();
+      const post = http.expectOne((r) => r.method === 'POST' && r.url === '/api/staff/sub-users');
+      expect(post.request.body).toMatchObject({ states: ['28'], agencies: [] });
+      post.flush({ message: 'Sub-User AG1S02 created.' });
+      await settle();
+      // Master Admin: the agencies too, and the list says both.
+      http.expectOne('/api/staff/sub-users').flush({
+        ...list, accountType: 'Operation Admin', states, agencies: [{ code: 'AGENCY1', name: 'Acme Assessors' }],
+        users: [{ ...list.users[0], states: ['28', '36'], agencies: ['AGENCY1'] }],
+      });
+      await settle();
+      expect(el.querySelector('[data-scope]')!.textContent!.trim()).toBe('2 states · 1 agency');
+      button('+ Add Operation Admin').click();
+      await settle();
+      expect(el.querySelector('[data-scope-agencies]')!.textContent).toContain('Acme Assessors');
     });
 
     it('edits screens and blocks a sub-user', async () => {
@@ -328,7 +363,7 @@ describe('User management', () => {
       submit();
       await settle();
       const put = http.expectOne((r) => r.method === 'PUT' && r.url === '/api/staff/sub-users/AG1S01');
-      expect(put.request.body).toEqual({ userName: 'Ravi', email: 'ravi@zed.test', mobileNo: '', permissions: ['monitoring'], isActive: false });
+      expect(put.request.body).toEqual({ userName: 'Ravi', email: 'ravi@zed.test', mobileNo: '', permissions: ['monitoring'], isActive: false, states: [], agencies: [] });
       put.flush({ title: 'Please select at least one screen.' }, { status: 400, statusText: 'Bad Request' });
       await settle();
       expect(el.querySelector('.modal .alert-danger')!.textContent).toContain('Please select at least one screen.');
@@ -353,7 +388,7 @@ describe('User management', () => {
       expect(tiles()).toEqual(['3 All logins', '1 Active', '1 Locked', '1 Blocked']);
       expect([...el.querySelectorAll('.su-avatar')].map((a) => a.textContent!.trim())).toEqual(['PN', 'RO', 'AS']);
       const rows = () => [...el.querySelectorAll('tbody tr')];
-      expect([...rows()[0].querySelectorAll('.zed-chip')].map((c) => c.textContent!.trim())).toEqual(['Screen A', 'Screen B', 'Screen C', 'Screen D', '+1 more']);
+      expect([...rows()[0].querySelectorAll('.su-screens .zed-chip')].map((c) => c.textContent!.trim())).toEqual(['Screen A', 'Screen B', 'Screen C', 'Screen D', '+1 more']);
       expect(rows()[0].querySelector('.su-chip-more')!.getAttribute('title')).toBe('Screen E');
       expect(rows()[1].querySelector('.su-screens')!.textContent!.trim()).toBe('All 6 screens');
       expect(rows()[0].querySelector('.su-never')!.textContent).toBe('Never signed in');

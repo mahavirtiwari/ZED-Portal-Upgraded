@@ -66,7 +66,9 @@ public sealed class StaffAssessorsController(
         var blocks = await UserBlockHistory.LatestBlocksAsync(db, log, ct);
         var pans = await ProfessionalVerification.PansAsync(db, log, ct);
         var scopes = host.IsConsultancy() ? [] : await AssessorScope.ByRoleAsync(db, log, ct);
-        return sets[0].Select(r =>
+        // 2026-11-16: an operation admin limited to some agencies sees only their assessors.
+        var login = await HttpContext.LoginScopeAsync(ct);
+        return sets[0].Where(r => login.AllowsAgency(r.Text("AgencyUserId"))).Select(r =>
         {
             var row = StaffUserRules.Pick(r, AllColumns);
             row["IsActive"] = StaffUserRules.Bool(r, "IsActive");
