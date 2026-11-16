@@ -5,7 +5,7 @@ using Zed.Core.Data;
 namespace Zed.Portal.Features.Staff.Masters;
 
 /// <summary>
-/// The states of the LG Directory masters (dbo.States, kept up to date by Masters → LG Directory and copied to the other
+/// The states of the LG Directory masters (dbo.States, kept up to date by Master → LG Directory and copied to the other
 /// portals' databases), for every state drop-down, filter and server check (2026-11-08; before, several fixed copies).
 /// Read when the portal starts and every few minutes, and at once after an LG Directory import. Until the first read, or
 /// when the table cannot be read or is empty, the states as of 2026 are used.

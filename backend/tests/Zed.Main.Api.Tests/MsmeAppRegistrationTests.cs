@@ -300,7 +300,7 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         var otp = await CaptchaPlantAndOtpAsync(app);
         Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
         var plant = new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" };
-        // Migration 0051: the new ZED ID (ZEDM / ZEDS) needs the sector's type in Masters → Sectors.
+        // Migration 0051: the new ZED ID (ZEDM / ZEDS) needs the sector's type in Master → Sectors.
         _host.Sql.Procs["SP_MSME_VALIDATE_UDYAM_DETAILS"] = _ => FakeSql.Sets([], [new { TwoDigitActivity = "24", SectorType = (string?)null }], []);
         Assert.Equal(("0", MsmeRegistrationService.SectorTypeMissing), await Answer(await Post(app, "ValidatePlantAndActivity", plant)));
         Assert.Equal(("0", MsmeRegistrationService.SectorTypeMissing), await Answer(await Post(app, "FinalSubmit", RegistrationBody())));

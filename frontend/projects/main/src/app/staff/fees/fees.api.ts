@@ -98,7 +98,7 @@ export interface AddFeesRequest {
   levels?: string[];
 }
 
-/** A subsidy category switched off on the three portals (Masters → Payments, Disable; migration 0070). */
+/** A subsidy category switched off on the three portals (Master → Payments, Disable; migration 0070). */
 export interface OffCategory {
   category: number;
   reason: string | null;

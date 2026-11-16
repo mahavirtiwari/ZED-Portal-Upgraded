@@ -14,7 +14,7 @@ const HANDHOLDING_LEVELS: readonly string[] = HANDHOLDING_LEVEL_CODES;
 
 /**
  * AssessmentFee.SpecialCategory, the same on the three portals (migration 0041): the payment charges a unit the category it
- * fits with the highest subsidy; the regions come from Admin → Masters → Subsidy Regions.
+ * fits with the highest subsidy; the regions come from Admin → Master → Subsidy Regions.
  */
 const CATEGORIES: Record<number, { code: string; name: string }> = {
   0: { code: 'GEN', name: 'General' },
@@ -93,7 +93,7 @@ interface SharePreview {
 }
 
 /**
- * Admin → Masters → Payments, Main and Surveillance (V4, as the LEAN portal's Fee Structure): per level and enterprise
+ * Admin → Master → Payments, Main and Surveillance (V4, as the LEAN portal's Fee Structure): per level and enterprise
  * type, the certification fee and joining reward, the payment structure of each subsidy category (the Government of India's
  * share, the MSME's share with GST) with an Edit of the category's subsidy share (base plus additional), and the TDS
  * deductions with the net payable. Bronze, Silver and Gold have the same structure, only the fee differs. Every amount is

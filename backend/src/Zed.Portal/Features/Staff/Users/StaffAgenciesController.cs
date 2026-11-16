@@ -396,7 +396,7 @@ public sealed class StaffAgenciesController(
     }
 
     private static List<Sector> Sectors(ResultSets sets) =>
-        // 2026-11-16: a disabled sector (Masters → Sectors) is not offered.
+        // 2026-11-16: a disabled sector (Master → Sectors) is not offered.
         sets[0].Where(r => !Masters.StaffMastersController.SectorDisabled(r))
             .Select(r => new Sector(r.Text("SectorCode"), r.Text("SectorName"))).Where(s => s.SectorCode.Length > 0).ToList();
 

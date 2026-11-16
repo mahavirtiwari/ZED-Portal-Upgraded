@@ -82,7 +82,7 @@ public sealed partial class MsmeController
         }
     }
 
-    /// <summary>The unit's kind: its NIC sector's type (Masters → Sectors), else its Udyam activity; null when unknown.</summary>
+    /// <summary>The unit's kind: its NIC sector's type (Master → Sectors), else its Udyam activity; null when unknown.</summary>
     private async Task<string?> UnitCategoryAsync(string zedId, CancellationToken ct)
     {
         try

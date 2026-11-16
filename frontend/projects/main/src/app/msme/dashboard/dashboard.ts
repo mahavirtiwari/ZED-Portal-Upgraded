@@ -320,7 +320,7 @@ export class DashboardPage {
     void this.load();
     void this.loadIncentiveCards();
     firstValueFrom(this.http.get<PublicLevel[]>('/api/public/levels')).then((l) => this.publicLevels.set(l)).catch(() => undefined);
-    // The unit's own fee of each level, from Masters → Payments (2026-11-08).
+    // The unit's own fee of each level, from Master → Payments (2026-11-08).
     firstValueFrom(this.http.get<Record<string, number | null>>('/api/msme/dashboard/level-fees')).then((f) => this.levelFees.set(f ?? {})).catch(() => undefined);
   }
 

@@ -24,7 +24,7 @@ namespace Zed.Portal.Features.CertLevels;
 public sealed partial class CertificationLevelsController(
     ISqlExecutor db, IWebHostEnvironment env, IOptions<PortalOptions> portal, PortalHost host, ILogger<CertificationLevelsController> log) : StaffApiController
 {
-    /// <param name="Fees">2026-11-08: the level's fees in Masters → Payments (with GST, before subsidy) by enterprise type.</param>
+    /// <param name="Fees">2026-11-08: the level's fees in Master → Payments (with GST, before subsidy) by enterprise type.</param>
     /// <param name="Readiness">2026-11-08 (generic levels): what a V4 level still needs before it can be enabled.</param>
     public sealed record LevelItem(CertificationLevel Level, string Sample, string? LogoUrl)
     {
@@ -43,7 +43,7 @@ public sealed partial class CertificationLevelsController(
 
     /// <summary>The checklist of a level (Administration → Certification Levels). Bronze, Silver, Gold and ZED-X: all true.</summary>
     /// <param name="Questionnaire">The level has at least one parameter (dbo.Sections of its code).</param>
-    /// <param name="Fees">Masters → Payments has its Micro, Small and Medium fees (dbo.AssessmentFee).</param>
+    /// <param name="Fees">Master → Payments has its Micro, Small and Medium fees (dbo.AssessmentFee).</param>
     /// <param name="Artwork">The certificate background and the report picture are there (<see cref="LevelArtwork"/>).</param>
     /// <param name="Agencies">At least one active desktop-verification agency may be allotted the level (Users.Allow{Code}Assessments).</param>
     /// <param name="Columns">The level's columns exist (Msme.Is{Code}PaymentDone, IsSur{Code}PaymentDone, Users.Allow{Code}Assessments,
@@ -58,7 +58,7 @@ public sealed partial class CertificationLevelsController(
         {
             var missing = new List<string>();
             if (!Questionnaire) missing.Add("its questionnaire (Questionnaire menu)");
-            if (!Fees) missing.Add("its Micro, Small and Medium fees (Masters → Payments)");
+            if (!Fees) missing.Add("its Micro, Small and Medium fees (Master → Payments)");
             if (!Artwork) missing.Add("its certificate and report artwork");
             if (!Columns) missing.Add("its database columns (" + (ColumnsMessage ?? ColumnsPending) + ")");
             return missing;
@@ -329,7 +329,7 @@ public sealed partial class CertificationLevelsController(
         await AssignQrDigitAsync(code, ct);
         var flowNote = await SaveFlowAsync(code, req, ct);
         await RefreshRegistryAsync(ct);
-        return new MessageResponse($"{req.Name!.Trim()} added (disabled). Add its questionnaire (Questionnaire menu), its fees (Masters → Payments) " +
+        return new MessageResponse($"{req.Name!.Trim()} added (disabled). Add its questionnaire (Questionnaire menu), its fees (Master → Payments) " +
             "and its certificate and report artwork before enabling it." +
             (columns ? "" : $" Its database columns could not be added by the portal: {ColumnsPending.ToLowerInvariant()}.") + flowNote);
     }
@@ -607,7 +607,7 @@ public sealed class PublicLevelsController(ISqlExecutor db, IWebHostEnvironment 
     {
         var flows = await LevelFlows.StoredAsync(db, log, ct);
         return (await CertificationLevels.AllAsync(db, log, ct)).Where(l => l.IsEnabled)
-            // Fee: none since 2026-11-08 (the dashboard shows the unit's own fee from Masters → Payments, api/msme/dashboard/level-fees).
+            // Fee: none since 2026-11-08 (the dashboard shows the unit's own fee from Master → Payments, api/msme/dashboard/level-fees).
             .Select(l => new PublicLevel(l.Code, l.Name, l.Description, l.Comment, CertificationLevelsController.LogoUrl(l), l.AssessmentMode, l.ValidityMonths, null,
                 SurveillanceOf(l), LevelFlows.FlowOf(flows.GetValueOrDefault(l.Code)?.AssessmentFlow, l.AssessmentMode),
                 LevelFlows.SurveillanceModeOf(flows.GetValueOrDefault(l.Code)?.SurveillanceMode)))

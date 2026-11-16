@@ -134,7 +134,7 @@ export class RemoteAssessmentPage {
   protected readonly instructions = computed(() => {
     const t = this.content.text('staff.surveillance.remote.instructions');
     // {{Validity}}, {{SurveillanceAssessments}} and {{Level}}: the unit's level settings (Administration → Certification
-    // Levels); {{SurveillanceFee}}: its surveillance fee (Admin → Masters → Payments).
+    // Levels); {{SurveillanceFee}}: its surveillance fee (Admin → Master → Payments).
     const d = this.data();
     return t?.enabled
       ? textParts(fillText(t.html, {

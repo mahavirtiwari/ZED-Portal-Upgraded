@@ -228,7 +228,7 @@ public sealed class DesktopAssessmentAllotmentTests : IDisposable
             new { UserId = "AGENCYB", UserName = "Both", SiteVerification = true },
             new { UserId = "AGENCYN", UserName = "Not set yet", SiteVerification = true },
         ]);
-        // The unit: NIC 62, a Services sector in Masters → Sectors.
+        // The unit: NIC 62, a Services sector in Master → Sectors.
         _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.UnitSql] = _ => [new { Activity = "Manufacturing", TwoDigitActivity = "62 - IT" }];
         _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.SectorTypesSql] = _ => [new { SectorCode = "62", SectorType = "Services" }];
         _host.Sql.Queries[Zed.Portal.Features.Staff.Users.UserSectorActivity.ByRoleSql] = _ =>

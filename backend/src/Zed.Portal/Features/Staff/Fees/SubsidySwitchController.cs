@@ -8,7 +8,7 @@ using Zed.Portal.Features.Staff.Users;
 namespace Zed.Portal.Features.Staff.Fees;
 
 /// <summary>
-/// Switching a subsidy category off and on again (2026-11-13; Masters → Payments, Disable / Enable on a category). A
+/// Switching a subsidy category off and on again (2026-11-13; Master → Payments, Disable / Enable on a category). A
 /// switched-off category is left out by dbo.FN_V4_SUBSIDY_CATEGORY (migration 0070), so the payment procedures charge the
 /// unit's next eligible category (General when none); payments already made do not change. General (0) cannot be switched
 /// off. One switch covers the three portals: dbo.AssessmentFee of ZEDCS_V2_LIVE, ZED_CONSULTANT and ZED_SURVEILLANCE

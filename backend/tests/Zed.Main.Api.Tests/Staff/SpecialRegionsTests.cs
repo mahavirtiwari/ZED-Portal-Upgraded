@@ -7,7 +7,7 @@ using Zed.Portal.Features.Staff.Masters;
 
 namespace Zed.Main.Api.Tests.Staff;
 
-/// <summary>Admin → Masters → Subsidy Regions and LG Directory.</summary>
+/// <summary>Admin → Master → Subsidy Regions and LG Directory.</summary>
 public sealed class SpecialRegionsTests : IDisposable
 {
     private const string Url = "/api/staff/masters/regions";

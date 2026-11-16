@@ -15,7 +15,8 @@ html[data-zed-theme] {
   .btn-primary:hover, .btn-primary:focus-visible, .ml-login:hover, .zl-login:hover { filter: brightness(1.12); }
   .btn-outline-primary { color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }
   .btn-outline-primary:hover { background-color: var(--zt-dark) !important; color: #fff !important; }
-  .btn-link { color: var(--zt-dark) !important; }
+  // Not the menu bar's drop-down tabs and user button (btn-link too): they keep their light text on the dark bar.
+  .btn-link:not(.nav-link) { color: var(--zt-dark) !important; }
 
   // Table headings.
   .table-zed > thead > tr > th, .table-zed thead th { background: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }

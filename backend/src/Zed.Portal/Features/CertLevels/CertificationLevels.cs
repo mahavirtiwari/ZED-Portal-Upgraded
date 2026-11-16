@@ -12,7 +12,7 @@ namespace Zed.Portal.Features.CertLevels;
 /// </summary>
 /// <param name="AssessmentMode">"Desktop" (desktop assessment only, as Bronze) or "Site" (desktop and site assessment).</param>
 /// <param name="CertNoFormat">The certificate number (<see cref="CertificateNumbers"/>); the Manufacturing / Services formats apply once set.</param>
-/// <param name="Fee">The fee shown on the level's box (the amounts charged are in Masters → Payments).</param>
+/// <param name="Fee">The fee shown on the level's box (the amounts charged are in Master → Payments).</param>
 /// <param name="SurveillanceCount">V4 levels (migration 0032): the surveillance schedule run by SP_V4_LEVEL_SURVEILLANCE_SCHEDULE;
 /// null = the Silver / Gold value (<see cref="SurveillanceSchedule.Default"/>). Since migration 0037 the schedule runs Bronze, Silver
 /// and Gold too (their legacy jobs switched off).</param>

@@ -31,8 +31,8 @@ public sealed partial class StaffMastersController
         new("Code", "The technology code (up to 200 characters). Required."),
         new("Technology", "The technology name (up to 200 characters). Required."),
         new("Description", "Optional (up to 2000 characters)."),
-        new("NIC sectors", "Codes of the sectors it applies to, separated by commas, e.g. 10, 13 (Masters → Sectors). Optional."),
-        new("Categories", "Codes of its categories, separated by commas (Masters → Categories). Optional."),
+        new("NIC sectors", "Codes of the sectors it applies to, separated by commas, e.g. 10, 13 (Master → Sectors). Optional."),
+        new("Categories", "Codes of its categories, separated by commas (Master → Categories). Optional."),
         new("Status", "Active or Inactive (empty = Active). Inactive switches the technology off."),
     ], 1, ByCode + " To switch a technology off, set Status to Inactive.");
 
@@ -184,8 +184,8 @@ public sealed partial class StaffMastersController
             if (!StaffUserRules.TryText(row.Cell(1), 200, true, false, out _)) row.Errors.Add("Technology is required (up to 200 characters).");
             if (!StaffUserRules.TryText(row.Cell(2), 2000, false, true, out _)) row.Errors.Add("Description can be up to 2000 characters.");
             var existing = row.Current is null ? null : data.Technologies.First(t => SameCode(t.TechnologyCode, row.Cell(0)));
-            row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), data.SectorLabels.Concat(existing?.Sectors ?? []).Select(SectorCodeOf), "NIC sector", "Masters → Sectors");
-            row.Cells[4] = CodesIn(row, MasterSheet.Codes(row.Cell(4)), data.CategoryLabels.Concat(existing?.Categories ?? []).Select(CategoryCodeOf), "Category", "Masters → Categories");
+            row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), data.SectorLabels.Concat(existing?.Sectors ?? []).Select(SectorCodeOf), "NIC sector", "Master → Sectors");
+            row.Cells[4] = CodesIn(row, MasterSheet.Codes(row.Cell(4)), data.CategoryLabels.Concat(existing?.Categories ?? []).Select(CategoryCodeOf), "Category", "Master → Categories");
             if (MasterSheet.Status(row.Cell(5)) is { } status) row.Cells[5] = status;
             else row.Errors.Add("Status must be Active or Inactive.");
         });
@@ -272,7 +272,7 @@ public sealed partial class StaffMastersController
             else if (row.Current is null && ParameterCode(row.Cell(0)) is null) row.Errors.Add("Code must be a number, e.g. 1.");
             if (!StaffUserRules.TryText(row.Cell(1), 200, true, false, out _)) row.Errors.Add("Name is required (up to 200 characters).");
             if (!StaffUserRules.TryText(row.Cell(2), 1990, false, true, out _)) row.Errors.Add("Description can be up to 1990 characters.");
-            row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), sectors, "NIC sector", "Masters → Sectors");
+            row.Cells[3] = CodesIn(row, MasterSheet.Codes(row.Cell(3)), sectors, "NIC sector", "Master → Sectors");
             if (MasterSheet.YesNo(row.Cell(4)) is { } yes) row.Cells[4] = yes;
             else row.Errors.Add("In surveillance must be Yes or No.");
             if (MasterSheet.YesNo(row.Cell(5), "Yes") is { } used) row.Cells[5] = used;

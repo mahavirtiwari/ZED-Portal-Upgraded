@@ -40,7 +40,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
 };
 
 /**
- * Admin → Masters → LG Directory (new in V4): brings the States and Districts masters up to date with the Local
+ * Admin → Master → LG Directory (new in V4): brings the States and Districts masters up to date with the Local
  * Government Directory. LGD has no open web service, so the Admin downloads its district list and uploads it; the page
  * shows what differs and applies only the ticked changes. V4 layout: the three steps as numbered cards (the current one
  * marked), an upload box showing the chosen file, the file's counts, a card per kind of change (ticks all of that kind)

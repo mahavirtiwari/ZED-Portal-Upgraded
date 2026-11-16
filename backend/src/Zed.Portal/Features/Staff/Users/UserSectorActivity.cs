@@ -80,7 +80,7 @@ public static class UserSectorActivity
 
     internal const string SectorTypesSql = "SELECT SectorCode, SectorType FROM dbo.Sectors WHERE SectorType IS NOT NULL;";
 
-    /// <summary>NIC 2-digit code → Manufacturing / Services (Masters → Sectors, migration 0025); empty when not readable.</summary>
+    /// <summary>NIC 2-digit code → Manufacturing / Services (Master → Sectors, migration 0025); empty when not readable.</summary>
     public static async Task<Dictionary<string, string>> SectorTypesAsync(ISqlExecutor db, ILogger log, CancellationToken ct)
     {
         try
@@ -97,7 +97,7 @@ public static class UserSectorActivity
     }
 
     /// <summary>
-    /// A unit's category: the type of its NIC sector (LEFT(TwoDigitActivity, 2)) in Masters → Sectors, else its Udyam
+    /// A unit's category: the type of its NIC sector (LEFT(TwoDigitActivity, 2)) in Master → Sectors, else its Udyam
     /// activity (Msme.Activity: "Manufacturing", anything else Services); null when neither is known.
     /// </summary>
     public static string? UnitCategory(string? activity, string? twoDigitActivity, IReadOnlyDictionary<string, string> sectorTypes)

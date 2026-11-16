@@ -28,7 +28,7 @@ public static class PortalLinks
             "Portal.PlayStoreUrl", "Portal.PlayStoreEnabled", "https://play.google.com/store/apps/details?id=com.qci.zed.msme"),
         new("appStore", "ZED MSME app on the App Store", "\"Download on the App Store\" on the MSME dashboard, certification and registration pages. Switched off: not shown.",
             "Portal.AppStoreUrl", "Portal.AppStoreEnabled", "https://apps.apple.com/in/app/zed-msme/id1631537071"),
-        new("lgd", "LGD Directory", "Admin → Masters → LG Directory, where to download the list of districts. Switched off: shown as text.",
+        new("lgd", "LGD Directory", "Admin → Master → LG Directory, where to download the list of districts. Switched off: shown as text.",
             "Portal.LgdUrl", "Portal.LgdEnabled", "https://lgdirectory.gov.in/downloadDirectory.do"),
     ];
 

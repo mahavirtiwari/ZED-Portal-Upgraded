@@ -116,10 +116,10 @@ describe('staff menu', () => {
     it('groups the long menus into a few drop-downs (V4)', () => {
       expect(bar(StaffRole.MasterAdmin, 'main')).toEqual(['Agencies (5)', 'Assessment (6)', 'Schemes (2)', 'Documents', 'Quality Observations', 'Operation Admins']);
       expect(bar(StaffRole.Admin, 'main')).toEqual([
-        'All settings', 'Masters (6)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (5)', 'User Management', 'Administration (13)',
+        'All settings', 'Master (6)', 'Questionnaire (5)', 'Technology Upgradation (2)', 'Incentives (5)', 'User Management', 'Administration (13)',
       ]);
-      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['All settings', 'Masters (4)', 'User Management', 'Administration (6)']);
-      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['All settings', 'Masters (2)', 'Questionnaire (5)', 'User Management', 'Administration (8)']);
+      expect(bar(StaffRole.Admin, 'consultancy')).toEqual(['All settings', 'Master (4)', 'User Management', 'Administration (6)']);
+      expect(bar(StaffRole.Admin, 'surveillance')).toEqual(['All settings', 'Master (2)', 'Questionnaire (5)', 'User Management', 'Administration (8)']);
       // The incentives in four groups, a page each (the state is chosen on the State Government page), and the MSME dashboard's cards.
       expect(menuFor(StaffRole.Admin, [], 'main').filter((i) => i.group === 'Incentives').map((i) => `${i.label} ${i.route}`)).toEqual([
         'Ministry of MSME /staff/incentives/ministry', 'State Government /staff/incentives/state',

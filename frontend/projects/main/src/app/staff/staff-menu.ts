@@ -42,7 +42,7 @@ export interface StaffMenuItem {
    */
   group?: string;
   /**
-   * V4: the menu bar's drop-down for this entry when the role has many screens (e.g. the Admin's "Masters"): the
+   * V4: the menu bar's drop-down for this entry when the role has many screens (e.g. the Admin's "Master"): the
    * entry's `group`, if any, becomes a heading inside it.
    */
   menu?: string;
@@ -151,13 +151,13 @@ export const MAIN_MENU: StaffMenuItem[] = [
   // Upgradation are drop-downs of their own rather than headings under Masters (V4, 2026-10-27).
   // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
   { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
-  { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Documents/Videos', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Upload Image', legacyPath: '/Home/PageSettings', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Master' },
+  { label: 'Documents/Videos', legacyPath: '/MyDocuments/Index', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Master' },
+  { label: 'Sectors', legacyPath: '/Sector/List', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Master' },
+  { label: 'Payments', legacyPath: '/Assessment/PaymentDetails', route: '/staff/fees', roles: [R.Admin], menu: 'Master' },
   // New in V4: the regions of the additional subsidy, and the states and districts from the LG Directory.
-  { label: 'Subsidy Regions', route: '/staff/masters/regions', roles: [R.Admin], menu: 'Masters' },
-  { label: 'LG Directory', route: '/staff/masters/lgd', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Subsidy Regions', route: '/staff/masters/regions', roles: [R.Admin], menu: 'Master' },
+  { label: 'LG Directory', route: '/staff/masters/lgd', roles: [R.Admin], menu: 'Master' },
   // A questionnaire per level: Bronze, Silver, Gold, ZED-X (NIC sector-wise) and the levels the Admin adds (2026-11-08).
   {
     label: '{level}', legacyPath: '/Questionaire/Index?SectionType={level}', route: '/staff/masters/parameters/{level}', roles: [R.Admin],
@@ -218,10 +218,10 @@ export const CONSULTANCY_MENU: StaffMenuItem[] = [
   // Admin: as the live layout; its Incentives drop-down is not ported (ZED_CONSULTANT incentives are not served here).
   // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
   { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
-  { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Documents/Videos', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Upload Image', route: '/staff/masters/page-settings', roles: [R.Admin], menu: 'Master' },
+  { label: 'Documents/Videos', route: '/staff/masters/documents', roles: [R.Admin], menu: 'Master' },
+  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Master' },
+  { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Master' },
   // No Questionnaire: the live menu had it, but ZED_CONSULTANT has no section tables, so its pages failed.
   // New in V4: the Admin's logins (Master Admin, Ministry, MSME DFO, dashboard), a tab of its own, and the settings.
   { label: 'User Management', route: '/staff/user-management', roles: [R.Admin] },
@@ -288,8 +288,8 @@ export const SURVEILLANCE_MENU: StaffMenuItem[] = [
 
   // 2026-11-14 (approved frame A): every Admin screen as tiles in groups, with a search (the staff home page).
   { label: 'All settings', route: '/staff/administration', roles: [R.Admin] },
-  { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Masters' },
-  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Masters' },
+  { label: 'Payments', route: '/staff/fees', roles: [R.Admin], menu: 'Master' },
+  { label: 'Sectors', route: '/staff/masters/sectors', roles: [R.Admin], menu: 'Master' },
   { label: '{level}', route: '/staff/masters/parameters/{level}', roles: [R.Admin], menu: 'Questionnaire', perLevel: true },
   // New in V4: the ESG checklist of the surveillance app's assessment (before, a fixed file).
   { label: 'ESG Checklist', route: '/staff/settings/esg-checklist', roles: [R.Admin], menu: 'Questionnaire' },

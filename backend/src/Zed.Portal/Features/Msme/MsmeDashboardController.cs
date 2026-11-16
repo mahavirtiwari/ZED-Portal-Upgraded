@@ -111,7 +111,7 @@ public sealed class MsmeDashboardController(ISqlExecutor db, ILogger<MsmeDashboa
         "ORDER BY CASE IncentiveType WHEN 'Common' THEN 0 WHEN 'Financial' THEN 2 WHEN 'Other' THEN 3 ELSE 1 END, OrderNo, Id;";
 
     /// <summary>
-    /// GET api/msme/dashboard/level-fees (2026-11-08): what this unit would pay for each enabled level, from Masters → Payments
+    /// GET api/msme/dashboard/level-fees (2026-11-08): what this unit would pay for each enabled level, from Master → Payments
     /// as the payment step reads it (SP_MSME_GET_PAYMENT_DETAILS without the joining reward: after subsidy, with GST). A level
     /// without a fee row, or a procedure error, gives no amount; the level box then shows no fee.
     /// </summary>

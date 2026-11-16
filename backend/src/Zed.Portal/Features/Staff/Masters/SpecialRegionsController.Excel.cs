@@ -13,7 +13,7 @@ public sealed partial class SpecialRegionsController
     internal static SheetSpec Sheet => new("Subsidy regions", "subsidy-regions",
     [
         new("List", "One of: " + string.Join(", ", Categories.Select(c => c.Name)) + ". Required."),
-        new("State code", "The LGD code of the state, e.g. 9 (Masters → LG Directory). Required."),
+        new("State code", "The LGD code of the state, e.g. 9 (Master → LG Directory). Required."),
         new("District code", "The LGD code of the district; empty = the whole state. " +
             string.Join(" and ", Categories.Where(c => c.Level == "district").Select(c => c.Name)) + " need a district.", Optional: true),
         new("State", "The state's name (for reading only; taken from the masters)."),

@@ -343,7 +343,7 @@ public static partial class ContentCatalogue
         // (Administration → Certification Levels), "three years" for 36 months, "18 months"; {{SurveillanceAssessments}}: its
         // number of surveillances there, "Two Surveillance Assessments" (Silver / Gold), "One Surveillance Assessment";
         // {{Level}}: its name; {{SurveillanceFee}}: its surveillance fee for the unit's enterprise type from the fee master
-        // (Admin → Masters → Payments, Surveillance), "Rs. 10,000/- plus GST" ("as shown on the payment page" when none is set).
+        // (Admin → Master → Payments, Surveillance), "Rs. 10,000/- plus GST" ("as shown on the payment page" when none is set).
         Web("staff.surveillance.remote.instructions", "Remote surveillance: instructions", StaffSurveillance, [PortalSystem.Surveillance], """
             <ol>
               <li>Surveillance Assessments are mandatory for all Silver and Gold Certified MSMEs.</li>

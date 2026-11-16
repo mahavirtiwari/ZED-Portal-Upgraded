@@ -32,7 +32,7 @@ interface DocumentIcon {
 }
 
 /**
- * Admin → Masters → Documents/Videos (V4, as the LEAN portal's page; port of Views/MyDocuments/Index.cshtml): a document
+ * Admin → Master → Documents/Videos (V4, as the LEAN portal's page; port of Views/MyDocuments/Index.cshtml): a document
  * is a file or a video link, with a description, given to the account types that may open it (the MSMEs on My
  * Documents and in the apps, staff on their Documents page). Upload and save are one step; the API names the file.
  * Documents from before have no roles set: they go to the MSMEs only, as before. V4 layout: the counts (documents,

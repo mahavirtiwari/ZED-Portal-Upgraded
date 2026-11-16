@@ -114,7 +114,7 @@ public sealed class AssessmentFeesController(ISqlExecutor db, PortalHost host, I
     /// The subsidy categories (AssessmentFee.SpecialCategory), the same on the three portals since migration 0041: 0 General,
     /// 1 SC-owned, 2 woman-owned, 3 ST-owned, 4 aspirational district, 5 LWE district, 6 Himalayan region, 7 island
     /// territory, 8 North Eastern Region. The payment procedures charge a unit the category it fits with the highest
-    /// subsidy (dbo.FN_V4_SUBSIDY_CATEGORY; the regions from Admin → Masters → Subsidy Regions). No value is the general row.
+    /// subsidy (dbo.FN_V4_SUBSIDY_CATEGORY; the regions from Admin → Master → Subsidy Regions). No value is the general row.
     /// </summary>
     public static readonly int[] Categories = [0, 1, 2, 3, 4, 5, 6, 7, 8];
 

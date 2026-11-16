@@ -206,7 +206,7 @@ public sealed partial class RemoteAssessmentController(
 
         /// <summary>
         /// Surveillance only: the level's surveillance fee before GST for the unit's enterprise type (General, without a
-        /// joining reward), from this portal's fee master (Admin → Masters → Payments); null when none is set.
+        /// joining reward), from this portal's fee master (Admin → Master → Payments); null when none is set.
         /// </summary>
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public decimal? SurveillanceFee { get; init; }
 

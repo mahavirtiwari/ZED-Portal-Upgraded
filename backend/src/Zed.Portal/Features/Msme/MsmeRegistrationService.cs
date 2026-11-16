@@ -24,7 +24,7 @@ public sealed class MsmeRegistrationService(
 {
     public const string AlreadyRegistered = "Selected Plant already registered.";
     public const string NotApplicable = "Currently this scheme is not applicable for the selected plant activity.";
-    /// <summary>The selected activity's NIC sector has no type in Masters → Sectors: the new ZED ID (ZEDM / ZEDS) cannot be made.</summary>
+    /// <summary>The selected activity's NIC sector has no type in Master → Sectors: the new ZED ID (ZEDM / ZEDS) cannot be made.</summary>
     public const string SectorTypeMissing =
         "The sector (Manufacturing / Services) of the selected plant activity is not set yet. Please contact the ZED team.";
     public const string RegistrationFailed = "Registrtion failed. Try again after some time.";
@@ -48,7 +48,7 @@ public sealed class MsmeRegistrationService(
 
         if (sets[0].Count > 0) return AlreadyRegistered;
         if (sets[1].Count == 0) return NotApplicable;
-        // Migration 0051: the ZED ID carries the sector (ZEDM / ZEDS), taken only from Masters → Sectors (SectorType).
+        // Migration 0051: the ZED ID carries the sector (ZEDM / ZEDS), taken only from Master → Sectors (SectorType).
         if (!sets[1].Any(r => r.Text("SectorType") is "Manufacturing" or "Services")) return SectorTypeMissing;
         if (emailId is not null && sets.Count > 2 && sets[2].FirstOrDefault() is { } limit && limit.Text("EmailCountStatus") == "1")
             return limit.Text("ErrorMessage");

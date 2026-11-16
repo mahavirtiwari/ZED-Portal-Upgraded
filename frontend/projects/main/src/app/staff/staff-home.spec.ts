@@ -21,7 +21,7 @@ describe('StaffHomePage', () => {
     const el = await render(1, 'Admin');
     expect(el.querySelector('h3')!.textContent).toContain('Welcome, Test User');
     const cards = [...el.querySelectorAll('.group-card h4')].map((h) => h.textContent!.trim());
-    expect(cards).toEqual(['Masters', 'Questionnaire', 'Technology Upgradation', 'Incentives', 'Administration']);
+    expect(cards).toEqual(['Master', 'Questionnaire', 'Technology Upgradation', 'Incentives', 'Administration']);
     const questionnaire = [...el.querySelectorAll('.group-card')].find((c) => c.querySelector('h4')!.textContent!.trim() === 'Questionnaire')!;
     expect([...questionnaire.querySelectorAll('li')].map((li) => li.textContent!.replace('›', '').trim())).toEqual(['Bronze', 'Silver', 'Gold', 'ZED-X', 'ESG Checklist']);
     expect(el.querySelector('.group-card')!.textContent).toContain('Sectors');

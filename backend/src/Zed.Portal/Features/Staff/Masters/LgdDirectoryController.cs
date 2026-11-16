@@ -8,7 +8,7 @@ using Zed.Portal.Features.Staff.Schemes;
 namespace Zed.Portal.Features.Staff.Masters;
 
 /// <summary>
-/// Admin → Masters → LG Directory (new in V4): brings the States and Districts masters up to date with the Local
+/// Admin → Master → LG Directory (new in V4): brings the States and Districts masters up to date with the Local
 /// Government Directory (lgdirectory.gov.in). LGD offers no open web service, so the Admin downloads its district list
 /// ("Download Directory" → all districts of India, CSV or Excel: State Code, State Name (In English), District Code,
 /// District Name (In English), ...) and uploads it here. The page shows the new states and districts, the renamed ones

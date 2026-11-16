@@ -5,7 +5,7 @@ using Zed.Portal.Features.Staff.Fees;
 
 namespace Zed.Main.Api.Tests.Staff;
 
-/// <summary>Masters → Payments: switching a subsidy category off and on again on the three portals (2026-11-13).</summary>
+/// <summary>Master → Payments: switching a subsidy category off and on again on the three portals (2026-11-13).</summary>
 public sealed class SubsidySwitchTests : IDisposable
 {
     private const string Url = "/api/staff/fees/subsidy-switches";

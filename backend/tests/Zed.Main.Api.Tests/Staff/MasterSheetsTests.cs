@@ -159,7 +159,7 @@ public sealed class MasterSheetsTests : IDisposable
         var rows = check.GetProperty("rows");
         Assert.Equal("Status", Assert.Single(rows[0].GetProperty("changed").EnumerateArray()).GetString());
         Assert.Equal(("new", "10, 24", "Active"), (rows[1].GetProperty("result").GetString(), rows[1].GetProperty("values")[3].GetString(), rows[1].GetProperty("values")[5].GetString()));
-        Assert.Equal("NIC sector 99 is not in Masters → Sectors.", rows[2].GetProperty("errors")[0].GetString());
+        Assert.Equal("NIC sector 99 is not in Master → Sectors.", rows[2].GetProperty("errors")[0].GetString());
 
         var r = await admin.PostAsync("/api/staff/masters/technologies/excel/apply", Xlsx(columns, Row("T1", "Solar", "", "24", "C1", "Inactive"), Row("T2", "Heat pump", "", "10,24", "C1", "")));
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);

@@ -12,7 +12,7 @@ describe('LinksPage', () => {
     key: 'contact', name: 'Contact ZED', shownOn: 'The MSME menu.', url: null, defaultUrl: 'https://zed.example.org/contact-us', enabled: true,
   };
   const lgd: PortalLink = {
-    key: 'lgd', name: 'LGD Directory', shownOn: 'Admin → Masters → LG Directory.', url: 'https://lgd.example.org/download', defaultUrl: 'https://lgd.example.org/', enabled: false,
+    key: 'lgd', name: 'LGD Directory', shownOn: 'Admin → Master → LG Directory.', url: 'https://lgd.example.org/download', defaultUrl: 'https://lgd.example.org/', enabled: false,
   };
 
   async function settle() {

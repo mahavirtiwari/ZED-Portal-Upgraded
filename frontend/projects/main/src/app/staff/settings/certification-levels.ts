@@ -66,10 +66,10 @@ const SCHEDULE_KEYS: readonly ScheduleKey[] = [
  * The server refuses to enable a level while questionnaire, fees, artwork or columns is false.
  */
 export interface LevelReadiness {
-  /** The level has a parameter at least (Masters → Questionnaire). */
+  /** The level has a parameter at least (Master → Questionnaire). */
   questionnaire: boolean;
   parameterCount: number;
-  /** Masters → Payments has its fees (Micro, Small and Medium). */
+  /** Master → Payments has its fees (Micro, Small and Medium). */
   fees: boolean;
   /** The certificate and report background images are uploaded. */
   artwork: boolean;
@@ -85,7 +85,7 @@ interface LevelItem {
   /** A number in the general format, for ZEDMSME129350 today. */
   sample: string;
   logoUrl: string | null;
-  /** 2026-11-08: the level's fees in Masters → Payments (with GST, before subsidy) by enterprise type. */
+  /** 2026-11-08: the level's fees in Master → Payments (with GST, before subsidy) by enterprise type. */
   fees?: { type: string; total: number | null }[];
   readiness?: LevelReadiness;
   /** 2026-11-14: how the level is assessed and its surveillance's mode; the choices the portal runs today. */
@@ -287,7 +287,7 @@ const API = '/api/staff/settings/levels';
             <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
             <div><dt>Fees</dt><dd>
               @if (i.fees?.length) { <span class="lv-fees" data-fees>{{ feeText(i) }}</span> }
-              @else { <a class="lv-fees-missing" routerLink="/staff/fees" data-fees-missing>Not set in Masters → Payments</a> }
+              @else { <a class="lv-fees-missing" routerLink="/staff/fees" data-fees-missing>Not set in Master → Payments</a> }
             </dd></div>
           </dl>
           @if (checklist(i); as r) {
@@ -307,7 +307,7 @@ const API = '/api/staff/settings/levels';
                 </li>
                 <li [class.ok]="r.fees" data-check="fees">
                   <span class="ck" aria-hidden="true">{{ r.fees ? '✓' : '!' }}</span>
-                  <span class="ck-text">Fees in Masters → Payments @if (!r.fees) { <em class="ck-hint">missing</em> }</span>
+                  <span class="ck-text">Fees in Master → Payments @if (!r.fees) { <em class="ck-hint">missing</em> }</span>
                   <a class="ck-link" routerLink="/staff/fees" [queryParams]="{ level: l.code }">{{ r.fees ? 'Open' : 'Set' }} →</a>
                 </li>
                 <li [class.ok]="r.artwork" data-check="artwork">
@@ -350,7 +350,7 @@ const API = '/api/staff/settings/levels';
         </article>
       }
     </div>
-    <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> The fees charged are set in Masters → Payments; the questionnaire of each level in the Questionnaire menu.</p>
+    <p class="lv-note mt-3"><span class="info-dot" aria-hidden="true">i</span> The fees charged are set in Master → Payments; the questionnaire of each level in the Questionnaire menu.</p>
 
     @if (artwork(); as a) {
       <div class="modal d-block" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="lv-art-title">
@@ -420,7 +420,7 @@ const API = '/api/staff/settings/levels';
                         <div data-edit-fees>
                           @if (feesOf(e.code); as f) { <span>{{ f }}</span> } @else { <span class="lv-fees-missing">Not set yet</span> }
                           <small class="muted d-block">With GST, before subsidy. Each MSME sees its own fee on the box.
-                            <a routerLink="/staff/fees" (click)="editing.set(null)">Edit in Masters → Payments</a></small>
+                            <a routerLink="/staff/fees" (click)="editing.set(null)">Edit in Master → Payments</a></small>
                         </div>
                         <span class="label-like">Shown to MSMEs</span>
                         <div class="form-check form-switch lv-switch">
@@ -739,7 +739,7 @@ const API = '/api/staff/settings/levels';
 })
 export class CertificationLevelsPage {
   /** Bronze, Silver and Gold: numbered by the legacy procedures (the format fields do not apply to them). */
-  /** "Micro ₹ 10,000 · Small ₹ 20,000 · Medium ₹ 30,000" from Masters → Payments (2026-11-08). */
+  /** "Micro ₹ 10,000 · Small ₹ 20,000 · Medium ₹ 30,000" from Master → Payments (2026-11-08). */
   protected feeText(i: LevelItem): string {
     return (i.fees ?? [])
       .filter((f) => f.total !== null)
@@ -774,7 +774,7 @@ export class CertificationLevelsPage {
     if (!r) return [];
     return [
       !r.questionnaire && 'the questionnaire',
-      !r.fees && 'the fees in Masters → Payments',
+      !r.fees && 'the fees in Master → Payments',
       !r.artwork && 'the certificate and report artwork',
       !r.columns && `the database columns (${r.columnsMessage || 'ready after the next update'})`,
     ].filter((m): m is string => !!m);

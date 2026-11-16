@@ -65,7 +65,7 @@ export interface RemoteDetails {
   surveillanceCount?: number;
   /** The level's name (Administration → Certification Levels). */
   levelName?: string | null;
-  /** Surveillance only: the level's surveillance fee before GST for the unit's enterprise type (Admin → Masters → Payments). */
+  /** Surveillance only: the level's surveillance fee before GST for the unit's enterprise type (Admin → Master → Payments). */
   surveillanceFee?: number | null;
   /**
    * An open NC round (status 14): its number and whether the MSME has submitted its answers. Its rows come from the site

@@ -187,6 +187,11 @@ import { RemoteAllotments } from './remote-allotments';
       .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
       .zed-navbar .nav > li > a.nav-link.active, .zed-navbar .nav > li > button.nav-link.active { color: #fff; border-bottom: 3px solid #c9e8a0; }
       .zed-navbar .nav > li.user-menu { margin-left: auto; }
+      /* 2026-11-16: a thin line between the tabs (not before Home, not before the user on the right). */
+      .zed-navbar .nav > li.tag { position: relative; }
+      .zed-navbar .nav > li.tag:not(:first-child):not(.user-menu)::before {
+        content: ''; position: absolute; left: 0; top: 50%; width: 1px; height: 22px; transform: translateY(-50%); background: rgba(255, 255, 255, 0.28);
+      }
     }
   `,
 })

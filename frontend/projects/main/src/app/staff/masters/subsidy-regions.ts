@@ -44,7 +44,7 @@ export interface RegionsResponse {
 type RegionFilter = 'all' | 'enabled' | 'disabled';
 
 /**
- * Admin → Masters → Subsidy Regions (new in V4): the aspirational, LWE, Himalayan, island and North Eastern regions
+ * Admin → Master → Subsidy Regions (new in V4): the aspirational, LWE, Himalayan, island and North Eastern regions
  * whose MSMEs get the ZED scheme's additional subsidy, each entry enabled or disabled. Only enabled entries count: the
  * server flags their districts for the payment procedures after every change. V4 layout: counts at the top, a card per
  * list (by district or by state, with its enabled count), the picked list's add panel, a chip per state in it (a click

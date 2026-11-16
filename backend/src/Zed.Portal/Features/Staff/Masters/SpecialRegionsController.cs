@@ -7,7 +7,7 @@ using Zed.Core.Security;
 namespace Zed.Portal.Features.Staff.Masters;
 
 /// <summary>
-/// Admin → Masters → Subsidy Regions (new in V4): the regions whose MSMEs get the ZED scheme's additional subsidy:
+/// Admin → Master → Subsidy Regions (new in V4): the regions whose MSMEs get the ZED scheme's additional subsidy:
 /// aspirational districts, LWE districts, Himalayan states, island territories and the North Eastern Region, each entry
 /// enabled or disabled. Kept in the existing tables (migration 0024): a column per region on dbo.Districts (a district
 /// entry) and on dbo.States (a whole state) - NULL not listed, 0 listed and off, 1 listed and on. The payment
