@@ -23,6 +23,53 @@ public sealed class MsmeRegistrationService(
     ILogger<MsmeRegistrationService> log)
 {
     public const string AlreadyRegistered = "Selected Plant already registered.";
+
+    /// <summary>2026-11-17 (the user): another plant of the same Udyam registered at the same address.</summary>
+    public static string SameAddressRegistered(string maskedZedId) =>
+        $"This plant appears to be already registered as {maskedZedId}: a plant of this Udyam with the same address is registered. " +
+        "Please sign in with that ZED ID, or contact the ZED team if this is a different plant.";
+
+    /// <summary>The registered units of a Udyam at a PIN, with their plant addresses (compared after <see cref="AddressKey"/>).</summary>
+    internal const string SameAddressSql =
+        "SELECT m.ZedId, m.PlantIdNo, m.PFlat, m.PBuilding, m.PRoad, m.PCity, m.PPin FROM dbo.Msme m " +
+        "INNER JOIN dbo.MsmeBasicInformation b ON b.ZedId = m.ZedId " +
+        "WHERE b.UdyogAadharNo = @UdyogAadharNo AND LTRIM(RTRIM(m.PPin)) = @Pin;";
+
+    public sealed record PlantAddressRow(string? ZedId, string? PlantIdNo, string? PFlat, string? PBuilding, string? PRoad, string? PCity, string? PPin);
+
+    /// <summary>
+    /// A plant's address as compared: flat, building, road, city and PIN in lower case, letters and digits only. Null when
+    /// the address has too little to compare (no PIN, or nothing besides it), so that empty addresses never match.
+    /// </summary>
+    public static string? AddressKey(string? flat, string? building, string? road, string? city, string? pin)
+    {
+        static string Clean(string? v) => new((v ?? "").ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+        var place = Clean(flat) + "|" + Clean(building) + "|" + Clean(road) + "|" + Clean(city);
+        var p = Clean(pin);
+        return p.Length < 6 || place.Replace("|", "").Length < 3 ? null : place + "|" + p;
+    }
+
+    /// <summary>
+    /// 2026-11-17 (the user): the ZED ID (masked) of another registered plant of the same Udyam at the same address, or null.
+    /// The same unit entered twice in Udyam under two plant numbers is refused; the same plant number is refused already
+    /// (SP_MSME_VALIDATE_UDYAM_DETAILS).
+    /// </summary>
+    public async Task<string?> SameAddressAsync(string? udyogAadharNo, IReadOnlyDictionary<string, string>? plant, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(udyogAadharNo) || plant is null) return null;
+        string? P(string k) => plant.GetValueOrDefault(k);
+        if (AddressKey(P("PFlat"), P("PBuilding"), P("PRoad"), P("PCity"), P("PPin")) is not { } key) return null;
+        var rows = await db.QuerySqlAsync<PlantAddressRow>(SameAddressSql, new
+        {
+            UdyogAadharNo = new Dapper.DbString { Value = udyogAadharNo.Trim(), IsAnsi = true, Length = 50 },
+            Pin = new Dapper.DbString { Value = P("PPin")!.Trim(), IsAnsi = true, Length = 20 },
+        }, ct);
+        var match = rows.FirstOrDefault(r => !string.Equals(r.PlantIdNo?.Trim(), P("PlantIdNo")?.Trim(), StringComparison.OrdinalIgnoreCase)
+                                             && AddressKey(r.PFlat, r.PBuilding, r.PRoad, r.PCity, r.PPin) == key);
+        if (match is null) return null;
+        log.LogWarning("Registration of {Udyam} plant {Plant} refused: same address as {ZedId}", udyogAadharNo, P("PlantIdNo"), match.ZedId);
+        return MsmeAccountFinder.MaskZedId(match.ZedId?.Trim() ?? "");
+    }
     public const string NotApplicable = "Currently this scheme is not applicable for the selected plant activity.";
     /// <summary>The selected activity's NIC sector has no type in Master → Sectors: the new ZED ID (ZEDM / ZEDS) cannot be made.</summary>
     public const string SectorTypeMissing =
@@ -81,6 +128,9 @@ public sealed class MsmeRegistrationService(
                 }, ct);
                 if (sets[0].FirstOrDefault() is { } registered)
                     copy[PlantRegisteredKey] = registered.Text("ZedId") is { Length: > 0 } z ? MsmeAccountFinder.MaskZedId(z) : "";
+                // 2026-11-17: the same address as a registered plant of this Udyam (another plant number) is greyed out too.
+                else if (await SameAddressAsync(regNo, p, ct) is { } sameAs)
+                    copy[PlantRegisteredKey] = sameAs;
             }
             plants.Add(copy);
         }
@@ -113,9 +163,11 @@ public sealed class MsmeRegistrationService(
     }
 
     /// <summary>The chosen plant and activity of a session, checked as <see cref="CheckEligibilityAsync"/>.</summary>
-    public Task<string?> CheckEligibilityAsync(RegistrationSession s, string? emailId, string? ip, CancellationToken ct) =>
-        CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),
-            s.Activity!.GetValueOrDefault("Two_DigitActivity"), emailId, ip, ct);
+    /// <remarks>2026-11-17: also refused when a registered plant of the same Udyam has the same address (<see cref="SameAddressAsync"/>).</remarks>
+    public async Task<string?> CheckEligibilityAsync(RegistrationSession s, string? emailId, string? ip, CancellationToken ct) =>
+        await CheckEligibilityAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant!.GetValueOrDefault("PlantIdNo"),
+            s.Activity!.GetValueOrDefault("Two_DigitActivity"), emailId, ip, ct)
+        ?? (await SameAddressAsync(s.Lookup.BasicDetails.GetValueOrDefault("UdyogAadharNo"), s.Plant, ct) is { } sameAs ? SameAddressRegistered(sameAs) : null);
 
     /// <summary>Start of the value V4 writes to OTP.OTP for a pledge OTP: never the OTP itself.</summary>
     public const string OtpPlaceholderPrefix = "V4!";

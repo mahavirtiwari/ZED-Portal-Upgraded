@@ -115,6 +115,43 @@ public sealed partial class MsmeRegistrationTests : IDisposable
         Assert.Equal("Selected Plant already registered.", await r.ProblemTitle());
     }
 
+    /// <summary>2026-11-17 (the user): the same unit entered twice in Udyam (another plant number, the same address).</summary>
+    [Fact]
+    public async Task A_plant_at_the_address_of_a_registered_plant_of_the_same_udyam_is_refused()
+    {
+        _host.Udyam.Result = _host.Udyam.Result with
+        {
+            Plants =
+            [
+                new() { ["PlantIdNo"] = "P2", ["UnitName"] = "Acme Unit 2", ["PFlat"] = "Plot-4", ["PBuilding"] = "", ["PRoad"] = "Industrial  Area", ["PCity"] = "KANPUR", ["PPin"] = "208001" },
+                new() { ["PlantIdNo"] = "P3", ["UnitName"] = "Acme Unit 3", ["PFlat"] = "Plot 9", ["PRoad"] = "Industrial Area", ["PCity"] = "Kanpur", ["PPin"] = "208001" },
+            ],
+        };
+        _host.Sql.Queries[Zed.Portal.Features.Msme.MsmeRegistrationService.SameAddressSql] = _ =>
+            [new Zed.Portal.Features.Msme.MsmeRegistrationService.PlantAddressRow("ZEDMSME000002", "P1", "Plot 4", null, "Industrial Area", "Kanpur", "208001")];
+        var client = await _host.CreateBrowserAsync();
+        var lookup = await (await client.PostAsJsonAsync("/api/msme/registration/lookup", new { registrationNo = "udyam-up-29-0003915", mobileNo = "9999999999" }))
+            .Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        var id = lookup.GetProperty("registrationId").GetString();
+
+        // The plant list greys out the repeat with the registered (masked) ZED ID; the other plant stays open.
+        var plants = lookup.GetProperty("plants").EnumerateArray().ToList();
+        Assert.True(plants[0].TryGetProperty(Zed.Portal.Features.Msme.MsmeRegistrationService.PlantRegisteredKey, out var masked));
+        Assert.DoesNotContain("000002", masked.GetString());
+        Assert.False(plants[1].TryGetProperty(Zed.Portal.Features.Msme.MsmeRegistrationService.PlantRegisteredKey, out _));
+
+        var r = await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 0, activityIndex = 0 });
+        Assert.StartsWith("This plant appears to be already registered as ", await r.ProblemTitle());
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"/api/msme/registration/{id}/plant", new { plantIndex = 1, activityIndex = 0 })).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Plot-4", "", "Industrial  Area", "KANPUR", "208 001", "plot4||industrialarea|kanpur|208001")]
+    [InlineData("", "", "", "", "208001", null)]
+    [InlineData("Plot 4", null, null, "Kanpur", "", null)]
+    public void The_address_is_compared_without_spaces_punctuation_and_case(string? flat, string? building, string? road, string? city, string? pin, string? key) =>
+        Assert.Equal(key, Zed.Portal.Features.Msme.MsmeRegistrationService.AddressKey(flat, building, road, city, pin));
+
     [Fact]
     public async Task Udyam_record_without_plants_is_rejected()
     {
