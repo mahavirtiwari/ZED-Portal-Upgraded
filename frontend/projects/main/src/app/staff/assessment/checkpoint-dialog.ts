@@ -195,10 +195,10 @@ const TITLES: Record<CheckpointStage, string> = {
     .cp-top { display: flex; gap: 14px; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; }
     .cp-q { color: #23474a; font-weight: 600; flex: 1 1 320px; }
     .cp-seg { display: inline-flex; border: 1.5px solid #45a5ad; border-radius: 9px; overflow: hidden; flex: none; }
-    .cp-opt { margin: 0; padding: 5px 13px; font-weight: 700; font-size: 13px; color: #2f7c83; background: #fff; cursor: pointer; border-right: 1.5px solid #45a5ad; }
+    .cp-opt { margin: 0; padding: 5px 13px; font-weight: 700; font-size: 13px; color: var(--zt-mid2, #2f7c83); background: #fff; cursor: pointer; border-right: 1.5px solid #45a5ad; }
     .cp-opt:last-child { border-right: 0; }
     .cp-opt input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .cp-opt:focus-within { outline: 2px solid #2f7c83; outline-offset: -3px; }
+    .cp-opt:focus-within { outline: 2px solid var(--zt-mid2, #2f7c83); outline-offset: -3px; }
     .cp-opt.on[data-v='Yes'] { background: #2e9e5b; color: #fff; }
     .cp-opt.on[data-v='Partial'] { background: #b88a00; color: #fff; }
     .cp-opt.on[data-v='No'] { background: #a8303a; color: #fff; }

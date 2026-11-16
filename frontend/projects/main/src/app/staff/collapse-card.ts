@@ -29,8 +29,8 @@ let nextId = 0;
     .collapse-head:focus-visible { outline: 2px solid #45a5ad; outline-offset: 4px; border-radius: 6px; }
     .card-title { display: block; margin: 0; font-size: 16px; font-weight: 700; color: #23474a; }
     .collapse-summary { display: block; margin-top: 2px; color: #6b7f80; font-size: 13px; }
-    .chevron { flex: 0 0 auto; width: 10px; height: 10px; margin-right: 6px; border-right: 2px solid #2f7c83;
-      border-bottom: 2px solid #2f7c83; transform: rotate(45deg); transition: transform .15s; }
+    .chevron { flex: 0 0 auto; width: 10px; height: 10px; margin-right: 6px; border-right: 2px solid var(--zt-mid2, #2f7c83);
+      border-bottom: 2px solid var(--zt-mid2, #2f7c83); transform: rotate(45deg); transition: transform .15s; }
     :host(.is-closed) .chevron { transform: rotate(-45deg); }
     .collapse-body { margin-top: 14px; }`,
 })

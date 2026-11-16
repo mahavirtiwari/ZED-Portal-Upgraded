@@ -82,19 +82,19 @@ import { UBP_RETURN_KEY } from '../udyami-signin/udyami-signin';
     .msme-content { min-height: calc(100vh - 260px); padding: 18px 0 40px; background: #fff; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     /* Frame A: the menu strip. */
-    .topnav { background: #23656b; padding: 0; min-height: 48px; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.12); }
+    .topnav { background: var(--zt-dark, #23656b); padding: 0; min-height: 48px; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.12); }
     .topnav .navbar-nav { align-items: stretch; gap: 2px; }
     .topnav .nav-link, .topnav button.nav-link {
-      display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; color: #d9eef0; font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 14px; color: var(--zt-soft, #d9eef0); font-size: 14px; font-weight: 700;
       border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; box-shadow: none; white-space: nowrap;
     }
     .topnav .nav-link:hover, .topnav .nav-link:focus-visible { color: #fff; background: rgba(255, 255, 255, 0.06); }
     .topnav .nav-link.active { color: #fff; border-bottom-color: #c9e8a0; }
-    .topnav .avatar { width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: #174a4e;
+    .topnav .avatar { width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: var(--zt-ink, #174a4e);
       font-size: 12.5px; font-weight: 800; }
     .topnav .dropdown-menu { border-radius: 8px; border: 1px solid #dfe9ea; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); padding: 6px; }
     .topnav .dropdown-item { border-radius: 6px; font-size: 14px; font-weight: 600; padding: 7px 12px; }
-    .topnav .dropdown-item:hover { background: #eef6f6; color: #174a4e; }
+    .topnav .dropdown-item:hover { background: #eef6f6; color: var(--zt-ink, #174a4e); }
     .topnav-portal { color: #fff; font-weight: 700; font-size: 14px; padding: 12px 0; }
     .topnav .navbar-toggler { border-color: rgba(255, 255, 255, 0.4); margin: 6px 0; }
     .topnav .navbar-toggler-icon { filter: invert(1); }

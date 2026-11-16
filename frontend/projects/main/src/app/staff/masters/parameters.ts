@@ -261,10 +261,10 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     .level-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
     .level-tab {
       display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid #cbd9da;
-      background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer;
+      background: #fff; color: var(--zt-mid2, #2f7c83); font-weight: 600; font-size: 14px; cursor: pointer;
     }
     .level-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .level-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .level-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .tab-note { font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 10px; background: #fff4d6; color: #8a6100; }
 
     /* The level's counts. */
@@ -277,14 +277,14 @@ type ParameterFilter = 'all' | 'surveillance' | 'notSurveillance' | 'notConsulta
     .list-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     .param-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 8px; }
     .param-table td { vertical-align: top; overflow-wrap: anywhere; padding-top: 14px; padding-bottom: 14px; }
-    .param-table tbody tr:hover { background: #f7fbfb; }
+    .param-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .code-badge {
       display: inline-flex; align-items: center; justify-content: center; min-width: 36px; height: 36px; padding: 0 8px; border-radius: 18px;
       background: #eef6f6; color: #23474a; font-weight: 700; font-size: 14px;

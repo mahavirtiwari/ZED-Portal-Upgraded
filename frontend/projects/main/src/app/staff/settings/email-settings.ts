@@ -108,7 +108,7 @@ interface EmailSettingItem {
     .mb-count small { display: block; color: #8a6100; font-weight: 600; }
     .mb-count.warn { background: #fff8e6; }
     .mb-group { margin-top: 14px; }
-    .group-title { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #2f7c83; margin: 0 0 4px; }
+    .group-title { display: flex; align-items: baseline; gap: 10px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--zt-mid2, #2f7c83); margin: 0 0 4px; }
     .group-count { font-size: 12px; font-weight: 400; text-transform: none; letter-spacing: 0; color: #5f6f70; }
     .mb-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 8px 24px; padding: 12px 0; border-bottom: 1px solid #eef3f3; }
     .mb-row:last-child { border-bottom: 0; }

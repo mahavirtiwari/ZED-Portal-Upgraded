@@ -333,10 +333,10 @@ type Section = 'partners' | 'apis' | 'services';
     .stat-label { font-size: 13px; color: #5f6f70; overflow-wrap: anywhere; }
 
     .ai-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .ai-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
-      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; }
-    .ai-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
-    .ai-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .ai-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
+      color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 14px; cursor: pointer; }
+    .ai-tab:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
+    .ai-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .ai-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
 
@@ -345,17 +345,17 @@ type Section = 'partners' | 'apis' | 'services';
     .ai-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
     .ai-search { flex: 0 1 340px; }
     .ai-table td { vertical-align: middle; }
-    .ai-table tbody tr:hover { background: #f7fbfb; }
+    .ai-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .partner { display: flex; gap: 12px; align-items: flex-start; min-width: 220px; }
     .avatar { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 19px; display: inline-grid; place-items: center; font-weight: 800; font-size: 13px;
       color: #fff; background: linear-gradient(135deg, #45a5ad, #23474a); letter-spacing: .03em; }
     .partner-text { min-width: 0; }
     .partner-text strong { color: #232527; }
     .partner-meta { display: flex; flex-wrap: wrap; gap: 4px; margin: 3px 0; }
-    .auth-chip { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #eef6f6; color: #2f7c83; }
+    .auth-chip { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 10px; padding: 1px 8px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .auth-chip.static { background: #f1f0fb; color: #3f3a7a; }
     .auth-chip.incentive { background: #fff4d6; color: #8a6100; }
-    .ai-chip { display: inline-block; font-size: 12px; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #eef6f6; color: #2f7c83; }
+    .ai-chip { display: inline-block; font-size: 12px; padding: 2px 8px; margin: 2px 4px 2px 0; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .ai-url { display: block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .activity { font-size: 13px; white-space: nowrap; }
     .act-label { display: inline-block; min-width: 70px; color: #5f6f70; font-size: 12px; font-weight: 600; }

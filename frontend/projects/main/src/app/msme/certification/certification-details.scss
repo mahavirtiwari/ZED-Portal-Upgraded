@@ -13,7 +13,7 @@
 .cd-head { align-items: center; }
 .crumb { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
 .crumb a { color: #7a8a8b; text-decoration: none; }
-.crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+.crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
 .cd-head .registration-title { font-size: 22px; margin: 0; }
 .cd-actions { display: flex; gap: 8px; }
 .cd-actions .btn { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
@@ -21,7 +21,7 @@
 .cd-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px; align-items: start; }
 @media (max-width: 991.98px) { .cd-grid { grid-template-columns: minmax(0, 1fr); } }
 .cd-card { background: #fff; border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
-.cd-title { font-size: 15px; font-weight: 700; color: #2f7c83; margin: 0 0 10px; }
+.cd-title { font-size: 15px; font-weight: 700; color: var(--zt-mid2, #2f7c83); margin: 0 0 10px; }
 // 2026-11-15 (the user, as the profile): each section under a heading bar in the applicant pages' colours.
 .cd-card { padding: 0; overflow: hidden; border-color: #cfe3e3; border-radius: 10px; }
 .cd-card > .cd-title { margin: 0; padding: 9px 14px; color: #fff; background: linear-gradient(137.03deg, #6DC5C5 5.05%, #4C9A9B 86.85%); }

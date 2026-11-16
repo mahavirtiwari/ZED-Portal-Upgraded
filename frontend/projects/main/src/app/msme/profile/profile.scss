@@ -43,7 +43,7 @@ label.panel-item {
   .page-head { align-items: center; }
   .crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
   .crumb a { color: #7a8a8b; text-decoration: none; }
-  .crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+  .crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
   .registration-title { font-size: 22px; }
   .summary { display: flex; align-items: center; gap: 14px; background: linear-gradient(90deg, #eef8f6, #fff 70%); }
   .ent { flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 20px;
@@ -78,7 +78,7 @@ label.panel-item {
   .pcols .pcard-head h3 { color: #fff; font-size: 15px; }
   .pcols .pcard-head h3 img { width: 18px; height: 18px; filter: brightness(0) invert(1); }
   .pcols .pcard-head .more { color: #fff; text-decoration: underline; }
-  .pcols .pcard-head .btn-outline-primary { background: #fff; border-color: #fff; color: #2f7c83; font-weight: 600; }
+  .pcols .pcard-head .btn-outline-primary { background: #fff; border-color: #fff; color: var(--zt-mid2, #2f7c83); font-weight: 600; }
   // Lines under and right of every cell; the last row's and column's are hidden under the card's edge.
   .pcols .pgrid { grid-template-columns: 18% 32% 18% 32%; gap: 0; margin: 0 -1px -1px 0; }
   .pcols .pgrid > div { display: contents; }

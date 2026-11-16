@@ -29,7 +29,7 @@
   margin: 0 auto 12px;
   border-radius: 50%;
   background: #eef6f6;
-  color: #2f7c83;
+  color: var(--zt-mid2, #2f7c83);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -62,7 +62,7 @@
   &:focus { outline: none; --otp-line: #45a5ad; }
 }
 .reg-otp-timer { font-size: 13px; color: #5f6f70; margin: 12px 0 0; }
-.reg-otp-resend { display: inline-block; margin: 8px 0 0; padding: 0; color: #2f7c83; font-weight: 600; text-decoration: none; }
+.reg-otp-resend { display: inline-block; margin: 8px 0 0; padding: 0; color: var(--zt-mid2, #2f7c83); font-weight: 600; text-decoration: none; }
 .reg-modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

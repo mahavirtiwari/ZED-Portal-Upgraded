@@ -442,10 +442,10 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-stat-label { font-size: 13px; color: #5f6f70; font-weight: 600; }
     .acc-list { padding: 16px; }
     .acc-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
-      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .acc-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
-    .acc-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .acc-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
+      color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .acc-tab:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
+    .acc-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .acc-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
     .acc-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 12px; }
@@ -453,7 +453,7 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-showing { font-size: 13px; }
     .acc-table { margin-bottom: 8px; }
     .acc-table td { vertical-align: middle; }
-    .acc-table tbody tr:hover td { background: #f7fbfb; }
+    .acc-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
     .acc-table tr.is-blocked td { background: #fbf7f7; }
     .acc-user { display: flex; align-items: center; gap: 12px; min-width: 200px; }
     .acc-who { min-width: 0; }
@@ -468,7 +468,7 @@ const typeHints: Readonly<Record<number, string>> = {
     .acc-contact { min-width: 220px; }
     .acc-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; overflow-wrap: anywhere; }
     .acc-contact .acc-mail { font-size: 13px; color: #5f6f70; }
-    .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: #2f7c83; stroke-width: 1.4; stroke-linejoin: round; }
+    .acc-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
     .acc-actions-cell .row-actions { flex-wrap: nowrap; }
     .acc-empty .btn-link { font-weight: 600; }
 
@@ -485,7 +485,7 @@ const typeHints: Readonly<Record<number, string>> = {
     .choice-card strong { color: #23474a; }
     .acc-type-fixed { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .acc-type-fixed .zed-chip { margin: 0; }
-    .acc-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: #2f7c83; font-size: 13px; }
+    .acc-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); font-size: 13px; }
 
     @media (max-width: 767.98px) {
       .acc-stats { gap: 8px; }
@@ -512,16 +512,16 @@ const typeHints: Readonly<Record<number, string>> = {
     }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
     /* The scope of a Master Admin / Ministry login. */
-    .acc-scope { color: #2f7c83; }
+    .acc-scope { color: var(--zt-mid2, #2f7c83); }
     .acc-scope-box { margin-top: 16px; border: 1px solid #b9dfe2; background: #f5fafa; border-radius: 12px; padding: 14px 16px; }
     .acc-scope-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
     .acc-scope-top h4 { color: #1f5c61; }
     .acc-scope-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; align-items: start; margin-top: 12px; }
     .acc-scope-label { font-weight: 700; font-size: 13.5px; color: #23474a; padding-top: 6px; }
     .acc-seg { display: inline-flex; justify-self: start; width: max-content; max-width: 100%; border: 1px solid #45a5ad; border-radius: 10px; overflow: hidden; }
-    .acc-seg-btn { border: 0; background: #d9eef0; color: #174a4e; font-weight: 600; font-size: 13.5px; padding: 7px 16px; }
+    .acc-seg-btn { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 13.5px; padding: 7px 16px; }
     .acc-seg-btn + .acc-seg-btn { border-left: 1px solid #b9dfe2; }
-    .acc-seg-btn.on { background: #23656b; color: #fff; }
+    .acc-seg-btn.on { background: var(--zt-dark, #23656b); color: #fff; }
     .acc-levels { display: flex; flex-wrap: wrap; gap: 8px; }
     .acc-level { display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cfd9da; border-radius: 10px; padding: 6px 12px; font-size: 13.5px; background: #fff; cursor: pointer; margin: 0; }
     .acc-level.on { border-color: #45a5ad; background: #e4f3f4; color: #1f5c61; font-weight: 600; }
@@ -530,7 +530,7 @@ const typeHints: Readonly<Record<number, string>> = {
     @media (max-width: 640px) { .acc-scope-row { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
     /* The Dashboard Admin's screens. */
     .acc-screens-links { font-size: 13px; color: #8a9899; }
-    .acc-screens-links .btn-link { font-size: 13px; font-weight: 600; color: #2f7c83; text-decoration: none; }
+    .acc-screens-links .btn-link { font-size: 13px; font-weight: 600; color: var(--zt-mid2, #2f7c83); text-decoration: none; }
     .acc-screen-portal + .acc-screen-portal { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #b9dfe2; }
     .acc-portal-name { font-size: 14px; font-weight: 700; color: #1f5c61; margin: 8px 0 0; }
     .acc-screen-group { font-size: 11.5px; font-weight: 700; color: #5f6f70; text-transform: uppercase; letter-spacing: .04em; margin: 10px 0 6px; }

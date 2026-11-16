@@ -144,10 +144,10 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     .list-toolbar .search { flex: 1 1 260px; max-width: 420px; }
     .list-toolbar .seg { margin-left: auto; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     /* 2026-11-15 (the user): the category is a filter beside the search, not a row of chips. */
     .cat-filter { display: flex; align-items: center; gap: 8px; margin: 0; flex: 0 1 300px; }
@@ -157,7 +157,7 @@ type StatusFilter = 'all' | 'active' | 'inactive';
 
     .tech-table { table-layout: fixed; width: 100%; min-width: 900px; margin-bottom: 8px; }
     .tech-table td { vertical-align: top; overflow-wrap: anywhere; padding-top: 14px; padding-bottom: 14px; }
-    .tech-table tbody tr:hover { background: #f7fbfb; }
+    .tech-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .tech-table tr.is-off .tech-name, .tech-table tr.is-off .code-badge { opacity: .65; }
     .code-badge { display: inline-flex; align-items: center; justify-content: center; min-height: 30px; padding: 3px 10px; border-radius: 15px; background: #eef6f6;
       color: #23474a; font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }

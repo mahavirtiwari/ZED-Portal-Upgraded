@@ -4,7 +4,7 @@
 // table, footer with conformance and remarks). Global (not a component style) so every page shares one look; every class
 // is prefixed "zp-".
 
-$zp-teal: #23656b;
+$zp-teal: var(--zt-dark, #23656b);
 $zp-accent: #2f8a92;
 $zp-line: #dce7e8;
 $zp-soft-line: #e3ecee;
@@ -75,7 +75,7 @@ $zp-muted: #5f6f70;
 // 2026-11-14 (approved): a checkpoint with its answer and, under it, its own evidences.
 .zp-cp.zp-cp-item { display: block; }
 .zp-cp-line { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 10px; align-items: start; }
-.zp-cp-no { width: 22px; height: 22px; border-radius: 50%; background: #d9eef0; color: #174a4e; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.zp-cp-no { width: 22px; height: 22px; border-radius: 50%; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .zp-cp-ev { margin: 8px 0 0 34px; border: 1px solid $zp-line; border-radius: 6px; overflow: hidden; }
 .zp-cp-item > .zp-cp-note { margin-left: 34px; margin-top: 6px; color: #8a6100; }
 .zp-ev-table { width: 100%; border-collapse: collapse; margin: 0; }
@@ -98,9 +98,9 @@ $zp-muted: #5f6f70;
 // ---- Small action buttons of the parameters layout (primary actions keep their filled style) ---------------------------
 body .btn.zp-btn, body .btn.zp-btn.btn-primary, body .btn.zp-btn.btn-outline-primary, body .btn.zp-btn.btn-default {
   height: 26px; padding: 0 10px; margin: 0; font-size: 12px; font-weight: 600; line-height: 24px; text-transform: none;
-  border: 1px solid #d9eef0 !important; border-radius: 7px; background: #d9eef0 !important; color: #174a4e !important; box-shadow: none; filter: none;
+  border: 1px solid var(--zt-soft, #d9eef0) !important; border-radius: 7px; background: var(--zt-soft, #d9eef0) !important; color: var(--zt-ink, #174a4e) !important; box-shadow: none; filter: none;
 }
-body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: #c5e5e8 !important; border-color: #c5e5e8 !important; color: #123b3e !important; }
+body .btn.zp-btn:hover, body .btn.zp-btn:focus-visible { background: var(--zt-soft-2, #c5e5e8) !important; border-color: var(--zt-soft-2, #c5e5e8) !important; color: var(--zt-ink, #123b3e) !important; }
 
 @media (max-width: 991px) {
   .zp-layout { grid-template-columns: minmax(0, 1fr); gap: 12px; }

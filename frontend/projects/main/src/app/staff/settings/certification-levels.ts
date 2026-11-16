@@ -673,7 +673,7 @@ const API = '/api/staff/settings/levels';
     .modal .lv-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
     .lv-tabs { display: flex; gap: 4px; border-bottom: 1px solid #dfe9ea; margin: -4px 0 16px; }
     .lv-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
-    .lv-tab:hover { color: #2f7c83; }
+    .lv-tab:hover { color: var(--zt-mid2, #2f7c83); }
     .lv-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
     .lv-nc { border: 1px dashed #9fcfd3; border-radius: 6px; padding: 10px 12px; }
     .lv-nc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }

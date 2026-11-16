@@ -41,8 +41,8 @@ const NO_COUNTS: MonitoringCounts = { NotStarted: 0, InProgress: 0, Qc: 0, Nc: 0
     .status-tabs .btn { border-radius: 6px; }
     .status-tabs .btn { font-size: 13px; font-weight: 600; }
     .status-tabs .btn .badge { background: #eef6f6; color: #23474a; margin-left: 4px; }
-    .status-tabs .btn.active { background: #23656b; border-color: #23656b; color: #fff; }
-    .status-tabs .btn.active .badge { background: #fff; color: #2f7c83; }
+    .status-tabs .btn.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
+    .status-tabs .btn.active .badge { background: #fff; color: var(--zt-mid2, #2f7c83); }
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
   `,
 })

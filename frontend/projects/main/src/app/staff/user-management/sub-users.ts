@@ -270,7 +270,7 @@ const API = '/api/staff/sub-users';
     .su-showing { font-size: 13px; }
     .su-table { margin-bottom: 8px; }
     .su-table td { vertical-align: middle; }
-    .su-table tbody tr:hover td { background: #f7fbfb; }
+    .su-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
     .su-table tr.is-blocked td { background: #fbf7f7; }
     .su-user { display: flex; align-items: center; gap: 12px; min-width: 180px; }
     .su-who { min-width: 0; }
@@ -307,7 +307,7 @@ const API = '/api/staff/sub-users';
     .toggle-card.form-switch { padding-left: 12px; }
     .toggle-card.form-switch .form-check-input { flex: none; float: none; margin: 3px 0 0; width: 2em; border: 1px solid #888; }
     .toggle-card strong { color: #23474a; }
-    .su-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: #2f7c83; font-size: 13px; }
+    .su-mail-note { padding: 8px 12px; border-radius: 8px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); font-size: 13px; }
 
     @media (max-width: 767.98px) {
       .su-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }

@@ -160,8 +160,8 @@ const KIND_TONES: Record<ChangeKind, string> = {
     .lgd-step > div { min-width: 0; font-size: 13.5px; color: #3b4b4c; overflow-wrap: anywhere; }
     .lgd-step > div > strong { display: block; color: #23474a; font-size: 14.5px; margin-bottom: 2px; }
     .lgd-no { flex: 0 0 30px; width: 30px; height: 30px; border-radius: 15px; display: inline-grid; place-items: center; font-weight: 800; font-size: 14px;
-      background: #eef6f6; color: #2f7c83; }
-    .lgd-step.is-now { border-color: #45a5ad; box-shadow: 0 0 0 1px #45a5ad inset; background: #f7fbfb; }
+      background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
+    .lgd-step.is-now { border-color: #45a5ad; box-shadow: 0 0 0 1px #45a5ad inset; background: var(--zt-pale, #f7fbfb); }
     .lgd-step.is-now .lgd-no { background: #45a5ad; color: #fff; }
     .lgd-step.is-done .lgd-no { background: #e6f6ec; color: #1e7a3c; }
 
@@ -170,7 +170,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
     .lgd-upload input[type=file] { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; }
     .lgd-drop:has(+ input:focus-visible) { outline: 2px solid #45a5ad; outline-offset: 2px; }
     .lgd-drop { display: flex; align-items: center; gap: 14px; margin: 0; padding: 16px 18px; border: 2px dashed #cbd9da; border-radius: 12px;
-      background: #f7fbfb; color: #45a5ad; cursor: pointer; font-weight: 400; }
+      background: var(--zt-pale, #f7fbfb); color: #45a5ad; cursor: pointer; font-weight: 400; }
     .lgd-drop:hover { border-color: #45a5ad; background: #eef6f6; }
     .lgd-drop.has-file { border-style: solid; border-color: #b9dfc8; background: #f3faf5; color: #2e9e5b; }
     .lgd-drop svg { flex: none; }
@@ -188,7 +188,7 @@ const KIND_TONES: Record<ChangeKind, string> = {
     .lgd-summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; margin-bottom: 8px; }
     .lgd-kind { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border: 1px solid #dfe9ea; border-left: 4px solid #cbd9da; border-radius: 10px;
       background: #fff; cursor: pointer; font-weight: 400; color: #232527; }
-    .lgd-kind.is-on { background: #f7fbfb; }
+    .lgd-kind.is-on { background: var(--zt-pale, #f7fbfb); }
     .lgd-kind.is-new { border-left-color: #2e9e5b; }
     .lgd-kind.is-rename { border-left-color: #45a5ad; }
     .lgd-kind.is-drop { border-left-color: #a8303a; }
@@ -199,11 +199,11 @@ const KIND_TONES: Record<ChangeKind, string> = {
 
     .lgd-badge { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
     .lgd-badge.is-new { background: #e6f6ec; color: #1e7a3c; }
-    .lgd-badge.is-rename { background: #eef6f6; color: #2f7c83; }
+    .lgd-badge.is-rename { background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .lgd-badge.is-drop { background: #fdeef0; color: #a8303a; }
     .lgd-list table { min-width: 680px; }
     .lgd-list td { vertical-align: middle; overflow-wrap: anywhere; }
-    .lgd-list tr.is-ticked { background: #f7fbfb; }
+    .lgd-list tr.is-ticked { background: var(--zt-pale, #f7fbfb); }
     .lgd-list s { color: #8a9899; text-decoration: line-through; }
 
     .form-actions { align-items: center; }

@@ -327,7 +327,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
     .sv-showing { font-size: 13px; margin-left: auto; }
     .sv-table { margin-bottom: 8px; }
     .sv-table td { vertical-align: middle; }
-    .sv-table tbody tr:hover td { background: #f7fbfb; }
+    .sv-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
     .sv-table tr.is-blocked td { background: #fbf7f7; }
     .sv-user { display: flex; align-items: flex-start; gap: 12px; min-width: 220px; }
     .sv-who { min-width: 0; display: flex; flex-direction: column; }

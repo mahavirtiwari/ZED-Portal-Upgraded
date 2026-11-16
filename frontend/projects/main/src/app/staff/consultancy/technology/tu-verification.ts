@@ -128,7 +128,7 @@ interface DecisionForm {
       background: #eef6f6; border: 1px solid #dfe9ea; border-radius: 10px; color: #23474a; font-size: 15px; font-weight: 700; text-align: left; cursor: pointer;
     }
     .section-toggle:hover { border-color: #45a5ad; }
-    .section-toggle::after { content: '+'; font-size: 20px; line-height: 1; color: #2f7c83; }
+    .section-toggle::after { content: '+'; font-size: 20px; line-height: 1; color: var(--zt-mid2, #2f7c83); }
     .section-toggle.open { border-radius: 10px 10px 0 0; }
     .section-toggle.open::after { content: '−'; }
     .section-body { border: 1px solid #dfe9ea; border-top: 0; border-radius: 0 0 10px 10px; padding: 12px; margin-bottom: 0; }

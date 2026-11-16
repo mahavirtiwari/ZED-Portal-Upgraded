@@ -128,7 +128,7 @@ export function asUtc(value: string | null): string | null {
     .am-hint { font-size: 13px; color: #5f6f70; margin: 0; overflow-wrap: anywhere; }
     .am-release { flex: none; }
     .am-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
-    .am-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #dfe9ea; border-radius: 10px; background: #f7fbfb; min-width: 0; }
+    .am-tile { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #dfe9ea; border-radius: 10px; background: var(--zt-pale, #f7fbfb); min-width: 0; }
     .am-label { font-size: 12px; font-weight: 600; color: #5f6f70; }
     .am-value { font-size: 14px; font-weight: 600; color: #23474a; overflow-wrap: anywhere; }
     .am-note { margin: 0 0 16px; padding: 10px 12px; border-radius: 10px; background: #f6f8f8; font-size: 14px; color: #3b4b4c; }

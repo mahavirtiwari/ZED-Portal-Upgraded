@@ -280,10 +280,10 @@ export function assessorTypeLabel(type: string | null | undefined): string {
 
     .as-list { padding: 16px; }
     .as-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
-      color: #174a4e; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
-    .as-tab:hover { background: #c5e5e8; border-color: #45a5ad; }
-    .as-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .as-tab { display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
+      color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+    .as-tab:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
+    .as-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .as-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
     .as-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 12px; }
@@ -294,7 +294,7 @@ export function assessorTypeLabel(type: string | null | undefined): string {
 
     .as-table { margin-bottom: 8px; }
     .as-table td { vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
-    .as-table tbody tr:hover td { background: #f7fbfb; }
+    .as-table tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
     .as-table tr.is-blocked td { background: #fbf7f7; }
     .as-sno { color: #5f6f70; }
     .as-user { display: flex; align-items: center; gap: 12px; min-width: 175px; }
@@ -309,13 +309,13 @@ export function assessorTypeLabel(type: string | null | undefined): string {
     .as-type-cell .zed-chip { margin: 0 0 4px; white-space: nowrap; }
     .sector-chip { display: table; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; background: #e6f6ec; color: #1e7a3c; }
     .sector-chip.sector-services { background: #f1f0fb; color: #3f3a7a; }
-    .sector-chip.sector-both { background: #eef6f6; color: #2f7c83; }
+    .sector-chip.sector-both { background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .sector-chip.sector-none { background: #fff4d6; color: #8a6100; }
     .as-contact { min-width: 230px; }
     .as-contact span { display: flex; align-items: center; gap: 6px; line-height: 1.6; }
     .as-contact .as-mail { font-size: 13px; color: #5f6f70; }
     .as-contact .as-address { display: -webkit-box; font-size: 12px; color: #6b7f80; line-height: 1.45; margin-top: 2px; }
-    .as-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: #2f7c83; stroke-width: 1.4; stroke-linejoin: round; }
+    .as-contact svg { flex: 0 0 13px; width: 13px; height: 13px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.4; stroke-linejoin: round; }
     .as-contact-under { margin: 8px 0 0 50px; min-width: 0; }
     .clamp-2 { -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .as-agency-cell { min-width: 150px; }

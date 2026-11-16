@@ -282,7 +282,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .page-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .sections-table { table-layout: fixed; width: 100%; min-width: 760px; margin-bottom: 0; }
     .sections-table td { overflow-wrap: anywhere; vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
-    .sections-table tbody tr:hover { background: #f7fbfb; }
+    .sections-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .sections-table tr.is-off td { color: #8a9899; }
     .row-actions .btn { text-transform: none; }
     .order-no {
@@ -304,7 +304,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
       color: #23474a; font-weight: 700; padding: 0; }
     .st-icon:hover:not(:disabled) { border-color: #45a5ad; background: #eef6f6; }
     .st-icon:disabled { opacity: .35; cursor: default; }
-    .st-edit { border: 1px solid #9cc9cd; background: #fff; color: #23656b; border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
+    .st-edit { border: 1px solid #9cc9cd; background: #fff; color: var(--zt-dark, #23656b); border-radius: 6px; padding: 4px 14px; font-weight: 600; font-size: 13px; }
     .st-edit:hover:not(:disabled) { background: #eef6f6; }
     .st-switch { display: inline-flex; align-items: center; gap: 5px; margin: 0 4px; font-size: 12.5px; font-weight: 600; color: #1e7a3c; cursor: pointer; text-transform: none; }
     .st-switch.off { color: #8a9899; }
@@ -313,7 +313,7 @@ export function sectionId(title: string, taken: readonly string[]): string {
     .st-track::after { content: ''; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left .15s; }
     .st-switch.off .st-track { background: #c3cdce; }
     .st-switch.off .st-track::after { left: 2px; }
-    .st-switch input:focus-visible + .st-track { outline: 2px solid #23656b; outline-offset: 2px; }
+    .st-switch input:focus-visible + .st-track { outline: 2px solid var(--zt-dark, #23656b); outline-offset: 2px; }
     @media (max-width: 767.98px) { .st-tiles { grid-template-columns: minmax(0, 1fr); } }
     .scope { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; }
     .scope .zed-chip { font-size: 11px; padding: 1px 8px; }
@@ -323,10 +323,10 @@ export function sectionId(title: string, taken: readonly string[]): string {
 
     /* The pop-up (as App Forms'). */
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .modal .section-dialog .form-grid { grid-template-columns: 170px minmax(0, 1fr); }
     .section-dialog .form-grid > .label { display: block; text-align: left; white-space: normal; text-transform: none; padding: 0; font-size: 14px;
       font-weight: 600; color: #3b4b4c; background: none; border-radius: 0; }

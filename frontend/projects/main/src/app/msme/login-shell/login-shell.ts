@@ -103,27 +103,27 @@ export const DEFAULT_BANNER = '/Images/HomePage/default-banner.webp';
     .ml-ministry { height: 84px; display: block; }
     .ml-zed { height: 76px; display: block; margin-left: auto; }
     .ml-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0 4px; }
-    .ml-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #23656b; margin: 0 0 8px; }
+    .ml-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--zt-dark, #23656b); margin: 0 0 8px; }
     .ml-title { font-size: 34px; font-weight: 700; color: #16302f; line-height: 1.15; margin: 0; }
-    .ml-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: #23656b; margin: 14px 0; }
+    .ml-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: var(--zt-dark, #23656b); margin: 14px 0; }
     .ml-sub { font-size: 15.5px; color: #4f6062; line-height: 1.6; margin: 0 0 20px; }
     .ml-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
-    .ml-banner { display: flex; align-items: center; gap: 14px; background: #23656b; border-radius: 12px; padding: 14px 18px; margin: 0 0 18px; }
+    .ml-banner { display: flex; align-items: center; gap: 14px; background: var(--zt-dark, #23656b); border-radius: 12px; padding: 14px 18px; margin: 0 0 18px; }
     .ml-cog { width: 42px; height: 42px; flex: none; fill: #9fd3d6; }
     .ml-apna { margin: 0; font-family: 'Segoe Script', 'Brush Script MT', 'Comic Sans MS', cursive; font-size: 32px; line-height: 1.15; color: #fff; }
     .ml-apna-sub { margin: 4px 0 0; font-size: 13px; color: #d9efef; }
     .ml-benefits { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
     .ml-benefits li { background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 12px 14px; }
-    .ml-benefits svg { width: 22px; height: 22px; fill: #23656b; display: block; }
+    .ml-benefits svg { width: 22px; height: 22px; fill: var(--zt-dark, #23656b); display: block; }
     .ml-benefits strong { display: block; font-size: 14px; color: #1d2b2c; margin-top: 6px; }
     .ml-benefits small { display: block; font-size: 12.5px; color: #5f6f70; line-height: 1.4; }
     .ml-levels { list-style: none; padding: 0; margin: 0 0 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
     .ml-level { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #dbe8e9; border-radius: 10px; padding: 10px 14px; font-weight: 700; color: #1d2b2c; font-size: 14px; }
     .ml-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
-    .ml-level-dot { width: 28px; height: 28px; border-radius: 50%; background: #d9eef0; flex: none; }
+    .ml-level-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--zt-soft, #d9eef0); flex: none; }
     .ml-side { display: flex; flex-direction: column; padding: 24px 40px 12px; min-width: 0; }
     .ml-side-top { display: flex; justify-content: flex-end; min-height: 32px; }
-    .ml-help { display: inline-flex; align-items: center; gap: 6px; color: #23656b; font-weight: 600; font-size: 14px; text-decoration: none; }
+    .ml-help { display: inline-flex; align-items: center; gap: 6px; color: var(--zt-dark, #23656b); font-weight: 600; font-size: 14px; text-decoration: none; }
     .ml-help svg { width: 16px; height: 16px; fill: currentColor; }
     .ml-card { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 440px; margin: 0 auto; padding: 16px 0; min-width: 0; }
     .ml-footer {

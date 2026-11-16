@@ -3,7 +3,7 @@
   .page-head { align-items: center; }
   .crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
   .crumb a { color: #7a8a8b; text-decoration: none; }
-  .crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+  .crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
   .registration-title { font-size: 22px; margin: 0; }
   // 2026-11-15 (design approved, second option): a heading bar in the applicant pages' colours over a ruled table per group.
   .dsec { background: #fff; border: 1px solid #cfe3e3; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
@@ -15,7 +15,7 @@
   .dtable td { padding: 9px 12px; border-bottom: 1px solid #dbe8e9; border-right: 1px solid #dbe8e9; vertical-align: middle; }
   .dtable td:last-child { border-right: 0; }
   .dtable tbody tr:last-child td { border-bottom: 0; }
-  .dtable tbody tr:hover td { background: #f7fbfb; }
+  .dtable tbody tr:hover td { background: var(--zt-pale, #f7fbfb); }
   .dn { width: 64px; text-align: center !important; color: #7a8a8b; }
   .da { width: 150px; text-align: center !important; }
   .dtable p { margin: 0; font-weight: 600; color: #1d2b2c; overflow-wrap: anywhere; }

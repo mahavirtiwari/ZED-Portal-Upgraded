@@ -2,7 +2,18 @@
 // (BrandingService puts <html data-zed-theme="..."> and the colours as --zt-dark / --zt-mid / --zt-accent): the menu bars,
 // buttons, table headings, pop-up title bars, active tabs and links take the theme's colours. Without the attribute nothing
 // here applies, so ZED Teal stays exactly as it is. !important: these must win over the pages' own colours.
+// ZED Teal's shades, for the styles that use these without a fallback (fee-structure.ts: its 8 kB style budget).
+:root { --zt-ink: #174a4e; --zt-mid2: #2f7c83; --zt-soft: #d9eef0; --zt-soft-2: #c5e5e8; --zt-pale: #f7fbfb; }
+
 html[data-zed-theme] {
+  // 2026-11-16: the shades the pages' own styles use (as var(--zt-…, today's teal)), made from the theme's colours: a deeper
+  // ink for text, the mid shade of links and icons, and the pale tints behind tabs, soft buttons and panels.
+  --zt-ink: color-mix(in srgb, var(--zt-dark) 78%, #000);
+  --zt-mid2: color-mix(in srgb, var(--zt-dark) 55%, var(--zt-mid));
+  --zt-soft: color-mix(in srgb, var(--zt-mid) 16%, #fff);
+  --zt-soft-2: color-mix(in srgb, var(--zt-mid) 26%, #fff);
+  --zt-pale: color-mix(in srgb, var(--zt-mid) 5%, #fff);
+
   // Menu bars (staff and MSME) and their accents.
   .zed-navbar, .topnav { background: var(--zt-dark) !important; }
   .zed-navbar .nav-link.active, .topnav .nav-link.active { border-bottom-color: var(--zt-accent) !important; }
@@ -13,8 +24,10 @@ html[data-zed-theme] {
     background-color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important;
   }
   .btn-primary:hover, .btn-primary:focus-visible, .ml-login:hover, .zl-login:hover { filter: brightness(1.12); }
-  .btn-outline-primary { color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; }
-  .btn-outline-primary:hover { background-color: var(--zt-dark) !important; color: #fff !important; }
+  // The soft buttons (Refresh, More filters…): the theme's pale tint, as the teal ones.
+  .btn-outline-primary { color: var(--zt-dark) !important; background-color: var(--zt-soft) !important; border-color: var(--zt-soft) !important; }
+  .btn-outline-primary:hover, .btn-outline-primary:focus-visible { background-color: var(--zt-soft-2) !important; border-color: var(--zt-soft-2) !important; }
+  .btn-outline-primary.active, .btn-outline-primary[aria-pressed='true'] { background-color: var(--zt-dark) !important; border-color: var(--zt-dark) !important; color: #fff !important; }
   // Not the menu bar's drop-down tabs and user button (btn-link too): they keep their light text on the dark bar.
   .btn-link:not(.nav-link) { color: var(--zt-dark) !important; }
 

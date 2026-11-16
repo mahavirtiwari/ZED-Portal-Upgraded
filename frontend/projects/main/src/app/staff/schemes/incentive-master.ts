@@ -194,10 +194,10 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .page-head { align-items: center; }
 
     .inc-groups { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
-      color: #174a4e; font-weight: 600; font-size: 14px; text-decoration: none; }
-    .inc-group-tab:hover { background: #c5e5e8; border-color: #45a5ad; color: #2f7c83; }
-    .inc-group-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .inc-group-tab { display: inline-flex; align-items: center; padding: 7px 18px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
+      color: var(--zt-ink, #174a4e); font-weight: 600; font-size: 14px; text-decoration: none; }
+    .inc-group-tab:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; color: var(--zt-mid2, #2f7c83); }
+    .inc-group-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .inc-group-cards { margin-left: auto; border-style: dashed; }
 
     .state-pick { display: flex; align-items: center; gap: 12px; max-width: 520px; margin-bottom: 16px; }
@@ -216,10 +216,10 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .inc-list-head .form-control { flex: 0 1 340px; min-width: 0; }
     .inc-list-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .seg-count { font-size: 12px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .seg button.active .seg-count { background: rgba(255,255,255,.25); color: #fff; }
     .lv-dot { display: inline-block; width: 9px; height: 9px; border-radius: 5px; }
@@ -241,7 +241,7 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .inc-card-name { flex: 1 1 auto; min-width: 0; }
     .inc-name { margin: 0 0 2px; font-size: 15px; font-weight: 700; color: #232527; overflow-wrap: anywhere; }
     .inc-card-name small { font-size: 12.5px; overflow-wrap: anywhere; }
-    .inc-highlight { align-self: flex-start; font-weight: 700; font-size: 14px; color: #2f7c83; background: #eef6f6; border-radius: 8px; padding: 3px 10px; overflow-wrap: anywhere; }
+    .inc-highlight { align-self: flex-start; font-weight: 700; font-size: 14px; color: var(--zt-mid2, #2f7c83); background: #eef6f6; border-radius: 8px; padding: 3px 10px; overflow-wrap: anywhere; }
     .inc-details { font-size: 13.5px; color: #3b4b4c; white-space: pre-wrap; overflow-wrap: anywhere; }
     .inc-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; }
     .lv-chip { display: inline-block; font-size: 12px; font-weight: 700; border-radius: 12px; padding: 2px 10px; }
@@ -259,7 +259,7 @@ export const GROUP_CARD: Record<IncentiveGroup['key'], string> = {
     .doc-slot { display: inline-flex; align-items: center; gap: 8px; border: 1px solid #dfe9ea; border-radius: 8px; padding: 3px 10px; font-size: 12.5px; }
     .doc-view { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; color: #23474a; text-decoration: none; }
     .doc-none { color: #8a9899; }
-    .doc-upload { margin: 0; color: #2f7c83; font-weight: 600; cursor: pointer; }
+    .doc-upload { margin: 0; color: var(--zt-mid2, #2f7c83); font-weight: 600; cursor: pointer; }
     .doc-upload:hover { text-decoration: underline; }
 
     @media (max-width: 767.98px) {

@@ -357,7 +357,7 @@ export interface PaymentGatewayInfo {
     .muted { color: #6b7a7b; font-size: 13px; }
     .form-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
     .inv-sec { border-top: 1px solid #dfe9ea; margin-top: 14px; padding-top: 12px; }
-    .inv-title { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #2f7c83; margin: 0 0 8px; }
+    .inv-title { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--zt-mid2, #2f7c83); margin: 0 0 8px; }
     .inv-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .inv-short { max-width: 160px; }
     .inv-unit { max-width: 240px; }

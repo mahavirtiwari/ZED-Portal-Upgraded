@@ -3,7 +3,7 @@
 // A4 sheets; printed (Print / Download PDF = the browser's "Save as PDF"): each sheet starts an A4 page, no toolbar.
 
 .zed-report {
-  --rp-teal-d: #23656b;
+  --rp-teal-d: var(--zt-dark, #23656b);
   --rp-teal: #45a5ad;
   --rp-teal-l: #e6f3f4;
   --rp-orange: #ee7f22;

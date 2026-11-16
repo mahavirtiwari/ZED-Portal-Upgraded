@@ -104,8 +104,8 @@ export function submittedValues(data: string | null): string[] {
   `,
   styles: `
     .eh-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-    .eh-chip { border: 1px solid #d9eef0; background: #d9eef0; border-radius: 6px; padding: 3px 14px; font-weight: 500; color: #174a4e; }
-    .eh-chip.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .eh-chip { border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0); border-radius: 6px; padding: 3px 14px; font-weight: 500; color: var(--zt-ink, #174a4e); }
+    .eh-chip.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .timeline { border-left: 2px solid #d6e9eb; margin-left: 8px; padding-left: 20px; }
     .timeline.is-empty { border-left: 0; margin-left: 0; padding-left: 0; }
     .eh-day { color: #7a7d80; font-weight: 600; margin: 14px 0 6px -20px; padding-left: 0; background: #fff; position: relative; left: -10px; }

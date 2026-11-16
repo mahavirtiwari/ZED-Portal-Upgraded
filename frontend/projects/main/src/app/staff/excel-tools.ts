@@ -175,7 +175,7 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
     .xl-tile { border: 1px solid #dfe9ea; border-radius: 10px; padding: 8px 12px; background: #fff; text-align: left; color: #5f6f70; font-size: 13px; }
     .xl-tile b { font-size: 20px; display: block; }
     .xl-tile.active { border-color: #45a5ad; box-shadow: 0 0 0 2px rgba(69, 165, 173, 0.25); }
-    .xl-new b { color: #1e7a3c; } .xl-changed b { color: #2f7c83; } .xl-same b { color: #8a9899; } .xl-error b { color: #a8303a; }
+    .xl-new b { color: #1e7a3c; } .xl-changed b { color: var(--zt-mid2, #2f7c83); } .xl-same b { color: #8a9899; } .xl-error b { color: #a8303a; }
     .xl-table { max-height: 46vh; overflow: auto; border: 1px solid #eef3f3; border-radius: 8px; }
     .xl-table table { margin: 0; font-size: 13px; }
     .xl-table th { position: sticky; top: 0; background: #45a5ad; color: #fff; font-size: 12.5px; white-space: nowrap; }
@@ -183,7 +183,7 @@ export async function blobErrorMessage(err: unknown): Promise<string> {
     .xl-table tr.is-error td { background: #fffafa; }
     .xl-result { min-width: 180px; }
     .xl-tag { display: inline-block; font-size: 11.5px; font-weight: 700; border-radius: 10px; padding: 1px 8px; white-space: normal; }
-    .t-new { background: #e6f6ec; color: #1e7a3c; } .t-chg { background: #eef6f6; color: #2f7c83; } .t-same { background: #f2f4f4; color: #5f6f70; }
+    .t-new { background: #e6f6ec; color: #1e7a3c; } .t-chg { background: #eef6f6; color: var(--zt-mid2, #2f7c83); } .t-same { background: #f2f4f4; color: #5f6f70; }
     .t-err { background: #fdeef0; color: #a8303a; }
     .xl-was { color: #8a9899; text-decoration: line-through; font-size: 12px; margin-right: 4px; }
     @media (max-width: 575.98px) { .xl-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

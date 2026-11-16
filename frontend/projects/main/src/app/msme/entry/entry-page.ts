@@ -33,11 +33,11 @@ const MAX_ROWS = 20;
     .entry-tabs button { display: flex; align-items: center; gap: 10px; text-align: left; background: #fff; border: 1px solid #dfe9ea;
       border-radius: 10px; padding: 10px 12px; font-weight: 700; font-size: 14px; color: #23474a; }
     .entry-tabs button:hover { border-color: #9cc9cd; }
-    .entry-tabs button.active { border: 2px solid #2f7c83; padding: 9px 11px; }
+    .entry-tabs button.active { border: 2px solid var(--zt-mid2, #2f7c83); padding: 9px 11px; }
     .entry-tabs button.done { background: #eef8f2; border-color: #bfe3cb; }
     .entry-tabs button.done.active { border-color: #1e7a3c; }
     .entry-tabs .st-num { flex: none; width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; background: #eef6f6;
-      color: #2f7c83; font-size: 13px; font-weight: 800; }
+      color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 800; }
     .entry-tabs button.done .st-num { background: #1e7a3c; color: #fff; }
     .entry-tabs button.is-nc .st-num { background: #f8d9d5; color: #c0392b; }
     .entry-tabs .st-text { min-width: 0; }

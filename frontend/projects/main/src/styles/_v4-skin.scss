@@ -7,7 +7,7 @@
 // buttons, tabs, pop-ups, notes, empty lists and the loading overlay.
 
 $teal: var(--zt-mid, #45a5ad);
-$teal-dark: var(--zt-dark, #2f7c83);
+$teal-dark: var(--zt-dark, var(--zt-mid2, #2f7c83));
 $teal-ink: #23474a;
 $teal-tint: #eef6f6;
 $line: #dfe9ea;
@@ -177,7 +177,7 @@ input[type='file'].form-control { padding: 6px 8px; }
 // 2026-11-13 (option B, approved): every button filled. The main action solid teal (var(--zt-dark, #23656b), 6.4:1 with white text).
 .btn-primary,
 .btn-primary:focus { background-color: var(--zt-dark, #23656b); border: 1px solid var(--zt-dark, #23656b); color: #fff; }
-.btn-primary:hover { background-color: var(--zt-dark, #174a4e); border-color: var(--zt-dark, #174a4e); color: #fff; filter: none; }
+.btn-primary:hover { background-color: var(--zt-dark, var(--zt-ink, #174a4e)); border-color: var(--zt-dark, var(--zt-ink, #174a4e)); color: #fff; filter: none; }
 .btn-primary:disabled, .btn-primary.disabled { background-color: #9fc5c8; border-color: #9fc5c8; color: #fff; }
 // The old grey "default" button (BACK, CANCEL, RESET, BLOCK): a quiet outlined button.
 .btn.btn-default,

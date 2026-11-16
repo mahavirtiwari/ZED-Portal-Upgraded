@@ -36,8 +36,8 @@ body {
 // Sign-in pages, 2026-11-08 (option A): one teal for buttons and links (#23656b, contrast 6.4:1 with white text), the light
 // teal only as an accent, soft fields, and no browser autofill blue.
 .zed-login {
-  .btn-primary, .btn-primary:focus, .btn-primary:disabled { background-color: #23656b; border-color: #23656b; color: #fff; }
-  .btn-primary:hover { background-color: #174a4e; border-color: #174a4e; filter: none; }
+  .btn-primary, .btn-primary:focus, .btn-primary:disabled { background-color: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
+  .btn-primary:hover { background-color: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); filter: none; }
   .form-control { background-color: #f7fafa; border-color: #d3dfe1; color: #1b2a2c; }
   .form-control:focus { background-color: #fff; }
   input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus {
@@ -46,7 +46,7 @@ body {
     caret-color: #1b2a2c;
     transition: background-color 9999s ease-out 0s;
   }
-  a { color: #23656b; }
+  a { color: var(--zt-dark, #23656b); }
 }
 
 // .btn-default came from Bootstrap 3; the old site restyled it in site.css.
@@ -62,26 +62,26 @@ body {
 // A PDF link (2026-11-12): a small red "PDF" tag with its name, tinted once opened (the old icon pictures did not exist).
 .pdf-chip {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border: 1px solid #cfe0e2; border-radius: 7px;
-  background: #fff; color: #23656b; font-size: 13px; font-weight: 600; line-height: 1.3; white-space: nowrap; vertical-align: middle;
+  background: #fff; color: var(--zt-dark, #23656b); font-size: 13px; font-weight: 600; line-height: 1.3; white-space: nowrap; vertical-align: middle;
   text-decoration: none;
 }
 .pdf-chip .pdf-tag { background: #c0392b; color: #fff; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; border-radius: 4px; padding: 1px 4px; }
 .pdf-chip.opened { background: #e6f2f3; }
-a:hover > .pdf-chip, a:focus-visible > .pdf-chip { border-color: #23656b; }
+a:hover > .pdf-chip, a:focus-visible > .pdf-chip { border-color: var(--zt-dark, #23656b); }
 
 // ZED teal primary buttons. 2026-11-13 (option B, approved): every button filled — the main action solid teal, the others
 // a soft fill (teal, amber warning, red danger); the staff pages get the same from styles/v4-skin and v4-blocks.
 .btn-primary,
 .btn-primary:focus {
   color: #fff;
-  background-color: #23656b;
-  border-color: #23656b;
+  background-color: var(--zt-dark, #23656b);
+  border-color: var(--zt-dark, #23656b);
 }
-.btn-primary:hover { color: #fff; background-color: #174a4e; border-color: #174a4e; filter: none; }
+.btn-primary:hover { color: #fff; background-color: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); filter: none; }
 .btn-primary:disabled, .btn-primary.disabled { color: #fff; background-color: #9fc5c8; border-color: #9fc5c8; }
-.btn.btn-outline-primary { color: #174a4e; background: #d9eef0; border-color: #d9eef0; }
-.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: #123b3e; background: #c5e5e8; border-color: #c5e5e8; }
-.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { color: #fff; background: #23656b; border-color: #23656b; }
+.btn.btn-outline-primary { color: var(--zt-ink, #174a4e); background: var(--zt-soft, #d9eef0); border-color: var(--zt-soft, #d9eef0); }
+.btn.btn-outline-primary:hover, .btn.btn-outline-primary:focus-visible { color: var(--zt-ink, #123b3e); background: var(--zt-soft-2, #c5e5e8); border-color: var(--zt-soft-2, #c5e5e8); }
+.btn.btn-outline-primary.active, .btn.btn-outline-primary[aria-pressed='true'] { color: #fff; background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); }
 .btn.btn-outline-danger { color: #8f1f15; background: #fde3e1; border-color: #fde3e1; }
 .btn.btn-outline-danger:hover { color: #7a1a11; background: #f9cfcb; border-color: #f9cfcb; }
 .btn.btn-outline-warning { color: #7a4700; background: #fff1d6; border-color: #fff1d6; }

@@ -95,7 +95,7 @@ interface SentLink {
     .prl-steps li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 20px; border: 1px solid #dfe9ea;
       background: #fff; color: #5f6f70; font-size: 13px; font-weight: 600; }
     .prl-step-no { flex: none; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
-      background: #eef6f6; color: #2f7c83; font-size: 12px; }
+      background: #eef6f6; color: var(--zt-mid2, #2f7c83); font-size: 12px; }
     .prl-steps li.is-on { border-color: #45a5ad; color: #23474a; background: #eef6f6; }
     .prl-steps li.is-on .prl-step-no { background: #45a5ad; color: #fff; }
     .prl-steps li.is-done .prl-step-no { background: #2e9e5b; color: #fff; }

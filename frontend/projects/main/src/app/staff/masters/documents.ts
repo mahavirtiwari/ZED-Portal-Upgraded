@@ -357,17 +357,17 @@ interface DocumentIcon {
     .doc-toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
     .doc-search { flex: 1 1 260px; max-width: 420px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .role-filter { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid #eef3f3; }
     .role-filter-label { font-size: 13px; font-weight: 600; color: #5f6f70; margin-right: 4px; }
-    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; border: 1px solid #d9eef0; background: #d9eef0;
-      color: #174a4e; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .role-pill:hover { background: #c5e5e8; border-color: #45a5ad; }
+    .role-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 6px; border: 1px solid var(--zt-soft, #d9eef0); background: var(--zt-soft, #d9eef0);
+      color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; cursor: pointer; }
+    .role-pill:hover { background: var(--zt-soft-2, #c5e5e8); border-color: #45a5ad; }
     .role-pill.none:not(.active) { color: #8a9899; }
-    .role-pill.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .role-pill.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .pill-count { font-size: 11px; border-radius: 10px; padding: 0 7px; background: #eef6f6; color: #23474a; }
     .role-pill.active .pill-count { background: rgba(255,255,255,.25); color: #fff; }
 
@@ -378,16 +378,16 @@ interface DocumentIcon {
     .tone-doc { background: #f1f0fb; color: #3f3a7a; }
     .tone-sheet { background: #e7f5ec; color: #1e7a3c; }
     .tone-slides { background: #fff4d6; color: #8a6100; }
-    .tone-image, .tone-other { background: #eef6f6; color: #2f7c83; }
+    .tone-image, .tone-other { background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .tone-video { background: #23474a; color: #fff; }
     .doc-item-main { flex: 1 1 auto; min-width: 0; }
     .doc-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .doc-title strong { color: #232527; font-size: 15px; overflow-wrap: anywhere; }
-    .kind-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #eef6f6; color: #2f7c83; }
+    .kind-badge { font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .kind-badge.video { background: #f1f0fb; color: #3f3a7a; }
     .doc-desc { color: #5f6f70; font-size: 13.5px; margin: 3px 0 6px; overflow-wrap: anywhere; }
     .doc-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
-    .doc-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #eef6f6; color: #2f7c83; }
+    .doc-chip { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .doc-chip.legacy { background: #fff4d6; color: #8a6100; }
     .doc-added { font-size: 12px; color: #5f6f70; margin-left: 4px; }
     .shown-on { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 2px; }
@@ -418,7 +418,7 @@ interface DocumentIcon {
     .kind-card:hover { border-color: #45a5ad; }
     .kind-card.active { border-color: #45a5ad; background: #f4fafa; box-shadow: inset 0 0 0 1px #45a5ad; }
     .doc-drop { position: relative; display: flex !important; flex-direction: column; align-items: center; gap: 4px; padding: 22px 16px; margin: 0;
-      border: 2px dashed #b9d3d5; border-radius: 12px; background: #f8fbfb; color: #2f7c83; cursor: pointer; text-align: center; overflow-wrap: anywhere; }
+      border: 2px dashed #b9d3d5; border-radius: 12px; background: #f8fbfb; color: var(--zt-mid2, #2f7c83); cursor: pointer; text-align: center; overflow-wrap: anywhere; }
     .doc-drop:hover, .doc-drop:focus-within { border-color: #45a5ad; background: #f1f8f8; }
     .doc-drop.picked { border-style: solid; border-color: #45a5ad; }
     .doc-drop-title { font-weight: 600; color: #23474a; }
@@ -429,11 +429,11 @@ interface DocumentIcon {
     .doc-roles-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .doc-role-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
     .modal .modal-popup.doc-dialog label.doc-role { position: relative; display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 12px; border: 1px solid #cbd9da;
-      border-radius: 6px; background: #fff; color: #2f7c83; font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
+      border-radius: 6px; background: #fff; color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 600; cursor: pointer; user-select: none; }
     .modal .modal-popup.doc-dialog label.doc-role::before { content: '+'; font-weight: 700; width: 12px; text-align: center; }
     .modal .modal-popup.doc-dialog label.doc-role.on { background: #45a5ad; border-color: #45a5ad; color: #fff; }
     .modal .modal-popup.doc-dialog label.doc-role.on::before { content: '✓'; }
-    .modal .modal-popup.doc-dialog label.doc-role:has(input:focus-visible) { outline: 2px solid #2f7c83; outline-offset: 2px; }
+    .modal .modal-popup.doc-dialog label.doc-role:has(input:focus-visible) { outline: 2px solid var(--zt-mid2, #2f7c83); outline-offset: 2px; }
     .doc-role input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
     .modal .modal-popup.doc-dialog label.doc-all { padding: 4px 12px; }
 

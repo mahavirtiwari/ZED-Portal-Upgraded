@@ -122,9 +122,9 @@ export function iconFor(label: string): string {
       box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
     }
     .welcome h3 { font-size: 22px; font-weight: 700; color: #23474a; }
-    .role-badge { background: #e8f4f5; color: #2f7c83; border-radius: 14px; padding: 4px 14px; font-size: 13px; font-weight: 700; }
+    .role-badge { background: #e8f4f5; color: var(--zt-mid2, #2f7c83); border-radius: 14px; padding: 4px 14px; font-size: 13px; font-weight: 700; }
     .icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #e8f4f5; flex: 0 0 auto; }
-    .icon svg { width: 20px; height: 20px; fill: none; stroke: #2f7c83; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .icon svg { width: 20px; height: 20px; fill: none; stroke: var(--zt-mid2, #2f7c83); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
     .tile {
       display: flex; align-items: center; gap: 12px; height: 100%; min-height: 70px; padding: 14px 16px; border-radius: 14px;
       background: #fff; border: 1px solid #dfe9ea; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06);
@@ -139,7 +139,7 @@ export function iconFor(label: string): string {
     .group-card li + li { border-top: 1px solid #eef3f3; }
     .group-card li a { display: flex; justify-content: space-between; padding: 8px 2px; color: #232527; font-weight: 500; text-decoration: none; }
     .group-card li a span { color: #9bbfc2; }
-    .group-card li a:hover, .group-card li a:focus { color: #2f7c83; }
+    .group-card li a:hover, .group-card li a:focus { color: var(--zt-mid2, #2f7c83); }
     .group-card li a:hover span { color: #45a5ad; }
     .chooser-label { display: block; background: none; padding: 0; font-size: 13px; color: #5f6f70; margin: 4px 0 6px; }
     .group-card .form-select { margin-bottom: 10px; max-width: 420px; }

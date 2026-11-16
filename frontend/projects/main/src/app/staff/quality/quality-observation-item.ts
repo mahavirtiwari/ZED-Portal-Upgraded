@@ -72,7 +72,7 @@ import { QoObservation, QualityApi, aboutLabels } from './quality.api';
     .qo-chip[data-sev='Major'] { background: #fef3c7; color: #8a6100; }
     .qo-chip[data-sev='Critical'] { background: #fdecec; color: #a8303a; }
     .qo-status { margin-left: auto; font-size: 12px; font-weight: 600; color: #5f6f70; }
-    .qo-unit { font-size: 12px; color: #2f7c83; font-weight: 600; }
+    .qo-unit { font-size: 12px; color: var(--zt-mid2, #2f7c83); font-weight: 600; }
     .qo-meta { font-size: 12px; color: #5f6f70; margin-top: 4px; }
     .qo-text { margin: 6px 0 2px; white-space: pre-line; }
     .qo-toggle { font-size: 12px; }

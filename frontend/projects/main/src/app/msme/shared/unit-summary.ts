@@ -88,7 +88,7 @@ type Row = Record<string, unknown>;
     .us-card dt { color: #7a8a8b; font-weight: 600; font-size: 11.5px; letter-spacing: .03em; padding-top: 1px; }
     .us-card dd { margin: 0; color: #232527; font-weight: 600; overflow-wrap: anywhere; }
     .us-card dd small { display: block; font-weight: 400; color: #5f6f70; }
-    .us-card dd a { margin-left: 6px; color: #2f7c83; font-weight: 700; }
+    .us-card dd a { margin-left: 6px; color: var(--zt-mid2, #2f7c83); font-weight: 700; }
   `,
 })
 export class MsmeUnitSummary {

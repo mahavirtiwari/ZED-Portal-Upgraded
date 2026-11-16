@@ -75,18 +75,18 @@ export const maintenanceInterceptor: HttpInterceptorFn = (req, next) => {
   `,
   styles: `
     .mt-page { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 16px;
-      background: linear-gradient(160deg, #eef6f6, #d9eef0); }
-    .mt-card { max-width: 520px; width: 100%; background: #fff; border-radius: 12px; border-top: 6px solid #23656b; box-shadow: 0 8px 30px rgba(16,61,64,.12);
+      background: linear-gradient(160deg, #eef6f6, var(--zt-soft, #d9eef0)); }
+    .mt-card { max-width: 520px; width: 100%; background: #fff; border-radius: 12px; border-top: 6px solid var(--zt-dark, #23656b); box-shadow: 0 8px 30px rgba(16,61,64,.12);
       padding: 28px 24px; text-align: center; }
     .mt-logo { height: 72px; margin-bottom: 12px; }
     h1 { font-size: 24px; font-weight: 700; color: #23474a; margin: 0 0 10px; }
     .mt-msg { font-size: 16px; color: #3b4b4c; margin: 0 0 8px; white-space: pre-line; }
-    .mt-until { font-size: 14px; color: #2f7c83; font-weight: 600; margin: 0 0 16px; }
+    .mt-until { font-size: 14px; color: var(--zt-mid2, #2f7c83); font-weight: 600; margin: 0 0 16px; }
     .mt-staff { margin: 14px 0 0; font-size: 13px; }
     .mt-staff a { color: #5f6f70; }
     .mt-admin { position: sticky; top: 0; z-index: 3000; background: #fdf1dc; color: #7a4d0b; border-bottom: 1px solid #f0d49c;
       padding: 6px 16px; font-size: 13.5px; font-weight: 600; text-align: center; }
-    .mt-admin a { margin-left: 8px; color: #23656b; }
+    .mt-admin a { margin-left: 8px; color: var(--zt-dark, #23656b); }
   `,
 })
 export class MaintenanceBanner {

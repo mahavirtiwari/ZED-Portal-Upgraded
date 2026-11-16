@@ -326,7 +326,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .help-block { color: #a94442; font-size: 13px; }
     .muted { color: #8a9899; font-size: 13px; }
     .crumbs { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: #5f6f70; margin-bottom: 6px; }
-    .crumbs a { color: #2f7c83; text-decoration: none; font-weight: 600; }
+    .crumbs a { color: var(--zt-mid2, #2f7c83); text-decoration: none; font-weight: 600; }
     .crumbs a:hover { text-decoration: underline; }
     .lvl { font-size: 15px; color: #5f6f70; font-weight: 500; }
     .summary { color: #5f6f70; }
@@ -347,7 +347,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .rq-name { font-size: 13.5px; color: #23474a; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .rq-missing { font-size: 11.5px; color: #8a5a00; }
     .rq-ok { font-size: 11.5px; color: #1e7a3c; font-weight: 600; }
-    .rq-add { width: 100%; margin-top: 10px; border: 1px dashed #45a5ad; color: #2f7c83; background: #f5fafa; font-weight: 700; border-radius: 10px; }
+    .rq-add { width: 100%; margin-top: 10px; border: 1px dashed #45a5ad; color: var(--zt-mid2, #2f7c83); background: #f5fafa; font-weight: 700; border-radius: 10px; }
     .rq-add:hover { background: #45a5ad; color: #fff; }
     .rq-detail { background: #fff; border: 1px solid #dfe9ea; border-radius: 14px; padding: 16px 18px; min-width: 0; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
     .det-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; flex-wrap: wrap; }
@@ -365,7 +365,7 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     /* Purpose and benefits. */
     .pb { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; font-size: 14px; }
     .pb div { border: 1px solid #e3ecec; border-radius: 10px; padding: 10px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-    .pb b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: #2f7c83; margin-bottom: 3px; }
+    .pb b { display: block; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--zt-mid2, #2f7c83); margin-bottom: 3px; }
     .pb .empty { color: #8a5a00; }
 
     /* A checkpoint (view). */
@@ -383,8 +383,8 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .tag { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; border-radius: 14px; padding: 3px 10px; font-size: 12.5px; margin: 0 6px 6px 0; overflow-wrap: anywhere; }
     .tag-ev { background: #e6f6ec; color: #17602f; }
     .tag-ac { background: #fdeef0; color: #8a2630; }
-    .m { font-size: 10px; font-weight: 700; color: #2f7c83; background: #fff; border-radius: 4px; padding: 0 5px; }
-    .samp { font-size: 11.5px; font-weight: 700; color: #2f7c83; }
+    .m { font-size: 10px; font-weight: 700; color: var(--zt-mid2, #2f7c83); background: #fff; border-radius: 4px; padding: 0 5px; }
+    .samp { font-size: 11.5px; font-weight: 700; color: var(--zt-mid2, #2f7c83); }
 
     /* The editor. */
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
@@ -411,8 +411,8 @@ const newCheckpoint = (): CheckpointForm => ({ optionCode: null, text: '', evide
     .tick .form-check-input { margin: 0; }
     .x { color: #8a9899; font-weight: 700; text-decoration: none; padding: 0 4px; }
     .sample { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 12px; color: #5f6f70; padding-left: 2px; }
-    .file { background: #eef6f6; color: #2f7c83; border-radius: 6px; padding: 2px 8px; font-weight: 700; overflow-wrap: anywhere; }
-    .up { border: 1px dashed #45a5ad; color: #2f7c83; border-radius: 6px; padding: 2px 8px; font-weight: 700; cursor: pointer; margin: 0; }
+    .file { background: #eef6f6; color: var(--zt-mid2, #2f7c83); border-radius: 6px; padding: 2px 8px; font-weight: 700; overflow-wrap: anywhere; }
+    .up { border: 1px dashed #45a5ad; color: var(--zt-mid2, #2f7c83); border-radius: 6px; padding: 2px 8px; font-weight: 700; cursor: pointer; margin: 0; }
     .hint { color: #8a9899; font-size: 12px; }
     /* The add buttons, in colour (2026-11-07): evidence green, action red, checkpoint teal. */
     .btn-add-evidence, .btn-add-action, .btn-add-checkpoint { color: #fff; font-weight: 700; border-radius: 8px; border: 0; padding: 5px 12px; font-size: 12.5px; }

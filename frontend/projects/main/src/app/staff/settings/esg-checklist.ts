@@ -213,9 +213,9 @@ const SHOW_ON = ['Yes', 'No'] as const;
     /* One tab per section. */
     .esg-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
     .esg-tab { display: inline-flex; align-items: center; gap: 8px; padding: 7px 18px; border-radius: 6px; border: 1px solid #cbd9da;
-      background: #fff; color: #2f7c83; font-weight: 600; font-size: 14px; cursor: pointer; }
+      background: #fff; color: var(--zt-mid2, #2f7c83); font-weight: 600; font-size: 14px; cursor: pointer; }
     .esg-tab:hover { background: #eef6f6; border-color: #45a5ad; }
-    .esg-tab.active { background: #23656b; border-color: #23656b; color: #fff; }
+    .esg-tab.active { background: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); color: #fff; }
     .tab-count { font-size: 12px; background: rgba(255,255,255,.25); border-radius: 10px; padding: 0 8px; }
     .esg-tab:not(.active) .tab-count { background: #eef6f6; color: #23474a; }
 
@@ -241,7 +241,7 @@ const SHOW_ON = ['Yes', 'No'] as const;
     .follow-switch { margin: 0; font-size: 13.5px; }
     .esg-follow { margin-top: 10px; padding: 10px 12px; border-left: 3px solid #45a5ad; background: #f4fafa; border-radius: 0 10px 10px 0; }
     .esg-follow.on-no { border-left-color: #d68a2f; background: #fdf8f1; }
-    .branch { display: inline-block; font-size: 12px; font-weight: 700; color: #2f7c83; margin-bottom: 6px; }
+    .branch { display: inline-block; font-size: 12px; font-weight: 700; color: var(--zt-mid2, #2f7c83); margin-bottom: 6px; }
     .on-no .branch { color: #8a5a12; }
     .follow-grid { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 8px; align-items: center; }
     .follow-grid .span-2 { grid-column: 1 / -1; }

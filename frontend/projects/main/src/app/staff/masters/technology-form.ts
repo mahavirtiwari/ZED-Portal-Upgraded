@@ -99,7 +99,7 @@ import { MastersApi, TechnologyRequest } from './masters.api';
     .tf-section { margin-bottom: 16px; }
     .tf-section h4 { display: flex; align-items: center; gap: 10px; }
     .tf-no { flex: 0 0 26px; width: 26px; height: 26px; border-radius: 13px; display: inline-grid; place-items: center; font-size: 13px; font-weight: 800;
-      background: #eef6f6; color: #2f7c83; }
+      background: #eef6f6; color: var(--zt-mid2, #2f7c83); }
     .tf-count { font-size: 12px; }
 
     .tf-side { position: sticky; top: 16px; }

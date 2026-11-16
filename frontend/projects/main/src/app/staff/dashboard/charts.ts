@@ -210,7 +210,7 @@ export type RankSort = 'high' | 'low' | 'name';
     </div>
   `,
   styles: `
-    .rk { --head: #2f7c83; border-radius: 12px; overflow: hidden; border: 1px solid #e4ecec; background: #fff; }
+    .rk { --head: var(--zt-mid2, #2f7c83); border-radius: 12px; overflow: hidden; border: 1px solid #e4ecec; background: #fff; }
     .rk-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px 10px; border-top: 3px solid var(--head); }
     .rk-title { font-size: 15px; font-weight: 700; color: #23474a; }
     .rk-title small { font-weight: 500; color: #6b7f80; }
@@ -220,7 +220,7 @@ export type RankSort = 'high' | 'low' | 'name';
       text-transform: uppercase; letter-spacing: .3px; background: #f7fafa; border-bottom: 1px solid #e4ecec; }
     .rk-cols span:first-child { text-align: right; }
     .rk-list { list-style: none; margin: 0; padding: 0 12px; }
-    .rk-more { display: block; width: 100%; border: 0; border-top: 1px solid #eef3f3; background: #f7fafa; color: #2f7c83; font-size: 13px; font-weight: 600;
+    .rk-more { display: block; width: 100%; border: 0; border-top: 1px solid #eef3f3; background: #f7fafa; color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 600;
       padding: 8px; cursor: pointer; }
     .rk-more:hover { background: #eef6f6; }
     .rk-list li { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid #eef3f3; }

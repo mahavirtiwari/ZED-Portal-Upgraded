@@ -229,7 +229,7 @@ const STAKEHOLDER_CARD: Record<IncentiveGroup['key'], { image: string; text: str
     .inc-form { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
     .inc-sections { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
     .inc-sections .zed-card { margin: 0; }
-    .inc-h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: #2f7c83; margin-bottom: 4px; }
+    .inc-h { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--zt-mid2, #2f7c83); margin-bottom: 4px; }
     .inc-step { flex: none; width: 24px; height: 24px; border-radius: 12px; display: inline-grid; place-items: center; background: #45a5ad; color: #fff; font-size: 12px; }
     .form-label { display: block; margin: 12px 0 4px; }
     .inc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }

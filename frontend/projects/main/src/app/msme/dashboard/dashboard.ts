@@ -137,7 +137,7 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
   styles: `
     .panel-incen-block > .panel-heading { background: #fff; border: 0; }
     /* The unit band (in place of the live page's side bar). */
-    .unit-band { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 16px; background: linear-gradient(90deg, #eef8f6, #f7fbfb 60%, #fff);
+    .unit-band { display: flex; align-items: center; gap: 16px; padding: 16px 20px; margin-bottom: 16px; background: linear-gradient(90deg, #eef8f6, var(--zt-pale, #f7fbfb) 60%, #fff);
       border: 1px solid #dfe9ea; border-radius: 14px; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.06); }
     .ent { flex: 0 0 64px; height: 64px; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
       background: #eef6f6; color: #23474a; }
@@ -152,7 +152,7 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     .unit-ids { display: flex; flex-wrap: wrap; gap: 8px; }
     .id-tag { display: inline-flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #dfe9ea; border-radius: 8px; padding: 4px 10px;
       font-size: 13.5px; font-weight: 600; color: #232527; letter-spacing: .02em; }
-    .id-tag i { font-style: normal; font-size: 10.5px; font-weight: 700; color: #2f7c83; background: #eef6f6; border-radius: 4px; padding: 1px 6px; letter-spacing: .05em; }
+    .id-tag i { font-style: normal; font-size: 10.5px; font-weight: 700; color: var(--zt-mid2, #2f7c83); background: #eef6f6; border-radius: 4px; padding: 1px 6px; letter-spacing: .05em; }
     .pledge-box { flex: none; display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid #cfe7d6; border-radius: 12px; padding: 10px 12px; }
     .pledge-box .seal { width: 34px; height: 34px; border-radius: 17px; background: #2e9e5b; color: #fff; display: grid; place-items: center; font-weight: 800; }
     .pledge-box small { display: block; font-size: 11.5px; color: #5f6f70; }
@@ -171,15 +171,15 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     /* 2026-11-14 (approved design A): the page header and the next-step banner. */
     .dash-head { align-items: center; }
     .dash-crumb { display: flex; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
-    .dash-crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+    .dash-crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
     .dash-head .registration-title { font-size: 22px; overflow-wrap: anywhere; }
     .page-actions { display: flex; align-items: center; gap: 8px; }
     .refresh-btn { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
     .refresh-btn img { width: 14px; }
     .next-step { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin-bottom: 16px; background: #fff;
-      border: 1px solid #dfe9ea; border-left: 4px solid #2f7c83; border-radius: 10px; }
+      border: 1px solid #dfe9ea; border-left: 4px solid var(--zt-mid2, #2f7c83); border-radius: 10px; }
     .next-step.is-nc { border-left-color: #c0392b; background: #fdf3f2; }
-    .ns-icon { flex: none; width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; background: #eef6f6; color: #2f7c83; font-weight: 800; }
+    .ns-icon { flex: none; width: 34px; height: 34px; border-radius: 17px; display: grid; place-items: center; background: #eef6f6; color: var(--zt-mid2, #2f7c83); font-weight: 800; }
     .next-step.is-nc .ns-icon { background: #f8d9d5; color: #c0392b; }
     .ns-text { flex: 1 1 auto; min-width: 0; }
     .ns-text small { display: block; font-size: 11px; font-weight: 700; letter-spacing: .06em; color: #7a8a8b; }
@@ -208,7 +208,7 @@ const completedStatus = (level: Level): number => (level === 'Bronze' ? 6 : 16);
     .lv-status { margin: auto 0 0; align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700;
       color: #a86a12; background: #fdf1dc; border-radius: 14px; padding: 3px 12px; }
     .lv-status.is-done { color: #1e7a3c; background: #e3f4e8; }
-    .lv-status.is-new { color: #2f7c83; background: #eef6f6; }
+    .lv-status.is-new { color: var(--zt-mid2, #2f7c83); background: #eef6f6; }
     .lv-status.is-locked { color: #5f6f70; background: #eef1f1; }
     .lv-lock-note { margin: -6px 0 0; font-size: 12px; color: #5f6f70; }
     /* A locked level stays readable (the legacy rule fades it to 0.3). */

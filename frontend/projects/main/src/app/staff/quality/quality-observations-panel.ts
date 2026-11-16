@@ -69,7 +69,7 @@ import { QoTarget, QoUnitView, QualityApi, aboutLabels } from './quality.api';
     }
   `,
   styles: `
-    .qo-panel { border: 1px solid #d6eef0; background: #f7fbfb; border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
+    .qo-panel { border: 1px solid var(--zt-soft, #d6eef0); background: var(--zt-pale, #f7fbfb); border-radius: 12px; padding: 12px 14px; margin: 12px 0; }
     .qo-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
     .qo-panel-head h4 { margin: 0; font-size: 16px; color: #23474a; }
     .qo-panel-head small { font-size: 12px; color: #5f6f70; font-weight: 400; margin-left: 6px; }

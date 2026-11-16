@@ -45,8 +45,8 @@ import { StaffLoginShell } from '../staff-login-shell';
   `,
   styles: `
     .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; }
-    .btn-primary, .btn-primary:hover { color: #fff; background-color: #23656b; border-color: #23656b; font-size: 14px; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; }
-    .btn-primary:hover { background-color: #174a4e; border-color: #174a4e; filter: none; }
+    .btn-primary, .btn-primary:hover { color: #fff; background-color: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); font-size: 14px; text-transform: uppercase; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-primary:hover { background-color: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); filter: none; }
   `,
 })
 export class StaffForgotPasswordPage {

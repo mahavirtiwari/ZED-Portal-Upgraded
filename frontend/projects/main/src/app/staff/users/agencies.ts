@@ -49,26 +49,26 @@ interface Dialog {
     .seg-group { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
     .seg-label { font-size: 13px; font-weight: 600; color: #5f6f70; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 12px; cursor: pointer; white-space: nowrap; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .seg .n { font-weight: 400; opacity: .85; }
 
     .ag-table { min-width: 940px; margin-bottom: 8px; }
     .ag-table td { vertical-align: middle; overflow-wrap: anywhere; }
-    .ag-table tbody tr:hover { background: #f7fbfb; }
+    .ag-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .ag-table tr.is-off .ag-name { color: #5f6f70; }
     .col-cat { width: 220px; }
     .col-count { width: 96px; }
     .col-status { width: 112px; }
     .col-actions { width: 300px; }
     .ag { display: flex; gap: 12px; align-items: flex-start; }
-    .initials { flex: 0 0 38px; height: 38px; border-radius: 10px; background: #eef6f6; color: #2f7c83; display: grid; place-items: center; font-size: 14px; font-weight: 700; }
+    .initials { flex: 0 0 38px; height: 38px; border-radius: 10px; background: #eef6f6; color: var(--zt-mid2, #2f7c83); display: grid; place-items: center; font-size: 14px; font-weight: 700; }
     tr.is-off .initials { background: #eef1f2; color: #8a9899; }
     .ag-text { min-width: 0; }
     .ag-name { display: block; font-weight: 700; color: #232527; }
-    .ag-id { display: inline-block; margin: 1px 0 2px; font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: #2f7c83; }
+    .ag-id { display: inline-block; margin: 1px 0 2px; font: 600 12px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: var(--zt-mid2, #2f7c83); }
     .ag-text small { display: block; font-size: 13px; }
     .contact { margin-top: 4px; }
     .contact strong { color: #23474a; font-weight: 600; white-space: nowrap; }

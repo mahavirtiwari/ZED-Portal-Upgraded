@@ -135,9 +135,9 @@ export function pairRows(rows: InfoRow[]): InfoRow[][] {
     .pf-unit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: -4px 0 14px; }
     .pf-unit strong { font-size: 18px; color: #1d2b2c; }
     .pf-unit .pf-id { color: #5f6f70; font-weight: 600; }
-    .pf-chip { display: inline-block; background: #d9eef0; color: #174a4e; border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
+    .pf-chip { display: inline-block; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: 700; }
     .pf-section { margin-bottom: 14px; }
-    .pf-bar { background: #23656b; color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; margin: 0; }
+    .pf-bar { background: var(--zt-dark, #23656b); color: #fff; font-size: 14px; font-weight: 700; padding: 8px 12px; border-radius: 4px 4px 0 0; margin: 0; }
     .pf-table { width: 100%; margin: 0; border-collapse: collapse; table-layout: fixed; background: #fff; }
     .pf-table td { border: 1px solid #e1ecec; padding: 8px 10px; vertical-align: middle; overflow-wrap: anywhere; font-size: 14px; }
     .pf-table td.pf-label { background: #f4f8f8; color: #5f6f70; font-weight: 600; width: 20%; }

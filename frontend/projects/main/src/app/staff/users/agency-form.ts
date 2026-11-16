@@ -32,7 +32,7 @@ function emptyAgency(): AgencyRequest {
   styles: `
     .req-note { font-size: 13px; color: #5f6f70; margin: -6px 0 10px; }
     .form-section { padding: 0; overflow: hidden; }
-    .section-head { display: flex; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid #dfe9ea; background: #f7fbfb; }
+    .section-head { display: flex; gap: 12px; align-items: center; padding: 14px 20px; border-bottom: 1px solid #dfe9ea; background: var(--zt-pale, #f7fbfb); }
     .step { flex: 0 0 30px; height: 30px; border-radius: 50%; background: #45a5ad; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
     .section-head h4 { margin: 0; font-size: 16px; font-weight: 700; color: #23474a; }
     .section-head p { margin: 2px 0 0; font-size: 13px; color: #5f6f70; }
@@ -52,7 +52,7 @@ function emptyAgency(): AgencyRequest {
     .choice-name { display: block; font-weight: 700; color: #23474a; }
     .choice-card small { display: block; font-size: 12.5px; line-height: 1.4; margin-top: 2px; }
     .login-id { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: #2f7c83; }
+    .user-id { font: 700 14px/1.5 SFMono-Regular, Consolas, 'Liberation Mono', monospace; color: var(--zt-mid2, #2f7c83); }
     .login-note { padding: 10px 14px; border-radius: 10px; background: #eef6f6; color: #23474a; font-size: 14px; }
     .help-block { color: #a94442; font-size: 13px; }
 

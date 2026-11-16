@@ -66,28 +66,28 @@ import { EXPIRED_PARAM, RETURN_PARAM, SESSION_EXPIRED_MESSAGE, returnUrl } from 
     .zed-user-form label { color: #1d1618; font-size: 14px; font-weight: 500; margin-bottom: 4px; }
     .field { position: relative; }
     .in-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; pointer-events: none; }
-    .in-icon svg { width: 18px; height: 18px; fill: #23656b; display: block; }
+    .in-icon svg { width: 18px; height: 18px; fill: var(--zt-dark, #23656b); display: block; }
     .field .form-control { height: 46px; padding-left: 40px; border-radius: 10px; border-color: #cfd9da; background-color: #f7fafa; }
     .field .form-control:focus { background-color: #fff; }
     .field .form-control:focus { border-color: #2f8a92; box-shadow: 0 0 0 3px rgba(47, 138, 146, 0.2); }
     .field .form-control.has-toggle { padding-right: 64px; }
     .toggle {
-      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: #23656b;
+      position: absolute; right: 6px; top: 50%; transform: translateY(-50%); border: 0; background: none; color: var(--zt-dark, #23656b);
       font-size: 13px; font-weight: 600; padding: 6px 8px; border-radius: 6px;
     }
     .toggle:hover { background: #e6f2f3; }
     .btn-primary, .btn-primary:hover {
-      color: #fff; background-color: #23656b; border-color: #23656b; font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
+      color: #fff; background-color: var(--zt-dark, #23656b); border-color: var(--zt-dark, #23656b); font-size: 15px; font-weight: 600; letter-spacing: 0.6px;
       text-transform: uppercase; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
     }
-    .btn-primary:hover, .btn-primary:focus-visible { background-color: #174a4e; border-color: #174a4e; filter: none; }
+    .btn-primary:hover, .btn-primary:focus-visible { background-color: var(--zt-ink, #174a4e); border-color: var(--zt-ink, #174a4e); filter: none; }
     .login-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .login-actions .btn {
       height: 46px; border-radius: 5px; border: 0; color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 0.5px;
       text-transform: uppercase; display: flex; align-items: center; justify-content: center; white-space: nowrap; padding: 0 10px;
     }
-    .btn-login { background-color: #2b8a8e; }
-    .btn-login:hover, .btn-login:focus-visible { background-color: #23656b; color: #fff; }
+    .btn-login { background-color: var(--zt-mid2, #2b8a8e); }
+    .btn-login:hover, .btn-login:focus-visible { background-color: var(--zt-dark, #23656b); color: #fff; }
     .btn-forgot { background-color: #7a7a7a; }
     .btn-forgot:hover, .btn-forgot:focus-visible { background-color: #5f5f5f; color: #fff; }
     @media (max-width: 359.98px) { .login-actions { grid-template-columns: 1fr; } }

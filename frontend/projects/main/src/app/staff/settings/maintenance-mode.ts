@@ -89,7 +89,7 @@ export interface MaintenanceRow {
     .mm-track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: left .15s; }
     .mm-switch.down .mm-track { background: #d9776b; }
     .mm-switch.down .mm-track::after { left: 18px; }
-    .mm-switch input:focus-visible + .mm-track { outline: 2px solid #23656b; outline-offset: 2px; }
+    .mm-switch input:focus-visible + .mm-track { outline: 2px solid var(--zt-dark, #23656b); outline-offset: 2px; }
     .mm-window { display: flex; align-items: center; gap: 6px; }
     .mm-window .form-control { min-width: 0; }
     .mm-note { font-size: 13px; margin: 8px 0 0; }

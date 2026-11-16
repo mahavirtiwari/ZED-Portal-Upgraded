@@ -57,7 +57,7 @@ interface MilestoneRow {
   styleUrl: '../shared/msme-page.scss',
   styles: `
     .loadingdiv { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 2000; }
-    .back-link { display: inline-flex; align-items: center; gap: 4px; color: #2f7c83; text-decoration: none; }
+    .back-link { display: inline-flex; align-items: center; gap: 4px; color: var(--zt-mid2, #2f7c83); text-decoration: none; }
     /* The two level cards side by side, equal height (one column on phones). */
     .level-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
     .panel-cert-block, .panel-cert-block:hover { height: 100%; overflow: visible; background: #fff; box-shadow: 0 2px 8px rgba(16, 61, 64, 0.08) !important; }

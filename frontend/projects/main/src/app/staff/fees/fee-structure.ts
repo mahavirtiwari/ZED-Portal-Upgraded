@@ -504,10 +504,10 @@ interface SharePreview {
     .fs-type { flex-direction: column; align-items: flex-start; gap: 4px; }
     .fs-type-label { font-size: 12px; font-weight: 600; color: #5f6f70; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft); color: var(--zt-ink); font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
 
     /* A card per level: picks the level shown below. */
     .lv-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -530,8 +530,8 @@ interface SharePreview {
     .add-note { margin: 12px 0 0; padding: 8px 12px; border-radius: 8px; background: #f4f8f8; font-size: 13px; color: #5f6f70; }
     .lv-card { display: flex; flex-direction: column; gap: 4px; text-align: left; background: #fff; border: 1px solid #dfe9ea; border-radius: 12px;
       padding: 12px 16px; cursor: pointer; min-width: 0; color: #232527; border-top: 4px solid #cbd9da; }
-    .lv-card:hover { border-color: #45a5ad; background: #f7fbfb; }
-    .lv-card.active { border-color: #45a5ad; border-top-color: #2f7c83; background: #eef6f6; box-shadow: 0 2px 10px rgba(16, 61, 64, 0.1); }
+    .lv-card:hover { border-color: #45a5ad; background: var(--zt-pale); }
+    .lv-card.active { border-color: #45a5ad; border-top-color: var(--zt-mid2); background: #eef6f6; box-shadow: 0 2px 10px rgba(16, 61, 64, 0.1); }
     .lv-card.is-unset { background: #fafcfc; }
     .lv-name { font-weight: 700; color: #23474a; font-size: 15px; }
     .lv-fee { font-size: 22px; font-weight: 700; color: #23474a; line-height: 1.2; font-variant-numeric: tabular-nums; }
@@ -560,16 +560,16 @@ interface SharePreview {
 
     .fs-table td, .fs-table th { vertical-align: middle; white-space: nowrap; font-variant-numeric: tabular-nums; }
     .fs-table td.fs-cat { white-space: normal; overflow-wrap: anywhere; min-width: 180px; }
-    .fs-table tbody tr:hover td { background-color: #f7fbfb; }
+    .fs-table tbody tr:hover td { background-color: var(--zt-pale); }
     .fs-table td.col-pay, .fs-table td.col-net { background-color: #eaf6ee; color: #1e7a3c; }
     .fs-table tbody tr:hover td.col-pay, .fs-table tbody tr:hover td.col-net { background-color: #dff0e5; }
     .cat-chip { display: inline-block; min-width: 52px; text-align: center; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 700;
-      background: #eef6f6; color: #2f7c83; white-space: nowrap; }
+      background: #eef6f6; color: var(--zt-mid2); white-space: nowrap; }
     .cat-chip.cat-1 { background: #f1f0fb; color: #3f3a7a; }
     .cat-chip.cat-2 { background: #fff4d6; color: #8a6100; }
     .cat-chip.cat-region { background: #eaf6ee; color: #1e7a3c; }
     .reward-note { color: #3f3a7a; font-weight: 600; }
-    .fs-share { color: #2f7c83; }
+    .fs-share { color: var(--zt-mid2); }
 
     /* The share pop-up: the fields, and a preview beside them. */
     .modal > .modal-dialog.modal-lg.fs-dialog { max-width: 880px; width: calc(100% - 32px); margin-left: auto; margin-right: auto; }

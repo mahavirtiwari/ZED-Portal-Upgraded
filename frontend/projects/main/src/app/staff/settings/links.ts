@@ -109,14 +109,14 @@ function addressProblem(value: string): string {
     .link-title { flex: 1 1 auto; min-width: 0; }
     .link-title h5 { margin: 0 0 4px; font-size: 16px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
     .link-badges { display: flex; flex-wrap: wrap; gap: 6px; }
-    .addr-chip { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; background: #eef6f6; color: #2f7c83; white-space: nowrap; }
+    .addr-chip { display: inline-block; border-radius: 12px; padding: 2px 10px; font-size: 12px; font-weight: 600; background: #eef6f6; color: var(--zt-mid2, #2f7c83); white-space: nowrap; }
     .addr-chip.own { background: #f1f0fb; color: #3f3a7a; }
     .link-switch { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding-left: 0; min-height: 0; }
     .link-switch .form-check-input { float: none; margin: 0; width: 2.6em; height: 1.4em; cursor: pointer; }
     .link-switch .form-check-input:checked { background-color: #45a5ad; border-color: #45a5ad; }
     .link-switch .form-check-label { min-width: 62px; font-weight: 600; color: #3b4b4c; cursor: pointer; }
     .link-where { margin: 0 20px; padding: 0 0 12px 56px; font-size: 13px; color: #5f6f70; border-bottom: 1px solid #e6eeef; overflow-wrap: anywhere; }
-    .where-label { display: inline-block; margin-right: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: #2f7c83; }
+    .where-label { display: inline-block; margin-right: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--zt-mid2, #2f7c83); }
     .link-body { flex: 1 1 auto; padding: 14px 20px 4px; }
     .link-body > label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #3b4b4c; }
     .input-group { flex-wrap: nowrap; }

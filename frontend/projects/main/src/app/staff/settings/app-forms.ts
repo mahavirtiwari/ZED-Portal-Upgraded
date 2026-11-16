@@ -464,13 +464,13 @@ const TYPE_GLYPHS: Record<string, string> = {
     .changed-on { display: block; font-size: 11.5px; color: #8a9899; margin-top: 4px; }
     .row-actions .btn { text-transform: none; }
     .fields-table td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
-    .fields-table tbody tr:hover { background: #f7fbfb; }
+    .fields-table tbody tr:hover { background: var(--zt-pale, #f7fbfb); }
     .fields-table tr.is-off td { color: #8a9899; }
     .order-no {
       display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 14px;
       background: #eef6f6; color: #23474a; font-weight: 700; font-size: 13px;
     }
-    .field-heading { display: block; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; font-weight: 700; color: #2f7c83; margin-bottom: 2px; }
+    .field-heading { display: block; text-transform: uppercase; letter-spacing: .04em; font-size: 11px; font-weight: 700; color: var(--zt-mid2, #2f7c83); margin-bottom: 2px; }
     .field-label { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
     .field-label strong { color: #232527; font-size: 14.5px; }
     .is-off .field-label strong { color: #8a9899; }
@@ -496,14 +496,14 @@ const TYPE_GLYPHS: Record<string, string> = {
     .type-tile:hover { border-color: #45a5ad; }
     .type-tile.active { border: 2px solid #45a5ad; padding: 9px 5px; background: #f4fafa; }
     .type-tile:focus-within { outline: 2px solid #45a5ad; outline-offset: 2px; }
-    .type-glyph { font: 700 15px/1 Consolas, 'Courier New', monospace; color: #2f7c83; height: 18px; }
+    .type-glyph { font: 700 15px/1 Consolas, 'Courier New', monospace; color: var(--zt-mid2, #2f7c83); height: 18px; }
     .type-name { font-size: 12px; font-weight: 600; color: #3b4b4c; line-height: 1.25; }
     .type-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; background: #eef6f6; color: #23474a; border-radius: 12px; padding: 2px 10px; }
     .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; }
-    .seg button { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
+    .seg button { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 6px 14px; cursor: pointer; }
     .seg button + button { border-left: 1px solid #cbd9da; }
-    .seg button:hover { background: #c5e5e8; }
-    .seg button.active { background: #23656b; color: #fff; }
+    .seg button:hover { background: var(--zt-soft-2, #c5e5e8); }
+    .seg button.active { background: var(--zt-dark, #23656b); color: #fff; }
     .dialog-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 14px; }
     .side-settings { border: 1px solid #dfe9ea; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
     .side-settings h4 { font-size: 14px; font-weight: 700; color: #23474a; text-transform: uppercase; letter-spacing: .04em; margin: 0 0 4px; }
@@ -541,7 +541,7 @@ const TYPE_GLYPHS: Record<string, string> = {
     .pf-radios i, .pf-check i { display: inline-block; width: 14px; height: 14px; border: 1.5px solid #8a9899; border-radius: 50%; vertical-align: -2px; margin-right: 4px; }
     .pf-check { font-size: 13px; margin-bottom: 4px; }
     .pf-check i { border-radius: 3px; }
-    .pf-photo { border: 1.5px dashed #45a5ad; border-radius: 8px; color: #2f7c83; font-size: 13px; font-weight: 600; text-align: center; padding: 18px 8px; }
+    .pf-photo { border: 1.5px dashed #45a5ad; border-radius: 8px; color: var(--zt-mid2, #2f7c83); font-size: 13px; font-weight: 600; text-align: center; padding: 18px 8px; }
     .pf-help { font-size: 12px; color: #5f6f70; margin-top: 6px; overflow-wrap: anywhere; }
 
     @media (max-width: 991.98px) {

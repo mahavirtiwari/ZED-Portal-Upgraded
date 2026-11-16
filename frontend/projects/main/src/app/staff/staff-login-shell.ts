@@ -92,9 +92,9 @@ import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
     .zl-ministry { height: 84px; display: block; }
     .zl-zed { height: 76px; display: block; margin-left: auto; }
     .zl-hero-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 24px 0 8px; }
-    .zl-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #23656b; margin: 0 0 8px; }
+    .zl-kicker { font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: var(--zt-dark, #23656b); margin: 0 0 8px; }
     .zl-title { font-size: 36px; font-weight: 700; color: #16302f; line-height: 1.15; margin: 0; }
-    .zl-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: #23656b; margin: 16px 0; }
+    .zl-rule { display: block; width: 56px; height: 4px; border-radius: 2px; background: var(--zt-dark, #23656b); margin: 16px 0; }
     .zl-lead { font-size: 15.5px; color: #4f6062; line-height: 1.6; margin: 0 0 24px; }
     .zl-label { font-size: 11.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #5f6f70; margin: 4px 0 10px; }
     .zl-levels { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); gap: 10px; }
@@ -103,37 +103,37 @@ import { HANDHOLDING_LEVEL_CODES, PublicLevels } from '../msme/shared/levels';
       font-weight: 700; color: #1d2b2c; font-size: 14px;
     }
     .zl-level img { width: 32px; height: 32px; object-fit: contain; flex: none; }
-    .zl-level-dot { width: 28px; height: 28px; border-radius: 50%; background: #d9eef0; flex: none; }
+    .zl-level-dot { width: 28px; height: 28px; border-radius: 50%; background: var(--zt-soft, #d9eef0); flex: none; }
     .zl-quick {
       display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #fff; border: 1px solid #dbe8e9;
-      border-left: 4px solid #23656b; border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; text-decoration: none; color: #1d2b2c;
+      border-left: 4px solid var(--zt-dark, #23656b); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; text-decoration: none; color: #1d2b2c;
     }
-    .zl-quick:hover { border-color: #23656b; background: #f8fcfc; }
+    .zl-quick:hover { border-color: var(--zt-dark, #23656b); background: #f8fcfc; }
     .zl-quick strong { display: block; font-size: 14.5px; }
     .zl-quick small { display: block; color: #5f6f70; font-size: 12.5px; }
     .zl-go {
       width: 28px; height: 28px; border-radius: 50%; border: 1px solid #cfe0e2; display: inline-flex; align-items: center; justify-content: center;
-      color: #23656b; font-size: 18px; flex: none;
+      color: var(--zt-dark, #23656b); font-size: 18px; flex: none;
     }
     .zl-side { display: flex; flex-direction: column; padding: 24px 40px 16px; min-width: 0; }
     .zl-side-top { display: flex; justify-content: flex-end; min-height: 32px; }
-    .zl-help { display: inline-flex; align-items: center; gap: 6px; color: #23656b; font-weight: 600; font-size: 14px; text-decoration: none; }
+    .zl-help { display: inline-flex; align-items: center; gap: 6px; color: var(--zt-dark, #23656b); font-weight: 600; font-size: 14px; text-decoration: none; }
     .zl-help svg { width: 16px; height: 16px; fill: currentColor; }
     /* min-width 0: a long sentence (Forgot Password) wraps instead of widening the form. */
     .zl-form { flex: 1; display: flex; flex-direction: column; justify-content: center; width: 100%; max-width: 460px; margin: 0 auto; padding: 24px 0; min-width: 0; }
     .zl-card {
       /* 2026-11-15: smaller corners, so that the teal top line bends less at its ends. */
-      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid #23656b; border-radius: 8px; padding: 26px 30px 16px;
+      background: #fff; border: 1px solid #e3ecee; border-top: 4px solid var(--zt-dark, #23656b); border-radius: 8px; padding: 26px 30px 16px;
       box-shadow: 0 18px 40px rgba(23, 74, 78, 0.08); min-width: 0;
     }
     .zl-tag {
-      display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px; background: #d9eef0; color: #174a4e; margin-bottom: 12px;
+      display: inline-block; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 4px; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); margin-bottom: 12px;
     }
     .zl-secure {
       display: flex; align-items: center; justify-content: center; gap: 8px; margin: 18px 0 0; padding-top: 12px; border-top: 1px solid #e3ecee;
       font-size: 12.5px; color: #6b7a7c;
     }
-    .zl-secure svg { width: 14px; height: 14px; fill: #23656b; flex: none; }
+    .zl-secure svg { width: 14px; height: 14px; fill: var(--zt-dark, #23656b); flex: none; }
     .zl-foot {
       display: flex; justify-content: center; align-items: center; gap: 12px; border-top: 1px solid #e3ecee;
       padding-top: 12px; color: #6b7a7c; background: none; /* legacy-login paints footers dark */

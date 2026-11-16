@@ -34,8 +34,8 @@ export interface Crumb {
     .ph-text { min-width: 0; }
     .ph-crumb { display: flex; flex-wrap: wrap; gap: 6px; font-size: 12.5px; color: #7a8a8b; margin-bottom: 2px; }
     .ph-crumb a { color: #7a8a8b; text-decoration: none; }
-    .ph-crumb a:hover { color: #2f7c83; }
-    .ph-crumb [aria-current] { color: #2f7c83; font-weight: 600; }
+    .ph-crumb a:hover { color: var(--zt-mid2, #2f7c83); }
+    .ph-crumb [aria-current] { color: var(--zt-mid2, #2f7c83); font-weight: 600; }
     .ph-title { margin: 0; font-size: 22px; font-weight: 700; color: #23474a; overflow-wrap: anywhere; }
     .ph-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .ph-actions:empty { display: none; }

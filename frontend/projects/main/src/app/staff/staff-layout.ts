@@ -153,7 +153,7 @@ import { RemoteAllotments } from './remote-allotments';
     .zed-navbar .nav { align-items: center; }
     .zed-navbar .tag { padding: 0 12px; }
     .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link { white-space: nowrap; }
-    .zed-navbar .dropdown-header { font-weight: 700; color: #2f7c83; font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 16px 4px; }
+    .zed-navbar .dropdown-header { font-weight: 700; color: var(--zt-mid2, #2f7c83); font-size: 12px; text-transform: uppercase; letter-spacing: 0.4px; padding: 10px 16px 4px; }
     .dropdown-toggle.btn-link { text-decoration: none; }
     /* The drop-downs are buttons; the old stylesheet styles only the links (.zed-navbar .nav > li > a). */
     .zed-navbar .nav > li > button.nav-link {
@@ -164,12 +164,12 @@ import { RemoteAllotments } from './remote-allotments';
     .zed-navbar .nav > li > button.nav-link:hover, .zed-navbar .nav > li > button.nav-link:focus { opacity: 0.9; }
 
     /* 2026-11-14 (approved frame A): a slim dark-teal strip, text links, the current page underlined, the user on the right. */
-    .zed-navbar { background: #23656b; top: 0; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.14); }
+    .zed-navbar { background: var(--zt-dark, #23656b); top: 0; box-shadow: 0 2px 6px rgba(16, 61, 64, 0.14); }
     .zed-navbar .nav-bar-sec { background: none; min-height: 56px; border-radius: 0; box-shadow: none; }
     .zed-navbar .nav > li:not(:last-child) { border-right: 0; }
     .zed-navbar .tag { padding: 0; }
     .zed-navbar .dropdown-menu { top: 100%; margin-top: 0; border-radius: 8px !important; box-shadow: 0 8px 24px rgba(16, 61, 64, 0.14); }
-    .zed-navbar .avatar { flex: none; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: #174a4e;
+    .zed-navbar .avatar { flex: none; width: 26px; height: 26px; border-radius: 13px; display: grid; place-items: center; background: #c9e8a0; color: var(--zt-ink, #174a4e);
       font-size: 12.5px; font-weight: 800; }
     .zed-navbar .who { display: flex; flex-direction: column; line-height: 1.15; text-align: left; }
     .zed-navbar .who small { font-size: 11px; font-weight: 600; color: #a9d3d6; }
@@ -181,7 +181,7 @@ import { RemoteAllotments } from './remote-allotments';
       .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link {
         /* 2026-11-15: the full height of the strip (56px), and a transparent top line as thick as the underline, so that the
            text sits in the middle. */
-        display: flex; align-items: center; gap: 8px; height: 56px; margin: 0; padding: 0 12px; color: #d9eef0; font-size: 14px; font-weight: 700;
+        display: flex; align-items: center; gap: 8px; height: 56px; margin: 0; padding: 0 12px; color: var(--zt-soft, #d9eef0); font-size: 14px; font-weight: 700;
         line-height: 1.2; border: 0; border-top: 3px solid transparent; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; opacity: 1;
       }
       .zed-navbar .nav > li > a.nav-link:hover, .zed-navbar .nav > li > button.nav-link:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }

@@ -212,9 +212,9 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an-status.is-hidden { display: none; }
     /* The date basis as tabs; State, District, Certification, the date range and More filters in one row. */
     .an-basis { display: inline-flex; border: 1px solid #cbd9da; border-radius: 8px; overflow: hidden; margin-bottom: 14px; }
-    .an-basis-tab { border: 0; background: #d9eef0; color: #174a4e; font-size: 13px; font-weight: 600; padding: 7px 14px; }
+    .an-basis-tab { border: 0; background: var(--zt-soft, #d9eef0); color: var(--zt-ink, #174a4e); font-size: 13px; font-weight: 600; padding: 7px 14px; }
     .an-basis-tab + .an-basis-tab { border-left: 1px solid #cbd9da; }
-    .an-basis-tab.active { background: #23656b; color: #fff; }
+    .an-basis-tab.active { background: var(--zt-dark, #23656b); color: #fff; }
     .an-filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 1.7fr) auto; gap: 12px 16px; margin-bottom: 12px; align-items: end; }
     .an-more { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 12px; background: #f7fafa; border: 1px solid #e4ecec; border-radius: 10px; }
     .an-more[hidden] { display: none; }
@@ -225,7 +225,7 @@ export const ANALYTICS_WORDS: Record<PortalSystem, AnalyticsWords> = {
     .an-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: -2px 0 14px; }
     .an-chip { display: inline-flex; align-items: center; gap: 4px; background: #eef6f6; color: #23474a; border: 1px solid #d3e6e7; border-radius: 999px;
       padding: 2px 4px 2px 10px; font-size: 12px; font-weight: 600; }
-    .an-chip button { border: 0; background: none; color: #2f7c83; font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; }
+    .an-chip button { border: 0; background: none; color: var(--zt-mid2, #2f7c83); font-size: 15px; line-height: 1; padding: 0 4px; cursor: pointer; }
     .an-status { margin-bottom: 18px; }
     .an-status h5 { font-size: 15px; font-weight: 700; color: #23474a; margin: 0 0 12px; }
     .an-status h5 small { font-weight: 500; font-size: 12px; margin-left: 6px; }
