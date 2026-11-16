@@ -145,7 +145,7 @@ public sealed class SurveillanceStaffTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync("/api/staff/surveillance-users/assessors/ZEDAS0002/bronze-surveillance", new { allow = true })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync("/api/staff/surveillance-users/assessors/ZEDAS0001/bronze-surveillance", new { allow = true })).StatusCode);
 
-        var unblock = await client.PostAsync("/api/staff/surveillance-users/assessors/ZEDAS0001/unblock", null);
+        var unblock = await client.PostAsJsonAsync("/api/staff/surveillance-users/assessors/ZEDAS0001/unblock", new { reason = "Back on duty" });
         Assert.Equal(HttpStatusCode.OK, unblock.StatusCode);
         var update = _host.Sql.Calls.Last(c => c.Name.StartsWith("UPDATE Users SET IsActive", StringComparison.Ordinal));
         Assert.Equal("3", FakeSql.Arg(update.Args, "RoleId"));

@@ -422,8 +422,9 @@ export class UsersApi {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/block`, { reason });
   }
 
-  unblock(kind: ManagedKind, userId: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, null);
+  /** 2026-11-16: with its reason (recorded and e-mailed to the user). */
+  unblock(kind: ManagedKind, userId: string, reason: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, { reason });
   }
 
   /** Every block and unblock of an assessor / consultant, latest first. */
@@ -528,8 +529,9 @@ export class SurveillanceUsersApi {
     return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/block`, { reason });
   }
 
-  unblock(kind: ManagedKind, userId: string): Observable<MessageResponse> {
-    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, null);
+  /** 2026-11-16: with its reason (recorded and e-mailed to the user). */
+  unblock(kind: ManagedKind, userId: string, reason: string): Observable<MessageResponse> {
+    return this.http.post<MessageResponse>(`${this.base}/${kind}/${encodeURIComponent(userId)}/unblock`, { reason });
   }
 
   /** E-mails the user a link to set a new password; refused for accounts whose password the main portal holds. */

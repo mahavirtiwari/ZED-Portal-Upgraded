@@ -50,14 +50,15 @@ internal static class StaffUserActions
         return new MessageResponse("User Blocked successful");
     }
 
+    /// <summary>2026-11-16 (the user): an unblock asks for its reason too; it is recorded and mailed to the user.</summary>
     public static async Task<ActionResult<MessageResponse>> UnblockAsync(
-        ControllerBase c, ISqlExecutor db, PortalHost host, StaffUserMail mail, ManagedUser user, string actor, ILogger log, CancellationToken ct)
+        ControllerBase c, ISqlExecutor db, PortalHost host, StaffUserMail mail, ManagedUser user, string reason, string actor, ILogger log, CancellationToken ct)
     {
         if (user.IsActive) return c.Problem400("This user is not blocked.");
         if (!await SetActiveAsync(db, host, user, true, "", ct))
             return c.Problem400("The user could not be unblocked. Please try again.");
         log.LogInformation("User {UserId} unblocked by {Actor}", user.UserId, actor);
-        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Unblocked, null, actor, ActorRole(c), log, ct);
+        await UserBlockHistory.RecordAsync(db, user.UserId, RoleOf(user), UserBlockHistory.Unblocked, reason, actor, ActorRole(c), log, ct);
         await SessionStamps.EndSessionsAsync(db, host.System, user.UserId, log, ct);
 
         if (StaffUserRules.IsEmail(user.Row.Text("Email")))
@@ -68,8 +69,44 @@ internal static class StaffUserActions
                     [nameof(StaffAccountUnblockedEmail.UserId)] = user.UserId,
                     [nameof(StaffAccountUnblockedEmail.LoginUrl)] = mail.LoginUrl,
                     [nameof(StaffAccountUnblockedEmail.Consultancy)] = host.IsConsultancy(),
+                    [nameof(StaffAccountUnblockedEmail.Reason)] = reason,
                 }, ct);
         return new MessageResponse("User UnBlocked successful");
+    }
+
+    /// <summary>The reason of a block or an unblock (required, up to 2000 characters), or the message that refuses it.</summary>
+    public static string? ReasonError(string? raw, bool block, out string? reason) =>
+        StaffUserRules.TryText(raw, 2000, required: true, multiline: true, out reason)
+            ? null
+            : $"Please enter the reason for {(block ? "blocking" : "unblocking")} (up to 2000 characters).";
+
+    /// <summary>
+    /// 2026-11-16 (the user): a login of User Management or the NEFT Admin blocked or unblocked: the history row and the mail
+    /// with the reason, as for agencies and assessors (the caller has already changed Users.IsActive).
+    /// </summary>
+    public static async Task RecordAndMailLoginAsync(ControllerBase c, ISqlExecutor db, PortalHost host, StaffUserMail mail, string userId, int roleId,
+        string? userName, string? email, string roleLabel, bool blocked, string reason, string actor, ILogger log, CancellationToken ct)
+    {
+        await UserBlockHistory.RecordAsync(db, userId, roleId, blocked ? UserBlockHistory.Blocked : UserBlockHistory.Unblocked, reason, actor, ActorRole(c), log, ct);
+        if (!StaffUserRules.IsEmail(email)) return;
+        if (blocked)
+            await mail.SendAsync<StaffAccountBlockedEmail>(email!, $"{roleLabel} Login Details for “MSME Sustainable (ZED) Certification” - {userId}", new()
+            {
+                [nameof(StaffAccountBlockedEmail.UserName)] = userName ?? userId,
+                [nameof(StaffAccountBlockedEmail.UserId)] = userId,
+                [nameof(StaffAccountBlockedEmail.Consultancy)] = host.IsConsultancy(),
+                [nameof(StaffAccountBlockedEmail.RoleLabel)] = roleLabel,
+                [nameof(StaffAccountBlockedEmail.Reason)] = reason,
+            }, ct);
+        else
+            await mail.SendAsync<StaffAccountUnblockedEmail>(email!, "“MSME Sustainable (ZED) Certification” - Account Unblocked - " + userId, new()
+            {
+                [nameof(StaffAccountUnblockedEmail.UserName)] = userName ?? userId,
+                [nameof(StaffAccountUnblockedEmail.UserId)] = userId,
+                [nameof(StaffAccountUnblockedEmail.LoginUrl)] = mail.LoginUrl,
+                [nameof(StaffAccountUnblockedEmail.Consultancy)] = host.IsConsultancy(),
+                [nameof(StaffAccountUnblockedEmail.Reason)] = reason,
+            }, ct);
     }
 
     /// <summary>

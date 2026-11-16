@@ -129,8 +129,17 @@ public sealed class StaffAccountsTests : IDisposable
 
         (await admin.PutAsJsonAsync("/api/staff/accounts/DFO9", new { userName = "DFO Kanpur", email = "dfo@zed.test", mobileNo = "9876543210", sectorActivity = "Both", states = new[] { "9" }, neftLists = new[] { "main" } })).EnsureSuccessStatusCode();
         Assert.Equal("DFO Kanpur", FakeSql.Arg(Assert.Single(Sql("UPDATE Users SET UserName")).Args, "UserName"));
-        (await admin.PostAsync("/api/staff/accounts/DFO9/block", null)).EnsureSuccessStatusCode();
+        // 2026-11-16 (the user): a block asks for its reason, kept in the history and e-mailed to the login.
+        Assert.Equal("Please enter the reason for blocking (up to 2000 characters).", await (await admin.PostAsync("/api/staff/accounts/DFO9/block", null)).ProblemTitle());
+        Assert.Empty(Sql("UPDATE Users SET IsActive"));
+        (await admin.PostAsJsonAsync("/api/staff/accounts/DFO9/block", new { reason = "Transferred" })).EnsureSuccessStatusCode();
         Assert.Equal("False", FakeSql.Arg(Assert.Single(Sql("UPDATE Users SET IsActive")).Args, "IsActive"));
+        var history = _host.Sql.Calls.Last(c => c.Name == UserBlockHistory.InsertSql);
+        Assert.Equal(("DFO9", "Blocked", "Transferred"), (FakeSql.Arg(history.Args, "UserId"), FakeSql.Arg(history.Args, "Action"), FakeSql.Arg(history.Args, "Reason")));
+        var blocked = Assert.Single(_host.Email.Sent);
+        Assert.Equal("dfo@zed.test", blocked.To);
+        Assert.Contains("Transferred", blocked.HtmlBody);
+        _host.Email.Sent.Clear();
         (await admin.PostAsync("/api/staff/accounts/DFO9/reset-password", null)).EnsureSuccessStatusCode();
         Assert.Single(Sql("UPDATE Users SET Password"));
         Assert.Equal("dfo@zed.test", Assert.Single(_host.Email.Sent).To);

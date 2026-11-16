@@ -7,6 +7,7 @@ import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
 import { PagedView, PagerComponent } from '../pager';
 import { MultiSelect } from '../users/multi-select';
+import { ReasonAsk, ReasonDialog } from '../users/reason-dialog';
 
 interface AccountType {
   roleId: number;
@@ -111,7 +112,7 @@ const typeHints: Readonly<Record<number, string>> = {
  */
 @Component({
   selector: 'zed-staff-accounts',
-  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect],
+  imports: [FormsModule, PagerComponent, PortalSwitchComponent, MultiSelect, ReasonDialog],
   template: `
     <div class="page-head">
       <div>
@@ -425,6 +426,9 @@ const typeHints: Readonly<Record<number, string>> = {
         </div>
       </div>
       <div class="modal-backdrop show"></div>
+    }
+    @if (reasonAsk(); as r) {
+      <zed-reason-dialog [ask]="r" [busy]="busy()" [failed]="reasonError()" (confirmed)="blockOrUnblock(r, $event)" (cancel)="reasonAsk.set(null)" />
     }
     @if (busy()) {
       <div class="loadingdiv"><div class="loader"></div></div>
@@ -788,12 +792,35 @@ export class AccountsPage {
     );
   }
 
+  /** 2026-11-16 (the user): a block or an unblock asks for its reason (recorded and e-mailed to the login). */
+  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
+  protected readonly reasonError = signal('');
+
   protected async act(a: Account, action: 'block' | 'unblock' | 'reset-password'): Promise<void> {
+    if (action !== 'reset-password') {
+      this.reasonError.set('');
+      this.reasonAsk.set({ action, userId: a.userId, userName: a.userName ?? null });
+      return;
+    }
     const who = `${a.userId}${a.userName ? ' (' + a.userName + ')' : ''}`;
-    const question = action === 'block' ? `Block the login ${who}? The user can no longer sign in.`
-      : action === 'reset-password' ? `Reset the password of ${who}? A new password is e-mailed to the user.` : null;
-    if (question && !window.confirm(question)) return;
+    if (!window.confirm(`Reset the password of ${who}? A new password is e-mailed to the user.`)) return;
     await this.run(() => this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(a.userId)}/${action}`, null), false);
+  }
+
+  protected async blockOrUnblock(r: ReasonAsk, reason: string): Promise<void> {
+    this.busy.set(true);
+    this.error.set('');
+    this.success.set('');
+    try {
+      const done = await firstValueFrom(this.http.post<MessageResponse>(`${this.api}/${encodeURIComponent(r.userId)}/${r.action}`, { reason }));
+      this.reasonAsk.set(null);
+      this.success.set(done.message);
+      await this.load();
+    } catch (err) {
+      this.reasonError.set(apiErrorMessage(err));
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   private async run(call: () => Observable<MessageResponse>, fromForm: boolean): Promise<void> {

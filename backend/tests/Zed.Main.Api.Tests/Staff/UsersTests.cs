@@ -326,7 +326,7 @@ public sealed class UsersTests : IDisposable
     }
 
     [Fact]
-    public async Task Block_needs_a_reason_and_unblock_mail_has_no_password()
+    public async Task Block_and_unblock_need_a_reason_which_the_mails_give_without_a_password()
     {
         var client = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/block", new { reason = " " })).StatusCode);
@@ -343,12 +343,16 @@ public sealed class UsersTests : IDisposable
         Agency1["IsActive"] = false;
         try
         {
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/staff/users/agencies/ZEDAA0001/unblock", null)).StatusCode);
+            // 2026-11-16 (the user): an unblock needs its reason too.
+            Assert.Equal("Please enter the reason for unblocking (up to 2000 characters).",
+                await (await client.PostAsync("/api/staff/users/agencies/ZEDAA0001/unblock", null)).ProblemTitle());
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/agencies/ZEDAA0001/unblock", new { reason = "Complaint resolved" })).StatusCode);
         }
         finally { Agency1["IsActive"] = true; }
         var mail = Assert.Single(_host.Email.Sent);
         Assert.DoesNotContain("agencypw", mail.HtmlBody);
         Assert.Contains("unblocked", mail.HtmlBody);
+        Assert.Contains("Complaint resolved", mail.HtmlBody);
     }
 
     [Fact]
@@ -500,11 +504,11 @@ public sealed class UsersTests : IDisposable
         _users["ZEDAS0001"]["IsActive"] = false;
         try
         {
-            (await master.PostAsync("/api/staff/users/assessors/ZEDAS0001/unblock", null)).EnsureSuccessStatusCode();
+            (await master.PostAsJsonAsync("/api/staff/users/assessors/ZEDAS0001/unblock", new { reason = "Certificate renewed" })).EnsureSuccessStatusCode();
         }
         finally { _users["ZEDAS0001"]["IsActive"] = true; }
         var unblocked = _host.Sql.Calls.Where(c => c.Name == UserBlockHistory.InsertSql).Last();
-        Assert.Equal(("Unblocked", null), (UsersMastersLogin.Arg(unblocked.Args, "Action"), UsersMastersLogin.Arg(unblocked.Args, "Reason")));
+        Assert.Equal(("Unblocked", "Certificate renewed"), (UsersMastersLogin.Arg(unblocked.Args, "Action"), UsersMastersLogin.Arg(unblocked.Args, "Reason")));
 
         var history = await master.GetFromJsonAsync<JsonElement>("/api/staff/users/assessors/ZEDAS0001/history");
         Assert.Equal("Certificate expired", Assert.Single(history.EnumerateArray()).GetProperty("reason").GetString());
@@ -531,12 +535,12 @@ public sealed class UsersTests : IDisposable
     {
         _host.Sql.Queries["SELECT COUNT(*) FROM Users"] = _ => [1];
         var client = await UsersMastersLogin.SignInAsync(_host, "AGENCY1");
-        var r = await client.PostAsync("/api/staff/users/assessors/ZEDAS0003/unblock", null);
+        var r = await client.PostAsJsonAsync("/api/staff/users/assessors/ZEDAS0003/unblock", new { reason = "Renewed" });
         Assert.Equal(HttpStatusCode.BadRequest, r.StatusCode);
         Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_BLOCK_UNBLOCK_USER");
 
         _host.Sql.Queries["SELECT COUNT(*) FROM Users"] = _ => [0];
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/staff/users/assessors/ZEDAS0003/unblock", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/staff/users/assessors/ZEDAS0003/unblock", new { reason = "Renewed" })).StatusCode);
     }
 
     [Fact]

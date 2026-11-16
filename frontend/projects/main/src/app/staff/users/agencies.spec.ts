@@ -132,19 +132,26 @@ describe('AgenciesPage', () => {
     expect(ids().length).toBe(4);
   });
 
-  it('unblocks after confirmation and shows API errors', async () => {
+  it('unblocks with a reason and shows API errors (2026-11-16)', async () => {
     await create('all');
     http.expectOne('/api/staff/users/agencies').flush([agency('ZEDAA0002', { IsActive: false })]);
     await settle();
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     button('UnBlock')!.click();
     await settle();
+    // No reason: refused in the pop-up, nothing sent.
+    (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('zed-reason-dialog')!.textContent).toContain('Please enter the reason.');
     http.expectNone('/api/staff/users/agencies/ZEDAA0002/unblock');
-
-    confirm.mockReturnValue(true);
-    button('UnBlock')!.click();
+    const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
+    box.value = 'Re-empanelled';
+    box.dispatchEvent(new Event('input'));
     await settle();
-    http.expectOne('/api/staff/users/agencies/ZEDAA0002/unblock').flush({ title: 'This user is not blocked.' }, { status: 400, statusText: 'Bad Request' });
+    (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const req = http.expectOne('/api/staff/users/agencies/ZEDAA0002/unblock');
+    expect(req.request.body).toEqual({ reason: 'Re-empanelled' });
+    req.flush({ title: 'This user is not blocked.' }, { status: 400, statusText: 'Bad Request' });
     await settle();
     expect(el.querySelector('.alert-danger')!.textContent).toContain('This user is not blocked.');
   });

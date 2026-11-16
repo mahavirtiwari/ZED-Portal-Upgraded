@@ -195,13 +195,13 @@ public sealed class SurveillanceUsersController(
 
     [HttpPost("agencies/{userId}/unblock")]
     [StaffRoles(UserRole.MasterAdmin)]
-    public Task<ActionResult<MessageResponse>> UnblockAgency(string userId, CancellationToken ct) => UnblockAsync(userId, UserRole.Agency, ct);
+    public Task<ActionResult<MessageResponse>> UnblockAgency(string userId, ReasonRequest? req, CancellationToken ct) => UnblockAsync(userId, UserRole.Agency, req, ct);
 
     [HttpPost("assessors/{userId}/block")]
     public Task<ActionResult<MessageResponse>> BlockAssessor(string userId, ReasonRequest req, CancellationToken ct) => BlockAsync(userId, UserRole.DesktopAssessor, req, ct);
 
     [HttpPost("assessors/{userId}/unblock")]
-    public Task<ActionResult<MessageResponse>> UnblockAssessor(string userId, CancellationToken ct) => UnblockAsync(userId, UserRole.DesktopAssessor, ct);
+    public Task<ActionResult<MessageResponse>> UnblockAssessor(string userId, ReasonRequest? req, CancellationToken ct) => UnblockAsync(userId, UserRole.DesktopAssessor, req, ct);
 
     /// <summary>Every block and unblock of the login on Surveillance, latest first (2026-11-08).</summary>
     [HttpGet("agencies/{userId}/history")]
@@ -247,11 +247,12 @@ public sealed class SurveillanceUsersController(
         return await StaffUserActions.BlockAsync(this, db, new PortalHost(PortalSystem.Surveillance), Mail, user, reason!, UserId, log, ct);
     }
 
-    private async Task<ActionResult<MessageResponse>> UnblockAsync(string userId, UserRole role, CancellationToken ct)
+    private async Task<ActionResult<MessageResponse>> UnblockAsync(string userId, UserRole role, ReasonRequest? req, CancellationToken ct)
     {
         var user = await FindAsync(userId, role, ct);
         if (user is null) return NotFound();
-        return await StaffUserActions.UnblockAsync(this, db, new PortalHost(PortalSystem.Surveillance), Mail, user, UserId, log, ct);
+        if (StaffUserActions.ReasonError(req?.Reason, block: false, out var reason) is { } error) return this.Problem400(error);
+        return await StaffUserActions.UnblockAsync(this, db, new PortalHost(PortalSystem.Surveillance), Mail, user, reason!, UserId, log, ct);
     }
 
     private async Task<ManagedUser?> FindAsync(string userId, UserRole role, CancellationToken ct)

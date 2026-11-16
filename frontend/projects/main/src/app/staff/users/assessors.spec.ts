@@ -507,11 +507,18 @@ describe('AssessorListPage', () => {
     await settle(fixture);
     expect(el.querySelector('.modal')).toBeNull();
 
-    // Unblock after confirming.
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    // Unblock with its reason (2026-11-16).
     rowButton(1, 'Unblock').click();
     await settle(fixture);
-    http.expectOne('/api/staff/users/assessors/ZEDSA02/unblock').flush({ message: 'User UnBlocked successful' });
+    const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
+    box.value = 'Certificate renewed';
+    box.dispatchEvent(new Event('input'));
+    await settle(fixture);
+    (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle(fixture);
+    const unblock = http.expectOne('/api/staff/users/assessors/ZEDSA02/unblock');
+    expect(unblock.request.body).toEqual({ reason: 'Certificate renewed' });
+    unblock.flush({ message: 'User UnBlocked successful' });
     await settle(fixture);
     http.expectOne((r) => r.url === '/api/staff/users/assessors').flush(list);
     await settle(fixture);

@@ -1,6 +1,7 @@
 import { ContentTextComponent } from '../../content/content-text';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -33,7 +34,7 @@ interface Dialog {
  */
 @Component({
   selector: 'zed-staff-agencies',
-  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent, PageHead],
+  imports: [FormsModule, RouterLink, PagerComponent, ContentTextComponent, PageHead, ReasonDialog],
   templateUrl: './agencies.html',
   styles: `
     .ag-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -273,9 +274,16 @@ export class AgenciesPage {
     if (await this.run(call, true)) this.dialog.set(null);
   }
 
-  protected async unblock(a: AgencyRow): Promise<void> {
-    if (!window.confirm('Are you sure that you want to unblock?')) return;
-    await this.run(this.api.unblock('agencies', a.UserId), false);
+  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
+  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
+
+  protected unblock(a: AgencyRow): void {
+    this.reasonAsk.set({ action: 'unblock', userId: a.UserId, userName: a.UserName ?? null });
+  }
+
+  protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
+    await this.run(this.api.unblock('agencies', r.userId, reason), false);
+    this.reasonAsk.set(null);
   }
 
   /** E-mails the agency a link to set a new password. */

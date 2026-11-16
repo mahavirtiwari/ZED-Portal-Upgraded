@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ReasonAsk, ReasonDialog } from './reason-dialog';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService, MessageResponse, apiErrorMessage } from '@zed/shared';
 import { Observable, firstValueFrom } from 'rxjs';
@@ -38,7 +39,7 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
  */
 @Component({
   selector: 'zed-staff-surveillance-users',
-  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, DatePipe],
+  imports: [FormsModule, MultiSelect, PagerComponent, AssessorMobilePanel, DatePipe, ReasonDialog],
   template: `
     <div class="page-head">
       <div>
@@ -308,6 +309,9 @@ type ListFilter = 'all' | 'active' | 'blocked' | 'bronze';
       </div>
       <div class="modal-backdrop show"></div>
     }
+    @if (reasonAsk(); as r) {
+      <zed-reason-dialog [ask]="r" [busy]="false" (confirmed)="unblockWithReason(r, $event)" (cancel)="reasonAsk.set(null)" />
+    }
   `,
   styles: `
     .sv-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
@@ -549,9 +553,18 @@ export class SurveillanceUsersPage {
     await this.run(this.api.passwordReset(kind, userId));
   }
 
-  protected async unblock(kind: 'agencies' | 'assessors', userId: string): Promise<void> {
-    if (!window.confirm('Are you sure that you want to unblock this user?')) return;
-    await this.run(this.api.unblock(kind, userId));
+  /** 2026-11-16 (the user): an unblock asks for its reason (recorded and e-mailed to the user). */
+  protected readonly reasonAsk = signal<ReasonAsk | null>(null);
+  private unblockKind: 'agencies' | 'assessors' = 'agencies';
+
+  protected unblock(kind: 'agencies' | 'assessors', userId: string): void {
+    this.unblockKind = kind;
+    this.reasonAsk.set({ action: 'unblock', userId, userName: null });
+  }
+
+  protected async unblockWithReason(r: ReasonAsk, reason: string): Promise<void> {
+    await this.run(this.api.unblock(this.unblockKind, r.userId, reason));
+    this.reasonAsk.set(null);
   }
 
   private async run(call: Observable<MessageResponse>): Promise<boolean> {

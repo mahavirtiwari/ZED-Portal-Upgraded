@@ -499,10 +499,11 @@ public sealed class StaffAssessorsController(
     /// </summary>
     [HttpPost("{userId}/unblock")]
     [StaffRoles(UserRole.Agency, UserRole.MasterAdmin)]
-    public async Task<ActionResult<MessageResponse>> Unblock(string userId, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> Unblock(string userId, ReasonRequest? req, CancellationToken ct)
     {
         var a = await FindAsync(userId, ct);
         if (a is null) return NotFound();
+        if (StaffUserActions.ReasonError(req?.Reason, block: false, out var reason) is { } reasonError) return this.Problem400(reasonError);
         var cert = a.Row.Text("CertificateNo");
         // Bronze Assessors (one active account per certificate) exist on Main only.
         if (cert.Length > 0 && !host.IsConsultancy())
@@ -513,7 +514,7 @@ public sealed class StaffAssessorsController(
             if (attached.FirstOrDefault() > 0)
                 return this.Problem400("This certificate is attached to another active Bronze Assessor, so the user cannot be unblocked.");
         }
-        return await StaffUserActions.UnblockAsync(this, db, host, Mail, a, UserId, log, ct);
+        return await StaffUserActions.UnblockAsync(this, db, host, Mail, a, reason!, UserId, log, ct);
     }
 
     /// <summary>E-mails the assessor a link to set a new password (MasterAdmin, or the agency that manages the assessor).</summary>

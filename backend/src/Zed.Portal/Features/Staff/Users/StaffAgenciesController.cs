@@ -298,11 +298,12 @@ public sealed class StaffAgenciesController(
     }
 
     [HttpPost("{userId}/unblock")]
-    public async Task<ActionResult<MessageResponse>> Unblock(string userId, CancellationToken ct)
+    public async Task<ActionResult<MessageResponse>> Unblock(string userId, ReasonRequest? req, CancellationToken ct)
     {
         var agency = await FindAsync(userId, ct);
         if (agency is null) return NotFound();
-        return await StaffUserActions.UnblockAsync(this, db, host, Mail, agency, UserId, log, ct);
+        if (StaffUserActions.ReasonError(req?.Reason, block: false, out var reason) is { } error) return this.Problem400(error);
+        return await StaffUserActions.UnblockAsync(this, db, host, Mail, agency, reason!, UserId, log, ct);
     }
 
     /// <summary>E-mails the agency a link to set a new password (the MasterAdmin never sees or sets it).</summary>

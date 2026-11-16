@@ -23,6 +23,13 @@
                 <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">User ID</td>
                 <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@UserId</td>
             </tr>
+            @if (!string.IsNullOrWhiteSpace(Reason))
+            {
+                <tr>
+                    <td style="border-bottom:2px solid #f0f0f0;padding: 15px; width: 30%; font-size: 13px; text-align: left; padding-right: 20px;">Reason</td>
+                    <td style="border-bottom:2px solid #f0f0f0;font-weight: 700;">@Reason</td>
+                </tr>
+            }
         </tbody>
     </table>
     <div style="text-align: center; padding: 30px 0;">
@@ -38,5 +45,7 @@
     [Parameter, EditorRequired] public string LoginUrl { get; set; } = "";
     /// <summary>Consultancy (handholding) wording.</summary>
     [Parameter] public bool Consultancy { get; set; }
+    /// <summary>2026-11-16: the reason the Admin gave for the unblock.</summary>
+    [Parameter] public string? Reason { get; set; }
     [Parameter, EditorRequired] public string PublicBaseUrl { get; set; } = "";
 }

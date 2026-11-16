@@ -187,21 +187,27 @@ describe('User management', () => {
       await settle();
     });
 
-    it('blocks a login after asking and shows refusals', async () => {
+    it('blocks a login with a reason and shows refusals in the pop-up (2026-11-16)', async () => {
       await create(AccountsPage);
       http.expectOne('/api/staff/accounts').flush(list);
       await settle();
-      const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
       button('Block').click();
+      await settle();
+      expect(el.querySelector('zed-reason-dialog h3')!.textContent).toContain('Block DFO Lucknow');
+      (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
       await settle();
       http.expectNone('/api/staff/accounts/DFO9/block');
-      button('Block').click();
+      const box = el.querySelector('#reason-dialog-text') as HTMLTextAreaElement;
+      box.value = 'Transferred';
+      box.dispatchEvent(new Event('input'));
       await settle();
-      expect(confirm).toHaveBeenLastCalledWith('Block the login DFO9 (DFO Lucknow)? The user can no longer sign in.');
-      http.expectOne('/api/staff/accounts/DFO9/block').flush({ title: 'Not allowed.' }, { status: 400, statusText: 'Bad Request' });
+      (el.querySelector('zed-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
       await settle();
-      expect(el.querySelector('.alert-danger')!.textContent).toContain('Not allowed.');
-      confirm.mockRestore();
+      const req = http.expectOne('/api/staff/accounts/DFO9/block');
+      expect(req.request.body).toEqual({ reason: 'Transferred' });
+      req.flush({ title: 'Not allowed.' }, { status: 400, statusText: 'Bad Request' });
+      await settle();
+      expect(el.querySelector('zed-reason-dialog')!.textContent).toContain('Not allowed.');
     });
 
     it('filters by login type with the tabs, starts Add with that type and keeps the type of a saved login', async () => {

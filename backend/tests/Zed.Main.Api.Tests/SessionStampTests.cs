@@ -90,8 +90,8 @@ public sealed class SessionStampTests : IDisposable
         var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
         foreach (var call in new Func<Task<HttpResponseMessage>>[]
         {
-            () => admin.PostAsync("/api/staff/accounts/DFO9/block", null),
-            () => admin.PostAsync("/api/staff/accounts/DFO9/unblock", null),
+            () => admin.PostAsJsonAsync("/api/staff/accounts/DFO9/block", new { reason = "Test" }),
+            () => admin.PostAsJsonAsync("/api/staff/accounts/DFO9/unblock", new { reason = "Test" }),
             () => admin.PutAsJsonAsync("/api/staff/accounts/DFO9", new { userName = "DFO Kanpur", email = "dfo@zed.test", mobileNo = "9876543210", sectorActivity = "Both", states = new[] { "9" }, neftLists = new[] { "main" } }),
             () => admin.PostAsync("/api/staff/accounts/DFO9/reset-password", null),
         })

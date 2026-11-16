@@ -370,11 +370,14 @@ public sealed class StaffAccountsController(
         return new MessageResponse("Login updated. The user is signed out and the change applies at the next sign-in.");
     }
 
+    public sealed record ReasonRequest(string? Reason);
+
+    /// <summary>2026-11-16 (the user): a block and an unblock ask for the reason, recorded and mailed to the login.</summary>
     [HttpPost("{userId}/block")]
-    public Task<ActionResult<MessageResponse>> Block(string userId, CancellationToken ct) => SetActiveAsync(userId, false, ct);
+    public Task<ActionResult<MessageResponse>> Block(string userId, ReasonRequest? req, CancellationToken ct) => SetActiveAsync(userId, false, req?.Reason, ct);
 
     [HttpPost("{userId}/unblock")]
-    public Task<ActionResult<MessageResponse>> Unblock(string userId, CancellationToken ct) => SetActiveAsync(userId, true, ct);
+    public Task<ActionResult<MessageResponse>> Unblock(string userId, ReasonRequest? req, CancellationToken ct) => SetActiveAsync(userId, true, req?.Reason, ct);
 
     /// <summary>A new password, mailed to the login's e-mail address.</summary>
     [HttpPost("{userId}/reset-password")]
@@ -410,13 +413,17 @@ public sealed class StaffAccountsController(
         return rows.Count > 0 ? rows[0] : null;
     }
 
-    private async Task<ActionResult<MessageResponse>> SetActiveAsync(string userId, bool active, CancellationToken ct)
+    private async Task<ActionResult<MessageResponse>> SetActiveAsync(string userId, bool active, string? rawReason, CancellationToken ct)
     {
         if (await FindAsync(userId, ct) is not { } row) return NotFound();
+        if (StaffUserActions.ReasonError(rawReason, block: !active, out var reason) is { } error) return this.Problem400(error);
         await db.ExecuteSqlAsync("UPDATE Users SET IsActive = @IsActive WHERE UserId = @UserId AND RoleId = @RoleId;",
             new { IsActive = active, row.UserId, row.RoleId }, ct);
         log.LogInformation("Login {UserId} {Action} by {Actor}", row.UserId, active ? "unblocked" : "blocked", UserId);
         await SessionStamps.EndSessionsAsync(db, host.System, row.UserId, log, ct);
+        var label = Types.FirstOrDefault(t => t.RoleId == row.RoleId)?.Label ?? "Dashboard Admin";
+        await StaffUserActions.RecordAndMailLoginAsync(this, db, host, new StaffUserMail(email, templates, portal, addresses, log), row.UserId, row.RoleId,
+            row.UserName, row.Email, label, blocked: !active, reason!, UserId, log, ct);
         return new MessageResponse(active ? "Login unblocked." : "Login blocked.");
     }
 
