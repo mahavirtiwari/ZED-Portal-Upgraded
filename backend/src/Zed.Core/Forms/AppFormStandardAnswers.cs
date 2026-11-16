@@ -35,6 +35,8 @@ public static class AppFormStandardAnswers
     /// <summary>Why a standard field of a validated form has no "Validation required" switch, or null when it has one.</summary>
     public static string? WhyNot(string formKey, AppField field) =>
         CanValidate(formKey, field.Key) ? null
+        : string.Equals(formKey, AppFormCatalogue.AssessorBasicInfo, StringComparison.OrdinalIgnoreCase)
+            ? "The agency reviews the site assessor's standard answers on the site assessment page; only the fields you added can be \"Validation required\"."
         : string.Equals(field.Key, "productDetailsList", StringComparison.OrdinalIgnoreCase) || field.Type == AppFieldTypes.Photo
             ? "The assessor already checks this answer on the desktop assessment (Valid / Not valid, with its own NC)."
             : field.Type == AppFieldTypes.Rows

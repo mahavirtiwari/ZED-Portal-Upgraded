@@ -159,6 +159,13 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         // 2026-11-16 (approved): the ZED team's open major / critical observations wait for the agency's reply.
         if (await Quality.QualityObservations.BlockingAsync(db, zedId, level!, log, ct) is > 0 and var open)
             return this.Problem400(Quality.QualityObservations.BlockingMessage(open));
+        // 2026-11-16 (the user): the site assessor's "Validation required" answers checked, none sent back uncorrected.
+        if (!desktop && AgencyChecks)
+        {
+            var (unchecked_, notValid) = await Checks.SummaryAsync(PortalSystem.Main, zedId, level!, AgencyRound(), ct);
+            if (Zed.Core.Forms.AppFormChecks.UncheckedMessage(unchecked_) is { } uncheckedMessage) return this.Problem400(uncheckedMessage);
+            if (notValid > 0) return this.Problem400(Zed.Core.Forms.AppFormChecks.SentBackMessage(notValid));
+        }
 
         await Decisions.WaitAsync(ct);
         try
@@ -304,6 +311,47 @@ public sealed class MonitoringReviewController(ISqlExecutor db, ILogger<Monitori
         if (error is null && now == stage) return null;
         log.LogWarning("{UserId}: decision on {ZedId} {Certification} not run, the record was decided meanwhile", UserId, zedId, certification);
         return Problem(title: AlreadyDecided, statusCode: StatusCodes.Status409Conflict);
+    }
+
+    // ---------- 2026-11-16 (the user): the site assessor's "Validation required" answers, checked by the agency ----------
+
+    /// <param name="Applies">The site review of a main-portal record (the site assessor's form is checked here).</param>
+    /// <param name="CanCheck">The signed-in agency may check now (the site review is open to it).</param>
+    public sealed record FormChecksResponse(bool Applies, bool CanCheck, int Round, bool NcRound, IReadOnlyList<Zed.Core.Forms.AppFormCheckItem> Items);
+
+    public sealed record FormCheckRequest(string? Form, string? Key, string? Status, string? Remarks);
+
+    private Zed.Core.Forms.AppFormChecks Checks => HttpContext.RequestServices.GetRequiredService<Zed.Core.Forms.AppFormChecks>();
+
+    private bool AgencyChecks => HttpContext.RequestServices.GetService<PortalHost>()?.System == PortalSystem.Main;
+
+    /// <summary>The agency checks the answers as they stand on each review (round 0: not an NC round of the unit).</summary>
+    private static Zed.Core.Forms.AppFormCheckRound AgencyRound() => new(Zed.Core.Forms.AppFormStages.Agency, 0, false);
+
+    [HttpGet("form-checks")]
+    public async Task<ActionResult<FormChecksResponse>> FormChecks(string zedId, string certification, CancellationToken ct)
+    {
+        var level = AssessmentInput.Level(certification);
+        if (!AssessmentInput.IsId(zedId) || level is null) return this.Problem400("Invalid request.");
+        var record = await AssessmentRecords.CertificationAsync(db, zedId, level, ct);
+        if (record is null || !record.CanView(CurrentUser)) return NotFound();
+        if (!AgencyChecks || Zed.Core.Data.LevelRegistry.IsDesktop(level)) return new FormChecksResponse(false, false, 0, false, []);
+        var can = ReviewRules.StageOf(record) == ReviewStage.Site && ReviewRules.For(CurrentUser, record, ReviewStage.Site).FinalSubmit;
+        return new FormChecksResponse(true, can, 0, false, await Checks.ItemsAsync(PortalSystem.Main, zedId, level, AgencyRound(), ct));
+    }
+
+    /// <summary>Valid, or Not valid with a remark: the answer goes back to the site assessor, who corrects it in the assessor app.</summary>
+    [HttpPost("form-checks")]
+    [StaffRoles(UserRole.Agency)]
+    public async Task<ActionResult<MessageResponse>> SaveFormCheck(string zedId, string certification, FormCheckRequest req, CancellationToken ct)
+    {
+        var (level, _, stage, error) = await ForAction(zedId, certification, a => a.FinalSubmit, ct);
+        if (error is not null) return error;
+        if (stage != ReviewStage.Site || !AgencyChecks) return this.Problem400("The site assessor's answers are checked on the site assessment review.");
+        if (await Checks.SaveAsync(PortalSystem.Main, zedId, level!, AgencyRound(), req.Form, req.Key, req.Status, req.Remarks, UserId, ct) is { } invalid)
+            return this.Problem400(invalid);
+        return new MessageResponse(string.Equals(req.Status?.Trim(), "Yes", StringComparison.OrdinalIgnoreCase) || string.Equals(req.Status?.Trim(), "Valid", StringComparison.OrdinalIgnoreCase)
+            ? "Saved." : "Saved. The answer is sent back to the site assessor for correction in the assessor app.");
     }
 
     /// <summary>

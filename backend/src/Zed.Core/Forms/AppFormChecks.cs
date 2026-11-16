@@ -29,6 +29,9 @@ public static class AppFormStages
     /// </summary>
     public static string For(string level) => Data.LevelRegistry.IsDesktop(AppFormUnit.LevelOf(level)) ? Desktop : Site;
 
+    /// <summary>2026-11-16: the assessment agency, on its review of the site assessment (the site assessor's own form).</summary>
+    public const string Agency = "AG";
+
 }
 
 /// <summary>A stored answer with its check and NC (dbo.V4AppFormValues).</summary>
@@ -153,10 +156,12 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
     {
         var unit = await AppFormUnit.ForAsync(db, zedId, certification, ct);
         var specs = new List<(AppFormSpec Spec, EffectiveAppForm Form)>();
-        foreach (var spec in AppFormCatalogue.For(system).Where(s => s.CanValidate(system)))
+        // The unit's forms are checked by its assessor; the site assessor's form by the agency (2026-11-16).
+        var agency = round.Stage == AppFormStages.Agency;
+        foreach (var spec in AppFormCatalogue.For(system).Where(s => (agency ? s.AgencyChecked : s.Validated).Contains(system)))
         {
             var form = (await forms.GetAsync(system, spec.Key, ct, unit))!;
-            if (!round.NcRound) await CopyStandardAnswersAsync(form, zedId, certification, round, ct);
+            if (!round.NcRound && !agency) await CopyStandardAnswersAsync(form, zedId, certification, round, ct);
             specs.Add((spec, form));
         }
         var rows = await RowsAsync(zedId, certification, ct);
@@ -232,6 +237,66 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
         1 => "You have not checked 1 answer under \"to validate\" (Basic Information). Please mark it Valid or Not valid before final submit.",
         _ => $"You have not checked {count} answers under \"to validate\" (Basic Information). Please mark each Valid or Not valid before final submit.",
     };
+
+    /// <summary>The site assessor's answers the agency found Not valid and sent back, not corrected yet.</summary>
+    public static string SentBackMessage(int count) => count == 1
+        ? "1 answer of the site assessor's Basic Information was sent back for correction. Final submit once it is corrected and checked Valid."
+        : $"{count} answers of the site assessor's Basic Information were sent back for correction. Final submit once they are corrected and checked Valid.";
+
+    // ---------- The site assessor's side (assessor app), 2026-11-16 ----------
+
+    /// <summary>A site assessor's answer the agency found Not valid, as the assessor app corrects it.</summary>
+    public sealed record AppFormCorrection(string Form, string Key, string Label, string Type, string? Help, IReadOnlyList<string>? Options,
+        string? Remarks, string? Value);
+
+    public const string CorrectSql =
+        "UPDATE dbo.V4AppFormValues SET Value = @Value, SubmittedBy = @By, UpdatedOn = SYSUTCDATETIME(), ValidStatus = NULL " +
+        "WHERE FormKey = @FormKey AND ZedId = @ZedId AND CertificationType = @CertificationType AND FieldKey = @FieldKey " +
+        "AND ValidStage = 'AG' AND ValidStatus = 'No';";
+
+    /// <summary>The answers of the agency-checked forms sent back to the site assessor (Not valid, not corrected yet).</summary>
+    public async Task<IReadOnlyList<AppFormCorrection>> CorrectionsAsync(PortalSystem system, string zedId, string certification, CancellationToken ct = default)
+    {
+        var rows = (await RowsAsync(zedId, certification, ct)).Where(r => r.ValidStage == AppFormStages.Agency && r.ValidStatus == "No").ToList();
+        var result = new List<AppFormCorrection>();
+        foreach (var spec in AppFormCatalogue.For(system).Where(s => s.AgencyChecked.Contains(system)))
+        {
+            var mine = rows.Where(r => string.Equals(r.FormKey, spec.Key, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (mine.Count == 0) continue;
+            var form = (await forms.GetAsync(system, spec.Key, ct))!;
+            foreach (var row in mine)
+            {
+                var f = form.Find(row.FieldKey);
+                var type = f?.Type ?? AppFieldTypes.Text;
+                result.Add(new AppFormCorrection(spec.Key, row.FieldKey, f?.Label ?? row.FieldKey, type, f?.Help, f?.Options, row.ValidRemarks,
+                    AppFormRules.Display(type, row.Value)));
+            }
+        }
+        return result;
+    }
+
+    /// <summary>The site assessor's corrected answer (checked against the field's type and choices): the agency checks it again. The error, or null.</summary>
+    public async Task<string?> CorrectAsync(PortalSystem system, string zedId, string certification, string? form, string? key, JsonElement value,
+        string submittedBy, CancellationToken ct = default)
+    {
+        var item = (await CorrectionsAsync(system, zedId, certification, ct))
+            .FirstOrDefault(i => string.Equals(i.Form, form?.Trim(), StringComparison.OrdinalIgnoreCase) && string.Equals(i.Key, key?.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (item is null) return "This answer is not sent back for correction. Please refresh.";
+        var spec = AppFormCatalogue.Find(system, item.Form)!;
+        var field = (await forms.GetAsync(system, spec.Key, ct))!.Find(item.Key)
+                    ?? new AppField { Key = item.Key, Label = item.Label, Type = item.Type, Section = spec.Sections[0].Key, Custom = true };
+        var (stored, error) = AppFormRules.Normalise(field, value);
+        if (error is not null) return $"{item.Label}: {error}";
+        if (stored is null) return $"Please fill in: {item.Label}.";
+        var changed = await db.ExecuteSqlAsync(CorrectSql, new
+        {
+            Value = stored, By = Ansi(submittedBy.Length <= 50 ? submittedBy : submittedBy[..50], 50),
+            FormKey = Ansi(spec.Key, 50), ZedId = Ansi(zedId, 50), CertificationType = Ansi(certification, 50), FieldKey = Ansi(item.Key, 100),
+        }, ct);
+        if (changed == 0) return "This answer is not sent back for correction. Please refresh.";
+        log.LogInformation("App form correction: {Form}/{Key} of {ZedId} {Certification} corrected by {By}", spec.Key, item.Key, zedId, certification, submittedBy);
+        return null;
+    }
 
     // ---------- The unit's side (ZED MSME app) ----------
 

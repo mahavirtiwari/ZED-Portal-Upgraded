@@ -135,6 +135,41 @@ public sealed class MonitoringReviewTests : IDisposable
 
     private IEnumerable<object?> CallsTo(string name) => _host.Sql.Calls.Where(c => c.Name == name).Select(c => c.Args);
 
+    /// <summary>2026-11-16 (the user): the site assessor's "Validation required" answers, checked by the agency on its site review.</summary>
+    [Fact]
+    public async Task The_agency_checks_the_site_assessors_answers_and_a_not_valid_one_holds_the_final_submit()
+    {
+        const string Form = global::Zed.Core.Forms.AppFormCatalogue.AssessorBasicInfo;
+        var answers = new List<global::Zed.Core.Forms.AppFormCheckRow> { new() { FormKey = Form, FieldKey = "cf_machines", Value = "12" } };
+        _host.Sql.Queries[global::Zed.Core.Forms.SqlAppFormStore.FieldsSql] = args => FakeSql.Arg(args, "FormKey") == Form
+            ? [new global::Zed.Core.Forms.AppFormFieldRow(Form, "cf_machines", true, "Machines on the floor", null, "number", true, true, 100, "basic", null, "ADMIN1", null, null, null, true)]
+            : [];
+        _host.Sql.Queries[global::Zed.Core.Forms.AppFormChecks.RowsSql] = _ => answers.ToList();
+        var agency = await As("AGENCYSV");
+
+        var checks = (await agency.GetFromJsonAsync<MonitoringReviewController.FormChecksResponse>(Silver + "/form-checks"))!;
+        Assert.True(checks.Applies && checks.CanCheck);
+        Assert.Equal(("cf_machines", "12"), (Assert.Single(checks.Items).Key, checks.Items[0].Value));
+
+        // Not checked yet: no final submit.
+        var unchecked_ = await agency.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true });
+        Assert.Contains("not checked 1 answer", await unchecked_.ProblemTitle());
+
+        // Not valid: stored for the agency stage, and the final submit waits for the site assessor's correction.
+        var saved = await agency.PostAsJsonAsync(Silver + "/form-checks", new { form = Form, key = "cf_machines", status = "No", remarks = "Count again" });
+        Assert.Contains("sent back to the site assessor", (await saved.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("message").GetString());
+        var check = _host.Sql.Calls.Last(c => c.Name == global::Zed.Core.Forms.AppFormChecks.CheckSql);
+        Assert.Equal(("No", "AG", "0"), (FakeSql.Arg(check.Args, "Status"), FakeSql.Arg(check.Args, "Stage"), FakeSql.Arg(check.Args, "Round")));
+        answers[0] = answers[0] with { ValidStatus = "No", ValidStage = "AG", ValidRound = 0, ValidRemarks = "Count again" };
+        var held = await agency.PostAsJsonAsync(Silver + "/final-submit", new { qualityChecked = true });
+        Assert.Contains("sent back for correction", await held.ProblemTitle());
+        Assert.Empty(CallsTo("SP_V4_RA_FINAL_SUBMIT"));
+
+        // Another agency cannot check.
+        var other = await As("AGENCY1");
+        Assert.NotEqual(HttpStatusCode.OK, (await other.PostAsJsonAsync(Silver + "/form-checks", new { form = Form, key = "cf_machines", status = "Yes" })).StatusCode);
+    }
+
     private static readonly string[] ChangeProcs =
     [
         "SP_MONITORING_UPDATE_AGENCY_REMARKS", "SP_MONITORING_RA_UPDATE_AGENCY_REMARKS", "SP_ASSESSMENT_RA_UPDATE_COMMENTS",

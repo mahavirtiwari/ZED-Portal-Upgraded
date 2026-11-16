@@ -57,6 +57,44 @@ public sealed class SaWriteTests : IDisposable
         Assert.Empty(_t.AllFiles());
     }
 
+    // ---------------------------------------------------------------- 2026-11-16: answers the agency sent back
+
+    [Fact]
+    public async Task The_site_assessor_lists_and_corrects_the_answers_the_agency_sent_back()
+    {
+        const string Form = global::Zed.Core.Forms.AppFormCatalogue.AssessorBasicInfo;
+        var status = 15;
+        var rows = new List<global::Zed.Core.Forms.AppFormCheckRow>
+        {
+            new() { FormKey = Form, FieldKey = "cf_machines", Value = "12", ValidStatus = "No", ValidStage = "AG", ValidRound = 0, ValidRemarks = "Count again" },
+            new() { FormKey = Form, FieldKey = "cf_shifts", Value = "2", ValidStatus = "Yes", ValidStage = "AG", ValidRound = 0 },
+        };
+        _t.Fake.Queries[global::Zed.Core.Forms.SqlAppFormStore.FieldsSql] = args => FakeSql.Arg(args, "FormKey") == Form
+            ? [new global::Zed.Core.Forms.AppFormFieldRow(Form, "cf_machines", true, "Machines on the floor", null, "number", true, true, 100, "basic", null, "ADMIN1", null, null, null, true)]
+            : [];
+        _t.Fake.Queries[global::Zed.Core.Forms.AppFormChecks.RowsSql] = _ => rows.ToList();
+        _t.Fake.Queries[global::Zed.Main.MobileApi.Controllers.SAController.ReviewStatusSql] = _ => [new { CertificationStatus = (int?)status }];
+
+        var list = await _t.Json("/SA/FormCorrections", new { saId = Lead, zedId = Zed, certificationType = "Silver" });
+        AssertOk(list);
+        var item = Assert.Single(list.GetProperty("corrections").EnumerateArray());
+        Assert.Equal(("cf_machines", "Machines on the floor", "Count again"),
+            (item.GetProperty("key").GetString(), item.GetProperty("label").GetString(), item.GetProperty("remarks").GetString()));
+
+        AssertFail(await _t.Json("/SA/SubmitFormCorrection", new { saId = Lead, zedId = Zed, certificationType = "Silver", form = Form, key = "cf_machines", value = "many" }),
+            "Machines on the floor: please enter a whole number.");
+        AssertOk(await _t.Json("/SA/SubmitFormCorrection", new { saId = Co, zedId = Zed, certificationType = "Silver", form = Form, key = "cf_machines", value = 14 }));
+        var corrected = _t.CallsTo(global::Zed.Core.Forms.AppFormChecks.CorrectSql).Single().Args;
+        Assert.Equal(("14", "cf_machines", Co), (FakeSql.Arg(corrected, "Value"), FakeSql.Arg(corrected, "FieldKey"), FakeSql.Arg(corrected, "By")));
+
+        // Not allotted, or the agency's review is not open: refused.
+        AssertFail(await _t.Json("/SA/FormCorrections", new { saId = Other, zedId = Zed, certificationType = "Silver" }), "Site Assessment data not yet allocated for the ZEDID: " + Zed);
+        status = 16;
+        AssertFail(await _t.Json("/SA/SubmitFormCorrection", new { saId = Lead, zedId = Zed, certificationType = "Silver", form = Form, key = "cf_machines", value = 15 }),
+            "The agency's review of this site assessment is not open.");
+        Assert.Empty((await _t.Json("/SA/FormCorrections", new { saId = Lead, zedId = Zed, certificationType = "Silver" })).GetProperty("corrections").EnumerateArray());
+    }
+
     // ---------------------------------------------------------------- SubmitAllocation
 
     [Fact]

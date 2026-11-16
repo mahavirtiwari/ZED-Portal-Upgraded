@@ -1,4 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { FormChecksPanel } from '../assessment/form-checks';
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { apiErrorMessage } from '@zed/shared';
@@ -46,7 +47,7 @@ export const SA_TAB_TITLES: Record<number, string> = {
  */
 @Component({
   selector: 'zed-staff-sa-details',
-  imports: [QualityObservationsPanel, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo],
+  imports: [QualityObservationsPanel, RouterLink, ReviewActionsBar, ReviewRemarksDialog, SaSurveillanceTab, RequirementVideo, FormChecksPanel],
   templateUrl: './sa-details.html',
   styles: [DETAILS_STYLES],
   host: { '(document:keydown.escape)': 'preview.set(null)' },

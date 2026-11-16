@@ -56,6 +56,8 @@ describe('FormChecksPanel (App Forms: Validation required)', () => {
   it('builds the desktop and the remote address', () => {
     expect(formChecksUrl('desktop', 'Z1', 'Bronze')).toContain('/api/staff/assessment/da/Z1/Bronze/form-checks');
     expect(formChecksUrl('remote', 'Z1', 'Silver')).toContain('/api/staff/remote/Z1/Silver/form-checks');
+    // 2026-11-16: the agency's site review of the site assessor's own form.
+    expect(formChecksUrl('agency', 'Z1', 'Gold')).toContain('/api/staff/monitoring/review/Z1/Gold/form-checks');
   });
 
   it('lists each answer to check with Valid and Not valid', async () => {

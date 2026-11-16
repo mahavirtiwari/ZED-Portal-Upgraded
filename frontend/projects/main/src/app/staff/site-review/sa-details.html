@@ -399,6 +399,8 @@
             </tbody>
           </table>
           </div>
+          <!-- 2026-11-16: the site assessor's "Validation required" answers, checked by the agency. -->
+          <zed-form-checks kind="agency" [zedId]="zedId()" [certification]="level() ?? certification()" />
         </div>
       }
 

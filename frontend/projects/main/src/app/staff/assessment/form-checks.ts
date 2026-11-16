@@ -34,11 +34,13 @@ export interface FormChecks {
 }
 
 /** Where the checks are: the desktop page or the lead assessor's review of a unit and level. */
-export type FormChecksKind = 'desktop' | 'remote';
+export type FormChecksKind = 'desktop' | 'remote' | 'agency';
 
 export function formChecksUrl(kind: FormChecksKind, zedId: string, certification: string): string {
   const unit = `${encodeURIComponent(zedId)}/${encodeURIComponent(certification)}`;
-  return withApiBase(kind === 'desktop' ? `/api/staff/assessment/da/${unit}/form-checks` : `/api/staff/remote/${unit}/form-checks`);
+  // 2026-11-16: 'agency': the site assessor's own form, checked by the agency on its site review.
+  return withApiBase(kind === 'desktop' ? `/api/staff/assessment/da/${unit}/form-checks`
+    : kind === 'agency' ? `/api/staff/monitoring/review/${unit}/form-checks` : `/api/staff/remote/${unit}/form-checks`);
 }
 
 /**
@@ -60,6 +62,7 @@ export function formChecksUrl(kind: FormChecksKind, zedId: string, certification
           </div>
           <div class="card-body py-2">
             @if (d.ncRound) { <p class="small text-muted mb-2">NC {{ d.round }}: the unit's new answers to the fields found not valid.</p> }
+            @if (kind() === 'agency') { <p class="small text-muted mb-2" data-agency-note>The site assessor's answers. Not valid sends the answer back to the site assessor, who corrects it in the assessor app; final submit once every answer is Valid.</p> }
             @if (error()) { <div class="alert alert-danger py-1 small mb-2" role="alert">{{ error() }}</div> }
             @for (i of d.items; track i.form + i.key) {
               <div class="fc-row" [attr.data-key]="i.key">
@@ -86,7 +89,7 @@ export function formChecksUrl(kind: FormChecksKind, zedId: string, certification
                 </div>
                 @if (editing() === i.form + i.key) {
                   <div class="fc-remark">
-                    <input class="form-control form-control-sm" maxlength="1000" placeholder="Why the answer is not valid (raises an NC)"
+                    <input class="form-control form-control-sm" maxlength="1000" [placeholder]="kind() === 'agency' ? 'Why the answer is not valid (sent back to the site assessor)' : 'Why the answer is not valid (raises an NC)'"
                            [attr.aria-label]="'Remark on ' + i.label" [(ngModel)]="remark" />
                     <button type="button" class="btn btn-sm btn-danger" [disabled]="busy()" (click)="saveNotValid(i)">Save</button>
                     <button type="button" class="btn btn-sm btn-link" (click)="editing.set(null)">Cancel</button>

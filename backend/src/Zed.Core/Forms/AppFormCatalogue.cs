@@ -61,7 +61,13 @@ public sealed record AppFormSpec(string Key, string Name, string App, IReadOnlyL
     /// </summary>
     public IReadOnlyList<PortalSystem> Validated { get; init; } = [];
 
-    public bool CanValidate(PortalSystem system) => Validated.Contains(system);
+    /// <summary>
+    /// 2026-11-16 (the user): systems where this form's "Validation required" answers are checked by the assessment agency on
+    /// its review (the site assessor fills the form in at the visit; Not valid sends the answer back to the site assessor).
+    /// </summary>
+    public IReadOnlyList<PortalSystem> AgencyChecked { get; init; } = [];
+
+    public bool CanValidate(PortalSystem system) => Validated.Contains(system) || AgencyChecked.Contains(system);
 }
 
 /// <summary>
@@ -95,7 +101,7 @@ public static class AppFormCatalogue
         // Site assessment app (ZED_SA_Studio): the same questions without the photos, numbered 1-10.
         new(AssessorBasicInfo, "Basic Information", "Site assessment app", [PortalSystem.Main, PortalSystem.Surveillance], true,
             [new(Basic, "Basic Information")],
-            [.. UnitQuestions(10, productDescriptionPhoto: "Product Description Photo")]),
+            [.. UnitQuestions(10, productDescriptionPhoto: "Product Description Photo")]) { AgencyChecked = [PortalSystem.Main] },
         // Handholding consultant app (ZEDConsultant): the unit's baseline figures in nine groups.
         new(ConsultantBasicInfo, "Basic Information", "Handholding consultant app", [PortalSystem.Consultancy], false,
             [

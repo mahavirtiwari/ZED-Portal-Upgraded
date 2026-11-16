@@ -59,7 +59,9 @@ public sealed class AppFormValidationTests : IDisposable
         Assert.Equal(AppFormStages.Site, AppFormStages.For("Gold"));
         Assert.Equal(AppFormStages.Site, AppFormStages.For("ZEDX"));
         Assert.True(AppFormCatalogue.Find(PortalSystem.Main, Msme)!.CanValidate(PortalSystem.Main));
-        Assert.False(AppFormCatalogue.Find(PortalSystem.Main, AppFormCatalogue.AssessorBasicInfo)!.CanValidate(PortalSystem.Main));
+        // 2026-11-16: the site assessor's form is checked by the agency.
+        Assert.True(AppFormCatalogue.Find(PortalSystem.Main, AppFormCatalogue.AssessorBasicInfo)!.CanValidate(PortalSystem.Main));
+        Assert.Empty(AppFormCatalogue.Find(PortalSystem.Main, AppFormCatalogue.AssessorBasicInfo)!.Validated);
     }
 
     /// <summary>2026-11-15: the report lists the NCs raised on answers in their rounds (a round raised only by them counted none).</summary>
@@ -105,9 +107,14 @@ public sealed class AppFormValidationTests : IDisposable
         var products = await admin.PutAsJsonAsync($"{Forms}/{Msme}/fields", new { key = "productDetailsList", label = "Products", required = true, enabled = true, validationRequired = true });
         Assert.Equal(HttpStatusCode.BadRequest, products.StatusCode);
 
-        // The site assessor's own form is not checked by anyone.
-        var other = await admin.PostAsJsonAsync($"{Forms}/{AppFormCatalogue.AssessorBasicInfo}/fields", new { label = "X", type = "text", validationRequired = true });
-        Assert.Equal(HttpStatusCode.BadRequest, other.StatusCode);
+        // 2026-11-16: the site assessor's own form: its own fields can be validated (by the agency), its standard ones not.
+        var site = (await admin.GetFromJsonAsync<AppFormsController.FormDetails>($"{Forms}/{AppFormCatalogue.AssessorBasicInfo}"))!;
+        Assert.True(site.CanValidate);
+        Assert.Contains("agency reviews", site.Fields.Single(f => f.Key == "auditsConducted").NoValidation);
+        var other = await admin.PostAsJsonAsync($"{Forms}/{AppFormCatalogue.AssessorBasicInfo}/fields", new { label = "Machines", type = "text", validationRequired = true });
+        Assert.Equal(HttpStatusCode.OK, other.StatusCode);
+        var std = await admin.PutAsJsonAsync($"{Forms}/{AppFormCatalogue.AssessorBasicInfo}/fields", new { key = "auditsConducted", label = "Audits?", required = true, enabled = true, validationRequired = true });
+        Assert.Equal(HttpStatusCode.BadRequest, std.StatusCode);
     }
 
     [Fact]

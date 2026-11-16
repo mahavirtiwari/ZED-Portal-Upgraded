@@ -191,7 +191,8 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
             x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList(), x.Levels, x.NicSectors,
             x.ValidationRequired)
         {
-            NoValidation = !x.Custom && x.Standard is not null && f.Spec.Validated.Count > 0 && !x.Key.Contains(AppFormCatalogue.ColumnSeparator)
+            NoValidation = !x.Custom && x.Standard is not null && (f.Spec.Validated.Count > 0 || f.Spec.AgencyChecked.Count > 0)
+                           && !x.Key.Contains(AppFormCatalogue.ColumnSeparator)
                 ? AppFormStandardAnswers.WhyNot(f.Spec.Key, x) : null,
         };
 
