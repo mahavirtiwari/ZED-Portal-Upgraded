@@ -2,7 +2,6 @@ import { Component, DestroyRef, ElementRef, HostListener, Injector, afterNextRen
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService, ClientConfigService, PortalLinksService } from '@zed/shared';
 import { BrandingService } from '../branding';
-import { PORTAL_SYSTEM } from '../portal-system';
 import { StaffMenuEntry, StaffMenuItem, menuEntries, menuFor, staffRoleName } from './staff-menu';
 import { RemoteAllotments } from './remote-allotments';
 
@@ -31,7 +30,7 @@ import { RemoteAllotments } from './remote-allotments';
       <nav class="navbar navbar-expand-lg zed-navbar" id="main_navbar" aria-label="Staff menu">
         <div class="container nav-bar-sec">
           <!-- 2026-11-14 (approved frame A): the role and portal are shown with the user on wide screens; the bar's name on phones only. -->
-          <a class="navbar-brand" routerLink="/staff">{{ roleName() }}<span>{{ portalName }}</span></a>
+          <a class="navbar-brand" routerLink="/staff">{{ roleName() }}</a>
           <button class="navbar-toggler" type="button" aria-controls="staff-menu" [attr.aria-expanded]="menuOpen()"
                   aria-label="Toggle navigation" (click)="menuOpen.set(!menuOpen())">
             <span class="navbar-toggler-icon"></span>
@@ -110,7 +109,7 @@ import { RemoteAllotments } from './remote-allotments';
                 <button type="button" class="nav-link dropdown-toggle btn btn-link" [attr.aria-expanded]="userMenuOpen()" (click)="toggleUserMenu($event)"
                         [title]="user()?.actingUserId ? 'Working for ' + user()?.userName + ' (' + user()?.userId + ')' : ''">
                   <span class="avatar" aria-hidden="true">{{ (user()?.actingUserName || user()?.userName || '?').charAt(0) }}</span>
-                  <span class="who">{{ user()?.actingUserName || user()?.userName }}<small>{{ roleName() }}, {{ portalName }}</small></span>
+                  <span class="who">{{ user()?.actingUserName || user()?.userName }}<small>{{ roleName() }}</small></span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end" [class.show]="userMenuOpen()">
                   <li><a class="dropdown-item" routerLink="/staff/change-password">Change Password</a></li>
@@ -151,7 +150,6 @@ import { RemoteAllotments } from './remote-allotments';
     :host ::ng-deep .staff-page .container, :host ::ng-deep .staff-page .container-fluid { max-width: none; padding-left: 0; padding-right: 0; }
     /* The bar: page name and role on the left, the menu on one row on the right. */
     .zed-navbar .navbar-brand { max-width: 260px; white-space: normal; line-height: 1.15; font-size: 22px; text-decoration: none; color: #fff; }
-    .zed-navbar .navbar-brand span { margin-top: 4px; opacity: 0.9; }
     .zed-navbar .nav { align-items: center; }
     .zed-navbar .tag { padding: 0 12px; }
     .zed-navbar .nav > li > a.nav-link, .zed-navbar .nav > li > button.nav-link { white-space: nowrap; }
@@ -216,8 +214,6 @@ export class StaffLayout {
   protected readonly userMenuOpen = signal(false);
   /** The role as people say it ("MasterAdmin" -> "Master Admin"). */
   protected readonly roleName = computed(() => staffRoleName(this.user()));
-  protected readonly portalName =
-    PORTAL_SYSTEM === 'consultancy' ? 'ZED Handholding' : PORTAL_SYSTEM === 'surveillance' ? 'ZED Surveillance' : 'ZED Certification';
 
   /** How many menu entries are on the row (wide screens); the rest are under "More". */
   protected readonly fit = signal(Number.MAX_SAFE_INTEGER);

@@ -351,10 +351,15 @@ export const MENUS: Record<PortalSystem, StaffMenuItem[]> = { main: MAIN_MENU, c
  * Consultant Organisation (2) and Consultant/Expert (3), otherwise the role name with spaces ("MasterAdmin" -> "Master Admin").
  */
 export function staffRoleName(
-  user: { roleId: number; role?: string | null; isNeftAdmin?: boolean } | null | undefined,
+  user: { roleId: number; role?: string | null; isNeftAdmin?: boolean; actingUserId?: string | null } | null | undefined,
   system: PortalSystem = PORTAL_SYSTEM,
 ): string {
   if (!user) return '';
+  // 2026-11-16: a sub-user (it signs in as its owner) is named for itself: a Master Admin's are its Operation Admins.
+  if (user.actingUserId) {
+    if (user.roleId === R.MasterAdmin) return 'Operation Admin';
+    return `${staffRoleName({ ...user, actingUserId: null }, system)} Sub-User`;
+  }
   if (user.roleId === 10) return 'Dashboard Admin';
   if (user.roleId === 6) return user.isNeftAdmin ? 'NEFT Admin' : 'MSME DFO';
   // 2026-11-15: Consultancy's agencies and assessors are its Consultant Organisations and Consultants/Experts ("Desktop Assessor, ZED Handholding").

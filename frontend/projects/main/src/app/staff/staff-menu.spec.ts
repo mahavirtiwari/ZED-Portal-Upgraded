@@ -44,6 +44,10 @@ describe('staff menu', () => {
       expect(staffRoleName({ roleId: 2, role: 'Agency' }, 'consultancy')).toBe('Consultant Organisation');
       expect(staffRoleName({ roleId: 3, role: 'DesktopAssessor' }, 'main')).toBe('Desktop Assessor');
       expect(staffRoleName({ roleId: 1, role: 'MasterAdmin' }, 'consultancy')).toBe('Master Admin');
+      // 2026-11-16: sub-users by their own role: a Master Admin's are Operation Admins.
+      expect(staffRoleName({ roleId: 7, role: 'MasterAdmin', actingUserId: 'MASTER1S01' }, 'main')).toBe('Operation Admin');
+      expect(staffRoleName({ roleId: 2, role: 'Agency', actingUserId: 'AG1S01' }, 'main')).toBe('Agency Sub-User');
+      expect(staffRoleName({ roleId: 2, role: 'Agency', actingUserId: 'CO1S01' }, 'consultancy')).toBe('Consultant Organisation Sub-User');
     });
 
     it('gives the master admin allotment, the CO and consultant lists and TU', () => {
