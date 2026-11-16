@@ -165,6 +165,68 @@ export function validateForm(def: FormDefinition, valueOf: (field: FormField) =>
   return errors;
 }
 
+type PhotoLike = { photoId?: string | null };
+
+const photoIdOf = (p: unknown): string | null =>
+  p && typeof p === 'object' ? ((p as PhotoLike).photoId ?? null) : typeof p === 'string' && p ? p : null;
+
+/**
+ * 2026-11-16: the Admin's repeating entries as the request sends them: each entry's answered columns, numbers as JSON
+ * numbers, a photo column as its photo ids (the files go with the Basic Information photos, {@link customRowPhotos}).
+ */
+export function rowsForRequest(field: FormField, value: unknown): Array<Record<string, unknown>> {
+  const entries = Array.isArray(value) ? value : [];
+  return entries
+    .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
+    .map(e => {
+      const out: Record<string, unknown> = {};
+      for (const c of field.columns ?? []) {
+        const v = e[c.key];
+        if (!isAnswered(v)) continue;
+        if (c.type === 'photo') out[c.key] = (Array.isArray(v) ? v : [v]).map(photoIdOf).filter((id): id is string => !!id);
+        else if ((c.type === 'number' || c.type === 'decimal') && typeof v === 'string' && !isNaN(Number(v.trim()))) out[c.key] = Number(v.trim());
+        else out[c.key] = typeof v === 'string' ? v.trim() : v;
+      }
+      return out;
+    })
+    .filter(o => Object.keys(o).length > 0);
+}
+
+/** 2026-11-16: the photos of the Admin's repeating entries (shown fields), to upload with the Basic Information photos. */
+export function customRowPhotos<T extends PhotoLike>(def: FormDefinition, answers: Record<string, unknown>, valueOf: (key: string) => unknown): T[] {
+  const photos: T[] = [];
+  for (const f of def.fields) {
+    if (!f.custom || f.type !== 'rows' || !isFieldShown(f, valueOf)) continue;
+    const entries = Array.isArray(answers[f.key]) ? (answers[f.key] as unknown[]) : [];
+    for (const e of entries) {
+      if (!e || typeof e !== 'object') continue;
+      for (const c of (f.columns ?? []).filter(col => col.type === 'photo')) {
+        const v = (e as Record<string, unknown>)[c.key];
+        for (const p of Array.isArray(v) ? v : v ? [v] : []) if (p && typeof p === 'object' && (p as PhotoLike).photoId) photos.push(p as T);
+      }
+    }
+  }
+  return photos;
+}
+
+/**
+ * 2026-11-16: every photo inside the answers to the Admin's fields (the photo columns of repeating entries), without the
+ * form at hand (the send queue keeps only the answers).
+ */
+export function photosInAnswers<T extends PhotoLike>(answers: Record<string, unknown> | null | undefined): T[] {
+  const photos: T[] = [];
+  for (const v of Object.values(answers ?? {})) {
+    if (!Array.isArray(v)) continue;
+    for (const entry of v) {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
+      for (const cell of Object.values(entry as Record<string, unknown>))
+        for (const p of Array.isArray(cell) ? cell : [])
+          if (p && typeof p === 'object' && (p as PhotoLike).photoId && !photos.some(x => x.photoId === (p as PhotoLike).photoId)) photos.push(p as T);
+    }
+  }
+  return photos;
+}
+
 /** The `customFields` of a submit: every shown custom field, unanswered as null; numbers as JSON numbers. */
 export function customFieldsPayload(def: FormDefinition, answers: Record<string, unknown>, valueOf: (key: string) => unknown): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -173,6 +235,11 @@ export function customFieldsPayload(def: FormDefinition, answers: Record<string,
     const v = answers[f.key];
     if (!isAnswered(v)) {
       out[f.key] = null;
+      continue;
+    }
+    if (f.type === 'rows') {
+      const rows = rowsForRequest(f, v);
+      out[f.key] = rows.length ? rows : null;
       continue;
     }
     if ((f.type === 'number' || f.type === 'decimal') && typeof v === 'string' && !isNaN(Number(v.trim()))) out[f.key] = Number(v.trim());

@@ -9,6 +9,7 @@ import {
   errorResponse,
   isNetworkError,
   isSuccess,
+  photosInAnswers,
   UNKNOWN_ERROR,
   type BaseServiceResponse,
   type PhotoData,
@@ -79,6 +80,17 @@ export async function submitBasicInformation(app: MsmeApp, type: CertificationTy
       let filled: PhotoData[];
       try {
         filled = await app.photos.fill(productPhotos, `${product.productName} product photos missing, please capture again`);
+      } catch (e) {
+        return errorResponse((e as Error).message);
+      }
+      finalResponse = await app.api.submitPhotos(loginId, type, filled);
+    }
+    // 2026-11-16: the photos of the Admin's repeating entries, uploaded as the Basic Information photos.
+    const rowPhotos = photosInAnswers<PhotoData>(info.customAnswers);
+    if (rowPhotos.length) {
+      let filled: PhotoData[];
+      try {
+        filled = await app.photos.fill(rowPhotos, 'Photos of the entries missing, please capture again');
       } catch (e) {
         return errorResponse((e as Error).message);
       }

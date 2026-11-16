@@ -13,6 +13,7 @@ import {
   MultiRow,
   PhotosField,
   REQUIRED,
+  RowsFormField,
   ScreenFrame,
   SelectionPicker,
   TextField,
@@ -174,6 +175,21 @@ export function BasicInformationScreen() {
     if (!isShown(def, info, f)) return null;
     const error = errors.get(f.key);
     const help = <FieldHelp text={f.help} />;
+    if (f.custom && f.type === 'rows') {
+      // 2026-11-16: the Admin's repeating entries ("Add more"), photos captured as the Basic Information photos.
+      return (
+        <RowsFormField
+          key={f.key}
+          field={f}
+          value={info.customAnswers?.[f.key]}
+          onChange={v => change(b => (b.customAnswers = { ...(b.customAnswers ?? {}), [f.key]: v }), f.key, true)}
+          error={error}
+          capturer={capturer}
+          store={app.photos}
+          sourceOptions={src => (src === 'countries' ? countryNames() : [])}
+        />
+      );
+    }
     if (f.custom) {
       return (
         <CustomFormField

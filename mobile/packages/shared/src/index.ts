@@ -48,6 +48,7 @@ export * from './ui/components/Form';
 export * from './ui/components/PhotosField';
 export * from './ui/components/HtmlText';
 export * from './ui/components/CustomFormField';
+export * from './ui/components/RowsFormField';
 export * from './ui/components/ScreenFrame';
 export * from './ui/components/AppStart';
 export { sharedIcons } from './ui/sharedIcons';

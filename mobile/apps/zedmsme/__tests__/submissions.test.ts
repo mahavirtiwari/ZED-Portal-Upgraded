@@ -47,6 +47,19 @@ describe('basic information (BasicInfoViewModel.handleDataSubmission)', () => {
     expect(info(app).siteExteriorPhotos[0]!.photo).toBeUndefined();
   });
 
+  it('uploads the photos of the Admin repeating entries with the Basic Information photos (2026-11-16)', async () => {
+    const server = new FakeServer();
+    const app = await signedIn(server);
+    const b = info(app);
+    b.productDetailsList = [];
+    b.formVersion = 'v1';
+    b.customAnswers = { cf_machines: [{ c_name: 'Press', c_photo: [legacyPhoto('ZEDRNTEST00011700000000003', 'e1.jpg')] }] };
+    b.customFields = { cf_machines: [{ c_name: 'Press', c_photo: ['ZEDRNTEST00011700000000003'] }] };
+    expect((await submitBasicInformation(app, 'Bronze', b)).status).toBe('1');
+    expect(server.last('SubmitBasicInformation')!.json!.customFields).toEqual({ cf_machines: [{ c_name: 'Press', c_photo: ['ZEDRNTEST00011700000000003'] }] });
+    expect(server.last('SubmitPhotos')!.files!.map(f => f.fileName)).toEqual(['ZEDRNTEST00011700000000003.jpg']);
+  });
+
   it('keeps the legacy messages', async () => {
     const refused = new FakeServer(() => ({ status: '0', errorMessage: 'Invalid Details.' }));
     const app = await signedIn(refused);
