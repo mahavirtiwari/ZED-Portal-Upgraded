@@ -24,6 +24,7 @@ describe('SiteVerificationPage', () => {
     // Assessment Agency cell: agency id, line break, assessor name (SiteVerification.cshtml).
     expect(el.querySelectorAll('tbody td')[4].innerHTML).toMatch(/AGENCYSV<br>A Assessor/);
     expect(el.querySelector('a')!.getAttribute('href')).toBe('/staff/assessment/sa-details/ZEDMSME000001/Gold');
+    for (const r of http.match((req) => req.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
     http.verify();
   });
 

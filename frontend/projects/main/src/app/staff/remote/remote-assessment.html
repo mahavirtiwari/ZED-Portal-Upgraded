@@ -239,6 +239,8 @@
         <!-- ===================================================== basic info -->
         @if (tab() === 'basicInfo') {
           @if (!d.nc) { <zed-form-checks kind="remote" [zedId]="zedId" [certification]="certification" /> }
+          <!-- 2026-11-17: the other ZED units of the same PAN, before the site exterior photos. -->
+          <zed-same-pan [zedId]="zedId" />
           <div class="table-responsive">
           <table class="table table-bordered table-zed basic-info">
             <thead><tr><th class="text-center">S.No</th><th>Description</th><th>Responses</th></tr></thead>

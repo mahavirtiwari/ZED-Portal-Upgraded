@@ -103,6 +103,8 @@
           @if (isAssessorRole()) {
             <zed-text key="staff.assessment.desktop.validateNote.productPhotos" box="alert alert-warning" />
           }
+          <!-- 2026-11-17: the other ZED units of the same PAN, before the site exterior photos. -->
+          <zed-same-pan [zedId]="zedId()" />
           <div class="table-responsive">
           <table class="table table-bordered table-zed basic-info">
             <thead><tr><th class="text-center" style="width: 60px">S.No</th><th style="width: 28%">Description</th><th>Responses</th></tr></thead>

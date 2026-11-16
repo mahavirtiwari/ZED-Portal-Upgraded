@@ -1,3 +1,4 @@
+using Zed.Portal.Features.Staff.MsmeProfile;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -81,6 +82,31 @@ public sealed class StaffMsmeProfileTests : IDisposable
             : [];
         _host.Sql.Procs["SP_MASTER_GET_SECTORS"] = _ => FakeSql.Sets(
             [new { Id = 1, SectorCode = "10", SectorName = "Food" }, new { Id = 2, SectorCode = "24", SectorName = "Manufacture of basic metals" }]);
+    }
+
+    /// <summary>2026-11-17 (the user, approved): the other units of the same PAN, for tracing repeat registrations.</summary>
+    [Fact]
+    public async Task The_other_units_of_the_same_pan_are_listed_with_masked_zed_ids_and_full_addresses()
+    {
+        _host.Sql.Queries[StaffMsmeProfileController.PanSql] = args => FakeSql.Arg(args, "ZedId") == "ZEDMSME000001" ? [new { PanNo = "ABCDE1234F" }] : [];
+        _host.Sql.Queries[StaffMsmeProfileController.SamePanSql] = _ =>
+        [
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000001", "Acme Unit 2", "Plot 4", null, "Industrial Area", "Kanpur", "Kanpur Nagar", "UTTAR PRADESH", "208001", null),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000002", "Acme Unit 1", "Plot-4", "", "Industrial Area", "Kanpur", null, null, "208001", null),
+            new StaffMsmeProfileController.SamePanRow("ZEDMSME000003", "Acme Services", null, null, null, null, null, null, "226001", "12 MG Road, Lucknow"),
+        ];
+        var master = await UsersMastersLogin.SignInAsync(_host, "MASTER1");
+        var r = (await master.GetFromJsonAsync<StaffMsmeProfileController.SamePanResponse>("/api/staff/msme-profile/ZEDMSME000001/same-pan"))!;
+        Assert.DoesNotContain("CDE1234", r.Pan);
+        Assert.Equal("Acme Unit 2", r.This!.UnitName);
+        Assert.Equal(2, r.Others.Count);
+        Assert.All(r.Others, o => Assert.DoesNotContain("00000", o.ZedId));
+        Assert.Equal(("Acme Unit 1", "Plot-4, Industrial Area, Kanpur 208001"), (r.Others[0].UnitName, r.Others[0].Address));
+        Assert.Equal("12 MG Road, Lucknow 226001", r.Others[1].Address);
+
+        // An agency sees it for its own units only.
+        Assert.Equal(HttpStatusCode.OK, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY1")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await (await UsersMastersLogin.SignInAsync(_host, "AGENCY2")).GetAsync("/api/staff/msme-profile/ZEDMSME000001/same-pan")).StatusCode);
     }
 
     [Fact]

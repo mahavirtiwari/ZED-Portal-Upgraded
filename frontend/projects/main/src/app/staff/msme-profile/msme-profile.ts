@@ -1,4 +1,5 @@
 import { HttpClient } from '@angular/common/http';
+import { SamePanUnits } from './same-pan';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -129,7 +130,7 @@ export function pairRows(rows: InfoRow[]): InfoRow[][] {
  */
 @Component({
   selector: 'zed-staff-msme-profile',
-  imports: [FormsModule, EditHistoryTable],
+  imports: [FormsModule, EditHistoryTable, SamePanUnits],
   templateUrl: './msme-profile.html',
   styles: `
     .pf-unit { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: -4px 0 14px; }

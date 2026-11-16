@@ -13,6 +13,8 @@
 @if (error()) {
   <div class="alert alert-danger" role="alert">{{ error() }}</div>
 }
+<!-- 2026-11-17: the other ZED units of the same PAN, for tracing repeat registrations. -->
+<zed-same-pan [zedId]="zedId" />
 @if (success()) {
   <div class="alert alert-success alert-dismissible" role="status">
     {{ success() }}

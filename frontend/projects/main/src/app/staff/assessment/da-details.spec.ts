@@ -79,6 +79,7 @@ describe('DaDetailsPage', () => {
   afterEach(() => {
     // The "to validate" panel (App Forms, migration 0080) asks for its checks.
     for (const r of http.match((req) => req.url.endsWith('/form-checks'))) r.flush({ applies: false, canCheck: false, round: 0, ncRound: false, items: [] });
+    for (const r of http.match((req) => req.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
     http.verify();
   });
 
@@ -642,6 +643,7 @@ describe('DaDetailsPage (surveillance ESG tab)', () => {
     expect(esg.querySelector('tbody td')!.textContent!.trim()).toBe('E1');
     expect(social.querySelector('tbody td')!.textContent!.trim()).toBe('S1');
     expect(Array.from(el.querySelectorAll('.panel-black')).map((p) => p.textContent!.trim())).toEqual(['ESG Check List', 'Social/OHS Check List']);
+    for (const r of http.match((req) => req.url.endsWith('/same-pan'))) r.flush({ pan: null, this: null, others: [] });
     http.verify();
   });
 });

@@ -92,6 +92,62 @@ public sealed class StaffMsmeProfileController(ISqlExecutor db, PortalHost host,
             allotments.Select(a => a.Certification ?? "").Where(c => c.Length > 0).Distinct().ToList());
     }
 
+    // ---- 2026-11-17 (the user, approved): the other units of the same PAN, for tracing repeat registrations ---------
+
+    /// <param name="ZedId">Masked (the unit names and addresses are shown in full).</param>
+    public sealed record SamePanUnit(string ZedId, string? UnitName, string Address);
+
+    /// <param name="Pan">Masked, as the profile shows it.</param>
+    public sealed record SamePanResponse(string? Pan, SamePanUnit? This, IReadOnlyList<SamePanUnit> Others);
+
+    internal const string SamePanSql =
+        "SELECT TOP (50) m.ZedId, m.PUnitName, m.PFlat, m.PBuilding, m.PRoad, m.PCity, m.PDistrictName, m.PStateName, m.PPin, m.PAddress " +
+        "FROM dbo.MsmeBasicInformation b INNER JOIN dbo.Msme m ON m.ZedId = b.ZedId " +
+        "WHERE NULLIF(LTRIM(RTRIM(b.PanNo)), '') IS NOT NULL AND LTRIM(RTRIM(b.PanNo)) = " +
+        "(SELECT TOP (1) LTRIM(RTRIM(x.PanNo)) FROM dbo.MsmeBasicInformation x WHERE x.ZedId = @ZedId) " +
+        "ORDER BY m.ZedId;";
+
+    internal const string PanSql = "SELECT TOP (1) PanNo FROM dbo.MsmeBasicInformation WHERE ZedId = @ZedId;";
+
+    public sealed record SamePanRow(string? ZedId, string? PUnitName, string? PFlat, string? PBuilding, string? PRoad, string? PCity,
+        string? PDistrictName, string? PStateName, string? PPin, string? PAddress);
+
+    private sealed record PanRow(string? PanNo);
+
+    /// <summary>
+    /// GET api/staff/msme-profile/{zedId}/same-pan: the other ZED units registered with the unit's PAN (ZED ID masked; unit
+    /// name and address in full), shown to the staff who may see the unit before its site exterior photos. Same access as
+    /// the profile (the Master Admin and its operation admins, Super Admin, Ministry, QC, citizen feedback; an agency or
+    /// assessor allotted to the unit).
+    /// </summary>
+    [HttpGet("{zedId}/same-pan")]
+    public async Task<ActionResult<SamePanResponse>> SamePan(string zedId, CancellationToken ct)
+    {
+        if (!AssessmentInput.IsId(zedId)) return this.Problem400("Invalid ZED ID.");
+        var id = AssessmentInput.BaseZedId(zedId);
+        var allotments = await db.QuerySqlAsync<Allotment>(
+            "SELECT Certification, CertificationBodyUserId, DesktopAssessorId, SiteAssessorId, CoAssessorId FROM MsmeCertifications WHERE ZedId = @ZedId",
+            new { ZedId = AssessmentInput.Ansi(id) }, ct);
+        if (await AccessAsync(id, allotments, ct) == Access.None) return NotFound();
+        var p = new { ZedId = AssessmentInput.Ansi(id) };
+        var pan = (await db.QuerySqlAsync<PanRow>(PanSql, p, ct)).FirstOrDefault()?.PanNo;
+        if (string.IsNullOrWhiteSpace(pan)) return new SamePanResponse(null, null, []);
+        var rows = await db.QuerySqlAsync<SamePanRow>(SamePanSql, p, ct);
+        static SamePanUnit Unit(SamePanRow r) => new(Zed.Portal.Features.Msme.MsmeAccountFinder.MaskZedId(r.ZedId?.Trim() ?? ""), r.PUnitName?.Trim(), AddressOf(r));
+        var self = rows.FirstOrDefault(r => string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase));
+        return new SamePanResponse(StaffUserRules.MaskIdProof(pan), self is null ? null : Unit(self),
+            rows.Where(r => !string.Equals(r.ZedId?.Trim(), id, StringComparison.OrdinalIgnoreCase)).Select(Unit).ToList());
+    }
+
+    /// <summary>The plant's address from its parts (as Udyam gives them), else the stored one line.</summary>
+    internal static string AddressOf(SamePanRow r)
+    {
+        var parts = new[] { r.PFlat, r.PBuilding, r.PRoad, r.PCity, r.PDistrictName, r.PStateName }
+            .Select(x => x?.Trim()).Where(x => !string.IsNullOrEmpty(x)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var line = parts.Count > 0 ? string.Join(", ", parts) : r.PAddress?.Trim() ?? "";
+        return string.IsNullOrWhiteSpace(r.PPin) ? line : $"{line} {r.PPin.Trim()}".Trim();
+    }
+
     // ---- SuperAdmin "EDIT PROFILE" (Main only) ----------------------------------------------------------------
 
     /// <summary>NIC 2-digit options of the edit form, as the legacy drop-down ("{SectorCode}-{SectorName}" of SP_MASTER_GET_SECTORS).</summary>
