@@ -255,4 +255,37 @@ public sealed class CertificationLevelsTests : IDisposable
         Assert.Equal("DesktopOnsite", levels[1].GetProperty("assessmentFlow").GetString());
         Assert.Equal("Remote", levels[1].GetProperty("surveillanceMode").GetString());
     }
+
+    /// <summary>2026-11-16 (approved): the Admin sets each level's NC rounds (1-5) and days to close them (migration 0086).</summary>
+    [Fact]
+    public async Task A_level_saves_its_NC_rounds_and_days_and_the_list_shows_the_defaults_of_its_flow()
+    {
+        var admin = await UsersMastersLogin.SignInAsync(_host, "ADMIN1");
+        Dictionary<string, object?> Body(string flow, int? rounds, int? days) => new()
+        {
+            ["name"] = "ZED-X", ["isEnabled"] = true, ["assessmentMode"] = "Site", ["validityMonths"] = 36, ["surveillanceEnabled"] = false,
+            ["certNoFormat"] = "ZX/{YYYY}/{ZEDNO}", ["fee"] = 75000, ["assessmentFlow"] = flow, ["surveillanceMode"] = "Remote",
+            ["ncRounds"] = rounds, ["ncDays"] = days,
+        };
+        // Six rounds (the records have five) and 0 days are refused; nothing written.
+        Assert.Equal("NC rounds must be 1 to 5.", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("DesktopOnsite", 6, 60))).ProblemTitle());
+        Assert.Equal("Days to close NCs must be 1 to 365.", await (await admin.PutAsJsonAsync($"{Url}/zedx", Body("DesktopOnsite", 5, 0))).ProblemTitle());
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == CertificationLevelsController.UpdateSql);
+
+        Assert.Equal(HttpStatusCode.OK, (await admin.PutAsJsonAsync($"{Url}/zedx", Body("DesktopRemote", 3, 45))).StatusCode);
+        var saved = Assert.Single(_host.Sql.Calls, c => c.Name == LevelNcRules.SaveSql).Args;
+        Assert.Equal(("ZEDX", "3", "45"), (FakeSql.Arg(saved, "Code"), FakeSql.Arg(saved, "NcRounds"), FakeSql.Arg(saved, "NcDays")));
+
+        // Nothing stored: 5 rounds; 30 days for Desktop only (Bronze), 60 for a flow with a visit (Gold).
+        var levels = (await admin.GetFromJsonAsync<JsonElement>(Url)).GetProperty("levels");
+        Assert.Equal((5, 30), (levels[0].GetProperty("ncRounds").GetInt32(), levels[0].GetProperty("ncDays").GetInt32()));
+        Assert.Equal((5, 60), (levels[1].GetProperty("ncRounds").GetInt32(), levels[1].GetProperty("ncDays").GetInt32()));
+
+        // Stored values are shown as they are.
+        _host.Sql.Queries[LevelNcRules.ReadSql] = _ => [new LevelNcRules.Row("Gold", 2, 90)];
+        levels = (await admin.GetFromJsonAsync<JsonElement>(Url)).GetProperty("levels");
+        Assert.Equal((2, 90), (levels[1].GetProperty("ncRounds").GetInt32(), levels[1].GetProperty("ncDays").GetInt32()));
+        Assert.Equal("remote", LevelNcRules.StageOf("DesktopRemote"));
+        Assert.Equal("onsite", LevelNcRules.StageOf("Onsite"));
+    }
 }

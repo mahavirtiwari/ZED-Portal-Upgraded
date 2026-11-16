@@ -80,10 +80,11 @@ public sealed class DesktopAssessmentEmails(
                         $"Rejection by Assessor for Desktop Verification under {Scheme} - {zedId}", AssessorRejected(row, zedId, reason), cc, ct);
                     break;
                 case Kind.NcRaised:
+                    var rules = await Zed.Portal.Features.CertLevels.LevelNcRules.ForAsync(db, certification, log, ct);
                     var level = row.Text("NcCount") switch { "1" => "First ", "2" => "Second ", "3" => "Third ", "4" => "Fourth ", "5" => "Fifth ", _ => "" };
                     await SendAsync(kind, zedId, certification, row.Text("EmailId"),
                         surveillance ? $"{level}Non-conformance(s) raised for Surveillance Assessment under {Scheme} - {zedId}" : $"{level}Non-conformance(s) raised under {Scheme} - {zedId}",
-                        NcRaised(row, zedId, certification, surveillance), surveillance ? cc : null, ct);
+                        NcRaised(row, zedId, rules.Rounds, rules.Days, surveillance), surveillance ? cc : null, ct);
                     break;
             }
         }
@@ -197,7 +198,8 @@ public sealed class DesktopAssessmentEmails(
         return sb.ToString();
     }
 
-    private string NcRaised(IDictionary<string, object?> row, string zedId, string certification, bool surveillance)
+    /// <param name="rounds">2026-11-16: the level's NC rounds and <paramref name="days"/> to close them (Admin, migration 0086).</param>
+    internal string NcRaised(IDictionary<string, object?> row, string zedId, int rounds, int days, bool surveillance)
     {
         var sb = new StringBuilder();
         P(sb, "Dear Madam/Sir,");
@@ -205,16 +207,15 @@ public sealed class DesktopAssessmentEmails(
         P(sb, "This is with reference to your application for Certification under \"MSME Sustainable (ZED) Certification\" Scheme.");
         P(sb, "After review of the documents, the list of Non-conformance(s) along with the comments of the assessor can be viewed online in your dashboard. " +
               $"You are requested to close all the Non-conformance(s) through the mobile application latest by {row.Text("NcFinalClosureDt")} (NC Closure Date).");
-        var attempt = row.Text("NcCount") switch
+        var n = int.TryParse(row.Text("NcCount"), out var count) ? count : 0;
+        var attempt = n switch { 1 => "first", 2 => "second", 3 => "third", 4 => "fourth", 5 => "fifth", _ => null };
+        if (attempt is not null && n <= rounds)
         {
-            "1" => "first", "2" => "second", "3" => "third", "4" => "fourth", "5" => "fifth and last", _ => null,
-        };
-        if (attempt is not null)
-        {
-            var days = Zed.Core.Data.LevelRegistry.IsDesktop(certification) ? 30 : 60;
-            P(sb, $"Note: This is your {attempt} attempt out of total 5 attempts to close your Non-conformance(s). All the Non-Conformances (all 5 attempts) " +
+            if (n == rounds) attempt += " and last";
+            var all = rounds == 1 ? "the 1 attempt" : $"all {rounds} attempts";
+            P(sb, $"Note: This is your {attempt} attempt out of total {rounds} attempt{(rounds == 1 ? "" : "s")} to close your Non-conformance(s). All the Non-Conformances ({all}) " +
                   $"must be closed within a period of {days} days from the date of first Non-Conformance raised. In case you are unable to close the " +
-                  $"Non-conformance(s) in these 5 attempts or within {days} days, your application for the applied Certification shall stand as Rejected " +
+                  $"Non-conformance(s) in {(rounds == 1 ? "this attempt" : $"these {rounds} attempts")} or within {days} days, your application for the applied Certification shall stand as Rejected " +
                   "and no Certificate will be awarded.");
         }
         if (surveillance)

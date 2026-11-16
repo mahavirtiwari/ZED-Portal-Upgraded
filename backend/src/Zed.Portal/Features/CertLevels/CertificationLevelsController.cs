@@ -36,6 +36,9 @@ public sealed partial class CertificationLevelsController(
         /// <summary>The choices the portal runs today (the others are shown as "available soon").</summary>
         public IReadOnlyList<string> AvailableFlows { get; init; } = LevelFlows.Available;
         public IReadOnlyList<string> AvailableSurveillanceModes { get; init; } = LevelFlows.AvailableSurveillance;
+        /// <summary>2026-11-16: the level's NC rounds and days to close them (<see cref="LevelNcRules"/>; the defaults when not set).</summary>
+        public int NcRounds { get; init; } = LevelNcRules.DefaultRounds;
+        public int NcDays { get; init; } = LevelNcRules.DefaultDays(LevelFlows.DesktopOnsite);
     }
 
     /// <summary>The checklist of a level (Administration → Certification Levels). Bronze, Silver, Gold and ZED-X: all true.</summary>
@@ -91,6 +94,7 @@ public sealed partial class CertificationLevelsController(
         string[] order = ["Micro", "Small", "Medium"];
         var parameters = await ParameterCountsAsync(ct);
         var flows = await LevelFlows.StoredAsync(db, log, ct);
+        var ncRules = await LevelNcRules.StoredAsync(db, log, ct);
         var items = new List<LevelItem>();
         foreach (var l in levels)
         {
@@ -98,11 +102,14 @@ public sealed partial class CertificationLevelsController(
                 .OrderBy(f => Array.FindIndex(order, o => string.Equals(o, f.Type, StringComparison.OrdinalIgnoreCase)))
                 .Select(f => new LevelFee(f.Type!, f.Total)).ToList();
             var levelFlow = flows.GetValueOrDefault(l.Code);
+            var flow = LevelFlows.FlowOf(levelFlow?.AssessmentFlow, l.AssessmentMode);
+            var nc = ncRules.GetValueOrDefault(l.Code);
             items.Add(Item(l) with
             {
                 Fees = levelFees, Readiness = await ReadinessAsync(l, levelFees, parameters, ct),
-                AssessmentFlow = LevelFlows.FlowOf(levelFlow?.AssessmentFlow, l.AssessmentMode),
+                AssessmentFlow = flow,
                 SurveillanceMode = LevelFlows.SurveillanceModeOf(levelFlow?.SurveillanceMode),
+                NcRounds = LevelNcRules.RoundsOf(nc?.NcRounds), NcDays = LevelNcRules.DaysOf(nc?.NcDays, flow),
             });
         }
         return new LevelsResponse(items, CertificateNumbers.Tokens, stored);
@@ -223,19 +230,23 @@ public sealed partial class CertificationLevelsController(
         int? SurveillanceCount = null, int? SurveillanceIntervalMonths = null, int? SurveillanceNoticeMonths = null, int? SurveillanceReminders = null,
         int? SurveillanceReminderEveryMonths = null, int? SurveillanceSuspendAfterMonths = null, int? SurveillanceWithdrawAfterDays = null,
         bool? SurveillanceAutoApply = null, int? SurveillanceSuspendRounds = null,
-        string? AssessmentFlow = null, string? SurveillanceMode = null);
+        string? AssessmentFlow = null, string? SurveillanceMode = null, int? NcRounds = null, int? NcDays = null);
 
     /// <summary>The request with the old AssessmentMode set from the chosen flow (2026-11-14), and why the flow cannot be saved.</summary>
     private static (LevelRequest Request, string? Problem) WithFlow(LevelRequest req, string code) =>
         (req.AssessmentFlow is { } flow && LevelFlows.Flows.Contains(flow) ? req with { AssessmentMode = LevelFlows.AssessmentModeOf(flow) } : req,
-         LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code));
+         LevelFlows.Problem(req.AssessmentFlow, req.SurveillanceMode, code) ?? LevelNcRules.Problem(req.NcRounds, req.NcDays));
 
-    /// <summary>Saves the chosen flow and surveillance mode after the level's row; the message's tail when it could not.</summary>
+    /// <summary>Saves the chosen flow, surveillance mode and NC rounds / days after the level's row; the message's tail when they could not.</summary>
     private async Task<string> SaveFlowAsync(string code, LevelRequest req, CancellationToken ct)
     {
-        if (req.AssessmentFlow is null && req.SurveillanceMode is null) return "";
         var flow = req.AssessmentFlow ?? LevelFlows.FlowOf(null, req.AssessmentMode ?? CertificationLevels.Site);
-        return await LevelFlows.SaveAsync(db, code, flow, req.SurveillanceMode ?? LevelFlows.Remote, log, ct) ? "" : LevelFlows.NotSaved;
+        var note = req.AssessmentFlow is null && req.SurveillanceMode is null ? ""
+            : await LevelFlows.SaveAsync(db, code, flow, req.SurveillanceMode ?? LevelFlows.Remote, log, ct) ? "" : LevelFlows.NotSaved;
+        // 2026-11-16: the NC rounds and days (a value left out takes the default of the flow).
+        if (req.NcRounds is not null || req.NcDays is not null)
+            note += await LevelNcRules.SaveAsync(db, code, LevelNcRules.RoundsOf(req.NcRounds), LevelNcRules.DaysOf(req.NcDays, flow), log, ct) ? "" : LevelNcRules.NotSaved;
+        return note;
     }
 
     internal const string UpdateSql =

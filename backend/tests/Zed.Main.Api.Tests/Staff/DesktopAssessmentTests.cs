@@ -351,6 +351,23 @@ public sealed class DesktopAssessmentTests : IDisposable
         Assert.Equal("unit@x.test", mail.To);
         Assert.StartsWith("First Non-conformance(s) raised", mail.Subject);
         Assert.DoesNotContain("Msme#Secret1", mail.HtmlBody);
+        // 2026-11-16: the level's NC rounds and days (Bronze, Desktop only, nothing stored: 5 rounds, 30 days).
+        Assert.Contains("first attempt out of total 5 attempts", mail.HtmlBody);
+        Assert.Contains("within a period of 30 days", mail.HtmlBody);
+    }
+
+    /// <summary>2026-11-16 (approved): the NC mail names the rounds and days the Admin set for the level (migration 0086).</summary>
+    [Fact]
+    public async Task The_nc_mail_names_the_levels_rounds_and_days()
+    {
+        _host.Sql.Queries[global::Zed.Portal.Features.CertLevels.LevelNcRules.ReadSql] = _ => [new global::Zed.Portal.Features.CertLevels.LevelNcRules.Row("Bronze", 3, 20)];
+        var client = await As("ASSESSOR1");
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync(Base + "/final-submit", new { remarks = "All checked", isNcRaised = "0" })).StatusCode);
+        var mail = Assert.Single(_host.Email.Sent);
+        Assert.Contains("first attempt out of total 3 attempts", mail.HtmlBody);
+        Assert.Contains("(all 3 attempts)", mail.HtmlBody);
+        Assert.Contains("within a period of 20 days", mail.HtmlBody);
+        Assert.DoesNotContain("5 attempts", mail.HtmlBody);
     }
 
     [Fact]

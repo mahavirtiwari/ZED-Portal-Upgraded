@@ -93,6 +93,9 @@ interface LevelItem {
   surveillanceMode?: SurveillanceMode;
   availableFlows?: string[];
   availableSurveillanceModes?: string[];
+  /** 2026-11-16 (approved, migration 0086): the level's NC rounds (1-5) and days to close them (from the first NC). */
+  ncRounds?: number;
+  ncDays?: number;
 }
 
 export type AssessmentFlow = 'Desktop' | 'Remote' | 'Onsite' | 'DesktopRemote' | 'DesktopOnsite';
@@ -117,6 +120,20 @@ export const SURVEILLANCE_MODES: { value: SurveillanceMode; label: string; hint:
 export function levelFlowsFor(_code: string, available: string[]): string[] {
   return available;
 }
+/** 2026-11-16: the NC days when the Admin has not set them: 30 for Desktop only, 60 for a flow with a visit. */
+export const defaultNcDays = (flow: AssessmentFlow): number => (flow === 'Desktop' ? 30 : 60);
+export const NC_MAX_ROUNDS = 5;
+export const NC_MAX_DAYS = 365;
+/** Where a flow raises its NCs: the desktop for Desktop only, otherwise the visit (none at a combined flow's desktop step). */
+export const ncStage = (flow: AssessmentFlow): 'desktop' | 'remote' | 'onsite' =>
+  flow === 'Desktop' ? 'desktop' : flow === 'Remote' || flow === 'DesktopRemote' ? 'remote' : 'onsite';
+export const ncNote = (flow: AssessmentFlow): string =>
+  flow === 'Desktop'
+    ? 'Raised at the desktop assessment.'
+    : flow === 'DesktopRemote' || flow === 'DesktopOnsite'
+      ? `Raised at the ${ncStage(flow)} assessment only. The desktop assessment raises no NCs in this flow.`
+      : `Raised at the ${ncStage(flow)} assessment.`;
+
 export const flowLabel = (f: string | undefined, mode: string) =>
   ASSESSMENT_FLOWS.find((x) => x.value === f)?.label ?? (mode === 'Desktop' ? 'Desktop only' : 'Desktop + Onsite');
 
@@ -145,6 +162,8 @@ interface LevelForm {
   /** The choices the portal runs today; the others show as "available soon". */
   availableFlows: string[];
   availableSurveillanceModes: string[];
+  ncRounds: number | null;
+  ncDays: number | null;
   validityMonths: number | null;
   surveillanceEnabled: boolean;
   firstSurveillanceMonths: number | null;
@@ -262,6 +281,7 @@ const API = '/api/staff/settings/levels';
           @if (l.description) { <p class="lv-desc">{{ l.description }}</p> }
           <dl class="lv-facts">
             <div><dt>Assessment</dt><dd>{{ flowOf(l) }}</dd></div>
+            <div><dt>NCs</dt><dd data-nc-fact>{{ ncFact(i) }}</dd></div>
             <div><dt>Valid for</dt><dd>{{ months(l.validityMonths) }}</dd></div>
             <div><dt>Surveillance</dt><dd>{{ surveillanceFact(l) }}</dd></div>
             <div><dt>Certificate no.</dt><dd><code class="lv-sample">{{ i.sample }}</code></dd></div>
@@ -427,6 +447,18 @@ const API = '/api/staff/settings/levels';
                               <span><strong>{{ f.label }}</strong><small>{{ f.hint }}</small>@if (soon) { <em class="lv-soon">Available soon</em> }</span>
                             </label>
                           }
+                        </div>
+                        <!-- 2026-11-16 (approved): the level's NC rounds and days (migration 0086). -->
+                        <span class="label-like top">Non-conformities</span>
+                        <div class="lv-nc" data-nc>
+                          <small class="muted d-block" data-nc-note>{{ ncNote(e.assessmentFlow) }}</small>
+                          <div class="lv-nc-row">
+                            <label for="lv-nc-rounds">NC rounds<span class="req">*</span></label>
+                            <input id="lv-nc-rounds" name="ncRounds" type="number" min="1" [max]="ncMaxRounds" class="form-control lv-short" [(ngModel)]="e.ncRounds" />
+                            <label for="lv-nc-days">Days to close<span class="req">*</span></label>
+                            <input id="lv-nc-days" name="ncDays" type="number" min="1" [max]="ncMaxDays" class="form-control lv-short" [(ngModel)]="e.ncDays" />
+                          </div>
+                          <small class="muted d-block">1 to {{ ncMaxRounds }} rounds. The days count from the first NC and cover every round; after that the application is rejected automatically.</small>
                         </div>
                         <label for="lv-validity">Valid for (months)<span class="req">*</span></label>
                         <div class="lv-surv">
@@ -643,6 +675,9 @@ const API = '/api/staff/settings/levels';
     .lv-tab { border: 0; background: none; padding: 8px 16px; font-weight: 600; font-size: 14px; color: #5f6f70; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
     .lv-tab:hover { color: #2f7c83; }
     .lv-tab.active { color: #23474a; border-bottom-color: #45a5ad; }
+    .lv-nc { border: 1px dashed #9fcfd3; border-radius: 6px; padding: 10px 12px; }
+    .lv-nc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 6px 0; }
+    .lv-nc-row label { margin: 0; }
     .lv-edit { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
     /* The portal's form styles stretch every field; the numbers stay short. */
     .form-grid input.lv-short { width: 110px !important; max-width: 110px !important; flex: none; }
@@ -897,6 +932,7 @@ export class CertificationLevelsPage {
     this.editing.set({
       code: '', isNew: true, name: '', description: '', comment: '', isEnabled: false, assessmentMode: 'Site',
       assessmentFlow: 'DesktopOnsite', surveillanceMode: 'Remote', availableFlows: ['Desktop', 'DesktopOnsite'], availableSurveillanceModes: ['Remote'],
+      ncRounds: NC_MAX_ROUNDS, ncDays: defaultNcDays('DesktopOnsite'),
       validityMonths: 36,
       surveillanceEnabled: true, certNoFormat: '{DDMMYYYY}_{ZEDNO}', certNoFormatManufacturing: '', certNoFormatService: '', fee: null,
       ...DEFAULT_SCHEDULE, surveillanceAutoApply: false, surveillanceSuspendRounds: null, surveillanceScheduleFrom: null,
@@ -911,9 +947,24 @@ export class CertificationLevelsPage {
     return flowLabel(this.levels().find((i) => i.level.code === l.code)?.assessmentFlow, l.assessmentMode);
   }
 
-  /** A flow chosen: the old Desktop / Site follows it (the preview and the Bronze rules read it). */
+  protected readonly ncNote = ncNote;
+  protected readonly ncMaxRounds = NC_MAX_ROUNDS;
+  protected readonly ncMaxDays = NC_MAX_DAYS;
+
+  /** The level card's NC line: where they are raised, rounds and days. */
+  protected ncFact(i: LevelItem): string {
+    const flow = i.assessmentFlow ?? (i.level.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite');
+    const rounds = i.ncRounds ?? NC_MAX_ROUNDS;
+    return `${ncStage(flow)[0].toUpperCase()}${ncStage(flow).slice(1)}, ${rounds} round${rounds === 1 ? '' : 's'}, ${i.ncDays ?? defaultNcDays(flow)} days`;
+  }
+
+  /**
+   * A flow chosen: the old Desktop / Site follows it (the preview and the Bronze rules read it). The NC days move to the new
+   * flow's default while they are still the old flow's default (30 Desktop only, 60 with a visit).
+   */
   protected setFlow(e: LevelForm, flow: AssessmentFlow): void {
-    this.editing.set({ ...e, assessmentFlow: flow, assessmentMode: flow === 'Desktop' ? 'Desktop' : 'Site' });
+    const ncDays = e.ncDays === defaultNcDays(e.assessmentFlow) ? defaultNcDays(flow) : e.ncDays;
+    this.editing.set({ ...e, assessmentFlow: flow, assessmentMode: flow === 'Desktop' ? 'Desktop' : 'Site', ncDays });
   }
 
   protected edit(i: LevelItem): void {
@@ -926,6 +977,8 @@ export class CertificationLevelsPage {
       assessmentMode: l.assessmentMode, validityMonths: l.validityMonths, surveillanceEnabled: l.surveillanceEnabled,
       assessmentFlow: i.assessmentFlow ?? (l.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite'), surveillanceMode: i.surveillanceMode ?? 'Remote',
       availableFlows: levelFlowsFor(l.code, i.availableFlows ?? ['Desktop', 'DesktopOnsite']), availableSurveillanceModes: i.availableSurveillanceModes ?? ['Remote'],
+      ncRounds: i.ncRounds ?? NC_MAX_ROUNDS,
+      ncDays: i.ncDays ?? defaultNcDays(i.assessmentFlow ?? (l.assessmentMode === 'Desktop' ? 'Desktop' : 'DesktopOnsite')),
       firstSurveillanceMonths: l.firstSurveillanceMonths, certNoFormat: l.certNoFormat, certNoFormatManufacturing: l.certNoFormatManufacturing ?? '',
       certNoFormatService: l.certNoFormatService ?? '', fee: l.fee,
       ...(Object.fromEntries(SCHEDULE_KEYS.map((k) => [k, l[k] ?? DEFAULT_SCHEDULE[k]])) as Record<ScheduleKey, number>),
@@ -959,7 +1012,7 @@ export class CertificationLevelsPage {
     const body = {
       code: e.isNew ? e.code.trim() : undefined, name: e.name.trim(), description: e.description, comment: e.comment, isEnabled: e.isEnabled,
       assessmentMode: e.assessmentMode, validityMonths: e.validityMonths, surveillanceEnabled: e.surveillanceEnabled,
-      assessmentFlow: e.assessmentFlow, surveillanceMode: e.surveillanceMode,
+      assessmentFlow: e.assessmentFlow, surveillanceMode: e.surveillanceMode, ncRounds: e.ncRounds, ncDays: e.ncDays,
       firstSurveillanceMonths: e.surveillanceEnabled ? e.firstSurveillanceMonths : null, certNoFormat: e.certNoFormat.trim(),
       certNoFormatManufacturing: e.certNoFormatManufacturing, certNoFormatService: e.certNoFormatService, fee: e.fee,
       ...(e.surveillanceEnabled
@@ -1040,6 +1093,8 @@ export class CertificationLevelsPage {
     if (e.isNew && !/^[A-Za-z][A-Za-z0-9]{1,19}$/.test(e.code.trim())) return 'The code must be 2 to 20 letters and digits, starting with a letter (e.g. ZEDX).';
     if (!e.name.trim()) return "Please enter the level's name.";
     if (!e.validityMonths || e.validityMonths < 1 || e.validityMonths > 120) return 'The validity must be 1 to 120 months.';
+    if (!Number.isInteger(e.ncRounds) || e.ncRounds! < 1 || e.ncRounds! > NC_MAX_ROUNDS) return `NC rounds must be 1 to ${NC_MAX_ROUNDS}.`;
+    if (!Number.isInteger(e.ncDays) || e.ncDays! < 1 || e.ncDays! > NC_MAX_DAYS) return `Days to close NCs must be 1 to ${NC_MAX_DAYS}.`;
     if (e.surveillanceEnabled && (!e.firstSurveillanceMonths || e.firstSurveillanceMonths < 1 || e.firstSurveillanceMonths >= e.validityMonths))
       return 'The first surveillance must be due before the certificate expires.';
     if (e.surveillanceEnabled) {

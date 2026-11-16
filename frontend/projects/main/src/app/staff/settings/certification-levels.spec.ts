@@ -154,6 +154,61 @@ describe('CertificationLevelsPage', () => {
     await settle();
   });
 
+  it('sets the NC rounds and days of a level, the days following the flow while they are its default (2026-11-16)', async () => {
+    const r = response(false);
+    (r.levels[0] as Record<string, unknown>)['availableFlows'] = ['Desktop', 'Remote', 'Onsite', 'DesktopRemote', 'DesktopOnsite'];
+    (r.levels[0] as Record<string, unknown>)['assessmentFlow'] = 'Desktop';
+    fixture.destroy();
+    fixture = TestBed.createComponent(CertificationLevelsPage);
+    el = fixture.nativeElement;
+    await settle();
+    http.expectOne(api).flush(r);
+    await settle();
+    // Nothing from the server: 5 rounds; 30 days at the desktop (Bronze), 60 at the visit (ZED-X, Site).
+    expect(box('Bronze').querySelector('[data-nc-fact]')!.textContent!.trim()).toBe('Desktop, 5 rounds, 30 days');
+    expect(box('ZED-X').querySelector('[data-nc-fact]')!.textContent!.trim()).toBe('Onsite, 5 rounds, 60 days');
+
+    button(box('Bronze'), 'Edit').click();
+    await settle();
+    button(el.querySelector('.modal')!, 'Certificate').click();
+    await settle();
+    const note = () => el.querySelector('[data-nc-note]')!.textContent!.trim();
+    const days = () => (el.querySelector('#lv-nc-days') as HTMLInputElement).value;
+    expect(note()).toBe('Raised at the desktop assessment.');
+    expect(days()).toBe('30');
+    const pick = async (label: string) => {
+      ([...el.querySelectorAll('[aria-label="Assessment"] label')].find((l) => l.textContent!.includes(label))!.querySelector('input') as HTMLInputElement).click();
+      await settle();
+    };
+    await pick('Desktop + Remote');
+    expect(note()).toBe('Raised at the remote assessment only. The desktop assessment raises no NCs in this flow.');
+    expect(days()).toBe('60');
+
+    // Six rounds are refused before anything is sent.
+    typeIn('#lv-nc-rounds', '6');
+    await settle();
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.modal')!.textContent).toContain('NC rounds must be 1 to 5.');
+    http.expectNone(`${api}/Bronze`);
+
+    // Days the Admin typed stay when the flow changes again.
+    typeIn('#lv-nc-rounds', '3');
+    typeIn('#lv-nc-days', '45');
+    await settle();
+    await pick('Onsite only');
+    expect(note()).toBe('Raised at the onsite assessment.');
+    expect(days()).toBe('45');
+    (el.querySelector('.modal form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    await settle();
+    const save = http.expectOne(`${api}/Bronze`);
+    expect(save.request.body).toEqual(expect.objectContaining({ assessmentFlow: 'Onsite', ncRounds: 3, ncDays: 45 }));
+    save.flush({ message: 'Bronze saved.' });
+    await settle();
+    http.expectOne(api).flush(r);
+    await settle();
+  });
+
   it('sets the surveillance schedule of Bronze as of ZED-X: applied by the portal, never suspended', async () => {
     button(box('Bronze'), 'Edit').click();
     await settle();
