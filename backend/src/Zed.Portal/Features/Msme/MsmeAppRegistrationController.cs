@@ -113,6 +113,8 @@ public sealed class MsmeAppRegistrationController(
         }
 
         await store.MarkCaptchaAsync(ClientIp, ct);
+        // 2026-11-17: the plants (with their addresses) for the plant step's same-address check.
+        await store.SavePlantsAsync(regNo, lookup.Plants, ct);
         Audit("Udyam lookup", regNo);
         var basic = lookup.BasicDetails;
         // Registered plants and activities the scheme does not cover come marked, to be greyed out with the reason.
@@ -152,6 +154,14 @@ public sealed class MsmeAppRegistrationController(
         {
             Audit($"plant check refused: {error}", regNo);
             return Fail(error);
+        }
+        // 2026-11-17 (the user): a plant at the address of a registered plant of the same Udyam (another plant number) is
+        // refused here too (the Udyam record of LookupUdyam; FinalSubmit checks it again with a fresh lookup).
+        var chosen = (await store.GetPlantsAsync(regNo, ct))?.FirstOrDefault(p => Same(p.GetValueOrDefault("PlantIdNo"), plant));
+        if (await registration.SameAddressAsync(regNo, chosen, ct) is { } sameAs)
+        {
+            Audit("plant check refused: same address as a registered plant", regNo);
+            return Fail(MsmeRegistrationService.SameAddressRegistered(sameAs));
         }
         return Success();
     }
@@ -444,6 +454,15 @@ public sealed class AppRegistrationStore(IDistributedCache cache)
         cache.SetAsync(LookupFailuresKey(regNo), BitConverter.GetBytes(failures), CaptchaLifetime, ct);
 
     private static string LookupFailuresKey(string regNo) => "msme-app-lookup:" + regNo.Trim().ToUpperInvariant();
+
+    /// <summary>2026-11-17: the plants of the Udyam record LookupUdyam read (an hour), for ValidatePlantAndActivity's address check.</summary>
+    public Task SavePlantsAsync(string regNo, IReadOnlyList<Dictionary<string, string>> plants, CancellationToken ct) =>
+        cache.SetAsync(PlantsKey(regNo), JsonSerializer.SerializeToUtf8Bytes(plants), StateLifetime, ct);
+
+    public async Task<List<Dictionary<string, string>>?> GetPlantsAsync(string regNo, CancellationToken ct) =>
+        await cache.GetAsync(PlantsKey(regNo), ct) is { } bytes ? JsonSerializer.Deserialize<List<Dictionary<string, string>>>(bytes) : null;
+
+    private static string PlantsKey(string regNo) => "msme-app-plants:" + regNo.Trim().ToUpperInvariant();
 
     public async Task<bool> CaptchaPassedAsync(string? ip, CancellationToken ct) => await cache.GetAsync(CaptchaKey(ip), ct) is not null;
 

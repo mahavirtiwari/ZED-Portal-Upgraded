@@ -237,6 +237,37 @@ public sealed partial class MsmeAppRegistrationTests : IDisposable
         Assert.Equal(MsmeRegistrationService.NotApplicable, activities[1].GetProperty(MsmeRegistrationService.ActivityRefusedKey).GetString());
     }
 
+    /// <summary>2026-11-17 (the user): the same unit entered twice in Udyam is refused in the app too, at each step.</summary>
+    [Fact]
+    public async Task A_plant_at_the_address_of_a_registered_plant_of_the_same_udyam_is_refused_in_the_app()
+    {
+        _host.Udyam.Result = _host.Udyam.Result with
+        {
+            Plants = [new() { ["PlantIdNo"] = "P1", ["UnitName"] = "Acme Unit 2", ["PFlat"] = "Plot 4", ["PRoad"] = "Industrial Area", ["PCity"] = "Kanpur", ["PPin"] = "208001" }],
+        };
+        _host.Sql.Queries[MsmeRegistrationService.SameAddressSql] = _ =>
+            [new MsmeRegistrationService.PlantAddressRow("ZEDMSME000002", "P0", "PLOT-4", null, "industrial area", "Kanpur", "208001")];
+        var app = _host.CreateClient();
+
+        // The plant list greys it out with the registered ZED ID (masked).
+        var lookup = await app.PostAsJsonAsync("/Msme/LookupUdyam", new { udyamNumber = Udyam, mobileNo = "9999999999" });
+        using (var doc = JsonDocument.Parse(await lookup.Content.ReadAsStringAsync()))
+            Assert.True(doc.RootElement.GetProperty("Plants")[0].TryGetProperty(MsmeRegistrationService.PlantRegisteredKey, out _));
+
+        // The plant step and the final submit refuse it.
+        Assert.Equal("1", (await Answer(await Post(app, "ValidateCaptcha", new { token = "safetynet-token" }))).Status);
+        var plant = await Answer(await Post(app, "ValidatePlantAndActivity", new Dictionary<string, string> { ["UdyogAadharNo"] = Udyam, ["PlantIdNo"] = "P1", ["TwoDigitActivity"] = "24" }));
+        Assert.Equal("0", plant.Status);
+        Assert.StartsWith("This plant appears to be already registered as ", plant.Message);
+        Assert.Equal("1", (await Answer(await Post(app, "SendPledgeEmailOtp", new { email = Pledge }))).Status);
+        var otp = OtpInMail().Match(_host.Email.Sent.Last(m => m.To == Pledge).HtmlBody).Groups[1].Value;
+        Assert.Equal("1", (await Answer(await Post(app, "VerifyPledgeEmailOtp", new { email = Pledge, otp }))).Status);
+        var submit = await Answer(await Post(app, "FinalSubmit", RegistrationBody()));
+        Assert.Equal("0", submit.Status);
+        Assert.StartsWith("This plant appears to be already registered as ", submit.Message);
+        Assert.DoesNotContain(_host.Sql.Calls, c => c.Name == "SP_MSME_INSERT_UDYAM_DETAILS");
+    }
+
     [Fact]
     public async Task Activities_sharing_an_ActivityDetail_Id_register_the_one_the_user_chose()
     {
