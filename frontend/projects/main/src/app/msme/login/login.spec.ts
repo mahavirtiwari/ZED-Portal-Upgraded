@@ -53,7 +53,9 @@ describe('LoginPage', () => {
 
   it('forgot password: finds the units of a PAN, sends the link for the chosen one and shows the hidden e-mail', async () => {
     const buttons = () => Array.from(el.querySelectorAll('button')) as HTMLButtonElement[];
-    buttons().find((b) => b.textContent?.includes('Forgot password'))!.click();
+    // 2026-11-16: LOGIN and FORGOT PASSWORD? side by side.
+    expect([...el.querySelectorAll('.ml-two .btn')].map((b) => b.textContent!.trim())).toEqual(['LOGIN', 'FORGOT PASSWORD?']);
+    buttons().find((b) => b.textContent?.trim() === 'FORGOT PASSWORD?')!.click();
     await settle();
     for (const r of http.match('/api/config')) r.flush({ captchaEnabled: false, captchaSiteKey: '' });
     await settle();
