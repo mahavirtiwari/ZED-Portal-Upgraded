@@ -95,13 +95,48 @@ public sealed class AppFormValidationTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, r.StatusCode);
         Assert.Equal("True", FakeSql.Arg(LastMerge().Args, "ValidationRequired"));
 
-        // Standard fields: the assessor already checks them (Basic Info, products, site exterior).
+        // 2026-11-16 (the user): a standard field with one answer can be validated too; products and photos are checked already.
         var standard = await admin.PutAsJsonAsync($"{Forms}/{Msme}/fields", new { key = "auditsConducted", label = "Audits?", required = true, enabled = true, validationRequired = true });
-        Assert.Equal(HttpStatusCode.BadRequest, standard.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, standard.StatusCode);
+        Assert.Equal(("auditsConducted", "True"), (FakeSql.Arg(LastMerge().Args, "FieldKey"), FakeSql.Arg(LastMerge().Args, "ValidationRequired")));
+        Assert.Null(form.Fields.Single(f => f.Key == "auditsConducted").NoValidation);
+        Assert.Contains("already checks", form.Fields.Single(f => f.Key == "productDetailsList").NoValidation);
+        Assert.NotNull(form.Fields.Single(f => f.Key == "siteExteriorPhotos").NoValidation);
+        var products = await admin.PutAsJsonAsync($"{Forms}/{Msme}/fields", new { key = "productDetailsList", label = "Products", required = true, enabled = true, validationRequired = true });
+        Assert.Equal(HttpStatusCode.BadRequest, products.StatusCode);
 
         // The site assessor's own form is not checked by anyone.
         var other = await admin.PostAsJsonAsync($"{Forms}/{AppFormCatalogue.AssessorBasicInfo}/fields", new { label = "X", type = "text", validationRequired = true });
         Assert.Equal(HttpStatusCode.BadRequest, other.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_validated_standard_answer_is_copied_for_the_check_and_an_NC_answer_goes_back_to_the_record()
+    {
+        // The Admin marked "Domestic customers" and "Energy sources" (standard) validation required.
+        _fields.Add(new AppFormFieldRow(Msme, "domesticCustomers", false, null, null, null, null, true, null, null, null, "ADMIN1", null, null, null, true));
+        _fields.Add(new AppFormFieldRow(Msme, "energySources", false, null, null, null, null, true, null, null, null, "ADMIN1", null, null, null, true));
+        _host.Sql.Queries[AppFormStandardAnswers.ReadSql] = _ => [new AppFormChecks.StandardRecord { DomesticCustomers = "Tata Motors", EnergySources = "Solar,Coal" }];
+        var client = await DaTestUsers.SignInAsync(_host, "ASSESSOR1");
+        _ = (await client.GetFromJsonAsync<DesktopAssessmentController.FormChecksResponse>(Base + "/form-checks"))!;
+        var copies = _host.Sql.Calls.Where(c => c.Name == AppFormStandardAnswers.CopySql).ToList();
+        Assert.Equal(("domesticCustomers", "Tata Motors"), (FakeSql.Arg(copies[0].Args, "FieldKey"), FakeSql.Arg(copies[0].Args, "Value")));
+        Assert.Equal(("energySources", "[\"Solar\",\"Coal\"]"), (FakeSql.Arg(copies[1].Args, "FieldKey"), FakeSql.Arg(copies[1].Args, "Value")));
+
+        // Listed with the own fields once copied.
+        _answers.Add(new AppFormCheckRow { FormKey = Msme, FieldKey = "domesticCustomers", Value = "Tata Motors" });
+        var checks = (await client.GetFromJsonAsync<DesktopAssessmentController.FormChecksResponse>(Base + "/form-checks"))!;
+        Assert.Equal(["cf_gst", "domesticCustomers"], checks.Items.Select(i => i.Key).Order());
+
+        // The unit's answer to an NC on it is written back into its record too.
+        _answers.Clear();
+        _answers.Add(new AppFormCheckRow { FormKey = Msme, FieldKey = "energySources", Value = "[\"Solar\"]", NcRound = 1, NcRemarks = "Diesel missing" });
+        var error = await _host.Services.GetRequiredService<AppFormChecks>().AnswerNcAsync(PortalSystem.Main, Zed, "Bronze", 1, Msme, "energySources",
+            System.Text.Json.JsonSerializer.SerializeToElement(new[] { "Solar", "Diesel" }), Zed);
+        Assert.Null(error);
+        var write = _host.Sql.Calls.Last(c => c.Name == AppFormStandardAnswers.WriteSql("EnergySources"));
+        Assert.Equal(("Solar,Diesel", Zed), (FakeSql.Arg(write.Args, "Value"), FakeSql.Arg(write.Args, "ZedId")));
+        Assert.Throws<ArgumentException>(() => AppFormStandardAnswers.WriteSql("Password"));
     }
 
     [Fact]

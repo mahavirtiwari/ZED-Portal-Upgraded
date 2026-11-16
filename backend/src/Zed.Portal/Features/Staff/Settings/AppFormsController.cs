@@ -31,7 +31,12 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
         bool Active, bool Custom, string Section, int Order, IReadOnlyList<string>? Options, string? OptionsSource, int? MaxItems,
         string? ShownWhen, string? StandardLabel, string? StandardHelp, bool? StandardRequired, bool Customised, string? UpdatedBy,
         DateTime? UpdatedOn, IReadOnlyList<FieldItem>? Columns, IReadOnlyList<string>? Levels = null, IReadOnlyList<string>? NicSectors = null,
-        bool ValidationRequired = false);
+        bool ValidationRequired = false)
+    {
+        /// <summary>2026-11-16: on a form whose answers an assessor checks, why this standard field has no "Validation required"
+        /// switch (products and photos are checked on the desktop assessment already); null when it has one, or for own fields.</summary>
+        public string? NoValidation { get; init; }
+    }
 
     public sealed record LevelOption(string Code, string Name);
 
@@ -116,8 +121,11 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
             if (req.Type is { Length: > 0 } type && !string.Equals(type.Trim(), field.Type, StringComparison.OrdinalIgnoreCase))
                 return this.Problem400("The type of a standard field cannot be changed.");
             if (LabelError(req.Label, req.Help) is { } error) return this.Problem400(error);
-            if (req.ValidationRequired) return this.Problem400("Only the fields you added can be \"Validation required\". The assessor already checks the standard answers.");
-            var row = StandardRow(f, f.KeyOf(req.Key)!, field, req.Label!.Trim(), Clean(req.Help), req.Required, req.Enabled, levels, sectors);
+            if (ValidationError(f, req) is { } invalid) return this.Problem400(invalid);
+            // 2026-11-16 (the user): a standard field with one answer can be "Validation required" too.
+            if (req.ValidationRequired && AppFormStandardAnswers.WhyNot(f.Spec.Key, field) is { } whyNot) return this.Problem400(whyNot);
+            var row = StandardRow(f, f.KeyOf(req.Key)!, field, req.Label!.Trim(), Clean(req.Help), req.Required, req.Enabled, levels, sectors,
+                req.ValidationRequired && AppFormStandardAnswers.CanValidate(f.Spec.Key, field.Key));
             if (await WriteAsync(() => SaveStandardAsync(row, ct), "save a field of", f) is { } failed) return failed;
         }
         log.LogInformation("App form {Form}: field {Key} saved by {UserId} (required {Required}, enabled {Enabled}, validated {Validated})",
@@ -135,7 +143,7 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
                 field.Options is null ? null : AppFormRules.ToJsonArray(field.Options), null, null, AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors),
                 field.ValidationRequired ? true : null)
             : StandardRow(f, f.KeyOf(req.Key)!, field, field.Label, field.Help, field.Required, req.Enabled,
-                AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors));
+                AppFormUnit.Join(field.Levels), AppFormUnit.Join(field.NicSectors), field.ValidationRequired);
         if (await WriteAsync(() => field.Custom ? forms.Store.SaveFieldAsync(row, UserId, ct) : SaveStandardAsync(row, ct), "change", f) is { } failed)
             return failed;
         log.LogInformation("App form {Form}: field {Key} {State} by {UserId}", f.Spec.Key, field.Key, req.Enabled ? "enabled" : "disabled", UserId);
@@ -181,11 +189,15 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
             x.MaxItems, x.When is { } w ? $"{(f.Find(w.Field)?.Label ?? w.Field)} is {w.EqualsValue}" : null,
             x.Standard?.Label, x.Standard?.Help, x.Standard?.Required, x.Customised, x.UpdatedBy, x.UpdatedOn,
             x.Columns?.Select(c => Field(f, c with { Key = x.Key + AppFormCatalogue.ColumnSeparator + c.Key })).ToList(), x.Levels, x.NicSectors,
-            x.ValidationRequired);
+            x.ValidationRequired)
+        {
+            NoValidation = !x.Custom && x.Standard is not null && f.Spec.Validated.Count > 0 && !x.Key.Contains(AppFormCatalogue.ColumnSeparator)
+                ? AppFormStandardAnswers.WhyNot(f.Spec.Key, x) : null,
+        };
 
     /// <summary>The row of a standard field: only what differs from the catalogue is stored.</summary>
     private static AppFormFieldRow StandardRow(EffectiveAppForm f, string key, AppField field, string label, string? help, bool required, bool enabled,
-        string? levels = null, string? sectors = null)
+        string? levels = null, string? sectors = null, bool validationRequired = false)
     {
         var s = field.Standard!;
         return new AppFormFieldRow(f.Spec.Key, key, false,
@@ -195,7 +207,7 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
             required == s.Required ? null : required,
             enabled,
             field.Order == s.Order ? null : field.Order,
-            null, null, null, null, levels, sectors);
+            null, null, null, null, levels, sectors, validationRequired ? true : null);
     }
 
     /// <summary>The levels and NIC sectors chosen (stored comma-separated; none chosen = all), or what is wrong with them.</summary>
@@ -223,7 +235,7 @@ public sealed class AppFormsController(AppForms forms, PortalHost host, ISqlExec
 
     /// <summary>A standard field with nothing changed has no row (the same as Reset).</summary>
     private Task SaveStandardAsync(AppFormFieldRow row, CancellationToken ct) =>
-        row is { Label: null, Help: null, Required: null, Enabled: true, SortOrder: null, Levels: null, NicSectors: null }
+        row is { Label: null, Help: null, Required: null, Enabled: true, SortOrder: null, Levels: null, NicSectors: null, ValidationRequired: null }
             ? forms.Store.ResetAsync(row.FormKey, row.FieldKey, ct)
             : forms.Store.SaveFieldAsync(row, UserId, ct);
 

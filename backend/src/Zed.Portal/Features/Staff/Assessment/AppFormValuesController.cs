@@ -34,7 +34,9 @@ public sealed class AppFormValuesController(ISqlExecutor db, AppForms forms, Por
         var result = new List<FormValues>();
         foreach (var spec in AppFormCatalogue.For(host.System))
         {
-            var answers = rows.Where(r => string.Equals(r.FormKey, spec.Key, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(r.Value)).ToList();
+            // 2026-11-16: not the copies of standard answers made for the check (the page shows those with the basic information).
+            var answers = rows.Where(r => string.Equals(r.FormKey, spec.Key, StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(r.Value)
+                                          && !AppFormStandardAnswers.CanValidate(r.FormKey, r.FieldKey)).ToList();
             if (answers.Count == 0) continue;
             var form = (await forms.GetAsync(host.System, spec.Key, ct))!;
             var values = answers

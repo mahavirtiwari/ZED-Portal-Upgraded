@@ -51,6 +51,8 @@ export interface AppFieldItem {
   nicSectors?: string[] | null;
   /** V4 (migration 0080): the assessor checks the answer (Valid / Not valid, which raises an NC). */
   validationRequired?: boolean;
+  /** 2026-11-16: why this standard field has no "Validation required" switch (products and photos are checked already). */
+  noValidation?: string | null;
 }
 
 export interface AppFormSection {
@@ -409,7 +411,11 @@ const TYPE_GLYPHS: Record<string, string> = {
                         <small class="text-muted d-block">{{ e.enabled ? 'Asked in the form.' : 'Not shown; answers already given are kept.' }}</small>
                       </span>
                     </label>
-                    @if (e.custom && details()?.canValidate) {
+                    @if (details()?.canValidate && !e.custom && e.field?.noValidation) {
+                      <div class="toggle-card no-validation" data-no-validation>
+                        <span><strong>Validation required</strong><small class="text-muted d-block">{{ e.field.noValidation }}</small></span>
+                      </div>
+                    } @else if (details()?.canValidate) {
                       <label class="toggle-card form-switch" for="fieldValidated">
                         <input class="form-check-input" type="checkbox" role="switch" id="fieldValidated" [(ngModel)]="e.validationRequired" />
                         <span>
@@ -527,6 +533,7 @@ const TYPE_GLYPHS: Record<string, string> = {
     .choice-remove { color: #a8303a; text-decoration: none; padding: 2px 8px; }
     .add-choice { align-self: flex-start; }
     .toggle-card { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #dfe9ea; border-radius: 10px; padding: 10px 12px; margin: 0; cursor: pointer; }
+    .toggle-card.no-validation { cursor: default; background: #f6f8f8; }
     .toggle-card .form-check-input { flex: 0 0 auto; margin: 3px 0 0; }
     .toggle-card.form-switch { padding-left: 12px; }
     .toggle-card.form-switch .form-check-input { margin-left: 0; width: 2em; }
@@ -719,7 +726,7 @@ export class AppFormsPage {
       options: e.custom && this.isChoice(e.type) ? e.options.map((o) => o.trim()).filter((o) => o) : null,
       levels: e.levels,
       nicSectors: e.nicSectors,
-      validationRequired: e.custom && e.validationRequired,
+      validationRequired: e.validationRequired && (e.custom || !e.field?.noValidation),
     };
     this.busy.set(true);
     this.modalError.set('');

@@ -94,6 +94,8 @@ public sealed partial class MsmeEntryController(
         var site = await db.QuerySqlAsync<PhotoRow>(SitePhotosSql, key, ct);
         var custom = (await forms.Store.ValuesAsync(ZedId, level, ct))
             .Where(v => string.Equals(v.FormKey, AppFormCatalogue.MsmeBasicInfo, StringComparison.OrdinalIgnoreCase))
+            // 2026-11-16: the copies of standard answers made for the assessor's check are not the unit's own fields.
+            .Where(v => !AppFormStandardAnswers.CanValidate(v.FormKey, v.FieldKey))
             .GroupBy(v => v.FieldKey, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Last().Value, StringComparer.OrdinalIgnoreCase);
 

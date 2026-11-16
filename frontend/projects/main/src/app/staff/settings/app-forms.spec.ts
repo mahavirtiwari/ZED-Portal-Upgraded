@@ -175,7 +175,8 @@ describe('AppFormsPage', () => {
     const withValidation = (): AppFormDetails => {
       const d = details();
       d.canValidate = true;
-      d.fields = d.fields.map((f) => (f.key === 'cf_sector' ? { ...f, validationRequired: true } : f));
+      d.fields = d.fields.map((f) => (f.key === 'cf_sector' ? { ...f, validationRequired: true }
+        : f.key === 'productDetailsList' ? { ...f, noValidation: 'The assessor already checks this answer on the desktop assessment.' } : f));
       return d;
     };
     (fixture.componentInstance as unknown as { details: { set(d: AppFormDetails): void } }).details.set(withValidation());
@@ -183,10 +184,27 @@ describe('AppFormsPage', () => {
     expect(row('cf_sector').textContent).toContain('Validated');
     expect(row('auditsConducted').textContent).not.toContain('Validated');
 
-    // A standard field: no switch (the assessor already checks the standard answers).
+    // 2026-11-16: a standard field with one answer has the switch too (sent with the save).
     button('Edit', row('auditsConducted')).click();
     await settle();
+    const std = el.querySelector('[role=dialog] #fieldValidated') as HTMLInputElement;
+    expect(std.checked).toBe(false);
+    std.click();
+    await settle();
+    button('SAVE', el.querySelector('[role=dialog]')!).click();
+    await settle();
+    const stdPut = http.expectOne((r) => r.method === 'PUT' && r.url === `${formUrl}/fields`);
+    expect([stdPut.request.body.key, stdPut.request.body.validationRequired]).toEqual(['auditsConducted', true]);
+    stdPut.flush({ message: 'Field saved.' });
+    await reloaded('Field saved.');
+    (fixture.componentInstance as unknown as { details: { set(d: AppFormDetails): void } }).details.set(withValidation());
+    await settle();
+
+    // Products: checked on the desktop assessment already; a note instead of the switch.
+    button('Edit', row('productDetailsList')).click();
+    await settle();
     expect(el.querySelector('[role=dialog] #fieldValidated')).toBeNull();
+    expect(el.querySelector('[role=dialog] [data-no-validation]')!.textContent).toContain('already checks');
     button('CANCEL', el.querySelector('[role=dialog]')!).click();
     await settle();
 

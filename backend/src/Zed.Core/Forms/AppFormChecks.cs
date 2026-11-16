@@ -85,6 +85,49 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
 
     private static DbString Ansi(string? value, int length) => new() { Value = value, IsAnsi = true, Length = length };
 
+    /// <summary>The standard answers of the unit's record (<see cref="AppFormStandardAnswers.ReadSql"/>).</summary>
+    public sealed class StandardRecord
+    {
+        public string? AuditsConducted { get; init; }
+        public string? DomesticCustomers { get; init; }
+        public string? InternationalCustomers { get; init; }
+        public string? RawMaterialImported { get; init; }
+        public string? OutsourcedProcesses { get; init; }
+        public string? EnergySources { get; init; }
+        public string? ManufacturingCapacityUnits { get; init; }
+        public string? ManufacturingCapacityValue { get; init; }
+        public string? MonthlyUtilizationUnits { get; init; }
+        public string? MonthlyUtilizationValue { get; init; }
+
+        public string? Of(string column) => (string?)typeof(StandardRecord).GetProperty(column)?.GetValue(this);
+    }
+
+    /// <summary>
+    /// 2026-11-16: the "Validation required" standard answers of the record copied for the check (first assessment only; an
+    /// NC round checks the answers its NCs were raised on). A failure is logged: the custom answers are still listed.
+    /// </summary>
+    private async Task CopyStandardAnswersAsync(EffectiveAppForm form, string zedId, string certification, AppFormCheckRound round, CancellationToken ct)
+    {
+        var wanted = form.Fields.Where(f => !f.Custom && f.Active && f.ValidationRequired && AppFormStandardAnswers.CanValidate(form.Spec.Key, f.Key)).ToList();
+        if (wanted.Count == 0) return;
+        try
+        {
+            var record = (await db.QuerySqlAsync<StandardRecord>(AppFormStandardAnswers.ReadSql,
+                new { ZedId = Ansi(zedId, 50), CertificationType = Ansi(certification, 50) }, ct)).FirstOrDefault();
+            if (record is null) return;
+            foreach (var f in wanted)
+                await db.ExecuteSqlAsync(AppFormStandardAnswers.CopySql, new
+                {
+                    FormKey = Ansi(form.Spec.Key, 50), ZedId = Ansi(zedId, 50), CertificationType = Ansi(certification, 50), FieldKey = Ansi(f.Key, 100),
+                    Value = AppFormStandardAnswers.ToStored(f.Key, record.Of(AppFormStandardAnswers.Columns[f.Key])), Stage = Ansi(round.Stage, 2), round.Round,
+                }, ct);
+        }
+        catch (SqlException ex)
+        {
+            log.LogWarning(ex, "Could not copy the standard answers of {ZedId} {Certification} for the check", zedId, certification);
+        }
+    }
+
     /// <summary>The unit's answers with their checks; none before migration 0080 (or when the table cannot be read).</summary>
     public async Task<IReadOnlyList<AppFormCheckRow>> RowsAsync(string zedId, string certification, CancellationToken ct = default)
     {
@@ -108,15 +151,21 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
     public async Task<IReadOnlyList<AppFormCheckItem>> ItemsAsync(PortalSystem system, string zedId, string certification, AppFormCheckRound round,
         CancellationToken ct = default)
     {
-        var rows = await RowsAsync(zedId, certification, ct);
-        if (rows.Count == 0) return [];
         var unit = await AppFormUnit.ForAsync(db, zedId, certification, ct);
-        var result = new List<AppFormCheckItem>();
+        var specs = new List<(AppFormSpec Spec, EffectiveAppForm Form)>();
         foreach (var spec in AppFormCatalogue.For(system).Where(s => s.CanValidate(system)))
         {
             var form = (await forms.GetAsync(system, spec.Key, ct, unit))!;
+            if (!round.NcRound) await CopyStandardAnswersAsync(form, zedId, certification, round, ct);
+            specs.Add((spec, form));
+        }
+        var rows = await RowsAsync(zedId, certification, ct);
+        if (rows.Count == 0) return [];
+        var result = new List<AppFormCheckItem>();
+        foreach (var (spec, form) in specs)
+        {
             var mine = rows.Where(r => string.Equals(r.FormKey, spec.Key, StringComparison.OrdinalIgnoreCase)).ToList();
-            foreach (var f in form.Fields.Where(f => f.Custom))
+            foreach (var f in form.Fields.Where(f => f.Custom || AppFormStandardAnswers.CanValidate(spec.Key, f.Key)))
             {
                 var row = mine.FirstOrDefault(r => string.Equals(r.FieldKey, f.Key, StringComparison.OrdinalIgnoreCase));
                 if (row is null) continue;
@@ -257,6 +306,12 @@ public sealed class AppFormChecks(ISqlExecutor db, AppForms forms, ILogger<AppFo
             FormKey = Ansi(spec.Key, 50), ZedId = Ansi(zedId, 50), CertificationType = Ansi(certification, 50), FieldKey = Ansi(item.Key, 100), NcRound = ncRound,
         }, ct);
         if (changed == 0) return "This non-conformance is not open. Please refresh.";
+        // 2026-11-16: a standard answer goes back into the unit's record too, so the reports show the corrected answer.
+        if (AppFormStandardAnswers.CanValidate(spec.Key, item.Key))
+            await db.ExecuteSqlAsync(AppFormStandardAnswers.WriteSql(AppFormStandardAnswers.Columns[item.Key]), new
+            {
+                Value = Ansi(AppFormStandardAnswers.ToRecorded(item.Key, stored), 5000), ZedId = Ansi(zedId, 50), CertificationType = Ansi(certification, 50),
+            }, ct);
         log.LogInformation("App form NC {Round}: {Form}/{Key} of {ZedId} {Certification} answered", ncRound, spec.Key, item.Key, zedId, certification);
         return null;
     }

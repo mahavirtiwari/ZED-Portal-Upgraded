@@ -383,6 +383,8 @@ public sealed class EffectiveAppForm
         UpdatedOn = r?.UpdatedOn,
         Levels = AppFormUnit.Split(r?.Levels),
         NicSectors = AppFormUnit.Split(r?.NicSectors),
+        // 2026-11-16: a standard field with one answer can be "Validation required" too (AppFormStandardAnswers).
+        ValidationRequired = r?.ValidationRequired == true,
     };
 
     private static AppField FromCustom(AppFormFieldRow r, string section) => new()
